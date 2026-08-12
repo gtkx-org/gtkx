@@ -64,7 +64,7 @@ mod tests {
                 gobject_type(&handle),
                 glib::Object::static_type().into_glib() as u64
             );
-            drop(handle.take_owned());
+            handle.release_owned();
             drop(obj);
         });
     }

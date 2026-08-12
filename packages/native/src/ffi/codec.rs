@@ -281,9 +281,9 @@ pub trait Decoder {
     /// # Safety
     ///
     /// `ptr` must point at an initialized, readable machine word holding a pointer to an instance
-    /// of the type this codec describes (a C out-parameter slot), or, for a codec that reports
-    /// itself inline, at the instance itself. The word itself need not be aligned; it is read
-    /// unaligned. `env` must belong to the thread running the JavaScript main loop.
+    /// of the type this codec describes (a C out-parameter slot). The word itself need not be
+    /// aligned; it is read unaligned. `env` must belong to the thread running the JavaScript main
+    /// loop.
     unsafe fn read_pointer_slot<'e>(
         &self,
         env: &'e Env,
@@ -291,11 +291,13 @@ pub trait Decoder {
         context: &str,
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
-        let inner_ptr = if self.is_inline() {
-            ptr.cast_mut()
-        } else {
-            unsafe { ptr.cast::<*mut c_void>().read_unaligned() }
-        };
+        if self.is_inline() {
+            bail!(
+                "{context}: a value stored inline has no pointer slot to read, it can only be decoded as a field of the instance that holds it"
+            );
+        }
+
+        let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
         unsafe {
             self.read(
                 env,

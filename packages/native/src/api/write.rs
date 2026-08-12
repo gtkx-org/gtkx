@@ -7,7 +7,7 @@ use napi_derive::napi;
 use crate::api::{byte_count_from_f64, live_handle_ptr, native_result};
 use crate::ffi::codec::{Codec, PtrWriter as _, SlotInit};
 use crate::ffi::descriptor::Descriptor;
-use crate::handle::Handle;
+use crate::handle::{Handle, NULL_HANDLE};
 
 fn write_field(
     env: &Env,
@@ -23,7 +23,8 @@ fn write_field(
     )
 }
 
-/// Encodes `value` with `fieldDescriptor` and writes it into the handle's memory at `offset` bytes.
+/// Encodes `value` with `fieldDescriptor` and writes it into the handle's memory at `offset` bytes,
+/// rejecting a handle that points at nothing rather than writing at the bare offset.
 #[napi(catch_unwind)]
 pub fn write<'env>(
     env: &'env Env,
@@ -33,8 +34,16 @@ pub fn write<'env>(
     value: Unknown<'_>,
 ) -> Result<Unknown<'env>> {
     let offset = byte_count_from_f64(offset, "field write: offset")?;
+    let base_ptr = live_handle_ptr(handle, "field write")?;
 
-    let field_ptr = live_handle_ptr(handle, "field write")?.wrapping_byte_add(offset);
+    if base_ptr.is_null() {
+        return Err(Error::new(
+            Status::InvalidArg,
+            format!("field write: {NULL_HANDLE}"),
+        ));
+    }
+
+    let field_ptr = base_ptr.wrapping_byte_add(offset);
     let field_codec = field_descriptor.into_codec()?;
     let transfer = native_result(
         "field write",

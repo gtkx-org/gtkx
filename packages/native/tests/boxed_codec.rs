@@ -374,7 +374,7 @@ fn caller_allocated_struct_aliases_source_without_copying() {
 }
 
 #[test]
-fn an_inline_boxed_read_from_a_slot_decodes_the_slot_itself() {
+fn an_inline_boxed_cannot_be_read_from_a_pointer_slot() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let (type_, original) = rgba_boxed_alloc();
@@ -386,13 +386,14 @@ fn an_inline_boxed_read_from_a_slot_decodes_the_slot_itself() {
             size: Some(size_of::<gdk::ffi::GdkRGBA>()),
             ..boxed(Ownership::Borrowed)
         };
-        let value = unsafe { codec.read(&env, ReadCtx::slot(slot_ptr, "inline slot")) }
-            .expect("an inline boxed reads from a slot");
+        let result = unsafe { codec.read(&env, ReadCtx::slot(slot_ptr, "inline slot")) };
+        let Err(error) = result else {
+            panic!("an inline boxed reached through a pointer slot must be rejected")
+        };
 
-        assert_eq!(
-            handle_ptr(value, "inline slot").expect("expected Object value"),
-            slot_ptr.cast_mut(),
-            "an inline boxed value must decode at the slot's own address, not the pointer it holds"
+        assert!(
+            format!("{error:#}").contains("has no pointer slot to read"),
+            "an inline boxed has no owner to alias here, so it must fail loudly rather than copy"
         );
 
         free_rgba(type_, original);

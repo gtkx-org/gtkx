@@ -14,8 +14,9 @@ use crate::ffi::PendingTransfer;
 const GOBJECT_SIZE_HINT: usize = 512;
 const STRUCT_SIZE_HINT: usize = 256;
 
-pub const INVALIDATED_HANDLE: &str =
-    "the instance a dispose or finalize override receives is only valid until the override returns";
+pub const INVALIDATED_HANDLE: &str = "the instance a dispose or finalize override receives is only valid until the override returns, and a handle over borrowed memory only until the borrow ends";
+
+pub const NULL_HANDLE: &str = "the handle points at nothing, so it has no field to reach";
 
 #[derive(Default)]
 pub struct FieldStore {
@@ -69,6 +70,7 @@ enum HandleKind {
 struct HandleInner {
     kind: HandleKind,
     fields: FieldStore,
+    invalidated: Cell<bool>,
 }
 
 /// A shared reference to one native instance. Cloning shares the same instance, so a value that
@@ -103,6 +105,7 @@ impl From<HandleKind> for Handle {
             inner: Rc::new(HandleInner {
                 kind,
                 fields: FieldStore::default(),
+                invalidated: Cell::new(false),
             }),
         }
     }
@@ -179,8 +182,12 @@ impl Handle {
         .into()
     }
 
-    /// Drops the pointer an object handle carries, leaving it referring to nothing.
+    /// Ends the handle's reference to its instance, so every later read or write through it, and
+    /// through any field aliasing it, is rejected instead of touching memory whose validity has
+    /// run out. Call it on a handle over a pointer GTKX does not own once the borrow expires.
     pub fn invalidate(&self) {
+        self.inner.invalidated.set(true);
+
         if let HandleKind::Object { ptr, .. } = &self.inner.kind {
             ptr.set(std::ptr::null_mut());
         }
@@ -188,6 +195,10 @@ impl Handle {
 
     #[must_use]
     pub fn is_invalidated(&self) -> bool {
+        if self.inner.invalidated.get() {
+            return true;
+        }
+
         match &self.inner.kind {
             HandleKind::Object { ptr, .. } => ptr.get().is_null(),
             HandleKind::Field { owner, .. } => owner.is_invalidated(),
@@ -206,7 +217,8 @@ impl Handle {
         (!ptr.is_null()).then(|| ptr.cast::<glib::gobject_ffi::GObject>())
     }
 
-    #[allow(clippy::must_use_candidate)]
+    /// Hands the owned reference over to the caller, which becomes responsible for releasing it.
+    #[must_use]
     pub fn take_owned(&self) -> Option<glib::Object> {
         match &self.inner.kind {
             HandleKind::Object { owned, .. } => owned.take(),
@@ -214,14 +226,32 @@ impl Handle {
         }
     }
 
+    /// Releases the reference the handle owns, for a caller that wants the handle to stop holding
+    /// its instance alive rather than to take the instance over.
+    pub fn release_owned(&self) {
+        drop(self.take_owned());
+    }
+
     #[must_use]
     pub fn as_ptr(&self) -> *mut c_void {
+        if self.is_invalidated() {
+            return std::ptr::null_mut();
+        }
+
         match &self.inner.kind {
             HandleKind::Object { ptr, .. } => ptr.get(),
             HandleKind::Struct(ptr) | HandleKind::Borrowed(ptr) => *ptr,
             HandleKind::Boxed(boxed) => boxed.as_ptr(),
             HandleKind::Fundamental(fundamental) => fundamental.as_ptr(),
-            HandleKind::Field { owner, offset } => owner.as_ptr().wrapping_byte_add(*offset),
+            HandleKind::Field { owner, offset } => {
+                let owner_ptr = owner.as_ptr();
+
+                if owner_ptr.is_null() {
+                    owner_ptr
+                } else {
+                    owner_ptr.wrapping_byte_add(*offset)
+                }
+            }
         }
     }
 

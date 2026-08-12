@@ -171,6 +171,20 @@ fn take_owned_consumes_the_object_once() {
 }
 
 #[test]
+fn release_owned_drops_the_reference_the_handle_holds() {
+    helpers::run(|| {
+        let (obj, obj_ptr, initial_ref, handle) = extra_referenced_decoded_gobject();
+
+        handle.release_owned();
+
+        assert_eq!(unsafe { get_gobject_refcount(obj_ptr) }, initial_ref - 1);
+
+        drop(handle);
+        drop(obj);
+    });
+}
+
+#[test]
 fn a_call_scoped_gobject_handle_owns_nothing_until_it_is_invalidated() {
     helpers::run(|| {
         let (obj, obj_ptr, before) = helpers::fresh_gobject();
@@ -193,14 +207,17 @@ fn a_call_scoped_gobject_handle_owns_nothing_until_it_is_invalidated() {
 }
 
 #[test]
-fn invalidating_a_handle_that_holds_no_gobject_changes_nothing() {
+fn invalidating_a_borrowed_handle_ends_its_reference() {
     let raw = 0xABCD_1234usize as *mut c_void;
     let handle = Handle::from_glib_borrow(raw);
 
-    handle.invalidate();
-
     assert!(!handle.is_invalidated());
     assert_eq!(handle.as_ptr(), raw);
+
+    handle.invalidate();
+
+    assert!(handle.is_invalidated());
+    assert!(handle.as_ptr().is_null());
 }
 
 #[test]
@@ -214,10 +231,9 @@ fn take_owned_on_a_borrowed_handle_returns_none() {
 }
 
 #[test]
-fn a_field_of_a_borrowed_owner_aliases_it_and_owns_nothing() {
+fn a_field_of_a_borrowed_owner_stops_reaching_it_when_the_borrow_ends() {
     helpers::run(|| {
-        let mut owner: [u32; 4] = [1, 2, 3, 4];
-        let owner_ptr = (&raw mut owner).cast::<c_void>();
+        let owner_ptr = unsafe { glib::ffi::g_malloc0(size_of::<u32>() * 4) };
         let owner_handle = Handle::from_glib_borrow(owner_ptr);
         let field = Handle::field(&owner_handle, size_of::<u32>() * 2);
 
@@ -225,14 +241,15 @@ fn a_field_of_a_borrowed_owner_aliases_it_and_owns_nothing() {
         assert_eq!(field.size_hint(), 0);
         assert!(!field.is_invalidated());
 
-        drop(owner_handle);
         unsafe { field.as_ptr().cast::<u32>().write(99) };
 
-        assert_eq!(owner, [1, 2, 99, 4]);
+        assert_eq!(unsafe { owner_ptr.cast::<u32>().add(2).read() }, 99);
 
-        drop(field);
+        owner_handle.invalidate();
+        unsafe { glib::ffi::g_free(owner_ptr) };
 
-        assert_eq!(owner, [1, 2, 99, 4]);
+        assert!(field.is_invalidated());
+        assert!(field.as_ptr().is_null());
     });
 }
 

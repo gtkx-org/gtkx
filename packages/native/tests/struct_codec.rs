@@ -4,6 +4,7 @@ use gtk4::glib;
 use napi::bindgen_prelude::{External, Unknown};
 use napi::{Env, JsValue as _};
 use native::api::read::read;
+use native::api::write::write;
 use native::ffi::Slot;
 use native::ffi::codec::{Decoder, Encoder, Ownership, PtrWriter, ReadCtx, SlotInit, StructCodec};
 use native::ffi::descriptor::Descriptor;
@@ -274,13 +275,21 @@ fn inline_struct_codec() -> StructCodec {
     }
 }
 
-fn inline_struct_descriptor() -> Descriptor {
+fn struct_descriptor(is_inline: Option<bool>) -> Descriptor {
     Descriptor::Struct {
         ownership: Ownership::Borrowed,
         size: Some(8),
         is_caller_allocated: None,
-        is_inline: Some(true),
+        is_inline,
     }
+}
+
+fn inline_struct_descriptor() -> Descriptor {
+    struct_descriptor(Some(true))
+}
+
+fn null_owner() -> External<Handle> {
+    External::new(Handle::owned_struct(std::ptr::null_mut()))
 }
 
 fn read_inline_field(env: &Env, handle: &External<Handle>) -> *mut c_void {
@@ -344,10 +353,9 @@ fn an_inline_field_keeps_its_owner_alive() {
 fn an_inline_field_of_a_null_handle_reads_as_null() {
     test_support::run(|| {
         let env = test_support::fake_env();
-        let handle = External::new(Handle::owned_struct(std::ptr::null_mut()));
         let decoded = read(
             &env,
-            &handle,
+            &null_owner(),
             inline_struct_descriptor(),
             INLINE_FIELD_OFFSET,
         )
@@ -361,7 +369,80 @@ fn an_inline_field_of_a_null_handle_reads_as_null() {
 }
 
 #[test]
-fn an_inline_struct_read_from_a_slot_decodes_the_slot_itself() {
+fn a_pointer_field_of_a_null_handle_reads_as_null() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let decoded = read(
+            &env,
+            &null_owner(),
+            struct_descriptor(None),
+            INLINE_FIELD_OFFSET,
+        )
+        .expect("a pointer field of a null handle reads without erroring");
+
+        assert!(
+            napi_mock::is_null(decoded.raw()),
+            "a field of a handle that points at nothing must decode to null whether or not the field is inline"
+        );
+    });
+}
+
+#[test]
+fn a_field_of_a_null_handle_cannot_be_written() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let source = InlineRecord { left: 7, right: 9 };
+        let value = handle_value_of(&env, (&raw const source).cast_mut().cast::<c_void>());
+        let Err(error) = write(
+            &env,
+            &null_owner(),
+            inline_struct_descriptor(),
+            INLINE_FIELD_OFFSET,
+            value,
+        ) else {
+            panic!("writing a field of a handle that points at nothing must be rejected")
+        };
+
+        assert!(
+            error.reason.contains("points at nothing"),
+            "a write into a handle that points at nothing must say so instead of writing at the bare offset"
+        );
+    });
+}
+
+#[test]
+fn a_field_read_through_a_borrow_that_has_ended_is_rejected() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let block = unsafe { glib::ffi::g_malloc0(size_of::<InlineOwner>()) };
+        let owner = External::new(Handle::from_glib_borrow(block));
+
+        assert_eq!(
+            read_inline_field(&env, &owner),
+            block.wrapping_byte_add(size_of::<i32>())
+        );
+
+        owner.invalidate();
+        unsafe { glib::ffi::g_free(block) };
+
+        let Err(error) = read(
+            &env,
+            &owner,
+            inline_struct_descriptor(),
+            INLINE_FIELD_OFFSET,
+        ) else {
+            panic!("reading a field of a borrow that has ended must be rejected")
+        };
+
+        assert!(
+            error.reason.contains("refers to nothing"),
+            "a field of a borrow that has ended must be refused, not aliased into freed memory"
+        );
+    });
+}
+
+#[test]
+fn an_inline_struct_cannot_be_read_from_a_pointer_slot() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let decoy = unsafe { glib::ffi::g_malloc0(size_of::<PointerRecord>()) };
@@ -370,20 +451,20 @@ fn an_inline_struct_read_from_a_slot_decodes_the_slot_itself() {
             size: Some(size_of::<PointerRecord>()),
             ..inline_struct_codec()
         };
-        let decoded = unsafe {
+        let result = unsafe {
             Decoder::read(
                 &codec,
                 &env,
                 ReadCtx::slot((&raw const slot).cast::<c_void>(), "inline slot"),
             )
-        }
-        .expect("an inline struct reads from a slot");
-        let ptr = native::value::handle_ptr(decoded, "inline slot").expect("a handle pointer");
+        };
+        let Err(error) = result else {
+            panic!("an inline struct reached through a pointer slot must be rejected")
+        };
 
-        assert_eq!(
-            unsafe { ptr.cast::<PointerRecord>().read() }.target,
-            decoy,
-            "an inline struct must decode the slot's own bytes, not the pointer they spell"
+        assert!(
+            format!("{error:#}").contains("has no pointer slot to read"),
+            "an inline struct has no owner to alias here, so it must fail loudly rather than copy"
         );
 
         unsafe { glib::ffi::g_free(decoy) };
