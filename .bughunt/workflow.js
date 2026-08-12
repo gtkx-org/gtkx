@@ -130,7 +130,9 @@ Rule it out if any of these hold, and say which:
 - The GTK4 / Adwaita / GLib C API documentation says this is the correct behavior. GTKX faithfully
   exposing a GTK limitation is not a GTKX defect.
 - The reproduction misuses the API in a way the GTKX documentation warns about.
-- It duplicates an entry in ${WORKTREE}/.bughunt/findings.jsonl. Name the id.
+- It duplicates an entry in ${WORKTREE}/.bughunt/findings.jsonl. Name the id. **Ignore every entry whose
+  \`round\` is ${round}** — those were written by this same round and may be this very report, so matching
+  against them would reject a finding as a duplicate of itself. Only entries from earlier rounds count.
 - It is an artifact of this machine: a missing system package, the container, the headless compositor,
   or a stale codegen store. Reproduce the same operation a different way to check.
 - It is a missing feature rather than a broken one.
