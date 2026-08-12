@@ -63,7 +63,7 @@ type SpinnerStep = {
     done: string;
     failed: string;
     run: () => Promise<void>;
-    report: (error: unknown) => void;
+    explain?: ((error: unknown) => void) | undefined;
 };
 
 const selfVersion = packageVersion(import.meta.url, "../package.json");
@@ -97,7 +97,6 @@ To run tests, you need a headless Wayland compositor installed:
 
 const RECOVERY_HEADING = "Finish the setup by adding the dependencies again, which is safe to repeat:";
 const APPLICATION_ID_FORMAT_ERROR = "Application ID must be reverse domain notation (e.g., com.example.myapp)";
-const PROJECT_STRUCTURE_FAILURE = "Failed to create the project structure";
 const APPLICATION_ID_PREFIX = "com.";
 const APPLICATION_ID_SUFFIX = ".app";
 
@@ -547,10 +546,8 @@ const formatRecovery = ({ resolved, devDependencies }: InstallFailureOptions): s
     return `${RECOVERY_HEADING}\n${indented}`;
 };
 
-const reportInstallFailure = (options: InstallFailureOptions): void => {
-    const message = errorMessage(options.error);
-    p.log.error(`Failed to install dependencies: ${message}`);
-    const hint = getInstallHint(message);
+const explainInstallFailure = (options: InstallFailureOptions): void => {
+    const hint = getInstallHint(errorMessage(options.error));
 
     if (hint !== undefined) {
         p.log.warn(hint);
@@ -567,8 +564,9 @@ const runWithSpinner = async (step: SpinnerStep): Promise<void> => {
         await step.run();
         spinner.stop(step.done);
     } catch (error) {
-        spinner.stop(step.failed);
-        step.report(error);
+        spinner.error(step.failed);
+        p.log.error(errorMessage(error));
+        step.explain?.(error);
         throw new ScaffoldAbortedError(step.failed);
     }
 };
@@ -585,8 +583,8 @@ const installAllDependencies = async (options: InstallAllOptions): Promise<void>
             await installDependencies({ cwd: root, packageManager, dependencies: pin(DEPENDENCIES), isDev: false });
             await installDependencies({ cwd: root, packageManager, dependencies: pin(devDependencies), isDev: true });
         },
-        report: (error) => {
-            reportInstallFailure({ error, resolved, devDependencies });
+        explain: (error) => {
+            explainInstallFailure({ error, resolved, devDependencies });
         },
     });
 };
@@ -608,7 +606,7 @@ const initializeGitRepo = async (root: string): Promise<void> => {
         await x("git", ["commit", "-m", "Initial commit"], opts);
         spinner.stop("Git repository initialized");
     } catch {
-        spinner.stop("Failed to initialize git repository");
+        spinner.error("Failed to initialize git repository");
     }
 };
 
@@ -623,14 +621,11 @@ const createProjectStructure = async (root: string, resolved: ResolvedOptions): 
     await runWithSpinner({
         pending: "Creating project structure...",
         done: "Project structure created",
-        failed: PROJECT_STRUCTURE_FAILURE,
+        failed: "Failed to create the project structure",
         run: async () => {
             prepareTargetDirectory(root, resolved.shouldEmptyTarget);
             await scaffoldProject(root, resolved);
             writeBuildAllowance(root, resolved.packageManager);
-        },
-        report: (error) => {
-            p.log.error(`${PROJECT_STRUCTURE_FAILURE}: ${errorMessage(error)}`);
         },
     });
 };

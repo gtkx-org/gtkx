@@ -10,13 +10,14 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CreateOptions, scaffold } from "../src/scaffolder.js";
 
 type ScaffoldedManifest = { name?: string; scripts: Record<string, string | undefined> };
+type SpinnerLine = { level: "done" | "failed"; message: string };
 
 const clack = vi.hoisted(() => ({
     intro: vi.fn(),
     note: vi.fn(),
     cancel: vi.fn(),
     log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-    spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
+    spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn(), error: vi.fn() })),
     text: vi.fn<(options: TextOptions) => Promise<string | symbol>>(() => Promise.resolve("")),
     select: vi.fn((opts: { initialValue?: unknown }) => Promise.resolve(opts.initialValue)),
     confirm: vi.fn((): Promise<boolean | string> => Promise.resolve(true)),
@@ -28,7 +29,7 @@ const detectMock = vi.mocked(detectPackageManager);
 const xMock = vi.mocked(x);
 const TEST_DIR = "/test-workspace";
 const CANCEL_KEYSTROKE = String.fromCodePoint(3);
-const spinnerStops: string[] = [];
+const spinnerLines: SpinnerLine[] = [];
 const TEMPLATES_DIR = join(import.meta.dirname, "..", "src", "templates");
 const SELF_VERSION = (createRequire(import.meta.url)("../package.json") as { version: string }).version;
 const templateFiles: Record<string, string> = {};
@@ -98,16 +99,21 @@ function lastInfo(): string {
     return String(clack.log.info.mock.calls.at(-1)?.[0] ?? "");
 }
 
-function lastSpinnerStop(): string {
-    return spinnerStops.at(-1) ?? "";
+function lastSpinnerLine(): SpinnerLine | undefined {
+    return spinnerLines.at(-1);
+}
+
+function trackSpinnerLine(level: SpinnerLine["level"]): (message?: string) => void {
+    return (message?: string) => {
+        spinnerLines.push({ level, message: message ?? "" });
+    };
 }
 
 function trackedSpinner(): ReturnType<typeof clack.spinner> {
     return {
         start: vi.fn(),
-        stop: vi.fn((message?: string) => {
-            spinnerStops.push(message ?? "");
-        }),
+        stop: vi.fn(trackSpinnerLine("done")),
+        error: vi.fn(trackSpinnerLine("failed")),
     };
 }
 
@@ -206,7 +212,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
     vi.clearAllMocks();
-    spinnerStops.length = 0;
+    spinnerLines.length = 0;
     clack.spinner.mockImplementation(trackedSpinner);
     clack.text.mockResolvedValue("");
     clack.select.mockImplementation((opts) => Promise.resolve(opts.initialValue));
@@ -415,6 +421,14 @@ describe("scaffold (install failure)", () => {
         expect(clack.log.warn).not.toHaveBeenCalled();
     });
 
+    it("announces the failed install on a failed spinner line instead of repeating it", async () => {
+        addDependencyMock.mockRejectedValueOnce(new Error("install failed"));
+        await expect(run()).rejects.toThrow(/Failed to install dependencies/);
+        expect(lastSpinnerLine()).toEqual({ level: "failed", message: "Failed to install dependencies" });
+        expect(clack.log.error).toHaveBeenCalledTimes(1);
+        expect(lastError()).toBe("install failed");
+    });
+
     it("recovers by adding the dependencies rather than a plain install", async () => {
         addDependencyMock.mockRejectedValueOnce(new Error("install failed"));
         await expect(run()).rejects.toThrow(/Failed to install dependencies/);
@@ -478,10 +492,11 @@ describe("scaffold (git initialization)", () => {
         expect(xMock).toHaveBeenNthCalledWith(3, "git", ["commit", "-m", "Initial commit"], expect.anything());
     });
 
-    it("swallows git initialization errors", async () => {
+    it("swallows git initialization errors and marks its spinner line as failed", async () => {
         xMock.mockRejectedValueOnce(new Error("git failed"));
         await expect(run()).resolves.toBeUndefined();
         expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(true);
+        expect(lastSpinnerLine()).toEqual({ level: "failed", message: "Failed to initialize git repository" });
     });
 });
 
@@ -631,13 +646,15 @@ describe("scaffold (unusable inputs)", () => {
         expect(read(`${TEST_DIR}/test-app`)).toBe("not a directory");
     });
 
-    it("reports a project directory it cannot create and stops the spinner", async () => {
+    it("reports a project directory it cannot create once, on a failed spinner line", async () => {
         seedFile("apps", "not a directory");
         const scaffolded = runNonInteractive({ name: "apps/my-app" });
         await expect(scaffolded).rejects.toThrow(/Failed to create the project structure/);
-        expect(lastError()).toContain("Failed to create the project structure: ENOTDIR");
+        expect(spinnerLines).toEqual([{ level: "failed", message: "Failed to create the project structure" }]);
+        expect(clack.log.error).toHaveBeenCalledTimes(1);
+        expect(lastError()).toContain("ENOTDIR");
         expect(lastError()).toContain("apps/my-app");
-        expect(lastSpinnerStop()).toBe("Failed to create the project structure");
+        expect(lastError()).not.toContain("Failed to create the project structure");
     });
 
     it("rejects an empty project directory the way an omitted one is rejected", async () => {
