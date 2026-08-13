@@ -223,9 +223,9 @@ const transformWorkerUrls = async (emit: EmitContext, code: string, id: string):
     return replacements.length === 0 ? null : { code: applyReplacements(code, replacements), map: null };
 };
 
-function gtkxWorker(root: string): Plugin {
+function gtkxWorker(emitDir: string): Plugin {
     const emitted: Map<string, string> = new Map();
-    const extension = esmExtension(root);
+    const extension = esmExtension(emitDir);
 
     return {
         name: "gtkx:worker",

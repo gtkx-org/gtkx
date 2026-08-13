@@ -13,7 +13,7 @@ type AppProject = { root: string; entry: string };
 type AppProjectOptions = {
     applicationId: string;
     entry: string;
-    modules?: Record<string, string> | undefined;
+    files?: Record<string, string> | undefined;
     packageType: string;
     prefix: string;
 };
@@ -38,9 +38,11 @@ const appConfig = (applicationId: string): string =>
 const appManifest = (packageType: string): string =>
     `${JSON.stringify({ name: PROJECT_NAME, type: packageType }, null, 4)}\n`;
 
-const writeModules = (root: string, modules: Record<string, string>): void => {
-    for (const [name, source] of Object.entries(modules)) {
-        writeFileSync(join(root, "src", name), source);
+const writeFiles = (root: string, files: Record<string, string>): void => {
+    for (const [name, source] of Object.entries(files)) {
+        const target = join(root, name);
+        mkdirSync(dirname(target), { recursive: true });
+        writeFileSync(target, source);
     }
 };
 
@@ -52,7 +54,7 @@ const createAppProject = (options: AppProjectOptions): AppProject => {
     writeFileSync(join(root, "package.json"), appManifest(options.packageType));
     writeFileSync(join(root, "gtkx.config.mjs"), appConfig(options.applicationId));
     writeFileSync(entry, options.entry);
-    writeModules(root, options.modules ?? {});
+    writeFiles(root, options.files ?? {});
 
     return { root, entry };
 };

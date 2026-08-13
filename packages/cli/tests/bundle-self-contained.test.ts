@@ -1,7 +1,7 @@
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -28,7 +28,8 @@ const SIBLING_MANIFEST = "./package.json";
 const MISSING_MODULE = "Cannot find module";
 const WORKER_DIR = "workers";
 const WORKER_NAME = "indexer.mjs";
-const JS_SUFFIX = ".js";
+const WORKER_SOURCE_PATH = join("src", WORKER_NAME);
+const JS_EXTENSION = ".js";
 
 const APP_ENTRY = String.raw`import { createRoot } from "@gtkx/react";
 
@@ -170,16 +171,15 @@ describe("gtkx build (worker chunks)", () => {
         const project = createAppProject({
             applicationId: "com.gtkx.clibundleworker",
             entry: WORKER_APP_ENTRY,
+            files: { [WORKER_SOURCE_PATH]: WORKER_SOURCE },
             packageType: "module",
             prefix: "gtkx-bundle-worker-",
         });
 
-        writeFileSync(join(project.root, "src", WORKER_NAME), WORKER_SOURCE);
-
         try {
             await buildAppProject({ project, outDir: OUT_DIR });
             const emitted = readdirSync(join(project.root, OUT_DIR, WORKER_DIR));
-            expect(emitted.filter((name) => name.endsWith(JS_SUFFIX))).toHaveLength(1);
+            expect(emitted.map((name) => extname(name))).toEqual([JS_EXTENSION]);
         } finally {
             removeAppProject(project);
         }

@@ -9,6 +9,7 @@ type NamingCase = {
     root: Record<string, string>;
     nested: Record<string, string> | null;
     from: "path" | "child";
+    outDir: string;
     expected: string;
 };
 
@@ -28,6 +29,8 @@ type ViteConfigSnapshot = {
 };
 
 const APP_VERSION_DEFINE = "__APP_VERSION__";
+const DEFAULT_OUT_DIR = "dist";
+const NESTED_OUT_DIR = join("nested", "dist");
 
 const NAMING_CASES: NamingCase[] = [
     {
@@ -35,6 +38,7 @@ const NAMING_CASES: NamingCase[] = [
         root: { type: "module" },
         nested: null,
         from: "path",
+        outDir: DEFAULT_OUT_DIR,
         expected: "bundle.js",
     },
     {
@@ -42,6 +46,7 @@ const NAMING_CASES: NamingCase[] = [
         root: { type: "commonjs" },
         nested: null,
         from: "path",
+        outDir: DEFAULT_OUT_DIR,
         expected: "bundle.mjs",
     },
     {
@@ -49,21 +54,40 @@ const NAMING_CASES: NamingCase[] = [
         root: { name: "typeless" },
         nested: null,
         from: "path",
+        outDir: DEFAULT_OUT_DIR,
         expected: "bundle.mjs",
     },
     {
-        title: "walks up from a root that has no manifest of its own",
+        title: "walks up from an output directory with no manifest of its own",
         root: { type: "module" },
         nested: null,
         from: "child",
+        outDir: DEFAULT_OUT_DIR,
         expected: "bundle.js",
     },
     {
-        title: "reads the manifest nearest to the root",
+        title: "reads the manifest nearest to the output directory",
         root: { type: "module" },
         nested: { type: "commonjs" },
         from: "child",
+        outDir: DEFAULT_OUT_DIR,
         expected: "bundle.mjs",
+    },
+    {
+        title: "follows an outDir that lands under a commonjs manifest",
+        root: { type: "module" },
+        nested: { type: "commonjs" },
+        from: "path",
+        outDir: NESTED_OUT_DIR,
+        expected: "bundle.mjs",
+    },
+    {
+        title: "follows an outDir that lands under a module manifest",
+        root: { type: "commonjs" },
+        nested: { type: "module" },
+        from: "path",
+        outDir: NESTED_OUT_DIR,
+        expected: "bundle.js",
     },
 ];
 
@@ -212,14 +236,14 @@ describe("build (entry naming)", () => {
     beforeEach(resetBuildMocks);
     afterEach(restoreSpies);
 
-    it.each(NAMING_CASES)("$title", async ({ root, nested, from, expected }) => {
+    it.each(NAMING_CASES)("$title", async ({ root, nested, from, outDir, expected }) => {
         writeManifest(project.path, root);
 
         if (nested !== null) {
             writeManifest(project.child, nested);
         }
 
-        await build({ entry: "src/index.tsx", vite: { root: project[from] } });
+        await build({ entry: "src/index.tsx", vite: { root: project[from], build: { outDir } } });
         expect(entryFileNames()).toBe(expected);
     });
 });

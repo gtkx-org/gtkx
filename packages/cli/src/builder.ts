@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { type InlineConfig, mergeConfig, build as viteBuild } from "vite";
 import { gtkxBuiltUrl } from "./vite-plugins/built-url.js";
 import { esmExtension } from "./vite-plugins/esm-extension.js";
@@ -32,12 +32,14 @@ const buildDefaults: InlineConfig = {
 const build = async (options: BuildOptions): Promise<string> => {
     const { entry, assetBase, vite: viteConfig } = options;
     const root = viteConfig?.root ?? process.cwd();
-    const entryFileNames = BUNDLE_STEM + esmExtension(root);
+    const outDir = viteConfig?.build?.outDir ?? DEFAULT_OUT_DIR;
+    const emitDir = resolve(root, outDir);
+    const entryFileNames = BUNDLE_STEM + esmExtension(emitDir);
 
     const forced: InlineConfig = {
         plugins: [
             ...gtkxVitePlugins(BUILD_MODE),
-            gtkxWorker(root),
+            gtkxWorker(emitDir),
             gtkxBuiltUrl(assetBase),
             gtkxNative(root),
             gtkxSelfContained(),
@@ -56,7 +58,7 @@ const build = async (options: BuildOptions): Promise<string> => {
     const merged: InlineConfig = mergeConfig(mergeConfig(buildDefaults, viteConfig ?? {}), forced);
     await viteBuild({ ...merged, ssr: { ...merged.ssr, noExternal: true } });
 
-    return join(merged.build?.outDir ?? DEFAULT_OUT_DIR, entryFileNames);
+    return join(outDir, entryFileNames);
 };
 
 export { build };

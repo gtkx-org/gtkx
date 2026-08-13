@@ -4,8 +4,8 @@ import { dirname, join, resolve } from "node:path";
 
 const MANIFEST_NAME = "package.json";
 const MODULE_PACKAGE_TYPE = "module";
-const MODULE_EXTENSION = ".js";
-const ESM_EXTENSION = ".mjs";
+const MODULE_PACKAGE_EXTENSION = ".js";
+const NON_MODULE_PACKAGE_EXTENSION = ".mjs";
 
 const nearestManifest = (dir: string): string | null => {
     const candidate = join(dir, MANIFEST_NAME);
@@ -27,8 +27,8 @@ const parseManifest = (manifestPath: string): unknown => {
     }
 };
 
-const packageType = (root: string): string | null => {
-    const manifestPath = nearestManifest(resolve(root));
+const packageType = (dir: string): string | null => {
+    const manifestPath = nearestManifest(resolve(dir));
 
     if (manifestPath === null) {
         return null;
@@ -43,7 +43,7 @@ const packageType = (root: string): string | null => {
     return typeof manifest.type === "string" ? manifest.type : null;
 };
 
-const esmExtension = (root: string): string =>
-    packageType(root) === MODULE_PACKAGE_TYPE ? MODULE_EXTENSION : ESM_EXTENSION;
+const esmExtension = (emitDir: string): string =>
+    packageType(emitDir) === MODULE_PACKAGE_TYPE ? MODULE_PACKAGE_EXTENSION : NON_MODULE_PACKAGE_EXTENSION;
 
 export { esmExtension };

@@ -13,7 +13,7 @@ type EmittedChunk = {
 
 type ExtensionCase = {
     title: string;
-    packageType: string;
+    manifest: Record<string, string>;
     expected: string;
 };
 
@@ -37,13 +37,14 @@ type QuotedConstruction = {
 };
 
 const MODULE_ID = "/project/src/app.tsx";
-const MODULE_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+const MODULE_EMIT_DIR = fileURLToPath(new URL("../..", import.meta.url));
 const CANONICAL_WORKER = 'const worker = new Worker(new URL("./worker.ts", import.meta.url));';
 const WORKER_CHUNK = /^workers\/worker-[0-9a-f]{8}\.js$/;
 
 const EXTENSION_CASES: ExtensionCase[] = [
-    { title: "keeps .js when the package declares type module", packageType: "module", expected: ".js" },
-    { title: "emits .mjs when the package declares type commonjs", packageType: "commonjs", expected: ".mjs" },
+    { title: "keeps .js when the package declares type module", manifest: { type: "module" }, expected: ".js" },
+    { title: "emits .mjs when the package declares type commonjs", manifest: { type: "commonjs" }, expected: ".mjs" },
+    { title: "emits .mjs when the package declares no type", manifest: { name: "typeless" }, expected: ".mjs" },
 ];
 
 const QUOTED_CONSTRUCTIONS: QuotedConstruction[] = [
@@ -56,9 +57,9 @@ const QUOTED_CONSTRUCTIONS: QuotedConstruction[] = [
 const runTransform = async (
     code: string,
     known: string[] = ["./worker.ts"],
-    root: string = MODULE_ROOT,
+    emitDir: string = MODULE_EMIT_DIR,
 ): Promise<TransformRun> => {
-    const plugin = gtkxWorker(root);
+    const plugin = gtkxWorker(emitDir);
     const emitted: EmittedChunk[] = [];
 
     const result = await (plugin.transform as TransformHook).call(
@@ -80,18 +81,18 @@ const runTransform = async (
 
 describe("gtkxWorker (plugin shape)", () => {
     it("returns a build-only plugin with the expected name", () => {
-        const plugin = gtkxWorker(MODULE_ROOT);
+        const plugin = gtkxWorker(MODULE_EMIT_DIR);
         expect(plugin.name).toBe("gtkx:worker");
         expect(plugin.apply).toBe("build");
     });
 });
 
 describe("gtkxWorker (package module type)", () => {
-    const project = setupTempTree("gtkx-worker-type-", "nested");
+    const project = setupTempTree("gtkx-worker-type-", "dist");
 
-    it.each(EXTENSION_CASES)("$title", async ({ packageType, expected }) => {
-        writeFileSync(join(project.path, "package.json"), JSON.stringify({ type: packageType }));
-        const run = await runTransform(CANONICAL_WORKER, ["./worker.ts"], project.path);
+    it.each(EXTENSION_CASES)("$title", async ({ manifest, expected }) => {
+        writeFileSync(join(project.path, "package.json"), JSON.stringify(manifest));
+        const run = await runTransform(CANONICAL_WORKER, ["./worker.ts"], project.child);
         expect(extname(run.emitted[0]?.fileName ?? "")).toBe(expected);
     });
 });
