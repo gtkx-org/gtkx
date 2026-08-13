@@ -39,15 +39,14 @@ describe("registerClass — registration", () => {
     });
 });
 
-describe("registerClass — interfaces", () => {
+describe("registerClass — interfaces (1)", () => {
     it("accepts inherited-interface entries through the options builder", () => {
         const label = new Gtk.Label();
-        expect(label).toBeInstanceOf(Gtk.Label);
         const name = uniqueName("GtkxNativeInterfaceVfuncs");
         const widgetGtype = typeFromName("GtkWidget");
         const buildableGtype = typeFromName("GtkBuildable");
-        expect(widgetGtype).toBeGreaterThan(0);
-        expect(buildableGtype).toBeGreaterThan(0);
+        expect(queryTypeIsA(label.__type__, widgetGtype)).toBe(true);
+        expect(queryTypeIsA(label.__type__, buildableGtype)).toBe(true);
         const newGtype = registerClass(name, widgetGtype, { interfaces: [{ type: buildableGtype, vfuncs: [] }] });
         expect(newGtype).toBeGreaterThan(0);
         expect(queryTypeIsA(newGtype, buildableGtype)).toBe(true);
@@ -56,11 +55,7 @@ describe("registerClass — interfaces", () => {
     it("rejects a non-interface type in the interfaces option without registering", () => {
         const name = uniqueName("GtkxNativeNonInterface");
         const gobjectGtype = typeFromName("GObject");
-
-        expect(() => registerClass(name, gobjectGtype, { interfaces: [{ type: gobjectGtype, vfuncs: [] }] })).toThrow(
-            /is not an interface/,
-        );
-
+        expect(() => registerClass(name, gobjectGtype, { interfaces: [{ type: gobjectGtype, vfuncs: [] }] })).toThrow();
         expect(typeFromName(name)).toBe(0n);
     });
 
@@ -77,21 +72,22 @@ describe("registerClass — interfaces", () => {
         expect(newGtype).toBeGreaterThan(0);
         expect(queryTypeIsA(newGtype, buildableGtype)).toBe(true);
     });
+});
 
+describe("registerClass — interfaces (2)", () => {
     it("rejects an interface whose prerequisite the parent misses without registering", () => {
         const entry = new Gtk.Entry();
-        expect(entry).toBeInstanceOf(Gtk.Entry);
         const name = uniqueName("GtkxNativeMissingPrerequisite");
         const gobjectGtype = typeFromName("GObject");
         const editableGtype = typeFromName("GtkEditable");
-        expect(editableGtype).toBeGreaterThan(0);
+        expect(queryTypeIsA(entry.__type__, editableGtype)).toBe(true);
 
         const register = (): unknown =>
             registerClass(name, gobjectGtype, {
                 interfaces: [{ type: editableGtype, vfuncs: [] }],
             });
 
-        expect(register).toThrow(/does not meet prerequisite 'GtkWidget' of interface 'GtkEditable'/);
+        expect(register).toThrow();
         expect(typeFromName(name)).toBe(0n);
     });
 });

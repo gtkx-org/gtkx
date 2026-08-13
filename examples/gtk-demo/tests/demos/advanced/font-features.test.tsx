@@ -78,9 +78,17 @@ describe("fontFeaturesDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(fontFeaturesDemo.id).toBe("font-features");
         expect(fontFeaturesDemo.title).toBe("Pango/Font Explorer");
-        expect(fontFeaturesDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(fontFeaturesDemo.keywords)).toBe(true);
-        expect(typeof fontFeaturesDemo.sourceCode).toBe("string");
+
+        expect(fontFeaturesDemo.description).toBe(
+            "This example demonstrates support for OpenType font features with Pango attributes. " +
+            "The attributes can be used manually or via Pango markup.\n\n" +
+            "It can also be used to explore available features in OpenType fonts and their effect.\n\n" +
+            "If the selected font supports OpenType font variations, " +
+            "then the axes are also offered for customization.",
+        );
+
+        expect(fontFeaturesDemo.keywords).toEqual([]);
+        expect(fontFeaturesDemo.sourceCode).toContain("const fontFeaturesDemo: Demo = {");
         expect(fontFeaturesDemo.defaultWidth).toBe(600);
         expect(fontFeaturesDemo.defaultHeight).toBe(500);
     });
@@ -312,7 +320,7 @@ describe("fontFeaturesDemo sliders", () => {
         await userEvent.keyboard(sizeSlider, "{PageUp}");
 
         await waitFor(() => {
-            expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 24 } })).toBeTruthy();
+            expect(sizeSlider).toHaveValue(24);
         });
 
         const sizeEntry = await screen.findByName("size_entry", { as: Gtk.Entry });

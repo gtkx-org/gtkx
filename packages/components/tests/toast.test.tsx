@@ -6,6 +6,7 @@ import {
     useToastOverlay,
 } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import { AdwToastOverlay } from "@gtkx/jsx/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, renderHook, screen, waitFor } from "@gtkx/testing";
@@ -65,7 +66,8 @@ describe("render - toast (useToast / useToastOverlay)", () => {
         expect(toast).toHaveObjectProperty("timeout", 3);
         expect(toast).toHaveObjectProperty("priority", Adw.ToastPriority.HIGH);
         expect(toast).toHaveObjectProperty("useMarkup", true);
-        expect(await screen.findByText("Moved to Trash")).toBeDefined();
+        await screen.findByText("Moved to Trash");
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Undo" })).toBeEnabled();
     });
 
     it("invokes onButtonClicked when the toast button is activated", async () => {

@@ -89,4 +89,4 @@ const serializeWidget = (
     return root;
 };
 
-export { serializeWidget, type WidgetFormatting };
+export { serializeWidget };

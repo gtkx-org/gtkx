@@ -119,10 +119,9 @@ describe("textviewDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(textviewDemo.id).toBe("textview");
         expect(textviewDemo.title).toBe("Text View/Multiple Views");
-        expect(textviewDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(textviewDemo.keywords)).toBe(true);
-        expect(typeof textviewDemo.sourceCode).toBe("string");
-        expect(textviewDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(textviewDemo.description).toContain("The GtkTextView widget displays a GtkTextBuffer.");
+        expect(textviewDemo.keywords).toEqual([]);
+        expect(textviewDemo.sourceCode).toContain("const textviewDemo: Demo = {");
         expect(textviewDemo.defaultWidth).toBe(450);
         expect(textviewDemo.defaultHeight).toBe(450);
         expect(textviewDemo.component).toBeTypeOf("function");
@@ -276,7 +275,8 @@ describe("textviewDemo cloned widgets", () => {
 describe("textviewDemo easter egg", () => {
     it("opens the easter-egg nested window when the cloned Click Me button is activated", async () => {
         const { newWindow } = await openEasterEggFromClonedButton();
-        expect(newWindow).toBeInstanceOf(Gtk.Window);
+        expect(newWindow).toBeRooted();
+        expect(newWindow.getDefaultSize()).toEqual([300, 400]);
     });
 
     it("opens the easter-egg via the source Click Me button in the first text view", async () => {
@@ -289,15 +289,16 @@ describe("textviewDemo easter egg", () => {
     });
 
     it("makes the easter-egg window modal and transient for the demo root window", async () => {
-        const { newWindow } = await openEasterEggFromClonedButton();
+        const { beforeWindows, newWindow } = await openEasterEggFromClonedButton();
         expect(newWindow).toHaveObjectProperty("modal", true);
-        expect(newWindow.getTransientFor()).toBeInstanceOf(Gtk.Window);
+        expect(beforeWindows).toHaveLength(1);
+        expect(newWindow.getTransientFor()).toBe(beforeWindows[0]);
     });
 
     it("nests multiple text views inside the easter-egg window sharing one buffer", async () => {
         const { newWindow } = await openEasterEggFromClonedButton();
         const nested = within(newWindow).queryAllByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
-        expect(nested.length).toBeGreaterThan(1);
+        expect(nested).toHaveLength(6);
         const sharedBuffer = nested[0]?.getBuffer();
 
         for (const view of nested) {

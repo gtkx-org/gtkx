@@ -45,9 +45,15 @@ describe("fontRenderingDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(fontRenderingDemo.id).toBe("fontrendering");
         expect(fontRenderingDemo.title).toBe("Pango/Font Rendering");
-        expect(fontRenderingDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(fontRenderingDemo.keywords)).toBe(true);
-        expect(typeof fontRenderingDemo.sourceCode).toBe("string");
+
+        expect(fontRenderingDemo.description).toBe(
+            "Demonstrates various aspects of font rendering, such as hinting, antialiasing and grid " +
+            "alignment.\n\nThe demo lets you explore font rendering options interactively to get a feeling for " +
+            "they affect the shape and positioning of the glyphs.",
+        );
+
+        expect(fontRenderingDemo.keywords).toEqual([]);
+        expect(fontRenderingDemo.sourceCode).toContain("const fontRenderingDemo: Demo = {");
         expect(fontRenderingDemo.defaultWidth).toBe(1024);
         expect(fontRenderingDemo.defaultHeight).toBe(768);
     });
@@ -136,10 +142,9 @@ describe("fontRenderingDemo zoom buttons", () => {
         await renderDemo(fontRenderingDemo);
         const zoomIn = await screen.findByName("up_button", { as: Gtk.Button });
         const zoomOut = await screen.findByName("down_button", { as: Gtk.Button });
-        expect(zoomIn).toBeInstanceOf(Gtk.Button);
-        expect(zoomOut).toBeInstanceOf(Gtk.Button);
         expect(zoomIn).toBeEnabled();
         expect(zoomOut).toBeEnabled();
+        expect(zoomIn).toAppearBefore(zoomOut);
     });
 
     it("grows the drawing-area content width when zooming in", async () => {
@@ -168,7 +173,7 @@ describe("fontRenderingDemo zoom buttons", () => {
 describe("fontRenderingDemo text input", () => {
     it("renders an entry holding the default text", async () => {
         const entry = await renderEntry();
-        expect(entry).toBeInstanceOf(Gtk.Entry);
+        expect(entry).toBeRooted();
         expect(entry).toHaveDisplayValue("Fonts render");
     });
 

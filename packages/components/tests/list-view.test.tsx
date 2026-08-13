@@ -2,32 +2,33 @@ import type { ListItem, ListItemRenderer } from "@gtkx/components";
 import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { screen, within } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { describe, expect, it, vi } from "vitest";
 import {
-    type CollectionView,
-    COUNTER_BASELINE_TEXTS,
-    COUNTER_SINGLE_UPDATE_TEXTS,
-    counterBaselineRows,
-    counterSingleUpdateRows,
-    expectAllVisibleOnce,
-    expectFilteredViewReorder,
-    expectInitialOrder,
-    expectLargeDatasetReorder,
-    expectRapidReorder,
-    expectRenderItemFunctionUpdate,
-    expectRenderItemReceivesData,
-    expectReorder,
-    expectSingleItemValueUpdate,
-    namedRows,
-    RAPID_REORDER_ORDERS,
-    renderCounterCell,
-} from "./helpers/list-collection-render.js";
-import { renderGridView, renderListView } from "./helpers/list-fixtures.js";
+    asCollectionView,
+    expectFiltering,
+    expectLargeReordering,
+    expectReordering,
+} from "./helpers/collection-view.js";
+import {
+    firstSecondItems,
+    firstSecondThirdItems,
+    namedItems,
+    renderGridView,
+    renderListView,
+    renderStatefulListView,
+} from "./helpers/list-fixtures.js";
+import { labelTexts } from "./helpers/row-texts.js";
+import { getSelectionModel } from "./helpers/selection-model.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 type NamedItem = ListItem<{ name: string }>;
 type Splice = [number, number, number];
+
+const hundredItems: ListItem<{ name: string }>[] = Array.from({ length: 100 }, (_, index) => ({
+    id: `item-${String(index)}`,
+    value: { name: `Item ${String(index)}` },
+}));
 
 const branchA: NamedItem = { id: "a", value: { name: "A" }, children: [{ id: "a0", value: { name: "A0" } }] };
 const leafB: NamedItem = { id: "b", value: { name: "B" } };
@@ -63,26 +64,6 @@ const spliceLog = (ref: RefObject<Gtk.ListView>): Splice[] => {
     return splices;
 };
 
-const collectLabelTexts = (container: Gtk.Widget): string[] =>
-    within(container)
-        .getAllByRole(Gtk.AccessibleRole.LABEL)
-        .map((widget) => (widget instanceof Gtk.Label ? widget.getLabel() : ""))
-        .filter((text) => text.length > 0);
-
-const asCollectionView = (fixture: {
-    ref: RefObject<Gtk.Widget>;
-    rerender: CollectionView["rerender"];
-}): CollectionView => ({
-    texts: () => collectLabelTexts(fixture.ref.current),
-    rerender: fixture.rerender,
-});
-
-const listViewView = async (items: Parameters<typeof renderListView>[0]): Promise<CollectionView> =>
-    asCollectionView(await renderListView(items));
-
-const gridViewView = async (items: Parameters<typeof renderGridView>[0]): Promise<CollectionView> =>
-    asCollectionView(await renderGridView(items));
-
 const topLevelTexts = (items: string[] | NamedItem[]): string[] =>
     items.map((item) => (typeof item === "string" ? item : item.value.name));
 
@@ -92,294 +73,246 @@ const expectSpliceEmissions = async (
     expected: Splice[],
 ): Promise<void> => {
     const { ref, rerender } = await renderListView<{ name: string }>(initial);
-    expect(collectLabelTexts(ref.current)).toEqual(topLevelTexts(initial));
+    expect(labelTexts(ref.current)).toEqual(topLevelTexts(initial));
     const splices = spliceLog(ref);
     await rerender(next);
-    expect(collectLabelTexts(ref.current)).toEqual(topLevelTexts(next));
+    expect(labelTexts(ref.current)).toEqual(topLevelTexts(next));
     expect(splices).toEqual(expected);
 };
 
-const createItems = (a: number, b: number, c: number) => [
-    { id: "1", value: { count: a } },
-    { id: "2", value: { count: b } },
-    { id: "3", value: { count: c } },
-];
-
+const listViewView = async (items: string[]) => asCollectionView(await renderListView(items), labelTexts);
+const gridViewView = async (items: string[]) => asCollectionView(await renderGridView(items), labelTexts);
 const renderCount: ListItemRenderer<{ count: number }> = ({ item }) => <GtkLabel>{String(item.count)}</GtkLabel>;
 
-describe("render - ListView (1)", () => {
-    describe("GtkListView", () => {
-        it("creates ListView widget", async () => {
-            await renderListView([{ id: "1", value: { name: "First" } }]);
-            expect(screen.getByRole(Gtk.AccessibleRole.LIST)).toBeTruthy();
+const countedItems = (offset: number): ListItem<{ count: number }>[] => [
+    { id: "1", value: { count: offset } },
+    { id: "2", value: { count: offset * 2 } },
+];
+
+describe("ListView", () => {
+    it("draws a row per item and follows insertions, removals and value changes", async () => {
+        const { ref, rerender } = await renderListView(
+            namedItems([
+                ["1", "First"],
+                ["3", "Third"],
+            ]),
+        );
+
+        expect(screen.getByRole(Gtk.AccessibleRole.LIST)).toBe(ref.current);
+        expect(labelTexts(ref.current)).toEqual(["First", "Third"]);
+
+        await rerender(
+            namedItems([
+                ["1", "First"],
+                ["2", "Second"],
+                ["3", "Third"],
+            ]),
+        );
+
+        expect(labelTexts(ref.current)).toEqual(["First", "Second", "Third"]);
+
+        await rerender(
+            namedItems([
+                ["1", "First"],
+                ["3", "Renamed"],
+            ]),
+        );
+
+        expect(labelTexts(ref.current)).toEqual(["First", "Renamed"]);
+        expect(screen.queryAllByText("Second")).toHaveLength(0);
+    });
+
+    it("reorders the rows to match the items array", async () => {
+        await expectReordering(listViewView);
+    });
+
+    it("keeps a filtered list and a large list in the order they are given", async () => {
+        await expectFiltering(listViewView);
+        await expectLargeReordering(listViewView);
+    });
+});
+
+describe("ListView rendering", () => {
+    it("hands the renderer the item and redraws when the renderer changes", async () => {
+        const renderItem = vi.fn<ListItemRenderer<{ name: string }>>(({ item }) => <GtkLabel>{item.name}</GtkLabel>);
+        const items = namedItems([["1", "Test"]]);
+        const { ref, rerender } = await renderListView(items, { renderItem });
+        expect(renderItem).toHaveBeenCalledWith(expect.objectContaining({ item: { name: "Test" } }));
+        await rerender(items, { renderItem: ({ item }) => <GtkLabel>{`Second: ${item.name}`}</GtkLabel> });
+        expect(labelTexts(ref.current)).toEqual(["Second: Test"]);
+    });
+
+    it("keeps the row order through repeated value updates", async () => {
+        const { ref, rerender } = await renderListView(countedItems(0), { renderItem: renderCount });
+
+        for (let round = 1; round <= 10; round++) {
+            await rerender(countedItems(round), { renderItem: renderCount });
+            expect(labelTexts(ref.current)).toEqual([String(round), String(round * 2)]);
+        }
+    });
+
+    it("renders the row content as the cell's direct child", async () => {
+        const { ref } = await renderListView(["First"]);
+        expectNoBoxBetween(screen.getByText("First"), ref.current);
+    });
+});
+
+describe("ListView model emissions", () => {
+    it("emits nothing for a pure reorder and one tail splice per structural change", async () => {
+        await expectSpliceEmissions(["A", "B", "C", "D"], ["D", "A", "B", "C"], []);
+        await expectSpliceEmissions(["A", "B", "C"], ["A", "X", "B", "C"], [[3, 0, 1]]);
+        await expectSpliceEmissions(["A", "B", "C", "D"], ["A", "C"], [[2, 2, 0]]);
+    });
+
+    it("coalesces a run of adjacent expandability flips into one replacement", async () => {
+        await expectSpliceEmissions([branchA, leafB], [branchA, branchB], [[1, 1, 1]]);
+        await expectSpliceEmissions([branchA, leafB, leafC, leafD], [branchA, branchB, branchC, leafD], [[1, 2, 2]]);
+
+        await expectSpliceEmissions(
+            [branchA, leafB, leafC, leafD],
+            [branchA, branchB, leafC, branchD],
+            [
+                [1, 1, 1],
+                [3, 1, 1],
+            ],
+        );
+    });
+});
+
+describe("ListView selection", () => {
+    it("selects the row named by selectedIds and reports what it selected", async () => {
+        const onSelectionChanged = vi.fn();
+        const { ref, rerender } = await renderListView(firstSecondItems, { selected: ["2"], onSelectionChanged });
+        const model = getSelectionModel(ref);
+        expect(onSelectionChanged).toHaveBeenCalledWith(["2"]);
+
+        await waitFor(() => {
+            expect(model.isSelected(1)).toBe(true);
+        });
+
+        await rerender(firstSecondItems, { selected: [] });
+        expect(labelTexts(ref.current)).toEqual(["First", "Second"]);
+    });
+});
+
+describe("ListView selection through the widget", () => {
+    it("moves the selection to the row the user clicks, label included", async () => {
+        await renderStatefulListView(firstSecondItems);
+        const [, second] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+
+        if (second === undefined) {
+            throw new TypeError("Expected a second row");
+        }
+
+        await userEvent.click(second);
+
+        await waitFor(() => {
+            expect(screen.queryAllByText("selected:2")).toHaveLength(1);
+        });
+
+        await userEvent.click(screen.getByText("First"));
+
+        await waitFor(() => {
+            expect(screen.queryAllByText("selected:1")).toHaveLength(1);
         });
     });
 
-    describe("ListItem (1)", () => {
-        it("adds item to list model", async () => {
-            await renderListView(
-                namedRows([
-                    ["1", "First"],
-                    ["2", "Second"],
-                ]),
-            );
+    it("re-asserts selectedIds after the widget selects another row on its own", async () => {
+        const { ref, rerender } = await renderListView(firstSecondItems, { selected: ["2"] });
+        const model = getSelectionModel(ref);
 
-            expectAllVisibleOnce("First", "Second");
+        await waitFor(() => {
+            expect(model.isSelected(1)).toBe(true);
         });
 
-        it("inserts item before existing item", async () => {
-            const { rerender } = await renderListView(
-                namedRows([
-                    ["1", "First"],
-                    ["3", "Third"],
-                ]),
-            );
+        await act(() => {
+            model.selectItem(0, true);
+        });
 
-            expectAllVisibleOnce("First", "Third");
+        await rerender(firstSecondItems, { selected: ["2"] });
 
-            await rerender(
-                namedRows([
-                    ["1", "First"],
-                    ["2", "Second"],
-                    ["3", "Third"],
-                ]),
-            );
-
-            expectAllVisibleOnce("First", "Second", "Third");
+        await waitFor(() => {
+            expect(model.isSelected(0)).toBe(false);
+            expect(model.isSelected(1)).toBe(true);
         });
     });
 });
 
-describe("render - ListView (2)", () => {
-    describe("ListItem (2)", () => {
-        it("removes item from list model", async () => {
-            const { rerender } = await renderListView(
-                namedRows([
-                    ["1", "A"],
-                    ["2", "B"],
-                    ["3", "C"],
-                ]),
-            );
+describe("ListView selection while scrolled", () => {
+    it("keeps the scroll position when a row is selected after scrolling", async () => {
+        const { ref } = await renderStatefulListView(hundredItems, { maxContentHeight: 200 });
+        const scroller = ref.current.getAncestor(Gtk.ScrolledWindow.prototype.__type__);
 
-            expectAllVisibleOnce("A", "B", "C");
+        if (!(scroller instanceof Gtk.ScrolledWindow)) {
+            throw new TypeError("Expected the list to sit inside a scrolled window");
+        }
 
-            await rerender(
-                namedRows([
-                    ["1", "A"],
-                    ["3", "C"],
-                ]),
-            );
+        const adjustment = scroller.getVadjustment();
+        ref.current.scrollTo(99, Gtk.ListScrollFlags.FOCUS, null);
 
-            expect(screen.queryAllByText("A")).toHaveLength(1);
-            expect(screen.queryAllByText("B")).toHaveLength(0);
-            expect(screen.queryAllByText("C")).toHaveLength(1);
+        await waitFor(() => {
+            adjustment.setValue(adjustment.getUpper() - adjustment.getPageSize());
+            expect(adjustment.getValue()).toBeGreaterThan(0);
         });
 
-        it("updates item value", async () => {
-            await expectSingleItemValueUpdate();
+        const before = adjustment.getValue();
+        await userEvent.selectOptions(ref.current, 99);
+        expect(adjustment.getValue()).toBe(before);
+    });
+});
+
+describe("ListView selection modes", () => {
+    it("reports every row the user selects when the mode allows several", async () => {
+        const { ref } = await renderStatefulListView(firstSecondItems, {
+            selectionMode: Gtk.SelectionMode.MULTIPLE,
         });
 
-        it("re-renders bound items when value changes", async () => {
-            await expectSingleItemValueUpdate();
+        await userEvent.selectOptions(ref.current, [0, 1]);
+
+        await waitFor(() => {
+            expect(screen.queryAllByText("selected:1,2")).toHaveLength(1);
+        });
+    });
+
+    it("keeps the selection when selectionMode and selectedIds change together", async () => {
+        const { ref, rerender } = await renderListView(firstSecondThirdItems, {
+            selectionMode: Gtk.SelectionMode.SINGLE,
+            selected: ["1"],
+        });
+
+        await rerender(firstSecondThirdItems, {
+            selectionMode: Gtk.SelectionMode.MULTIPLE,
+            selected: ["1", "3"],
+        });
+
+        await waitFor(() => {
+            const selection = getSelectionModel(ref).getSelection();
+            expect(selection.getSize()).toBe(2n);
+            expect(selection.contains(0)).toBe(true);
+            expect(selection.contains(2)).toBe(true);
+        });
+    });
+
+    it("selects a row that only comes into view after scrolling", async () => {
+        const { ref } = await renderStatefulListView(hundredItems);
+        ref.current.scrollTo(99, Gtk.ListScrollFlags.NONE, null);
+        await userEvent.selectOptions(ref.current, 99);
+
+        await waitFor(() => {
+            expect(screen.queryAllByText("selected:item-99")).toHaveLength(1);
         });
     });
 });
 
-describe("render - ListView (3)", () => {
-    describe("renderItem", () => {
-        it("receives item data in renderItem", async () => {
-            await expectRenderItemReceivesData();
-        });
-
-        it("updates when renderItem function changes", async () => {
-            await expectRenderItemFunctionUpdate();
-        });
+describe("GridView", () => {
+    it("draws a cell per item and reorders them to match the items array", async () => {
+        await expectReordering(gridViewView);
     });
 
-    describe("GtkGridView", () => {
-        it("creates GridView widget", async () => {
-            await renderGridView([{ id: "1", value: { name: "First" } }]);
-            expect(screen.getByRole(Gtk.AccessibleRole.GRID)).toBeTruthy();
-        });
-
-        it("sets singleClickActivate property correctly", async () => {
-            const { ref } = await renderGridView([{ id: "1", value: { name: "First" } }], {
-                singleClickActivate: true,
-            });
-
-            expect(ref.current).toHaveObjectProperty("singleClickActivate", true);
-        });
-    });
-});
-
-describe("render - ListView (4)", () => {
-    describe("item reordering (1)", () => {
-        it("respects React declaration order on initial render", async () => {
-            await expectInitialOrder(listViewView, ["C", "A", "B"]);
-        });
-
-        it("handles complete reversal of items", async () => {
-            await expectReorder(listViewView, ["A", "B", "C", "D", "E"], ["E", "D", "C", "B", "A"]);
-        });
-
-        it("handles interleaved reordering", async () => {
-            await expectReorder(listViewView, ["A", "B", "C", "D"], ["B", "D", "A", "C"]);
-        });
-
-        it("handles removing and adding while reordering", async () => {
-            await expectReorder(listViewView, ["A", "B", "C"], ["D", "B", "E"]);
-        });
-
-        it("handles insert at beginning", async () => {
-            await expectReorder(listViewView, ["B", "C"], ["A", "B", "C"]);
-        });
-
-        it("handles single item to multiple items", async () => {
-            await expectReorder(listViewView, ["A"], ["X", "A", "Y"]);
-        });
-    });
-});
-
-describe("render - ListView (5)", () => {
-    describe("item reordering (2)", () => {
-        it("handles rapid reordering", async () => {
-            await expectRapidReorder(listViewView, RAPID_REORDER_ORDERS);
-        });
-
-        it("handles large dataset reordering (200 items)", async () => {
-            await expectLargeDatasetReorder(listViewView);
-        });
-
-        it("handles move first item to last position", async () => {
-            await expectReorder(listViewView, ["A", "B", "C", "D"], ["B", "C", "D", "A"]);
-        });
-
-        it("handles move last item to first position", async () => {
-            await expectReorder(listViewView, ["A", "B", "C", "D"], ["D", "A", "B", "C"]);
-        });
-
-        it("handles swap of two items", async () => {
-            await expectReorder(listViewView, ["A", "B", "C", "D"], ["A", "C", "B", "D"]);
-        });
-    });
-});
-
-describe("render - ListView (6)", () => {
-    describe("item reordering (3)", () => {
-        it("handles filtered view reordering", async () => {
-            await expectFilteredViewReorder(listViewView);
-        });
-
-        it("preserves order when only item values change", async () => {
-            const { ref, rerender } = await renderListView(
-                namedRows([
-                    ["1", "Alice"],
-                    ["2", "Bob"],
-                    ["3", "Charlie"],
-                ]),
-            );
-
-            expect(collectLabelTexts(ref.current)).toEqual(["Alice", "Bob", "Charlie"]);
-
-            await rerender(
-                namedRows([
-                    ["1", "Alice Updated"],
-                    ["2", "Bob Updated"],
-                    ["3", "Charlie Updated"],
-                ]),
-            );
-
-            expect(collectLabelTexts(ref.current)).toEqual(["Alice Updated", "Bob Updated", "Charlie Updated"]);
-        });
-    });
-});
-
-describe("render - ListView (7)", () => {
-    describe("item reordering (4)", () => {
-        it("preserves order when updating a single item value", async () => {
-            const { ref, rerender } = await renderListView(counterBaselineRows(), { renderItem: renderCounterCell });
-            expect(collectLabelTexts(ref.current)).toEqual(COUNTER_BASELINE_TEXTS);
-            await rerender(counterSingleUpdateRows(), { renderItem: renderCounterCell });
-            expect(collectLabelTexts(ref.current)).toEqual(COUNTER_SINGLE_UPDATE_TEXTS);
-        });
-
-        it("preserves order with frequent value updates", async () => {
-            const { ref, rerender } = await renderListView(createItems(0, 0, 0), { renderItem: renderCount });
-            expect(collectLabelTexts(ref.current)).toEqual(["0", "0", "0"]);
-
-            for (let i = 1; i <= 10; i++) {
-                await rerender(createItems(i, i * 2, i * 3), { renderItem: renderCount });
-                expect(collectLabelTexts(ref.current)).toEqual([String(i), String(i * 2), String(i * 3)]);
-            }
-        });
-    });
-});
-
-describe("render - ListView (8)", () => {
-    describe("GridView item reordering", () => {
-        it("handles complete reversal of items", async () => {
-            await expectReorder(gridViewView, ["A", "B", "C", "D", "E"], ["E", "D", "C", "B", "A"]);
-        });
-
-        it("handles interleaved reordering", async () => {
-            await expectReorder(gridViewView, ["A", "B", "C", "D"], ["B", "D", "A", "C"]);
-        });
-
-        it("handles rapid reordering", async () => {
-            await expectRapidReorder(gridViewView, RAPID_REORDER_ORDERS);
-        });
-    });
-});
-
-describe("render - ListView (9)", () => {
-    describe("direct cell rendering", () => {
-        it("renders the item label as the list cell's direct content with no wrapper container", async () => {
-            const { ref } = await renderListView(["First"]);
-            expectNoBoxBetween(screen.getByText("First"), ref.current);
-        });
-
-        it("renders the item label as the grid cell's direct content with no wrapper container", async () => {
-            const { ref } = await renderGridView(["First"]);
-            expectNoBoxBetween(screen.getByText("First"), ref.current);
-        });
-    });
-});
-
-describe("render - ListView (10)", () => {
-    describe("model emission policy", () => {
-        it("emits no items-changed for a pure reorder", async () => {
-            await expectSpliceEmissions(["A", "B", "C", "D"], ["D", "A", "B", "C"], []);
-        });
-
-        it("emits one tail splice when a row is inserted in the middle", async () => {
-            await expectSpliceEmissions(["A", "B", "C"], ["A", "X", "B", "C"], [[3, 0, 1]]);
-        });
-
-        it("emits one tail splice when rows are removed", async () => {
-            await expectSpliceEmissions(["A", "B", "C", "D"], ["A", "C"], [[2, 2, 0]]);
-        });
-
-        it("emits one replacement when a row's expandability flips", async () => {
-            await expectSpliceEmissions([branchA, leafB], [branchA, branchB], [[1, 1, 1]]);
-        });
-
-        it("emits one replacement covering a run of adjacent expandability flips", async () => {
-            await expectSpliceEmissions(
-                [branchA, leafB, leafC, leafD],
-                [branchA, branchB, branchC, leafD],
-                [[1, 2, 2]],
-            );
-        });
-
-        it("emits one replacement per run when the flips are not adjacent", async () => {
-            await expectSpliceEmissions(
-                [branchA, leafB, leafC, leafD],
-                [branchA, branchB, leafC, branchD],
-                [
-                    [1, 1, 1],
-                    [3, 1, 1],
-                ],
-            );
-        });
+    it("renders the cell content as the cell's direct child and takes singleClickActivate", async () => {
+        const { ref } = await renderGridView(["First"], { singleClickActivate: true });
+        expect(screen.getByRole(Gtk.AccessibleRole.GRID)).toBe(ref.current);
+        expect(ref.current).toHaveObjectProperty("singleClickActivate", true);
+        expectNoBoxBetween(screen.getByText("First"), ref.current);
     });
 });

@@ -29,10 +29,9 @@ describe("textundoDemo", () => {
     it("exposes the expected metadata", () => {
         expect(textundoDemo.id).toBe("textundo");
         expect(textundoDemo.title).toBe("Text View/Undo and Redo");
-        expect(textundoDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(textundoDemo.keywords)).toBe(true);
-        expect(typeof textundoDemo.sourceCode).toBe("string");
-        expect(textundoDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(textundoDemo.description).toContain("The GtkTextView supports undo and redo");
+        expect(textundoDemo.keywords).toEqual([]);
+        expect(textundoDemo.sourceCode).toContain("const textundoDemo: Demo = {");
         expect(textundoDemo.defaultWidth).toBe(330);
         expect(textundoDemo.defaultHeight).toBe(330);
         expect(textundoDemo.component).toBeTypeOf("function");

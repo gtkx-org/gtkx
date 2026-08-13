@@ -11,9 +11,6 @@
         "path": "../runtime/tsconfig.lib.json"
       },
       {
-        "path": "../vitest/tsconfig.lib.json"
-      },
-      {
         "path": "../config/tsconfig.lib.json"
       }
     ]

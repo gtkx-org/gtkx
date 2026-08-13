@@ -18,10 +18,9 @@ describe("overlayDecorativeDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(overlayDecorativeDemo.id).toBe("overlay-decorative");
         expect(overlayDecorativeDemo.title).toBe("Overlay/Decorative Overlay");
-        expect(overlayDecorativeDemo.description.length).toBeGreaterThan(0);
+        expect(overlayDecorativeDemo.description).toContain("Another example of an overlay with some decorative");
         expect(overlayDecorativeDemo.keywords).toEqual(["GtkOverlay"]);
-        expect(typeof overlayDecorativeDemo.sourceCode).toBe("string");
-        expect(overlayDecorativeDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(overlayDecorativeDemo.sourceCode).toContain("const overlayDecorativeDemo: Demo = {");
         expect(overlayDecorativeDemo.defaultWidth).toBe(500);
         expect(overlayDecorativeDemo.defaultHeight).toBe(510);
         expect(overlayDecorativeDemo.component).toBeTypeOf("function");
@@ -31,12 +30,14 @@ describe("overlayDecorativeDemo metadata", () => {
 describe("overlayDecorativeDemo overlay structure", () => {
     it("renders a single GtkOverlay containing the scrolled text view and three overlay children", async () => {
         await renderDemo(overlayDecorativeDemo);
-        expect(await screen.findByName("overlay")).toBeInstanceOf(Gtk.Overlay);
-        expect(await screen.findByName("scrolled")).toBeInstanceOf(Gtk.ScrolledWindow);
-        expect(await screen.findByName("text-view")).toBeInstanceOf(Gtk.TextView);
-        expect(await screen.findByName("picture-start")).toBeInstanceOf(Gtk.Picture);
-        expect(await screen.findByName("picture-end")).toBeInstanceOf(Gtk.Picture);
-        expect(await screen.findByName("margin-scale")).toBeInstanceOf(Gtk.Scale);
+        const overlay = await screen.findByName("overlay", { as: Gtk.Overlay });
+        const scrolled = await screen.findByName("scrolled", { as: Gtk.ScrolledWindow });
+        expect(screen.getAllByName("overlay")).toHaveLength(1);
+        expect(overlay).toContainElement(scrolled);
+        expect(scrolled).toContainElement(await screen.findByName("text-view", { as: Gtk.TextView }));
+        expect(overlay).toContainElement(await screen.findByName("picture-start", { as: Gtk.Picture }));
+        expect(overlay).toContainElement(await screen.findByName("picture-end", { as: Gtk.Picture }));
+        expect(overlay).toContainElement(await screen.findByName("margin-scale", { as: Gtk.Scale }));
     });
 
     it("configures the scrolled window with automatic scrollbar policies", async () => {
@@ -93,6 +94,9 @@ describe("overlayDecorativeDemo scale behavior", () => {
 describe("overlayDecorativeDemo text content", () => {
     it("renders the concatenated 'Dear diary...' text inside the text view buffer", async () => {
         await renderDemo(overlayDecorativeDemo);
-        expect(await screen.findByDisplayValue(/Dear diary\.\.\./)).toBeInstanceOf(Gtk.TextView);
+
+        expect(await screen.findByDisplayValue(/Dear diary\.\.\./)).toBe(
+            await screen.findByName("text-view", { as: Gtk.TextView }),
+        );
     });
 });

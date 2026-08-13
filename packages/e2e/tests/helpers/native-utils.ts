@@ -54,4 +54,4 @@ function getRefCount(handle: ExternalObject<Handle>): number {
     return read(handle, UINT32_DESCRIPTOR, GOBJECT_REF_COUNT_OFFSET) as number;
 }
 
-export { callArgs, GTK_LIB, GOBJECT_LIB, BIGUINT64, typeFromName, forceGC, gcUntil, getRefCount };
+export { BIGUINT64, callArgs, gcUntil, getRefCount, GOBJECT_LIB, GTK_LIB, typeFromName };

@@ -8,10 +8,9 @@ describe("glareaDemo", () => {
     it("exposes the expected metadata", () => {
         expect(glareaDemo.id).toBe("glarea");
         expect(glareaDemo.title).toBe("OpenGL/OpenGL Area");
-        expect(glareaDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(glareaDemo.keywords)).toBe(true);
-        expect(typeof glareaDemo.sourceCode).toBe("string");
-        expect(glareaDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(glareaDemo.description).toBe("GtkGLArea is a widget that allows custom drawing using OpenGL calls.");
+        expect(glareaDemo.keywords).toEqual([]);
+        expect(glareaDemo.sourceCode).toContain("const glareaDemo: Demo = {");
         expect(glareaDemo.component).toBeTypeOf("function");
     });
 

@@ -7,9 +7,9 @@ import { renderDemo } from "../../test-utils.js";
 const TIME_DISPLAY_PATTERN = /^\d{2}:\d{2}$/;
 
 const FIRST_RENDER_FORMATS = [
-    { field: "hex", displayValue: "0x00" },
-    { field: "time", displayValue: "00:00" },
-    { field: "month", displayValue: "January" },
+    { field: "hex", name: "hex_spin", displayValue: "0x00" },
+    { field: "time", name: "time_spin", displayValue: "00:00" },
+    { field: "month", name: "month_spin", displayValue: "January" },
 ];
 
 const REJECTED_TIME_TEXTS = [
@@ -43,7 +43,15 @@ describe("spinbuttonDemo", () => {
     it("exposes the expected metadata", () => {
         expect(spinbuttonDemo.id).toBe("spinbutton");
         expect(spinbuttonDemo.title).toBe("Spin Buttons");
-        expect(typeof spinbuttonDemo.sourceCode).toBe("string");
+
+        expect(spinbuttonDemo.description).toBe(
+            "GtkSpinButton provides convenient ways to input data that can be seen as a value in a range. " +
+            "The examples here show that this does not necessarily mean numeric values, " +
+            "and it can include custom formatting.",
+        );
+
+        expect(spinbuttonDemo.keywords).toEqual(["GtkEntry"]);
+        expect(spinbuttonDemo.sourceCode).toContain("const spinbuttonDemo: Demo = {");
     });
 
     it("renders the four labelled spin rows", async () => {
@@ -54,9 +62,9 @@ describe("spinbuttonDemo", () => {
 
     it.each(FIRST_RENDER_FORMATS)(
         "formats the $field spin button as $displayValue on first render",
-        async ({ displayValue }) => {
+        async ({ name, displayValue }) => {
             await renderDemo(spinbuttonDemo);
-            expect(await screen.findByDisplayValue(displayValue)).toBeTruthy();
+            expect(await screen.findByName(name, { as: Gtk.SpinButton })).toHaveDisplayValue(displayValue);
         },
     );
 });
@@ -65,25 +73,29 @@ describe("spinbuttonDemo custom output formatting", () => {
     it("formats hex output for a non-zero value", async () => {
         const hexButton = await renderSpinButton("hex_spin");
         await commitText(hexButton, "0xAB");
-        expect(await screen.findByDisplayValue("0xAB")).toBeTruthy();
+        expect(await screen.findByDisplayValue("0xAB")).toBe(hexButton);
+        expect(hexButton).toHaveValue(0xAB);
     });
 
     it("formats hex output as 0x00 when the value is essentially zero", async () => {
         const hexButton = await renderSpinButton("hex_spin");
         await commitText(hexButton, "0");
-        expect(await screen.findByDisplayValue("0x00")).toBeTruthy();
+        expect(await screen.findByDisplayValue("0x00")).toBe(hexButton);
+        expect(hexButton).toHaveValue(0);
     });
 
     it("formats time output as HH:MM for a non-zero value", async () => {
         const timeButton = await renderSpinButton("time_spin");
         await commitText(timeButton, "02:30");
-        expect(await screen.findByDisplayValue("02:30")).toBeTruthy();
+        expect(await screen.findByDisplayValue("02:30")).toBe(timeButton);
+        expect(timeButton).toHaveValue(150);
     });
 
     it("formats month output for the corresponding month index", async () => {
         const monthButton = await renderSpinButton("month_spin");
         await commitText(monthButton, "July");
-        expect(await screen.findByDisplayValue("July")).toBeTruthy();
+        expect(await screen.findByDisplayValue("July")).toBe(monthButton);
+        expect(monthButton).toHaveValue(7);
     });
 });
 
@@ -91,7 +103,7 @@ describe("spinbuttonDemo custom input parsing", () => {
     it("parses hexadecimal text via the hex input handler when the user types and commits", async () => {
         const hexButton = await renderSpinButton("hex_spin");
         await commitText(hexButton, "0xff");
-        expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 0xFF } })).toBeTruthy();
+        expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 0xFF } })).toBe(hexButton);
     });
 
     it("clamps a signed hexadecimal value to the adjustment lower bound via the '-' sign branch", async () => {
@@ -133,7 +145,7 @@ describe("spinbuttonDemo time input parsing", () => {
     it("parses HH:MM time strings via the time input handler", async () => {
         const timeButton = await renderSpinButton("time_spin");
         await commitText(timeButton, "12:30");
-        expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 750 } })).toBeTruthy();
+        expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 750 } })).toBe(timeButton);
     });
 
     it.each(REJECTED_TIME_TEXTS)("rejects time strings $label and keeps the previous value", async ({ text }) => {
@@ -179,7 +191,7 @@ describe("spinbuttonDemo numeric input", () => {
         const numericButton = await renderSpinButton("basic_spin");
         await commitText(numericButton, "12.5");
         expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 12.5 } })).toBe(numericButton);
-        expect(await screen.findByText("12.5")).toBeInstanceOf(Gtk.Label);
+        expect(await screen.findByText("12.5")).toAppearAfter(numericButton);
     });
 
     it("steps the numeric value up by its 0.5 step increment when ArrowUp is pressed", async () => {
@@ -191,7 +203,7 @@ describe("spinbuttonDemo numeric input", () => {
             expect(numericButton.getValue()).toBeCloseTo(0.5);
         });
 
-        expect(await screen.findByText("0.5")).toBeInstanceOf(Gtk.Label);
+        expect(await screen.findByText("0.5")).toAppearAfter(numericButton);
     });
 });
 
@@ -204,13 +216,13 @@ describe("spinbuttonDemo mirrored value labels", () => {
             expect(hexButton).toHaveObjectProperty("value", 255);
         });
 
-        expect(await screen.findByText("255")).toBeInstanceOf(Gtk.Label);
+        expect(await screen.findByText("255")).toAppearAfter(hexButton);
     });
 
     it("mirrors the parsed time value (minutes since midnight) into the third-column label", async () => {
         const timeButton = await renderSpinButton("time_spin");
         await establishTimeValue(timeButton);
-        expect(await screen.findByText("750")).toBeInstanceOf(Gtk.Label);
+        expect(await screen.findByText("750")).toAppearAfter(timeButton);
     });
 
     it("mirrors the parsed month index into the third-column label", async () => {
@@ -221,7 +233,7 @@ describe("spinbuttonDemo mirrored value labels", () => {
             expect(monthButton).toHaveObjectProperty("value", 7);
         });
 
-        expect(await screen.findByText("7")).toBeInstanceOf(Gtk.Label);
+        expect(await screen.findByText("7")).toAppearAfter(monthButton);
     });
 });
 

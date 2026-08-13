@@ -311,9 +311,6 @@ const runDevSupervisor = async (options: DevSupervisorOptions): Promise<never> =
 
 export {
     RESTART_EXIT_CODE,
-    defaultForkRunner,
     runDevSupervisor,
     type DevWatch,
-    type ForkRunner,
-    type SupervisedChild,
 };

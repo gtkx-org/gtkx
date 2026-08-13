@@ -14,9 +14,19 @@ describe("expanderDemo", () => {
     it("exposes the expected metadata", () => {
         expect(expanderDemo.id).toBe("expander");
         expect(expanderDemo.title).toBe("Expander");
-        expect(typeof expanderDemo.sourceCode).toBe("string");
-    });
 
+        expect(expanderDemo.description).toBe(
+            "GtkExpander allows to provide additional content that is initially hidden. " +
+            'This is also known as "disclosure triangle".\n\n' +
+            "This example also shows how to make the window resizable only if the expander is expanded.",
+        );
+
+        expect(expanderDemo.keywords).toEqual(["gtkexpander"]);
+        expect(expanderDemo.sourceCode).toContain("const expanderDemo: Demo = {");
+    });
+});
+
+describe("expanderDemo rendering", () => {
     it("renders the headline label, the details summary, and the collapsed Details expander", async () => {
         await renderDemo(expanderDemo);
 
@@ -45,7 +55,6 @@ describe("expanderDemo", () => {
         const expander = await renderExpander();
         await userEvent.click(expander);
         const textView = await within(expander).findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
-        expect(textView).toBeInstanceOf(Gtk.TextView);
         expect(textView).toHaveObjectProperty("editable", false);
         expect(textView).toHaveObjectProperty("wrapMode", Gtk.WrapMode.WORD);
         expect(screen.getByDisplayValue(/Finally, the full story/)).toBe(textView);

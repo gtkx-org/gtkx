@@ -41,10 +41,9 @@ describe("gesturesDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(gesturesDemo.id).toBe("gestures");
         expect(gesturesDemo.title).toBe("Gestures");
-        expect(gesturesDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(gesturesDemo.keywords)).toBe(true);
-        expect(typeof gesturesDemo.sourceCode).toBe("string");
-        expect(gesturesDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(gesturesDemo.description).toContain("Perform gestures on touchscreens and other input devices");
+        expect(gesturesDemo.keywords).toEqual(["GtkGesture"]);
+        expect(gesturesDemo.sourceCode).toContain("const gesturesDemo: Demo = {");
         expect(gesturesDemo.component).toBeTypeOf("function");
         expect(gesturesDemo.defaultWidth).toBe(400);
         expect(gesturesDemo.defaultHeight).toBe(400);
@@ -89,7 +88,6 @@ describe("gesturesDemo gesture controllers", () => {
         await renderDemo(gesturesDemo);
         const drawingArea = await findDrawingArea();
         const longPress = getController(drawingArea, Gtk.GestureLongPress);
-        expect(longPress).toBeInstanceOf(Gtk.GestureLongPress);
         await userEvent.longPress(drawingArea, 100, 100);
         const queueDraw = vi.spyOn(drawingArea, "queueDraw");
         await fireEvent(longPress, "end", null);
@@ -141,8 +139,6 @@ describe("gesturesDemo gesture painting", () => {
         const drawingArea = await findDrawingArea();
         const rotate = getController(drawingArea, Gtk.GestureRotate);
         const zoom = getController(drawingArea, Gtk.GestureZoom);
-        expect(rotate).toBeInstanceOf(Gtk.GestureRotate);
-        expect(zoom).toBeInstanceOf(Gtk.GestureZoom);
         const baseline = await paintWindow();
         vi.spyOn(rotate, "isRecognized").mockReturnValue(true);
         vi.spyOn(rotate, "getAngleDelta").mockReturnValue(Math.PI / 6);
@@ -157,7 +153,6 @@ describe("gesturesDemo gesture painting", () => {
         await renderDemo(gesturesDemo);
         const drawingArea = await findDrawingArea();
         const zoom = getController(drawingArea, Gtk.GestureZoom);
-        expect(zoom).toBeInstanceOf(Gtk.GestureZoom);
         const baseline = await paintWindow();
         vi.spyOn(zoom, "isRecognized").mockReturnValue(true);
         vi.spyOn(zoom, "getScaleDelta").mockReturnValue(1.5);
@@ -171,7 +166,6 @@ describe("gesturesDemo gesture painting", () => {
         await renderDemo(gesturesDemo);
         const drawingArea = await findDrawingArea();
         const longPress = getController(drawingArea, Gtk.GestureLongPress);
-        expect(longPress).toBeInstanceOf(Gtk.GestureLongPress);
         const baseline = await paintWindow();
         await userEvent.longPress(drawingArea, 150, 150);
         const pressed = await paintWindow();

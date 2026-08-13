@@ -659,4 +659,4 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     printNextSteps(resolved);
 };
 
-export { scaffold, type CreateOptions };
+export { scaffold };

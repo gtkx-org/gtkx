@@ -145,4 +145,4 @@ const createCss = (): Css => {
     };
 };
 
-export { removeLabel, createCss, type Css };
+export { createCss, type Css };

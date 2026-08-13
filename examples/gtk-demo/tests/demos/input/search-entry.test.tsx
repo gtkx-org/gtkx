@@ -20,10 +20,9 @@ describe("searchEntryDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(searchEntryDemo.id).toBe("search-entry");
         expect(searchEntryDemo.title).toBe("Entry/Search Entry");
-        expect(searchEntryDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(searchEntryDemo.keywords)).toBe(true);
-        expect(typeof searchEntryDemo.sourceCode).toBe("string");
-        expect(searchEntryDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(searchEntryDemo.description).toContain("GtkSearchEntry provides an entry that is ready for search.");
+        expect(searchEntryDemo.keywords).toEqual([]);
+        expect(searchEntryDemo.sourceCode).toContain("const searchEntryDemo: Demo = {");
         expect(searchEntryDemo.component).toBeTypeOf("function");
     });
 });

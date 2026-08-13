@@ -45,16 +45,16 @@ describe("framesDemo metadata", () => {
         expect(framesDemo.title).toBe("Benchmark/Frames");
         expect(framesDemo.defaultWidth).toBe(600);
         expect(framesDemo.defaultHeight).toBe(400);
-        expect(typeof framesDemo.sourceCode).toBe("string");
+        expect(framesDemo.sourceCode).toContain("const framesDemo: Demo = {");
     });
 });
 
 describe("framesDemo header bar", () => {
     it("renders the fps label in the header bar driven by shared state", async () => {
         const header = await findFramesHeader();
-        expect(header).toBeInstanceOf(Gtk.HeaderBar);
         const fpsLabel = await within(header).findByRole(Gtk.AccessibleRole.LABEL, { name: FPS_PATTERN });
-        expect(fpsLabel).toBeInstanceOf(Gtk.Label);
+        expect(header).toContainElement(fpsLabel);
+        expect(fpsLabel).toHaveTextContent("0.00 fps");
     });
 
     it("carries a tabular-numbers font-features Pango attribute on the fps label", async () => {
@@ -83,11 +83,11 @@ describe("framesDemo fps polling", () => {
         const colorWidget = await screen.findByName("color-widget");
         expect(colorWidget.getFrameClock()).not.toBeNull();
         const header = await screen.findByName("frames-header", { as: Gtk.HeaderBar });
-        expect(findFpsLabel(header)).toHaveObjectProperty("label", "0.00 fps");
+        expect(findFpsLabel(header)).toHaveTextContent("0.00 fps");
 
         await waitFor(
             () => {
-                expect(findFpsLabel(header)).not.toHaveObjectProperty("label", "0.00 fps");
+                expect(findFpsLabel(header)).not.toHaveTextContent("0.00 fps");
             },
             { timeout: 10_000 },
         );

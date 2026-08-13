@@ -78,7 +78,7 @@ describe("render - ComboRow", () => {
         await openComboList(ref.current);
 
         await waitFor(() => {
-            expect(screen.getAllByText("By date").length).toBeGreaterThanOrEqual(2);
+            expect(screen.getAllByText("By date")).toHaveLength(2);
             expect(screen.getAllByText("By size")).toHaveLength(1);
         });
     });
@@ -93,7 +93,7 @@ describe("render - ComboRow", () => {
         await openComboList(ref.current);
 
         await waitFor(() => {
-            expect(screen.getAllByText("By size").length).toBeGreaterThanOrEqual(2);
+            expect(screen.getAllByText("By size")).toHaveLength(2);
             expect(screen.getAllByText("By title")).toHaveLength(1);
         });
     });
@@ -113,7 +113,7 @@ describe("render - ComboRow", () => {
     it("renders custom item templates", async () => {
         const ref = createRef<Adw.ComboRow>();
         await render(<TemplatedComboProbe comboRef={ref} />);
-        const matches = await screen.findAllByText("Sorted by date");
-        expect(matches.length).toBeGreaterThanOrEqual(1);
+        expect(await screen.findAllByText("Sorted by date")).toHaveLength(1);
+        expect(screen.queryAllByText("By date")).toHaveLength(0);
     });
 });

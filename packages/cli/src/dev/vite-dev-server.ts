@@ -82,7 +82,6 @@ export {
     createDevServerConfig,
     type DevServer,
     type DevServerChangedModule,
-    type DevServerConfig,
     type DevServerWatchEvent,
     isServerConfigFile,
 };

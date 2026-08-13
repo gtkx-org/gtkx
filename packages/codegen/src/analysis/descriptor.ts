@@ -104,7 +104,6 @@ type FnSpecParts = {
 type CallbackSpecParts = {
     argTypes: string[];
     returns: string;
-    isReturnSkipped: boolean;
     options: string[];
 };
 
@@ -271,8 +270,7 @@ const tFixedArray = (element: string, length: number, ownership?: Ownership, ele
     ]);
 
 const tCallback = (spec: CallbackSpecParts): string => {
-    const entries = spec.isReturnSkipped ? [SKIPPED_RETURN_ENTRY, ...spec.options] : spec.options;
-    const optionsArg = entries.length > 0 ? `{ ${entries.join(", ")} }` : undefined;
+    const optionsArg = spec.options.length > 0 ? `{ ${spec.options.join(", ")} }` : undefined;
 
     return call("callback", [`[${spec.argTypes.join(", ")}]`, spec.returns, optionsArg]);
 };
@@ -292,7 +290,6 @@ const tFn = (lib: string, cIdentifier: string, spec: FnSpecParts): string => {
 };
 
 export {
-    SKIPPED_RETURN_ENTRY,
     tVoid,
     tBoolean,
     tUint8,

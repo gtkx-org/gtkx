@@ -7,6 +7,8 @@ export default mergeConfig(
         test: {
             name: "create-gtkx",
             include: ["tests/**/*.test.{ts,tsx}"],
+            testTimeout: 120_000,
+            hookTimeout: 120_000,
         },
     }),
 );

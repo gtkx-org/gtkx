@@ -18,10 +18,9 @@ describe("entryUndoDemo", () => {
     it("exposes the expected metadata", () => {
         expect(entryUndoDemo.id).toBe("entry-undo");
         expect(entryUndoDemo.title).toBe("Entry/Undo and Redo");
-        expect(entryUndoDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(entryUndoDemo.keywords)).toBe(true);
-        expect(typeof entryUndoDemo.sourceCode).toBe("string");
-        expect(entryUndoDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(entryUndoDemo.description).toContain("GtkEntry can provide basic Undo/Redo support");
+        expect(entryUndoDemo.keywords).toEqual([]);
+        expect(entryUndoDemo.sourceCode).toContain("const entryUndoDemo: Demo = {");
         expect(entryUndoDemo.component).toBeTypeOf("function");
     });
 

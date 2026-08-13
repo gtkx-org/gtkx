@@ -142,10 +142,4 @@ const readElfInfo = (path: string): ElfInfo => {
     };
 };
 
-const maxGlibcFloor = (floors: (string | null)[]): string | null => {
-    const parsed = floors.filter((floor) => floor !== null).map((floor) => floor.split(".").map(Number));
-
-    return formatVersion(highestVersion(parsed));
-};
-
-export { type ElfInfo, maxGlibcFloor, readElfInfo };
+export { type ElfInfo, readElfInfo };

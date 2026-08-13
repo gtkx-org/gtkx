@@ -23,10 +23,9 @@ describe("shadertoyDemo", () => {
     it("exposes the expected metadata", () => {
         expect(shadertoyDemo.id).toBe("shadertoy");
         expect(shadertoyDemo.title).toBe("OpenGL/Shadertoy");
-        expect(shadertoyDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(shadertoyDemo.keywords)).toBe(true);
-        expect(typeof shadertoyDemo.sourceCode).toBe("string");
-        expect(shadertoyDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(shadertoyDemo.description).toContain("Generate pixels using a custom fragment shader.");
+        expect(shadertoyDemo.keywords).toEqual(["GtkGLArea"]);
+        expect(shadertoyDemo.sourceCode).toContain("const shadertoyDemo: Demo = {");
         expect(shadertoyDemo.component).toBeTypeOf("function");
     });
 
@@ -52,11 +51,11 @@ describe("shadertoyDemo", () => {
 describe("shadertoyDemo shader presets", () => {
     it("exposes Restart, Clear, and one button per shader preset", async () => {
         await renderDemo(shadertoyDemo);
-        expect(await findButton("Restart the demo")).toBeInstanceOf(Gtk.Button);
-        expect(await findButton("Clear the text view")).toBeInstanceOf(Gtk.Button);
+        expect(await findButton("Restart the demo")).toBeEnabled();
+        expect(await findButton("Clear the text view")).toBeEnabled();
 
         for (const presetName of PRESET_NAMES) {
-            expect(await findButton(presetName)).toBeInstanceOf(Gtk.Button);
+            expect(await findButton(presetName)).toBeEnabled();
         }
     });
 });

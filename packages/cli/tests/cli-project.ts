@@ -1,0 +1,126 @@
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+type CliProject = { root: string; nodeModules: string };
+type CliRun = { status: number | null; output: string };
+
+type CliProjectOptions = {
+    prefix: string;
+    config?: string | undefined;
+    files?: Record<string, string> | undefined;
+    hasStore?: boolean | undefined;
+};
+
+const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+const WORKSPACE_MODULES = join(WORKSPACE_ROOT, "node_modules");
+const CLI_ENTRY = join(WORKSPACE_ROOT, "packages", "cli", "src", "cli.ts");
+const CLI_ARGV = ["--conditions=source", "--import", "tsx", CLI_ENTRY];
+const CLI_TIMEOUT = 300_000;
+const STORE_DIR = ".gtkx";
+const SCOPE = "@gtkx";
+const STORE_NAMES = ["gi", "jsx"];
+const WORKSPACE_PACKAGES = ["components", "config", "css", "native", "react", "runtime", "testing", "utils"];
+const REGISTRY_PACKAGES = ["@types", "csstype", "react", "tsx"];
+const STORE_LIBRARIES = ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"];
+const MANIFEST = { name: "gtkx-cli-project", version: "1.0.0", type: "module" };
+
+const writeProjectFiles = (root: string, files: Record<string, string>): void => {
+    for (const [name, contents] of Object.entries(files)) {
+        const target = join(root, name);
+        mkdirSync(dirname(target), { recursive: true });
+        writeFileSync(target, contents);
+    }
+};
+
+const linkInto = (nodeModules: string, name: string, target: string): void => {
+    const link = join(nodeModules, name);
+    mkdirSync(dirname(link), { recursive: true });
+    symlinkSync(target, link, "dir");
+};
+
+const installPeers = (nodeModules: string): void => {
+    for (const name of WORKSPACE_PACKAGES) {
+        linkInto(nodeModules, join(SCOPE, name), join(WORKSPACE_ROOT, "packages", name));
+    }
+
+    for (const name of REGISTRY_PACKAGES) {
+        linkInto(nodeModules, name, join(WORKSPACE_MODULES, name));
+    }
+};
+
+const installStore = (nodeModules: string): void => {
+    cpSync(join(WORKSPACE_MODULES, STORE_DIR), join(nodeModules, STORE_DIR), {
+        recursive: true,
+        verbatimSymlinks: true,
+    });
+
+    for (const name of STORE_NAMES) {
+        symlinkSync(join("..", STORE_DIR, name), join(nodeModules, SCOPE, name), "dir");
+    }
+};
+
+const createCliProject = (options: CliProjectOptions): CliProject => {
+    const root = mkdtempSync(join(tmpdir(), options.prefix));
+    const nodeModules = join(root, "node_modules");
+    mkdirSync(join(nodeModules, SCOPE), { recursive: true });
+    installPeers(nodeModules);
+
+    if (options.hasStore === true) {
+        installStore(nodeModules);
+    }
+
+    writeFileSync(join(root, "package.json"), `${JSON.stringify(MANIFEST, null, 4)}\n`);
+    writeProjectFiles(root, options.files ?? {});
+
+    if (options.config !== undefined) {
+        writeFileSync(join(root, "gtkx.config.ts"), options.config);
+    }
+
+    return { root, nodeModules };
+};
+
+const listProjectFiles = (project: CliProject, directory: string): string[] =>
+    readdirSync(join(project.root, directory), { recursive: true, encoding: "utf8" });
+
+const removeCliProject = (project: CliProject): void => {
+    rmSync(project.root, { recursive: true, force: true });
+};
+
+const cliEnvironment = (): NodeJS.ProcessEnv => {
+    const environment = { ...process.env };
+    delete environment.NODE_ENV;
+    delete environment.NODE_PATH;
+
+    return environment;
+};
+
+const runCli = (project: CliProject, args: string[]): CliRun => {
+    const result = spawnSync(process.execPath, [...CLI_ARGV, ...args, "--cwd", project.root], {
+        cwd: WORKSPACE_ROOT,
+        encoding: "utf8",
+        env: cliEnvironment(),
+        timeout: CLI_TIMEOUT,
+    });
+
+    return { status: result.status, output: `${result.stdout}${result.stderr}` };
+};
+
+const startCli = (project: CliProject, args: string[]): ChildProcess =>
+    spawn(process.execPath, [...CLI_ARGV, ...args, "--cwd", project.root], {
+        cwd: WORKSPACE_ROOT,
+        env: cliEnvironment(),
+        stdio: ["ignore", "pipe", "pipe"],
+    });
+
+export {
+    type CliProject,
+    createCliProject,
+    listProjectFiles,
+    removeCliProject,
+    runCli,
+    startCli,
+    STORE_LIBRARIES,
+};

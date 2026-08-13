@@ -8,10 +8,13 @@ describe("pageSetupDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(pageSetupDemo.id).toBe("pagesetup");
         expect(pageSetupDemo.title).toBe("Printing/Page Setup");
-        expect(pageSetupDemo.description.length).toBeGreaterThan(0);
-        expect(pageSetupDemo.keywords).toContain("GtkPageSetup");
-        expect(typeof pageSetupDemo.sourceCode).toBe("string");
-        expect(pageSetupDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+
+        expect(pageSetupDemo.description).toBe(
+            "GtkPageSetupUnixDialog can be used if page setup is needed independent of a full printing dialog.",
+        );
+
+        expect(pageSetupDemo.keywords).toEqual(["GtkPageSetup"]);
+        expect(pageSetupDemo.sourceCode).toContain("const pageSetupDemo: Demo = {");
         expect(pageSetupDemo.component).toBeTypeOf("function");
         expect(pageSetupDemo.isDialogOnly).toBe(true);
     });

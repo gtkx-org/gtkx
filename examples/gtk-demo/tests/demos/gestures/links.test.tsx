@@ -17,16 +17,14 @@ describe("linksDemo", () => {
     it("exposes the expected metadata", () => {
         expect(linksDemo.id).toBe("links");
         expect(linksDemo.title).toBe("Links");
-        expect(linksDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(linksDemo.keywords)).toBe(true);
-        expect(typeof linksDemo.sourceCode).toBe("string");
-        expect(linksDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(linksDemo.description).toContain("GtkLabel can show hyperlinks");
+        expect(linksDemo.keywords).toEqual([]);
+        expect(linksDemo.sourceCode).toContain("const linksDemo: Demo = {");
         expect(linksDemo.component).toBeTypeOf("function");
     });
 
     it("renders a markup-enabled label that wraps on word boundaries", async () => {
         const label = await renderLinksLabel();
-        expect(label).toBeInstanceOf(Gtk.Label);
         expect(label).toHaveObjectProperty("useMarkup", true);
         expect(label).toHaveObjectProperty("wrap", true);
         expect(label).toHaveObjectProperty("wrapMode", Pango.WrapMode.WORD);
@@ -53,7 +51,7 @@ describe("linksDemo activate-link handler", () => {
             const isHandled = label.emit("activate-link", "keynav");
             expect(isHandled).toBe(true);
             expect(choose).toHaveBeenCalledTimes(1);
-            expect(choose.mock.calls[0]?.[0]).toBeInstanceOf(Gtk.Window);
+            expect(choose.mock.calls[0]?.[0]).toBe(await screen.findByRole(Gtk.AccessibleRole.WINDOW));
             expect(setHeading).toHaveBeenCalledWith("Keyboard navigation");
             expect(String(setBody.mock.calls[0]?.[0])).toContain("keyboard navigation");
         } finally {

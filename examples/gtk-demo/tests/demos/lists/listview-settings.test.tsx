@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { listviewSettingsDemo } from "../../../src/demos/lists/listview-settings.js";
 import { collectWidgets, findInactiveSearchToggle, openSearchEntry, renderDemo } from "../../test-utils.js";
@@ -101,9 +101,9 @@ describe("listviewSettingsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewSettingsDemo.id).toBe("listview-settings");
         expect(listviewSettingsDemo.title).toBe("Lists/Settings");
-        expect(listviewSettingsDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(listviewSettingsDemo.keywords)).toBe(true);
-        expect(typeof listviewSettingsDemo.sourceCode).toBe("string");
+        expect(listviewSettingsDemo.description).toContain("This demo shows a settings viewer for GSettings.");
+        expect(listviewSettingsDemo.keywords).toEqual(["GtkListItemFactory", "GListModel"]);
+        expect(listviewSettingsDemo.sourceCode).toContain("const listviewSettingsDemo: Demo = {");
         expect(listviewSettingsDemo.defaultWidth).toBe(640);
         expect(listviewSettingsDemo.defaultHeight).toBe(480);
         expect(listviewSettingsDemo.component).toBeTypeOf("function");
@@ -120,12 +120,10 @@ describe("listviewSettingsDemo layout", () => {
     it("splits the sidebar list from the column-view details across the paned", async () => {
         await renderDemo(listviewSettingsDemo);
         const paned = await screen.findByName("paned", { as: Gtk.Paned });
-        const start = paned.getStartChild();
-        const end = paned.getEndChild();
-        expect(start).not.toBeNull();
-        expect(end).not.toBeNull();
-        expect(within(start as Gtk.Widget).getByName("sidebar")).toBeInstanceOf(Gtk.ListView);
-        expect(within(end as Gtk.Widget).getByName("column-view")).toBeInstanceOf(Gtk.ColumnView);
+        const sidebar = await screen.findByName("sidebar", { as: Gtk.ListView });
+        const columnView = await findColumnView();
+        expect(paned.getStartChild()).toContainElement(sidebar);
+        expect(paned.getEndChild()).toContainElement(columnView);
     });
 
     it("populates the navigation sidebar list with the schema tree", async () => {
@@ -285,11 +283,14 @@ describe("listviewSettingsDemo value editing", () => {
             await renderDemo(listviewSettingsDemo);
             const columnView = await selectFirstSchemaWithKeys();
             const [target] = collectWidgets(columnView, Gtk.EditableLabel);
-            expect(target).toBeDefined();
-            const editable = target as Gtk.EditableLabel;
-            const errorBellSpy = vi.spyOn(editable, "errorBell");
+
+            if (!target) {
+                throw new Error("the selected schema exposes no editable value cell");
+            }
+
+            const errorBellSpy = vi.spyOn(target, "errorBell");
             setValueSpy.mockClear();
-            editable.setText("!!not-a-valid-variant!!");
+            target.setText("!!not-a-valid-variant!!");
 
             await waitFor(() => {
                 expect(errorBellSpy).toHaveBeenCalled();

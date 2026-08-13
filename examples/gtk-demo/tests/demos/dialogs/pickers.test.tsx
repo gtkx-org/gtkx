@@ -49,11 +49,24 @@ describe("pickersDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(pickersDemo.id).toBe("pickers");
         expect(pickersDemo.title).toBe("Pickers and Launchers");
-        expect(pickersDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(pickersDemo.keywords)).toBe(true);
-        expect(typeof pickersDemo.sourceCode).toBe("string");
-        expect(pickersDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(pickersDemo.keywords).toContain("GtkUriLauncher");
+
+        expect(pickersDemo.description).toBe(
+            "The dialogs are mainly intended for use in preference dialogs. They allow to select colors, fonts " +
+            "and files. There is also a print dialog.\n\nThe launchers let you open files or URIs in " +
+            "applications that can handle them.",
+        );
+
+        expect(pickersDemo.sourceCode).toContain("const pickersDemo: Demo = {");
+
+        expect(pickersDemo.keywords).toEqual([
+            "GtkColorDialog",
+            "GtkFontDialog",
+            "GtkFileDialog",
+            "GtkPrintDialog",
+            "GtkFileLauncher",
+            "GtkUriLauncher",
+        ]);
+
         expect(pickersDemo.component).toBeTypeOf("function");
     });
 });
@@ -61,8 +74,10 @@ describe("pickersDemo metadata", () => {
 describe("pickersDemo rendering", () => {
     it("renders a color dialog button and a font dialog button", async () => {
         await renderDemo(pickersDemo);
-        expect(await screen.findByName("color-button")).toBeInstanceOf(Gtk.ColorDialogButton);
-        expect(await screen.findByName("font-button")).toBeInstanceOf(Gtk.FontDialogButton);
+        const colorButton = await screen.findByName("color-button", { as: Gtk.ColorDialogButton });
+        const fontButton = await screen.findByName("font-button", { as: Gtk.FontDialogButton });
+        expect(colorButton.getDialog()).not.toBeNull();
+        expect(fontButton.getDialog()).not.toBeNull();
     });
 
     it("renders the 'None' file label and the www.gtk.org URI launcher button", async () => {
@@ -74,10 +89,10 @@ describe("pickersDemo rendering", () => {
 
     it("renders the labelled rows for color, font, file and URI via mnemonic labels", async () => {
         await renderDemo(pickersDemo);
-        expect(await screen.findByLabelText("Color:")).toBeInstanceOf(Gtk.ColorDialogButton);
-        expect(await screen.findByLabelText("Font:")).toBeInstanceOf(Gtk.FontDialogButton);
-        expect(await screen.findByLabelText("File:")).toBeInstanceOf(Gtk.Button);
-        expect(await screen.findByLabelText("URI:")).toBeInstanceOf(Gtk.Button);
+        expect(await screen.findByLabelText("Color:")).toBe(await screen.findByName("color-button"));
+        expect(await screen.findByLabelText("Font:")).toBe(await screen.findByName("font-button"));
+        expect(await screen.findByLabelText("File:")).toBe(await screen.findByName("select-file-button"));
+        expect(await screen.findByLabelText("URI:")).toHaveTextContent("www.gtk.org");
     });
 });
 
@@ -92,7 +107,7 @@ describe("pickersDemo file buttons", () => {
             expect(openFileBtn).toBeDisabled();
             expect(openFolderBtn).toBeDisabled();
             expect(printBtn).toBeDisabled();
-            expect(printBtn).toHaveObjectProperty("tooltipText", "Print File");
+            expect(printBtn).toHaveAccessibleDescription("Print File");
         },
     );
 });

@@ -1,9 +1,11 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
+import { join } from "node:path";
 import { RUST_NIGHTLY } from "./rust-nightly.js";
 
 const ASAN_OPTIONS = "detect_leaks=0:verify_asan_link_order=0:halt_on_error=0:abort_on_error=0";
-const SANDBOXED_SPECS = "tests/runtime/promisify.test.ts";
+const SANDBOXED_SPECS = "**/tests/promisify.test.ts";
+const WORKSPACE_ROOT = join(import.meta.dirname, "..");
 
 const BUILD_ARGS = ["--filter", "@gtkx/native", "exec", "napi", "build", "--platform", "--release", "--esm",
     "--no-dts-cache", "--no-const-enum"];
@@ -19,8 +21,8 @@ const asanRuntime = (): string => {
     return printed;
 };
 
-const run = (command: string, args: string[], env: NodeJS.ProcessEnv): void => {
-    execFileSync(resolveExecutable(command), args, { stdio: "inherit", env });
+const run = (command: string, args: string[], env: NodeJS.ProcessEnv, cwd?: string): void => {
+    execFileSync(resolveExecutable(command), args, { stdio: "inherit", env, cwd });
 };
 
 const runAsanE2e = (): void => {
@@ -31,11 +33,12 @@ const runAsanE2e = (): void => {
     });
 
     try {
-        run("pnpm", ["exec", "vitest", "run", "--project", "e2e", "--exclude", SANDBOXED_SPECS], {
+        run("pnpm", ["exec", "vitest", "run", "--project", "e2e", "--project", "runtime", "--exclude",
+            SANDBOXED_SPECS], {
             ...process.env,
             ASAN_OPTIONS,
             LD_PRELOAD: asanRuntime(),
-        });
+        }, WORKSPACE_ROOT);
     } finally {
         run("pnpm", BUILD_ARGS, process.env);
     }

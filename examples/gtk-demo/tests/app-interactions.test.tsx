@@ -2,6 +2,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { Buffer } from "node:buffer";
 import { describe, expect, it, vi } from "vitest";
 import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
 import { createAppRenderer } from "./render-app.js";
@@ -38,8 +39,8 @@ const findNotebook = async (): Promise<Gtk.Notebook> => await screen.findByName(
 
 const expectDialogShown = async (): Promise<void> => {
     await waitFor(async () => {
-        const dialogs = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
-        expect(dialogs.length).toBeGreaterThan(0);
+        const [dialog] = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
+        expect(dialog).toBeVisible();
     });
 };
 
@@ -51,8 +52,8 @@ const openMenuItem = async (name: string): Promise<void> => {
 
 const expectShortcutsDialogShown = async (): Promise<void> => {
     await expectDialogShown();
-    const shortcutLabels = await screen.findAllByText("Search demos");
-    expect(shortcutLabels.length).toBeGreaterThan(0);
+    const [shortcutLabel] = await screen.findAllByText("Search demos");
+    expect(shortcutLabel).toBeRooted();
 };
 
 const expectInteractiveDebugging = async (activate: () => Promise<void>): Promise<void> => {
@@ -117,7 +118,8 @@ describe("App about menu", () => {
         await renderDemo();
         const display = Gdk.Display.getDefault();
         expect(display, "no default display available").not.toBeNull();
-        expect(() => Gio.resourcesLookupData(logoResourcePath, Gio.ResourceLookupFlags.NONE)).not.toThrow();
+        const logo = Gio.resourcesLookupData(logoResourcePath, Gio.ResourceLookupFlags.NONE).getData() ?? [];
+        expect(Buffer.from(logo.slice(0, 64)).toString("utf8")).toContain("<svg");
     });
 });
 
@@ -125,11 +127,9 @@ describe("App notebook", () => {
     it("renders the Info and Source tabs", async () => {
         await renderDemo();
         const tabs = await screen.findAllByRole(Gtk.AccessibleRole.TAB);
-        const [infoTab, sourceTab] = tabs;
         expect(tabs).toHaveLength(2);
-        expect(infoTab).toBeInstanceOf(Gtk.Widget);
-        expect(sourceTab).toBeInstanceOf(Gtk.Widget);
-        expect(sourceTab).not.toBe(infoTab);
+        expect(tabs[0]).toHaveTextContent("Info");
+        expect(tabs[1]).toHaveTextContent("Source");
     });
 
     it("advances the page when the notebook page is set", async () => {

@@ -299,7 +299,6 @@ export {
     APPLICATION_ID_MAX_LENGTH,
     defineConfig,
     isValidApplicationId,
-    resolveReactCompilerOptions,
     validateConfig,
     mergeConfig,
     resolveLazyElements,

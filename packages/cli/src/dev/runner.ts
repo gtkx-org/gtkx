@@ -617,5 +617,4 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
     },
 });
 
-export type { DevServer } from "./vite-dev-server.js";
 export { createDevRunner, type DevRunnerDeps };

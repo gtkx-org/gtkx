@@ -90,24 +90,12 @@ describe("gtkx build (identifier names)", () => {
         removeAppProject(probe.project);
     });
 
-    it("runs the emitted bundle without failing to derive a name", () => {
+    it("keeps every declared name the emitted bundle reads back", () => {
         expect(probe.run.stderr).toBe("");
         expect(probe.run.status).toBe(0);
-    });
-
-    it("keeps the declared class name in the emitted bundle", () => {
         expect(probe.run.stdout).toContain(printedName(CLASS_PREFIX, CLASS_NAME));
-    });
-
-    it("keeps the declared function name in the emitted bundle", () => {
         expect(probe.run.stdout).toContain(printedName(FUNCTION_PREFIX, FUNCTION_NAME));
-    });
-
-    it("keeps the name of a class the bundler inlines into the call that reads it", () => {
         expect(probe.run.stdout).toContain(printedName(REGISTERED_PREFIX, SUBCLASS_NAME));
-    });
-
-    it("keeps that inlined name in an emitted worker chunk too", () => {
         expect(probe.run.stdout).toContain(printedName(WORKER_PREFIX, WORKER_CLASS_NAME));
     });
 });

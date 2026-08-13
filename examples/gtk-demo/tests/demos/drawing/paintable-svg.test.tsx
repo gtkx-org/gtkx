@@ -37,11 +37,15 @@ describe("paintableSvgDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(paintableSvgDemo.id).toBe("paintable-svg");
         expect(paintableSvgDemo.title).toBe("Paintable/SVG");
-        expect(paintableSvgDemo.description.length).toBeGreaterThan(0);
+
+        expect(paintableSvgDemo.description).toBe(
+            "This demo shows using GtkSvg to display an SVG image in a GtkPicture that can be scaled by resizing " +
+            "the window.",
+        );
+
         expect(paintableSvgDemo.keywords).toEqual([]);
         expect(paintableSvgDemo.windowTitle).toBe("Paintable — SVG");
-        expect(typeof paintableSvgDemo.sourceCode).toBe("string");
-        expect(paintableSvgDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(paintableSvgDemo.sourceCode).toContain("const paintableSvgDemo: Demo = {");
         expect(paintableSvgDemo.defaultWidth).toBe(330);
         expect(paintableSvgDemo.defaultHeight).toBe(330);
         expect(paintableSvgDemo.component).toBeTypeOf("function");
@@ -52,28 +56,29 @@ describe("paintableSvgDemo rendering", () => {
     it("renders the Open button in the header bar", async () => {
         await renderDemo(paintableSvgDemo);
         const openButton = await findButton("Open");
-        expect(openButton).toBeInstanceOf(Gtk.Button);
+        expect(openButton).toHaveObjectProperty("label", "_Open");
         expect(openButton).toHaveObjectProperty("useUnderline", true);
     });
 
     it("renders a GtkPicture displaying the SVG paintable", async () => {
         const { picture, svg } = await renderAndFindSvgPicture();
         expect(picture).toHaveObjectProperty("paintable", svg);
-        expect(svg).toBeInstanceOf(Gtk.Svg);
+        expect(picture).toBeRooted();
     });
 
     it("packs the open button into a HeaderBar titlebar", async () => {
         await renderDemo(paintableSvgDemo);
         const headerBar = await screen.findByName("paintable-svg-header", { as: Gtk.HeaderBar });
         const openButton = within(headerBar).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Open", as: Gtk.Button });
-        expect(openButton).toBeInstanceOf(Gtk.Button);
+        expect(headerBar).toContainElement(openButton);
+        expect(openButton).toBe(await findButton("Open"));
     });
 
     it("loads the bundled SVG and attaches it to the picture", async () => {
         const { picture, svg } = await renderAndFindSvgPicture();
         expect(picture).toHaveObjectProperty("paintable", svg);
-        expect(svg.getIntrinsicWidth()).toBeGreaterThan(0);
-        expect(svg.getIntrinsicHeight()).toBeGreaterThan(0);
+        expect(svg.getIntrinsicWidth()).toBe(128);
+        expect(svg.getIntrinsicHeight()).toBe(128);
     });
 });
 

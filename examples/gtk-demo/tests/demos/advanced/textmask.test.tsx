@@ -1,4 +1,4 @@
-import { Context, Format, ImageSurface } from "@gtkx/gi/cairo";
+import { Context, Format, ImageSurface, Status } from "@gtkx/gi/cairo";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
@@ -30,9 +30,12 @@ describe("textmaskDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(textmaskDemo.id).toBe("textmask");
         expect(textmaskDemo.title).toBe("Pango/Text Mask");
-        expect(textmaskDemo.description).toContain("PangoCairo");
-        expect(Array.isArray(textmaskDemo.keywords)).toBe(true);
-        expect(typeof textmaskDemo.sourceCode).toBe("string");
+
+        expect(textmaskDemo.description).toBe(
+            "This demo shows how to use PangoCairo to draw text with more than just a single color.",
+        );
+
+        expect(textmaskDemo.sourceCode).toContain("const textmaskDemo: Demo = {");
         expect(textmaskDemo.defaultWidth).toBe(400);
         expect(textmaskDemo.defaultHeight).toBe(240);
         expect(textmaskDemo.keywords).toEqual([]);
@@ -54,23 +57,24 @@ describe("textmaskDemo rendering", () => {
         expect(height).toBe(240);
     });
 
-    it("renders a GtkDrawingArea with the demo's draw function attached", async () => {
+    it("mounts the GtkDrawingArea as the sole content of the host window", async () => {
         await renderDemo(textmaskDemo);
-        const drawingArea = await screen.findByName("textmask-area");
-        expect(drawingArea).toBeInstanceOf(Gtk.DrawingArea);
+        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
+        const drawingArea = await screen.findByName("textmask-area", { as: Gtk.DrawingArea });
+        expect(drawingArea).toBeRooted();
+        expect(window).toContainElement(drawingArea);
+        expect(drawingArea).toBeEmptyWidget();
     });
 });
 
 describe("textmaskDemo paint", () => {
-    it("runs the registered draw function against a real Cairo context without throwing", async () => {
+    it("paints the gradient-masked text onto a real Cairo surface", async () => {
         const { drawingArea, drawFunc } = await captureDrawFunc();
         const surface = ImageSurface.create(Format.ARGB32, 400, 240);
         const cr = Context.create(surface);
-
-        expect(() => {
-            drawFunc(drawingArea, cr, 400, 240);
-        }).not.toThrow();
-
+        drawFunc(drawingArea, cr, 400, 240);
+        expect(cr.status()).toBe(Status.SUCCESS);
+        expect(surface.getData().some((byte) => byte !== 0)).toBe(true);
         surface.finish();
     });
 

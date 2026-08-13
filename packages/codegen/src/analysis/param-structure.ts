@@ -4,7 +4,7 @@ import type { Library } from "../gir/library.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { JsDocParam } from "../writer/doc-tags.js";
 import { type GirCallable, type GirParameter, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
-import { isCellInout, shouldOmitPrimaryReturn } from "./descriptor-render.js";
+import { isCellInout, isVoidPrimaryReturn } from "./descriptor-render.js";
 
 type InputParameter = {
     parameter: GirParameter;
@@ -277,7 +277,7 @@ const renderHandlerResultType = (options: HandlerResultOptions): string => {
     const { library, signal, renderType, shouldIncludeCallerAllocated, isOptOut } = options;
     const shouldExcludeOut = options.shouldExcludeOut ?? (() => false);
 
-    const primary = shouldOmitPrimaryReturn(library, signal.returnValue)
+    const primary = isVoidPrimaryReturn(library, signal.returnValue)
         ? undefined
         : renderType(signal.returnValue.type, signal.returnValue.nullable);
 

@@ -15,10 +15,9 @@ describe("tabsDemo", () => {
     it("exposes the expected metadata", () => {
         expect(tabsDemo.id).toBe("tabs");
         expect(tabsDemo.title).toBe("Text View/Tabs");
-        expect(tabsDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(tabsDemo.keywords)).toBe(true);
-        expect(typeof tabsDemo.sourceCode).toBe("string");
-        expect(tabsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(tabsDemo.description).toContain("GtkTextView can position text at fixed positions, using tabs.");
+        expect(tabsDemo.keywords).toEqual([]);
+        expect(tabsDemo.sourceCode).toContain("const tabsDemo: Demo = {");
         expect(tabsDemo.defaultWidth).toBe(330);
         expect(tabsDemo.defaultHeight).toBe(130);
         expect(tabsDemo.component).toBeTypeOf("function");

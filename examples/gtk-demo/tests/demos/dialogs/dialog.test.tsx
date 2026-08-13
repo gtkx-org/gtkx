@@ -30,10 +30,13 @@ describe("dialogDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(dialogDemo.id).toBe("dialog");
         expect(dialogDemo.title).toBe("Dialogs");
-        expect(dialogDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(dialogDemo.keywords)).toBe(true);
-        expect(typeof dialogDemo.sourceCode).toBe("string");
-        expect(dialogDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+
+        expect(dialogDemo.description).toBe(
+            "Dialogs are used to pop up transient windows for information and user feedback.",
+        );
+
+        expect(dialogDemo.keywords).toEqual([]);
+        expect(dialogDemo.sourceCode).toContain("const dialogDemo: Demo = {");
         expect(dialogDemo.component).toBeTypeOf("function");
     });
 

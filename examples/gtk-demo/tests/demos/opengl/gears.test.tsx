@@ -9,10 +9,9 @@ describe("gearsDemo", () => {
     it("exposes the expected metadata", () => {
         expect(gearsDemo.id).toBe("gears");
         expect(gearsDemo.title).toBe("OpenGL/Gears");
-        expect(gearsDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(gearsDemo.keywords)).toBe(true);
-        expect(typeof gearsDemo.sourceCode).toBe("string");
-        expect(gearsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(gearsDemo.description).toContain("This is a classic OpenGL demo, running in a GtkGLArea.");
+        expect(gearsDemo.keywords).toEqual([]);
+        expect(gearsDemo.sourceCode).toContain("const gearsDemo: Demo = {");
         expect(gearsDemo.component).toBeTypeOf("function");
         expect(gearsDemo.defaultWidth).toBe(640);
         expect(gearsDemo.defaultHeight).toBe(640);

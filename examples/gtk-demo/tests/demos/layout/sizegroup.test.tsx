@@ -21,10 +21,9 @@ describe("sizegroupDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(sizegroupDemo.id).toBe("sizegroup");
         expect(sizegroupDemo.title).toBe("Size Groups");
-        expect(sizegroupDemo.description.length).toBeGreaterThan(0);
+        expect(sizegroupDemo.description).toContain("GtkSizeGroup provides a mechanism for grouping");
         expect(sizegroupDemo.keywords).toEqual([]);
-        expect(typeof sizegroupDemo.sourceCode).toBe("string");
-        expect(sizegroupDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(sizegroupDemo.sourceCode).toContain("const sizegroupDemo: Demo = {");
         expect(sizegroupDemo.component).toBeTypeOf("function");
     });
 });
@@ -47,11 +46,10 @@ describe("sizegroupDemo frames and labels", () => {
         "renders the underline-mnemonic labels '_Foreground', '_Background', '_Dashing', '_Line ends' " +
         "linked to their dropdowns",
         async () => {
-            await renderDemo(sizegroupDemo);
+            const dropdowns = await renderDropDowns();
 
-            for (const text of MNEMONIC_LABELS) {
-                const target = await screen.findByLabelText(text);
-                expect(target).toBeInstanceOf(Gtk.DropDown);
+            for (const [index, text] of MNEMONIC_LABELS.entries()) {
+                expect(await screen.findByLabelText(text)).toBe(dropdowns[index]);
             }
         },
     );

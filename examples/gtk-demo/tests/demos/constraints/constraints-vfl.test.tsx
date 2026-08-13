@@ -95,9 +95,16 @@ describe("constraintsVflDemo", () => {
     it("exposes the expected metadata", () => {
         expect(constraintsVflDemo.id).toBe("constraints-vfl");
         expect(constraintsVflDemo.title).toBe("Constraints/VFL");
-        expect(constraintsVflDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(constraintsVflDemo.keywords)).toBe(true);
-        expect(typeof constraintsVflDemo.sourceCode).toBe("string");
+
+        expect(constraintsVflDemo.description).toBe(
+            "GtkConstraintLayout allows defining constraints using a compact syntax called Visual Format " +
+            "Language, or VFL.\n\nA typical example of a VFL specification looks like " +
+            "this:\n\nH:|-[button1(==button2)]-12-[button2]-|",
+        );
+
+        expect(constraintsVflDemo.keywords).toEqual([]);
+        expect(constraintsVflDemo.windowTitle).toBe("Constraints — VFL");
+        expect(constraintsVflDemo.sourceCode).toContain("const constraintsVflDemo: Demo = {");
         expect(constraintsVflDemo.defaultWidth).toBe(260);
     });
 

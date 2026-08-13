@@ -11,11 +11,9 @@ import type { JsDocSpec } from "../../writer/doc.js";
 import {
     isInlineCallbackRef,
     isScalarRef,
-    isSkippedPrimaryReturn,
     renderDescriptor,
     renderParamDescriptor,
 } from "../../analysis/descriptor-render.js";
-import { SKIPPED_RETURN_ENTRY } from "../../analysis/descriptor.js";
 import {
     foldedLengthParameters,
     handlerParameters,
@@ -535,10 +533,6 @@ const renderVtableSlotDescriptor = (context: ModuleContext, vtable: Vtable, slot
     }
 
     lines.push(`argDescriptors: [${argDescriptors}],`, `returnDescriptor: ${returnDescriptor},`);
-
-    if (isSkippedPrimaryReturn(context.library, callback.returnValue)) {
-        lines.push(`${SKIPPED_RETURN_ENTRY},`);
-    }
 
     if (callback.throws) {
         lines.push("canThrow: true,");

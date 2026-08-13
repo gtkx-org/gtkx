@@ -53,6 +53,4 @@ const containmentFailure = (rule: string): string | null => {
     return hasProbe(parsed(`${rule}\n${PROBE_RULE}`)) ? null : SWALLOWS_WHAT_FOLLOWS;
 };
 
-const isSelfContained = (rule: string): boolean => containmentFailure(rule) === null;
-
-export { containmentFailure, isSelfContained };
+export { containmentFailure };

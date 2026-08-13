@@ -14,10 +14,9 @@ describe("fixed2Demo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(fixed2Demo.id).toBe("fixed2");
         expect(fixed2Demo.title).toBe("Fixed Layout / Transformations");
-        expect(fixed2Demo.description.length).toBeGreaterThan(0);
+        expect(fixed2Demo.description).toContain("rotate and scale a child widget using a transform");
         expect(fixed2Demo.keywords).toEqual(["GtkLayoutManager"]);
-        expect(typeof fixed2Demo.sourceCode).toBe("string");
-        expect(fixed2Demo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(fixed2Demo.sourceCode).toContain("const fixed2Demo: Demo = {");
         expect(fixed2Demo.defaultWidth).toBe(400);
         expect(fixed2Demo.defaultHeight).toBe(300);
         expect(fixed2Demo.component).toBeTypeOf("function");

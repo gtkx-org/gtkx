@@ -19,16 +19,15 @@ describe("printingDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(printingDemo.id).toBe("printing");
         expect(printingDemo.title).toBe("Printing/Printing");
-        expect(printingDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(printingDemo.keywords)).toBe(true);
-        expect(typeof printingDemo.sourceCode).toBe("string");
-        expect(printingDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+
+        expect(printingDemo.description).toBe(
+            "GtkPrintOperation offers a simple API to support printing in a cross-platform way.",
+        );
+
+        expect(printingDemo.keywords).toEqual([]);
+        expect(printingDemo.sourceCode).toContain("const configurePrintOperation = (source: string)");
         expect(printingDemo.component).toBeTypeOf("function");
         expect(printingDemo.isDialogOnly).toBe(true);
-    });
-
-    it("declares an empty keywords list matching the official header", () => {
-        expect(printingDemo.keywords).toEqual([]);
     });
 
     it("includes the actual source code as a non-empty string with PrintOperation usage", () => {
@@ -42,7 +41,6 @@ describe("printingDemo metadata", () => {
 describe("configurePrintOperation", () => {
     it("returns a PrintOperation with the demo's async, unit, and page-setup defaults", () => {
         const printOp = configurePrintOperation("line one\nline two\nline three");
-        expect(printOp).toBeInstanceOf(Gtk.PrintOperation);
         expect(printOp).toHaveObjectProperty("allowAsync", true);
         expect(printOp).toHaveObjectProperty("useFullPage", false);
         expect(printOp).toHaveObjectProperty("embedPageSetup", true);

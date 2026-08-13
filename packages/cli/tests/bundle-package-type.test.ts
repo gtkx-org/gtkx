@@ -78,16 +78,10 @@ describe("gtkx build (commonjs package)", () => {
         removeAppProject(probe.project);
     });
 
-    it("names the entry so node loads it as ESM", () => {
+    it("names the entry so node loads it as ESM, and reports the path it emitted", () => {
         expect(bundleNames(probe.emitted)).toEqual([BUNDLE_NAME]);
-    });
-
-    it("starts when node runs the emitted file", () => {
-        expectStarted(probe.run, READY_MARKER);
-    });
-
-    it("returns the path it emitted", () => {
         expect(probe.reported).toBe(join(OUT_DIR, BUNDLE_NAME));
+        expectStarted(probe.run, READY_MARKER);
     });
 });
 
@@ -109,11 +103,8 @@ describe("gtkx build (commonjs package with a worker)", () => {
         removeAppProject(probe.project);
     });
 
-    it("names the worker chunk so node loads it as ESM", () => {
+    it("names the worker chunk so node loads it as ESM, and runs it", () => {
         expect(workerExtensions(probe.emitted)).toEqual([extname(BUNDLE_NAME)]);
-    });
-
-    it("runs the worker when node runs the emitted file", () => {
         expectStarted(probe.run, WORKER_MARKER);
     });
 });
@@ -142,23 +133,14 @@ describe("gtkx build (module package)", () => {
         rmSync(installDir, { recursive: true, force: true });
     });
 
-    it("names the entry the same way it names it for a commonjs package", () => {
+    it("names the entry and the worker chunk the way it names them for a commonjs package", () => {
         expect(bundleNames(probe.emitted)).toEqual([BUNDLE_NAME]);
-    });
-
-    it("names the worker chunk the same way too", () => {
         expect(workerExtensions(probe.emitted)).toEqual([extname(BUNDLE_NAME)]);
-    });
-
-    it("returns the path it emitted", () => {
         expect(probe.reported).toBe(join(OUT_DIR, BUNDLE_NAME));
     });
 
-    it("runs the worker when node runs the emitted file", () => {
+    it("runs the worker from the project and from an install directory that declares commonjs", () => {
         expectStarted(probe.run, WORKER_MARKER);
-    });
-
-    it("runs the worker from an install directory that declares commonjs", () => {
         expectStarted(installed, WORKER_MARKER);
     });
 });

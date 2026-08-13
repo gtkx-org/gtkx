@@ -8,10 +8,14 @@ describe("cssPixbufsDemo", () => {
     it("exposes the expected metadata", () => {
         expect(cssPixbufsDemo.id).toBe("css-pixbufs");
         expect(cssPixbufsDemo.title).toBe("Theming/Animated Backgrounds");
-        expect(cssPixbufsDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(cssPixbufsDemo.keywords)).toBe(true);
-        expect(typeof cssPixbufsDemo.sourceCode).toBe("string");
-        expect(cssPixbufsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+
+        expect(cssPixbufsDemo.description).toBe(
+            "This demo is in honour of a classic Pixbufs demo.\n\nIt is done exclusively with CSS as the " +
+            "background of the window.",
+        );
+
+        expect(cssPixbufsDemo.keywords).toEqual([]);
+        expect(cssPixbufsDemo.sourceCode).toContain("const cssPixbufsDemo: Demo = {");
         expect(cssPixbufsDemo.defaultWidth).toBe(400);
         expect(cssPixbufsDemo.defaultHeight).toBe(300);
         expect(cssPixbufsDemo.component).toBeTypeOf("function");
@@ -21,9 +25,8 @@ describe("cssPixbufsDemo", () => {
         await renderDemo(cssPixbufsDemo);
         const paned = await screen.findByName("paned", { as: Gtk.Paned });
         expect(paned.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
-        expect(paned.getStartChild()).toBeInstanceOf(Gtk.Box);
-        expect(paned.getEndChild()).toBeInstanceOf(Gtk.ScrolledWindow);
-        await screen.findByName("scrolled");
+        expect(paned.getStartChild()).toBeEmptyWidget();
+        expect(paned.getEndChild()).toBe(await screen.findByName("scrolled"));
     });
 
     it("preloads the default CSS containing the keyframe animations", async () => {

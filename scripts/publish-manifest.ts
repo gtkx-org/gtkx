@@ -205,12 +205,4 @@ const assertPublishedShape = ({ name, entries, manifest, maps }: PublishedPackag
     }
 };
 
-export {
-    distTagForVersion,
-    stripDevArtifacts,
-    hasSourceCondition,
-    collectExportTargets,
-    assertPublishedShape,
-    type PackageManifest,
-    type PublishedPackage,
-};
+export { assertPublishedShape, distTagForVersion, type PackageManifest, stripDevArtifacts };

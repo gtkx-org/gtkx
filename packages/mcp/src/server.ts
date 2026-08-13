@@ -420,4 +420,4 @@ async function main(): Promise<void> {
     await server.start();
 }
 
-export { log, createMcpServer, main };
+export { log, main };

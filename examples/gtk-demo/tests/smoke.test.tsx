@@ -125,9 +125,8 @@ const exerciseWindowDemo = async (title: string, run: Gtk.Button, mainWindow: Gt
 const exerciseErrorStatesDialog = async (): Promise<void> => {
     const dialog = await screen.findByRole(Gtk.AccessibleRole.DIALOG);
     const bound = within(dialog);
-    expect(await bound.findByRole(Gtk.AccessibleRole.SWITCH)).toBeInstanceOf(Gtk.Switch);
-    const textBoxes = await bound.findAllByRole(Gtk.AccessibleRole.TEXT_BOX);
-    expect(textBoxes.length).toBeGreaterThanOrEqual(2);
+    await bound.findByRole(Gtk.AccessibleRole.SWITCH);
+    expect(await bound.findAllByRole(Gtk.AccessibleRole.TEXT_BOX)).toHaveLength(2);
     await dismissDialog(dialog);
 };
 
@@ -264,8 +263,8 @@ const exerciseMainMenu = async (): Promise<void> => {
     await openMenuItem(menuButton, "About GTK Demo");
     await dismissDialog(await screen.findByRole(Gtk.AccessibleRole.DIALOG));
     await openMenuItem(menuButton, "Keyboard Shortcuts Ctrl+?");
-    const shortcutLabels = await screen.findAllByText("Search demos");
-    expect(shortcutLabels.length).toBeGreaterThan(0);
+    const [shortcutLabel] = await screen.findAllByText("Search demos");
+    expect(shortcutLabel).toBeRooted();
     await dismissDialog(await screen.findByRole(Gtk.AccessibleRole.DIALOG));
     const inspector = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
     await openMenuItem(menuButton, "Inspector Shift+Ctrl+I");

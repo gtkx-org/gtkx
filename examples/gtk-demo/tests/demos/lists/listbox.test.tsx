@@ -43,10 +43,9 @@ describe("listboxDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listboxDemo.id).toBe("listbox");
         expect(listboxDemo.title).toBe("List Box/Complex");
-        expect(listboxDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(listboxDemo.keywords)).toBe(true);
-        expect(typeof listboxDemo.sourceCode).toBe("string");
-        expect(listboxDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(listboxDemo.description).toContain("GtkListBox allows lists with complicated layouts");
+        expect(listboxDemo.keywords).toEqual([]);
+        expect(listboxDemo.sourceCode).toContain("const listboxDemo: Demo = {");
         expect(listboxDemo.defaultWidth).toBe(400);
         expect(listboxDemo.defaultHeight).toBe(600);
         expect(listboxDemo.component).toBeTypeOf("function");
@@ -65,7 +64,6 @@ describe("listboxDemo rendering", () => {
     it("wraps the list box in a scrolled window with the expected policies", async () => {
         await renderDemo(listboxDemo);
         const sw = await screen.findByName("scrolled", { as: Gtk.ScrolledWindow });
-        expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
         const [h, v] = sw.getPolicy();
         expect(h).toBe(Gtk.PolicyType.NEVER);
         expect(v).toBe(Gtk.PolicyType.AUTOMATIC);
@@ -74,7 +72,6 @@ describe("listboxDemo rendering", () => {
     it("renders a GtkListBox configured for double-click activation", async () => {
         await renderDemo(listboxDemo);
         const listBox = await findListBox();
-        expect(listBox).toBeInstanceOf(Gtk.ListBox);
         expect(listBox).toHaveObjectProperty("activateOnSingleClick", false);
     });
 

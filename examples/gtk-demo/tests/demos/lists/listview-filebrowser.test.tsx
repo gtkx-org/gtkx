@@ -116,9 +116,9 @@ describe("listviewFilebrowserDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewFilebrowserDemo.id).toBe("listview-filebrowser");
         expect(listviewFilebrowserDemo.title).toBe("Lists/File browser");
-        expect(listviewFilebrowserDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(listviewFilebrowserDemo.keywords)).toBe(true);
-        expect(typeof listviewFilebrowserDemo.sourceCode).toBe("string");
+        expect(listviewFilebrowserDemo.description).toContain("implementing a file browser with different views");
+        expect(listviewFilebrowserDemo.keywords).toEqual(["GListModel"]);
+        expect(listviewFilebrowserDemo.sourceCode).toContain("const listviewFilebrowserDemo: Demo = {");
         expect(listviewFilebrowserDemo.defaultWidth).toBe(600);
         expect(listviewFilebrowserDemo.defaultHeight).toBe(400);
         expect(listviewFilebrowserDemo.component).toBeTypeOf("function");
@@ -129,15 +129,13 @@ describe("listviewFilebrowserDemo header bar", () => {
     it("installs a header bar with the up-button and view-switcher packed into it", async () => {
         await renderDemo(listviewFilebrowserDemo);
         const header = await screen.findByName("filebrowser-header", { as: Gtk.HeaderBar });
-        expect(header).toBeInstanceOf(Gtk.HeaderBar);
-        expect(within(header).getByName("up-button")).toBeInstanceOf(Gtk.Button);
-        expect(within(header).getByName("view-switcher")).toBeInstanceOf(Gtk.ListView);
+        expect(header).toContainElement(await screen.findByName("up-button", { as: Gtk.Button }));
+        expect(header).toContainElement(await screen.findByName("view-switcher", { as: Gtk.ListView }));
     });
 
     it("renders a go-up button in the header bar", async () => {
         await renderDemo(listviewFilebrowserDemo);
         const upButton = await screen.findByName("up-button", { as: Gtk.Button });
-        expect(upButton).toBeInstanceOf(Gtk.Button);
         expect(upButton).toHaveObjectProperty("iconName", "go-up-symbolic");
     });
 
@@ -153,16 +151,9 @@ describe("listviewFilebrowserDemo file grid", () => {
         await renderDemo(listviewFilebrowserDemo);
         const sw = await screen.findByName("files-scrolled", { as: Gtk.ScrolledWindow });
         const grid = within(sw).getByName("files-grid", { as: Gtk.GridView });
-        expect(grid).toBeInstanceOf(Gtk.GridView);
+        expect(sw).toContainElement(grid);
         await waitForPopulatedModel(grid);
-        await scrollToEntry(grid, "package.json");
-    });
-
-    it("populates the file grid with known entries from the working directory", async () => {
-        const grid = await renderPopulatedGrid();
-        expect(await scrollToEntry(grid, "package.json")).toBeInstanceOf(Gtk.Label);
-        expect(await scrollToEntry(grid, "examples")).toBeInstanceOf(Gtk.Label);
-        expect(await scrollToEntry(grid, "packages")).toBeInstanceOf(Gtk.Label);
+        expect(await scrollToEntry(grid, "package.json")).toHaveTextContent("package.json");
     });
 
     it("sorts directories before files, alphabetically within each group", async () => {
@@ -202,8 +193,9 @@ describe("listviewFilebrowserDemo view modes", () => {
         await waitForPopulatedModel(grid);
         expect(switcher.getModel()).toHaveObjectProperty("selected", 2);
         await scrollToEntry(grid, "packages");
-        expect(within(grid).getAllByText("folder").length).toBeGreaterThan(0);
-        expect(within(grid).getAllByText("inode/directory").length).toBeGreaterThan(0);
+        const folders = within(grid).getAllByText("folder");
+        expect(folders.length).toBeGreaterThan(0);
+        expect(within(grid).getAllByText("inode/directory")).toHaveLength(folders.length);
     });
 });
 

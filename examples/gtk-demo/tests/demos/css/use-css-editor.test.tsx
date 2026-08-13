@@ -28,8 +28,8 @@ const renderHost = async (defaultCss: string): Promise<Gtk.TextView> => {
 
 describe("useCssEditor buffer", () => {
     it("populates the text buffer with the supplied default css", async () => {
-        await renderHost(DEFAULT_CSS);
-        expect(screen.getByDisplayValue(DEFAULT_CSS)).not.toBeNull();
+        const textView = await renderHost(DEFAULT_CSS);
+        expect(textView).toHaveDisplayValue(DEFAULT_CSS);
     });
 
     it("registers warning and error text tags on the buffer's tag table", async () => {
@@ -45,7 +45,7 @@ describe("useCssEditor lifecycle", () => {
         const textView = await renderHost(DEFAULT_CSS);
         await userEvent.clear(textView);
         await userEvent.type(textView, "window { color: not-a-real-value; }");
-        expect(screen.getByDisplayValue("window { color: not-a-real-value; }")).not.toBeNull();
+        expect(textView).toHaveDisplayValue("window { color: not-a-real-value; }");
         const tagTable = textView.getBuffer().getTagTable();
         expect(tagTable.lookup("error")).not.toBeNull();
     });

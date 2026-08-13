@@ -182,11 +182,9 @@ describe("clipboardDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(clipboardDemo.id).toBe("clipboard");
         expect(clipboardDemo.title).toBe("Clipboard");
-        expect(clipboardDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(clipboardDemo.keywords)).toBe(true);
-        expect(typeof clipboardDemo.sourceCode).toBe("string");
-        expect(clipboardDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(clipboardDemo.keywords).toContain("drag-and-drop");
+        expect(clipboardDemo.description).toContain("GdkClipboard is used for clipboard handling");
+        expect(clipboardDemo.keywords).toEqual(["drag-and-drop", "dnd"]);
+        expect(clipboardDemo.sourceCode).toContain("const clipboardDemo: Demo = {");
         expect(clipboardDemo.component).toBeTypeOf("function");
     });
 });
@@ -218,10 +216,15 @@ describe("clipboardDemo rendering", () => {
         expect(logo).not.toBePressed();
     });
 
-    it("includes a GtkColorDialogButton for the Color source page", async () => {
+    it("labels the Color source page button and initialises it to the purple source color", async () => {
         await renderSourceType("Color");
-        const colorButton = await screen.findByName("color-button");
-        expect(colorButton).toBeInstanceOf(Gtk.ColorDialogButton);
+        const colorButton = await screen.findByName("color-button", { as: Gtk.ColorDialogButton });
+        expect(colorButton).toHaveAccessibleName("Color Drag Source");
+        const rgba = colorButton.getRgba();
+        expect(rgba.red).toBeCloseTo(128 / 255, 2);
+        expect(rgba.green).toBe(0);
+        expect(rgba.blue).toBeCloseTo(128 / 255, 2);
+        expect(rgba.alpha).toBe(1);
     });
 
     it("renders the source GtkStack initialised to the 'Text' page", async () => {

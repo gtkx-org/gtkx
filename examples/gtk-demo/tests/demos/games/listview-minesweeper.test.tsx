@@ -45,10 +45,15 @@ describe("listviewMinesweeperDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewMinesweeperDemo.id).toBe("listview-minesweeper");
         expect(listviewMinesweeperDemo.title).toBe("Lists/Minesweeper");
-        expect(listviewMinesweeperDemo.description.length).toBeGreaterThan(0);
-        expect(listviewMinesweeperDemo.keywords).toEqual(expect.arrayContaining(["GtkGridView", "GListModel", "game"]));
-        expect(typeof listviewMinesweeperDemo.sourceCode).toBe("string");
-        expect(listviewMinesweeperDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+
+        expect(listviewMinesweeperDemo.description).toBe(
+            "This demo shows how to develop a user interface for small game using a grid view.\n\nIt demonstrates " +
+            "how to use the activate signal and single-press behavior to implement rather different interaction " +
+            "behavior to a typical list.",
+        );
+
+        expect(listviewMinesweeperDemo.keywords).toEqual(["GtkGridView", "GListModel", "game"]);
+        expect(listviewMinesweeperDemo.sourceCode).toContain("const listviewMinesweeperDemo: Demo = {");
         expect(listviewMinesweeperDemo.component).toBeTypeOf("function");
     });
 });

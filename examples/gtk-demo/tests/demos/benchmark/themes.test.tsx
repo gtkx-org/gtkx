@@ -60,8 +60,13 @@ describe("themesDemo", () => {
     it("exposes the expected metadata", () => {
         expect(themesDemo.id).toBe("themes");
         expect(themesDemo.title).toBe("Benchmark/Themes");
-        expect(themesDemo.description.length).toBeGreaterThan(0);
-        expect(typeof themesDemo.sourceCode).toBe("string");
+
+        expect(themesDemo.description).toBe(
+            "This demo continuously switches themes, like some of you.\n\nWarning: This demo involves " +
+            "rapidly flashing changes and may be hazardous to photosensitive viewers.",
+        );
+
+        expect(themesDemo.sourceCode).toContain("const themesDemo: Demo = {");
         expect(themesDemo.isResizable).toBe(false);
         expect(themesDemo.component).toBeTypeOf("function");
     });
@@ -100,7 +105,7 @@ describe("themesDemo", () => {
 
     it("opens the warning dialog and exposes the photosensitive warning text", async () => {
         const { cycle, alert } = await activateCycleAndAwaitAlert();
-        expect(alert).toHaveObjectProperty("heading", "Warning");
+        expect(alert).toHaveAccessibleName("Warning");
         expect(alert.getBody()).toMatch(/photosensitive/i);
         expect(cycle).toBePressed();
     });

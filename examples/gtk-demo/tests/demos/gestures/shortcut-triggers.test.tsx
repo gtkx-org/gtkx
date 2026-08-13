@@ -21,11 +21,9 @@ describe("shortcutTriggersDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(shortcutTriggersDemo.id).toBe("shortcut-triggers");
         expect(shortcutTriggersDemo.title).toBe("Shortcuts");
-        expect(shortcutTriggersDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(shortcutTriggersDemo.keywords)).toBe(true);
-        expect(typeof shortcutTriggersDemo.sourceCode).toBe("string");
-        expect(shortcutTriggersDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
-        expect(shortcutTriggersDemo.keywords).toContain("GtkShortcutController");
+        expect(shortcutTriggersDemo.description).toContain("GtkShortcut is the abstraction used by GTK");
+        expect(shortcutTriggersDemo.keywords).toEqual(["GtkShortcutController"]);
+        expect(shortcutTriggersDemo.sourceCode).toContain("const shortcutTriggersDemo: Demo = {");
         expect(shortcutTriggersDemo.component).toBeTypeOf("function");
         expect(shortcutTriggersDemo.defaultWidth).toBe(200);
     });
@@ -42,12 +40,10 @@ describe("shortcutTriggersDemo rendering", () => {
 
     it("wraps each instruction label in a list box row", async () => {
         await renderDemo(shortcutTriggersDemo);
-        const rows = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+        const rows = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, { as: Gtk.ListBoxRow });
         expect(rows).toHaveLength(2);
-
-        for (const row of rows) {
-            expect(row).toBeInstanceOf(Gtk.ListBoxRow);
-        }
+        expect(rows[0]).toContainElement(await screen.findByName("label-ctrl-g"));
+        expect(rows[1]).toContainElement(await screen.findByName("label-x"));
     });
 
     it("applies the 6px margins on the listbox container", async () => {

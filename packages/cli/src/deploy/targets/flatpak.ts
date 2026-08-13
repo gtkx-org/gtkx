@@ -140,4 +140,4 @@ const packFlatpak = (payload: DeployPayload): DeployArtifact[] => {
     return settings.deploy.flatpak?.shouldEmitBundle === false ? [] : [bundleFlatpak(settings)];
 };
 
-export { builderArgsFor, bundleArgsFor, flatpakTarget };
+export { flatpakTarget };

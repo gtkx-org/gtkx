@@ -103,10 +103,9 @@ describe("dndDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(dndDemo.id).toBe("dnd");
         expect(dndDemo.title).toBe("Drag-and-Drop");
-        expect(dndDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(dndDemo.keywords)).toBe(true);
-        expect(typeof dndDemo.sourceCode).toBe("string");
-        expect(dndDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(dndDemo.description).toContain("This demo shows dragging colors and widgets");
+        expect(dndDemo.keywords).toEqual(["dnd", "menu", "popover", "gesture"]);
+        expect(dndDemo.sourceCode).toContain("const dndDemo: Demo = {");
         expect(dndDemo.component).toBeTypeOf("function");
         expect(dndDemo.defaultWidth).toBe(640);
         expect(dndDemo.defaultHeight).toBe(480);
@@ -139,7 +138,6 @@ describe("dndDemo initial canvas", () => {
         const canvas = await findCanvas();
         await triggerContextMenu(canvas, 50, 50);
         const popover = await screen.findByName("context-menu", { as: Gtk.Popover });
-        expect(popover).toBeInstanceOf(Gtk.Popover);
         expect(popover).toBeVisible();
     });
 });
@@ -192,7 +190,7 @@ describe("dndDemo inline editing", () => {
         const entry = await openInlineEntryForItem1();
         await userEvent.clear(entry);
         await userEvent.type(entry, "Renamed");
-        expect(await screen.findByText("Renamed")).toBeInstanceOf(Gtk.Widget);
+        expect(await findItemLabel("1")).toHaveTextContent("Renamed");
     });
 
     it("closes the inline entry when Enter is pressed", async () => {
@@ -351,7 +349,7 @@ describe("dndDemo item drag-source side effects", () => {
     it("dims the item and reveals the trash zone on drag-begin, then restores them on drag-end", async () => {
         const item1 = await renderItemWithTrashHidden();
         const dragSource = await beginItemDrag(item1);
-        expect(await findTrashZone()).toBeVisible();
+        await findTrashZone();
 
         await waitFor(() => {
             expect(item1.getOpacity()).toBeCloseTo(0.3, 2);

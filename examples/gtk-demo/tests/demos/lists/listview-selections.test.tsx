@@ -15,7 +15,6 @@ async function expectListedTwiceAfterOpening(dropdown: Gtk.DropDown, text: strin
 
 async function findVerticalColumnSeparator() {
     const sep = await screen.findByName("column-separator", { as: Gtk.Separator });
-    expect(sep).toBeInstanceOf(Gtk.Separator);
     expect(sep).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
 
     return sep;
@@ -65,9 +64,9 @@ describe("listviewSelectionsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewSelectionsDemo.id).toBe("listview-selections");
         expect(listviewSelectionsDemo.title).toBe("Lists/Selections");
-        expect(listviewSelectionsDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(listviewSelectionsDemo.keywords)).toBe(true);
-        expect(typeof listviewSelectionsDemo.sourceCode).toBe("string");
+        expect(listviewSelectionsDemo.description).toContain("The GtkDropDown widget presents a list of choices.");
+        expect(listviewSelectionsDemo.keywords).toEqual(["suggestion", "completion"]);
+        expect(listviewSelectionsDemo.sourceCode).toContain("const listviewSelectionsDemo: Demo = {");
         expect(listviewSelectionsDemo.component).toBeTypeOf("function");
     });
 });

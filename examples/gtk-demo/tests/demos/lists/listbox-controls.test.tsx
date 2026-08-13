@@ -8,9 +8,9 @@ describe("listboxControlsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listboxControlsDemo.id).toBe("listbox-controls");
         expect(listboxControlsDemo.title).toBe("List Box/Controls");
-        expect(listboxControlsDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(listboxControlsDemo.keywords)).toBe(true);
-        expect(typeof listboxControlsDemo.sourceCode).toBe("string");
+        expect(listboxControlsDemo.description).toContain("GtkListBox is well-suited for creating");
+        expect(listboxControlsDemo.keywords).toEqual([]);
+        expect(listboxControlsDemo.sourceCode).toContain("const listboxControlsDemo: Demo = {");
         expect(listboxControlsDemo.defaultHeight).toBe(400);
         expect(listboxControlsDemo.component).toBeTypeOf("function");
     });
@@ -94,19 +94,17 @@ describe("listboxControlsDemo row activation", () => {
 describe("listboxControlsDemo Group 2 controls", () => {
     it("renders a scale, spin button, dropdown and entry in Group 2", async () => {
         await renderDemo(listboxControlsDemo);
-        expect(await screen.findByName("scale")).toBeInstanceOf(Gtk.Scale);
-        expect(await screen.findByName("spin")).toBeInstanceOf(Gtk.SpinButton);
-        expect(await screen.findByName("dropdown")).toBeInstanceOf(Gtk.DropDown);
-        expect(await screen.findByName("entry")).toBeInstanceOf(Gtk.Entry);
+        const group2 = await screen.findByName("group-2-list", { as: Gtk.ListBox });
+        expect(group2).toContainElement(await screen.findByName("scale", { as: Gtk.Scale }));
+        expect(group2).toContainElement(await screen.findByName("spin", { as: Gtk.SpinButton }));
+        expect(group2).toContainElement(await screen.findByName("dropdown", { as: Gtk.DropDown }));
+        expect(group2).toContainElement(await screen.findByName("entry", { as: Gtk.Entry }));
     });
 
     it("seeds the scale and spin button with the expected starting value", async () => {
         await renderDemo(listboxControlsDemo);
-        expect(await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 50 } })).toBeInstanceOf(Gtk.Scale);
-
-        expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 50 } })).toBeInstanceOf(
-            Gtk.SpinButton,
-        );
+        expect(await screen.findByName("scale", { as: Gtk.Scale })).toHaveValue(50);
+        expect(await screen.findByName("spin", { as: Gtk.SpinButton })).toHaveValue(50);
     });
 
     it("increments the scale value when an arrow key is pressed", async () => {

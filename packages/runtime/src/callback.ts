@@ -3,7 +3,7 @@ import type { CallbackDescriptor, RefDescriptor } from "./descriptors.js";
 import { foldedLengthSources, type LengthSource, type LengthSources } from "./folded-lengths.js";
 import { fromNative, toNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
-import { hasSurfacedPrimary, skippedReturnValue, splitTupleResult } from "./tuple.js";
+import { splitTupleResult } from "./tuple.js";
 import { copyValue } from "./value.js";
 import { popSeedFrame, pushSeedFrame, type RefSeeds } from "./vfunc-seeds.js";
 
@@ -18,7 +18,6 @@ type OutValues = Map<number, unknown>;
 type CallbackSpec = {
     argDescriptors: Descriptor[];
     returnDescriptor: Descriptor;
-    isReturnSkipped?: boolean;
     userDataIndex?: number;
 };
 
@@ -27,7 +26,6 @@ type CallbackPlan = {
     effectiveTypes: Descriptor[];
     returnDescriptor: Descriptor;
     hasPrimary: boolean;
-    skippedReturn: unknown;
     start: number;
     isInstanceBound: boolean;
     lengthSources: LengthSources;
@@ -231,7 +229,7 @@ const trimCallbackInputs = (plan: CallbackPlan, wrapped: unknown[]): unknown[] =
 };
 
 const nativeReturn = (plan: CallbackPlan, primary: unknown): unknown =>
-    toNative(plan.returnDescriptor, plan.hasPrimary ? primary : plan.skippedReturn);
+    toNative(plan.returnDescriptor, plan.hasPrimary ? primary : undefined);
 
 const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
     const { effectiveTypes } = plan;
@@ -281,8 +279,7 @@ function wrapCallback(fn: Callback, spec: CallbackSpec, kind: CallbackKind): Cal
         fn,
         effectiveTypes,
         returnDescriptor: spec.returnDescriptor,
-        hasPrimary: hasSurfacedPrimary(spec.returnDescriptor, spec.isReturnSkipped),
-        skippedReturn: skippedReturnValue(spec.returnDescriptor, spec.isReturnSkipped),
+        hasPrimary: spec.returnDescriptor.kind !== "void",
         start,
         isInstanceBound,
         lengthSources: planLengthSources(spec, hasFoldedLengths),

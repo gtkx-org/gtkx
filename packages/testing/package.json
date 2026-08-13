@@ -75,8 +75,6 @@
     },
     "devDependencies": {
         "@gtkx/config": "workspace:*",
-        "@gtkx/vitest": "workspace:*",
-        "@types/react": "catalog:",
-        "vitest": "catalog:"
+        "@types/react": "catalog:"
     }
 }

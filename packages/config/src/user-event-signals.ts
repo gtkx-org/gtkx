@@ -48,4 +48,4 @@ const resolveUserEventSignals = (overrides: Record<string, string[]> | undefined
     return resolved;
 };
 
-export { DEFAULT_USER_EVENT_SIGNALS, resolveUserEventSignals };
+export { resolveUserEventSignals };

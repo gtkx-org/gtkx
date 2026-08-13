@@ -8,14 +8,20 @@ const renderDemo = createAppRenderer("org.gtkx.gtkdemoapp");
 describe("App", () => {
     it("renders the main window titled 'GTK Demo'", async () => {
         await renderDemo();
-        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "GTK Demo" });
-        expect(window).toBeInstanceOf(Gtk.ApplicationWindow);
+
+        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, {
+            name: "GTK Demo",
+            as: Gtk.ApplicationWindow,
+        });
+
+        expect(window).toBeRooted();
+        expect(window.getApplication()?.getApplicationId()).toMatch(/^org\.gtkx\.gtkdemoapp\d+$/);
     });
 
     it("renders the Info notebook tab label", async () => {
         await renderDemo();
-        const labels = await screen.findAllByText("Info");
-        expect(labels.length).toBeGreaterThanOrEqual(1);
+        const notebook = await screen.findByName("notebook", { as: Gtk.Notebook });
+        expect(notebook).toContainOneByText("Info");
     });
 
     it("starts with the Run button disabled because the intro demo has no component", async () => {
@@ -32,14 +38,15 @@ describe("App", () => {
 
     it("renders the sidebar with the intro demo entry", async () => {
         await renderDemo();
-        const entries = await screen.findAllByText("GTK Demo");
-        expect(entries.length).toBeGreaterThan(0);
+        const sidebar = await screen.findByName("sidebar-list", { as: Gtk.ListView });
+        expect(sidebar).toContainOneByText("GTK Demo");
     });
 
     it("renders a menu button in the header bar", async () => {
         await renderDemo();
         const menuButton = await screen.findByName("menu-button", { as: Gtk.MenuButton });
-        expect(menuButton).toBeInstanceOf(Gtk.MenuButton);
+        expect(menuButton).toBeEnabled();
+        expect(menuButton.getMenuModel()).not.toBeNull();
     });
 
     it("renders the notebook with two pages", async () => {

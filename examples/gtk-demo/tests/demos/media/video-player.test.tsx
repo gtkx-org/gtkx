@@ -33,14 +33,17 @@ describe("videoPlayerDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(videoPlayerDemo.id).toBe("video-player");
         expect(videoPlayerDemo.title).toBe("Video Player");
-        expect(videoPlayerDemo.description.length).toBeGreaterThan(0);
+        expect(videoPlayerDemo.description).toContain("This is a simple video player using just GTK widgets.");
 
-        expect(videoPlayerDemo.keywords).toEqual(
-            expect.arrayContaining(["GtkVideo", "GtkMediaStream", "GtkMediaFile", "GdkPaintable", "GtkMediaControls"]),
-        );
+        expect(videoPlayerDemo.keywords).toEqual([
+            "GtkVideo",
+            "GtkMediaStream",
+            "GtkMediaFile",
+            "GdkPaintable",
+            "GtkMediaControls",
+        ]);
 
-        expect(typeof videoPlayerDemo.sourceCode).toBe("string");
-        expect(videoPlayerDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(videoPlayerDemo.sourceCode).toContain("const videoPlayerDemo: Demo = {");
         expect(videoPlayerDemo.defaultWidth).toBe(600);
         expect(videoPlayerDemo.defaultHeight).toBe(400);
         expect(videoPlayerDemo.component).toBeTypeOf("function");
@@ -50,7 +53,7 @@ describe("videoPlayerDemo metadata", () => {
 describe("videoPlayerDemo header bar", () => {
     it("renders the Open button and three labelled icon buttons in the header bar", async () => {
         await renderDemo(videoPlayerDemo);
-        expect(await screen.findByName("open-button")).toBeInstanceOf(Gtk.Button);
+        expect(await screen.findByName("open-button", { as: Gtk.Button })).toBe(await findButton("Open"));
         await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "GTK Logo" });
         await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Big Buck Bunny" });
         const fullscreenButton = await screen.findByName("fullscreen-button", { as: Gtk.Button });
@@ -60,14 +63,12 @@ describe("videoPlayerDemo header bar", () => {
     it("wires the Open button with useUnderline in the header bar's pack-start area", async () => {
         await renderDemo(videoPlayerDemo);
         const openButton = await findButton("Open");
-        expect(openButton).toBeInstanceOf(Gtk.Button);
         expect(openButton).toHaveObjectProperty("useUnderline", true);
     });
 
     it("renders the Big Buck Bunny header button with a 24px image child", async () => {
         await renderDemo(videoPlayerDemo);
         const bbbImage = await screen.findByName("bbb-image", { as: Gtk.Image });
-        expect(bbbImage).toBeInstanceOf(Gtk.Image);
         expect(bbbImage).toHaveObjectProperty("pixelSize", 24);
     });
 

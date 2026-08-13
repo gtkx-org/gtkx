@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, fireEvent, getAllControllers, getController, queryController, screen, userEvent } from "@gtkx/testing";
+import { act, fireEvent, getAllControllers, getController, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { hypertextDemo } from "../../../src/demos/input/hypertext.js";
 import { readBufferText, renderDemo } from "../../test-utils.js";
@@ -45,6 +45,10 @@ const placeCursorAtWord = async (view: Gtk.TextView, word: string): Promise<numb
     const buffer = view.getBuffer();
     const offset = readBufferText(view).indexOf(word);
 
+    if (offset === -1) {
+        throw new Error(`the hypertext buffer does not contain ${word}`);
+    }
+
     await act(() => {
         buffer.placeCursor(buffer.getIterAtOffset(offset));
     });
@@ -70,10 +74,9 @@ describe("hypertextDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(hypertextDemo.id).toBe("hypertext");
         expect(hypertextDemo.title).toBe("Text View/Hypertext");
-        expect(hypertextDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(hypertextDemo.keywords)).toBe(true);
-        expect(typeof hypertextDemo.sourceCode).toBe("string");
-        expect(hypertextDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(hypertextDemo.description).toContain("tags modify the appearance of text in the view");
+        expect(hypertextDemo.keywords).toEqual(["GtkTextView", "GtkTextBuffer"]);
+        expect(hypertextDemo.sourceCode).toContain("const hypertextDemo: Demo = {");
         expect(hypertextDemo.defaultWidth).toBe(330);
         expect(hypertextDemo.defaultHeight).toBe(330);
         expect(hypertextDemo.component).toBeTypeOf("function");
@@ -103,16 +106,14 @@ describe("hypertextDemo rendering", () => {
 describe("hypertextDemo link navigation", () => {
     it("navigates to the tags definition page when Enter is pressed at the tags link", async () => {
         const textView = await renderTextView();
-        const tagsOffset = await placeCursorAtWord(textView, "tags");
-        expect(tagsOffset).toBeGreaterThan(0);
+        await placeCursorAtWord(textView, "tags");
         await userEvent.keyboard(textView, "{Enter}");
         expect(await screen.findByDisplayValue(/attribute that can be applied to some range of text/)).toBe(textView);
     });
 
     it("navigates to the hypertext definition page when Enter is pressed at the hypertext link", async () => {
         const textView = await renderTextView();
-        const linkOffset = await placeCursorAtWord(textView, "hypertext");
-        expect(linkOffset).toBeGreaterThan(0);
+        await placeCursorAtWord(textView, "hypertext");
         await userEvent.keyboard(textView, "{Enter}");
         expect(await screen.findByDisplayValue(/Machine-readable text that is not sequential/)).toBe(textView);
     });
@@ -199,9 +200,8 @@ describe("hypertextDemo speaker icon", () => {
         await userEvent.keyboard(textView, "{Enter}");
         await screen.findByDisplayValue(/attribute that can be applied/);
         const speaker = await screen.findByRole(Gtk.AccessibleRole.IMG, { as: Gtk.Image });
-        const gesture = queryController(speaker, Gtk.GestureClick);
-        expect(gesture).not.toBeNull();
-        await fireEvent(gesture as Gtk.GestureClick, "pressed", 1, 0, 0);
+        const gesture = getController(speaker, Gtk.GestureClick);
+        await fireEvent(gesture, "pressed", 1, 0, 0);
         expect(spawnMock).toHaveBeenCalledTimes(1);
         expect(spawnMock.mock.calls[0]?.[0]).toBe("espeak-ng");
         expect(spawnMock.mock.calls[0]?.[1]).toEqual(["tag"]);

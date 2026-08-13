@@ -164,6 +164,5 @@ export {
     stageSchema,
     findSchemaFiles,
     stageAndCompileProjectSchemas,
-    schemaEnvPath,
     emitSchemaEnv,
 };

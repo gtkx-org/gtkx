@@ -20,9 +20,9 @@ describe("stackDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(stackDemo.id).toBe("stack");
         expect(stackDemo.title).toBe("Stack");
-        expect(stackDemo.description.length).toBeGreaterThan(0);
-        expect(typeof stackDemo.sourceCode).toBe("string");
-        expect(Array.isArray(stackDemo.keywords)).toBe(true);
+        expect(stackDemo.description).toContain("GtkStack is a container that shows a single child at a time");
+        expect(stackDemo.sourceCode).toContain("const stackDemo: Demo = {");
+        expect(stackDemo.keywords).toEqual([]);
     });
 });
 
@@ -35,7 +35,6 @@ describe("stackDemo structure", () => {
     it("renders a GtkStackSwitcher tied to the stack", async () => {
         await renderDemo(stackDemo);
         const switcher = await screen.findByRole(Gtk.AccessibleRole.TAB_LIST, { as: Gtk.StackSwitcher });
-        expect(switcher).toBeInstanceOf(Gtk.StackSwitcher);
         const stack = await findStack();
         expect(switcher).toHaveObjectProperty("stack", stack);
     });
@@ -70,7 +69,7 @@ describe("stackDemo pages", () => {
         expect(within(stack).queryByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Page 2" })).toBeNull();
         await clickTab("Page 2");
         const checkButton = await within(stack).findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Page 2" });
-        expect(checkButton).toBeInstanceOf(Gtk.CheckButton);
+        expect(checkButton).toBeVisible();
     });
 });
 

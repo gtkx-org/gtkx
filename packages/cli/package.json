@@ -30,11 +30,6 @@
     "type": "module",
     "exports": {
         "./env": "./env.d.ts",
-        "./internal": {
-            "source": "./src/internal.ts",
-            "types": "./dist/internal.d.ts",
-            "default": "./dist/internal.js"
-        },
         "./package.json": "./package.json",
         "./refresh-runtime": {
             "source": "./src/refresh-runtime.ts",

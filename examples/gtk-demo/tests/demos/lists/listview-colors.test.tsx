@@ -74,9 +74,9 @@ describe("listviewColorsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewColorsDemo.id).toBe("listview-colors");
         expect(listviewColorsDemo.title).toBe("Lists/Colors");
-        expect(listviewColorsDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(listviewColorsDemo.keywords)).toBe(true);
-        expect(typeof listviewColorsDemo.sourceCode).toBe("string");
+        expect(listviewColorsDemo.description).toContain("This demo displays a grid of colors.");
+        expect(listviewColorsDemo.keywords).toEqual(["GtkMultiSelection"]);
+        expect(listviewColorsDemo.sourceCode).toContain("const listviewColorsDemo: Demo = {");
         expect(listviewColorsDemo.defaultWidth).toBe(800);
         expect(listviewColorsDemo.defaultHeight).toBe(400);
         expect(listviewColorsDemo.component).toBeTypeOf("function");
@@ -87,11 +87,11 @@ describe("listviewColorsDemo header bar", () => {
     it("hosts the refill button and the three drop-downs inside the header bar", async () => {
         await renderDemo(listviewColorsDemo);
         const headerBar = await screen.findByName("header-bar", { as: Gtk.HeaderBar });
-        const refill = await within(headerBar).findByRole(Gtk.AccessibleRole.BUTTON, { name: "Refill" });
-        expect(refill).toBeInstanceOf(Gtk.Button);
-        expect(await within(headerBar).findByName("limit-dropdown")).toBeInstanceOf(Gtk.DropDown);
-        expect(await within(headerBar).findByName("sort-dropdown")).toBeInstanceOf(Gtk.DropDown);
-        expect(await within(headerBar).findByName("display-dropdown")).toBeInstanceOf(Gtk.DropDown);
+        await within(headerBar).findByRole(Gtk.AccessibleRole.BUTTON, { name: "Refill" });
+        expect(headerBar).toContainOneByRole(Gtk.AccessibleRole.BUTTON, { name: "Refill" });
+        expect(headerBar).toContainElement(await screen.findByName("limit-dropdown", { as: Gtk.DropDown }));
+        expect(headerBar).toContainElement(await screen.findByName("sort-dropdown", { as: Gtk.DropDown }));
+        expect(headerBar).toContainElement(await screen.findByName("display-dropdown", { as: Gtk.DropDown }));
     });
 
     it("maps each drop-down's initial selection to demo state", async () => {
@@ -137,9 +137,9 @@ describe("listviewColorsDemo grid view", () => {
     it("wraps the grid view in a scrolled window inside the overlay", async () => {
         await renderDemo(listviewColorsDemo);
         const overlay = await screen.findByName("grid-overlay", { as: Gtk.Overlay });
-        const sw = await within(overlay).findByName("grid-scrolled");
-        expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
-        expect(await within(sw).findByName("color-grid")).toBeInstanceOf(Gtk.GridView);
+        const sw = await within(overlay).findByName("grid-scrolled", { as: Gtk.ScrolledWindow });
+        expect(overlay).toContainElement(sw);
+        expect(sw).toContainElement(await screen.findByName("color-grid", { as: Gtk.GridView }));
     });
 });
 

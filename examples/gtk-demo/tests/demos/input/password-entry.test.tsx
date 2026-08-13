@@ -31,10 +31,9 @@ describe("passwordEntryDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(passwordEntryDemo.id).toBe("password-entry");
         expect(passwordEntryDemo.title).toBe("Entry/Password Entry");
-        expect(passwordEntryDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(passwordEntryDemo.keywords)).toBe(true);
-        expect(typeof passwordEntryDemo.sourceCode).toBe("string");
-        expect(passwordEntryDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(passwordEntryDemo.description).toContain("GtkPasswordEntry provides common functionality of entries");
+        expect(passwordEntryDemo.keywords).toEqual([]);
+        expect(passwordEntryDemo.sourceCode).toContain("const passwordEntryDemo: Demo = {");
         expect(passwordEntryDemo.component).toBeTypeOf("function");
     });
 });

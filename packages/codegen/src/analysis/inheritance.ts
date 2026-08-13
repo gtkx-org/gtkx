@@ -21,6 +21,8 @@ type AncestryContext = {
 };
 
 type OwnedProperty = { owner: GirClass; property: GirProperty };
+type DeclaredAccessorType = { type: string; owner: string };
+type DeclaredAccessorTypes = { read: DeclaredAccessorType | undefined; write: DeclaredAccessorType | undefined };
 type MethodSignature = { returnType: string; arity: number };
 
 type InheritedMethod = {
@@ -267,28 +269,48 @@ const collectInterfaceMergeOmissions = (
     ...vfuncMergeOmissions(context, klass, iface),
 ];
 
+const declaredBy = (type: string | undefined, owner: string): DeclaredAccessorType | undefined =>
+    type === undefined ? undefined : { type, owner };
+
+const reconcileAccessorType = (
+    jsName: string,
+    direction: string,
+    declared: DeclaredAccessorType | undefined,
+    candidate: DeclaredAccessorType | undefined,
+): DeclaredAccessorType | undefined => {
+    if (candidate === undefined) {
+        return declared;
+    }
+
+    if (declared === undefined || declared.type === candidate.type) {
+        return declared ?? candidate;
+    }
+
+    throw new Error(
+        `Cannot type the ${direction} accessor of ${jsName}: ${declared.owner} declares it as ${declared.type} ` +
+        `and ${candidate.owner} declares it as ${candidate.type}. Both are bases of the same class, so no single ` +
+        "member satisfies them; correct the GIR the disagreeing base comes from.",
+    );
+};
+
 const recordInheritedPropertyType = (
     context: ModuleContext,
-    types: Map<string, InheritedAccessorTypes>,
+    types: Map<string, DeclaredAccessorTypes>,
     owner: GirClass,
     property: GirProperty,
 ): void => {
-    const jsName = toCamelIdentifier(property.name);
-    const declared = types.get(jsName);
-
-    if (declared?.readType !== undefined && declared.writeType !== undefined) {
-        return;
-    }
-
     const accessorTypes = resolveAccessorTypes(context, property, owner.methods);
 
     if (accessorTypes === undefined) {
         return;
     }
 
+    const jsName = toCamelIdentifier(property.name);
+    const declared = types.get(jsName);
+
     types.set(jsName, {
-        readType: declared?.readType ?? accessorTypes.readType,
-        writeType: declared?.writeType ?? accessorTypes.writeType,
+        read: reconcileAccessorType(jsName, "read", declared?.read, declaredBy(accessorTypes.readType, owner.name)),
+        write: reconcileAccessorType(jsName, "write", declared?.write, declaredBy(accessorTypes.writeType, owner.name)),
     });
 };
 
@@ -296,11 +318,17 @@ const collectInheritedPropertyTypes = (
     context: ModuleContext,
     klass: GirClass,
 ): Map<string, InheritedAccessorTypes> => {
-    const types: Map<string, InheritedAccessorTypes> = new Map();
+    const declared: Map<string, DeclaredAccessorTypes> = new Map();
 
     forEachInheritedProperty(context, klass, (owner, property) => {
-        recordInheritedPropertyType(context, types, owner, property);
+        recordInheritedPropertyType(context, declared, owner, property);
     });
+
+    const types: Map<string, InheritedAccessorTypes> = new Map();
+
+    for (const [jsName, entry] of declared) {
+        types.set(jsName, { readType: entry.read?.type, writeType: entry.write?.type });
+    }
 
     return types;
 };

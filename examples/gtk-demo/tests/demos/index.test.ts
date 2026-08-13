@@ -8,6 +8,7 @@ describe("demos catalog", () => {
         expect(first?.id).toBe("intro");
         expect(first?.title).toBe("GTK Demo");
         expect(first?.component).toBeUndefined();
+        expect(parseTitle(first?.title ?? "").category).toBeNull();
     });
 
     it("assigns unique ids to every demo", () => {
@@ -15,11 +16,12 @@ describe("demos catalog", () => {
         expect(new Set(ids).size).toBe(ids.length);
     });
 
-    it("exposes a description and a keywords array on every demo", () => {
-        for (const demo of demos) {
-            expect(typeof demo.description).toBe("string");
-            expect(Array.isArray(demo.keywords)).toBe(true);
-        }
+    it("backs every demo but the intro with a component and its own source code", () => {
+        const runnable = demos.slice(1);
+        expect(demos.filter((demo) => demo.description === "").map((demo) => demo.id)).toEqual([]);
+        expect(runnable.filter((demo) => demo.component === undefined).map((demo) => demo.id)).toEqual([]);
+        expect(runnable.filter((demo) => demo.sourceCode === undefined).map((demo) => demo.id)).toEqual([]);
+        expect(new Set(runnable.map((demo) => demo.sourceCode)).size).toBe(runnable.length);
     });
 
     it("pulls in demos from every category module", () => {

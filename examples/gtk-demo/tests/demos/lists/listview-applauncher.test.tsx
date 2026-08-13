@@ -36,9 +36,9 @@ describe("listviewApplauncherDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewApplauncherDemo.id).toBe("listview-applauncher");
         expect(listviewApplauncherDemo.title).toBe("Lists/Application launcher");
-        expect(listviewApplauncherDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(listviewApplauncherDemo.keywords)).toBe(true);
-        expect(typeof listviewApplauncherDemo.sourceCode).toBe("string");
+        expect(listviewApplauncherDemo.description).toContain("GtkListView widget as a fancy application launcher");
+        expect(listviewApplauncherDemo.keywords).toEqual(["GtkListItemFactory", "GListModel"]);
+        expect(listviewApplauncherDemo.sourceCode).toContain("const listviewApplauncherDemo: Demo = {");
         expect(listviewApplauncherDemo.defaultWidth).toBe(640);
         expect(listviewApplauncherDemo.defaultHeight).toBe(320);
         expect(listviewApplauncherDemo.component).toBeTypeOf("function");
@@ -48,10 +48,10 @@ describe("listviewApplauncherDemo metadata", () => {
 describe("listviewApplauncherDemo structure", () => {
     it("wraps a single GtkListView inside a scrolled window", async () => {
         await renderDemo(listviewApplauncherDemo);
-        const sw = await screen.findByName("scrolled");
-        expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
-        const listView = await screen.findByName("list-view");
-        expect(listView).toBeInstanceOf(Gtk.ListView);
+        const sw = await screen.findByName("scrolled", { as: Gtk.ScrolledWindow });
+        const listView = await screen.findByName("list-view", { as: Gtk.ListView });
+        expect(screen.getAllByName("list-view")).toHaveLength(1);
+        expect(sw).toContainElement(listView);
     });
 
     it("uses single selection mode on the list view", async () => {
@@ -100,8 +100,8 @@ describe("listviewApplauncherDemo rows", () => {
         try {
             await activateFirstRowAndExpectLaunch(launchSpy);
             await screen.findByText("denied by policy");
-            const headings = await screen.findAllByText(`Could not launch ${firstAppInfo().getDisplayName()}`);
-            expect(headings.length).toBeGreaterThan(0);
+            const [heading] = await screen.findAllByText(`Could not launch ${firstAppInfo().getDisplayName()}`);
+            expect(heading).toBeRooted();
         } finally {
             launchSpy.mockRestore();
         }
@@ -113,8 +113,7 @@ describe("listviewApplauncherDemo rows", () => {
         const labels = within(listView).getAllByRole(Gtk.AccessibleRole.LABEL);
         expect(images.length).toBeGreaterThan(0);
         expect(images).toHaveLength(labels.length);
-        const firstAppName = firstAppInfo().getDisplayName();
-        expect(firstAppName).toBeTypeOf("string");
-        expect(await within(listView).findByText(firstAppName)).toBeInstanceOf(Gtk.Label);
+        await within(listView).findByText(firstAppInfo().getDisplayName());
+        expect(within(listView).getAllByText(firstAppInfo().getDisplayName())).toHaveLength(1);
     });
 });

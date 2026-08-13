@@ -137,4 +137,4 @@ const packAppImage = async (payload: DeployPayload): Promise<DeployArtifact[]> =
     return [{ path: target, size: statSync(target).size }];
 };
 
-export { appimageTarget, artifactNameFor, renderAppRun, toolArgsFor };
+export { appimageTarget };

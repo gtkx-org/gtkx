@@ -14,9 +14,8 @@ describe("cssMultiplebgsDemo", () => {
             "that you can style very similarly to a regular website.",
         );
 
-        expect(Array.isArray(cssMultiplebgsDemo.keywords)).toBe(true);
-        expect(typeof cssMultiplebgsDemo.sourceCode).toBe("string");
-        expect(cssMultiplebgsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(cssMultiplebgsDemo.keywords).toEqual([]);
+        expect(cssMultiplebgsDemo.sourceCode).toContain("const cssMultiplebgsDemo: Demo = {");
         expect(cssMultiplebgsDemo.defaultWidth).toBe(400);
         expect(cssMultiplebgsDemo.defaultHeight).toBe(300);
         expect(cssMultiplebgsDemo.component).toBeTypeOf("function");
@@ -24,17 +23,22 @@ describe("cssMultiplebgsDemo", () => {
 
     it("renders an overlay with a canvas drawing area and the bricks button", async () => {
         await renderDemo(cssMultiplebgsDemo);
-        expect(await screen.findByName("overlay")).toBeInstanceOf(Gtk.Overlay);
-        expect(await screen.findByName("canvas")).toBeInstanceOf(Gtk.DrawingArea);
-        expect(await screen.findByName("bricks-button")).toBeInstanceOf(Gtk.Button);
+        const overlay = await screen.findByName("overlay", { as: Gtk.Overlay });
+        const canvas = await screen.findByName("canvas", { as: Gtk.DrawingArea });
+        const bricksButton = await screen.findByName("bricks-button", { as: Gtk.Button });
+        expect(overlay.getChild()).toBe(canvas);
+        expect(overlay).toContainElement(bricksButton);
+        expect(canvas).toHaveObjectProperty("hexpand", true);
+        expect(canvas).toHaveObjectProperty("vexpand", true);
     });
 
     it("splits the editor from the canvas with a vertical paned holding the editor as its end child", async () => {
         await renderDemo(cssMultiplebgsDemo);
         const paned = await screen.findByName("paned", { as: Gtk.Paned });
-        expect(paned.getStartChild()).toBeInstanceOf(Gtk.Box);
-        expect(paned.getEndChild()).toBeInstanceOf(Gtk.ScrolledWindow);
+        expect(paned.getOrientation()).toBe(Gtk.Orientation.VERTICAL);
+        expect(paned.getStartChild()).toBeEmptyWidget();
         const textView = await screen.findByName("text-view", { as: Gtk.TextView });
+        expect(paned.getEndChild()).toContainElement(textView);
         expect(textView).toHaveDisplayValue(/#canvas/);
         expect(textView).toHaveDisplayValue(/transition-property/);
     });

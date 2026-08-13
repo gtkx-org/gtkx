@@ -35,9 +35,9 @@ describe("sidebarDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(sidebarDemo.id).toBe("sidebar");
         expect(sidebarDemo.title).toBe("Stack Sidebar");
-        expect(sidebarDemo.description.length).toBeGreaterThan(0);
-        expect(typeof sidebarDemo.sourceCode).toBe("string");
-        expect(Array.isArray(sidebarDemo.keywords)).toBe(true);
+        expect(sidebarDemo.description).toContain("GtkStackSidebar provides an automatic sidebar widget");
+        expect(sidebarDemo.sourceCode).toContain("const sidebarDemo: Demo = {");
+        expect(sidebarDemo.keywords).toEqual([]);
     });
 });
 
@@ -77,7 +77,7 @@ describe("sidebarDemo structure", () => {
         expect(within(stack).queryByRole(Gtk.AccessibleRole.LABEL, { name: "Scrolling" })).toBeNull();
         await clickPageRow(sidebar, "Scrolling");
         const label = await within(stack).findByRole(Gtk.AccessibleRole.LABEL, { name: "Scrolling" });
-        expect(label).toBeInstanceOf(Gtk.Label);
+        expect(stack.getVisibleChild()).toContainElement(label);
     });
 });
 

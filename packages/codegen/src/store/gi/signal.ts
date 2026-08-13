@@ -6,12 +6,11 @@ import type { ModuleContext } from "../../writer/context.js";
 import type { Declaration } from "../../writer/module.js";
 import {
     isCellInout,
-    isSkippedPrimaryReturn,
     primaryReturnKind,
     renderDescriptor,
     renderParamDescriptor,
 } from "../../analysis/descriptor-render.js";
-import { SKIPPED_RETURN_ENTRY, tCallback, tObject, tVoid } from "../../analysis/descriptor.js";
+import { tCallback, tObject, tVoid } from "../../analysis/descriptor.js";
 import {
     collectInterfaceProperties,
     forEachAncestor,
@@ -292,16 +291,11 @@ const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextA
 };
 
 const renderEmitReturnArg = (context: ModuleContext, returnValue: GirReturnValue): string => {
-    const kind = primaryReturnKind(context.library, returnValue);
-
-    if (kind === "void") {
+    if (primaryReturnKind(context.library, returnValue) === "void") {
         return "";
     }
 
-    const descriptor = renderDescriptor(context, returnValue.type, returnValue.transferOwnership);
-    const skipEntry = kind === "skipped" ? `, ${SKIPPED_RETURN_ENTRY}` : "";
-
-    return `, { descriptor: ${descriptor}${skipEntry} }`;
+    return `, ${renderDescriptor(context, returnValue.type, returnValue.transferOwnership)}`;
 };
 
 const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => {
@@ -350,7 +344,6 @@ const renderCallback = (context: ModuleContext, signal: GirCallable): string => 
     return tCallback({
         argTypes: callbackArgs,
         returns: renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership),
-        isReturnSkipped: isSkippedPrimaryReturn(context.library, signal.returnValue),
         options: [
             "hasDestroy: true",
             "destroyKind: \"closureNotify\"",

@@ -106,6 +106,9 @@ const firstSecondThirdItems: ListItem<NamedValue>[] = [...firstSecondItems, { id
 const valueItems = (values: string[]): { id: string; value: string }[] =>
     values.map((value, index) => ({ id: String(index + 1), value }));
 
+const namedItems = (entries: [string, string][]): ListItem<NamedValue>[] =>
+    entries.map(([id, name]) => ({ id, value: { name } }));
+
 const toListItems = <T,>(items: FixtureInput<T>): ListItem<T>[] =>
     items.length > 0 && typeof items[0] === "string"
         ? (items as string[]).map((id) => ({ id, value: { name: id } as T }))
@@ -298,18 +301,14 @@ const renderColumnView = async <T = NamedValue>(
     return wireFixture({ ref, draw, items, options });
 };
 
-export type { ColumnViewColumn } from "@gtkx/components";
 export {
-    valueItems,
     firstSecondItems,
     firstSecondThirdItems,
-    allExpandableIds,
+    namedItems,
+    renderColumnView,
+    renderGridView,
     renderListView,
     renderStatefulListView,
-    renderGridView,
-    renderColumnView,
-    type NamedValue,
-    type FixtureInput,
-    type RenderListViewOptions,
+    valueItems,
     type ListViewFixture,
 };

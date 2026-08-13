@@ -1,11 +1,13 @@
 import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 
-const getSelectionModel = (listRef: RefObject<Gtk.ListView | null>): Gtk.SelectionModel => {
-    const model = listRef.current?.getModel() ?? null;
+type SelectionOwner = { getModel: () => Gtk.SelectionModel | null };
+
+const getSelectionModel = (viewRef: RefObject<SelectionOwner | null>): Gtk.SelectionModel => {
+    const model = viewRef.current?.getModel() ?? null;
 
     if (model === null) {
-        throw new TypeError("Expected the list view to expose a selection model");
+        throw new TypeError("Expected the view to expose a selection model");
     }
 
     return model;

@@ -5,7 +5,6 @@
         "-internal"
     ],
     "ignore": [
-        ".bughunt/**",
         "packages/eslint/tests/fixtures/**",
         "packages/native/index.js"
     ],
@@ -25,6 +24,9 @@
         ],
         "packages/react/src/adw/prop-types.ts": [
             "types"
+        ],
+        "packages/cli/src/refresh-runtime.ts": [
+            "exports"
         ]
     },
     "workspaces": {
@@ -79,9 +81,7 @@
         },
         "packages/utils": {
             "entry": [
-                "src/process/process-guard.ts",
-                "tests/fixtures/spawn-driver.mjs",
-                "tests/fixtures/spawn-escapee.mjs"
+                "src/process/process-guard.ts"
             ]
         },
         "packages/testing": {
@@ -92,10 +92,7 @@
         },
         "packages/cli": {
             "entry": [
-                "src/global.d.ts!",
-                "tests/dev/fixtures/supervisor-harness.ts",
-                "tests/dev/fixtures/graceful-child.mjs",
-                "tests/dev/fixtures/resolve-probe.mjs"
+                "src/global.d.ts!"
             ]
         },
         "packages/vitest": {

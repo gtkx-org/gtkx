@@ -150,6 +150,9 @@ const shouldOmitPrimaryReturn = (library: Library, returnValue: GirReturnValue):
 const isSkippedPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
     primaryReturnKind(library, returnValue) === "skipped";
 
+const isVoidPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
+    primaryReturnKind(library, returnValue) === "void";
+
 const argIndexOptions = (options: RenderDescriptorOptions): ArgIndexOptions => ({
     argIndexOffset: options.argIndexOffset ?? 0,
     argIndexMap: options.argIndexMap,
@@ -370,7 +373,6 @@ const renderCallbackType = (
     return tCallback({
         argTypes,
         returns: renderDescriptor(context, returnValue.type, returnValue.transferOwnership),
-        isReturnSkipped: isSkippedPrimaryReturn(context.library, returnValue),
         options: callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters)),
     });
 };
@@ -780,6 +782,7 @@ const aliasExpression = (
 export {
     isInlineCallbackRef,
     isSkippedPrimaryReturn,
+    isVoidPrimaryReturn,
     primaryReturnKind,
     shouldOmitPrimaryReturn,
     renderDescriptor,

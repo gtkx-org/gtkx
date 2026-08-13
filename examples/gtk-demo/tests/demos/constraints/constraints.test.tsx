@@ -67,11 +67,18 @@ describe("constraintsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(constraintsDemo.id).toBe("constraints");
         expect(constraintsDemo.title).toBe("Constraints/Simple Constraints");
-        expect(constraintsDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(constraintsDemo.keywords)).toBe(true);
-        expect(typeof constraintsDemo.sourceCode).toBe("string");
+
+        expect(constraintsDemo.description).toBe(
+            "GtkConstraintLayout provides a layout manager that uses relations between widgets (also known as " +
+            "“constraints”) to compute the position and size of each child.\n\nIn addition to child widgets, the " +
+            "constraints can involve spacer objects (also known as “guides”). This example has a guide between " +
+            "the two buttons in the top row.\n\nTry resizing the window to see how the constraints react to " +
+            "update the layout.",
+        );
+
+        expect(constraintsDemo.sourceCode).toContain("const constraintsDemo: Demo = {");
         expect(constraintsDemo.defaultWidth).toBe(260);
-        expect(constraintsDemo.keywords).toContain("GtkLayoutManager");
+        expect(constraintsDemo.keywords).toEqual(["GtkLayoutManager"]);
     });
 });
 
@@ -165,8 +172,10 @@ describe("constraintsDemo children", () => {
         const child1 = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 1", as: Gtk.Button });
         const child2 = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 2", as: Gtk.Button });
         const child3 = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Child 3", as: Gtk.Button });
-        expect(child1).toHaveObjectProperty("label", "Child 1");
-        expect(child2).toHaveObjectProperty("label", "Child 2");
-        expect(child3).toHaveObjectProperty("label", "Child 3");
+        expect(child1).toHaveTextContent("Child 1");
+        expect(child2).toHaveTextContent("Child 2");
+        expect(child3).toHaveTextContent("Child 3");
+        expect(child1).toAppearBefore(child2);
+        expect(child2).toAppearBefore(child3);
     });
 });

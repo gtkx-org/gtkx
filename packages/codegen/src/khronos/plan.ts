@@ -328,7 +328,6 @@ const planCommand = (command: GlCommand, policy: GlPlanPolicy): CommandPlan => {
 
 export {
     GL_SCALARS,
-    parseCType,
     planCommand,
     type GlScalar,
     type ParamPlan,

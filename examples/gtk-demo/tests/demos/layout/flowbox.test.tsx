@@ -21,7 +21,7 @@ describe("flowboxDemo metadata", () => {
     });
 
     it("ships source code containing the flow box and swatch-drawing markers", () => {
-        expect(typeof flowboxDemo.sourceCode).toBe("string");
+        expect(flowboxDemo.sourceCode).toContain("const flowboxDemo: Demo = {");
         expect(flowboxDemo.sourceCode).toContain("GtkFlowBox");
         expect(flowboxDemo.sourceCode).toContain("drawColor");
     });
@@ -75,7 +75,7 @@ describe("flowboxDemo children", () => {
         expect(cells).toHaveLength(EXPECTED_COLOR_COUNT);
 
         for (const cell of cells) {
-            expect(within(cell).getByRole(Gtk.AccessibleRole.BUTTON)).toBeInstanceOf(Gtk.Button);
+            expect(cell).toContainOneByRole(Gtk.AccessibleRole.BUTTON);
         }
     });
 });
@@ -84,6 +84,6 @@ describe("flowboxDemo accessibility", () => {
     it("exposes the GtkFlowBox via the GRID accessible role", async () => {
         await renderDemo(flowboxDemo);
         const grid = await screen.findByRole(Gtk.AccessibleRole.GRID);
-        expect(grid).toBeInstanceOf(Gtk.FlowBox);
+        expect(grid).toBe(await screen.findByName("flow-box", { as: Gtk.FlowBox }));
     });
 });

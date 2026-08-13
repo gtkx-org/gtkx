@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, within } from "@gtkx/testing";
+import { screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { headerbarDemo } from "../../../src/demos/layout/headerbar.js";
 import { renderDemo } from "../../test-utils.js";
@@ -8,10 +8,9 @@ describe("headerbarDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(headerbarDemo.id).toBe("headerbar");
         expect(headerbarDemo.title).toBe("Header Bar");
-        expect(headerbarDemo.description.length).toBeGreaterThan(0);
-        expect(headerbarDemo.keywords).toEqual(expect.arrayContaining(["GtkWindowHandle", "GtkWindowControls"]));
-        expect(typeof headerbarDemo.sourceCode).toBe("string");
-        expect(headerbarDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(headerbarDemo.description).toContain("GtkHeaderBar is a container that is suitable");
+        expect(headerbarDemo.keywords).toEqual(["GtkWindowHandle", "GtkWindowControls"]);
+        expect(headerbarDemo.sourceCode).toContain("const headerbarDemo: Demo = {");
         expect(headerbarDemo.defaultWidth).toBe(600);
         expect(headerbarDemo.defaultHeight).toBe(400);
         expect(headerbarDemo.component).toBeTypeOf("function");
@@ -20,10 +19,9 @@ describe("headerbarDemo metadata", () => {
     it("installs the named GtkHeaderBar and packs the nav/check-out buttons into it", async () => {
         await renderDemo(headerbarDemo);
         const headerbar = await screen.findByName("headerbar-titlebar", { as: Gtk.HeaderBar });
-        expect(headerbar).toBeInstanceOf(Gtk.HeaderBar);
-        expect(within(headerbar).getByName("nav-box")).toBeInstanceOf(Gtk.Box);
-        expect(within(headerbar).getByName("check-out-button")).toBeInstanceOf(Gtk.Button);
-        within(headerbar).getByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something" });
+        expect(headerbar).toContainElement(await screen.findByName("nav-box", { as: Gtk.Box }));
+        expect(headerbar).toContainElement(await screen.findByName("check-out-button", { as: Gtk.Button }));
+        expect(headerbar).toContainOneByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something" });
     });
 });
 
@@ -44,14 +42,7 @@ describe("headerbarDemo header content", () => {
     it("groups Back and Forward inside a GtkBox with the 'linked' style class", async () => {
         await renderDemo(headerbarDemo);
         const navBox = await screen.findByName("nav-box", { as: Gtk.Box });
-        expect(navBox).toBeInstanceOf(Gtk.Box);
         expect(navBox).toHaveClass("linked");
-    });
-
-    it("renders a GtkSwitch in the header bar with the 'Change something' accessible label", async () => {
-        await renderDemo(headerbarDemo);
-        const switchEl = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { name: "Change something" });
-        expect(switchEl).toBeInstanceOf(Gtk.Switch);
     });
 
     it("renders the body GtkTextView with its 'Content' accessible label", async () => {

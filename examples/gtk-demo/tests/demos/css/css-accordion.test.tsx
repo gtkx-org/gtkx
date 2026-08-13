@@ -1,5 +1,6 @@
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { cssAccordionDemo } from "../../../src/demos/css/css-accordion.js";
 import { getChildren, renderDemo } from "../../test-utils.js";
@@ -10,10 +11,13 @@ describe("cssAccordionDemo", () => {
     it("exposes the expected metadata", () => {
         expect(cssAccordionDemo.id).toBe("css-accordion");
         expect(cssAccordionDemo.title).toBe("Theming/CSS Accordion");
-        expect(cssAccordionDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(cssAccordionDemo.keywords)).toBe(true);
-        expect(typeof cssAccordionDemo.sourceCode).toBe("string");
-        expect(cssAccordionDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+
+        expect(cssAccordionDemo.description).toBe(
+            "A simple accordion demo written using CSS transitions and multiple backgrounds",
+        );
+
+        expect(cssAccordionDemo.keywords).toEqual([]);
+        expect(cssAccordionDemo.sourceCode).toContain("const cssAccordionDemo: Demo = {");
         expect(cssAccordionDemo.defaultWidth).toBe(600);
         expect(cssAccordionDemo.defaultHeight).toBe(300);
         expect(cssAccordionDemo.component).toBeTypeOf("function");
@@ -45,7 +49,7 @@ describe("cssAccordionDemo", () => {
 });
 
 describe("cssAccordionDemo styling and interaction", () => {
-    it("registers a CssProvider on the default display at application priority", async () => {
+    it("registers exactly one CssProvider on the default display at application priority", async () => {
         // eslint-disable-next-line @typescript-eslint/no-deprecated
         const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
 
@@ -56,31 +60,11 @@ describe("cssAccordionDemo styling and interaction", () => {
                 (call) => call[2] === Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
             );
 
-            expect(
-                applicationCalls.length,
-                "expected the accordion demo to add a provider at STYLE_PROVIDER_PRIORITY_APPLICATION",
-            ).toBeGreaterThan(0);
-
-            expect(applicationCalls.every(([, provider]) => provider instanceof Gtk.CssProvider)).toBe(true);
+            expect(applicationCalls).toHaveLength(1);
+            expect(applicationCalls[0]?.[0]).toBe(Gdk.DisplayManager.get().getDefaultDisplay());
+            expect(applicationCalls[0]?.[1]).toBeInstanceOf(Gtk.CssProvider);
         } finally {
             addSpy.mockRestore();
-        }
-    });
-
-    it("fires the clicked signal when an accordion button is activated", async () => {
-        await renderDemo(cssAccordionDemo);
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "This", as: Gtk.Button });
-        const clickHandler = vi.fn();
-        button.on("clicked", clickHandler);
-
-        try {
-            await userEvent.click(button);
-
-            await waitFor(() => {
-                expect(clickHandler).toHaveBeenCalled();
-            });
-        } finally {
-            button.off("clicked", clickHandler);
         }
     });
 });

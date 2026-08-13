@@ -16,19 +16,27 @@ describe("drawingAreaDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(drawingAreaDemo.id).toBe("drawingarea");
         expect(drawingAreaDemo.title).toBe("Drawing Area");
-        expect(drawingAreaDemo.description.length).toBeGreaterThan(0);
-        expect(drawingAreaDemo.keywords).toEqual(expect.arrayContaining(["GtkDrawingArea"]));
-        expect(typeof drawingAreaDemo.sourceCode).toBe("string");
-        expect(drawingAreaDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+
+        expect(drawingAreaDemo.description).toBe(
+            "GtkDrawingArea is a blank area where you can draw custom displays of various kinds.\n\nThis demo has " +
+            "two drawing areas. The checkerboard area shows how you can just draw something; all you have to do " +
+            'is set a function via gtk_drawing_area_set_draw_func(), as shown here.\n\nThe "scribble" area is a ' +
+            "bit more advanced, and shows how to handle events such as button presses and mouse motion. Click " +
+            "the mouse and drag in the scribble area to draw squiggles. Resize the window to clear the area.",
+        );
+
+        expect(drawingAreaDemo.keywords).toEqual(["GtkDrawingArea"]);
+        expect(drawingAreaDemo.sourceCode).toContain("const drawingAreaDemo: Demo = {");
         expect(drawingAreaDemo.defaultWidth).toBe(250);
         expect(drawingAreaDemo.component).toBeTypeOf("function");
     });
 
-    it("mounts the demo inside the host window with both framed drawing areas reachable", async () => {
-        await renderDemo(drawingAreaDemo);
+    it("mounts both framed drawing areas inside the host window, knockout above scribble", async () => {
+        const { knockoutFrame, scribbleFrame } = await renderFrames();
         const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW);
-        expect(within(window).getByName("knockout-frame")).toBeInstanceOf(Gtk.Frame);
-        expect(within(window).getByName("scribble-frame")).toBeInstanceOf(Gtk.Frame);
+        expect(window).toContainElement(knockoutFrame);
+        expect(window).toContainElement(scribbleFrame);
+        expect(knockoutFrame).toAppearBefore(scribbleFrame);
     });
 });
 
@@ -67,8 +75,8 @@ describe("drawingAreaDemo rendering", () => {
             expect(frame).toHaveObjectProperty("vexpand", true);
         }
 
-        expect(within(knockoutFrame).getByName("knockout-area")).toBeInstanceOf(Gtk.DrawingArea);
-        expect(within(scribbleFrame).getByName("scribble-area")).toBeInstanceOf(Gtk.DrawingArea);
+        expect(knockoutFrame).toContainElement(screen.getByName("knockout-area"));
+        expect(scribbleFrame).toContainElement(screen.getByName("scribble-area"));
     });
 });
 

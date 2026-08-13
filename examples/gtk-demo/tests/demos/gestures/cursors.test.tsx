@@ -16,17 +16,13 @@ const rowFramesFor = async (name: string): Promise<Gtk.Frame[]> => {
     return row ? collectWidgets(row, Gtk.Frame) : [];
 };
 
-const getSelectionModes = (listBoxes: Gtk.Widget[]): Gtk.SelectionMode[] =>
-    listBoxes.map((listBox) => (listBox as Gtk.ListBox).getSelectionMode());
-
 describe("cursorsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(cursorsDemo.id).toBe("cursors");
         expect(cursorsDemo.title).toBe("Cursors");
-        expect(cursorsDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(cursorsDemo.keywords)).toBe(true);
-        expect(typeof cursorsDemo.sourceCode).toBe("string");
-        expect(cursorsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(cursorsDemo.description).toContain("Demonstrates a useful set of available cursors");
+        expect(cursorsDemo.keywords).toEqual([]);
+        expect(cursorsDemo.sourceCode).toContain("const cursorsDemo: Demo = {");
         expect(cursorsDemo.component).toBeTypeOf("function");
         expect(cursorsDemo.defaultWidth).toBe(300);
         expect(cursorsDemo.defaultHeight).toBe(300);
@@ -44,17 +40,19 @@ describe("cursorsDemo list structure", () => {
 
     it("groups the cursor rows into six non-selectable list boxes", async () => {
         await renderDemo(cursorsDemo);
-        const listBoxes = await screen.findAllByRole(Gtk.AccessibleRole.LIST);
+        const listBoxes = await screen.findAllByRole(Gtk.AccessibleRole.LIST, { as: Gtk.ListBox });
         expect(listBoxes).toHaveLength(6);
-        expect(listBoxes.every((listBox) => listBox instanceof Gtk.ListBox)).toBe(true);
-        expect(getSelectionModes(listBoxes)).toEqual(listBoxes.map(() => Gtk.SelectionMode.NONE));
+
+        expect(listBoxes.map((listBox) => listBox.getSelectionMode())).toEqual(
+            listBoxes.map(() => Gtk.SelectionMode.NONE),
+        );
     });
 
     it("renders 38 non-activatable list rows in total", async () => {
         await renderDemo(cursorsDemo);
-        const rows = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+        const rows = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, { as: Gtk.ListBoxRow });
         expect(rows).toHaveLength(38);
-        expect(rows.some((row) => (row as Gtk.ListBoxRow).getActivatable())).toBe(false);
+        expect(rows.map((row) => row.getActivatable())).toEqual(rows.map(() => false));
     });
 });
 
@@ -124,9 +122,10 @@ describe("cursorsDemo previews", () => {
 });
 
 describe("cursorsDemo css registration", () => {
-    it("adds exactly one cursors CssProvider at user priority for the default display", async () => {
+    it("loads the cursors stylesheet into one user-priority provider for the default display", async () => {
         // eslint-disable-next-line @typescript-eslint/no-deprecated
         const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
+        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
 
         try {
             await renderDemo(cursorsDemo);
@@ -136,8 +135,11 @@ describe("cursorsDemo css registration", () => {
             );
 
             expect(userPriorityCalls).toHaveLength(1);
-            expect(userPriorityCalls[0]?.[1]).toBeInstanceOf(Gtk.CssProvider);
+            expect(userPriorityCalls[0]?.[0]).toBe(Gdk.DisplayManager.get().getDefaultDisplay());
+            expect(loadSpy).toHaveBeenCalledTimes(1);
+            expect(loadSpy.mock.instances[0]).toBe(userPriorityCalls[0]?.[1]);
         } finally {
+            loadSpy.mockRestore();
             addSpy.mockRestore();
         }
     });

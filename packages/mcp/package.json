@@ -64,5 +64,9 @@
         "@gtkx/utils": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.30.0",
         "zod": "catalog:"
+    },
+    "devDependencies": {
+        "@gtkx/vitest": "workspace:*",
+        "vitest": "catalog:"
     }
 }

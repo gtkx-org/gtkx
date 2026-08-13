@@ -20,4 +20,4 @@ const optionalGuard = <T>(isPresent: Guard<T>): OptionalGuard<T> =>
 const hasFields = <T extends object>(value: unknown, guards: FieldGuards<T>): value is T =>
     isRecord(value) && Object.entries(guards).every(([name, guard]) => (guard as Guard<unknown>)(value[name]));
 
-export { arrayGuard, type FieldGuards, hasFields, isBoolean, isNumber, isString, optionalGuard };
+export { arrayGuard, hasFields, isBoolean, isNumber, isString, optionalGuard };

@@ -38,9 +38,9 @@ describe("listviewUcdDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewUcdDemo.id).toBe("listview-ucd");
         expect(listviewUcdDemo.title).toBe("Lists/Characters");
-        expect(listviewUcdDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(listviewUcdDemo.keywords)).toBe(true);
-        expect(typeof listviewUcdDemo.sourceCode).toBe("string");
+        expect(listviewUcdDemo.description).toContain("Unicode Character Database");
+        expect(listviewUcdDemo.keywords).toEqual([]);
+        expect(listviewUcdDemo.sourceCode).toContain("const listviewUcdDemo: Demo = {");
         expect(listviewUcdDemo.defaultWidth).toBe(800);
         expect(listviewUcdDemo.defaultHeight).toBe(400);
         expect(listviewUcdDemo.component).toBeTypeOf("function");
@@ -94,9 +94,7 @@ describe("listviewUcdDemo selection", () => {
         await userEvent.keyboard(cv, "{ArrowDown}{Enter}");
 
         await waitFor(() => {
-            expect(preview.getLabel().length).toBeGreaterThan(0);
+            expect(preview).toHaveObjectProperty("label", expectedChar);
         });
-
-        expect(preview).toHaveObjectProperty("label", expectedChar);
     });
 });

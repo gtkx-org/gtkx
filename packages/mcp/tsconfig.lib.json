@@ -2,13 +2,16 @@
     "extends": "../../tsconfig.lib.json",
     "references": [
         {
-            "path": "../codegen/tsconfig.lib.json"
+            "path": "../utils/tsconfig.lib.json"
         },
         {
             "path": "../config/tsconfig.lib.json"
         },
         {
-            "path": "../utils/tsconfig.lib.json"
+            "path": "../codegen/tsconfig.lib.json"
+        },
+        {
+            "path": "../vitest/tsconfig.lib.json"
         }
     ]
 }

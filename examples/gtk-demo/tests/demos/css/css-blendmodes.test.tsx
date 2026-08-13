@@ -15,10 +15,13 @@ describe("cssBlendmodesDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(cssBlendmodesDemo.id).toBe("css-blendmodes");
         expect(cssBlendmodesDemo.title).toBe("Theming/CSS Blend Modes");
-        expect(cssBlendmodesDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(cssBlendmodesDemo.keywords)).toBe(true);
-        expect(typeof cssBlendmodesDemo.sourceCode).toBe("string");
-        expect(cssBlendmodesDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+
+        expect(cssBlendmodesDemo.description).toBe(
+            "You can blend multiple backgrounds using the CSS blend modes available.",
+        );
+
+        expect(cssBlendmodesDemo.keywords).toEqual([]);
+        expect(cssBlendmodesDemo.sourceCode).toContain("const cssBlendmodesDemo: Demo = {");
         expect(cssBlendmodesDemo.defaultWidth).toBe(400);
         expect(cssBlendmodesDemo.defaultHeight).toBe(300);
         expect(cssBlendmodesDemo.component).toBeTypeOf("function");

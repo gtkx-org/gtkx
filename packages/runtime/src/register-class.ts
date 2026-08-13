@@ -422,11 +422,7 @@ function wrapVfunc(
 ): VfuncFn {
     return wrapCallback(
         fn as (...args: unknown[]) => unknown,
-        {
-            argDescriptors,
-            returnDescriptor: descriptor.returnDescriptor,
-            isReturnSkipped: descriptor.isReturnSkipped === true,
-        },
+        { argDescriptors, returnDescriptor: descriptor.returnDescriptor },
         "vfunc",
     );
 }

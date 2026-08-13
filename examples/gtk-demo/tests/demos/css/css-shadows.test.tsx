@@ -8,10 +8,9 @@ describe("cssShadowsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(cssShadowsDemo.id).toBe("css-shadows");
         expect(cssShadowsDemo.title).toBe("Theming/Shadows");
-        expect(cssShadowsDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(cssShadowsDemo.keywords)).toBe(true);
-        expect(typeof cssShadowsDemo.sourceCode).toBe("string");
-        expect(cssShadowsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(cssShadowsDemo.description).toBe("This demo shows how to use CSS shadows.");
+        expect(cssShadowsDemo.keywords).toEqual([]);
+        expect(cssShadowsDemo.sourceCode).toContain("const cssShadowsDemo: Demo = {");
         expect(cssShadowsDemo.defaultWidth).toBe(400);
         expect(cssShadowsDemo.defaultHeight).toBe(300);
         expect(cssShadowsDemo.component).toBeTypeOf("function");

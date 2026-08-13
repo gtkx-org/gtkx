@@ -26,9 +26,9 @@ describe("listviewSettings2Demo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewSettings2Demo.id).toBe("listview-settings2");
         expect(listviewSettings2Demo.title).toBe("Lists/Alternative Settings");
-        expect(listviewSettings2Demo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(listviewSettings2Demo.keywords)).toBe(true);
-        expect(typeof listviewSettings2Demo.sourceCode).toBe("string");
+        expect(listviewSettings2Demo.description).toContain("This demo shows an alternative settings viewer");
+        expect(listviewSettings2Demo.keywords).toEqual(["GtkListHeaderFactory", "GtkSectionModel"]);
+        expect(listviewSettings2Demo.sourceCode).toContain("const listviewSettings2Demo: Demo = {");
         expect(listviewSettings2Demo.defaultWidth).toBe(640);
         expect(listviewSettings2Demo.defaultHeight).toBe(480);
         expect(listviewSettings2Demo.component).toBeTypeOf("function");
@@ -66,8 +66,7 @@ describe("listviewSettings2Demo layout", () => {
         const bar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
         expect(within(bar).queryByName("search-entry")).toBeNull();
         const entry = await openSearchEntry();
-        await within(bar).findByName("search-entry");
-        expect(entry).toBeInstanceOf(Gtk.SearchEntry);
+        expect(bar).toContainElement(entry);
     });
 
     it("groups the keys into per-schema sections with schema-id headings", async () => {

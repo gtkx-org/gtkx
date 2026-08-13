@@ -40,10 +40,16 @@ describe("errorstatesDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(errorstatesDemo.id).toBe("errorstates");
         expect(errorstatesDemo.title).toBe("Error States");
-        expect(errorstatesDemo.description.length).toBeGreaterThan(0);
+
+        expect(errorstatesDemo.description).toBe(
+            "GtkLabel and GtkEntry can indicate errors if you set the .error style class on them.\n\n" +
+            "This examples shows how this can be used in a dialog for input validation.\n\n" +
+            "It also shows how pass callbacks and objects to GtkBuilder with GtkBuilderScope and " +
+            "gtk_builder_expose_object().",
+        );
+
         expect(errorstatesDemo.keywords).toEqual([]);
-        expect(typeof errorstatesDemo.sourceCode).toBe("string");
-        expect(errorstatesDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(errorstatesDemo.sourceCode).toContain("const errorstatesDemo: Demo = {");
         expect(errorstatesDemo.component).toBeTypeOf("function");
     });
 
@@ -62,7 +68,7 @@ describe("errorstatesDemo entries", () => {
     it("flags the more-details entry as invalid when filled while details is empty", async () => {
         const { moreDetailsEntry } = await renderAndFlagMoreDetails();
         expect(moreDetailsEntry).toHaveClass("error");
-        expect(moreDetailsEntry).toHaveObjectProperty("tooltipText", "Must have details first");
+        expect(moreDetailsEntry).toHaveAccessibleDescription("Must have details first");
         expect(moreDetailsEntry).toBeInvalid();
     });
 
@@ -71,7 +77,7 @@ describe("errorstatesDemo entries", () => {
         expect(moreDetailsEntry).toHaveClass("error");
         await userEvent.type(detailsEntry, "ok");
         expect(moreDetailsEntry).not.toHaveClass("error");
-        expect(moreDetailsEntry).toHaveObjectProperty("tooltipText", null);
+        expect(moreDetailsEntry).not.toHaveAccessibleDescription();
         expect(moreDetailsEntry).toBeValid();
     });
 });
@@ -91,7 +97,7 @@ describe("errorstatesDemo switch and scale", () => {
         const sw = await renderSwitch();
         sw.grabFocus();
         await userEvent.keyboard(sw, "{Control>}m{/Control}");
-        expect(sw).toHaveObjectProperty("active", true);
+        expect(sw).toBeChecked();
         const errorLabel = await findLevelErrorLabel();
         expect(errorLabel).toHaveClass("error");
         expect(sw).toBeInvalid();

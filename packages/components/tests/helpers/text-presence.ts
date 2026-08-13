@@ -3,7 +3,10 @@ import { expect } from "vitest";
 
 const expectTextPresent = async (text: string): Promise<void> => {
     const matches = await screen.findAllByText(text);
-    expect(matches.length).toBeGreaterThan(0);
+
+    for (const match of matches) {
+        expect(match).toBeVisible();
+    }
 };
 
 export { expectTextPresent };

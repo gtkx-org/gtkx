@@ -61,4 +61,4 @@ const foldedLengthSources = (spec: FoldedLengthSpec): LengthSources => {
     return sources;
 };
 
-export { foldedLengthSources, type FoldedLengthSpec, type LengthSource, type LengthSources };
+export { foldedLengthSources, type LengthSource, type LengthSources };

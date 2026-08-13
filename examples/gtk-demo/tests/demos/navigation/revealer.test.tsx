@@ -45,10 +45,10 @@ describe("revealerDemo metadata", () => {
         expect(revealerDemo.id).toBe("revealer");
         expect(revealerDemo.title).toBe("Revealer");
         expect(revealerDemo.description).toContain("GtkRevealer");
-        expect(typeof revealerDemo.sourceCode).toBe("string");
+        expect(revealerDemo.sourceCode).toContain("const revealerDemo: Demo = {");
         expect(revealerDemo.defaultWidth).toBe(300);
         expect(revealerDemo.defaultHeight).toBe(300);
-        expect(Array.isArray(revealerDemo.keywords)).toBe(true);
+        expect(revealerDemo.keywords).toEqual([]);
     });
 });
 

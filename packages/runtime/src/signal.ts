@@ -43,17 +43,6 @@ type SignalConnectSpec = {
     isAfter: boolean;
 };
 
-/** How a signal emission marshals the value the emission returns. */
-type EmitReturn = {
-    /** Descriptor for the signal's return value. */
-    descriptor: Descriptor;
-    /**
-     * GIR marks the value as one the bindings do not surface, so the emission still gives the
-     * closures somewhere to write it and then leaves it out of the result.
-     */
-    isReturnSkipped?: boolean;
-};
-
 type EmitValues = {
     values: ExternalObject<Handle>[];
     reads: (() => unknown)[];
@@ -260,9 +249,9 @@ const readEmitOutputs = (reads: (() => unknown)[]): unknown[] => reads.map((read
  * @param instance Emitter to emit the signal on.
  * @param signal Signal name, optionally including a `::detail` suffix.
  * @param args Arguments to pass, including output and inout arguments.
- * @param returns How to marshal the signal's return value, omitted when it returns void.
+ * @param returns Descriptor for the signal's return value, omitted when it returns void.
  */
-function emitSignal(instance: object, signal: string, args: EmitArg[], returns?: EmitReturn): unknown {
+function emitSignal(instance: object, signal: string, args: EmitArg[], returns?: Descriptor): unknown {
     const signalId = getSignalId(instance, signal);
     const detail = getSignalDetailQuark(signal);
     const { values, reads } = collectEmitValues(instance, args);
@@ -273,10 +262,10 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returns?:
         return packTupleResult(readEmitOutputs(reads), undefined, false);
     }
 
-    const returnValue = newValueForDescriptor(returns.descriptor);
+    const returnValue = newValueForDescriptor(returns);
     gSignalEmitv(values, signalId, detail, returnValue);
 
-    return packTupleResult(readEmitOutputs(reads), fromValue(returnValue), returns.isReturnSkipped !== true);
+    return packTupleResult(readEmitOutputs(reads), fromValue(returnValue), true);
 }
 
 export {
@@ -287,6 +276,5 @@ export {
     hasSignalListener,
     isSignalHandlerConnected,
     untrackConnection,
-    type EmitReturn,
     type SignalHandler,
 };

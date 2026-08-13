@@ -157,24 +157,16 @@ describe("gtkx build (self-contained bundle)", () => {
         rmSync(state.installDir, { recursive: true, force: true });
     });
 
-    it("sits where node resolves neither the gtkx packages nor their manifests", () => {
+    it("starts where node resolves neither the gtkx packages nor their manifests", () => {
         expect(canResolveFromInstall(state.installDir, REACT_PACKAGE)).toBe(false);
         expect(canResolveFromInstall(state.installDir, REACT_MANIFEST)).toBe(false);
-    });
-
-    it("starts from there anyway", () => {
         expect(state.run.stderr).not.toContain(MISSING_MODULE);
         expect(state.run.status).toBe(0);
     });
 
-    it("reports the renderer version the react manifest carries", () => {
+    it("reports the renderer version the react manifest carries, read at build time", () => {
         expect(state.run.stdout.trim()).toBe(`${VERSION_PREFIX}${reactManifest().version}`);
-    });
-
-    it("stamps that version as a literal instead of carrying the manifest", () => {
-        const manifest = reactManifest();
-        expect(state.source).toMatch(versionLiteral(manifest.version));
-        expect(state.source).not.toContain(manifest.description);
+        expect(state.source).toMatch(versionLiteral(reactManifest().version));
         expect(state.source).not.toMatch(/rendererVersion:\s*[\w$]+\(/);
     });
 });

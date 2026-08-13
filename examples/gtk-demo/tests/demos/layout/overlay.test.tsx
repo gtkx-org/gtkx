@@ -8,10 +8,9 @@ describe("overlayDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(overlayDemo.id).toBe("overlay");
         expect(overlayDemo.title).toBe("Overlay/Interactive Overlay");
-        expect(overlayDemo.description.length).toBeGreaterThan(0);
+        expect(overlayDemo.description).toContain("Shows widgets in static positions over a main widget.");
         expect(overlayDemo.keywords).toEqual(["GtkOverlay"]);
-        expect(typeof overlayDemo.sourceCode).toBe("string");
-        expect(overlayDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(overlayDemo.sourceCode).toContain("const overlayDemo: Demo = {");
         expect(overlayDemo.defaultWidth).toBe(500);
         expect(overlayDemo.defaultHeight).toBe(510);
         expect(overlayDemo.component).toBeTypeOf("function");
@@ -21,13 +20,12 @@ describe("overlayDemo metadata", () => {
 describe("overlayDemo grid and labels", () => {
     it("renders a 5x5 grid of numbered buttons", async () => {
         await renderDemo(overlayDemo);
-        const grid = await screen.findByName("number-grid");
-        const buttons = within(grid).getAllByRole(Gtk.AccessibleRole.BUTTON);
-        expect(buttons).toHaveLength(25);
+        const grid = await screen.findByName("number-grid", { as: Gtk.Grid });
+        const buttons = within(grid).getAllByRole(Gtk.AccessibleRole.BUTTON, { as: Gtk.Button });
 
-        for (let i = 0; i < 25; i++) {
-            expect(within(grid).getByRole(Gtk.AccessibleRole.BUTTON, { name: String(i) })).toBeTruthy();
-        }
+        expect(buttons.map((button) => button.getLabel())).toEqual(
+            Array.from({ length: 25 }, (_unused, index) => String(index)),
+        );
     });
 
     it("renders the decorative 'Numbers' label as non-interactive markup inside a click-through box", async () => {

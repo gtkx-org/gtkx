@@ -19,10 +19,14 @@ describe("cssBasicsDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(cssBasicsDemo.id).toBe("css-basics");
         expect(cssBasicsDemo.title).toBe("Theming/CSS Basics");
-        expect(cssBasicsDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(cssBasicsDemo.keywords)).toBe(true);
-        expect(typeof cssBasicsDemo.sourceCode).toBe("string");
-        expect(cssBasicsDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+
+        expect(cssBasicsDemo.description).toBe(
+            "GTK themes are written using CSS. Every widget is build of multiple items " +
+            "that you can style very similarly to a regular website.",
+        );
+
+        expect(cssBasicsDemo.keywords).toEqual([]);
+        expect(cssBasicsDemo.sourceCode).toContain("const cssBasicsDemo: Demo = {");
         expect(cssBasicsDemo.defaultWidth).toBe(400);
         expect(cssBasicsDemo.defaultHeight).toBe(300);
         expect(cssBasicsDemo.component).toBeTypeOf("function");

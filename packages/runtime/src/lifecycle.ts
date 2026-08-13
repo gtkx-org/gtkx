@@ -220,6 +220,5 @@ export {
     runApplication,
     quitApplication,
     type ApplicationInstance,
-    type ApplicationLike,
     type RunApplicationResult,
 };

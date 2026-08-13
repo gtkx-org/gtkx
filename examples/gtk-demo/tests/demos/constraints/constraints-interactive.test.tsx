@@ -28,11 +28,15 @@ describe("constraintsInteractiveDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(constraintsInteractiveDemo.id).toBe("constraints-interactive");
         expect(constraintsInteractiveDemo.title).toBe("Constraints/Interactive Constraints");
-        expect(constraintsInteractiveDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(constraintsInteractiveDemo.keywords)).toBe(true);
-        expect(typeof constraintsInteractiveDemo.sourceCode).toBe("string");
+
+        expect(constraintsInteractiveDemo.description).toBe(
+            "This example shows how constraints can be updated during user interaction. The vertical edge " +
+            "between the buttons can be dragged with the mouse.",
+        );
+
+        expect(constraintsInteractiveDemo.sourceCode).toContain("const constraintsInteractiveDemo: Demo = {");
         expect(constraintsInteractiveDemo.defaultWidth).toBe(260);
-        expect(constraintsInteractiveDemo.keywords).toContain("GtkConstraintLayout");
+        expect(constraintsInteractiveDemo.keywords).toEqual(["GtkConstraintLayout"]);
     });
 });
 

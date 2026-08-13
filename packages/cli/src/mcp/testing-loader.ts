@@ -84,6 +84,5 @@ export {
     mergeTestingModule,
     type TestingInternalModule,
     type TestingModule,
-    type TestingModuleLoader,
     type TestingPublicModule,
 };

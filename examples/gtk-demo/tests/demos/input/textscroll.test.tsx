@@ -28,10 +28,9 @@ describe("textscrollDemo", () => {
     it("exposes the expected metadata", () => {
         expect(textscrollDemo.id).toBe("textscroll");
         expect(textscrollDemo.title).toBe("Text View/Automatic Scrolling");
-        expect(textscrollDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(textscrollDemo.keywords)).toBe(true);
-        expect(typeof textscrollDemo.sourceCode).toBe("string");
-        expect(textscrollDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(textscrollDemo.description).toContain("the gravity of GtkTextMarks");
+        expect(textscrollDemo.keywords).toEqual(["GtkTextView", "GtkScrolledWindow"]);
+        expect(textscrollDemo.sourceCode).toContain("const textscrollDemo: Demo = {");
         expect(textscrollDemo.defaultWidth).toBe(600);
         expect(textscrollDemo.defaultHeight).toBe(400);
         expect(textscrollDemo.component).toBeTypeOf("function");

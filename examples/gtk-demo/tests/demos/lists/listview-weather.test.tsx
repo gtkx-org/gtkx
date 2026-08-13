@@ -27,9 +27,9 @@ describe("listviewWeatherDemo metadata", () => {
     it("exposes the expected metadata", () => {
         expect(listviewWeatherDemo.id).toBe("listview-weather");
         expect(listviewWeatherDemo.title).toBe("Lists/Weather");
-        expect(listviewWeatherDemo.description.length).toBeGreaterThan(0);
-        expect(Array.isArray(listviewWeatherDemo.keywords)).toBe(true);
-        expect(typeof listviewWeatherDemo.sourceCode).toBe("string");
+        expect(listviewWeatherDemo.description).toContain("rarer features of GtkListView");
+        expect(listviewWeatherDemo.keywords).toEqual([]);
+        expect(listviewWeatherDemo.sourceCode).toContain("const listviewWeatherDemo: Demo = {");
         expect(listviewWeatherDemo.defaultWidth).toBe(600);
         expect(listviewWeatherDemo.defaultHeight).toBe(400);
         expect(listviewWeatherDemo.component).toBeTypeOf("function");
@@ -68,8 +68,7 @@ describe("listviewWeatherDemo cell content", () => {
     it("wraps the list view inside the named scrolled window", async () => {
         await renderDemo(listviewWeatherDemo);
         const sw = await screen.findByName("scrolled", { as: Gtk.ScrolledWindow });
-        expect(sw).toBeInstanceOf(Gtk.ScrolledWindow);
-        expect(within(sw).getByName("list-view")).toBeInstanceOf(Gtk.ListView);
+        expect(sw).toContainElement(await screen.findByName("list-view", { as: Gtk.ListView }));
     });
 
     it("maps each weather type to a known symbolic weather icon", async () => {

@@ -85,7 +85,6 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
         {
             args,
             returns: descriptor.returnDescriptor,
-            isReturnSkipped: descriptor.isReturnSkipped === true,
             canThrow,
         },
         takeRefSeeds,

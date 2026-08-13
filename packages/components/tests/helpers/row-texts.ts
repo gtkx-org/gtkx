@@ -10,9 +10,12 @@ const rowTexts = (container: Gtk.Widget | null): (string | null)[] =>
                 .queryAllByRole(Gtk.AccessibleRole.LABEL)
                 .map((widget) => getWidgetText(widget));
 
+const labelTexts = (container: Gtk.Widget | null): string[] =>
+    rowTexts(container).filter((text): text is string => text !== null && text.length > 0);
+
 const expectRowTexts = (ref: RefObject<Gtk.Widget | null>, expected: (string | null)[]): Promise<void> =>
     waitFor(() => {
         expect(rowTexts(ref.current)).toEqual(expected);
     });
 
-export { expectRowTexts, rowTexts };
+export { expectRowTexts, labelTexts, rowTexts };

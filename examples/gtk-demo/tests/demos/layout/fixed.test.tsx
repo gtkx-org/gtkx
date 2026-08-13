@@ -22,10 +22,9 @@ describe("fixedDemo metadata", () => {
         expect(fixedDemo.id).toBe("fixed");
         expect(fixedDemo.title).toBe("Fixed Layout / Cube");
         expect(fixedDemo.windowTitle).toBe("Fixed Layout ‐ Cube");
-        expect(fixedDemo.description.length).toBeGreaterThan(0);
+        expect(fixedDemo.description).toContain("create a cube out of child widgets");
         expect(fixedDemo.keywords).toEqual(["GtkLayoutManager"]);
-        expect(typeof fixedDemo.sourceCode).toBe("string");
-        expect(fixedDemo.sourceCode?.length ?? 0).toBeGreaterThan(0);
+        expect(fixedDemo.sourceCode).toContain("const fixedDemo: Demo = {");
         expect(fixedDemo.defaultWidth).toBe(600);
         expect(fixedDemo.defaultHeight).toBe(400);
         expect(fixedDemo.component).toBeTypeOf("function");

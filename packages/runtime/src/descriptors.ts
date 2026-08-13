@@ -60,16 +60,8 @@ type FundamentalDescriptor = Extract<Descriptor, { kind: "fundamental" }> & {
 type ArrayDescriptor = Extract<Descriptor, { kind: "array" }>;
 /** Descriptor variant for a `GHashTable`, marshalled as an array of key/value pairs. */
 type HashTableDescriptor = Extract<Descriptor, { kind: "hashtable" }>;
-
 /** Descriptor variant for a function pointer a JavaScript function is marshalled into. */
-type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }> & {
-    /**
-     * GIR marks the return value as one the bindings do not surface, so the JavaScript function is
-     * asked only for the callback's out values and reports success in its place.
-     */
-    isReturnSkipped?: boolean;
-};
-
+type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }>;
 /** Descriptor variant for a pointer to another descriptor's value, for an output or inout argument. */
 type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
 
@@ -102,8 +94,6 @@ type BoxedOptions = {
  * long that closure has to stay alive.
  */
 type CallbackOptions = {
-    /** The bindings drop the callback's return value, as `CallbackDescriptor.isReturnSkipped` describes. */
-    isReturnSkipped?: boolean;
     /** The callee also takes a destroy notify, which frees the closure once it is done with it. */
     hasDestroy?: boolean;
     /** Signature of that destroy notify; defaults to `destroyNotify`, a one-argument `GDestroyNotify`. */
@@ -456,10 +446,6 @@ const callbackT = (
 
     if (options === undefined) {
         return result;
-    }
-
-    if (options.isReturnSkipped !== undefined) {
-        result.isReturnSkipped = options.isReturnSkipped;
     }
 
     applyClosureOptions(result, options);
