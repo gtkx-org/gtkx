@@ -15,9 +15,9 @@ const hoisted = vi.hoisted(() => ({
     startMcpClient: vi.fn(() => Promise.resolve()),
     stopMcpClient: vi.fn(),
     setTestingModuleLoader: vi.fn(),
-    performRefresh: vi.fn(),
+    performRefresh: vi.fn(() => 1),
     isRefreshBoundary: vi.fn(() => false),
-    exportSignature: vi.fn(() => new Map<string, boolean>()),
+    staleExportName: vi.fn(() => null),
     createServer: vi.fn(() => Promise.resolve({})),
 }));
 
@@ -49,9 +49,9 @@ vi.mock("../../src/mcp/testing-loader.js", () => ({
 }));
 
 vi.mock("../../src/refresh-runtime.js", () => ({
-    exportSignature: hoisted.exportSignature,
     isRefreshBoundary: hoisted.isRefreshBoundary,
     performRefresh: hoisted.performRefresh,
+    staleExportName: hoisted.staleExportName,
 }));
 
 beforeEach(() => {
@@ -65,7 +65,7 @@ describe("defaultDevRunnerDeps (wiring)", () => {
         expect(deps.stopMcpClient).toBe(hoisted.stopMcpClient);
         expect(deps.performRefresh).toBe(hoisted.performRefresh);
         expect(deps.isRefreshBoundary).toBe(hoisted.isRefreshBoundary);
-        expect(deps.exportSignature).toBe(hoisted.exportSignature);
+        expect(deps.staleExportName).toBe(hoisted.staleExportName);
     });
 
     it("installs an app-graph testing-module loader before starting the MCP client", async () => {

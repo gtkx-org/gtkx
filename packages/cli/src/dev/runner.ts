@@ -1,7 +1,6 @@
 import type { ApplicationInstance } from "@gtkx/runtime";
 import type { InlineConfig, Plugin } from "vite";
 import { error, warn } from "@gtkx/utils";
-import type { ExportSignature } from "../refresh-runtime.js";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
@@ -29,9 +28,9 @@ type DevRunnerDeps = {
     getApplicationInstance(): ApplicationInstance;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
     quitDefaultApplication(): void;
-    performRefresh: () => void;
+    performRefresh: () => number;
     isRefreshBoundary(module: Record<string, unknown>): boolean;
-    exportSignature(module: Record<string, unknown>): ExportSignature;
+    staleExportName(previous: Record<string, unknown>, current: Record<string, unknown>): string | null;
     readFileRevision(path: string): Promise<string>;
     plugins(): Plugin[];
     log(message: string): void;
@@ -71,6 +70,7 @@ const OWNED_ID_EXIT_CODE = 1;
 const LOAD_ATTEMPT_LIMIT = 5;
 const WATCH_EVENTS: DevServerWatchEvent[] = ["add", "change", "unlink"];
 const SKIP_REASON = `did not settle in ${String(LOAD_ATTEMPT_LIMIT)} attempts; save it again to patch the window.`;
+const DROPPED_REFRESH = "Fast Refresh dropped";
 const SAVE_ACTION = "File changed";
 const RETRY_ACTION = "Retrying pending save";
 
@@ -185,19 +185,11 @@ const loadSettledExports = async (
     return null;
 };
 
-const previousExportSignature = (session: DevSession, module: DevServerChangedModule): ExportSignature => {
-    const previousExports = module.ssrModule;
+const droppedExportName = (previous: Record<string, unknown>, current: Record<string, unknown>): string | null => {
+    const kept = new Set(Object.keys(current));
 
-    if (!previousExports) {
-        return new Map();
-    }
-
-    return session.deps.exportSignature(previousExports);
-};
-
-const droppedExportName = (previous: ExportSignature, current: ExportSignature): string | null => {
-    for (const [name, isComponent] of previous) {
-        if (current.get(name) !== isComponent) {
+    for (const name of Object.keys(previous)) {
+        if (!kept.has(name)) {
             return name;
         }
     }
@@ -205,8 +197,32 @@ const droppedExportName = (previous: ExportSignature, current: ExportSignature):
     return null;
 };
 
-const restartForDroppedExport = async (session: DevSession, changedPath: string, name: string): Promise<void> => {
-    session.deps.log(`${changedPath} no longer exports ${name}, which its importers still hold`);
+const unpatchedExportReason = (
+    session: DevSession,
+    previous: Record<string, unknown> | null,
+    current: Record<string, unknown>,
+): string | null => {
+    if (!previous) {
+        return null;
+    }
+
+    const dropped = droppedExportName(previous, current);
+
+    if (dropped !== null) {
+        return `no longer exports ${dropped}, which its importers still hold`;
+    }
+
+    const stale = session.deps.staleExportName(previous, current);
+
+    if (stale === null) {
+        return null;
+    }
+
+    return `renamed the component it exports as ${stale}, which the window is still rendering`;
+};
+
+const restartUnpatched = async (session: DevSession, changedPath: string, reason: string): Promise<void> => {
+    warn(`${DROPPED_REFRESH}: ${changedPath} ${reason}`);
     await requestRestart(session);
 };
 
@@ -214,7 +230,7 @@ const refreshChangedModule = async (
     session: DevSession,
     changedPath: string,
     changedModule: DevServerChangedModule,
-    previous: ExportSignature,
+    previous: Record<string, unknown> | null,
 ): Promise<void> => {
     const loadedExports = await loadSettledExports(session, changedPath, changedModule);
 
@@ -234,17 +250,23 @@ const refreshChangedModule = async (
         return;
     }
 
-    const dropped = droppedExportName(previous, session.deps.exportSignature(loadedExports));
+    const unpatched = unpatchedExportReason(session, previous, loadedExports);
 
-    if (dropped !== null) {
-        await restartForDroppedExport(session, changedPath, dropped);
+    if (unpatched !== null) {
+        await restartUnpatched(session, changedPath, unpatched);
 
         return;
     }
 
     session.pendingSaves.delete(changedPath);
     session.deps.log("Running Fast Refresh...");
-    session.deps.performRefresh();
+
+    if (session.deps.performRefresh() === 0) {
+        await restartUnpatched(session, changedPath, "patched no component the window is rendering");
+
+        return;
+    }
+
     session.deps.log("Fast Refresh complete");
 };
 
@@ -263,7 +285,7 @@ const applyModuleChange = async (session: DevSession, changedPath: string, actio
         return;
     }
 
-    await refreshChangedModule(session, changedPath, module, previousExportSignature(session, module));
+    await refreshChangedModule(session, changedPath, module, module.ssrModule ?? null);
 };
 
 const awaitMissingImport = (session: DevSession, changedPath: string, cause: unknown): void => {

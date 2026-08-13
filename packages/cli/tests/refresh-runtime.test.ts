@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
     createModuleRegistration,
-    exportSignature,
     isRefreshBoundary,
     performRefresh,
+    staleExportName,
 } from "../src/refresh-runtime.js";
 
 const ES_MODULE_FLAG = "__esModule";
@@ -18,6 +18,15 @@ const esModuleExports = (exports: Record<string, unknown>): Record<string, unkno
     [ES_MODULE_FLAG]: true,
     ...exports,
 });
+
+const freshComponent = (): (() => null) => NullComponent.bind(null);
+
+const registerComponent = (moduleId: string, id: string): (() => null) => {
+    const component = freshComponent();
+    createModuleRegistration(moduleId).$RefreshReg$(component, id);
+
+    return component;
+};
 
 describe("createModuleRegistration", () => {
     it("returns registration helpers for a module id", () => {
@@ -89,33 +98,54 @@ describe("isRefreshBoundary", () => {
     });
 });
 
-describe("exportSignature", () => {
-    it("pairs every export name with whether that export is a component", () => {
-        const signature = exportSignature(esModuleExports({ Component: NullComponent, count: 1 }));
+describe("staleExportName", () => {
+    it("names the export whose component the save re-registered under a different id", () => {
+        const previous = registerComponent("mod-stale-1", "Widget");
+        const current = registerComponent("mod-stale-1", "Panel");
 
-        expect([...signature]).toEqual([
-            [ES_MODULE_FLAG, true],
-            ["Component", true],
-            ["count", false],
-        ]);
+        expect(staleExportName(esModuleExports({ default: previous }), esModuleExports({ default: current }))).toBe(
+            "default",
+        );
     });
 
-    it("reports the names a renamed export leaves behind", () => {
-        const before = exportSignature(esModuleExports({ Widget: NullComponent }));
-        const after = exportSignature(esModuleExports({ Panel: NullComponent }));
-        expect(after.has("Widget")).toBe(false);
-        expect(before.has("Panel")).toBe(false);
+    it("names nothing when the save re-registered the component under the same id", () => {
+        const previous = registerComponent("mod-stale-2", "Widget");
+        const current = registerComponent("mod-stale-2", "Widget");
+
+        expect(
+            staleExportName(esModuleExports({ Widget: previous }), esModuleExports({ Widget: current })),
+        ).toBeNull();
     });
 
-    it("returns an empty signature for a module with no exports", () => {
-        expect([...exportSignature({})]).toEqual([]);
+    it("names nothing when the same component is exported under another name", () => {
+        const shared = registerComponent("mod-stale-3", "Widget");
+        expect(staleExportName(esModuleExports({ Widget: shared }), esModuleExports({ Thing: shared }))).toBeNull();
+    });
+
+    it("names an export react-refresh never registered once its value changed", () => {
+        const previous = esModuleExports({ Widget: freshComponent() });
+        const current = esModuleExports({ Widget: freshComponent() });
+        expect(staleExportName(previous, current)).toBe("Widget");
+    });
+
+    it("names nothing for a module that exported nothing before the save", () => {
+        const current = esModuleExports({ Widget: freshComponent() });
+        expect(staleExportName({}, current)).toBeNull();
     });
 });
 
 describe("performRefresh", () => {
-    it("does not throw when invoked", () => {
-        expect(() => {
-            performRefresh();
-        }).not.toThrow();
+    it("counts the family a save re-registered under an id react-refresh already knew", () => {
+        registerComponent("mod-refresh-1", "Widget");
+        performRefresh();
+        registerComponent("mod-refresh-1", "Widget");
+        expect(performRefresh()).toBe(1);
+    });
+
+    it("counts nothing for a save that registered its component under a renamed id", () => {
+        registerComponent("mod-refresh-2", "Widget");
+        performRefresh();
+        registerComponent("mod-refresh-2", "Panel");
+        expect(performRefresh()).toBe(0);
     });
 });

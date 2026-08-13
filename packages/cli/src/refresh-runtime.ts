@@ -1,8 +1,12 @@
-import RefreshRuntime from "react-refresh/runtime";
+import RefreshRuntime, { type Family } from "react-refresh/runtime";
 import "./refresh-globals.js";
 
 type ComponentType = (...args: unknown[]) => unknown;
-type ExportSignature = Map<string, boolean>;
+
+type PatchedExports = {
+    values: Set<unknown>;
+    families: Set<Family>;
+};
 
 function createModuleRegistration(moduleId: string): {
     $RefreshReg$: (type: ComponentType, id: string) => void;
@@ -41,18 +45,55 @@ function isRefreshBoundary(moduleExports: Record<string, unknown>): boolean {
     return Object.keys(moduleExports).some((k) => k !== "__esModule");
 }
 
-const exportSignature = (moduleExports: Record<string, unknown>): ExportSignature => {
-    const signature: ExportSignature = new Map();
+const exportedFamilies = (moduleExports: Record<string, unknown>): Set<Family> => {
+    const families: Set<Family> = new Set();
 
     for (const key in moduleExports) {
-        signature.set(key, isComponentExport(key, moduleExports[key]));
+        const family = RefreshRuntime.getFamilyByType(moduleExports[key]);
+
+        if (family) {
+            families.add(family);
+        }
     }
 
-    return signature;
+    return families;
 };
 
-function performRefresh(): void {
-    RefreshRuntime.performReactRefresh();
+const patchedExports = (moduleExports: Record<string, unknown>): PatchedExports => ({
+    values: new Set(Object.values(moduleExports)),
+    families: exportedFamilies(moduleExports),
+});
+
+const isPatchedExport = (patched: PatchedExports, value: unknown): boolean => {
+    if (patched.values.has(value)) {
+        return true;
+    }
+
+    const family = RefreshRuntime.getFamilyByType(value);
+
+    return family !== undefined && patched.families.has(family);
+};
+
+const staleExportName = (previous: Record<string, unknown>, current: Record<string, unknown>): string | null => {
+    const patched = patchedExports(current);
+
+    for (const key in previous) {
+        if (!isPatchedExport(patched, previous[key])) {
+            return key;
+        }
+    }
+
+    return null;
+};
+
+function performRefresh(): number {
+    const update = RefreshRuntime.performReactRefresh();
+
+    if (!update) {
+        return 0;
+    }
+
+    return update.updatedFamilies.size + update.staleFamilies.size;
 }
 
-export { createModuleRegistration, exportSignature, type ExportSignature, isRefreshBoundary, performRefresh };
+export { createModuleRegistration, isRefreshBoundary, performRefresh, staleExportName };
