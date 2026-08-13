@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, join } from "node:path";
 import type { DeploySettings } from "../types.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
 import { gitRemoteUrl, runGit } from "../git.js";
@@ -106,17 +107,30 @@ const resolveGitSource = (settings: DeploySettings): GitSource => ({
 const generatedSourcesPath = (settings: DeploySettings): string =>
     join(settings.paths.targets, "flatpak", GENERATED_SOURCES);
 
+const isolateLockfile = (root: string, lockfile: string): string => {
+    const dir = mkdtempSync(join(tmpdir(), "gtkx-lockfile-"));
+    copyFileSync(join(root, "package.json"), join(dir, "package.json"));
+    copyFileSync(join(root, lockfile), join(dir, basename(lockfile)));
+
+    return dir;
+};
+
 const generateNodeSources = (settings: DeploySettings, manager: PackageManager): void => {
     const lockfile = settings.deploy.flatpak?.lockfile ?? LOCKFILE_BY_MANAGER[manager];
     const output = generatedSourcesPath(settings);
     mkdirSync(dirname(output), { recursive: true });
+    const isolated = isolateLockfile(settings.paths.root, lockfile);
 
-    runCliTool({
-        tool: GENERATOR,
-        args: [manager, join(settings.paths.root, lockfile), "-o", output],
-        target: "the offline npm sources",
-        shouldStream: true,
-    });
+    try {
+        runCliTool({
+            tool: GENERATOR,
+            args: [manager, join(isolated, basename(lockfile)), "-o", output],
+            target: "the offline npm sources",
+            shouldStream: true,
+        });
+    } finally {
+        rmSync(isolated, { recursive: true, force: true, maxRetries: 5 });
+    }
 };
 
 export {

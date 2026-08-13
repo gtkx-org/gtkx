@@ -1,5 +1,5 @@
-import { existsSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     detectPackageManager,
@@ -53,31 +53,32 @@ describe("installCommandFor", () => {
 
 describe("generateNodeSources", () => {
     it("creates the target directory, which the generator will not create itself", () => {
-        const targets = state.project.settings.paths.targets;
+        const settings = state.project.settings;
+        writeFileSync(join(settings.paths.root, "package-lock.json"), "{}");
+        const targets = settings.paths.targets;
         rmSync(targets, { recursive: true, force: true });
-        generateNodeSources(state.project.settings, "npm");
+        generateNodeSources(settings, "npm");
         expect(existsSync(join(targets, "flatpak"))).toBe(true);
     });
 
-    it("writes the sources beside the manifest, from the project's lockfile", () => {
+    it("reads the lockfile away from the project, where node_modules would hide every package", () => {
         const settings = state.project.settings;
+        writeFileSync(join(settings.paths.root, "package-lock.json"), "{}");
         generateNodeSources(settings, "npm");
-
-        expect(invocation()).toMatchObject({
-            tool: "flatpak-node-generator",
-            args: [
-                "npm",
-                join(settings.paths.root, "package-lock.json"),
-                "-o",
-                join(settings.paths.targets, "flatpak", "generated-sources.json"),
-            ],
-        });
+        const { tool, args } = invocation();
+        expect(tool).toBe("flatpak-node-generator");
+        expect(args[0]).toBe("npm");
+        expect(basename(args[1] ?? "")).toBe("package-lock.json");
+        expect(args[1]?.startsWith(settings.paths.root)).toBe(false);
+        expect(args[3]).toBe(join(settings.paths.targets, "flatpak", "generated-sources.json"));
     });
 
     it("reads a lockfile the project points at explicitly", () => {
         const settings = state.project.settings;
+        mkdirSync(join(settings.paths.root, "packages", "app"), { recursive: true });
+        writeFileSync(join(settings.paths.root, "packages", "app", "pnpm-lock.yaml"), "");
         settings.deploy = { flatpak: { lockfile: "packages/app/pnpm-lock.yaml" } };
         generateNodeSources(settings, "pnpm");
-        expect(invocation().args[1]).toBe(join(settings.paths.root, "packages/app/pnpm-lock.yaml"));
+        expect(basename(invocation().args[1] ?? "")).toBe("pnpm-lock.yaml");
     });
 });
