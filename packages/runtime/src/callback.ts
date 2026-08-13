@@ -9,7 +9,8 @@ import { popSeedFrame, pushSeedFrame, type RefSeeds } from "./vfunc-seeds.js";
 type Callback = (...args: unknown[]) => unknown;
 type CallbackReceiver = "this" | "emitter" | "none";
 type OutParam = { value: unknown; descriptor: Descriptor; argIndex: number };
-type LengthLink = { target: OutParam; sourceIndex: number };
+type LengthSource = { kind: "return" } | { kind: "outParam"; argIndex: number };
+type LengthLink = { target: OutParam; source: LengthSource };
 type OutParamGroups = { lengthLinks: LengthLink[]; valueParams: OutParam[] };
 
 type CallbackSpec = {
@@ -108,28 +109,29 @@ const haveOutParamArgs = (effectiveTypes: Descriptor[], start: number): boolean 
 const haveRefOutParamArgs = (effectiveTypes: Descriptor[], start: number): boolean =>
     effectiveTypes.slice(start).some((descriptor) => hasRefOutParamArg(descriptor));
 
-const sizeParamIndexFor = (descriptor: Descriptor): number | undefined => {
-    if (descriptor.kind !== "ref") {
-        return undefined;
+const arraySizeParamIndex = (descriptor: Descriptor): number | undefined =>
+    descriptor.kind === "array" ? descriptor.sizeParamIndex : undefined;
+
+const sizeParamIndexFor = (descriptor: Descriptor): number | undefined =>
+    descriptor.kind === "ref" ? arraySizeParamIndex(descriptor.innerDescriptor) : undefined;
+
+const lengthSourceIndices = (outParams: OutParam[], returnDescriptor: Descriptor): Map<number, LengthSource> => {
+    const sources: Map<number, LengthSource> = new Map();
+    const returnSizeParamIndex = arraySizeParamIndex(returnDescriptor);
+
+    if (returnSizeParamIndex !== undefined) {
+        sources.set(returnSizeParamIndex, { kind: "return" });
     }
-
-    const { innerDescriptor } = descriptor;
-
-    return innerDescriptor.kind === "array" ? innerDescriptor.sizeParamIndex : undefined;
-};
-
-const lengthOutParamIndices = (outParams: OutParam[]): Map<number, number> => {
-    const indices: Map<number, number> = new Map();
 
     for (const outParam of outParams) {
         const sizeParamIndex = sizeParamIndexFor(outParam.descriptor);
 
         if (sizeParamIndex !== undefined) {
-            indices.set(sizeParamIndex, outParam.argIndex);
+            sources.set(sizeParamIndex, { kind: "outParam", argIndex: outParam.argIndex });
         }
     }
 
-    return indices;
+    return sources;
 };
 
 const writeOutParams = (outParams: OutParam[], outValues: unknown[]): Map<number, unknown> => {
@@ -150,17 +152,17 @@ const writeOutParams = (outParams: OutParam[], outValues: unknown[]): Map<number
     return written;
 };
 
-const groupOutParams = (outParams: OutParam[]): OutParamGroups => {
-    const lengths = lengthOutParamIndices(outParams);
+const groupOutParams = (outParams: OutParam[], returnDescriptor: Descriptor): OutParamGroups => {
+    const sources = lengthSourceIndices(outParams, returnDescriptor);
     const groups: OutParamGroups = { lengthLinks: [], valueParams: [] };
 
     for (const outParam of outParams) {
-        const sourceIndex = lengths.get(outParam.argIndex);
+        const source = sources.get(outParam.argIndex);
 
-        if (sourceIndex === undefined) {
+        if (source === undefined) {
             groups.valueParams.push(outParam);
         } else {
-            groups.lengthLinks.push({ target: outParam, sourceIndex });
+            groups.lengthLinks.push({ target: outParam, source });
         }
     }
 
@@ -173,9 +175,14 @@ const getFoldedLength = (source: unknown): number => {
     return typeof length === "number" ? length : 0;
 };
 
-const writeFoldedLengths = (lengthLinks: LengthLink[], written: Map<number, unknown>): void => {
+const getLengthSourceValue = (source: LengthSource, written: Map<number, unknown>, primary: unknown): unknown =>
+    source.kind === "return" ? primary : written.get(source.argIndex);
+
+const writeFoldedLengths = (lengthLinks: LengthLink[], written: Map<number, unknown>, primary: unknown): void => {
     for (const link of lengthLinks) {
-        (link.target.value as { value: unknown }).value = getFoldedLength(written.get(link.sourceIndex));
+        (link.target.value as { value: unknown }).value = getFoldedLength(
+            getLengthSourceValue(link.source, written, primary),
+        );
     }
 };
 
@@ -249,9 +256,9 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
         return toNative(returnDescriptor, result);
     }
 
-    const { lengthLinks, valueParams } = groupOutParams(outParams);
+    const { lengthLinks, valueParams } = groupOutParams(outParams, returnDescriptor);
     const { primary, outValues } = splitTupleResult(result, returnDescriptor.kind !== "void", valueParams.length);
-    writeFoldedLengths(lengthLinks, writeOutParams(valueParams, outValues));
+    writeFoldedLengths(lengthLinks, writeOutParams(valueParams, outValues), primary);
 
     return toNative(returnDescriptor, primary);
 };

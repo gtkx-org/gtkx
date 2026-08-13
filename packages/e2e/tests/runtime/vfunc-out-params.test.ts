@@ -1,3 +1,4 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -7,6 +8,22 @@ import { describe, expect, it } from "vitest";
 import { createTypeNameFactory } from "../helpers/unique-name.js";
 
 const uniqueName = createTypeNameFactory("_");
+
+function createSwipeable(typeName: string, snapPoints: () => number[]): Adw.Swipeable {
+    class Pager extends Gtk.Widget implements Adw.SwipeableImpl {
+        override vfuncMeasure(): [number, number, number, number] {
+            return [100, 100, -1, -1];
+        }
+
+        vfuncGetSnapPoints(): number[] {
+            return snapPoints();
+        }
+    }
+
+    registerClass(Pager, { typeName: uniqueName(typeName), implements: [Adw.Swipeable] });
+
+    return new Pager({}) as Pager & Adw.Swipeable;
+}
 
 describe("vfunc out parameters written back through the C vtable", () => {
     it("writes a string and two integers", () => {
@@ -133,6 +150,22 @@ describe("vfunc out arrays whose length parameter is folded away", () => {
         expect(face.listSizes()).toEqual([1, 2]);
         sizes = [3, 4, 5, 6];
         expect(face.listSizes()).toEqual([3, 4, 5, 6]);
+    });
+});
+
+describe("vfunc return arrays whose length parameter is folded away", () => {
+    it("returns the array a swipeable implementation hands back", () => {
+        expect(createSwipeable("GtkxPagerJ", () => [0, 0.5, 1]).getSnapPoints()).toEqual([0, 0.5, 1]);
+    });
+
+    it("keeps a derived length in step with an array the implementation rebuilds", () => {
+        let points = [0.25];
+        const pager = createSwipeable("GtkxPagerK", () => points);
+        expect(pager.getSnapPoints()).toEqual([0.25]);
+        points = [];
+        expect(pager.getSnapPoints()).toEqual([]);
+        points = [0, 0.5, 0.75, 1];
+        expect(pager.getSnapPoints()).toEqual([0, 0.5, 0.75, 1]);
     });
 });
 
