@@ -111,20 +111,6 @@ DBusActivatable=true
 
 `X-GNOME-UsesNotifications=true` gives the app its own row in the desktop's notification settings, so the reminders from [Reminders That Reach the Desktop](/tutorial/reminders) can be tuned or silenced there. `DBusActivatable=true` lets the desktop start the app over D-Bus instead of running `Exec` directly. That is how a reminder's **Mark Complete** button reaches the `app.complete-task` action when the app is closed: the desktop activates the application by its ID, delivers the action, and the app handles it on startup.
 
-## The D-Bus service file
-
-`DBusActivatable=true` is a promise, not a switch, and this is the file that keeps it. The desktop starts an activatable app by asking the session bus for its application ID, and the bus resolves that name through a service file of the same name under `share/dbus-1/services/`:
-
-```ini
-[D-BUS Service]
-Name=com.gtkx.tutorial
-Exec=/home/you/.local/bin/gtkx-tutorial --gapplication-service
-```
-
-`Name` is the bus name, which is the application ID, which is also the file name: all three have to agree or the bus never finds the app. `Exec` is an absolute path, because the bus starts this process itself rather than through a shell, and it expands neither `~` nor environment variables. `--gapplication-service` is the option `GApplication` reads to register on the bus and wait for a message instead of opening a window, which is what lets activation deliver an action to an app that is not running.
-
-That absolute path is why this file belongs to the install prefix rather than to the source tree. The copy below points into `~/.local/bin`; the one [Appendix C](/tutorial/flatpak) ships points at `/app/bin` inside the sandbox. Without either, `DBusActivatable=true` names a service nothing provides, and **Mark Complete** on a closed app reaches nothing.
-
 ## Icons
 
 The build copies `data/icons/` verbatim, so the layout you write is the layout that ships. Use the same shape as the system icon theme:
@@ -226,18 +212,12 @@ install -Dm755 dist/gtkx.node ~/.local/bin/gtkx.node
 install -Dm644 dist/gschemas.compiled ~/.local/bin/gschemas.compiled
 install -Dm644 flatpak/com.gtkx.tutorial.desktop ~/.local/share/applications/com.gtkx.tutorial.desktop
 install -Dm644 flatpak/com.gtkx.tutorial.metainfo.xml ~/.local/share/metainfo/com.gtkx.tutorial.metainfo.xml
-mkdir -p ~/.local/share/dbus-1/services
-cat > ~/.local/share/dbus-1/services/com.gtkx.tutorial.service <<EOF
-[D-BUS Service]
-Name=com.gtkx.tutorial
-Exec=$HOME/.local/bin/gtkx-tutorial --gapplication-service
-EOF
 cp -r data/icons/hicolor ~/.local/share/icons/
 update-desktop-database ~/.local/share/applications
 gtk4-update-icon-cache -f -t ~/.local/share/icons/hicolor
 ```
 
-The binary, the native addon, and the compiled schema share a directory because that is where the running executable looks for them. The service file is written rather than copied so the shell expands `$HOME` into it, since the bus needs a path it can execute with no shell of its own. The cache commands tell the desktop to notice the new files immediately rather than at the next login; the session bus needs none, because it reads the services directory on every activation.
+The binary, the native addon, and the compiled schema share a directory because that is where the running executable looks for them. The cache commands tell the desktop to notice the new files immediately rather than at the next login.
 
 ## Run it
 
@@ -245,21 +225,7 @@ Run `./dist/app` from the project directory. Tasks opens with your seeded lists,
 
 Then install with the commands above, open the overview, and type **Tasks**. The app appears with its own blue checklist icon rather than a generic placeholder, and pressing Enter launches it. Open the desktop's notification settings and Tasks is listed there as an app that sends notifications.
 
-Quit it and check the activation path a reminder uses:
-
-```bash
-gapplication launch com.gtkx.tutorial
-```
-
-The window opens, and nothing ran the binary directly: the bus resolved `com.gtkx.tutorial` through the service file and started it with `--gapplication-service`. Move that file out of `~/.local/share/dbus-1/services`, quit the app, and run the command again:
-
-```
-error sending Activate message to application: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name com.gtkx.tutorial was not provided by any .service files
-```
-
-Nothing starts, and nothing falls back to `Exec`: an entry marked `DBusActivatable=true` is launched over the bus or not at all. That is what **Mark Complete** from [Reminders That Reach the Desktop](/tutorial/reminders) hits when the app is closed and the service file is missing. Put it back.
-
-For the negative check on the schema, move `dist/gschemas.compiled` out of `~/.local/bin` and launch again from a terminal. The app aborts on the first settings read with a GLib error naming the `com.gtkx.tutorial` schema as not installed. Put the file back and it starts.
+For the negative check, move `dist/gschemas.compiled` out of `~/.local/bin` and launch again from a terminal. The app aborts on the first settings read with a GLib error naming the `com.gtkx.tutorial` schema as not installed. Put the file back and it starts.
 
 ## Next
 

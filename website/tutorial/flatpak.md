@@ -54,7 +54,6 @@ modules:
       - install -Dm644 data/com.gtkx.tutorial.gschema.xml /app/share/glib-2.0/schemas/com.gtkx.tutorial.gschema.xml
       - glib-compile-schemas /app/share/glib-2.0/schemas
       - install -Dm644 flatpak/com.gtkx.tutorial.desktop /app/share/applications/com.gtkx.tutorial.desktop
-      - install -Dm644 flatpak/com.gtkx.tutorial.service /app/share/dbus-1/services/com.gtkx.tutorial.service
       - install -Dm644 flatpak/com.gtkx.tutorial.metainfo.xml /app/share/metainfo/com.gtkx.tutorial.metainfo.xml
       - install -Dm644 data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg /app/share/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg
       - install -Dm644 data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg /app/share/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg
@@ -79,31 +78,9 @@ modules:
 
 `strip: false` matters for the reason [Appendix B](/tutorial/packaging) explains, and flatpak-builder strips your binary by default.
 
-The build commands do what Appendix B did by hand, now inside the sandbox, then install the schema, the desktop entry, the D-Bus service file, the metainfo, and the icons where the system expects them. `glib-compile-schemas` runs against `/app/share/glib-2.0/schemas` after the schema lands there, so the preferences from [Preferences and the System Theme](/tutorial/preferences-and-theming) resolve inside the sandbox.
+The build commands do what Appendix B did by hand, now inside the sandbox, then install the schema, the desktop entry, the metainfo, and the icons where the system expects them. `glib-compile-schemas` runs against `/app/share/glib-2.0/schemas` after the schema lands there, so the preferences from [Preferences and the System Theme](/tutorial/preferences-and-theming) resolve inside the sandbox.
 
 The `dir` source builds your working tree, skipping everything derived. The other source, `generated-sources.json`, does not exist yet.
-
-## The service file inside the sandbox
-
-One of those installs carries the file [Appendix B](/tutorial/packaging) wrote straight into your home directory: the D-Bus service file that keeps the desktop entry's `DBusActivatable=true` promise. Its `Exec` is an absolute path, so the sandbox needs its own copy naming `/app/bin` rather than `~/.local/bin`, and that copy ships in the tree like every other piece of metadata the manifest installs.
-
-Create `flatpak/com.gtkx.tutorial.service`:
-
-```ini
-[D-BUS Service]
-Name=com.gtkx.tutorial
-Exec=/app/bin/gtkx-tutorial --gapplication-service
-```
-
-`Name` is the application ID, which is the bus name the desktop calls and the file name the bus resolves it through. `Exec` is where `install -Dm755 app /app/bin/gtkx-tutorial` above put the binary, so renaming the manifest's `command` renames this path too, and `--gapplication-service` is what makes that binary register and wait rather than open a window.
-
-Ship it next to the desktop entry, not instead of it. Flatpak checks the promise when it exports the finished build: an app whose desktop entry sets `DBusActivatable=true` with no `share/dbus-1/services/com.gtkx.tutorial.service` beside it fails with `error: Desktop file D-Bus activatable, but service file not exported`, after every build command has already run.
-
-## Checking the packaging before the build
-
-That failure arrives at the end of a build that takes minutes, and `npm run flatpak:lint` cannot see it coming: `desktop-file-validate` reads the entry that makes the promise, never the service file that keeps it. The suite from [Appendix A](/tutorial/testing) can see it in seconds, by reading the manifest and checking what its build commands install against the `id` and the `command` it declares: the binary, the desktop entry, the service file, the metainfo, the settings schema, and `applicationId` in `gtkx.config.ts`. The finished suite is [`tests/flatpak.test.ts`](https://github.com/gtkx-org/gtkx/blob/main/examples/tutorial/tests/flatpak.test.ts), ready to copy into your own project.
-
-It earns its place on a rename. Change the `id` alone and every file still carrying the old one fails the suite, where the build itself only prints `non-allowed export filename` as `flatpak build-finish` runs, then exports an app with no launcher and no service file. Change the `command` alone and the desktop entry, the service file and the metainfo that still name the old binary fail it, which the build never checks at all.
 
 ## Building offline
 
