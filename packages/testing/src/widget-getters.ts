@@ -1,6 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { getClassType, getInstanceType, typeName } from "@gtkx/runtime";
+import { getClassType, getInstanceType, TYPE_INVALID, typeName } from "@gtkx/runtime";
 import { resolveWrapperClass } from "@gtkx/runtime/internal";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
 
@@ -9,9 +9,16 @@ const UNNAMED_TYPE_TAG = "Object";
 const getWidgetMethod = (widget: Gtk.Widget, name: string): unknown => Reflect.get(widget, name);
 const getWidgetTypeName = (widget: Gtk.Widget): string | null => typeName(getInstanceType(widget));
 const nonEmpty = (value: string | null): string | undefined => (value !== null && value.length > 0 ? value : undefined);
+const getObjectClass = (object: GObject.Object): AnyClass | null => (object.constructor as AnyClass | null) ?? null;
 
 const getNearestClassName = (object: GObject.Object): string | undefined =>
-    walkClassChain((object.constructor as AnyClass | undefined) ?? null, (ancestor) => nonEmpty(ancestor.name));
+    walkClassChain(getObjectClass(object), (ancestor) => nonEmpty(ancestor.name));
+
+const getUntypedClassName = (object: GObject.Object): string | undefined => {
+    const cls = getObjectClass(object);
+
+    return cls !== null && getClassType(cls) === TYPE_INVALID ? nonEmpty(cls.name) : undefined;
+};
 
 const getExactWrapperName = (type: bigint): string | undefined => {
     const wrapper = resolveWrapperClass(type);
@@ -22,7 +29,13 @@ const getExactWrapperName = (type: bigint): string | undefined => {
 const getTypeTag = (object: GObject.Object): string => {
     const type = getInstanceType(object);
 
-    return getExactWrapperName(type) ?? nonEmpty(typeName(type)) ?? getNearestClassName(object) ?? UNNAMED_TYPE_TAG;
+    return (
+        getUntypedClassName(object) ??
+        getExactWrapperName(type) ??
+        nonEmpty(typeName(type)) ??
+        getNearestClassName(object) ??
+        UNNAMED_TYPE_TAG
+    );
 };
 
 const isDefaultWidgetName = (widget: Gtk.Widget, name: string): boolean =>

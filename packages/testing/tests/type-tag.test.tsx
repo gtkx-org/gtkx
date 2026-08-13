@@ -57,6 +57,8 @@ const expectActionabilityFailure = async (widget: Gtk.Widget, description: strin
     );
 };
 
+class UnregisteredButton extends Gtk.Button {}
+
 afterEach(() => {
     configure(initialConfig);
 });
@@ -77,6 +79,11 @@ describe("getTypeTag", () => {
 
     it("names a type whose registered wrapper class is anonymous by its GType", () => {
         expect(getTypeTag(new AnonymousBox())).toBe(ANONYMOUS_TYPE_NAME);
+    });
+
+    it("names an instance wrapped as a class carrying no GType by that class", async () => {
+        const button = await findButton(<GtkButton label="Viewed" />, "Viewed");
+        expect(getTypeTag(wrapAs(button, UnregisteredButton))).toBe("UnregisteredButton");
     });
 
     it("names an instance carrying no GType by its nearest named class", () => {
@@ -104,6 +111,34 @@ describe("prettyWidget on types with no generated wrapper class", () => {
         const dump = prettyWidget(new AnonymousBox(), { shouldHighlight: false });
         expect(dump).toContain(`<${ANONYMOUS_TYPE_NAME}`);
         expect(dump).not.toContain("< ");
+    });
+});
+
+describe("prettyWidget on instances wrapped as a class carrying no GType", () => {
+    it("names the widget after the class it was wrapped as", async () => {
+        const button = await findButton(<GtkButton label="Wrapped" />, "Wrapped");
+        const dump = prettyWidget(wrapAs(button, UnregisteredButton), { shouldHighlight: false });
+        expect(dump).toContain("<UnregisteredButton");
+        expect(dump).toContain("</UnregisteredButton>");
+    });
+});
+
+describe("the missing-handle error", () => {
+    it("names an unbound instance of a composed wrapper class by its GType", async () => {
+        const item = await renderMenuItem();
+        const unbound = Object.create(Object.getPrototypeOf(item) as object) as GObject.Object;
+        expect(() => getHandle(unbound)).toThrow("No native handle associated with GtkModelButton");
+    });
+
+    it("names an unbound instance of an anonymous class by its nearest named class", () => {
+        const unbound = Object.create(subclass(Gtk.Button).prototype) as GObject.Object;
+        expect(() => getHandle(unbound)).toThrow("No native handle associated with Button");
+    });
+
+    it("names an unbound object carrying no class chain", () => {
+        expect(() => getHandle(Object.create(null) as GObject.Object)).toThrow(
+            "No native handle associated with object",
+        );
     });
 });
 
