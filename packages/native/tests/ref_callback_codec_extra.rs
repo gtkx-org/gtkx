@@ -1,12 +1,10 @@
-use std::ffi::c_void;
-
 use libffi::middle;
+use native::ffi;
 use native::ffi::codec::{
     BigIntCodec, BoxedCodec, BufferCodec, CallbackCodec, CallbackScope, Codec, Decoder,
     DestroyNotifyKind, Encoder, FundamentalCodec, IntegerCodec, Ownership, ReadCtx, RefCodec,
     StructCodec, VoidCodec,
 };
-use native::ffi::{self, StashData, StashStorage};
 use test_support as helpers;
 use test_support::napi_mock;
 
@@ -173,19 +171,6 @@ fn ref_read_from_value_source_errors() {
         let result =
             unsafe { i32_ref_codec().read(&env, ReadCtx::value(std::ptr::null_mut(), "ctx")) };
         assert!(result.is_err());
-    });
-}
-
-#[test]
-fn ref_decode_unsupported_inner_errors() {
-    helpers::run(|| {
-        let env = helpers::fake_env();
-        let ref_codec = RefCodec::new(Codec::BigInt(BigIntCodec::I64), false)
-            .expect("BigInt is a valid Ref inner");
-        let mut backing: u64 = 0;
-        let ptr = (&raw mut backing).cast::<c_void>();
-        let stash = ffi::Stash::Storage(StashStorage::new(ptr, StashData::Unit));
-        assert!(ref_codec.decode(&env, &stash).is_err());
     });
 }
 

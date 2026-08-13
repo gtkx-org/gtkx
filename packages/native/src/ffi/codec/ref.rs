@@ -174,15 +174,10 @@ impl Decoder for RefCodec {
         }
 
         match &*self.inner_codec {
-            Codec::Integer(_)
-            | Codec::EnumFlags(_)
-            | Codec::Float(_)
-            | Codec::Boolean(_)
-            | Codec::Unichar(_) => unsafe {
-                self.inner_codec.read(
+            codec if codec.is_scalar() => unsafe {
+                codec.read(
                     env,
-                    ReadCtx::slot(storage.ptr(), "Ref inner")
-                        .with_transfer(self.inner_codec.transfer()),
+                    ReadCtx::slot(storage.ptr(), "Ref inner").with_transfer(codec.transfer()),
                 )
             },
             Codec::String(string_codec) => Self::decode_ref_string(env, storage, string_codec),

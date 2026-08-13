@@ -8,9 +8,9 @@ use napi::{Env, JsValue as _};
 use native::api::bind::bind;
 use native::api::call::call;
 use native::ffi::codec::{
-    ArrayBounds, ArrayCodec, ArrayKind, BooleanCodec, Codec, Decoder, Encoder, EnumFlagsCodec,
-    EnumFlagsKind, FloatCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, ReadCtx,
-    RefCodec, StringCodec, UnicharCodec,
+    ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Decoder, Encoder,
+    EnumFlagsCodec, EnumFlagsKind, FloatCodec, HashTableCodec, IntegerCodec, ObjectCodec,
+    Ownership, ReadCtx, RefCodec, StringCodec, UnicharCodec,
 };
 use native::ffi::descriptor::{Descriptor, NestedDescriptor};
 use native::ffi::{self, StashData, StashStorage};
@@ -62,6 +62,19 @@ fn with_i32_storage_ref(value: i32, f: impl FnOnce(&ffi::Stash, &RefCodec)) {
     let stash = ffi::Stash::Storage(StashStorage::new(slot, StashData::Unit));
     let ref_codec =
         RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner");
+    f(&stash, &ref_codec);
+}
+
+fn with_bigint_storage_ref(
+    codec: BigIntCodec,
+    bytes: [u8; 8],
+    f: impl FnOnce(&ffi::Stash, &RefCodec),
+) {
+    let mut bytes = bytes;
+    let slot = bytes.as_mut_ptr().cast::<c_void>();
+    let stash = ffi::Stash::Storage(StashStorage::new(slot, StashData::Unit));
+    let ref_codec = RefCodec::new(Codec::BigInt(codec), false).expect("valid Ref inner");
+
     f(&stash, &ref_codec);
 }
 
@@ -144,6 +157,68 @@ fn decode_float_reads_number() {
             .decode(&env, &stash)
             .expect("float ref decode should succeed");
         assert_eq!(napi_mock::read_double(decoded.raw()), Some(2.5));
+    });
+}
+
+#[test]
+fn decode_bigint_i64_reads_bigint() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        with_bigint_storage_ref(
+            BigIntCodec::I64,
+            i64::MIN.to_ne_bytes(),
+            |stash, ref_codec| {
+                let decoded = ref_codec
+                    .decode(&env, stash)
+                    .expect("bigint64 ref decode should succeed");
+                assert_eq!(
+                    napi_mock::read_bigint_i128(decoded.raw()),
+                    Some(i128::from(i64::MIN))
+                );
+            },
+        );
+    });
+}
+
+#[test]
+fn decode_bigint_u64_reads_bigint() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        with_bigint_storage_ref(
+            BigIntCodec::U64,
+            u64::MAX.to_ne_bytes(),
+            |stash, ref_codec| {
+                let decoded = ref_codec
+                    .decode(&env, stash)
+                    .expect("biguint64 ref decode should succeed");
+                assert_eq!(
+                    napi_mock::read_bigint_i128(decoded.raw()),
+                    Some(i128::from(u64::MAX))
+                );
+            },
+        );
+    });
+}
+
+#[test]
+fn decode_bigint_inout_reads_back_the_encoded_seed() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let seed = i128::from(i64::MIN);
+        let value = napi_mock::to_unknown(
+            &env,
+            napi_mock::fake_object(&[("value", napi_mock::fake_bigint_i128(seed))]),
+        );
+        let ref_codec =
+            RefCodec::new(Codec::BigInt(BigIntCodec::I64), true).expect("valid Ref inner");
+        let stash = ref_codec
+            .encode(&env, value)
+            .expect("encoding an inout bigint should succeed");
+
+        let decoded = ref_codec
+            .decode(&env, &stash)
+            .expect("inout bigint ref decode should succeed");
+        assert_eq!(napi_mock::read_bigint_i128(decoded.raw()), Some(seed));
     });
 }
 
