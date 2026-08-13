@@ -3,12 +3,7 @@ import type { GirClass } from "../../gir/class.js";
 import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../analysis/inheritance.js";
-import {
-    GOBJECT_NAMESPACE,
-    GOBJECT_ROOT,
-    omittedTypeRef,
-    prerequisiteConflicts,
-} from "../../analysis/interface-conflicts.js";
+import { omittedTypeRef, prerequisiteConflicts } from "../../analysis/interface-conflicts.js";
 import { resolveClassOrInterface, resolveInterfaces } from "../../gir/ancestry.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
 import { renderJsDoc } from "../../writer/doc.js";
@@ -232,8 +227,8 @@ const prerequisiteRef = (context: ModuleContext, iface: GirClass, name: string):
 };
 
 const rootPrerequisiteRef = (context: ModuleContext, iface: GirClass): string => {
-    const ref = context.qualify(GOBJECT_NAMESPACE, GOBJECT_ROOT);
-    const base = resolveClassOrInterface(context.library, GOBJECT_NAMESPACE, GOBJECT_ROOT);
+    const ref = context.qualify("GObject", "Object");
+    const base = resolveClassOrInterface(context.library, "GObject", "Object");
 
     return base === undefined ? ref : omittedTypeRef(ref, prerequisiteConflicts(context.library, iface, base));
 };

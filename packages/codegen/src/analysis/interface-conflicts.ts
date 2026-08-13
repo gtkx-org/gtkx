@@ -35,8 +35,6 @@ type CallableKeyPair = {
 };
 
 const CHAINABLE_SIGNAL_MEMBERS = ["addEventListener", "off", "on", "once", "removeEventListener"];
-const GOBJECT_NAMESPACE = "GObject";
-const GOBJECT_ROOT = "Object";
 
 const callableKeys = (library: Library, fn: GirFunction): CallableKeys => ({
     inputs: inputParameters(library, fn).map((entry) => typeKey(library, entry.parameter.type)),
@@ -147,7 +145,7 @@ const interfaceConflicts = (options: InterfaceConflictOptions, claimed: ClaimedM
 };
 
 const rootPrerequisite = (library: Library): ResolvedAncestor[] => {
-    const root = resolveClassOrInterface(library, GOBJECT_NAMESPACE, GOBJECT_ROOT);
+    const root = resolveClassOrInterface(library, "GObject", "Object");
 
     return root === undefined ? [] : [root];
 };
@@ -232,8 +230,6 @@ const omittedTypeRef = (typeRef: string, omissions: string[]): string => {
 export {
     type ClaimedMembers,
     claimInterfaceMembers,
-    GOBJECT_NAMESPACE,
-    GOBJECT_ROOT,
     inheritedMembers,
     interfaceConflicts,
     omittedTypeRef,

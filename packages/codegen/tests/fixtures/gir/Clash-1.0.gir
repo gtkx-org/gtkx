@@ -34,6 +34,7 @@
     <class name="Base"
            c:symbol-prefix="base"
            c:type="ClashBase"
+           parent="GObject.Object"
            glib:type-name="ClashBase"
            glib:get-type="clash_base_get_type"
            glib:type-struct="BaseClass">

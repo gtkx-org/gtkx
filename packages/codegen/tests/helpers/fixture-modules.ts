@@ -1,24 +1,41 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { SourceModule } from "../../src/compile.js";
+import { resolveGirPath } from "../../src/gir/gir-path.js";
 import { Library } from "../../src/gir/library.js";
+import { type GirNamespace, namespaceDirectory } from "../../src/gir/namespace.js";
+import { collectStoreSources } from "../../src/store/gi-store.js";
 import { generateNamespaceModule } from "../../src/store/gi/pipeline.js";
 
-const SYSTEM_GIR_PATH = "/usr/share/gir-1.0";
-const FIXTURE_GIR_PATH = [join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "gir"), SYSTEM_GIR_PATH];
+const FIXTURE_GIR_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "gir");
 
-const namespaceNames = (names: string[]): Set<string> =>
-    new Set(names.map((name) => name.slice(0, name.lastIndexOf("-"))));
+const loadFixtures = (names: string[]): Library => Library.load(names, resolveGirPath([FIXTURE_GIR_DIR]));
+const isFixtureNamespace = (namespace: GirNamespace): boolean => dirname(namespace.girFile) === FIXTURE_GIR_DIR;
 
 const fixtureModules = (names: string[]): Map<string, string> => {
-    const library = Library.load(names, FIXTURE_GIR_PATH);
-    const requested = namespaceNames(names);
+    const library = loadFixtures(names);
 
     return new Map(
         library.namespaces
             .values()
-            .filter((namespace) => requested.has(namespace.name))
+            .filter((namespace) => isFixtureNamespace(namespace))
             .map((namespace) => [namespace.name, generateNamespaceModule(namespace, library)]),
     );
 };
 
-export { fixtureModules };
+const fixtureStoreModules = (names: string[]): SourceModule[] => {
+    const library = loadFixtures(names);
+
+    const namespaces = library.namespaces
+        .values()
+        .map((namespace) => ({
+            directory: namespaceDirectory(namespace),
+            rawSource: generateNamespaceModule(namespace, library),
+            girFile: namespace.girFile,
+        }))
+        .toArray();
+
+    return collectStoreSources(namespaces).collected;
+};
+
+export { fixtureModules, fixtureStoreModules };
