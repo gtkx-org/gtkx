@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { runCodegen } from "../../src/index.js";
+import { runningStagingName, strandedStagingName } from "../helpers/staging.js";
 import { storeUnit } from "../helpers/store-unit.js";
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
@@ -73,17 +74,6 @@ const registerFreshnessTests = (): void => {
         expect(existsSync(join(gi.storeDir, "glib", "glib.js"))).toBe(true);
     });
 
-    it("removes what a killed run stranded even when the store stays fresh", async () => {
-        const gi = storeUnit(projectModules("stranded"), "gi");
-        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
-        await runCodegen(options);
-        const stranded = `${gi.storeDir}.tmp-killed`;
-        mkdirSync(stranded, { recursive: true });
-        const rerun = await runCodegen(options);
-        expect(rerun.isRegenerated).toBe(false);
-        expect(existsSync(stranded)).toBe(false);
-    });
-
     it("restores a link an install pruned without regenerating the store", async () => {
         const gi = storeUnit(projectModules("pruned-link"), "gi");
         const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
@@ -109,6 +99,38 @@ const registerFreshnessTests = (): void => {
     });
 };
 
+const registerStagingTests = (): void => {
+    it("removes what a killed run stranded and keeps what a running one staged", async () => {
+        const gi = storeUnit(projectModules("stranded"), "gi");
+        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
+        await runCodegen(options);
+        const stranded = strandedStagingName(gi.storeDir);
+        const running = runningStagingName(gi.storeDir);
+        mkdirSync(stranded, { recursive: true });
+        mkdirSync(running, { recursive: true });
+        const rerun = await runCodegen(options);
+        expect(rerun.isRegenerated).toBe(false);
+        expect(existsSync(stranded)).toBe(false);
+        expect(existsSync(running)).toBe(true);
+    });
+
+    it("runs on when a stranded staging directory cannot be removed", async () => {
+        const gi = storeUnit(projectModules("unsweepable"), "gi");
+        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
+        await runCodegen(options);
+        const storeParent = dirname(gi.storeDir);
+        mkdirSync(strandedStagingName(gi.storeDir), { recursive: true });
+        chmodSync(storeParent, 0o555);
+
+        try {
+            const rerun = await runCodegen(options);
+            expect(rerun.isRegenerated).toBe(false);
+        } finally {
+            chmodSync(storeParent, 0o755);
+        }
+    });
+};
+
 afterAll(() => {
     rmSync(workDir, { recursive: true, force: true });
 });
@@ -116,4 +138,5 @@ afterAll(() => {
 describe("runCodegen", () => {
     registerStoreWriteTests();
     registerFreshnessTests();
+    registerStagingTests();
 });

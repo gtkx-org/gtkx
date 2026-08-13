@@ -11,7 +11,7 @@ import {
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { keepFailedProject, type SourceModule } from "../compile.js";
-import { createStagingDir, stagingPrefix } from "../staging.js";
+import { createStagingDir } from "../staging.js";
 import { compileStore } from "./compile-store.js";
 
 /** Where one generated store is written and how it is reached. */
@@ -166,7 +166,7 @@ const storeWriteMessage = (storeDir: string, error: unknown): string =>
 
 const createTempStore = (storeDir: string): string => {
     try {
-        const tmp = createStagingDir(stagingPrefix(storeDir));
+        const tmp = createStagingDir(storeDir);
         chmodSync(tmp, STORE_DIR_MODE);
 
         return tmp;

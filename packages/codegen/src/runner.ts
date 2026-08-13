@@ -7,7 +7,7 @@ import { isGiStoreFresh } from "./fingerprint.js";
 import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
-import { stagingPrefix, sweepStagingDirs } from "./staging.js";
+import { sweepStagingDirs } from "./staging.js";
 import { ensureStoreLink, type StoreOptions } from "./store/store-fs.js";
 
 type GlCodegenOptions = {
@@ -180,7 +180,7 @@ const eachStore = (stores: (StoreOptions | undefined)[], visit: (store: StoreOpt
 };
 
 const sweepStoreStaging = (store: StoreOptions): void => {
-    sweepStagingDirs(stagingPrefix(store.storeDir));
+    sweepStagingDirs(store.storeDir);
 };
 
 const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> => {

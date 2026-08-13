@@ -1,8 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getShadowingStorePaths, resolveStore } from "../../src/store/resolve-store.js";
+import { getShadowingStorePaths, resolveStore, sweepProjectStaging } from "../../src/store/resolve-store.js";
+import { runningStagingName, strandedStagingName } from "../helpers/staging.js";
 
 type WorkspaceRef = { root: string; app: string; hoisted: string; nested: string };
 
@@ -38,6 +39,13 @@ const installPackage = (root: string, name: string, version = "1.2.3", exports?:
     writeFileSync(join(dir, "index.js"), "");
 
     return dir;
+};
+
+const stageStoreDir = (nodeModules: string, name: string): string => {
+    const staged = join(nodeModules, ".gtkx", name);
+    mkdirSync(staged, { recursive: true });
+
+    return staged;
 };
 
 const unreachableConsumer = (workspace: WorkspaceRef, consumer: string): string =>
@@ -173,6 +181,34 @@ describe("resolveStore hoisting overrides", () => {
         const store = resolveStore(workspace.app);
         expect(store.gi.storeDir).toBe(join(workspace.hoisted, ".gtkx", "gi"));
         expect(store.gi.linkDir).toBe(join(workspace.hoisted, "@gtkx", "gi"));
+    });
+});
+
+describe("sweepProjectStaging", () => {
+    const workspace = setupWorkspace("gtkx-sweep-project-staging-");
+
+    it("removes what a killed run stranded where the store is anchored and where the project sits", () => {
+        installPackage(workspace.root, "@gtkx/runtime");
+        const hoisted = stageStoreDir(workspace.hoisted, strandedStagingName("gi"));
+        const nested = stageStoreDir(workspace.nested, strandedStagingName("jsx"));
+        sweepProjectStaging(workspace.app);
+        expect(existsSync(hoisted)).toBe(false);
+        expect(existsSync(nested)).toBe(false);
+    });
+
+    it("removes what a killed run stranded even when no @gtkx/runtime resolves", () => {
+        const stranded = stageStoreDir(workspace.nested, strandedStagingName("gi"));
+        sweepProjectStaging(workspace.app);
+        expect(existsSync(stranded)).toBe(false);
+    });
+
+    it("keeps the generated stores and the staging directory of a run still going", () => {
+        installPackage(workspace.root, "@gtkx/runtime");
+        const store = stageStoreDir(workspace.hoisted, "gi");
+        const running = stageStoreDir(workspace.hoisted, runningStagingName("gi"));
+        sweepProjectStaging(workspace.app);
+        expect(existsSync(store)).toBe(true);
+        expect(existsSync(running)).toBe(true);
     });
 });
 

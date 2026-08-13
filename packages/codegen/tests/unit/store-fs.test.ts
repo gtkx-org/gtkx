@@ -3,11 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildManifest, ensureStoreLink, writeStore } from "../../src/store/store-fs.js";
+import { legacyStagingName, runningStagingName, strandedStagingName } from "../helpers/staging.js";
 
 const EMPTY_MODULE = "";
 const WORKING_MODULE = "export const answer: number = 42;\n";
 const IMPORTER_MODULE = 'import { answer } from "../glib/glib.js";\n\nexport const value: number = answer;\n';
-const STRANDED_STAGING_DIR = "gi.tmp-killed";
 const roots: string[] = [];
 
 const createRoot = (): string => {
@@ -38,12 +38,12 @@ const writeGiStore = (root: string, glibSource: string): void => {
     });
 };
 
-const strandStagingDir = (root: string): string => {
-    const stranded = join(root, "node_modules", ".gtkx", STRANDED_STAGING_DIR);
-    mkdirSync(join(stranded, "glib"), { recursive: true });
-    writeFileSync(join(stranded, "glib", "glib.ts"), WORKING_MODULE);
+const stageDir = (root: string, name: string): string => {
+    const staged = join(root, "node_modules", ".gtkx", name);
+    mkdirSync(join(staged, "glib"), { recursive: true });
+    writeFileSync(join(staged, "glib", "glib.ts"), WORKING_MODULE);
 
-    return stranded;
+    return staged;
 };
 
 const getBrokenStoreError = (root: string): Error => {
@@ -116,17 +116,31 @@ describe("ensureStoreLink", () => {
 });
 
 describe("writeStore, when a killed run stranded its staging directory", () => {
-    it("removes the stranded staging directory", () => {
+    it("removes the staging directory whose run no longer exists", () => {
         const root = createRoot();
-        const stranded = strandStagingDir(root);
+        const stranded = stageDir(root, strandedStagingName("gi"));
         writeGiStore(root, WORKING_MODULE);
         expect(existsSync(stranded)).toBe(false);
+    });
+
+    it("removes a staging directory an older release named without its run", () => {
+        const root = createRoot();
+        const stranded = stageDir(root, legacyStagingName("gi"));
+        writeGiStore(root, WORKING_MODULE);
+        expect(existsSync(stranded)).toBe(false);
+    });
+
+    it("keeps the staging directory of a run that is still going", () => {
+        const root = createRoot();
+        const running = stageDir(root, runningStagingName("gi"));
+        writeGiStore(root, WORKING_MODULE);
+        expect(existsSync(join(running, "glib", "glib.ts"))).toBe(true);
     });
 
     it("keeps the siblings that are not staging directories", () => {
         const root = createRoot();
         const storeParent = join(root, "node_modules", ".gtkx");
-        strandStagingDir(root);
+        stageDir(root, strandedStagingName("gi"));
         mkdirSync(join(storeParent, "jsx"), { recursive: true });
         writeFileSync(join(storeParent, "env.d.ts"), "");
         writeGiStore(root, WORKING_MODULE);
