@@ -285,7 +285,13 @@ function createComposedClass(base: AnyClass, runtimeType: bigint): AnyClass {
         cls = applyInterfaceMixin(cls, type, baseType, applied);
     }
 
-    return applied.size === 0 ? base : cls;
+    if (applied.size === 0) {
+        return base;
+    }
+
+    Object.defineProperty(cls, "name", { configurable: true, value: typeName(runtimeType) ?? base.name });
+
+    return cls;
 }
 
 function resolveComposedClass(runtimeType: bigint): AnyClass | null {

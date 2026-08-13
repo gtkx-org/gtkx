@@ -1,33 +1,32 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { type AnyClass, getClassType, getInstanceType, getWrapperClass, typeName } from "@gtkx/runtime";
+import { getClassType, getInstanceType, typeName } from "@gtkx/runtime";
+import { resolveWrapperClass } from "@gtkx/runtime/internal";
+import { type AnyClass, walkClassChain } from "@gtkx/utils";
 
-const UNKNOWN_TYPE_TAG = "Object";
+const UNNAMED_CLASS_TAG = "Object";
 
 const getWidgetMethod = (widget: Gtk.Widget, name: string): unknown => Reflect.get(widget, name);
 const getWidgetTypeName = (widget: Gtk.Widget): string | null => typeName(getInstanceType(widget));
+const getClassName = (cls: AnyClass): string | undefined => (cls.name.length > 0 ? cls.name : undefined);
 
-const isExactWrapper = (wrapper: AnyClass, type: bigint): boolean =>
-    wrapper.name.length > 0 && getClassType(wrapper) === type;
+const getNearestClassName = (object: GObject.Object): string =>
+    walkClassChain(object.constructor as AnyClass, getClassName) ?? UNNAMED_CLASS_TAG;
 
-const getWrapperName = (object: GObject.Object): string => {
-    const name = object.constructor.name;
+const getExactWrapperName = (type: bigint): string | null => {
+    const wrapper = resolveWrapperClass(type);
 
-    return name.length > 0 ? name : UNKNOWN_TYPE_TAG;
+    return wrapper === null || getClassType(wrapper) !== type ? null : wrapper.name;
 };
 
 const getTypeTag = (object: GObject.Object): string => {
     const type = getInstanceType(object);
-    const registeredName = typeName(type);
 
-    if (registeredName === null || registeredName.length === 0) {
-        return getWrapperName(object);
-    }
-
-    const wrapper = getWrapperClass(type);
-
-    return isExactWrapper(wrapper, type) ? wrapper.name : registeredName;
+    return getExactWrapperName(type) ?? typeName(type) ?? getNearestClassName(object);
 };
+
+const isDefaultWidgetName = (widget: Gtk.Widget, name: string): boolean =>
+    name.length === 0 || name === getWidgetTypeName(widget);
 
 const hasWidgetMethod = (widget: Gtk.Widget, name: string): boolean =>
     typeof getWidgetMethod(widget, name) === "function";
@@ -54,4 +53,12 @@ const callStringGetter = (widget: Gtk.Widget, method: string): string | null => 
     return typeof value === "string" ? value : null;
 };
 
-export { callBooleanGetter, callStringGetter, getCallableMethod, getTypeTag, getWidgetTypeName, hasWidgetMethod };
+export {
+    callBooleanGetter,
+    callStringGetter,
+    getCallableMethod,
+    getTypeTag,
+    getWidgetTypeName,
+    hasWidgetMethod,
+    isDefaultWidgetName,
+};
