@@ -108,9 +108,16 @@ const generatedSourcesPath = (settings: DeploySettings): string =>
     join(settings.paths.targets, "flatpak", GENERATED_SOURCES);
 
 const isolateLockfile = (root: string, lockfile: string): string => {
+    const source = join(root, lockfile);
+
+    if (!existsSync(source)) {
+        throw new Error(`Cannot vendor the offline sources: no ${lockfile} under ${root}`);
+    }
+
+    const manifest = join(dirname(source), "package.json");
     const dir = mkdtempSync(join(tmpdir(), "gtkx-lockfile-"));
-    copyFileSync(join(root, "package.json"), join(dir, "package.json"));
-    copyFileSync(join(root, lockfile), join(dir, basename(lockfile)));
+    copyFileSync(existsSync(manifest) ? manifest : join(root, "package.json"), join(dir, "package.json"));
+    copyFileSync(source, join(dir, basename(lockfile)));
 
     return dir;
 };
