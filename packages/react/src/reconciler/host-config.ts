@@ -6,7 +6,6 @@ import { createContext } from "react";
 import ReactReconciler from "react-reconciler";
 import { DefaultEventPriority, DiscreteEventPriority, NoEventPriority } from "react-reconciler/constants.js";
 import type { Props } from "./registry.js";
-import packageManifest from "../../package.json" with { type: "json" };
 import { Prop } from "../components/element.js";
 import {
     applyAdoptedProps,
@@ -48,7 +47,7 @@ type PriorityTracker = {
     withDiscrete: <T>(fn: () => T) => T;
 };
 
-const RENDERER_VERSION = packageManifest.version;
+const RENDERER_VERSION = "1.0.0";
 const HOST_CONTEXT: Record<string, never> = {};
 const containerNodes: WeakMap<object, ElementNode> = new WeakMap();
 const priority = createPriorityTracker();

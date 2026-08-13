@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,6 +14,8 @@ import {
 } from "./app-project.js";
 
 type InstalledBundle = { project: AppProject; installDir: string; source: string; run: AppRun };
+type ReactManifest = { version: string; description: string };
+type ResolvingCase = { title: string; specifier: string; applicationId: string; prefix: string };
 
 const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const VERSION_PREFIX = "rendererVersion=";
@@ -22,8 +24,11 @@ const OUT_DIR = "dist";
 const BUNDLE_NAME = "bundle.js";
 const REACT_PACKAGE = "@gtkx/react";
 const REACT_MANIFEST = `${REACT_PACKAGE}/package.json`;
+const SIBLING_MANIFEST = "./package.json";
 const MISSING_MODULE = "Cannot find module";
-const GTKX_MANIFEST_SPECIFIER = /@gtkx\/[^"'`\s]*\/package\.json/;
+const WORKER_DIR = "workers";
+const WORKER_NAME = "indexer.mjs";
+const JS_SUFFIX = ".js";
 
 const APP_ENTRY = String.raw`import { createRoot } from "@gtkx/react";
 
@@ -43,17 +48,55 @@ createRoot();
 process.stdout.write("${VERSION_PREFIX}" + injected.join(",") + "\n");
 `;
 
-const LAZY_RESOLVING_ENTRY = String.raw`import { createRequire } from "node:module";
+const WORKER_APP_ENTRY = `import { Worker } from "node:worker_threads";
+import { createRoot } from "@gtkx/react";
 
-globalThis.__gtkxRendererVersion = () => createRequire(import.meta.url)("${REACT_MANIFEST}").version;
+const worker = new Worker(new URL("./${WORKER_NAME}", import.meta.url));
+
+worker.on("message", (total) => {
+    process.stdout.write("total=" + total);
+});
+
+createRoot();
+`;
+
+const WORKER_SOURCE = `import { parentPort } from "node:worker_threads";
+
+parentPort?.postMessage(21 + 21);
+`;
+
+const RESOLVING_CASES: ResolvingCase[] = [
+    {
+        title: "a gtkx manifest resolved out of node_modules",
+        specifier: REACT_MANIFEST,
+        applicationId: "com.gtkx.clibundleresolver",
+        prefix: "gtkx-bundle-resolver-",
+    },
+    {
+        title: "a manifest read beside the bundle",
+        specifier: SIBLING_MANIFEST,
+        applicationId: "com.gtkx.clibundlesibling",
+        prefix: "gtkx-bundle-sibling-",
+    },
+];
+
+const resolvingEntry = (specifier: string): string => String.raw`import { createRequire } from "node:module";
+
+globalThis.__gtkxLateVersion = () => createRequire(import.meta.url)("${specifier}").version;
 
 process.stdout.write("started\n");
 `;
 
-const reactVersion = (): string => {
+const reactManifest = (): ReactManifest => {
     const manifest = readFileSync(join(WORKSPACE_ROOT, "packages", "react", "package.json"), "utf8");
 
-    return (JSON.parse(manifest) as { version: string }).version;
+    return JSON.parse(manifest) as ReactManifest;
+};
+
+const versionLiteral = (version: string): RegExp => {
+    const escaped = version.split(".").join(String.raw`\.`);
+
+    return new RegExp(String.raw`(["'\x60])${escaped}\1`);
 };
 
 const installBundle = (outDir: string): string => {
@@ -110,28 +153,56 @@ describe("gtkx build (self-contained bundle)", () => {
         expect(state.run.status).toBe(0);
     });
 
-    it("reports the renderer version stamped from the react manifest", () => {
-        expect(state.run.stdout.trim()).toBe(`${VERSION_PREFIX}${reactVersion()}`);
+    it("reports the renderer version the react manifest carries", () => {
+        expect(state.run.stdout.trim()).toBe(`${VERSION_PREFIX}${reactManifest().version}`);
     });
 
-    it("carries no gtkx manifest specifier", () => {
-        expect(state.source).not.toMatch(GTKX_MANIFEST_SPECIFIER);
+    it("stamps that version as a literal instead of carrying the manifest", () => {
+        const manifest = reactManifest();
+        expect(state.source).toMatch(versionLiteral(manifest.version));
+        expect(state.source).not.toContain(manifest.description);
+        expect(state.source).not.toMatch(/rendererVersion:\s*[\w$]+\(/);
     });
 });
 
-describe("gtkx build (bundle that would resolve a gtkx package at runtime)", () => {
-    it("fails the build even when nothing on the startup path resolves", async () => {
+describe("gtkx build (worker chunks)", () => {
+    it("holds every emitted chunk to the same rule", async () => {
         const project = createAppProject({
-            applicationId: "com.gtkx.clibundleresolver",
-            entry: LAZY_RESOLVING_ENTRY,
+            applicationId: "com.gtkx.clibundleworker",
+            entry: WORKER_APP_ENTRY,
             packageType: "module",
-            prefix: "gtkx-bundle-resolver-",
+            prefix: "gtkx-bundle-worker-",
         });
 
+        writeFileSync(join(project.root, "src", WORKER_NAME), WORKER_SOURCE);
+
         try {
-            await expect(buildAppProject({ project, outDir: OUT_DIR })).rejects.toThrow(REACT_MANIFEST);
+            await buildAppProject({ project, outDir: OUT_DIR });
+            const emitted = readdirSync(join(project.root, OUT_DIR, WORKER_DIR));
+            expect(emitted.filter((name) => name.endsWith(JS_SUFFIX))).toHaveLength(1);
         } finally {
             removeAppProject(project);
         }
     }, BUILD_TIMEOUT);
+});
+
+describe("gtkx build (bundle that would resolve a module at runtime)", () => {
+    it.each(RESOLVING_CASES)(
+        "fails the build over $title",
+        async ({ specifier, applicationId, prefix }) => {
+            const project = createAppProject({
+                applicationId,
+                entry: resolvingEntry(specifier),
+                packageType: "module",
+                prefix,
+            });
+
+            try {
+                await expect(buildAppProject({ project, outDir: OUT_DIR })).rejects.toThrow(specifier);
+            } finally {
+                removeAppProject(project);
+            }
+        },
+        BUILD_TIMEOUT,
+    );
 });

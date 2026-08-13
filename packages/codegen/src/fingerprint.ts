@@ -1,9 +1,9 @@
 import { sortStrings } from "@gtkx/utils";
 import { createHash } from "node:crypto";
 import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import packageManifest from "../package.json" with { type: "json" };
 
 type GiFingerprint = {
     value: string;
@@ -27,9 +27,8 @@ type JsxFingerprint = {
     intrinsicElementCount: number;
 };
 
-const require = createRequire(import.meta.url);
 const FINGERPRINT_FILENAME = ".codegen-fingerprint.json";
-const CODEGEN_VERSION: string = (require("../package.json") as { version: string }).version;
+const CODEGEN_VERSION: string = packageManifest.version;
 const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "overrides");
 
 const sortAlpha = (values: string[]): string => sortStrings(values).join(",");
