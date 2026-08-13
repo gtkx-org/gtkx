@@ -8,6 +8,7 @@ import { createCollectionModel } from "../src/internal/collection-model.js";
 import { trackPaths } from "../src/internal/slots.js";
 import { adoptOrder } from "../src/internal/tree-expansion.js";
 import { buildVisibleOrder } from "../src/internal/tree-order.js";
+import { expandablePaths } from "../tests/helpers/expandable-paths.js";
 
 type NarrowingCase = {
     model: CollectionModel;
@@ -31,7 +32,7 @@ function newNarrowingCase(narrowed: ListItem[]): NarrowingCase {
     const wide = treeIndex(branches(BRANCH_COUNT));
     const model = createCollectionModel();
     model.sync(wide);
-    const order = buildVisibleOrder(wide, trackPaths(wide.children.keys()));
+    const order = buildVisibleOrder(wide, trackPaths(expandablePaths(wide)));
     adoptOrder(model.expansion, order);
 
     return { model, wide, narrow: treeIndex(narrowed), order };

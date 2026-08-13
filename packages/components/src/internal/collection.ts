@@ -4,7 +4,8 @@ import type { CollectionModel, SlotRef } from "./collection-model.js";
 import { slotPathAt, slotRefFor } from "./collection-model.js";
 import { findPositions } from "./tree-order.js";
 
-type Collection = Pick<CollectionModel, "model" | "expansion" | "treeModel"> & {
+type Collection = Pick<CollectionModel, "model" | "expansion" | "rowAt"> & {
+    isTree: boolean;
     itemAt: (ref: SlotRef) => ListItem | undefined;
     sectionFor: (levelPath: string) => unknown;
     idAt: (position: number) => string | null;
@@ -39,14 +40,14 @@ function refAt(collectionModel: CollectionModel, position: number): SlotRef | nu
     return slotRefFor(collectionModel.model.getItem(position));
 }
 
+function itemAt(index: CollectionIndex, ref: SlotRef): ListItem | undefined {
+    return index.itemAt(ref.store.level.path, ref.slot);
+}
+
 function idAt(collectionModel: CollectionModel, index: CollectionIndex, position: number): string | null {
     const ref = refAt(collectionModel, position);
 
-    if (ref === null) {
-        return null;
-    }
-
-    return index.itemAt(ref.store.path, ref.slot)?.id ?? null;
+    return ref === null ? null : (itemAt(index, ref)?.id ?? null);
 }
 
 function pathAt(collectionModel: CollectionModel, position: number): string | null {
@@ -69,8 +70,9 @@ function createCollection(collectionModel: CollectionModel, index: CollectionInd
     return {
         model: collectionModel.model,
         expansion: collectionModel.expansion,
-        treeModel: () => (index.isTree ? collectionModel.treeModel() : null),
-        itemAt: (ref) => index.itemAt(ref.store.path, ref.slot),
+        isTree: index.isTree,
+        rowAt: collectionModel.rowAt,
+        itemAt: (ref) => itemAt(index, ref),
         sectionFor: index.sectionFor,
         idAt: (position) => idAt(collectionModel, index, position),
         pathAt: (position) => pathAt(collectionModel, position),

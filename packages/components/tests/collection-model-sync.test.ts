@@ -1,4 +1,4 @@
-import type { ListItem } from "@gtkx/components";
+import type { ListItem, ListSection } from "@gtkx/components";
 import type * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
@@ -10,8 +10,14 @@ import { encodePart } from "../src/internal/keys.js";
 import { trackPaths } from "../src/internal/slots.js";
 import { adoptOrder } from "../src/internal/tree-expansion.js";
 import { walkVisible } from "../src/internal/tree-order.js";
+import { expandablePaths } from "./helpers/expandable-paths.js";
 
 type Splice = [number, number, number];
+
+type LevelLookups = {
+    childLevel: number;
+    pathLookups: number;
+};
 
 const NARROW_SOURCE_COUNT = 2500;
 const NARROW_TARGET_COUNT = 1250;
@@ -36,6 +42,16 @@ const longTree = (): ListItem[] => [branch("a", [leaf("a0")]), leaf("b"), leaf("
 const stub = (id: string): ListItem => branch(id, [leaf(`${id}-child`)]);
 const nested = (id: string): ListItem => branch(id, [stub(`${id}-child`)]);
 const rootPathAt = (slot: number): string => encodePart("0") + encodePart(String(slot));
+const sectionPathAt = (group: number, slot: number): string => encodePart(String(group)) + encodePart(String(slot));
+const sectionAt = (data: ListItem[], group: number): ListSection => ({ id: `s-${String(group)}`, value: group, data });
+
+const sectionIndex = (groups: ListItem[][]): CollectionIndex =>
+    createCollectionIndex(
+        undefined,
+        groups.map((data, group) => sectionAt(data, group)),
+        false,
+    );
+
 const stubs = (count: number): ListItem[] => Array.from({ length: count }, (_, slot) => stub(`b-${String(slot)}`));
 
 const kids = (id: string, count: number): ListItem[] =>
@@ -48,6 +64,20 @@ const leaves = (count: number): ListItem[] => Array.from({ length: count }, (_, 
 const flipRunSource = (): ListItem[] => [stub("a"), leaf("b"), leaf("c"), leaf("d")];
 const adjacentFlips = (): ListItem[] => [stub("a"), stub("b"), stub("c"), leaf("d")];
 const splitFlips = (): ListItem[] => [stub("a"), stub("b"), leaf("c"), stub("d")];
+
+const countingIndex = (index: CollectionIndex, lookups: LevelLookups): CollectionIndex => ({
+    ...index,
+    childLevel: (level, slot) => {
+        lookups.childLevel += 1;
+
+        return index.childLevel(level, slot);
+    },
+    levelFor: (levelPath) => {
+        lookups.pathLookups += 1;
+
+        return index.levelFor(levelPath);
+    },
+});
 
 const syncedModel = (index: CollectionIndex): CollectionModel => {
     const collectionModel = createCollectionModel();
@@ -66,18 +96,8 @@ const spliceLog = (model: Gio.ListModel): Splice[] => {
     return calls;
 };
 
-const getTree = (collectionModel: CollectionModel): Gtk.TreeListModel => {
-    const tree = collectionModel.treeModel();
-
-    if (tree === null) {
-        throw new TypeError("Expected the collection model to hold a tree");
-    }
-
-    return tree;
-};
-
-const getRowAt = (tree: Gtk.TreeListModel, position: number): Gtk.TreeListRow => {
-    const row = tree.getRow(position);
+const getRowAt = (collectionModel: CollectionModel, position: number): Gtk.TreeListRow => {
+    const row = collectionModel.rowAt(position);
 
     if (row === null) {
         throw new TypeError("Expected a tree list row");
@@ -86,14 +106,17 @@ const getRowAt = (tree: Gtk.TreeListModel, position: number): Gtk.TreeListRow =>
     return row;
 };
 
-const isRowExpandableAt = (tree: Gtk.TreeListModel, position: number): boolean =>
-    getRowAt(tree, position).isExpandable();
+const isRowExpandableAt = (collectionModel: CollectionModel, position: number): boolean =>
+    getRowAt(collectionModel, position).isExpandable();
 
-const isRowExpandedAt = (tree: Gtk.TreeListModel, position: number): boolean => getRowAt(tree, position).getExpanded();
-const getRowDepthAt = (tree: Gtk.TreeListModel, position: number): number => getRowAt(tree, position).getDepth();
+const isRowExpandedAt = (collectionModel: CollectionModel, position: number): boolean =>
+    getRowAt(collectionModel, position).getExpanded();
 
-const expandRowAt = (tree: Gtk.TreeListModel, position: number): void => {
-    getRowAt(tree, position).setExpanded(true);
+const getRowDepthAt = (collectionModel: CollectionModel, position: number): number =>
+    getRowAt(collectionModel, position).getDepth();
+
+const expandRowAt = (collectionModel: CollectionModel, position: number): void => {
+    getRowAt(collectionModel, position).setExpanded(true);
 };
 
 const expectFlatSplices = (previous: string[], next: string[], expected: Splice[]): void => {
@@ -115,26 +138,32 @@ const expectTreeSplices = (previous: ListItem[], next: ListItem[], expected: Spl
 const expandedModel = (items: ListItem[]): CollectionModel => {
     const index = treeIndex(items);
     const collectionModel = syncedModel(index);
-    const slots = trackPaths(index.children.keys());
+    const slots = trackPaths(expandablePaths(index));
     adoptOrder(collectionModel.expansion, walkVisible({ index, slots }));
 
     return collectionModel;
 };
 
 const expandEveryRow = (collectionModel: CollectionModel, index: CollectionIndex): void => {
-    const tree = getTree(collectionModel);
-
     const order = walkVisible({
         index,
-        slots: trackPaths(index.children.keys()),
+        slots: trackPaths(expandablePaths(index)),
         visit: (row) => {
             if (row.isOpen) {
-                expandRowAt(tree, row.position);
+                expandRowAt(collectionModel, row.position);
             }
         },
     });
 
     adoptOrder(collectionModel.expansion, order);
+};
+
+const expandedSections = (groups: ListItem[][]): CollectionModel => {
+    const index = sectionIndex(groups);
+    const collectionModel = syncedModel(index);
+    expandEveryRow(collectionModel, index);
+
+    return collectionModel;
 };
 
 const levelTrimCost = (count: number): number => {
@@ -184,12 +213,11 @@ describe("createCollectionModel - sync emissions", () => {
 
     it("emits one replacement when a slot's expandability flips", () => {
         const collectionModel = syncedModel(treeIndex(leafTailTree()));
-        const tree = getTree(collectionModel);
-        expect(isRowExpandableAt(tree, 1)).toBe(false);
+        expect(isRowExpandableAt(collectionModel, 1)).toBe(false);
         const splices = spliceLog(collectionModel.model);
         collectionModel.sync(treeIndex(branchTailTree()));
         expect(splices).toEqual([[1, 1, 1]]);
-        expect(isRowExpandableAt(tree, 1)).toBe(true);
+        expect(isRowExpandableAt(collectionModel, 1)).toBe(true);
     });
 
     it("coalesces a run of adjacent expandability flips into one replacement", () => {
@@ -247,24 +275,64 @@ describe("createCollectionModel - expansion pruning", () => {
     });
 });
 
+describe("createCollectionModel - section trees", () => {
+    it("keeps a section's expanded row when another section arrives", () => {
+        const collectionModel = expandedSections([[stub("a")]]);
+        expect(collectionModel.model.getNItems()).toBe(2);
+        collectionModel.sync(sectionIndex([[stub("a")], [leaf("b")]]));
+        expect(collectionModel.model.getNItems()).toBe(3);
+        expect(isRowExpandedAt(collectionModel, 0)).toBe(true);
+        expect([...collectionModel.expansion.expanded]).toEqual([sectionPathAt(0, 0)]);
+    });
+
+    it("drops a removed section's expanded paths and rebuilds it collapsed", () => {
+        const collectionModel = expandedSections([[leaf("a")], [stub("b")]]);
+        expect([...collectionModel.expansion.expanded]).toEqual([sectionPathAt(1, 0)]);
+        collectionModel.sync(sectionIndex([[leaf("a")]]));
+        expect([...collectionModel.expansion.expanded]).toEqual([]);
+        collectionModel.sync(sectionIndex([[leaf("a")], [stub("b")]]));
+        expect([...collectionModel.expansion.expanded]).toEqual([]);
+        expect(isRowExpandedAt(collectionModel, 1)).toBe(false);
+        expect(collectionModel.model.getNItems()).toBe(2);
+    });
+});
+
 describe("createCollectionModel - level stores", () => {
     it("serves each slot's children through the tree model", () => {
         const collectionModel = syncedModel(treeIndex(wideTree()));
-        const tree = getTree(collectionModel);
-        expect(tree.getNItems()).toBe(2);
-        expandRowAt(tree, 0);
-        expect(tree.getNItems()).toBe(4);
-        expect(getRowDepthAt(tree, 1)).toBe(1);
-        expect(getRowDepthAt(tree, 2)).toBe(1);
+        expect(collectionModel.model.getNItems()).toBe(2);
+        expandRowAt(collectionModel, 0);
+        expect(collectionModel.model.getNItems()).toBe(4);
+        expect(getRowDepthAt(collectionModel, 1)).toBe(1);
+        expect(getRowDepthAt(collectionModel, 2)).toBe(1);
     });
 
     it("keeps the surviving rows when the tail shrinks", () => {
         const collectionModel = syncedModel(treeIndex(longTree()));
-        const tree = getTree(collectionModel);
-        expandRowAt(tree, 0);
-        expect(tree.getNItems()).toBe(4);
+        expandRowAt(collectionModel, 0);
+        expect(collectionModel.model.getNItems()).toBe(4);
         collectionModel.sync(treeIndex(leafTailTree()));
-        expect(tree.getNItems()).toBe(3);
-        expect(isRowExpandedAt(tree, 0)).toBe(true);
+        expect(collectionModel.model.getNItems()).toBe(3);
+        expect(isRowExpandedAt(collectionModel, 0)).toBe(true);
+    });
+});
+
+describe("createCollectionModel - level lookups", () => {
+    it("materializes a leaf row without resolving a level", () => {
+        const lookups: LevelLookups = { childLevel: 0, pathLookups: 0 };
+        const index = countingIndex(treeIndex(leafTailTree()), lookups);
+        const collectionModel = syncedModel(index);
+        expect(isRowExpandableAt(collectionModel, 1)).toBe(false);
+        expect(lookups).toEqual({ childLevel: 0, pathLookups: 0 });
+    });
+
+    it("opens a nested branch without descending from the group root", () => {
+        const lookups: LevelLookups = { childLevel: 0, pathLookups: 0 };
+        const index = countingIndex(treeIndex([nested("a")]), lookups);
+        const collectionModel = syncedModel(index);
+        expandRowAt(collectionModel, 0);
+        expandRowAt(collectionModel, 1);
+        expect(getRowDepthAt(collectionModel, 2)).toBe(2);
+        expect(lookups.pathLookups).toBe(0);
     });
 });

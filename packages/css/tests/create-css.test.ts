@@ -5,6 +5,7 @@ import { createCss, type Css, removeLabel } from "../src/create-css.js";
 import { StyleSheet } from "../src/stylesheet.js";
 
 type CssFixture = { instance: Css; insertSpy: MockInstance<StyleSheet["insert"]> };
+type StyleMerge = { sources: string[]; mergedClass: string; rule: string };
 
 const declElement = (value: string): Element => ({
     parent: null,
@@ -57,6 +58,13 @@ const findInsertedRule = (fixture: CssFixture, selectorPrefix: string): string =
     return rule;
 };
 
+const mergeStyleBodies = (fixture: CssFixture, bodies: string[]): StyleMerge => {
+    const sources = bodies.map((body) => fixture.instance.css(body));
+    const mergedClass = soleClassName(fixture.instance.cx(...sources));
+
+    return { sources, mergedClass, rule: findInsertedRule(fixture, `.${mergedClass}`) };
+};
+
 const isTruthyAtRuntime = (isValue: boolean): boolean => isValue;
 
 const injectUniqueGlobal = (instance: Css): void => {
@@ -102,7 +110,7 @@ describe("removeLabel", () => {
     });
 });
 
-describe("css — class name generation", () => {
+describe("css, class name generation", () => {
     const fixture = installCssFixture();
 
     it("creates a class name from template literal styles", () => {
@@ -147,7 +155,7 @@ describe("css — class name generation", () => {
     });
 });
 
-describe("css — nesting, interpolation, and composition", () => {
+describe("css, nesting, interpolation, and composition", () => {
     const fixture = installCssFixture();
 
     it("handles nested style rules", () => {
@@ -203,22 +211,30 @@ describe("cx", () => {
     });
 
     it("merges multiple css outputs into a single last-wins override class", () => {
-        const style1 = fixture.instance.css`
-            color: red;
-        `;
+        const merge = mergeStyleBodies(fixture, ["color: red;", "color: blue;"]);
+        expect(merge.mergedClass).toMatch(/^gtkx-/);
+        expect(merge.sources).not.toContain(merge.mergedClass);
+        expect(merge.rule).toContain("color:red;");
+        expect(merge.rule).toContain("color:blue;");
+        expect(merge.rule.lastIndexOf("color:blue")).toBeGreaterThan(merge.rule.lastIndexOf("color:red"));
+    });
 
-        const style2 = fixture.instance.css`
-            color: blue;
-        `;
+    it("merges styles whose last declaration omits its trailing semicolon", () => {
+        const merge = mergeStyleBodies(fixture, ["min-height: 32px", "color: rgb(0, 0, 255)"]);
+        expect(merge.rule).toContain("min-height:32px;");
+        expect(merge.rule).toContain("color:rgb(0, 0, 255);");
+        expect(merge.rule).not.toContain("32pxcolor");
+    });
 
-        const mergedClass = soleClassName(fixture.instance.cx(style1, style2));
-        expect(mergedClass).toMatch(/^gtkx-/);
-        expect(mergedClass).not.toBe(style1);
-        expect(mergedClass).not.toBe(style2);
-        const mergedRule = findInsertedRule(fixture, `.${mergedClass}`);
-        expect(mergedRule).toContain("color:red;");
-        expect(mergedRule).toContain("color:blue;");
-        expect(mergedRule.lastIndexOf("color:blue")).toBeGreaterThan(mergedRule.lastIndexOf("color:red"));
+    it("merges an unterminated declaration ahead of nested and at-rule bodies", () => {
+        const dark = "@media (prefers-color-scheme: dark)";
+        const bodies = ["min-height: 32px", "&:hover { color: blue; }", `${dark} { color: green; }`];
+        const merge = mergeStyleBodies(fixture, bodies);
+        const rules = insertedRules(fixture);
+        expect(merge.rule).toBe(`.${merge.mergedClass}{min-height:32px;}`);
+        expect(rules).toContain(`.${merge.mergedClass}:hover{color:blue;}`);
+        expect(rules).toContain(`${dark}{.${merge.mergedClass}{color:green;}}`);
+        expect(rules.filter((rule) => !rule.startsWith(".") && !rule.startsWith("@"))).toEqual([]);
     });
 
     it("handles conditional composition", () => {
@@ -229,7 +245,7 @@ describe("cx", () => {
     });
 });
 
-describe("cx — falsy filtering", () => {
+describe("cx, falsy filtering", () => {
     const fixture = installCssFixture();
 
     it("filters out false values", () => {
@@ -256,7 +272,7 @@ describe("cx — falsy filtering", () => {
     });
 });
 
-describe("cx — edge cases", () => {
+describe("cx, edge cases", () => {
     const fixture = installCssFixture();
 
     it("returns empty array when given no arguments", () => {
@@ -312,7 +328,7 @@ describe("injectGlobal", () => {
     });
 });
 
-describe("css — GTK named colors", () => {
+describe("css, GTK named colors", () => {
     const fixture = installCssFixture();
 
     it("preserves declarations carrying GTK named colors", () => {
@@ -358,7 +374,7 @@ describe("css — GTK named colors", () => {
     });
 });
 
-describe("css — at-rule and selector scoping", () => {
+describe("css, at-rule and selector scoping", () => {
     const fixture = installCssFixture();
 
     it("scopes @media at-rules around the generated class selector", () => {
@@ -396,7 +412,7 @@ describe("css — at-rule and selector scoping", () => {
     });
 });
 
-describe("css — rule shape and deduplication", () => {
+describe("css, rule shape and deduplication", () => {
     const fixture = installCssFixture();
 
     it("strips Emotion label declarations before they reach the GTK sink", () => {
@@ -417,6 +433,22 @@ describe("css — rule shape and deduplication", () => {
         const rule = findInsertedRule(fixture, `.${composed}`);
         expect(rule).toContain("color:red");
         expect(rule).toContain("padding:8px");
+    });
+
+    it("inlines a class whose last declaration omits its trailing semicolon", () => {
+        const base = fixture.instance.css`
+            color: red
+        `;
+
+        const composed = fixture.instance.css`
+            ${base}
+            padding: 8px;
+        `;
+
+        const rule = findInsertedRule(fixture, `.${composed}`);
+        expect(rule).toContain("color:red;");
+        expect(rule).toContain("padding:8px;");
+        expect(rule).not.toContain("red padding");
     });
 
     it("emits the literal scoped rule for the simplest common path", () => {

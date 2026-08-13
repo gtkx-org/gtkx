@@ -17,7 +17,7 @@ type ListItem<T = unknown> = {
     id: string;
     /** Payload handed to the cell renderer as `ListItemRenderArgs.item`. */
     value: T;
-    /** Child items nested under this one, which turn a plain item list into a tree. */
+    /** Child items nested under this one, which turn a plain item list into a tree, read only as rows are drawn. */
     children?: ListItem<T>[] | undefined;
     /** Hides the tree expander arrow even when the item has children, through `hide-expander`. */
     shouldHideExpander?: boolean | undefined;
@@ -119,7 +119,8 @@ type ExpansionProps = {
     /**
      * Ids of the items to keep expanded; omitting it keeps every row collapsed, and `onExpandedChange` is how a
      * user's expansion is adopted into it. An id repeated in several branches names every matching row, so all of
-     * them expand together.
+     * them expand together. An item whose children lead back to itself expands one level at a time, since a row
+     * repeating an item already expanded above it stays collapsed.
      */
     expandedIds?: string[] | null | undefined;
     /** Called with one id per expanded row, in visible order, whenever expansion changes. */
