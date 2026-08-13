@@ -1,8 +1,8 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildManifest, writeStore } from "../../src/store/store-fs.js";
+import { buildManifest, ensureStoreLink, writeStore } from "../../src/store/store-fs.js";
 
 const EMPTY_MODULE = "";
 const WORKING_MODULE = "export const answer: number = 42;\n";
@@ -19,11 +19,17 @@ const createRoot = (): string => {
 
 const getStoreDir = (root: string): string => join(root, "node_modules", ".gtkx", "gi");
 const getFailedStoreDir = (root: string): string => `${getStoreDir(root)}.failed`;
+const getLinkDir = (root: string): string => join(root, "node_modules", "@gtkx", "gi");
+const getLinkedModule = (root: string): string => join(getLinkDir(root), "glib", "glib.js");
+
+const linkGiStore = (root: string): void => {
+    ensureStoreLink({ storeDir: getStoreDir(root), linkDir: getLinkDir(root) });
+};
 
 const writeGiStore = (root: string, glibSource: string): void => {
     writeStore({
         storeDir: getStoreDir(root),
-        linkDir: join(root, "node_modules", "@gtkx", "gi"),
+        linkDir: getLinkDir(root),
         files: [
             { fileName: "glib/glib.ts", source: glibSource },
             { fileName: "gdk/gdk.ts", source: IMPORTER_MODULE },
@@ -72,6 +78,40 @@ describe("writeStore", () => {
                 manifest: buildManifest({ name: "@gtkx/gi", version: "1.0.0", exports: {} }),
             });
         }).toThrow(`Cannot write the generated store to ${storeDir}`);
+    });
+});
+
+describe("ensureStoreLink", () => {
+    it("recreates a link an install pruned from an intact store", () => {
+        const root = createRoot();
+        writeGiStore(root, WORKING_MODULE);
+        rmSync(getLinkDir(root), { recursive: true, force: true });
+        linkGiStore(root);
+        expect(existsSync(getLinkedModule(root))).toBe(true);
+    });
+
+    it("repoints a link an install left on another package", () => {
+        const root = createRoot();
+        writeGiStore(root, WORKING_MODULE);
+        const other = join(root, "node_modules", ".gtkx", "other");
+        mkdirSync(other, { recursive: true });
+        rmSync(getLinkDir(root), { recursive: true, force: true });
+        symlinkSync(other, getLinkDir(root), "dir");
+        linkGiStore(root);
+        expect(existsSync(getLinkedModule(root))).toBe(true);
+    });
+
+    it("leaves the link alone when no store was ever written", () => {
+        const root = createRoot();
+        linkGiStore(root);
+        expect(existsSync(getLinkDir(root))).toBe(false);
+    });
+
+    it("keeps the link on the store across a rewrite", () => {
+        const root = createRoot();
+        writeGiStore(root, WORKING_MODULE);
+        writeGiStore(root, WORKING_MODULE);
+        expect(existsSync(getLinkedModule(root))).toBe(true);
     });
 });
 

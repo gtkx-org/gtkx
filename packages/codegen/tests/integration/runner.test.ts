@@ -84,6 +84,16 @@ const registerFreshnessTests = (): void => {
         expect(existsSync(stranded)).toBe(false);
     });
 
+    it("restores a link an install pruned without regenerating the store", async () => {
+        const gi = storeUnit(projectModules("pruned-link"), "gi");
+        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
+        await runCodegen(options);
+        rmSync(gi.linkDir, { recursive: true, force: true });
+        const rerun = await runCodegen(options);
+        expect(rerun.isRegenerated).toBe(false);
+        expect(existsSync(join(gi.linkDir, "glib", "glib.js"))).toBe(true);
+    });
+
     it("regenerates when the fingerprint no longer matches", async () => {
         const gi = storeUnit(projectModules("stale-fp"), "gi");
         const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };

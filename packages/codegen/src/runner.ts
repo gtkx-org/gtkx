@@ -2,13 +2,13 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ModuleExport } from "./react/element-config.js";
 import type { OmittedProps } from "./store/jsx/omitted-props.js";
-import type { StoreOptions } from "./store/store-fs.js";
 import { checkModules } from "./compile.js";
 import { isGiStoreFresh } from "./fingerprint.js";
 import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
 import { stagingPrefix, sweepStagingDirs } from "./staging.js";
+import { ensureStoreLink, type StoreOptions } from "./store/store-fs.js";
 
 type GlCodegenOptions = {
     registryPath: string;
@@ -64,6 +64,9 @@ type StoreResult = {
  * libraries. The gi store is rewritten only when its GIR inputs changed, and the jsx store only when the gi
  * store or the React element config changed, unless `options.isForced` is set. Pass the spread of
  * `resolveStore(projectRoot)` for everything but `libraries` and `girPath`.
+ *
+ * Every run ends with each store linked at its `linkDir`, whether or not it was rewritten, so a store whose
+ * link an install pruned out of `node_modules` is linked again without being regenerated.
  *
  * @param options What to generate and where to write it.
  * @returns A summary of what was regenerated and how long the run took.
@@ -168,12 +171,16 @@ const emitStoresWithConfig = async (config: {
     return emitJsxStore({ options, jsx, gi, loadLibrary, isGiRegenerated, namespaces });
 };
 
-const sweepStoreStaging = (stores: (StoreOptions | undefined)[]): void => {
+const eachStore = (stores: (StoreOptions | undefined)[], visit: (store: StoreOptions) => void): void => {
     for (const store of stores) {
         if (store !== undefined) {
-            sweepStagingDirs(stagingPrefix(store.storeDir));
+            visit(store);
         }
     }
+};
+
+const sweepStoreStaging = (store: StoreOptions): void => {
+    sweepStagingDirs(stagingPrefix(store.storeDir));
 };
 
 const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> => {
@@ -183,9 +190,11 @@ const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> =
         throw new Error("codegen needs at least one GIR search path; pass the result of resolveGirPath");
     }
 
-    sweepStoreStaging([gi, jsx]);
+    eachStore([gi, jsx], sweepStoreStaging);
+    const result = await emitStoresWithConfig({ options, gi, jsx, libraries, girPath });
+    eachStore([gi, jsx], ensureStoreLink);
 
-    return emitStoresWithConfig({ options, gi, jsx, libraries, girPath });
+    return result;
 };
 
 export { runCodegen, runGlCodegen, type CodegenRunnerOptions, type CodegenRunnerResult };
