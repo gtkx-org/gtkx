@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { quitApplication, registerClass, runApplication } from "@gtkx/runtime";
+import { quitApplication, registerClass, runApplication, type RunApplicationResult } from "@gtkx/runtime";
 import { afterEach, describe, expect, it } from "vitest";
 import { applicationProps, countSignal, createApplication, createApplicationFrom } from "../helpers/application.js";
 import { createTypeNameFactory } from "../helpers/unique-name.js";
@@ -21,6 +21,16 @@ const createTrackedApplication = (): { application: Gio.Application; activations
     const application = track(createApplication());
 
     return { application, activations: countSignal(application, "activate") };
+};
+
+const startTrackedApplication = (
+    argv: string[],
+    expected: RunApplicationResult,
+): { application: Gio.Application; activations: () => number } => {
+    const tracked = createTrackedApplication();
+    expect(runApplication(tracked.application, argv)).toEqual(expected);
+
+    return tracked;
 };
 
 afterEach(() => {
@@ -75,15 +85,12 @@ describe("runApplication — application options", () => {
 
 describe("runApplication — launch modes", () => {
     it("activates normally when nothing but the program name is passed", () => {
-        const { application, activations } = createTrackedApplication();
-        expect(runApplication(application, ["probe"])).toEqual({ isPrimary: true, exitStatus: 0 });
+        const { activations } = startTrackedApplication(["probe"], { isPrimary: true, exitStatus: 0 });
         expect(activations()).toBe(1);
     });
 
     it("registers without activating for --gapplication-service", () => {
-        const { application, activations } = createTrackedApplication();
-
-        expect(runApplication(application, ["probe", "--gapplication-service"])).toEqual({
+        const { application, activations } = startTrackedApplication(["probe", "--gapplication-service"], {
             isPrimary: true,
             exitStatus: 0,
         });
@@ -96,10 +103,14 @@ describe("runApplication — launch modes", () => {
     });
 
     it("reports a failing exit status for an unknown option without registering", () => {
-        const { application, activations } = createTrackedApplication();
-        expect(runApplication(application, ["probe", "--nope"])).toEqual({ isPrimary: false, exitStatus: 1 });
+        const { application, activations } = startTrackedApplication(["probe", "--nope"], {
+            isPrimary: false,
+            exitStatus: 1,
+        });
+
         expect(application.getIsRegistered()).toBe(false);
         expect(activations()).toBe(0);
+        expect(Gio.Application.getDefault()).toBe(application);
     });
 });
 
@@ -128,6 +139,16 @@ describe("quitApplication", () => {
         const shutdowns = countSignal(application, "shutdown");
         quitApplication(application);
         expect(shutdowns()).toBe(0);
+    });
+
+    it("gives up the process-wide default an application kept when its start left it unregistered", () => {
+        const application = createApplication();
+        application.on("handle-local-options", () => 3);
+        expect(runApplication(application, ["probe"])).toEqual({ isPrimary: false, exitStatus: 3 });
+        expect(application.getIsRegistered()).toBe(false);
+        expect(Gio.Application.getDefault()).toBe(application);
+        quitApplication(application);
+        expect(Gio.Application.getDefault()).toBeNull();
     });
 });
 

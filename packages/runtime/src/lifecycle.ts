@@ -1,5 +1,6 @@
 import { keepAlive, quit as nativeQuit } from "@gtkx/native";
 import { isDerivedApplication, type LocalCommandLineApplication, shutDownThroughRun } from "./application-class.js";
+import { claimDefaultApplication, releaseDefaultApplication } from "./default-application.js";
 
 /**
  * The GIO and GTK application surface {@link runApplication} and {@link quitApplication} drive, so any
@@ -130,6 +131,13 @@ const getApplicationInstance = (application: ApplicationLike): ApplicationInstan
  * user interface may be built here, because a remote application has no `GtkApplicationImpl` and
  * attaching a window to it crashes.
  *
+ * The application also claims the process-wide default `Gio.Application.getDefault()` returns, before
+ * its command line is parsed, so an `activate` handler and anything the host reads afterwards see the
+ * application being started rather than an earlier one. That holds whether the start ends registered,
+ * remote or unregistered: a refused command line still has to be reportable through the default, which
+ * is how `gtkx dev` learns which application its entry mounted. {@link quitApplication} gives the
+ * default back up, since GLib drops it only at finalize.
+ *
  * @param application The application to start.
  * @param argv The command line, whose first entry names the program as `--help` should print it.
  * @returns Whether this process may build a user interface, and the status to exit with.
@@ -142,6 +150,8 @@ const runApplication = (application: ApplicationLike, argv: string[]): RunApplic
             "or construct it with createApplication from @gtkx/runtime",
         );
     }
+
+    claimDefaultApplication(application);
 
     const exitStatus = startedApplications.has(application)
         ? restartApplication(application)
@@ -162,18 +172,7 @@ const runApplication = (application: ApplicationLike, argv: string[]): RunApplic
     return { isPrimary, exitStatus };
 };
 
-/**
- * Detaches every window from the application and runs GLib's own shutdown, which emits `shutdown`,
- * destroys the application implementation and releases the D-Bus registration. Does nothing for an
- * application that is not registered, so a repeated call is a no-op.
- *
- * GLib's own shutdown is reachable once per application: reaching it marks the application as
- * quitting, which GLib never undoes. An application that has already quit falls back to emitting
- * `shutdown`, which releases the runtime and leaves the registration for GLib to drop at finalize.
- *
- * @param application The application to shut down.
- */
-const quitApplication = (application: ApplicationLike): void => {
+const tearDownApplication = (application: ApplicationLike): void => {
     if (!application.getIsRegistered() || shutDownApplications.has(application)) {
         return;
     }
@@ -190,6 +189,28 @@ const quitApplication = (application: ApplicationLike): void => {
         shutDownApplications.add(application);
         application.emit("shutdown");
     }
+};
+
+/**
+ * Detaches every window from the application and runs GLib's own shutdown, which emits `shutdown`,
+ * destroys the application implementation and releases the D-Bus registration. Does nothing for an
+ * application that is not registered, so a repeated call is a no-op.
+ *
+ * GLib's own shutdown is reachable once per application: reaching it marks the application as
+ * quitting, which GLib never undoes. An application that has already quit falls back to emitting
+ * `shutdown`, which releases the runtime and leaves the registration for GLib to drop at finalize.
+ *
+ * The process-wide default {@link runApplication} claimed is given up whichever of those paths the
+ * application took, including the ones that have no teardown left to do, so
+ * `Gio.Application.getDefault()` never hands back an application that has been torn down or that
+ * never registered in the first place. GLib clears that default only at finalize, which a
+ * garbage-collected wrapper reaches arbitrarily late or never.
+ *
+ * @param application The application to shut down.
+ */
+const quitApplication = (application: ApplicationLike): void => {
+    tearDownApplication(application);
+    releaseDefaultApplication(application);
 };
 
 export {
