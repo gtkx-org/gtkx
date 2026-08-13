@@ -272,23 +272,20 @@ fn take_owned_on_a_borrowed_handle_returns_none() {
 #[test]
 fn a_field_of_a_borrowed_owner_stops_reaching_it_when_the_borrow_ends() {
     helpers::run(|| {
-        let owner_ptr = unsafe { glib::ffi::g_malloc0(size_of::<u32>() * 4) };
+        let mut owner = [0u32; 4];
+        let owner_ptr = owner.as_mut_ptr().cast::<c_void>();
         let owner_handle = Handle::from_glib_borrow(owner_ptr);
         let field = Handle::field(&owner_handle, size_of::<u32>() * 2);
-
-        let field_ptr = field.as_ptr().cast::<u32>();
 
         assert_eq!(field.as_ptr(), owner_ptr.wrapping_byte_add(8));
         assert_eq!(field.size_hint(), 0);
         assert!(!field.is_invalidated());
-        assert!(!field_ptr.is_null());
 
-        unsafe { field_ptr.write(99) };
+        unsafe { field.as_ptr().cast::<u32>().write(99) };
 
-        assert_eq!(unsafe { owner_ptr.cast::<u32>().add(2).read() }, 99);
+        assert_eq!(owner[2], 99);
 
         owner_handle.invalidate();
-        unsafe { glib::ffi::g_free(owner_ptr) };
 
         assert!(field.is_invalidated());
         assert!(field.as_ptr().is_null());
