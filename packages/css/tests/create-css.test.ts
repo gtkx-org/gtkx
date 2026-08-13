@@ -110,7 +110,7 @@ describe("removeLabel", () => {
     });
 });
 
-describe("css — class name generation", () => {
+describe("css, class name generation", () => {
     const fixture = installCssFixture();
 
     it("creates a class name from template literal styles", () => {
@@ -155,7 +155,7 @@ describe("css — class name generation", () => {
     });
 });
 
-describe("css — nesting, interpolation, and composition", () => {
+describe("css, nesting, interpolation, and composition", () => {
     const fixture = installCssFixture();
 
     it("handles nested style rules", () => {
@@ -245,7 +245,7 @@ describe("cx", () => {
     });
 });
 
-describe("cx — falsy filtering", () => {
+describe("cx, falsy filtering", () => {
     const fixture = installCssFixture();
 
     it("filters out false values", () => {
@@ -272,7 +272,7 @@ describe("cx — falsy filtering", () => {
     });
 });
 
-describe("cx — edge cases", () => {
+describe("cx, edge cases", () => {
     const fixture = installCssFixture();
 
     it("returns empty array when given no arguments", () => {
@@ -328,7 +328,7 @@ describe("injectGlobal", () => {
     });
 });
 
-describe("css — GTK named colors", () => {
+describe("css, GTK named colors", () => {
     const fixture = installCssFixture();
 
     it("preserves declarations carrying GTK named colors", () => {
@@ -374,7 +374,7 @@ describe("css — GTK named colors", () => {
     });
 });
 
-describe("css — at-rule and selector scoping", () => {
+describe("css, at-rule and selector scoping", () => {
     const fixture = installCssFixture();
 
     it("scopes @media at-rules around the generated class selector", () => {
@@ -412,7 +412,7 @@ describe("css — at-rule and selector scoping", () => {
     });
 });
 
-describe("css — rule shape and deduplication", () => {
+describe("css, rule shape and deduplication", () => {
     const fixture = installCssFixture();
 
     it("strips Emotion label declarations before they reach the GTK sink", () => {

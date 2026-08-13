@@ -5,6 +5,9 @@ type Case = { kind: string; rule: string };
 
 const CONTAINED: Case[] = [
     { kind: "a rule that closes everything it opens", rule: ".a{color:rgb(0, 0, 255);}" },
+    { kind: "a selector carrying a pseudo-class", rule: ".a:hover{color:red;}" },
+    { kind: "a descendant selector", rule: "window.demo .a{color:red;}" },
+    { kind: "a selector list", rule: ".a:hover:active,.a:active{color:red;}" },
     {
         kind: "nested blocks and functions",
         rule: "@media (prefers-color-scheme: dark){.a{color:alpha(@accent_bg_color, 0.4);}}",
@@ -20,12 +23,13 @@ const CONTAINED: Case[] = [
     { kind: "an unquoted url padded with spaces", rule: ".a{--icon:url(  https://x.dev/a/*b.png  );}" },
     { kind: "an escaped closer inside an unquoted url", rule: String.raw`.a{--icon:url(a\)b.png);}` },
     { kind: "a closer inside a quoted url", rule: '.a{--icon:url("https://x.dev/a)b.png");}' },
-    { kind: "an at-rule statement", rule: "@define-color mine rgb(1, 2, 3);" },
-    { kind: "an at-rule statement whose prelude carries brackets", rule: '@import url("theme.css");' },
+    { kind: "an at-rule statement", rule: '@import url("theme.css");' },
+    { kind: "an at-rule that carries a block", rule: "@keyframes gtkx-spin{from{opacity:0;}to{opacity:1;}}" },
+    { kind: "an at-rule GTK4 does not recognize", rule: '@charset "utf-8";' },
+    { kind: "a declaration GTK4 does not recognize", rule: ".a{not-a-real-property:1;}" },
     { kind: "a comment trailing a closed block", rule: ".a{color:red;}/* done */" },
     { kind: "a comment standing alone", rule: "/* nothing to see */" },
     { kind: "two rules handed over together", rule: ".a{color:red;}.b{color:blue;}" },
-    { kind: "an at-rule followed by a rule", rule: "@define-color mine red;.a{color:@mine;}" },
     { kind: "nothing but whitespace", rule: " " },
 ];
 
@@ -44,8 +48,12 @@ const UNCONTAINED: Case[] = [
     { kind: "a stray semicolon after a closed block", rule: ".a{color:red;};" },
     { kind: "a selector left dangling after a closed block", rule: ".a{color:red;}.b" },
     { kind: "a prelude whose brackets close but whose block never opens", rule: ".a[b]" },
-    { kind: "an at-rule statement that never reaches its semicolon", rule: "@define-color mine rgb(1, 2, 3)" },
+    { kind: "an at-rule statement that never reaches its semicolon", rule: '@import url("theme.css")' },
+    { kind: "an at-rule with an empty name", rule: "@;" },
+    { kind: "an at sign with nothing behind it", rule: "@" },
     { kind: "a lone semicolon", rule: ";" },
+    { kind: "a block opener with nothing behind it", rule: "{" },
+    { kind: "a block closer that opens nothing", rule: "}" },
 ];
 
 describe("isSelfContained", () => {
