@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { flag, relativePathRecord, text, textList, textRecord, url } from "./schema-text.ts";
+import { fileExtension, flag, relativePathRecord, text, textList, textRecord, url } from "./schema-text.ts";
 
 const APPIMAGE_COMPRESSIONS = ["gzip", "xz", "zstd"] as const;
 const DEB_COMPRESSIONS = ["gzip", "none", "xz", "zstd"] as const;
@@ -69,7 +69,7 @@ const releaseSchema = z.strictObject({
 });
 
 const fileAssociationSchema = z.strictObject({
-    extension: text("must be a file extension without a leading dot"),
+    extension: fileExtension("must be a file extension without a leading dot"),
     mimeType: text("must be a MIME type such as text/plain"),
     description: text("must be a description of the file type").optional(),
 });

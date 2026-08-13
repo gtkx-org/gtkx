@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+const FILE_EXTENSION = /^[^\s./\\*?[\]]+(?:\.[^\s./\\*?[\]]+)*$/;
 const SEGMENT_SEPARATOR = /[/\\]/;
 
 const isRelativePath = (value: string): boolean => {
@@ -21,6 +22,9 @@ const flag = (message: string): z.ZodBoolean => z.boolean({ error: message });
 const textRecord = (valueMessage: string, recordMessage: string): z.ZodRecord<z.ZodString, z.ZodString> =>
     z.record(z.string(), text(valueMessage), { error: recordMessage });
 
+const fileExtension = (message: string): z.ZodString =>
+    z.string({ error: message }).refine((value) => FILE_EXTENSION.test(value), { error: message });
+
 const relativePath = (message: string): z.ZodString =>
     z.string({ error: message }).refine((value) => isRelativePath(value), { error: message });
 
@@ -31,4 +35,4 @@ const relativePathRecord = (
 ): z.ZodRecord<z.ZodString, z.ZodString> =>
     z.record(relativePath(keyMessage), text(valueMessage), { error: recordMessage });
 
-export { flag, relativePathRecord, text, textList, textRecord, url };
+export { fileExtension, flag, relativePathRecord, text, textList, textRecord, url };
