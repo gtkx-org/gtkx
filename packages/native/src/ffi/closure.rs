@@ -356,9 +356,9 @@ impl ClosureData {
         arg_ptr: *const c_void,
     ) -> anyhow::Result<RefSlot<'e>> {
         let inner_ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
-        let is_seeded = ref_codec.inout;
+        let is_seeded = ref_codec.is_inout();
         let seed = if is_seeded {
-            seed_ref(env, inner_ptr, &ref_codec.inner_codec)?
+            seed_ref(env, inner_ptr, ref_codec.inner_codec())?
         } else {
             value::js_null(env)?
         };
@@ -366,8 +366,8 @@ impl ClosureData {
         Ok(RefSlot {
             obj: wrap_ref(env, seed)?,
             inner_ptr,
-            inner_codec: &ref_codec.inner_codec,
-            init: if ref_codec.inout {
+            inner_codec: ref_codec.inner_codec(),
+            init: if ref_codec.is_inout() {
                 SlotInit::Initialized
             } else {
                 SlotInit::Uninitialized
