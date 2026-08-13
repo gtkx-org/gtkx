@@ -48,7 +48,7 @@ const runUntilSignalled = async (signal: NodeJS.Signals, mode?: string): Promise
     return { output: read(), ...exit };
 };
 
-describe("onExit — a process stopped by a signal", () => {
+describe("onExit for a process stopped by a signal", () => {
     it("runs the registered callbacks on SIGINT, then dies of the signal", async () => {
         const run = await runUntilSignalled("SIGINT");
         expect(run.output).toContain(EXIT_MARKER);

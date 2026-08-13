@@ -22,7 +22,7 @@ const makeKindHolderClass = () => {
     return KindHolder;
 };
 
-describe("GValue conversion — GType", () => {
+describe("GValue conversion for GType", () => {
     it("round-trips a GType through the gtype descriptor", () => {
         const value = toValue(t.gtype, TYPE_STRING);
         expect(getValueType(value)).toBe(TYPE_GTYPE);
@@ -34,7 +34,7 @@ describe("GValue conversion — GType", () => {
     });
 });
 
-describe("generated accessors — GType properties", () => {
+describe("generated GType property accessors", () => {
     it("reads itemType off a Gio.ListStore", () => {
         const store = new Gio.ListStore({ itemType: getClassType(Gtk.Widget) });
         expect(store.itemType).toBe(getClassType(Gtk.Widget));
@@ -52,7 +52,7 @@ describe("generated accessors — GType properties", () => {
     });
 });
 
-describe("registerClass — a paramSpecGtype property", () => {
+describe("registerClass with a paramSpecGtype property", () => {
     it("reads the pspec default of a never-written property", () => {
         const KindHolder = makeKindHolderClass();
         expect(new KindHolder().kind).toBe(TYPE_OBJECT);
