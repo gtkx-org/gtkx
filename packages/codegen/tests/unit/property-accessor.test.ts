@@ -3,14 +3,16 @@ import { fixtureModules } from "../helpers/fixture-modules.js";
 
 const accessor = String(fixtureModules(["Accessor-1.0"]).get("Accessor"));
 
-const blockFrom = (source: string, head: string): string => {
+const sliceFrom = (source: string, head: string, closing: string): string => {
     const index = source.indexOf(head);
     expect(index, `expected ${head} in the generated module`).toBeGreaterThan(-1);
 
-    return source.slice(index, source.indexOf("\n    }", index));
+    return source.slice(index, source.indexOf(closing, index));
 };
 
+const blockFrom = (source: string, head: string): string => sliceFrom(source, head, "\n    }");
 const propertiesBlock = (): string => blockFrom(accessor, "export interface PanelProperties");
+const dockClass = (): string => sliceFrom(accessor, "export class Dock extends Frame {", "\n}");
 
 describe("a property whose getter and setter disagree on nullability", () => {
     it("reads through the getter's own return type", () => {
@@ -55,6 +57,30 @@ describe("a property whose setter contradicts the getter's base type", () => {
             "set tags(value: string[] | null) {\n" +
             '        setObjectProperty(this, "tags", t.array(t.string("borrowed"), "array", "borrowed"), value);',
         );
+    });
+});
+
+describe("a property a subclass redeclares against what its ancestor declares", () => {
+    it("reads through the property descriptor when the getter it would delegate to is wider", () => {
+        const dock = dockClass();
+        expect(dock).toContain("getBadge(): string | null {");
+
+        expect(blockFrom(dock, "get badge()")).toBe(
+            'get badge(): string {\n        return getObjectProperty(this, "badge", t.string("borrowed")) as string;',
+        );
+
+        expect(blockFrom(dock, "set badge(")).toBe("set badge(value: string) {\n        this.setBadge(value);");
+    });
+
+    it("writes through the property descriptor when the setter it would delegate to is narrower", () => {
+        const dock = dockClass();
+        expect(dock).toContain("setMotto(motto: string): void {");
+
+        expect(blockFrom(dock, "set motto(")).toBe(
+            'set motto(value: string | null) {\n        setObjectProperty(this, "motto", t.string("borrowed"), value);',
+        );
+
+        expect(blockFrom(dock, "get motto()")).toBe("get motto(): string {\n        return this.getMotto();");
     });
 });
 

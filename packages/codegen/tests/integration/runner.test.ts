@@ -73,6 +73,20 @@ const registerShadowedMemberTests = (): void => {
     });
 };
 
+const registerPropertyAccessorTests = (): void => {
+    it("writes a store whose property accessors read and write different types", async () => {
+        const gi = storeUnit(projectModules("accessor-types"), "gi");
+        const result = await runCodegen({ libraries: ["Accessor-1.0"], girPath: FIXTURE_GIR_PATH, gi });
+        expect(result.namespaces).toBeGreaterThan(0);
+        const types = readFileSync(join(gi.storeDir, "accessor", "accessor.d.ts"), "utf8");
+        expect(types).toContain("get caption(): string | null;\n    set caption(value: string);");
+        expect(types).toContain("get title(): string;\n    set title(value: string | null);");
+        expect(types).toContain("get badge(): string;\n    set badge(value: string);");
+        expect(types).toContain("get motto(): string;\n    set motto(value: string | null);");
+        expect(existsSync(join(gi.storeDir, "accessor", "accessor.js"))).toBe(true);
+    });
+};
+
 const registerFreshnessTests = (): void => {
     it("skips regeneration when the store fingerprint is still fresh", async () => {
         const gi = storeUnit(projectModules("rerun"), "gi");
@@ -197,6 +211,7 @@ afterAll(() => {
 describe("runCodegen", () => {
     registerStoreWriteTests();
     registerShadowedMemberTests();
+    registerPropertyAccessorTests();
     registerFreshnessTests();
     registerStagingTests();
     registerStoreLinkTests();

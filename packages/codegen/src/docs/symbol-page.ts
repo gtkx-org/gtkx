@@ -400,7 +400,11 @@ const getAccessNotes = (accessor: ResolvedAccessor): string[] => {
         return ["read-only"];
     }
 
-    return accessor.hasGetter ? [] : ["write-only"];
+    if (!accessor.hasGetter) {
+        return ["write-only"];
+    }
+
+    return accessor.readType === accessor.writeType ? [] : [`writes \`${accessor.writeType}\``];
 };
 
 const documentedAccessorType = (accessor: ResolvedAccessor): string =>

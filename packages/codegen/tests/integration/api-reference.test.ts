@@ -59,6 +59,14 @@ const registerClassPageTests = (): void => {
         expect(page).toContain("setLabel(label: string): void");
     });
 
+    it("documents both directions of a property that reads and writes different types", () => {
+        const page = pageFor("Gtk.Button");
+        const properties = page.slice(page.indexOf("## Properties"), page.indexOf("## Signals"));
+        expect(properties).toContain("`string | null` · default `null` · writes `string`");
+        expect(properties).toContain("`Gtk.Widget | null`\n");
+        expect(properties).not.toContain("`Gtk.Widget | null` · writes");
+    });
+
     it("omits properties whose names are claimed by generated methods", () => {
         const page = pageFor("Gtk.Widget");
         const propertiesSection = page.slice(page.indexOf("## Properties"), page.indexOf("## Signals"));

@@ -39,6 +39,7 @@ type PropertyAccessorArgs = {
 
 type AccessorDelegate = { member: string; method: GirFunction };
 type AccessorDelegates = { getter: AccessorDelegate | undefined; setter: AccessorDelegate | undefined };
+type TypedDelegates = { types: AccessorTypes; delegates: AccessorDelegates };
 
 const NULLABLE_SUFFIX = " | null";
 
@@ -166,8 +167,24 @@ const resolveOwnTypes = (
     };
 };
 
-const resolveTypes = (args: PropertyAccessorArgs, delegates: AccessorDelegates): AccessorTypes =>
-    args.inheritedTypes ?? resolveOwnTypes(args.context, args.property, delegates);
+const isAssignableType = (source: string, target: string): boolean =>
+    source === target || baseTypeName(target) === source;
+
+const agreeingDelegates = (
+    delegates: AccessorDelegates,
+    ownTypes: AccessorTypes,
+    declaredTypes: AccessorTypes,
+): AccessorDelegates => ({
+    getter: isAssignableType(ownTypes.readType, declaredTypes.readType) ? delegates.getter : undefined,
+    setter: isAssignableType(declaredTypes.writeType, ownTypes.writeType) ? delegates.setter : undefined,
+});
+
+const resolveTypedDelegates = (args: PropertyAccessorArgs, resolved: AccessorDelegates): TypedDelegates => {
+    const ownTypes = resolveOwnTypes(args.context, args.property, resolved);
+    const types = args.inheritedTypes ?? ownTypes;
+
+    return { types, delegates: agreeingDelegates(resolved, ownTypes, types) };
+};
 
 const isSkippedAccessor = (args: PropertyAccessorArgs, jsName: string): boolean =>
     !args.property.introspectable ||
@@ -184,14 +201,14 @@ const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefin
     }
 
     const isWritable = isConstructableProperty(property) && !property.constructOnly;
-    const delegates = resolveDelegates(args, jsName, isWritable);
-    const hasGetter = property.readable || delegates.getter !== undefined;
+    const resolved = resolveDelegates(args, jsName, isWritable);
+    const hasGetter = property.readable || resolved.getter !== undefined;
 
     if (!hasGetter && !isWritable) {
         return undefined;
     }
 
-    const types = resolveTypes(args, delegates);
+    const { types, delegates } = resolveTypedDelegates(args, resolved);
 
     return {
         property,
