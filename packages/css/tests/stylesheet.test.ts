@@ -1,4 +1,8 @@
 import { CssProvider } from "@gtkx/gi/gtk";
+import { execFile } from "node:child_process";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { describe, expect, it, vi } from "vitest";
 import { createCss } from "../src/create-css.js";
 import { StyleSheet } from "../src/stylesheet.js";
@@ -12,11 +16,16 @@ const GOOD_LAST = ".last{color:rgb(0, 0, 255);}";
 const NUL_RULE = `.nul{font-family:"Canta${NUL}rell";}`;
 const URL_RULE = ".iconic{--icon:url(https://x.dev/a/*b.png);}";
 const DROP_WARNING = "Dropped a malformed CSS rule";
+const PROBE_CLASS = "gtkx-probe";
+const ROOT = join(import.meta.dirname, "..", "..", "..");
+const CREATE_CSS = pathToFileURL(join(import.meta.dirname, "..", "src", "create-css.ts")).href;
+const runNode = promisify(execFile);
 
 const DROPPED_RULES: RuleCase[] = [
     { kind: "an unbalanced parenthesis", rule: ".broken{color:rgb(0;font-weight:bold;};}" },
     { kind: "an unterminated string", rule: '.broken{font-family:"Cantarell;}' },
     { kind: "an unterminated comment", rule: ".broken{color:red;/*}" },
+    { kind: "a newline inside a string", rule: ".broken{content:'Canta\nrell';}" },
     { kind: "a block that is never closed", rule: ".broken{color:red;" },
     { kind: "an unquoted url that never closes", rule: ".broken{--icon:url(https://x.dev/a/*b.png;}" },
     { kind: "a comment opener inside a function named after a url", rule: ".broken{--icon:myurl(a/*b);}" },
@@ -27,6 +36,9 @@ const DROPPED_RULES: RuleCase[] = [
     { kind: "an at-rule statement that never reaches its semicolon", rule: '@import url("theme.css")' },
     { kind: "an at-rule with an empty name", rule: "@;" },
     { kind: "a lone semicolon", rule: ";" },
+    { kind: "a rule that spells the probe and then opens a url", rule: `.${PROBE_CLASS}{color:rgb(0, 0, 0);b:url(}` },
+    { kind: "a rule that spells the probe and then opens a parenthesis", rule: `.${PROBE_CLASS}{color:rgb(0;}` },
+    { kind: "a rule that spells the probe and then opens a comment", rule: `.${PROBE_CLASS}{color:rgb(0, 0, 0);/*}` },
 ];
 
 const KEPT_RULES: RuleCase[] = [
@@ -35,9 +47,25 @@ const KEPT_RULES: RuleCase[] = [
     { kind: "a media query around a rule", rule: "@media (prefers-color-scheme: dark){.dark{color:red;}}" },
     { kind: "an at-rule statement", rule: '@import url("theme.css");' },
     { kind: "an at-rule that carries a block", rule: "@keyframes gtkx-spin{from{opacity:0;}to{opacity:1;}}" },
-    { kind: "a declaration GTK4 does not recognize", rule: ".kept{not-a-real-property:1;}" },
+    { kind: "a color definition", rule: "@define-color mine rgb(1, 2, 3);" },
     { kind: "an unquoted url carrying a comment opener", rule: URL_RULE },
+    { kind: "brackets sitting inside a string and a comment", rule: '.quoted{font-family:"Cantarell{(";/* } ( */}' },
 ];
+
+const REPORTED_RULES: RuleCase[] = [
+    { kind: "a declaration GTK4 does not recognize", rule: ".kept{not-a-real-property:1;}" },
+    { kind: "an at-rule GTK4 does not recognize", rule: '@charset "utf-8";' },
+];
+
+const CHILD_SOURCE = [
+    `const { createCss } = await import(${JSON.stringify(CREATE_CSS)});`,
+    "const { css } = createCss();",
+    'css({ backgroundImage: "url(" });',
+    String.raw`css({ fontFamily: "'Canta\nrell'" });`,
+    'css({ color: "rgb(0, 0, 255)" });',
+    "await Promise.resolve();",
+    "await Promise.resolve();",
+].join("\n");
 
 const flushMicrotasks = async (): Promise<void> => {
     await new Promise<void>((resolve) => {
@@ -98,6 +126,31 @@ const parsedDocument = (document: string): string => {
 
 const hasSelector = (parsed: string, selector: string): boolean => parsed.split("\n").includes(`${selector} {`);
 
+const manyRules = (count: number): string[] =>
+    Array.from({ length: count }, (_, index) => `.many-${String(index)}{color:rgb(0, 0, ${String(index)});}`);
+
+const loadsFor = async (count: number): Promise<number> => {
+    const { loadedDocuments } = await applied(() => {
+        insertAll(manyRules(count));
+    });
+
+    return loadedDocuments.length;
+};
+
+const connectionsFor = async (count: number): Promise<number> => {
+    const connect = vi.spyOn(CssProvider.prototype, "on");
+
+    try {
+        await applied(() => {
+            insertAll(manyRules(count));
+        });
+
+        return connect.mock.calls.length;
+    } finally {
+        connect.mockRestore();
+    }
+};
+
 const styleThroughUnclosedValue = (): void => {
     const { css } = createCss();
     css({ color: "rgb(255, 0, 0)" });
@@ -118,6 +171,12 @@ const styleThroughUnscopedDeclarations = (): void => {
     css({ color: "rgb(0, 0, 255)" });
 };
 
+const styleThroughForgedProbe = (): void => {
+    const { css, injectGlobal } = createCss();
+    injectGlobal(`.${PROBE_CLASS}{color:rgb(0, 0, 0);background-image:url(}`);
+    css({ color: "rgb(0, 0, 255)" });
+};
+
 describe("StyleSheet", () => {
     it("accepts a rule via insert", () => {
         const stylesheet = new StyleSheet();
@@ -135,15 +194,6 @@ describe("StyleSheet", () => {
             stylesheet.insert(".rule2 { color: blue; }");
             stylesheet.insert(".rule3 { color: green; }");
         }).not.toThrow();
-    });
-
-    it("warns when GTK4 rejects a declaration", async () => {
-        const { warnings } = await applied(() => {
-            insertAll([".bad { not-a-real-property: 1; }"]);
-        });
-
-        expect(warnings).toContain("[gtkx:css]");
-        expect(warnings).toContain("GTK4 rejected CSS");
     });
 });
 
@@ -177,11 +227,21 @@ describe("StyleSheet, rules GTK4 parses whole", () => {
         expect(hasSelector(parsed, ".last")).toBe(true);
     });
 
-    it.each(KEPT_RULES)("never reports $kind as malformed", async ({ rule }) => {
+    it.each(KEPT_RULES)("stays silent about $kind", async ({ rule }) => {
         const { warnings } = await applied(() => {
             insertAll([rule]);
         });
 
+        expect(warnings).toBe("");
+    });
+
+    it.each(REPORTED_RULES)("installs $kind and reports what GTK4 rejected in it", async ({ rule }) => {
+        const { flushedDocument, warnings } = await applied(() => {
+            insertAll([rule]);
+        });
+
+        expect(flushedDocument).toContain(rule);
+        expect(warnings).toContain("GTK4 rejected CSS");
         expect(warnings).not.toContain(DROP_WARNING);
     });
 
@@ -190,12 +250,38 @@ describe("StyleSheet, rules GTK4 parses whole", () => {
         expect(parsedDocument(flushedDocument)).toContain("--icon: url(https://x.dev/a/*b.png)");
     });
 
-    it("installs a rule whose brackets sit inside a string or a comment", async () => {
-        const { flushedDocument } = await applied(() => {
-            insertAll(['.quoted{font-family:"Cantarell{(";/* } ( */}']);
-        });
+    it("never hands the display a rule of its own", async () => {
+        const { loadedDocuments, flushedDocument } = await appliedAround(GOOD_LAST);
+        expect(flushedDocument).not.toContain(PROBE_CLASS);
+        expect(loadedDocuments.at(-1)).toBe(flushedDocument);
+    });
+});
 
-        expect(parsedDocument(flushedDocument)).toContain(".quoted");
+describe("StyleSheet, the work one insert costs", () => {
+    it("parses each rule once, however many arrive", async () => {
+        await loadsFor(1);
+        const few = await loadsFor(4);
+        const many = await loadsFor(24);
+        expect(few).toBe(5);
+        expect(many).toBe(25);
+    });
+
+    it("checks every rule through one provider", async () => {
+        await connectionsFor(1);
+        expect(await connectionsFor(4)).toBe(1);
+        expect(await connectionsFor(24)).toBe(1);
+    });
+
+    it("keeps GTK4 parser output off stdout when a value is malformed", async () => {
+        const { stdout, stderr } = await runNode(
+            "node",
+            ["--import", "tsx", "--input-type=module", "-e", CHILD_SOURCE],
+            { cwd: ROOT },
+        );
+
+        expect(stdout).toBe("");
+        expect(stderr).toContain(DROP_WARNING);
+        expect(stderr).toContain("url(");
     });
 });
 
@@ -218,6 +304,12 @@ describe("StyleSheet, styles written through css and injectGlobal", () => {
         const { flushedDocument, warnings } = await applied(styleThroughUnscopedDeclarations);
         expect(warnings).toContain(DROP_WARNING);
         expect(warnings).toContain("color:rgb(255, 0, 0);");
+        expect(parsedDocument(flushedDocument)).toContain("rgb(0,0,255)");
+    });
+
+    it("keeps the styles created after a rule that spells out the probe", async () => {
+        const { flushedDocument, warnings } = await applied(styleThroughForgedProbe);
+        expect(warnings).toContain(DROP_WARNING);
         expect(parsedDocument(flushedDocument)).toContain("rgb(0,0,255)");
     });
 

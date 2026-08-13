@@ -52,6 +52,19 @@ const UNCONTAINED: Case[] = [
     { kind: "an at-rule with an empty name", rule: "@;" },
     { kind: "an at sign with nothing behind it", rule: "@" },
     { kind: "a lone semicolon", rule: ";" },
+    { kind: "a newline inside a string", rule: ".a{content:'Canta\nrell';}" },
+    {
+        kind: "a rule that serializes to the probe and then opens a url",
+        rule: ".gtkx-probe{color:rgb(0, 0, 0);background-image:url(}",
+    },
+    {
+        kind: "a rule that serializes to the probe and then leaves a parenthesis open",
+        rule: ".gtkx-probe{color:rgb(0, 0, 0);border:rgb(0;}",
+    },
+    {
+        kind: "a rule that serializes to the probe and then opens a comment",
+        rule: ".gtkx-probe{color:rgb(0, 0, 0);/*}",
+    },
     { kind: "a block opener with nothing behind it", rule: "{" },
     { kind: "a block closer that opens nothing", rule: "}" },
 ];
