@@ -1,3 +1,4 @@
+import RefreshRuntime from "react-refresh/runtime";
 import { describe, expect, it } from "vitest";
 import {
     createModuleRegistration,
@@ -26,6 +27,12 @@ const registerComponent = (moduleId: string, id: string): (() => null) => {
     createModuleRegistration(moduleId).$RefreshReg$(component, id);
 
     return component;
+};
+
+const familyCurrent = (type: unknown): unknown => {
+    const family = RefreshRuntime.getFamilyByType(type);
+
+    return family === undefined ? null : family.current;
 };
 
 describe("createModuleRegistration", () => {
@@ -132,20 +139,31 @@ describe("staleExportName", () => {
         const current = esModuleExports({ Widget: freshComponent() });
         expect(staleExportName({}, current)).toBeNull();
     });
+
+    it("names nothing when a save re-exports the component it re-exported before", () => {
+        const shared = registerComponent("mod-stale-4", "Widget");
+        performRefresh();
+        expect(staleExportName(esModuleExports({ Widget: shared }), esModuleExports({ Widget: shared }))).toBeNull();
+        performRefresh();
+        expect(familyCurrent(shared)).toBe(shared);
+    });
 });
 
 describe("performRefresh", () => {
-    it("counts the family a save re-registered under an id react-refresh already knew", () => {
-        registerComponent("mod-refresh-1", "Widget");
+    it("swaps the family the window renders to the type a save registered under the same id", () => {
+        const previous = registerComponent("mod-refresh-1", "Widget");
         performRefresh();
-        registerComponent("mod-refresh-1", "Widget");
-        expect(performRefresh()).toBe(1);
+        const current = registerComponent("mod-refresh-1", "Widget");
+        performRefresh();
+        expect(familyCurrent(previous)).toBe(current);
     });
 
-    it("counts nothing for a save that registered its component under a renamed id", () => {
-        registerComponent("mod-refresh-2", "Widget");
+    it("leaves the window rendering the old type when a save registered its component under a renamed id", () => {
+        const previous = registerComponent("mod-refresh-2", "Widget");
         performRefresh();
-        registerComponent("mod-refresh-2", "Panel");
-        expect(performRefresh()).toBe(0);
+        const current = registerComponent("mod-refresh-2", "Panel");
+        performRefresh();
+        expect(familyCurrent(previous)).toBe(previous);
+        expect(familyCurrent(current)).toBe(current);
     });
 });

@@ -42,7 +42,7 @@ type HarnessOverrides = {
     applicationId?: string | null;
     configuredApplicationId?: string;
     isBoundary?: (mod: Record<string, unknown>) => boolean;
-    performRefresh?: DevRunnerDeps["performRefresh"];
+    performRefresh?: () => unknown;
     staleExportName?: DevRunnerDeps["staleExportName"];
     applicationInstance?: ApplicationInstance;
     readFileRevision?: DevRunnerDeps["readFileRevision"];
@@ -80,7 +80,7 @@ type Harness = HarnessMocks & {
 };
 
 type WaitCall = { timeoutMs: number; shouldKeepWaiting: () => boolean };
-type DroppedSave = { harness: Harness; written: string };
+type WatchedSave = { harness: Harness; written: string };
 type OnShutdown = () => void;
 type OnSignal = () => void | Promise<void>;
 type OnCause = (cause: unknown) => void;
@@ -103,9 +103,9 @@ const RESOLVE_FAILURE = "PROBE: Failed to load url ./theme.js";
 const NEXT_RESOLVE_FAILURE = "PROBE: Failed to load url ./palette.js";
 const BROKEN_FILE_FAILURE = "PROBE: theme.ts failed to parse";
 const RETRY_LOG = "Retrying pending save";
+const DROPPED_REFRESH = "Fast Refresh dropped";
 const DROPPED_EXPORT_REASON = "no longer exports Widget, which its importers still hold";
 const RENAMED_COMPONENT_REASON = "renamed the component it exports as default, which the window is still rendering";
-const UNPATCHED_REASON = "patched no component the window is rendering";
 const SETTLE_ROUNDS = 8;
 
 const PLUGIN_NAMES = [
@@ -230,7 +230,7 @@ const buildMocks = (server: FakeServer, overrides: HarnessOverrides): HarnessMoc
     watchUncaughtErrors: vi.fn<DevRunnerDeps["watchUncaughtErrors"]>(),
     installShutdownHandlers: vi.fn<DevRunnerDeps["installShutdownHandlers"]>(),
     quitDefaultApp: vi.fn<DevRunnerDeps["quitDefaultApplication"]>(),
-    performRefresh: vi.fn<DevRunnerDeps["performRefresh"]>(overrides.performRefresh ?? ((): number => 1)),
+    performRefresh: vi.fn<DevRunnerDeps["performRefresh"]>(overrides.performRefresh ?? ((): void => undefined)),
     isBoundary: vi.fn<DevRunnerDeps["isRefreshBoundary"]>((mod) =>
         overrides.isBoundary ? overrides.isBoundary(mod) : mod.isBoundary === true,
     ),
@@ -410,8 +410,6 @@ const expectRefreshRestart = async (schedule: (fireShutdown: () => void) => void
         schedule(() => {
             onShutdown();
         });
-
-        return 1;
     });
 
     await emitBoundaryChange(harness, "/x/y.ts");
@@ -563,8 +561,6 @@ const startFailedHarness = async (cause: Error): Promise<Harness> => {
     harness.performRefresh.mockImplementationOnce(() => {
         onShutdown();
         reportUncaught(cause);
-
-        return 1;
     });
 
     await emitBoundaryChange(harness, "/x/y.ts");
@@ -647,6 +643,7 @@ const appearWithBoundaryLoad = async (harness: Harness, createdPath: string): Pr
 
 const Widget = (): null => null;
 const Panel = (): null => null;
+const patchesNothing = (): number => 0;
 
 const saveWithExports = async (
     previous: FakeExports,
@@ -661,11 +658,11 @@ const saveWithExports = async (
     return harness;
 };
 
-const saveDroppingRefresh = async (
+const saveWatchingStderr = async (
     previous: FakeExports,
     next: FakeExports,
     overrides: HarnessOverrides = {},
-): Promise<DroppedSave> => {
+): Promise<WatchedSave> => {
     const stderrSpy = captureStderr();
     const harness = await saveWithExports(previous, next, overrides);
     const written = collectLogged(stderrSpy);
@@ -674,11 +671,18 @@ const saveDroppingRefresh = async (
     return { harness, written };
 };
 
-const expectDroppedRefreshRestart = (save: DroppedSave, reason: string): void => {
-    expect(save.written).toContain(`Fast Refresh dropped: ${WATCHED_FILE} ${reason}`);
+const expectDroppedRefreshRestart = (save: WatchedSave, reason: string): void => {
+    expect(save.written).toContain(`${DROPPED_REFRESH}: ${WATCHED_FILE} ${reason}`);
     expect(loggedMessages(save.harness).some((message) => message.includes("Fast Refresh complete"))).toBe(false);
     expect(save.harness.server.close).toHaveBeenCalled();
     expect(save.harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+};
+
+const expectAnnouncedRefresh = (save: WatchedSave): void => {
+    expect(save.written).not.toContain(DROPPED_REFRESH);
+    expect(loggedMessages(save.harness)).toContain("Fast Refresh complete");
+    expect(save.harness.server.close).not.toHaveBeenCalled();
+    expect(save.harness.exit).not.toHaveBeenCalled();
 };
 
 const appearWithFailingLoad = async (harness: Harness, createdPath: string, failure: string): Promise<string> => {
@@ -1129,13 +1133,13 @@ describe("createDevRunner (file watcher dispatch)", () => {
 
 describe("createDevRunner (a save the running window cannot receive)", () => {
     it("restarts instead of announcing a Fast Refresh the importers never receive", async () => {
-        const save = await saveDroppingRefresh({ isBoundary: true, Widget }, { isBoundary: true, Panel });
+        const save = await saveWatchingStderr({ isBoundary: true, Widget }, { isBoundary: true, Panel });
         expect(save.harness.performRefresh).not.toHaveBeenCalled();
         expectDroppedRefreshRestart(save, DROPPED_EXPORT_REASON);
     });
 
     it("restarts when an unchanged export name hides a component react-refresh cannot patch", async () => {
-        const save = await saveDroppingRefresh(
+        const save = await saveWatchingStderr(
             { isBoundary: true, default: Widget },
             { isBoundary: true, default: Panel },
             { staleExportName: () => "default" },
@@ -1145,30 +1149,28 @@ describe("createDevRunner (a save the running window cannot receive)", () => {
         expectDroppedRefreshRestart(save, RENAMED_COMPONENT_REASON);
     });
 
-    it("restarts when the refresh itself patched no component the window is rendering", async () => {
-        const save = await saveDroppingRefresh({ isBoundary: true, Widget }, { isBoundary: true, Widget }, {
-            performRefresh: () => 0,
-        });
-
-        expect(save.harness.performRefresh).toHaveBeenCalledTimes(1);
-        expectDroppedRefreshRestart(save, UNPATCHED_REASON);
-    });
-
     it("fast-refreshes when the module keeps every export its importers hold", async () => {
         const previous = { isBoundary: true, Widget, revision: "before" };
         const next = { isBoundary: true, Widget, revision: "after" };
-        const harness = await saveWithExports(previous, next);
-        expect(harness.performRefresh).toHaveBeenCalledTimes(1);
-        expect(harness.staleExportName).toHaveBeenCalledWith(previous, next);
-        expect(loggedMessages(harness)).toContain("Fast Refresh complete");
-        expect(harness.exit).not.toHaveBeenCalled();
+        const save = await saveWatchingStderr(previous, next);
+        expect(save.harness.performRefresh).toHaveBeenCalledTimes(1);
+        expect(save.harness.staleExportName).toHaveBeenCalledWith(previous, next);
+        expectAnnouncedRefresh(save);
     });
 
     it("fast-refreshes when the module only adds an export", async () => {
-        const harness = await saveWithExports({ isBoundary: true, Widget }, { isBoundary: true, Widget, Panel });
-        expect(harness.performRefresh).toHaveBeenCalledTimes(1);
-        expect(loggedMessages(harness)).toContain("Fast Refresh complete");
-        expect(harness.exit).not.toHaveBeenCalled();
+        const save = await saveWatchingStderr({ isBoundary: true, Widget }, { isBoundary: true, Widget, Panel });
+        expect(save.harness.performRefresh).toHaveBeenCalledTimes(1);
+        expectAnnouncedRefresh(save);
+    });
+
+    it("fast-refreshes a re-export the save left patching nothing of its own", async () => {
+        const save = await saveWatchingStderr({ isBoundary: true, Widget }, { isBoundary: true, Widget }, {
+            performRefresh: patchesNothing,
+        });
+
+        expect(save.harness.performRefresh).toHaveBeenCalledTimes(1);
+        expectAnnouncedRefresh(save);
     });
 });
 

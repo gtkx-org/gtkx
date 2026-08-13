@@ -1,9 +1,9 @@
 type RefreshTracker = {
-    performRefresh: () => number;
+    performRefresh: () => void;
     isRefreshing: () => boolean;
 };
 
-const createRefreshTracker = (performRefresh: () => number): RefreshTracker => {
+const createRefreshTracker = (performRefresh: () => void): RefreshTracker => {
     let isRefreshing = false;
 
     return {
@@ -11,7 +11,7 @@ const createRefreshTracker = (performRefresh: () => number): RefreshTracker => {
             isRefreshing = true;
 
             try {
-                return performRefresh();
+                performRefresh();
             } finally {
                 setTimeout(() => {
                     isRefreshing = false;

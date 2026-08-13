@@ -28,7 +28,7 @@ type DevRunnerDeps = {
     getApplicationInstance(): ApplicationInstance;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
     quitDefaultApplication(): void;
-    performRefresh: () => number;
+    performRefresh: () => void;
     isRefreshBoundary(module: Record<string, unknown>): boolean;
     staleExportName(previous: Record<string, unknown>, current: Record<string, unknown>): string | null;
     readFileRevision(path: string): Promise<string>;
@@ -221,11 +221,6 @@ const unpatchedExportReason = (
     return `renamed the component it exports as ${stale}, which the window is still rendering`;
 };
 
-const restartUnpatched = async (session: DevSession, changedPath: string, reason: string): Promise<void> => {
-    warn(`${DROPPED_REFRESH}: ${changedPath} ${reason}`);
-    await requestRestart(session);
-};
-
 const refreshChangedModule = async (
     session: DevSession,
     changedPath: string,
@@ -253,20 +248,15 @@ const refreshChangedModule = async (
     const unpatched = unpatchedExportReason(session, previous, loadedExports);
 
     if (unpatched !== null) {
-        await restartUnpatched(session, changedPath, unpatched);
+        warn(`${DROPPED_REFRESH}: ${changedPath} ${unpatched}`);
+        await requestRestart(session);
 
         return;
     }
 
     session.pendingSaves.delete(changedPath);
     session.deps.log("Running Fast Refresh...");
-
-    if (session.deps.performRefresh() === 0) {
-        await restartUnpatched(session, changedPath, "patched no component the window is rendering");
-
-        return;
-    }
-
+    session.deps.performRefresh();
     session.deps.log("Fast Refresh complete");
 };
 

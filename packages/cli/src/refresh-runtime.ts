@@ -86,14 +86,8 @@ const staleExportName = (previous: Record<string, unknown>, current: Record<stri
     return null;
 };
 
-function performRefresh(): number {
-    const update = RefreshRuntime.performReactRefresh();
-
-    if (!update) {
-        return 0;
-    }
-
-    return update.updatedFamilies.size + update.staleFamilies.size;
+function performRefresh(): void {
+    RefreshRuntime.performReactRefresh();
 }
 
 export { createModuleRegistration, isRefreshBoundary, performRefresh, staleExportName };

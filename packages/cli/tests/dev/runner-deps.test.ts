@@ -15,7 +15,7 @@ const hoisted = vi.hoisted(() => ({
     startMcpClient: vi.fn(() => Promise.resolve()),
     stopMcpClient: vi.fn(),
     setTestingModuleLoader: vi.fn(),
-    performRefresh: vi.fn(() => 1),
+    performRefresh: vi.fn(),
     isRefreshBoundary: vi.fn(() => false),
     staleExportName: vi.fn(() => null),
     createServer: vi.fn(() => Promise.resolve({})),
