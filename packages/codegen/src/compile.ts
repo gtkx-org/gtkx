@@ -4,16 +4,25 @@ import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
-type SourceModule = {
+type ProjectFile = {
     fileName: string;
+    origin?: string | undefined;
+};
+
+type SourceModule = ProjectFile & {
     source: string;
 };
 
 type CompileProjectParams = {
     projectDir: string;
-    fileNames: string[];
+    files: ProjectFile[];
     compilerOptions: Record<string, unknown>;
     label: string;
+};
+
+type DiagnosedFile = {
+    fileName: string;
+    text: string;
 };
 
 type FailedProjectInput = {
@@ -81,47 +90,84 @@ const linkToolingModules = (projectDir: string): (() => void) => {
 const isProjectFile = (rel: string): boolean =>
     !rel.startsWith("..") && !isAbsolute(rel) && !rel.split(/[/\\]/).includes("node_modules");
 
-const projectDiagnosticLine = (diagnostic: ts.Diagnostic, projectDir: string): string | undefined => {
+const projectDiagnosticFile = (diagnostic: ts.Diagnostic, projectDir: string): DiagnosedFile | undefined => {
     const { file, start } = diagnostic;
 
     if (file === undefined || start === undefined) {
         return undefined;
     }
 
-    const filePath = relative(projectDir, file.fileName);
+    const fileName = relative(projectDir, file.fileName);
 
-    if (!isProjectFile(filePath)) {
+    if (!isProjectFile(fileName)) {
         return undefined;
     }
 
     const { line, character } = file.getLineAndCharacterOfPosition(start);
     const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
 
-    return `${filePath}:${String(line + 1)}:${String(character + 1)} - ${message} (TS${String(diagnostic.code)})`;
+    return {
+        fileName,
+        text: `${fileName}:${String(line + 1)}:${String(character + 1)} - ${message} (TS${String(diagnostic.code)})`,
+    };
 };
 
-const projectDiagnosticLines = (diagnostics: ts.Diagnostic[], projectDir: string): string[] => {
-    const lines: string[] = [];
+const projectDiagnosticFiles = (diagnostics: ts.Diagnostic[], projectDir: string): DiagnosedFile[] => {
+    const diagnosed: DiagnosedFile[] = [];
 
     for (const diagnostic of diagnostics) {
-        const line = projectDiagnosticLine(diagnostic, projectDir);
+        const entry = projectDiagnosticFile(diagnostic, projectDir);
 
-        if (line !== undefined) {
-            lines.push(line);
+        if (entry !== undefined) {
+            diagnosed.push(entry);
         }
     }
 
-    return lines;
+    return diagnosed;
 };
 
-const diagnosticError = (label: string, projectDir: string, diagnostics: ts.Diagnostic[]): Error => {
-    const lines = projectDiagnosticLines(diagnostics, projectDir);
+const collectOrigins = (files: ProjectFile[]): Map<string, string> => {
+    const origins: Map<string, string> = new Map();
 
-    if (lines.length > 0) {
-        return new Error(`Type checking ${label} found ${String(lines.length)} error(s):\n${lines.join("\n")}`);
+    for (const { fileName, origin } of files) {
+        if (origin !== undefined) {
+            origins.set(fileName, origin);
+        }
     }
 
-    return new Error(`Type checking ${label} failed:\n${ts.formatDiagnostics(diagnostics, FORMAT_HOST).trim()}`);
+    return origins;
+};
+
+const groupByOrigin = (diagnosed: DiagnosedFile[], origins: Map<string, string>): Map<string, Set<string>> => {
+    const grouped: Map<string, Set<string>> = new Map();
+
+    for (const { fileName } of diagnosed) {
+        const origin = origins.get(fileName);
+
+        if (origin !== undefined) {
+            grouped.set(origin, (grouped.get(origin) ?? new Set<string>()).add(fileName));
+        }
+    }
+
+    return grouped;
+};
+
+const originLines = (diagnosed: DiagnosedFile[], files: ProjectFile[]): string[] =>
+    [...groupByOrigin(diagnosed, collectOrigins(files))].map(
+        ([origin, generated]) => `Generated from ${origin}: ${[...generated].join(", ")}`,
+    );
+
+const diagnosticError = (params: CompileProjectParams, diagnostics: ts.Diagnostic[]): Error => {
+    const diagnosed = projectDiagnosticFiles(diagnostics, params.projectDir);
+    const { label } = params;
+
+    if (diagnosed.length === 0) {
+        return new Error(`Type checking ${label} failed:\n${ts.formatDiagnostics(diagnostics, FORMAT_HOST).trim()}`);
+    }
+
+    const lines = [...diagnosed.map((entry) => entry.text), ...originLines(diagnosed, params.files)];
+
+    return new Error(`Type checking ${label} found ${String(diagnosed.length)} error(s):\n${lines.join("\n")}`);
 };
 
 const keepFailedProject = (input: FailedProjectInput): Error => {
@@ -144,7 +190,7 @@ const runProgram = (params: CompileProjectParams): ts.Diagnostic[] => {
     const parsed = ts.parseJsonConfigFileContent(
         {
             compilerOptions: { ...BASE_COMPILER_OPTIONS, ...params.compilerOptions },
-            files: params.fileNames.map((name) => `./${name}`),
+            files: params.files.map((file) => `./${file.fileName}`),
         },
         ts.sys,
         params.projectDir,
@@ -172,7 +218,7 @@ const compileProject = (params: CompileProjectParams): void => {
         const diagnostics = runProgram(params);
 
         if (diagnostics.length > 0) {
-            throw diagnosticError(params.label, params.projectDir, diagnostics);
+            throw diagnosticError(params, diagnostics);
         }
     } finally {
         unlinkToolingModules();
@@ -194,7 +240,7 @@ const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; la
 
         compileProject({
             projectDir,
-            fileNames: params.modules.map((module) => module.fileName),
+            files: params.modules,
             compilerOptions: CHECK_OPTIONS,
             label: params.label,
         });
@@ -206,4 +252,4 @@ const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; la
     rmSync(keepAt, { recursive: true, force: true });
 };
 
-export { compileProject, checkModules, keepFailedProject, type SourceModule };
+export { compileProject, checkModules, keepFailedProject, type ProjectFile, type SourceModule };

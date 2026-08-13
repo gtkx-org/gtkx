@@ -139,6 +139,10 @@ class ModuleBuilder {
         this.declarations.push(declaration.code);
     }
 
+    hasExports(): boolean {
+        return this.declaredNames.size > 0;
+    }
+
     appendRegistration(code: string, requires: string[] = []): void {
         for (const name of requires) {
             this.requiredNames.add(name);

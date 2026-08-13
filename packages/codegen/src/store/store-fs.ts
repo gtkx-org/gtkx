@@ -1,7 +1,7 @@
 import { errorMessage } from "@gtkx/utils";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import { keepFailedProject } from "../compile.js";
+import { keepFailedProject, type SourceModule } from "../compile.js";
 import { compileStore } from "./compile-store.js";
 
 /** Where one generated store is written and how it is reached. */
@@ -12,11 +12,6 @@ type StoreOptions = {
     linkDir: string;
     /** Version stamped on the store's `package.json`, taken from the dependency the store is generated for. */
     version: string;
-};
-
-type StoreFile = {
-    fileName: string;
-    source: string;
 };
 
 type Manifest = {
@@ -40,7 +35,7 @@ type RawFile = { relativePath: string; content: string };
 type WriteStoreParams = {
     storeDir: string;
     linkDir: string;
-    files: StoreFile[];
+    files: SourceModule[];
     manifest: Manifest;
     rawFiles?: RawFile[];
     requiresEnvReference?: boolean;

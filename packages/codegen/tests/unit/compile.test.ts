@@ -15,6 +15,11 @@ const BROKEN_MODULES: SourceModule[] = [
     { fileName: "importer.ts", source: 'import { gone } from "./empty.js";\n\nexport const use: number = gone;\n' },
 ];
 
+const ATTRIBUTED_MODULES: SourceModule[] = [
+    { fileName: "bad.ts", source: "export const wrong: string = 42;\n", origin: "/inputs/bad.gir" },
+    { fileName: "fine.ts", source: "export const right: number = 42;\n", origin: "/inputs/fine.gir" },
+];
+
 const createTempDir = (): string => {
     const dir = mkdtempSync(join(tmpdir(), "gtkx-compile-"));
     tempDirs.push(dir);
@@ -99,6 +104,18 @@ describe("checkModules", () => {
         },
         ).toThrow(/bad\.ts:1:\d+ - Type 'number' is not assignable to type 'string'/);
     });
+
+    it("names the input file a module with a type error was generated from", () => {
+        expect(() => {
+            checkTestModules(REPO_ROOT, ATTRIBUTED_MODULES);
+        }).toThrow("Generated from /inputs/bad.gir: bad.ts");
+    });
+
+    it("leaves the inputs of modules that check out unnamed", () => {
+        expect(() => {
+            checkTestModules(REPO_ROOT, ATTRIBUTED_MODULES);
+        }).not.toThrow("/inputs/fine.gir");
+    });
 });
 
 describe("checkModules, when the modules do not type-check", () => {
@@ -135,7 +152,7 @@ describe("compileProject", () => {
         expect(() => {
             compileProject({
                 projectDir,
-                fileNames: ["ok.ts"],
+                files: [{ fileName: "ok.ts" }],
                 compilerOptions: { noEmit: true, types: ["gtkx-missing-types-package"] },
                 label: "the test modules",
             });

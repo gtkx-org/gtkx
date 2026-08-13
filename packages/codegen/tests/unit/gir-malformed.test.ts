@@ -7,17 +7,23 @@ import { runCodegen } from "../../src/index.js";
 import { storeUnit } from "../helpers/store-unit.js";
 
 const NAMESPACE_OPEN = '<?xml version="1.0"?>\n<repository version="1.2">\n  <namespace name="Bare" version="1.0">\n';
+const NAMESPACE_CLOSE = "  </namespace>\n</repository>\n";
 const MID_TAG = '<?xml version="1.0"?>\n<repository version="1.2">\n  <namespace name="Bare" ver';
 const NO_NAMESPACE = '<?xml version="1.0"?>\n<repository version="1.2"></repository>\n';
 const NO_REPOSITORY = '<?xml version="1.0"?>\n<introspection></introspection>\n';
-const NO_DECLARATIONS = `${NAMESPACE_OPEN}    <docsection name="intro"/>\n  </namespace>\n</repository>\n`;
+const DECLARES_NOTHING = '    <docsection name="intro"/>\n';
 
-const DECLARATION =
-    '    <constant name="LIMIT" value="1" c:type="BARE_LIMIT">\n' +
-    '      <type name="gint" c:type="gint"/>\n' +
-    "    </constant>\n";
+const DECLARES_ONLY_UNINTROSPECTABLE =
+    '    <function name="doit" c:identifier="bare_doit" introspectable="0">\n' +
+    '      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>\n' +
+    "    </function>\n";
 
-const POPULATED = `${NAMESPACE_OPEN}${DECLARATION}  </namespace>\n</repository>\n`;
+const DECLARES_ONLY_UNNAMED = '    <record name="" c:type="BareAnon"/>\n';
+
+const DECLARES_UNRESOLVED_PARENT =
+    '    <class name="Thing" parent="Missing" c:symbol-prefix="thing" c:type="BareThing"\n' +
+    '        glib:type-name="BareThing" glib:get-type="bare_thing_get_type">\n' +
+    "    </class>\n";
 
 describe("a malformed .gir on the search path", () => {
     let girDir: string;
@@ -60,39 +66,51 @@ describe("a malformed .gir on the search path", () => {
         }).toThrow(`GIR file at ${barePath()} has no <repository> root`);
     });
 
-    it("names the file whose namespace declares nothing to generate from", () => {
-        expect(() => {
-            loadBare(NO_DECLARATIONS);
-        }).toThrow(`GIR file at ${barePath()} declares nothing in its <namespace>`);
-    });
-
     it("keeps loading a well-formed namespace", () => {
         expect(() => {
-            loadBare(POPULATED);
+            loadBare(`${NAMESPACE_OPEN}${NAMESPACE_CLOSE}`);
         }).not.toThrow();
     });
 });
 
-describe("codegen given a .gir whose namespace declares nothing", () => {
+describe("codegen given a .gir the generated bindings cannot come from", () => {
     let root: string;
+    let girDir: string;
+    const barePath = (): string => join(girDir, "Bare-1.0.gir");
+
+    const startCodegen = (declarations: string): { run: Promise<unknown>; giStoreDir: string } => {
+        writeFileSync(barePath(), `${NAMESPACE_OPEN}${declarations}${NAMESPACE_CLOSE}`);
+        const gi = storeUnit(join(root, "node_modules"), "gi");
+
+        return { run: runCodegen({ libraries: ["Bare-1.0"], girPath: [girDir], gi }), giStoreDir: gi.storeDir };
+    };
 
     beforeEach(() => {
-        root = mkdtempSync(join(tmpdir(), "gtkx-gir-empty-ns-"));
+        root = mkdtempSync(join(tmpdir(), "gtkx-gir-nothing-"));
+        girDir = join(root, "gir");
+        mkdirSync(girDir, { recursive: true });
     });
 
     afterEach(() => {
         rmSync(root, { recursive: true, force: true });
     });
 
-    it("names the offending file instead of type-checking a store generated from it", async () => {
-        const girDir = join(root, "gir");
-        mkdirSync(girDir, { recursive: true });
-        const file = join(girDir, "Bare-1.0.gir");
-        writeFileSync(file, NO_DECLARATIONS);
-        const gi = storeUnit(join(root, "node_modules"), "gi");
-        const run = runCodegen({ libraries: ["Bare-1.0"], girPath: [girDir], gi });
-        await expect(run).rejects.toThrow(`GIR file at ${file} declares nothing in its <namespace>`);
-        await expect(run).rejects.not.toThrow("is not a module");
-        expect(existsSync(gi.storeDir)).toBe(false);
+    it.each([
+        ["declares nothing at all", DECLARES_NOTHING],
+        ["declares only what GIR marks as not introspectable", DECLARES_ONLY_UNINTROSPECTABLE],
+        ["declares only an entry with no name to export", DECLARES_ONLY_UNNAMED],
+    ])("names the file that %s, instead of type-checking a store built from it", async (_case, declarations) => {
+        const { run, giStoreDir } = startCodegen(declarations);
+        await expect(run).rejects.toThrow(`GIR file at ${barePath()} has nothing to generate`);
+        await expect(run).rejects.toThrow("its Bare namespace produces a module with no exports");
+        await expect(run).rejects.not.toThrow("Type checking");
+        expect(existsSync(`${giStoreDir}.failed`)).toBe(false);
+    });
+
+    it("names the file a module whose declarations do not resolve was generated from", async () => {
+        const { run, giStoreDir } = startCodegen(DECLARES_UNRESOLVED_PARENT);
+        await expect(run).rejects.toThrow("Cannot find name 'Missing'");
+        await expect(run).rejects.toThrow(`Generated from ${barePath()}: bare/bare.ts`);
+        expect(existsSync(`${giStoreDir}.failed`)).toBe(true);
     });
 });

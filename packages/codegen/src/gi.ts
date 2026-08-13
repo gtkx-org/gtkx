@@ -17,6 +17,7 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
     const namespaces: GiNamespaceInput[] = Array.from(library.namespaces.values(), (namespace) => ({
         directory: namespaceDirectory(namespace),
         rawSource: generateNamespaceModule(namespace, library),
+        girFile: namespace.girFile,
     }));
 
     const fingerprint = computeGiFingerprint(library.girFiles, [...libraries], [...girPath]);

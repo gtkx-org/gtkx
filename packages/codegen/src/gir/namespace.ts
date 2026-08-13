@@ -44,6 +44,8 @@ type GirNamespace = {
     id: number;
     /** Namespace name as it appears in the GIR, such as `Gtk`. */
     name: string;
+    /** Path of the `.gir` file the namespace was parsed from, named by every diagnostic the namespace causes. */
+    girFile: string;
     /** The `shared-library` attribute verbatim: the objects to load symbols from, separated by commas. */
     sharedLibrary: string | undefined;
     /** Prefixes stripped off C identifiers to derive export names, such as `gtk`. */
@@ -78,6 +80,8 @@ type NamespaceInclude = {
 type NamespaceHeader = {
     /** Namespace name as it appears in the GIR, such as `Gtk`. */
     name: string;
+    /** Path of the `.gir` file the header was read from. */
+    girFile: string;
     /** The `shared-library` attribute verbatim: the objects to load symbols from, separated by commas. */
     sharedLibrary: string | undefined;
     /** Prefixes stripped off C identifiers to derive export names, such as `gtk`. */
@@ -88,23 +92,7 @@ type NamespaceHeader = {
     namespaceNode: RawNode;
 };
 
-const DECLARATION_TAGS: string[] = [
-    "alias",
-    "bitfield",
-    "callback",
-    "class",
-    "constant",
-    "enumeration",
-    "function",
-    "interface",
-    "record",
-    "union",
-];
-
 const namespaceDirectory = (namespace: Pick<GirNamespace, "name">): string => namespace.name.toLowerCase();
-
-const hasDeclarations = (namespaceNode: RawNode): boolean =>
-    DECLARATION_TAGS.some((tag) => getChildren(namespaceNode, tag).length > 0);
 
 const parseNamespaceHeader = (repositoryNode: RawNode, path: string): NamespaceHeader => {
     const includes = getChildren(repositoryNode, "include").map<NamespaceInclude>((include) => ({
@@ -118,15 +106,9 @@ const parseNamespaceHeader = (repositoryNode: RawNode, path: string): NamespaceH
         throw new Error(`GIR file at ${path} has no <namespace> child in its <repository>`);
     }
 
-    if (!hasDeclarations(namespaceNode)) {
-        throw new Error(
-            `GIR file at ${path} declares nothing in its <namespace>, so it is empty or truncated and no ` +
-            "bindings can be generated from it",
-        );
-    }
-
     return {
         name: nameAttr(namespaceNode),
+        girFile: path,
         sharedLibrary: attr(namespaceNode, "shared-library"),
         cSymbolPrefixes: splitPrefixes(attr(namespaceNode, "c:symbol-prefixes")),
         includes,
@@ -137,6 +119,7 @@ const parseNamespaceHeader = (repositoryNode: RawNode, path: string): NamespaceH
 const createNamespaceShell = (header: NamespaceHeader, id: number): GirNamespace => ({
     id,
     name: header.name,
+    girFile: header.girFile,
     sharedLibrary: header.sharedLibrary,
     cSymbolPrefixes: header.cSymbolPrefixes,
     classes: [],

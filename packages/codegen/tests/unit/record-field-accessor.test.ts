@@ -8,6 +8,7 @@ import { ModuleContext } from "../../src/writer/context.js";
 const EMPTY_NAMESPACE: GirNamespace = {
     id: 0,
     name: "Test",
+    girFile: "/nonexistent/Test-1.0.gir",
     sharedLibrary: undefined,
     cSymbolPrefixes: [],
     classes: [],

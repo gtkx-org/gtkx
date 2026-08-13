@@ -30,6 +30,14 @@ const generateNamespaceModule = (namespace: GirNamespace, library: Library): str
     generateNamespaceTypes(context, namespace);
     generateNamespaceMembers(context, namespace);
 
+    if (!context.module.hasExports()) {
+        throw new Error(
+            `GIR file at ${namespace.girFile} has nothing to generate: its ${namespace.name} namespace produces a ` +
+            "module with no exports, so the file is empty, truncated, or declares only entries GIR marks as not " +
+            "introspectable",
+        );
+    }
+
     return context.module.toSource();
 };
 
