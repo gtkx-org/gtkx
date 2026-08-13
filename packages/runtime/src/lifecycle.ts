@@ -32,9 +32,10 @@ type ApplicationLike = {
 
 /**
  * The role a process plays for its application ID: `primary` owns it and may build a user interface,
- * `remote` reaches the process that owns it, and `unregistered` holds no registration at all.
+ * `remote` reaches the process that owns it, `shutDown` held a registration its own shutdown has since
+ * released, and `unregistered` never held one.
  */
-type ApplicationInstance = "primary" | "remote" | "unregistered";
+type ApplicationInstance = "primary" | "remote" | "shutDown" | "unregistered";
 
 /** What {@link runApplication} reports about the process it just started. */
 type RunApplicationResult = {
@@ -46,6 +47,7 @@ type RunApplicationResult = {
 
 const shutdownCallbacks: (() => void)[] = [];
 const startedApplications: WeakSet<object> = new WeakSet();
+const registeredApplications: WeakSet<object> = new WeakSet();
 const shutDownApplications: WeakSet<object> = new WeakSet();
 /**
  * Runs every registered exit callback and shuts down the native runtime. Safe to
@@ -108,16 +110,19 @@ const restartApplication = (application: ApplicationLike): number => {
 };
 
 /**
- * Reports whether this process owns the application ID, only reaches the process that owns it, or holds
- * no registration at all. Registration alone cannot tell the first two apart, because registering as a
- * remote instance succeeds exactly as owning the ID does.
+ * Reports whether this process owns the application ID, only reaches the process that owns it, has shut
+ * down a registration it held, or never held one. Registration alone cannot tell the first two apart,
+ * because registering as a remote instance succeeds exactly as owning the ID does, and it cannot tell
+ * the last two apart either, because GLib clears the registration an application shuts down; {@link
+ * runApplication} records the registration so that a shutdown reads as `shutDown` rather than as a
+ * command line the application refused.
  *
  * @param application The application to inspect.
  * @returns The role this process plays for the application ID.
  */
 const getApplicationInstance = (application: ApplicationLike): ApplicationInstance => {
     if (!application.getIsRegistered()) {
-        return "unregistered";
+        return registeredApplications.has(application) ? "shutDown" : "unregistered";
     }
 
     return application.getIsRemote?.() === true ? "remote" : "primary";
@@ -158,7 +163,13 @@ const runApplication = (application: ApplicationLike, argv: string[]): RunApplic
         ? restartApplication(application)
         : startApplication(application, argv);
 
-    const isPrimary = getApplicationInstance(application) === "primary";
+    const instance = getApplicationInstance(application);
+
+    if (instance !== "unregistered") {
+        registeredApplications.add(application);
+    }
+
+    const isPrimary = instance === "primary";
 
     if (isPrimary) {
         keepAlive(true);

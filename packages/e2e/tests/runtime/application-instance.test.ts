@@ -15,6 +15,14 @@ const trackUniqueApplication = (applicationId: string): Gio.Application => {
     return application;
 };
 
+const runAndQuitApplication = (): Gio.Application => {
+    const application = trackUniqueApplication(uniqueAppId());
+    runApplication(application, ["probe"]);
+    quitApplication(application);
+
+    return application;
+};
+
 afterEach(() => {
     const applications = [...started];
     started.length = 0;
@@ -46,5 +54,17 @@ describe("getApplicationInstance", () => {
         const application = trackUniqueApplication(uniqueAppId());
         expect(application.getIsRegistered()).toBe(false);
         expect(getApplicationInstance(application)).toBe("unregistered");
+    });
+
+    it("tells an application that shut down apart from one that never registered", () => {
+        const application = runAndQuitApplication();
+        expect(application.getIsRegistered()).toBe(false);
+        expect(getApplicationInstance(application)).toBe("shutDown");
+    });
+
+    it("reports a primary instance again for an application that ran a second time", () => {
+        const application = runAndQuitApplication();
+        expect(runApplication(application, ["probe"])).toEqual({ isPrimary: true, exitStatus: 0 });
+        expect(getApplicationInstance(application)).toBe("primary");
     });
 });

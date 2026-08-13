@@ -387,6 +387,20 @@ const installedUncaughtErrorHandler = (harness: Harness): OnCause => {
     return onUncaughtError;
 };
 
+const startWithDeadApplication = async (instance: ApplicationInstance, cause: Error): Promise<Harness> => {
+    const harness: Harness = buildHarness({
+        applicationId: "com.example.app",
+        applicationInstance: instance,
+        whileWaiting: () => {
+            installedUncaughtErrorHandler(harness)(cause);
+        },
+    });
+
+    await startRunner(harness);
+
+    return harness;
+};
+
 const emitBoundaryChange = async (harness: Harness, file: string): Promise<void> => {
     defineModule(harness, file);
     harness.server.loads.next(() => Promise.resolve({ isBoundary: true }));
@@ -727,6 +741,37 @@ describe("createDevRunner (a command line the application refused)", () => {
     });
 });
 
+describe("createDevRunner (an application that quit before the runner attached)", () => {
+    it("reports the quit rather than blaming a command line nothing refused", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app", applicationInstance: "shutDown" });
+        await startRunner(harness);
+        const messages = loggedMessages(harness);
+        expect(messages.some((m) => m.includes("Application quit - stopping dev runner..."))).toBe(true);
+        expect(messages.some((m) => m.includes("refused its command line"))).toBe(false);
+    });
+
+    it("closes the server and exits zero, the way the built application does", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app", applicationInstance: "shutDown" });
+        const previousExitCode = process.exitCode;
+        process.exitCode = undefined;
+        await startRunner(harness);
+        process.exitCode = previousExitCode;
+        expect(harness.server.close).toHaveBeenCalled();
+        expect(harness.exit).toHaveBeenCalledWith(0);
+        expect(harness.startMcp).not.toHaveBeenCalled();
+        expect(harness.watchAppShutdown).not.toHaveBeenCalled();
+    });
+
+    it("parks the session when an error brought the application down", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startWithDeadApplication("shutDown", new Error("PROBE: initial render throw"));
+        stderrSpy.mockRestore();
+        expect(harness.exit).not.toHaveBeenCalled();
+        expect(harness.server.close).not.toHaveBeenCalled();
+        expect(loggedMessages(harness).some((m) => m.includes(PARKED))).toBe(true);
+    });
+});
+
 describe("createDevRunner (an application ID another process already owns)", () => {
     it("names the process holding the application ID instead of watching a windowless session", async () => {
         const harness = await startRemoteHarness();
@@ -905,16 +950,7 @@ describe("createDevRunner (an application that died before the runner attached)"
     it("parks the session instead of taking the whole command down", async () => {
         const stderrSpy = captureStderr();
         const cause = new Error("PROBE: initial render throw");
-
-        const harness: Harness = buildHarness({
-            applicationId: "com.example.app",
-            applicationInstance: "unregistered",
-            whileWaiting: () => {
-                installedUncaughtErrorHandler(harness)(cause);
-            },
-        });
-
-        await startRunner(harness);
+        const harness = await startWithDeadApplication("unregistered", cause);
         const written = collectLogged(stderrSpy);
         stderrSpy.mockRestore();
         expect(harness.exit).not.toHaveBeenCalled();
@@ -925,16 +961,7 @@ describe("createDevRunner (an application that died before the runner attached)"
 
     it("restarts on the next save instead of Fast Refreshing into a dead application", async () => {
         const stderrSpy = captureStderr();
-
-        const harness: Harness = buildHarness({
-            applicationId: "com.example.app",
-            applicationInstance: "unregistered",
-            whileWaiting: () => {
-                installedUncaughtErrorHandler(harness)(new Error("boom"));
-            },
-        });
-
-        await startRunner(harness);
+        const harness = await startWithDeadApplication("unregistered", new Error("boom"));
         defineModule(harness, "/x/y.ts");
         await emitChangeAndFlush(harness, "/x/y.ts", 2);
         stderrSpy.mockRestore();

@@ -431,14 +431,19 @@ const isSessionInactive = (session: DevSession): boolean => {
     return true;
 };
 
+const stopForApplicationQuit = (session: DevSession): Promise<never> => {
+    session.deps.log("Application quit - stopping dev runner...");
+
+    return closeAndExit(session);
+};
+
 const settleUnmount = (session: DevSession, wasRefreshing: boolean): void => {
     if (isSessionInactive(session)) {
         return;
     }
 
     if (!wasRefreshing) {
-        session.deps.log("Application quit - stopping dev runner...");
-        void closeAndExit(session);
+        void stopForApplicationQuit(session);
 
         return;
     }
@@ -482,10 +487,16 @@ const stopForOwnedApplicationId = async (session: DevSession, liveApplicationId:
     await closeAndExit(session, OWNED_ID_EXIT_CODE);
 };
 
-const stopForUnregisteredApplication = async (session: DevSession): Promise<void> => {
+const stopForStoppedApplication = async (session: DevSession, instance: ApplicationInstance): Promise<void> => {
     if (session.failure.hasReported()) {
         session.deps.log("Application stopped before the dev runner attached.");
         session.failure.fail();
+
+        return;
+    }
+
+    if (instance === "shutDown") {
+        await stopForApplicationQuit(session);
 
         return;
     }
@@ -509,7 +520,7 @@ const connectLiveApplication = async (session: DevSession, liveApplicationId: st
         return;
     }
 
-    await stopForUnregisteredApplication(session);
+    await stopForStoppedApplication(session, instance);
 };
 
 const attachApplication = async (session: DevSession): Promise<void> => {
@@ -544,8 +555,11 @@ const loadEntry = async (session: DevSession, entryPath: string): Promise<void> 
     }
 };
 
+const hasApplicationStopped = (instance: ApplicationInstance): boolean =>
+    instance === "shutDown" || instance === "unregistered";
+
 const isApplicationLost = (session: DevSession): boolean =>
-    session.failure.hasReported() && session.deps.getApplicationInstance() === "unregistered";
+    session.failure.hasReported() && hasApplicationStopped(session.deps.getApplicationInstance());
 
 const announceReady = (session: DevSession): void => {
     if (isApplicationLost(session)) {
