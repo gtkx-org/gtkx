@@ -17,6 +17,11 @@ type AccessorTypes = {
     writeType: string;
 };
 
+type InheritedAccessorTypes = {
+    readType: string | undefined;
+    writeType: string | undefined;
+};
+
 type ResolvedAccessor = {
     property: GirProperty;
     jsName: string;
@@ -33,7 +38,7 @@ type PropertyAccessorArgs = {
     property: GirProperty;
     claimedNames: Set<string>;
     methodByName: Map<string, GirFunction>;
-    inheritedTypes?: AccessorTypes | undefined;
+    inheritedTypes?: InheritedAccessorTypes | undefined;
     inheritedNames?: Set<string> | undefined;
 };
 
@@ -181,7 +186,11 @@ const agreeingDelegates = (
 
 const resolveTypedDelegates = (args: PropertyAccessorArgs, resolved: AccessorDelegates): TypedDelegates => {
     const ownTypes = resolveOwnTypes(args.context, args.property, resolved);
-    const types = args.inheritedTypes ?? ownTypes;
+
+    const types = {
+        readType: args.inheritedTypes?.readType ?? ownTypes.readType,
+        writeType: args.inheritedTypes?.writeType ?? ownTypes.writeType,
+    };
 
     return { types, delegates: agreeingDelegates(resolved, ownTypes, types) };
 };
@@ -201,14 +210,12 @@ const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefin
     }
 
     const isWritable = isConstructableProperty(property) && !property.constructOnly;
-    const resolved = resolveDelegates(args, jsName, isWritable);
-    const hasGetter = property.readable || resolved.getter !== undefined;
+    const { types, delegates } = resolveTypedDelegates(args, resolveDelegates(args, jsName, isWritable));
+    const hasGetter = property.readable || delegates.getter !== undefined;
 
     if (!hasGetter && !isWritable) {
         return undefined;
     }
-
-    const { types, delegates } = resolveTypedDelegates(args, resolved);
 
     return {
         property,
@@ -246,14 +253,17 @@ const resolveAccessorTypes = (
     context: ModuleContext,
     property: GirProperty,
     methods: GirFunction[],
-): AccessorTypes | undefined => {
+): InheritedAccessorTypes | undefined => {
     const accessor = resolveOwnerAccessor(context, property, methods);
 
     if (accessor === undefined) {
         return undefined;
     }
 
-    return { readType: accessor.readType, writeType: accessor.writeType };
+    return {
+        readType: accessor.hasGetter ? accessor.readType : undefined,
+        writeType: accessor.isWritable ? accessor.writeType : undefined,
+    };
 };
 
 const withAccessor = (
@@ -372,7 +382,7 @@ export {
     renderResolvedPropertyAccessor,
     renderPropertyAccessor,
     renderPropertyAccessorSignature,
-    type AccessorTypes,
+    type InheritedAccessorTypes,
     type ResolvedAccessor,
     type PropertyAccessorArgs,
 };

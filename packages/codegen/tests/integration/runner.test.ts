@@ -73,17 +73,54 @@ const registerShadowedMemberTests = (): void => {
     });
 };
 
+const generateAccessorStore = async (name: string): Promise<{ types: string; code: string }> => {
+    const gi = storeUnit(projectModules(name), "gi");
+    const result = await runCodegen({ libraries: ["Accessor-1.0"], girPath: FIXTURE_GIR_PATH, gi });
+    expect(result.namespaces).toBeGreaterThan(0);
+
+    return {
+        types: readFileSync(join(gi.storeDir, "accessor", "accessor.d.ts"), "utf8"),
+        code: readFileSync(join(gi.storeDir, "accessor", "accessor.js"), "utf8"),
+    };
+};
+
+const classBody = (source: string, head: string): string => {
+    const start = source.indexOf(head);
+    expect(start, `expected ${head} in the generated store`).toBeGreaterThan(-1);
+
+    return source.slice(start, source.indexOf("\n}", start));
+};
+
 const registerPropertyAccessorTests = (): void => {
     it("writes a store whose property accessors read and write different types", async () => {
-        const gi = storeUnit(projectModules("accessor-types"), "gi");
-        const result = await runCodegen({ libraries: ["Accessor-1.0"], girPath: FIXTURE_GIR_PATH, gi });
-        expect(result.namespaces).toBeGreaterThan(0);
-        const types = readFileSync(join(gi.storeDir, "accessor", "accessor.d.ts"), "utf8");
-        expect(types).toContain("get caption(): string | null;\n    set caption(value: string);");
-        expect(types).toContain("get title(): string;\n    set title(value: string | null);");
-        expect(types).toContain("get badge(): string;\n    set badge(value: string);");
-        expect(types).toContain("get motto(): string;\n    set motto(value: string | null);");
-        expect(existsSync(join(gi.storeDir, "accessor", "accessor.js"))).toBe(true);
+        const { types } = await generateAccessorStore("accessor-types");
+        const panel = classBody(types, "export declare class Panel");
+        expect(panel).toContain("get caption(): string | null;\n    set caption(value: string);");
+        expect(panel).toContain("get title(): string;\n    set title(value: string | null);");
+        expect(panel).toContain("get tags(): string[];\n    set tags(value: string[] | null);");
+    });
+
+    it("keeps a redeclared property assignable to every base type that declares it", async () => {
+        const { types, code } = await generateAccessorStore("accessor-bases");
+
+        expect(classBody(types, "export declare class Dock")).toContain(
+            "get badge(): string;\n    set badge(value: string);\n" +
+            "    get motto(): string;\n    set motto(value: string | null);",
+        );
+
+        expect(classBody(code, "export class Dock")).toContain(
+            'get badge() {\n        return getObjectProperty(this, "badge", t.string("borrowed"));',
+        );
+
+        expect(classBody(types, "export declare class Node")).toContain(
+            "get tag(): string;\n    set tag(value: string);\n    set token(value: string);",
+        );
+
+        expect(classBody(code, "export class Node")).toContain(
+            'get tag() {\n        return getObjectProperty(this, "tag", t.string("borrowed"));',
+        );
+
+        expect(classBody(code, "export class Node")).toContain("set token(value) {\n        this.setToken(value);");
     });
 };
 

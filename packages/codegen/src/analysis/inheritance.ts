@@ -9,7 +9,7 @@ import type { ModuleContext } from "../writer/context.js";
 import { ancestorChain, type ResolvedAncestor, resolveInterfaces } from "../gir/ancestry.js";
 import { isEmittableEntity } from "../gir/emittable.js";
 import { memberName, methodExportName } from "../store/gi/method.js";
-import { type AccessorTypes, resolveAccessorTypes } from "../store/gi/property-accessor.js";
+import { type InheritedAccessorTypes, resolveAccessorTypes } from "../store/gi/property-accessor.js";
 import { vfuncMemberNames } from "../store/gi/vtable.js";
 import { comparisonContextFor } from "../writer/comparison-context.js";
 import { inputParameters } from "./param-structure.js";
@@ -111,7 +111,7 @@ const visitInterfaceProperties = (
     }
 };
 
-const forEachInheritedProperty = (
+const forEachAncestorProperty = (
     context: ModuleContext,
     klass: GirClass,
     visit: (owner: GirClass, property: GirProperty) => void,
@@ -125,6 +125,15 @@ const forEachInheritedProperty = (
     });
 };
 
+const forEachInheritedProperty = (
+    context: ModuleContext,
+    klass: GirClass,
+    visit: (owner: GirClass, property: GirProperty) => void,
+): void => {
+    visitInterfaceProperties(resolveDirectInterfaces(context, klass, context.namespace.name), visit);
+    forEachAncestorProperty(context, klass, visit);
+};
+
 const collectSeenPropertyNames = (context: ModuleContext, klass: GirClass): Set<string> => {
     const seen: Set<string> = new Set();
 
@@ -132,7 +141,7 @@ const collectSeenPropertyNames = (context: ModuleContext, klass: GirClass): Set<
         seen.add(toCamelIdentifier(property.name));
     }
 
-    forEachInheritedProperty(context, klass, (_owner, property) => seen.add(toCamelIdentifier(property.name)));
+    forEachAncestorProperty(context, klass, (_owner, property) => seen.add(toCamelIdentifier(property.name)));
 
     return seen;
 };
@@ -258,24 +267,40 @@ const collectInterfaceMergeOmissions = (
     ...vfuncMergeOmissions(context, klass, iface),
 ];
 
-const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass): Map<string, AccessorTypes> => {
-    const types: Map<string, AccessorTypes> = new Map();
+const recordInheritedPropertyType = (
+    context: ModuleContext,
+    types: Map<string, InheritedAccessorTypes>,
+    owner: GirClass,
+    property: GirProperty,
+): void => {
+    const jsName = toCamelIdentifier(property.name);
+    const declared = types.get(jsName);
 
-    const record = (owner: GirClass, property: GirProperty): void => {
-        const jsName = toCamelIdentifier(property.name);
+    if (declared?.readType !== undefined && declared.writeType !== undefined) {
+        return;
+    }
 
-        if (types.has(jsName)) {
-            return;
-        }
+    const accessorTypes = resolveAccessorTypes(context, property, owner.methods);
 
-        const accessorTypes = resolveAccessorTypes(context, property, owner.methods);
+    if (accessorTypes === undefined) {
+        return;
+    }
 
-        if (accessorTypes !== undefined) {
-            types.set(jsName, accessorTypes);
-        }
-    };
+    types.set(jsName, {
+        readType: declared?.readType ?? accessorTypes.readType,
+        writeType: declared?.writeType ?? accessorTypes.writeType,
+    });
+};
 
-    forEachInheritedProperty(context, klass, record);
+const collectInheritedPropertyTypes = (
+    context: ModuleContext,
+    klass: GirClass,
+): Map<string, InheritedAccessorTypes> => {
+    const types: Map<string, InheritedAccessorTypes> = new Map();
+
+    forEachInheritedProperty(context, klass, (owner, property) => {
+        recordInheritedPropertyType(context, types, owner, property);
+    });
 
     return types;
 };

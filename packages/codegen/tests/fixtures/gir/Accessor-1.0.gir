@@ -244,5 +244,140 @@
         </parameters>
       </method>
     </class>
+    <interface name="Tagged"
+               c:symbol-prefix="tagged"
+               c:type="AccessorTagged"
+               glib:type-name="AccessorTagged"
+               glib:get-type="accessor_tagged_get_type">
+      <property name="tag"
+                writable="1"
+                transfer-ownership="none"
+                getter="fetch_tag"
+                setter="apply_tag">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="token"
+                writable="1"
+                transfer-ownership="none"
+                getter="fetch_token"
+                setter="apply_token">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <method name="fetch_tag" c:identifier="accessor_tagged_fetch_tag">
+        <return-value transfer-ownership="none">
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="tagged" transfer-ownership="none">
+            <type name="Tagged" c:type="AccessorTagged*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="apply_tag" c:identifier="accessor_tagged_apply_tag">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="tagged" transfer-ownership="none">
+            <type name="Tagged" c:type="AccessorTagged*"/>
+          </instance-parameter>
+          <parameter name="tag" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="fetch_token" c:identifier="accessor_tagged_fetch_token">
+        <return-value transfer-ownership="none">
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="tagged" transfer-ownership="none">
+            <type name="Tagged" c:type="AccessorTagged*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="apply_token" c:identifier="accessor_tagged_apply_token">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="tagged" transfer-ownership="none">
+            <type name="Tagged" c:type="AccessorTagged*"/>
+          </instance-parameter>
+          <parameter name="token" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </interface>
+    <class name="Node"
+           c:symbol-prefix="node"
+           c:type="AccessorNode"
+           parent="GObject.Object"
+           glib:type-name="AccessorNode"
+           glib:get-type="accessor_node_get_type">
+      <implements name="Tagged"/>
+      <property name="tag"
+                writable="1"
+                transfer-ownership="none"
+                getter="get_tag"
+                setter="set_tag">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="token"
+                readable="0"
+                writable="1"
+                transfer-ownership="none"
+                getter="get_token"
+                setter="set_token">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <method name="get_tag" c:identifier="accessor_node_get_tag">
+        <return-value transfer-ownership="none" nullable="1">
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="node" transfer-ownership="none">
+            <type name="Node" c:type="AccessorNode*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="set_tag" c:identifier="accessor_node_set_tag">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="node" transfer-ownership="none">
+            <type name="Node" c:type="AccessorNode*"/>
+          </instance-parameter>
+          <parameter name="tag" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_token" c:identifier="accessor_node_get_token">
+        <return-value transfer-ownership="none" nullable="1">
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="node" transfer-ownership="none">
+            <type name="Node" c:type="AccessorNode*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="set_token" c:identifier="accessor_node_set_token">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="node" transfer-ownership="none">
+            <type name="Node" c:type="AccessorNode*"/>
+          </instance-parameter>
+          <parameter name="token" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
   </namespace>
 </repository>
