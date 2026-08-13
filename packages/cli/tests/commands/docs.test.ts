@@ -6,7 +6,7 @@ import { docs } from "../../src/commands/docs.js";
 import { collectLogged } from "../stderr-text.js";
 import { setupLogState } from "./log-state.js";
 
-type DocsArgs = { out?: string; "base-path"?: string; force?: boolean; cwd?: string };
+type DocsArgs = { out?: string; "base-path"?: string; force?: boolean; overwrite?: boolean; cwd?: string };
 type DocsRun = NonNullable<typeof docs.run>;
 type DocsContext = Parameters<DocsRun>[0];
 
@@ -22,6 +22,7 @@ const docsCall = (overrides: Record<string, unknown>): Record<string, unknown> =
     girPath: ["/usr/share/gir-1.0"],
     props: {},
     omittedProps: {},
+    isOverwrite: false,
     ...overrides,
 });
 
@@ -36,6 +37,7 @@ const run = (overrides: DocsArgs): Promise<unknown> => {
         out: "docs/reference",
         "base-path": "/reference",
         force: false,
+        overwrite: false,
         ...overrides,
     } as DocsContext["args"];
 
@@ -71,6 +73,48 @@ function mockedMergeOmittedProps(...maps: Record<string, string[]>[]): Record<st
 
     return merged;
 }
+
+const expectOutDirRejected = async (out: string): Promise<void> => {
+    await expect(run({ cwd: "/custom/dir", out, overwrite: true })).rejects.toThrow(
+        "--out must name a directory below the project root /custom/dir",
+    );
+};
+
+const registerOutDirTests = (): void => {
+    it("rejects an out that names the project root itself", async () => {
+        await expectOutDirRejected("");
+        await expectOutDirRejected(" ");
+        await expectOutDirRejected(".");
+        await expectOutDirRejected("docs/..");
+        expect(writeDocsMock).not.toHaveBeenCalled();
+    });
+
+    it("rejects an out that leaves the project root", async () => {
+        await expectOutDirRejected("..");
+        await expectOutDirRejected("../sibling");
+        await expectOutDirRejected("docs/../../sibling");
+        await expectOutDirRejected("/elsewhere/docs");
+        expect(writeDocsMock).not.toHaveBeenCalled();
+    });
+};
+
+const registerConfigFailureTests = (): void => {
+    it("fails when codegen is disabled", async () => {
+        loadConfigMock.mockResolvedValueOnce({
+            config: { applicationId: "com.example.App", codegen: false },
+            configFile: "/project/gtkx.config.ts",
+        } as never);
+
+        await expect(run({})).rejects.toThrow("codegen is disabled");
+        expect(writeDocsMock).not.toHaveBeenCalled();
+    });
+
+    it("fails when no GIR search paths are available", async () => {
+        resolveGirPathMock.mockReturnValueOnce([]);
+        await expect(run({})).rejects.toThrow("No GIR search paths available");
+        expect(writeDocsMock).not.toHaveBeenCalled();
+    });
+};
 
 vi.mock("@gtkx/codegen", () => ({
     resolveGirPath: vi.fn(() => ["/usr/share/gir-1.0"]),
@@ -115,20 +159,29 @@ describe("docs command", () => {
         expect(collectLogged(state.stderrSpy)).toContain("wrote 3 element pages across 2 namespaces");
     });
 
-    it("passes out, base-path, and force through", async () => {
+    it("passes out, base-path, force, and overwrite through", async () => {
         loadConfigMock.mockResolvedValueOnce({
             config: { applicationId: "com.example.App" },
             configFile: "/project/gtkx.config.ts",
         } as never);
 
-        await run({ cwd: "/custom/dir", out: "site/elements", "base-path": "/elements", force: true });
+        await run({
+            cwd: "/custom/dir",
+            out: "site/elements",
+            "base-path": "/elements",
+            force: true,
+            overwrite: true,
+        });
 
         expect(writeDocsMock).toHaveBeenCalledWith(docsCall({
             outDir: stringContaining("custom/dir/site/elements"),
             basePath: "/elements",
             isForced: true,
+            isOverwrite: true,
         }));
     });
+
+    registerOutDirTests();
 
     it("reports up to date when nothing was regenerated", async () => {
         writeDocsMock.mockReturnValueOnce({ isRegenerated: false, namespaces: [] });
@@ -136,19 +189,5 @@ describe("docs command", () => {
         expect(collectLogged(state.stderrSpy)).toContain("up to date");
     });
 
-    it("fails when codegen is disabled", async () => {
-        loadConfigMock.mockResolvedValueOnce({
-            config: { applicationId: "com.example.App", codegen: false },
-            configFile: "/project/gtkx.config.ts",
-        } as never);
-
-        await expect(run({})).rejects.toThrow("codegen is disabled");
-        expect(writeDocsMock).not.toHaveBeenCalled();
-    });
-
-    it("fails when no GIR search paths are available", async () => {
-        resolveGirPathMock.mockReturnValueOnce([]);
-        await expect(run({})).rejects.toThrow("No GIR search paths available");
-        expect(writeDocsMock).not.toHaveBeenCalled();
-    });
+    registerConfigFailureTests();
 });

@@ -477,6 +477,39 @@ describe("codegen gi pipeline", () => {
     });
 });
 
+describe("codegen classes the GIR marks abstract", () => {
+    it.each([
+        ["gtk", "Widget"],
+        ["gtk", "EventController"],
+        ["adw", "Animation"],
+        ["gio", "InputStream"],
+        ["gdk", "Texture"],
+        ["gsk", "RenderNode"],
+        ["gobject", "ParamSpec"],
+    ])("declares %s.%s abstract, so new is rejected before it aborts the process", (directory, className) => {
+        expect(moduleSource(directory)).toContain(`export abstract class ${className} `);
+    });
+
+    it("declares abstract a class whose own static constructors still work", () => {
+        const gtk = moduleSource("gtk");
+        expect(gtk).toContain("export abstract class MediaFile extends (MediaStream as StaticBase<");
+        expect(gtk).toContain("static new(): MediaFile {");
+    });
+
+    it("keeps the construct-property chain the subclasses of an abstract class call through", () => {
+        expect(moduleSource("gtk")).toContain("constructor(props: MediaFileConstructorProps = {}) {");
+    });
+
+    it.each([
+        ["gtk", "Button"],
+        ["gtk", "Label"],
+        ["gobject", "Object"],
+        ["gio", "MemoryInputStream"],
+    ])("leaves the instantiable class %s.%s alone", (directory, className) => {
+        expect(moduleSource(directory)).toContain(`export class ${className} `);
+    });
+});
+
 describe("codegen element-prop metadata", () => {
     it("does not bake element rules into the metadata module", () => {
         expect(reactPipeline.metadata).not.toContain("ELEMENT_PROPS");

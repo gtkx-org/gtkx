@@ -12,10 +12,12 @@ import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeP
 
 /**
  * Static side of class `C` with its construct signature preserved but the member
- * named `K` (default `"new"`) removed.
+ * named `K` (default `"new"`) removed. The signature is kept abstract so an abstract
+ * `C` survives it: a subclass extends the result, and only the subclass's own
+ * declaration decides whether `new` reaches it.
  */
 type StaticBase<C, K extends PropertyKey = "new"> = Omit<C, K> &
-    (C extends new (...args: infer A) => infer R ? new (...args: A) => R : never);
+    (C extends abstract new (...args: infer A) => infer R ? abstract new (...args: A) => R : never);
 
 /** One overridable vtable slot: where it sits in the vtable struct and how it is marshalled. */
 type VfuncDescriptor = {

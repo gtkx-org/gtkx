@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CodegenContext } from "../../src/codegen/store-resolver.js";
 import { ensureGenerated, ensureGeneratedIn, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 import { collectLogged } from "../stderr-text.js";
-import { setupTempTree } from "../temp-tree.js";
+import { setupTempTree, type TempTree } from "../temp-tree.js";
 
 const writeFingerprint = (cwd: string, libraries: string[] = ["Gtk-4.0"]) => {
     writeFileSync(
@@ -87,6 +87,33 @@ const installGeneratedProject = (cwd: string) => {
     installReactProject(cwd);
     writeJsxStore(cwd);
     writeFingerprint(cwd);
+};
+
+const installOwnStoreProject = (cwd: string) => {
+    installRuntimePackage(cwd);
+    installReactStack(cwd);
+    writeDisabledConfig(cwd);
+    writeDefaultGiBarrels(cwd);
+    writeJsxStore(cwd);
+};
+
+const installShadowedProject = (workspace: TempTree) => {
+    installRuntimePackage(workspace.path);
+    installReactStack(workspace.path);
+    writeDefaultGiBarrels(workspace.path);
+    writeJsxStore(workspace.path);
+    writeDisabledConfig(workspace.child);
+    writeGiBarrel(workspace.child, "gtk");
+};
+
+const expectOwnStoreKept = (cwd: string) => {
+    expect(existsSync(join(cwd, "node_modules", ".gtkx", "gi"))).toBe(true);
+    expect(existsSync(join(cwd, "node_modules", "@gtkx", "jsx"))).toBe(true);
+};
+
+const expectHoistedStoreKept = (workspace: TempTree) => {
+    expect(existsSync(join(workspace.path, "node_modules", ".gtkx", "gi"))).toBe(true);
+    expect(existsSync(join(workspace.child, "node_modules", ".gtkx", "gi"))).toBe(false);
 };
 
 const announceLogs = async (cwd: string): Promise<string> => {
@@ -192,27 +219,42 @@ describe("runCodegen — force in a hoisted workspace", () => {
 describe("runCodegen — codegen: false", () => {
     const workspace = setupTempTree("gtkx-codegen-disabled-", "packages", "app");
 
-    it("removes the stores under the project's own node_modules", async () => {
+    it("keeps the store the project installed for itself", async () => {
+        installOwnStoreProject(workspace.child);
+        await runCodegen({ cwd: workspace.child });
+        expectOwnStoreKept(workspace.child);
+    });
+
+    it("keeps a store the project installed for itself without React", async () => {
         installRuntimePackage(workspace.child);
         writeDisabledConfig(workspace.child);
         writeDefaultGiBarrels(workspace.child);
-        writeJsxStore(workspace.child);
         await runCodegen({ cwd: workspace.child });
-        expect(existsSync(join(workspace.child, "node_modules", ".gtkx", "gi"))).toBe(false);
-        expect(existsSync(join(workspace.child, "node_modules", "@gtkx", "jsx"))).toBe(false);
+        expect(existsSync(join(workspace.child, "node_modules", ".gtkx", "gi"))).toBe(true);
+        expect(existsSync(join(workspace.child, "node_modules", "@gtkx", "gi"))).toBe(true);
     });
 
     it("keeps the hoisted store the project consumes", async () => {
-        installRuntimePackage(workspace.path);
-        installReactStack(workspace.path);
-        writeDefaultGiBarrels(workspace.path);
-        writeJsxStore(workspace.path);
-        writeDisabledConfig(workspace.child);
-        writeGiBarrel(workspace.child, "gtk");
+        installShadowedProject(workspace);
         await runCodegen({ cwd: workspace.child });
-        expect(existsSync(join(workspace.path, "node_modules", ".gtkx", "gi"))).toBe(true);
+        expectHoistedStoreKept(workspace);
         expect(existsSync(join(workspace.path, "node_modules", ".gtkx", "jsx"))).toBe(true);
-        expect(existsSync(join(workspace.child, "node_modules", ".gtkx", "gi"))).toBe(false);
+    });
+});
+
+describe("ensureGenerated — codegen: false", () => {
+    const workspace = setupTempTree("gtkx-ensure-disabled-", "packages", "app");
+
+    it("keeps the store the project installed for itself", async () => {
+        installOwnStoreProject(workspace.child);
+        expect(await ensureGenerated(workspace.child)).toBe(false);
+        expectOwnStoreKept(workspace.child);
+    });
+
+    it("drops a store that shadows the hoisted one the project consumes", async () => {
+        installShadowedProject(workspace);
+        expect(await ensureGenerated(workspace.child)).toBe(false);
+        expectHoistedStoreKept(workspace);
     });
 });
 

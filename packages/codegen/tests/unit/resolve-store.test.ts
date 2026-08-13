@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getStorePaths, resolveStore } from "../../src/store/resolve-store.js";
+import { getShadowingStorePaths, resolveStore } from "../../src/store/resolve-store.js";
 
 type WorkspaceRef = { root: string; app: string; hoisted: string; nested: string };
 
@@ -38,6 +38,15 @@ const installPackage = (root: string, name: string, version = "1.2.3", exports?:
     writeFileSync(join(dir, "index.js"), "");
 
     return dir;
+};
+
+const unreachableConsumer = (workspace: WorkspaceRef, consumer: string): string =>
+    `Cannot write the generated store to ${workspace.nested}: ${consumer} is installed in ` +
+    `${workspace.hoisted}, above it`;
+
+const installReactAboveRuntime = (workspace: WorkspaceRef): void => {
+    installPackage(workspace.root, "@gtkx/react");
+    installPackage(workspace.app, "@gtkx/runtime");
 };
 
 describe("resolveStore", () => {
@@ -126,21 +135,16 @@ describe("resolveStore split installs", () => {
         installPackage(workspace.root, "@gtkx/cli");
         installPackage(workspace.app, "@gtkx/runtime");
         installPackage(workspace.app, "@gtkx/react");
+        const message = unreachableConsumer(workspace, "@gtkx/cli");
 
         expect(() => resolveStore(workspace.app)).toThrow(
-            `Cannot write the generated store to ${workspace.nested}: @gtkx/cli is installed in ` +
-            `${workspace.hoisted}, above it, so that copy can never import the generated @gtkx/gi.`,
+            `${message}, so that copy can never import the generated @gtkx/gi.`,
         );
     });
 
     it("rejects an install whose @gtkx/react sits above the store", () => {
-        installPackage(workspace.root, "@gtkx/react");
-        installPackage(workspace.app, "@gtkx/runtime");
-
-        expect(() => resolveStore(workspace.app)).toThrow(
-            `Cannot write the generated store to ${workspace.nested}: @gtkx/react is installed in ` +
-            `${workspace.hoisted}, above it`,
-        );
+        installReactAboveRuntime(workspace);
+        expect(() => resolveStore(workspace.app)).toThrow(unreachableConsumer(workspace, "@gtkx/react"));
     });
 
     it("rejects an install whose @gtkx/testing sits above the store", () => {
@@ -172,16 +176,34 @@ describe("resolveStore hoisting overrides", () => {
     });
 });
 
-describe("getStorePaths", () => {
-    it("lists both store directories and both links in one node_modules", () => {
-        const nodeModules = join(tmpdir(), "gtkx-store-paths", "node_modules");
+describe("getShadowingStorePaths", () => {
+    const workspace = setupWorkspace("gtkx-shadowing-store-paths-");
 
-        expect(getStorePaths(nodeModules)).toEqual([
-            join(nodeModules, ".gtkx", "gi"),
-            join(nodeModules, "@gtkx", "gi"),
-            join(nodeModules, ".gtkx", "jsx"),
-            join(nodeModules, "@gtkx", "jsx"),
+    it("lists both store directories and both links when the store resolves above the project", () => {
+        installPackage(workspace.root, "@gtkx/runtime");
+        installPackage(workspace.root, "@gtkx/react");
+
+        expect(getShadowingStorePaths(workspace.app)).toEqual([
+            join(workspace.nested, ".gtkx", "gi"),
+            join(workspace.nested, "@gtkx", "gi"),
+            join(workspace.nested, ".gtkx", "jsx"),
+            join(workspace.nested, "@gtkx", "jsx"),
         ]);
+    });
+
+    it("lists nothing when the project's own node_modules is where the store belongs", () => {
+        installPackage(workspace.app, "@gtkx/runtime");
+        installPackage(workspace.app, "@gtkx/react");
+        expect(getShadowingStorePaths(workspace.app)).toEqual([]);
+    });
+
+    it("lists nothing when the project installs @gtkx/runtime itself under a hoisted @gtkx/react", () => {
+        installReactAboveRuntime(workspace);
+        expect(getShadowingStorePaths(workspace.app)).toEqual([]);
+    });
+
+    it("lists nothing when @gtkx/runtime cannot be resolved", () => {
+        expect(getShadowingStorePaths(workspace.app)).toEqual([]);
     });
 });
 

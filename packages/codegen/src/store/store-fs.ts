@@ -1,5 +1,7 @@
+import { errorMessage } from "@gtkx/utils";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
+import { keepFailedProject, type SourceModule } from "../compile.js";
 import { compileStore } from "./compile-store.js";
 
 /** Where one generated store is written and how it is reached. */
@@ -10,11 +12,6 @@ type StoreOptions = {
     linkDir: string;
     /** Version stamped on the store's `package.json`, taken from the dependency the store is generated for. */
     version: string;
-};
-
-type StoreFile = {
-    fileName: string;
-    source: string;
 };
 
 type Manifest = {
@@ -38,13 +35,14 @@ type RawFile = { relativePath: string; content: string };
 type WriteStoreParams = {
     storeDir: string;
     linkDir: string;
-    files: StoreFile[];
+    files: SourceModule[];
     manifest: Manifest;
     rawFiles?: RawFile[];
     requiresEnvReference?: boolean;
 };
 
 const STORE_DIR_MODE = 0o755;
+const FAILED_STORE_SUFFIX = ".failed";
 
 const subpathExport = (stem: string): { types: string; default: string } => ({
     types: `./${stem}.d.ts`,
@@ -69,29 +67,35 @@ const buildManifest = (input: ManifestInput): Manifest => {
 
 const writeStore = (params: WriteStoreParams): void => {
     const tmp = createTempStore(params.storeDir);
+    const keepAt = `${params.storeDir}${FAILED_STORE_SUFFIX}`;
 
     try {
-        for (const file of params.files) {
-            writeSourceFile(tmp, file.fileName, file.source);
-        }
-
-        compileStore({
-            storeDir: tmp,
-            files: params.files,
-            packageName: params.manifest.name,
-            ...(params.requiresEnvReference !== undefined && { requiresEnvReference: params.requiresEnvReference }),
-        });
-
-        writePackageJson(tmp, params.manifest);
-        const rawFiles = params.rawFiles ?? [];
-
-        for (const raw of rawFiles) {
-            writeFileSync(join(tmp, raw.relativePath), raw.content);
-        }
-
+        buildTempStore(tmp, params);
         swapStore(tmp, params.storeDir, params.linkDir);
-    } finally {
-        rmSync(tmp, { recursive: true, force: true });
+    } catch (error) {
+        throw keepFailedProject({ projectDir: tmp, keepAt, error });
+    }
+
+    rmSync(keepAt, { recursive: true, force: true });
+};
+
+const buildTempStore = (tmp: string, params: WriteStoreParams): void => {
+    for (const file of params.files) {
+        writeSourceFile(tmp, file.fileName, file.source);
+    }
+
+    compileStore({
+        storeDir: tmp,
+        files: params.files,
+        packageName: params.manifest.name,
+        ...(params.requiresEnvReference !== undefined && { requiresEnvReference: params.requiresEnvReference }),
+    });
+
+    writePackageJson(tmp, params.manifest);
+    const rawFiles = params.rawFiles ?? [];
+
+    for (const raw of rawFiles) {
+        writeFileSync(join(tmp, raw.relativePath), raw.content);
     }
 };
 
@@ -125,7 +129,7 @@ const swapStore = (tmp: string, storeDir: string, visibleLink: string): void => 
 };
 
 const storeWriteMessage = (storeDir: string, error: unknown): string =>
-    `Cannot write the generated store to ${storeDir}: ${error instanceof Error ? error.message : String(error)}. ` +
+    `Cannot write the generated store to ${storeDir}: ${errorMessage(error)}. ` +
     "Codegen writes the store into the node_modules the @gtkx packages resolve from, " +
     `so ${dirname(storeDir)} has to be writable.`;
 
