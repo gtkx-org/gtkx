@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer, type Plugin, type ViteDevServer } from "vite";
 import { describe, expect, it } from "vitest";
+import { missingImportName } from "../../src/dev/missing-import.js";
 import { createDevServerConfig } from "../../src/dev/vite-dev-server.js";
 
 const BURST_WRITES = 20;
@@ -198,11 +199,9 @@ describe("createDevServerConfig (the watcher it configures)", () => {
         "reports a file created after startup and loads the import that was missing until it appeared",
         { timeout: WATCH_TEST_TIMEOUT_MS },
         async () => {
-            expect(await reloadsAcrossMissingImport()).toEqual([
-                "0",
-                expect.stringContaining("Does the file exist?"),
-                "dark",
-            ]);
+            const reloads = await reloadsAcrossMissingImport();
+            expect(reloads).toEqual(["0", expect.stringContaining("Does the file exist?"), "dark"]);
+            expect(missingImportName(reloads[1])).toBe("theme");
         },
     );
 
