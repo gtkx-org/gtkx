@@ -94,6 +94,13 @@ type BindArgs = {
     returnType: string;
 };
 
+type FnSpecParts = {
+    args: string;
+    returns: string;
+    isReturnSkipped: boolean;
+    canThrow: boolean;
+};
+
 const T: DescriptorNames = {
     bind: "t.bind",
     int8: "t.int8",
@@ -260,17 +267,14 @@ const tCallback = (argTypes: string[], returnType: string, options?: string): st
 const tBind = (args: BindArgs): string =>
     call("bind", [args.libExpr, args.symbolExpr, args.argList, args.returnType]);
 
-const tFn = (
-    lib: string,
-    cIdentifier: string,
-    spec: { args: string; returns: string; canThrow: boolean },
-): string => {
+const tFn = (lib: string, cIdentifier: string, spec: FnSpecParts): string => {
+    const skipEntry = spec.isReturnSkipped ? ", isReturnSkipped: true" : "";
     const throwsEntry = spec.canThrow ? ", canThrow: true" : "";
 
     return call("fn", [
         sourceStringLiteral(lib),
         sourceStringLiteral(cIdentifier),
-        `{ args: ${spec.args}, returns: ${spec.returns}${throwsEntry} }`,
+        `{ args: ${spec.args}, returns: ${spec.returns}${skipEntry}${throwsEntry} }`,
     ]);
 };
 

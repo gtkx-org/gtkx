@@ -137,6 +137,9 @@ const isInlineCallbackRef = (library: Library, ref: TypeId | undefined): boolean
 const shouldOmitPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
     isVoidRef(library, returnValue.type) || returnValue.skip;
 
+const isSkippedPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
+    returnValue.skip && !isVoidRef(library, returnValue.type);
+
 const argIndexOptions = (options: RenderDescriptorOptions): ArgIndexOptions => ({
     argIndexOffset: options.argIndexOffset ?? 0,
     argIndexMap: options.argIndexMap,
@@ -767,6 +770,7 @@ const aliasExpression = (
 
 export {
     isInlineCallbackRef,
+    isSkippedPrimaryReturn,
     shouldOmitPrimaryReturn,
     renderDescriptor,
     isScalarRef,

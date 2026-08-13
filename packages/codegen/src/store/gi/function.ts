@@ -42,9 +42,14 @@ const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | u
 
     context.addRuntimeImport("t");
     const params = planCallArgs(context, fn).map((arg) => arg.paramLiteral);
-    const ret = renderReturnDescriptor(context, fn);
+    const returnPlan = renderReturnDescriptor(context, fn);
 
-    return tFn(library, fn.cIdentifier, { args: arrayLiteral(params), returns: ret, canThrow: fn.throws });
+    return tFn(library, fn.cIdentifier, {
+        args: arrayLiteral(params),
+        returns: returnPlan.descriptor,
+        isReturnSkipped: returnPlan.isSkipped,
+        canThrow: fn.throws,
+    });
 };
 
 const isMovedOntoEmittedMember = (context: ModuleContext, fn: GirFunction): boolean => {

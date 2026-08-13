@@ -231,6 +231,14 @@ const namespaceNamed = (name: string): GirNamespace | undefined =>
 
 const gioSource = (): string => giSource("gio");
 
+const callDescriptorFor = (source: string, cIdentifier: string): string => {
+    const start = source.indexOf(`"${cIdentifier}", {`);
+    expect(start).toBeGreaterThan(-1);
+    const end = source.indexOf("});", start);
+
+    return source.slice(start, end);
+};
+
 const interfaceBody = (jsxSource: string, glibName: string): string => {
     const block = jsxSource.slice(jsxSource.indexOf(`export interface ${glibName}Props`));
 
@@ -543,6 +551,21 @@ describe("codegen return-value convention", () => {
         );
 
         expect(source).not.toContain("[boolean, string, string, string, number, string, string, string]");
+    });
+
+    it.each(["g_uri_split", "g_uri_split_network", "g_uri_split_with_user"])(
+        "marks the skipped return of %s as unsurfaced in the call descriptor",
+        (cIdentifier) => {
+            const descriptor = callDescriptorFor(giSource("glib"), cIdentifier);
+            expect(descriptor).toContain("returns: t.boolean");
+            expect(descriptor).toContain("isReturnSkipped: true");
+        },
+    );
+
+    it("surfaces the return value of a throwing function GIR does not skip", () => {
+        const descriptor = callDescriptorFor(giSource("glib"), "g_file_get_contents");
+        expect(descriptor).toContain("returns: t.boolean");
+        expect(descriptor).not.toContain("isReturnSkipped");
     });
 });
 

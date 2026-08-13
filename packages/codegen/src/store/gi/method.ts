@@ -3,6 +3,7 @@ import type { GirFunction } from "../../gir/function.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
 import {
+    isSkippedPrimaryReturn,
     renderCallbackType,
     renderDescriptor,
     renderSelfDescriptor,
@@ -58,6 +59,11 @@ type WriteMethodBodyOptions = {
 type CallArgPlan = {
     paramLiteral: string;
     inputExpr: string | undefined;
+};
+
+type ReturnDescriptorPlan = {
+    descriptor: string;
+    isSkipped: boolean;
 };
 
 type ParamDescriptorOptions = {
@@ -358,14 +364,16 @@ const paramDescriptorLiteral = (descriptor: string, options: ParamDescriptorOpti
     return `{ ${parts.join(", ")} }`;
 };
 
-const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction): string => {
+const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction): ReturnDescriptorPlan => {
     const instanceOffset = fn.instance === undefined ? 0 : 1;
 
-    return renderDescriptor(context, fn.returnValue.type, fn.returnValue.transferOwnership, {
+    const descriptor = renderDescriptor(context, fn.returnValue.type, fn.returnValue.transferOwnership, {
         argIndexOffset: instanceOffset,
         argIndexMap: emittedArgIndices(fn, instanceOffset),
         isNewlyCreated: fn.instance === undefined,
     });
+
+    return { descriptor, isSkipped: isSkippedPrimaryReturn(context.library, fn.returnValue) };
 };
 
 const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPlan[] => {
