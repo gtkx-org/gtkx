@@ -1,3 +1,4 @@
+import type { Object as GObject, ParamSpec } from "@gtkx/gi/gobject";
 import { Value } from "@gtkx/gi/gobject";
 import { expect } from "vitest";
 
@@ -34,4 +35,15 @@ const valueOfType = (type: bigint): Value => {
     return value;
 };
 
-export { type ErrorClass, expectThrown, thrownBy, uniqueName, valueOfType };
+const notifiedNames = (instance: GObject): string[] => {
+    const seen: string[] = [];
+
+    instance.on("notify", (...args: unknown[]) => {
+        const [pspec] = args as [ParamSpec];
+        seen.push(pspec.getName());
+    });
+
+    return seen;
+};
+
+export { type ErrorClass, expectThrown, notifiedNames, thrownBy, uniqueName, valueOfType };

@@ -16,7 +16,14 @@ import {
 } from "./param-spec.js";
 import { getHandle, getInterfaceProperties, instanceClassName, type InterfaceProperty } from "./registry.js";
 import { typeName } from "./type.js";
-import { fromValue, intoValue, newValueForType, type ValueWriter, valueWriterFor } from "./value.js";
+import {
+    fromValue,
+    newValueForType,
+    type ValueNarrower,
+    valueNarrowerFor,
+    type ValueWriter,
+    valueWriterFor,
+} from "./value.js";
 
 type PropertyCheck = {
     name: string;
@@ -25,6 +32,7 @@ type PropertyCheck = {
     flags: number;
     valueType: bigint;
     canHoldValue: ValueGuard;
+    narrowValue: ValueNarrower;
     write?: ValueWriter;
     scratch?: ExternalObject<Handle>;
 };
@@ -95,6 +103,7 @@ function checkFor(handle: ExternalObject<Handle>, name: string): PropertyCheck {
         flags: getParamFlags(handle),
         valueType,
         canHoldValue: valueGuardFor(valueType),
+        narrowValue: valueNarrowerFor(valueType),
     };
 }
 
@@ -170,6 +179,11 @@ function assertWritable(instance: object, check: PropertyCheck, value: unknown):
     throw new TypeError(propertyMessage(instance, check, refusalTail(check, value, READ_ONLY_REASON)));
 }
 
+function writeHeld(check: PropertyCheck, gValue: ExternalObject<Handle>, value: unknown): void {
+    check.write ??= valueWriterFor(check.valueType);
+    check.write(gValue, check.narrowValue(value));
+}
+
 function fillCheckedValue(
     instance: object,
     check: PropertyCheck,
@@ -177,8 +191,7 @@ function fillCheckedValue(
     value: unknown,
 ): void {
     assertValueFits(instance, check, value);
-    check.write ??= valueWriterFor(check.valueType);
-    check.write(gValue, value);
+    writeHeld(check, gValue, value);
     assertValueValidates(instance, check, value, gValue);
 }
 
@@ -246,7 +259,7 @@ function writeProperty(instance: object, accessor: PropertyAccessor, value: unkn
     }
 
     assertValueAccepted(instance, accessor, value);
-    writeStored(stored, accessor, value);
+    writeStored(stored, accessor, accessor.narrowValue(value));
 }
 
 function storedGetter(accessor: PropertyAccessor): (this: object) => unknown {
@@ -432,7 +445,7 @@ function makeGetProperty(dispatch: PropertyDispatch) {
         const accessor = resolveAccessor(dispatch, propertyId, pspec);
         const current = readCurrent(this, accessor);
         assertValueServes(this, accessor, current);
-        intoValue(getHandle(value), current);
+        writeHeld(accessor, getHandle(value), current);
     };
 }
 

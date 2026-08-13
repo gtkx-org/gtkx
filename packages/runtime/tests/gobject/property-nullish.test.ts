@@ -29,7 +29,7 @@ import {
 import * as Gtk from "@gtkx/gi/gtk";
 import { getClassType, registerClass, resolveType, TYPE_LONG } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
-import { expectThrown, thrownBy, uniqueName, valueOfType } from "./helpers.js";
+import { expectThrown, notifiedNames, thrownBy, uniqueName, valueOfType } from "./helpers.js";
 
 type NullishCase = { name: string; type: string; written: unknown; fallback: unknown };
 type RefusedCase = NullishCase & { refused: unknown; described: string };
@@ -104,17 +104,6 @@ const refusalFor = (entry: NullishCase, written: string): RegExp =>
         String.raw`^Probe\.${entry.name}: cannot set property '${entry.name}' to ${written}; ` +
         `the property holds values of type '${entry.type}'$`,
     );
-
-const notifiedNames = (instance: GObject): string[] => {
-    const seen: string[] = [];
-
-    instance.on("notify", (...args: unknown[]) => {
-        const [pspec] = args as [ParamSpec];
-        seen.push(pspec.getName());
-    });
-
-    return seen;
-};
 
 const probeProperties = (): Record<string, ParamSpec> => ({
     bias: paramSpecChar("bias", null, null, -10, 10, 0, ParamFlags.READWRITE),

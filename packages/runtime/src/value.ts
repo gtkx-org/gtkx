@@ -64,6 +64,7 @@ type ValueType = {
 
 type ValueGetter = (value: ExternalObject<Handle>) => unknown;
 type ValueWriter = ValueType["set"];
+type ValueNarrower = (jsValue: unknown) => unknown;
 
 const setBoxedCache = createBindCache();
 const setStaticBoxedCache = createBindCache();
@@ -82,7 +83,7 @@ const longValueType = bindValueType("long", bigint64T);
 const ulongValueType = bindValueType("ulong", biguint64T);
 const int64ValueType = bindValueType("int64", bigint64T);
 const uint64ValueType = bindValueType("uint64", biguint64T);
-const floatValueType = narrowedFloatValueType(bindValueType("float", float32T));
+const floatValueType = bindValueType("float", float32T);
 const doubleValueType = bindValueType("double", float64T);
 const stringValueType = bindValueType("string", stringT("borrowed"));
 const enumValueType = bindValueType("enum", int32T);
@@ -165,15 +166,6 @@ function bindValueType(symbol: string, descriptor: Descriptor): ValueType {
     return {
         set: bind(LIB, `g_value_set_${symbol}`, [VALUE_T, descriptor], voidT),
         get: bind(LIB, `g_value_get_${symbol}`, [VALUE_T], descriptor),
-    };
-}
-
-function narrowedFloatValueType(valueType: ValueType): ValueType {
-    return {
-        set: (value, nativeValue) => {
-            valueType.set(value, typeof nativeValue === "number" ? Math.fround(nativeValue) : nativeValue);
-        },
-        get: valueType.get,
     };
 }
 
@@ -443,6 +435,13 @@ const resolveValueGetter = (type: bigint): ValueGetter | undefined =>
 const resolveValueSetter = (type: bigint): ValueType["set"] | undefined =>
     exactValueType(type)?.set ?? builtInValueSetter(typeFundamental(type)) ?? customFundamentalSetter(type);
 
+const holdsUnchanged: ValueNarrower = (jsValue) => jsValue;
+const holdsAsFloat: ValueNarrower = (jsValue) => Math.fround(jsValue as number);
+
+function valueNarrowerFor(type: bigint): ValueNarrower {
+    return typeFundamental(type) === TYPE_FLOAT ? holdsAsFloat : holdsUnchanged;
+}
+
 function valueWriterFor(type: bigint): ValueWriter {
     const set = resolveValueSetter(type);
 
@@ -537,6 +536,8 @@ export {
     outValueForDescriptor,
     outValueForBoxedDescriptor,
     inoutValueForBoxedDescriptor,
+    type ValueNarrower,
+    valueNarrowerFor,
     type ValueWriter,
     valueWriterFor,
 };

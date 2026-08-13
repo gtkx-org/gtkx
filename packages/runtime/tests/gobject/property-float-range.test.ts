@@ -2,7 +2,7 @@ import type { ParamSpec } from "@gtkx/gi/gobject";
 import { Object as GObject, ParamFlags, paramSpecDouble, paramSpecFloat } from "@gtkx/gi/gobject";
 import { registerClass, TYPE_DOUBLE, TYPE_FLOAT } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
-import { type ErrorClass, expectThrown, uniqueName, valueOfType } from "./helpers.js";
+import { type ErrorClass, expectThrown, notifiedNames, uniqueName, valueOfType } from "./helpers.js";
 
 type WrittenCase = { name: string; type: string; written: unknown; described: string };
 type RangeCase = WrittenCase & { substitute: string };
@@ -11,6 +11,7 @@ type Probe = InstanceType<ReturnType<typeof makeProbeClass>>;
 
 const FLOAT_MAXIMUM = 3.4028234663852886e38;
 const ABOVE_FLOAT_MAXIMUM = 3.4028235e38;
+const NARROWED_TENTH = 0.10000000149011612;
 const HELD = 0.5;
 
 const RANGE_REFUSED: RangeCase[] = [
@@ -34,6 +35,8 @@ const TYPE_REFUSED: WrittenCase[] = [
 ];
 
 const NARROWED: NarrowedCase[] = [
+    { written: 0.1, narrowed: NARROWED_TENTH, described: "a double no gfloat spells exactly" },
+    { written: -0.1, narrowed: -NARROWED_TENTH, described: "a negative double no gfloat spells exactly" },
     { written: 1e300, narrowed: Infinity, described: "a magnitude no gfloat holds" },
     { written: -1e300, narrowed: -Infinity, described: "a negative magnitude no gfloat holds" },
     { written: ABOVE_FLOAT_MAXIMUM, narrowed: FLOAT_MAXIMUM, described: "a magnitude just past the widest gfloat" },
@@ -44,10 +47,13 @@ const NARROWED: NarrowedCase[] = [
     },
 ];
 
+const unboundedFloat = (name: string): ParamSpec =>
+    paramSpecFloat(name, null, null, -Infinity, Infinity, Infinity, ParamFlags.READWRITE);
+
 const probeProperties = (): Record<string, ParamSpec> => ({
     span: paramSpecDouble("span", null, null, -Infinity, Infinity, Infinity, ParamFlags.READWRITE),
     ratio: paramSpecDouble("ratio", null, null, 0, 1, 0, ParamFlags.READWRITE),
-    reach: paramSpecFloat("reach", null, null, -Infinity, Infinity, Infinity, ParamFlags.READWRITE),
+    reach: unboundedFloat("reach"),
     gain: paramSpecFloat("gain", null, null, 0, 1, 0, ParamFlags.READWRITE),
 });
 
@@ -67,6 +73,27 @@ const makeProbeClass = () => {
     return Probe;
 };
 
+const makeOwningClass = () => {
+    class Owner extends GObject {
+        own = 0;
+
+        get reach(): number {
+            return this.own;
+        }
+
+        set reach(value: number) {
+            this.own = value;
+        }
+    }
+
+    registerClass(Owner, {
+        typeName: uniqueName("GtkxFloatOwnerProbe"),
+        properties: { reach: unboundedFloat("reach") },
+    });
+
+    return Owner;
+};
+
 const refusalPrefix = (entry: WrittenCase): string =>
     `Probe.${entry.name}: cannot set property '${entry.name}' to ${entry.described}; `;
 
@@ -84,9 +111,9 @@ const probeHolding = (name: string, value: unknown): Probe => {
     return probe;
 };
 
-const servedBy = (probe: Probe, name: string, type: bigint): number => {
+const servedBy = (instance: GObject, name: string, type: bigint): number => {
     const value = valueOfType(type);
-    probe.getProperty(name, value);
+    instance.getProperty(name, value);
 
     return type === TYPE_FLOAT ? value.getFloat() : value.getDouble();
 };
@@ -126,17 +153,44 @@ describe("a floating-point property whose ParamSpec range admits infinity", () =
     });
 
     it("serves an infinite double through the GValue GObject reads the property into", () => {
-        const probe = probeHolding("span", 5);
-        probe.span = Infinity;
-        expect(servedBy(probe, "span", TYPE_DOUBLE)).toBe(Infinity);
+        expect(servedBy(probeHolding("span", Infinity), "span", TYPE_DOUBLE)).toBe(Infinity);
+    });
+
+    it("serves an infinite float through the GValue GObject reads the property into", () => {
+        expect(servedBy(probeHolding("reach", -Infinity), "reach", TYPE_FLOAT)).toBe(-Infinity);
     });
 });
 
-describe("a magnitude wider than a gfloat written where the ParamSpec range admits what it narrows to", () => {
+describe("a double written to a gfloat property whose range admits what it narrows to", () => {
     it.each(NARROWED)("holds $described as the gfloat GObject narrows it to", (entry) => {
         const probe = probeHolding("reach", entry.written);
+        expect(probe.reach).toBe(entry.narrowed);
         expect(servedBy(probe, "reach", TYPE_FLOAT)).toBe(entry.narrowed);
+    });
+
+    it.each(NARROWED)("takes $described at construction as the gfloat it narrows to", (entry) => {
         expect(new (makeProbeClass())({ reach: entry.written }).reach).toBe(entry.narrowed);
+    });
+
+    it.each(NARROWED)("writes $described one instance holds onto another unchanged", (entry) => {
+        const target = probeHolding("reach", HELD);
+        target.reach = probeHolding("reach", entry.written).reach;
+        expect(target.reach).toBe(entry.narrowed);
+    });
+
+    it("notifies once for a double it narrows and not again for the same double", () => {
+        const probe = probeHolding("reach", HELD);
+        const seen = notifiedNames(probe);
+        probe.reach = 0.1;
+        probe.reach = 0.1;
+        expect(seen).toEqual(["reach"]);
+    });
+
+    it("serves the gfloat it narrows a member the class owns to", () => {
+        const owner = new (makeOwningClass())();
+        owner.reach = 1e300;
+        expect(owner.reach).toBe(1e300);
+        expect(servedBy(owner, "reach", TYPE_FLOAT)).toBe(Infinity);
     });
 });
 
@@ -154,5 +208,21 @@ describe("a value a floating-point ParamSpec's range rejects", () => {
 describe("a value a floating-point property cannot hold at all", () => {
     it.each(TYPE_REFUSED)("refuses $described written to $name as a $type mismatch", (entry) => {
         expectRefused(entry, TypeError, typeMessage(entry));
+    });
+});
+
+describe("a GValue filled outside an installed property", () => {
+    it("refuses the magnitude no gfloat holds that a property would narrow", () => {
+        const value = valueOfType(TYPE_FLOAT);
+
+        expectThrown(() => {
+            value.setFloat(1e300);
+        }, Error, "is out of range for f32");
+    });
+
+    it("takes the infinity a property narrows that magnitude to", () => {
+        const value = valueOfType(TYPE_FLOAT);
+        value.setFloat(Infinity);
+        expect(value.getFloat()).toBe(Infinity);
     });
 });

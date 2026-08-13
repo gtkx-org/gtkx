@@ -148,6 +148,17 @@ type RegisterClassOptions<TInstance extends object, TProperties extends Record<s
      * being given at all and leaves it at the ParamSpec's default, so a property is never handed a
      * value it cannot serve back.
      *
+     * A floating-point property takes every JavaScript number, `NaN` and both infinities
+     * included, and its ParamSpec alone rules on which of them the range admits: a `gdouble`
+     * bounded by `-Infinity` and `Infinity` holds either infinity, and a magnitude a bounded
+     * one excludes, like any `NaN`, comes back as the `RangeError` that names what GObject
+     * would put in its place rather than as the `TypeError` a type the property cannot hold
+     * earns. A `gfloat` property holds what GObject narrows the double to, so it serves `0.1`
+     * back as `0.10000000149011612` and a finite magnitude no `gfloat` reaches as an infinity,
+     * which the range then rules on in turn. That narrowing belongs to the property alone: the
+     * same magnitude written to a `gfloat` through a generated binding, a signal argument or a
+     * closure return is refused outright rather than narrowed.
+     *
      * A generated property of a wrapped type answers a nullish differently, and the two halves of
      * the API disagree here: that property marshals what it is written through its descriptor
      * rather than through the checks above, so `new Gtk.Label({ widthRequest: null })` and a later
