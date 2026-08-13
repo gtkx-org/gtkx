@@ -80,7 +80,103 @@
           </parameter>
         </parameters>
       </method>
+      <method name="watch" c:identifier="skip_probe_watch">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="probe" transfer-ownership="none">
+            <type name="Probe" c:type="SkipProbe*"/>
+          </instance-parameter>
+          <parameter name="notice"
+                     transfer-ownership="none"
+                     scope="call"
+                     closure="1">
+            <type name="NoticeFunc" c:type="SkipNoticeFunc"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="weigh" c:identifier="skip_probe_weigh">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="probe" transfer-ownership="none">
+            <type name="Probe" c:type="SkipProbe*"/>
+          </instance-parameter>
+          <parameter name="weight"
+                     transfer-ownership="none"
+                     scope="call"
+                     closure="1">
+            <type name="WeightFunc" c:type="SkipWeightFunc"/>
+          </parameter>
+          <parameter name="user_data"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </method>
+      <glib:signal name="probed" when="last">
+        <return-value transfer-ownership="none" skip="1">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters/>
+      </glib:signal>
+      <glib:signal name="ranked" when="last">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters/>
+      </glib:signal>
     </class>
+    <callback name="NoticeFunc" c:type="SkipNoticeFunc">
+      <return-value transfer-ownership="none" skip="1">
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="note"
+                   direction="out"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <type name="utf8" c:type="char**"/>
+        </parameter>
+        <parameter name="user_data"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1"
+                   closure="1">
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+      </parameters>
+    </callback>
+    <callback name="WeightFunc" c:type="SkipWeightFunc">
+      <return-value transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="weight"
+                   direction="out"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <type name="gint" c:type="gint*"/>
+        </parameter>
+        <parameter name="user_data"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1"
+                   closure="1">
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+      </parameters>
+    </callback>
     <record name="ProbeClass"
             c:type="SkipProbeClass"
             glib:is-gtype-struct-for="Probe">

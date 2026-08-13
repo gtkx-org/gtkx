@@ -60,8 +60,16 @@ type FundamentalDescriptor = Extract<Descriptor, { kind: "fundamental" }> & {
 type ArrayDescriptor = Extract<Descriptor, { kind: "array" }>;
 /** Descriptor variant for a `GHashTable`, marshalled as an array of key/value pairs. */
 type HashTableDescriptor = Extract<Descriptor, { kind: "hashtable" }>;
+
 /** Descriptor variant for a function pointer a JavaScript function is marshalled into. */
-type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }>;
+type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }> & {
+    /**
+     * GIR marks the return value as one the bindings do not surface, so the JavaScript function is
+     * asked only for the callback's out values and reports success in its place.
+     */
+    isReturnSkipped?: boolean;
+};
+
 /** Descriptor variant for a pointer to another descriptor's value, for an output or inout argument. */
 type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
 
@@ -89,8 +97,13 @@ type BoxedOptions = {
     size?: number;
 };
 
-/** How the callee takes a callback's closure, and how long that closure has to stay alive. */
+/**
+ * What the bindings do with a callback's return value, how the callee takes its closure, and how
+ * long that closure has to stay alive.
+ */
 type CallbackOptions = {
+    /** The bindings drop the callback's return value, as `CallbackDescriptor.isReturnSkipped` describes. */
+    isReturnSkipped?: boolean;
     /** The callee also takes a destroy notify, which frees the closure once it is done with it. */
     hasDestroy?: boolean;
     /** Signature of that destroy notify; defaults to `destroyNotify`, a one-argument `GDestroyNotify`. */
@@ -411,6 +424,28 @@ const fixedArrayT = (
     elementSize?: number,
 ): ArrayDescriptor => arrayT(itemDescriptor, "fixed", ownership, { fixedSize, elementSize });
 
+const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOptions): void => {
+    if (options.hasDestroy !== undefined) {
+        result.hasDestroy = options.hasDestroy;
+    }
+
+    if (options.destroyKind !== undefined) {
+        result.destroyKind = options.destroyKind;
+    }
+
+    if (options.hasUserData !== undefined) {
+        result.hasUserData = options.hasUserData;
+    }
+
+    if (options.userDataIndex !== undefined) {
+        result.userDataIndex = options.userDataIndex;
+    }
+
+    if (options.scope !== undefined) {
+        result.scope = options.scope;
+    }
+};
+
 /** Builds a descriptor for a function pointer, marshalling a JavaScript function into a native closure. */
 const callbackT = (
     argDescriptors: Descriptor[],
@@ -419,25 +454,15 @@ const callbackT = (
 ): CallbackDescriptor => {
     const result: CallbackDescriptor = { kind: "callback", argDescriptors, returnDescriptor };
 
-    if (options?.hasDestroy !== undefined) {
-        result.hasDestroy = options.hasDestroy;
+    if (options === undefined) {
+        return result;
     }
 
-    if (options?.destroyKind !== undefined) {
-        result.destroyKind = options.destroyKind;
+    if (options.isReturnSkipped !== undefined) {
+        result.isReturnSkipped = options.isReturnSkipped;
     }
 
-    if (options?.hasUserData !== undefined) {
-        result.hasUserData = options.hasUserData;
-    }
-
-    if (options?.userDataIndex !== undefined) {
-        result.userDataIndex = options.userDataIndex;
-    }
-
-    if (options?.scope !== undefined) {
-        result.scope = options.scope;
-    }
+    applyClosureOptions(result, options);
 
     return result;
 };

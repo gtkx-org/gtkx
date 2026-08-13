@@ -18,5 +18,7 @@ const callDescriptorFor = (source: string, cIdentifier: string): string =>
     sliceBetween(source, `"${cIdentifier}", {`, "});");
 
 const vtableSlotFor = (source: string, key: string): string => sliceBetween(source, `${key}: {`, "\n    },");
+const memberSourceFor = (source: string, header: string): string => sliceBetween(source, header, "\n    }");
+const switchCaseFor = (member: string, key: string): string => sliceBetween(member, `case "${key}": {`, ";");
 
-export { callDescriptorFor, vtableSlotFor };
+export { callDescriptorFor, memberSourceFor, switchCaseFor, vtableSlotFor };

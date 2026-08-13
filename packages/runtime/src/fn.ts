@@ -17,9 +17,8 @@ type FnSpec = {
     /** Descriptor for the C return value, packed first when output arguments are also returned. */
     returns: Descriptor;
     /**
-     * The callee returns a value the bindings do not surface, so the call keeps the callee's own
-     * return type, marshals the value the way any other return value is marshalled, and then leaves
-     * it out of the result instead of packing it first.
+     * The callee returns a value the bindings do not surface, so the call is made against the
+     * declared return type and the value is dropped instead of being packed into the result.
      */
     isReturnSkipped?: boolean;
     /** The function takes a trailing `GError**`, whose contents are thrown as an error on return. */
@@ -144,22 +143,16 @@ const directCallable = (
     hasPrimary: boolean,
     argCount: number,
 ): ((...inputs: unknown[]) => unknown) => {
-    if (returnDescriptor.kind === "void") {
-        return (...inputs) => {
-            call(descriptor, resizeInputs(inputs, argCount));
-        };
-    }
-
     const marshal = (inputs: unknown[]): unknown =>
         fromNative(returnDescriptor, call(descriptor, resizeInputs(inputs, argCount)));
 
-    if (!hasPrimary) {
-        return (...inputs) => {
-            marshal(inputs);
-        };
+    if (hasPrimary) {
+        return (...inputs) => marshal(inputs);
     }
 
-    return (...inputs) => marshal(inputs);
+    return (...inputs) => {
+        marshal(inputs);
+    };
 };
 
 function fromNativeCallable(
@@ -177,11 +170,12 @@ function fromNativeCallable(
         return directCallable(descriptor, returnDescriptor, hasPrimary, plans.length);
     }
 
-    const shape = (inputs: unknown[], nativeValues: unknown[], nativeResult: unknown): unknown => {
-        const primary = returnDescriptor.kind === "void" ? undefined : fromNative(returnDescriptor, nativeResult);
-
-        return packTupleResult(readOutParams(outPlans, inputs, nativeValues), primary, hasPrimary);
-    };
+    const shape = (inputs: unknown[], nativeValues: unknown[], nativeResult: unknown): unknown =>
+        packTupleResult(
+            readOutParams(outPlans, inputs, nativeValues),
+            fromNative(returnDescriptor, nativeResult),
+            hasPrimary,
+        );
 
     if (canThrow) {
         return (...inputs) => {

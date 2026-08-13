@@ -568,8 +568,10 @@ describe("codegen return-value convention", () => {
 
     it("surfaces the return value of a throwing function GIR does not skip", () => {
         const source = giSource("glib");
+        const descriptor = callDescriptorFor(source, "g_file_get_contents");
         expect(source).toContain("export function fileGetContents(filename: string): [boolean, number[]]");
-        expect(callDescriptorFor(source, "g_file_get_contents")).toContain("returns: t.boolean, canThrow: true");
+        expect(descriptor).toContain("returns: t.boolean");
+        expect(descriptor).not.toContain("isReturnSkipped");
     });
 });
 

@@ -39,7 +39,7 @@ type VfuncDescriptor = {
     returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"];
     /**
      * GIR marks the slot's return value as one the bindings do not surface, so a call through the
-     * slot drops it and an implementation of the slot is asked only for its out values, while
+     * slot drops it and an implementation of the slot reports success in its place, while
      * `VfuncDescriptor.returnDescriptor` keeps the C type the slot is called against either way.
      */
     isReturnSkipped?: boolean;

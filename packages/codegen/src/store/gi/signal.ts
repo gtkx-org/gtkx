@@ -1,16 +1,17 @@
 import { camelCase, sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
-import type { GirCallable, GirParameter } from "../../gir/parameter.js";
+import type { GirCallable, GirParameter, GirReturnValue } from "../../gir/parameter.js";
 import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
 import type { Declaration } from "../../writer/module.js";
 import {
     isCellInout,
+    isSkippedPrimaryReturn,
+    primaryReturnKind,
     renderDescriptor,
     renderParamDescriptor,
-    shouldOmitPrimaryReturn,
 } from "../../analysis/descriptor-render.js";
-import { tCallback, tObject, tVoid } from "../../analysis/descriptor.js";
+import { SKIPPED_RETURN_ENTRY, tCallback, tObject, tVoid } from "../../analysis/descriptor.js";
 import {
     collectInterfaceProperties,
     forEachAncestor,
@@ -290,6 +291,19 @@ const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextA
     return { literal: `{ type: ${descriptor}, value: args[${String(argIndex)}] }`, nextArgIndex: argIndex + 1 };
 };
 
+const renderEmitReturnArg = (context: ModuleContext, returnValue: GirReturnValue): string => {
+    const kind = primaryReturnKind(context.library, returnValue);
+
+    if (kind === "void") {
+        return "";
+    }
+
+    const descriptor = renderDescriptor(context, returnValue.type, returnValue.transferOwnership);
+    const skipEntry = kind === "skipped" ? `, ${SKIPPED_RETURN_ENTRY}` : "";
+
+    return `, { descriptor: ${descriptor}${skipEntry} }`;
+};
+
 const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => {
     const params = nonVarargParameters(signal);
 
@@ -308,12 +322,7 @@ const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => 
         return rendered.literal;
     });
 
-    const isVoid = shouldOmitPrimaryReturn(context.library, signal.returnValue);
-
-    const returnArg = isVoid
-        ? ""
-        : `, ${renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership)}`;
-
+    const returnArg = renderEmitReturnArg(context, signal.returnValue);
     const body = `return emitSignal(this, sigName, [${argLiterals.join(", ")}]${returnArg});`;
 
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
@@ -335,21 +344,20 @@ const renderCallback = (context: ModuleContext, signal: GirCallable): string => 
         renderParamDescriptor(context, parameter, parameter.type, { argIndexOffset: 1 }),
     );
 
-    const isVoid = shouldOmitPrimaryReturn(context.library, signal.returnValue);
-
-    const returnDescriptor = isVoid
-        ? tVoid
-        : renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership);
-
     const callbackArgs = [tObject("borrowed"), ...callbackParamDescriptors, tVoid];
     const userDataIndex = String(params.length + 1);
-    const destroy = "hasDestroy: true, destroyKind: \"closureNotify\"";
 
-    return tCallback(
-        callbackArgs,
-        returnDescriptor,
-        `{ ${destroy}, hasUserData: true, userDataIndex: ${userDataIndex} }`,
-    );
+    return tCallback({
+        argTypes: callbackArgs,
+        returns: renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership),
+        isReturnSkipped: isSkippedPrimaryReturn(context.library, signal.returnValue),
+        options: [
+            "hasDestroy: true",
+            "destroyKind: \"closureNotify\"",
+            "hasUserData: true",
+            `userDataIndex: ${userDataIndex}`,
+        ],
+    });
 };
 
 const forEachInterfaceSignal = (
