@@ -3,11 +3,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { ensureStoreLinks, runCodegen } from "../../src/index.js";
+import { FIXTURE_GIR_PATH, GIR_PATH } from "../helpers/gir-path.js";
 import { createIsolatedProject } from "../helpers/isolated-project.js";
 import { runningStagingName, strandedStagingName } from "../helpers/staging.js";
 import { storeUnit } from "../helpers/store-unit.js";
 
-const GIR_PATH = ["/usr/share/gir-1.0"];
 const FINGERPRINT_FILE = ".codegen-fingerprint.json";
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const workDir = mkdtempSync(join(REPO_ROOT, "node_modules", ".gtkx-test-"));
@@ -50,14 +50,8 @@ const registerStoreWriteTests = (): void => {
         const nodeModules = projectModules("with-jsx");
         const gi = storeUnit(nodeModules, "gi");
         const jsx = storeUnit(nodeModules, "jsx");
-
-        const result = await runCodegen({
-            libraries: ["Gtk-4.0"],
-            girPath: GIR_PATH,
-            gi,
-            jsx,
-        });
-
+        const options = { libraries: ["Gtk-4.0"], girPath: GIR_PATH, gi, jsx };
+        const result = await runCodegen(options);
         expect(result.intrinsicElements).toBeGreaterThan(0);
         expect(existsSync(join(gi.storeDir, "gtk", "gtk.js"))).toBe(true);
         expect(readFileSync(join(jsx.storeDir, "gtk", "gtk.js"), "utf8").length).toBeGreaterThan(0);
@@ -65,6 +59,17 @@ const registerStoreWriteTests = (): void => {
         expect(existsSync(jsx.linkDir)).toBe(true);
         expectMappableNamespace(gi.storeDir);
         expectMappableNamespace(jsx.storeDir);
+    });
+};
+
+const registerShadowedMemberTests = (): void => {
+    it("writes a store whose interface members shadow what GObject.Object declares", async () => {
+        const gi = storeUnit(projectModules("shadowed-members"), "gi");
+        const result = await runCodegen({ libraries: ["Clash-1.0"], girPath: FIXTURE_GIR_PATH, gi });
+        expect(result.namespaces).toBeGreaterThan(0);
+        const types = readFileSync(join(gi.storeDir, "clash", "clash.d.ts"), "utf8");
+        expect(types).toContain("export interface Serial extends Omit<GObject.Object, \"getProperty\"> {");
+        expect(existsSync(join(gi.storeDir, "clash", "clash.js"))).toBe(true);
     });
 };
 
@@ -191,6 +196,7 @@ afterAll(() => {
 
 describe("runCodegen", () => {
     registerStoreWriteTests();
+    registerShadowedMemberTests();
     registerFreshnessTests();
     registerStagingTests();
     registerStoreLinkTests();

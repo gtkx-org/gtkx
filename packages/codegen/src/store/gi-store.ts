@@ -82,4 +82,4 @@ const writeGiStore = (
     });
 };
 
-export { collectStoreSources, writeGiStore, type GiNamespaceInput };
+export { writeGiStore, type GiNamespaceInput };

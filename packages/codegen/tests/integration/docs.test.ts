@@ -7,11 +7,11 @@ import { afterAll, describe, expect, it } from "vitest";
 import { computeGiFingerprint, FINGERPRINT_FILENAME } from "../../src/fingerprint.js";
 import { writeDocs } from "../../src/internal.js";
 import { readBuiltinElements } from "../../src/react/element-config.js";
+import { GIR_PATH } from "../helpers/gir-path.js";
 
 type DocsOptions = Parameters<typeof writeDocs>[0];
 type EscapingGir = { name: string; dir: string; namespace: string; element: string; reason: string };
 
-const GIR_PATH = ["/usr/share/gir-1.0"];
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const GI_STORE_DIR = join(REPO_ROOT, "node_modules", ".gtkx", "gi");
 const REACT_SUBEXPORTS = ["config", "adw", "adw/config", "internal"];

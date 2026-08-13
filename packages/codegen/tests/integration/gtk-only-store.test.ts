@@ -5,10 +5,10 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { runCodegen } from "../../src/index.js";
 import { constructionGuard } from "../helpers/construction-guard.js";
+import { GIR_PATH } from "../helpers/gir-path.js";
 import { isolateProject } from "../helpers/isolated-project.js";
 import { storeUnit } from "../helpers/store-unit.js";
 
-const GIR_PATH = ["/usr/share/gir-1.0"];
 const workDir = mkdtempSync(join(tmpdir(), "gtkx-gtk-only-"));
 const projectModules = join(workDir, "node_modules");
 

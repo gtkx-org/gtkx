@@ -4,8 +4,9 @@ import type { GirField } from "../../src/gir/field.js";
 import type { GirFunction } from "../../src/gir/function.js";
 import type { GirProperty } from "../../src/gir/property.js";
 import { Library } from "../../src/gir/library.js";
+import { GIR_PATH } from "../helpers/gir-path.js";
 
-const library = Library.load(["Gtk-4.0"], ["/usr/share/gir-1.0"]);
+const library = Library.load(["Gtk-4.0"], GIR_PATH);
 
 const typeIn = (namespaceName: string, typeName: string): GirClass => {
     const namespace = library.namespaces.get(namespaceName);

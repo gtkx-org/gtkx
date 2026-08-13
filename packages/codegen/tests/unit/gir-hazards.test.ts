@@ -1,10 +1,6 @@
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { checkModules } from "../../src/compile.js";
-import { fixtureModules, fixtureStoreModules } from "../helpers/fixture-modules.js";
+import { fixtureModules } from "../helpers/fixture-modules.js";
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const sources = fixtureModules(["Hazard-1.0", "Bare-1.0", "Clash-1.0"]);
 const hazard = String(sources.get("Hazard"));
 const bare = String(sources.get("Bare"));
@@ -12,14 +8,6 @@ const clash = String(sources.get("Clash"));
 
 const generateTwinModules = (): void => {
     fixtureModules(["Twin-1.0"]);
-};
-
-const checkClashStore = (): void => {
-    checkModules({
-        modules: fixtureStoreModules(["Clash-1.0"]),
-        resolveFrom: REPO_ROOT,
-        label: "the Clash fixture store",
-    });
 };
 
 describe("a namespace whose type names collide with TypeScript keywords", () => {
@@ -157,10 +145,6 @@ describe("a namespace whose members shadow what they inherit", () => {
 });
 
 describe("an interface whose method shadows a member of what it extends", () => {
-    it("type-checks the store it emits against the GObject it extends", () => {
-        expect(checkClashStore).not.toThrow();
-    });
-
     it("omits a member the root prerequisite declares with another signature", () => {
         expect(clash).toContain('export interface Serial extends Omit<GObject.Object, "getProperty"> {');
     });

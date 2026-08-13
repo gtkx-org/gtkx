@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { type ApiReference, loadApiReference } from "../../src/index.js";
+import { GIR_PATH } from "../helpers/gir-path.js";
 
 type PageResult = Extract<ReturnType<ApiReference["lookup"]>, { outcome: "page" }>;
 
-const GIR_PATH = ["/usr/share/gir-1.0"];
 const reference = loadApiReference({ libraries: ["Gtk-4.0", "Adw-1"], girPath: GIR_PATH });
 
 const DBUS_CONNECTION_NEW_SIGNATURE =
