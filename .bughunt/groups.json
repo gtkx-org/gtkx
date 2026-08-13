@@ -2,73 +2,43 @@
     "groups": [
         {
             "name": "cli-dev",
-            "owns": "packages/cli/src/dev, packages/cli/src/builder.ts, packages/cli/src/vite-plugins",
+            "owns": "packages/cli, packages/create-gtkx",
             "findings": [
-                "F209",
-                "F312",
-                "F314"
-            ]
-        },
-        {
-            "name": "cli-scaffold",
-            "owns": "packages/create-gtkx, packages/config, packages/cli/src/internal",
-            "findings": [
-                "F301",
-                "F302",
-                "F303",
-                "F304",
-                "F305"
+                "F501",
+                "F502",
+                "F506",
+                "F511",
+                "F513",
+                "F514",
+                "F515"
             ]
         },
         {
             "name": "codegen",
-            "owns": "packages/codegen, packages/cli/src/commands/docs.ts",
+            "owns": "packages/codegen",
             "findings": [
-                "F201",
-                "F202",
-                "F306",
-                "F307",
-                "F308",
-                "F315"
-            ]
-        },
-        {
-            "name": "testing",
-            "owns": "packages/testing, packages/mcp",
-            "findings": [
-                "F206",
-                "F207",
-                "F208",
-                "F311"
-            ]
-        },
-        {
-            "name": "style-collections",
-            "owns": "packages/css, packages/components",
-            "findings": [
-                "F309",
-                "F310",
-                "F317",
-                "F318",
-                "F319"
+                "F503",
+                "F505",
+                "F512",
+                "F516",
+                "F517"
             ]
         },
         {
             "name": "runtime-native",
             "owns": "packages/runtime, packages/native, packages/react",
             "findings": [
-                "F203",
-                "F204",
-                "F205",
-                "F210"
+                "F504",
+                "F507",
+                "F508",
+                "F509"
             ]
         },
         {
-            "name": "examples",
-            "owns": "examples/gtk-demo, examples/tutorial",
+            "name": "testing",
+            "owns": "packages/testing, packages/mcp",
             "findings": [
-                "F313",
-                "F401"
+                "F510"
             ]
         }
     ]
