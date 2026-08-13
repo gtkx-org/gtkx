@@ -8,17 +8,12 @@ import {
     resolveOmittedProps,
 } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
-import { existsSync, rmSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { rmSync } from "node:fs";
+import { resolve } from "node:path";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { emitSchemaEnv } from "../settings/schema.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
-import {
-    type CodegenContext,
-    type CodegenStore,
-    resolveCodegenContext,
-    resolveCodegenStore,
-} from "./store-resolver.js";
+import { type CodegenContext, type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 
 type RunCodegenOptions = {
     cwd?: string;
@@ -244,29 +239,14 @@ const ensureGeneratedIn = async (
 const ensureGenerated = async (cwd: string, options: EnsureGeneratedOptions = {}): Promise<boolean> =>
     isPreflightSkipped(options) ? false : generate(await resolveCodegenContext(cwd, options.mode), options);
 
-const storeLinkPaths = (root: string, config: Config): string[] => {
-    if (config.codegen === false) {
-        return [];
-    }
-
-    try {
-        const store = resolveCodegenStore(root);
-        const links = store.react === null ? [store.giLinkDir] : [store.giLinkDir, store.jsxLinkDir];
-
-        return links.filter((link) => existsSync(dirname(link)));
-    } catch {
-        return [];
-    }
-};
-
 const resolveConfigWatch = async (
     cwd: string,
     mode?: string,
 ): Promise<{ paths: string[]; regenerate: () => Promise<void> }> => {
-    const { config, configFile, root } = await loadConfig(cwd, { mode });
+    const { configFile, root } = await loadConfig(cwd, { mode });
 
     return {
-        paths: [resolve(root, configFile), ...storeLinkPaths(root, config)],
+        paths: [resolve(root, configFile)],
         regenerate: async () => {
             await runCodegen({ cwd: root, mode });
         },

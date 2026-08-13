@@ -15,6 +15,14 @@ function context(overrides: Partial<TemplateContext> = {}): TemplateContext {
     };
 }
 
+const compilerOptions = async (): Promise<Record<string, unknown>> => {
+    const rendered = JSON.parse(await renderFile("tsconfig.json", baseContext)) as {
+        compilerOptions: Record<string, unknown>;
+    };
+
+    return rendered.compilerOptions;
+};
+
 describe("renderFile", () => {
     it("renders the package.json template with the project name", async () => {
         const output = await renderFile("package.json", baseContext);
@@ -53,11 +61,6 @@ describe("renderFile", () => {
         expect(await renderFile("vitest.config.ts", context({ isTypescript: false }))).toContain("{js,jsx}");
     });
 
-    it("declares node and react types without the dom lib", async () => {
-        const tsconfig = JSON.parse(await renderFile("tsconfig.json", baseContext)) as { compilerOptions: unknown };
-        expect(tsconfig.compilerOptions).toMatchObject({ lib: ["esnext"], types: ["node", "react"] });
-    });
-
     it("uses the import extension for the entry and test imports", async () => {
         expect(await renderFile("src/index.tsx", context({ importExtension: ".js" }))).toContain('from "./app.js"');
         expect(await renderFile("src/index.tsx", context({ importExtension: ".jsx" }))).toContain('from "./app.jsx"');
@@ -65,6 +68,21 @@ describe("renderFile", () => {
         expect(await renderFile("tests/app.test.tsx", context({ importExtension: ".jsx" }))).toContain(
             'from "../src/app.jsx"',
         );
+    });
+});
+
+describe("the scaffolded tsconfig", () => {
+    it("declares node and react types without the dom lib", async () => {
+        expect(await compilerOptions()).toMatchObject({ lib: ["esnext"], types: ["node", "react"] });
+    });
+
+    it("types the generated bindings from the store, which no install can prune", async () => {
+        const options = await compilerOptions();
+
+        expect(options.paths).toEqual({
+            "@gtkx/gi/*": ["./node_modules/.gtkx/gi/*/index.d.ts", "./node_modules/.gtkx/gi/*.d.ts"],
+            "@gtkx/jsx/*": ["./node_modules/.gtkx/jsx/*/index.d.ts", "./node_modules/.gtkx/jsx/*.d.ts"],
+        });
     });
 });
 

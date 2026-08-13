@@ -2,13 +2,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CodegenContext } from "../../src/codegen/store-resolver.js";
-import {
-    ensureGenerated,
-    ensureGeneratedIn,
-    resolveConfigWatch,
-    runCodegen,
-    syncSchemaEnv,
-} from "../../src/codegen/run-codegen.js";
+import { ensureGenerated, ensureGeneratedIn, runCodegen, syncSchemaEnv } from "../../src/codegen/run-codegen.js";
 import { collectLogged } from "../stderr-text.js";
 import { setupTempTree, type TempTree } from "../temp-tree.js";
 
@@ -168,12 +162,6 @@ const missingConfigMessage = (cwd: string): string => `gtkx.config.ts: no config
 
 const expectMissingConfig = async (cwd: string): Promise<void> => {
     await expect(ensureGenerated(cwd, { shouldAnnounce: true })).rejects.toThrow(missingConfigMessage(cwd));
-};
-
-const watchedPaths = async (cwd: string): Promise<string[]> => {
-    const watch = await resolveConfigWatch(cwd);
-
-    return watch.paths;
 };
 
 const expectPrunedLinkRelinked = async (cwd: string, name: "gi" | "jsx"): Promise<void> => {
@@ -422,49 +410,6 @@ describe("ensureGenerated — store links", () => {
         installGeneratedProject(project.path);
         rmSync(join(project.path, "node_modules", ".gtkx", "jsx", "package.json"), { force: true });
         expect(await ensureGenerated(project.path)).toBe(true);
-    });
-});
-
-describe("resolveConfigWatch", () => {
-    const project = setupTempTree("gtkx-config-watch-");
-
-    it("watches both store links alongside gtkx.config.ts", async () => {
-        installGeneratedProject(project.path);
-
-        expect(await watchedPaths(project.path)).toEqual([
-            join(project.path, "gtkx.config.ts"),
-            getLinkDir(project.path, "gi"),
-            getLinkDir(project.path, "jsx"),
-        ]);
-    });
-
-    it("keeps watching a link an install already pruned", async () => {
-        installGeneratedProject(project.path);
-        pruneStoreLink(project.path, "gi");
-        expect(await watchedPaths(project.path)).toContain(getLinkDir(project.path, "gi"));
-    });
-
-    it("watches the gi link alone when the project has no React runtime", async () => {
-        installGiOnlyProject(project.path);
-
-        expect(await watchedPaths(project.path)).toEqual([
-            join(project.path, "gtkx.config.ts"),
-            getLinkDir(project.path, "gi"),
-        ]);
-    });
-
-    it("watches the configuration alone when codegen is disabled", async () => {
-        installOwnStoreProject(project.path);
-        expect(await watchedPaths(project.path)).toEqual([join(project.path, "gtkx.config.ts")]);
-    });
-
-    it("restores a pruned link without regenerating the store", async () => {
-        installGeneratedProject(project.path);
-        const watch = await resolveConfigWatch(project.path);
-        pruneStoreLink(project.path, "gi");
-        core.calls.length = 0;
-        await watch.regenerate();
-        expect(lastCodegenCall().isForced).toBe(false);
     });
 });
 

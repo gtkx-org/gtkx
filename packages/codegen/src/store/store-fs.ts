@@ -61,6 +61,11 @@ const subpathExport = (stem: string): { types: string; default: string } => ({
     default: `./${stem}.js`,
 });
 
+const namespaceBarrel = (directory: string): { fileName: string; source: string } => ({
+    fileName: `${directory}/index.ts`,
+    source: `export * from "./${directory}.js";\n`,
+});
+
 const buildManifest = (input: ManifestInput): Manifest => {
     const manifest: Manifest = {
         name: input.name,
@@ -172,4 +177,12 @@ const createTempStore = (storeDir: string): string => {
     }
 };
 
-export { subpathExport, buildManifest, ensureStoreLink, writeStore, type StoreOptions, type RawFile };
+export {
+    subpathExport,
+    buildManifest,
+    ensureStoreLink,
+    namespaceBarrel,
+    writeStore,
+    type StoreOptions,
+    type RawFile,
+};

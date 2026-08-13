@@ -3,7 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { SourceModule } from "../compile.js";
 import { FINGERPRINT_FILENAME, type GiFingerprint } from "../fingerprint.js";
-import { buildManifest, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
+import { buildManifest, namespaceBarrel, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
 
 type GiNamespaceInput = {
     directory: string;
@@ -32,14 +32,14 @@ const overrideModule = (fileName: string, overridePath: string): SourceModule =>
 });
 
 const barrelFile = (directory: string, girFile: string): SourceModule => {
+    const barrel = namespaceBarrel(directory);
     const overrideIndex = join(OVERRIDES_ROOT, directory, "index.ts.ejs");
-    const fileName = `${directory}/index.ts`;
 
     if (!existsSync(overrideIndex)) {
-        return { fileName, source: `export * from "./${directory}.js";\n`, origin: girFile };
+        return { ...barrel, origin: girFile };
     }
 
-    return overrideModule(fileName, overrideIndex);
+    return overrideModule(barrel.fileName, overrideIndex);
 };
 
 const collectStoreSources = (

@@ -2,7 +2,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wr
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
-import { runCodegen } from "../../src/index.js";
+import { ensureStoreLinks, runCodegen } from "../../src/index.js";
 import { createIsolatedProject } from "../helpers/isolated-project.js";
 import { runningStagingName, strandedStagingName } from "../helpers/staging.js";
 import { storeUnit } from "../helpers/store-unit.js";
@@ -14,6 +14,16 @@ const workDir = mkdtempSync(join(REPO_ROOT, "node_modules", ".gtkx-test-"));
 const isolatedRoots: string[] = [];
 
 const projectModules = (name: string): string => join(workDir, name, "node_modules");
+
+const expectMappableNamespace = (storeDir: string): void => {
+    const { exports } = JSON.parse(readFileSync(join(storeDir, "package.json"), "utf8")) as {
+        exports: Record<string, unknown>;
+    };
+
+    expect(exports["./gtk"]).toEqual({ types: "./gtk/index.d.ts", default: "./gtk/index.js" });
+    expect(existsSync(join(storeDir, "gtk", "index.js"))).toBe(true);
+    expect(existsSync(join(storeDir, "gtk", "index.d.ts"))).toBe(true);
+};
 
 const registerStoreWriteTests = (): void => {
     it("writes the gi store with raw modules, barrels, a package.json and the visible alias", async () => {
@@ -53,6 +63,8 @@ const registerStoreWriteTests = (): void => {
         expect(readFileSync(join(jsx.storeDir, "gtk", "gtk.js"), "utf8").length).toBeGreaterThan(0);
         expect(readFileSync(join(jsx.storeDir, "metadata.js"), "utf8").length).toBeGreaterThan(0);
         expect(existsSync(jsx.linkDir)).toBe(true);
+        expectMappableNamespace(gi.storeDir);
+        expectMappableNamespace(jsx.storeDir);
     });
 };
 
@@ -142,6 +154,15 @@ const registerStoreLinkTests = (): void => {
         rmSync(gi.linkDir, { recursive: true, force: true });
         await expect(runCodegen({ ...options, libraries: ["Absent-1.0"] })).rejects.toThrow("Absent-1.0.gir");
         expect(existsSync(join(gi.linkDir, "glib", "glib.js"))).toBe(true);
+    });
+
+    it("restores a pruned link from the project root alone, without running codegen", async () => {
+        const { root, gi } = createIsolatedProject("gtkx-relink-project-");
+        isolatedRoots.push(root);
+        await runCodegen({ libraries: ["GLib-2.0"], girPath: GIR_PATH, gi });
+        rmSync(gi.linkDir, { recursive: true, force: true });
+        ensureStoreLinks(root);
+        expect(existsSync(join(gi.linkDir, "glib", "index.js"))).toBe(true);
     });
 
     it("restores the pruned gi link before the stale jsx store is type checked", async () => {

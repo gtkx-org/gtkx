@@ -1,7 +1,7 @@
 import { error, exitCodeForSignal, info, installGracefulShutdown } from "@gtkx/utils";
 import { fork as nodeFork } from "node:child_process";
 import { type FSWatcher, watch as watchFs } from "node:fs";
-import { basename, dirname, join, relative } from "node:path";
+import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEV_ENTRY_ENV } from "./entry-env.js";
 
@@ -43,7 +43,7 @@ type DevSupervisorOptions = {
     fork?: ForkRunner | undefined;
 };
 
-type DebounceTimer = { handle: NodeJS.Timeout | null; changedPath: string };
+type DebounceTimer = { handle: NodeJS.Timeout | null };
 
 const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
 const FORCE_KILL_TIMEOUT_MS = 5000;
@@ -152,7 +152,7 @@ const relaunchAfterExit = (state: SupervisorState): void => {
     launch(state);
 };
 
-const restart = async (state: SupervisorState, changedPath: string): Promise<void> => {
+const restart = async (state: SupervisorState): Promise<void> => {
     const watch = state.watch;
 
     if (watch === undefined || isRestartBlocked(state)) {
@@ -160,7 +160,7 @@ const restart = async (state: SupervisorState, changedPath: string): Promise<voi
     }
 
     state.isRestarting = true;
-    info(`${relative(state.cwd, changedPath)} changed; refreshing bindings...`);
+    info("gtkx.config.ts changed; regenerating bindings...");
 
     try {
         await watch.regenerate();
@@ -193,27 +193,20 @@ const restart = async (state: SupervisorState, changedPath: string): Promise<voi
     forwardSignal(current, "SIGTERM");
 };
 
-const scheduleRestart = (state: SupervisorState, timer: DebounceTimer, changedPath: string): void => {
+const scheduleRestart = (state: SupervisorState, timer: DebounceTimer): void => {
     if (timer.handle !== null) {
         clearTimeout(timer.handle);
     }
 
-    timer.changedPath = changedPath;
-    timer.handle = setTimeout(() => void restart(state, timer.changedPath), CONFIG_DEBOUNCE_MS);
+    timer.handle = setTimeout(() => void restart(state), CONFIG_DEBOUNCE_MS);
 };
 
-const watchedName = (
-    state: SupervisorState,
-    names: Set<string>,
-    filename: string | Buffer | null,
-): string | undefined => {
+const isWatchedChange = (state: SupervisorState, names: Set<string>, filename: string | Buffer | null): boolean => {
     if (filename === null || state.isShuttingDown) {
-        return undefined;
+        return false;
     }
 
-    const name = basename(filename.toString());
-
-    return names.has(name) ? name : undefined;
+    return names.has(basename(filename.toString()));
 };
 
 const groupWatchNamesByDirectory = (paths: string[]): Map<string, Set<string>> => {
@@ -236,10 +229,8 @@ const watchConfigDirectory = (
     timer: DebounceTimer,
 ): void => {
     const watcher = watchFs(directory, (_event, filename) => {
-        const name = watchedName(state, names, filename);
-
-        if (name !== undefined) {
-            scheduleRestart(state, timer, join(directory, name));
+        if (isWatchedChange(state, names, filename)) {
+            scheduleRestart(state, timer);
         }
     });
 
@@ -254,7 +245,7 @@ const installConfigWatchers = (state: SupervisorState): void => {
         return;
     }
 
-    const timer: DebounceTimer = { handle: null, changedPath: "" };
+    const timer: DebounceTimer = { handle: null };
 
     for (const [directory, names] of groupWatchNamesByDirectory(watch.paths)) {
         watchConfigDirectory(state, directory, names, timer);

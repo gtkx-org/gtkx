@@ -1,6 +1,6 @@
 import type { JsxNamespaceFile } from "./jsx/pipeline.js";
 import type { RawFile } from "./store-fs.js";
-import { buildManifest, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
+import { buildManifest, namespaceBarrel, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
 
 const writeJsxStore = (
     options: StoreOptions,
@@ -15,8 +15,8 @@ const writeJsxStore = (
     const files = [{ fileName: "metadata.ts", source: metadata }];
 
     for (const { directory, source } of namespaces) {
-        files.push({ fileName: `${directory}/${directory}.tsx`, source });
-        exportsMap[`./${directory}`] = subpathExport(`${directory}/${directory}`);
+        files.push({ fileName: `${directory}/${directory}.tsx`, source }, namespaceBarrel(directory));
+        exportsMap[`./${directory}`] = subpathExport(`${directory}/index`);
     }
 
     writeStore({

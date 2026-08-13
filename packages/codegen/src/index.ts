@@ -29,3 +29,5 @@ export { mergeOmittedProps, type OmittedProps } from "./store/jsx/omitted-props.
 export { getShadowingStorePaths, type ResolvedStore, resolveStore } from "./store/resolve-store.js";
 /** @public */
 export type { StoreOptions } from "./store/store-fs.js";
+/** @public */
+export { ensureStoreLinks } from "./store/store-links.js";

@@ -2,7 +2,6 @@ import type { FSWatcher } from "node:fs";
 import type { ProcessEventMap } from "node:process";
 import { EventEmitter } from "node:events";
 import { watch as watchFs } from "node:fs";
-import { basename } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
 import {
     type DevWatch,
@@ -26,8 +25,6 @@ type SupervisorContext = {
 };
 
 const TEST_CWD = "/proj";
-const CONFIG_PATH = "/proj/gtkx.config.ts";
-const GI_LINK_PATH = "/proj/node_modules/@gtkx/gi";
 const forkMock = vi.fn<ForkRunner>();
 const watchMock = vi.mocked(watchFs);
 
@@ -65,19 +62,19 @@ function createFakeWatcher(): FSWatcher {
     return watcher;
 }
 
-function captureWatcher(name: string): { fire: () => void } {
-    let listener: (() => void) | null = null;
+function captureConfigWatcher(): { fireConfigChange: () => void } {
+    let fire: (() => void) | null = null;
 
-    watchMock.mockImplementationOnce((_path, callback) => {
-        listener = () => {
-            callback("change", name);
+    watchMock.mockImplementationOnce((_path, listener) => {
+        fire = () => {
+            listener("change", "gtkx.config.ts");
         };
 
         return createFakeWatcher();
     });
 
-    return { fire: () => {
-        listener?.();
+    return { fireConfigChange: () => {
+        fire?.();
     } };
 }
 
@@ -142,16 +139,18 @@ const startWithKillSpy = async (): Promise<{ child: FakeChild; processKillSpy: M
 
 const startWithWatch = async (
     regenerate: () => Promise<void>,
-    linkPath?: string,
-): Promise<{ child: FakeChild; fireConfigChange: () => void; fireLinkChange: () => void }> => {
+): Promise<{ child: FakeChild; fireConfigChange: () => void }> => {
     const child = queueChild();
-    const config = captureWatcher(basename(CONFIG_PATH));
-    const link = linkPath === undefined ? { fire: (): void => undefined } : captureWatcher(basename(linkPath));
-    const paths = linkPath === undefined ? [CONFIG_PATH] : [CONFIG_PATH, linkPath];
-    startWithForkMock("/proj/src/index.tsx", { paths, regenerate });
+    const { fireConfigChange } = captureConfigWatcher();
+
+    startWithForkMock("/proj/src/index.tsx", {
+        paths: ["/proj/gtkx.config.ts"],
+        regenerate,
+    });
+
     await Promise.resolve();
 
-    return { child, fireConfigChange: config.fire, fireLinkChange: link.fire };
+    return { child, fireConfigChange };
 };
 
 class FakeChild implements SupervisedChild {
@@ -366,26 +365,11 @@ describe("runDevSupervisor (config watch)", () => {
         fireConfigChange();
         await new Promise((resolve) => setTimeout(resolve, 250));
         expect(regenerate).toHaveBeenCalledOnce();
-        expect(collectLogged(ctx.stderrSpy)).toContain("gtkx.config.ts changed; refreshing bindings...");
         expect(child.kill).toHaveBeenCalledWith("SIGTERM");
         child.emit("exit", null, "SIGTERM");
         await flushMicrotasks();
         expect(forkMock).toHaveBeenCalledTimes(2);
         expect(ctx.exitSpy).not.toHaveBeenCalled();
-    });
-
-    it("refreshes the bindings when an install prunes a store link", async () => {
-        const regenerate = vi.fn(() => Promise.resolve());
-        const { child, fireLinkChange } = await startWithWatch(regenerate, GI_LINK_PATH);
-        queueChild();
-        fireLinkChange();
-        await new Promise((resolve) => setTimeout(resolve, 250));
-        expect(regenerate).toHaveBeenCalledOnce();
-        expect(collectLogged(ctx.stderrSpy)).toContain("node_modules/@gtkx/gi changed; refreshing bindings...");
-        expect(child.kill).toHaveBeenCalledWith("SIGTERM");
-        child.emit("exit", null, "SIGTERM");
-        await flushMicrotasks();
-        expect(forkMock).toHaveBeenCalledTimes(2);
     });
 
     it("keeps the current runner when regeneration fails", async () => {
