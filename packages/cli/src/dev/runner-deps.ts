@@ -7,7 +7,7 @@ import { createServer } from "vite";
 import type { DevRunnerDeps } from "./runner.js";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
 import { setTestingModuleLoader } from "../mcp/testing-loader.js";
-import { isRefreshBoundary, performRefresh } from "../refresh-runtime.js";
+import { exportSignature, isRefreshBoundary, performRefresh } from "../refresh-runtime.js";
 import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/swc-refresh.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
@@ -71,6 +71,7 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     },
     performRefresh,
     isRefreshBoundary,
+    exportSignature,
     readFileRevision,
     plugins: () => [...gtkxVitePlugins(DEV_MODE), ...gtkxFastRefresh(), gtkxReactDomPrebundle()],
     log: info,

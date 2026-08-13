@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createModuleRegistration, isRefreshBoundary, performRefresh } from "../src/refresh-runtime.js";
+import {
+    createModuleRegistration,
+    exportSignature,
+    isRefreshBoundary,
+    performRefresh,
+} from "../src/refresh-runtime.js";
 
 const ES_MODULE_FLAG = "__esModule";
 
@@ -81,6 +86,29 @@ describe("isRefreshBoundary", () => {
 
     it("returns false when a non-PascalCase named function is exported", () => {
         expect(isRefreshBoundary({ helper: lowercaseHelper })).toBe(false);
+    });
+});
+
+describe("exportSignature", () => {
+    it("pairs every export name with whether that export is a component", () => {
+        const signature = exportSignature(esModuleExports({ Component: NullComponent, count: 1 }));
+
+        expect([...signature]).toEqual([
+            [ES_MODULE_FLAG, true],
+            ["Component", true],
+            ["count", false],
+        ]);
+    });
+
+    it("reports the names a renamed export leaves behind", () => {
+        const before = exportSignature(esModuleExports({ Widget: NullComponent }));
+        const after = exportSignature(esModuleExports({ Panel: NullComponent }));
+        expect(after.has("Widget")).toBe(false);
+        expect(before.has("Panel")).toBe(false);
+    });
+
+    it("returns an empty signature for a module with no exports", () => {
+        expect([...exportSignature({})]).toEqual([]);
     });
 });
 

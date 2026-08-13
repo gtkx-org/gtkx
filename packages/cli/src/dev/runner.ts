@@ -1,6 +1,7 @@
 import type { ApplicationInstance } from "@gtkx/runtime";
 import type { InlineConfig, Plugin } from "vite";
 import { error, warn } from "@gtkx/utils";
+import type { ExportSignature } from "../refresh-runtime.js";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
@@ -30,6 +31,7 @@ type DevRunnerDeps = {
     quitDefaultApplication(): void;
     performRefresh: () => void;
     isRefreshBoundary(module: Record<string, unknown>): boolean;
+    exportSignature(module: Record<string, unknown>): ExportSignature;
     readFileRevision(path: string): Promise<string>;
     plugins(): Plugin[];
     log(message: string): void;
@@ -183,10 +185,36 @@ const loadSettledExports = async (
     return null;
 };
 
+const previousExportSignature = (session: DevSession, module: DevServerChangedModule): ExportSignature => {
+    const previousExports = module.ssrModule;
+
+    if (!previousExports) {
+        return new Map();
+    }
+
+    return session.deps.exportSignature(previousExports);
+};
+
+const droppedExportName = (previous: ExportSignature, current: ExportSignature): string | null => {
+    for (const [name, isComponent] of previous) {
+        if (current.get(name) !== isComponent) {
+            return name;
+        }
+    }
+
+    return null;
+};
+
+const restartForDroppedExport = async (session: DevSession, changedPath: string, name: string): Promise<void> => {
+    session.deps.log(`${changedPath} no longer exports ${name}, which its importers still hold`);
+    await requestRestart(session);
+};
+
 const refreshChangedModule = async (
     session: DevSession,
     changedPath: string,
     changedModule: DevServerChangedModule,
+    previous: ExportSignature,
 ): Promise<void> => {
     const loadedExports = await loadSettledExports(session, changedPath, changedModule);
 
@@ -202,6 +230,14 @@ const refreshChangedModule = async (
 
     if (!session.deps.isRefreshBoundary(loadedExports)) {
         await requestRestart(session);
+
+        return;
+    }
+
+    const dropped = droppedExportName(previous, session.deps.exportSignature(loadedExports));
+
+    if (dropped !== null) {
+        await restartForDroppedExport(session, changedPath, dropped);
 
         return;
     }
@@ -227,7 +263,7 @@ const applyModuleChange = async (session: DevSession, changedPath: string, actio
         return;
     }
 
-    await refreshChangedModule(session, changedPath, module);
+    await refreshChangedModule(session, changedPath, module, previousExportSignature(session, module));
 };
 
 const awaitMissingImport = (session: DevSession, changedPath: string, cause: unknown): void => {

@@ -60,6 +60,7 @@ type HarnessMocks = {
     stopMcp: ReturnType<typeof vi.fn<DevRunnerDeps["stopMcpClient"]>>;
     performRefresh: ReturnType<typeof vi.fn<DevRunnerDeps["performRefresh"]>>;
     isBoundary: ReturnType<typeof vi.fn<DevRunnerDeps["isRefreshBoundary"]>>;
+    exportSignature: ReturnType<typeof vi.fn<DevRunnerDeps["exportSignature"]>>;
     watchAppShutdown: ReturnType<typeof vi.fn<DevRunnerDeps["watchApplicationShutdown"]>>;
     watchUncaughtErrors: ReturnType<typeof vi.fn<DevRunnerDeps["watchUncaughtErrors"]>>;
     installShutdownHandlers: ReturnType<typeof vi.fn<DevRunnerDeps["installShutdownHandlers"]>>;
@@ -99,6 +100,7 @@ const RESOLVE_FAILURE = "PROBE: Failed to load url ./theme.js";
 const NEXT_RESOLVE_FAILURE = "PROBE: Failed to load url ./palette.js";
 const BROKEN_FILE_FAILURE = "PROBE: theme.ts failed to parse";
 const RETRY_LOG = "Retrying pending save";
+const DROPPED_EXPORT_LOG = `${WATCHED_FILE} no longer exports Widget, which its importers still hold`;
 const SETTLE_ROUNDS = 8;
 
 const PLUGIN_NAMES = [
@@ -215,6 +217,16 @@ const createFakeServer = (): FakeServer => {
     };
 };
 
+const fakeSignature = (moduleExports: FakeExports): Map<string, boolean> => {
+    const signature: Map<string, boolean> = new Map();
+
+    for (const [name, value] of Object.entries(moduleExports)) {
+        signature.set(name, typeof value === "function");
+    }
+
+    return signature;
+};
+
 const buildMocks = (server: FakeServer, overrides: HarnessOverrides): HarnessMocks => ({
     createServer: vi.fn<DevRunnerDeps["createServer"]>(() => Promise.resolve(server)),
     startMcp: vi.fn<DevRunnerDeps["startMcpClient"]>(() => Promise.resolve()),
@@ -227,6 +239,7 @@ const buildMocks = (server: FakeServer, overrides: HarnessOverrides): HarnessMoc
     isBoundary: vi.fn<DevRunnerDeps["isRefreshBoundary"]>((mod) =>
         overrides.isBoundary ? overrides.isBoundary(mod) : mod.isBoundary === true,
     ),
+    exportSignature: vi.fn<DevRunnerDeps["exportSignature"]>(fakeSignature),
     log: vi.fn<DevRunnerDeps["log"]>(),
     exit: vi.fn<DevRunnerDeps["exit"]>(((): void => undefined) as never),
 });
@@ -254,6 +267,7 @@ const buildDeps = (
     quitDefaultApplication: mocks.quitDefaultApp,
     performRefresh: mocks.performRefresh,
     isRefreshBoundary: mocks.isBoundary,
+    exportSignature: mocks.exportSignature,
     readFileRevision: overrides.readFileRevision ?? ((): Promise<string> => Promise.resolve("revision")),
     plugins: () => plugins,
     log: mocks.log,
@@ -616,6 +630,18 @@ const startedLoads = (harness: Harness): number => harness.server.ssrLoadModule.
 const appearWithBoundaryLoad = async (harness: Harness, createdPath: string): Promise<void> => {
     harness.server.loads.next(() => Promise.resolve({ isBoundary: true }));
     await emitWatchEventAndSettle(harness, "add", createdPath);
+};
+
+const Widget = (): null => null;
+const Panel = (): null => null;
+
+const saveWithExports = async (previous: FakeExports, next: FakeExports): Promise<Harness> => {
+    const harness = await startAppHarness();
+    defineModule(harness, WATCHED_FILE, { ssrModule: previous });
+    harness.server.loads.next(() => Promise.resolve(next));
+    await emitChangeAndSettle(harness, WATCHED_FILE);
+
+    return harness;
 };
 
 const appearWithFailingLoad = async (harness: Harness, createdPath: string, failure: string): Promise<string> => {
@@ -1048,6 +1074,31 @@ describe("createDevRunner (file watcher dispatch)", () => {
         expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
         expect(harness.server.close).toHaveBeenCalled();
         expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    });
+});
+
+describe("createDevRunner (a save that renames an exported component)", () => {
+    it("restarts instead of announcing a Fast Refresh the importers never receive", async () => {
+        const harness = await saveWithExports({ isBoundary: true, Widget }, { isBoundary: true, Panel });
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+        expect(loggedMessages(harness).some((m) => m.includes("Fast Refresh complete"))).toBe(false);
+        expect(loggedMessages(harness)).toContain(DROPPED_EXPORT_LOG);
+        expect(harness.server.close).toHaveBeenCalled();
+        expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    });
+
+    it("fast-refreshes when the module keeps every export its importers hold", async () => {
+        const harness = await saveWithExports({ isBoundary: true, Widget }, { isBoundary: true, Widget });
+        expect(harness.performRefresh).toHaveBeenCalledTimes(1);
+        expect(loggedMessages(harness)).toContain("Fast Refresh complete");
+        expect(harness.exit).not.toHaveBeenCalled();
+    });
+
+    it("fast-refreshes when the module only adds an export", async () => {
+        const harness = await saveWithExports({ isBoundary: true, Widget }, { isBoundary: true, Widget, Panel });
+        expect(harness.performRefresh).toHaveBeenCalledTimes(1);
+        expect(loggedMessages(harness)).toContain("Fast Refresh complete");
+        expect(harness.exit).not.toHaveBeenCalled();
     });
 });
 
