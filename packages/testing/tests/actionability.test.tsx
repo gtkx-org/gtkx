@@ -139,6 +139,27 @@ const renderBackgroundedMainWindow = async () => {
     return rendered;
 };
 
+const presentToplevelOnAnotherDisplay = async (): Promise<Gtk.Window> => {
+    const display = Gdk.DisplayManager.get().openDisplay(Gdk.Display.getDefault()?.getName() ?? null);
+
+    if (display === null) {
+        throw new Error("could not open a second display");
+    }
+
+    const toplevel = new Gtk.Window({ title: "Other display", defaultWidth: 200, defaultHeight: 140 });
+    toplevel.setDisplay(display);
+
+    await act(() => {
+        toplevel.present();
+    });
+
+    await waitFor(() => {
+        expect(toplevel.isActive()).toBe(true);
+    });
+
+    return toplevel;
+};
+
 const renderModalDialog = async (dialogContent: ReactNode) => {
     const rendered = await renderMainWindow((onClick) => (
         <MainWindow onClick={onClick}>
@@ -431,6 +452,25 @@ describe("userEvent actionability - background toplevels", () => {
         await userEvent.type(entry, "typed");
         expect(entry.getText()).toBe("beforetyped");
     });
+
+    it("clicks a button in a window a toplevel on another display has taken the activation from", async () => {
+        const { handleMainClick, mainButton } = await renderMainWindow((onClick) => <MainWindow onClick={onClick} />);
+        const main = await findMappedWindow("Main");
+        const other = await presentToplevelOnAnotherDisplay();
+
+        try {
+            await waitFor(() => {
+                expect(main.isActive()).toBe(false);
+            });
+
+            await userEvent.click(mainButton);
+            expect(handleMainClick).toHaveBeenCalledTimes(1);
+        } finally {
+            const display = other.getDisplay();
+            other.destroy();
+            display.close();
+        }
+    });
 });
 
 describe("userEvent actionability - modal toplevels", () => {
@@ -448,6 +488,17 @@ describe("userEvent actionability - modal toplevels", () => {
         const confirm = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Confirm" });
         await userEvent.click(confirm);
         expect(handleConfirm).toHaveBeenCalledTimes(1);
+    });
+
+    it("clicks a button in a window a modal toplevel of another window group cannot grab", async () => {
+        const { dialog, handleMainClick, mainButton } = await renderModalDialog(<GtkLabel>Blocking</GtkLabel>);
+
+        await act(() => {
+            Gtk.WindowGroup.new().addWindow(dialog);
+        });
+
+        await userEvent.click(mainButton);
+        expect(handleMainClick).toHaveBeenCalledTimes(1);
     });
 
     it("clicks a button inside a modal toplevel stacked on another modal toplevel", async () => {

@@ -4,13 +4,17 @@ import { getConfig } from "../config.js";
 import { formatRole } from "../role-helpers.js";
 import { delay, now } from "../timers.js";
 import { getTypeTag, isDefaultWidgetName } from "../widget-getters.js";
-import { isDisplayActivated, isWindowAllocated, isWindowBlockedByModal } from "../window-state.js";
+import {
+    isApplicationActivated,
+    isWindowAllocated,
+    isWindowBlockedByModal,
+    NO_WINDOW_ACTIVATED,
+} from "../window-state.js";
 
 const NOT_SENSITIVE = "it is not sensitive (the widget or one of its ancestors is disabled)";
 const WINDOW_NOT_ALLOCATED = "its window has not been allocated a size";
 const NOT_MAPPED = "it is not mapped (it is not shown on screen, e.g. it is hidden or on a non-visible page)";
 const NOT_IN_VISIBLE_WINDOW = "it is not attached to a visible window (it was removed from the tree or never shown)";
-const NO_WINDOW_ACTIVATED = "no window of the application ever became active";
 const BLOCKED_BY_MODAL = "its window is blocked by a modal window holding the grab";
 const ACTIONABLE_HOP_MS = 1;
 
@@ -23,7 +27,7 @@ const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): s
         return NOT_MAPPED;
     }
 
-    if (!isDisplayActivated(root)) {
+    if (!isApplicationActivated(root)) {
         return NO_WINDOW_ACTIVATED;
     }
 

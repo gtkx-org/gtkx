@@ -21,7 +21,7 @@ const activeToplevel = (): Gtk.Window | null => mappedToplevels().find((toplevel
 const isWindowActivated = (window: Gtk.Window): boolean =>
     !canDisplayDeliverActivation(window) || window.isActive();
 
-const isDisplayActivated = (window: Gtk.Window): boolean =>
+const isApplicationActivated = (window: Gtk.Window): boolean =>
     !canDisplayDeliverActivation(window) || activeToplevel() !== null;
 
 const isTransientDescendant = (window: Gtk.Window, ancestor: Gtk.Window): boolean => {
@@ -34,11 +34,14 @@ const isTransientDescendant = (window: Gtk.Window, ancestor: Gtk.Window): boolea
     return false;
 };
 
-const isGrabHeldOver = (window: Gtk.Window, modal: Gtk.Window): boolean =>
-    modal !== window && !isTransientDescendant(window, modal);
+const isModalGrabHeldOver = (modal: Gtk.Window, window: Gtk.Window): boolean =>
+    modal.getModal() &&
+    modal !== window &&
+    modal.getGroup() === window.getGroup() &&
+    !isTransientDescendant(window, modal);
 
 const isWindowBlockedByModal = (window: Gtk.Window): boolean =>
-    mappedToplevels().some((toplevel) => toplevel.getModal() && isGrabHeldOver(window, toplevel));
+    mappedToplevels().some((toplevel) => isModalGrabHeldOver(toplevel, window));
 
 const findPresentedWindowFailure = (window: Gtk.Window): string | null => {
     if (!isWindowAllocated(window)) {
@@ -53,16 +56,17 @@ const findRenderedWindowFailure = (window: Gtk.Window): string | null => {
         return WINDOW_NOT_ALLOCATED;
     }
 
-    return isDisplayActivated(window) ? null : NO_WINDOW_ACTIVATED;
+    return isApplicationActivated(window) ? null : NO_WINDOW_ACTIVATED;
 };
 
 export {
     activeToplevel,
     findPresentedWindowFailure,
     findRenderedWindowFailure,
-    isDisplayActivated,
+    isApplicationActivated,
     isWindowActivated,
     isWindowAllocated,
     isWindowBlockedByModal,
     mappedToplevels,
+    NO_WINDOW_ACTIVATED,
 };
