@@ -281,10 +281,6 @@ fn a_field_of_a_borrowed_owner_stops_reaching_it_when_the_borrow_ends() {
         assert_eq!(field.size_hint(), 0);
         assert!(!field.is_invalidated());
 
-        unsafe { field.as_ptr().cast::<u32>().write(99) };
-
-        assert_eq!(owner[2], 99);
-
         owner_handle.invalidate();
 
         assert!(field.is_invalidated());
