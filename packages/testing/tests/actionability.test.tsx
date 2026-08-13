@@ -449,7 +449,8 @@ describe("userEvent actionability - timeout error", () => {
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" });
 
         await expect(userEvent.click(button)).rejects.toThrow(
-            'Cannot dispatch user event: <Button name="save-button" role="button"> did not become actionable ' +
+            'Cannot dispatch user event: <Button accessible-name="Save" name="save-button" role="button"> ' +
+            "did not become actionable " +
             "within 60ms because it is not sensitive (the widget or one of its ancestors is disabled)",
         );
     });
@@ -476,7 +477,8 @@ describe("userEvent actionability - timeout error", () => {
         const concealed = concealedRef.current as Gtk.Button;
 
         await expect(userEvent.click(concealed)).rejects.toThrow(
-            /<Button role="button"> did not become actionable within 60ms because it is not mapped/,
+            '<Button accessible-name="Concealed" role="button"> did not become actionable ' +
+            "within 60ms because it is not mapped",
         );
 
         expect(handleClick).not.toHaveBeenCalled();
@@ -554,7 +556,8 @@ describe("userEvent actionability - toplevels that are not windows", () => {
         const { button, handleClick } = await renderDragIconButton(false);
 
         await expect(userEvent.click(button)).rejects.toThrow(
-            /<Button role="button"> did not become actionable within 60ms because it is not mapped/,
+            '<Button accessible-name="Dragged" role="button"> did not become actionable ' +
+            "within 60ms because it is not mapped",
         );
 
         expect(handleClick).not.toHaveBeenCalled();

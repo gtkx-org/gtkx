@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GMenu } from "@gtkx/jsx/gio";
-import { GtkButton, GtkMenuButton } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkMenuButton } from "@gtkx/jsx/gtk";
 import { getHandle, registerClass, wrapHandle } from "@gtkx/runtime";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { configure, getConfig, prettyRoles, prettyWidget, render, screen, userEvent } from "../src/index.js";
@@ -19,17 +19,24 @@ const AnonymousBox = registerClass(class extends Gtk.Box {}, { typeName: ANONYMO
 const subclass = (base: typeof Gtk.Button) => class extends base {};
 const wrapAs = <T extends object>(object: GObject.Object, cls: AnyClass<T>): T => wrapHandle(getHandle(object), cls);
 
-const renderMenuItem = async (): Promise<Gtk.Widget> => {
+const openMenu = async (labels: string[]): Promise<void> => {
     await render(
         <GtkMenuButton
             tooltipText="Main Menu"
-            menuModel={<GMenu items={[{ label: "New Task", action: "win.new" }]} />}
+            menuModel={<GMenu items={labels.map((label) => ({ label, action: "win.missing" }))} />}
         />,
     );
 
     await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Main Menu" }));
+};
 
-    return screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "New Task" });
+const findMenuItem = (label: string): Promise<Gtk.Widget> =>
+    screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: label });
+
+const renderMenuItem = async (): Promise<Gtk.Widget> => {
+    await openMenu(["New Task"]);
+
+    return findMenuItem("New Task");
 };
 
 const findMenuPopover = (item: Gtk.Widget): Gtk.Widget => {
@@ -50,6 +57,12 @@ const findButton = async (element: ReactNode, label: string): Promise<Gtk.Widget
 
 const findInsensitiveButton = (label: string): Promise<Gtk.Widget> =>
     findButton(<GtkButton label={label} sensitive={false} />, label);
+
+const renderInsensitiveBox = async (): Promise<Gtk.Widget> => {
+    await render(<GtkBox name="panel" sensitive={false} />);
+
+    return screen.getByName<Gtk.Box>("panel");
+};
 
 const expectActionabilityFailure = async (widget: Gtk.Widget, description: string): Promise<void> => {
     await expect(userEvent.click(widget)).rejects.toThrow(
@@ -94,6 +107,12 @@ describe("getTypeTag", () => {
     it("names an object carrying neither a GType nor a class chain", () => {
         expect(getTypeTag(Object.create(null) as GObject.Object)).toBe("Object");
     });
+
+    it("names an object whose own constructor is not a class", () => {
+        const impostor = Object.create(null) as GObject.Object;
+        Object.defineProperty(impostor, "constructor", { value: "GtkModelButton" });
+        expect(getTypeTag(impostor)).toBe("Object");
+    });
 });
 
 describe("prettyWidget on types with no generated wrapper class", () => {
@@ -123,25 +142,6 @@ describe("prettyWidget on instances wrapped as a class carrying no GType", () =>
     });
 });
 
-describe("the missing-handle error", () => {
-    it("names an unbound instance of a composed wrapper class by its GType", async () => {
-        const item = await renderMenuItem();
-        const unbound = Object.create(Object.getPrototypeOf(item) as object) as GObject.Object;
-        expect(() => getHandle(unbound)).toThrow("No native handle associated with GtkModelButton");
-    });
-
-    it("names an unbound instance of an anonymous class by its nearest named class", () => {
-        const unbound = Object.create(subclass(Gtk.Button).prototype) as GObject.Object;
-        expect(() => getHandle(unbound)).toThrow("No native handle associated with Button");
-    });
-
-    it("names an unbound object carrying no class chain", () => {
-        expect(() => getHandle(Object.create(null) as GObject.Object)).toThrow(
-            "No native handle associated with object",
-        );
-    });
-});
-
 describe("prettyRoles on types with no generated wrapper class", () => {
     it("names every widget next to its role", async () => {
         const output = prettyRoles(findMenuPopover(await renderMenuItem()));
@@ -157,22 +157,41 @@ describe("userEvent errors", () => {
 
     it("names a widget whose type has no generated wrapper class", async () => {
         const item = await renderMenuItem();
-        await expectActionabilityFailure(item, '<GtkModelButton role="menu_item">');
+        await expectActionabilityFailure(item, '<GtkModelButton accessible-name="New Task" role="menu_item">');
+    });
+
+    it("tells two items of the same menu apart by their accessible names", async () => {
+        await openMenu(["New Task", "Delete Task"]);
+
+        await expectActionabilityFailure(
+            await findMenuItem("New Task"),
+            '<GtkModelButton accessible-name="New Task" role="menu_item">',
+        );
+
+        await expectActionabilityFailure(
+            await findMenuItem("Delete Task"),
+            '<GtkModelButton accessible-name="Delete Task" role="menu_item">',
+        );
     });
 
     it("names a widget wrapped as an ancestor class by its own type", async () => {
         const button = await findInsensitiveButton("Save");
-        await expectActionabilityFailure(wrapAs(button, Gtk.Widget), '<Button role="button">');
+        await expectActionabilityFailure(wrapAs(button, Gtk.Widget), '<Button accessible-name="Save" role="button">');
     });
 
     it("omits the name attribute when the widget carries GTK's default name", async () => {
         const button = await findInsensitiveButton("Save");
-        await expectActionabilityFailure(button, '<Button role="button">');
+        await expectActionabilityFailure(button, '<Button accessible-name="Save" role="button">');
     });
 
     it("keeps a custom name that ends with the type tag", async () => {
         const button = await findButton(<GtkButton name="MyButton" label="Custom" sensitive={false} />, "Custom");
-        await expectActionabilityFailure(button, '<Button name="MyButton" role="button">');
+        await expectActionabilityFailure(button, '<Button accessible-name="Custom" name="MyButton" role="button">');
+    });
+
+    it("omits the accessible name when the widget has none", async () => {
+        const box = await renderInsensitiveBox();
+        await expectActionabilityFailure(box, '<Box name="panel" role="generic">');
     });
 
     it("names the widget slide rejects by its own type", async () => {

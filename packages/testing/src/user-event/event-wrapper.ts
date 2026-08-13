@@ -3,6 +3,7 @@ import { runInAct } from "../act.js";
 import { getConfig } from "../config.js";
 import { formatRole } from "../role-helpers.js";
 import { delay, now } from "../timers.js";
+import { getWidgetAccessibleName } from "../widget-accessible-properties.js";
 import { getTypeTag, isDefaultWidgetName } from "../widget-getters.js";
 import {
     isApplicationActivated,
@@ -62,12 +63,19 @@ const findActionabilityFailure = (widget: Gtk.Widget): string | null => {
     return widget.getMapped() ? null : NOT_MAPPED;
 };
 
-const describeWidget = (widget: Gtk.Widget): string => {
-    const tag = getTypeTag(widget);
-    const name = widget.getName();
-    const nameAttribute = isDefaultWidgetName(widget, name) ? "" : ` name="${name}"`;
+const attribute = (key: string, value: string | null): string => (value === null ? "" : ` ${key}="${value}"`);
 
-    return `<${tag}${nameAttribute} role="${formatRole(widget.getAccessibleRole())}">`;
+const widgetNameAttribute = (widget: Gtk.Widget): string => {
+    const name = widget.getName();
+
+    return attribute("name", isDefaultWidgetName(widget, name) ? null : name);
+};
+
+const describeWidget = (widget: Gtk.Widget): string => {
+    const accessibleName = attribute("accessible-name", getWidgetAccessibleName(widget));
+    const role = attribute("role", formatRole(widget.getAccessibleRole()));
+
+    return `<${getTypeTag(widget)}${accessibleName}${widgetNameAttribute(widget)}${role}>`;
 };
 
 const waitForActionable = async (widget: Gtk.Widget): Promise<void> => {

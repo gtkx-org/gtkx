@@ -6,6 +6,7 @@ const ROLE_NAMES: Record<number, string> = { 1: "button", 2: "label" };
 
 const testing: WidgetFormatting = {
     formatRole: (role) => ROLE_NAMES[role] ?? String(role),
+    getTypeTag: (widget) => widget.constructor.name,
     getWidgetText: (widget) => {
         const probe = widget as { getLabel?: () => string | null; getText?: () => string | null };
 
@@ -60,6 +61,12 @@ describe("serializeWidget", () => {
         const textOnly = makeWidget({ getText: () => "T" });
         expect(serializeWidget(labelOnly, nextId, testing).text).toBe("L");
         expect(serializeWidget(textOnly, nextId, testing).text).toBe("T");
+    });
+
+    it("names a widget whose wrapper class is anonymous through the testing module", () => {
+        const composed = makeWidget({ type: "" });
+        const named: WidgetFormatting = { ...testing, getTypeTag: () => "GtkModelButton" };
+        expect(serializeWidget(composed, nextId, named).type).toBe("GtkModelButton");
     });
 
     it("walks sibling chains via getNextSibling", () => {

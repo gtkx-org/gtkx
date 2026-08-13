@@ -107,4 +107,5 @@ export type {
 export { userEvent } from "./user-event/index.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";
 export { getWidgetText, isInaccessible } from "./widget-accessible-properties.js";
+export { getTypeTag } from "./widget-getters.js";
 export { getQueriesForElement, within } from "./within.js";

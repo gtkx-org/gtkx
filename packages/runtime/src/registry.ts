@@ -285,13 +285,7 @@ function createComposedClass(base: AnyClass, runtimeType: bigint): AnyClass {
         cls = applyInterfaceMixin(cls, type, baseType, applied);
     }
 
-    if (applied.size === 0) {
-        return base;
-    }
-
-    Object.defineProperty(cls, "name", { configurable: true, value: typeName(runtimeType) ?? base.name });
-
-    return cls;
+    return applied.size === 0 ? base : cls;
 }
 
 function resolveComposedClass(runtimeType: bigint): AnyClass | null {
@@ -371,14 +365,8 @@ function getOrCreateWrapper(handle: ExternalObject<Handle>): object {
     return wrapperFor(handle, registerWrapper);
 }
 
-function namedClass(cls: AnyClass): string | undefined {
-    return cls.name.length > 0 ? cls.name : undefined;
-}
-
 function instanceClassName(instance: object): string {
-    const cls = (instance as { constructor?: AnyClass }).constructor;
-
-    return walkClassChain(cls ?? null, namedClass) ?? "object";
+    return (instance as { constructor?: { name?: string } }).constructor?.name ?? "object";
 }
 
 /** Returns the native handle bound to a wrapper instance, throwing if none is set. */

@@ -32,6 +32,7 @@ const hoisted = vi.hoisted(() => ({
     fireEvent: vi.fn(() => Promise.resolve()),
     prettyWidget: vi.fn<(container: unknown, options?: PrettyWidgetOptions) => string>(() => "tree"),
     formatRole: vi.fn((role: number) => (role === 2 ? "label" : "button")),
+    getTypeTag: vi.fn((widget: { constructor: { name: string } }) => widget.constructor.name),
     getWidgetText: vi.fn((widget: { getLabel?: () => string | null; getText?: () => string | null }) => {
         return widget.getLabel?.() ?? widget.getText?.() ?? null;
     }),
@@ -104,6 +105,7 @@ vi.mock("@gtkx/testing", () => ({
     fireEvent: hoisted.fireEvent,
     prettyWidget: hoisted.prettyWidget,
     formatRole: hoisted.formatRole,
+    getTypeTag: hoisted.getTypeTag,
     getWidgetText: hoisted.getWidgetText,
     userEvent: { click: hoisted.click, type: hoisted.typeText, clear: hoisted.clear },
 }));

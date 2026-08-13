@@ -8,8 +8,16 @@ const UNNAMED_TYPE_TAG = "Object";
 
 const getWidgetMethod = (widget: Gtk.Widget, name: string): unknown => Reflect.get(widget, name);
 const getWidgetTypeName = (widget: Gtk.Widget): string | null => typeName(getInstanceType(widget));
-const nonEmpty = (value: string | null): string | undefined => (value !== null && value.length > 0 ? value : undefined);
-const getObjectClass = (object: GObject.Object): AnyClass | null => (object.constructor as AnyClass | null) ?? null;
+const isClass = (value: unknown): value is AnyClass => typeof value === "function";
+
+const nonEmpty = (value: unknown): string | undefined =>
+    typeof value === "string" && value.length > 0 ? value : undefined;
+
+const getObjectClass = (object: GObject.Object): AnyClass | null => {
+    const cls: unknown = object.constructor;
+
+    return isClass(cls) ? cls : null;
+};
 
 const getNearestClassName = (object: GObject.Object): string | undefined =>
     walkClassChain(getObjectClass(object), (ancestor) => nonEmpty(ancestor.name));
@@ -26,6 +34,14 @@ const getExactWrapperName = (type: bigint): string | undefined => {
     return wrapper !== null && getClassType(wrapper) === type ? nonEmpty(wrapper.name) : undefined;
 };
 
+/**
+ * Names an object the way the widget printers tag it: the wrapper class registered for the object's
+ * own GType when there is one, the GType's own name when GTKX composed the wrapper itself (as it does
+ * for GTK's private types, such as the `GtkModelButton` behind a menu item), and the nearest named
+ * class in the prototype chain when the object carries no GType at all.
+ *
+ * @param object The object to name.
+ */
 const getTypeTag = (object: GObject.Object): string => {
     const type = getInstanceType(object);
 
