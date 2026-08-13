@@ -9,7 +9,7 @@ export const meta = {
     ],
 };
 
-const WORKTREE = "/home/eugenio/gtkx-bughunt";
+const WORKTREE = "/home/eugenio/gtkx";
 const PLAYGROUND = "/home/eugenio/gtkx-playground";
 const MAX_VERIFIED_PER_PERSONA = 6;
 

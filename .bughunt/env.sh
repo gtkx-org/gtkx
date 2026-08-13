@@ -7,7 +7,7 @@ export ALSOFT_DRIVERS=null
 export ALSOFT_LOGLEVEL=0
 export G_DEBUG=fatal-criticals
 export GTKX_PLAYGROUND=/home/eugenio/gtkx-playground
-export GTKX_WORKTREE=/home/eugenio/gtkx-bughunt
+export GTKX_WORKTREE=/home/eugenio/gtkx
 
 gtkx_headless() {
     wlheadless-run -c weston -- "$@"

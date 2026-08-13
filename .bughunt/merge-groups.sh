@@ -7,7 +7,7 @@
 
 set -uo pipefail
 
-ROOT=/home/eugenio/gtkx-bughunt
+ROOT=/home/eugenio/gtkx
 BASE=bugfix/v1.0
 
 mapfile -t ALL < <(node -e '

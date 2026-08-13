@@ -16,7 +16,7 @@ that is what the repository's own suites are for.
 | `run-headless.sh` | Runs a GTK command under a throwaway compositor and cleans up after it. |
 | `count-strays.sh` | Counts leaked compositors, workers, and app processes. |
 
-The worktree is `/home/eugenio/gtkx-bughunt` on `bugfix/v1.0`. Scratch apps live outside it in
+The worktree is `/home/eugenio/gtkx` on `bugfix/v1.0`. Scratch apps live outside it in
 `/home/eugenio/gtkx-playground/`, so a hunt never dirties the source.
 
 `/home/eugenio/gtkx-playground/bughunt-template` is a warm app with all four GIR libraries bound and a
@@ -31,7 +31,7 @@ rounds 1 through 5, so their findings are all against 1.0.0.
 ## Running a round
 
 ```
-Workflow({ scriptPath: "/home/eugenio/gtkx-bughunt/.bughunt/workflow.js",
+Workflow({ scriptPath: "/home/eugenio/gtkx/.bughunt/workflow.js",
            args: { round: N, personas: ["cli", "marshal", ...] } })
 ```
 

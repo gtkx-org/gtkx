@@ -9,7 +9,7 @@ export const meta = {
     ],
 };
 
-const WORKTREE = "/home/eugenio/gtkx-bughunt";
+const WORKTREE = "/home/eugenio/gtkx";
 
 const input = typeof args === "string" ? JSON.parse(args) : args || {};
 const roundNumber = input.round || 1;

@@ -9,7 +9,7 @@
 
 set -uo pipefail
 
-WORKTREE=/home/eugenio/gtkx-bughunt
+WORKTREE=/home/eugenio/gtkx
 PLAYGROUND=/home/eugenio/gtkx-playground
 TEMPLATE=$PLAYGROUND/bughunt-template
 REGISTRY=http://localhost:4873/

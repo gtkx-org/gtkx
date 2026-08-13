@@ -10,7 +10,7 @@ export const meta = {
     ],
 };
 
-const LEDGER = "/home/eugenio/gtkx-bughunt/.bughunt/findings.jsonl";
+const LEDGER = "/home/eugenio/gtkx/.bughunt/findings.jsonl";
 
 const input = typeof args === "string" ? JSON.parse(args) : args || {};
 const groups = input.groups || [];
@@ -47,7 +47,7 @@ This is your group's own git worktree. Six other groups are fixing other defects
 at the same time, and every branch is merged back into \`bugfix/v1.0\` afterwards. That makes two rules
 absolute:
 
-- **Stay inside ${group.worktree}.** Never read or write \`/home/eugenio/gtkx-bughunt\` or any other
+- **Stay inside ${group.worktree}.** Never read or write \`/home/eugenio/gtkx\` or any other
   \`gtkx-fix-*\` directory. Run every command with that worktree as the working directory.
 - **Only touch what your group owns: ${group.owns}.** Editing a file another group owns produces a merge
   conflict that costs more than your fix saves. If your fix genuinely requires a change outside those
@@ -60,7 +60,7 @@ path — never \`git add -A\`.`;
 const fixPrompt = (group, id, index) => `Fix one confirmed defect in GTKX v1.0.
 
 THE DEFECT: ledger entry \`${id}\`. Read it in ${LEDGER} — one JSON object per line, find the one whose
-\`id\` is "${id}". Its \`detail\` field names the round file under /home/eugenio/gtkx-bughunt/.bughunt/
+\`id\` is "${id}". Its \`detail\` field names the round file under /home/eugenio/gtkx/.bughunt/
 holding the full reproduction, the verbatim observed output, the expected behavior with its
 justification, the replay evidence and an independent reader's analysis of where the defect lives.
 Read that record before anything else. Those two files are the only things you may read outside your

@@ -19,7 +19,7 @@ Your job is to **find defects and prove them with a reproduction**, not to revie
 
 | Thing | Value |
 | --- | --- |
-| Source worktree (do not dirty it) | `/home/eugenio/gtkx-bughunt` (branch `bugfix/v1.0`) |
+| Source worktree (do not dirty it) | `/home/eugenio/gtkx` (branch `bugfix/v1.0`) |
 | Writable sandbox worktree | `/home/eugenio/gtkx-sandbox` (branch `sandbox/hunters`) — installed and built |
 | Your scratch area | `/home/eugenio/gtkx-playground/<your-slug>/` — create it, own it, leave it behind |
 | Packages under test | `@gtkx/*` published from **this branch** to the local registry at `http://localhost:4873/` |
@@ -72,7 +72,7 @@ nothing on it is ever merged. Rules:
 - It is pinned to the commit it was created at. Run `git -C /home/eugenio/gtkx-sandbox merge --ff-only
   bugfix/v1.0 && pnpm install && pnpm nx run-many -t build --exclude @gtkx/website` if you need
   the fixes that landed since.
-- `/home/eugenio/gtkx-bughunt` remains read-only to you. The sandbox is the only source tree you write to.
+- `/home/eugenio/gtkx` remains read-only to you. The sandbox is the only source tree you write to.
 
 ## Stay out of the other hunters' way
 
