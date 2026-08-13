@@ -1,4 +1,5 @@
 import { type AnyClass, getOrInsert } from "@gtkx/utils";
+import { releaseDefaultApplication } from "./default-application.js";
 import { registerClass } from "./register-class.js";
 import { getClassType } from "./registry.js";
 import { typeName } from "./type.js";
@@ -99,12 +100,21 @@ const deriveApplicationClass = <T extends CommandLineApplication>(base: AnyClass
  * once per instance and crashes on a second parse, so {@link runApplication} and
  * {@link quitApplication} only accept an application built here.
  *
+ * Whatever `g_application_constructed` assigned to the process-wide default is handed straight back,
+ * so merely building an application never makes it what `Gio.Application.getDefault()` returns.
+ * {@link runApplication} is the only place that claims that default, which keeps it pointing at an
+ * application GTKX has actually started rather than at one that is still unregistered.
+ *
  * @param base The application class to construct, such as `Gtk.Application`.
  * @param props Construct properties, passed through unchanged.
  * @returns An instance of a class derived from `base`, registered once per base class as its own GType.
  */
-const createApplication = <T extends CommandLineApplication, P>(base: ApplicationClass<T, P>, props: P): T =>
-    new (deriveApplicationClass(base) as new (props: P) => T)(props);
+const createApplication = <T extends CommandLineApplication, P>(base: ApplicationClass<T, P>, props: P): T => {
+    const application = new (deriveApplicationClass(base) as new (props: P) => T)(props);
+    releaseDefaultApplication(application);
+
+    return application;
+};
 
 export {
     createApplication,

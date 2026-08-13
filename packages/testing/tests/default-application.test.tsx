@@ -3,7 +3,7 @@ import * as Gio from "@gtkx/gi/gio";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { createApplication, runApplication } from "@gtkx/runtime";
+import { createApplication } from "@gtkx/runtime";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "../src/index.js";
@@ -42,21 +42,26 @@ const renderProbe = async (): Promise<Gtk.Application> => {
     return application;
 };
 
+const renderDefaultProbe = async (): Promise<Gtk.Application> => {
+    const application = await renderProbe();
+    expect(Gio.Application.getDefault()).toBe(application);
+
+    return application;
+};
+
 const renderAfterCleanup = async (): Promise<Gtk.Application> => {
     await renderProbe();
     await cleanup();
 
-    return renderProbe();
+    return renderDefaultProbe();
 };
 
 describe("Gio.Application.getDefault", () => {
     it("hands back the mounted application on every render, not the first one built", async () => {
-        const first = await renderProbe();
-        expect(Gio.Application.getDefault()).toBe(first);
+        const first = await renderDefaultProbe();
         await cleanup();
-        const second = await renderProbe();
+        const second = await renderDefaultProbe();
         expect(second).not.toBe(first);
-        expect(Gio.Application.getDefault()).toBe(second);
         expect(second.getIsRegistered()).toBe(true);
     });
 
@@ -76,13 +81,17 @@ describe("Gio.Application.getDefault", () => {
         expect(afterCleanup).toBeNull();
     });
 
-    it("never hands back an application whose start left it unregistered", () => {
-        const application = createApplication(Gio.Application, {
-            applicationId: `${APPLICATION_ID}.unstarted`,
+    it("ignores an application a test builds but never renders", async () => {
+        await renderDefaultProbe();
+        await cleanup();
+
+        const unrendered = createApplication(Gio.Application, {
+            applicationId: `${APPLICATION_ID}.unrendered`,
             flags: Gio.ApplicationFlags.NON_UNIQUE,
         });
 
-        expect(runApplication(application, ["probe", "--nope"])).toEqual({ isPrimary: false, exitStatus: 1 });
-        expect(Gio.Application.getDefault()).not.toBe(application);
+        expect(unrendered.getIsRegistered()).toBe(false);
+        expect(Gio.Application.getDefault()).toBeNull();
+        await renderDefaultProbe();
     });
 });

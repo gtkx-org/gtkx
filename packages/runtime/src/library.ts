@@ -1,6 +1,7 @@
 import { type BoxedDescriptor, boxedT, type FundamentalDescriptor, fundamentalT } from "./descriptors.js";
 
 const LIB = "libgobject-2.0.so.0,libglib-2.0.so.0";
+const GIO_LIB = "libgio-2.0.so.0";
 const VALUE_SIZE = 24;
 const CLOSURE_SIZE = 32;
 const VALUE_T: BoxedDescriptor = boxedT("GValue", { sharedLibrary: LIB, getTypeFnName: "g_value_get_type" });
@@ -15,4 +16,4 @@ const VARIANT_T: FundamentalDescriptor = fundamentalT(LIB, "g_variant_ref", "g_v
     typeName: "GVariant",
 });
 
-export { CLOSURE_SIZE, LIB, VALUE_SIZE, VALUE_T, PARAM_T, VARIANT_T };
+export { CLOSURE_SIZE, GIO_LIB, LIB, VALUE_SIZE, VALUE_T, PARAM_T, VARIANT_T };

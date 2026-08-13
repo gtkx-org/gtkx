@@ -1,8 +1,6 @@
 import { keepAlive, quit as nativeQuit } from "@gtkx/native";
 import { isDerivedApplication, type LocalCommandLineApplication, shutDownThroughRun } from "./application-class.js";
-import { bind } from "./bind.js";
-import { objectT, voidT } from "./descriptors.js";
-import { getHandle } from "./registry.js";
+import { claimDefaultApplication, releaseDefaultApplication } from "./default-application.js";
 
 /**
  * The GIO and GTK application surface {@link runApplication} and {@link quitApplication} drive, so any
@@ -47,12 +45,9 @@ type RunApplicationResult = {
     exitStatus: number;
 };
 
-const GIO_LIB = "libgio-2.0.so.0";
 const shutdownCallbacks: (() => void)[] = [];
 const startedApplications: WeakSet<object> = new WeakSet();
 const shutDownApplications: WeakSet<object> = new WeakSet();
-const readDefaultApplication = bind(GIO_LIB, "g_application_get_default", [], objectT("borrowed"));
-const writeDefaultApplication = bind(GIO_LIB, "g_application_set_default", [objectT("borrowed")], voidT);
 /**
  * Runs every registered exit callback and shuts down the native runtime. Safe to
  * call more than once; only the first call takes effect.
@@ -113,18 +108,6 @@ const restartApplication = (application: ApplicationLike): number => {
     return 0;
 };
 
-const claimDefaultApplication = (application: ApplicationLike): void => {
-    writeDefaultApplication(getHandle(application));
-};
-
-const releaseDefaultApplication = (application: ApplicationLike): void => {
-    if (readDefaultApplication() !== application) {
-        return;
-    }
-
-    writeDefaultApplication(null);
-};
-
 /**
  * Reports whether this process owns the application ID, only reaches the process that owns it, or holds
  * no registration at all. Registration alone cannot tell the first two apart, because registering as a
@@ -159,11 +142,12 @@ const getApplicationInstance = (application: ApplicationLike): ApplicationInstan
  * user interface may be built here, because a remote application has no `GtkApplicationImpl` and
  * attaching a window to it crashes.
  *
- * An application this leaves registered also takes the process-wide default `Gio.Application.getDefault()`
- * returns, and one whose start left it unregistered gives that default up instead of keeping it. GLib
- * assigns the default at construction only while none is set and drops it only at finalize, so a process
- * that mounts an application element more than once would otherwise read back the first application it
- * ever built rather than the one it is running.
+ * The application also claims the process-wide default `Gio.Application.getDefault()` returns, before
+ * its command line is parsed, so an `activate` handler and anything the host reads afterwards see the
+ * application being started rather than an earlier one. That holds whether the start ends registered,
+ * remote or unregistered: a refused command line still has to be reportable through the default, which
+ * is how `gtkx dev` learns which application its entry mounted. {@link quitApplication} gives the
+ * default back up, since GLib drops it only at finalize.
  *
  * @param application The application to start.
  * @param argv The command line, whose first entry names the program as `--help` should print it.
@@ -178,19 +162,13 @@ const runApplication = (application: ApplicationLike, argv: string[]): RunApplic
         );
     }
 
+    claimDefaultApplication(application);
+
     const exitStatus = startedApplications.has(application)
         ? restartApplication(application)
         : startApplication(application, argv);
 
-    const instance = getApplicationInstance(application);
-
-    if (instance === "unregistered") {
-        releaseDefaultApplication(application);
-    } else {
-        claimDefaultApplication(application);
-    }
-
-    const isPrimary = instance === "primary";
+    const isPrimary = getApplicationInstance(application) === "primary";
 
     if (isPrimary) {
         keepAlive(true);
@@ -199,22 +177,7 @@ const runApplication = (application: ApplicationLike, argv: string[]): RunApplic
     return { isPrimary, exitStatus };
 };
 
-/**
- * Detaches every window from the application and runs GLib's own shutdown, which emits `shutdown`,
- * destroys the application implementation and releases the D-Bus registration. Does nothing for an
- * application that is not registered, so a repeated call is a no-op.
- *
- * GLib's own shutdown is reachable once per application: reaching it marks the application as
- * quitting, which GLib never undoes. An application that has already quit falls back to emitting
- * `shutdown`, which releases the runtime and leaves the registration for GLib to drop at finalize.
- *
- * The process-wide default {@link runApplication} claimed is given up here too, so
- * `Gio.Application.getDefault()` never hands back the torn-down application: GLib clears that default
- * only at finalize, which a garbage-collected wrapper reaches arbitrarily late or never.
- *
- * @param application The application to shut down.
- */
-const quitApplication = (application: ApplicationLike): void => {
+const tearDownApplication = (application: ApplicationLike): void => {
     if (!application.getIsRegistered() || shutDownApplications.has(application)) {
         return;
     }
@@ -231,7 +194,27 @@ const quitApplication = (application: ApplicationLike): void => {
         shutDownApplications.add(application);
         application.emit("shutdown");
     }
+};
 
+/**
+ * Detaches every window from the application and runs GLib's own shutdown, which emits `shutdown`,
+ * destroys the application implementation and releases the D-Bus registration. Does nothing for an
+ * application that is not registered, so a repeated call is a no-op.
+ *
+ * GLib's own shutdown is reachable once per application: reaching it marks the application as
+ * quitting, which GLib never undoes. An application that has already quit falls back to emitting
+ * `shutdown`, which releases the runtime and leaves the registration for GLib to drop at finalize.
+ *
+ * The process-wide default {@link runApplication} claimed is given up whichever of those paths the
+ * application took, including the ones that have no teardown left to do, so
+ * `Gio.Application.getDefault()` never hands back an application that has been torn down or that
+ * never registered in the first place. GLib clears that default only at finalize, which a
+ * garbage-collected wrapper reaches arbitrarily late or never.
+ *
+ * @param application The application to shut down.
+ */
+const quitApplication = (application: ApplicationLike): void => {
+    tearDownApplication(application);
     releaseDefaultApplication(application);
 };
 
