@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createCss } from "../src/create-css.js";
 import { StyleSheet } from "../src/stylesheet.js";
 
-type BrokenRule = { kind: string; rule: string };
+type RuleCase = { kind: string; rule: string };
 
 const NUL = "\u{0}";
 const GOOD_FIRST = ".first{color:rgb(255, 0, 0);}";
@@ -11,13 +11,32 @@ const GOOD_LAST = ".last{color:rgb(0, 0, 255);}";
 const NUL_RULE = `.nul{font-family:"Canta${NUL}rell";}`;
 const URL_RULE = ".iconic{--icon:url(https://x.dev/a/*b.png);}";
 
-const BROKEN_RULES: BrokenRule[] = [
+const BROKEN_RULES: RuleCase[] = [
     { kind: "an unbalanced parenthesis", rule: ".broken{color:rgb(0;font-weight:bold;};}" },
     { kind: "an unterminated string", rule: '.broken{font-family:"Cantarell;}' },
     { kind: "an unterminated comment", rule: ".broken{color:red;/*}" },
     { kind: "a block that is never closed", rule: ".broken{color:red;" },
     { kind: "an unquoted url that never closes", rule: ".broken{--icon:url(https://x.dev/a/*b.png;}" },
     { kind: "a comment opener inside a function named after a url", rule: ".broken{--icon:myurl(a/*b);}" },
+];
+
+const PARTIAL_RULES: RuleCase[] = [
+    { kind: "a declaration with no selector around it", rule: "font-weight:bold;" },
+    { kind: "a declaration that never reaches its semicolon", rule: "font-weight:bold" },
+    { kind: "a stray semicolon after a closed block", rule: ".broken{color:red;};" },
+    { kind: "a selector left dangling after a closed block", rule: ".broken{color:red;}.dangling" },
+    { kind: "an at-rule statement that never reaches its semicolon", rule: "@define-color broken rgb(1, 2, 3)" },
+    { kind: "a lone semicolon", rule: ";" },
+];
+
+const COMPLETE_RULES: RuleCase[] = [
+    { kind: "an at-rule statement", rule: "@define-color mine rgb(1, 2, 3);" },
+    { kind: "a comment trailing a closed block", rule: ".commented{color:red;}/* done */" },
+    { kind: "two rules handed over together", rule: ".one{color:red;}.two{color:red;}" },
+    {
+        kind: "an at-rule whose prelude carries brackets",
+        rule: "@media (prefers-color-scheme: dark){.dark{color:red;}}",
+    },
 ];
 
 const flushMicrotasks = async (): Promise<void> => {
@@ -60,10 +79,19 @@ const parsedDocument = (document: string): string => {
     return provider.toString();
 };
 
+const hasSelector = (parsed: string, selector: string): boolean => parsed.split("\n").includes(`${selector} {`);
+
 const styleThroughCss = (): void => {
     const { css } = createCss();
     css({ color: "rgb(255, 0, 0)" });
     css({ color: "rgb(0", fontWeight: "bold" });
+    css({ color: "rgb(0, 0, 255)" });
+};
+
+const styleThroughEarlyClose = (): void => {
+    const { css } = createCss();
+    css({ color: "rgb(255, 0, 0)" });
+    css({ color: "} font-weight:bold" });
     css({ color: "rgb(0, 0, 255)" });
 };
 
@@ -141,6 +169,49 @@ describe("StyleSheet — rules that never close what they open", () => {
         });
 
         expect(parsedDocument(document)).toContain(".quoted");
+    });
+});
+
+describe("StyleSheet — rules that are not whole on their own", () => {
+    it.each(PARTIAL_RULES)("keeps the rules inserted after $kind", async ({ rule }) => {
+        const parsed = await parseAround(rule);
+        expect(hasSelector(parsed, ".first")).toBe(true);
+        expect(hasSelector(parsed, ".last")).toBe(true);
+    });
+
+    it.each(PARTIAL_RULES)("warns and names the rule it drops for $kind", ({ rule }) => {
+        const warn = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+        try {
+            insertAll([rule]);
+            expect(warn).toHaveBeenCalledWith(expect.stringContaining("[gtkx:css]"));
+            expect(warn).toHaveBeenCalledWith(expect.stringContaining(rule));
+        } finally {
+            warn.mockRestore();
+        }
+    });
+
+    it.each(COMPLETE_RULES)("installs $kind", async ({ rule }) => {
+        const parsed = await parseAround(rule);
+        expect(hasSelector(parsed, ".first")).toBe(true);
+        expect(hasSelector(parsed, ".last")).toBe(true);
+    });
+
+    it.each(COMPLETE_RULES)("stays silent about $kind", ({ rule }) => {
+        const warn = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+        try {
+            insertAll([rule]);
+            expect(warn).not.toHaveBeenCalled();
+        } finally {
+            warn.mockRestore();
+        }
+    });
+
+    it("keeps the styles created after a css call whose value closes the rule early", async () => {
+        const parsed = parsedDocument(await loadedDocument(styleThroughEarlyClose));
+        expect(parsed).toContain("rgb(255,0,0)");
+        expect(parsed).toContain("rgb(0,0,255)");
     });
 });
 
