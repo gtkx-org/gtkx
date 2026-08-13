@@ -292,8 +292,8 @@ impl StashStorage {
         &self.data
     }
 
-    pub fn lends_memory(&self) -> bool {
-        !matches!(self.data, StashData::Unit)
+    pub fn owns_element_buffer(&self) -> bool {
+        self.byte_len().is_some()
     }
 
     pub fn byte_len(&self) -> Option<usize> {

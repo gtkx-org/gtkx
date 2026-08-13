@@ -145,8 +145,8 @@ impl Stash {
         }
     }
 
-    pub fn lends_memory(&self) -> bool {
-        matches!(self, Self::Storage(storage) if storage.lends_memory())
+    pub fn owns_element_buffer(&self) -> bool {
+        matches!(self, Self::Storage(storage) if storage.owns_element_buffer())
     }
 
     /// # Safety

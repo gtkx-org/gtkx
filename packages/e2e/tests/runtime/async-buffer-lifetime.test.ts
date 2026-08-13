@@ -1,15 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import { getHandle, promisify, t } from "@gtkx/runtime";
-import {
-    closeSync,
-    existsSync,
-    mkdtempSync,
-    readFileSync,
-    readSync,
-    rmSync,
-    writeFileSync,
-} from "node:fs";
+import { closeSync, existsSync, mkdtempSync, readFileSync, readSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -26,14 +18,6 @@ const payload = Array.from({ length: PAYLOAD_LENGTH }, (_, index) => (index % 25
 const sentinel = Array.from({ length: PAYLOAD_LENGTH }, () => 0);
 const directory = mkdtempSync(join(tmpdir(), "gtkx-async-buffer-"));
 
-const asyncReadyCallback = {
-    type: t.callback([t.object("borrowed"), t.object("borrowed"), t.uint64], t.void, {
-        hasUserData: true,
-        userDataIndex: 2,
-        scope: "async",
-    }),
-};
-
 const replaceContentsAsync = t.fn("libgio-2.0.so.0", "g_file_replace_contents_async", {
     args: [
         { type: t.object("borrowed") },
@@ -43,17 +27,13 @@ const replaceContentsAsync = t.fn("libgio-2.0.so.0", "g_file_replace_contents_as
         { type: t.boolean },
         { type: t.flags("libgio-2.0.so.0", "g_file_create_flags_get_type", false) },
         { type: t.object("borrowed") },
-        asyncReadyCallback,
-    ],
-    returns: t.void,
-});
-
-const readAsync = t.fn("libgio-2.0.so.0", "g_file_read_async", {
-    args: [
-        { type: t.object("borrowed") },
-        { type: t.int32 },
-        { type: t.object("borrowed") },
-        asyncReadyCallback,
+        {
+            type: t.callback([t.object("borrowed"), t.object("borrowed"), t.uint64], t.void, {
+                hasUserData: true,
+                userDataIndex: 2,
+                scope: "async",
+            }),
+        },
     ],
     returns: t.void,
 });
@@ -214,12 +194,18 @@ describe("async calls made without a completion callback", () => {
         expect(existsSync(path)).toBe(false);
     });
 
-    it("makes a call that lends the callee nothing", () => {
-        const path = join(directory, "read-async.dat");
-        writeFileSync(path, Uint8Array.from(payload));
+    it("makes a call that lends the callee a borrowed string", () => {
+        const path = join(directory, "bytes-etag.dat");
 
         expect(() => {
-            readAsync(getHandle(Gio.File.newForPath(path)), 0, null, null);
+            Gio.File.newForPath(path).replaceContentsBytesAsync(
+                GLib.Bytes.new(payload),
+                "some-etag",
+                false,
+                Gio.FileCreateFlags.NONE,
+                null,
+                null,
+            );
         }).not.toThrow();
     });
 });

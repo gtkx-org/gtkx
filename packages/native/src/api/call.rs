@@ -34,7 +34,7 @@ fn execute_call<'e>(
         })
         .collect::<anyhow::Result<Vec<ffi::Stash>>>()?;
 
-    let completion = AsyncCompletion::resolve(completion_index, &stashes)
+    let completion = AsyncCompletion::resolve(completion_index, arg_codecs, &stashes)
         .with_context(|| format!("calling {label}"))?;
 
     let mut ffi_args: Vec<libffi::Arg<'_>> = Vec::with_capacity(stashes.len() + 1);
@@ -88,6 +88,16 @@ fn completion_callback(stash: &ffi::Stash) -> anyhow::Result<&ffi::CallbackValue
     }
 }
 
+fn lends_element_buffer(codec: &Codec, stash: &ffi::Stash) -> bool {
+    let borrows_a_buffer = match codec {
+        Codec::Array(array) => array.ownership.is_borrowed(),
+        Codec::Buffer(_) => true,
+        _ => false,
+    };
+
+    borrows_a_buffer && stash.owns_element_buffer()
+}
+
 struct AsyncCompletion {
     index: usize,
 }
@@ -95,6 +105,7 @@ struct AsyncCompletion {
 impl AsyncCompletion {
     fn resolve(
         completion_index: Option<usize>,
+        arg_codecs: &[Codec],
         stashes: &[ffi::Stash],
     ) -> anyhow::Result<Option<Self>> {
         let Some(index) = completion_index else {
@@ -108,12 +119,12 @@ impl AsyncCompletion {
             return Ok(Some(Self { index }));
         }
 
-        for (i, stash) in stashes.iter().enumerate() {
+        for (i, (codec, stash)) in arg_codecs.iter().zip(stashes).enumerate() {
             anyhow::ensure!(
-                i == index || !stash.lends_memory(),
-                "arg {i} stays lent to the callee until the call completes, and the completion \
-                 callback in arg {index} is null, so nothing reports the moment the callee is done \
-                 reading it; pass a completion callback"
+                i == index || !lends_element_buffer(codec, stash),
+                "arg {i} lends the callee a buffer that is freed when the call returns, and the \
+                 completion callback in arg {index} is null, so nothing reports the moment the \
+                 callee is done reading it; pass a completion callback"
             );
         }
 
@@ -202,7 +213,7 @@ mod tests {
     use super::*;
     use crate::ffi::codec::{
         ArrayBounds, ArrayCodec, ArrayKind, CallbackCodec, CallbackScope, DestroyNotifyKind,
-        IntegerCodec, ObjectCodec, Ownership, VoidCodec,
+        IntegerCodec, ObjectCodec, Ownership, RefCodec, StringCodec, VoidCodec,
     };
 
     fn borrowed_object_codec() -> Codec {
@@ -259,6 +270,13 @@ mod tests {
             None,
             None,
         ))
+    }
+
+    fn borrowed_string_codec() -> Codec {
+        Codec::String(StringCodec {
+            ownership: Ownership::Borrowed,
+            length: None,
+        })
     }
 
     fn borrowed_bytes_codec() -> Codec {
@@ -431,7 +449,7 @@ mod tests {
     }
 
     #[test]
-    fn refuses_an_async_call_that_lends_memory_with_no_completion_callback() {
+    fn refuses_an_async_call_that_lends_a_buffer_with_no_completion_callback() {
         test_support::run(|| {
             let env = napi_mock::fake_env();
             let descriptor = lending_async_descriptor();
@@ -442,7 +460,7 @@ mod tests {
             let report = format!("{error:#}");
 
             assert!(
-                report.contains("arg 0 stays lent to the callee"),
+                report.contains("arg 0 lends the callee a buffer"),
                 "{report}"
             );
             assert!(report.contains("pass a completion callback"), "{report}");
@@ -466,29 +484,64 @@ mod tests {
     }
 
     #[test]
-    fn takes_an_async_call_with_no_completion_callback_that_lends_nothing() {
-        let stashes = vec![ffi::Stash::U32(3), null_completion_stash()];
+    fn takes_an_async_call_with_no_completion_callback_that_lends_a_borrowed_string() {
+        test_support::run(|| {
+            let env = napi_mock::fake_env();
+            let descriptor = descriptor(
+                "gtkx_no_such_symbol",
+                vec![borrowed_string_codec(), async_ready_callback_codec()],
+                Codec::Void(VoidCodec),
+            );
+            let values = vec![
+                napi_mock::to_unknown(&env, napi_mock::fake_string("some-etag")),
+                napi_mock::to_unknown(&env, napi_mock::fake_null()),
+            ];
+            let Err(error) = execute_call(&env, &descriptor, &values) else {
+                panic!("the missing symbol should be what stops the call");
+            };
+            let report = format!("{error:#}");
+
+            assert!(report.contains("Failed to find symbol"), "{report}");
+            assert!(!report.contains("pass a completion callback"), "{report}");
+        });
+    }
+
+    #[test]
+    fn takes_an_async_call_whose_only_owned_buffer_is_an_out_parameter() {
+        let codecs = vec![
+            Codec::Ref(
+                RefCodec::new(Codec::Integer(IntegerCodec::U64), false).expect("a Ref codec"),
+            ),
+            async_ready_callback_codec(),
+        ];
+        let stashes = vec![
+            ffi::Stash::Storage(vec![0u64].into()),
+            null_completion_stash(),
+        ];
 
         assert!(
-            AsyncCompletion::resolve(Some(1), &stashes)
-                .expect("nothing is lent, so the call stands")
+            AsyncCompletion::resolve(Some(1), &codecs, &stashes)
+                .expect("an out parameter is written, not lent")
                 .is_none()
         );
     }
 
     #[test]
     fn refuses_a_completion_argument_that_was_not_marshalled_as_a_callback() {
+        let codecs = vec![borrowed_bytes_codec(), async_ready_callback_codec()];
         let stashes = vec![
             ffi::Stash::Storage(vec![1u8, 2, 3].into()),
             ffi::Stash::Void,
         ];
 
-        assert!(AsyncCompletion::resolve(Some(1), &stashes).is_err());
+        assert!(AsyncCompletion::resolve(Some(1), &codecs, &stashes).is_err());
     }
 
     #[test]
     fn refuses_a_completion_argument_that_was_never_marshalled() {
-        assert!(AsyncCompletion::resolve(Some(1), &[ffi::Stash::Void]).is_err());
+        let codecs = vec![borrowed_bytes_codec(), async_ready_callback_codec()];
+
+        assert!(AsyncCompletion::resolve(Some(1), &codecs, &[ffi::Stash::Void]).is_err());
     }
 
     #[test]
