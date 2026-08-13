@@ -20,6 +20,7 @@ import {
     isVirtual,
     REFRESH_EXPORT,
     REL_SEPARATOR,
+    RESOURCE_PATH_EXPORT,
     toVirtualId,
     VIRTUAL_INIT,
 } from "./resource-shared.js";
@@ -210,7 +211,7 @@ const loadAssetModule = (state: PluginState, virtualId: string): string => {
         `import { ensureRegistered } from ${JSON.stringify(VIRTUAL_INIT)};`,
         "ensureRegistered();",
         `export default ${JSON.stringify(uri)};`,
-        `export const path = ${JSON.stringify(entry.resourcePath)};`,
+        `export const ${RESOURCE_PATH_EXPORT} = ${JSON.stringify(entry.resourcePath)};`,
     ].join("\n");
 };
 

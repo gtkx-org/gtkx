@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { ResolveIdHook } from "./plugin-hook-types.js";
 import { ASSET_EXTENSIONS } from "../../src/vite-plugins/asset-extensions.js";
 import { DATA_PREFIX } from "../../src/vite-plugins/asset-specifier.js";
+import { RESOURCE_PATH_EXPORT } from "../../src/vite-plugins/resource-shared.js";
 import { gtkxResources } from "../../src/vite-plugins/resources.js";
 
 type ScopeCase = { title: string; specifier: (extension: string) => string; isRewritten: boolean };
@@ -23,7 +24,7 @@ const RESOURCE_BLOCK = [
     "    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */",
     "    const resourceUri: string;",
     "    /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */",
-    "    export const path: string;",
+    `    export const ${RESOURCE_PATH_EXPORT}: string;`,
     "    export default resourceUri;",
 ];
 

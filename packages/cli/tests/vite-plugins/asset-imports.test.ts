@@ -6,6 +6,7 @@ type TransformHook = (code: string, id: string) => void;
 const MODULE_ID = "/project/src/app.tsx";
 const RELATIVE_PATH_IMPORT = "import { path } from \"./icon.png\";\nconsole.log(path);\n";
 const DATA_PATH_IMPORT = "import { path } from \"#data/icons/logo.png\";\nconsole.log(path);\n";
+const DATA_MISSING_IMPORT = "import { nope } from \"#data/icons/logo.png\";\nconsole.log(nope);\n";
 
 const COMPONENT = [
     "import { path } from \"./icon.png\";",
@@ -50,23 +51,55 @@ describe("gtkxAssetImports (bindings the bundle cannot back)", () => {
         }).toThrow(/drop the query/);
     });
 
-    it("rejects the binding in a JavaScript project, which has no declarations to catch it", () => {
+    it("rejects the binding in JavaScript, which gtkx build and gtkx dev run no typechecker over", () => {
         expect(() => {
             transform(RELATIVE_PATH_IMPORT, "/project/src/app.js");
         }).toThrow(/does not export "path"/);
     });
 
-    it("rejects the binding in JSX a JavaScript project keeps in a .js file", () => {
+    it("rejects the binding in JSX kept in a .js file", () => {
         expect(() => {
             transform(COMPONENT, "/project/src/icon.js");
         }).toThrow(/does not export "path"/);
     });
 });
 
+describe("gtkxAssetImports (names a staged asset does not carry)", () => {
+    it("rejects a name the GResource module never emits", () => {
+        expect(() => {
+            transform(DATA_MISSING_IMPORT);
+        }).toThrow(/"#data\/icons\/logo\.png" does not export "nope"/);
+    });
+
+    it("lists what a staged asset exports rather than pointing at the data directory", () => {
+        expect(() => {
+            transform(DATA_MISSING_IMPORT);
+        }).toThrow(/exports "path" and a "resource:\/\/" default, and nothing else/);
+    });
+
+    it("rejects the imported name, not the local one it is bound to", () => {
+        expect(() => {
+            transform("import { nope as path } from \"#data/icons/logo.png\";\nconsole.log(path);\n");
+        }).toThrow(/does not export "nope"/);
+    });
+
+    it("rejects such a name re-exported from a staged asset", () => {
+        expect(() => {
+            transform("export { nope } from \"#data/icons/logo.png\";\n");
+        }).toThrow(/does not export "nope"/);
+    });
+});
+
 describe("gtkxAssetImports (bindings the bundle backs)", () => {
-    it("accepts the named import of a data-scoped asset", () => {
+    it("accepts the one named export a data-scoped asset carries", () => {
         expect(() => {
             transform(DATA_PATH_IMPORT);
+        }).not.toThrow();
+    });
+
+    it("accepts the resource URI a data-scoped asset defaults to", () => {
+        expect(() => {
+            transform("import logoUri from \"#data/icons/logo.png\";\nconsole.log(logoUri);\n");
         }).not.toThrow();
     });
 

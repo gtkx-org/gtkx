@@ -5,6 +5,7 @@ const VIRTUAL_INIT = "\0gtkx-resources-init";
 const BUNDLE_FILENAME = "gtkx.gresource";
 const REL_SEPARATOR = "\0rel=";
 const REFRESH_EXPORT = "__refresh";
+const RESOURCE_PATH_EXPORT = "path";
 const { isVirtual, toVirtualId, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const escapeXml = (value: string): string =>
@@ -33,6 +34,7 @@ export {
     BUNDLE_FILENAME,
     REL_SEPARATOR,
     REFRESH_EXPORT,
+    RESOURCE_PATH_EXPORT,
     escapeXml,
     isVirtual,
     toVirtualId,
