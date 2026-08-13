@@ -153,6 +153,6 @@ describe("tutorial regressions", () => {
     it("opens a second dialog while the first one's onClosed clears the state that mounted it", async () => {
         const { rerender } = await render(<DialogShell shown="about" />, { container: rootElement });
         await rerender(<DialogShell shown="shortcuts" />);
-        expect(screen.queryAllByText("shortcuts body")).toHaveLength(1);
+        expect(await screen.findAllByText("shortcuts body")).toHaveLength(1);
     });
 });

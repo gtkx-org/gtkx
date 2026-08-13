@@ -383,15 +383,6 @@ describe("writeDocs over a directory it does not own", () => {
         expect(page(outDir, join("guide", "intro.md"))).toBe("# Handwritten guide\n");
         expect(page(outDir, "getting-started.md")).toBe("# Handwritten getting started\n");
     });
-
-    it("replaces the contents once overwriting is requested", () => {
-        const outDir = handwrittenDir("handwritten-overwritten");
-        const result = writeDocs({ ...docsOptions(outDir), isOverwrite: true });
-        expect(result.isRegenerated).toBe(true);
-        expect(existsSync(join(outDir, "getting-started.md"))).toBe(false);
-        expect(existsSync(join(outDir, "guide"))).toBe(false);
-        expect(existsSync(join(outDir, "gtk", "button.md"))).toBe(true);
-    });
 });
 
 describe("writeDocs when the output path is not a directory", () => {
@@ -465,18 +456,14 @@ describe("writeDocs over a directory it generated", () => {
         expect(existsSync(join(outDir, "gtk", "button.md"))).toBe(true);
     });
 
-    it("recovers from its own damaged manifest once overwriting is requested", () => {
+    it("keeps refusing a damaged manifest even when regeneration is forced, and touches nothing", () => {
         const outDir = generatedDir("damaged-manifest");
         writeFileSync(join(outDir, MANIFEST_FILE), '{"namespaces":[{"na');
         mkdirSync(join(outDir, "guide"), { recursive: true });
         writeFileSync(join(outDir, "guide", "intro.md"), "# Handwritten guide\n");
         expectRefusal(outDir, `holds no ${MANIFEST_FILE}`);
         expect(() => writeDocs({ ...docsOptions(outDir), isForced: true })).toThrow(`holds no ${MANIFEST_FILE}`);
-        const recovered = writeDocs({ ...docsOptions(outDir), isOverwrite: true });
-        expect(recovered.isRegenerated).toBe(true);
-        expect(existsSync(join(outDir, "guide"))).toBe(false);
-        expect(existsSync(join(outDir, "gtk", "button.md"))).toBe(true);
-        expect(writeDocs(docsOptions(outDir)).isRegenerated).toBe(false);
+        expect(page(outDir, join("guide", "intro.md"))).toBe("# Handwritten guide\n");
     });
 });
 

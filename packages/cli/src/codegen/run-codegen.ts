@@ -1,4 +1,5 @@
-import { getShadowingStorePaths, runCodegen as runCodegenCore } from "@gtkx/codegen";
+import { runCodegen as runCodegenCore } from "@gtkx/codegen";
+import { getShadowingStorePaths } from "@gtkx/codegen/internal";
 import { type Config, loadConfig } from "@gtkx/config";
 import {
     resolveElementComponents,

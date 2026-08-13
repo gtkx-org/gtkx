@@ -1,12 +1,17 @@
 import { loadConfig } from "@gtkx/config";
 import * as Gio from "@gtkx/gi/gio";
-import { type ApplicationInstance, getApplicationInstance, quitApplication } from "@gtkx/runtime";
+import { quitApplication } from "@gtkx/runtime";
 import { info, installGracefulShutdown } from "@gtkx/utils";
 import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
-import type { DevRunnerDeps } from "./runner.js";
+import type { ApplicationInstance, DevRunnerDeps } from "./runner.js";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
-import { setTestingModuleLoader } from "../mcp/testing-loader.js";
+import {
+    mergeTestingModule,
+    setTestingModuleLoader,
+    type TestingInternalModule,
+    type TestingPublicModule,
+} from "../mcp/testing-loader.js";
 import { isRefreshBoundary, performRefresh } from "../refresh-runtime.js";
 import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/swc-refresh.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
@@ -20,7 +25,11 @@ const currentApplicationId = (): string | null => Gio.Application.getDefault()?.
 const currentApplicationInstance = (): ApplicationInstance => {
     const application = Gio.Application.getDefault();
 
-    return application === null ? "unregistered" : getApplicationInstance(application);
+    if (!application?.getIsRegistered()) {
+        return "unregistered";
+    }
+
+    return application.getIsRemote() ? "remote" : "primary";
 };
 
 const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => boolean): Promise<string | null> => {
@@ -46,7 +55,14 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
         return loaded.config.applicationId;
     },
     startMcpClient: (applicationId, loadAppModule) => {
-        setTestingModuleLoader(() => loadAppModule("@gtkx/testing") as Promise<typeof import("@gtkx/testing")>);
+        setTestingModuleLoader(async () => {
+            const [publicApi, internals] = await Promise.all([
+                loadAppModule("@gtkx/testing") as Promise<TestingPublicModule>,
+                loadAppModule("@gtkx/testing/internal") as Promise<TestingInternalModule>,
+            ]);
+
+            return mergeTestingModule(publicApi, internals);
+        });
 
         return startMcpClient(applicationId);
     },

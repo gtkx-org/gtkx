@@ -1,4 +1,3 @@
-import type { ApplicationInstance } from "@gtkx/runtime";
 import type { InlineConfig, Plugin } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
@@ -15,6 +14,7 @@ import {
 } from "./vite-dev-server.js";
 
 type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
+type ApplicationInstance = "primary" | "remote" | "unregistered";
 
 type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<DevServer>;
@@ -544,4 +544,4 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
 });
 
 export type { DevServer } from "./vite-dev-server.js";
-export { createDevRunner, type DevRunnerDeps };
+export { type ApplicationInstance, createDevRunner, type DevRunnerDeps };

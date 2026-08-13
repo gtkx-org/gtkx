@@ -151,19 +151,6 @@ const findStoreNodeModules = (projectRoot: string): string | null => {
     return storeNodeModules(runtime, resolvePackage(projectRoot, "@gtkx/react"));
 };
 
-/**
- * Lists the paths a generated store occupies in a project's own `node_modules` when that copy shadows the
- * store the project resolves: the `.gtkx` directories holding the `gi` and `jsx` packages, and the `@gtkx`
- * links pointing at them. Removing all four leaves the project importing the store installed above it,
- * which is what a project that generates no store of its own wants.
- *
- * The list is empty whenever removing those paths would take the project's own bindings away: when the
- * project's `node_modules` is where {@link resolveStore} anchors the store, and when no `@gtkx/runtime`
- * resolves from the project at all, so there is no store location to compare against.
- *
- * @param projectRoot Directory holding the project's `package.json`, whose `node_modules` chain is walked.
- * @returns The shadowing store and link directories, which need not exist.
- */
 const getShadowingStorePaths = (projectRoot: string): string[] => {
     const nodeModules = join(projectRoot, "node_modules");
     const anchored = findStoreNodeModules(projectRoot);

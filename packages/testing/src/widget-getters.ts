@@ -34,14 +34,6 @@ const getExactWrapperName = (type: bigint): string | undefined => {
     return wrapper !== null && getClassType(wrapper) === type ? nonEmpty(wrapper.name) : undefined;
 };
 
-/**
- * Names an object the way the widget printers tag it: the wrapper class registered for the object's
- * own GType when there is one, the GType's own name when GTKX composed the wrapper itself (as it does
- * for GTK's private types, such as the `GtkModelButton` behind a menu item), and the nearest named
- * class in the prototype chain when the object carries no GType at all.
- *
- * @param object The object to name.
- */
 const getTypeTag = (object: GObject.Object): string => {
     const type = getInstanceType(object);
 

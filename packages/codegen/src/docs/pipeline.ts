@@ -37,7 +37,6 @@ type DocsOptions = {
     props?: ElementProps;
     omittedProps?: OmittedProps;
     isForced?: boolean;
-    isOverwrite?: boolean;
 };
 
 type DocsManifest = {
@@ -251,13 +250,13 @@ const readDocsManifest = (manifestPath: string): DocsManifest | undefined => {
 const outDirRefusal = (outDir: string, reason: string): Error =>
     new Error(
         `Refusing to generate documentation into ${outDir}: ${reason}. Point the output directory at an ` +
-        "empty directory or at one gtkx generated, or pass --overwrite to replace whatever it holds.",
+        "empty directory or at one gtkx generated, or remove it yourself first.",
     );
 
 const assertOwnedOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): void => {
     const stats = statSync(options.outDir, { throwIfNoEntry: false });
 
-    if (stats === undefined || options.isOverwrite === true) {
+    if (stats === undefined) {
         return;
     }
 
@@ -277,12 +276,6 @@ const assertOwnedOutDir = (options: DocsOptions, manifest: DocsManifest | undefi
 };
 
 const clearOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): void => {
-    if (options.isOverwrite === true) {
-        rmSync(options.outDir, { recursive: true, force: true });
-
-        return;
-    }
-
     if (manifest === undefined) {
         return;
     }

@@ -9,3 +9,4 @@ export {
 } from "./accessible-native.js";
 export { cleanup, render } from "./production.js";
 export { renderChildren, type ChildrenBuilder } from "./render-children.js";
+export { getTypeTag } from "./widget-getters.js";

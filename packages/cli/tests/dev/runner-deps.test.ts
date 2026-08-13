@@ -1,4 +1,3 @@
-import type { ApplicationInstance } from "@gtkx/runtime";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,14 +6,20 @@ import { defaultDevRunnerDeps } from "../../src/dev/runner-deps.js";
 
 const hoisted = vi.hoisted(() => ({
     getDefault: vi.fn(
-        () => null as { applicationId: string | null; on?: (signal: string, handler: () => void) => void } | null,
+        () =>
+            null as {
+                applicationId: string | null;
+                getIsRegistered?: () => boolean;
+                getIsRemote?: () => boolean;
+                on?: (signal: string, handler: () => void) => void;
+            } | null,
     ),
-    getApplicationInstance: vi.fn((): ApplicationInstance => "primary"),
     quitApplication: vi.fn(),
     installGracefulShutdown: vi.fn(),
     startMcpClient: vi.fn(() => Promise.resolve()),
     stopMcpClient: vi.fn(),
     setTestingModuleLoader: vi.fn(),
+    mergeTestingModule: vi.fn((publicApi: object, internals: object) => ({ ...publicApi, ...internals })),
     performRefresh: vi.fn(),
     isRefreshBoundary: vi.fn(() => false),
     createServer: vi.fn(() => Promise.resolve({})),
@@ -25,7 +30,6 @@ vi.mock("@gtkx/gi/gio", () => ({
 }));
 
 vi.mock("@gtkx/runtime", () => ({
-    getApplicationInstance: hoisted.getApplicationInstance,
     quitApplication: hoisted.quitApplication,
 }));
 
@@ -44,6 +48,7 @@ vi.mock("../../src/mcp/index.js", () => ({
 }));
 
 vi.mock("../../src/mcp/testing-loader.js", () => ({
+    mergeTestingModule: hoisted.mergeTestingModule,
     setTestingModuleLoader: hoisted.setTestingModuleLoader,
 }));
 
@@ -74,6 +79,7 @@ describe("defaultDevRunnerDeps (wiring)", () => {
         const installedLoader = hoisted.setTestingModuleLoader.mock.calls[0]?.[0] as () => Promise<unknown>;
         await installedLoader();
         expect(loadAppModule).toHaveBeenCalledWith("@gtkx/testing");
+        expect(loadAppModule).toHaveBeenCalledWith("@gtkx/testing/internal");
     });
 
     it("connects the runner shutdown handler to the live application's shutdown signal", () => {
@@ -96,24 +102,37 @@ describe("defaultDevRunnerDeps (wiring)", () => {
 });
 
 describe("defaultDevRunnerDeps (getApplicationInstance)", () => {
-    beforeEach(() => {
-        hoisted.getApplicationInstance.mockReset();
-    });
-
-    it("reports the role the runtime derives for the live application", () => {
+    it("separates the process that owns the application ID from the one that only reaches it", () => {
         const deps = defaultDevRunnerDeps();
-        const application = { applicationId: "com.example.app" };
-        hoisted.getDefault.mockReturnValueOnce(application);
-        hoisted.getApplicationInstance.mockReturnValueOnce("remote");
+
+        hoisted.getDefault.mockReturnValueOnce({
+            applicationId: "com.example.app",
+            getIsRegistered: () => true,
+            getIsRemote: () => true,
+        });
+
         expect(deps.getApplicationInstance()).toBe("remote");
-        expect(hoisted.getApplicationInstance).toHaveBeenCalledWith(application);
+
+        hoisted.getDefault.mockReturnValueOnce({
+            applicationId: "com.example.app",
+            getIsRegistered: () => true,
+            getIsRemote: () => false,
+        });
+
+        expect(deps.getApplicationInstance()).toBe("primary");
     });
 
-    it("reports an unregistered instance when no application mounted", () => {
+    it("reports an unregistered instance when no application mounted or it never registered", () => {
         const deps = defaultDevRunnerDeps();
         hoisted.getDefault.mockReturnValueOnce(null);
         expect(deps.getApplicationInstance()).toBe("unregistered");
-        expect(hoisted.getApplicationInstance).not.toHaveBeenCalled();
+
+        hoisted.getDefault.mockReturnValueOnce({
+            applicationId: "com.example.app",
+            getIsRegistered: () => false,
+        });
+
+        expect(deps.getApplicationInstance()).toBe("unregistered");
     });
 });
 

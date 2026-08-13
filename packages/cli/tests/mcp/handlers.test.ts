@@ -105,9 +105,12 @@ vi.mock("@gtkx/testing", () => ({
     fireEvent: hoisted.fireEvent,
     prettyWidget: hoisted.prettyWidget,
     formatRole: hoisted.formatRole,
-    getTypeTag: hoisted.getTypeTag,
     getWidgetText: hoisted.getWidgetText,
     userEvent: { click: hoisted.click, type: hoisted.typeText, clear: hoisted.clear },
+}));
+
+vi.mock("@gtkx/testing/internal", () => ({
+    getTypeTag: hoisted.getTypeTag,
 }));
 
 vi.mock("@gtkx/gi/gtk", () => ({

@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { getApplicationInstance, quitApplication, runApplication } from "@gtkx/runtime";
+import { quitApplication, runApplication } from "@gtkx/runtime";
 import { pickBy, warn } from "@gtkx/utils";
 import process from "node:process";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
@@ -22,7 +22,7 @@ const commandLine = (applicationId: string | null): string[] => [
 ];
 
 const reportOwnedApplicationId = (application: Gtk.Application): void => {
-    if (getApplicationInstance(application) !== "remote") {
+    if (!application.getIsRegistered() || !application.getIsRemote()) {
         return;
     }
 

@@ -18,12 +18,14 @@ beforeEach(() => {
 
 afterEach(() => {
     vi.doUnmock("@gtkx/testing");
+    vi.doUnmock("@gtkx/testing/internal");
     vi.resetModules();
 });
 
 describe("loadTestingModule", () => {
     it("caches successful imports across calls", async () => {
         vi.doMock("@gtkx/testing", () => ({ marker: "ok" }));
+        vi.doMock("@gtkx/testing/internal", () => ({ getTypeTag: () => "Gtk.Button" }));
         const { loadTestingModule } = await importLoader();
         const first = await loadTestingModule();
         const second = await loadTestingModule();
@@ -35,6 +37,7 @@ describe("loadTestingModule", () => {
             throw new Error("not installed");
         });
 
+        vi.doMock("@gtkx/testing/internal", () => ({ getTypeTag: () => "Gtk.Button" }));
         const { loadTestingModule } = await importLoader();
         const first = await settled(loadTestingModule);
         const second = await settled(loadTestingModule);

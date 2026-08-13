@@ -7,15 +7,7 @@ export { type ClosureCallback, ClosureMarshalError, toClosure, tryToClosure } fr
 /** @public */
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 /** @public */
-export {
-    type ApplicationInstance,
-    getApplicationInstance,
-    onExit,
-    quit,
-    quitApplication,
-    runApplication,
-    type RunApplicationResult,
-} from "./lifecycle.js";
+export { onExit, quit, quitApplication, runApplication, type RunApplicationResult } from "./lifecycle.js";
 /** @public */
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 /** @public */

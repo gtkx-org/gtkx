@@ -1,8 +1,12 @@
-import type { ApplicationInstance } from "@gtkx/runtime";
 import type { InlineConfig, Plugin } from "vite";
 import { describe, expect, it, vi } from "vitest";
 import type { DevServerWatchEvent } from "../../src/dev/vite-dev-server.js";
-import { createDevRunner, type DevRunnerDeps, type DevServer } from "../../src/dev/runner.js";
+import {
+    type ApplicationInstance,
+    createDevRunner,
+    type DevRunnerDeps,
+    type DevServer,
+} from "../../src/dev/runner.js";
 import { RESTART_EXIT_CODE } from "../../src/dev/supervisor.js";
 import { collectLogged, type StderrSpy } from "../stderr-text.js";
 

@@ -42,11 +42,6 @@ const docs = defineCommand({
                 "and the element props the project configures",
             default: false,
         },
-        overwrite: {
-            type: "boolean",
-            description: "Replace whatever the output directory holds, even pages `gtkx docs` did not write",
-            default: false,
-        },
         ...cwdArg,
     },
     async run({ args }) {
@@ -83,7 +78,6 @@ const docs = defineCommand({
             props: builtin.props,
             omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
             isForced: args.force,
-            isOverwrite: args.overwrite,
         });
 
         if (!isRegenerated) {

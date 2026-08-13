@@ -6,7 +6,7 @@ import { docs } from "../../src/commands/docs.js";
 import { collectLogged } from "../stderr-text.js";
 import { setupLogState } from "./log-state.js";
 
-type DocsArgs = { out?: string; "base-path"?: string; force?: boolean; overwrite?: boolean; cwd?: string };
+type DocsArgs = { out?: string; "base-path"?: string; force?: boolean; cwd?: string };
 type DocsRun = NonNullable<typeof docs.run>;
 type DocsContext = Parameters<DocsRun>[0];
 
@@ -22,7 +22,6 @@ const docsCall = (overrides: Record<string, unknown>): Record<string, unknown> =
     girPath: ["/usr/share/gir-1.0"],
     props: {},
     omittedProps: {},
-    isOverwrite: false,
     ...overrides,
 });
 
@@ -37,7 +36,6 @@ const run = (overrides: DocsArgs): Promise<unknown> => {
         out: "docs/reference",
         "base-path": "/reference",
         force: false,
-        overwrite: false,
         ...overrides,
     } as DocsContext["args"];
 
@@ -75,7 +73,7 @@ function mockedMergeOmittedProps(...maps: Record<string, string[]>[]): Record<st
 }
 
 const expectOutDirRejected = async (out: string): Promise<void> => {
-    await expect(run({ cwd: "/custom/dir", out, overwrite: true })).rejects.toThrow(
+    await expect(run({ cwd: "/custom/dir", out })).rejects.toThrow(
         "--out must name a directory below the project root /custom/dir",
     );
 };
@@ -159,7 +157,7 @@ describe("docs command", () => {
         expect(collectLogged(state.stderrSpy)).toContain("wrote 3 element pages across 2 namespaces");
     });
 
-    it("passes out, base-path, force, and overwrite through", async () => {
+    it("passes out, base-path, and force through", async () => {
         loadConfigMock.mockResolvedValueOnce({
             config: { applicationId: "com.example.App" },
             configFile: "/project/gtkx.config.ts",
@@ -170,14 +168,12 @@ describe("docs command", () => {
             out: "site/elements",
             "base-path": "/elements",
             force: true,
-            overwrite: true,
         });
 
         expect(writeDocsMock).toHaveBeenCalledWith(docsCall({
             outDir: stringContaining("custom/dir/site/elements"),
             basePath: "/elements",
             isForced: true,
-            isOverwrite: true,
         }));
     });
 
