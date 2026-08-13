@@ -1,11 +1,8 @@
 import type { ListItem } from "../types.js";
 import type { CollectionIndex, Level } from "./collection-index.js";
 import type { SlotMap } from "./slots.js";
-import { EMPTY_LEVEL } from "./collection-index.js";
 
 type VisibleRow = {
-    level: Level;
-    slot: number;
     item: ListItem;
     position: number;
     isOpen: boolean;
@@ -57,9 +54,6 @@ type OpenWalk = {
 
 const NO_ITEM: ListItem = { id: "", value: undefined };
 
-const cycleError = (item: ListItem): Error =>
-    new Error(`Cannot expand "${item.id}" because its children lead back to itself`);
-
 function advanceStack<F extends LevelFrame>(
     stack: F[],
     onSlot: (frame: F, slot: number) => void,
@@ -107,8 +101,6 @@ function visitSlot(state: WalkState, frame: WalkFrame, slot: number): void {
     }
 
     const { row } = state;
-    row.level = frame.level;
-    row.slot = slot;
     row.item = item;
     row.isOpen = frame.open?.has(slot) ?? false;
     row.isMarked = frame.marked?.has(slot) ?? false;
@@ -122,7 +114,7 @@ function visitSlot(state: WalkState, frame: WalkFrame, slot: number): void {
 
 function walkVisible(options: WalkOptions): VisibleOrder {
     const order: VisibleOrder = { expandedPaths: [], expandedIds: [] };
-    const row: VisibleRow = { level: EMPTY_LEVEL, slot: 0, item: NO_ITEM, position: 0, isOpen: false, isMarked: false };
+    const row: VisibleRow = { item: NO_ITEM, position: 0, isOpen: false, isMarked: false };
     const frames = options.index.groups.map((level) => frameFor(options, level));
     const state: WalkState = { options, stack: frames.toReversed(), row, order };
 
@@ -140,12 +132,8 @@ function walkVisible(options: WalkOptions): VisibleOrder {
 function openSlot(walk: OpenWalk, frame: OpenFrame, slot: number): void {
     const item = frame.level.items[slot];
 
-    if (item === undefined || !walk.ids.has(item.id)) {
+    if (item === undefined || !walk.ids.has(item.id) || walk.ancestors.has(item)) {
         return;
-    }
-
-    if (walk.ancestors.has(item)) {
-        throw cycleError(item);
     }
 
     const child = walk.index.childLevel(frame.level, slot);

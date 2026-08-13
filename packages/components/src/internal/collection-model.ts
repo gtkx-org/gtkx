@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { registerClass } from "@gtkx/runtime";
 import type { CollectionIndex, Level } from "./collection-index.js";
 import type { TreeExpansion } from "./tree-expansion.js";
-import { createCollectionIndex, EMPTY_LEVEL } from "./collection-index.js";
+import { createCollectionIndex, emptyLevel } from "./collection-index.js";
 import { encodePart } from "./keys.js";
 import { adoptIndex, createTreeExpansion, pruneSlots } from "./tree-expansion.js";
 
@@ -266,11 +266,11 @@ function syncLevel(context: SyncContext, store: LevelStore, level: Level): void 
 function ensureChildStore(index: CollectionIndex, store: LevelStore, slot: number): LevelStore | null {
     const existing = store.childStores[slot] ?? null;
 
-    if (existing !== null) {
+    if (existing !== null || !(store.level.expandableFlags[slot] ?? false)) {
         return existing;
     }
 
-    const level = index.levelFor(slotPathAt(store, slot));
+    const level = index.childLevel(store.level, slot);
 
     if (level === undefined) {
         return null;
@@ -423,7 +423,7 @@ function createCollectionModel(): CollectionModel {
 
 class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
     declare itemsChanged: Gio.ListModel["itemsChanged"];
-    level: Level = EMPTY_LEVEL;
+    level: Level = emptyLevel();
     refs: SlotRef[] = [];
     objects: (Gtk.StringObject | null)[] = [];
     childStores: (LevelStore | null)[] = [];

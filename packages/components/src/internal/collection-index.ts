@@ -25,8 +25,7 @@ type IndexState = {
 
 type ParentItem = ListItem & { children: ListItem[] };
 
-const EMPTY_LEVEL: Level = { path: "", items: [], expandableFlags: [] };
-
+const emptyLevel = (): Level => ({ path: "", items: [], expandableFlags: [] });
 const hasChildren = (item: ListItem): item is ParentItem => item.children !== undefined && item.children.length > 0;
 
 function newLevel(state: IndexState, path: string, items: ListItem[]): Level {
@@ -37,16 +36,28 @@ function newLevel(state: IndexState, path: string, items: ListItem[]): Level {
     return level;
 }
 
-function childLevel(state: IndexState, parent: Level, slot: number): Level | undefined {
-    const item = parent.items[slot];
+function slotItems(state: IndexState, parent: Level, slot: number): ListItem[] | undefined {
+    const owner = state.levels.get(parent.path) === parent ? parent : levelFor(state, parent.path);
+    const item = owner?.items[slot];
 
-    if (item === undefined || !state.isTree || !hasChildren(item)) {
+    return item !== undefined && hasChildren(item) ? item.children : undefined;
+}
+
+function childLevel(state: IndexState, parent: Level, slot: number): Level | undefined {
+    if (!state.isTree) {
         return undefined;
     }
 
     const path = parent.path + encodePart(String(slot));
+    const cached = state.levels.get(path);
 
-    return state.levels.get(path) ?? newLevel(state, path, item.children);
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const items = slotItems(state, parent, slot);
+
+    return items === undefined ? undefined : newLevel(state, path, items);
 }
 
 function descendPath(state: IndexState, levelPath: string, group: string): Level | undefined {
@@ -130,4 +141,4 @@ function createCollectionIndex(
     };
 }
 
-export { createCollectionIndex, EMPTY_LEVEL, type CollectionIndex, type Level };
+export { createCollectionIndex, emptyLevel, type CollectionIndex, type Level };

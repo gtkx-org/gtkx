@@ -14,6 +14,11 @@ import { expandablePaths } from "./helpers/expandable-paths.js";
 
 type Splice = [number, number, number];
 
+type LevelLookups = {
+    childLevel: number;
+    pathLookups: number;
+};
+
 const NARROW_SOURCE_COUNT = 2500;
 const NARROW_TARGET_COUNT = 1250;
 const SCALE_BASE_COUNT = 625;
@@ -59,6 +64,20 @@ const leaves = (count: number): ListItem[] => Array.from({ length: count }, (_, 
 const flipRunSource = (): ListItem[] => [stub("a"), leaf("b"), leaf("c"), leaf("d")];
 const adjacentFlips = (): ListItem[] => [stub("a"), stub("b"), stub("c"), leaf("d")];
 const splitFlips = (): ListItem[] => [stub("a"), stub("b"), leaf("c"), stub("d")];
+
+const countingIndex = (index: CollectionIndex, lookups: LevelLookups): CollectionIndex => ({
+    ...index,
+    childLevel: (level, slot) => {
+        lookups.childLevel += 1;
+
+        return index.childLevel(level, slot);
+    },
+    levelFor: (levelPath) => {
+        lookups.pathLookups += 1;
+
+        return index.levelFor(levelPath);
+    },
+});
 
 const syncedModel = (index: CollectionIndex): CollectionModel => {
     const collectionModel = createCollectionModel();
@@ -295,5 +314,25 @@ describe("createCollectionModel - level stores", () => {
         collectionModel.sync(treeIndex(leafTailTree()));
         expect(collectionModel.model.getNItems()).toBe(3);
         expect(isRowExpandedAt(collectionModel, 0)).toBe(true);
+    });
+});
+
+describe("createCollectionModel - level lookups", () => {
+    it("materializes a leaf row without resolving a level", () => {
+        const lookups: LevelLookups = { childLevel: 0, pathLookups: 0 };
+        const index = countingIndex(treeIndex(leafTailTree()), lookups);
+        const collectionModel = syncedModel(index);
+        expect(isRowExpandableAt(collectionModel, 1)).toBe(false);
+        expect(lookups).toEqual({ childLevel: 0, pathLookups: 0 });
+    });
+
+    it("opens a nested branch without descending from the group root", () => {
+        const lookups: LevelLookups = { childLevel: 0, pathLookups: 0 };
+        const index = countingIndex(treeIndex([nested("a")]), lookups);
+        const collectionModel = syncedModel(index);
+        expandRowAt(collectionModel, 0);
+        expandRowAt(collectionModel, 1);
+        expect(getRowDepthAt(collectionModel, 2)).toBe(2);
+        expect(lookups.pathLookups).toBe(0);
     });
 });

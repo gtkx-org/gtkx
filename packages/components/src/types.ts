@@ -119,8 +119,8 @@ type ExpansionProps = {
     /**
      * Ids of the items to keep expanded; omitting it keeps every row collapsed, and `onExpandedChange` is how a
      * user's expansion is adopted into it. An id repeated in several branches names every matching row, so all of
-     * them expand together. Expanding an item whose children lead back to itself raises an error naming that id,
-     * since such an item has no finite expansion.
+     * them expand together. An item whose children lead back to itself expands one level at a time, since a row
+     * repeating an item already expanded above it stays collapsed.
      */
     expandedIds?: string[] | null | undefined;
     /** Called with one id per expanded row, in visible order, whenever expansion changes. */
