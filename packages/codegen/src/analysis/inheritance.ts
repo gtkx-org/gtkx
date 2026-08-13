@@ -9,7 +9,7 @@ import type { ModuleContext } from "../writer/context.js";
 import { ancestorChain, type ResolvedAncestor, resolveInterfaces } from "../gir/ancestry.js";
 import { isEmittableEntity } from "../gir/emittable.js";
 import { memberName, methodExportName } from "../store/gi/method.js";
-import { resolveAccessorType } from "../store/gi/property-accessor.js";
+import { type AccessorTypes, resolveAccessorTypes } from "../store/gi/property-accessor.js";
 import { vfuncMemberNames } from "../store/gi/vtable.js";
 import { comparisonContextFor } from "../writer/comparison-context.js";
 import { inputParameters } from "./param-structure.js";
@@ -258,8 +258,8 @@ const collectInterfaceMergeOmissions = (
     ...vfuncMergeOmissions(context, klass, iface),
 ];
 
-const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass): Map<string, string> => {
-    const types: Map<string, string> = new Map();
+const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass): Map<string, AccessorTypes> => {
+    const types: Map<string, AccessorTypes> = new Map();
 
     const record = (owner: GirClass, property: GirProperty): void => {
         const jsName = toCamelIdentifier(property.name);
@@ -268,10 +268,10 @@ const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass):
             return;
         }
 
-        const tsType = resolveAccessorType(context, property, owner.methods);
+        const accessorTypes = resolveAccessorTypes(context, property, owner.methods);
 
-        if (tsType !== undefined) {
-            types.set(jsName, tsType);
+        if (accessorTypes !== undefined) {
+            types.set(jsName, accessorTypes);
         }
     };
 

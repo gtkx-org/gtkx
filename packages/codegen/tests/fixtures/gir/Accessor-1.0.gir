@@ -1,0 +1,114 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="Accessor"
+             version="1.0"
+             shared-library="libaccessor.so.1"
+             c:identifier-prefixes="Accessor"
+             c:symbol-prefixes="accessor">
+    <class name="Panel"
+           c:symbol-prefix="panel"
+           c:type="AccessorPanel"
+           parent="GObject.Object"
+           glib:type-name="AccessorPanel"
+           glib:get-type="accessor_panel_get_type">
+      <property name="caption"
+                writable="1"
+                transfer-ownership="none"
+                getter="get_caption"
+                setter="set_caption">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="title"
+                writable="1"
+                transfer-ownership="none"
+                getter="get_title"
+                setter="set_title">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="tags"
+                writable="1"
+                transfer-ownership="none"
+                getter="get_tags"
+                setter="set_tags">
+        <array>
+          <type name="utf8"/>
+        </array>
+      </property>
+      <method name="get_caption" c:identifier="accessor_panel_get_caption">
+        <return-value transfer-ownership="none" nullable="1">
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="panel" transfer-ownership="none">
+            <type name="Panel" c:type="AccessorPanel*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="set_caption" c:identifier="accessor_panel_set_caption">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="panel" transfer-ownership="none">
+            <type name="Panel" c:type="AccessorPanel*"/>
+          </instance-parameter>
+          <parameter name="caption" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_title" c:identifier="accessor_panel_get_title">
+        <return-value transfer-ownership="none">
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="panel" transfer-ownership="none">
+            <type name="Panel" c:type="AccessorPanel*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="set_title" c:identifier="accessor_panel_set_title">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="panel" transfer-ownership="none">
+            <type name="Panel" c:type="AccessorPanel*"/>
+          </instance-parameter>
+          <parameter name="title" transfer-ownership="none" nullable="1">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_tags" c:identifier="accessor_panel_get_tags">
+        <return-value transfer-ownership="none">
+          <array c:type="GStrv">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="panel" transfer-ownership="none">
+            <type name="Panel" c:type="AccessorPanel*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="set_tags" c:identifier="accessor_panel_set_tags">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="panel" transfer-ownership="none">
+            <type name="Panel" c:type="AccessorPanel*"/>
+          </instance-parameter>
+          <parameter name="tags" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar* const*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+  </namespace>
+</repository>

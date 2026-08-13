@@ -606,8 +606,9 @@ describe("codegen notify detail signals", () => {
 describe("codegen property maps", () => {
     it("maps each introduced property to its accessor type and chains the parent map", () => {
         const source = giSource("gtk");
+        const properties = declarationFrom(moduleSource("gtk"), "export interface ButtonProperties");
         expect(source).toContain("export interface ButtonProperties extends WidgetProperties {");
-        expect(source).toContain("label: string;");
+        expect(properties).toContain("label: string | null;");
         expect(source).toContain("__properties__: ButtonProperties;");
     });
 
@@ -630,6 +631,28 @@ describe("codegen property maps", () => {
         const body = properties.slice(0, properties.indexOf("}"));
         expect(body).toContain("active: boolean;");
         expect(body).not.toContain("group:");
+    });
+});
+
+describe("codegen property accessor types", () => {
+    it("reads a nullable getter as nullable rather than casting it to the setter's type", () => {
+        const button = declarationFrom(moduleSource("gtk"), "export class Button extends (Widget as StaticBase");
+        expect(button).toContain("getLabel(): string | null {");
+        expect(button).toContain("get label(): string | null {\n        return this.getLabel();\n    }");
+        expect(button).toContain("set label(value: string) {\n        this.setLabel(value);\n    }");
+    });
+
+    it("splits an interface member into a get and set pair when the two types differ", () => {
+        const chooser = declarationFrom(moduleSource("gtk"), "export interface FileChooser extends GObject.Object {");
+        expect(chooser).toContain("get filter(): FileFilter | null;\n    set filter(value: FileFilter);");
+    });
+
+    it("casts no delegate getter's result in any generated module", () => {
+        const offenders = giModules
+            .filter(({ source }) => /return this\.\w+\(\) as /.test(source))
+            .map(({ directory }) => directory);
+
+        expect(offenders, `modules casting a delegate getter: ${offenders.join(", ")}`).toEqual([]);
     });
 });
 
