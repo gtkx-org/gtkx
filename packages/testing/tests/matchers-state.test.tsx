@@ -11,6 +11,7 @@ import {
     renderNamedBox,
     renderSlider,
     renderStyledButton,
+    withStolenActivation,
 } from "./widget-fixtures.js";
 
 function InvalidField() {
@@ -103,9 +104,25 @@ describe("emptiness, validity and focus matchers", () => {
     it("toHaveFocus reflects the focused widget", async () => {
         const entry = await renderEntry("focused");
         entry.grabFocus();
+        expect(entry).toHaveFocus();
+    });
 
-        await waitFor(() => {
-            expect(entry).toHaveFocus();
+    it("toHaveFocus blames the inactive window when it still holds the focus on the widget", async () => {
+        const entry = await renderEntry("blamed");
+        entry.grabFocus();
+        expect(entry).toHaveFocus();
+
+        await withStolenActivation(async () => {
+            await waitFor(() => {
+                expect(entry).not.toHaveFocus();
+            });
+
+            expectRejection(
+                () => {
+                    expect(entry).toHaveFocus();
+                },
+                /its window has given it the focus, but that window is not active/,
+            );
         });
     });
 });

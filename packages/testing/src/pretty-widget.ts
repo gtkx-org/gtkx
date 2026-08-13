@@ -4,6 +4,7 @@ import { type Config, format, type NewPlugin, type PrettyFormatOptions } from "@
 import { formatRole } from "./role-helpers.js";
 import { type Container, descendants, isOnScreen, roots } from "./traversal.js";
 import { getWidgetText } from "./widget-accessible-properties.js";
+import { getTypeTag } from "./widget-getters.js";
 
 /** Produces the value of the `id` attribute printed first on a widget's opening tag. */
 type WidgetIdResolver = (widget: Gtk.Widget) => string;
@@ -181,7 +182,7 @@ const formatBody = (widget: Gtk.Widget, indentation: string, depth: number, ctx:
 
 const formatWidget = (widget: Gtk.Widget, indentation: string, depth: number, ctx: FormatContext): string => {
     const { config } = ctx;
-    const tag = widget.constructor.name;
+    const tag = getTypeTag(widget);
     const attrs = formatAttrs(buildAttrs(widget, ctx.getId), config.colors);
     const openTag = `${paint(config.colors.tag, "<" + tag)}${attrs}${paint(config.colors.tag, ">")}`;
     const closeTag = paint(config.colors.tag, `</${tag}>`);

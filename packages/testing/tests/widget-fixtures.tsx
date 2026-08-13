@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkAdjustment, GtkBox, GtkButton, GtkEntry, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
 import { expect } from "vitest";
-import { render, screen } from "../src/index.js";
+import { render, screen, waitFor } from "../src/index.js";
+
+const FOREIGN_WINDOW_WIDTH = 120;
+const FOREIGN_WINDOW_HEIGHT = 80;
 
 const VBox = ({ children }: { children: ReactNode }) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL}>{children}</GtkBox>
@@ -10,6 +13,38 @@ const VBox = ({ children }: { children: ReactNode }) => (
 
 const expectRejection = (assert: () => void, message: RegExp): void => {
     expect(assert).toThrow(message);
+};
+
+const foreignWindow = (): Gtk.Window =>
+    new Gtk.Window({ defaultWidth: FOREIGN_WINDOW_WIDTH, defaultHeight: FOREIGN_WINDOW_HEIGHT });
+
+const untilDestroyed = async (window: Gtk.Window, body: () => Promise<void>): Promise<void> => {
+    try {
+        await body();
+    } finally {
+        window.destroy();
+    }
+};
+
+const withStolenActivation = async (body: () => Promise<void>): Promise<void> => {
+    const stealer = foreignWindow();
+
+    await untilDestroyed(stealer, async () => {
+        stealer.present();
+
+        await waitFor(() => {
+            expect(stealer.isActive()).toBe(true);
+        });
+
+        await body();
+    });
+};
+
+const withHostWindow = async (body: (host: Gtk.Window, content: Gtk.Box) => Promise<void>): Promise<void> => {
+    const host = foreignWindow();
+    const content = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+    host.setChild(content);
+    await untilDestroyed(host, () => body(host, content));
 };
 
 const renderLabel = async (text: string, findAs = text): Promise<Gtk.Widget> => {
@@ -57,4 +92,6 @@ export {
     renderSlider,
     renderStyledButton,
     VBox,
+    withHostWindow,
+    withStolenActivation,
 };

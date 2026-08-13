@@ -9,6 +9,7 @@ import { getConfig } from "./config.js";
 import { now } from "./timers.js";
 import { descendants } from "./traversal.js";
 import { waitFor } from "./wait-for.js";
+import { activeToplevel, mappedToplevels } from "./window-state.js";
 
 type FrameProbe = {
     counter: bigint | null;
@@ -322,14 +323,8 @@ const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions): Prom
     return outcome.result;
 };
 
-const isWindow = (widget: Gtk.Widget): widget is Gtk.Window => widget instanceof Gtk.Window;
-const isOnScreen = (window: Gtk.Window): boolean => window.getMapped();
-const isActiveWindow = (window: Gtk.Window): boolean => window.isActive();
-
-const activeToplevel = (): Gtk.Window => {
-    const toplevels = Gtk.Window.listToplevels().filter((widget) => isWindow(widget));
-    const onScreen = toplevels.filter((window) => isOnScreen(window));
-    const target = onScreen.find((window) => isActiveWindow(window)) ?? onScreen[0];
+const screenTarget = (): Gtk.Window => {
+    const target = activeToplevel() ?? mappedToplevels()[0];
 
     if (!target) {
         throw new Error(NOTHING_ON_SCREEN_MESSAGE);
@@ -338,10 +333,7 @@ const activeToplevel = (): Gtk.Window => {
     return target;
 };
 
-const captureScreen = async (options?: ScreenshotOptions): Promise<ScreenshotResult> => {
-    const target = activeToplevel();
-
-    return screenshot(target, options);
-};
+const captureScreen = async (options?: ScreenshotOptions): Promise<ScreenshotResult> =>
+    screenshot(screenTarget(), options);
 
 export { captureScreen, screenshot };
