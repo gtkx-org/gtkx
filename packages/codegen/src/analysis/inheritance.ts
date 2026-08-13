@@ -1,14 +1,17 @@
-import { camelCase, lowerFirst, pascalCase, toCamelIdentifier } from "@gtkx/utils";
+import { lowerFirst, pascalCase, sanitizeTypeIdentifier, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
+import type { GirParameter } from "../gir/parameter.js";
 import type { GirProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";
 import { ancestorChain, type ResolvedAncestor, resolveInterfaces } from "../gir/ancestry.js";
-import { methodExportName } from "../store/gi/method.js";
-import { resolveAccessorType } from "../store/gi/property-accessor.js";
+import { isEmittableEntity } from "../gir/emittable.js";
+import { memberName, methodExportName } from "../store/gi/method.js";
+import { type InheritedAccessorTypes, resolveAccessorTypes } from "../store/gi/property-accessor.js";
 import { vfuncMemberNames } from "../store/gi/vtable.js";
+import { comparisonContextFor } from "../writer/comparison-context.js";
 import { inputParameters } from "./param-structure.js";
 import { renderTsType } from "./ts-type.js";
 
@@ -18,6 +21,8 @@ type AncestryContext = {
 };
 
 type OwnedProperty = { owner: GirClass; property: GirProperty };
+type DeclaredAccessorType = { type: string; owner: string };
+type DeclaredAccessorTypes = { read: DeclaredAccessorType | undefined; write: DeclaredAccessorType | undefined };
 type MethodSignature = { returnType: string; arity: number };
 
 type InheritedMethod = {
@@ -28,6 +33,11 @@ type InheritedMethod = {
 type InheritedMethods = {
     returnTypes: Map<string, string>;
     definitions: Map<string, InheritedMethod>;
+};
+
+type ParameterPair = {
+    own: GirParameter;
+    inherited: GirParameter;
 };
 
 type InheritedMatch = {
@@ -63,7 +73,11 @@ const resolvePrerequisiteReference = (context: ModuleContext, name: string): str
         return undefined;
     }
 
-    return context.qualify(resolved.namespace.name, pascalCase(resolved.value.name));
+    if (!isEmittableEntity(resolved.value)) {
+        return undefined;
+    }
+
+    return context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(resolved.value.name));
 };
 
 const forEachAncestor = (
@@ -99,7 +113,7 @@ const visitInterfaceProperties = (
     }
 };
 
-const forEachInheritedProperty = (
+const forEachAncestorProperty = (
     context: ModuleContext,
     klass: GirClass,
     visit: (owner: GirClass, property: GirProperty) => void,
@@ -113,6 +127,15 @@ const forEachInheritedProperty = (
     });
 };
 
+const forEachInheritedProperty = (
+    context: ModuleContext,
+    klass: GirClass,
+    visit: (owner: GirClass, property: GirProperty) => void,
+): void => {
+    visitInterfaceProperties(resolveDirectInterfaces(context, klass, context.namespace.name), visit);
+    forEachAncestorProperty(context, klass, visit);
+};
+
 const collectSeenPropertyNames = (context: ModuleContext, klass: GirClass): Set<string> => {
     const seen: Set<string> = new Set();
 
@@ -120,7 +143,7 @@ const collectSeenPropertyNames = (context: ModuleContext, klass: GirClass): Set<
         seen.add(toCamelIdentifier(property.name));
     }
 
-    forEachInheritedProperty(context, klass, (_owner, property) => seen.add(toCamelIdentifier(property.name)));
+    forEachAncestorProperty(context, klass, (_owner, property) => seen.add(toCamelIdentifier(property.name)));
 
     return seen;
 };
@@ -159,7 +182,7 @@ const recordAncestorSignatures = (
     signatures: Map<string, MethodSignature>,
 ): void => {
     for (const method of klass.methods) {
-        const name = camelCase(method.name);
+        const name = memberName(method.name);
 
         if (!method.introspectable || signatures.has(name)) {
             continue;
@@ -182,6 +205,9 @@ const ancestorClassMethodSignatures = (context: ModuleContext, klass: GirClass):
     return signatures;
 };
 
+const ancestorClassMethodNames = (context: ModuleContext, klass: GirClass): Set<string> =>
+    new Set(ancestorClassMethodSignatures(context, klass).keys());
+
 const mergeOmissionName = (
     context: ModuleContext,
     method: GirFunction,
@@ -191,7 +217,7 @@ const mergeOmissionName = (
         return undefined;
     }
 
-    const name = camelCase(method.name);
+    const name = memberName(method.name);
     const ancestor = ancestors.get(name);
 
     if (ancestor === undefined) {
@@ -243,24 +269,66 @@ const collectInterfaceMergeOmissions = (
     ...vfuncMergeOmissions(context, klass, iface),
 ];
 
-const collectInheritedPropertyTypes = (context: ModuleContext, klass: GirClass): Map<string, string> => {
-    const types: Map<string, string> = new Map();
+const declaredBy = (type: string | undefined, owner: string): DeclaredAccessorType | undefined =>
+    type === undefined ? undefined : { type, owner };
 
-    const record = (owner: GirClass, property: GirProperty): void => {
-        const jsName = toCamelIdentifier(property.name);
+const reconcileAccessorType = (
+    jsName: string,
+    direction: string,
+    declared: DeclaredAccessorType | undefined,
+    candidate: DeclaredAccessorType | undefined,
+): DeclaredAccessorType | undefined => {
+    if (candidate === undefined) {
+        return declared;
+    }
 
-        if (types.has(jsName)) {
-            return;
-        }
+    if (declared === undefined || declared.type === candidate.type) {
+        return declared ?? candidate;
+    }
 
-        const tsType = resolveAccessorType(context, property, owner.methods);
+    throw new Error(
+        `Cannot type the ${direction} accessor of ${jsName}: ${declared.owner} declares it as ${declared.type} ` +
+        `and ${candidate.owner} declares it as ${candidate.type}. Both are bases of the same class, so no single ` +
+        "member satisfies them; correct the GIR the disagreeing base comes from.",
+    );
+};
 
-        if (tsType !== undefined) {
-            types.set(jsName, tsType);
-        }
-    };
+const recordInheritedPropertyType = (
+    context: ModuleContext,
+    types: Map<string, DeclaredAccessorTypes>,
+    owner: GirClass,
+    property: GirProperty,
+): void => {
+    const accessorTypes = resolveAccessorTypes(context, property, owner.methods);
 
-    forEachInheritedProperty(context, klass, record);
+    if (accessorTypes === undefined) {
+        return;
+    }
+
+    const jsName = toCamelIdentifier(property.name);
+    const declared = types.get(jsName);
+
+    types.set(jsName, {
+        read: reconcileAccessorType(jsName, "read", declared?.read, declaredBy(accessorTypes.readType, owner.name)),
+        write: reconcileAccessorType(jsName, "write", declared?.write, declaredBy(accessorTypes.writeType, owner.name)),
+    });
+};
+
+const collectInheritedPropertyTypes = (
+    context: ModuleContext,
+    klass: GirClass,
+): Map<string, InheritedAccessorTypes> => {
+    const declared: Map<string, DeclaredAccessorTypes> = new Map();
+
+    forEachInheritedProperty(context, klass, (owner, property) => {
+        recordInheritedPropertyType(context, declared, owner, property);
+    });
+
+    const types: Map<string, InheritedAccessorTypes> = new Map();
+
+    for (const [jsName, entry] of declared) {
+        types.set(jsName, { readType: entry.read?.type, writeType: entry.write?.type });
+    }
 
     return types;
 };
@@ -298,7 +366,7 @@ const absorbInheritedMethods = (
             continue;
         }
 
-        const name = camelCase(method.name);
+        const name = memberName(method.name);
 
         if (returnTypes.has(name)) {
             continue;
@@ -332,9 +400,47 @@ const hasMethodConflict = (options: {
     return (
         inheritedReturn !== ownReturn ||
         hasParameterEnumConflict(context, callable, inheritedMethod) ||
-        inputParameters(context.library, callable).length !==
-        inputParameters(context.library, inheritedMethod.method).length
+        hasParameterTypeConflict(context, callable, inheritedMethod.method)
     );
+};
+
+const isCallbackType = (context: ModuleContext, ref: TypeId | undefined): boolean =>
+    ref !== undefined && context.library.typeFor(ref)?.kind === "callback";
+
+const areParametersComparable = (context: ModuleContext, pair: ParameterPair): boolean => {
+    if (isCallbackType(context, pair.own.type) && isCallbackType(context, pair.inherited.type)) {
+        return true;
+    }
+
+    const scratch = comparisonContextFor(context);
+
+    return renderTsType(scratch, pair.own.type, false) === renderTsType(scratch, pair.inherited.type, false);
+};
+
+const inputParameterPairs = (context: ModuleContext, own: GirFunction, inherited: GirFunction): ParameterPair[] => {
+    const ownParams = inputParameters(context.library, own);
+    const inheritedParams = inputParameters(context.library, inherited);
+    const pairs: ParameterPair[] = [];
+
+    for (const [index, entry] of ownParams.entries()) {
+        const other = inheritedParams[index];
+
+        if (other !== undefined) {
+            pairs.push({ own: entry.parameter, inherited: other.parameter });
+        }
+    }
+
+    return pairs;
+};
+
+const hasParameterTypeConflict = (context: ModuleContext, own: GirFunction, inherited: GirFunction): boolean => {
+    const ownCount = inputParameters(context.library, own).length;
+
+    if (ownCount !== inputParameters(context.library, inherited).length) {
+        return true;
+    }
+
+    return inputParameterPairs(context, own, inherited).some((pair) => !areParametersComparable(context, pair));
 };
 
 const conflictRename = (
@@ -383,26 +489,9 @@ const hasEnumConflict = (
     return ownEnum !== undefined && inheritedEnum !== undefined && ownEnum !== inheritedEnum;
 };
 
-const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean => {
-    const ownParams = inputParameters(context.library, own);
-    const inheritedParams = inputParameters(context.library, inherited.method);
-    const count = Math.min(ownParams.length, inheritedParams.length);
-
-    for (let index = 0; index < count; index += 1) {
-        const ownParam = ownParams[index];
-        const inheritedParam = inheritedParams[index];
-
-        if (
-            ownParam !== undefined &&
-            inheritedParam !== undefined &&
-            hasEnumConflict(context, ownParam.parameter.type, inheritedParam.parameter.type)
-        ) {
-            return true;
-        }
-    }
-
-    return false;
-};
+const hasParameterEnumConflict = (context: ModuleContext, own: GirFunction, inherited: InheritedMethod): boolean =>
+    inputParameterPairs(context, own, inherited.method).some(
+        (pair) => hasEnumConflict(context, pair.own.type, pair.inherited.type));
 
 const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string | undefined => {
     if (ref === undefined) {
@@ -419,6 +508,7 @@ const enumIdentity = (context: ModuleContext, ref: TypeId | undefined): string |
 };
 
 export {
+    ancestorClassMethodNames,
     resolvePrerequisiteReference,
     forEachAncestor,
     collectInterfaceProperties,

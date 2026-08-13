@@ -1,8 +1,9 @@
-import { readFileSync } from "node:fs";
-import { createXmlParser } from "../xml.js";
+import { createXmlParser, parseXmlFile } from "../xml.js";
 
 /** An element of the parsed GIR XML: attributes under `@_`-prefixed keys, children under their tag names. */
 type RawNode = Record<string, unknown>;
+
+const GIR_LABEL = "GIR file";
 
 const MULTI_TAGS: Set<string> = new Set([
     "include",
@@ -42,11 +43,8 @@ function renameReservedTag(tag: string): string {
     return RESERVED_TAG_RENAMES.get(tag) ?? tag;
 }
 
-const parseGirFile = (path: string): RawNode => {
-    const xml = readFileSync(path, "utf8");
-
-    return PARSER.parse(xml) as RawNode;
-};
+const parseGirFile = (path: string): RawNode =>
+    parseXmlFile({ parser: PARSER, label: GIR_LABEL, path }) as RawNode;
 
 const attr = (node: RawNode | undefined, name: string): string | undefined => {
     if (node === undefined) {

@@ -484,7 +484,6 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
 };
 
 export {
-    DEFAULT_HEADLESS_SIZE,
     STATIC_HEADLESS_ENV,
     resolveHeadlessOptions,
     readHeadlessOptions,

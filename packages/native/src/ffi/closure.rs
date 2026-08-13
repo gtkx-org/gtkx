@@ -3,16 +3,17 @@ use std::collections::HashMap;
 use std::ffi::{CString, c_char, c_void};
 
 use ::libffi::{low as libffi_low, middle as libffi};
-use napi::Env;
 use napi::bindgen_prelude::{
     Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object, Unknown,
 };
+use napi::{Env, ValueType};
 
 use crate::ffi::Stash;
 use crate::ffi::codec::{
     Codec, Decoder as _, Encoder as _, Ownership, PtrWriter as _, ReadCtx, SlotInit,
     str_to_glib_full,
 };
+use crate::handle::{BorrowScope, Handle};
 use crate::host::error_reporter::{self, ReportErr};
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
@@ -30,6 +31,19 @@ fn wrap_ref<'e>(env: &'e Env, value: Unknown<'e>) -> anyhow::Result<Unknown<'e>>
     let mut ref_obj: Object<'e> = Object::new(env)?;
     ref_obj.set_named_property("value", value)?;
     Ok(ref_obj.to_unknown())
+}
+
+/// The memory a C caller lends for the length of one invocation, as the handles the arguments were
+/// built over. Dropping it ends every one of those borrows, on the way out of a panic as much as on
+/// the way out of a normal return, so nothing reaches that memory once the invocation is over.
+struct LentMemory(Vec<Handle>);
+
+impl Drop for LentMemory {
+    fn drop(&mut self) {
+        for handle in &self.0 {
+            handle.invalidate();
+        }
+    }
 }
 
 enum CallbackError {
@@ -56,9 +70,9 @@ pub struct ClosureData {
     pub arg_codecs: Vec<Codec>,
     pub return_codec: Codec,
     pub user_data_index: Option<usize>,
-    pub is_oneshot: bool,
+    is_oneshot: bool,
     pub state_ptr: Cell<*mut ClosureState>,
-    pub oneshot_fired: Cell<bool>,
+    oneshot_fired: Cell<bool>,
     in_flight: Cell<u32>,
     pending_destroy: Cell<bool>,
     retained_strings: RefCell<HashMap<CString, *mut c_char>>,
@@ -118,6 +132,7 @@ pub struct ClosureState {
     closure: std::mem::ManuallyDrop<libffi::Closure<'static>>,
     pub code_ptr: *mut c_void,
     data: *mut ClosureData,
+    holds: Cell<u32>,
 }
 
 impl std::fmt::Debug for ClosureState {
@@ -160,6 +175,22 @@ impl ClosureState {
             closure: std::mem::ManuallyDrop::new(closure),
             code_ptr,
             data,
+            holds: Cell::new(1),
+        }
+    }
+
+    pub(crate) fn hold(&self) {
+        self.holds.set(self.holds.get() + 1);
+    }
+
+    pub(crate) unsafe fn release(state: *mut Self) {
+        if state.is_null() {
+            return;
+        }
+        let holds = unsafe { (*state).holds.get() }.saturating_sub(1);
+        unsafe { (*state).holds.set(holds) };
+        if holds == 0 {
+            drop(unsafe { Box::from_raw(state) });
         }
     }
 
@@ -180,13 +211,14 @@ impl ClosureState {
     /// # Safety
     ///
     /// `user_data` must be a pointer obtained from `Box::into_raw` on a `Box<ClosureState>` (which
-    /// is what `ClosureState::boxed` produces) and must still be live. This takes ownership of that
-    /// box and frees it, along with the `ClosureData` and the libffi closure it owns, so the caller
-    /// must not use `user_data`, the closure's code pointer, or any trampoline installed from it
-    /// afterwards, and must invoke this at most once per pointer. Invoking it from inside the
-    /// callback itself is allowed: the release is then deferred until the invocation returns. When
-    /// called off the thread the Node environment was installed on, the drop is deferred onto that
-    /// thread, so the pointer must stay valid until it runs.
+    /// is what `ClosureState::boxed` produces) and must still be live. This drops the hold the
+    /// callee was given, freeing the box along with the `ClosureData` and the libffi closure it
+    /// owns once no other hold is left, so the caller must not use `user_data`, the closure's code
+    /// pointer, or any trampoline installed from it afterwards, and must invoke this at most once
+    /// per pointer. Invoking it from inside the callback itself is allowed: the release is then
+    /// deferred until the invocation returns. When called off the thread the Node environment was
+    /// installed on, the release is deferred onto that thread, so the pointer must stay valid until
+    /// it runs.
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
         guard_ffi_boundary("callback destroy notify", || {
             let state_ptr = user_data.cast::<Self>();
@@ -195,13 +227,13 @@ impl ClosureState {
             }
 
             if node_env::is_installed_on_current_thread() {
-                drop(unsafe { Box::from_raw(state_ptr) });
+                unsafe { Self::release(state_ptr) };
                 return;
             }
 
             let state_address = user_data as usize;
             node_env::invoke_on_install_thread("callback destroy notify", move || {
-                drop(unsafe { Box::from_raw(state_address as *mut Self) });
+                unsafe { Self::release(state_address as *mut Self) };
             });
         });
     }
@@ -324,9 +356,9 @@ impl ClosureData {
         arg_ptr: *const c_void,
     ) -> anyhow::Result<RefSlot<'e>> {
         let inner_ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
-        let is_seeded = ref_codec.inout;
+        let is_seeded = ref_codec.is_inout();
         let seed = if is_seeded {
-            seed_ref(env, inner_ptr, &ref_codec.inner_codec)?
+            seed_ref(env, inner_ptr, ref_codec.inner_codec())?
         } else {
             value::js_null(env)?
         };
@@ -334,8 +366,8 @@ impl ClosureData {
         Ok(RefSlot {
             obj: wrap_ref(env, seed)?,
             inner_ptr,
-            inner_codec: &ref_codec.inner_codec,
-            init: if ref_codec.inout {
+            inner_codec: ref_codec.inner_codec(),
+            init: if ref_codec.is_inout() {
                 SlotInit::Initialized
             } else {
                 SlotInit::Uninitialized
@@ -401,9 +433,12 @@ impl ClosureData {
 
         let state_ptr = self.take_oneshot_state();
 
+        let scope = BorrowScope::open();
+        let read = unsafe { self.read_args(&env, args) };
+        let _lent = LentMemory(scope.close());
+
         let outcome: Result<(), CallbackError> = (|| {
-            let ClosureArgs { js_args, ref_slots } =
-                unsafe { self.read_args(&env, args) }.map_err(CallbackError::Infrastructure)?;
+            let ClosureArgs { js_args, ref_slots } = read.map_err(CallbackError::Infrastructure)?;
             let return_value = call_js_function(&env, &self.js_fn, &js_args)?;
             self.flush_refs(&env, &ref_slots);
             let ret = if capture_result {
@@ -551,7 +586,7 @@ impl ClosureData {
 
 fn string_from_unknown(value: Unknown<'_>) -> Option<String> {
     match value.get_type().ok()? {
-        napi::ValueType::String => value::read_napi::<String>(value).ok(),
+        ValueType::String => value::read_napi::<String>(value).ok(),
         _ => None,
     }
 }
@@ -602,7 +637,7 @@ unsafe extern "C" fn closure_entry(
     if let Some(ptr) = state_ptr {
         glib::idle_add_local_once(move || {
             guard_ffi_boundary("callback one-shot cleanup", || {
-                drop(unsafe { Box::from_raw(ptr) });
+                unsafe { ClosureState::release(ptr) };
             });
         });
     }

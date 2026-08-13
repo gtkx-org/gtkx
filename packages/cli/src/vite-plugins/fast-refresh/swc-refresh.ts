@@ -89,4 +89,4 @@ function gtkxRefreshRuntime(): Plugin {
 
 const gtkxFastRefresh = (): Plugin[] => [gtkxSwcRefresh(), gtkxRefreshRuntime()];
 
-export { gtkxSwcRefresh, gtkxRefreshRuntime, gtkxFastRefresh };
+export { gtkxFastRefresh };

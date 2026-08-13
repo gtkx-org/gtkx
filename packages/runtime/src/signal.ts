@@ -43,6 +43,11 @@ type SignalConnectSpec = {
     isAfter: boolean;
 };
 
+type EmitValues = {
+    values: ExternalObject<Handle>[];
+    reads: (() => unknown)[];
+};
+
 /** One argument of a signal emission: how to marshal it, plus the value to marshal. */
 type EmitArg = Arg & {
     /**
@@ -194,7 +199,7 @@ function connectBind(type: bigint, signal: string, callback: CallbackDescriptor)
  */
 function connectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
     const { callback, handler, isAfter } = spec;
-    const wrapped = wrapCallback(handler, callback, "emitter");
+    const wrapped = wrapCallback(handler, callback, "signal");
     const type: bigint = (instance as TypedClass).__type__;
     const connect = connectBind(type, signal, callback);
     const handlerId = connect(getHandle(instance), signal, wrapped, isAfter ? 1 : 0) as number;
@@ -221,6 +226,23 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
     return isInoutArg(arg) ? outValueForDescriptor(arg.type, arg.value) : outValueForDescriptor(arg.type);
 };
 
+const collectEmitValues = (instance: object, args: EmitArg[]): EmitValues => {
+    const collected: EmitValues = { values: [toValue(objectT("full"), instance)], reads: [] };
+
+    for (const arg of args) {
+        const { value, read } = createEmitValue(arg);
+        collected.values.push(value);
+
+        if (read) {
+            collected.reads.push(read);
+        }
+    }
+
+    return collected;
+};
+
+const readEmitOutputs = (reads: (() => unknown)[]): unknown[] => reads.map((read) => read());
+
 /**
  * Emits a signal on an instance with the given arguments and returns its result
  * combined with any output-argument values.
@@ -232,36 +254,18 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
 function emitSignal(instance: object, signal: string, args: EmitArg[], returnDescriptor?: Descriptor): unknown {
     const signalId = getSignalId(instance, signal);
     const detail = getSignalDetailQuark(signal);
-    const values: ExternalObject<Handle>[] = [toValue(objectT("full"), instance)];
-    const reads: (() => unknown)[] = [];
+    const { values, reads } = collectEmitValues(instance, args);
 
-    for (const arg of args) {
-        const { value, read } = createEmitValue(arg);
-        values.push(value);
+    if (returnDescriptor === undefined) {
+        gSignalEmitv(values, signalId, detail, undefined);
 
-        if (read) {
-            reads.push(read);
-        }
+        return packTupleResult(readEmitOutputs(reads), undefined, false);
     }
 
-    if (returnDescriptor !== undefined) {
-        const returnValue = newValueForDescriptor(returnDescriptor);
-        gSignalEmitv(values, signalId, detail, returnValue);
+    const returnValue = newValueForDescriptor(returnDescriptor);
+    gSignalEmitv(values, signalId, detail, returnValue);
 
-        return packTupleResult(
-            reads.map((read) => read()),
-            fromValue(returnValue),
-            true,
-        );
-    }
-
-    gSignalEmitv(values, signalId, detail, undefined);
-
-    return packTupleResult(
-        reads.map((read) => read()),
-        undefined,
-        false,
-    );
+    return packTupleResult(readEmitOutputs(reads), fromValue(returnValue), true);
 }
 
 export {

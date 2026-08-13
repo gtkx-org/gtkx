@@ -1,7 +1,8 @@
-import { pascalCase, sourceStringLiteral } from "@gtkx/utils";
-import type { GirCallback } from "../../gir/callback.js";
+import { pascalCase, sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass, GirVirtualMethod } from "../../gir/class.js";
 import type { GirField } from "../../gir/field.js";
+import type { GirFunction } from "../../gir/function.js";
+import type { Library } from "../../gir/library.js";
 import type { GirParameter } from "../../gir/parameter.js";
 import type { GirRecord } from "../../gir/record.js";
 import type { TypeId } from "../../gir/type-id.js";
@@ -22,7 +23,9 @@ import {
     renderHandlerResultType,
 } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
+import { typeKey } from "../../analysis/type-key.js";
 import { ancestorChain, type ResolvedAncestor, resolveInterfaces } from "../../gir/ancestry.js";
+import { callbackAsFunction, type GirCallback } from "../../gir/callback.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock, renderBraced } from "../../writer/emit.js";
 import { handlerSpec, THROWS_TEXT } from "./doc-spec.js";
@@ -80,6 +83,7 @@ const UNCALLABLE_SLOT_KEYS: Set<string> = new Set([
     "vfuncSetProperty",
 ]);
 
+const VTABLE_CACHE: WeakMap<GirClass, Vtable> = new WeakMap();
 const PROTECTED_SLOT_NOTE = "It is `protected`, so only a subclass chaining up reaches it.";
 const PUBLIC_SLOT_NOTE = "Calling it from anywhere else re-enters the slot on a live instance.";
 
@@ -193,7 +197,7 @@ const attachVirtualMethods = (slots: VtableSlot[], klass: GirClass): VtableSlot[
     return slots.map((slot) => ({ ...slot, vfunc: byKey.get(slot.key) }));
 };
 
-const collectVtable = (context: ModuleContext, namespaceName: string, klass: GirClass): Vtable | undefined => {
+const buildVtable = (context: ModuleContext, namespaceName: string, klass: GirClass): Vtable | undefined => {
     const resolved = resolveVtableRecord(context, namespaceName, klass);
 
     if (resolved === undefined) {
@@ -210,8 +214,61 @@ const collectVtable = (context: ModuleContext, namespaceName: string, klass: Gir
         structName: pascalCase(resolved.typeStruct),
         kind: klass.isInterface ? "interface" : "class",
         vtableSize,
-        slots: attachVirtualMethods(slots, klass),
+        slots: disambiguateSlots(context, namespaceName, klass, attachVirtualMethods(slots, klass)),
     };
+};
+
+const collectVtable = (context: ModuleContext, namespaceName: string, klass: GirClass): Vtable | undefined => {
+    const cached = VTABLE_CACHE.get(klass);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const vtable = buildVtable(context, namespaceName, klass);
+
+    if (vtable !== undefined) {
+        VTABLE_CACHE.set(klass, vtable);
+    }
+
+    return vtable;
+};
+
+const shadowedSlotKey = (klass: GirClass, slot: VtableSlot): string =>
+    `vfunc${sanitizeTypeIdentifier(klass.name)}${pascalCase(slot.field.name)}`;
+
+const slotSignatureKey = (library: Library, slot: VtableSlot): string => {
+    const [, ...parameters] = slot.callback.parameters;
+
+    const parts = parameters.map(
+        (parameter) => `${typeKey(library, parameter.type)}/${parameter.direction}/${String(parameter.nullable)}`);
+
+    return `${parts.join(",")}->${typeKey(library, slot.callback.returnValue.type)}`;
+};
+
+const isShadowingSlot = (library: Library, slot: VtableSlot, inherited: VtableSlot[]): boolean =>
+    inherited.some(
+        (other) =>
+            other.key === slot.key &&
+            slotIdentity(other) !== slotIdentity(slot) &&
+            slotSignatureKey(library, other) !== slotSignatureKey(library, slot));
+
+const disambiguateSlots = (
+    context: ModuleContext,
+    namespaceName: string,
+    klass: GirClass,
+    slots: VtableSlot[],
+): VtableSlot[] => {
+    const inherited = ancestorSlots(context, namespaceName, klass);
+
+    return slots.map((slot) =>
+        isShadowingSlot(context.library, slot, inherited) ? { ...slot, key: shadowedSlotKey(klass, slot) } : slot);
+};
+
+const ancestorSlots = (context: ModuleContext, namespaceName: string, klass: GirClass): VtableSlot[] => {
+    const [, ...ancestors] = [...ancestorChain(context.library, klass, namespaceName)];
+
+    return ancestors.flatMap((ancestor) => collectVtable(context, ancestor.namespaceName, ancestor.klass)?.slots ?? []);
 };
 
 const vfuncMemberNames = (context: ModuleContext, namespaceName: string, klass: GirClass): string[] =>
@@ -231,21 +288,8 @@ const renderVfuncMetadata = (context: ModuleContext, klass: GirClass): string | 
 
 const slotIdentity = (slot: VtableSlot): string => `${slot.key}:${String(slot.byteOffset)}`;
 
-const inheritedSlotIdentities = (context: ModuleContext, namespaceName: string, klass: GirClass): Set<string> => {
-    const identities: Set<string> = new Set();
-    const [, ...ancestors] = [...ancestorChain(context.library, klass, namespaceName)];
-
-    for (const ancestor of ancestors) {
-        const vtable = collectVtable(context, ancestor.namespaceName, ancestor.klass);
-        const slots = vtable?.slots ?? [];
-
-        for (const slot of slots) {
-            identities.add(slotIdentity(slot));
-        }
-    }
-
-    return identities;
-};
+const inheritedSlotIdentities = (context: ModuleContext, namespaceName: string, klass: GirClass): Set<string> =>
+    new Set(ancestorSlots(context, namespaceName, klass).map((slot) => slotIdentity(slot)));
 
 const addInterfaceSlotKeys = (
     context: ModuleContext,
@@ -295,6 +339,37 @@ const protectedSlotKeys = (options: VfuncMembersOptions, slots: VtableSlot[]): S
     return new Set(slots.map((slot) => slot.key).filter((key) => !shared.has(key)));
 };
 
+const vfuncCallables = (context: ModuleContext, namespaceName: string, klass: GirClass): Map<string, GirFunction> => {
+    const members: Map<string, GirFunction> = new Map();
+
+    for (const slot of callableVfuncSlots(context, namespaceName, klass)) {
+        const [, ...parameters] = slot.callback.parameters;
+        members.set(slot.key, { ...callbackAsFunction(slot.callback), parameters });
+    }
+
+    return members;
+};
+
+const addProtectedSlotKeys = (context: ModuleContext, ancestor: ResolvedAncestor, keys: Set<string>): void => {
+    const shared = implementedSlotKeys(context, ancestor.namespaceName, ancestor.klass);
+
+    for (const slot of callableVfuncSlots(context, ancestor.namespaceName, ancestor.klass)) {
+        if (!shared.has(slot.key)) {
+            keys.add(slot.key);
+        }
+    }
+};
+
+const protectedChainSlotKeys = (context: ModuleContext, klass: GirClass): Set<string> => {
+    const keys: Set<string> = new Set();
+
+    for (const ancestor of ancestorChain(context.library, klass, context.namespace.name)) {
+        addProtectedSlotKeys(context, ancestor, keys);
+    }
+
+    return keys;
+};
+
 const callableVfuncSlots = (context: ModuleContext, namespaceName: string, klass: GirClass): VtableSlot[] => {
     const vtable = collectVtable(context, namespaceName, klass);
 
@@ -339,7 +414,7 @@ const vfuncEntries = (context: ModuleContext, namespaceName: string, klass: GirC
 
 const renderVfuncMembers = (options: VfuncMembersOptions): string[] => {
     const { context, klass, mode } = options;
-    const ownerRef = pascalCase(klass.name);
+    const ownerRef = sanitizeTypeIdentifier(klass.name);
     const slots = callableVfuncSlots(context, context.namespace.name, klass);
 
     if (slots.length === 0) {
@@ -468,7 +543,9 @@ const renderVtableSlotDescriptor = (context: ModuleContext, vtable: Vtable, slot
 
 export {
     hasCallableVfuncSlots,
+    protectedChainSlotKeys,
     renderVfuncMembers,
+    vfuncCallables,
     renderVfuncMetadata,
     vfuncEntries,
     vfuncMemberNames,

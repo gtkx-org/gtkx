@@ -5,6 +5,7 @@ type WidgetIdResolver = (widget: Gtk.Widget) => string;
 
 type WidgetFormatting = {
     formatRole(role: Gtk.AccessibleRole): string;
+    getTypeTag(widget: Gtk.Widget): string;
     getWidgetText(widget: Gtk.Widget): string | null;
 };
 
@@ -36,7 +37,7 @@ const getChildren = (widget: Gtk.Widget): Gtk.Widget[] => {
 
 const createNode = (widget: Gtk.Widget, expansion: Expansion): SerializedWidget => ({
     id: expansion.resolveId(widget),
-    type: widget.constructor.name,
+    type: expansion.testing.getTypeTag(widget),
     role: expansion.testing.formatRole(widget.getAccessibleRole()),
     name: widget.getName() || null,
     text: expansion.testing.getWidgetText(widget),
@@ -88,4 +89,4 @@ const serializeWidget = (
     return root;
 };
 
-export { serializeWidget, type WidgetFormatting };
+export { serializeWidget };

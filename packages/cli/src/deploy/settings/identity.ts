@@ -121,7 +121,6 @@ const resolveMetadataLicense = ({ deploy }: IdentityRequest): string =>
 
 export {
     type IdentityRequest,
-    normalizePackageName,
     resolveBinaryName,
     resolveCopyright,
     resolveDescription,

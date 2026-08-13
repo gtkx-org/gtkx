@@ -8,8 +8,8 @@ use crate::ffi::{StashData, StashStorage};
 
 #[derive(Debug, Clone)]
 pub struct RefCodec {
-    pub inner_codec: Box<Codec>,
-    pub inout: bool,
+    inner_codec: Box<Codec>,
+    inout: bool,
 }
 
 impl RefCodec {
@@ -24,6 +24,16 @@ impl RefCodec {
             inner_codec: Box::new(inner_codec),
             inout,
         })
+    }
+
+    #[must_use]
+    pub fn inner_codec(&self) -> &Codec {
+        &self.inner_codec
+    }
+
+    #[must_use]
+    pub fn is_inout(&self) -> bool {
+        self.inout
     }
 
     #[must_use]
@@ -174,17 +184,6 @@ impl Decoder for RefCodec {
         }
 
         match &*self.inner_codec {
-            Codec::Integer(_)
-            | Codec::EnumFlags(_)
-            | Codec::Float(_)
-            | Codec::Boolean(_)
-            | Codec::Unichar(_) => unsafe {
-                self.inner_codec.read(
-                    env,
-                    ReadCtx::slot(storage.ptr(), "Ref inner")
-                        .with_transfer(self.inner_codec.transfer()),
-                )
-            },
             Codec::String(string_codec) => Self::decode_ref_string(env, storage, string_codec),
             Codec::HashTable(_) => {
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
@@ -193,10 +192,12 @@ impl Decoder for RefCodec {
             Codec::Array(_) => {
                 bail!("Ref<Array> requires decode_with_context to get size from another parameter")
             }
-            _ => bail!(
-                "Unsupported ref inner codec for reading: {:?}",
-                self.inner_codec
-            ),
+            scalar => unsafe {
+                scalar.read(
+                    env,
+                    ReadCtx::slot(storage.ptr(), "Ref inner").with_transfer(scalar.transfer()),
+                )
+            },
         }
     }
 

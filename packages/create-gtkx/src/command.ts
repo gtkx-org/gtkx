@@ -1,6 +1,8 @@
+import * as p from "@clack/prompts";
+import { errorMessage } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
-import { isKnownPackageManager, PACKAGE_MANAGER_FLAG_DESCRIPTION, type PackageManager } from "./package-managers.js";
+import { PACKAGE_MANAGER_FLAG_DESCRIPTION } from "./package-managers.js";
 import { scaffold } from "./scaffolder.js";
 
 type CreateCommandArgs = {
@@ -31,7 +33,7 @@ const scaffoldCommand = defineCommand({
         },
         "package-manager": {
             type: "string",
-            alias: "pm",
+            alias: "p",
             description: PACKAGE_MANAGER_FLAG_DESCRIPTION,
         },
         typescript: {
@@ -56,48 +58,33 @@ const scaffoldCommand = defineCommand({
         },
         overwrite: {
             type: "boolean",
-            alias: "force",
+            alias: "f",
             description: "Overwrite the contents of a non-empty target directory when running without prompts",
         },
     },
     run: ({ args }) => runCreate(args),
 });
 
-const parsePackageManager = (value: string | undefined): PackageManager | undefined => {
-    if (value === undefined) {
-        return undefined;
-    }
-
-    if (!isKnownPackageManager(value)) {
-        throw new Error(`Unknown package manager "${value}". Expected one of: ${PACKAGE_MANAGER_FLAG_DESCRIPTION}.`);
-    }
-
-    return value;
-};
-
 const settleScaffoldFailure = (error: unknown): void => {
     if (error instanceof OperationCanceledError) {
         return;
     }
 
-    if (error instanceof ScaffoldAbortedError) {
-        process.exitCode = 1;
-
-        return;
+    if (!(error instanceof ScaffoldAbortedError)) {
+        p.log.error(errorMessage(error));
     }
 
-    throw error;
+    process.exitCode = 1;
 };
 
 const runCreate = async (args: CreateCommandArgs): Promise<void> => {
     const isInteractive = args["no-interactive"] || args.yes ? false : process.stdin.isTTY;
-    const packageManager = parsePackageManager(args["package-manager"]);
 
     try {
         await scaffold({
             name: args.name,
             applicationId: args["application-id"],
-            packageManager,
+            packageManager: args["package-manager"],
             isTypescript: args.typescript,
             shouldIncludeTesting: args.vitest,
             isInteractive,
@@ -108,4 +95,4 @@ const runCreate = async (args: CreateCommandArgs): Promise<void> => {
     }
 };
 
-export { scaffoldCommand, runCreate };
+export { scaffoldCommand };

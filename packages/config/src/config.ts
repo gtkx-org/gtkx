@@ -296,9 +296,9 @@ const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
 });
 
 export {
+    APPLICATION_ID_MAX_LENGTH,
     defineConfig,
     isValidApplicationId,
-    resolveReactCompilerOptions,
     validateConfig,
     mergeConfig,
     resolveLazyElements,

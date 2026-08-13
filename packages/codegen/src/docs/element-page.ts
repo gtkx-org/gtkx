@@ -29,6 +29,7 @@ import {
     originSignatureBlocks,
     type OriginSignatureEntry,
     propertyMetaLine,
+    qualifiedClassName,
     renderDocsSignalSignature,
     renderDocsType,
     signalTags,
@@ -76,7 +77,9 @@ const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): s
     const parts = ancestors.map((ancestor) => {
         const glib = getGlibName(ancestor.klass);
 
-        return glib === undefined ? `\`${ancestor.namespaceName}.${ancestor.klass.name}\`` : glibLabel(context, glib);
+        return glib === undefined
+            ? `\`${qualifiedClassName(ancestor.namespaceName, ancestor.klass.name)}\``
+            : glibLabel(context, glib);
     });
 
     parts.push(`**${entry.glibName}**`);
@@ -265,7 +268,7 @@ const methodsSection = (entry: GlibNamedClass, context: ElementPageContext, self
 };
 
 const renderElementPage = (entry: GlibNamedClass, context: ElementPageContext): string => {
-    const selfType = `${entry.namespace.name}.${entry.klass.name}`;
+    const selfType = qualifiedClassName(entry.namespace.name, entry.klass.name);
 
     return joinSections([
         frontmatter(entry),

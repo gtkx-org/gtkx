@@ -1,4 +1,4 @@
-import { camelCase, toCamelIdentifier, uniqBy } from "@gtkx/utils";
+import { toCamelIdentifier, uniqBy } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
 import type { JsDocSpec } from "../../writer/doc.js";
@@ -10,6 +10,7 @@ import { renderFnExpression } from "./function.js";
 import { gtypeMemberDeclaration } from "./gtype-binding.js";
 import {
     finishCallExpression,
+    memberName,
     methodExportName,
     renderMethodBody,
     renderMethodReturnType,
@@ -47,6 +48,11 @@ type StaticEntryOptions = {
 type ResolvedInstanceMember = {
     name: string;
     finishFn: GirFunction | undefined;
+};
+
+type StaticMember = {
+    callable: GirFunction;
+    name: string;
 };
 
 type InstanceMemberRenderer = (
@@ -99,15 +105,14 @@ const dedupeCallables = (callables: GirFunction[]): GirFunction[] =>
         (callable) => callable.cIdentifier,
     );
 
+const getEmittableCIdentifier = (context: ModuleContext, callable: GirFunction): string | undefined =>
+    isEmittableCallable(context, callable) ? callable.cIdentifier : undefined;
+
 const renderBinding = (
     context: ModuleContext,
     callable: GirFunction,
 ): { text: string; cIdentifier: string } | undefined => {
-    if (!isEmittableCallable(context, callable)) {
-        return undefined;
-    }
-
-    const cIdentifier = callable.cIdentifier;
+    const cIdentifier = getEmittableCIdentifier(context, callable);
 
     if (cIdentifier === undefined) {
         return undefined;
@@ -139,11 +144,7 @@ const resolveCallableMember = (
     callable: GirFunction,
     resolveName: (callable: GirFunction) => string | undefined,
 ): { cIdentifier: string; name: string } | undefined => {
-    if (!isEmittableCallable(context, callable)) {
-        return undefined;
-    }
-
-    const cIdentifier = callable.cIdentifier;
+    const cIdentifier = getEmittableCIdentifier(context, callable);
 
     if (cIdentifier === undefined) {
         return undefined;
@@ -151,7 +152,7 @@ const resolveCallableMember = (
 
     const name = resolveName(callable);
 
-    if (name === undefined || name === "constructor") {
+    if (name === undefined || !isEmittableMemberName(name)) {
         return undefined;
     }
 
@@ -218,7 +219,7 @@ const renderStaticEntry = (
     if (finishFn !== undefined) {
         const name = options.resolveName(callable);
 
-        if (name === undefined || name === "constructor") {
+        if (name === undefined || !isEmittableMemberName(name)) {
             return undefined;
         }
 
@@ -247,6 +248,8 @@ const renderInstanceMethod = (
         canUseRuntimeOverride: true,
     });
 
+const isEmittableMemberName = (name: string): boolean => name !== "constructor" && name.length > 0;
+
 const resolveInstanceMember = (
     context: ModuleContext,
     callable: GirFunction,
@@ -259,7 +262,7 @@ const resolveInstanceMember = (
 
     const name = nameOverride ?? methodExportName(callable);
 
-    if (name === "constructor") {
+    if (!isEmittableMemberName(name)) {
         return undefined;
     }
 
@@ -373,13 +376,9 @@ const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boo
     !hasUnmarshalableParam(context, callable);
 
 const constructorMemberName = (girName: string): string | undefined => {
-    const camel = camelCase(girName);
+    const camel = memberName(girName);
 
-    if (camel === "constructor") {
-        return undefined;
-    }
-
-    return camel;
+    return isEmittableMemberName(camel) ? camel : undefined;
 };
 
 const renderStaticSignature = (
@@ -409,23 +408,31 @@ const renderStaticSignature = (
     };
 };
 
-const classConstructorMemberNames = (context: ModuleContext, callables: Callables): string[] => {
-    const names: string[] = [];
+const collectStaticMembers = (
+    context: ModuleContext,
+    group: GirFunction[],
+    resolveName: (girName: string) => string | undefined,
+): StaticMember[] => {
+    const members: StaticMember[] = [];
 
-    for (const callable of callables.constructors) {
-        if (!isEmittableCallable(context, callable)) {
-            continue;
-        }
+    for (const callable of group) {
+        const name = isEmittableCallable(context, callable) ? resolveName(callable.name) : undefined;
 
-        const member = constructorMemberName(callable.name);
-
-        if (member !== undefined) {
-            names.push(member);
+        if (name !== undefined) {
+            members.push({ callable, name });
         }
     }
 
-    return names;
+    return members;
 };
+
+const staticMembers = (context: ModuleContext, callables: Callables): StaticMember[] => [
+    ...collectStaticMembers(context, callables.constructors, constructorMemberName),
+    ...collectStaticMembers(context, callables.functions, memberName),
+];
+
+const constructorMemberNames = (context: ModuleContext, constructors: GirFunction[]): string[] =>
+    collectStaticMembers(context, constructors, constructorMemberName).map((member) => member.name);
 
 const collectStaticEntries = (
     context: ModuleContext,
@@ -456,7 +463,7 @@ const renderStaticHead = (context: ModuleContext, callables: Callables, ownerCla
             returnTypeOverride: ownerClassName,
         }),
         ...collectStaticEntries(context, callables.functions, siblings, {
-            resolveName: (member) => camelCase(member.name),
+            resolveName: (member) => memberName(member.name),
             ownerName: ownerClassName,
         }),
     ];
@@ -509,9 +516,10 @@ export {
     indexMethodsByName,
     isEmittableCallable,
     renderStaticSignature,
-    classConstructorMemberNames,
+    constructorMemberNames,
     renderStaticHead,
     renderPlainTypeMembers,
+    staticMembers,
     type Callables,
     type InstanceMemberRenderer,
     type InstanceScope,

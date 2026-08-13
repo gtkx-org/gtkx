@@ -9,4 +9,3 @@ export * from "./process/index.ts";
 export * from "./set/index.ts";
 export * from "./source/index.ts";
 export * from "./string/index.ts";
-export * from "./util/index.ts";

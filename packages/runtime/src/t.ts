@@ -77,6 +77,8 @@ type T = {
     sizedArray: typeof helpers.sizedArrayT;
     /** Builds a descriptor for a C array of a fixed length. */
     fixedArray: typeof helpers.fixedArrayT;
+    /** Builds a descriptor for an out pointer into the buffer another argument supplied. */
+    cursorArray: typeof helpers.cursorArrayT;
     /** Builds a descriptor for a function pointer, marshalling a JavaScript function into a native closure. */
     callback: typeof helpers.callbackT;
     /**
@@ -127,6 +129,7 @@ const t: T = {
     byteArray: helpers.byteArrayT,
     sizedArray: helpers.sizedArrayT,
     fixedArray: helpers.fixedArrayT,
+    cursorArray: helpers.cursorArrayT,
     callback: helpers.callbackT,
     fn,
 };

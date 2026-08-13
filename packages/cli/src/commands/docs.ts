@@ -13,7 +13,7 @@ import { resolveOmittedProps } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 const docs = defineCommand({
@@ -25,7 +25,9 @@ const docs = defineCommand({
     args: {
         out: {
             type: "string",
-            description: "Output directory for the generated markdown pages, relative to the project root",
+            description:
+                "Output directory for the generated markdown pages, below the project root. It must be empty " +
+                "or hold an earlier `gtkx docs` run, whose pages are replaced",
             default: "docs/reference",
         },
         "base-path": {
@@ -35,7 +37,9 @@ const docs = defineCommand({
         },
         force: {
             type: "boolean",
-            description: "Regenerate even when the pages are up to date with the GIR libraries",
+            description:
+                "Regenerate even when the pages are up to date with the GIR libraries, the base path, " +
+                "and the element props the project configures",
             default: false,
         },
         ...cwdArg,
@@ -63,7 +67,7 @@ const docs = defineCommand({
 
         const libraries = resolveLibraries(config.libraries, girPath);
         const startedAt = Date.now();
-        const outDir = resolve(cwd, args.out);
+        const outDir = resolveOutDir(cwd, args.out);
         const builtin = await resolveDocsElements(cwd);
 
         const { isRegenerated, namespaces } = writeDocs({
@@ -90,6 +94,37 @@ const docs = defineCommand({
         );
     },
 });
+
+const isBelow = (parent: string, child: string): boolean => {
+    const path = relative(parent, child);
+
+    return path !== "" && path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path);
+};
+
+const outDirReason = (cwd: string, out: string, outDir: string): string => {
+    if (out.trim() === "") {
+        return "it was empty, which names the project root itself";
+    }
+
+    if (outDir === cwd) {
+        return "it names the project root itself";
+    }
+
+    return `${outDir} is outside it`;
+};
+
+const resolveOutDir = (cwd: string, out: string): string => {
+    const outDir = out.trim() === "" ? cwd : resolve(cwd, out);
+
+    if (isBelow(cwd, outDir)) {
+        return outDir;
+    }
+
+    throw new Error(
+        `--out must name a directory below the project root ${cwd}, and ${outDirReason(cwd, out, outDir)}. ` +
+        "Pass a path such as --out=docs/reference.",
+    );
+};
 
 const resolveDocsElements = async (cwd: string): Promise<{ props: ElementProps; omittedProps: OmittedProps }> => {
     const { gi, reactSubexports } = resolveStore(cwd);

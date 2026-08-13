@@ -3,9 +3,9 @@ import type { CArrayType, TypeId } from "../gir/type-id.js";
 import type { GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
 import { isCallerAllocatedOut, isInoutParameter } from "../gir/parameter.js";
-import { constructibleName } from "../store/gi/method.js";
 import { isCollectibleCallerOut, isHandlePassedInPlace, underlyingType } from "../store/gi/param-marshal.js";
-import { isScalarRef, recordInlineSize } from "./descriptor-render.js";
+import { recordInlineSize } from "../store/gi/record-layout.js";
+import { isScalarRef } from "./descriptor-render.js";
 
 const POINTER_DEPTH = 1;
 
@@ -114,15 +114,12 @@ const hasCallerSuppliedLength = (context: ModuleContext, parameter: GirParameter
     return type?.kind === "carray" && type.lengthParameterIndex !== undefined;
 };
 
-const isUnbuildableCallerOut = (context: ModuleContext, parameter: GirParameter): boolean =>
-    constructibleName(context, parameter.type) === undefined || !isCollectibleCallerOut(context, parameter);
-
 const isUnmarshalableCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
     if (hasCallerSuppliedLength(context, parameter)) {
         return true;
     }
 
-    return isUnbuildableCallerOut(context, parameter) && !parameter.optional;
+    return !isCollectibleCallerOut(context, parameter) && !parameter.optional;
 };
 
 const hasIndirectionMismatch = (context: ModuleContext, parameter: GirParameter): boolean => {

@@ -27,7 +27,7 @@ mod r#struct;
 mod unichar;
 mod void;
 
-pub use array::{ArrayCodec, ArrayKind};
+pub use array::{ArrayBounds, ArrayCodec, ArrayKind};
 pub use bigint::BigIntCodec;
 pub use boolean::BooleanCodec;
 pub use boxed::BoxedCodec;
@@ -178,6 +178,10 @@ pub trait Encoder {
         }
     }
 
+    fn encode_owned(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        self.encode(env, value)
+    }
+
     fn object_ptr_context(&self) -> &'static str {
         "object"
     }
@@ -241,6 +245,12 @@ pub trait Decoder {
         bail!("This type cannot be decoded from Stash")
     }
 
+    /// Whether the value this codec describes is stored inside its owner rather than behind a
+    /// pointer, which is how a struct field that embeds another struct is laid out.
+    fn is_inline(&self) -> bool {
+        false
+    }
+
     /// # Safety
     ///
     /// `_ptr` must be null or a live pointer to an instance of the type this codec describes,
@@ -285,6 +295,12 @@ pub trait Decoder {
         context: &str,
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
+        if self.is_inline() {
+            bail!(
+                "{context}: a value stored inline has no pointer slot to read, it can only be decoded as a field of the instance that holds it"
+            );
+        }
+
         let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
         unsafe {
             self.read(
@@ -397,7 +413,7 @@ impl Codec {
             Self::Array(codec) => codec.ownership,
             Self::HashTable(codec) => codec.ownership,
             Self::Fundamental(codec) => codec.ownership,
-            Self::Ref(codec) => codec.inner_codec.transfer(),
+            Self::Ref(codec) => codec.inner_codec().transfer(),
             Self::Integer(_)
             | Self::BigInt(_)
             | Self::Float(_)
@@ -453,7 +469,7 @@ impl std::fmt::Display for Codec {
             Self::Buffer(_) => write!(f, "Buffer"),
             Self::HashTable(_) => write!(f, "HashTable"),
             Self::Callback(_) => write!(f, "Callback"),
-            Self::Ref(t) => write!(f, "Ref({})", t.inner_codec),
+            Self::Ref(t) => write!(f, "Ref({})", t.inner_codec()),
             Self::Unichar(_) => write!(f, "Unichar"),
         }
     }

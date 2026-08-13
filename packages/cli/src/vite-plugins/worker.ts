@@ -1,6 +1,7 @@
 import type { Plugin, Rollup } from "vite";
 import { createHash } from "node:crypto";
 import { basename, extname } from "node:path";
+import { ESM_EXTENSION } from "./esm-extension.js";
 import { stripQuery } from "./strip-query.js";
 
 type WorkerReplacement = {
@@ -52,6 +53,8 @@ const NON_CODE = new RegExp(
     "g",
 );
 
+const WORKER_DIR = "workers";
+
 const SUGGESTED_EXTENSIONS: Record<string, string[]> = {
     ".cjs": [".cts"],
     ".js": [".ts", ".tsx"],
@@ -64,7 +67,7 @@ const workerFileName = (id: string): string => {
     const stem = basename(path, extname(path));
     const digest = createHash("sha256").update(id).digest("hex").slice(0, 8);
 
-    return `workers/${stem}-${digest}.js`;
+    return `${WORKER_DIR}/${stem}-${digest}${ESM_EXTENSION}`;
 };
 
 const nonCodeRanges = (code: string): SourceRange[] =>

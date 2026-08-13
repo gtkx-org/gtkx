@@ -13,6 +13,7 @@ import {
     TYPE_ENUM,
     TYPE_FLAGS,
     TYPE_FLOAT,
+    TYPE_GTYPE,
     TYPE_INT,
     TYPE_INT64,
     TYPE_INTERFACE,
@@ -51,7 +52,6 @@ const UINT32_MAXIMUM = 4_294_967_295;
 const INT64_MINIMUM = -(2n ** 63n);
 const INT64_MAXIMUM = 2n ** 63n - 1n;
 const UINT64_MAXIMUM = 2n ** 64n - 1n;
-const FLOAT_MAXIMUM = 3.4028234663852886e38;
 
 const WRAPPED_FUNDAMENTALS: Set<bigint> = new Set([
     TYPE_BOXED,
@@ -60,6 +60,8 @@ const WRAPPED_FUNDAMENTALS: Set<bigint> = new Set([
     TYPE_PARAM,
     TYPE_VARIANT,
 ]);
+
+const isWideUnsignedValue: ValueGuard = wideIntegerGuardFor(0n, UINT64_MAXIMUM);
 
 const SCALAR_GUARDS: Map<bigint, ValueGuard> = new Map([
     [TYPE_BOOLEAN, isBooleanValue],
@@ -71,11 +73,11 @@ const SCALAR_GUARDS: Map<bigint, ValueGuard> = new Map([
     [TYPE_ENUM, integerGuardFor(INT32_MINIMUM, INT32_MAXIMUM)],
     [TYPE_FLAGS, integerGuardFor(0, UINT32_MAXIMUM)],
     [TYPE_LONG, wideIntegerGuardFor(INT64_MINIMUM, INT64_MAXIMUM)],
-    [TYPE_ULONG, wideIntegerGuardFor(0n, UINT64_MAXIMUM)],
+    [TYPE_ULONG, isWideUnsignedValue],
     [TYPE_INT64, wideIntegerGuardFor(INT64_MINIMUM, INT64_MAXIMUM)],
-    [TYPE_UINT64, wideIntegerGuardFor(0n, UINT64_MAXIMUM)],
-    [TYPE_FLOAT, isFloatValue],
-    [TYPE_DOUBLE, isDoubleValue],
+    [TYPE_UINT64, isWideUnsignedValue],
+    [TYPE_FLOAT, isNumberValue],
+    [TYPE_DOUBLE, isNumberValue],
     [TYPE_POINTER, isNullValue],
 ]);
 
@@ -115,12 +117,8 @@ function isStrvValue(value: unknown): boolean {
     return value == null || (Array.isArray(value) && value.every((item) => typeof item === "string"));
 }
 
-function isDoubleValue(value: unknown): boolean {
-    return value == null || (typeof value === "number" && Number.isFinite(value));
-}
-
-function isFloatValue(value: unknown): boolean {
-    return isDoubleValue(value) && (value == null || Math.abs(value as number) <= FLOAT_MAXIMUM);
+function isNumberValue(value: unknown): boolean {
+    return typeof value === "number";
 }
 
 function isAnyValue(): boolean {
@@ -131,12 +129,8 @@ function isNullValue(value: unknown): boolean {
     return value == null;
 }
 
-function isIntegerWithin(value: unknown, minimum: number, maximum: number): boolean {
-    return Number.isSafeInteger(value) && (value as number) >= minimum && (value as number) <= maximum;
-}
-
 function integerGuardFor(minimum: number, maximum: number): ValueGuard {
-    return (value) => value == null || isIntegerWithin(value, minimum, maximum);
+    return (value) => Number.isSafeInteger(value) && (value as number) >= minimum && (value as number) <= maximum;
 }
 
 function toWideInteger(value: unknown): bigint | undefined {
@@ -149,10 +143,6 @@ function toWideInteger(value: unknown): bigint | undefined {
 
 function wideIntegerGuardFor(minimum: bigint, maximum: bigint): ValueGuard {
     return (value) => {
-        if (value == null) {
-            return true;
-        }
-
         const wide = toWideInteger(value);
 
         return wide !== undefined && wide >= minimum && wide <= maximum;
@@ -173,11 +163,20 @@ function wrappedGuardFor(valueType: bigint): ValueGuard {
     return (value) => value == null || typeIsA(resolveGtype(value), valueType);
 }
 
+function exactGuardFor(valueType: bigint): ValueGuard | undefined {
+    if (valueType === TYPE_GTYPE) {
+        return isWideUnsignedValue;
+    }
+
+    return valueType === getStrvType() ? isStrvValue : undefined;
+}
+
 function valueGuardFor(valueType: bigint): ValueGuard {
     assertParamLayout();
+    const exact = exactGuardFor(valueType);
 
-    if (valueType === getStrvType()) {
-        return isStrvValue;
+    if (exact !== undefined) {
+        return exact;
     }
 
     const fundamental = typeFundamental(valueType);

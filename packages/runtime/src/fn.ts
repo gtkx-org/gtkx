@@ -8,7 +8,7 @@ import { checkError } from "./error.js";
 import { LIB } from "./library.js";
 import { fromNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
-import { packTupleResult } from "./tuple.js";
+import { hasSurfacedPrimary, packTupleResult } from "./tuple.js";
 
 /** The signature a native function is bound against. */
 type FnSpec = {
@@ -16,6 +16,11 @@ type FnSpec = {
     args: Arg[];
     /** Descriptor for the C return value, packed first when output arguments are also returned. */
     returns: Descriptor;
+    /**
+     * The callee returns a value the bindings do not surface, so the call is made against the
+     * declared return type and the value is dropped instead of being packed into the result.
+     */
+    isReturnSkipped?: boolean;
     /** The function takes a trailing `GError**`, whose contents are thrown as an error on return. */
     canThrow?: boolean;
     /**
@@ -135,15 +140,19 @@ const resizeInputs = (inputs: unknown[], argCount: number): unknown[] => {
 const directCallable = (
     descriptor: ExternalObject<CallDescriptor>,
     returnDescriptor: Descriptor,
+    hasPrimary: boolean,
     argCount: number,
 ): ((...inputs: unknown[]) => unknown) => {
-    if (returnDescriptor.kind === "void") {
-        return (...inputs) => {
-            call(descriptor, resizeInputs(inputs, argCount));
-        };
+    const marshal = (inputs: unknown[]): unknown =>
+        fromNative(returnDescriptor, call(descriptor, resizeInputs(inputs, argCount)));
+
+    if (hasPrimary) {
+        return (...inputs) => marshal(inputs);
     }
 
-    return (...inputs) => fromNative(returnDescriptor, call(descriptor, resizeInputs(inputs, argCount)));
+    return (...inputs) => {
+        marshal(inputs);
+    };
 };
 
 function fromNativeCallable(
@@ -152,20 +161,21 @@ function fromNativeCallable(
     getRefSeeds?: () => RefSeeds | undefined,
 ): (...inputs: unknown[]) => unknown {
     const { args, returns: returnDescriptor, canThrow = false } = spec;
-    const hasPrimary = returnDescriptor.kind !== "void";
+    const hasPrimary = hasSurfacedPrimary(returnDescriptor, spec.isReturnSkipped);
     const plans = buildArgSpecs(args);
     const outPlans = plans.filter((plan) => plan.isOutParam);
     const arePassThrough = plans.every((plan, index) => isPassThroughPlan(plan, index));
 
     if (!canThrow && arePassThrough) {
-        return directCallable(descriptor, returnDescriptor, plans.length);
+        return directCallable(descriptor, returnDescriptor, hasPrimary, plans.length);
     }
 
-    const shape = (inputs: unknown[], nativeValues: unknown[], nativeResult: unknown): unknown => {
-        const primary = hasPrimary ? fromNative(returnDescriptor, nativeResult) : undefined;
-
-        return packTupleResult(readOutParams(outPlans, inputs, nativeValues), primary, hasPrimary);
-    };
+    const shape = (inputs: unknown[], nativeValues: unknown[], nativeResult: unknown): unknown =>
+        packTupleResult(
+            readOutParams(outPlans, inputs, nativeValues),
+            fromNative(returnDescriptor, nativeResult),
+            hasPrimary,
+        );
 
     if (canThrow) {
         return (...inputs) => {

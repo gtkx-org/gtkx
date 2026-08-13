@@ -14,7 +14,7 @@ type TreeExpansion = {
     isSyncing: boolean;
 };
 
-function dropSubtree(expansion: TreeExpansion, path: string): void {
+function dropLevel(expansion: TreeExpansion, path: string, pending: string[]): void {
     expansion.expanded.delete(path);
     const level = expansion.slots.get(path);
 
@@ -25,7 +25,19 @@ function dropSubtree(expansion: TreeExpansion, path: string): void {
     expansion.slots.delete(path);
 
     for (const slot of level) {
-        dropSubtree(expansion, path + encodePart(String(slot)));
+        pending.push(path + encodePart(String(slot)));
+    }
+}
+
+function dropSubtree(expansion: TreeExpansion, path: string): void {
+    const pending: string[] = [path];
+
+    while (pending.length > 0) {
+        const current = pending.pop();
+
+        if (current !== undefined) {
+            dropLevel(expansion, current, pending);
+        }
     }
 }
 
@@ -87,12 +99,6 @@ function markExpanded(expansion: TreeExpansion, path: string, isExpanded: boolea
     prunePath(expansion, path);
 }
 
-function resetExpansion(expansion: TreeExpansion): void {
-    expansion.expanded = new Set();
-    expansion.slots = new Map();
-    expansion.order = null;
-}
-
 function adoptIndex(expansion: TreeExpansion, index: CollectionIndex): void {
     expansion.index = index;
     expansion.order = null;
@@ -105,6 +111,5 @@ export {
     markExpanded,
     orderFor,
     pruneSlots,
-    resetExpansion,
     type TreeExpansion,
 };

@@ -1,5 +1,5 @@
 import type { ListItem, ListSection } from "../types.js";
-import { encodePart } from "./keys.js";
+import { decodePartAt, encodePart } from "./keys.js";
 
 type Level = {
     path: string;
@@ -10,83 +10,109 @@ type Level = {
 type CollectionIndex = {
     isTree: boolean;
     groups: Level[];
-    children: Map<string, Level>;
+    childLevel: (level: Level, slot: number) => Level | undefined;
+    levelFor: (levelPath: string) => Level | undefined;
     itemAt: (levelPath: string, slot: number) => ListItem | undefined;
     sectionFor: (levelPath: string) => unknown;
-    expandablePathsFor: (id: string) => string[];
 };
 
 type IndexState = {
     isTree: boolean;
     groups: Level[];
-    children: Map<string, Level>;
     levels: Map<string, Level>;
-    expandablePaths: Map<string, string[]>;
     sectionValues: Map<string, unknown>;
 };
 
-const NO_PATHS: string[] = [];
+type ParentItem = ListItem & { children: ListItem[] };
 
-const hasChildren = (item: ListItem): boolean => item.children !== undefined && item.children.length > 0;
+const emptyLevel = (): Level => ({ path: "", items: [], expandableFlags: [] });
+const hasChildren = (item: ListItem): item is ParentItem => item.children !== undefined && item.children.length > 0;
 
-function pushPath(table: Map<string, string[]>, id: string, path: string): void {
-    const existing = table.get(id);
-
-    if (existing === undefined) {
-        table.set(id, [path]);
-
-        return;
-    }
-
-    existing.push(path);
-}
-
-function collectChildren(state: IndexState, level: Level, slotPath: string, item: ListItem): void {
-    const canExpand = hasChildren(item);
-    level.expandableFlags.push(canExpand);
-
-    if (!canExpand) {
-        return;
-    }
-
-    pushPath(state.expandablePaths, item.id, slotPath);
-    state.children.set(slotPath, collectLevel(state, slotPath, item.children ?? []));
-}
-
-function collectLevel(state: IndexState, path: string, items: ListItem[]): Level {
-    const level: Level = { path, items, expandableFlags: [] };
+function newLevel(state: IndexState, path: string, items: ListItem[]): Level {
+    const expandableFlags = state.isTree ? items.map((item) => hasChildren(item)) : [];
+    const level: Level = { path, items, expandableFlags };
     state.levels.set(path, level);
 
+    return level;
+}
+
+function slotItems(state: IndexState, parent: Level, slot: number): ListItem[] | undefined {
+    const owner = state.levels.get(parent.path) === parent ? parent : levelFor(state, parent.path);
+    const item = owner?.items[slot];
+
+    return item !== undefined && hasChildren(item) ? item.children : undefined;
+}
+
+function childLevel(state: IndexState, parent: Level, slot: number): Level | undefined {
     if (!state.isTree) {
-        return level;
+        return undefined;
     }
 
-    for (const [slot, item] of items.entries()) {
-        collectChildren(state, level, path + encodePart(String(slot)), item);
+    const path = parent.path + encodePart(String(slot));
+    const cached = state.levels.get(path);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const items = slotItems(state, parent, slot);
+
+    return items === undefined ? undefined : newLevel(state, path, items);
+}
+
+function descendPath(state: IndexState, levelPath: string, group: string): Level | undefined {
+    let level = state.levels.get(encodePart(group));
+    let offset = encodePart(group).length;
+
+    while (level !== undefined && offset < levelPath.length) {
+        const part = decodePartAt(levelPath, offset);
+
+        if (part === null) {
+            return undefined;
+        }
+
+        level = childLevel(state, level, Number(part));
+        offset += encodePart(part).length;
     }
 
     return level;
 }
 
+function levelFor(state: IndexState, levelPath: string): Level | undefined {
+    const cached = state.levels.get(levelPath);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const group = decodePartAt(levelPath, 0);
+
+    return group === null ? undefined : descendPath(state, levelPath, group);
+}
+
 function buildGroups(state: IndexState, source: ListItem[], sections: ListSection[] | undefined): Level[] {
     if (sections === undefined) {
-        return [collectLevel(state, encodePart("0"), source)];
+        return [newLevel(state, encodePart("0"), source)];
     }
 
     return sections.map((section, group) => {
         const path = encodePart(String(group));
         state.sectionValues.set(path, section.value);
 
-        return collectLevel(state, path, section.data);
+        return newLevel(state, path, section.data);
     });
 }
 
 function isTreeSource(source: ListItem[], sections: ListSection[] | undefined, isFlat: boolean): boolean {
-    if (sections !== undefined || isFlat) {
+    if (isFlat) {
         return false;
     }
 
-    return source.some((item) => hasChildren(item));
+    if (sections === undefined) {
+        return source.some((item) => hasChildren(item));
+    }
+
+    return sections.some((section) => section.data.some((item) => hasChildren(item)));
 }
 
 function createCollectionIndex(
@@ -99,9 +125,7 @@ function createCollectionIndex(
     const state: IndexState = {
         isTree: isTreeSource(source, sections, isFlat),
         groups: [],
-        children: new Map(),
         levels: new Map(),
-        expandablePaths: new Map(),
         sectionValues: new Map(),
     };
 
@@ -110,11 +134,11 @@ function createCollectionIndex(
     return {
         isTree: state.isTree,
         groups: state.groups,
-        children: state.children,
-        itemAt: (levelPath, slot) => state.levels.get(levelPath)?.items[slot],
+        childLevel: (level, slot) => childLevel(state, level, slot),
+        levelFor: (levelPath) => levelFor(state, levelPath),
+        itemAt: (levelPath, slot) => levelFor(state, levelPath)?.items[slot],
         sectionFor: (levelPath) => state.sectionValues.get(levelPath),
-        expandablePathsFor: (id) => state.expandablePaths.get(id) ?? NO_PATHS,
     };
 }
 
-export { createCollectionIndex, type CollectionIndex, type Level };
+export { createCollectionIndex, emptyLevel, type CollectionIndex, type Level };

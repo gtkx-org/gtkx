@@ -1,8 +1,8 @@
 use std::ffi::CString;
 
 use anyhow::bail;
-pub use container::ArrayKind;
-use container::{ArrayContainer, ArrayContainerCodec};
+pub use container::{ArrayBounds, ArrayKind};
+use container::{ArrayContainer, ArrayContainerCodec, ViewEncoding};
 use item::ItemCodec;
 
 use super::prelude::*;
@@ -12,6 +12,7 @@ use crate::value::TypedView;
 
 mod byte_array;
 mod container;
+mod cursor;
 mod fixed;
 mod garray;
 mod item;
@@ -33,15 +34,14 @@ impl ArrayCodec {
         item_codec: Box<Codec>,
         kind: ArrayKind,
         ownership: Ownership,
-        size_param_index: Option<u32>,
-        fixed_size: Option<u32>,
+        bounds: ArrayBounds,
         element_size: Option<usize>,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             item_codec,
             ownership,
             element_size,
-            container: ArrayContainerCodec::from_kind(kind, size_param_index, fixed_size)?,
+            container: ArrayContainerCodec::from_kind(kind, bounds)?,
         })
     }
 
@@ -90,11 +90,22 @@ impl Encoder for ArrayCodec {
             return self.container.encode(self, *env, &items);
         }
         if let Some(view) = TypedView::from_unknown(env, value)? {
-            return self.container.encode_buffer_view(self, &view);
+            return self
+                .container
+                .encode_buffer_view(self, &view, ViewEncoding::Passthrough);
         }
         match value.get_type()? {
             ValueType::Null | ValueType::Undefined => Ok(ffi::Stash::Ptr(std::ptr::null_mut())),
             _ => bail_expected!("an Array", "array"),
+        }
+    }
+
+    fn encode_owned(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        match TypedView::from_unknown(env, value)? {
+            Some(view) => self
+                .container
+                .encode_buffer_view(self, &view, ViewEncoding::Copy),
+            None => self.encode(env, value),
         }
     }
 }
@@ -262,6 +273,14 @@ impl ArrayCodec {
         self.element_size
     }
 
+    pub(super) fn cursor_stride(&self) -> anyhow::Result<usize> {
+        self.inline_element_size()
+            .or_else(|| self.item_element_size())
+            .ok_or_else(|| {
+                anyhow::anyhow!("Unsupported cursor array item codec: {:?}", self.item_codec)
+            })
+    }
+
     pub(super) fn inline_element_buffer(
         stride: usize,
         array: &[Unknown<'_>],
@@ -292,6 +311,8 @@ impl ArrayCodec {
         data: *const u8,
         len: usize,
     ) -> anyhow::Result<Vec<Unknown<'e>>> {
+        value::checked_array_length(len)?;
+
         (0..len)
             .map(|index| unsafe {
                 self.item_codec.read(
@@ -416,6 +437,8 @@ impl ArrayCodec {
         if let Some(stride) = self.inline_element_size() {
             return self.decode_inline(env, stride, data, len);
         }
+        value::checked_array_length(len)?;
+
         let numbers_to_unknowns = |numbers: Vec<f64>| -> anyhow::Result<Vec<Unknown<'e>>> {
             numbers
                 .into_iter()
@@ -458,10 +481,11 @@ impl ArrayCodec {
         }
     }
 
-    fn buffer_view_passthrough(
+    fn buffer_view_stash(
         &self,
         view: &TypedView,
         expected_length: Option<usize>,
+        encoding: ViewEncoding,
     ) -> anyhow::Result<ffi::Stash> {
         anyhow::ensure!(
             self.ownership.is_borrowed(),
@@ -481,7 +505,10 @@ impl ArrayCodec {
             view.kind(),
             self.item_codec
         );
-        Ok(ffi::Stash::Ptr(view.ptr()))
+        Ok(match encoding {
+            ViewEncoding::Passthrough => ffi::Stash::Ptr(view.ptr()),
+            ViewEncoding::Copy => ffi::Stash::Storage(owned_view_storage(view)),
+        })
     }
 
     fn decode_ptr_iter<'e>(

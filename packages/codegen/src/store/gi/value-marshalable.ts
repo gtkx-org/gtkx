@@ -15,6 +15,8 @@ const hasOwnCopySemantics = (record: GirRecord): boolean =>
     record.glibGetType !== undefined ||
     ((record.glibRefFunc ?? record.copyFunc) !== undefined && (record.glibUnrefFunc ?? record.freeFunc) !== undefined);
 
+const isOpaqueRecord = (record: GirRecord): boolean => record.opaque || record.disguised;
+
 const isValueSafeArray = (scope: Scope, type: Extract<GirType, { kind: "carray" }>): boolean =>
     type.fixedSize !== undefined && isValueSafeRef(scope, type.element, type.elementCType);
 
@@ -82,6 +84,6 @@ const isValueMarshalable = (context: ModuleContext, namespaceName: string, recor
     isValueSafeRecord({ context, seen: new Set<string>() }, namespaceName, record);
 
 const isConstructibleRecord = (context: ModuleContext, namespaceName: string, record: GirRecord): boolean =>
-    hasOwnCopySemantics(record) || isValueMarshalable(context, namespaceName, record);
+    !isOpaqueRecord(record) && (hasOwnCopySemantics(record) || isValueMarshalable(context, namespaceName, record));
 
 export { isConstructibleRecord, isValueMarshalable };

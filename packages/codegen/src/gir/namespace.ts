@@ -44,6 +44,8 @@ type GirNamespace = {
     id: number;
     /** Namespace name as it appears in the GIR, such as `Gtk`. */
     name: string;
+    /** Path of the `.gir` file the namespace was parsed from, named by every diagnostic the namespace causes. */
+    girFile: string;
     /** The `shared-library` attribute verbatim: the objects to load symbols from, separated by commas. */
     sharedLibrary: string | undefined;
     /** Prefixes stripped off C identifiers to derive export names, such as `gtk`. */
@@ -78,6 +80,8 @@ type NamespaceInclude = {
 type NamespaceHeader = {
     /** Namespace name as it appears in the GIR, such as `Gtk`. */
     name: string;
+    /** Path of the `.gir` file the header was read from. */
+    girFile: string;
     /** The `shared-library` attribute verbatim: the objects to load symbols from, separated by commas. */
     sharedLibrary: string | undefined;
     /** Prefixes stripped off C identifiers to derive export names, such as `gtk`. */
@@ -90,7 +94,7 @@ type NamespaceHeader = {
 
 const namespaceDirectory = (namespace: Pick<GirNamespace, "name">): string => namespace.name.toLowerCase();
 
-const parseNamespaceHeader = (repositoryNode: RawNode): NamespaceHeader => {
+const parseNamespaceHeader = (repositoryNode: RawNode, path: string): NamespaceHeader => {
     const includes = getChildren(repositoryNode, "include").map<NamespaceInclude>((include) => ({
         name: nameAttr(include),
         version: attr(include, "version") ?? "",
@@ -99,11 +103,12 @@ const parseNamespaceHeader = (repositoryNode: RawNode): NamespaceHeader => {
     const namespaceNode = getChildren(repositoryNode, "namespace")[0];
 
     if (namespaceNode === undefined) {
-        throw new Error("GIR repository has no <namespace> child");
+        throw new Error(`GIR file at ${path} has no <namespace> child in its <repository>`);
     }
 
     return {
         name: nameAttr(namespaceNode),
+        girFile: path,
         sharedLibrary: attr(namespaceNode, "shared-library"),
         cSymbolPrefixes: splitPrefixes(attr(namespaceNode, "c:symbol-prefixes")),
         includes,
@@ -114,6 +119,7 @@ const parseNamespaceHeader = (repositoryNode: RawNode): NamespaceHeader => {
 const createNamespaceShell = (header: NamespaceHeader, id: number): GirNamespace => ({
     id,
     name: header.name,
+    girFile: header.girFile,
     sharedLibrary: header.sharedLibrary,
     cSymbolPrefixes: header.cSymbolPrefixes,
     classes: [],

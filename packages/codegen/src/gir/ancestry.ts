@@ -1,10 +1,26 @@
 import type { GirClass } from "./class.js";
 import type { Library } from "./library.js";
 import type { GirType } from "./type.js";
+import { splitOptionalNamespace } from "./type-ref.js";
 
 type ResolvedAncestor = {
     klass: GirClass;
     namespaceName: string;
+};
+
+type ParentRef = {
+    namespaceName: string | undefined;
+    typeName: string;
+};
+
+const getParentRef = (klass: GirClass): ParentRef | undefined => {
+    if (klass.parent === undefined) {
+        return undefined;
+    }
+
+    const [namespaceName, typeName] = splitOptionalNamespace(klass.parent);
+
+    return { namespaceName, typeName };
 };
 
 const getAncestor = (resolved: GirType | undefined): ResolvedAncestor | undefined =>
@@ -64,4 +80,4 @@ function* ancestorChain(library: Library, klass: GirClass, namespaceName: string
     }
 }
 
-export { resolveInterfaces, ancestorChain, type ResolvedAncestor };
+export { resolveClassOrInterface, resolveInterfaces, ancestorChain, getParentRef, type ResolvedAncestor };

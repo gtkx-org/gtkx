@@ -46,25 +46,6 @@ macro_rules! read_value_non_null {
 }
 pub(super) use read_value_non_null;
 
-macro_rules! read_inlineable_pointer_slot {
-    () => {
-        unsafe fn read_pointer_slot<'e>(
-            &self,
-            env: &'e ::napi::Env,
-            ptr: *const ::std::ffi::c_void,
-            context: &str,
-            transfer: $crate::ffi::codec::Ownership,
-        ) -> ::anyhow::Result<::napi::bindgen_prelude::Unknown<'e>> {
-            if self.inline {
-                return unsafe { self.read_value(env, ptr.cast_mut(), context, transfer) };
-            }
-            let inner_ptr = unsafe { ptr.cast::<*mut ::std::ffi::c_void>().read_unaligned() };
-            unsafe { self.read_value(env, inner_ptr, context, transfer) }
-        }
-    };
-}
-pub(super) use read_inlineable_pointer_slot;
-
 macro_rules! write_container_value_to_ptr {
     ($noun:literal, $label:literal, $release:expr) => {
         fn write_value_to_ptr(
@@ -131,6 +112,19 @@ pub(super) use write_return_transferred;
 
 pub(super) unsafe fn lossy_c_string(ptr: *const c_char) -> String {
     unsafe { glib::GStr::from_ptr_lossy(ptr) }.to_string()
+}
+
+/// Whether the value being written already lives in the slot it is written to, which is what a
+/// field read handed straight back to its own setter looks like.
+pub(super) fn is_slot_its_own_source(slot: ffi::Slot, src_ptr: *mut c_void) -> bool {
+    std::ptr::eq(slot.as_ptr(), src_ptr)
+}
+
+/// Copies `size` bytes into the slot, tolerating a source that overlaps it.
+pub(super) fn copy_into_slot(slot: ffi::Slot, src_ptr: *mut c_void, size: usize) {
+    unsafe {
+        std::ptr::copy(src_ptr.cast::<u8>(), slot.as_ptr().cast::<u8>(), size);
+    }
 }
 
 pub(super) fn ref_for_full_transfer<F>(
@@ -267,6 +261,23 @@ where
         std::mem::forget(stash);
     }
     container
+}
+
+pub(super) fn owned_view_storage(view: &value::TypedView) -> ffi::StashStorage {
+    match view.kind() {
+        value::ViewKind::Int8 => view.to_vec::<i8>().into(),
+        value::ViewKind::Uint8 | value::ViewKind::Uint8Clamped | value::ViewKind::DataView => {
+            view.to_vec::<u8>().into()
+        }
+        value::ViewKind::Int16 => view.to_vec::<i16>().into(),
+        value::ViewKind::Uint16 => view.to_vec::<u16>().into(),
+        value::ViewKind::Int32 => view.to_vec::<i32>().into(),
+        value::ViewKind::Uint32 => view.to_vec::<u32>().into(),
+        value::ViewKind::Float32 => view.to_vec::<f32>().into(),
+        value::ViewKind::Float64 => view.to_vec::<f64>().into(),
+        value::ViewKind::BigInt64 => view.to_vec::<i64>().into(),
+        value::ViewKind::BigUint64 => view.to_vec::<u64>().into(),
+    }
 }
 
 pub(super) fn full_transfer_stash(ptr: *mut c_void, release: ffi::ReleaseKind) -> ffi::Stash {

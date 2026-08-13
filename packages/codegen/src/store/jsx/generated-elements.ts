@@ -1,7 +1,8 @@
-import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { GlibNamedClass } from "./intrinsic-elements.js";
 import { namespaceDirectory } from "../../gir/namespace.js";
+import { arrayGuard, hasFields, isBoolean, isString } from "../../guards.js";
+import { readJsonFile } from "../../json.js";
 
 /** One element the `@gtkx/jsx` store binds. */
 type GeneratedElement = {
@@ -33,22 +34,30 @@ const collectGeneratedElements = (intrinsicElements: GlibNamedClass[]): Generate
 const renderGeneratedElements = (elements: GeneratedElement[]): string =>
     `${JSON.stringify(elements, null, 2)}\n`;
 
+const isGeneratedElement = (value: unknown): value is GeneratedElement =>
+    hasFields<GeneratedElement>(value, {
+        namespace: isString,
+        directory: isString,
+        glibName: isString,
+        isMountable: isBoolean,
+    });
+
+const isGeneratedInventory = (value: unknown): value is GeneratedElement[] =>
+    arrayGuard(isGeneratedElement)(value);
+
 /**
  * Reads the inventory of elements the `@gtkx/jsx` store binds, written into the store by codegen. Answers
  * "what does this project's JSX layer cover" without loading the store, which resolves `virtual:` specifiers
  * that only exist inside a Vite or Vitest build.
  *
  * @param jsxStoreDir The jsx store directory, as given by `resolveStore(projectRoot).jsx.storeDir`.
- * @returns Every bound element, sorted by GLib type name, or an empty array when the store has no inventory.
+ * @returns Every bound element, sorted by GLib type name, or an empty array when the store holds no inventory
+ * codegen wrote, which covers an absent, unreadable, unparseable and structurally foreign store file alike.
  */
 const readGeneratedElements = (jsxStoreDir: string): GeneratedElement[] => {
-    const path = join(jsxStoreDir, ELEMENTS_FILENAME);
+    const parsed = readJsonFile(join(jsxStoreDir, ELEMENTS_FILENAME));
 
-    if (!existsSync(path)) {
-        return [];
-    }
-
-    return JSON.parse(readFileSync(path, "utf8")) as GeneratedElement[];
+    return isGeneratedInventory(parsed) ? parsed : [];
 };
 
 export {

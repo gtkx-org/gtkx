@@ -6,19 +6,30 @@ import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { inputParameters } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
+import { comparisonContextFor } from "../../writer/comparison-context.js";
 import { renderBlock } from "../../writer/emit.js";
 import { isEmittableCallable } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
 import { methodExportName, renderMethodReturnType } from "./method.js";
 
+type AccessorTypes = {
+    readType: string;
+    writeType: string;
+};
+
+type InheritedAccessorTypes = {
+    readType: string | undefined;
+    writeType: string | undefined;
+};
+
 type ResolvedAccessor = {
     property: GirProperty;
     jsName: string;
-    tsType: string;
+    readType: string;
+    writeType: string;
     hasGetter: boolean;
     isWritable: boolean;
     getterMember: string | undefined;
-    getterMethod: GirFunction | undefined;
     setterMember: string | undefined;
 };
 
@@ -27,18 +38,15 @@ type PropertyAccessorArgs = {
     property: GirProperty;
     claimedNames: Set<string>;
     methodByName: Map<string, GirFunction>;
-    inheritedType?: string | undefined;
+    inheritedTypes?: InheritedAccessorTypes | undefined;
+    inheritedNames?: Set<string> | undefined;
 };
 
-type AccessorDelegate = { member: string | undefined; method: GirFunction | undefined };
+type AccessorDelegate = { member: string; method: GirFunction };
+type AccessorDelegates = { getter: AccessorDelegate | undefined; setter: AccessorDelegate | undefined };
+type TypedDelegates = { types: AccessorTypes; delegates: AccessorDelegates };
 
-type GetterBodyOptions = {
-    context: ModuleContext;
-    property: GirProperty;
-    getterMember: string | undefined;
-    getterMethod: GirFunction | undefined;
-    tsType: string;
-};
+const NULLABLE_SUFFIX = " | null";
 
 const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined): boolean => {
     if (type === undefined) {
@@ -71,14 +79,17 @@ const resolveDelegate = (
     attribute: string | undefined,
     member: string | undefined,
     isDelegatable: (method: GirFunction) => boolean,
-): AccessorDelegate => {
+): AccessorDelegate | undefined => {
     const method = member !== undefined && attribute !== undefined ? args.methodByName.get(attribute) : undefined;
-    const canDelegate = method === undefined || isDelegatable(method);
 
-    return canDelegate ? { member, method } : { member: undefined, method: undefined };
+    if (member === undefined || method === undefined || !isDelegatable(method)) {
+        return undefined;
+    }
+
+    return { member, method };
 };
 
-const resolveGetterDelegate = (args: PropertyAccessorArgs, jsName: string): AccessorDelegate => {
+const resolveGetterDelegate = (args: PropertyAccessorArgs, jsName: string): AccessorDelegate | undefined => {
     const { context, property, claimedNames } = args;
     const member = delegateMember(property.getter, jsName, claimedNames);
 
@@ -92,7 +103,11 @@ const resolveGetterDelegate = (args: PropertyAccessorArgs, jsName: string): Acce
     );
 };
 
-const resolveSetterDelegate = (args: PropertyAccessorArgs, jsName: string, isWritable: boolean): AccessorDelegate => {
+const resolveSetterDelegate = (
+    args: PropertyAccessorArgs,
+    jsName: string,
+    isWritable: boolean,
+): AccessorDelegate | undefined => {
     const { context, property, claimedNames } = args;
     const member = isWritable ? delegateMember(property.setter, jsName, claimedNames) : undefined;
 
@@ -104,52 +119,114 @@ const resolveSetterDelegate = (args: PropertyAccessorArgs, jsName: string, isWri
     );
 };
 
-const resolveOwnType = (
+const baseTypeName = (type: string): string =>
+    type.endsWith(NULLABLE_SUFFIX) ? type.slice(0, -NULLABLE_SUFFIX.length) : type;
+
+const areDelegateBaseTypesAgreeing = (
     context: ModuleContext,
-    property: GirProperty,
-    getterMethod: GirFunction | undefined,
-    setterMethod: GirFunction | undefined,
-): string => {
-    const setterParam = setterMethod?.parameters[0];
+    getter: AccessorDelegate | undefined,
+    setter: AccessorDelegate | undefined,
+): boolean => {
+    const setterParam = setter?.method.parameters[0];
 
-    if (setterParam !== undefined) {
-        return renderTsType(context, setterParam.type, setterParam.nullable || setterParam.optional);
+    if (setterParam === undefined || getter === undefined) {
+        return true;
     }
 
-    if (getterMethod !== undefined) {
-        return renderMethodReturnType(context, getterMethod);
-    }
+    const scratch = comparisonContextFor(context);
+    const read = baseTypeName(renderMethodReturnType(scratch, getter.method));
+    const written = baseTypeName(renderTsType(scratch, setterParam.type, false));
 
-    return renderTsType(context, property.type, isNullablePropertyType(context, property.type));
+    return read === written;
 };
 
-const isSkippedAccessor = (property: GirProperty, jsName: string, claimedNames: Set<string>): boolean =>
-    !property.introspectable || claimedNames.has(jsName) || jsName === "constructor";
+const resolveDelegates = (args: PropertyAccessorArgs, jsName: string, isWritable: boolean): AccessorDelegates => {
+    const getter = resolveGetterDelegate(args, jsName);
+    const setter = resolveSetterDelegate(args, jsName, isWritable);
 
-const resolveTsType = (inheritedType: string | undefined, ownType: string): string =>
-    inheritedType !== undefined && inheritedType !== ownType ? inheritedType : ownType;
+    if (areDelegateBaseTypesAgreeing(args.context, getter, setter)) {
+        return { getter, setter };
+    }
+
+    return { getter, setter: undefined };
+};
+
+const declaredPropertyType = (context: ModuleContext, property: GirProperty): string =>
+    renderTsType(context, property.type, isNullablePropertyType(context, property.type));
+
+const resolveOwnTypes = (
+    context: ModuleContext,
+    property: GirProperty,
+    delegates: AccessorDelegates,
+): AccessorTypes => {
+    const getterMethod = delegates.getter?.method;
+    const setterParam = delegates.setter?.method.parameters[0];
+
+    return {
+        readType: getterMethod === undefined
+            ? declaredPropertyType(context, property)
+            : renderMethodReturnType(context, getterMethod),
+        writeType: setterParam === undefined
+            ? declaredPropertyType(context, property)
+            : renderTsType(context, setterParam.type, setterParam.nullable || setterParam.optional),
+    };
+};
+
+const isAssignableType = (source: string, target: string): boolean =>
+    source === target || baseTypeName(target) === source;
+
+const agreeingDelegates = (
+    delegates: AccessorDelegates,
+    ownTypes: AccessorTypes,
+    declaredTypes: AccessorTypes,
+): AccessorDelegates => ({
+    getter: isAssignableType(ownTypes.readType, declaredTypes.readType) ? delegates.getter : undefined,
+    setter: isAssignableType(declaredTypes.writeType, ownTypes.writeType) ? delegates.setter : undefined,
+});
+
+const resolveTypedDelegates = (args: PropertyAccessorArgs, resolved: AccessorDelegates): TypedDelegates => {
+    const ownTypes = resolveOwnTypes(args.context, args.property, resolved);
+
+    const types = {
+        readType: args.inheritedTypes?.readType ?? ownTypes.readType,
+        writeType: args.inheritedTypes?.writeType ?? ownTypes.writeType,
+    };
+
+    return { types, delegates: agreeingDelegates(resolved, ownTypes, types) };
+};
+
+const isSkippedAccessor = (args: PropertyAccessorArgs, jsName: string): boolean =>
+    !args.property.introspectable ||
+    args.claimedNames.has(jsName) ||
+    args.inheritedNames?.has(jsName) === true ||
+    jsName === "constructor";
 
 const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefined => {
-    const { context, property, claimedNames } = args;
+    const { property } = args;
     const jsName = toCamelIdentifier(property.name);
 
-    if (isSkippedAccessor(property, jsName, claimedNames)) {
+    if (isSkippedAccessor(args, jsName)) {
         return undefined;
     }
 
     const isWritable = isConstructableProperty(property) && !property.constructOnly;
-    const { member: getterMember, method: getterMethod } = resolveGetterDelegate(args, jsName);
-    const { member: setterMember, method: setterMethod } = resolveSetterDelegate(args, jsName, isWritable);
-    const hasGetter = property.readable || getterMember !== undefined;
+    const { types, delegates } = resolveTypedDelegates(args, resolveDelegates(args, jsName, isWritable));
+    const hasGetter = property.readable || delegates.getter !== undefined;
 
     if (!hasGetter && !isWritable) {
         return undefined;
     }
 
-    const ownType = resolveOwnType(context, property, getterMethod, setterMethod);
-    const tsType = resolveTsType(args.inheritedType, ownType);
-
-    return { property, jsName, tsType, hasGetter, isWritable, getterMember, getterMethod, setterMember };
+    return {
+        property,
+        jsName,
+        readType: types.readType,
+        writeType: types.writeType,
+        hasGetter,
+        isWritable,
+        getterMember: delegates.getter?.member,
+        setterMember: delegates.setter?.member,
+    };
 };
 
 const resolveOwnerAccessor = (
@@ -172,11 +249,22 @@ const resolveOwnerAccessor = (
     return resolveAccessor({ context, property, claimedNames, methodByName });
 };
 
-const resolveAccessorType = (
+const resolveAccessorTypes = (
     context: ModuleContext,
     property: GirProperty,
     methods: GirFunction[],
-): string | undefined => resolveOwnerAccessor(context, property, methods)?.tsType;
+): InheritedAccessorTypes | undefined => {
+    const accessor = resolveOwnerAccessor(context, property, methods);
+
+    if (accessor === undefined) {
+        return undefined;
+    }
+
+    return {
+        readType: accessor.hasGetter ? accessor.readType : undefined,
+        writeType: accessor.isWritable ? accessor.writeType : undefined,
+    };
+};
 
 const withAccessor = (
     args: PropertyAccessorArgs,
@@ -196,19 +284,18 @@ const renderResolvedPropertyAccessor = (
     property: GirProperty,
     accessor: ResolvedAccessor,
 ): string => {
-    const { jsName, tsType, hasGetter, isWritable, getterMember, getterMethod, setterMember } = accessor;
+    const { jsName, readType, writeType, hasGetter, isWritable, setterMember } = accessor;
     const blocks: string[] = [];
 
     if (hasGetter) {
-        const getterBody = renderGetterBody({ context, property, getterMember, getterMethod, tsType });
-        blocks.push(renderBlock(`get ${jsName}(): ${tsType}`, getterBody));
+        blocks.push(renderBlock(`get ${jsName}(): ${readType}`, renderGetterBody(context, property, accessor)));
     }
 
     if (isWritable) {
         const setterBody =
             setterMember === undefined ? renderGenericSetBody(context, property) : `this.${setterMember}(value);`;
 
-        blocks.push(renderBlock(`set ${jsName}(value: ${tsType})`, setterBody));
+        blocks.push(renderBlock(`set ${jsName}(value: ${writeType})`, setterBody));
     }
 
     return `${propertyDoc(property)}${blocks.join("\n\n")}`;
@@ -220,20 +307,26 @@ const propertyDoc = (property: GirProperty): string =>
 const renderPropertyAccessor = (args: PropertyAccessorArgs): string | undefined =>
     withAccessor(args, (accessor) => renderResolvedPropertyAccessor(args.context, args.property, accessor));
 
+const renderAccessorPairSignature = (accessor: ResolvedAccessor): string => {
+    const { jsName, readType, writeType, hasGetter, isWritable } = accessor;
+
+    if (!hasGetter) {
+        return `set ${jsName}(value: ${writeType});`;
+    }
+
+    if (!isWritable) {
+        return `get ${jsName}(): ${readType};`;
+    }
+
+    if (readType === writeType) {
+        return `${jsName}: ${readType};`;
+    }
+
+    return `get ${jsName}(): ${readType};\nset ${jsName}(value: ${writeType});`;
+};
+
 const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): string | undefined =>
-    withAccessor(args, ({ jsName, tsType, hasGetter, isWritable }) => {
-        const doc = propertyDoc(args.property);
-
-        if (hasGetter && isWritable) {
-            return `${doc}${jsName}: ${tsType};`;
-        }
-
-        if (hasGetter) {
-            return `${doc}get ${jsName}(): ${tsType};`;
-        }
-
-        return `${doc}set ${jsName}(value: ${tsType});`;
-    });
+    withAccessor(args, (accessor) => `${propertyDoc(args.property)}${renderAccessorPairSignature(accessor)}`);
 
 const renderPropertyDescriptor = (context: ModuleContext, property: GirProperty): string =>
     renderDescriptor(context, property.type, property.transferOwnership);
@@ -254,21 +347,10 @@ const renderGenericSetBody = (context: ModuleContext, property: GirProperty): st
     return `setObjectProperty(this, ${sourceStringLiteral(property.name)}, ${descriptor}, value);`;
 };
 
-const renderGetterBody = (options: GetterBodyOptions): string => {
-    const { context, property, getterMember, getterMethod, tsType } = options;
-
-    if (getterMember === undefined) {
-        return renderGenericGetBody(context, property, tsType);
-    }
-
-    if (getterMethod === undefined) {
-        return `return this.${getterMember}() as ${tsType};`;
-    }
-
-    const getterType = renderMethodReturnType(context, getterMethod);
-
-    return getterType === tsType ? `return this.${getterMember}();` : `return this.${getterMember}() as ${tsType};`;
-};
+const renderGetterBody = (context: ModuleContext, property: GirProperty, accessor: ResolvedAccessor): string =>
+    accessor.getterMember === undefined
+        ? renderGenericGetBody(context, property, accessor.readType)
+        : `return this.${accessor.getterMember}();`;
 
 const delegateMember = (
     attribute: string | undefined,
@@ -296,10 +378,11 @@ export {
     propertyDoc,
     resolveAccessor,
     resolveOwnerAccessor,
-    resolveAccessorType,
+    resolveAccessorTypes,
     renderResolvedPropertyAccessor,
     renderPropertyAccessor,
     renderPropertyAccessorSignature,
+    type InheritedAccessorTypes,
     type ResolvedAccessor,
     type PropertyAccessorArgs,
 };

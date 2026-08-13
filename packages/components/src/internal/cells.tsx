@@ -477,7 +477,7 @@ function HeaderCellImpl({ entry, render, collection }: HeaderCellProps): ReactNo
     const item = useSyncExternalStore(entry.subscribe, entry.getItem);
     const ref = slotRefFor(item);
     const renderHeader = render as ListSectionRenderer<unknown>;
-    const body = ref === null ? null : renderHeader({ section: collection.sectionFor(ref.store.path) });
+    const body = ref === null ? null : renderHeader({ section: collection.sectionFor(ref.store.level.path) });
 
     return createPortal(body, entry.host, entry.key);
 }

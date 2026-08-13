@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { getWidgetTypeName } from "../widget-getters.js";
 import { applyHeaderClick } from "./column-header-click.js";
 import { applyRowClick } from "./list-row-click.js";
+import { applyTabClick, isNotebookTab } from "./notebook-tab-click.js";
 
 type NativeClick = (widget: Gtk.Widget, nPress: number) => void;
 
@@ -38,6 +39,10 @@ const nativeClickFor = (widget: Gtk.Widget, isClicked: boolean): NativeClick | n
 
     if (isColumnHeader(widget)) {
         return applyHeaderClick;
+    }
+
+    if (isNotebookTab(widget)) {
+        return applyTabClick;
     }
 
     return isFactoryRow(widget) ? applyRowClick : null;

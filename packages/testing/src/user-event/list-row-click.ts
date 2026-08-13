@@ -1,5 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as GLib from "@gtkx/gi/glib";
+import { ancestors } from "../traversal.js";
 import { callBooleanGetter, hasWidgetMethod } from "../widget-getters.js";
 
 const SELECT_ACTION = "listitem.select";
@@ -7,14 +8,10 @@ const SINGLE_CLICK_ACTIVATE_GETTER = "getSingleClickActivate";
 const DOUBLE_CLICK_PRESS = 2;
 
 const viewFor = (row: Gtk.Widget): Gtk.Widget | null => {
-    let current: Gtk.Widget | null = row.getParent();
-
-    while (current !== null) {
-        if (hasWidgetMethod(current, SINGLE_CLICK_ACTIVATE_GETTER)) {
-            return current;
+    for (const ancestor of ancestors(row)) {
+        if (hasWidgetMethod(ancestor, SINGLE_CLICK_ACTIVATE_GETTER)) {
+            return ancestor;
         }
-
-        current = current.getParent();
     }
 
     return null;

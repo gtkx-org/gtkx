@@ -5,6 +5,7 @@ use napi_derive::napi;
 use super::super::prelude::*;
 use super::ArrayCodec;
 use super::byte_array::GByteArrayCodec;
+use super::cursor::CursorArrayCodec;
 use super::fixed::FixedArrayCodec;
 use super::garray::GArrayCodec;
 use super::list::ListArrayCodec;
@@ -15,7 +16,8 @@ use crate::ffi::codec::Codec;
 use crate::value::TypedView;
 
 /// Container layout used to marshal an array: a plain C `array`, a `glist`, `gslist`, `gptrarray`,
-/// `garray`, `gbytearray`, a `sized` buffer, or a `fixed`-length buffer.
+/// `garray`, `gbytearray`, a `sized` buffer, a `fixed`-length buffer, or a `cursor` pointing into
+/// the buffer another argument supplied.
 #[napi(string_enum = "lowercase")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ArrayKind {
@@ -27,6 +29,52 @@ pub enum ArrayKind {
     GByteArray,
     Sized,
     Fixed,
+    Cursor,
+}
+
+/// Where an array container reads its extent from, as the descriptor declared it.
+#[derive(Debug, Clone, Copy)]
+pub struct ArrayBounds {
+    pub base_param_index: Option<u32>,
+    pub size_param_index: Option<u32>,
+    pub fixed_size: Option<u32>,
+}
+
+impl ArrayBounds {
+    /// Bounds for a container that carries its own extent, such as a null-terminated array.
+    pub const NONE: Self = Self {
+        base_param_index: None,
+        size_param_index: None,
+        fixed_size: None,
+    };
+
+    /// Bounds for an array whose element count is carried by the argument at `size_param_index`.
+    #[must_use]
+    pub fn sized(size_param_index: u32) -> Self {
+        Self {
+            size_param_index: Some(size_param_index),
+            ..Self::NONE
+        }
+    }
+
+    /// Bounds for an array of a constant element count.
+    #[must_use]
+    pub fn fixed(fixed_size: u32) -> Self {
+        Self {
+            fixed_size: Some(fixed_size),
+            ..Self::NONE
+        }
+    }
+
+    /// Bounds for a cursor into the buffer of `base_param_index`, sized by `size_param_index`.
+    #[must_use]
+    pub fn cursor(base_param_index: u32, size_param_index: u32) -> Self {
+        Self {
+            base_param_index: Some(base_param_index),
+            size_param_index: Some(size_param_index),
+            fixed_size: None,
+        }
+    }
 }
 
 #[enum_dispatch]
@@ -70,10 +118,11 @@ pub(super) trait ArrayContainer {
         &self,
         codec: &ArrayCodec,
         view: &TypedView,
+        encoding: ViewEncoding,
     ) -> anyhow::Result<ffi::Stash> {
         match self.buffer_view_support() {
             BufferViewSupport::Contiguous(expected_length) => {
-                codec.buffer_view_passthrough(view, expected_length)
+                codec.buffer_view_stash(view, expected_length, encoding)
             }
             BufferViewSupport::Rejected => {
                 anyhow::ensure!(
@@ -96,36 +145,47 @@ pub(super) enum BufferViewSupport {
     Contiguous(Option<usize>),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ViewEncoding {
+    Passthrough,
+    Copy,
+}
+
 #[enum_dispatch(ArrayContainer)]
 #[derive(Debug, Clone)]
 pub(crate) enum ArrayContainerCodec {
     NullTerminated(NullTerminatedArrayCodec),
     Sized(SizedArrayCodec),
     Fixed(FixedArrayCodec),
+    Cursor(CursorArrayCodec),
     List(ListArrayCodec),
     PtrArray(GPtrArrayCodec),
     GArray(GArrayCodec),
     ByteArray(GByteArrayCodec),
 }
 
+fn required_index(index: Option<u32>, field: &str, kind: &str) -> anyhow::Result<u32> {
+    index.ok_or_else(|| anyhow::anyhow!("A {kind} array requires a {field}"))
+}
+
 impl ArrayContainerCodec {
-    pub(super) fn from_kind(
-        kind: ArrayKind,
-        size_param_index: Option<u32>,
-        fixed_size: Option<u32>,
-    ) -> anyhow::Result<Self> {
+    pub(super) fn from_kind(kind: ArrayKind, bounds: ArrayBounds) -> anyhow::Result<Self> {
         Ok(match kind {
             ArrayKind::Array => Self::NullTerminated(NullTerminatedArrayCodec),
-            ArrayKind::Sized => {
-                Self::Sized(SizedArrayCodec::new(size_param_index.ok_or_else(|| {
-                    anyhow::anyhow!("A sized array requires a sizeParamIndex")
-                })?))
-            }
-            ArrayKind::Fixed => {
-                Self::Fixed(FixedArrayCodec::new(fixed_size.ok_or_else(|| {
-                    anyhow::anyhow!("A fixed array requires a fixedSize")
-                })?))
-            }
+            ArrayKind::Sized => Self::Sized(SizedArrayCodec::new(required_index(
+                bounds.size_param_index,
+                "sizeParamIndex",
+                "sized",
+            )?)),
+            ArrayKind::Fixed => Self::Fixed(FixedArrayCodec::new(required_index(
+                bounds.fixed_size,
+                "fixedSize",
+                "fixed",
+            )?)),
+            ArrayKind::Cursor => Self::Cursor(CursorArrayCodec::new(
+                required_index(bounds.base_param_index, "baseParamIndex", "cursor")?,
+                required_index(bounds.size_param_index, "sizeParamIndex", "cursor")?,
+            )),
             ArrayKind::GList => Self::List(ListArrayCodec::new(&ffi::GLIST_OPS)),
             ArrayKind::GSList => Self::List(ListArrayCodec::new(&ffi::GSLIST_OPS)),
             ArrayKind::GPtrArray => Self::PtrArray(GPtrArrayCodec),
@@ -135,6 +195,6 @@ impl ArrayContainerCodec {
     }
 
     pub(super) fn is_length_bounded(&self) -> bool {
-        matches!(self, Self::Sized(_) | Self::Fixed(_))
+        matches!(self, Self::Sized(_) | Self::Fixed(_) | Self::Cursor(_))
     }
 }

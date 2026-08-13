@@ -66,11 +66,14 @@ const generateMetadata = (library: Library): string => {
 
 const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => {
     const entries: IntrinsicElementEntry[] = [];
+    const seen: Set<string> = new Set();
 
     for (const { glibName, klass, namespace } of iterateClassesWithGlibName(library)) {
-        if (!isIntrinsicElementClass(klass, namespace, library)) {
+        if (!isIntrinsicElementClass(klass, namespace, library) || seen.has(glibName)) {
             continue;
         }
+
+        seen.add(glibName);
 
         const sources: GirClass[] = [
             klass,

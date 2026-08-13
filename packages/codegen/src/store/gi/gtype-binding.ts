@@ -24,9 +24,14 @@ const renderInternGtype = (context: ModuleContext, typeName: string | undefined)
     return `typeFromName(${sourceStringLiteral(typeName)})`;
 };
 
-const renderResolveGtype = (context: ModuleContext, typeFnName: string): string => {
+const renderResolveGtype = (context: ModuleContext, typeFnName: string): string | undefined => {
+    const lib = context.namespace.sharedLibrary;
+
+    if (lib === undefined) {
+        return undefined;
+    }
+
     context.addRuntimeImport("resolveType");
-    const lib = context.namespace.sharedLibrary ?? "";
 
     return `resolveType(${sourceStringLiteral(lib)}, ${sourceStringLiteral(typeFnName)})`;
 };

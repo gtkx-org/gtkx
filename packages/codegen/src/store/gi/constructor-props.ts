@@ -96,7 +96,7 @@ const renderTranslatingConstructor = (context: ModuleContext, props: GirProperty
     context.addRuntimeImport("t");
     context.addRuntimeImport("registerConstructProperties");
     const bindings = renderConstructBindings(context, props);
-    context.module.appendRegistration(`registerConstructProperties(${className}, ${bindings});`);
+    context.module.appendRegistration(`registerConstructProperties(${className}, ${bindings});`, [className]);
 
     return renderBlock(`constructor(props: ${className}ConstructorProps = {})`, "super(props);");
 };

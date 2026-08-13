@@ -2,15 +2,16 @@ import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
 import { error, info, sortStrings } from "@gtkx/utils";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { AssetEmitter } from "./asset-emitter.js";
-import { DATA_IMPORT_PREFIX, resolveDataDir } from "../internal/data-dir.js";
+import { resolveDataDir } from "../internal/data-dir.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
+import { loadModuleExclusively } from "../internal/module-loads.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
-import { withStagingDir } from "../internal/staging-dir.js";
-import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
+import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
+import { ASSET_RE } from "./asset-extensions.js";
+import { DATA_PREFIX, isDataAsset } from "./asset-specifier.js";
 import { renderInitModule } from "./resource-init-module.js";
 import {
     BUNDLE_FILENAME,
@@ -19,10 +20,10 @@ import {
     isVirtual,
     REFRESH_EXPORT,
     REL_SEPARATOR,
+    RESOURCE_PATH_EXPORT,
     toVirtualId,
     VIRTUAL_INIT,
 } from "./resource-shared.js";
-import { stripQuery } from "./strip-query.js";
 
 type ResourceEntry = {
     sourcePath: string;
@@ -35,16 +36,16 @@ type PluginState = {
     isBuild: boolean;
     entries: Map<string, ResourceEntry>;
     sourcePaths: Set<string>;
-    devStagingDir: string | null;
+    stagingDir: RetainedStagingDir;
     devBundlePath: string;
     server: ViteDevServer | null;
     compiledSignature: string;
     dataDir: string | null;
 };
 
-const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 const RESOURCE_COMPILER = "glib-compile-resources";
 const MANIFEST_PREFIX = "/";
+const DEV_STAGING_PREFIX = "resources-dev";
 
 const deriveResourcePrefix = (applicationId: string): string => `/${applicationId.replaceAll(".", "/")}`;
 
@@ -93,12 +94,13 @@ const runCompiler = (sourceDir: string, manifest: string, outputPath: string): B
 };
 
 const ensureStagingDir = (state: PluginState): void => {
-    if (state.devStagingDir) {
-        return;
-    }
+    state.devBundlePath = join(state.stagingDir.retain(), BUNDLE_FILENAME);
+};
 
-    state.devStagingDir = mkdtempSync(join(tmpdir(), "gtkx-resources-dev-"));
-    state.devBundlePath = join(state.devStagingDir, BUNDLE_FILENAME);
+const releaseStagingDir = (state: PluginState): void => {
+    state.stagingDir.release();
+    state.devBundlePath = "";
+    state.compiledSignature = "";
 };
 
 const entriesSignature = (state: PluginState): string => sortStrings(state.entries.keys()).join("\0");
@@ -123,7 +125,7 @@ const reregisterDevBundle = async (state: PluginState): Promise<void> => {
         return;
     }
 
-    const mod = await server.ssrLoadModule(VIRTUAL_INIT);
+    const mod = await loadModuleExclusively(server, VIRTUAL_INIT);
     const refresh: unknown = mod[REFRESH_EXPORT];
 
     if (isRefreshHook(refresh)) {
@@ -174,25 +176,15 @@ const registerEntry = (state: PluginState, absPath: string, rel: string): Resour
 
 const isTrackedSource = (state: PluginState, file: string): boolean => state.sourcePaths.has(file);
 
-const dataAssetSource = (source: string): string | null => {
-    const clean = stripQuery(source);
-
-    if (!clean.startsWith(DATA_PREFIX) || !ASSET_PATH_RE.test(clean)) {
-        return null;
-    }
-
-    return clean;
-};
-
 const resolvedAssetId = (
     resolved: { id: string; external: boolean | string } | null,
-    clean: string,
+    source: string,
 ): string | undefined => {
     if (!resolved || resolved.external) {
         return undefined;
     }
 
-    return toVirtualId(resolved.id) + REL_SEPARATOR + clean.slice(DATA_PREFIX.length);
+    return toVirtualId(resolved.id) + REL_SEPARATOR + source.slice(DATA_PREFIX.length);
 };
 
 const loadInitModule = (state: PluginState): string => {
@@ -219,7 +211,7 @@ const loadAssetModule = (state: PluginState, virtualId: string): string => {
         `import { ensureRegistered } from ${JSON.stringify(VIRTUAL_INIT)};`,
         "ensureRegistered();",
         `export default ${JSON.stringify(uri)};`,
-        `export const path = ${JSON.stringify(entry.resourcePath)};`,
+        `export const ${RESOURCE_PATH_EXPORT} = ${JSON.stringify(entry.resourcePath)};`,
     ].join("\n");
 };
 
@@ -271,6 +263,12 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
         void refreshTrackedSource(state, file);
     };
 
+    const onClose = (): void => {
+        releaseStagingDir(state);
+    };
+
+    server.httpServer?.once("close", onClose);
+    server.watcher.once("close", onClose);
     server.watcher.on("change", onFileEvent);
     server.watcher.on("add", onFileEvent);
 };
@@ -304,7 +302,7 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin 
         isBuild: false,
         entries: new Map(),
         sourcePaths: new Set(),
-        devStagingDir: null,
+        stagingDir: createRetainedStagingDir(DEV_STAGING_PREFIX),
         devBundlePath: "",
         server: null,
         compiledSignature: "",
@@ -333,15 +331,13 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin 
                 return VIRTUAL_INIT;
             }
 
-            const clean = dataAssetSource(source);
-
-            if (clean === null) {
+            if (!isDataAsset(source)) {
                 return;
             }
 
-            const resolved = await this.resolve(clean, importer, { ...opts, skipSelf: true });
+            const resolved = await this.resolve(source, importer, { ...opts, skipSelf: true });
 
-            return resolvedAssetId(resolved, clean);
+            return resolvedAssetId(resolved, source);
         },
 
         load(id) {
@@ -350,6 +346,10 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin 
 
         buildEnd() {
             emitBuildBundle(this, state);
+        },
+
+        closeBundle() {
+            releaseStagingDir(state);
         },
     };
 }

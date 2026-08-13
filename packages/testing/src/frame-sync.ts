@@ -1,5 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as GLib from "@gtkx/gi/glib";
+import { cancelTimeout, scheduleTimeout } from "./timers.js";
 
 const CLOCK_STALL_FALLBACK_MS = 500;
 
@@ -17,22 +18,21 @@ const once = (callback: () => void): (() => void) => {
 };
 
 const hasFrameClock = (widget: Gtk.Widget | null): widget is Gtk.Widget => widget?.getFrameClock() != null;
-const isSized = (widget: Gtk.Widget): boolean => widget.getWidth() > 0;
 
-const runUntilReady = (widget: Gtk.Widget, isReady: () => boolean, finish: () => void): void => {
+const runUntilReady = (widget: Gtk.Widget, isReady: () => boolean, timeout: number, finish: () => void): void => {
     let tickId = 0;
 
-    const fallback = setTimeout(() => {
+    const fallback = scheduleTimeout(() => {
         widget.removeTickCallback(tickId);
         finish();
-    }, CLOCK_STALL_FALLBACK_MS);
+    }, timeout);
 
     tickId = widget.addTickCallback(() => {
         if (!isReady()) {
             return GLib.SOURCE_CONTINUE;
         }
 
-        clearTimeout(fallback);
+        cancelTimeout(fallback);
         finish();
 
         return GLib.SOURCE_REMOVE;
@@ -49,19 +49,24 @@ const scheduleNextFrame = (widget: Gtk.Widget): Promise<void> =>
             return;
         }
 
-        runUntilReady(widget, () => true, finish);
+        runUntilReady(widget, () => true, CLOCK_STALL_FALLBACK_MS, finish);
     });
 
-const scheduleAfterLayout = (widget: Gtk.Widget | null, callback: () => void): void => {
+const scheduleWhenWindowReady = (
+    window: Gtk.Window | null,
+    isReady: (window: Gtk.Window) => boolean,
+    timeout: number,
+    callback: () => void,
+): void => {
     const finish = once(callback);
 
-    if (!hasFrameClock(widget) || isSized(widget)) {
+    if (!hasFrameClock(window) || isReady(window)) {
         queueMicrotask(finish);
 
         return;
     }
 
-    runUntilReady(widget, () => isSized(widget), finish);
+    runUntilReady(window, () => isReady(window), timeout, finish);
 };
 
-export { scheduleAfterLayout, scheduleNextFrame };
+export { scheduleNextFrame, scheduleWhenWindowReady };

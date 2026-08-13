@@ -3,6 +3,7 @@ import type { WaitForOptions } from "./types.js";
 import { runWithActEnvironment } from "./act.js";
 import { getConfig } from "./config.js";
 import { timeoutError } from "./errors.js";
+import { advanceFakeClock, delay, now } from "./timers.js";
 
 type PollResult<T> = { status: "resolved"; value: T } | { status: "timedout"; lastError: Error | null };
 /** Widgets watched for removal; null counts as already removed. */
@@ -12,8 +13,6 @@ type ElementOrCallback = Gtk.Widget | Gtk.Widget[] | (() => RemovalTarget);
 
 const DEFAULT_INTERVAL = 50;
 const ELEMENT_NOT_REMOVED = new Error("Element not yet removed");
-
-const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 const copyStackTrace = (target: Error, source: Error): void => {
     const { stack } = source;
@@ -38,10 +37,10 @@ const pollUntilSuccess = async <T>(
     timeout: number,
     interval: number,
 ): Promise<PollResult<T>> => {
-    const startTime = Date.now();
+    const startTime = now();
     let lastError: Error | null = null;
 
-    while (Date.now() - startTime < timeout) {
+    while (now() - startTime < timeout) {
         try {
             const result = await callback();
             await delay(0);
@@ -49,6 +48,7 @@ const pollUntilSuccess = async <T>(
             return { status: "resolved", value: result };
         } catch (error) {
             lastError = error as Error;
+            await advanceFakeClock(interval);
             await delay(interval);
         }
     }

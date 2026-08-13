@@ -55,6 +55,20 @@ pub(crate) unsafe fn tracked_gobject_value(
     )?)
 }
 
+pub(crate) unsafe fn call_scoped_gobject_value(
+    env: &Env,
+    gobject_ptr: *mut glib::gobject_ffi::GObject,
+) -> anyhow::Result<Unknown<'_>> {
+    if let Some(existing) = unsafe { wrapper::wrapper_value(env, gobject_ptr) } {
+        return Ok(existing.into_unknown(env)?);
+    }
+
+    Ok(value::handle_to_unknown(
+        env,
+        Handle::borrowed_gobject(gobject_ptr),
+    )?)
+}
+
 unsafe fn object_ref_full(ptr: *mut c_void) -> *mut c_void {
     let obj: glib::Object =
         unsafe { glib::Object::from_glib_none(ptr.cast::<glib::gobject_ffi::GObject>()) };
@@ -64,6 +78,22 @@ unsafe fn object_ref_full(ptr: *mut c_void) -> *mut c_void {
 #[derive(Debug, Clone, Copy)]
 pub struct ObjectCodec {
     pub ownership: Ownership,
+    pub is_call_scoped: bool,
+}
+
+impl ObjectCodec {
+    unsafe fn gobject_value<'e>(
+        &self,
+        env: &'e Env,
+        gobject_ptr: *mut glib::gobject_ffi::GObject,
+        ownership: Ownership,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if self.is_call_scoped {
+            return unsafe { call_scoped_gobject_value(env, gobject_ptr) };
+        }
+
+        unsafe { tracked_gobject_value(env, gobject_ptr, ownership) }
+    }
 }
 
 impl Encoder for ObjectCodec {
@@ -87,7 +117,7 @@ impl Encoder for ObjectCodec {
 impl Decoder for ObjectCodec {
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
         self.decode_call_non_null(env, stash, "Object", |object_ptr| unsafe {
-            tracked_gobject_value(
+            self.gobject_value(
                 env,
                 object_ptr.cast::<glib::gobject_ffi::GObject>(),
                 self.ownership,
@@ -96,7 +126,7 @@ impl Decoder for ObjectCodec {
     }
 
     read_value_non_null!(|self, env, ptr, transfer| unsafe {
-        tracked_gobject_value(env, ptr.cast::<glib::gobject_ffi::GObject>(), transfer)
+        self.gobject_value(env, ptr.cast::<glib::gobject_ffi::GObject>(), transfer)
     });
 }
 

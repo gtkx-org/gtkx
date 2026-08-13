@@ -359,4 +359,4 @@ class SocketServer {
     }
 }
 
-export { SocketServer, withClaimLock };
+export { SocketServer };

@@ -2,6 +2,7 @@ import { getOrInsert } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { missingConfigFileError } from "./config-error.ts";
 import { type Config, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
 
 /** Result of loading a project's `gtkx.config.ts` file. */
@@ -33,14 +34,16 @@ type ConfigLoader = {
 
 /**
  * Loads and validates the `gtkx.config.ts` file for a project.
- * @param cwd Directory the configuration file is looked up in.
+ * @param cwd Directory the configuration file is looked up in; parent directories are not searched.
  * @param options Loading options, such as the environment mode whose overrides are applied.
- * @throws When the configuration fails validation, or when no configuration file is found.
+ * @throws When that directory holds no configuration file, or when the configuration fails validation.
  */
 const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise<LoadedConfig> => {
+    const searched = resolve(cwd);
+
     const result = await loadConfigFile<Config>({
         name: "gtkx",
-        cwd,
+        cwd: searched,
         rcFile: false,
         globalRc: false,
         packageJson: false,
@@ -48,18 +51,19 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
         ...((options.mode !== undefined) && { envName: options.mode }),
     });
 
-    const config = result.config;
     const configFile = result.configFile;
-    validateConfig(config);
 
-    if (configFile === undefined || !existsSync(resolve(cwd, configFile))) {
-        throw new Error(`gtkx.config.ts: no configuration file was found from ${cwd}`);
+    if (configFile === undefined || !existsSync(resolve(searched, configFile))) {
+        throw missingConfigFileError(searched);
     }
+
+    const config = result.config;
+    validateConfig(config);
 
     return {
         config,
         configFile,
-        root: result.cwd ?? cwd,
+        root: result.cwd ?? searched,
     };
 };
 

@@ -20,7 +20,7 @@ pub fn get_wrapper<'env>(
         return Ok(None);
     };
 
-    drop(handle.take_owned());
+    handle.release_owned();
 
     Ok(Some(wrapper))
 }

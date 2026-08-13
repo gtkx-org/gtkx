@@ -1,4 +1,4 @@
-import { pascalCase, sortStringsBy, upperFirst } from "@gtkx/utils";
+import { sanitizeTypeIdentifier, sortStringsBy, upperFirst } from "@gtkx/utils";
 import type { GirAnnotations } from "../gir/annotations.js";
 import type { GirClass } from "../gir/class.js";
 import type { EnumMember, GirEnum } from "../gir/enum.js";
@@ -51,6 +51,7 @@ import {
     type OriginSignatureEntry,
     plainText,
     propertyMetaLine,
+    qualifiedClassName,
     renderDocsSignalHandlerType,
     renderDocsType,
     signalTags,
@@ -202,9 +203,6 @@ const pageHeader = (entry: GiSymbolEntry, kindLabel: string): string[] => [
     importBlock(entry),
 ];
 
-const qualifiedClassName = (namespaceName: string, className: string): string =>
-    `${namespaceName}.${pascalCase(className)}`;
-
 const elementNote = (entry: ClassSymbol, options: SymbolPageOptions): string[] => {
     const glibName = options.elementNameFor(entry.namespace.name, entry.klass.name);
 
@@ -354,7 +352,7 @@ const memberOwners = (entry: ClassSymbol, library: Library): MemberOwner[] => [
 
 const interfaceMethodNames = (library: Library, owner: MemberOwner): string[] => {
     const context = docsSignatureContext(owner.namespace, library);
-    const className = pascalCase(owner.klass.name);
+    const className = sanitizeTypeIdentifier(owner.klass.name);
     const methods = dedupeCallables(owner.klass.methods);
 
     const scope = instanceScope(className, {
@@ -402,8 +400,15 @@ const getAccessNotes = (accessor: ResolvedAccessor): string[] => {
         return ["read-only"];
     }
 
-    return accessor.hasGetter ? [] : ["write-only"];
+    if (!accessor.hasGetter) {
+        return ["write-only"];
+    }
+
+    return accessor.readType === accessor.writeType ? [] : [`writes \`${accessor.writeType}\``];
 };
+
+const documentedAccessorType = (accessor: ResolvedAccessor): string =>
+    accessor.hasGetter ? accessor.readType : accessor.writeType;
 
 const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, seen: Set<string>): MetaDocEntry[] => {
     const entries: MetaDocEntry[] = [];
@@ -425,7 +430,7 @@ const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, 
         entries.push({
             name: accessor.jsName,
             meta: propertyMetaLine({
-                type: accessor.tsType,
+                type: documentedAccessorType(accessor),
                 property,
                 accessNotes: getAccessNotes(accessor),
                 origin: owner.origin,

@@ -39,6 +39,8 @@ import {
     isWidgetValueMatch,
     isWidgetVisible,
 } from "./widget-accessible-properties.js";
+import { getTypeTag } from "./widget-getters.js";
+import { isWindowActivated } from "./window-state.js";
 
 /** The expected value for a text matcher: an exact string or a regular expression. */
 type TextExpectation = string | RegExp;
@@ -389,7 +391,7 @@ const describeWidget = (widget: Gtk.Widget): string => {
 };
 
 const describeObject = (object: GObject.Object): string =>
-    object instanceof Gtk.Widget ? describeWidget(object) : `<${object.constructor.name}>`;
+    object instanceof Gtk.Widget ? describeWidget(object) : `<${getTypeTag(object)}>`;
 
 const isTextMatch = (actual: string, expected: TextExpectation, mode: "exact" | "substring"): boolean => {
     if (expected instanceof RegExp) {
@@ -428,6 +430,31 @@ const stateResult = (widget: Gtk.Widget, stateName: string, isPass: boolean): Ma
     pass: isPass,
     message: () => `expected widget ${negationPrefix(isPass)}to be ${stateName}\n${describeWidget(widget)}`,
 });
+
+const isHoldingFocus = (widget: Gtk.Widget, root: Gtk.Window): boolean => {
+    const focus = root.getFocus();
+
+    return focus !== null && (focus === widget || focus.isAncestor(widget));
+};
+
+const isFocusHeldByInactiveWindow = (widget: Gtk.Widget): boolean => {
+    const root = widget.getRoot();
+
+    return root instanceof Gtk.Window && !isWindowActivated(root) && isHoldingFocus(widget, root);
+};
+
+const focusResult = (widget: Gtk.Widget, isPass: boolean): MatcherResult => {
+    if (isPass || !isFocusHeldByInactiveWindow(widget)) {
+        return stateResult(widget, "focused", isPass);
+    }
+
+    return {
+        pass: false,
+        message: () =>
+            "expected widget to be focused: its window has given it the focus, " +
+            `but that window is not active\n${describeWidget(widget)}`,
+    };
+};
 
 const describeAttributeValue = (value: AccessibleAttributeValue | null): string =>
     value === null ? "unset" : JSON.stringify(value);
@@ -900,7 +927,7 @@ function toBeValid(received: unknown): MatcherResult {
 function toHaveFocus(received: unknown): MatcherResult {
     const widget = asWidget(received, "toHaveFocus");
 
-    return stateResult(widget, "focused", widget.getPlatformState(Gtk.AccessiblePlatformState.FOCUSED));
+    return focusResult(widget, widget.getPlatformState(Gtk.AccessiblePlatformState.FOCUSED));
 }
 
 function toHaveRole(received: unknown, expected: Gtk.AccessibleRole): MatcherResult {

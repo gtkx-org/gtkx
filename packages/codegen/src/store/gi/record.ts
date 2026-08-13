@@ -1,5 +1,7 @@
+import { sanitizeTypeIdentifier } from "@gtkx/utils";
 import type { GirRecord } from "../../gir/record.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { isEmittableEntity } from "../../gir/emittable.js";
 import { indentMembers } from "../../writer/emit.js";
 import { type Callables, dedupeCallables, generateBindings, renderPlainTypeMembers } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
@@ -8,20 +10,17 @@ import { renderRecordConstructor, renderRecordConstructorPropsInterface } from "
 import { renderRecordFieldAccessor } from "./record-field-accessor.js";
 import { computeRecordFieldSlots } from "./record-layout.js";
 import { appendWrapperClassRegistration } from "./registration.js";
+import { isConstructibleRecord } from "./value-marshalable.js";
 
 const isGErrorRecord = (context: ModuleContext, record: GirRecord): boolean =>
     context.namespace.name === "GLib" && record.glibGetType === "g_error_get_type";
 
 const generateRecord = (context: ModuleContext, record: GirRecord): void => {
-    if (!record.introspectable) {
+    if (!isEmittableEntity(record)) {
         return;
     }
 
-    if (record.name.length === 0) {
-        return;
-    }
-
-    const className = record.name;
+    const className = sanitizeTypeIdentifier(record.name);
     const isErrorSubclass = isGErrorRecord(context, record);
 
     const callables: Callables = {
@@ -35,13 +34,22 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     const body = indentMembers(members);
     const heritage = isErrorSubclass ? " extends globalThis.Error" : "";
     const doc = getDoc(record);
+    const isConstructible = isConstructibleRecord(context, context.namespace.name, record);
+    const modifier = isConstructible ? "" : "abstract ";
 
-    context.module.appendDeclaration(
-        `${doc}export class ${className}${heritage} {\n${body}\n}`,
-        context.declaredType(className),
-    );
+    context.declare({
+        name: className,
+        code: `${doc}export ${modifier}class ${className}${heritage} {\n${body}\n}`,
+        owner: record.name,
+    });
 
-    context.module.appendDeclaration(renderRecordConstructorPropsInterface(context, record, className));
+    if (isConstructible) {
+        context.declare({
+            name: `${className}ConstructorProps`,
+            code: renderRecordConstructorPropsInterface(context, record, className),
+        });
+    }
+
     const gtypeExpr = renderSourceGtype(context, record);
 
     appendWrapperClassRegistration(context, {
@@ -65,7 +73,7 @@ const renderRecordMembers = (
         hasGtype: record.glibGetType !== undefined,
     });
 
-    members.unshift(renderRecordConstructor(context, record, className, isErrorSubclass));
+    members.unshift(renderRecordConstructor(context, { record, className, callables, isErrorSubclass }));
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
 
     for (const slot of slots) {

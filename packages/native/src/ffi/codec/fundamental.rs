@@ -62,13 +62,15 @@ impl Encoder for FundamentalCodec {
 }
 
 impl Decoder for FundamentalCodec {
+    fn is_inline(&self) -> bool {
+        self.inline
+    }
+
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
         self.decode_call_non_null(env, stash, "Fundamental", |ptr| {
             Ok(value::handle_to_unknown(env, self.wrap_ptr(ptr)?)?)
         })
     }
-
-    read_inlineable_pointer_slot!();
 
     read_value_non_null!(|self, env, ptr, _transfer| {
         let (ref_fn, unref_fn) = self.lookup_fns()?;

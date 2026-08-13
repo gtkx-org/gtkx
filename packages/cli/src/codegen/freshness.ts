@@ -30,7 +30,7 @@ const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
 const hasManifest = (storeDir: string): boolean => existsSync(join(storeDir, "package.json"));
 
 const isGiStoreStale = (store: CodegenStore, libraries: string[]): boolean => {
-    if (!existsSync(store.giLinkDir) || !hasManifest(store.giStoreDir)) {
+    if (!hasManifest(store.giStoreDir)) {
         return true;
     }
 
@@ -42,7 +42,7 @@ const isReactStoreStale = (store: CodegenStore): boolean => {
         return false;
     }
 
-    if (!existsSync(store.jsxLinkDir) || !hasManifest(store.jsxStoreDir)) {
+    if (!hasManifest(store.jsxStoreDir)) {
         return true;
     }
 

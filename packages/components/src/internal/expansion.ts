@@ -1,4 +1,3 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import { useState } from "react";
 import type { Collection } from "./collection.js";
 import type { TreeExpansion } from "./tree-expansion.js";
@@ -8,7 +7,7 @@ import { useControlledSync } from "./controlled-sync.js";
 import { joinParts } from "./keys.js";
 import { trackPaths } from "./slots.js";
 import { adoptOrder, markExpanded, orderFor } from "./tree-expansion.js";
-import { walkVisible } from "./tree-order.js";
+import { expandedPathsFor, walkVisible } from "./tree-order.js";
 
 type ExpansionOptions = {
     collection: Collection;
@@ -35,30 +34,20 @@ function newLastExpansion(): LastExpansion {
     return { key: "" };
 }
 
-function wantedSet(expansion: TreeExpansion, expandedIds: string[]): Set<string> {
-    const wanted: Set<string> = new Set();
-
-    for (const id of expandedIds) {
-        for (const path of expansion.index.expandablePathsFor(id)) {
-            wanted.add(path);
-        }
-    }
-
-    return wanted;
-}
-
 function hasSameExpansion(expanded: Set<string>, wanted: Set<string>): boolean {
     return expanded.size === wanted.size && wanted.isSubsetOf(expanded);
 }
 
-function toggleOptions(expansion: TreeExpansion, tree: Gtk.TreeListModel, wanted: Set<string>): WalkOptions {
+function toggleOptions(collection: Collection, wanted: Set<string>): WalkOptions {
+    const { expansion } = collection;
+
     return {
         index: expansion.index,
         slots: trackPaths(wanted),
         marks: trackPaths(wanted.symmetricDifference(expansion.expanded)),
         visit: (row) => {
             if (row.isMarked) {
-                tree.getRow(row.position)?.setExpanded(row.isOpen);
+                collection.rowAt(row.position)?.setExpanded(row.isOpen);
             }
         },
     };
@@ -74,14 +63,15 @@ function walkApplying(expansion: TreeExpansion, options: WalkOptions): VisibleOr
     }
 }
 
-function applyWanted(expansion: TreeExpansion, tree: Gtk.TreeListModel, expandedIds: string[]): void {
-    const wanted = wantedSet(expansion, expandedIds);
+function applyWanted(collection: Collection, expandedIds: string[]): void {
+    const { expansion } = collection;
+    const wanted = expandedPathsFor(expansion.index, new Set(expandedIds));
 
     if (hasSameExpansion(expansion.expanded, wanted)) {
         return;
     }
 
-    adoptOrder(expansion, walkApplying(expansion, toggleOptions(expansion, tree, wanted)));
+    adoptOrder(expansion, walkApplying(expansion, toggleOptions(collection, wanted)));
 }
 
 function reportExpansion(context: ExpansionContext): void {
@@ -97,18 +87,16 @@ function reportExpansion(context: ExpansionContext): void {
 }
 
 function applyControlledExpansion(context: ExpansionContext, expandedIds: string[] | null | undefined): void {
-    const tree = context.collection.treeModel();
-
-    if (tree === null) {
+    if (!context.collection.isTree) {
         return;
     }
 
-    applyWanted(context.collection.expansion, tree, expandedIds ?? []);
+    applyWanted(context.collection, expandedIds ?? []);
     reportExpansion(context);
 }
 
 function isExpansionIdle(collection: Collection): boolean {
-    return collection.treeModel() !== null && isCollectionIdle(collection);
+    return collection.isTree && isCollectionIdle(collection);
 }
 
 function didRowDrift(collection: Collection, change: ItemsChange): boolean {

@@ -34,4 +34,4 @@ const documentedFromNode = (node: RawNode): DocumentedNode => ({
 const hasAnnotations = (annotations: GirAnnotations): boolean =>
     annotations.since !== undefined || annotations.isDeprecated || annotations.deprecatedSince !== undefined;
 
-export { annotationsFromNode, documentedFromNode, hasAnnotations, type GirAnnotations };
+export { documentedFromNode, hasAnnotations, type GirAnnotations };

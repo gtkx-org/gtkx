@@ -3,12 +3,13 @@ import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { DeploySettings, DeployTargetName, NodeRuntime, StagedFile } from "../types.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
+import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderCopyright } from "../freedesktop/copyright.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
 import { renderDesktopEntry } from "../freedesktop/desktop-entry.js";
 import { copyInto, EXECUTABLE_MODE, writeInto } from "./copy-tree.js";
 import { stageIcons } from "./icons.js";
-import { BUNDLE_FILENAME, NODE_FILENAME, renderLauncher } from "./launcher.js";
+import { NODE_FILENAME, renderLauncher } from "./launcher.js";
 import { stageSchemas } from "./schemas.js";
 
 type StageRequest = {

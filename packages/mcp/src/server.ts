@@ -1,9 +1,9 @@
 import { createLogger, installGracefulShutdown, type Logger } from "@gtkx/utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createRequire } from "node:module";
 import { z } from "zod";
 import type { ConnectionErrorEvent } from "./transport.js";
+import packageManifest from "../package.json" with { type: "json" };
 import { type AppRegisteredEvent, AppRouter, type AppUnregisteredEvent } from "./app-router.js";
 import { ConnectionRegistry } from "./connection-registry.js";
 import {
@@ -49,8 +49,7 @@ type ServerLifecycle = {
 type AppWindow = { id: string; title: string | null };
 type AppWithWindows = AppInfo & { windows?: AppWindow[] };
 
-const require = createRequire(import.meta.url);
-const { version } = require("../package.json") as { version: string };
+const { version } = packageManifest;
 const log: Logger = createLogger("mcp");
 const APPLICATION_ID_DESCRIPTION = "Application ID to query. If not specified, uses the first connected app.";
 
@@ -421,4 +420,4 @@ async function main(): Promise<void> {
     await server.start();
 }
 
-export { log, createMcpServer, main };
+export { log, main };

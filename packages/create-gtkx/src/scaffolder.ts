@@ -1,23 +1,29 @@
 import * as p from "@clack/prompts";
-import { isValidApplicationId } from "@gtkx/config/internal";
-import { errorMessage, packageVersion, tryResolveExecutable, upperFirst } from "@gtkx/utils";
+import { APPLICATION_ID_MAX_LENGTH, isValidApplicationId } from "@gtkx/config/internal";
+import { errorMessage, tryResolveExecutable, upperFirst } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync, type Stats, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
+import packageManifest from "../package.json" with { type: "json" };
 import { writeBuildAllowance } from "./build-allowance.js";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
 import { getInstallHint } from "./install-hints.js";
 import { updateManifest } from "./manifest.js";
-import { isKnownPackageManager, PACKAGE_MANAGERS, type PackageManager } from "./package-managers.js";
+import {
+    isKnownPackageManager,
+    PACKAGE_MANAGER_VALUES,
+    PACKAGE_MANAGERS,
+    type PackageManager,
+} from "./package-managers.js";
 import { isValidProjectName } from "./project-name.js";
 import { listTemplates, renderFile, type TemplateContext } from "./templates.js";
 
 type CreateOptions = {
     name?: string | undefined;
     applicationId?: string | undefined;
-    packageManager?: PackageManager | undefined;
+    packageManager?: string | undefined;
     isTypescript?: boolean | undefined;
     shouldIncludeTesting?: boolean | undefined;
     isInteractive?: boolean | undefined;
@@ -26,11 +32,14 @@ type CreateOptions = {
 
 type ResolvedOptions = {
     target: string;
+    root: string;
+    isCurrentDirectory: boolean;
     name: string;
     applicationId: string;
     packageManager: PackageManager;
     isTypescript: boolean;
     shouldIncludeTesting: boolean;
+    shouldEmptyTarget: boolean;
 };
 
 type InstallDependenciesOptions = {
@@ -41,20 +50,25 @@ type InstallDependenciesOptions = {
 };
 
 type InstallAllOptions = {
-    root: string;
-    target: string;
-    packageManager: PackageManager;
+    resolved: ResolvedOptions;
     devDependencies: string[];
 };
 
 type InstallFailureOptions = {
     error: unknown;
-    target: string;
-    packageManager: PackageManager;
+    resolved: ResolvedOptions;
     devDependencies: string[];
 };
 
-const selfVersion = packageVersion(import.meta.url, "../package.json");
+type SpinnerStep = {
+    pending: string;
+    done: string;
+    failed: string;
+    run: () => Promise<void>;
+    explain?: ((error: unknown) => void) | undefined;
+};
+
+const selfVersion = packageManifest.version;
 const ICON_TEMPLATE_NAME = "icon.svg";
 
 const GTKX_ENV_MODULE_HEADER = `/**
@@ -85,6 +99,12 @@ To run tests, you need a headless Wayland compositor installed:
   Ubuntu: sudo apt install sway`;
 
 const RECOVERY_HEADING = "Finish the setup by adding the dependencies again, which is safe to repeat:";
+const APPLICATION_ID_FORMAT_ERROR = "Application ID must be reverse domain notation (e.g., com.example.myapp)";
+const APPLICATION_ID_PREFIX = "com.";
+const APPLICATION_ID_SUFFIX = ".app";
+
+const APPLICATION_ID_SEGMENT_LIMIT = APPLICATION_ID_MAX_LENGTH - APPLICATION_ID_PREFIX.length -
+    APPLICATION_ID_SUFFIX.length;
 
 const pinGtkxDependency = (name: string, version: string): string =>
     name.startsWith("@gtkx/") ? `${name}@^${version}` : name;
@@ -107,7 +127,15 @@ const gitConfigValue = (key: string): string | null => {
     }
 };
 
-const suggestApplicationId = (name: string): string => `com.${name.replaceAll("-", "")}.app`;
+const applicationIdSegment = (name: string): string => {
+    const compact = name.replaceAll("-", "");
+    const segment = /^[A-Za-z_]/.test(compact) ? compact : `_${compact}`;
+
+    return segment.slice(0, APPLICATION_ID_SEGMENT_LIMIT);
+};
+
+const suggestApplicationId = (name: string): string =>
+    `${APPLICATION_ID_PREFIX}${applicationIdSegment(name)}${APPLICATION_ID_SUFFIX}`;
 
 const stripTrailingSlashes = (value: string): string => {
     let end = value.length;
@@ -166,38 +194,60 @@ const validateProjectName = (value: string | undefined): string | undefined => {
     return undefined;
 };
 
-const validateApplicationIdInput = (value: string | undefined): string | undefined => {
-    if (!value) {
-        return "Application ID is required";
-    }
+const validateApplicationIdFormat = (value: string): string | undefined =>
+    isValidApplicationId(value) ? undefined : APPLICATION_ID_FORMAT_ERROR;
 
-    if (!isValidApplicationId(value)) {
-        return "Application ID must be reverse domain notation (e.g., com.example.myapp)";
-    }
+const validateApplicationIdInput = (value: string | undefined): string | undefined =>
+    value ? validateApplicationIdFormat(value) : "Application ID is required";
 
-    return undefined;
-};
+const validateApplicationIdAnswer = (value: string | undefined): string | undefined =>
+    value ? validateApplicationIdFormat(value) : undefined;
 
 const fail = (message: string): never => {
     p.log.error(message);
     throw new ScaffoldAbortedError(message);
 };
 
-const validateTarget = (value: string | undefined): string | undefined => {
-    if (!value) {
+const requestedPackageManager = (value: string | undefined): PackageManager | undefined => {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (!isKnownPackageManager(value)) {
+        return fail(`Unknown package manager "${value}". Expected one of: ${PACKAGE_MANAGER_VALUES.join(", ")}`);
+    }
+
+    return value;
+};
+
+const targetStats = (root: string): Stats | undefined => {
+    try {
+        return statSync(root, { throwIfNoEntry: false });
+    } catch {
+        return undefined;
+    }
+};
+
+const validateTargetDir = (target: string): string | undefined => {
+    if (!target) {
         return "Project directory is required";
     }
 
-    return validateProjectName(deriveProjectName(formatTargetDir(value)));
+    return validateProjectName(deriveProjectName(target));
 };
 
+const validateTargetAnswer = (value: string | undefined): string | undefined =>
+    validateTargetDir(formatTargetDir(value ?? ""));
+
 const promptTarget = async (): Promise<string> =>
-    guardCancellation(
-        await p.text({
-            message: "Project directory",
-            placeholder: "my-app",
-            validate: validateTarget,
-        }),
+    formatTargetDir(
+        guardCancellation(
+            await p.text({
+                message: "Project directory",
+                placeholder: "my-app",
+                validate: validateTargetAnswer,
+            }),
+        ),
     );
 
 const promptApplicationId = async (name: string): Promise<string> => {
@@ -207,8 +257,8 @@ const promptApplicationId = async (name: string): Promise<string> => {
         await p.text({
             message: "Application ID",
             placeholder: defaultApplicationId,
-            initialValue: defaultApplicationId,
-            validate: validateApplicationIdInput,
+            defaultValue: defaultApplicationId,
+            validate: validateApplicationIdAnswer,
         }),
     );
 };
@@ -291,17 +341,11 @@ const emptyDir = (root: string): void => {
     }
 };
 
-const validateResolvedOptions = (name: string, applicationId: string): void => {
-    const nameError = validateProjectName(name);
+const prepareTargetDirectory = (root: string, shouldEmptyTarget: boolean): void => {
+    mkdirSync(root, { recursive: true });
 
-    if (nameError) {
-        fail(nameError);
-    }
-
-    const applicationIdError = validateApplicationIdInput(applicationId);
-
-    if (applicationIdError) {
-        fail(applicationIdError);
+    if (shouldEmptyTarget) {
+        emptyDir(root);
     }
 };
 
@@ -318,43 +362,54 @@ const shouldOverwriteDirectory = async (target: string, options: CreateOptions):
     );
 };
 
-const handleTargetDirectory = async (root: string, target: string, options: CreateOptions): Promise<void> => {
-    if (!existsSync(root) || isDirEmpty(root)) {
-        return;
+const shouldEmptyTargetDirectory = async (root: string, target: string, options: CreateOptions): Promise<boolean> => {
+    const stats = targetStats(root);
+
+    if (stats === undefined) {
+        return false;
+    }
+
+    if (!stats.isDirectory()) {
+        return fail(`Target "${target}" is not a directory`);
+    }
+
+    if (isDirEmpty(root)) {
+        return false;
     }
 
     if (await shouldOverwriteDirectory(target, options)) {
-        emptyDir(root);
-
-        return;
+        return true;
     }
 
-    fail(`Directory "${target}" is not empty`);
+    return fail(`Directory "${target}" is not empty`);
 };
 
 const resolveTarget = async (options: CreateOptions): Promise<string> => {
-    if (options.name !== undefined) {
-        return formatTargetDir(options.name);
+    if (options.name === undefined && options.isInteractive) {
+        return promptTarget();
     }
 
-    if (!options.isInteractive) {
-        return fail("Project directory is required");
-    }
+    const target = formatTargetDir(options.name ?? "");
+    const error = validateTargetDir(target);
 
-    return formatTargetDir(await promptTarget());
+    return error === undefined ? target : fail(error);
 };
 
 const resolveApplicationId = async (options: CreateOptions, name: string): Promise<string> => {
-    if (options.applicationId !== undefined) {
-        return options.applicationId;
-    }
+    const applicationId = options.applicationId ??
+        (options.isInteractive ? await promptApplicationId(name) : suggestApplicationId(name));
 
-    return options.isInteractive ? promptApplicationId(name) : suggestApplicationId(name);
+    const error = validateApplicationIdInput(applicationId);
+
+    return error === undefined ? applicationId : fail(error);
 };
 
-const resolvePackageManager = async (options: CreateOptions): Promise<PackageManager> => {
-    if (options.packageManager !== undefined) {
-        return options.packageManager;
+const resolvePackageManager = async (
+    requested: PackageManager | undefined,
+    options: CreateOptions,
+): Promise<PackageManager> => {
+    if (requested !== undefined) {
+        return requested;
     }
 
     if (options.isInteractive) {
@@ -381,17 +436,28 @@ const isTestingIncluded = async (options: CreateOptions): Promise<boolean> => {
 };
 
 const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
+    const requested = requestedPackageManager(options.packageManager);
     const target = await resolveTarget(options);
     const name = deriveProjectName(target);
     const applicationId = await resolveApplicationId(options, name);
-    validateResolvedOptions(name, applicationId);
     const root = resolve(process.cwd(), target);
-    await handleTargetDirectory(root, target, options);
-    const packageManager = await resolvePackageManager(options);
+    const isCurrentDirectory = root === process.cwd();
+    const shouldEmptyTarget = await shouldEmptyTargetDirectory(root, target, options);
+    const packageManager = await resolvePackageManager(requested, options);
     const isTypescript = await isTypescriptSelected(options);
     const shouldIncludeTesting = await isTestingIncluded(options);
 
-    return { target, name, applicationId, packageManager, isTypescript, shouldIncludeTesting };
+    return {
+        target,
+        root,
+        isCurrentDirectory,
+        name,
+        applicationId,
+        packageManager,
+        isTypescript,
+        shouldIncludeTesting,
+        shouldEmptyTarget,
+    };
 };
 
 const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOptions): boolean => {
@@ -435,7 +501,6 @@ const templateContext = (resolved: ResolvedOptions): TemplateContext => ({
 const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise<void> => {
     const { applicationId, isTypescript, shouldIncludeTesting } = resolved;
     const context = templateContext(resolved);
-    mkdirSync(root, { recursive: true });
 
     for (const template of listTemplates()) {
         if (!isTemplateIncluded(template, resolved)) {
@@ -480,11 +545,11 @@ const installDependencies = async (options: InstallDependenciesOptions): Promise
 
 const pin = (names: string[]): string[] => names.map((dependency) => pinGtkxDependency(dependency, selfVersion));
 
-const formatRecovery = ({ target, packageManager, devDependencies }: InstallFailureOptions): string => {
-    const add = getAddCommand(packageManager);
+const formatRecovery = ({ resolved, devDependencies }: InstallFailureOptions): string => {
+    const add = getAddCommand(resolved.packageManager);
 
     const steps = [
-        ...(target === "." ? [] : [`cd ${target}`]),
+        ...(resolved.isCurrentDirectory ? [] : [`cd ${resolved.target}`]),
         `${add} ${pin(DEPENDENCIES).join(" ")}`,
         `${add} -D ${pin(devDependencies).join(" ")}`,
     ];
@@ -494,10 +559,8 @@ const formatRecovery = ({ target, packageManager, devDependencies }: InstallFail
     return `${RECOVERY_HEADING}\n${indented}`;
 };
 
-const reportInstallFailure = (options: InstallFailureOptions): void => {
-    const message = errorMessage(options.error);
-    p.log.error(`Failed to install dependencies: ${message}`);
-    const hint = getInstallHint(message);
+const explainInstallFailure = (options: InstallFailureOptions): void => {
+    const hint = getInstallHint(errorMessage(options.error));
 
     if (hint !== undefined) {
         p.log.warn(hint);
@@ -506,20 +569,37 @@ const reportInstallFailure = (options: InstallFailureOptions): void => {
     p.log.info(formatRecovery(options));
 };
 
-const installAllDependencies = async (options: InstallAllOptions): Promise<void> => {
-    const { root, target, packageManager, devDependencies } = options;
+const runWithSpinner = async (step: SpinnerStep): Promise<void> => {
     const spinner = p.spinner();
-    spinner.start("Installing dependencies...");
+    spinner.start(step.pending);
 
     try {
-        await installDependencies({ cwd: root, packageManager, dependencies: pin(DEPENDENCIES), isDev: false });
-        await installDependencies({ cwd: root, packageManager, dependencies: pin(devDependencies), isDev: true });
-        spinner.stop("Dependencies installed");
+        await step.run();
+        spinner.stop(step.done);
     } catch (error) {
-        spinner.stop("Failed to install dependencies");
-        reportInstallFailure({ error, target, packageManager, devDependencies });
-        throw new ScaffoldAbortedError("Failed to install dependencies");
+        spinner.error(step.failed);
+        p.log.error(errorMessage(error));
+        step.explain?.(error);
+        throw new ScaffoldAbortedError(step.failed);
     }
+};
+
+const installAllDependencies = async (options: InstallAllOptions): Promise<void> => {
+    const { resolved, devDependencies } = options;
+    const { root, packageManager } = resolved;
+
+    await runWithSpinner({
+        pending: "Installing dependencies...",
+        done: "Dependencies installed",
+        failed: "Failed to install dependencies",
+        run: async () => {
+            await installDependencies({ cwd: root, packageManager, dependencies: pin(DEPENDENCIES), isDev: false });
+            await installDependencies({ cwd: root, packageManager, dependencies: pin(devDependencies), isDev: true });
+        },
+        explain: (error) => {
+            explainInstallFailure({ error, resolved, devDependencies });
+        },
+    });
 };
 
 const writeInitialEnvModule = (root: string): void => {
@@ -539,34 +619,37 @@ const initializeGitRepo = async (root: string): Promise<void> => {
         await x("git", ["commit", "-m", "Initial commit"], opts);
         spinner.stop("Git repository initialized");
     } catch {
-        spinner.stop("Failed to initialize git repository");
+        spinner.error("Failed to initialize git repository");
     }
 };
 
 const printNextSteps = (resolved: ResolvedOptions): void => {
     const devCmd = getDevCommand(resolved.packageManager);
-    const cdStep = resolved.target === "." ? "" : `cd ${resolved.target}\n`;
+    const cdStep = resolved.isCurrentDirectory ? "" : `cd ${resolved.target}\n`;
     const testingNote = resolved.shouldIncludeTesting ? HEADLESS_COMPOSITOR_NOTE : "";
     p.note(`${cdStep}${devCmd}${testingNote}`, "Next steps");
+};
+
+const createProjectStructure = async (root: string, resolved: ResolvedOptions): Promise<void> => {
+    await runWithSpinner({
+        pending: "Creating project structure...",
+        done: "Project structure created",
+        failed: "Failed to create the project structure",
+        run: async () => {
+            prepareTargetDirectory(root, resolved.shouldEmptyTarget);
+            await scaffoldProject(root, resolved);
+            writeBuildAllowance(root, resolved.packageManager);
+        },
+    });
 };
 
 const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     p.intro("Create GTKX App");
     const resolved = await resolveOptions(options);
-    const root = resolve(process.cwd(), resolved.target);
+    const { root } = resolved;
     const devDeps = getDevDependencies(resolved);
-    const projectSpinner = p.spinner();
-    projectSpinner.start("Creating project structure...");
-    await scaffoldProject(root, resolved);
-    writeBuildAllowance(root, resolved.packageManager);
-    projectSpinner.stop("Project structure created");
-
-    await installAllDependencies({
-        root,
-        target: resolved.target,
-        packageManager: resolved.packageManager,
-        devDependencies: devDeps,
-    });
+    await createProjectStructure(root, resolved);
+    await installAllDependencies({ resolved, devDependencies: devDeps });
 
     if (resolved.isTypescript) {
         writeInitialEnvModule(root);
@@ -576,4 +659,4 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     printNextSteps(resolved);
 };
 
-export { scaffold, type CreateOptions };
+export { scaffold };

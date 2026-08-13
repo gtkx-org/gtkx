@@ -98,6 +98,9 @@ impl BoxedCodec {
                 self.type_name
             )
         }
+        if is_slot_its_own_source(slot, src_ptr) {
+            return Ok(None);
+        }
         match self.type_name.as_str() {
             "GValue" => return unsafe { write_inline_value(slot, src_ptr) },
             "GClosure" => bail!(
@@ -106,9 +109,7 @@ impl BoxedCodec {
             ),
             _ => {}
         }
-        unsafe {
-            std::ptr::copy_nonoverlapping(src_ptr.cast::<u8>(), slot.as_ptr().cast::<u8>(), size);
-        }
+        copy_into_slot(slot, src_ptr, size);
         Ok(None)
     }
 
@@ -153,6 +154,10 @@ impl Encoder for BoxedCodec {
 }
 
 impl Decoder for BoxedCodec {
+    fn is_inline(&self) -> bool {
+        self.inline
+    }
+
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
         self.decode_call_non_null(env, stash, "Boxed", |ptr| {
             if let Some(free_fn_name) = self.free_fn_name.as_deref() {
@@ -173,8 +178,6 @@ impl Decoder for BoxedCodec {
             Ok(value::handle_to_unknown(env, handle)?)
         })
     }
-
-    read_inlineable_pointer_slot!();
 
     read_value_non_null!(|self, env, ptr, _transfer| {
         if self.free_fn_name.is_some() || self.caller_allocated {

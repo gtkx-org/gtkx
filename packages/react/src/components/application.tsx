@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { quitApplication, runApplication } from "@gtkx/runtime";
-import { pickBy } from "@gtkx/utils";
+import { pickBy, warn } from "@gtkx/utils";
 import process from "node:process";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
 import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
@@ -21,6 +21,18 @@ const commandLine = (applicationId: string | null): string[] => [
     ...process.argv.slice(2),
 ];
 
+const reportOwnedApplicationId = (application: Gtk.Application): void => {
+    if (!application.getIsRegistered() || !application.getIsRemote()) {
+        return;
+    }
+
+    warn(
+        `Another process already owns ${application.applicationId ?? "this application ID"}, so this process ` +
+        "registered as a remote instance and can never show a window. Quit that instance or change " +
+        "applicationId, then start this application again.",
+    );
+};
+
 const startApplication = (
     application: Gtk.Application,
     setActivated: (isActivated: boolean) => void,
@@ -31,6 +43,7 @@ const startApplication = (
     });
 
     const { exitStatus } = runApplication(application, commandLine(applicationId));
+    reportOwnedApplicationId(application);
 
     if (exitStatus !== 0) {
         process.exitCode = exitStatus;

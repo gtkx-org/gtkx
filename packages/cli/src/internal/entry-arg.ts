@@ -1,10 +1,10 @@
 import type { PositionalArgDef, StringArgDef } from "citty";
-import { existsSync } from "node:fs";
+import { statSync } from "node:fs";
 import { resolve } from "node:path";
 
 const DEFAULT_ENTRY_BASE = "src/index";
-const DEFAULT_ENTRY_EXTENSION = ".tsx";
-const DEFAULT_ENTRY_EXTENSIONS = [DEFAULT_ENTRY_EXTENSION, ".jsx", ".ts", ".js"];
+const DEFAULT_ENTRY_EXTENSIONS = [".tsx", ".jsx", ".ts", ".js"];
+const DEFAULT_ENTRY_CANDIDATES = DEFAULT_ENTRY_EXTENSIONS.map((extension) => `${DEFAULT_ENTRY_BASE}${extension}`);
 const DEFAULT_ENTRY = `${DEFAULT_ENTRY_BASE}{${DEFAULT_ENTRY_EXTENSIONS.join(",")}}`;
 
 const cwdArg: { cwd: StringArgDef } = {
@@ -24,23 +24,37 @@ const entryArg: { entry: PositionalArgDef; cwd: StringArgDef } = {
 };
 
 const resolveCwd = (args: { cwd?: string }): string => (args.cwd ? resolve(args.cwd) : process.cwd());
+const isFile = (path: string): boolean => statSync(path, { throwIfNoEntry: false })?.isFile() === true;
+
+const missingDefaultEntryError = (cwd: string): Error =>
+    new Error(
+        `No entry file found in ${cwd}. Looked for ${DEFAULT_ENTRY_CANDIDATES.join(", ")}; ` +
+        "pass the entry file as an argument.",
+    );
 
 const resolveDefaultEntry = (cwd: string): string => {
-    for (const extension of DEFAULT_ENTRY_EXTENSIONS) {
-        const candidate = resolve(cwd, `${DEFAULT_ENTRY_BASE}${extension}`);
+    for (const candidate of DEFAULT_ENTRY_CANDIDATES) {
+        const path = resolve(cwd, candidate);
 
-        if (existsSync(candidate)) {
-            return candidate;
+        if (isFile(path)) {
+            return path;
         }
     }
 
-    return resolve(cwd, `${DEFAULT_ENTRY_BASE}${DEFAULT_ENTRY_EXTENSION}`);
+    throw missingDefaultEntryError(cwd);
 };
 
-const resolveEntry = (args: { entry?: string; cwd?: string }): { cwd: string; entry: string } => {
-    const cwd = resolveCwd(args);
+const resolveGivenEntry = (cwd: string, entry: string): string => {
+    const path = resolve(cwd, entry);
 
-    return { cwd, entry: args.entry ? resolve(cwd, args.entry) : resolveDefaultEntry(cwd) };
+    if (!isFile(path)) {
+        throw new Error(`No entry file at ${path}.`);
+    }
+
+    return path;
 };
+
+const resolveEntry = (cwd: string, entry: string | undefined): string =>
+    entry ? resolveGivenEntry(cwd, entry) : resolveDefaultEntry(cwd);
 
 export { cwdArg, entryArg, resolveCwd, resolveEntry };

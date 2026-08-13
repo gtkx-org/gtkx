@@ -1,6 +1,6 @@
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
-import { type DeclaredType, ModuleBuilder } from "./module.js";
+import { type Declaration, ModuleBuilder } from "./module.js";
 
 class ModuleContext {
     public module: ModuleBuilder = new ModuleBuilder();
@@ -55,16 +55,22 @@ class ModuleContext {
         return namespaceName;
     }
 
-    declaredType(owner: string, name: string = owner): DeclaredType {
-        return { name, owner: `${this.namespace.name}.${owner}` };
+    declare(declaration: Declaration): void {
+        const { name, code, owner } = declaration;
+
+        this.module.appendDeclaration({
+            name,
+            code,
+            owner: owner === undefined ? undefined : `${this.namespace.name}.${owner}`,
+        });
     }
 
-    qualify(namespaceName: string, typeName: string): string {
+    qualify(namespaceName: string, name: string): string {
         if (namespaceName === this.namespace.name) {
-            return typeName;
+            return name;
         }
 
-        return `${this.addCrossNamespaceImport(namespaceName)}.${typeName}`;
+        return `${this.addCrossNamespaceImport(namespaceName)}.${name}`;
     }
 }
 

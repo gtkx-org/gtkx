@@ -70,6 +70,9 @@ const formatIssue = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string =
     return path === "" ? `${CONFIG_PREFIX} ${issue.message}` : `${CONFIG_PREFIX} \`${path}\` ${issue.message}`;
 };
 
+const missingConfigFileError = (cwd: string): Error =>
+    new Error(`${CONFIG_PREFIX} no configuration file found in ${cwd}`);
+
 const configError = (error: z.ZodError): Error => {
     const issue = error.issues[0];
 
@@ -80,4 +83,4 @@ const configError = (error: z.ZodError): Error => {
     return new Error(formatIssue(issue, issue.path));
 };
 
-export { isRecord, rawIssue, configError };
+export { isRecord, rawIssue, missingConfigFileError, configError };

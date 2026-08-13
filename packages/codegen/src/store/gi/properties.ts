@@ -1,5 +1,6 @@
 import type { GirClass } from "../../gir/class.js";
 import type { ModuleContext } from "../../writer/context.js";
+import type { Declaration } from "../../writer/module.js";
 import { collectInterfaceProperties } from "../../analysis/inheritance.js";
 import { renderBracedOrEmpty } from "../../writer/emit.js";
 import { parentCompanionRef } from "./companion.js";
@@ -8,7 +9,7 @@ import { propertyDoc, type ResolvedAccessor, resolveOwnerAccessor } from "./prop
 const PROPERTIES_SUFFIX = "Properties";
 
 const propertyEntry = (accessor: ResolvedAccessor): string =>
-    `${propertyDoc(accessor.property)}${accessor.jsName}: ${accessor.tsType};`;
+    `${propertyDoc(accessor.property)}${accessor.jsName}: ${accessor.readType};`;
 
 const interfaceEntries = (context: ModuleContext, klass: GirClass): string[] => {
     const entries: string[] = [];
@@ -31,7 +32,7 @@ const renderPropertyDeclarations = (
     klass: GirClass,
     className: string,
     accessors: ResolvedAccessor[],
-): string[] => {
+): Declaration[] => {
     const parentRef = parentCompanionRef(context, klass, PROPERTIES_SUFFIX);
     const extendsClause = parentRef === undefined ? "" : ` extends ${parentRef}`;
 
@@ -43,8 +44,11 @@ const renderPropertyDeclarations = (
     const map = `${className}${PROPERTIES_SUFFIX}`;
 
     return [
-        renderBracedOrEmpty(`export interface ${map}${extendsClause}`, entries.join("\n")),
-        renderBracedOrEmpty(`export interface ${className}`, `__properties__: ${map};`),
+        { name: map, code: renderBracedOrEmpty(`export interface ${map}${extendsClause}`, entries.join("\n")) },
+        {
+            name: className,
+            code: renderBracedOrEmpty(`export interface ${className}`, `__properties__: ${map};`),
+        },
     ];
 };
 

@@ -1,9 +1,16 @@
 import { sortStringsBy } from "@gtkx/utils";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { computeGiFingerprint, FINGERPRINT_FILENAME, isGiStoreFresh } from "../fingerprint.js";
+import {
+    computeDocsFingerprint,
+    type DocsFingerprintInput,
+    FINGERPRINT_FILENAME,
+    isDocsOutputFresh,
+} from "../fingerprint.js";
 import { Library } from "../gir/library.js";
 import { namespaceDirectory } from "../gir/namespace.js";
+import { arrayGuard, hasFields, isString } from "../guards.js";
+import { readJsonFile } from "../json.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
@@ -33,6 +40,7 @@ type DocsOptions = {
 };
 
 type DocsManifest = {
+    generator: string;
     namespaces: DocsNamespace[];
 };
 
@@ -50,6 +58,9 @@ type DocsResult = {
 };
 
 const MANIFEST_FILENAME = "manifest.json";
+const MANIFEST_GENERATOR = "gtkx-docs";
+const ROOT_INDEX_FILENAME = "index.md";
+const DEFAULT_BASE_PATH = "/reference";
 
 const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]): string => {
     const rows = elements.map((entry, index) => {
@@ -144,6 +155,28 @@ const buildElementLinks = (elements: GlibNamedClass[], basePath: string): Map<st
     return linkByGlibName;
 };
 
+const isEntryInsideOutDir = (value: string): boolean =>
+    value.length > 0 && value !== "." && value !== ".." && !value.includes("/") && !value.includes("\\");
+
+const isChildEntry = (value: unknown): value is string => isString(value) && isEntryInsideOutDir(value);
+
+const ownedEntry = (entry: string, source: string): string => {
+    if (isEntryInsideOutDir(entry)) {
+        return entry;
+    }
+
+    throw new Error(
+        `Refusing to generate documentation outside the output directory: ${source} maps to \`${entry}\`, ` +
+        "which is not an entry inside it. The GIR that declares it is malformed.",
+    );
+};
+
+const elementPagePath = (directory: string, entry: GlibNamedClass): string => {
+    const slug = ownedEntry(elementSlug(entry.klass.name), `the element ${entry.glibName}`);
+
+    return `${directory}/${slug}.md`;
+};
+
 const namespacePages = (input: {
     name: string;
     elements: GlibNamedClass[];
@@ -152,7 +185,7 @@ const namespacePages = (input: {
     pageContext: ElementPageContext;
 }): NamespacePages => {
     const { name, elements, basePath, linkByGlibName, pageContext } = input;
-    const directory = name.toLowerCase();
+    const directory = ownedEntry(namespaceDirectory({ name }), `the GIR namespace ${name}`);
 
     const docs: DocsNamespace = {
         name,
@@ -162,7 +195,7 @@ const namespacePages = (input: {
     };
 
     const pages: Page[] = elements.map((entry) => ({
-        path: `${directory}/${elementSlug(entry.klass.name)}.md`,
+        path: elementPagePath(directory, entry),
         content: renderElementPage(entry, pageContext),
     }));
 
@@ -187,21 +220,90 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
         namespaces.push(result.docs);
     }
 
-    pages.push({ path: "index.md", content: rootIndexPage(namespaces, options.libraries) });
+    pages.push({ path: ROOT_INDEX_FILENAME, content: rootIndexPage(namespaces, options.libraries) });
 
     return { pages, namespaces };
 };
 
-const cachedDocsResult = (options: DocsOptions, manifestPath: string): DocsResult | undefined => {
-    if (options.isForced === true || !isGiStoreFresh(options.outDir, options.libraries, options.girPath)) {
+const isGeneratorTag = (value: unknown): value is string => value === MANIFEST_GENERATOR;
+
+const isDocsElementLink = (value: unknown): value is DocsElementLink =>
+    hasFields<DocsElementLink>(value, { text: isString, link: isString });
+
+const isDocsNamespace = (value: unknown): value is DocsNamespace =>
+    hasFields<DocsNamespace>(value, {
+        name: isString,
+        directory: isChildEntry,
+        link: isString,
+        elements: arrayGuard(isDocsElementLink),
+    });
+
+const isDocsManifest = (value: unknown): value is DocsManifest =>
+    hasFields<DocsManifest>(value, { generator: isGeneratorTag, namespaces: arrayGuard(isDocsNamespace) });
+
+const readDocsManifest = (manifestPath: string): DocsManifest | undefined => {
+    const parsed = readJsonFile(manifestPath);
+
+    return isDocsManifest(parsed) ? parsed : undefined;
+};
+
+const outDirRefusal = (outDir: string, reason: string): Error =>
+    new Error(
+        `Refusing to generate documentation into ${outDir}: ${reason}. Point the output directory at an ` +
+        "empty directory or at one gtkx generated, or remove it yourself first.",
+    );
+
+const assertOwnedOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): void => {
+    const stats = statSync(options.outDir, { throwIfNoEntry: false });
+
+    if (stats === undefined) {
+        return;
+    }
+
+    if (!stats.isDirectory()) {
+        throw outDirRefusal(options.outDir, "it already exists and is not a directory");
+    }
+
+    if (manifest !== undefined || readdirSync(options.outDir).length === 0) {
+        return;
+    }
+
+    throw outDirRefusal(
+        options.outDir,
+        `it is not empty and holds no ${MANIFEST_FILENAME} written by \`gtkx docs\`, ` +
+        "so its contents are not gtkx's to replace",
+    );
+};
+
+const clearOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): void => {
+    if (manifest === undefined) {
+        return;
+    }
+
+    const entries = [
+        ...manifest.namespaces.map((namespace) => namespace.directory),
+        ROOT_INDEX_FILENAME,
+        MANIFEST_FILENAME,
+        FINGERPRINT_FILENAME,
+    ];
+
+    for (const entry of entries) {
+        rmSync(join(options.outDir, entry), { recursive: true, force: true });
+    }
+};
+
+const cachedDocsResult = (
+    options: DocsOptions,
+    manifest: DocsManifest | undefined,
+    input: DocsFingerprintInput,
+): DocsResult | undefined => {
+    if (manifest === undefined || options.isForced === true) {
         return undefined;
     }
 
-    if (!existsSync(manifestPath)) {
+    if (!isDocsOutputFresh(options.outDir, options.libraries, options.girPath, input)) {
         return undefined;
     }
-
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as DocsManifest;
 
     return { isRegenerated: false, namespaces: manifest.namespaces };
 };
@@ -214,28 +316,36 @@ const writePages = (outDir: string, pages: Page[]): void => {
     }
 };
 
+const docsFingerprintInput = (options: DocsOptions): DocsFingerprintInput => ({
+    basePath: options.basePath ?? DEFAULT_BASE_PATH,
+    props: options.props ?? {},
+    omittedProps: options.omittedProps ?? {},
+});
+
 const writeDocs = (options: DocsOptions): DocsResult => {
-    setElementProps(options.props ?? {});
-    setOmittedProps(options.omittedProps ?? {});
-    const basePath = options.basePath ?? "/reference";
+    const input = docsFingerprintInput(options);
+    setElementProps(input.props);
+    setOmittedProps(input.omittedProps);
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
-    const cached = cachedDocsResult(options, manifestPath);
+    const previous = readDocsManifest(manifestPath);
+    const cached = cachedDocsResult(options, previous, input);
 
     if (cached !== undefined) {
         return cached;
     }
 
+    assertOwnedOutDir(options, previous);
     const library = Library.load(options.libraries, options.girPath);
-    const { pages, namespaces } = generatePages(options, basePath, library);
-    rmSync(options.outDir, { recursive: true, force: true });
+    const { pages, namespaces } = generatePages(options, input.basePath, library);
+    clearOutDir(options, previous);
     mkdirSync(options.outDir, { recursive: true });
-    writePages(options.outDir, pages);
-    const manifest: DocsManifest = { namespaces };
+    const manifest: DocsManifest = { generator: MANIFEST_GENERATOR, namespaces };
     writeFileSync(manifestPath, JSON.stringify(manifest));
+    writePages(options.outDir, pages);
 
     writeFileSync(
         join(options.outDir, FINGERPRINT_FILENAME),
-        JSON.stringify(computeGiFingerprint(library.girFiles, options.libraries, options.girPath)),
+        JSON.stringify(computeDocsFingerprint(library.girFiles, options.libraries, options.girPath, input)),
     );
 
     return { isRegenerated: true, namespaces };

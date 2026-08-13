@@ -1,4 +1,6 @@
-type TestingModule = typeof import("@gtkx/testing");
+type TestingPublicModule = typeof import("@gtkx/testing");
+type TestingInternalModule = typeof import("@gtkx/testing/internal");
+type TestingModule = TestingPublicModule & Pick<TestingInternalModule, "getTypeTag">;
 type TestingModuleLoader = () => Promise<TestingModule>;
 
 type TestingModuleCache = {
@@ -14,8 +16,14 @@ type TestingModuleState = {
 
 const { setLoader: setTestingModuleLoader, load: loadTestingModule } = createTestingModuleCache();
 
-function defaultLoader(): Promise<TestingModule> {
-    return import("@gtkx/testing");
+function mergeTestingModule(publicApi: TestingPublicModule, internals: TestingInternalModule): TestingModule {
+    return { ...publicApi, getTypeTag: internals.getTypeTag };
+}
+
+async function defaultLoader(): Promise<TestingModule> {
+    const [publicApi, internals] = await Promise.all([import("@gtkx/testing"), import("@gtkx/testing/internal")]);
+
+    return mergeTestingModule(publicApi, internals);
 }
 
 function missingTestingPackageError(cause: unknown): Error {
@@ -70,4 +78,11 @@ function createTestingModuleCache(): TestingModuleCache {
     };
 }
 
-export { setTestingModuleLoader, loadTestingModule, type TestingModule, type TestingModuleLoader };
+export {
+    setTestingModuleLoader,
+    loadTestingModule,
+    mergeTestingModule,
+    type TestingInternalModule,
+    type TestingModule,
+    type TestingPublicModule,
+};

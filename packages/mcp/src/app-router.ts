@@ -206,4 +206,4 @@ class AppRouter extends EventTarget {
     }
 }
 
-export { AppRouter, appRegisteredEvent, appUnregisteredEvent, type AppRegisteredEvent, type AppUnregisteredEvent };
+export { AppRouter, type AppRegisteredEvent, type AppUnregisteredEvent };

@@ -12,6 +12,7 @@ import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.ts
 type PluginOptions = Partial<HeadlessOptions>;
 
 const GTKX_INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
+const DEFAULT_TIMEOUT = 30_000;
 
 const workerPreloadUrl = (): URL => {
     const sibling = join(import.meta.dirname, "worker-preload.js");
@@ -41,13 +42,13 @@ const headlessPreloadSpecifier = (options: PluginOptions): string => {
 const gtkx = (options: PluginOptions = {}): Plugin =>
     createConfigPlugin({
         name: "gtkx:vitest",
-        config() {
+        config(config) {
             return {
                 test: {
                     globals: true,
                     execArgv: ["--import", headlessPreloadSpecifier(options)],
-                    testTimeout: 30_000,
-                    hookTimeout: 30_000,
+                    testTimeout: config.test?.testTimeout ?? DEFAULT_TIMEOUT,
+                    hookTimeout: config.test?.hookTimeout ?? DEFAULT_TIMEOUT,
                     pool: "forks",
                     env: STATIC_HEADLESS_ENV,
                     server: {

@@ -1,7 +1,10 @@
 import { defineCommand } from "citty";
 import { KNOWN_NAMES } from "../deploy/registry.js";
 import { runDeploy } from "../deploy/run-deploy.js";
-import { entryArg, resolveEntry } from "../internal/entry-arg.js";
+import { entryArg } from "../internal/entry-arg.js";
+import { resolveProject } from "../internal/prepare-project.js";
+
+const DEPLOY_MODE = "production";
 
 const deploy = defineCommand({
     meta: {
@@ -28,7 +31,7 @@ const deploy = defineCommand({
         },
     },
     async run({ args }) {
-        const { cwd, entry } = resolveEntry(args);
+        const { cwd, entry } = await resolveProject(args, DEPLOY_MODE);
 
         await runDeploy({
             entry,

@@ -15,7 +15,11 @@ type Config = {
     /** Default timeout in milliseconds for async utilities such as waitFor. */
     asyncUtilTimeout: number;
 
-    /** Timeout in milliseconds for waiting on a widget to become actionable. */
+    /**
+     * Timeout in milliseconds for waiting on a window to become usable: how long `render` waits for
+     * the window it shows the tree in to be laid out and activated, and how long a user event waits
+     * for its widget to become actionable.
+     */
     actionabilityTimeout: number;
 };
 

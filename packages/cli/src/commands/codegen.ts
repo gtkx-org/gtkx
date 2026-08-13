@@ -4,6 +4,11 @@ import { formatCodegenResult } from "../codegen/report.js";
 import { ensureGenerated, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
+const FORCED_WHILE_DISABLED_MESSAGE =
+    "codegen is disabled for this project, so --force has no store to regenerate here. " +
+    "Remove `codegen: false` from gtkx.config.ts, or run `gtkx codegen --force` where the installed " +
+    "binding store is generated.";
+
 const codegen = defineCommand({
     meta: {
         name: "codegen",
@@ -19,8 +24,10 @@ const codegen = defineCommand({
     },
     async run({ args }) {
         const cwd = resolveCwd(args);
+        const isDisabled = await isCodegenDisabled(cwd);
+        checkForce(isDisabled, args.force);
 
-        if (await isCodegenDisabled(cwd)) {
+        if (isDisabled) {
             await runCodegen({ cwd });
             syncSchemaEnv(cwd);
             info("codegen: disabled for this project; reusing an installed binding store");
@@ -45,5 +52,11 @@ const codegen = defineCommand({
         }
     },
 });
+
+const checkForce = (isDisabled: boolean, isForced: boolean): void => {
+    if (isDisabled && isForced) {
+        throw new Error(FORCED_WHILE_DISABLED_MESSAGE);
+    }
+};
 
 export { codegen };

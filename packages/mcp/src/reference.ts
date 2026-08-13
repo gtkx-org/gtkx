@@ -562,7 +562,5 @@ export {
     createReferenceProvider,
     buildReferenceTools,
     registerReferenceResources,
-    type ReferenceApi,
     type ReferenceProvider,
-    type ResolvedProject,
 };

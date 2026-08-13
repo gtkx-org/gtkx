@@ -1,20 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { children } from "../traversal.js";
+import { ancestorFor, children } from "../traversal.js";
 import { getWidgetTextContent } from "../widget-accessible-properties.js";
-
-const columnViewFor = (header: Gtk.Widget): Gtk.ColumnView | null => {
-    let current: Gtk.Widget | null = header.getParent();
-
-    while (current !== null) {
-        if (current instanceof Gtk.ColumnView) {
-            return current;
-        }
-
-        current = current.getParent();
-    }
-
-    return null;
-};
 
 const columnsFor = (view: Gtk.ColumnView): Gtk.ColumnViewColumn[] => {
     const model = view.getColumns();
@@ -75,7 +61,7 @@ const nextSortDirection = (view: Gtk.ColumnView, column: Gtk.ColumnViewColumn): 
 };
 
 const applyHeaderClick = (header: Gtk.Widget, nPress: number): void => {
-    const view = columnViewFor(header);
+    const view = ancestorFor(header, Gtk.ColumnView);
     const column = view === null ? null : sortableColumnFor(header, view);
 
     if (view === null || column === null) {

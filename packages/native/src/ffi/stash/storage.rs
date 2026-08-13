@@ -292,6 +292,10 @@ impl StashStorage {
         &self.data
     }
 
+    pub fn owns_element_buffer(&self) -> bool {
+        self.byte_len().is_some()
+    }
+
     pub fn byte_len(&self) -> Option<usize> {
         match &self.data {
             StashData::U8Vec(v) | StashData::Buffer(v) => Some(size_of_val(v.as_slice())),
@@ -381,12 +385,20 @@ impl Drop for StashStorage {
     }
 }
 
+fn allocated_ptr<T>(vec: &mut Vec<T>) -> *mut c_void {
+    if vec.capacity() == 0 {
+        return std::ptr::null_mut();
+    }
+
+    vec.as_mut_ptr().cast::<c_void>()
+}
+
 macro_rules! impl_stash_storage_from_vec {
     ($($descriptor:ty => $vec_variant:ident),+ $(,)?) => {
         $(
             impl From<Vec<$descriptor>> for StashStorage {
                 fn from(mut vec: Vec<$descriptor>) -> Self {
-                    let ptr = vec.as_mut_ptr().cast::<c_void>();
+                    let ptr = allocated_ptr(&mut vec);
                     Self::new(ptr, StashData::$vec_variant(vec))
                 }
             }

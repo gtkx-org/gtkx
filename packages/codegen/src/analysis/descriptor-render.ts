@@ -1,10 +1,11 @@
-import { sourceStringLiteral } from "@gtkx/utils";
+import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirCallback } from "../gir/callback.js";
 import type { Library } from "../gir/library.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
 import {
+    type GirCursorBounds,
     type GirParameter,
     type GirReturnValue,
     isCallerAllocatedOut,
@@ -20,7 +21,7 @@ import {
     type TypeId,
 } from "../gir/type-id.js";
 import { isRecordInout } from "../store/gi/param-marshal.js";
-import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
+import { computeRecordFieldSlots, recordInlineSize } from "../store/gi/record-layout.js";
 import { isValueMarshalable } from "../store/gi/value-marshalable.js";
 import {
     type ListDescriptorName,
@@ -30,6 +31,7 @@ import {
     tBoxed,
     tByteArray,
     tCallback,
+    tCursorArray,
     tEnum,
     tFixedArray,
     tFlags,
@@ -50,19 +52,21 @@ import {
 } from "./descriptor.js";
 import { carrayFor, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
 
-type RenderDescriptorOptions = {
-    argIndexOffset?: number;
-    argIndexMap?: Map<number, number> | undefined;
-    hasOutIndirection?: boolean;
-    isCallerAllocated?: boolean;
-    isInline?: boolean;
-    isNewlyCreated?: boolean;
-};
+type PrimaryReturnKind = "surfaced" | "void" | "skipped";
 
 type ArgIndexOptions = {
     argIndexOffset: number;
     argIndexMap: Map<number, number> | undefined;
+    cursor: GirCursorBounds | undefined;
     hasOutIndirection: boolean;
+};
+
+type CursorArgIndexOptions = ArgIndexOptions & { cursor: GirCursorBounds };
+
+type RenderDescriptorOptions = Partial<ArgIndexOptions> & {
+    isCallerAllocated?: boolean;
+    isInline?: boolean;
+    isNewlyCreated?: boolean;
 };
 
 type RecordPlacement = {
@@ -91,6 +95,7 @@ type ResolvedRecord = Extract<EntityType, { kind: "record" }>["value"];
 
 type FundamentalRecordOptions = {
     resolved: Extract<EntityType, { kind: "record" }>;
+    lib: string;
     refFunc: string;
     unrefFunc: string;
     ownership: Ownership;
@@ -131,12 +136,27 @@ const isVoidRef = (library: Library, ref: TypeId | undefined): boolean =>
 const isInlineCallbackRef = (library: Library, ref: TypeId | undefined): boolean =>
     ref !== undefined && library.typeFor(ref)?.kind === "callback" && library.nameFor(ref) === undefined;
 
+const primaryReturnKind = (library: Library, returnValue: GirReturnValue): PrimaryReturnKind => {
+    if (isVoidRef(library, returnValue.type)) {
+        return "void";
+    }
+
+    return returnValue.skip ? "skipped" : "surfaced";
+};
+
 const shouldOmitPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
-    isVoidRef(library, returnValue.type) || returnValue.skip;
+    primaryReturnKind(library, returnValue) !== "surfaced";
+
+const isSkippedPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
+    primaryReturnKind(library, returnValue) === "skipped";
+
+const isVoidPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
+    primaryReturnKind(library, returnValue) === "void";
 
 const argIndexOptions = (options: RenderDescriptorOptions): ArgIndexOptions => ({
     argIndexOffset: options.argIndexOffset ?? 0,
     argIndexMap: options.argIndexMap,
+    cursor: options.cursor,
     hasOutIndirection: options.hasOutIndirection === true,
 });
 
@@ -276,7 +296,7 @@ const renderParamDescriptor = (
     ref: TypeId | undefined,
     argIndex: Partial<ArgIndexOptions> = {},
 ): string => {
-    const behindRef: RenderDescriptorOptions = { ...argIndex, hasOutIndirection: true };
+    const behindRef: RenderDescriptorOptions = { ...argIndex, cursor: parameter.cursor, hasOutIndirection: true };
 
     if (isCellInout(context.library, parameter)) {
         return tRef(renderDescriptor(context, ref, parameter.transferOwnership, behindRef), true);
@@ -310,7 +330,7 @@ const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
     return declared?.closureIndex ?? userDataIndexByName(parameters);
 };
 
-const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number | undefined): string | undefined => {
+const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number | undefined): string[] => {
     const options: string[] = [];
 
     if (owningParameter.destroyIndex !== undefined) {
@@ -329,7 +349,7 @@ const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number
         options.push(`scope: ${sourceStringLiteral(owningParameter.scope)}`);
     }
 
-    return options.length > 0 ? `{ ${options.join(", ")} }` : undefined;
+    return options;
 };
 
 const renderCallbackType = (
@@ -348,15 +368,13 @@ const renderCallbackType = (
         (parameter, index) => argOverrides?.get(index) ?? renderParamDescriptor(context, parameter, parameter.type),
     );
 
-    const returnRef = callback.returnValue.type;
+    const { returnValue } = callback;
 
-    const returnType = isVoidRef(context.library, returnRef)
-        ? tVoid
-        : renderDescriptor(context, returnRef, callback.returnValue.transferOwnership);
-
-    const optionsArg = callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters));
-
-    return tCallback(argTypes, returnType, optionsArg);
+    return tCallback({
+        argTypes,
+        returns: renderDescriptor(context, returnValue.type, returnValue.transferOwnership),
+        options: callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters)),
+    });
 };
 
 const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership): string => {
@@ -424,13 +442,14 @@ const getFundamental = (
     node: Extract<EntityType, { kind: "class" | "interface" }>,
 ): AncestorFundamental | undefined => {
     const cls = node.value;
+    const lib = node.namespace.sharedLibrary;
 
-    if (!cls.fundamental || cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
+    if (lib === undefined || !cls.fundamental || cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
         return undefined;
     }
 
     return {
-        lib: node.namespace.sharedLibrary ?? "",
+        lib,
         refFunc: cls.glibRefFunc,
         unrefFunc: cls.glibUnrefFunc,
         typeName: cls.glibTypeName,
@@ -529,7 +548,7 @@ const structExpression = (
     options: { isCallerAllocated: boolean; isInline: boolean },
 ): string => {
     const { size } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
-    const wrapperClass = context.qualify(resolved.namespace.name, resolved.value.name);
+    const wrapperClass = context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(resolved.value.name));
     const isCopyable = isValueMarshalable(context, resolved.namespace.name, resolved.value);
 
     return tStruct(ownership, {
@@ -541,10 +560,10 @@ const structExpression = (
 };
 
 const fundamentalRecordExpression = (options: FundamentalRecordOptions): string => {
-    const { resolved, refFunc, unrefFunc, ownership, wrapperClass, isInline } = options;
+    const { resolved, lib, refFunc, unrefFunc, ownership, wrapperClass, isInline } = options;
 
     return renderFundamental({
-        lib: resolved.namespace.sharedLibrary ?? "",
+        lib,
         refFunc,
         unrefFunc,
         typeName: resolved.value.glibTypeName,
@@ -605,14 +624,16 @@ const recordExpression = (
 ): string => {
     const record = resolved.value;
     const { refFunc, unrefFunc } = recordRefPair(record);
+    const lib = resolved.namespace.sharedLibrary;
 
-    if (refFunc !== undefined && unrefFunc !== undefined) {
+    if (refFunc !== undefined && unrefFunc !== undefined && lib !== undefined) {
         const wrapperClass = requiresFallbackClass(record)
-            ? context.qualify(resolved.namespace.name, record.name)
+            ? context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(record.name))
             : undefined;
 
         return fundamentalRecordExpression({
             resolved,
+            lib,
             refFunc,
             unrefFunc,
             ownership,
@@ -629,12 +650,11 @@ const rawEnumDescriptor = (isSigned: boolean): string => (isSigned ? tInt32 : tU
 const enumExpression = (resolved: Extract<EntityType, { kind: "enum" }>): string => {
     const getter = resolved.value.glibGetType;
     const isSigned = resolved.value.members.some((member) => member.value.startsWith("-"));
+    const lib = resolved.namespace.sharedLibrary;
 
-    if (getter === undefined || getter === "") {
+    if (getter === undefined || getter === "" || lib === undefined) {
         return rawEnumDescriptor(isSigned);
     }
-
-    const lib = resolved.namespace.sharedLibrary ?? "";
 
     return resolved.value.kind === "bitfield" ? tFlags(lib, getter, isSigned) : tEnum(lib, getter, isSigned);
 };
@@ -667,19 +687,52 @@ const expressionForResolved = (
     }
 };
 
+const elementExpression = (
+    context: ModuleContext,
+    ref: CArrayType,
+    transfer: ParameterTransfer,
+    options: ArgIndexOptions,
+): string =>
+    renderDescriptor(context, ref.element, deriveElementTransfer(transfer), {
+        ...options,
+        cursor: undefined,
+        hasOutIndirection: false,
+    });
+
+const cursorArrayExpression = (
+    context: ModuleContext,
+    ref: CArrayType,
+    transfer: ParameterTransfer,
+    options: CursorArgIndexOptions,
+): string =>
+    tCursorArray(
+        elementExpression(context, ref, transfer, options),
+        {
+            baseIndex: mapArgIndex(options, options.cursor.baseIndex),
+            lengthIndex: mapArgIndex(options, options.cursor.lengthIndex),
+        },
+        transferOwnership(transfer),
+        inlineElementSize(context, ref, options.hasOutIndirection),
+    );
+
 const arrayExpression = (
     context: ModuleContext,
     ref: CArrayType,
     transfer: ParameterTransfer,
     options: ArgIndexOptions,
 ): string => {
+    const { cursor } = options;
+
+    if (cursor !== undefined) {
+        return cursorArrayExpression(context, ref, transfer, { ...options, cursor });
+    }
+
     if (hasUnknownArrayLength(ref)) {
         return tUint64;
     }
 
     const ownership = transferOwnership(transfer);
-    const elementOptions: ArgIndexOptions = { ...options, hasOutIndirection: false };
-    const element = renderDescriptor(context, ref.element, deriveElementTransfer(transfer), elementOptions);
+    const element = elementExpression(context, ref, transfer, options);
     const size = inlineElementSize(context, ref, options.hasOutIndirection);
 
     if (ref.lengthParameterIndex !== undefined) {
@@ -691,16 +744,6 @@ const arrayExpression = (
     }
 
     return tArray(element, ownership, size);
-};
-
-const recordInlineSize = (context: ModuleContext, record: ResolvedRecord): number | undefined => {
-    if (record.opaque || record.disguised || record.fields.length === 0) {
-        return undefined;
-    }
-
-    const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
-
-    return size > 0 ? size : undefined;
 };
 
 const elementPointerDepth = (elementCType: string | undefined, hasOutIndirection: boolean): number => {
@@ -738,11 +781,13 @@ const aliasExpression = (
 
 export {
     isInlineCallbackRef,
+    isSkippedPrimaryReturn,
+    isVoidPrimaryReturn,
+    primaryReturnKind,
     shouldOmitPrimaryReturn,
     renderDescriptor,
     isScalarRef,
     isCellInout,
-    recordInlineSize,
     renderParamDescriptor,
     renderCallbackType,
     renderSelfDescriptor,

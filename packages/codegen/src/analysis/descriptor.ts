@@ -1,4 +1,5 @@
 import { sourceStringLiteral } from "@gtkx/utils";
+import type { GirCursorBounds } from "../gir/parameter.js";
 import { joinArgs } from "../writer/emit.js";
 
 type Ownership = "borrowed" | "full";
@@ -39,6 +40,7 @@ type DescriptorName =
     "byteArray" |
     "sizedArray" |
     "fixedArray" |
+    "cursorArray" |
     "callback" |
     "fn";
 
@@ -92,6 +94,21 @@ type BindArgs = {
     returnType: string;
 };
 
+type FnSpecParts = {
+    args: string;
+    returns: string;
+    isReturnSkipped: boolean;
+    canThrow: boolean;
+};
+
+type CallbackSpecParts = {
+    argTypes: string[];
+    returns: string;
+    options: string[];
+};
+
+const SKIPPED_RETURN_ENTRY = "isReturnSkipped: true";
+
 const T: DescriptorNames = {
     bind: "t.bind",
     int8: "t.int8",
@@ -128,6 +145,7 @@ const T: DescriptorNames = {
     byteArray: "t.byteArray",
     sizedArray: "t.sizedArray",
     fixedArray: "t.fixedArray",
+    cursorArray: "t.cursorArray",
     callback: "t.callback",
     fn: "t.fn",
 };
@@ -235,6 +253,14 @@ const tSizedArray = (
         elementSize === undefined ? undefined : String(elementSize),
     ]);
 
+const tCursorArray = (element: string, bounds: GirCursorBounds, ownership?: Ownership, elementSize?: number): string =>
+    call("cursorArray", [
+        element,
+        `{ baseParamIndex: ${String(bounds.baseIndex)}, sizeParamIndex: ${String(bounds.lengthIndex)} }`,
+        ownership === undefined ? undefined : sourceStringLiteral(ownership),
+        elementSize === undefined ? undefined : String(elementSize),
+    ]);
+
 const tFixedArray = (element: string, length: number, ownership?: Ownership, elementSize?: number): string =>
     call("fixedArray", [
         element,
@@ -243,23 +269,23 @@ const tFixedArray = (element: string, length: number, ownership?: Ownership, ele
         elementSize === undefined ? undefined : String(elementSize),
     ]);
 
-const tCallback = (argTypes: string[], returnType: string, options?: string): string =>
-    call("callback", [`[${argTypes.join(", ")}]`, returnType, options]);
+const tCallback = (spec: CallbackSpecParts): string => {
+    const optionsArg = spec.options.length > 0 ? `{ ${spec.options.join(", ")} }` : undefined;
+
+    return call("callback", [`[${spec.argTypes.join(", ")}]`, spec.returns, optionsArg]);
+};
 
 const tBind = (args: BindArgs): string =>
     call("bind", [args.libExpr, args.symbolExpr, args.argList, args.returnType]);
 
-const tFn = (
-    lib: string,
-    cIdentifier: string,
-    spec: { args: string; returns: string; canThrow: boolean },
-): string => {
+const tFn = (lib: string, cIdentifier: string, spec: FnSpecParts): string => {
+    const skipEntry = spec.isReturnSkipped ? `, ${SKIPPED_RETURN_ENTRY}` : "";
     const throwsEntry = spec.canThrow ? ", canThrow: true" : "";
 
     return call("fn", [
         sourceStringLiteral(lib),
         sourceStringLiteral(cIdentifier),
-        `{ args: ${spec.args}, returns: ${spec.returns}${throwsEntry} }`,
+        `{ args: ${spec.args}, returns: ${spec.returns}${skipEntry}${throwsEntry} }`,
     ]);
 };
 
@@ -288,6 +314,7 @@ export {
     tArray,
     tSizedArray,
     tFixedArray,
+    tCursorArray,
     tCallback,
     tBind,
     tFn,

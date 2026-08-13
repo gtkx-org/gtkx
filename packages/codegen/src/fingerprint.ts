@@ -1,9 +1,11 @@
 import { sortStrings } from "@gtkx/utils";
 import { createHash } from "node:crypto";
 import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import packageManifest from "../package.json" with { type: "json" };
+import { arrayGuard, hasFields, isNumber, isString, optionalGuard } from "./guards.js";
+import { readJsonFile } from "./json.js";
 
 type GiFingerprint = {
     value: string;
@@ -13,6 +15,17 @@ type GiFingerprint = {
 };
 
 type ModuleExport = { module: string; export: string };
+
+type DocsFingerprintInput = {
+    basePath: string;
+    props: Record<string, ModuleExport>;
+    omittedProps: Record<string, string[]>;
+};
+
+type DocsFingerprint = {
+    value: string;
+    gi: GiFingerprint;
+};
 
 type JsxFingerprintInput = {
     reactVersion: string;
@@ -27,9 +40,8 @@ type JsxFingerprint = {
     intrinsicElementCount: number;
 };
 
-const require = createRequire(import.meta.url);
 const FINGERPRINT_FILENAME = ".codegen-fingerprint.json";
-const CODEGEN_VERSION: string = (require("../package.json") as { version: string }).version;
+const CODEGEN_VERSION: string = packageManifest.version;
 const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "overrides");
 
 const sortAlpha = (values: string[]): string => sortStrings(values).join(",");
@@ -75,38 +87,86 @@ const computeGiFingerprint = (
     girPath,
 });
 
+const readSentinel = (storeDir: string): unknown => readJsonFile(join(storeDir, FINGERPRINT_FILENAME));
+
+const isGiFingerprint = (value: unknown): value is GiFingerprint =>
+    hasFields<GiFingerprint>(value, {
+        value: isString,
+        girFiles: arrayGuard(isString),
+        libraries: arrayGuard(isString),
+        girPath: optionalGuard(arrayGuard(isString)),
+    });
+
+const isDocsFingerprint = (value: unknown): value is DocsFingerprint =>
+    hasFields<DocsFingerprint>(value, { value: isString, gi: isGiFingerprint });
+
+const isJsxFingerprint = (value: unknown): value is JsxFingerprint =>
+    hasFields<JsxFingerprint>(value, { value: isString, intrinsicElementCount: isNumber });
+
+const recordedGiValue = (sentinel: GiFingerprint, libraries: string[], girPath: string[]): string | undefined => {
+    if (!hasMatchingRecordedInputs(sentinel, libraries, girPath)) {
+        return undefined;
+    }
+
+    try {
+        return hashGi(sentinel.girFiles, sentinel.libraries, girPath);
+    } catch {
+        return undefined;
+    }
+};
+
 const isGiStoreFresh = (
     giStoreDir: string,
     libraries: string[],
     girPath: string[],
 ): boolean => {
-    const sentinelPath = join(giStoreDir, FINGERPRINT_FILENAME);
+    const sentinel = readSentinel(giStoreDir);
 
-    if (!existsSync(sentinelPath)) {
-        return false;
-    }
-
-    let sentinel: GiFingerprint;
-
-    try {
-        sentinel = JSON.parse(readFileSync(sentinelPath, "utf8")) as GiFingerprint;
-    } catch {
-        return false;
-    }
-
-    if (!hasMatchingRecordedInputs(sentinel, libraries, girPath)) {
-        return false;
-    }
-
-    try {
-        return hashGi(sentinel.girFiles, sentinel.libraries, girPath) === sentinel.value;
-    } catch {
-        return false;
-    }
+    return isGiFingerprint(sentinel) && recordedGiValue(sentinel, libraries, girPath) === sentinel.value;
 };
 
 const hasMatchingRecordedInputs = (sentinel: GiFingerprint, libraries: string[], girPath: string[]): boolean =>
     sortAlpha(sentinel.libraries) === sortAlpha(libraries) && sortAlpha(sentinel.girPath ?? []) === sortAlpha(girPath);
+
+const hashDocs = (giValue: string, input: DocsFingerprintInput): string =>
+    createHash("sha256")
+        .update(
+            JSON.stringify([
+                giValue,
+                input.basePath,
+                serializeModuleExports(input.props),
+                serializeOmittedProps(input.omittedProps),
+            ]),
+        )
+        .digest("hex");
+
+const computeDocsFingerprint = (
+    girFiles: string[],
+    libraries: string[],
+    girPath: string[],
+    input: DocsFingerprintInput,
+): DocsFingerprint => {
+    const gi = computeGiFingerprint(girFiles, libraries, girPath);
+
+    return { value: hashDocs(gi.value, input), gi };
+};
+
+const isDocsOutputFresh = (
+    outDir: string,
+    libraries: string[],
+    girPath: string[],
+    input: DocsFingerprintInput,
+): boolean => {
+    const sentinel = readSentinel(outDir);
+
+    if (!isDocsFingerprint(sentinel)) {
+        return false;
+    }
+
+    const giValue = recordedGiValue(sentinel.gi, libraries, girPath);
+
+    return giValue !== undefined && hashDocs(giValue, input) === sentinel.value;
+};
 
 const serializeModuleExports = (map: Record<string, ModuleExport>): [string, string, string][] =>
     sortStrings(Object.keys(map)).map((type) => [type, map[type]?.module ?? "", map[type]?.export ?? ""]);
@@ -137,17 +197,9 @@ const jsxStoreFreshness = (
     jsxStoreDir: string,
     input: JsxFingerprintInput,
 ): { isFresh: boolean; intrinsicElementCount: number } => {
-    const sentinelPath = join(jsxStoreDir, FINGERPRINT_FILENAME);
+    const sentinel = readSentinel(jsxStoreDir);
 
-    if (!existsSync(sentinelPath)) {
-        return { isFresh: false, intrinsicElementCount: 0 };
-    }
-
-    let sentinel: JsxFingerprint;
-
-    try {
-        sentinel = JSON.parse(readFileSync(sentinelPath, "utf8")) as JsxFingerprint;
-    } catch {
+    if (!isJsxFingerprint(sentinel)) {
         return { isFresh: false, intrinsicElementCount: 0 };
     }
 
@@ -159,9 +211,12 @@ const jsxStoreFreshness = (
 export {
     FINGERPRINT_FILENAME,
     computeGiFingerprint,
+    computeDocsFingerprint,
     isGiStoreFresh,
+    isDocsOutputFresh,
     computeJsxFingerprint,
     jsxStoreFreshness,
+    type DocsFingerprintInput,
     type GiFingerprint,
     type JsxFingerprintInput,
 };

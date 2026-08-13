@@ -55,9 +55,10 @@ impl StructCodec {
         if src_ptr.is_null() {
             bail!("Cannot write null into an inline struct field")
         }
-        unsafe {
-            std::ptr::copy_nonoverlapping(src_ptr.cast::<u8>(), slot.as_ptr().cast::<u8>(), size);
+        if is_slot_its_own_source(slot, src_ptr) {
+            return Ok(None);
         }
+        copy_into_slot(slot, src_ptr, size);
         Ok(None)
     }
 
@@ -94,6 +95,10 @@ impl StructCodec {
 }
 
 impl Decoder for StructCodec {
+    fn is_inline(&self) -> bool {
+        self.inline
+    }
+
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
         self.decode_call_non_null(env, stash, "Struct", |struct_ptr| {
             let handle = match self.ownership {
@@ -104,8 +109,6 @@ impl Decoder for StructCodec {
             Ok(value::handle_to_unknown(env, handle)?)
         })
     }
-
-    read_inlineable_pointer_slot!();
 
     read_value_non_null!(|self, env, ptr, _transfer| {
         let handle = if self.caller_allocated {

@@ -10,4 +10,4 @@ const escapeNamedColors = (input: string): string =>
 
 const restoreNamedColors = (rule: string): string => rule.replaceAll(NAMED_COLOR_TOKEN_PATTERN, "@$1");
 
-export { AT_RULE_KEYWORDS, NAMED_COLOR_TOKEN, escapeNamedColors, restoreNamedColors };
+export { escapeNamedColors, restoreNamedColors };

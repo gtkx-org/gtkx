@@ -43,6 +43,17 @@ const removeLabel = (element: Element): void => {
 };
 
 const getClassName = (serialized: SerializedStyles): string => `${KEY}-${serialized.name}`;
+
+const terminateDeclarations = (styles: string): string => {
+    const trimmed = styles.trimEnd();
+
+    if (trimmed.length === 0 || trimmed.endsWith(";") || trimmed.endsWith("}")) {
+        return trimmed;
+    }
+
+    return `${trimmed};`;
+};
+
 const isNonEmptyString = (token: CxToken): token is string => typeof token === "string" && token.length > 0;
 
 const partitionTokens = (tokens: string[], registered: RegisteredCache): TokenPartition => {
@@ -91,8 +102,9 @@ const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
     }
 
     const className = getClassName(serialized);
-    runStylis(state.sheet, `.${className}{${serialized.styles}}`);
-    state.registered[className] = serialized.styles;
+    const styles = terminateDeclarations(serialized.styles);
+    runStylis(state.sheet, `.${className}{${styles}}`);
+    state.registered[className] = styles;
 };
 
 const insertWithoutScoping = (state: CssState, serialized: SerializedStyles): void => {
@@ -133,4 +145,4 @@ const createCss = (): Css => {
     };
 };
 
-export { removeLabel, createCss, type Css };
+export { createCss, type Css };

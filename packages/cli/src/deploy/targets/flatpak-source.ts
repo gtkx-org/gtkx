@@ -1,6 +1,7 @@
 import { posix, relative } from "node:path";
 import type { DeployPayload, DeploySettings } from "../types.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
+import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
 import { renderDesktopEntry } from "../freedesktop/desktop-entry.js";
 import { renderMetainfo } from "../freedesktop/metainfo.js";
@@ -47,7 +48,7 @@ const runtimeInstallCommands = (settings: DeploySettings, nodeExtensionPath: str
 
     return [
         installCommand(`${nodeExtensionPath}/bin/node`, `${lib}/node`, "m755"),
-        installCommand("dist/bundle.js", `${lib}/bundle.js`, "m644"),
+        installCommand(`dist/${BUNDLE_FILENAME}`, `${lib}/${BUNDLE_FILENAME}`, "m644"),
         installCommand("dist/gtkx.node", `${lib}/gtkx.node`, "m755"),
         "test ! -f dist/gtkx.gresource || " + installCommand("dist/gtkx.gresource", `${lib}/gtkx.gresource`, "m644"),
         "test ! -f dist/gschemas.compiled || " +

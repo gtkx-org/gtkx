@@ -3,11 +3,14 @@ import { type ElementType, type ReactNode, useCallback } from "react";
 import { createPortaledComponent } from "../components/portaled.js";
 import { useParentWindow } from "../hooks/use-parent-window.js";
 import { createPresentedComponent, type PresentedProps } from "../hooks/use-presented-instance.js";
+import { applyWrite } from "../reconciler/signals.js";
 
 type DialogComponentProps = PresentedProps<Adw.Dialog>;
 
 const closeDialog = (dialog: Adw.Dialog): void => {
-    dialog.forceClose();
+    applyWrite(() => {
+        dialog.forceClose();
+    });
 };
 
 const usePresentDialog = (): ((dialog: Adw.Dialog) => void) => {

@@ -1,6 +1,6 @@
 import type { DeploySettings } from "../types.js";
+import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 
-const BUNDLE_FILENAME = "bundle.js";
 const NODE_FILENAME = "node";
 
 const compileCacheLines = (binaryName: string): string[] => [
@@ -24,4 +24,4 @@ const renderLauncher = (settings: DeploySettings): string => {
     ].join("\n");
 };
 
-export { BUNDLE_FILENAME, NODE_FILENAME, renderLauncher };
+export { NODE_FILENAME, renderLauncher };

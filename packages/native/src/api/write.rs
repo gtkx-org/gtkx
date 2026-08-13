@@ -4,7 +4,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::{byte_count_from_f64, native_result};
+use crate::api::{byte_count_from_f64, handle_memory_ptr, native_result};
 use crate::ffi::codec::{Codec, PtrWriter as _, SlotInit};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
@@ -23,7 +23,8 @@ fn write_field(
     )
 }
 
-/// Encodes `value` with `fieldDescriptor` and writes it into the handle's memory at `offset` bytes.
+/// Encodes `value` with `fieldDescriptor` and writes it into the handle's memory at `offset` bytes,
+/// rejecting a handle that points at nothing rather than writing at the bare offset.
 #[napi(catch_unwind)]
 pub fn write<'env>(
     env: &'env Env,
@@ -33,15 +34,14 @@ pub fn write<'env>(
     value: Unknown<'_>,
 ) -> Result<Unknown<'env>> {
     let offset = byte_count_from_f64(offset, "field write: offset")?;
-
-    let field_ptr = handle.as_ptr().wrapping_byte_add(offset);
+    let field_ptr = handle_memory_ptr(handle, "field write")?.wrapping_byte_add(offset);
     let field_codec = field_descriptor.into_codec()?;
     let transfer = native_result(
         "field write",
         write_field(env, field_ptr, &field_codec, value),
     )?;
-    if let (Some(transfer), Some(fields)) = (transfer, handle.field_store()) {
-        fields.adopt(offset, transfer);
+    if let (Some(transfer), Some((fields, base))) = (transfer, handle.field_store()) {
+        fields.adopt(base + offset, transfer);
     }
     ().into_unknown(env)
 }

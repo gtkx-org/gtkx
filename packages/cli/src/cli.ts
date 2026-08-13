@@ -1,9 +1,9 @@
-import { packageVersion } from "@gtkx/utils";
 import { defineCommand, runMain } from "citty";
+import packageManifest from "../package.json" with { type: "json" };
 import { splitApplicationArgs } from "./internal/application-args.js";
 import { withErrorBoundary } from "./internal/errors.js";
 
-const version = packageVersion(import.meta.url, "../package.json");
+const version = packageManifest.version;
 const { cliArgs } = splitApplicationArgs(process.argv.slice(2));
 
 const main = defineCommand({

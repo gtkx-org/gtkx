@@ -1,4 +1,5 @@
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
+import { getShadowingStorePaths, sweepProjectStaging } from "@gtkx/codegen/internal";
 import { type Config, loadConfig } from "@gtkx/config";
 import {
     resolveElementComponents,
@@ -12,7 +13,7 @@ import { resolve } from "node:path";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { emitSchemaEnv } from "../settings/schema.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
-import { type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
+import { type CodegenContext, type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 
 type RunCodegenOptions = {
     cwd?: string;
@@ -45,6 +46,7 @@ type CodegenOptionsInput = {
 };
 
 type PreparedCodegen = CodegenInputs & { isForced: boolean };
+type EnsureGeneratedOptions = { shouldAnnounce?: boolean; mode?: string };
 
 type RunOptionsInput = {
     root: string;
@@ -58,15 +60,15 @@ const GIR_PATH_MISSING_MESSAGE =
     "(Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), " +
     "or set `girPath` in gtkx.config.ts.";
 
-const removeSharedStoreShadow = (cwd: string): void => {
-    for (const path of [
-        resolve(cwd, "node_modules/.gtkx/gi"),
-        resolve(cwd, "node_modules/.gtkx/jsx"),
-        resolve(cwd, "node_modules/@gtkx/gi"),
-        resolve(cwd, "node_modules/@gtkx/jsx"),
-    ]) {
+const removeStores = (paths: string[]): void => {
+    for (const path of paths) {
         rmSync(path, { recursive: true, force: true });
     }
+};
+
+const removeShadowingStores = (cwd: string): void => {
+    sweepProjectStaging(cwd);
+    removeStores(getShadowingStorePaths(cwd));
 };
 
 const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsInput) => ({
@@ -102,10 +104,16 @@ const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
     libraries: [],
 });
 
-const clearGeneratedStores = (store: CodegenStore): void => {
-    for (const path of [store.giStoreDir, store.giLinkDir, store.jsxStoreDir, store.jsxLinkDir]) {
-        rmSync(path, { recursive: true, force: true });
+const regeneratedStorePaths = (store: CodegenStore): string[] => {
+    if (store.react === null) {
+        return [store.giStoreDir, store.giLinkDir];
     }
+
+    return [store.giStoreDir, store.giLinkDir, store.jsxStoreDir, store.jsxLinkDir];
+};
+
+const clearGeneratedStores = (store: CodegenStore): void => {
+    removeStores(regeneratedStorePaths(store));
 };
 
 const resolveLoadedConfig = async (options: RunCodegenOptions, cwd: string): Promise<LoadedConfig> =>
@@ -128,7 +136,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     const { config, configFile } = await resolveLoadedConfig(options, cwd);
 
     if (config.codegen === false) {
-        removeSharedStoreShadow(cwd);
+        removeShadowingStores(cwd);
 
         return disabledCodegenResult(configFile);
     }
@@ -200,20 +208,15 @@ const getRunOptions = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCo
     return { cwd: root, mode, inputs, resolved };
 };
 
-/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
-const ensureGenerated = async (
-    cwd: string,
-    options: { shouldAnnounce?: boolean; mode?: string } = {},
-): Promise<boolean> => {
-    if (options.shouldAnnounce && process.env.GTKX_DISABLE_PREFLIGHT === "1") {
-        return false;
-    }
+const isPreflightSkipped = (options: EnsureGeneratedOptions): boolean =>
+    options.shouldAnnounce === true && process.env.GTKX_DISABLE_PREFLIGHT === "1";
 
-    const context = await resolveCodegenContext(cwd, options.mode);
-    syncSchemaEnv(cwd);
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
+const generate = async (context: CodegenContext, options: EnsureGeneratedOptions): Promise<boolean> => {
+    syncSchemaEnv(context.root);
 
     if (context.config.codegen === false) {
-        removeSharedStoreShadow(context.root);
+        removeShadowingStores(context.root);
 
         return false;
     }
@@ -225,6 +228,16 @@ const ensureGenerated = async (
 
     return result.isRegenerated;
 };
+
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
+const ensureGeneratedIn = async (
+    context: CodegenContext,
+    options: EnsureGeneratedOptions = {},
+): Promise<boolean> => (isPreflightSkipped(options) ? false : generate(context, options));
+
+/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
+const ensureGenerated = async (cwd: string, options: EnsureGeneratedOptions = {}): Promise<boolean> =>
+    isPreflightSkipped(options) ? false : generate(await resolveCodegenContext(cwd, options.mode), options);
 
 const resolveConfigWatch = async (
     cwd: string,
@@ -245,6 +258,7 @@ export {
     isCodegenDisabled,
     syncSchemaEnv,
     ensureGenerated,
+    ensureGeneratedIn,
     resolveConfigWatch,
     type RunCodegenResult,
 };

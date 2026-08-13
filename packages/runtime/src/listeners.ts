@@ -11,10 +11,10 @@ type SignalConnectable = {
     disconnect(handlerId: number): void;
 };
 
-const listenerTable: WeakMap<object, Map<string, Map<SignalHandler, number>>> = new WeakMap();
+const listenerTable: WeakMap<object, Map<string, Map<SignalHandler, number[]>>> = new WeakMap();
 
 const findListenerHandlerId = (instance: object, signal: string, handler: SignalHandler): number | undefined =>
-    listenerTable.get(instance)?.get(signal)?.get(handler);
+    listenerTable.get(instance)?.get(signal)?.get(handler)?.at(-1);
 
 const trackListener = (instance: object, signal: string, handler: SignalHandler, handlerId: number): void => {
     let bySignal = listenerTable.get(instance);
@@ -31,7 +31,24 @@ const trackListener = (instance: object, signal: string, handler: SignalHandler,
         bySignal.set(signal, byHandler);
     }
 
-    byHandler.set(handler, handlerId);
+    let handlerIds = byHandler.get(handler);
+
+    if (!handlerIds) {
+        handlerIds = [];
+        byHandler.set(handler, handlerIds);
+    }
+
+    handlerIds.push(handlerId);
+};
+
+const removeTrackedHandlerId = (handlerIds: number[], handlerId: number): number => {
+    const index = handlerIds.lastIndexOf(handlerId);
+
+    if (index !== -1) {
+        handlerIds.splice(index, 1);
+    }
+
+    return handlerIds.length;
 };
 
 const untrackHandlerId = (instance: object, signal: string, handlerId: number): void => {
@@ -42,8 +59,8 @@ const untrackHandlerId = (instance: object, signal: string, handlerId: number): 
         return;
     }
 
-    for (const [handler, id] of byHandler) {
-        if (id === handlerId) {
+    for (const [handler, handlerIds] of byHandler) {
+        if (removeTrackedHandlerId(handlerIds, handlerId) === 0) {
             byHandler.delete(handler);
         }
     }

@@ -32,8 +32,8 @@ const createConfigPlugin = (options: {
     name: string;
     /** Loader the configuration is resolved through, defaulting to a fresh caching loader. */
     loadConfig?: ConfigLoader;
-    /** Extra Vite configuration contributed from the plugin's `config` hook. */
-    config?: () => Omit<UserConfig, "plugins">;
+    /** Extra Vite configuration contributed from the plugin's `config` hook, given the user's own configuration. */
+    config?: (config: UserConfig) => Omit<UserConfig, "plugins">;
 }): Plugin => {
     const loadConfig = options.loadConfig ?? createConfigLoader();
     const state: PluginState = { root: undefined };
@@ -43,7 +43,7 @@ const createConfigPlugin = (options: {
         config(config: UserConfig) {
             state.root = config.root ?? state.root;
 
-            return options.config?.();
+            return options.config?.(config);
         },
         resolveId: (id: string) => resolveVirtualId(id),
         load: (id: string) => loadVirtualModule(id, loadConfig, state),

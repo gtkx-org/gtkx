@@ -1,8 +1,8 @@
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { build as buildApp } from "../builder.js";
-import { ensureGenerated } from "../codegen/run-codegen.js";
-import { entryArg, resolveEntry } from "../internal/entry-arg.js";
+import { entryArg } from "../internal/entry-arg.js";
+import { prepareProject } from "../internal/prepare-project.js";
 
 const BUILD_MODE = "production";
 
@@ -19,11 +19,10 @@ const build = defineCommand({
         },
     },
     async run({ args }) {
-        const { cwd, entry } = resolveEntry(args);
+        const { cwd, entry } = await prepareProject(args, BUILD_MODE);
         info(`Building ${entry}`);
-        await ensureGenerated(cwd, { shouldAnnounce: true, mode: BUILD_MODE });
 
-        await buildApp({
+        const bundlePath = await buildApp({
             entry,
             assetBase: args["asset-base"],
             vite: {
@@ -31,7 +30,7 @@ const build = defineCommand({
             },
         });
 
-        info("Build complete: dist/bundle.js");
+        info(`Build complete: ${bundlePath}`);
     },
 });
 

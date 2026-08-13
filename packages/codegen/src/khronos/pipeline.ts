@@ -387,4 +387,4 @@ const generateGlModules = (options: GlGenerationOptions): GlGenerationResult => 
     };
 };
 
-export { generateGlModules, type GlGenerationReport, type GlGenerationResult };
+export { generateGlModules, type GlGenerationReport };

@@ -2,34 +2,37 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { runInAct } from "../act.js";
 import { getConfig } from "../config.js";
 import { formatRole } from "../role-helpers.js";
+import { delay, now } from "../timers.js";
+import { getWidgetAccessibleName } from "../widget-accessible-properties.js";
+import { getTypeTag, isDefaultWidgetName } from "../widget-getters.js";
+import { isWindowAllocated, isWindowBlockedByModal } from "../window-state.js";
 
 const NOT_SENSITIVE = "it is not sensitive (the widget or one of its ancestors is disabled)";
+const NOT_ROOTED = "it is not inside a toplevel (it was removed from the widget tree, or was never added to one)";
+const WINDOW_NOT_VISIBLE = "its window is not visible (it was hidden, or it was never shown)";
 const WINDOW_NOT_ALLOCATED = "its window has not been allocated a size";
 const NOT_MAPPED = "it is not mapped (it is not shown on screen, e.g. it is hidden or on a non-visible page)";
-const WINDOW_NOT_ACTIVE = "its window never became active";
+const BLOCKED_BY_MODAL = "its window is blocked by a modal window holding the grab";
+const ACTIONABLE_HOP_MS = 1;
 
-const actionableHop = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 1));
+const findWindowActionabilityFailure = (window: Gtk.Window): string | null => {
+    if (!window.getVisible()) {
+        return WINDOW_NOT_VISIBLE;
+    }
 
-const canDisplayDeliverActivation = (window: Gtk.Window): boolean =>
-    window.getDisplay().getDefaultSeat() !== null;
-
-const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): string | null => {
-    const [isComputed, allocation] = root.computeBounds(root);
-
-    if (!isComputed || allocation.getWidth() === 0) {
+    if (!isWindowAllocated(window)) {
         return WINDOW_NOT_ALLOCATED;
     }
 
-    if (!widget.getMapped()) {
-        return NOT_MAPPED;
-    }
-
-    if (canDisplayDeliverActivation(root) && !root.isActive()) {
-        return WINDOW_NOT_ACTIVE;
+    if (isWindowBlockedByModal(window)) {
+        return BLOCKED_BY_MODAL;
     }
 
     return null;
 };
+
+const findRootActionabilityFailure = (root: Gtk.Root): string | null =>
+    root instanceof Gtk.Window ? findWindowActionabilityFailure(root) : null;
 
 const findActionabilityFailure = (widget: Gtk.Widget): string | null => {
     if (!widget.isSensitive()) {
@@ -38,28 +41,41 @@ const findActionabilityFailure = (widget: Gtk.Widget): string | null => {
 
     const root = widget.getRoot();
 
-    if (!(root instanceof Gtk.Window) || !root.getVisible()) {
-        return null;
+    if (root === null) {
+        return NOT_ROOTED;
     }
 
-    return findWindowActionabilityFailure(widget, root);
+    const rootFailure = findRootActionabilityFailure(root);
+
+    if (rootFailure !== null) {
+        return rootFailure;
+    }
+
+    return widget.getMapped() ? null : NOT_MAPPED;
+};
+
+const attribute = (key: string, value: string | null): string => (value === null ? "" : ` ${key}="${value}"`);
+
+const widgetNameAttribute = (widget: Gtk.Widget): string => {
+    const name = widget.getName();
+
+    return attribute("name", isDefaultWidgetName(widget, name) ? null : name);
 };
 
 const describeWidget = (widget: Gtk.Widget): string => {
-    const tag = widget.constructor.name;
-    const name = widget.getName();
-    const nameAttribute = name && !name.endsWith(tag) ? ` name="${name}"` : "";
+    const accessibleName = attribute("accessible-name", getWidgetAccessibleName(widget));
+    const role = attribute("role", formatRole(widget.getAccessibleRole()));
 
-    return `<${tag}${nameAttribute} role="${formatRole(widget.getAccessibleRole())}">`;
+    return `<${getTypeTag(widget)}${accessibleName}${widgetNameAttribute(widget)}${role}>`;
 };
 
 const waitForActionable = async (widget: Gtk.Widget): Promise<void> => {
     const timeout = getConfig().actionabilityTimeout;
-    const deadline = Date.now() + timeout;
+    const deadline = now() + timeout;
     let failure = findActionabilityFailure(widget);
 
-    while (failure !== null && Date.now() < deadline) {
-        await actionableHop();
+    while (failure !== null && now() < deadline) {
+        await delay(ACTIONABLE_HOP_MS);
         failure = findActionabilityFailure(widget);
     }
 

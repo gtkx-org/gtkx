@@ -1,5 +1,17 @@
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { errorMessage } from "@gtkx/utils";
+import {
+    chmodSync,
+    existsSync,
+    mkdirSync,
+    realpathSync,
+    renameSync,
+    rmSync,
+    symlinkSync,
+    writeFileSync,
+} from "node:fs";
 import { dirname, join, relative } from "node:path";
+import { keepFailedProject, type SourceModule } from "../compile.js";
+import { createStagingDir } from "../staging.js";
 import { compileStore } from "./compile-store.js";
 
 /** Where one generated store is written and how it is reached. */
@@ -12,10 +24,7 @@ type StoreOptions = {
     version: string;
 };
 
-type StoreFile = {
-    fileName: string;
-    source: string;
-};
+type StoreLink = Pick<StoreOptions, "storeDir" | "linkDir">;
 
 type Manifest = {
     name: string;
@@ -38,17 +47,23 @@ type RawFile = { relativePath: string; content: string };
 type WriteStoreParams = {
     storeDir: string;
     linkDir: string;
-    files: StoreFile[];
+    files: SourceModule[];
     manifest: Manifest;
     rawFiles?: RawFile[];
     requiresEnvReference?: boolean;
 };
 
 const STORE_DIR_MODE = 0o755;
+const FAILED_STORE_SUFFIX = ".failed";
 
 const subpathExport = (stem: string): { types: string; default: string } => ({
     types: `./${stem}.d.ts`,
     default: `./${stem}.js`,
+});
+
+const namespaceBarrel = (directory: string): { fileName: string; source: string } => ({
+    fileName: `${directory}/index.ts`,
+    source: `export * from "./${directory}.js";\n`,
 });
 
 const buildManifest = (input: ManifestInput): Manifest => {
@@ -69,29 +84,36 @@ const buildManifest = (input: ManifestInput): Manifest => {
 
 const writeStore = (params: WriteStoreParams): void => {
     const tmp = createTempStore(params.storeDir);
+    const keepAt = `${params.storeDir}${FAILED_STORE_SUFFIX}`;
 
     try {
-        for (const file of params.files) {
-            writeSourceFile(tmp, file.fileName, file.source);
-        }
+        buildTempStore(tmp, params);
+        swapStore(tmp, params.storeDir);
+        ensureStoreLink(params);
+    } catch (error) {
+        throw keepFailedProject({ projectDir: tmp, keepAt, error });
+    }
 
-        compileStore({
-            storeDir: tmp,
-            files: params.files,
-            packageName: params.manifest.name,
-            ...(params.requiresEnvReference !== undefined && { requiresEnvReference: params.requiresEnvReference }),
-        });
+    rmSync(keepAt, { recursive: true, force: true });
+};
 
-        writePackageJson(tmp, params.manifest);
-        const rawFiles = params.rawFiles ?? [];
+const buildTempStore = (tmp: string, params: WriteStoreParams): void => {
+    for (const file of params.files) {
+        writeSourceFile(tmp, file.fileName, file.source);
+    }
 
-        for (const raw of rawFiles) {
-            writeFileSync(join(tmp, raw.relativePath), raw.content);
-        }
+    compileStore({
+        storeDir: tmp,
+        files: params.files,
+        packageName: params.manifest.name,
+        ...(params.requiresEnvReference !== undefined && { requiresEnvReference: params.requiresEnvReference }),
+    });
 
-        swapStore(tmp, params.storeDir, params.linkDir);
-    } finally {
-        rmSync(tmp, { recursive: true, force: true });
+    writePackageJson(tmp, params.manifest);
+    const rawFiles = params.rawFiles ?? [];
+
+    for (const raw of rawFiles) {
+        writeFileSync(join(tmp, raw.relativePath), raw.content);
     }
 };
 
@@ -111,7 +133,7 @@ const writePackageJson = (storeDir: string, manifest: Manifest): void => {
     writeFileSync(join(storeDir, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 };
 
-const swapStore = (tmp: string, storeDir: string, visibleLink: string): void => {
+const swapStore = (tmp: string, storeDir: string): void => {
     const previous = `${storeDir}.old`;
     rmSync(previous, { recursive: true, force: true });
 
@@ -121,15 +143,46 @@ const swapStore = (tmp: string, storeDir: string, visibleLink: string): void => 
 
     renameSync(tmp, storeDir);
     rmSync(previous, { recursive: true, force: true });
-    symlinkRelative(visibleLink, storeDir);
 };
+
+const isStoreLinked = (link: StoreLink): boolean => {
+    try {
+        return realpathSync(link.linkDir) === realpathSync(link.storeDir);
+    } catch {
+        return false;
+    }
+};
+
+const ensureStoreLink = (link: StoreLink): void => {
+    if (!existsSync(join(link.storeDir, "package.json")) || isStoreLinked(link)) {
+        return;
+    }
+
+    symlinkRelative(link.linkDir, link.storeDir);
+};
+
+const storeWriteMessage = (storeDir: string, error: unknown): string =>
+    `Cannot write the generated store to ${storeDir}: ${errorMessage(error)}. ` +
+    "Codegen writes the store into the node_modules the @gtkx packages resolve from, " +
+    `so ${dirname(storeDir)} has to be writable.`;
 
 const createTempStore = (storeDir: string): string => {
-    mkdirSync(dirname(storeDir), { recursive: true });
-    const tmp = mkdtempSync(`${storeDir}.tmp-`);
-    chmodSync(tmp, STORE_DIR_MODE);
+    try {
+        const tmp = createStagingDir(storeDir);
+        chmodSync(tmp, STORE_DIR_MODE);
 
-    return tmp;
+        return tmp;
+    } catch (error) {
+        throw new Error(storeWriteMessage(storeDir, error), { cause: error });
+    }
 };
 
-export { subpathExport, buildManifest, writeStore, type StoreOptions, type RawFile };
+export {
+    subpathExport,
+    buildManifest,
+    ensureStoreLink,
+    namespaceBarrel,
+    writeStore,
+    type StoreOptions,
+    type RawFile,
+};

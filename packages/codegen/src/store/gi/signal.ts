@@ -1,13 +1,14 @@
 import { camelCase, sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
-import type { GirCallable, GirParameter } from "../../gir/parameter.js";
+import type { GirCallable, GirParameter, GirReturnValue } from "../../gir/parameter.js";
 import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
+import type { Declaration } from "../../writer/module.js";
 import {
     isCellInout,
+    primaryReturnKind,
     renderDescriptor,
     renderParamDescriptor,
-    shouldOmitPrimaryReturn,
 } from "../../analysis/descriptor-render.js";
 import { tCallback, tObject, tVoid } from "../../analysis/descriptor.js";
 import {
@@ -23,7 +24,7 @@ import { renderJsDoc } from "../../writer/doc.js";
 import { indent, renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { parentCompanionRef } from "./companion.js";
 import { getDoc, handlerSpec } from "./doc-spec.js";
-import { isRecordCallerOut, isRecordInout } from "./param-marshal.js";
+import { isAllocatableCallerOut, isRecordInout, renderCallerOutInstance } from "./param-marshal.js";
 
 type SignalMapSpec = {
     context: ModuleContext;
@@ -92,12 +93,18 @@ const renderSignalDeclarations = (
     klass: GirClass,
     className: string,
     isParentlessObjectSubclass: boolean,
-): string[] => {
+): Declaration[] => {
     const base = { context, klass, className, isParentlessObjectSubclass };
 
-    const declarations = [
-        renderSignalMap({ ...base, suffix: SIGNALS_SUFFIX, renderEntry: renderSignalHandlerType }),
-        renderSignalMap({ ...base, suffix: SIGNAL_EMIT_SUFFIX, renderEntry: renderSignalEmitEntry }),
+    const declarations: Declaration[] = [
+        {
+            name: `${className}${SIGNALS_SUFFIX}`,
+            code: renderSignalMap({ ...base, suffix: SIGNALS_SUFFIX, renderEntry: renderSignalHandlerType }),
+        },
+        {
+            name: `${className}${SIGNAL_EMIT_SUFFIX}`,
+            code: renderSignalMap({ ...base, suffix: SIGNAL_EMIT_SUFFIX, renderEntry: renderSignalEmitEntry }),
+        },
     ];
 
     if (
@@ -107,7 +114,7 @@ const renderSignalDeclarations = (
             klass.implements.length > 0)
     ) {
         const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
-        declarations.push(renderSignalConnectInterface(className, isRootObject));
+        declarations.push({ name: className, code: renderSignalConnectInterface(className, isRootObject) });
     }
 
     return declarations;
@@ -263,7 +270,7 @@ const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextA
     }
 
     if (isCallerAllocatedOut(parameter)) {
-        const value = renderCallerOutAllocation(context, parameter);
+        const value = renderCallerOutInstance(context, parameter);
 
         return {
             literal: `{ type: ${descriptor}, direction: "out", isCallerAllocated: true, value: ${value} }`,
@@ -283,10 +290,18 @@ const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextA
     return { literal: `{ type: ${descriptor}, value: args[${String(argIndex)}] }`, nextArgIndex: argIndex + 1 };
 };
 
+const renderEmitReturnArg = (context: ModuleContext, returnValue: GirReturnValue): string => {
+    if (primaryReturnKind(context.library, returnValue) === "void") {
+        return "";
+    }
+
+    return `, ${renderDescriptor(context, returnValue.type, returnValue.transferOwnership)}`;
+};
+
 const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => {
     const params = nonVarargParameters(signal);
 
-    if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isRecordCallerOut(context, parameter))) {
+    if (params.some((parameter) => isCallerAllocatedOut(parameter) && !isAllocatableCallerOut(context, parameter))) {
         return renderUnsupportedEmitCase(signal);
     }
 
@@ -301,12 +316,7 @@ const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => 
         return rendered.literal;
     });
 
-    const isVoid = shouldOmitPrimaryReturn(context.library, signal.returnValue);
-
-    const returnArg = isVoid
-        ? ""
-        : `, ${renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership)}`;
-
+    const returnArg = renderEmitReturnArg(context, signal.returnValue);
     const body = `return emitSignal(this, sigName, [${argLiterals.join(", ")}]${returnArg});`;
 
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
@@ -321,16 +331,6 @@ const renderUnsupportedEmitCase = (signal: GirCallable): string => {
     );
 };
 
-const renderCallerOutAllocation = (context: ModuleContext, parameter: GirParameter): string => {
-    const name = parameter.type === undefined ? undefined : context.library.nameFor(parameter.type);
-
-    if (name === undefined) {
-        throw new Error("renderCallerOutAllocation: expected a named caller-allocated out-parameter");
-    }
-
-    return `new ${context.qualify(name.namespaceName, name.typeName)}()`;
-};
-
 const renderCallback = (context: ModuleContext, signal: GirCallable): string => {
     const params = nonVarargParameters(signal);
 
@@ -338,21 +338,19 @@ const renderCallback = (context: ModuleContext, signal: GirCallable): string => 
         renderParamDescriptor(context, parameter, parameter.type, { argIndexOffset: 1 }),
     );
 
-    const isVoid = shouldOmitPrimaryReturn(context.library, signal.returnValue);
-
-    const returnDescriptor = isVoid
-        ? tVoid
-        : renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership);
-
     const callbackArgs = [tObject("borrowed"), ...callbackParamDescriptors, tVoid];
     const userDataIndex = String(params.length + 1);
-    const destroy = "hasDestroy: true, destroyKind: \"closureNotify\"";
 
-    return tCallback(
-        callbackArgs,
-        returnDescriptor,
-        `{ ${destroy}, hasUserData: true, userDataIndex: ${userDataIndex} }`,
-    );
+    return tCallback({
+        argTypes: callbackArgs,
+        returns: renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership),
+        options: [
+            "hasDestroy: true",
+            "destroyKind: \"closureNotify\"",
+            "hasUserData: true",
+            `userDataIndex: ${userDataIndex}`,
+        ],
+    });
 };
 
 const forEachInterfaceSignal = (

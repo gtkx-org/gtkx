@@ -89,7 +89,10 @@ type BoxedOptions = {
     size?: number;
 };
 
-/** How the callee takes a callback's closure, and how long that closure has to stay alive. */
+/**
+ * What the bindings do with a callback's return value, how the callee takes its closure, and how
+ * long that closure has to stay alive.
+ */
 type CallbackOptions = {
     /** The callee also takes a destroy notify, which frees the closure once it is done with it. */
     hasDestroy?: boolean;
@@ -107,10 +110,20 @@ type CallbackOptions = {
 type ArrayOptions = {
     /** Stride in bytes between elements stored inline in the array. */
     elementSize?: number | undefined;
+    /** Position of the argument whose buffer a cursor array points into. */
+    baseParamIndex?: number | undefined;
     /** Position of the argument carrying the element count, for a length-bounded array. */
     sizeParamIndex?: number | undefined;
     /** Element count of a fixed-length array. */
     fixedSize?: number | undefined;
+};
+
+/** Where a cursor array's base buffer and total length come from. */
+type CursorBounds = {
+    /** Position of the argument holding the buffer the cursor points into. */
+    baseParamIndex: number;
+    /** Position of the argument carrying that buffer's element count. */
+    sizeParamIndex: number;
 };
 
 /** How a ref-counted fundamental value is named, wrapped and stored. */
@@ -123,6 +136,12 @@ type FundamentalOptions = {
     wrapperClass?: AnyClass;
     /** The value is embedded in the containing struct rather than reached through a pointer. */
     isInline?: boolean;
+};
+
+type FundamentalLifecycle = {
+    sharedLibrary: string;
+    refFnName: string;
+    unrefFnName: string;
 };
 
 /** How a plain C struct is stored and wrapped. */
@@ -171,6 +190,7 @@ const voidT: VoidDescriptor = { kind: "void" };
 const unicharT: UnicharDescriptor = { kind: "unichar" };
 /** Descriptor for an opaque `gpointer`, taken from a typed array's memory or a numeric address. */
 const bufferT: BufferDescriptor = { kind: "buffer" };
+const fundamentalLifecycles: Map<string, FundamentalLifecycle> = new Map();
 
 /**
  * Builds a descriptor for a C string, whose optional length sizes the caller-allocated buffer
@@ -280,6 +300,15 @@ const structT = (ownership: Ownership = "borrowed", options: StructOptions = {})
     return result;
 };
 
+const recordFundamentalLifecycle = (typeName: string, lifecycle: FundamentalLifecycle): void => {
+    if (!fundamentalLifecycles.has(typeName)) {
+        fundamentalLifecycles.set(typeName, lifecycle);
+    }
+};
+
+const fundamentalLifecycleFor = (typeName: string): FundamentalLifecycle | undefined =>
+    fundamentalLifecycles.get(typeName);
+
 /** Builds a descriptor for a fundamental type whose lifetime is managed by named ref and unref functions. */
 const fundamentalT = (
     sharedLibrary: string,
@@ -292,6 +321,7 @@ const fundamentalT = (
 
     if (options.typeName !== undefined) {
         result.typeName = options.typeName;
+        recordFundamentalLifecycle(options.typeName, { sharedLibrary, refFnName, unrefFnName });
     }
 
     if (options.wrapperClass !== undefined) {
@@ -316,6 +346,10 @@ const arrayT = (
 
     if (options?.elementSize !== undefined) {
         result.elementSize = options.elementSize;
+    }
+
+    if (options?.baseParamIndex !== undefined) {
+        result.baseParamIndex = options.baseParamIndex;
     }
 
     if (options?.sizeParamIndex !== undefined) {
@@ -361,6 +395,17 @@ const sizedArrayT = (
     elementSize?: number,
 ): ArrayDescriptor => arrayT(itemDescriptor, "sized", ownership, { sizeParamIndex, elementSize });
 
+/**
+ * Builds a descriptor for an out pointer into the buffer another argument supplied, decoded as the
+ * elements from where it points to the end of that buffer.
+ */
+const cursorArrayT = (
+    itemDescriptor: Descriptor,
+    bounds: CursorBounds,
+    ownership: Ownership = "borrowed",
+    elementSize?: number,
+): ArrayDescriptor => arrayT(itemDescriptor, "cursor", ownership, { ...bounds, elementSize });
+
 /** Builds a descriptor for a C array of a fixed length. */
 const fixedArrayT = (
     itemDescriptor: Descriptor,
@@ -368,6 +413,28 @@ const fixedArrayT = (
     ownership: Ownership = "borrowed",
     elementSize?: number,
 ): ArrayDescriptor => arrayT(itemDescriptor, "fixed", ownership, { fixedSize, elementSize });
+
+const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOptions): void => {
+    if (options.hasDestroy !== undefined) {
+        result.hasDestroy = options.hasDestroy;
+    }
+
+    if (options.destroyKind !== undefined) {
+        result.destroyKind = options.destroyKind;
+    }
+
+    if (options.hasUserData !== undefined) {
+        result.hasUserData = options.hasUserData;
+    }
+
+    if (options.userDataIndex !== undefined) {
+        result.userDataIndex = options.userDataIndex;
+    }
+
+    if (options.scope !== undefined) {
+        result.scope = options.scope;
+    }
+};
 
 /** Builds a descriptor for a function pointer, marshalling a JavaScript function into a native closure. */
 const callbackT = (
@@ -377,25 +444,11 @@ const callbackT = (
 ): CallbackDescriptor => {
     const result: CallbackDescriptor = { kind: "callback", argDescriptors, returnDescriptor };
 
-    if (options?.hasDestroy !== undefined) {
-        result.hasDestroy = options.hasDestroy;
+    if (options === undefined) {
+        return result;
     }
 
-    if (options?.destroyKind !== undefined) {
-        result.destroyKind = options.destroyKind;
-    }
-
-    if (options?.hasUserData !== undefined) {
-        result.hasUserData = options.hasUserData;
-    }
-
-    if (options?.userDataIndex !== undefined) {
-        result.userDataIndex = options.userDataIndex;
-    }
-
-    if (options?.scope !== undefined) {
-        result.scope = options.scope;
-    }
+    applyClosureOptions(result, options);
 
     return result;
 };
@@ -426,6 +479,7 @@ export {
     flagsT,
     boxedT,
     structT,
+    fundamentalLifecycleFor,
     fundamentalT,
     arrayT,
     listT,
@@ -435,6 +489,7 @@ export {
     byteArrayT,
     sizedArrayT,
     fixedArrayT,
+    cursorArrayT,
     callbackT,
     type BoxedDescriptor,
     type StructDescriptor,

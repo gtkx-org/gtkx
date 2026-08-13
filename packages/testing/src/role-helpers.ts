@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { sortStringsBy } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
 import { getWidgetAccessibleName, getWidgetLevel } from "./widget-accessible-properties.js";
+import { getTypeTag } from "./widget-getters.js";
 
 const ROLE_NAMES_BY_VALUE = enumNamesByValue(Gtk.AccessibleRole);
 
@@ -71,7 +72,7 @@ const getRoles = (container: Container): Map<string, Gtk.Widget[]> => {
 };
 
 const formatWidgetPreview = (widget: Gtk.Widget, name: string | null): string => {
-    const tagName = widget.constructor.name;
+    const tagName = getTypeTag(widget);
     const roleAttr = formatRole(widget.getAccessibleRole());
     const nameDisplay = name ? `Name "${name}"` : 'Name ""';
 

@@ -98,4 +98,4 @@ class Logger {
     }
 }
 
-export { Logger, type OutputStream, type LoggerOptions };
+export { Logger, type LoggerOptions };

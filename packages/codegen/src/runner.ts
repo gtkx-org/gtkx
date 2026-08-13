@@ -2,12 +2,13 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ModuleExport } from "./react/element-config.js";
 import type { OmittedProps } from "./store/jsx/omitted-props.js";
-import type { StoreOptions } from "./store/store-fs.js";
 import { checkModules } from "./compile.js";
 import { isGiStoreFresh } from "./fingerprint.js";
 import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
+import { sweepStagingDirs } from "./staging.js";
+import { ensureStoreLink, type StoreOptions } from "./store/store-fs.js";
 
 type GlCodegenOptions = {
     registryPath: string;
@@ -63,6 +64,10 @@ type StoreResult = {
  * libraries. The gi store is rewritten only when its GIR inputs changed, and the jsx store only when the gi
  * store or the React element config changed, unless `options.isForced` is set. Pass the spread of
  * `resolveStore(projectRoot)` for everything but `libraries` and `girPath`.
+ *
+ * Every store already on disk is linked at its `linkDir` before anything is generated, so a link an install
+ * pruned out of `node_modules` is restored without regenerating the store, and the gi store is reachable
+ * under its own specifier while the jsx store is type checked.
  *
  * @param options What to generate and where to write it.
  * @returns A summary of what was regenerated and how long the run took.
@@ -167,12 +172,25 @@ const emitStoresWithConfig = async (config: {
     return emitJsxStore({ options, jsx, gi, loadLibrary, isGiRegenerated, namespaces });
 };
 
+const prepareStores = (stores: (StoreOptions | undefined)[]): void => {
+    for (const store of stores) {
+        if (store === undefined) {
+            continue;
+        }
+
+        sweepStagingDirs(store.storeDir);
+        ensureStoreLink(store);
+    }
+};
+
 const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> => {
     const { gi, jsx, libraries, girPath } = options;
 
     if (girPath.length === 0) {
         throw new Error("codegen needs at least one GIR search path; pass the result of resolveGirPath");
     }
+
+    prepareStores([gi, jsx]);
 
     return emitStoresWithConfig({ options, gi, jsx, libraries, girPath });
 };
