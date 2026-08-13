@@ -22,12 +22,22 @@ import {
     GtkWindow,
 } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
 import { createRef, type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { act, configure, getConfig, render, screen, userEvent, waitFor } from "../src/index.js";
 import { renderDragAndDropPair, renderGesturedLabel, renderShortcutHost } from "./event-render-setup.js";
 
 const initialConfig = { ...getConfig() };
+const FOREIGN_ACTIVATION_TIMEOUT = 20_000;
+
+const FOREIGN_CLIENT_SOURCE = [
+    'import * as Gtk from "@gtkx/gi/gtk";',
+    'new Gtk.Window({ title: "Foreign client", defaultWidth: 160, defaultHeight: 120 }).present();',
+    "process.stdin.resume();",
+].join("\n");
+
 const NOT_SENSITIVE_PATTERN = /did not become actionable within 60ms because it is not sensitive/;
 const NOT_ROOTED_PATTERN = /did not become actionable within 60ms because it is not inside a toplevel/;
 const WINDOW_HIDDEN_PATTERN = /did not become actionable within 60ms because its window is not visible/;
@@ -162,25 +172,25 @@ const renderBackgroundedMainWindow = async () => {
     return rendered;
 };
 
-const presentToplevelOnAnotherDisplay = async (): Promise<Gtk.Window> => {
-    const display = Gdk.DisplayManager.get().openDisplay(Gdk.Display.getDefault()?.getName() ?? null);
+const withActivationHeldOutsideThisProcess = async (window: Gtk.Window, body: () => Promise<void>): Promise<void> => {
+    const foreign = spawn(process.execPath, ["--input-type=module", "--eval", FOREIGN_CLIENT_SOURCE], {
+        cwd: import.meta.dirname,
+        stdio: ["pipe", "ignore", "ignore"],
+    });
 
-    if (display === null) {
-        throw new Error("could not open a second display");
+    try {
+        await waitFor(() => {
+            expect(window.isActive()).toBe(false);
+        }, {
+            timeout: FOREIGN_ACTIVATION_TIMEOUT,
+            onTimeout: () => new Error("the window of the client spawned outside this process never took activation"),
+        });
+
+        await body();
+    } finally {
+        foreign.kill("SIGKILL");
+        await once(foreign, "close");
     }
-
-    const toplevel = new Gtk.Window({ title: "Other display", defaultWidth: 200, defaultHeight: 140 });
-    toplevel.setDisplay(display);
-
-    await act(() => {
-        toplevel.present();
-    });
-
-    await waitFor(() => {
-        expect(toplevel.isActive()).toBe(true);
-    });
-
-    return toplevel;
 };
 
 const beginDrag = (window: Gtk.Window): Gdk.Drag => {
@@ -578,22 +588,25 @@ describe("userEvent actionability - background toplevels", () => {
         expect(entry.getText()).toBe("beforetyped");
     });
 
-    it("clicks a button in a window a toplevel on another display has taken the activation from", async () => {
+    it("clicks a button in a window a client outside this process has taken the activation from", async () => {
         const { handleMainClick, main, mainButton } = await renderSoleMainWindow();
-        const other = await presentToplevelOnAnotherDisplay();
 
-        try {
-            await waitFor(() => {
-                expect(main.isActive()).toBe(false);
-            });
-
+        await withActivationHeldOutsideThisProcess(main, async () => {
             await userEvent.click(mainButton);
-            expect(handleMainClick).toHaveBeenCalledTimes(1);
-        } finally {
-            const display = other.getDisplay();
-            other.destroy();
-            display.close();
-        }
+        });
+
+        expect(handleMainClick).toHaveBeenCalledTimes(1);
+    });
+
+    it("types into an entry in a window a client outside this process has taken the activation from", async () => {
+        const { main } = await renderSoleMainWindow();
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
+
+        await withActivationHeldOutsideThisProcess(main, async () => {
+            await userEvent.type(entry, "typed");
+        });
+
+        expect(entry.getText()).toBe("beforetyped");
     });
 });
 

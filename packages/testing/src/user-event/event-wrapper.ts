@@ -5,12 +5,7 @@ import { formatRole } from "../role-helpers.js";
 import { delay, now } from "../timers.js";
 import { getWidgetAccessibleName } from "../widget-accessible-properties.js";
 import { getTypeTag, isDefaultWidgetName } from "../widget-getters.js";
-import {
-    isApplicationActivated,
-    isWindowAllocated,
-    isWindowBlockedByModal,
-    NO_WINDOW_ACTIVATED,
-} from "../window-state.js";
+import { isWindowAllocated, isWindowBlockedByModal } from "../window-state.js";
 
 const NOT_SENSITIVE = "it is not sensitive (the widget or one of its ancestors is disabled)";
 const NOT_ROOTED = "it is not inside a toplevel (it was removed from the widget tree, or was never added to one)";
@@ -27,10 +22,6 @@ const findWindowActionabilityFailure = (window: Gtk.Window): string | null => {
 
     if (!isWindowAllocated(window)) {
         return WINDOW_NOT_ALLOCATED;
-    }
-
-    if (!isApplicationActivated(window)) {
-        return NO_WINDOW_ACTIVATED;
     }
 
     if (isWindowBlockedByModal(window)) {

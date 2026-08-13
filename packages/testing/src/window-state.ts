@@ -63,10 +63,8 @@ export {
     activeToplevel,
     findPresentedWindowFailure,
     findRenderedWindowFailure,
-    isApplicationActivated,
     isWindowActivated,
     isWindowAllocated,
     isWindowBlockedByModal,
     mappedToplevels,
-    NO_WINDOW_ACTIVATED,
 };
