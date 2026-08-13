@@ -64,6 +64,7 @@ type ValueType = {
 
 type ValueGetter = (value: ExternalObject<Handle>) => unknown;
 type ValueWriter = ValueType["set"];
+type ValueNarrower = (jsValue: unknown) => unknown;
 
 const setBoxedCache = createBindCache();
 const setStaticBoxedCache = createBindCache();
@@ -434,6 +435,13 @@ const resolveValueGetter = (type: bigint): ValueGetter | undefined =>
 const resolveValueSetter = (type: bigint): ValueType["set"] | undefined =>
     exactValueType(type)?.set ?? builtInValueSetter(typeFundamental(type)) ?? customFundamentalSetter(type);
 
+const holdsUnchanged: ValueNarrower = (jsValue) => jsValue;
+const holdsAsFloat: ValueNarrower = (jsValue) => Math.fround(jsValue as number);
+
+function valueNarrowerFor(type: bigint): ValueNarrower {
+    return typeFundamental(type) === TYPE_FLOAT ? holdsAsFloat : holdsUnchanged;
+}
+
 function valueWriterFor(type: bigint): ValueWriter {
     const set = resolveValueSetter(type);
 
@@ -528,6 +536,8 @@ export {
     outValueForDescriptor,
     outValueForBoxedDescriptor,
     inoutValueForBoxedDescriptor,
+    type ValueNarrower,
+    valueNarrowerFor,
     type ValueWriter,
     valueWriterFor,
 };

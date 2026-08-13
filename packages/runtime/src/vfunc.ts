@@ -2,6 +2,7 @@ import type { Descriptor } from "@gtkx/native";
 import { type AnyClass, getParentClass, walkClassChain } from "@gtkx/utils";
 import type { Arg } from "./arg.js";
 import { isCallerAllocatedOut } from "./callback.js";
+import { foldedLengthSources } from "./folded-lengths.js";
 import { getInterfaceVfuncRegistry, getVfuncRegistry, type VfuncDescriptor } from "./registry.js";
 
 function findClassVfuncDescriptor(klass: AnyClass, methodName: string): VfuncDescriptor | null {
@@ -12,9 +13,13 @@ function findInterfaceVfuncDescriptor(interfaceGtype: bigint, methodName: string
     return getInterfaceVfuncRegistry(interfaceGtype)?.[methodName];
 }
 
-function vfuncArg(descriptor: Descriptor): Arg {
+function vfuncArg(descriptor: Descriptor, isFoldedLength: boolean): Arg {
     if (descriptor.kind === "ref") {
-        return { type: descriptor.innerDescriptor, direction: descriptor.inout === true ? "inout" : "out" };
+        return {
+            type: descriptor.innerDescriptor,
+            direction: descriptor.inout === true ? "inout" : "out",
+            isConsumed: isFoldedLength,
+        };
     }
 
     if (isCallerAllocatedOut(descriptor)) {
@@ -25,7 +30,9 @@ function vfuncArg(descriptor: Descriptor): Arg {
 }
 
 function vfuncArgs(descriptor: VfuncDescriptor): Arg[] {
-    return descriptor.argDescriptors.map((argDescriptor) => vfuncArg(argDescriptor));
+    const lengths = foldedLengthSources(descriptor);
+
+    return descriptor.argDescriptors.map((argDescriptor, index) => vfuncArg(argDescriptor, lengths.has(index)));
 }
 
 export { findClassVfuncDescriptor, findInterfaceVfuncDescriptor, vfuncArgs };

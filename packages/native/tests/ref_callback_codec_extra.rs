@@ -2,9 +2,10 @@ use std::ffi::c_void;
 
 use libffi::middle;
 use native::ffi::codec::{
-    BigIntCodec, BoxedCodec, BufferCodec, CallbackCodec, CallbackScope, Codec, Decoder,
-    DestroyNotifyKind, Encoder, FundamentalCodec, IntegerCodec, Ownership, ReadCtx, RefCodec,
-    StructCodec, VoidCodec,
+    BigIntCodec, BooleanCodec, BoxedCodec, BufferCodec, CallbackCodec, CallbackScope, Codec,
+    Decoder, DestroyNotifyKind, Encoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
+    FundamentalCodec, IntegerCodec, Ownership, ReadCtx, RefCodec, StructCodec, UnicharCodec,
+    VoidCodec,
 };
 use native::ffi::{self, StashData, StashStorage};
 use test_support as helpers;
@@ -56,6 +57,15 @@ fn fundamental_codec() -> FundamentalCodec {
 
 fn i32_ref_codec() -> RefCodec {
     RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("Integer is a valid Ref inner")
+}
+
+fn enum_flags_codec() -> EnumFlagsCodec {
+    EnumFlagsCodec {
+        kind: EnumFlagsKind::Enum,
+        shared_library: "libgobject-2.0.so.0".to_owned(),
+        get_type_fn_name: "g_unused_get_type".to_owned(),
+        storage: IntegerCodec::I32,
+    }
 }
 
 fn empty_cif() -> middle::Cif {
@@ -177,15 +187,32 @@ fn ref_read_from_value_source_errors() {
 }
 
 #[test]
-fn ref_decode_unsupported_inner_errors() {
+fn ref_decode_reads_every_scalar_inner() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let ref_codec = RefCodec::new(Codec::BigInt(BigIntCodec::I64), false)
-            .expect("BigInt is a valid Ref inner");
         let mut backing: u64 = 0;
         let ptr = (&raw mut backing).cast::<c_void>();
         let stash = ffi::Stash::Storage(StashStorage::new(ptr, StashData::Unit));
-        assert!(ref_codec.decode(&env, &stash).is_err());
+
+        for inner in [
+            Codec::Integer(IntegerCodec::I32),
+            Codec::Integer(IntegerCodec::U64),
+            Codec::BigInt(BigIntCodec::I64),
+            Codec::BigInt(BigIntCodec::U64),
+            Codec::Float(FloatCodec::F64),
+            Codec::EnumFlags(enum_flags_codec()),
+            Codec::Boolean(BooleanCodec),
+            Codec::Unichar(UnicharCodec),
+        ] {
+            assert!(inner.is_scalar());
+            assert!(RefCodec::supports_inner(&inner));
+            let ref_codec =
+                RefCodec::new(inner.clone(), false).expect("a scalar is a valid Ref inner");
+
+            if let Err(error) = ref_codec.decode(&env, &stash) {
+                panic!("Ref<{inner}> should read back from its out slot: {error:#}");
+            }
+        }
     });
 }
 

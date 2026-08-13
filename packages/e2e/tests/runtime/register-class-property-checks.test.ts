@@ -212,7 +212,7 @@ describe("registerClass — property types", () => {
 
         expect(() => {
             probe.ratio = NaN;
-        }).toThrow(/'ratio' to NaN; the property holds values of type 'gdouble'/);
+        }).toThrow(/'ratio' to NaN.+invalid or out of range for type 'gdouble'.+would put NaN in its place/);
 
         expect(probe.red).toBe(0);
         expect(probe.ratio).toBe(0);
@@ -273,11 +273,11 @@ describe("registerClass — notifications for checked writes", () => {
         const Probe = makeProbeClass();
         const probe = new Probe();
         const seen = watchNotify(probe);
-        Reflect.set(probe, "red", null);
-        Reflect.set(probe, "red", null);
-        Reflect.set(probe, "red", null);
-        expect(seen).toEqual(["red"]);
-        expect(probe.red).toBeNull();
+        Reflect.set(probe, "label", null);
+        Reflect.set(probe, "label", null);
+        Reflect.set(probe, "label", null);
+        expect(seen).toEqual(["label"]);
+        expect(probe.label).toBeNull();
     });
 
     it("batches notifications between freeze_notify and thaw_notify", () => {

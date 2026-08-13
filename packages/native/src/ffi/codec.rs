@@ -413,7 +413,7 @@ impl Codec {
             Self::Array(codec) => codec.ownership,
             Self::HashTable(codec) => codec.ownership,
             Self::Fundamental(codec) => codec.ownership,
-            Self::Ref(codec) => codec.inner_codec.transfer(),
+            Self::Ref(codec) => codec.inner_codec().transfer(),
             Self::Integer(_)
             | Self::BigInt(_)
             | Self::Float(_)
@@ -469,7 +469,7 @@ impl std::fmt::Display for Codec {
             Self::Buffer(_) => write!(f, "Buffer"),
             Self::HashTable(_) => write!(f, "HashTable"),
             Self::Callback(_) => write!(f, "Callback"),
-            Self::Ref(t) => write!(f, "Ref({})", t.inner_codec),
+            Self::Ref(t) => write!(f, "Ref({})", t.inner_codec()),
             Self::Unichar(_) => write!(f, "Unichar"),
         }
     }

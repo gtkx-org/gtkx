@@ -210,7 +210,7 @@ function connectBind(type: bigint, signal: string, callback: CallbackDescriptor)
  */
 function connectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
     const { callback, handler, isAfter } = spec;
-    const wrapped = wrapCallback(handler, callback, "emitter");
+    const wrapped = wrapCallback(handler, callback, "signal");
     const type: bigint = (instance as TypedClass).__type__;
     const connect = connectBind(type, signal, callback);
     const handlerId = connect(getHandle(instance), signal, wrapped, isAfter ? 1 : 0) as number;

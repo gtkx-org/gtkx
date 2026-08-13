@@ -3,18 +3,21 @@ use std::ffi::{CString, c_char, c_void};
 use gtk4::glib;
 use gtk4::prelude::ObjectType as _;
 use helpers::napi_mock;
-use napi::bindgen_prelude::{Array, FromNapiValue as _};
+use napi::bindgen_prelude::{Array, External, FromNapiValue as _};
 use napi::{Env, JsValue as _};
 use native::api::bind::bind;
 use native::api::call::call;
 use native::ffi::codec::{
-    ArrayBounds, ArrayCodec, ArrayKind, BooleanCodec, Codec, Decoder, Encoder, EnumFlagsCodec,
-    EnumFlagsKind, FloatCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, ReadCtx,
-    RefCodec, StringCodec, UnicharCodec,
+    ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Decoder, Encoder,
+    EnumFlagsCodec, EnumFlagsKind, FloatCodec, HashTableCodec, IntegerCodec, ObjectCodec,
+    Ownership, ReadCtx, RefCodec, StringCodec, UnicharCodec,
 };
 use native::ffi::descriptor::{Descriptor, NestedDescriptor};
 use native::ffi::{self, StashData, StashStorage};
+use native::handle::Handle;
 use test_support as helpers;
+
+const GLIB: &str = "libglib-2.0.so.0";
 
 fn string_codec() -> StringCodec {
     StringCodec {
@@ -62,6 +65,19 @@ fn with_i32_storage_ref(value: i32, f: impl FnOnce(&ffi::Stash, &RefCodec)) {
     let stash = ffi::Stash::Storage(StashStorage::new(slot, StashData::Unit));
     let ref_codec =
         RefCodec::new(Codec::Integer(IntegerCodec::I32), false).expect("valid Ref inner");
+    f(&stash, &ref_codec);
+}
+
+fn with_bigint_storage_ref(
+    codec: BigIntCodec,
+    bytes: [u8; 8],
+    f: impl FnOnce(&ffi::Stash, &RefCodec),
+) {
+    let mut bytes = bytes;
+    let slot = bytes.as_mut_ptr().cast::<c_void>();
+    let stash = ffi::Stash::Storage(StashStorage::new(slot, StashData::Unit));
+    let ref_codec = RefCodec::new(Codec::BigInt(codec), false).expect("valid Ref inner");
+
     f(&stash, &ref_codec);
 }
 
@@ -144,6 +160,68 @@ fn decode_float_reads_number() {
             .decode(&env, &stash)
             .expect("float ref decode should succeed");
         assert_eq!(napi_mock::read_double(decoded.raw()), Some(2.5));
+    });
+}
+
+#[test]
+fn decode_bigint_i64_reads_bigint() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        with_bigint_storage_ref(
+            BigIntCodec::I64,
+            i64::MIN.to_ne_bytes(),
+            |stash, ref_codec| {
+                let decoded = ref_codec
+                    .decode(&env, stash)
+                    .expect("bigint64 ref decode should succeed");
+                assert_eq!(
+                    napi_mock::read_bigint_i128(decoded.raw()),
+                    Some(i128::from(i64::MIN))
+                );
+            },
+        );
+    });
+}
+
+#[test]
+fn decode_bigint_u64_reads_bigint() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        with_bigint_storage_ref(
+            BigIntCodec::U64,
+            u64::MAX.to_ne_bytes(),
+            |stash, ref_codec| {
+                let decoded = ref_codec
+                    .decode(&env, stash)
+                    .expect("biguint64 ref decode should succeed");
+                assert_eq!(
+                    napi_mock::read_bigint_i128(decoded.raw()),
+                    Some(i128::from(u64::MAX))
+                );
+            },
+        );
+    });
+}
+
+#[test]
+fn decode_bigint_inout_reads_back_the_encoded_seed() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let seed = i128::from(i64::MIN);
+        let value = napi_mock::to_unknown(
+            &env,
+            napi_mock::fake_object(&[("value", napi_mock::fake_bigint_i128(seed))]),
+        );
+        let ref_codec =
+            RefCodec::new(Codec::BigInt(BigIntCodec::I64), true).expect("valid Ref inner");
+        let stash = ref_codec
+            .encode(&env, value)
+            .expect("encoding an inout bigint should succeed");
+
+        let decoded = ref_codec
+            .decode(&env, &stash)
+            .expect("inout bigint ref decode should succeed");
+        assert_eq!(napi_mock::read_bigint_i128(decoded.raw()), Some(seed));
     });
 }
 
@@ -510,11 +588,58 @@ fn decode_with_context_array_non_ptr_slot_stash_uses_storage_pointer() {
     });
 }
 
-fn i32_ref_descriptor() -> Descriptor {
+fn ref_descriptor(inner: Descriptor, inout: Option<bool>) -> Descriptor {
     Descriptor::Ref {
-        inner_descriptor: NestedDescriptor(Box::new(Descriptor::Int32)),
-        inout: None,
+        inner_descriptor: NestedDescriptor(Box::new(inner)),
+        inout,
     }
+}
+
+fn gerror_ref_descriptor() -> Descriptor {
+    ref_descriptor(
+        Descriptor::Boxed {
+            ownership: Ownership::Full,
+            type_name: "GError".to_owned(),
+            shared_library: Some(GLIB.to_owned()),
+            get_type_fn_name: Some("g_error_get_type".to_owned()),
+            free_fn_name: None,
+            is_caller_allocated: None,
+            size: None,
+            is_inline: None,
+        },
+        None,
+    )
+}
+
+fn borrowed_string_descriptor() -> Descriptor {
+    Descriptor::String {
+        ownership: Ownership::Borrowed,
+        length: None,
+    }
+}
+
+fn value_array<'e>(env: &'e Env, items: &[napi::sys::napi_value]) -> Array<'e> {
+    Array::from_unknown(napi_mock::to_unknown(env, napi_mock::fake_array(items)))
+        .expect("fake array should convert to an Array")
+}
+
+fn out_ref_value() -> napi::sys::napi_value {
+    napi_mock::fake_object(&[("value", napi_mock::fake_null())])
+}
+
+fn ref_value_bigint(value: napi::sys::napi_value) -> Option<i128> {
+    napi_mock::read_object_property(value, "value").and_then(napi_mock::read_bigint_i128)
+}
+
+fn ascii_string_to_number_descriptors(width: fn() -> Descriptor) -> Vec<Descriptor> {
+    vec![
+        borrowed_string_descriptor(),
+        Descriptor::Uint32,
+        width(),
+        width(),
+        ref_descriptor(width(), None),
+        gerror_ref_descriptor(),
+    ]
 }
 
 #[test]
@@ -522,24 +647,132 @@ fn call_with_nullish_ref_arguments_passes_null_pointers_and_skips_writeback() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let descriptor = bind(
-            "libglib-2.0.so.0".to_owned(),
+            GLIB.to_owned(),
             "g_direct_equal".to_owned(),
-            vec![i32_ref_descriptor(), i32_ref_descriptor()],
+            vec![
+                ref_descriptor(Descriptor::Int32, None),
+                ref_descriptor(Descriptor::Int32, None),
+            ],
             Descriptor::Boolean,
             None,
         )
         .expect("bind should succeed");
 
-        let raw_values =
-            napi_mock::fake_array(&[napi_mock::fake_null(), napi_mock::fake_undefined()]);
-        let values = Array::from_unknown(napi_mock::to_unknown(&env, raw_values))
-            .expect("fake array should convert to an Array");
+        let values = value_array(&env, &[napi_mock::fake_null(), napi_mock::fake_undefined()]);
 
         let result =
             call(&env, &descriptor, values).expect("call with nullish refs should succeed");
 
         assert_eq!(napi_mock::read_bool(result.raw()), Some(true));
         assert_eq!(napi_mock::count("napi_set_named_property"), 0);
+    });
+}
+
+#[test]
+fn call_writes_back_a_gint64_out_parameter_from_g_ascii_string_to_signed() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = bind(
+            GLIB.to_owned(),
+            "g_ascii_string_to_signed".to_owned(),
+            ascii_string_to_number_descriptors(|| Descriptor::Bigint64),
+            Descriptor::Boolean,
+            None,
+        )
+        .expect("bind should succeed");
+
+        let out_num = out_ref_value();
+        let values = value_array(
+            &env,
+            &[
+                napi_mock::fake_string("-9223372036854775808"),
+                napi_mock::fake_double(10.0),
+                napi_mock::fake_bigint_i128(i128::from(i64::MIN)),
+                napi_mock::fake_bigint_i128(0),
+                out_num,
+                napi_mock::fake_null(),
+            ],
+        );
+
+        let result = call(&env, &descriptor, values).expect("the call should succeed");
+
+        assert_eq!(napi_mock::read_bool(result.raw()), Some(true));
+        assert_eq!(ref_value_bigint(out_num), Some(i128::from(i64::MIN)));
+    });
+}
+
+#[test]
+fn call_writes_back_a_guint64_out_parameter_from_g_ascii_string_to_unsigned() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = bind(
+            GLIB.to_owned(),
+            "g_ascii_string_to_unsigned".to_owned(),
+            ascii_string_to_number_descriptors(|| Descriptor::Biguint64),
+            Descriptor::Boolean,
+            None,
+        )
+        .expect("bind should succeed");
+
+        let out_num = out_ref_value();
+        let values = value_array(
+            &env,
+            &[
+                napi_mock::fake_string("18446744073709551615"),
+                napi_mock::fake_double(10.0),
+                napi_mock::fake_bigint_i128(0),
+                napi_mock::fake_bigint_i128(i128::from(u64::MAX)),
+                out_num,
+                napi_mock::fake_null(),
+            ],
+        );
+
+        let result = call(&env, &descriptor, values).expect("the call should succeed");
+
+        assert_eq!(napi_mock::read_bool(result.raw()), Some(true));
+        assert_eq!(ref_value_bigint(out_num), Some(i128::from(u64::MAX)));
+    });
+}
+
+#[test]
+fn call_writes_back_a_gint64_inout_parameter_from_g_time_zone_adjust_time() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = bind(
+            GLIB.to_owned(),
+            "g_time_zone_adjust_time".to_owned(),
+            vec![
+                Descriptor::Boxed {
+                    ownership: Ownership::Borrowed,
+                    type_name: "GTimeZone".to_owned(),
+                    shared_library: Some(GLIB.to_owned()),
+                    get_type_fn_name: Some("g_time_zone_get_type".to_owned()),
+                    free_fn_name: None,
+                    is_caller_allocated: None,
+                    size: None,
+                    is_inline: None,
+                },
+                Descriptor::Int32,
+                ref_descriptor(Descriptor::Bigint64, Some(true)),
+            ],
+            Descriptor::Int32,
+            None,
+        )
+        .expect("bind should succeed");
+
+        let zone = unsafe { glib::ffi::g_time_zone_new_utc() };
+        let zone_value = External::new(Handle::from_glib_borrow(zone.cast::<c_void>()))
+            .into_unknown(&env)
+            .expect("wrapping the time zone handle should succeed")
+            .raw();
+        let seed = i128::from(i64::from(i32::MAX)) * 1_000;
+        let time = napi_mock::fake_object(&[("value", napi_mock::fake_bigint_i128(seed))]);
+        let values = value_array(&env, &[zone_value, napi_mock::fake_double(0.0), time]);
+
+        call(&env, &descriptor, values).expect("the call should succeed");
+
+        assert_eq!(ref_value_bigint(time), Some(seed));
+        unsafe { glib::ffi::g_time_zone_unref(zone) };
     });
 }
 

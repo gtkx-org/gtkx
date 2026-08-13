@@ -134,6 +134,36 @@ type RegisterClassOptions<TInstance extends object, TProperties extends Record<s
      * which a `freeze_notify` batch collects; a write of the value the property already holds is
      * dropped and emits none.
      *
+     * `null` and `undefined` both mean NULL, and mean it only where the ParamSpec's own type holds
+     * NULL, which is a string, string-array, boxed, object, interface, param, variant or pointer
+     * property. Such a property holds the `null` either spelling wrote, so the member, the type's
+     * `get_property` slot and `g_object_get_property` serve the same thing, and writing the other
+     * spelling over it emits no `notify`. Every other property, so every integer, floating-point,
+     * boolean, enum, flags and GType one, refuses both with the same `TypeError` it refuses a
+     * string with, and keeps the value it already holds. It refuses them for what it holds rather
+     * than for its range, whatever that range is: the type is checked before the range, so a
+     * `gint` whose range excludes 0 answers a nullish with that same `TypeError` and never with
+     * the `RangeError` that names the value GObject would put in its place. The one place
+     * `undefined` means something else is the constructor, which reads it as the property not
+     * being given at all and leaves it at the ParamSpec's default, so a property is never handed a
+     * value it cannot serve back.
+     *
+     * A floating-point property takes every JavaScript number, `NaN` and both infinities
+     * included, and its ParamSpec alone rules on which of them the range admits: a `gdouble`
+     * bounded by `-Infinity` and `Infinity` holds either infinity, and a magnitude a bounded
+     * one excludes, like any `NaN`, comes back as the `RangeError` that names what GObject
+     * would put in its place rather than as the `TypeError` a type the property cannot hold
+     * earns. A `gfloat` property holds what GObject narrows the double to, so it serves `0.1`
+     * back as `0.10000000149011612` and a finite magnitude no `gfloat` reaches as an infinity,
+     * which the range then rules on in turn. That narrowing belongs to the property alone: the
+     * same magnitude written to a `gfloat` through a generated binding, a signal argument or a
+     * closure return is refused outright rather than narrowed.
+     *
+     * A generated property of a wrapped type answers a nullish differently, and the two halves of
+     * the API disagree here: that property marshals what it is written through its descriptor
+     * rather than through the checks above, so `new Gtk.Label({ widthRequest: null })` and a later
+     * write of `null` to that member both land 0, where a `gint` installed here refuses both.
+     *
      * A class that defines the camelCase member itself owns the property: its own accessor decides
      * what a write means, the other two spellings forward to it, and the type's property slots read
      * and write it rather than the generated storage.
@@ -397,7 +427,7 @@ function wrapVfunc(
             returnDescriptor: descriptor.returnDescriptor,
             isReturnSkipped: descriptor.isReturnSkipped === true,
         },
-        "this",
+        "vfunc",
     );
 }
 

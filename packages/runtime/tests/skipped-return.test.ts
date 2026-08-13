@@ -35,7 +35,7 @@ const strHasPrefix = (isReturnSkipped: boolean): ((...inputs: unknown[]) => unkn
     });
 
 const slotImplementation = (isReturnSkipped: boolean, fn: (...args: unknown[]) => unknown): typeof fn =>
-    wrapCallback(fn, { argDescriptors: SLOT_ARGS, returnDescriptor: t.boolean, isReturnSkipped }, "none");
+    wrapCallback(fn, { argDescriptors: SLOT_ARGS, returnDescriptor: t.boolean, isReturnSkipped }, "callback");
 
 const callbackValue = (isReturnSkipped: boolean, fn: (...args: unknown[]) => unknown): unknown =>
     wrapCallbackValue(

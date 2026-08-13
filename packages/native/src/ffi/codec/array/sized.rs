@@ -82,7 +82,7 @@ impl ArrayCodec {
         let arg_codec = &arg_codecs[size_param_index];
 
         if let Codec::Ref(ref_codec) = arg_codec
-            && let Codec::Integer(integer_codec) = &*ref_codec.inner_codec
+            && let Codec::Integer(integer_codec) = ref_codec.inner_codec()
         {
             match ffi_arg {
                 ffi::Stash::Storage(storage) => {
