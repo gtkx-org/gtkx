@@ -1,6 +1,6 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import { createServer, type Plugin, type ViteDevServer } from "vite";
 import { describe, expect, it } from "vitest";
 import { createDevServerConfig } from "../../src/dev/vite-dev-server.js";
@@ -42,7 +42,7 @@ const watchProbe = async (probe: (server: ViteDevServer, root: string) => Promis
     const server = await createServer({ ...createDevServerConfig(root, []), logLevel: "silent" });
 
     try {
-        await waitUntil(() => isWatching(server, "app.tsx"), WATCH_TEST_TIMEOUT_MS / 3);
+        await waitUntil(() => isWatching(server, "app.tsx"), WATCH_TEST_TIMEOUT_MS / 2);
         await probe(server, root);
     } finally {
         await server.close();
@@ -59,7 +59,7 @@ const reportedRevisions = async (): Promise<string[]> => {
         });
 
         await burstWrites(join(root, "app.tsx"));
-        await waitUntil(() => reported.length > 0, WATCH_TEST_TIMEOUT_MS / 3);
+        await waitUntil(() => reported.length > 0, WATCH_TEST_TIMEOUT_MS / 2);
         await delay(QUIET_PERIOD_MS);
     });
 
@@ -70,8 +70,8 @@ const collectEvents = (server: ViteDevServer): string[] => {
     const events: string[] = [];
 
     for (const event of WATCH_EVENTS) {
-        server.watcher.on(event, (path: string) => {
-            events.push(`${event} ${basename(path)}`);
+        server.watcher.on(event, (watched: string) => {
+            events.push(`${event} ${watched}`);
         });
     }
 
@@ -109,31 +109,33 @@ const reloadsAcrossMissingImport = async (): Promise<string[]> => {
 
     await watchProbe(async (server, root) => {
         const app = join(root, "app.tsx");
+        const theme = join(root, "theme.ts");
         const events = collectEvents(server);
         reloads.push(await reloadModule(server, app));
         writeFileSync(app, IMPORTING_APP);
-        await waitUntil(() => events.includes("change app.tsx"), LIFECYCLE_WAIT_MS);
+        await waitUntil(() => events.includes(`change ${app}`), LIFECYCLE_WAIT_MS);
         reloads.push(await reloadModule(server, app));
-        writeFileSync(join(root, "theme.ts"), THEME_SOURCE);
-        await waitUntil(() => events.includes("add theme.ts"), LIFECYCLE_WAIT_MS);
+        writeFileSync(theme, THEME_SOURCE);
+        await waitUntil(() => events.includes(`add ${theme}`), LIFECYCLE_WAIT_MS);
         reloads.push(await reloadModule(server, app));
     });
 
     return reloads;
 };
 
-const removedModuleReport = async (): Promise<{ events: string[]; isStillKnown: boolean }> => {
-    const report = { events: [] as string[], isStillKnown: false };
+const removedModuleReport = async (): Promise<{ events: string[]; removed: string; isStillKnown: boolean }> => {
+    const report = { events: [] as string[], removed: "", isStillKnown: false };
 
     await watchProbe(async (server, root) => {
-        const dependency = join(root, "theme.ts");
+        const theme = join(root, "theme.ts");
         report.events = collectEvents(server);
-        writeFileSync(dependency, THEME_SOURCE);
-        await waitUntil(() => report.events.includes("add theme.ts"), LIFECYCLE_WAIT_MS);
-        await server.ssrLoadModule(dependency);
-        rmSync(dependency);
-        await waitUntil(() => report.events.includes("unlink theme.ts"), LIFECYCLE_WAIT_MS);
-        report.isStillKnown = Boolean(server.moduleGraph.getModuleById(dependency));
+        report.removed = theme;
+        writeFileSync(theme, THEME_SOURCE);
+        await waitUntil(() => report.events.includes(`add ${theme}`), LIFECYCLE_WAIT_MS);
+        await server.ssrLoadModule(theme);
+        rmSync(theme);
+        await waitUntil(() => report.events.includes(`unlink ${theme}`), LIFECYCLE_WAIT_MS);
+        report.isStillKnown = Boolean(server.moduleGraph.getModuleById(theme));
     });
 
     return report;
@@ -209,7 +211,7 @@ describe("createDevServerConfig (the watcher it configures)", () => {
         { timeout: WATCH_TEST_TIMEOUT_MS },
         async () => {
             const report = await removedModuleReport();
-            expect(report.events).toEqual(["add theme.ts", "unlink theme.ts"]);
+            expect(report.events).toEqual([`add ${report.removed}`, `unlink ${report.removed}`]);
             expect(report.isStillKnown).toBe(true);
         },
     );
