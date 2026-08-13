@@ -178,19 +178,28 @@ declare module "#data/*.woff2" {
 }
 
 declare module "*.data" {
-    /** Filesystem path of the emitted asset; import it under `#data/` for a GResource path and URI. */
-    const assetPath: string;
-    export default assetPath;
+    /**
+     * URL of the emitted asset: a dev server URL under `gtkx dev`, an absolute filesystem path once built.
+     * Import it under `#data/` instead for a GResource path and a `resource://` URI.
+     */
+    const assetUrl: string;
+    export default assetUrl;
 }
 
 declare module "*.gpa" {
-    /** Filesystem path of the emitted asset; import it under `#data/` for a GResource path and URI. */
-    const assetPath: string;
-    export default assetPath;
+    /**
+     * URL of the emitted asset: a dev server URL under `gtkx dev`, an absolute filesystem path once built.
+     * Import it under `#data/` instead for a GResource path and a `resource://` URI.
+     */
+    const assetUrl: string;
+    export default assetUrl;
 }
 
 declare module "*.css?url" {
-    /** Filesystem path of the emitted stylesheet, imported without installing it on the default display. */
-    const path: string;
-    export default path;
+    /**
+     * URL of the emitted stylesheet, imported without installing it on the default display: a dev server URL
+     * under `gtkx dev`, an absolute filesystem path once built.
+     */
+    const styleSheetUrl: string;
+    export default styleSheetUrl;
 }

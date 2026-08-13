@@ -233,12 +233,12 @@ describe("gtkxResources (resolveId)", () => {
         expect(result).toBeUndefined();
     });
 
-    it("strips a query string before resolving and carries the relative path", async () => {
+    it("leaves a query-suffixed data asset to the Vite asset pipeline the declarations point at", async () => {
         const plugin = createResourcesPlugin();
         const resolve = vi.fn(() => Promise.resolve({ id: "/abs/data/logo.png" }));
         const result = await (plugin.resolveId as ResolveIdHook).call({ resolve }, "#data/logo.png?inline");
-        expect(resolve).toHaveBeenCalledWith("#data/logo.png", undefined, expect.objectContaining({ skipSelf: true }));
-        expect(result).toBe(`${toVirtualId("/abs/data/logo.png") + REL_SEPARATOR}logo.png`);
+        expect(resolve).not.toHaveBeenCalled();
+        expect(result).toBeUndefined();
     });
 });
 

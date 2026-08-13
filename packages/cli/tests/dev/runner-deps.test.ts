@@ -130,6 +130,7 @@ describe("defaultDevRunnerDeps (plugins)", () => {
             "gtkx:undeclared-library",
             "gtkx:settings",
             "gtkx:icons",
+            "gtkx:asset-imports",
             "gtkx:resources",
             "gtkx:css",
             "gtkx:react-compiler",

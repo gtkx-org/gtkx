@@ -5,12 +5,13 @@ import { error, info, sortStrings } from "@gtkx/utils";
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { AssetEmitter } from "./asset-emitter.js";
-import { DATA_IMPORT_PREFIX, resolveDataDir } from "../internal/data-dir.js";
+import { resolveDataDir } from "../internal/data-dir.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 import { loadModuleExclusively } from "../internal/module-loads.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
-import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
+import { ASSET_RE } from "./asset-extensions.js";
+import { DATA_PREFIX, isDataAsset } from "./asset-specifier.js";
 import { renderInitModule } from "./resource-init-module.js";
 import {
     BUNDLE_FILENAME,
@@ -22,7 +23,6 @@ import {
     toVirtualId,
     VIRTUAL_INIT,
 } from "./resource-shared.js";
-import { stripQuery } from "./strip-query.js";
 
 type ResourceEntry = {
     sourcePath: string;
@@ -42,7 +42,6 @@ type PluginState = {
     dataDir: string | null;
 };
 
-const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 const RESOURCE_COMPILER = "glib-compile-resources";
 const MANIFEST_PREFIX = "/";
 const DEV_STAGING_PREFIX = "resources-dev";
@@ -176,25 +175,15 @@ const registerEntry = (state: PluginState, absPath: string, rel: string): Resour
 
 const isTrackedSource = (state: PluginState, file: string): boolean => state.sourcePaths.has(file);
 
-const dataAssetSource = (source: string): string | null => {
-    const clean = stripQuery(source);
-
-    if (!clean.startsWith(DATA_PREFIX) || !ASSET_PATH_RE.test(clean)) {
-        return null;
-    }
-
-    return clean;
-};
-
 const resolvedAssetId = (
     resolved: { id: string; external: boolean | string } | null,
-    clean: string,
+    source: string,
 ): string | undefined => {
     if (!resolved || resolved.external) {
         return undefined;
     }
 
-    return toVirtualId(resolved.id) + REL_SEPARATOR + clean.slice(DATA_PREFIX.length);
+    return toVirtualId(resolved.id) + REL_SEPARATOR + source.slice(DATA_PREFIX.length);
 };
 
 const loadInitModule = (state: PluginState): string => {
@@ -341,15 +330,13 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin 
                 return VIRTUAL_INIT;
             }
 
-            const clean = dataAssetSource(source);
-
-            if (clean === null) {
+            if (!isDataAsset(source)) {
                 return;
             }
 
-            const resolved = await this.resolve(clean, importer, { ...opts, skipSelf: true });
+            const resolved = await this.resolve(source, importer, { ...opts, skipSelf: true });
 
-            return resolvedAssetId(resolved, clean);
+            return resolvedAssetId(resolved, source);
         },
 
         load(id) {
