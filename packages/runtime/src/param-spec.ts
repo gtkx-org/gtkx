@@ -119,11 +119,11 @@ function isStrvValue(value: unknown): boolean {
 }
 
 function isDoubleValue(value: unknown): boolean {
-    return value == null || (typeof value === "number" && Number.isFinite(value));
+    return typeof value === "number" && Number.isFinite(value);
 }
 
 function isFloatValue(value: unknown): boolean {
-    return isDoubleValue(value) && (value == null || Math.abs(value as number) <= FLOAT_MAXIMUM);
+    return isDoubleValue(value) && Math.abs(value as number) <= FLOAT_MAXIMUM;
 }
 
 function isAnyValue(): boolean {
@@ -134,12 +134,8 @@ function isNullValue(value: unknown): boolean {
     return value == null;
 }
 
-function isIntegerWithin(value: unknown, minimum: number, maximum: number): boolean {
-    return Number.isSafeInteger(value) && (value as number) >= minimum && (value as number) <= maximum;
-}
-
 function integerGuardFor(minimum: number, maximum: number): ValueGuard {
-    return (value) => value == null || isIntegerWithin(value, minimum, maximum);
+    return (value) => Number.isSafeInteger(value) && (value as number) >= minimum && (value as number) <= maximum;
 }
 
 function toWideInteger(value: unknown): bigint | undefined {
@@ -152,10 +148,6 @@ function toWideInteger(value: unknown): bigint | undefined {
 
 function wideIntegerGuardFor(minimum: bigint, maximum: bigint): ValueGuard {
     return (value) => {
-        if (value == null) {
-            return true;
-        }
-
         const wide = toWideInteger(value);
 
         return wide !== undefined && wide >= minimum && wide <= maximum;

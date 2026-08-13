@@ -1,5 +1,6 @@
 import type { ParamSpec } from "@gtkx/gi/gobject";
 import {
+    BindingFlags,
     Object as GObject,
     ParamFlags,
     paramSpecBoolean,
@@ -235,6 +236,68 @@ describe("registerClass — property types", () => {
     });
 });
 
+describe("registerClass — nullish property values", () => {
+    it("refuses null and undefined where the ParamSpec wants a number", () => {
+        const Probe = makeProbeClass();
+        const probe = new Probe();
+        probe.red = 12;
+        probe.ratio = 0.5;
+
+        expect(() => {
+            Reflect.set(probe, "red", null);
+        }).toThrow(/'red' to null; the property holds values of type 'gint'/);
+
+        expect(() => {
+            Reflect.set(probe, "red", undefined);
+        }).toThrow(/'red' to undefined; the property holds values of type 'gint'/);
+
+        expect(() => {
+            Reflect.set(probe, "ratio", null);
+        }).toThrow(/'ratio' to null; the property holds values of type 'gdouble'/);
+
+        expect(() => {
+            Reflect.set(probe, "orientation", null);
+        }).toThrow(/'orientation' to null; the property holds values of type 'GtkOrientation'/);
+
+        expect(probe.red).toBe(12);
+        expect(probe.ratio).toBe(0.5);
+    });
+
+    it("refuses null at construction as it refuses it after construction", () => {
+        const Probe = makeProbeClass();
+
+        expect(() => new Probe({ red: null })).toThrow(
+            /Probe\.red: cannot set property 'red' to null; the property holds values of type 'gint'/,
+        );
+    });
+
+    it("takes null where the ParamSpec's own type holds it", () => {
+        const Probe = makeProbeClass();
+        const probe = new Probe();
+        Reflect.set(probe, "label", null);
+        probe.child = null;
+        expect(probe.label).toBeNull();
+        expect(probe.child).toBeNull();
+    });
+});
+
+describe("registerClass — the value the property slots serve", () => {
+    it("serves an int property the number it was written with rather than a refused nullish", () => {
+        const Probe = makeProbeClass();
+        const probe = new Probe();
+        const label = new Gtk.Label();
+        probe.red = 120;
+
+        expect(() => {
+            Reflect.set(probe, "red", null);
+        }).toThrow(TypeError);
+
+        probe.bindProperty("red", label, "width-request", BindingFlags.SYNC_CREATE);
+        expect(label.widthRequest).toBe(120);
+        expect(probe.red).toBe(120);
+    });
+});
+
 describe("registerClass — accepted property values", () => {
     it("round-trips a string, int, boolean, enum and object property", () => {
         const Probe = makeProbeClass();
@@ -273,11 +336,11 @@ describe("registerClass — notifications for checked writes", () => {
         const Probe = makeProbeClass();
         const probe = new Probe();
         const seen = watchNotify(probe);
-        Reflect.set(probe, "red", null);
-        Reflect.set(probe, "red", null);
-        Reflect.set(probe, "red", null);
-        expect(seen).toEqual(["red"]);
-        expect(probe.red).toBeNull();
+        Reflect.set(probe, "label", null);
+        Reflect.set(probe, "label", null);
+        Reflect.set(probe, "label", null);
+        expect(seen).toEqual(["label"]);
+        expect(probe.label).toBeNull();
     });
 
     it("batches notifications between freeze_notify and thaw_notify", () => {
