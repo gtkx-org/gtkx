@@ -226,6 +226,17 @@ describe("cx", () => {
         expect(merge.rule).not.toContain("32pxcolor");
     });
 
+    it("merges an unterminated declaration ahead of nested and at-rule bodies", () => {
+        const dark = "@media (prefers-color-scheme: dark)";
+        const bodies = ["min-height: 32px", "&:hover { color: blue; }", `${dark} { color: green; }`];
+        const merge = mergeStyleBodies(fixture, bodies);
+        const rules = insertedRules(fixture);
+        expect(merge.rule).toBe(`.${merge.mergedClass}{min-height:32px;}`);
+        expect(rules).toContain(`.${merge.mergedClass}:hover{color:blue;}`);
+        expect(rules).toContain(`${dark}{.${merge.mergedClass}{color:green;}}`);
+        expect(rules.filter((rule) => !rule.startsWith(".") && !rule.startsWith("@"))).toEqual([]);
+    });
+
     it("handles conditional composition", () => {
         const isActive = isTruthyAtRuntime(true);
         const isDisabled = isTruthyAtRuntime(false);
