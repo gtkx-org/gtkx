@@ -211,7 +211,10 @@ const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
  * it is itself active; a window the caller or the tree owns is waited on until the application holds
  * activation, since only a present can claim it. Rendering into a container that is not shown waits
  * for nothing, and a window that never becomes readable within `actionabilityTimeout` throws an
- * error naming the condition that failed rather than resolving with unreadable platform state.
+ * error naming the condition that failed rather than resolving with unreadable platform state. A
+ * tree mounted into a container that sits outside every toplevel, or inside a window that is not
+ * visible, is out of reach of a pointer and a keyboard, so every `userEvent` helper aimed at it
+ * rejects after `actionabilityTimeout` naming that condition, and `fireEvent` drives it instead.
  *
  * @param element The React element to render.
  * @param options Optional container, wrapper, custom queries, and other render settings.

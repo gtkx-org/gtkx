@@ -169,7 +169,12 @@ type QueryFamilies<Head extends unknown[]> = QueryFamily<"Role", "role", Head> &
  * React behavior toggles, error callbacks, and custom queries to bind.
  */
 type RenderOptions<Q extends QueryMap = Record<never, never>> = {
-    /** Widget or root element to mount into; an undecorated harness window is created when omitted. */
+    /**
+     * Widget or root element to mount into; an undecorated harness window is created when omitted.
+     * A widget container that sits outside every toplevel, such as a bare `Gtk.Box`, keeps the tree
+     * out of reach of a pointer and a keyboard, so every `userEvent` helper aimed at it rejects
+     * after `actionabilityTimeout`; `fireEvent` drives such a tree instead.
+     */
     container?: Gtk.Widget | RootElement | undefined;
     /** Root of the subtree that bound queries search. */
     baseElement?: Container | undefined;

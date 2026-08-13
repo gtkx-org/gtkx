@@ -23,13 +23,14 @@ import {
 } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { createRef, type ReactNode, useState } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { act, configure, getConfig, render, screen, userEvent, waitFor } from "../src/index.js";
 import { renderDragAndDropPair, renderGesturedLabel, renderShortcutHost } from "./event-render-setup.js";
 
 const initialConfig = { ...getConfig() };
 const NOT_SENSITIVE_PATTERN = /did not become actionable within 60ms because it is not sensitive/;
-const DETACHED_PATTERN = /did not become actionable within 60ms because it is not attached to a visible window/;
+const NOT_ROOTED_PATTERN = /did not become actionable within 60ms because it is not inside a toplevel/;
+const WINDOW_HIDDEN_PATTERN = /did not become actionable within 60ms because its window is not visible/;
 const MODAL_PATTERN = /did not become actionable within 60ms because its window is blocked by a modal window/;
 
 const INSENSITIVE_BUTTON_ACTIONS: [string, (button: Gtk.Widget) => Promise<unknown>][] = [
@@ -54,6 +55,12 @@ const renderInsensitiveButton = async () => {
     const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Disabled" });
 
     return { button, handleClick };
+};
+
+const expectInsensitiveButtonRejection = async (action: (button: Gtk.Widget) => Promise<unknown>): Promise<void> => {
+    const { button, handleClick } = await renderInsensitiveButton();
+    await expect(action(button)).rejects.toThrow(NOT_SENSITIVE_PATTERN);
+    expect(handleClick).not.toHaveBeenCalled();
 };
 
 const renderInsensitiveGesturedLabel = (name: string, label: string, gesture: ReactNode): Promise<Gtk.Widget> =>
@@ -114,6 +121,22 @@ const findMappedWindow = async (name: string): Promise<Gtk.Window> => {
     return window;
 };
 
+const renderSoleMainWindow = async () => {
+    const rendered = await renderMainWindow((onClick) => <MainWindow onClick={onClick} />);
+
+    return { ...rendered, main: await findMappedWindow("Main") };
+};
+
+const renderHiddenMainWindow = async () => {
+    const rendered = await renderSoleMainWindow();
+
+    await act(() => {
+        rendered.main.setVisible(false);
+    });
+
+    return rendered;
+};
+
 const renderBackgroundedMainWindow = async () => {
     const rendered = await renderMainWindow((onClick) => (
         <>
@@ -160,6 +183,60 @@ const presentToplevelOnAnotherDisplay = async (): Promise<Gtk.Window> => {
     return toplevel;
 };
 
+const beginDrag = (window: Gtk.Window): Gdk.Drag => {
+    const device = window.getDisplay().getDefaultSeat()?.getPointer() ?? null;
+
+    if (device === null) {
+        throw new Error("the display has no pointer to drag with");
+    }
+
+    const content = Gdk.ContentProvider.newForValue(
+        GObject.buildValue(GObject.TYPE_STRING, (value) => {
+            value.setString("payload");
+        }),
+    );
+
+    const drag = Gdk.Drag.begin(window.getSurface(), device, content, Gdk.DragAction.COPY, 0, 0);
+
+    if (drag === null) {
+        throw new Error("the display refused to begin a drag");
+    }
+
+    return drag;
+};
+
+const showDragIcon = async (): Promise<Gtk.DragIcon> => {
+    await render(
+        <GtkWindow title="Icon host" defaultWidth={200} defaultHeight={140}>
+            <GtkLabel>Host</GtkLabel>
+        </GtkWindow>,
+        { container: rootElement },
+    );
+
+    const drag = beginDrag(await findMappedWindow("Icon host"));
+
+    onTestFinished(() => {
+        drag.dropDone(false);
+    });
+
+    return Gtk.DragIcon.getForDrag(drag);
+};
+
+const renderDragIconButton = async (isButtonVisible: boolean) => {
+    const handleClick = vi.fn();
+    const buttonRef = createRef<Gtk.Button>();
+    const icon = await showDragIcon();
+
+    await render(<GtkButton ref={buttonRef} label="Dragged" visible={isButtonVisible} onClicked={handleClick} />, {
+        container: icon,
+    });
+
+    const button = buttonRef.current as Gtk.Button;
+    expect(button.getRoot()).toBe(icon);
+
+    return { button, handleClick };
+};
+
 const renderModalDialog = async (dialogContent: ReactNode) => {
     const rendered = await renderMainWindow((onClick) => (
         <MainWindow onClick={onClick}>
@@ -179,11 +256,7 @@ describe("userEvent actionability - insensitive click targets", () => {
 
     it.each(INSENSITIVE_BUTTON_ACTIONS)(
         "rejects %s on an insensitive button without emitting clicked",
-        async (_label, action) => {
-            const { button, handleClick } = await renderInsensitiveButton();
-            await expect(action(button)).rejects.toThrow(NOT_SENSITIVE_PATTERN);
-            expect(handleClick).not.toHaveBeenCalled();
-        },
+        (_label, action) => expectInsensitiveButtonRejection(action),
     );
 
     it("rejects click on an insensitive switch without toggling it", async () => {
@@ -308,11 +381,8 @@ describe("userEvent actionability - insensitive keyboard targets", () => {
         expect(onActivate).not.toHaveBeenCalled();
     });
 
-    it("rejects tab on an insensitive button", async () => {
-        const { button, handleClick } = await renderInsensitiveButton();
-        await expect(userEvent.tab(button)).rejects.toThrow(NOT_SENSITIVE_PATTERN);
-        expect(handleClick).not.toHaveBeenCalled();
-    });
+    it("rejects tab on an insensitive button", () =>
+        expectInsensitiveButtonRejection((button) => userEvent.tab(button)));
 });
 
 describe("userEvent actionability - insensitive gesture targets", () => {
@@ -407,13 +477,13 @@ describe("userEvent actionability - timeout error", () => {
     });
 });
 
-describe("userEvent actionability - detached targets", () => {
+describe("userEvent actionability - targets outside a toplevel", () => {
     setupShortTimeout();
 
     it("rejects click on a widget whose conditional render was removed", async () => {
         const { handleClick, removable } = await renderRemovableButton();
         expect(removable.getRoot()).toBeNull();
-        await expect(userEvent.click(removable)).rejects.toThrow(DETACHED_PATTERN);
+        await expect(userEvent.click(removable)).rejects.toThrow(NOT_ROOTED_PATTERN);
         expect(handleClick).not.toHaveBeenCalled();
     });
 
@@ -423,7 +493,7 @@ describe("userEvent actionability - detached targets", () => {
         await render(<GtkEntry ref={entryRef} text="before" />, { container: box });
         const entry = entryRef.current as Gtk.Entry;
         expect(entry.getRoot()).toBeNull();
-        await expect(userEvent.type(entry, "typed")).rejects.toThrow(DETACHED_PATTERN);
+        await expect(userEvent.type(entry, "typed")).rejects.toThrow(NOT_ROOTED_PATTERN);
         expect(entry.getText()).toBe("before");
     });
 
@@ -434,7 +504,53 @@ describe("userEvent actionability - detached targets", () => {
         const button = buttonRef.current as Gtk.Button;
         await unmount();
         expect(button.getRoot()).toBeNull();
-        await expect(userEvent.click(button)).rejects.toThrow(DETACHED_PATTERN);
+        await expect(userEvent.click(button)).rejects.toThrow(NOT_ROOTED_PATTERN);
+        expect(handleClick).not.toHaveBeenCalled();
+    });
+});
+
+describe("userEvent actionability - hidden windows", () => {
+    setupShortTimeout();
+
+    it("rejects click on a button whose window was hidden after it was shown", async () => {
+        const { handleMainClick, mainButton } = await renderHiddenMainWindow();
+        await expect(userEvent.click(mainButton)).rejects.toThrow(WINDOW_HIDDEN_PATTERN);
+        expect(handleMainClick).not.toHaveBeenCalled();
+    });
+
+    it("clicks the same button once its window is shown again", async () => {
+        const { handleMainClick, main, mainButton } = await renderHiddenMainWindow();
+
+        await act(() => {
+            main.present();
+        });
+
+        await userEvent.click(mainButton);
+        expect(handleMainClick).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("userEvent actionability - toplevels that are not windows", () => {
+    setupShortTimeout();
+
+    it("clicks a button inside a drag icon, whose root is no window", async () => {
+        const { button, handleClick } = await renderDragIconButton(true);
+
+        await waitFor(() => {
+            expect(button.getMapped()).toBe(true);
+        });
+
+        await userEvent.click(button);
+        expect(handleClick).toHaveBeenCalledTimes(1);
+    });
+
+    it("rejects click on an unmapped button inside a drag icon", async () => {
+        const { button, handleClick } = await renderDragIconButton(false);
+
+        await expect(userEvent.click(button)).rejects.toThrow(
+            /<Button role="button"> did not become actionable within 60ms because it is not mapped/,
+        );
+
         expect(handleClick).not.toHaveBeenCalled();
     });
 });
@@ -454,8 +570,7 @@ describe("userEvent actionability - background toplevels", () => {
     });
 
     it("clicks a button in a window a toplevel on another display has taken the activation from", async () => {
-        const { handleMainClick, mainButton } = await renderMainWindow((onClick) => <MainWindow onClick={onClick} />);
-        const main = await findMappedWindow("Main");
+        const { handleMainClick, main, mainButton } = await renderSoleMainWindow();
         const other = await presentToplevelOnAnotherDisplay();
 
         try {

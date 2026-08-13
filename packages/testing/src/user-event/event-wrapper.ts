@@ -12,31 +12,35 @@ import {
 } from "../window-state.js";
 
 const NOT_SENSITIVE = "it is not sensitive (the widget or one of its ancestors is disabled)";
+const NOT_ROOTED = "it is not inside a toplevel (it was removed from the widget tree, or was never added to one)";
+const WINDOW_NOT_VISIBLE = "its window is not visible (it was hidden, or it was never shown)";
 const WINDOW_NOT_ALLOCATED = "its window has not been allocated a size";
 const NOT_MAPPED = "it is not mapped (it is not shown on screen, e.g. it is hidden or on a non-visible page)";
-const NOT_IN_VISIBLE_WINDOW = "it is not attached to a visible window (it was removed from the tree or never shown)";
 const BLOCKED_BY_MODAL = "its window is blocked by a modal window holding the grab";
 const ACTIONABLE_HOP_MS = 1;
 
-const findWindowActionabilityFailure = (widget: Gtk.Widget, root: Gtk.Window): string | null => {
-    if (!isWindowAllocated(root)) {
+const findWindowActionabilityFailure = (window: Gtk.Window): string | null => {
+    if (!window.getVisible()) {
+        return WINDOW_NOT_VISIBLE;
+    }
+
+    if (!isWindowAllocated(window)) {
         return WINDOW_NOT_ALLOCATED;
     }
 
-    if (!widget.getMapped()) {
-        return NOT_MAPPED;
-    }
-
-    if (!isApplicationActivated(root)) {
+    if (!isApplicationActivated(window)) {
         return NO_WINDOW_ACTIVATED;
     }
 
-    if (isWindowBlockedByModal(root)) {
+    if (isWindowBlockedByModal(window)) {
         return BLOCKED_BY_MODAL;
     }
 
     return null;
 };
+
+const findRootActionabilityFailure = (root: Gtk.Root): string | null =>
+    root instanceof Gtk.Window ? findWindowActionabilityFailure(root) : null;
 
 const findActionabilityFailure = (widget: Gtk.Widget): string | null => {
     if (!widget.isSensitive()) {
@@ -45,11 +49,17 @@ const findActionabilityFailure = (widget: Gtk.Widget): string | null => {
 
     const root = widget.getRoot();
 
-    if (!(root instanceof Gtk.Window) || !root.getVisible()) {
-        return NOT_IN_VISIBLE_WINDOW;
+    if (root === null) {
+        return NOT_ROOTED;
     }
 
-    return findWindowActionabilityFailure(widget, root);
+    const rootFailure = findRootActionabilityFailure(root);
+
+    if (rootFailure !== null) {
+        return rootFailure;
+    }
+
+    return widget.getMapped() ? null : NOT_MAPPED;
 };
 
 const describeWidget = (widget: Gtk.Widget): string => {
