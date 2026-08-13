@@ -13,6 +13,11 @@ type ApplicationLike = {
     getIsRemote?(): boolean;
     /** Registers the application with the session, returning whether it succeeded. */
     register(cancellable: null): boolean;
+    /**
+     * Claims the process-wide default `Gio.Application.getDefault()` returns, which GLib otherwise
+     * assigns only to the first application ever constructed in the process.
+     */
+    setDefault(): void;
     /** Emits `activate`, bringing up the application's initial user interface. */
     activate(): void;
     /**
@@ -141,6 +146,11 @@ const getApplicationInstance = (application: ApplicationLike): ApplicationInstan
  * user interface may be built here, because a remote application has no `GtkApplicationImpl` and
  * attaching a window to it crashes.
  *
+ * The application also claims the process-wide default `Gio.Application.getDefault()` returns, since
+ * GLib assigns that at construction only while no default is set yet and drops it only at finalize.
+ * A process that mounts an application element more than once therefore reads the application it is
+ * running back out of GIO, not the first one it ever built.
+ *
  * @param application The application to start.
  * @param argv The command line, whose first entry names the program as `--help` should print it.
  * @returns Whether this process may build a user interface, and the status to exit with.
@@ -153,6 +163,8 @@ const runApplication = (application: ApplicationLike, argv: string[]): RunApplic
             "or construct it with createApplication from @gtkx/runtime",
         );
     }
+
+    application.setDefault();
 
     const exitStatus = startedApplications.has(application)
         ? restartApplication(application)

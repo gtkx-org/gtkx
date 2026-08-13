@@ -7,6 +7,7 @@ const nativeMock = vi.hoisted(() => ({ quit: vi.fn(), keepAlive: vi.fn() }));
 const foreignApplication = (): ApplicationLike => ({
     getIsRegistered: () => false,
     register: () => true,
+    setDefault: vi.fn(),
     activate: vi.fn(),
     run: () => 0,
     on: vi.fn(),
