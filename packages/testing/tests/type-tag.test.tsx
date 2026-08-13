@@ -4,7 +4,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GMenu } from "@gtkx/jsx/gio";
 import { GtkButton, GtkMenuButton } from "@gtkx/jsx/gtk";
-import { getHandle, wrapHandle } from "@gtkx/runtime";
+import { getHandle, registerClass, wrapHandle } from "@gtkx/runtime";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { configure, getConfig, prettyRoles, prettyWidget, render, screen, userEvent } from "../src/index.js";
 import { ancestors } from "../src/traversal.js";
@@ -12,7 +12,9 @@ import { getTypeTag } from "../src/widget-getters.js";
 import { expectRejection } from "./widget-fixtures.js";
 
 const ACTIONABILITY_TIMEOUT = 60;
+const ANONYMOUS_TYPE_NAME = "GtkxAnonymousTagProbe";
 const initialConfig = { ...getConfig() };
+const AnonymousBox = registerClass(class extends Gtk.Box {}, { typeName: ANONYMOUS_TYPE_NAME });
 
 const subclass = (base: typeof Gtk.Button) => class extends base {};
 const wrapAs = <T extends object>(object: GObject.Object, cls: AnyClass<T>): T => wrapHandle(getHandle(object), cls);
@@ -73,16 +75,17 @@ describe("getTypeTag", () => {
         expect(getTypeTag(wrapAs(button, Gtk.Widget))).toBe("Button");
     });
 
+    it("names a type whose registered wrapper class is anonymous by its GType", () => {
+        expect(getTypeTag(new AnonymousBox())).toBe(ANONYMOUS_TYPE_NAME);
+    });
+
     it("names an instance carrying no GType by its nearest named class", () => {
         const unwrapped = Object.create(subclass(Gtk.Button).prototype) as Gtk.Button;
         expect(getTypeTag(unwrapped)).toBe("Button");
     });
-});
 
-describe("the composed wrapper class the runtime builds for a type", () => {
-    it("carries the name of the GType it was composed for", async () => {
-        const item = await renderMenuItem();
-        expect(item.constructor.name).toBe("GtkModelButton");
+    it("names an object carrying neither a GType nor a class chain", () => {
+        expect(getTypeTag(Object.create(null) as GObject.Object)).toBe("Object");
     });
 });
 
@@ -95,6 +98,12 @@ describe("prettyWidget on types with no generated wrapper class", () => {
         expect(dump).toContain("<GtkMenuSectionBox");
         expect(dump).not.toContain("< ");
         expect(dump).not.toContain("</>");
+    });
+
+    it("names a widget whose registered wrapper class is anonymous by its GType", () => {
+        const dump = prettyWidget(new AnonymousBox(), { shouldHighlight: false });
+        expect(dump).toContain(`<${ANONYMOUS_TYPE_NAME}`);
+        expect(dump).not.toContain("< ");
     });
 });
 

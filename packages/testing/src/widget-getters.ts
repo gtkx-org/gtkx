@@ -4,25 +4,25 @@ import { getClassType, getInstanceType, typeName } from "@gtkx/runtime";
 import { resolveWrapperClass } from "@gtkx/runtime/internal";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
 
-const UNNAMED_CLASS_TAG = "Object";
+const UNNAMED_TYPE_TAG = "Object";
 
 const getWidgetMethod = (widget: Gtk.Widget, name: string): unknown => Reflect.get(widget, name);
 const getWidgetTypeName = (widget: Gtk.Widget): string | null => typeName(getInstanceType(widget));
-const getClassName = (cls: AnyClass): string | undefined => (cls.name.length > 0 ? cls.name : undefined);
+const nonEmpty = (value: string | null): string | undefined => (value !== null && value.length > 0 ? value : undefined);
 
-const getNearestClassName = (object: GObject.Object): string =>
-    walkClassChain(object.constructor as AnyClass, getClassName) ?? UNNAMED_CLASS_TAG;
+const getNearestClassName = (object: GObject.Object): string | undefined =>
+    walkClassChain((object.constructor as AnyClass | undefined) ?? null, (ancestor) => nonEmpty(ancestor.name));
 
-const getExactWrapperName = (type: bigint): string | null => {
+const getExactWrapperName = (type: bigint): string | undefined => {
     const wrapper = resolveWrapperClass(type);
 
-    return wrapper === null || getClassType(wrapper) !== type ? null : wrapper.name;
+    return wrapper !== null && getClassType(wrapper) === type ? nonEmpty(wrapper.name) : undefined;
 };
 
 const getTypeTag = (object: GObject.Object): string => {
     const type = getInstanceType(object);
 
-    return getExactWrapperName(type) ?? typeName(type) ?? getNearestClassName(object);
+    return getExactWrapperName(type) ?? nonEmpty(typeName(type)) ?? getNearestClassName(object) ?? UNNAMED_TYPE_TAG;
 };
 
 const isDefaultWidgetName = (widget: Gtk.Widget, name: string): boolean =>
