@@ -1,36 +1,39 @@
-const SEGMENT = /\/\*.*?\*\/|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\\./gs;
-const UNCLOSED = /\/\*|["']/;
-const NON_BRACKET = /[^()[\]{}]/g;
+const COMMENT = String.raw`/\*.*?\*/`;
+const DOUBLE_STRING = String.raw`"(?:\\.|[^"\\\n])*"`;
+const SINGLE_STRING = String.raw`'(?:\\.|[^'\\\n])*'`;
+const ESCAPE = String.raw`\\.`;
+const UNQUOTED_URL = String.raw`url\((?!\s*["'])(?:\\.|[^\\)])*\)`;
+const NAME = String.raw`[\w-]+`;
+const BRACKET = String.raw`[()[\]{}]`;
+const UNCLOSED = String.raw`/\*|["']`;
+const TOKENS = [COMMENT, DOUBLE_STRING, SINGLE_STRING, ESCAPE, UNQUOTED_URL, NAME, BRACKET, UNCLOSED];
+const TOKEN = new RegExp(TOKENS.join("|"), "gis");
 const CLOSER_BY_OPENER: Record<string, string> = { "(": ")", "[": "]", "{": "}" };
+const CLOSERS = new Set(Object.values(CLOSER_BY_OPENER));
+const UNCLOSED_TOKENS = new Set(["/*", '"', "'"]);
 
-const didTakeBracket = (stack: string[], bracket: string): boolean => {
-    const closer = CLOSER_BY_OPENER[bracket];
+const didTakeBracket = (stack: string[], token: string): boolean => {
+    const closer = CLOSER_BY_OPENER[token];
 
-    if (closer === undefined) {
-        return stack.pop() === bracket;
+    if (closer !== undefined) {
+        stack.push(closer);
+
+        return true;
     }
 
-    stack.push(closer);
-
-    return true;
+    return CLOSERS.has(token) ? stack.pop() === token : true;
 };
 
-const hasBalancedBrackets = (text: string): boolean => {
+const isSelfContained = (rule: string): boolean => {
     const stack: string[] = [];
 
-    for (const bracket of text.replaceAll(NON_BRACKET, "")) {
-        if (!didTakeBracket(stack, bracket)) {
+    for (const [token] of rule.matchAll(TOKEN)) {
+        if (UNCLOSED_TOKENS.has(token) || !didTakeBracket(stack, token)) {
             return false;
         }
     }
 
     return stack.length === 0;
-};
-
-const isSelfContained = (rule: string): boolean => {
-    const residue = rule.replaceAll(SEGMENT, " ");
-
-    return !UNCLOSED.test(residue) && hasBalancedBrackets(residue);
 };
 
 export { isSelfContained };

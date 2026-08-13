@@ -9,12 +9,15 @@ const NUL = "\u{0}";
 const GOOD_FIRST = ".first{color:rgb(255, 0, 0);}";
 const GOOD_LAST = ".last{color:rgb(0, 0, 255);}";
 const NUL_RULE = `.nul{font-family:"Canta${NUL}rell";}`;
+const URL_RULE = ".iconic{--icon:url(https://x.dev/a/*b.png);}";
 
 const BROKEN_RULES: BrokenRule[] = [
     { kind: "an unbalanced parenthesis", rule: ".broken{color:rgb(0;font-weight:bold;};}" },
     { kind: "an unterminated string", rule: '.broken{font-family:"Cantarell;}' },
     { kind: "an unterminated comment", rule: ".broken{color:red;/*}" },
     { kind: "a block that is never closed", rule: ".broken{color:red;" },
+    { kind: "an unquoted url that never closes", rule: ".broken{--icon:url(https://x.dev/a/*b.png;}" },
+    { kind: "a comment opener inside a function named after a url", rule: ".broken{--icon:myurl(a/*b);}" },
 ];
 
 const flushMicrotasks = async (): Promise<void> => {
@@ -138,6 +141,38 @@ describe("StyleSheet — rules that never close what they open", () => {
         });
 
         expect(parsedDocument(document)).toContain(".quoted");
+    });
+});
+
+describe("StyleSheet — urls GTK4 reads as one token", () => {
+    it("installs a rule whose unquoted url carries a comment opener", async () => {
+        const parsed = await parseAround(URL_RULE);
+        expect(parsed).toContain("--icon: url(https://x.dev/a/*b.png)");
+        expect(parsed).toContain(".first");
+        expect(parsed).toContain(".last");
+    });
+
+    it("stays silent about a rule whose unquoted url carries a comment opener", () => {
+        const warn = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+        try {
+            insertAll([URL_RULE]);
+            expect(warn).not.toHaveBeenCalled();
+        } finally {
+            warn.mockRestore();
+        }
+    });
+
+    it("keeps a style injected with an unquoted url carrying a comment opener", async () => {
+        const document = await loadedDocument(() => {
+            const { injectGlobal } = createCss();
+            injectGlobal(URL_RULE);
+            injectGlobal(GOOD_LAST);
+        });
+
+        const parsed = parsedDocument(document);
+        expect(parsed).toContain("--icon: url(https://x.dev/a/*b.png)");
+        expect(parsed).toContain("rgb(0,0,255)");
     });
 });
 

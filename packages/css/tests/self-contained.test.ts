@@ -13,6 +13,13 @@ const CONTAINED: Case[] = [
     { kind: "brackets inside a comment", rule: ".a{color:red;/* ) } */}" },
     { kind: "an escaped quote inside a string", rule: String.raw`.a{font-family:"Cantarell\"";}` },
     { kind: "an escaped opener outside a string", rule: String.raw`.a\(b{color:red;}` },
+    { kind: "a comment opener inside an unquoted url", rule: ".a{--icon:url(https://x.dev/a/*b.png);}" },
+    { kind: "a quote inside an unquoted url", rule: '.a{--icon:url(https://x.dev/a"b.png);}' },
+    { kind: "an opener inside an unquoted url", rule: ".a{--icon:url(https://x.dev/a(b.png);}" },
+    { kind: "an uppercase unquoted url", rule: ".a{--icon:URL(https://x.dev/a/*b.png);}" },
+    { kind: "an unquoted url padded with spaces", rule: ".a{--icon:url(  https://x.dev/a/*b.png  );}" },
+    { kind: "an escaped closer inside an unquoted url", rule: String.raw`.a{--icon:url(a\)b.png);}` },
+    { kind: "a closer inside a quoted url", rule: '.a{--icon:url("https://x.dev/a)b.png");}' },
 ];
 
 const UNCONTAINED: Case[] = [
@@ -22,6 +29,9 @@ const UNCONTAINED: Case[] = [
     { kind: "a block that is never closed", rule: ".a{color:red;" },
     { kind: "a closer that matches nothing", rule: ".a{color:red;})" },
     { kind: "closers that arrive in the wrong order", rule: ".a{color:rgb(0, 0, 255};)" },
+    { kind: "an unquoted url that never closes", rule: ".a{--icon:url(https://x.dev/a/*b.png;}" },
+    { kind: "a comment opener inside a function named after a url", rule: ".a{--icon:myurl(a/*b);}" },
+    { kind: "a comment opener inside a quoted url", rule: '.a{--icon:url("a/*b);}' },
 ];
 
 describe("isSelfContained", () => {
