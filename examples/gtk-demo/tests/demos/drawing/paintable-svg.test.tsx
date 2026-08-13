@@ -4,7 +4,7 @@ import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import nodeEditorSvgUri from "#data/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.svg";
 import { paintableSvgDemo } from "../../../src/demos/drawing/paintable-svg.js";
-import { findOpenButton, renderDemo } from "../../test-utils.js";
+import { findButton, renderDemo } from "../../test-utils.js";
 
 type PictureState = { picture: Gtk.Picture; initial: ReturnType<Gtk.Picture["getPaintable"]> };
 
@@ -27,7 +27,7 @@ const renderAndFindSvgPicture = async (): Promise<{ picture: Gtk.Picture; svg: G
 const openPictureFileDialog = async (): Promise<PictureState> => {
     const { picture } = await renderAndFindSvgPicture();
     const initial = picture.getPaintable();
-    const openButton = await findOpenButton();
+    const openButton = await findButton("Open");
     await userEvent.click(openButton);
 
     return { picture, initial };
@@ -51,7 +51,7 @@ describe("paintableSvgDemo metadata", () => {
 describe("paintableSvgDemo rendering", () => {
     it("renders the Open button in the header bar", async () => {
         await renderDemo(paintableSvgDemo);
-        const openButton = await findOpenButton();
+        const openButton = await findButton("Open");
         expect(openButton).toBeInstanceOf(Gtk.Button);
         expect(openButton).toHaveObjectProperty("useUnderline", true);
     });

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, type MockInstance, vi } from "vitest";
 import { videoPlayerDemo } from "../../../src/demos/media/video-player.js";
-import { findOpenButton, renderDemo } from "../../test-utils.js";
+import { findButton, renderDemo } from "../../test-utils.js";
 
 type SetFileSpy = MockInstance<Gtk.Video["setFile"]>;
 
@@ -59,7 +59,7 @@ describe("videoPlayerDemo header bar", () => {
 
     it("wires the Open button with useUnderline in the header bar's pack-start area", async () => {
         await renderDemo(videoPlayerDemo);
-        const openButton = await findOpenButton();
+        const openButton = await findButton("Open");
         expect(openButton).toBeInstanceOf(Gtk.Button);
         expect(openButton).toHaveObjectProperty("useUnderline", true);
     });

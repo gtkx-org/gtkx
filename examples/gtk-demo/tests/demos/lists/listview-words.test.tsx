@@ -6,13 +6,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listviewWordsDemo } from "../../../src/demos/lists/listview-words.js";
-import { findOpenButton, renderDemo } from "../../test-utils.js";
+import { findButton, renderDemo } from "../../test-utils.js";
 
 const tempDirRef = { path: "" };
 
 async function renderDemoAndClickOpen() {
     await renderDemo(listviewWordsDemo);
-    const openButton = await findOpenButton();
+    const openButton = await findButton("Open");
     await userEvent.click(openButton);
 }
 
@@ -52,7 +52,7 @@ describe("listviewWordsDemo metadata", () => {
 describe("listviewWordsDemo layout", () => {
     it("installs a header bar with an Open button", async () => {
         await renderDemo(listviewWordsDemo);
-        const openButton = await findOpenButton();
+        const openButton = await findButton("Open");
         expect(openButton).toHaveObjectProperty("useUnderline", true);
     });
 

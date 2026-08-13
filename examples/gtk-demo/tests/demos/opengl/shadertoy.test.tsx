@@ -3,12 +3,9 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { shadertoyDemo } from "../../../src/demos/opengl/shadertoy.js";
-import { renderDemo } from "../../test-utils.js";
+import { findButton, renderDemo } from "../../test-utils.js";
 
 const PRESET_NAMES = ["Alien Planet", "Mandelbrot", "Neon", "Cogs", "Glowing Stars"];
-
-const findButton = async (name: string): Promise<Gtk.Button> =>
-    screen.findByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.Button });
 
 const clickPreset = async (name: string): Promise<void> => {
     await userEvent.click(await findButton(name));
