@@ -90,8 +90,11 @@ describe("a double written to a gfloat property whose range admits what it narro
         const probe = new (makeProbeClass())();
         probe.reach = 0.5;
         const seen = watchNotify(probe);
-        probe.reach = 0.1;
-        probe.reach = 0.1;
+
+        for (const written of [0.1, 0.1]) {
+            probe.reach = written;
+        }
+
         expect(seen).toEqual(["reach"]);
     });
 });
