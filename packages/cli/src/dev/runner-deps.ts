@@ -1,10 +1,11 @@
 import { loadConfig } from "@gtkx/config";
 import * as Gio from "@gtkx/gi/gio";
 import { quitApplication } from "@gtkx/runtime";
+import { type ApplicationInstance, getApplicationInstance } from "@gtkx/runtime/internal";
 import { info, installGracefulShutdown } from "@gtkx/utils";
 import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
-import type { ApplicationInstance, DevRunnerDeps } from "./runner.js";
+import type { DevRunnerDeps } from "./runner.js";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
 import {
     mergeTestingModule,
@@ -12,7 +13,7 @@ import {
     type TestingInternalModule,
     type TestingPublicModule,
 } from "../mcp/testing-loader.js";
-import { isRefreshBoundary, performRefresh } from "../refresh-runtime.js";
+import { isRefreshBoundary, performRefresh, staleExportName } from "../refresh-runtime.js";
 import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/swc-refresh.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
@@ -25,11 +26,7 @@ const currentApplicationId = (): string | null => Gio.Application.getDefault()?.
 const currentApplicationInstance = (): ApplicationInstance => {
     const application = Gio.Application.getDefault();
 
-    if (!application?.getIsRegistered()) {
-        return "unregistered";
-    }
-
-    return application.getIsRemote() ? "remote" : "primary";
+    return application === null ? "unregistered" : getApplicationInstance(application);
 };
 
 const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => boolean): Promise<string | null> => {
@@ -87,6 +84,7 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     },
     performRefresh,
     isRefreshBoundary,
+    staleExportName,
     readFileRevision,
     plugins: () => [...gtkxVitePlugins(DEV_MODE), ...gtkxFastRefresh(), gtkxReactDomPrebundle()],
     log: info,

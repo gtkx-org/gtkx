@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BuildEndHook, ResolveIdHook } from "./plugin-hook-types.js";
 import { gtkxSettings } from "../../src/vite-plugins/settings.js";
 import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./build-end-assertions.js";
+import { FakeEmitter } from "./fake-emitter.js";
 import { hasGlibCompileSchemas } from "./glib-tools.js";
 import { callOutputOptions, expectComposedAsyncBanner, expectComposedBanner } from "./output-options.js";
 
@@ -120,33 +121,6 @@ const loadSchemaDirInServeMode = (
 
     return { plugin, schemaDir: firstSchemaDir() };
 };
-
-class FakeEmitter {
-    #listeners: Map<string, { listener: (...args: unknown[]) => void; isOnce: boolean }[]> = new Map();
-
-    #register(event: string, listener: (...args: unknown[]) => void, isOnce: boolean): void {
-        const entries = this.#listeners.get(event) ?? [];
-        entries.push({ listener, isOnce });
-        this.#listeners.set(event, entries);
-    }
-
-    on(event: string, listener: (...args: unknown[]) => void): void {
-        this.#register(event, listener, false);
-    }
-
-    once(event: string, listener: (...args: unknown[]) => void): void {
-        this.#register(event, listener, true);
-    }
-
-    emit(event: string, ...args: unknown[]): void {
-        const entries = this.#listeners.get(event) ?? [];
-        this.#listeners.set(event, entries.filter((entry) => !entry.isOnce));
-
-        for (const entry of entries) {
-            entry.listener(...args);
-        }
-    }
-}
 
 describe("gtkxSettings (plugin shape and init)", () => {
     it("returns a plugin with the expected name and pre-enforce", () => {

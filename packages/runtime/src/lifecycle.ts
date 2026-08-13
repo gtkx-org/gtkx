@@ -30,6 +30,8 @@ type ApplicationLike = {
     emit(signal: "shutdown"): unknown;
 };
 
+type ApplicationInstance = "primary" | "remote" | "shutDown" | "unregistered";
+
 /** What {@link runApplication} reports about the process it just started. */
 type RunApplicationResult = {
     /** Whether this process owns the application ID and may build a user interface. */
@@ -40,6 +42,7 @@ type RunApplicationResult = {
 
 const shutdownCallbacks: (() => void)[] = [];
 const startedApplications: WeakSet<object> = new WeakSet();
+const registeredApplications: WeakSet<object> = new WeakSet();
 const shutDownApplications: WeakSet<object> = new WeakSet();
 /**
  * Runs every registered exit callback and shuts down the native runtime. Safe to
@@ -101,6 +104,14 @@ const restartApplication = (application: ApplicationLike): number => {
     return 0;
 };
 
+const getApplicationInstance = (application: ApplicationLike): ApplicationInstance => {
+    if (!application.getIsRegistered()) {
+        return registeredApplications.has(application) ? "shutDown" : "unregistered";
+    }
+
+    return application.getIsRemote?.() === true ? "remote" : "primary";
+};
+
 /**
  * Hands `argv` to GLib's own command line handling, which parses the application's options, prints
  * `--help`, runs `handle-local-options`, registers the application, and either activates it or
@@ -136,7 +147,13 @@ const runApplication = (application: ApplicationLike, argv: string[]): RunApplic
         ? restartApplication(application)
         : startApplication(application, argv);
 
-    const isPrimary = application.getIsRegistered() && application.getIsRemote?.() !== true;
+    const instance = getApplicationInstance(application);
+
+    if (instance !== "unregistered") {
+        registeredApplications.add(application);
+    }
+
+    const isPrimary = instance === "primary";
 
     if (isPrimary) {
         keepAlive(true);
@@ -175,4 +192,13 @@ const quitApplication = (application: ApplicationLike): void => {
     }
 };
 
-export { onExit, quit, runApplication, quitApplication, type ApplicationLike, type RunApplicationResult };
+export {
+    getApplicationInstance,
+    onExit,
+    quit,
+    runApplication,
+    quitApplication,
+    type ApplicationInstance,
+    type ApplicationLike,
+    type RunApplicationResult,
+};

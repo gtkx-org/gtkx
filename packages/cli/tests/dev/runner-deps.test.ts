@@ -1,3 +1,4 @@
+import type { ApplicationInstance } from "@gtkx/runtime/internal";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,14 +7,9 @@ import { defaultDevRunnerDeps } from "../../src/dev/runner-deps.js";
 
 const hoisted = vi.hoisted(() => ({
     getDefault: vi.fn(
-        () =>
-            null as {
-                applicationId: string | null;
-                getIsRegistered?: () => boolean;
-                getIsRemote?: () => boolean;
-                on?: (signal: string, handler: () => void) => void;
-            } | null,
+        () => null as { applicationId: string | null; on?: (signal: string, handler: () => void) => void } | null,
     ),
+    getApplicationInstance: vi.fn((): ApplicationInstance => "primary"),
     quitApplication: vi.fn(),
     installGracefulShutdown: vi.fn(),
     startMcpClient: vi.fn(() => Promise.resolve()),
@@ -22,6 +18,7 @@ const hoisted = vi.hoisted(() => ({
     mergeTestingModule: vi.fn((publicApi: object, internals: object) => ({ ...publicApi, ...internals })),
     performRefresh: vi.fn(),
     isRefreshBoundary: vi.fn(() => false),
+    staleExportName: vi.fn(() => null),
     createServer: vi.fn(() => Promise.resolve({})),
 }));
 
@@ -31,6 +28,10 @@ vi.mock("@gtkx/gi/gio", () => ({
 
 vi.mock("@gtkx/runtime", () => ({
     quitApplication: hoisted.quitApplication,
+}));
+
+vi.mock("@gtkx/runtime/internal", () => ({
+    getApplicationInstance: hoisted.getApplicationInstance,
 }));
 
 vi.mock("@gtkx/utils", async (importOriginal) => ({
@@ -55,6 +56,7 @@ vi.mock("../../src/mcp/testing-loader.js", () => ({
 vi.mock("../../src/refresh-runtime.js", () => ({
     isRefreshBoundary: hoisted.isRefreshBoundary,
     performRefresh: hoisted.performRefresh,
+    staleExportName: hoisted.staleExportName,
 }));
 
 beforeEach(() => {
@@ -68,6 +70,7 @@ describe("defaultDevRunnerDeps (wiring)", () => {
         expect(deps.stopMcpClient).toBe(hoisted.stopMcpClient);
         expect(deps.performRefresh).toBe(hoisted.performRefresh);
         expect(deps.isRefreshBoundary).toBe(hoisted.isRefreshBoundary);
+        expect(deps.staleExportName).toBe(hoisted.staleExportName);
     });
 
     it("installs an app-graph testing-module loader before starting the MCP client", async () => {
@@ -102,37 +105,24 @@ describe("defaultDevRunnerDeps (wiring)", () => {
 });
 
 describe("defaultDevRunnerDeps (getApplicationInstance)", () => {
-    it("separates the process that owns the application ID from the one that only reaches it", () => {
-        const deps = defaultDevRunnerDeps();
-
-        hoisted.getDefault.mockReturnValueOnce({
-            applicationId: "com.example.app",
-            getIsRegistered: () => true,
-            getIsRemote: () => true,
-        });
-
-        expect(deps.getApplicationInstance()).toBe("remote");
-
-        hoisted.getDefault.mockReturnValueOnce({
-            applicationId: "com.example.app",
-            getIsRegistered: () => true,
-            getIsRemote: () => false,
-        });
-
-        expect(deps.getApplicationInstance()).toBe("primary");
+    beforeEach(() => {
+        hoisted.getApplicationInstance.mockReset();
     });
 
-    it("reports an unregistered instance when no application mounted or it never registered", () => {
+    it("reports the role the runtime derives for the live application", () => {
+        const deps = defaultDevRunnerDeps();
+        const application = { applicationId: "com.example.app" };
+        hoisted.getDefault.mockReturnValueOnce(application);
+        hoisted.getApplicationInstance.mockReturnValueOnce("remote");
+        expect(deps.getApplicationInstance()).toBe("remote");
+        expect(hoisted.getApplicationInstance).toHaveBeenCalledWith(application);
+    });
+
+    it("reports an unregistered instance when no application mounted", () => {
         const deps = defaultDevRunnerDeps();
         hoisted.getDefault.mockReturnValueOnce(null);
         expect(deps.getApplicationInstance()).toBe("unregistered");
-
-        hoisted.getDefault.mockReturnValueOnce({
-            applicationId: "com.example.app",
-            getIsRegistered: () => false,
-        });
-
-        expect(deps.getApplicationInstance()).toBe("unregistered");
+        expect(hoisted.getApplicationInstance).not.toHaveBeenCalled();
     });
 });
 
@@ -146,6 +136,7 @@ describe("defaultDevRunnerDeps (plugins)", () => {
             "gtkx:undeclared-library",
             "gtkx:settings",
             "gtkx:icons",
+            "gtkx:asset-imports",
             "gtkx:resources",
             "gtkx:css",
             "gtkx:react-compiler",

@@ -18,7 +18,7 @@ type ViteConfigSnapshot = {
         cssMinify: boolean;
         assetsInlineLimit: number;
         ssrEmitAssets: boolean;
-        rolldownOptions: { output: { entryFileNames: string; chunkFileNames: string } };
+        rolldownOptions: { output: { entryFileNames: string; chunkFileNames: string; keepNames: boolean } };
     };
     define: Record<string, string>;
     ssr: { noExternal: boolean };
@@ -80,6 +80,7 @@ describe("build (core config)", () => {
         expect(config.build.ssr).toBe("src/index.tsx");
         expect(config.build.rolldownOptions.output.entryFileNames).toBe(BUNDLE_NAME);
         expect(config.build.rolldownOptions.output.chunkFileNames).toBe(CHUNK_NAMES);
+        expect(config.build.rolldownOptions.output.keepNames).toBe(true);
         expect(config.build.outDir).toBe("dist");
         expect(config.build.minify).toBe(true);
         expect(config.build.cssMinify).toBe(false);
@@ -118,6 +119,7 @@ describe("build (plugin order)", () => {
             "gtkx:undeclared-library",
             "gtkx:settings",
             "gtkx:icons",
+            "gtkx:asset-imports",
             "gtkx:resources",
             "gtkx:css",
             "gtkx:react-compiler",
@@ -139,6 +141,7 @@ describe("build (plugin order)", () => {
             "gtkx:undeclared-library",
             "gtkx:settings",
             "gtkx:icons",
+            "gtkx:asset-imports",
             "gtkx:resources",
             "gtkx:css",
             "gtkx:react-compiler",
@@ -241,5 +244,14 @@ describe("build (define and rolldown)", () => {
         expect(output.sourcemap).toBe(true);
         expect(output.entryFileNames).toBe(BUNDLE_NAME);
         expect(output.chunkFileNames).toBe(CHUNK_NAMES);
+    });
+
+    it("keeps names even when the user config asks the minifier to drop them", async () => {
+        await build({
+            entry: "src/index.tsx",
+            vite: { build: { rolldownOptions: { output: { keepNames: false } } } },
+        });
+
+        expect(getViteConfig().build.rolldownOptions.output.keepNames).toBe(true);
     });
 });

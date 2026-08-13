@@ -1,12 +1,8 @@
+import type { ApplicationInstance } from "@gtkx/runtime/internal";
 import type { InlineConfig, Plugin } from "vite";
 import { describe, expect, it, vi } from "vitest";
 import type { DevServerWatchEvent } from "../../src/dev/vite-dev-server.js";
-import {
-    type ApplicationInstance,
-    createDevRunner,
-    type DevRunnerDeps,
-    type DevServer,
-} from "../../src/dev/runner.js";
+import { createDevRunner, type DevRunnerDeps, type DevServer } from "../../src/dev/runner.js";
 import { RESTART_EXIT_CODE } from "../../src/dev/supervisor.js";
 import { collectLogged, type StderrSpy } from "../stderr-text.js";
 
@@ -46,6 +42,8 @@ type HarnessOverrides = {
     applicationId?: string | null;
     configuredApplicationId?: string;
     isBoundary?: (mod: Record<string, unknown>) => boolean;
+    performRefresh?: () => unknown;
+    staleExportName?: DevRunnerDeps["staleExportName"];
     applicationInstance?: ApplicationInstance;
     readFileRevision?: DevRunnerDeps["readFileRevision"];
     whileWaiting?: () => void;
@@ -64,6 +62,7 @@ type HarnessMocks = {
     stopMcp: ReturnType<typeof vi.fn<DevRunnerDeps["stopMcpClient"]>>;
     performRefresh: ReturnType<typeof vi.fn<DevRunnerDeps["performRefresh"]>>;
     isBoundary: ReturnType<typeof vi.fn<DevRunnerDeps["isRefreshBoundary"]>>;
+    staleExportName: ReturnType<typeof vi.fn<DevRunnerDeps["staleExportName"]>>;
     watchAppShutdown: ReturnType<typeof vi.fn<DevRunnerDeps["watchApplicationShutdown"]>>;
     watchUncaughtErrors: ReturnType<typeof vi.fn<DevRunnerDeps["watchUncaughtErrors"]>>;
     installShutdownHandlers: ReturnType<typeof vi.fn<DevRunnerDeps["installShutdownHandlers"]>>;
@@ -77,16 +76,28 @@ type Harness = HarnessMocks & {
     server: FakeServer;
     plugins: Plugin[];
     applicationId: string | null;
+    state: HarnessState;
+};
+
+type HarnessState = {
     waitCalls: WaitCall[];
+    applicationInstance: ApplicationInstance;
 };
 
 type WaitCall = { timeoutMs: number; shouldKeepWaiting: () => boolean };
+type WatchedSave = { harness: Harness; written: string };
 type OnShutdown = () => void;
 type OnSignal = () => void | Promise<void>;
 type OnCause = (cause: unknown) => void;
 
 const ENTRY = "/abs/src/main.tsx";
 const PARKED = "Waiting for a change to restart the application...";
+const PROJECT_ROOT = "/x";
+const VITE_CONFIG_FILE = "/x/vite.config.ts";
+const CONFIG_DEPENDENCY_FILE = "/x/vite.shared.ts";
+const ENV_FILE = "/x/.env";
+const MODE_ENV_FILE = "/x/.env.development.local";
+const OTHER_MODE_ENV_FILE = "/x/.env.production";
 const WATCHED_FILE = "/x/component.tsx";
 const OTHER_IMPORTER = "/x/panel.tsx";
 const MISSING_FILE = "/x/theme.ts";
@@ -97,6 +108,9 @@ const RESOLVE_FAILURE = "PROBE: Failed to load url ./theme.js";
 const NEXT_RESOLVE_FAILURE = "PROBE: Failed to load url ./palette.js";
 const BROKEN_FILE_FAILURE = "PROBE: theme.ts failed to parse";
 const RETRY_LOG = "Retrying pending save";
+const DROPPED_REFRESH = "Fast Refresh dropped";
+const DROPPED_EXPORT_REASON = "no longer exports Widget, which its importers still hold";
+const RENAMED_COMPONENT_REASON = "renamed the component it exports as default, which the window is still rendering";
 const SETTLE_ROUNDS = 8;
 
 const PLUGIN_NAMES = [
@@ -182,6 +196,12 @@ const createFakeServer = (): FakeServer => {
 
     return {
         close: vi.fn<DevServer["close"]>(() => Promise.resolve()),
+        config: {
+            configFile: VITE_CONFIG_FILE,
+            configFileDependencies: [CONFIG_DEPENDENCY_FILE],
+            envDir: PROJECT_ROOT,
+            mode: "development",
+        },
         moduleGraph: {
             getModuleById: vi.fn<DevServer["moduleGraph"]["getModuleById"]>((id) => modules.get(id)),
             invalidateModule: vi.fn<DevServer["moduleGraph"]["invalidateModule"]>((invalidated) => {
@@ -215,10 +235,11 @@ const buildMocks = (server: FakeServer, overrides: HarnessOverrides): HarnessMoc
     watchUncaughtErrors: vi.fn<DevRunnerDeps["watchUncaughtErrors"]>(),
     installShutdownHandlers: vi.fn<DevRunnerDeps["installShutdownHandlers"]>(),
     quitDefaultApp: vi.fn<DevRunnerDeps["quitDefaultApplication"]>(),
-    performRefresh: vi.fn<DevRunnerDeps["performRefresh"]>(),
+    performRefresh: vi.fn<DevRunnerDeps["performRefresh"]>(overrides.performRefresh ?? ((): void => undefined)),
     isBoundary: vi.fn<DevRunnerDeps["isRefreshBoundary"]>((mod) =>
         overrides.isBoundary ? overrides.isBoundary(mod) : mod.isBoundary === true,
     ),
+    staleExportName: vi.fn<DevRunnerDeps["staleExportName"]>(overrides.staleExportName ?? ((): null => null)),
     log: vi.fn<DevRunnerDeps["log"]>(),
     exit: vi.fn<DevRunnerDeps["exit"]>(((): void => undefined) as never),
 });
@@ -227,11 +248,11 @@ const buildDeps = (
     mocks: HarnessMocks,
     plugins: Plugin[],
     overrides: HarnessOverrides,
-    waitCalls: WaitCall[],
+    state: HarnessState,
 ): DevRunnerDeps => ({
     createServer: mocks.createServer,
     waitForApplicationId: (timeoutMs, shouldKeepWaiting) => {
-        waitCalls.push({ timeoutMs, shouldKeepWaiting });
+        state.waitCalls.push({ timeoutMs, shouldKeepWaiting });
         overrides.whileWaiting?.();
 
         return Promise.resolve(overrides.applicationId ?? null);
@@ -241,11 +262,12 @@ const buildDeps = (
     stopMcpClient: mocks.stopMcp,
     watchApplicationShutdown: mocks.watchAppShutdown,
     watchUncaughtErrors: mocks.watchUncaughtErrors,
-    getApplicationInstance: () => overrides.applicationInstance ?? "primary",
+    getApplicationInstance: () => state.applicationInstance,
     installShutdownHandlers: mocks.installShutdownHandlers,
     quitDefaultApplication: mocks.quitDefaultApp,
     performRefresh: mocks.performRefresh,
     isRefreshBoundary: mocks.isBoundary,
+    staleExportName: mocks.staleExportName,
     readFileRevision: overrides.readFileRevision ?? ((): Promise<string> => Promise.resolve("revision")),
     plugins: () => plugins,
     log: mocks.log,
@@ -256,15 +278,19 @@ const buildHarness = (overrides: HarnessOverrides = {}): Harness => {
     const server = createFakeServer();
     const plugins = PLUGIN_NAMES.map((name) => ({ name })) as Plugin[];
     const mocks = buildMocks(server, overrides);
-    const waitCalls: WaitCall[] = [];
+
+    const state: HarnessState = {
+        waitCalls: [],
+        applicationInstance: overrides.applicationInstance ?? "primary",
+    };
 
     return {
         ...mocks,
         server,
         plugins,
-        waitCalls,
+        state,
         applicationId: overrides.applicationId ?? null,
-        deps: buildDeps(mocks, plugins, overrides, waitCalls),
+        deps: buildDeps(mocks, plugins, overrides, state),
     };
 };
 
@@ -277,8 +303,8 @@ const startRunner = async (harness: Harness): Promise<void> => {
     await runner.run(ENTRY);
 };
 
-const startAppHarness = async (): Promise<Harness> => {
-    const harness = buildHarness({ applicationId: "com.example.app" });
+const startAppHarness = async (overrides: HarnessOverrides = {}): Promise<Harness> => {
+    const harness = buildHarness({ applicationId: "com.example.app", ...overrides });
     await startRunner(harness);
 
     return harness;
@@ -363,6 +389,39 @@ const installedUncaughtErrorHandler = (harness: Harness): OnCause => {
     const [onUncaughtError] = harness.watchUncaughtErrors.mock.calls[0] as [OnCause];
 
     return onUncaughtError;
+};
+
+const startWithDeadApplication = async (
+    instance: ApplicationInstance,
+    cause: Error,
+    applicationId: string | null = "com.example.app",
+): Promise<Harness> => {
+    const harness: Harness = buildHarness({
+        applicationId,
+        applicationInstance: instance,
+        whileWaiting: () => {
+            installedUncaughtErrorHandler(harness)(cause);
+        },
+    });
+
+    await startRunner(harness);
+
+    return harness;
+};
+
+const startDyingAfterAttach = async (cause: Error): Promise<Harness> => {
+    const harness: Harness = buildHarness({ applicationId: "com.example.app" });
+
+    harness.startMcp.mockImplementationOnce(() => {
+        harness.state.applicationInstance = "shutDown";
+        installedUncaughtErrorHandler(harness)(cause);
+
+        return Promise.resolve();
+    });
+
+    await startRunner(harness);
+
+    return harness;
 };
 
 const emitBoundaryChange = async (harness: Harness, file: string): Promise<void> => {
@@ -547,6 +606,24 @@ const emitWatchEventAndSettle = async (
     await settleQueue();
 };
 
+const watchServerConfigFile = async (
+    event: DevServerWatchEvent,
+    changedPath: string,
+    prepare: (harness: Harness) => void = (): void => undefined,
+): Promise<Harness> => {
+    const harness = await startAppHarness();
+    prepare(harness);
+    await emitWatchEventAndSettle(harness, event, changedPath);
+
+    return harness;
+};
+
+const expectServerConfigRestart = (harness: Harness, changedPath: string): void => {
+    expect(loggedMessages(harness)).toContain(`Server config changed: ${changedPath}`);
+    expect(harness.server.close).toHaveBeenCalled();
+    expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+};
+
 const failResolveOnSave = async (harness: Harness, importerPath: string): Promise<void> => {
     defineModule(harness, importerPath);
     harness.server.loads.next(() => Promise.reject(new Error(RESOLVE_FAILURE)));
@@ -590,6 +667,50 @@ const startedLoads = (harness: Harness): number => harness.server.ssrLoadModule.
 const appearWithBoundaryLoad = async (harness: Harness, createdPath: string): Promise<void> => {
     harness.server.loads.next(() => Promise.resolve({ isBoundary: true }));
     await emitWatchEventAndSettle(harness, "add", createdPath);
+};
+
+const Widget = (): null => null;
+const Panel = (): null => null;
+const patchesNothing = (): number => 0;
+
+const saveWithExports = async (
+    previous: FakeExports,
+    next: FakeExports,
+    overrides: HarnessOverrides = {},
+): Promise<Harness> => {
+    const harness = await startAppHarness(overrides);
+    defineModule(harness, WATCHED_FILE, { ssrModule: previous });
+    harness.server.loads.next(() => Promise.resolve(next));
+    await emitChangeAndSettle(harness, WATCHED_FILE);
+
+    return harness;
+};
+
+const saveWatchingStderr = async (
+    previous: FakeExports,
+    next: FakeExports,
+    overrides: HarnessOverrides = {},
+): Promise<WatchedSave> => {
+    const stderrSpy = captureStderr();
+    const harness = await saveWithExports(previous, next, overrides);
+    const written = collectLogged(stderrSpy);
+    stderrSpy.mockRestore();
+
+    return { harness, written };
+};
+
+const expectDroppedRefreshRestart = (save: WatchedSave, reason: string): void => {
+    expect(save.written).toContain(`${DROPPED_REFRESH}: ${WATCHED_FILE} ${reason}`);
+    expect(loggedMessages(save.harness).some((message) => message.includes("Fast Refresh complete"))).toBe(false);
+    expect(save.harness.server.close).toHaveBeenCalled();
+    expect(save.harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+};
+
+const expectAnnouncedRefresh = (save: WatchedSave): void => {
+    expect(save.written).not.toContain(DROPPED_REFRESH);
+    expect(loggedMessages(save.harness)).toContain("Fast Refresh complete");
+    expect(save.harness.server.close).not.toHaveBeenCalled();
+    expect(save.harness.exit).not.toHaveBeenCalled();
 };
 
 const appearWithFailingLoad = async (harness: Harness, createdPath: string, failure: string): Promise<string> => {
@@ -672,6 +793,37 @@ describe("createDevRunner (a command line the application refused)", () => {
         const harness = await startAppHarness();
         expect(harness.server.close).not.toHaveBeenCalled();
         expect(harness.watchAppShutdown).toHaveBeenCalled();
+    });
+});
+
+describe("createDevRunner (an application that quit before the runner attached)", () => {
+    it("reports the quit rather than blaming a command line nothing refused", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app", applicationInstance: "shutDown" });
+        await startRunner(harness);
+        const messages = loggedMessages(harness);
+        expect(messages.some((m) => m.includes("Application quit - stopping dev runner..."))).toBe(true);
+        expect(messages.some((m) => m.includes("refused its command line"))).toBe(false);
+    });
+
+    it("closes the server and exits zero, the way the built application does", async () => {
+        const harness = buildHarness({ applicationId: "com.example.app", applicationInstance: "shutDown" });
+        const previousExitCode = process.exitCode;
+        process.exitCode = undefined;
+        await startRunner(harness);
+        process.exitCode = previousExitCode;
+        expect(harness.server.close).toHaveBeenCalled();
+        expect(harness.exit).toHaveBeenCalledWith(0);
+        expect(harness.startMcp).not.toHaveBeenCalled();
+        expect(harness.watchAppShutdown).not.toHaveBeenCalled();
+    });
+
+    it("parks the session when an error brought the application down", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startWithDeadApplication("shutDown", new Error("PROBE: initial render throw"));
+        stderrSpy.mockRestore();
+        expect(harness.exit).not.toHaveBeenCalled();
+        expect(harness.server.close).not.toHaveBeenCalled();
+        expect(loggedMessages(harness).some((m) => m.includes(PARKED))).toBe(true);
     });
 });
 
@@ -838,13 +990,13 @@ describe("createDevRunner (an entry that fails to load)", () => {
         const stderrSpy = captureStderr();
         const harness = await startWithFailingEntry(new Error("boom"));
         stderrSpy.mockRestore();
-        const [wait] = harness.waitCalls;
+        const [wait] = harness.state.waitCalls;
         expect(wait?.shouldKeepWaiting()).toBe(false);
     });
 
     it("keeps polling for the application while the entry is healthy", async () => {
         const harness = await startAppHarness();
-        const [wait] = harness.waitCalls;
+        const [wait] = harness.state.waitCalls;
         expect(wait?.shouldKeepWaiting()).toBe(true);
     });
 });
@@ -853,16 +1005,7 @@ describe("createDevRunner (an application that died before the runner attached)"
     it("parks the session instead of taking the whole command down", async () => {
         const stderrSpy = captureStderr();
         const cause = new Error("PROBE: initial render throw");
-
-        const harness: Harness = buildHarness({
-            applicationId: "com.example.app",
-            applicationInstance: "unregistered",
-            whileWaiting: () => {
-                installedUncaughtErrorHandler(harness)(cause);
-            },
-        });
-
-        await startRunner(harness);
+        const harness = await startWithDeadApplication("unregistered", cause);
         const written = collectLogged(stderrSpy);
         stderrSpy.mockRestore();
         expect(harness.exit).not.toHaveBeenCalled();
@@ -873,18 +1016,42 @@ describe("createDevRunner (an application that died before the runner attached)"
 
     it("restarts on the next save instead of Fast Refreshing into a dead application", async () => {
         const stderrSpy = captureStderr();
-
-        const harness: Harness = buildHarness({
-            applicationId: "com.example.app",
-            applicationInstance: "unregistered",
-            whileWaiting: () => {
-                installedUncaughtErrorHandler(harness)(new Error("boom"));
-            },
-        });
-
-        await startRunner(harness);
+        const harness = await startWithDeadApplication("unregistered", new Error("boom"));
         defineModule(harness, "/x/y.ts");
         await emitChangeAndFlush(harness, "/x/y.ts", 2);
+        stderrSpy.mockRestore();
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+        expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    });
+
+    it("parks the session when the error struck before any application was mounted", async () => {
+        const stderrSpy = captureStderr();
+        const cause = new Error("PROBE: throw before the application was created");
+        const harness = await startWithDeadApplication("unregistered", cause, null);
+        stderrSpy.mockRestore();
+        const messages = loggedMessages(harness);
+        expect(messages.some((m) => m.includes("Entry did not mount an application"))).toBe(true);
+        expect(messages.some((m) => m.includes("HMR enabled"))).toBe(false);
+        expect(messages.some((m) => m.includes(PARKED))).toBe(true);
+    });
+});
+
+describe("createDevRunner (an application that died right after the runner attached)", () => {
+    it("parks the session instead of announcing Fast Refresh over a dead application", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startDyingAfterAttach(new Error("PROBE: throw inside useEffect"));
+        const written = collectLogged(stderrSpy);
+        stderrSpy.mockRestore();
+        const messages = loggedMessages(harness);
+        expect(messages.some((m) => m.includes("HMR enabled"))).toBe(false);
+        expect(messages.some((m) => m.includes(PARKED))).toBe(true);
+        expect(written).toContain("PROBE: throw inside useEffect");
+    });
+
+    it("restarts on the next save instead of Fast Refreshing a boundary into a dead application", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startDyingAfterAttach(new Error("boom"));
+        await emitBoundaryChange(harness, "/x/y.ts");
         stderrSpy.mockRestore();
         expect(harness.performRefresh).not.toHaveBeenCalled();
         expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
@@ -1022,6 +1189,86 @@ describe("createDevRunner (file watcher dispatch)", () => {
         expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
         expect(harness.server.close).toHaveBeenCalled();
         expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    });
+});
+
+describe("createDevRunner (a save the running window cannot receive)", () => {
+    it("restarts instead of announcing a Fast Refresh the importers never receive", async () => {
+        const save = await saveWatchingStderr({ isBoundary: true, Widget }, { isBoundary: true, Panel });
+        expect(save.harness.performRefresh).not.toHaveBeenCalled();
+        expectDroppedRefreshRestart(save, DROPPED_EXPORT_REASON);
+    });
+
+    it("restarts when an unchanged export name hides a component react-refresh cannot patch", async () => {
+        const save = await saveWatchingStderr(
+            { isBoundary: true, default: Widget },
+            { isBoundary: true, default: Panel },
+            { staleExportName: () => "default" },
+        );
+
+        expect(save.harness.performRefresh).not.toHaveBeenCalled();
+        expectDroppedRefreshRestart(save, RENAMED_COMPONENT_REASON);
+    });
+
+    it("fast-refreshes when the module keeps every export its importers hold", async () => {
+        const previous = { isBoundary: true, Widget, revision: "before" };
+        const next = { isBoundary: true, Widget, revision: "after" };
+        const save = await saveWatchingStderr(previous, next);
+        expect(save.harness.performRefresh).toHaveBeenCalledTimes(1);
+        expect(save.harness.staleExportName).toHaveBeenCalledWith(previous, next);
+        expectAnnouncedRefresh(save);
+    });
+
+    it("fast-refreshes when the module only adds an export", async () => {
+        const save = await saveWatchingStderr({ isBoundary: true, Widget }, { isBoundary: true, Widget, Panel });
+        expect(save.harness.performRefresh).toHaveBeenCalledTimes(1);
+        expectAnnouncedRefresh(save);
+    });
+
+    it("fast-refreshes a re-export the save left patching nothing of its own", async () => {
+        const save = await saveWatchingStderr({ isBoundary: true, Widget }, { isBoundary: true, Widget }, {
+            performRefresh: patchesNothing,
+        });
+
+        expect(save.harness.performRefresh).toHaveBeenCalledTimes(1);
+        expectAnnouncedRefresh(save);
+    });
+});
+
+describe("createDevRunner (the files vite restarts its own dev server for)", () => {
+    it("restarts the process when the vite config the server resolved is saved", async () => {
+        const harness = await watchServerConfigFile("change", VITE_CONFIG_FILE);
+        expectServerConfigRestart(harness, VITE_CONFIG_FILE);
+    });
+
+    it("restarts the process when a file the vite config depends on is saved", async () => {
+        const harness = await watchServerConfigFile("change", CONFIG_DEPENDENCY_FILE);
+        expectServerConfigRestart(harness, CONFIG_DEPENDENCY_FILE);
+    });
+
+    it("restarts the process when the env file the server read is saved", async () => {
+        const harness = await watchServerConfigFile("change", ENV_FILE);
+        expectServerConfigRestart(harness, ENV_FILE);
+    });
+
+    it("restarts the process when an env file for the running mode appears", async () => {
+        const harness = await watchServerConfigFile("add", MODE_ENV_FILE);
+        expectServerConfigRestart(harness, MODE_ENV_FILE);
+    });
+
+    it("restarts the process rather than patching a config file the module graph happens to hold", async () => {
+        const harness = await watchServerConfigFile("change", VITE_CONFIG_FILE, (started) => {
+            defineModule(started, VITE_CONFIG_FILE, { ssrModule: { isBoundary: true } });
+        });
+
+        expectServerConfigRestart(harness, VITE_CONFIG_FILE);
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+    });
+
+    it("leaves an env file for another mode to the module pipeline", async () => {
+        const harness = await watchServerConfigFile("change", OTHER_MODE_ENV_FILE);
+        expect(harness.exit).not.toHaveBeenCalled();
+        expect(harness.server.close).not.toHaveBeenCalled();
     });
 });
 

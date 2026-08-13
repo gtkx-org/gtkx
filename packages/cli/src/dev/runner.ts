@@ -1,3 +1,4 @@
+import type { ApplicationInstance } from "@gtkx/runtime/internal";
 import type { InlineConfig, Plugin } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
@@ -11,10 +12,10 @@ import {
     type DevServer,
     type DevServerChangedModule,
     type DevServerWatchEvent,
+    isServerConfigFile,
 } from "./vite-dev-server.js";
 
 type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
-type ApplicationInstance = "primary" | "remote" | "unregistered";
 
 type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<DevServer>;
@@ -29,6 +30,7 @@ type DevRunnerDeps = {
     quitDefaultApplication(): void;
     performRefresh: () => void;
     isRefreshBoundary(module: Record<string, unknown>): boolean;
+    staleExportName(previous: Record<string, unknown>, current: Record<string, unknown>): string | null;
     readFileRevision(path: string): Promise<string>;
     plugins(): Plugin[];
     log(message: string): void;
@@ -68,6 +70,7 @@ const OWNED_ID_EXIT_CODE = 1;
 const LOAD_ATTEMPT_LIMIT = 5;
 const WATCH_EVENTS: DevServerWatchEvent[] = ["add", "change", "unlink"];
 const SKIP_REASON = `did not settle in ${String(LOAD_ATTEMPT_LIMIT)} attempts; save it again to patch the window.`;
+const DROPPED_REFRESH = "Fast Refresh dropped";
 const SAVE_ACTION = "File changed";
 const RETRY_ACTION = "Retrying pending save";
 
@@ -182,10 +185,47 @@ const loadSettledExports = async (
     return null;
 };
 
+const droppedExportName = (previous: Record<string, unknown>, current: Record<string, unknown>): string | null => {
+    const kept = new Set(Object.keys(current));
+
+    for (const name of Object.keys(previous)) {
+        if (!kept.has(name)) {
+            return name;
+        }
+    }
+
+    return null;
+};
+
+const unpatchedExportReason = (
+    session: DevSession,
+    previous: Record<string, unknown> | null,
+    current: Record<string, unknown>,
+): string | null => {
+    if (!previous) {
+        return null;
+    }
+
+    const dropped = droppedExportName(previous, current);
+
+    if (dropped !== null) {
+        return `no longer exports ${dropped}, which its importers still hold`;
+    }
+
+    const stale = session.deps.staleExportName(previous, current);
+
+    if (stale === null) {
+        return null;
+    }
+
+    return `renamed the component it exports as ${stale}, which the window is still rendering`;
+};
+
 const refreshChangedModule = async (
     session: DevSession,
     changedPath: string,
     changedModule: DevServerChangedModule,
+    previous: Record<string, unknown> | null,
 ): Promise<void> => {
     const loadedExports = await loadSettledExports(session, changedPath, changedModule);
 
@@ -200,6 +240,15 @@ const refreshChangedModule = async (
     }
 
     if (!session.deps.isRefreshBoundary(loadedExports)) {
+        await requestRestart(session);
+
+        return;
+    }
+
+    const unpatched = unpatchedExportReason(session, previous, loadedExports);
+
+    if (unpatched !== null) {
+        warn(`${DROPPED_REFRESH}: ${changedPath} ${unpatched}`);
         await requestRestart(session);
 
         return;
@@ -226,7 +275,7 @@ const applyModuleChange = async (session: DevSession, changedPath: string, actio
         return;
     }
 
-    await refreshChangedModule(session, changedPath, module);
+    await refreshChangedModule(session, changedPath, module, module.ssrModule ?? null);
 };
 
 const awaitMissingImport = (session: DevSession, changedPath: string, cause: unknown): void => {
@@ -315,8 +364,19 @@ const createShutdownController = (server: DevServer, deps: DevRunnerDeps): Shutd
     };
 };
 
+const restartForServerConfig = async (session: DevSession, changedPath: string): Promise<void> => {
+    session.deps.log(`Server config changed: ${changedPath}`);
+    await requestRestart(session);
+};
+
 const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {
     if (session.controller.isShuttingDown()) {
+        return;
+    }
+
+    if (isServerConfigFile(session.server.config, change.path)) {
+        await restartForServerConfig(session, change.path);
+
         return;
     }
 
@@ -383,14 +443,19 @@ const isSessionInactive = (session: DevSession): boolean => {
     return true;
 };
 
+const stopForApplicationQuit = (session: DevSession): Promise<never> => {
+    session.deps.log("Application quit - stopping dev runner...");
+
+    return closeAndExit(session);
+};
+
 const settleUnmount = (session: DevSession, wasRefreshing: boolean): void => {
     if (isSessionInactive(session)) {
         return;
     }
 
     if (!wasRefreshing) {
-        session.deps.log("Application quit - stopping dev runner...");
-        void closeAndExit(session);
+        void stopForApplicationQuit(session);
 
         return;
     }
@@ -434,10 +499,16 @@ const stopForOwnedApplicationId = async (session: DevSession, liveApplicationId:
     await closeAndExit(session, OWNED_ID_EXIT_CODE);
 };
 
-const stopForUnregisteredApplication = async (session: DevSession): Promise<void> => {
+const stopForStoppedApplication = async (session: DevSession, instance: ApplicationInstance): Promise<void> => {
     if (session.failure.hasReported()) {
         session.deps.log("Application stopped before the dev runner attached.");
         session.failure.fail();
+
+        return;
+    }
+
+    if (instance === "shutDown") {
+        await stopForApplicationQuit(session);
 
         return;
     }
@@ -461,7 +532,7 @@ const connectLiveApplication = async (session: DevSession, liveApplicationId: st
         return;
     }
 
-    await stopForUnregisteredApplication(session);
+    await stopForStoppedApplication(session, instance);
 };
 
 const attachApplication = async (session: DevSession): Promise<void> => {
@@ -496,8 +567,11 @@ const loadEntry = async (session: DevSession, entryPath: string): Promise<void> 
     }
 };
 
+const hasApplicationStopped = (instance: ApplicationInstance): boolean =>
+    instance === "shutDown" || instance === "unregistered";
+
 const isApplicationLost = (session: DevSession): boolean =>
-    session.failure.hasReported() && session.deps.getApplicationInstance() === "unregistered";
+    session.failure.hasReported() && hasApplicationStopped(session.deps.getApplicationInstance());
 
 const announceReady = (session: DevSession): void => {
     if (isApplicationLost(session)) {
@@ -544,4 +618,4 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
 });
 
 export type { DevServer } from "./vite-dev-server.js";
-export { type ApplicationInstance, createDevRunner, type DevRunnerDeps };
+export { createDevRunner, type DevRunnerDeps };
