@@ -4,18 +4,35 @@ import { describe, expect, it, type Mock, vi } from "vitest";
 
 type ClickedHandler = () => void;
 type RegisterClicked = (button: Gtk.Button, handler: ClickedHandler) => GObject;
-type ButtonWithHandler = { button: Gtk.Button; handler: Mock<ClickedHandler> };
+type ClickedTarget = { button: Gtk.Button; handler: Mock<ClickedHandler> };
 
 const chainingHandler = vi.fn();
 const disconnectedHandler = vi.fn();
 
-const createButtonWithHandler = (): ButtonWithHandler => ({ button: new Gtk.Button(), handler: vi.fn() });
+const onClicked: RegisterClicked = (button, handler) => button.on("clicked", handler);
+const onceClicked: RegisterClicked = (button, handler) => button.once("clicked", handler);
+const offClicked: RegisterClicked = (button, handler) => button.off("clicked", handler);
+const addClickedListener: RegisterClicked = (button, handler) => button.addEventListener("clicked", handler);
+const removeClickedListener: RegisterClicked = (button, handler) => button.removeEventListener("clicked", handler);
+const createClickedTarget = (): ClickedTarget => ({ button: new Gtk.Button(), handler: vi.fn() });
+
+const applyClicked = (target: ClickedTarget, operation: RegisterClicked, count: number): void => {
+    for (let index = 0; index < count; index += 1) {
+        operation(target.button, target.handler);
+    }
+};
+
+const expectEmissionCalls = (target: ClickedTarget, expected: number): void => {
+    target.handler.mockClear();
+    target.button.emit("clicked");
+    expect(target.handler).toHaveBeenCalledTimes(expected);
+};
 
 const expectRemovableHandlerNeverFires = (register: RegisterClicked): void => {
-    const { button, handler } = createButtonWithHandler();
-    register(button, handler);
-    button.off("clicked", handler);
-    expect(handler).not.toHaveBeenCalled();
+    const target = createClickedTarget();
+    register(target.button, target.handler);
+    offClicked(target.button, target.handler);
+    expect(target.handler).not.toHaveBeenCalled();
 };
 
 const expectRegisterReturnsButton = (register: RegisterClicked): void => {
@@ -25,49 +42,17 @@ const expectRegisterReturnsButton = (register: RegisterClicked): void => {
     button.off("clicked", chainingHandler);
 };
 
-const repeatClicked = (operation: RegisterClicked, count: number): RegisterClicked[] =>
-    Array.from({ length: count }, () => operation);
-
-const applyClicked = (button: Gtk.Button, handler: ClickedHandler, operations: RegisterClicked[]): void => {
-    for (const operation of operations) {
-        operation(button, handler);
-    }
-};
-
-const expectEmissionCalls = (button: Gtk.Button, handler: Mock<ClickedHandler>, expected: number): void => {
-    handler.mockClear();
-    button.emit("clicked");
-    expect(handler).toHaveBeenCalledTimes(expected);
-};
-
-const expectCallsAfterRemoval = (
-    registrations: RegisterClicked[],
-    removals: RegisterClicked[],
-    expected: number,
-): void => {
-    const { button, handler } = createButtonWithHandler();
-    applyClicked(button, handler, registrations);
-    applyClicked(button, handler, removals);
-    expectEmissionCalls(button, handler, expected);
-};
-
 const expectBalancedRegistrationsLeaveNothingConnected = (
     register: RegisterClicked,
     remove: RegisterClicked,
     count: number,
 ): void => {
-    const { button, handler } = createButtonWithHandler();
-    applyClicked(button, handler, repeatClicked(register, count));
-    expectEmissionCalls(button, handler, count);
-    applyClicked(button, handler, repeatClicked(remove, count));
-    expectEmissionCalls(button, handler, 0);
+    const target = createClickedTarget();
+    applyClicked(target, register, count);
+    expectEmissionCalls(target, count);
+    applyClicked(target, remove, count);
+    expectEmissionCalls(target, 0);
 };
-
-const onClicked: RegisterClicked = (button, handler) => button.on("clicked", handler);
-const onceClicked: RegisterClicked = (button, handler) => button.once("clicked", handler);
-const offClicked: RegisterClicked = (button, handler) => button.off("clicked", handler);
-const addClickedListener: RegisterClicked = (button, handler) => button.addEventListener("clicked", handler);
-const removeClickedListener: RegisterClicked = (button, handler) => button.removeEventListener("clicked", handler);
 
 describe("on/off", () => {
     it("registers and removes handlers via callback identity", () => {
@@ -89,8 +74,35 @@ describe("on/off", () => {
         expectBalancedRegistrationsLeaveNothingConnected(onClicked, offClicked, count);
     });
 
-    it("removes one connection per off() call", () => {
-        expectCallsAfterRemoval([onClicked, onClicked], [offClicked], 1);
+    it("removes exactly one connection per off() call", () => {
+        const target = createClickedTarget();
+        applyClicked(target, onClicked, 3);
+
+        for (const remaining of [2, 1, 0]) {
+            offClicked(target.button, target.handler);
+            expectEmissionCalls(target, remaining);
+        }
+    });
+
+    it("stays disconnected when off() is called more often than on()", () => {
+        const target = createClickedTarget();
+        applyClicked(target, onClicked, 2);
+        applyClicked(target, offClicked, 2);
+        expectEmissionCalls(target, 0);
+        applyClicked(target, offClicked, 10);
+        expectEmissionCalls(target, 0);
+    });
+
+    it("removes every connection of a detail signal the same handler was registered on twice", () => {
+        const button = new Gtk.Button();
+        const handler = vi.fn();
+        button.on("notify::label", handler);
+        button.on("notify::label", handler);
+        button.off("notify::label", handler);
+        button.off("notify::label", handler);
+        handler.mockClear();
+        button.setLabel("changed");
+        expect(handler).not.toHaveBeenCalled();
     });
 });
 
@@ -104,7 +116,20 @@ describe("once", () => {
     });
 
     it("leaves an on() connection of the same handler removable", () => {
-        expectCallsAfterRemoval([onClicked, onceClicked], [offClicked, offClicked], 0);
+        const target = createClickedTarget();
+        onClicked(target.button, target.handler);
+        onceClicked(target.button, target.handler);
+        applyClicked(target, offClicked, 2);
+        expectEmissionCalls(target, 0);
+    });
+
+    it("leaves no stale connection behind once it has fired", () => {
+        const target = createClickedTarget();
+        onceClicked(target.button, target.handler);
+        expectEmissionCalls(target, 1);
+        applyClicked(target, onClicked, 2);
+        applyClicked(target, offClicked, 2);
+        expectEmissionCalls(target, 0);
     });
 });
 
@@ -123,7 +148,10 @@ describe("disconnect", () => {
 
 describe("addEventListener/removeEventListener", () => {
     it("registers a handler that fires on emission", () => {
-        expectCallsAfterRemoval([addClickedListener], [], 1);
+        const target = createClickedTarget();
+        addClickedListener(target.button, target.handler);
+        expectEmissionCalls(target, 1);
+        removeClickedListener(target.button, target.handler);
     });
 
     it("registers and removes handlers via callback identity", () => {
@@ -134,11 +162,14 @@ describe("addEventListener/removeEventListener", () => {
         expectRegisterReturnsButton(addClickedListener);
     });
 
-    it("removes every connection when the same handler was registered twice", () => {
-        expectBalancedRegistrationsLeaveNothingConnected(addClickedListener, removeClickedListener, 2);
+    it.each([2, 3])("removes every connection when the same handler was registered %i times", (count) => {
+        expectBalancedRegistrationsLeaveNothingConnected(addClickedListener, removeClickedListener, count);
     });
 
     it("removeEventListener removes a handler registered with on()", () => {
-        expectCallsAfterRemoval([onClicked], [removeClickedListener], 0);
+        const target = createClickedTarget();
+        onClicked(target.button, target.handler);
+        removeClickedListener(target.button, target.handler);
+        expectEmissionCalls(target, 0);
     });
 });

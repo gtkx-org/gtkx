@@ -41,23 +41,14 @@ const trackListener = (instance: object, signal: string, handler: SignalHandler,
     handlerIds.push(handlerId);
 };
 
-const removeTrackedHandlerId = (
-    byHandler: Map<SignalHandler, number[]>,
-    handler: SignalHandler,
-    handlerIds: number[],
-    handlerId: number,
-): void => {
+const removeTrackedHandlerId = (handlerIds: number[], handlerId: number): number => {
     const index = handlerIds.lastIndexOf(handlerId);
 
-    if (index === -1) {
-        return;
+    if (index !== -1) {
+        handlerIds.splice(index, 1);
     }
 
-    handlerIds.splice(index, 1);
-
-    if (handlerIds.length === 0) {
-        byHandler.delete(handler);
-    }
+    return handlerIds.length;
 };
 
 const untrackHandlerId = (instance: object, signal: string, handlerId: number): void => {
@@ -69,7 +60,9 @@ const untrackHandlerId = (instance: object, signal: string, handlerId: number): 
     }
 
     for (const [handler, handlerIds] of byHandler) {
-        removeTrackedHandlerId(byHandler, handler, handlerIds, handlerId);
+        if (removeTrackedHandlerId(handlerIds, handlerId) === 0) {
+            byHandler.delete(handler);
+        }
     }
 
     if (byHandler.size === 0) {
