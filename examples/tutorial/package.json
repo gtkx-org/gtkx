@@ -18,7 +18,7 @@
         "bundle": "gtkx build && node scripts/bundle.ts",
         "bundle:postject": "node scripts/bundle-postject.ts",
         "build:sea": "bash scripts/build-sea.sh",
-        "flatpak:lint": "desktop-file-validate flatpak/com.gtkx.tutorial.desktop && appstreamcli validate --no-net flatpak/com.gtkx.tutorial.metainfo.xml",
+        "flatpak:lint": "desktop-file-validate flatpak/com.gtkx.tutorial.desktop && appstreamcli validate --no-net flatpak/com.gtkx.tutorial.metainfo.xml && bash flatpak/check-activation.sh",
         "flatpak:sources": "bash flatpak/generate-sources.sh",
         "flatpak:build": "bash flatpak/build.sh"
     },

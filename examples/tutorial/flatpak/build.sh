@@ -3,7 +3,7 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-echo "Validating desktop entry and metainfo..."
+echo "Validating desktop entry, metainfo and D-Bus activation..."
 npm run flatpak:lint
 
 if [[ ! -f flatpak/generated-sources.json ]]; then

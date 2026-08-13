@@ -30,6 +30,12 @@ flatpak run com.gtkx.tutorial
 `flatpak/generated-sources.json`; both are needed for the offline sandbox build
 and are regenerated whenever dependencies change.
 
+`npm run flatpak:build` starts with `npm run flatpak:lint`, which validates the
+desktop entry and the metainfo, then runs `check-activation.sh`: a desktop entry
+that declares `DBusActivatable=true` must have a matching
+`dbus-1/services/<app id>.service` install in the manifest, or the lint fails in
+a second rather than the export failing after a build of several minutes.
+
 ## Submit to Flathub
 
 1. Swap the `dir` source in `com.gtkx.tutorial.yaml` for a pinned `git` source of
@@ -62,19 +68,23 @@ manifest's `command` (currently `gtkx-tutorial`) along with the `Exec` keys of
 the desktop entry and the service file, and update the identity fields in the
 metainfo (developer, homepage, screenshots) to point at your project.
 
-`tests/flatpak.test.ts` takes the `id` and the `command` from the manifest and
-checks the shipped files against them, so a rename you miss fails the app's
-`npm test` rather than the sandbox build. It compares identities only: the
-metainfo's developer, homepage and screenshots are yours to correct.
+`tests/flatpak.test.ts` reads the manifest as YAML, takes the `id` and the
+`command` from its top level, and checks every file its build commands install
+against them, so a rename you miss fails the app's `npm test` rather than the
+sandbox build. It compares identities only: the metainfo's developer, homepage
+and screenshots are yours to correct.
 
 The service file is what makes `DBusActivatable=true` in the desktop entry true:
 `flatpak build-export` refuses to export an app whose desktop entry claims D-Bus
 activation without a matching `share/dbus-1/services/<app id>.service`, so both
 files ship together or neither does. A half-finished rename bites there too:
-files under `share/applications`, `share/dbus-1/services`, `share/metainfo` and
-`share/icons` are exported only while their names start with the application ID,
-and one left on the old ID draws a single `non-allowed export filename` line
-from `flatpak build-finish` before the build succeeds anyway, installing an app
-with no launcher and no activation. The service file also has to exist under
-`~/.local/share/dbus-1/services/` for a plain user-prefix install, where its
-`Exec` names the installed binary instead of `/app/bin`.
+files under any directory flatpak exports (`share/applications`, `share/appdata`,
+`share/dbus-1/services`, `share/dbus-1/system-services`,
+`share/gnome-shell/search-providers`, `share/icons`, `share/metainfo` and
+`share/mime/packages`) are exported only while their names start with the
+application ID, and one left on the old ID draws a single
+`non-allowed export filename` line from `flatpak build-finish` before the build
+succeeds anyway, installing an app with no launcher and no activation. The
+service file also has to exist under `~/.local/share/dbus-1/services/` for a
+plain user-prefix install, where its `Exec` names the installed binary instead of
+`/app/bin`.
