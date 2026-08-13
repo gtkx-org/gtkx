@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
@@ -71,6 +71,17 @@ const registerFreshnessTests = (): void => {
         expect(result.isRegenerated).toBe(true);
         expect(result.namespaces).toBeGreaterThan(0);
         expect(existsSync(join(gi.storeDir, "glib", "glib.js"))).toBe(true);
+    });
+
+    it("removes what a killed run stranded even when the store stays fresh", async () => {
+        const gi = storeUnit(projectModules("stranded"), "gi");
+        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
+        await runCodegen(options);
+        const stranded = `${gi.storeDir}.tmp-killed`;
+        mkdirSync(stranded, { recursive: true });
+        const rerun = await runCodegen(options);
+        expect(rerun.isRegenerated).toBe(false);
+        expect(existsSync(stranded)).toBe(false);
     });
 
     it("regenerates when the fingerprint no longer matches", async () => {

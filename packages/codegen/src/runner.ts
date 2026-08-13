@@ -8,6 +8,7 @@ import { isGiStoreFresh } from "./fingerprint.js";
 import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
+import { stagingPrefix, sweepStagingDirs } from "./staging.js";
 
 type GlCodegenOptions = {
     registryPath: string;
@@ -167,12 +168,22 @@ const emitStoresWithConfig = async (config: {
     return emitJsxStore({ options, jsx, gi, loadLibrary, isGiRegenerated, namespaces });
 };
 
+const sweepStoreStaging = (stores: (StoreOptions | undefined)[]): void => {
+    for (const store of stores) {
+        if (store !== undefined) {
+            sweepStagingDirs(stagingPrefix(store.storeDir));
+        }
+    }
+};
+
 const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> => {
     const { gi, jsx, libraries, girPath } = options;
 
     if (girPath.length === 0) {
         throw new Error("codegen needs at least one GIR search path; pass the result of resolveGirPath");
     }
+
+    sweepStoreStaging([gi, jsx]);
 
     return emitStoresWithConfig({ options, gi, jsx, libraries, girPath });
 };

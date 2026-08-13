@@ -1,7 +1,8 @@
 import { errorMessage } from "@gtkx/utils";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { keepFailedProject, type SourceModule } from "../compile.js";
+import { createStagingDir, stagingPrefix } from "../staging.js";
 import { compileStore } from "./compile-store.js";
 
 /** Where one generated store is written and how it is reached. */
@@ -135,8 +136,7 @@ const storeWriteMessage = (storeDir: string, error: unknown): string =>
 
 const createTempStore = (storeDir: string): string => {
     try {
-        mkdirSync(dirname(storeDir), { recursive: true });
-        const tmp = mkdtempSync(`${storeDir}.tmp-`);
+        const tmp = createStagingDir(stagingPrefix(storeDir));
         chmodSync(tmp, STORE_DIR_MODE);
 
         return tmp;

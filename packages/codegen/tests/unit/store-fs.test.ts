@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -7,6 +7,7 @@ import { buildManifest, writeStore } from "../../src/store/store-fs.js";
 const EMPTY_MODULE = "";
 const WORKING_MODULE = "export const answer: number = 42;\n";
 const IMPORTER_MODULE = 'import { answer } from "../glib/glib.js";\n\nexport const value: number = answer;\n';
+const STRANDED_STAGING_DIR = "gi.tmp-killed";
 const roots: string[] = [];
 
 const createRoot = (): string => {
@@ -29,6 +30,14 @@ const writeGiStore = (root: string, glibSource: string): void => {
         ],
         manifest: buildManifest({ name: "@gtkx/gi", version: "1.0.0", exports: {} }),
     });
+};
+
+const strandStagingDir = (root: string): string => {
+    const stranded = join(root, "node_modules", ".gtkx", STRANDED_STAGING_DIR);
+    mkdirSync(join(stranded, "glib"), { recursive: true });
+    writeFileSync(join(stranded, "glib", "glib.ts"), WORKING_MODULE);
+
+    return stranded;
 };
 
 const getBrokenStoreError = (root: string): Error => {
@@ -63,6 +72,26 @@ describe("writeStore", () => {
                 manifest: buildManifest({ name: "@gtkx/gi", version: "1.0.0", exports: {} }),
             });
         }).toThrow(`Cannot write the generated store to ${storeDir}`);
+    });
+});
+
+describe("writeStore, when a killed run stranded its staging directory", () => {
+    it("removes the stranded staging directory", () => {
+        const root = createRoot();
+        const stranded = strandStagingDir(root);
+        writeGiStore(root, WORKING_MODULE);
+        expect(existsSync(stranded)).toBe(false);
+    });
+
+    it("keeps the siblings that are not staging directories", () => {
+        const root = createRoot();
+        const storeParent = join(root, "node_modules", ".gtkx");
+        strandStagingDir(root);
+        mkdirSync(join(storeParent, "jsx"), { recursive: true });
+        writeFileSync(join(storeParent, "env.d.ts"), "");
+        writeGiStore(root, WORKING_MODULE);
+        const entries = readdirSync(storeParent).toSorted((a, b) => a.localeCompare(b));
+        expect(entries).toEqual(["env.d.ts", "gi", "jsx"]);
     });
 });
 
