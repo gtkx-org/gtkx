@@ -45,7 +45,7 @@ There is a single staged payload, and every target installs it unchanged:
 ```
 bin/<app>                     a launcher script
 lib/<app>/node                the bundled Node.js
-lib/<app>/bundle.mjs           the app
+lib/<app>/bundle.mjs          the app
 lib/<app>/gtkx.node           the native addon
 share/...                     desktop entry, metainfo, icons, schemas
 ```

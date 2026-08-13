@@ -88,7 +88,7 @@ Every target installs the same tree, under `/usr` for deb, rpm, and AppImage, an
 ```
 bin/<binaryName>                              a launcher script
 lib/<binaryName>/node                         the bundled Node.js
-lib/<binaryName>/bundle.mjs                    the app
+lib/<binaryName>/bundle.mjs                   the app
 lib/<binaryName>/gtkx.node                    the native addon
 lib/<binaryName>/gschemas.compiled            compiled settings schemas
 share/applications/<id>.desktop               generated

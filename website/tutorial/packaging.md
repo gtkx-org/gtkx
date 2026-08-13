@@ -96,7 +96,6 @@ deploy: {
     contentRating: {},
     isDbusActivatable: true,
     desktopEntry: { "X-GNOME-UsesNotifications": "true" },
-    screenshotBaseUrl: "https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial",
     targets: ["flatpak", "deb", "rpm", "appimage"],
 },
 ```
@@ -106,8 +105,6 @@ Most of it is optional. `name`, `version`, `license`, `developer`, and `homepage
 Two keys earn their place. `X-GNOME-UsesNotifications` gives the app its own row in the desktop's notification settings, so the reminders from [Reminders That Reach the Desktop](/tutorial/reminders) can be tuned or silenced there. `isDbusActivatable` lets the desktop start the app over D-Bus instead of running the command directly, which is how a reminder's **Mark Complete** button reaches the `app.complete-task` action when the app is closed.
 
 `categories` also decides where the app appears in a launcher that groups by category, and it is what the deb `Section` and the rpm `Group` are derived from.
-
-`screenshotBaseUrl` turns each local `file` into the public URL the metainfo needs, because a software center fetches screenshots over the network. Leave it out and it is derived from the git remote.
 
 ## One command
 
@@ -135,7 +132,7 @@ npm run deploy
 
 The desktop entry and the metainfo are validated in the second step, before the build, so a bad category or a missing summary fails in about two seconds rather than after everything else has run.
 
-The third line matters: Node.js is bundled into the package. GTKX needs Node.js 24, Debian 13 ships 20, and Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` fetches the official build matching yours, verifies its checksum, and caches it, which is where most of each package's size comes from.
+Note the third line: Node.js is bundled into the package. GTKX needs Node.js 24, Debian 13 ships 20, and Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` fetches the official build matching yours, verifies its checksum, and caches it, which is where most of each package's size comes from.
 
 ## What is inside
 
@@ -155,8 +152,6 @@ Every package installs the same tree, under `/usr` here and under `/app` in the 
 ```
 
 The launcher resolves the other files from its own location, so nothing is hardcoded to `/usr` and the same tree works in a Flatpak and inside an AppImage.
-
-The D-Bus service file is there because `isDbusActivatable` is set. The two travel together: a desktop entry that declares `DBusActivatable=true` with no service file naming the command to start is an app the desktop cannot activate, and `flatpak build-export` refuses to export it at all. The AppImage is the exception, since it has no fixed install path to name in a service file, so its desktop entry is written without the key instead.
 
 ## Installing it
 

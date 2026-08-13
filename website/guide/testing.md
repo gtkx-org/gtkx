@@ -52,7 +52,7 @@ import { rootElement } from "@gtkx/react";
 await render(<App />, { container: rootElement });
 ```
 
-Queries search every open toplevel, so dialogs and popovers are findable, and animations are disabled unless `areAnimationsEnabled: true` is passed. Presenting the harness window leaves the editable it focuses with its text unselected and its caret at the end, so a render on its own never selects anything; GTK4's own settings are untouched, so a widget the test focuses afterwards, by tabbing to it or by calling `grabFocus`, selects its text exactly as it does in the application. `wrapper` mounts a context provider around the element; the remaining options are in the [`render` reference](/reference/@gtkx/testing/).
+Queries search every open toplevel, so dialogs and popovers are findable, and animations are disabled unless `areAnimationsEnabled: true` is passed. `wrapper` mounts a context provider around the element; the remaining options are in the [`render` reference](/reference/@gtkx/testing/).
 
 `screen` proxies to the most recent render and is the idiomatic way to query; `within(container)` scopes queries to a subtree, and `renderHook(callback)` tests a hook in isolation. Cleanup is automatic: every test starts from an empty display.
 
@@ -89,14 +89,6 @@ await userEvent.click(button);
 await userEvent.type(entry, "hello");
 await userEvent.keyboard(entry, "{Control>}a{/Control}");
 ```
-
-`userEvent.type` and `userEvent.paste` delete the text an editable widget has selected before inserting, as GTK4 does, and the replacement lands on the widget's undo stack like any other edit. Typing into a widget that has nothing selected appends, because `type` focuses it the way a click does, without selecting its text; pass `initialSelectionStart` and `initialSelectionEnd` to type over a specific range, or tab to the widget first to select its text the way GTK4 does on keyboard focus.
-
-`userEvent.keyboard` delivers each press and release the way GTK4 propagates a key event: down the capture-phase controllers from the root to the event widget, through the event widget's target-phase controllers, then back up the bubble-phase controllers to the root. A `GtkEventControllerKey` or a `GtkShortcutController` on a container or window above the widget therefore sees the key, each in the phase it declares, and the first controller that handles the press ends the chain, so a key controller returning `Gdk.EVENT_STOP` keeps a shortcut further along the chain from being dispatched. A press none of them handled reaches an editable widget's `activate` handler when the key is Return.
-
-The event widget is the editable delegate GTK4 focuses when the widget has one, the `Gtk.Text` inside a `Gtk.Entry` for instance, so the delegate and everything attached to it run ahead of the entry. Built-in key bindings take part too, since GTK4 carries them on a shortcut controller: an arrow key moves the caret inside that `Gtk.Text`, and `{Control>}z{/Control}` undoes on a `Gtk.TextView`, before an ancestor's key controller sees the press. Key controllers GTK4 attaches itself are the exception, since they read a GDK event that off-screen synthesis cannot produce, so only the key controllers the tree under test connected a handler to receive the key.
-
-A `GtkShortcutController` runs where its `scope` puts it, as in a real window: a local one only while the key passes through its own widget, a global one anywhere inside the root, and a managed one anywhere inside its nearest `GtkShortcutManager`, such as the surrounding window or popover. A global controller therefore fires from a widget in a different branch of the tree, and it fires once, at the root rather than at the widget carrying it. Its action still runs on the widget that carries the controller, and a shortcut whose widget is insensitive or unmapped stays inert, as GTK4 leaves it.
 
 `userEvent.click` on a list row changes the selection, on a `Gtk.TreeExpander` toggles expansion, and on a sortable column header sorts the view. Off-screen, `pointer` synthesizes left-button input only and `drag` refuses a `Gtk.Range`, so use `slide(range, value)` to move a slider. The full set of helpers is in the [`userEvent` reference](/reference/@gtkx/testing/).
 

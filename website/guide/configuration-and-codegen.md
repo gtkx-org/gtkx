@@ -20,8 +20,6 @@ export default defineConfig({
 });
 ```
 
-The file marks the project root, and every command reads it from a single directory: `--cwd` when you pass it, the current working directory otherwise. Parent directories are never searched, so running a command from `src/` reports `gtkx.config.ts: no configuration file found in <directory>` rather than picking up the config one level up.
-
 `mergeConfig(base, override)` layers a project config over a shared base. A `$development` or `$production` block layers over the top level, per mode.
 
 ### Every option
@@ -32,31 +30,16 @@ The file marks the project root, and every command reads it from a single direct
 - **`libraries`**: the GIR libraries to bind, as `Name-Version`. `Gtk-4.0` is the default, and joins any list that does not already name a Gtk version; the bare string `"*"` (never an array entry) binds everything on the GIR path.
 - **`girPath`**: directories searched for `.gir` files ahead of the standard locations.
 - **`reactCompiler`**: the React Compiler, on by default. `false` disables it; an object forwards `compilationMode` and `panicThreshold`.
-- **`codegen: false`**: skips generation, so the project imports whatever binding store is already installed. A store under the project's own `node_modules` is removed only when it shadows one installed above it, such as a workspace root's, which is the store the project imports instead; a project whose store belongs in its own `node_modules` keeps it, and `gtkx codegen --force` reports that generation is disabled rather than regenerating.
+- **`codegen: false`**: skips generation, so the project imports whatever binding store is already installed.
 - **`userEventSignals`**: signals, keyed by GLib type name, that GTKX suppresses while writing to a widget itself. Entries merge into the defaults.
 - **`elements`**: the [element customizations](#advanced-customizing-elements): `behaviors` is the module default-exporting your `defineElements` map, `config` sets per-type codegen output (`component`, `props`, `omittedProps`, `isLazy`).
 
 ## What codegen emits
 
-Codegen writes packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx`, so imports resolve without either appearing in your `package.json`. Both packages go into one `node_modules`, the one the installed `@gtkx` packages resolve from: your project's own when it installs its dependencies itself, and the workspace root when npm or yarn hoisted them there. That keeps the store beside `@gtkx/react` and the CLI, which import the bindings themselves and would otherwise never find them:
+Codegen writes packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx`, so imports resolve without either appearing in your `package.json`:
 
 - **`@gtkx/gi`** is the introspected API, one subpath per namespace (`@gtkx/gi/gtk`, `@gtkx/gi/adw`): the classes, enums, and functions you call imperatively, for refs and values such as `Gtk.Orientation.VERTICAL`.
 - **`@gtkx/jsx`** is the React layer, likewise per namespace (`@gtkx/jsx/gtk`, `@gtkx/jsx/adw`): a PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a `React.JSX.IntrinsicElements` augmentation.
-
-In a workspace whose package manager hoists (npm and yarn do; pnpm does not), that one `node_modules` is the workspace root's, so a single store serves every package in the workspace. The store binds whichever `libraries` the last codegen run declared: give the workspace packages that use GTKX the same `libraries` list, or each one regenerates the shared store on the next `gtkx dev` or `gtkx build`. `gtkx codegen --force` likewise rewrites the shared store rather than a private copy. Codegen refuses to run when the `@gtkx` packages are split across `node_modules` directories, for instance `@gtkx/cli` hoisted to the workspace root while `@gtkx/react` is installed in a package below it, because no single store location can serve both.
-
-Because the store is absent from your `package.json`, `npm install` classifies those two links as extraneous packages and deletes them, on every run and with no arguments needed, while `node_modules/.gtkx` stays untouched. Every `gtkx` command restores them before it does anything else, and a running `gtkx dev` restores them the moment the app imports a binding, so an install in the middle of a session costs nothing. TypeScript resolves through the same links, and nothing restores them for `npx tsc --noEmit` or your editor's language server, so scaffolded projects map both specifiers onto the store itself. A project scaffolded before that was added wants the same entry in its `tsconfig.json`, pointing at whichever `node_modules` holds the store:
-
-```json
-{
-    "compilerOptions": {
-        "paths": {
-            "@gtkx/gi/*": ["./node_modules/.gtkx/gi/*/index.d.ts", "./node_modules/.gtkx/gi/*.d.ts"],
-            "@gtkx/jsx/*": ["./node_modules/.gtkx/jsx/*/index.d.ts", "./node_modules/.gtkx/jsx/*.d.ts"]
-        }
-    }
-}
-```
 
 A few bindings take a NUL-terminated C string that GIR describes as a byte array (`GLib.Variant.newBytestring(string: number[])`), so the value silently stops at the first zero byte. Binary payloads go through `GLib.Bytes` and `GLib.Variant.newFromBytes`.
 
