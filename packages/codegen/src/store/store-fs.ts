@@ -24,10 +24,7 @@ type StoreOptions = {
     version: string;
 };
 
-type StoreLink = {
-    storeDir: string;
-    linkDir: string;
-};
+type StoreLink = Pick<StoreOptions, "storeDir" | "linkDir">;
 
 type Manifest = {
     name: string;

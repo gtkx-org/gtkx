@@ -65,8 +65,9 @@ type StoreResult = {
  * store or the React element config changed, unless `options.isForced` is set. Pass the spread of
  * `resolveStore(projectRoot)` for everything but `libraries` and `girPath`.
  *
- * Every run ends with each store linked at its `linkDir`, whether or not it was rewritten, so a store whose
- * link an install pruned out of `node_modules` is linked again without being regenerated.
+ * Every store already on disk is linked at its `linkDir` before anything is generated, so a link an install
+ * pruned out of `node_modules` is restored without regenerating the store, and the gi store is reachable
+ * under its own specifier while the jsx store is type checked.
  *
  * @param options What to generate and where to write it.
  * @returns A summary of what was regenerated and how long the run took.
@@ -171,16 +172,15 @@ const emitStoresWithConfig = async (config: {
     return emitJsxStore({ options, jsx, gi, loadLibrary, isGiRegenerated, namespaces });
 };
 
-const eachStore = (stores: (StoreOptions | undefined)[], visit: (store: StoreOptions) => void): void => {
+const prepareStores = (stores: (StoreOptions | undefined)[]): void => {
     for (const store of stores) {
-        if (store !== undefined) {
-            visit(store);
+        if (store === undefined) {
+            continue;
         }
-    }
-};
 
-const sweepStoreStaging = (store: StoreOptions): void => {
-    sweepStagingDirs(store.storeDir);
+        sweepStagingDirs(store.storeDir);
+        ensureStoreLink(store);
+    }
 };
 
 const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> => {
@@ -190,11 +190,9 @@ const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> =
         throw new Error("codegen needs at least one GIR search path; pass the result of resolveGirPath");
     }
 
-    eachStore([gi, jsx], sweepStoreStaging);
-    const result = await emitStoresWithConfig({ options, gi, jsx, libraries, girPath });
-    eachStore([gi, jsx], ensureStoreLink);
+    prepareStores([gi, jsx]);
 
-    return result;
+    return emitStoresWithConfig({ options, gi, jsx, libraries, girPath });
 };
 
 export { runCodegen, runGlCodegen, type CodegenRunnerOptions, type CodegenRunnerResult };

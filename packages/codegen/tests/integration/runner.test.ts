@@ -3,12 +3,15 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { runCodegen } from "../../src/index.js";
+import { createIsolatedProject } from "../helpers/isolated-project.js";
 import { runningStagingName, strandedStagingName } from "../helpers/staging.js";
 import { storeUnit } from "../helpers/store-unit.js";
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
+const FINGERPRINT_FILE = ".codegen-fingerprint.json";
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const workDir = mkdtempSync(join(REPO_ROOT, "node_modules", ".gtkx-test-"));
+const isolatedRoots: string[] = [];
 
 const projectModules = (name: string): string => join(workDir, name, "node_modules");
 
@@ -74,23 +77,13 @@ const registerFreshnessTests = (): void => {
         expect(existsSync(join(gi.storeDir, "glib", "glib.js"))).toBe(true);
     });
 
-    it("restores a link an install pruned without regenerating the store", async () => {
-        const gi = storeUnit(projectModules("pruned-link"), "gi");
-        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
-        await runCodegen(options);
-        rmSync(gi.linkDir, { recursive: true, force: true });
-        const rerun = await runCodegen(options);
-        expect(rerun.isRegenerated).toBe(false);
-        expect(existsSync(join(gi.linkDir, "glib", "glib.js"))).toBe(true);
-    });
-
     it("regenerates when the fingerprint no longer matches", async () => {
         const gi = storeUnit(projectModules("stale-fp"), "gi");
         const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
         await runCodegen(options);
 
         writeFileSync(
-            join(gi.storeDir, ".codegen-fingerprint.json"),
+            join(gi.storeDir, FINGERPRINT_FILE),
             JSON.stringify({ value: "stale", girFiles: [], libraries: ["GLib-2.0"] }),
         );
 
@@ -131,12 +124,53 @@ const registerStagingTests = (): void => {
     });
 };
 
+const registerStoreLinkTests = (): void => {
+    it("restores a link an install pruned without regenerating the store", async () => {
+        const gi = storeUnit(projectModules("pruned-link"), "gi");
+        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
+        await runCodegen(options);
+        rmSync(gi.linkDir, { recursive: true, force: true });
+        const rerun = await runCodegen(options);
+        expect(rerun.isRegenerated).toBe(false);
+        expect(existsSync(join(gi.linkDir, "glib", "glib.js"))).toBe(true);
+    });
+
+    it("keeps the restored link when the run fails before it writes anything", async () => {
+        const gi = storeUnit(projectModules("failed-relink"), "gi");
+        const options = { libraries: ["GLib-2.0"], girPath: GIR_PATH, gi };
+        await runCodegen(options);
+        rmSync(gi.linkDir, { recursive: true, force: true });
+        await expect(runCodegen({ ...options, libraries: ["Absent-1.0"] })).rejects.toThrow("Absent-1.0.gir");
+        expect(existsSync(join(gi.linkDir, "glib", "glib.js"))).toBe(true);
+    });
+
+    it("restores the pruned gi link before the stale jsx store is type checked", async () => {
+        const { root, gi, jsx } = createIsolatedProject("gtkx-pruned-link-jsx-");
+        isolatedRoots.push(root);
+        const options = { libraries: ["Gtk-4.0"], girPath: GIR_PATH, gi, jsx };
+        await runCodegen(options);
+        writeFileSync(join(jsx.storeDir, FINGERPRINT_FILE), JSON.stringify({ value: "stale" }));
+        rmSync(gi.linkDir, { recursive: true, force: true });
+        rmSync(jsx.linkDir, { recursive: true, force: true });
+        const rerun = await runCodegen(options);
+        expect(rerun.isRegenerated).toBe(true);
+        expect(rerun.namespaces).toBe(0);
+        expect(existsSync(join(gi.linkDir, "gtk", "gtk.js"))).toBe(true);
+        expect(existsSync(join(jsx.linkDir, "gtk", "gtk.js"))).toBe(true);
+    });
+};
+
 afterAll(() => {
     rmSync(workDir, { recursive: true, force: true });
+
+    for (const root of isolatedRoots) {
+        rmSync(root, { recursive: true, force: true });
+    }
 });
 
 describe("runCodegen", () => {
     registerStoreWriteTests();
     registerFreshnessTests();
     registerStagingTests();
+    registerStoreLinkTests();
 });
