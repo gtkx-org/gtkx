@@ -52,6 +52,7 @@ const build = async (options: BuildOptions): Promise<string> => {
                 output: {
                     entryFileNames: ENTRY_FILE_NAMES,
                     chunkFileNames: posix.join(assetsDir, CHUNK_STEM + ESM_EXTENSION),
+                    keepNames: true,
                 },
             },
         },
