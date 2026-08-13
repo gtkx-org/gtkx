@@ -88,7 +88,23 @@ type NamespaceHeader = {
     namespaceNode: RawNode;
 };
 
+const DECLARATION_TAGS: string[] = [
+    "alias",
+    "bitfield",
+    "callback",
+    "class",
+    "constant",
+    "enumeration",
+    "function",
+    "interface",
+    "record",
+    "union",
+];
+
 const namespaceDirectory = (namespace: Pick<GirNamespace, "name">): string => namespace.name.toLowerCase();
+
+const hasDeclarations = (namespaceNode: RawNode): boolean =>
+    DECLARATION_TAGS.some((tag) => getChildren(namespaceNode, tag).length > 0);
 
 const parseNamespaceHeader = (repositoryNode: RawNode, path: string): NamespaceHeader => {
     const includes = getChildren(repositoryNode, "include").map<NamespaceInclude>((include) => ({
@@ -100,6 +116,13 @@ const parseNamespaceHeader = (repositoryNode: RawNode, path: string): NamespaceH
 
     if (namespaceNode === undefined) {
         throw new Error(`GIR file at ${path} has no <namespace> child in its <repository>`);
+    }
+
+    if (!hasDeclarations(namespaceNode)) {
+        throw new Error(
+            `GIR file at ${path} declares nothing in its <namespace>, so it is empty or truncated and no ` +
+            "bindings can be generated from it",
+        );
     }
 
     return {
