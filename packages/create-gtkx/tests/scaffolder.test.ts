@@ -1,22 +1,26 @@
+import type { TextOptions } from "@clack/prompts";
 import { vol } from "memfs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { PassThrough } from "node:stream";
+import { stripVTControlCharacters } from "node:util";
 import { addDependency, detectPackageManager } from "nypm";
 import { x } from "tinyexec";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CreateOptions, scaffold } from "../src/scaffolder.js";
 
 type ScaffoldedManifest = { name?: string; scripts: Record<string, string | undefined> };
+type SpinnerLine = { level: "done" | "failed"; message: string };
 
 const clack = vi.hoisted(() => ({
     intro: vi.fn(),
     note: vi.fn(),
     cancel: vi.fn(),
     log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-    spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
-    text: vi.fn(() => Promise.resolve("")),
+    spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn(), error: vi.fn() })),
+    text: vi.fn<(options: TextOptions) => Promise<string | symbol>>(() => Promise.resolve("")),
     select: vi.fn((opts: { initialValue?: unknown }) => Promise.resolve(opts.initialValue)),
-    confirm: vi.fn(() => Promise.resolve(true)),
+    confirm: vi.fn((): Promise<boolean | string> => Promise.resolve(true)),
     isCancel: vi.fn((value: unknown) => value === "__CANCEL__"),
 }));
 
@@ -24,10 +28,13 @@ const addDependencyMock = vi.mocked(addDependency);
 const detectMock = vi.mocked(detectPackageManager);
 const xMock = vi.mocked(x);
 const TEST_DIR = "/test-workspace";
+const CANCEL_KEYSTROKE = String.fromCodePoint(3);
+const spinnerLines: SpinnerLine[] = [];
 const TEMPLATES_DIR = join(import.meta.dirname, "..", "src", "templates");
 const SELF_VERSION = (createRequire(import.meta.url)("../package.json") as { version: string }).version;
 const templateFiles: Record<string, string> = {};
 const CUTOFF = ", within the minimumReleaseAge cutoff (2026-08-09T08:49:41.166Z)";
+const INVALID_PROJECT_NAME_ERROR = "Project name must be lowercase letters, numbers, and hyphens only";
 const PROD_ARGS = ["@gtkx/css", "@gtkx/runtime", "@gtkx/react", "react"].map((name) => pin(name)).join(" ");
 
 const DEV_ARGS = ["@gtkx/cli", "@gtkx/config", "@gtkx/mcp", "vite", "@types/node", "@types/react", "typescript"]
@@ -93,6 +100,24 @@ function lastInfo(): string {
     return String(clack.log.info.mock.calls.at(-1)?.[0] ?? "");
 }
 
+function lastSpinnerLine(): SpinnerLine | undefined {
+    return spinnerLines.at(-1);
+}
+
+function trackSpinnerLine(level: SpinnerLine["level"]): (message?: string) => void {
+    return (message?: string) => {
+        spinnerLines.push({ level, message: message ?? "" });
+    };
+}
+
+function trackedSpinner(): ReturnType<typeof clack.spinner> {
+    return {
+        start: vi.fn(),
+        stop: vi.fn(trackSpinnerLine("done")),
+        error: vi.fn(trackSpinnerLine("failed")),
+    };
+}
+
 function recoverySteps(): string[] {
     return lastInfo().split("\n").slice(1).map((line) => line.trim());
 }
@@ -104,6 +129,54 @@ function partialOptions(overrides: Partial<CreateOptions> = {}): CreateOptions {
         isInteractive: true,
         ...overrides,
     };
+}
+
+async function answerPrompt(keystrokes: string, options: CreateOptions): Promise<string[]> {
+    const prompts = await vi.importActual<typeof import("@clack/prompts")>("@clack/prompts");
+    const input = new PassThrough();
+    const output = new PassThrough();
+    const frames: string[] = [];
+
+    output.on("data", (chunk: Buffer) => {
+        frames.push(stripVTControlCharacters(chunk.toString()));
+    });
+
+    clack.text.mockImplementation((textOptions) => {
+        const answered = prompts.text({ ...textOptions, input, output });
+        input.write(keystrokes);
+
+        return answered;
+    });
+
+    await scaffold(options);
+
+    return frames;
+}
+
+function answerApplicationId(keystrokes: string, name = "tasks"): Promise<string[]> {
+    return answerPrompt(keystrokes, {
+        name,
+        packageManager: "pnpm",
+        isTypescript: true,
+        shouldIncludeTesting: false,
+        isInteractive: true,
+    });
+}
+
+function answerProjectDirectory(keystrokes: string): Promise<string[]> {
+    return answerPrompt(keystrokes, partialOptions({ packageManager: "pnpm", isTypescript: true }));
+}
+
+async function expectArgumentRejected(name: string, message: string): Promise<void> {
+    clack.text.mockResolvedValue("prompted-app");
+    await expect(scaffold(partialOptions({ name }))).rejects.toThrow(message);
+    expect(lastError()).toBe(message);
+    expect(clack.text).not.toHaveBeenCalled();
+    expect(vol.readdirSync(TEST_DIR)).toEqual([]);
+}
+
+function scaffoldWithSuggestedId(name: string): Promise<void> {
+    return runNonInteractive({ name, applicationId: undefined });
 }
 
 async function captureInitialValue(detectedName: string | undefined): Promise<unknown> {
@@ -156,7 +229,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
     vi.clearAllMocks();
-    clack.spinner.mockImplementation(() => ({ start: vi.fn(), stop: vi.fn() }));
+    spinnerLines.length = 0;
+    clack.spinner.mockImplementation(trackedSpinner);
     clack.text.mockResolvedValue("");
     clack.select.mockImplementation((opts) => Promise.resolve(opts.initialValue));
     clack.confirm.mockResolvedValue(true);
@@ -364,6 +438,14 @@ describe("scaffold (install failure)", () => {
         expect(clack.log.warn).not.toHaveBeenCalled();
     });
 
+    it("announces the failed install on a failed spinner line instead of repeating it", async () => {
+        addDependencyMock.mockRejectedValueOnce(new Error("install failed"));
+        await expect(run()).rejects.toThrow(/Failed to install dependencies/);
+        expect(lastSpinnerLine()).toEqual({ level: "failed", message: "Failed to install dependencies" });
+        expect(clack.log.error).toHaveBeenCalledTimes(1);
+        expect(lastError()).toBe("install failed");
+    });
+
     it("recovers by adding the dependencies rather than a plain install", async () => {
         addDependencyMock.mockRejectedValueOnce(new Error("install failed"));
         await expect(run()).rejects.toThrow(/Failed to install dependencies/);
@@ -427,10 +509,11 @@ describe("scaffold (git initialization)", () => {
         expect(xMock).toHaveBeenNthCalledWith(3, "git", ["commit", "-m", "Initial commit"], expect.anything());
     });
 
-    it("swallows git initialization errors", async () => {
+    it("swallows git initialization errors and marks its spinner line as failed", async () => {
         xMock.mockRejectedValueOnce(new Error("git failed"));
         await expect(run()).resolves.toBeUndefined();
         expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(true);
+        expect(lastSpinnerLine()).toEqual({ level: "failed", message: "Failed to initialize git repository" });
     });
 });
 
@@ -480,6 +563,51 @@ describe("scaffold (prompting)", () => {
     });
 });
 
+describe("scaffold (application id prompt)", () => {
+    it("suggests the application id as a placeholder the typed answer replaces", async () => {
+        const frames = await answerApplicationId("com.gtkx.tutorial\r");
+        expect(frames.some((frame) => frame.includes("com.tasks.app"))).toBe(true);
+        expect(frames.filter((frame) => frame.includes("com.tasks.appc"))).toEqual([]);
+        expect(read(`${TEST_DIR}/tasks/gtkx.config.ts`)).toContain('applicationId: "com.gtkx.tutorial"');
+    });
+
+    it("scaffolds the suggested application id when the prompt is submitted empty", async () => {
+        await answerApplicationId("\r");
+        expect(read(`${TEST_DIR}/tasks/gtkx.config.ts`)).toContain('applicationId: "com.tasks.app"');
+    });
+
+    it("accepts an empty answer when the project name starts with a digit", async () => {
+        await answerApplicationId("\r", "42-app");
+        expect(read(`${TEST_DIR}/42-app/gtkx.config.ts`)).toContain('applicationId: "com._42app.app"');
+        expect(clack.log.error).not.toHaveBeenCalled();
+    });
+
+    it("keeps the prompt open instead of failing the run when the typed application id is invalid", async () => {
+        clack.isCancel.mockImplementation((value) => typeof value === "symbol");
+        await expect(answerApplicationId(`nodots\r${CANCEL_KEYSTROKE}`)).rejects.toThrow(/Operation canceled/);
+        expect(clack.text).toHaveBeenCalledTimes(1);
+        expect(clack.log.error).not.toHaveBeenCalled();
+    });
+});
+
+describe("scaffold (suggested application id)", () => {
+    it("prefixes a suggestion whose middle segment would start with a digit", async () => {
+        await scaffoldWithSuggestedId("2048");
+        expect(read(`${TEST_DIR}/2048/gtkx.config.ts`)).toContain('applicationId: "com._2048.app"');
+    });
+
+    it("suggests a valid id when the project name collapses to nothing", async () => {
+        await scaffoldWithSuggestedId("---");
+        expect(read(`${TEST_DIR}/---/gtkx.config.ts`)).toContain('applicationId: "com._.app"');
+    });
+
+    it("keeps the suggestion within the length the id format accepts", async () => {
+        await scaffoldWithSuggestedId("a".repeat(250));
+        const config = read(`${TEST_DIR}/${"a".repeat(250)}/gtkx.config.ts`);
+        expect(config).toContain(`applicationId: "com.${"a".repeat(247)}.app"`);
+    });
+});
+
 describe("scaffold (non-interactive and overwrite)", () => {
     it("rejects a flag-supplied name with an invalid format", async () => {
         await expect(runNonInteractive({ name: "Invalid_Name" })).rejects.toThrow(/lowercase letters/);
@@ -521,6 +649,64 @@ describe("scaffold (non-interactive and overwrite)", () => {
     });
 });
 
+describe("scaffold (unusable inputs)", () => {
+    it("reports an unknown package manager as one line naming the values it accepts", async () => {
+        await expect(runNonInteractive({ packageManager: "bun" })).rejects.toThrow(/Unknown package manager "bun"/);
+        expect(lastError()).toBe('Unknown package manager "bun". Expected one of: pnpm, npm, yarn');
+        expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(false);
+    });
+
+    it("reports a target that already exists as a file instead of reading it as a directory", async () => {
+        seedFile("test-app", "not a directory");
+        await expect(runNonInteractive()).rejects.toThrow(/is not a directory/);
+        expect(lastError()).toBe('Target "test-app" is not a directory');
+        expect(read(`${TEST_DIR}/test-app`)).toBe("not a directory");
+    });
+
+    it("reports a project directory it cannot create once, on a failed spinner line", async () => {
+        seedFile("apps", "not a directory");
+        const scaffolded = runNonInteractive({ name: "apps/my-app" });
+        await expect(scaffolded).rejects.toThrow(/Failed to create the project structure/);
+        expect(spinnerLines).toEqual([{ level: "failed", message: "Failed to create the project structure" }]);
+        expect(clack.log.error).toHaveBeenCalledTimes(1);
+        expect(lastError()).toContain("ENOTDIR");
+        expect(lastError()).toContain("apps/my-app");
+        expect(lastError()).not.toContain("Failed to create the project structure");
+    });
+
+    it("rejects an omitted project directory without prompting", async () => {
+        const scaffolded = scaffold({ applicationId: "org.test.app", isInteractive: false });
+        await expect(scaffolded).rejects.toThrow(/Project directory is required/);
+        expect(lastError()).toBe("Project directory is required");
+        expect(clack.text).not.toHaveBeenCalled();
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(false);
+    });
+
+    it("rejects an empty project directory the way an omitted one is rejected", async () => {
+        await expect(runNonInteractive({ name: "" })).rejects.toThrow(/Project directory is required/);
+        expect(lastError()).toBe("Project directory is required");
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(false);
+    });
+
+    it("rejects an empty flag-supplied application id", async () => {
+        await expect(runNonInteractive({ applicationId: "" })).rejects.toThrow(/Application ID is required/);
+        expect(lastError()).toBe("Application ID is required");
+        expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(false);
+    });
+
+    it("rejects a flag-supplied application id that is not reverse domain notation", async () => {
+        await expect(runNonInteractive({ applicationId: "nodots" })).rejects.toThrow(/reverse domain notation/);
+        expect(lastError()).toBe("Application ID must be reverse domain notation (e.g., com.example.myapp)");
+        expect(vol.existsSync(`${TEST_DIR}/test-app`)).toBe(false);
+    });
+
+    it("rejects a project directory left empty by sanitization", async () => {
+        await expect(runNonInteractive({ name: "/" })).rejects.toThrow(/Project directory is required/);
+        expect(lastError()).toBe("Project directory is required");
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(false);
+    });
+});
+
 describe("scaffold (overwrite)", () => {
     it("preserves .git while clearing other files when --overwrite is set", async () => {
         seedFile("test-app/.git/config", "[core]");
@@ -539,6 +725,27 @@ describe("scaffold (overwrite)", () => {
     });
 });
 
+describe("scaffold (cancellation after the overwrite answer)", () => {
+    it("keeps the target contents when the package manager prompt is canceled", async () => {
+        seedFile("test-app/keep.txt", "keep");
+        seedFile("test-app/src/main.js", "work");
+        clack.select.mockResolvedValueOnce("__CANCEL__");
+        clack.isCancel.mockImplementation((value) => value === "__CANCEL__");
+        await expect(scaffold(partialOptions({ name: "test-app" }))).rejects.toThrow(/Operation canceled/);
+        expect(read(`${TEST_DIR}/test-app/keep.txt`)).toBe("keep");
+        expect(read(`${TEST_DIR}/test-app/src/main.js`)).toBe("work");
+    });
+
+    it("keeps the target contents when the TypeScript prompt is canceled", async () => {
+        seedFile("test-app/keep.txt", "keep");
+        clack.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce("__CANCEL__");
+        clack.isCancel.mockImplementation((value) => value === "__CANCEL__");
+        const canceled = scaffold(partialOptions({ name: "test-app", packageManager: "pnpm" }));
+        await expect(canceled).rejects.toThrow(/Operation canceled/);
+        expect(read(`${TEST_DIR}/test-app/keep.txt`)).toBe("keep");
+    });
+});
+
 describe("scaffold (directory target)", () => {
     it("scaffolds into a nested path and derives the package name from its basename", async () => {
         await runNonInteractive({ name: "apps/my-app" });
@@ -553,5 +760,43 @@ describe("scaffold (directory target)", () => {
         const pkg = readJson(`${TEST_DIR}/package.json`);
         expect(pkg.name).toBe("test-workspace");
         expect(lastNote()).not.toContain("cd .");
+    });
+
+    it("omits the cd step when an absolute target names the current directory", async () => {
+        await runNonInteractive({ name: TEST_DIR });
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(true);
+        expect(lastNote()).not.toContain("cd ");
+    });
+});
+
+describe("scaffold (interactive target argument)", () => {
+    it("prompts for the project directory when the argument is omitted", async () => {
+        clack.text.mockResolvedValue("prompted-app");
+        await scaffold(partialOptions());
+        expect(clack.text).toHaveBeenCalled();
+        expect(vol.existsSync(`${TEST_DIR}/prompted-app/package.json`)).toBe(true);
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(false);
+    });
+
+    it("rejects an empty argument instead of prompting for another directory", async () => {
+        await expectArgumentRejected("", "Project directory is required");
+    });
+
+    it("rejects an argument left empty by sanitization instead of prompting for another directory", async () => {
+        await expectArgumentRejected("/", "Project directory is required");
+    });
+
+    it("keeps the prompt open instead of scaffolding when the typed project directory is invalid", async () => {
+        clack.isCancel.mockImplementation((value) => typeof value === "symbol");
+        const answered = answerProjectDirectory(`Bad_Name\r${CANCEL_KEYSTROKE}`);
+        await expect(answered).rejects.toThrow(/Operation canceled/);
+        expect(clack.text).toHaveBeenCalledTimes(1);
+        expect(clack.log.error).not.toHaveBeenCalled();
+        expect(vol.existsSync(`${TEST_DIR}/Bad_Name`)).toBe(false);
+        expect(vol.existsSync(`${TEST_DIR}/package.json`)).toBe(false);
+    });
+
+    it("rejects an argument with an invalid format instead of prompting for another directory", async () => {
+        await expectArgumentRejected("Invalid_Name", INVALID_PROJECT_NAME_ERROR);
     });
 });

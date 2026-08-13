@@ -169,7 +169,7 @@ async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, vari
         "--",
         "--application-id",
         variant.applicationId,
-        "--pm",
+        "--package-manager",
         "npm",
         "--vitest",
     ];

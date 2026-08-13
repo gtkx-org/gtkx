@@ -1,5 +1,6 @@
 export type { ResolvedReactCompilerOptions } from "./config.ts";
 export {
+    APPLICATION_ID_MAX_LENGTH,
     isValidApplicationId,
     resolveElementComponents,
     resolveElementProps,

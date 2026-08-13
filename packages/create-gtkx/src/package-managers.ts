@@ -12,4 +12,10 @@ const PACKAGE_MANAGER_FLAG_DESCRIPTION = `Package manager (${PACKAGE_MANAGER_VAL
 const isKnownPackageManager = (name: string): name is PackageManager =>
     (PACKAGE_MANAGER_VALUES as string[]).includes(name);
 
-export { PACKAGE_MANAGERS, PACKAGE_MANAGER_FLAG_DESCRIPTION, isKnownPackageManager, type PackageManager };
+export {
+    PACKAGE_MANAGERS,
+    PACKAGE_MANAGER_FLAG_DESCRIPTION,
+    PACKAGE_MANAGER_VALUES,
+    isKnownPackageManager,
+    type PackageManager,
+};
