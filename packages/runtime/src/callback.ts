@@ -251,12 +251,8 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
     return toNative(returnDescriptor, primary);
 };
 
-const planLengthSources = (
-    effectiveTypes: Descriptor[],
-    returnDescriptor: Descriptor,
-    hasFoldedLengths: boolean,
-): LengthSources =>
-    hasFoldedLengths ? foldedLengthSources(effectiveTypes, returnDescriptor) : new Map<number, LengthSource[]>();
+const planLengthSources = (spec: CallbackSpec, hasFoldedLengths: boolean): LengthSources =>
+    hasFoldedLengths ? foldedLengthSources(spec) : new Map<number, LengthSource[]>();
 
 const getEffectiveTypes = (spec: CallbackSpec): Descriptor[] => {
     const { userDataIndex } = spec;
@@ -282,7 +278,7 @@ function wrapCallback(fn: Callback, spec: CallbackSpec, kind: CallbackKind): Cal
         returnDescriptor: spec.returnDescriptor,
         start,
         isInstanceBound,
-        lengthSources: planLengthSources(effectiveTypes, spec.returnDescriptor, hasFoldedLengths),
+        lengthSources: planLengthSources(spec, hasFoldedLengths),
         hasOutParams: haveOutParamArgs(effectiveTypes, start),
         hasRefOutParams: haveRefOutParamArgs(effectiveTypes, start),
     };

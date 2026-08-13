@@ -30,7 +30,7 @@ function vfuncArg(descriptor: Descriptor, isFoldedLength: boolean): Arg {
 }
 
 function vfuncArgs(descriptor: VfuncDescriptor): Arg[] {
-    const lengths = foldedLengthSources(descriptor.argDescriptors, descriptor.returnDescriptor);
+    const lengths = foldedLengthSources(descriptor);
 
     return descriptor.argDescriptors.map((argDescriptor, index) => vfuncArg(argDescriptor, lengths.has(index)));
 }
