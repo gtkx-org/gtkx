@@ -23,7 +23,7 @@ const flatpakTarget: DeployTarget = {
     prefix: PREFIX,
     tools: [FLATPAK, FLATPAK_BUILDER, DESKTOP_FILE_VALIDATE, APPSTREAMCLI],
     render: (payload) => renderManifests(payload),
-    pack: (payload) => Promise.resolve(packFlatpak(payload)),
+    pack: (payload) => Promise.try(() => packFlatpak(payload)),
 };
 
 const flatpakDir = (settings: DeploySettings): string => join(settings.paths.targets, TARGET_DIR);
