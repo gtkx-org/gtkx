@@ -70,11 +70,11 @@ metainfo's developer, homepage and screenshots are yours to correct.
 The service file is what makes `DBusActivatable=true` in the desktop entry true:
 `flatpak build-export` refuses to export an app whose desktop entry claims D-Bus
 activation without a matching `share/dbus-1/services/<app id>.service`, so both
-files ship together or neither does. The export is where a half-finished rename
-bites hardest. Files under `share/applications`, `share/dbus-1/services`,
-`share/metainfo` and `share/icons` are exported only while their names start
-with the application ID, and one left on the old ID is dropped without a word,
-so the build succeeds and installs an app with no launcher and no activation.
-The service file also has to exist under `~/.local/share/dbus-1/services/` for a
-plain user-prefix install, where its `Exec` names the installed binary instead of
-`/app/bin`.
+files ship together or neither does. A half-finished rename bites there too:
+files under `share/applications`, `share/dbus-1/services`, `share/metainfo` and
+`share/icons` are exported only while their names start with the application ID,
+and one left on the old ID draws a single `non-allowed export filename` line
+from `flatpak build-finish` before the build succeeds anyway, installing an app
+with no launcher and no activation. The service file also has to exist under
+`~/.local/share/dbus-1/services/` for a plain user-prefix install, where its
+`Exec` names the installed binary instead of `/app/bin`.

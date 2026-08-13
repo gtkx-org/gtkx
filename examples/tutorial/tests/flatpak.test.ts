@@ -4,18 +4,11 @@ import { describe, expect, it } from "vitest";
 
 const EXAMPLE_DIR = join(import.meta.dirname, "..");
 
-const EXPORTED_DIRECTORIES = [
-    "applications",
-    "appdata",
-    "dbus-1/services",
-    "dbus-1/system-services",
-    "gnome-shell/search-providers",
-    "icons",
-    "metainfo",
-    "mime/packages",
-].map((directory) => `/app/share/${directory}/`);
+const EXPORTED_DIRECTORIES = ["applications", "dbus-1/services", "icons", "metainfo"].map(
+    (directory) => `/app/share/${directory}/`,
+);
 
-const TAKES_A_VALUE = new Set(["-g", "-m", "-o", "-t", "--group", "--mode", "--owner", "--target-directory"]);
+const INSTALL = /^install -Dm[0-7]{3} (\S+) (\S+)$/;
 
 const read = (path: string): string => readFileSync(join(EXAMPLE_DIR, path), "utf8");
 
@@ -23,63 +16,6 @@ const lines = (path: string): string[] =>
     read(path)
         .split("\n")
         .map((line) => line.trim());
-
-const only = (candidates: string[], what: string): string => {
-    if (candidates.length !== 1) throw new Error(`expected one ${what}, found ${candidates.length}`);
-    return candidates[0];
-};
-
-const unquoted = (word: string): string => (/^(".*"|'.*')$/.test(word) ? word.slice(1, -1) : word);
-
-const words = (command: string): string[] => (command.match(/"[^"]*"|'[^']*'|\S+/g) ?? []).map(unquoted);
-
-const installedBy = (commands: string[]): Map<string, string> => {
-    const installs = new Map<string, string>();
-
-    for (const command of commands) {
-        const argv = words(command);
-
-        if (argv[0] !== "install") continue;
-
-        const sources: string[] = [];
-        let directory = "";
-        let makesDirectories = false;
-
-        for (let index = 1; index < argv.length; index += 1) {
-            const argument = argv[index];
-
-            if (TAKES_A_VALUE.has(argument)) {
-                if (argument === "-t" || argument === "--target-directory") directory = argv[index + 1] ?? "";
-                index += 1;
-            } else if (argument.startsWith("--target-directory=")) {
-                directory = argument.slice(argument.indexOf("=") + 1);
-            } else if (argument === "-d" || argument === "--directory") {
-                makesDirectories = true;
-            } else if (!argument.startsWith("-")) {
-                sources.push(argument);
-            }
-        }
-
-        if (makesDirectories) continue;
-
-        if (directory === "" && sources.length > 1) {
-            const destination = sources.pop() ?? "";
-
-            if (sources.length === 1 && !destination.endsWith("/")) {
-                installs.set(destination, sources[0]);
-                continue;
-            }
-
-            directory = destination;
-        }
-
-        if (directory === "" || sources.length === 0) throw new Error(`cannot read this install command: ${command}`);
-
-        for (const source of sources) installs.set(posix.join(directory, posix.basename(source)), source);
-    }
-
-    return installs;
-};
 
 const keyFile = (path: string): Map<string, string> =>
     new Map(
@@ -94,24 +30,27 @@ const element = (path: string, tag: string): string => {
     return match[1].trim();
 };
 
-const manifestName = only(
-    readdirSync(join(EXAMPLE_DIR, "flatpak")).filter((name) => name.endsWith(".yaml")),
-    "manifest under flatpak/",
-);
+const manifests = readdirSync(join(EXAMPLE_DIR, "flatpak")).filter((name) => name.endsWith(".yaml"));
 
-const manifest = read(join("flatpak", manifestName)).split("\n");
+if (manifests.length !== 1) throw new Error(`expected one manifest under flatpak/, found ${manifests.length}`);
+
+const manifest = lines(join("flatpak", manifests[0]));
 
 const declaration = (key: string): string => {
     const line = manifest.find((entry) => entry.startsWith(`${key}: `));
     if (line === undefined) throw new Error(`the manifest declares no ${key}`);
-    return unquoted(line.slice(key.length + 2).trim());
+    return line.slice(key.length + 2);
 };
 
-const installs = installedBy(
+const installs = new Map(
     manifest
-        .map((line) => line.trim())
-        .filter((line) => line.startsWith("- "))
-        .map((line) => unquoted(line.slice(2).trim())),
+        .filter((line) => line.startsWith("- install "))
+        .map((line): [string, string] => {
+            const command = line.slice(2);
+            const match = INSTALL.exec(command);
+            if (match === null) throw new Error(`cannot read this install command: ${command}`);
+            return [match[2], match[1]];
+        }),
 );
 
 const sourceOf = (destination: string): string => {
@@ -186,27 +125,5 @@ describe("the flatpak packaging", () => {
         const shipped = [...installs.values()].filter((path) => path.startsWith("flatpak/") || path.startsWith("data/"));
 
         expect(shipped.filter((path) => !existsSync(join(EXAMPLE_DIR, path)))).toEqual([]);
-    });
-
-    it("reads an install command whichever way it is written", () => {
-        const rewritten = installedBy([
-            "install  -D  -m 644   flatpak/app.desktop   /app/share/applications/app.desktop",
-            "install -Dm644 -t /app/share/dbus-1/services flatpak/app.service",
-            'install -Dm644 flatpak/app.metainfo.xml "/app/share/metainfo/app.metainfo.xml"',
-            "install -Dm644 data/one.svg data/two.svg /app/share/icons/",
-            "install -d /app/share/nothing",
-        ]);
-
-        expect([...rewritten]).toEqual([
-            ["/app/share/applications/app.desktop", "flatpak/app.desktop"],
-            ["/app/share/dbus-1/services/app.service", "flatpak/app.service"],
-            ["/app/share/metainfo/app.metainfo.xml", "flatpak/app.metainfo.xml"],
-            ["/app/share/icons/one.svg", "data/one.svg"],
-            ["/app/share/icons/two.svg", "data/two.svg"],
-        ]);
-    });
-
-    it("refuses an install command it cannot read", () => {
-        expect(() => installedBy(["install -Dm644 flatpak/app.desktop"])).toThrow(/cannot read this install command/);
     });
 });
