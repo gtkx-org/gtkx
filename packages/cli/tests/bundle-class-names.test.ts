@@ -7,27 +7,40 @@ const OUT_DIR = "dist";
 const CLASS_PREFIX = "class-name=";
 const FUNCTION_PREFIX = "function-name=";
 const REGISTERED_PREFIX = "registered-name=";
+const WORKER_PREFIX = "worker-name=";
 const CLASS_NAME = "ProbeCounter";
 const SUBCLASS_NAME = "ProbeGauge";
+const WORKER_CLASS_NAME = "ProbeIndexer";
 const FUNCTION_NAME = "probeFactory";
 const DERIVE_FAILURE = "cannot derive a name";
 const REGISTRY_MODULE = "probe-registry.mjs";
+const WORKER_MODULE = "probe-worker.mjs";
 const REGISTRY_SOURCE_PATH = join("src", REGISTRY_MODULE);
+const WORKER_SOURCE_PATH = join("src", WORKER_MODULE);
 
-const REGISTRY_MODULE_SOURCE = String.raw`const registerClass = (klass) => {
+const REGISTRY_MODULE_SOURCE = `const registerClass = (klass, report) => {
     const name = klass.name;
 
     if (!name) {
         throw new Error("${DERIVE_FAILURE}");
     }
 
-    process.stdout.write("${REGISTERED_PREFIX}" + name + "\n");
+    report(name);
 };
 
 export { registerClass };
 `;
 
-const APP_ENTRY = String.raw`import { registerClass } from "./${REGISTRY_MODULE}";
+const WORKER_MODULE_SOURCE = `import { parentPort } from "node:worker_threads";
+import { registerClass } from "./${REGISTRY_MODULE}";
+
+class ${WORKER_CLASS_NAME} {}
+
+registerClass(${WORKER_CLASS_NAME}, (name) => parentPort?.postMessage(name));
+`;
+
+const APP_ENTRY = String.raw`import { Worker } from "node:worker_threads";
+import { registerClass } from "./${REGISTRY_MODULE}";
 
 class ${CLASS_NAME} {}
 
@@ -40,7 +53,18 @@ process.stdout.write("${FUNCTION_PREFIX}" + ${FUNCTION_NAME}.name + "\n");
 
 class ${SUBCLASS_NAME} extends ${CLASS_NAME} {}
 
-registerClass(${SUBCLASS_NAME});
+registerClass(${SUBCLASS_NAME}, (name) => process.stdout.write("${REGISTERED_PREFIX}" + name + "\n"));
+
+const worker = new Worker(new URL("./${WORKER_MODULE}", import.meta.url));
+
+worker.on("message", (message) => {
+    process.stdout.write("${WORKER_PREFIX}" + message + "\n");
+});
+
+worker.on("error", (error) => {
+    process.stderr.write(error.message + "\n");
+    process.exitCode = 1;
+});
 `;
 
 const printedName = (prefix: string, name: string): string => prefix + name + "\n";
@@ -52,7 +76,10 @@ describe("gtkx build (identifier names)", () => {
         probe = await probeAppProject({
             applicationId: "com.gtkx.clikeepnamesprobe",
             entry: APP_ENTRY,
-            files: { [REGISTRY_SOURCE_PATH]: REGISTRY_MODULE_SOURCE },
+            files: {
+                [REGISTRY_SOURCE_PATH]: REGISTRY_MODULE_SOURCE,
+                [WORKER_SOURCE_PATH]: WORKER_MODULE_SOURCE,
+            },
             outDir: OUT_DIR,
             packageType: "module",
             prefix: "gtkx-bundle-keep-names-",
@@ -78,5 +105,9 @@ describe("gtkx build (identifier names)", () => {
 
     it("keeps the name of a class the bundler inlines into the call that reads it", () => {
         expect(probe.run.stdout).toContain(printedName(REGISTERED_PREFIX, SUBCLASS_NAME));
+    });
+
+    it("keeps that inlined name in an emitted worker chunk too", () => {
+        expect(probe.run.stdout).toContain(printedName(WORKER_PREFIX, WORKER_CLASS_NAME));
     });
 });

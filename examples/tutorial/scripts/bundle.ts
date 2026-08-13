@@ -23,7 +23,6 @@ async function bundle() {
         format: "cjs",
         outfile: join(projectRoot, "dist/bundle.cjs"),
         minify: true,
-        keepNames: true,
         banner: {
             js: 'var __import_meta_url = require("url").pathToFileURL(__filename).href;',
         },
