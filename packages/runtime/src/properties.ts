@@ -80,6 +80,8 @@ const typeLabel = (type: bigint): string => typeName(type) ?? String(type);
 const defaultValueFor = (handle: ExternalObject<Handle>): ExternalObject<Handle> =>
     paramSpecDefaultValue(handle) as ExternalObject<Handle>;
 
+const heldValue = (value: unknown): unknown => value ?? null;
+
 const holdsReason = (check: PropertyCheck): string =>
     `the property holds values of type '${typeLabel(check.valueType)}'`;
 
@@ -224,11 +226,11 @@ function readStored(instance: Record<symbol, unknown>, accessor: PropertyAccesso
 }
 
 function storeValue(instance: Record<symbol, unknown>, accessor: PropertyAccessor, value: unknown): void {
-    instance[accessor.storage] = value;
+    instance[accessor.storage] = heldValue(value);
 }
 
 function writeStored(instance: Record<symbol, unknown>, accessor: PropertyAccessor, value: unknown): void {
-    if (readStored(instance, accessor) === value) {
+    if (readStored(instance, accessor) === heldValue(value)) {
         return;
     }
 
@@ -239,13 +241,12 @@ function writeStored(instance: Record<symbol, unknown>, accessor: PropertyAccess
 function writeProperty(instance: object, accessor: PropertyAccessor, value: unknown): void {
     const stored = instance as Record<symbol, unknown>;
 
-    if (readStored(stored, accessor) === value) {
+    if (readStored(stored, accessor) === heldValue(value)) {
         return;
     }
 
     assertValueAccepted(instance, accessor, value);
-    storeValue(stored, accessor, value);
-    (instance as NotifyingObject).notify?.(accessor.propertyName);
+    writeStored(stored, accessor, value);
 }
 
 function storedGetter(accessor: PropertyAccessor): (this: object) => unknown {
