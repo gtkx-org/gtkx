@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { createServer, type Plugin, type ViteDevServer } from "vite";
 import { describe, expect, it } from "vitest";
 import { missingImportName } from "../../src/dev/missing-import.js";
-import { createDevServerConfig } from "../../src/dev/vite-dev-server.js";
+import { createDevServerConfig, type DevServerConfig, isServerConfigFile } from "../../src/dev/vite-dev-server.js";
 
 const BURST_WRITES = 20;
 const BURST_INTERVAL_MS = 10;
@@ -14,6 +14,15 @@ const LIFECYCLE_WAIT_MS = WATCH_TEST_TIMEOUT_MS / 4;
 const WATCH_EVENTS = ["add", "change", "unlink"] as const;
 const THEME_SOURCE = "export const marker = 'dark';\n";
 const IMPORTING_APP = "import { marker as theme } from './theme.js';\nexport const marker = theme;\n";
+const VITE_CONFIG_SOURCE = "export default { clearScreen: false };\n";
+const ENV_SOURCE = "VITE_PROBE=1\n";
+
+const RESOLVED_CONFIG: DevServerConfig = {
+    configFile: "/proj/vite.config.ts",
+    configFileDependencies: ["/proj/vite.shared.ts"],
+    envDir: "/proj",
+    mode: "development",
+};
 
 const isKeptInternal = (patterns: RegExp[], id: string): boolean => patterns.some((pattern) => pattern.test(id));
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -37,9 +46,13 @@ const burstWrites = async (file: string): Promise<void> => {
     }
 };
 
-const watchProbe = async (probe: (server: ViteDevServer, root: string) => Promise<void>): Promise<void> => {
+const watchProbe = async (
+    probe: (server: ViteDevServer, root: string) => Promise<void>,
+    seed: (root: string) => void = (): void => undefined,
+): Promise<void> => {
     const root = mkdtempSync(join(tmpdir(), "gtkx-dev-watch-"));
     writeFileSync(join(root, "app.tsx"), marker(0));
+    seed(root);
     const server = await createServer({ ...createDevServerConfig(root, []), logLevel: "silent" });
 
     try {
@@ -124,6 +137,25 @@ const reloadsAcrossMissingImport = async (): Promise<string[]> => {
     return reloads;
 };
 
+const selfRestartReport = async (
+    name: string,
+    source: string,
+    seed: (root: string) => void = (): void => undefined,
+): Promise<{ isFlagged: boolean; isWatcherReplaced: boolean }> => {
+    const report = { isFlagged: false, isWatcherReplaced: false };
+
+    await watchProbe(async (server, root) => {
+        const file = join(root, name);
+        const watcher = server.watcher;
+        writeFileSync(file, source);
+        await waitUntil(() => server.watcher !== watcher, LIFECYCLE_WAIT_MS);
+        report.isWatcherReplaced = server.watcher !== watcher;
+        report.isFlagged = isServerConfigFile(server.config, file);
+    }, seed);
+
+    return report;
+};
+
 const removedModuleReport = async (): Promise<{ events: string[]; removed: string; isStillKnown: boolean }> => {
     const report = { events: [] as string[], removed: "", isStillKnown: false };
 
@@ -192,6 +224,53 @@ describe("createDevServerConfig", () => {
             expect(isKeptInternal(noExternal, id), `${id} must be external`).toBe(false);
         }
     });
+});
+
+describe("isServerConfigFile", () => {
+    it("names the config file and the files it depends on", () => {
+        expect(isServerConfigFile(RESOLVED_CONFIG, "/proj/vite.config.ts")).toBe(true);
+        expect(isServerConfigFile(RESOLVED_CONFIG, "/proj/vite.shared.ts")).toBe(true);
+    });
+
+    it("names every env file vite reads for the running mode", () => {
+        for (const name of [".env", ".env.local", ".env.development", ".env.development.local"]) {
+            expect(isServerConfigFile(RESOLVED_CONFIG, `/proj/${name}`), `${name} restarts the server`).toBe(true);
+        }
+    });
+
+    it("leaves source files and the env files of other modes to the module pipeline", () => {
+        expect(isServerConfigFile(RESOLVED_CONFIG, "/proj/src/app.tsx")).toBe(false);
+        expect(isServerConfigFile(RESOLVED_CONFIG, "/proj/.env.production")).toBe(false);
+    });
+
+    it("names no env file when the project turned the env directory off", () => {
+        expect(isServerConfigFile({ ...RESOLVED_CONFIG, envDir: false }, "/proj/.env")).toBe(false);
+    });
+});
+
+describe("createDevServerConfig (the restarts vite runs on its own)", () => {
+    it(
+        "hands the runner an env change it must act on before vite replaces the watcher underneath it",
+        { timeout: WATCH_TEST_TIMEOUT_MS },
+        async () => {
+            expect(await selfRestartReport(".env", ENV_SOURCE)).toEqual({
+                isFlagged: true,
+                isWatcherReplaced: true,
+            });
+        },
+    );
+
+    it(
+        "hands the runner a vite config change it must act on before vite replaces the watcher underneath it",
+        { timeout: WATCH_TEST_TIMEOUT_MS },
+        async () => {
+            const report = await selfRestartReport("vite.config.ts", `${VITE_CONFIG_SOURCE}\n`, (root) => {
+                writeFileSync(join(root, "vite.config.ts"), VITE_CONFIG_SOURCE);
+            });
+
+            expect(report).toEqual({ isFlagged: true, isWatcherReplaced: true });
+        },
+    );
 });
 
 describe("createDevServerConfig (the watcher it configures)", () => {

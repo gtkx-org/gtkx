@@ -83,6 +83,12 @@ type OnCause = (cause: unknown) => void;
 
 const ENTRY = "/abs/src/main.tsx";
 const PARKED = "Waiting for a change to restart the application...";
+const PROJECT_ROOT = "/x";
+const VITE_CONFIG_FILE = "/x/vite.config.ts";
+const CONFIG_DEPENDENCY_FILE = "/x/vite.shared.ts";
+const ENV_FILE = "/x/.env";
+const MODE_ENV_FILE = "/x/.env.development.local";
+const OTHER_MODE_ENV_FILE = "/x/.env.production";
 const WATCHED_FILE = "/x/component.tsx";
 const OTHER_IMPORTER = "/x/panel.tsx";
 const MISSING_FILE = "/x/theme.ts";
@@ -178,6 +184,12 @@ const createFakeServer = (): FakeServer => {
 
     return {
         close: vi.fn<DevServer["close"]>(() => Promise.resolve()),
+        config: {
+            configFile: VITE_CONFIG_FILE,
+            configFileDependencies: [CONFIG_DEPENDENCY_FILE],
+            envDir: PROJECT_ROOT,
+            mode: "development",
+        },
         moduleGraph: {
             getModuleById: vi.fn<DevServer["moduleGraph"]["getModuleById"]>((id) => modules.get(id)),
             invalidateModule: vi.fn<DevServer["moduleGraph"]["invalidateModule"]>((invalidated) => {
@@ -541,6 +553,24 @@ const emitWatchEventAndSettle = async (
 ): Promise<void> => {
     harness.server.watcher.emit(event, file);
     await settleQueue();
+};
+
+const watchServerConfigFile = async (
+    event: DevServerWatchEvent,
+    changedPath: string,
+    prepare: (harness: Harness) => void = (): void => undefined,
+): Promise<Harness> => {
+    const harness = await startAppHarness();
+    prepare(harness);
+    await emitWatchEventAndSettle(harness, event, changedPath);
+
+    return harness;
+};
+
+const expectServerConfigRestart = (harness: Harness, changedPath: string): void => {
+    expect(loggedMessages(harness)).toContain(`Server config changed: ${changedPath}`);
+    expect(harness.server.close).toHaveBeenCalled();
+    expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
 };
 
 const failResolveOnSave = async (harness: Harness, importerPath: string): Promise<void> => {
@@ -1018,6 +1048,43 @@ describe("createDevRunner (file watcher dispatch)", () => {
         expect(harness.server.ssrLoadModule).toHaveBeenCalledTimes(1);
         expect(harness.server.close).toHaveBeenCalled();
         expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    });
+});
+
+describe("createDevRunner (the files vite restarts its own dev server for)", () => {
+    it("restarts the process when the vite config the server resolved is saved", async () => {
+        const harness = await watchServerConfigFile("change", VITE_CONFIG_FILE);
+        expectServerConfigRestart(harness, VITE_CONFIG_FILE);
+    });
+
+    it("restarts the process when a file the vite config depends on is saved", async () => {
+        const harness = await watchServerConfigFile("change", CONFIG_DEPENDENCY_FILE);
+        expectServerConfigRestart(harness, CONFIG_DEPENDENCY_FILE);
+    });
+
+    it("restarts the process when the env file the server read is saved", async () => {
+        const harness = await watchServerConfigFile("change", ENV_FILE);
+        expectServerConfigRestart(harness, ENV_FILE);
+    });
+
+    it("restarts the process when an env file for the running mode appears", async () => {
+        const harness = await watchServerConfigFile("add", MODE_ENV_FILE);
+        expectServerConfigRestart(harness, MODE_ENV_FILE);
+    });
+
+    it("restarts the process rather than patching a config file the module graph happens to hold", async () => {
+        const harness = await watchServerConfigFile("change", VITE_CONFIG_FILE, (started) => {
+            defineModule(started, VITE_CONFIG_FILE, { ssrModule: { isBoundary: true } });
+        });
+
+        expectServerConfigRestart(harness, VITE_CONFIG_FILE);
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+    });
+
+    it("leaves an env file for another mode to the module pipeline", async () => {
+        const harness = await watchServerConfigFile("change", OTHER_MODE_ENV_FILE);
+        expect(harness.exit).not.toHaveBeenCalled();
+        expect(harness.server.close).not.toHaveBeenCalled();
     });
 });
 

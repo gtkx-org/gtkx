@@ -12,6 +12,7 @@ import {
     type DevServer,
     type DevServerChangedModule,
     type DevServerWatchEvent,
+    isServerConfigFile,
 } from "./vite-dev-server.js";
 
 type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
@@ -315,8 +316,19 @@ const createShutdownController = (server: DevServer, deps: DevRunnerDeps): Shutd
     };
 };
 
+const restartForServerConfig = async (session: DevSession, changedPath: string): Promise<void> => {
+    session.deps.log(`Server config changed: ${changedPath}`);
+    await requestRestart(session);
+};
+
 const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {
     if (session.controller.isShuttingDown()) {
+        return;
+    }
+
+    if (isServerConfigFile(session.server.config, change.path)) {
+        await restartForServerConfig(session, change.path);
+
         return;
     }
 
