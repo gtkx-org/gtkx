@@ -1,6 +1,7 @@
 import { posix, relative } from "node:path";
 import type { DeployPayload, DeploySettings } from "../types.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
+import { renderDbusService } from "../freedesktop/dbus-service.js";
 import { renderDesktopEntry } from "../freedesktop/desktop-entry.js";
 import { renderMetainfo } from "../freedesktop/metainfo.js";
 import { optional } from "../nfpm/optional.js";
@@ -17,6 +18,7 @@ import {
 const NODE_EXTENSION_PATH = "/usr/lib/sdk/node24";
 const LAUNCHER_FILENAME = "launcher.sh";
 const MODULE_BUILD_ROOT = "/run/build";
+const RUNTIME_PREFIX = "/app";
 const NPM_CACHE_DIR = "flatpak-node/npm-cache";
 const YARN_MIRROR_DIR = "flatpak-node/yarn-mirror";
 const PLAIN_ARGUMENT = /^[\w./-]+$/;
@@ -54,6 +56,20 @@ const runtimeInstallCommands = (settings: DeploySettings): string[] => {
     ];
 };
 
+const activationSource = (settings: DeploySettings): FlatpakModule[] =>
+    settings.isDbusActivatable
+        ? [inlineSource(`${settings.applicationId}.service`, renderDbusService(settings, RUNTIME_PREFIX))]
+        : [];
+
+const activationInstallCommands = (settings: DeploySettings): string[] =>
+    settings.isDbusActivatable
+        ? [installCommand(
+                `${settings.applicationId}.service`,
+                `${DESTINATION}/share/dbus-1/services/${settings.applicationId}.service`,
+                "m644",
+            )]
+        : [];
+
 const metadataInstallCommands = (settings: DeploySettings): string[] => [
     installCommand(
         `${settings.applicationId}.desktop`,
@@ -65,6 +81,7 @@ const metadataInstallCommands = (settings: DeploySettings): string[] => [
         `${DESTINATION}/share/metainfo/${settings.applicationId}.metainfo.xml`,
         "m644",
     ),
+    ...activationInstallCommands(settings),
 ];
 
 const schemaInstallCommands = (settings: DeploySettings): string[] =>
@@ -123,6 +140,7 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
             inlineSource(`${settings.applicationId}.desktop`, renderDesktopEntry(settings)),
             inlineSource(`${settings.applicationId}.metainfo.xml`, renderMetainfo(settings)),
             inlineSource(LAUNCHER_FILENAME, renderLauncher(settings)),
+            ...activationSource(settings),
         ],
         "build-commands": [
             installCommandFor(manager),
