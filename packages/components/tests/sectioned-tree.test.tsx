@@ -3,8 +3,8 @@ import type { ReactNode, RefObject } from "react";
 import { ColumnView, ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { act, getWidgetText, render, screen, waitFor, within } from "@gtkx/testing";
-import { createRef } from "react";
+import { render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { expectRowTexts } from "./helpers/row-texts.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
@@ -27,6 +27,28 @@ type ListFixture = {
     to: (next: ListDraw) => Promise<void>;
 };
 
+type ColumnFixture = {
+    ref: RefObject<Gtk.ColumnView | null>;
+    to: (next: ListDraw) => Promise<void>;
+};
+
+type StepFixture = {
+    ref: RefObject<Gtk.Widget | null>;
+    to: (next: ListDraw) => Promise<void>;
+};
+
+type SectionStep = {
+    from: ListDraw;
+    before: string[];
+    next: ListDraw;
+    after: string[];
+};
+
+type StatefulProps = {
+    listRef: RefObject<Gtk.ListView | null>;
+    onExpandedChange: (ids: string[]) => void;
+};
+
 const firstSection: ListSection<string, Named> = {
     id: "s1",
     value: "One",
@@ -39,27 +61,108 @@ const secondSection: ListSection<string, Named> = {
     data: [leaf("x2", "Solo 2"), branch("p2", "Parent 2", [leaf("c3", "Child 3")])],
 };
 
+const mirrorSection: ListSection<string, Named> = {
+    id: "s3",
+    value: "Three",
+    data: [
+        branch("p3", "Parent 3", [leaf("c4", "Child 4"), leaf("c5", "Child 5"), leaf("c6", "Child 6")]),
+        leaf("x3", "Solo 3"),
+    ],
+};
+
 const sections: ListSection<string, Named>[] = [firstSection, secondSection];
 const firstSectionOnly: ListSection<string, Named>[] = [firstSection];
+const secondSectionOnly: ListSection<string, Named>[] = [secondSection];
+const mirrorSectionOnly: ListSection<string, Named>[] = [mirrorSection];
+const firstThenMirror: ListSection<string, Named>[] = [firstSection, mirrorSection];
 const columns: ColumnViewColumn<Named>[] = [{ id: "name", title: "Name", renderCell: renderItem }];
 const soloSectionRows = ["H:One", "Parent 1", "Child 1", "Child 2", "Solo 1"];
 const soloCollapsedRows = ["H:One", "Parent 1", "Solo 1"];
 const firstExpandedRows = [...soloSectionRows, "H:Two", "Solo 2", "Parent 2"];
 const collapsedRows = ["H:One", "Parent 1", "Solo 1", "H:Two", "Solo 2", "Parent 2"];
 const secondExpandedRows = [...collapsedRows, "Child 3"];
+const bothExpandedRows = [...firstExpandedRows, "Child 3"];
+const secondOnlyRows = ["H:Two", "Solo 2", "Parent 2", "Child 3"];
+const mirrorAfterFirstRows = [...soloSectionRows, "H:Three", "Parent 3", "Solo 3"];
+const mirrorExpandedRows = ["H:Three", "Parent 3", "Child 4", "Child 5", "Child 6", "Solo 3"];
+const columnTitle = "Name";
+const expandedColumnRows = [columnTitle, ...firstExpandedRows];
+const soloColumnRows = [columnTitle, ...soloSectionRows];
+const collapsedColumnRows = [columnTitle, ...collapsedRows];
+const secondColumnRows = [columnTitle, ...secondExpandedRows];
+const secondOnlyColumnRows = [columnTitle, ...secondOnlyRows];
 const soloPosition = 1;
-const expandedColumnRows = ["Name", "Parent 1", "Child 1", "Child 2", "Solo 1", "Solo 2", "Parent 2"];
+
+const fromFirstSection: Pick<SectionStep, "before" | "from"> = {
+    from: { groups: firstSectionOnly, expandedIds: ["p1"] },
+    before: soloSectionRows,
+};
+
+const sectionAdded: SectionStep = {
+    ...fromFirstSection,
+    next: { groups: sections, expandedIds: ["p1"] },
+    after: firstExpandedRows,
+};
+
+const expansionMoved: SectionStep = {
+    ...fromFirstSection,
+    next: { groups: sections, expandedIds: ["p2"] },
+    after: secondExpandedRows,
+};
+
+const sectionDropped: SectionStep = {
+    from: { groups: sections, expandedIds: ["p1"] },
+    before: firstExpandedRows,
+    next: { groups: firstSectionOnly, expandedIds: [] },
+    after: soloCollapsedRows,
+};
+
+const earlierSectionDropped: SectionStep = {
+    from: { groups: sections, expandedIds: ["p2"] },
+    before: secondExpandedRows,
+    next: { groups: secondSectionOnly, expandedIds: ["p2"] },
+    after: secondOnlyRows,
+};
+
+const survivorKeepsExpansion: SectionStep = {
+    from: { groups: firstThenMirror, expandedIds: ["p1"] },
+    before: mirrorAfterFirstRows,
+    next: { groups: mirrorSectionOnly, expandedIds: ["p3"] },
+    after: mirrorExpandedRows,
+};
+
+const sectionPrepended: SectionStep = {
+    from: { groups: secondSectionOnly, expandedIds: ["p2"] },
+    before: secondOnlyRows,
+    next: { groups: sections, expandedIds: ["p2"] },
+    after: secondExpandedRows,
+};
+
+const sameSectionsCollapsed: SectionStep = {
+    from: { groups: sections, expandedIds: ["p1", "p2"] },
+    before: bothExpandedRows,
+    next: { groups: sections, expandedIds: ["p2"] },
+    after: secondExpandedRows,
+};
+
+const columnEarlierSectionDropped: SectionStep = {
+    from: { groups: sections, expandedIds: ["p2"] },
+    before: secondColumnRows,
+    next: { groups: secondSectionOnly, expandedIds: ["p2"] },
+    after: secondOnlyColumnRows,
+};
+
+const columnSectionAdded: SectionStep = {
+    from: { groups: firstSectionOnly, expandedIds: ["p1"] },
+    before: soloColumnRows,
+    next: { groups: sections, expandedIds: [] },
+    after: collapsedColumnRows,
+};
 
 const expanderNamed = (name: string): Gtk.TreeExpander =>
     screen.getByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.TreeExpander });
 
 const expanderCount = (): number => screen.queryAllByRole(Gtk.AccessibleRole.BUTTON, { as: Gtk.TreeExpander }).length;
-
-const columnRowTexts = (): (string | null)[] =>
-    screen
-        .queryAllByRole(Gtk.AccessibleRole.ROW)
-        .flatMap((row) => within(row).queryAllByRole(Gtk.AccessibleRole.LABEL))
-        .map((label) => getWidgetText(label));
 
 const drawList = (ref: RefObject<Gtk.ListView | null>, draw: ListDraw, handlers: ListHandlers): ReactNode => (
     <ScrollWrapper minContentHeight={500}>
@@ -77,23 +180,20 @@ const drawList = (ref: RefObject<Gtk.ListView | null>, draw: ListDraw, handlers:
     </ScrollWrapper>
 );
 
-const drawColumns = (ref: RefObject<Gtk.ColumnView | null>, expandedIds: string[]): ReactNode => (
+const drawColumns = (ref: RefObject<Gtk.ColumnView | null>, draw: ListDraw): ReactNode => (
     <ScrollWrapper minContentHeight={500}>
         <ColumnView<Named, string>
             ref={ref}
-            sections={sections}
-            expandedIds={expandedIds}
+            sections={draw.groups}
+            expandedIds={draw.expandedIds}
             columns={columns}
             renderHeader={renderHeader}
         />
     </ScrollWrapper>
 );
 
-const renderList = async (
-    expandedIds: string[],
-    onExpandedChange?: (ids: string[]) => void,
-): Promise<RefObject<Gtk.ListView | null>> => {
-    const { ref } = await renderFixture({ groups: sections, expandedIds }, { onExpandedChange });
+const renderList = async (expandedIds: string[]): Promise<RefObject<Gtk.ListView | null>> => {
+    const { ref } = await renderFixture({ groups: sections, expandedIds });
 
     return ref;
 };
@@ -110,8 +210,27 @@ const renderFixture = async (draw: ListDraw, handlers: ListHandlers = {}): Promi
     };
 };
 
+const renderColumns = async (draw: ListDraw): Promise<ColumnFixture> => {
+    const ref = createRef<Gtk.ColumnView>();
+    const { rerender } = await render(drawColumns(ref, draw));
+
+    return {
+        ref,
+        to: async (next) => {
+            await rerender(drawColumns(ref, next));
+        },
+    };
+};
+
 const renderFirstSection = (handlers: ListHandlers = {}, selectedIds?: string[]): Promise<ListFixture> =>
     renderFixture({ groups: firstSectionOnly, expandedIds: ["p1"], selectedIds }, handlers);
+
+const expectSectionStep = async (open: (draw: ListDraw) => Promise<StepFixture>, step: SectionStep): Promise<void> => {
+    const { ref, to } = await open(step.from);
+    await expectRowTexts(ref, step.before);
+    await to(step.next);
+    await expectRowTexts(ref, step.after);
+};
 
 const selectedPositions = (ref: RefObject<Gtk.ListView | null>): number[] => {
     const model = ref.current?.getModel();
@@ -141,6 +260,21 @@ function renderHeader({ section }: { section: string }): ReactNode {
     return <GtkLabel>{`H:${section}`}</GtkLabel>;
 }
 
+function StatefulSections({ listRef, onExpandedChange }: StatefulProps): ReactNode {
+    const [expandedIds, setExpandedIds] = useState<string[]>([]);
+
+    return drawList(
+        listRef,
+        { groups: sections, expandedIds },
+        {
+            onExpandedChange: (ids) => {
+                setExpandedIds(ids);
+                onExpandedChange(ids);
+            },
+        },
+    );
+}
+
 describe("sectioned tree - ListView (1)", () => {
     it("expands children nested under a section", async () => {
         const ref = await renderList(["p1"]);
@@ -163,10 +297,15 @@ describe("sectioned tree - ListView (1)", () => {
 
 describe("sectioned tree - ListView (2)", () => {
     it("keeps a nested row expanded when a section is added", async () => {
-        const { ref, to } = await renderFirstSection();
-        await expectRowTexts(ref, soloSectionRows);
-        await to({ groups: sections, expandedIds: ["p1"] });
-        await expectRowTexts(ref, firstExpandedRows);
+        await expectSectionStep(renderFixture, sectionAdded);
+    });
+
+    it("moves the expansion into the section that just arrived", async () => {
+        await expectSectionStep(renderFixture, expansionMoved);
+    });
+
+    it("collapses a nested row when a section is dropped and expandedIds empties", async () => {
+        await expectSectionStep(renderFixture, sectionDropped);
     });
 
     it("collapses a nested row when a section arrives and expandedIds empties", async () => {
@@ -179,22 +318,27 @@ describe("sectioned tree - ListView (2)", () => {
             expect(onExpandedChange).toHaveBeenLastCalledWith([]);
         });
     });
-
-    it("moves the expansion into the section that just arrived", async () => {
-        const { ref, to } = await renderFirstSection();
-        await to({ groups: sections, expandedIds: ["p2"] });
-        await expectRowTexts(ref, secondExpandedRows);
-    });
-
-    it("collapses a nested row when a section is dropped and expandedIds empties", async () => {
-        const { ref, to } = await renderFixture({ groups: sections, expandedIds: ["p1"] });
-        await expectRowTexts(ref, firstExpandedRows);
-        await to({ groups: firstSectionOnly, expandedIds: [] });
-        await expectRowTexts(ref, soloCollapsedRows);
-    });
 });
 
 describe("sectioned tree - ListView (3)", () => {
+    it("keeps a later section expanded when the section before it is dropped", async () => {
+        await expectSectionStep(renderFixture, earlierSectionDropped);
+    });
+
+    it("shows the surviving section's own children under the row that stays expanded", async () => {
+        await expectSectionStep(renderFixture, survivorKeepsExpansion);
+    });
+
+    it("keeps a nested row expanded when a section is prepended", async () => {
+        await expectSectionStep(renderFixture, sectionPrepended);
+    });
+
+    it("collapses one section while the sections array stays the same", async () => {
+        await expectSectionStep(renderFixture, sameSectionsCollapsed);
+    });
+});
+
+describe("sectioned tree - ListView (4)", () => {
     it("selects the row named by selectedIds after a section arrives", async () => {
         const onSelectionChanged = vi.fn();
         const { ref, to } = await renderFirstSection({ onSelectionChanged }, []);
@@ -207,36 +351,30 @@ describe("sectioned tree - ListView (3)", () => {
         });
     });
 
-    it("reports onExpandedChange when a sectioned row is expanded", async () => {
+    it("expands and reports the row whose sectioned expander is clicked", async () => {
         const onExpandedChange = vi.fn();
-        await renderList([], onExpandedChange);
-        const row = expanderNamed("Parent 2").getListRow();
-
-        if (row === null) {
-            throw new TypeError("Expected the sectioned row to carry a tree list row");
-        }
-
-        await act(() => {
-            row.setExpanded(true);
-        });
+        const ref = createRef<Gtk.ListView>();
+        await render(<StatefulSections listRef={ref} onExpandedChange={onExpandedChange} />);
+        await userEvent.click(expanderNamed("Parent 2"));
+        await expectRowTexts(ref, secondExpandedRows);
 
         await waitFor(() => {
-            expect(onExpandedChange).toHaveBeenCalledWith(["p2"]);
+            expect(onExpandedChange).toHaveBeenLastCalledWith(["p2"]);
         });
     });
 });
 
 describe("sectioned tree - ColumnView", () => {
     it("expands children nested under a section", async () => {
-        const ref = createRef<Gtk.ColumnView>();
-        await render(drawColumns(ref, ["p1"]));
+        const { ref } = await renderColumns({ groups: sections, expandedIds: ["p1"] });
+        await expectRowTexts(ref, expandedColumnRows);
+    });
 
-        await waitFor(() => {
-            expect(columnRowTexts()).toEqual(expandedColumnRows);
-        });
+    it("keeps a later section expanded when the section before it is dropped", async () => {
+        await expectSectionStep(renderColumns, columnEarlierSectionDropped);
+    });
 
-        expect(await screen.findAllByText("H:One")).toHaveLength(1);
-        expect(await screen.findAllByText("H:Two")).toHaveLength(1);
-        expect(ref.current).not.toBeNull();
+    it("collapses a nested row when a section arrives and expandedIds empties", async () => {
+        await expectSectionStep(renderColumns, columnSectionAdded);
     });
 });
