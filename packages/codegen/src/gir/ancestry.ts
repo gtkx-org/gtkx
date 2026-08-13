@@ -80,4 +80,4 @@ function* ancestorChain(library: Library, klass: GirClass, namespaceName: string
     }
 }
 
-export { resolveInterfaces, ancestorChain, getParentRef, type ResolvedAncestor };
+export { resolveClassOrInterface, resolveInterfaces, ancestorChain, getParentRef, type ResolvedAncestor };

@@ -3,6 +3,7 @@
             xmlns="http://www.gtk.org/introspection/core/1.0"
             xmlns:c="http://www.gtk.org/introspection/c/1.0"
             xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
   <namespace name="Clash"
              version="1.0"
              shared-library="libclash.so.1"
@@ -112,5 +113,78 @@
         </callback>
       </field>
     </record>
+    <interface name="Serial"
+               c:symbol-prefix="serial"
+               c:type="ClashSerial"
+               glib:type-name="ClashSerial"
+               glib:get-type="clash_serial_get_type">
+      <method name="get_property" c:identifier="clash_serial_get_property">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="serial" transfer-ownership="none">
+            <type name="Serial" c:type="ClashSerial*"/>
+          </instance-parameter>
+          <parameter name="pspec" transfer-ownership="none">
+            <type name="GObject.ParamSpec" c:type="GParamSpec*"/>
+          </parameter>
+          <parameter name="value"
+                     direction="out"
+                     caller-allocates="1"
+                     transfer-ownership="none">
+            <type name="GObject.Value" c:type="GValue*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </interface>
+    <class name="Holder"
+           c:symbol-prefix="holder"
+           c:type="ClashHolder"
+           parent="GObject.Object"
+           glib:type-name="ClashHolder"
+           glib:get-type="clash_holder_get_type">
+      <implements name="Serial"/>
+    </class>
+    <interface name="Tap"
+               c:symbol-prefix="tap"
+               c:type="ClashTap"
+               glib:type-name="ClashTap"
+               glib:get-type="clash_tap_get_type">
+      <prerequisite name="Serial"/>
+      <method name="set_property" c:identifier="clash_tap_set_property">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="tap" transfer-ownership="none">
+            <type name="Tap" c:type="ClashTap*"/>
+          </instance-parameter>
+          <parameter name="pspec" transfer-ownership="none">
+            <type name="GObject.ParamSpec" c:type="GParamSpec*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </interface>
+    <interface name="Probe"
+               c:symbol-prefix="probe"
+               c:type="ClashProbe"
+               glib:type-name="ClashProbe"
+               glib:get-type="clash_probe_get_type">
+      <prerequisite name="Derived"/>
+      <method name="is_live" c:identifier="clash_probe_is_live">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="probe" transfer-ownership="none">
+            <type name="Probe" c:type="ClashProbe*"/>
+          </instance-parameter>
+          <parameter name="index" transfer-ownership="none">
+            <type name="gint" c:type="gint"/>
+          </parameter>
+        </parameters>
+      </method>
+    </interface>
   </namespace>
 </repository>

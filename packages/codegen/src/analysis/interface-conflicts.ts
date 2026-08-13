@@ -2,6 +2,7 @@ import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { ModuleContext } from "../writer/context.js";
+import { resolveClassOrInterface, type ResolvedAncestor, resolveInterfaces } from "../gir/ancestry.js";
 import { isOutParameter } from "../gir/parameter.js";
 import { memberName } from "../store/gi/method.js";
 import { protectedChainSlotKeys, vfuncCallables, vfuncMemberNames } from "../store/gi/vtable.js";
@@ -34,6 +35,8 @@ type CallableKeyPair = {
 };
 
 const CHAINABLE_SIGNAL_MEMBERS = ["addEventListener", "off", "on", "once", "removeEventListener"];
+const GOBJECT_NAMESPACE = "GObject";
+const GOBJECT_ROOT = "Object";
 
 const callableKeys = (library: Library, fn: GirFunction): CallableKeys => ({
     inputs: inputParameters(library, fn).map((entry) => typeKey(library, entry.parameter.type)),
@@ -143,11 +146,66 @@ const interfaceConflicts = (options: InterfaceConflictOptions, claimed: ClaimedM
     return names.length === 0 ? names : [...new Set([...names, ...CHAINABLE_SIGNAL_MEMBERS])];
 };
 
-const prerequisiteConflicts = (library: Library, iface: GirClass, base: GirClass): string[] => {
+const rootPrerequisite = (library: Library): ResolvedAncestor[] => {
+    const root = resolveClassOrInterface(library, GOBJECT_NAMESPACE, GOBJECT_ROOT);
+
+    return root === undefined ? [] : [root];
+};
+
+const interfaceSupertypes = (library: Library, entry: ResolvedAncestor): ResolvedAncestor[] => {
+    const prerequisites = entry.klass.prerequisites
+        .map((name) => resolveClassOrInterface(library, entry.namespaceName, name))
+        .filter((prerequisite) => prerequisite !== undefined);
+
+    return prerequisites.length === 0 ? rootPrerequisite(library) : prerequisites;
+};
+
+const classSupertypes = (library: Library, entry: ResolvedAncestor): ResolvedAncestor[] => {
+    const interfaces = resolveInterfaces(library, entry.namespaceName, entry.klass.implements);
+
+    if (entry.klass.parent === undefined) {
+        return interfaces;
+    }
+
+    const parent = resolveClassOrInterface(library, entry.namespaceName, entry.klass.parent);
+
+    return parent === undefined ? interfaces : [parent, ...interfaces];
+};
+
+const directSupertypes = (library: Library, entry: ResolvedAncestor): ResolvedAncestor[] =>
+    entry.klass.isInterface ? interfaceSupertypes(library, entry) : classSupertypes(library, entry);
+
+const collectSupertypeMembers = (
+    library: Library,
+    entry: ResolvedAncestor,
+    visited: Set<string>,
+    members: MemberTable,
+): void => {
+    const key = `${entry.namespaceName}.${entry.klass.name}`;
+
+    if (visited.has(key)) {
+        return;
+    }
+
+    visited.add(key);
+    collectMethods(entry.klass, members);
+
+    for (const supertype of directSupertypes(library, entry)) {
+        collectSupertypeMembers(library, supertype, visited, members);
+    }
+};
+
+const supertypeMembers = (library: Library, base: ResolvedAncestor): MemberTable => {
+    const members: MemberTable = new Map();
+    collectSupertypeMembers(library, base, new Set(), members);
+
+    return members;
+};
+
+const prerequisiteConflicts = (library: Library, iface: GirClass, base: ResolvedAncestor): string[] => {
     const members: MemberTable = new Map();
     collectMethods(iface, members);
-    const inherited: MemberTable = new Map();
-    collectMethods(base, inherited);
+    const inherited = supertypeMembers(library, base);
     const names: string[] = [];
 
     for (const [name, method] of members) {
@@ -174,6 +232,8 @@ const omittedTypeRef = (typeRef: string, omissions: string[]): string => {
 export {
     type ClaimedMembers,
     claimInterfaceMembers,
+    GOBJECT_NAMESPACE,
+    GOBJECT_ROOT,
     inheritedMembers,
     interfaceConflicts,
     omittedTypeRef,
