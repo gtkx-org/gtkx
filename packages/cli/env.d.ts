@@ -1,120 +1,192 @@
 /// <reference types="vite/client" />
 /// <reference types="@gtkx/react/env" />
 
-declare module "*.aac" {
+declare module "#data/*.aac" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.avif" {
+declare module "#data/*.avif" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.eot" {
+declare module "#data/*.data" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.flac" {
+declare module "#data/*.eot" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.gif" {
+declare module "#data/*.flac" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.ico" {
+declare module "#data/*.gif" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.jpeg" {
+declare module "#data/*.gpa" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.jpg" {
+declare module "#data/*.ico" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.mp3" {
+declare module "#data/*.jpeg" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.mp4" {
+declare module "#data/*.jpg" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.ogg" {
+declare module "#data/*.mp3" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.otf" {
+declare module "#data/*.mp4" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.png" {
+declare module "#data/*.ogg" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.svg" {
+declare module "#data/*.otf" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.ttf" {
+declare module "#data/*.png" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.wav" {
+declare module "#data/*.svg" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.webm" {
+declare module "#data/*.ttf" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.webp" {
+declare module "#data/*.wav" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.woff" {
+declare module "#data/*.webm" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
 }
 
-declare module "*.woff2" {
+declare module "#data/*.webp" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
     /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
     export const path: string;
+    export default resourceUri;
+}
+
+declare module "#data/*.woff" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
+    /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
+    export const path: string;
+    export default resourceUri;
+}
+
+declare module "#data/*.woff2" {
+    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
+    const resourceUri: string;
+    /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
+    export const path: string;
+    export default resourceUri;
 }
 
 declare module "*.data" {
-    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
-    const resourceUri: string;
-    /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
-    export const path: string;
-    export default resourceUri;
+    /** Filesystem path of the emitted asset; import it under `#data/` for a GResource path and URI. */
+    const assetPath: string;
+    export default assetPath;
 }
 
 declare module "*.gpa" {
-    /** `resource://` URI of the bundled asset, accepted anywhere GTK takes a URI. */
-    const resourceUri: string;
-    /** GResource path of the bundled asset, for use with the `Gio.resources*` lookup functions. */
-    export const path: string;
-    export default resourceUri;
+    /** Filesystem path of the emitted asset; import it under `#data/` for a GResource path and URI. */
+    const assetPath: string;
+    export default assetPath;
 }
 
 declare module "*.css?url" {
