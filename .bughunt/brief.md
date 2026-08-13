@@ -22,9 +22,17 @@ Your job is to **find defects and prove them with a reproduction**, not to revie
 | Source worktree (do not dirty it) | `/home/eugenio/gtkx-bughunt` (branch `bugfix/v1.0`) |
 | Writable sandbox worktree | `/home/eugenio/gtkx-sandbox` (branch `sandbox/hunters`) — installed and built |
 | Your scratch area | `/home/eugenio/gtkx-playground/<your-slug>/` — create it, own it, leave it behind |
-| Published packages under test | `@gtkx/*@1.0.0`, `create-gtkx@1.0.0` from the public npm registry |
+| Packages under test | `@gtkx/*` published from **this branch** to the local registry at `http://localhost:4873/` |
 | Node | 24+ via mise, already on PATH |
 | Package managers | `pnpm` and `npm` both available |
+
+**You are testing the branch, not the release.** `bugfix/v1.0` is many fixes ahead of the 1.0.0 on
+public npm, so the harness publishes the workspace to a local Verdaccio and the template installs from
+there. That means two things: a defect you find is present in code that has not shipped yet, and a
+regression introduced by an earlier fix is in scope and worth hunting. Never `npm install` from the
+public registry — `--registry http://localhost:4873/` or the template's project-level npm config keeps
+you on the branch. If the registry is down, say so rather than falling back to public npm, because a
+finding against 1.0.0 may already be fixed here and wastes a verification cycle.
 
 GTKX is **Linux/GTK4 only and needs a display**. There is no mock GTK. Any command that starts a
 GTK application must be wrapped:

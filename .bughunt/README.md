@@ -19,9 +19,14 @@ that is what the repository's own suites are for.
 The worktree is `/home/eugenio/gtkx-bughunt` on `bugfix/v1.0`. Scratch apps live outside it in
 `/home/eugenio/gtkx-playground/`, so a hunt never dirties the source.
 
-`/home/eugenio/gtkx-playground/bughunt-template` is a warm app with `@gtkx/*@1.0.0` from public npm,
-all four GIR libraries bound, and a built codegen store. Hunters copy it instead of paying for
-`npm install` every round.
+`/home/eugenio/gtkx-playground/bughunt-template` is a warm app with all four GIR libraries bound and a
+built codegen store. Hunters copy it instead of paying for `npm install` every round.
+
+It installs from a local Verdaccio serving **this branch**, not from public npm. Run
+`.bughunt/refresh-template.sh` after every merge and before the next hunt: it republishes the workspace
+and rebuilds the template against it. Without that step hunters test the shipped 1.0.0, which goes
+stale the moment a fix lands — and, worse, cannot see a regression a fix introduced. That was true for
+rounds 1 through 5, so their findings are all against 1.0.0.
 
 ## Running a round
 
