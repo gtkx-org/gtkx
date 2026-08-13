@@ -169,6 +169,28 @@ describe("vfunc return arrays whose length parameter is folded away", () => {
     });
 });
 
+describe("vtable slots reached through the vfunc member the bindings emit", () => {
+    it("leaves the length of a returned array out of the result", () => {
+        const carousel = new Adw.Carousel({});
+        carousel.append(new Gtk.Label({ label: "one" }));
+        carousel.append(new Gtk.Label({ label: "two" }));
+        expect(carousel.vfuncGetSnapPoints()).toEqual(carousel.getSnapPoints());
+    });
+
+    it("leaves a 64-bit length out of the result and sizes the out array with it", () => {
+        const label = new Gtk.Label({ label: "hello world", selectable: true });
+        label.selectRegion(0, 5);
+        const [hasSelection, ranges] = label.vfuncGetSelection();
+        expect(hasSelection).toBe(true);
+        expect(ranges.map((range) => [range.start, range.length])).toEqual([[0, 5]]);
+    });
+
+    it("leaves the length out of a result that carries several arrays", () => {
+        const label = new Gtk.Label({ label: "hello world" });
+        expect(label.vfuncGetAttributes(1)).toEqual([expect.any(Boolean), [], [], []]);
+    });
+});
+
 describe("vfunc out hash tables", () => {
     it("writes the entries an implementation returns as a Map", () => {
         class Model extends Gio.MenuModel {

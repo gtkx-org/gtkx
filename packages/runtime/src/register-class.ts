@@ -390,7 +390,7 @@ function wrapVfunc(
     argDescriptors: NativeRegisterClassVfunc["argDescriptors"],
     returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"],
 ): VfuncFn {
-    return wrapCallback(fn as (...args: unknown[]) => unknown, { argDescriptors, returnDescriptor }, "this");
+    return wrapCallback(fn as (...args: unknown[]) => unknown, { argDescriptors, returnDescriptor }, "vfunc");
 }
 
 function discoverInterfaceBindings(
