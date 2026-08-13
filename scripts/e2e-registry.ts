@@ -360,10 +360,11 @@ function runBuiltAppUntilStable(appDir: string, env: NodeJS.ProcessEnv, launch: 
 
         child.on("exit", (code, signal) => {
             clearTimeout(timer);
+            const command = [launch.command, ...launch.args].join(" ");
 
             reject(
                 new Error(
-                    `Built app "node dist/bundle.js" exited early (code ${String(code ?? "null")}, ` +
+                    `Built app "${command}" exited early (code ${String(code ?? "null")}, ` +
                     `signal ${signal ?? "null"}) before it was confirmed running:\n${output}`,
                 ),
             );

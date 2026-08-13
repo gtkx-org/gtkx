@@ -65,6 +65,10 @@ const resolveLicenseFile = (root: string, configured: string | undefined): strin
 const configuredIcons = (root: string, configured: string): ResolvedIcons => {
     const path = resolve(root, configured);
 
+    if (!isInside(root, path)) {
+        throw new Error(`Cannot use "${configured}" as the icon path: it is outside ${root}`);
+    }
+
     if (existingDir(path) !== null) {
         return { iconsDir: path, iconFile: null };
     }

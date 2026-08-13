@@ -1,8 +1,9 @@
 import { join } from "node:path";
 import { stringify } from "yaml";
-import type { DeployArtifact, DeployManifest, DeployPayload, DeployTarget, DeployTool } from "../types.js";
+import type { DeployArtifact, DeployManifest, DeployPayload, DeployTarget } from "../types.js";
 import { type NfpmPackager, renderNfpmConfig } from "../nfpm/config.js";
 import { packWithNfpm } from "../nfpm/pack.js";
+import { TAR } from "../tools.js";
 
 const MANIFEST_FILENAME = "nfpm.yaml";
 const PREFIX = "/usr";
@@ -21,10 +22,10 @@ const packPackage = async (payload: DeployPayload, packager: NfpmPackager): Prom
     await packWithNfpm(payload, packager, manifestPathFor(payload, packager)),
 ];
 
-const nfpmTarget = (packager: NfpmPackager, tools: DeployTool[]): DeployTarget => ({
+const nfpmTarget = (packager: NfpmPackager): DeployTarget => ({
     name: packager,
     prefix: PREFIX,
-    tools,
+    tools: [TAR],
     render: (payload) => renderManifests(payload, packager),
     pack: (payload) => packPackage(payload, packager),
 });
