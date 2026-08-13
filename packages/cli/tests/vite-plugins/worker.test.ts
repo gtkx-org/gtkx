@@ -1,20 +1,11 @@
-import { writeFileSync } from "node:fs";
-import { extname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { extname } from "node:path";
 import { describe, expect, it } from "vitest";
 import { gtkxWorker } from "../../src/vite-plugins/worker.js";
-import { setupTempTree } from "../temp-tree.js";
 
 type EmittedChunk = {
     type: string;
     id: string;
     fileName: string;
-};
-
-type ExtensionCase = {
-    title: string;
-    manifest: Record<string, string>;
-    expected: string;
 };
 
 type TransformHook = (
@@ -37,15 +28,9 @@ type QuotedConstruction = {
 };
 
 const MODULE_ID = "/project/src/app.tsx";
-const MODULE_EMIT_DIR = fileURLToPath(new URL("../..", import.meta.url));
 const CANONICAL_WORKER = 'const worker = new Worker(new URL("./worker.ts", import.meta.url));';
-const WORKER_CHUNK = /^workers\/worker-[0-9a-f]{8}\.js$/;
-
-const EXTENSION_CASES: ExtensionCase[] = [
-    { title: "keeps .js when the package declares type module", manifest: { type: "module" }, expected: ".js" },
-    { title: "emits .mjs when the package declares type commonjs", manifest: { type: "commonjs" }, expected: ".mjs" },
-    { title: "emits .mjs when the package declares no type", manifest: { name: "typeless" }, expected: ".mjs" },
-];
+const ESM_EXTENSION = ".mjs";
+const WORKER_CHUNK = /^workers\/worker-[0-9a-f]{8}\.mjs$/;
 
 const QUOTED_CONSTRUCTIONS: QuotedConstruction[] = [
     { kind: "a string literal", source: "const doc = \"new Worker(new URL('./worker.ts', import.meta.url))\";" },
@@ -54,12 +39,8 @@ const QUOTED_CONSTRUCTIONS: QuotedConstruction[] = [
     { kind: "a block comment", source: '/* new Worker(new URL("./worker.ts", import.meta.url)); */' },
 ];
 
-const runTransform = async (
-    code: string,
-    known: string[] = ["./worker.ts"],
-    emitDir: string = MODULE_EMIT_DIR,
-): Promise<TransformRun> => {
-    const plugin = gtkxWorker(emitDir);
+const runTransform = async (code: string, known: string[] = ["./worker.ts"]): Promise<TransformRun> => {
+    const plugin = gtkxWorker();
     const emitted: EmittedChunk[] = [];
 
     const result = await (plugin.transform as TransformHook).call(
@@ -81,19 +62,16 @@ const runTransform = async (
 
 describe("gtkxWorker (plugin shape)", () => {
     it("returns a build-only plugin with the expected name", () => {
-        const plugin = gtkxWorker(MODULE_EMIT_DIR);
+        const plugin = gtkxWorker();
         expect(plugin.name).toBe("gtkx:worker");
         expect(plugin.apply).toBe("build");
     });
 });
 
-describe("gtkxWorker (package module type)", () => {
-    const project = setupTempTree("gtkx-worker-type-", "dist");
-
-    it.each(EXTENSION_CASES)("$title", async ({ manifest, expected }) => {
-        writeFileSync(join(project.path, "package.json"), JSON.stringify(manifest));
-        const run = await runTransform(CANONICAL_WORKER, ["./worker.ts"], project.child);
-        expect(extname(run.emitted[0]?.fileName ?? "")).toBe(expected);
+describe("gtkxWorker (chunk extension)", () => {
+    it("names the chunk .mjs so node loads it as ESM wherever the output lands", async () => {
+        const run = await runTransform(CANONICAL_WORKER);
+        expect(extname(run.emitted[0]?.fileName ?? "")).toBe(ESM_EXTENSION);
     });
 });
 

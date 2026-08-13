@@ -12,7 +12,7 @@
         "build": "gtkx build",
         "coverage": "vitest run --coverage",
         "dev": "gtkx dev",
-        "start": "node dist/bundle.js"
+        "start": "node dist/bundle.mjs"
     },
     "dependencies": {
         "@gtkx/components": "workspace:*",

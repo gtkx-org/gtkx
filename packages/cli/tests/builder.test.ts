@@ -6,11 +6,7 @@ import { setupTempTree } from "./temp-tree.js";
 
 type NamingCase = {
     title: string;
-    root: Record<string, string>;
-    nested: Record<string, string> | null;
-    from: "path" | "child";
-    outDir: string;
-    expected: string;
+    manifest: Record<string, string> | null;
 };
 
 type ViteConfigSnapshot = {
@@ -22,73 +18,21 @@ type ViteConfigSnapshot = {
         cssMinify: boolean;
         assetsInlineLimit: number;
         ssrEmitAssets: boolean;
-        rolldownOptions: { output: { entryFileNames: string } };
+        rolldownOptions: { output: { entryFileNames: string; chunkFileNames: string } };
     };
     define: Record<string, string>;
     ssr: { noExternal: boolean };
 };
 
 const APP_VERSION_DEFINE = "__APP_VERSION__";
-const DEFAULT_OUT_DIR = "dist";
-const NESTED_OUT_DIR = join("nested", "dist");
+const BUNDLE_NAME = "bundle.mjs";
+const CHUNK_NAMES = "assets/[name]-[hash].mjs";
 
 const NAMING_CASES: NamingCase[] = [
-    {
-        title: "keeps bundle.js when the package declares type module",
-        root: { type: "module" },
-        nested: null,
-        from: "path",
-        outDir: DEFAULT_OUT_DIR,
-        expected: "bundle.js",
-    },
-    {
-        title: "emits bundle.mjs when the package declares type commonjs",
-        root: { type: "commonjs" },
-        nested: null,
-        from: "path",
-        outDir: DEFAULT_OUT_DIR,
-        expected: "bundle.mjs",
-    },
-    {
-        title: "emits bundle.mjs when the package declares no type",
-        root: { name: "typeless" },
-        nested: null,
-        from: "path",
-        outDir: DEFAULT_OUT_DIR,
-        expected: "bundle.mjs",
-    },
-    {
-        title: "walks up from an output directory with no manifest of its own",
-        root: { type: "module" },
-        nested: null,
-        from: "child",
-        outDir: DEFAULT_OUT_DIR,
-        expected: "bundle.js",
-    },
-    {
-        title: "reads the manifest nearest to the output directory",
-        root: { type: "module" },
-        nested: { type: "commonjs" },
-        from: "child",
-        outDir: DEFAULT_OUT_DIR,
-        expected: "bundle.mjs",
-    },
-    {
-        title: "follows an outDir that lands under a commonjs manifest",
-        root: { type: "module" },
-        nested: { type: "commonjs" },
-        from: "path",
-        outDir: NESTED_OUT_DIR,
-        expected: "bundle.mjs",
-    },
-    {
-        title: "follows an outDir that lands under a module manifest",
-        root: { type: "commonjs" },
-        nested: { type: "module" },
-        from: "path",
-        outDir: NESTED_OUT_DIR,
-        expected: "bundle.js",
-    },
+    { title: "a package that declares type module", manifest: { type: "module" } },
+    { title: "a package that declares type commonjs", manifest: { type: "commonjs" } },
+    { title: "a package that declares no type", manifest: { name: "typeless" } },
+    { title: "a directory with no manifest above it", manifest: null },
 ];
 
 const { viteBuildMock } = vi.hoisted(() => ({
@@ -118,6 +62,7 @@ const writeManifest = (dir: string, manifest: Record<string, string>): void => {
 };
 
 const entryFileNames = (): string => getViteConfig().build.rolldownOptions.output.entryFileNames;
+const chunkFileNames = (): string => getViteConfig().build.rolldownOptions.output.chunkFileNames;
 
 vi.mock("vite", async (importActual) => {
     const actual = await importActual<typeof import("vite")>();
@@ -129,11 +74,12 @@ describe("build (core config)", () => {
     beforeEach(resetBuildMocks);
     afterEach(restoreSpies);
 
-    it("invokes vite with the entry as the SSR target and bundle.js as the entry filename", async () => {
+    it("invokes vite with the entry as the SSR target and bundle.mjs as the entry filename", async () => {
         await build({ entry: "src/index.tsx" });
         const config = getViteConfig();
         expect(config.build.ssr).toBe("src/index.tsx");
-        expect(config.build.rolldownOptions.output.entryFileNames).toBe("bundle.js");
+        expect(config.build.rolldownOptions.output.entryFileNames).toBe(BUNDLE_NAME);
+        expect(config.build.rolldownOptions.output.chunkFileNames).toBe(CHUNK_NAMES);
         expect(config.build.outDir).toBe("dist");
         expect(config.build.minify).toBe(true);
         expect(config.build.cssMinify).toBe(false);
@@ -231,43 +177,39 @@ describe("build (root resolution)", () => {
     });
 });
 
-describe("build (entry naming)", () => {
+describe("build (chunk naming)", () => {
     const project = setupTempTree("gtkx-builder-type-", "nested");
     beforeEach(resetBuildMocks);
     afterEach(restoreSpies);
 
-    it.each(NAMING_CASES)("$title", async ({ root, nested, from, outDir, expected }) => {
-        writeManifest(project.path, root);
-
-        if (nested !== null) {
-            writeManifest(project.child, nested);
+    it.each(NAMING_CASES)("names every emitted chunk .mjs under $title", async ({ manifest }) => {
+        if (manifest !== null) {
+            writeManifest(project.path, manifest);
         }
 
-        await build({ entry: "src/index.tsx", vite: { root: project[from], build: { outDir } } });
-        expect(entryFileNames()).toBe(expected);
+        await build({ entry: "src/index.tsx", vite: { root: project.child } });
+        expect(entryFileNames()).toBe(BUNDLE_NAME);
+        expect(chunkFileNames()).toBe(CHUNK_NAMES);
+    });
+
+    it("keeps split chunks under a user-supplied assetsDir", async () => {
+        await build({ entry: "src/index.tsx", vite: { build: { assetsDir: "chunks" } } });
+        expect(chunkFileNames()).toBe("chunks/[name]-[hash].mjs");
     });
 });
 
 describe("build (emitted path)", () => {
-    const project = setupTempTree("gtkx-builder-path-", "nested");
     beforeEach(resetBuildMocks);
     afterEach(restoreSpies);
 
     it("returns the bundle path under the default outDir", async () => {
-        writeManifest(project.path, { type: "commonjs" });
-        const emitted = await build({ entry: "src/index.tsx", vite: { root: project.path } });
-        expect(emitted).toBe(join("dist", "bundle.mjs"));
+        const emitted = await build({ entry: "src/index.tsx" });
+        expect(emitted).toBe(join("dist", BUNDLE_NAME));
     });
 
     it("returns the bundle path under a user-supplied outDir", async () => {
-        writeManifest(project.path, { type: "module" });
-
-        const emitted = await build({
-            entry: "src/index.tsx",
-            vite: { root: project.path, build: { outDir: "out" } },
-        });
-
-        expect(emitted).toBe(join("out", "bundle.js"));
+        const emitted = await build({ entry: "src/index.tsx", vite: { build: { outDir: "out" } } });
+        expect(emitted).toBe(join("out", BUNDLE_NAME));
     });
 });
 
@@ -297,6 +239,7 @@ describe("build (define and rolldown)", () => {
         const output = getViteConfig().build.rolldownOptions.output as Record<string, unknown>;
         expect(output.format).toBe("es");
         expect(output.sourcemap).toBe(true);
-        expect(output.entryFileNames).toBe("bundle.js");
+        expect(output.entryFileNames).toBe(BUNDLE_NAME);
+        expect(output.chunkFileNames).toBe(CHUNK_NAMES);
     });
 });

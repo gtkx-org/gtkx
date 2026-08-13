@@ -1,18 +1,25 @@
-import { extname, join } from "node:path";
+import { rmSync } from "node:fs";
+import { basename, extname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type AppProbe, probeAppProject, removeAppProject } from "./app-project.js";
+import {
+    type AppProbe,
+    type AppRun,
+    installBundle,
+    probeAppProject,
+    removeAppProject,
+    runNode,
+} from "./app-project.js";
 
 const BUILD_TIMEOUT = 120_000;
 const READY_MARKER = "app-created";
 const WORKER_MARKER = "worker-ready";
 const WORKER_MODULE = "probe-worker.mjs";
 const WORKER_SOURCE_PATH = join("src", WORKER_MODULE);
+const BUNDLE_NAME = "bundle.mjs";
 const BUNDLE_PREFIX = "bundle.";
 const WORKER_DIR = "workers/";
 const OUT_DIR = "dist";
-const NESTED_PACKAGE_DIR = "vendor";
-const NESTED_OUT_DIR = join(NESTED_PACKAGE_DIR, OUT_DIR);
-const NESTED_MANIFEST_PATH = join(NESTED_PACKAGE_DIR, "package.json");
+const MANIFEST_NAME = "package.json";
 const ESM_SYNTAX_ERROR = "Cannot use 'import.meta' outside a module";
 
 const APP_ENTRY = String.raw`import { createRoot } from "@gtkx/react";
@@ -41,17 +48,17 @@ const WORKER_MODULE_SOURCE = `import { parentPort } from "node:worker_threads";
 parentPort?.postMessage("${WORKER_MARKER}");
 `;
 
-const NESTED_MANIFEST = `${JSON.stringify({ name: "gtkx-app-probe-output", type: "commonjs" }, null, 4)}\n`;
+const INSTALL_MANIFEST = `${JSON.stringify({ name: "gtkx-app-install", type: "commonjs" }, null, 4)}\n`;
 
 const bundleNames = (emitted: string[]): string[] => emitted.filter((name) => name.startsWith(BUNDLE_PREFIX));
 
 const workerExtensions = (emitted: string[]): string[] =>
     emitted.filter((name) => name.startsWith(WORKER_DIR)).map((name) => extname(name));
 
-const expectStarted = (probe: AppProbe, marker: string): void => {
-    expect(probe.run.stderr).not.toContain(ESM_SYNTAX_ERROR);
-    expect(probe.run.stdout).toContain(marker);
-    expect(probe.run.status).toBe(0);
+const expectStarted = (run: AppRun, marker: string): void => {
+    expect(run.stderr).not.toContain(ESM_SYNTAX_ERROR);
+    expect(run.stdout).toContain(marker);
+    expect(run.status).toBe(0);
 };
 
 describe("gtkx build (commonjs package)", () => {
@@ -72,15 +79,15 @@ describe("gtkx build (commonjs package)", () => {
     });
 
     it("names the entry so node loads it as ESM", () => {
-        expect(bundleNames(probe.emitted)).toEqual(["bundle.mjs"]);
+        expect(bundleNames(probe.emitted)).toEqual([BUNDLE_NAME]);
     });
 
     it("starts when node runs the emitted file", () => {
-        expectStarted(probe, READY_MARKER);
+        expectStarted(probe.run, READY_MARKER);
     });
 
     it("returns the path it emitted", () => {
-        expect(probe.reported).toBe(join(OUT_DIR, "bundle.mjs"));
+        expect(probe.reported).toBe(join(OUT_DIR, BUNDLE_NAME));
     });
 });
 
@@ -103,45 +110,55 @@ describe("gtkx build (commonjs package with a worker)", () => {
     });
 
     it("names the worker chunk so node loads it as ESM", () => {
-        expect(workerExtensions(probe.emitted)).toEqual([".mjs"]);
+        expect(workerExtensions(probe.emitted)).toEqual([extname(BUNDLE_NAME)]);
     });
 
     it("runs the worker when node runs the emitted file", () => {
-        expectStarted(probe, WORKER_MARKER);
+        expectStarted(probe.run, WORKER_MARKER);
     });
 });
 
-describe("gtkx build (module package writing into a commonjs directory)", () => {
+describe("gtkx build (module package)", () => {
     let probe: AppProbe;
+    let installDir: string;
+    let installed: AppRun;
 
     beforeAll(async () => {
         probe = await probeAppProject({
-            applicationId: "com.gtkx.clioutdirprobe",
+            applicationId: "com.gtkx.cliworkermodule",
             entry: WORKER_ENTRY,
-            files: { [NESTED_MANIFEST_PATH]: NESTED_MANIFEST, [WORKER_SOURCE_PATH]: WORKER_MODULE_SOURCE },
-            outDir: NESTED_OUT_DIR,
+            files: { [WORKER_SOURCE_PATH]: WORKER_MODULE_SOURCE },
+            outDir: OUT_DIR,
             packageType: "module",
-            prefix: "gtkx-bundle-outdir-",
+            prefix: "gtkx-bundle-worker-module-",
         });
+
+        installDir = installBundle(join(probe.project.root, OUT_DIR), { [MANIFEST_NAME]: INSTALL_MANIFEST });
+        installed = runNode(join(installDir, basename(probe.reported)));
     }, BUILD_TIMEOUT);
 
     afterAll(() => {
         removeAppProject(probe.project);
+        rmSync(installDir, { recursive: true, force: true });
     });
 
-    it("names the entry after the manifest nearest the output, not the root", () => {
-        expect(bundleNames(probe.emitted)).toEqual(["bundle.mjs"]);
+    it("names the entry the same way it names it for a commonjs package", () => {
+        expect(bundleNames(probe.emitted)).toEqual([BUNDLE_NAME]);
     });
 
-    it("names the worker chunk after the manifest nearest the output, not the root", () => {
-        expect(workerExtensions(probe.emitted)).toEqual([".mjs"]);
+    it("names the worker chunk the same way too", () => {
+        expect(workerExtensions(probe.emitted)).toEqual([extname(BUNDLE_NAME)]);
     });
 
     it("returns the path it emitted", () => {
-        expect(probe.reported).toBe(join(NESTED_OUT_DIR, "bundle.mjs"));
+        expect(probe.reported).toBe(join(OUT_DIR, BUNDLE_NAME));
     });
 
     it("runs the worker when node runs the emitted file", () => {
-        expectStarted(probe, WORKER_MARKER);
+        expectStarted(probe.run, WORKER_MARKER);
+    });
+
+    it("runs the worker from an install directory that declares commonjs", () => {
+        expectStarted(installed, WORKER_MARKER);
     });
 });

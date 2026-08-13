@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +24,7 @@ const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const RUN_TIMEOUT = 60_000;
 const ENTRY_NAME = "index.mjs";
 const PROJECT_NAME = "gtkx-app-probe";
+const INSTALL_PREFIX = "gtkx-bundle-install-";
 
 const appConfig = (applicationId: string): string =>
     [
@@ -69,6 +70,14 @@ const buildAppProject = (options: AppBuildOptions): Promise<string> =>
         },
     });
 
+const installBundle = (outDir: string, files: Record<string, string> = {}): string => {
+    const installDir = mkdtempSync(join(tmpdir(), INSTALL_PREFIX));
+    cpSync(outDir, installDir, { recursive: true });
+    writeFiles(installDir, files);
+
+    return installDir;
+};
+
 const removeAppProject = (project: AppProject): void => {
     rmSync(join(project.root, "node_modules"), { force: true });
     rmSync(project.root, { recursive: true, force: true });
@@ -102,6 +111,7 @@ export {
     type AppRun,
     buildAppProject,
     createAppProject,
+    installBundle,
     probeAppProject,
     removeAppProject,
     runNode,

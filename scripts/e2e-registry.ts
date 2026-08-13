@@ -327,7 +327,7 @@ async function loadHeadlessDisplay(): Promise<HeadlessDisplay> {
 
 function runBuiltAppUntilStable(appDir: string, env: NodeJS.ProcessEnv): Promise<void> {
     return new Promise((resolve, reject) => {
-        const child = spawn(process.execPath, ["dist/bundle.js"], {
+        const child = spawn(process.execPath, ["dist/bundle.mjs"], {
             cwd: appDir,
             env,
             stdio: ["ignore", "pipe", "pipe"],
@@ -358,7 +358,7 @@ function runBuiltAppUntilStable(appDir: string, env: NodeJS.ProcessEnv): Promise
 
             reject(
                 new Error(
-                    `Built app "node dist/bundle.js" exited early (code ${String(code ?? "null")}, ` +
+                    `Built app "node dist/bundle.mjs" exited early (code ${String(code ?? "null")}, ` +
                     `signal ${signal ?? "null"}) before it was confirmed running:\n${output}`,
                 ),
             );

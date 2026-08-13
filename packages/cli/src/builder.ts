@@ -1,7 +1,7 @@
-import { join, resolve } from "node:path";
+import { join, posix } from "node:path";
 import { type InlineConfig, mergeConfig, build as viteBuild } from "vite";
 import { gtkxBuiltUrl } from "./vite-plugins/built-url.js";
-import { esmExtension } from "./vite-plugins/esm-extension.js";
+import { ESM_EXTENSION } from "./vite-plugins/esm-extension.js";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
 import { gtkxNative } from "./vite-plugins/native.js";
 import { gtkxSelfContained } from "./vite-plugins/self-contained.js";
@@ -15,7 +15,10 @@ type BuildOptions = {
 
 const BUILD_MODE = "production";
 const BUNDLE_STEM = "bundle";
+const CHUNK_STEM = "[name]-[hash]";
 const DEFAULT_OUT_DIR = "dist";
+const DEFAULT_ASSETS_DIR = "assets";
+const ENTRY_FILE_NAMES = BUNDLE_STEM + ESM_EXTENSION;
 
 const buildDefaults: InlineConfig = {
     build: {
@@ -32,14 +35,12 @@ const buildDefaults: InlineConfig = {
 const build = async (options: BuildOptions): Promise<string> => {
     const { entry, assetBase, vite: viteConfig } = options;
     const root = viteConfig?.root ?? process.cwd();
-    const outDir = viteConfig?.build?.outDir ?? DEFAULT_OUT_DIR;
-    const emitDir = resolve(root, outDir);
-    const entryFileNames = BUNDLE_STEM + esmExtension(emitDir);
+    const assetsDir = viteConfig?.build?.assetsDir ?? DEFAULT_ASSETS_DIR;
 
     const forced: InlineConfig = {
         plugins: [
             ...gtkxVitePlugins(BUILD_MODE),
-            gtkxWorker(emitDir),
+            gtkxWorker(),
             gtkxBuiltUrl(assetBase),
             gtkxNative(root),
             gtkxSelfContained(),
@@ -49,7 +50,8 @@ const build = async (options: BuildOptions): Promise<string> => {
             assetsInlineLimit: 0,
             rolldownOptions: {
                 output: {
-                    entryFileNames,
+                    entryFileNames: ENTRY_FILE_NAMES,
+                    chunkFileNames: posix.join(assetsDir, CHUNK_STEM + ESM_EXTENSION),
                 },
             },
         },
@@ -58,7 +60,7 @@ const build = async (options: BuildOptions): Promise<string> => {
     const merged: InlineConfig = mergeConfig(mergeConfig(buildDefaults, viteConfig ?? {}), forced);
     await viteBuild({ ...merged, ssr: { ...merged.ssr, noExternal: true } });
 
-    return join(outDir, entryFileNames);
+    return join(merged.build?.outDir ?? DEFAULT_OUT_DIR, ENTRY_FILE_NAMES);
 };
 
 export { build };

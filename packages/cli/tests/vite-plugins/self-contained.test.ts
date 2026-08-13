@@ -7,9 +7,9 @@ type GenerateBundleHook = (options: Record<string, unknown>, bundle: Record<stri
 type RejectedCase = { title: string; code: string; message: string };
 type AcceptedCase = { title: string; code: string };
 
-const BUNDLE_NAME = "bundle.js";
+const BUNDLE_NAME = "bundle.mjs";
 const BINDING_NAME = "gtkx.node";
-const WORKER_NAME = "workers/counter-4f2a1b3c.js";
+const WORKER_NAME = "workers/counter-4f2a1b3c.mjs";
 const ICON_NAME = "icons/hicolor/scalable/apps/com.gtkx.probe.svg";
 
 const NATIVE_LOADER = [
@@ -39,7 +39,7 @@ const REJECTED_CASES: RejectedCase[] = [
     {
         title: "rejects a gtkx manifest handed to a resolver helper",
         code: MANIFEST_HELPER_CALL,
-        message: "bundle.js resolves @gtkx/react/package.json at runtime",
+        message: "bundle.mjs resolves @gtkx/react/package.json at runtime",
     },
     {
         title: "rejects a gtkx package handed to a resolver helper",
@@ -49,12 +49,12 @@ const REJECTED_CASES: RejectedCase[] = [
     {
         title: "rejects a manifest read beside the bundle",
         code: OWN_MANIFEST_REQUIRE,
-        message: "bundle.js resolves ./package.json at runtime",
+        message: "bundle.mjs resolves ./package.json at runtime",
     },
     {
         title: "rejects a manifest read through a stored require",
         code: STORED_REQUIRE,
-        message: "bundle.js resolves ./package.json at runtime",
+        message: "bundle.mjs resolves ./package.json at runtime",
     },
     {
         title: "rejects a specifier handed a stored import.meta.url",

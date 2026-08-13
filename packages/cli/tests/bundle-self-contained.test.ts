@@ -1,6 +1,5 @@
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -9,6 +8,7 @@ import {
     type AppRun,
     buildAppProject,
     createAppProject,
+    installBundle,
     removeAppProject,
     runNode,
 } from "./app-project.js";
@@ -21,15 +21,19 @@ const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const VERSION_PREFIX = "rendererVersion=";
 const BUILD_TIMEOUT = 120_000;
 const OUT_DIR = "dist";
-const BUNDLE_NAME = "bundle.js";
+const BUNDLE_NAME = "bundle.mjs";
 const REACT_PACKAGE = "@gtkx/react";
 const REACT_MANIFEST = `${REACT_PACKAGE}/package.json`;
 const SIBLING_MANIFEST = "./package.json";
 const MISSING_MODULE = "Cannot find module";
-const WORKER_DIR = "workers";
 const WORKER_NAME = "indexer.mjs";
 const WORKER_SOURCE_PATH = join("src", WORKER_NAME);
-const JS_EXTENSION = ".js";
+const ASSETS_DIR = "assets";
+const WORKER_DIR = "workers";
+const SHARED_NAME = "totals.mjs";
+const SHARED_SOURCE_PATH = join("src", SHARED_NAME);
+const ESM_EXTENSION = ".mjs";
+const SCRIPT_EXTENSIONS = new Set([".cjs", ".js", ".mjs"]);
 
 const APP_ENTRY = String.raw`import { createRoot } from "@gtkx/react";
 
@@ -51,19 +55,26 @@ process.stdout.write("${VERSION_PREFIX}" + injected.join(",") + "\n");
 
 const WORKER_APP_ENTRY = `import { Worker } from "node:worker_threads";
 import { createRoot } from "@gtkx/react";
+import { half } from "./${SHARED_NAME}";
 
 const worker = new Worker(new URL("./${WORKER_NAME}", import.meta.url));
 
 worker.on("message", (total) => {
-    process.stdout.write("total=" + total);
+    process.stdout.write("total=" + (total + half(0)));
 });
 
 createRoot();
 `;
 
 const WORKER_SOURCE = `import { parentPort } from "node:worker_threads";
+import { half } from "./${SHARED_NAME}";
 
-parentPort?.postMessage(21 + 21);
+parentPort?.postMessage(half(42) + half(42));
+`;
+
+const SHARED_SOURCE = `const half = (total) => total / 2;
+
+export { half };
 `;
 
 const RESOLVING_CASES: ResolvingCase[] = [
@@ -88,6 +99,11 @@ globalThis.__gtkxLateVersion = () => createRequire(import.meta.url)("${specifier
 process.stdout.write("started\n");
 `;
 
+const scriptNames = (outDir: string): string[] =>
+    readdirSync(outDir, { recursive: true, encoding: "utf8" }).filter((name) =>
+        SCRIPT_EXTENSIONS.has(extname(name)),
+    );
+
 const reactManifest = (): ReactManifest => {
     const manifest = readFileSync(join(WORKSPACE_ROOT, "packages", "react", "package.json"), "utf8");
 
@@ -98,13 +114,6 @@ const versionLiteral = (version: string): RegExp => {
     const escaped = version.split(".").join(String.raw`\.`);
 
     return new RegExp(String.raw`(["'\x60])${escaped}\1`);
-};
-
-const installBundle = (outDir: string): string => {
-    const installDir = mkdtempSync(join(tmpdir(), "gtkx-bundle-install-"));
-    cpSync(outDir, installDir, { recursive: true });
-
-    return installDir;
 };
 
 const canResolveFromInstall = (installDir: string, specifier: string): boolean => {
@@ -171,15 +180,18 @@ describe("gtkx build (worker chunks)", () => {
         const project = createAppProject({
             applicationId: "com.gtkx.clibundleworker",
             entry: WORKER_APP_ENTRY,
-            files: { [WORKER_SOURCE_PATH]: WORKER_SOURCE },
+            files: { [SHARED_SOURCE_PATH]: SHARED_SOURCE, [WORKER_SOURCE_PATH]: WORKER_SOURCE },
             packageType: "module",
             prefix: "gtkx-bundle-worker-",
         });
 
         try {
             await buildAppProject({ project, outDir: OUT_DIR });
-            const emitted = readdirSync(join(project.root, OUT_DIR, WORKER_DIR));
-            expect(emitted.map((name) => extname(name))).toEqual([JS_EXTENSION]);
+            const emitted = scriptNames(join(project.root, OUT_DIR));
+            expect(emitted).toContain(BUNDLE_NAME);
+            expect(emitted.filter((name) => name.startsWith(ASSETS_DIR))).toHaveLength(1);
+            expect(emitted.filter((name) => name.startsWith(WORKER_DIR))).toHaveLength(1);
+            expect(emitted.map((name) => extname(name))).toEqual(emitted.map(() => ESM_EXTENSION));
         } finally {
             removeAppProject(project);
         }

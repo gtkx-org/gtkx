@@ -21,7 +21,7 @@ Install and build the workspace once from the repository root, then:
 pnpm --filter browser dev
 ```
 
-`pnpm --filter browser build` writes `dist/bundle.js`, which `pnpm --filter browser start` runs with Node.js.
+`pnpm --filter browser build` writes `dist/bundle.mjs`, which `pnpm --filter browser start` runs with Node.js.
 
 ## Learn more
 

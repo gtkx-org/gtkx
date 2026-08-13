@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-`npm run build` writes `dist/bundle.js`, which `npm start` runs with Node.js. `npm run bundle` and `npm run build:sea` produce a single executable.
+`npm run build` writes `dist/bundle.mjs`, which `npm start` runs with Node.js. `npm run bundle` and `npm run build:sea` produce a single executable.
 
 To validate it against the packages in this repository instead of the published ones, run this from the repository root:
 
