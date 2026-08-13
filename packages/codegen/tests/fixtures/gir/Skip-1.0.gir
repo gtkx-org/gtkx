@@ -1,0 +1,128 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="Skip"
+             version="1.0"
+             shared-library="libskip.so.1"
+             c:identifier-prefixes="Skip"
+             c:symbol-prefixes="skip">
+    <class name="Probe"
+           c:symbol-prefix="probe"
+           c:type="SkipProbe"
+           parent="GObject.Object"
+           glib:type-name="SkipProbe"
+           glib:get-type="skip_probe_get_type"
+           glib:type-struct="ProbeClass">
+      <virtual-method name="scan" invoker="scan">
+        <return-value transfer-ownership="none" skip="1">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="probe" transfer-ownership="none">
+            <type name="Probe" c:type="SkipProbe*"/>
+          </instance-parameter>
+          <parameter name="label"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
+            <type name="utf8" c:type="char**"/>
+          </parameter>
+        </parameters>
+      </virtual-method>
+      <virtual-method name="rank" invoker="rank">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="probe" transfer-ownership="none">
+            <type name="Probe" c:type="SkipProbe*"/>
+          </instance-parameter>
+          <parameter name="score"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
+            <type name="gint" c:type="gint*"/>
+          </parameter>
+        </parameters>
+      </virtual-method>
+      <method name="scan" c:identifier="skip_probe_scan">
+        <return-value transfer-ownership="none" skip="1">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="probe" transfer-ownership="none">
+            <type name="Probe" c:type="SkipProbe*"/>
+          </instance-parameter>
+          <parameter name="label"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
+            <type name="utf8" c:type="char**"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="rank" c:identifier="skip_probe_rank">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="probe" transfer-ownership="none">
+            <type name="Probe" c:type="SkipProbe*"/>
+          </instance-parameter>
+          <parameter name="score"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
+            <type name="gint" c:type="gint*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <record name="ProbeClass"
+            c:type="SkipProbeClass"
+            glib:is-gtype-struct-for="Probe">
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+      <field name="scan">
+        <callback name="scan">
+          <return-value transfer-ownership="none" skip="1">
+            <type name="gboolean" c:type="gboolean"/>
+          </return-value>
+          <parameters>
+            <parameter name="probe" transfer-ownership="none">
+              <type name="Probe" c:type="SkipProbe*"/>
+            </parameter>
+            <parameter name="label"
+                       direction="out"
+                       caller-allocates="0"
+                       transfer-ownership="full">
+              <type name="utf8" c:type="char**"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="rank">
+        <callback name="rank">
+          <return-value transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
+          </return-value>
+          <parameters>
+            <parameter name="probe" transfer-ownership="none">
+              <type name="Probe" c:type="SkipProbe*"/>
+            </parameter>
+            <parameter name="score"
+                       direction="out"
+                       caller-allocates="0"
+                       transfer-ownership="full">
+              <type name="gint" c:type="gint*"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+    </record>
+  </namespace>
+</repository>

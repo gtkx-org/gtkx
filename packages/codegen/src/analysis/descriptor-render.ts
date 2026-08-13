@@ -138,7 +138,7 @@ const shouldOmitPrimaryReturn = (library: Library, returnValue: GirReturnValue):
     isVoidRef(library, returnValue.type) || returnValue.skip;
 
 const isSkippedPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
-    returnValue.skip && !isVoidRef(library, returnValue.type);
+    shouldOmitPrimaryReturn(library, returnValue) && !isVoidRef(library, returnValue.type);
 
 const argIndexOptions = (options: RenderDescriptorOptions): ArgIndexOptions => ({
     argIndexOffset: options.argIndexOffset ?? 0,

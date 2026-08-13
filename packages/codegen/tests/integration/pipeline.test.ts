@@ -23,6 +23,7 @@ import {
     type ResolvedQualifiedInterface,
 } from "../../src/store/jsx/intrinsic-elements.js";
 import { generateJsxFiles } from "../../src/store/jsx/pipeline.js";
+import { callDescriptorFor } from "../helpers/emitted-spec.js";
 import { giModules, library } from "../helpers/library.js";
 
 type WalkedCallable = { parameters: GirParameter[]; returnValue: GirReturnValue };
@@ -37,6 +38,24 @@ const BUS_GET_SIGNATURE =
     "export function busGet(busType: BusType, cancellable?: Cancellable | null): Promise<DBusConnection> {";
 
 const BUS_GET_PROMISIFY_CALL = "return promisify(gBusGet, busGetFinish, cancellable, busType);";
+
+const SKIP_ANNOTATED_SPLITTERS: [string, string][] = [
+    [
+        "g_uri_split",
+        "static split(uriRef: string, flags: UriFlags): " +
+        "[string | null, string | null, string | null, number, string, string | null, string | null]",
+    ],
+    [
+        "g_uri_split_network",
+        "static splitNetwork(uriString: string, flags: UriFlags): [string | null, string | null, number]",
+    ],
+    [
+        "g_uri_split_with_user",
+        "static splitWithUser(uriRef: string, flags: UriFlags): [string | null, string | null, string | null, " +
+        "string | null, string | null, number, string, string | null, string | null]",
+    ],
+];
+
 const THROWS_TAG = "@throws A `GLib.Error` carrying the failing operation's domain, code, and message.";
 
 const DBUS_CONNECTION_NEW_SIGNATURE =
@@ -230,14 +249,6 @@ const namespaceNamed = (name: string): GirNamespace | undefined =>
     library.namespaces.values().find((namespace) => namespace.name === name);
 
 const gioSource = (): string => giSource("gio");
-
-const callDescriptorFor = (source: string, cIdentifier: string): string => {
-    const start = source.indexOf(`"${cIdentifier}", {`);
-    expect(start).toBeGreaterThan(-1);
-    const end = source.indexOf("});", start);
-
-    return source.slice(start, end);
-};
 
 const interfaceBody = (jsxSource: string, glibName: string): string => {
     const block = jsxSource.slice(jsxSource.indexOf(`export interface ${glibName}Props`));
@@ -542,30 +553,23 @@ describe("codegen return-value convention", () => {
         expect(source).toContain("getGroups(): [string[], number]");
     });
 
-    it("drops a skip-annotated return value from the surfaced result", () => {
-        const source = giSource("glib");
-
-        expect(source).toContain(
-            "static split(uriRef: string, flags: UriFlags): " +
-            "[string | null, string | null, string | null, number, string, string | null, string | null]",
-        );
-
-        expect(source).not.toContain("[boolean, string, string, string, number, string, string, string]");
-    });
-
-    it.each(["g_uri_split", "g_uri_split_network", "g_uri_split_with_user"])(
-        "marks the skipped return of %s as unsurfaced in the call descriptor",
-        (cIdentifier) => {
-            const descriptor = callDescriptorFor(giSource("glib"), cIdentifier);
-            expect(descriptor).toContain("returns: t.boolean");
-            expect(descriptor).toContain("isReturnSkipped: true");
+    it.each(SKIP_ANNOTATED_SPLITTERS)(
+        "drops the skip-annotated return of %s from the declaration and from the call descriptor alike",
+        (cIdentifier, declaration) => {
+            const source = giSource("glib");
+            expect(source).toContain(declaration);
+            expect(callDescriptorFor(source, cIdentifier)).toContain("returns: t.boolean, isReturnSkipped: true");
         },
     );
 
+    it("leaves no declaration behind that counts the skipped return as an element", () => {
+        expect(giSource("glib")).not.toContain("[boolean, string, string, string, number, string, string, string]");
+    });
+
     it("surfaces the return value of a throwing function GIR does not skip", () => {
-        const descriptor = callDescriptorFor(giSource("glib"), "g_file_get_contents");
-        expect(descriptor).toContain("returns: t.boolean");
-        expect(descriptor).not.toContain("isReturnSkipped");
+        const source = giSource("glib");
+        expect(source).toContain("export function fileGetContents(filename: string): [boolean, number[]]");
+        expect(callDescriptorFor(source, "g_file_get_contents")).toContain("returns: t.boolean, canThrow: true");
     });
 });
 

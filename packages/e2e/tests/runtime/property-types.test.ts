@@ -7,7 +7,7 @@ type Has<T, K extends PropertyKey> = K extends keyof T ? true : false;
 describe("generated property types", () => {
     it("types each property with its accessor type", () => {
         const button = new Gtk.Button({ label: "Send" });
-        expectTypeOf<Gtk.ButtonProperties["label"]>().toEqualTypeOf<string>();
+        expectTypeOf<Gtk.ButtonProperties["label"]>().toEqualTypeOf<string | null>();
         expectTypeOf<Gtk.ButtonProperties["child"]>().toEqualTypeOf<Gtk.Widget | null>();
         expectTypeOf<Gtk.LabelProperties["wrap"]>().toEqualTypeOf<boolean>();
         expect(button.label).toBe("Send");

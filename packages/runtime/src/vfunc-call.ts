@@ -82,7 +82,12 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
 
     const shaped = fromNativeCallable(
         bindVfunc(bindOptionsFor(slot, instanceType, args, label)),
-        { args, returns: descriptor.returnDescriptor, canThrow },
+        {
+            args,
+            returns: descriptor.returnDescriptor,
+            isReturnSkipped: descriptor.isReturnSkipped === true,
+            canThrow,
+        },
         takeRefSeeds,
     );
 

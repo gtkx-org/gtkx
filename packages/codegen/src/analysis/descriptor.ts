@@ -101,6 +101,8 @@ type FnSpecParts = {
     canThrow: boolean;
 };
 
+const SKIPPED_RETURN_ENTRY = "isReturnSkipped: true";
+
 const T: DescriptorNames = {
     bind: "t.bind",
     int8: "t.int8",
@@ -268,7 +270,7 @@ const tBind = (args: BindArgs): string =>
     call("bind", [args.libExpr, args.symbolExpr, args.argList, args.returnType]);
 
 const tFn = (lib: string, cIdentifier: string, spec: FnSpecParts): string => {
-    const skipEntry = spec.isReturnSkipped ? ", isReturnSkipped: true" : "";
+    const skipEntry = spec.isReturnSkipped ? `, ${SKIPPED_RETURN_ENTRY}` : "";
     const throwsEntry = spec.canThrow ? ", canThrow: true" : "";
 
     return call("fn", [
@@ -279,6 +281,7 @@ const tFn = (lib: string, cIdentifier: string, spec: FnSpecParts): string => {
 };
 
 export {
+    SKIPPED_RETURN_ENTRY,
     tVoid,
     tBoolean,
     tUint8,
