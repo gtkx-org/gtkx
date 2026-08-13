@@ -22,7 +22,7 @@
         "@gtkx/css": "^1.0.0",
         "@gtkx/react": "^1.0.0",
         "react": "^19.2.8",
-        "zustand": "^5.0.14"
+        "zustand": "^5.0.15"
     },
     "devDependencies": {
         "@gtkx/cli": "^1.0.0",

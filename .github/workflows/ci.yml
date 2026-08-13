@@ -470,7 +470,7 @@ jobs:
         shell: bash
         run: |
           corepack enable
-          corepack prepare pnpm@11.20.0 --activate
+          corepack prepare pnpm@11.21.0 --activate
 
       - name: Set up Rust
         shell: bash

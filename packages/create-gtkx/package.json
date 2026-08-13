@@ -62,7 +62,7 @@
     "devDependencies": {
         "@types/ejs": "catalog:",
         "@types/node": "catalog:",
-        "memfs": "^4.68.0",
+        "memfs": "^4.68.1",
         "typescript": "catalog:",
         "vitest": "catalog:"
     },
