@@ -57,6 +57,12 @@
     },
     "nx": {
         "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            },
             "codegen": {
                 "cache": true,
                 "dependsOn": [

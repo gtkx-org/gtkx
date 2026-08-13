@@ -68,6 +68,12 @@
     },
     "nx": {
         "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            },
             "copy-templates": {
                 "cache": true,
                 "inputs": [
