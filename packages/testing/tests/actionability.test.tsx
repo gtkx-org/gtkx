@@ -196,7 +196,13 @@ const beginDrag = (window: Gtk.Window): Gdk.Drag => {
         }),
     );
 
-    const drag = Gdk.Drag.begin(window.getSurface(), device, content, Gdk.DragAction.COPY, 0, 0);
+    const surface = window.getSurface();
+
+    if (surface === null) {
+        throw new Error("the window has no surface to drag from");
+    }
+
+    const drag = Gdk.Drag.begin(surface, device, content, Gdk.DragAction.COPY, 0, 0);
 
     if (drag === null) {
         throw new Error("the display refused to begin a drag");
