@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +14,7 @@ import {
 import { gtkxResources } from "../../src/vite-plugins/resources.js";
 import { collectLogged } from "../stderr-text.js";
 import { expectBuildEndEmitsAsset, expectBuildEndIsNoop } from "./build-end-assertions.js";
+import { FakeEmitter } from "./fake-emitter.js";
 import { hasGlibCompileResources } from "./glib-tools.js";
 
 type ConfigureServerHook = (this: unknown, server: unknown) => void;
@@ -22,6 +23,7 @@ type ConfigResolvedHook = (config: { command: "build" | "serve"; root: string })
 type ResourcesPlugin = ReturnType<typeof gtkxResources>;
 
 type FakeServer = {
+    httpServer: FakeEmitter;
     watcher: FakeEmitter;
     ssrLoadModule: ReturnType<typeof vi.fn>;
 };
@@ -32,8 +34,27 @@ type WatcherHarness = {
     refresh: ReturnType<typeof vi.fn>;
 };
 
+type ServeHarness = {
+    plugin: ResourcesPlugin;
+    stagingDir: string;
+};
+
 const TINY_PNG = Buffer.from([0x89, 0x50, 0x4E, 0x47]);
 const tmpDir = { path: "" };
+const BUNDLE_FILENAME_PATTERN = BUNDLE_FILENAME.replaceAll(".", String.raw`\.`);
+const DEV_BUNDLE_PATH_RE = new RegExp(`"([^"]+)/${BUNDLE_FILENAME_PATTERN}"`);
+const openPlugins: ResourcesPlugin[] = [];
+
+const callCloseBundle = (plugin: ResourcesPlugin): void => {
+    (plugin.closeBundle as (this: unknown) => void).call(plugin);
+};
+
+const createResourcesPlugin = (): ResourcesPlugin => {
+    const plugin = gtkxResources();
+    openPlugins.push(plugin);
+
+    return plugin;
+};
 
 const dataAssetPath = (...segments: string[]): string => join(tmpDir.path, "data", ...segments);
 
@@ -66,20 +87,20 @@ const callResolveIdResources = async (
     resolved: { id: string; external?: boolean } | null,
     source: string,
 ): Promise<string | undefined | null> => {
-    const plugin = gtkxResources();
+    const plugin = createResourcesPlugin();
 
     return (plugin.resolveId as ResolveIdHook).call({ resolve: () => Promise.resolve(resolved) }, source);
 };
 
 const loadBuiltAssetSource = async (rel: string, applicationId?: string): Promise<string> => {
-    const plugin = gtkxResources();
+    const plugin = createResourcesPlugin();
     await initPlugin(plugin, "build", tmpDir.path, applicationId);
 
     return (plugin.load as LoadHook)(virtualAssetId(dataAssetPath(rel), rel)) as string;
 };
 
 const trackServeAsset = async (assetName: string): Promise<{ assetPath: string; plugin: ResourcesPlugin }> => {
-    const plugin = gtkxResources();
+    const plugin = createResourcesPlugin();
     await initPlugin(plugin, "serve", tmpDir.path);
     const assetPath = writeDataAsset(assetName, TINY_PNG);
     (plugin.load as LoadHook)(virtualAssetId(assetPath, assetName));
@@ -98,14 +119,50 @@ const setupTmpDir = (): void => {
 };
 
 const createFakeServer = (refresh: ReturnType<typeof vi.fn>): FakeServer => ({
+    httpServer: new FakeEmitter(),
     watcher: new FakeEmitter(),
     ssrLoadModule: vi.fn(() => Promise.resolve({ [REFRESH_EXPORT]: refresh })),
 });
+
+const readDevStagingDir = (plugin: ResourcesPlugin): string => {
+    const source = (plugin.load as LoadHook)(VIRTUAL_INIT) as string;
+    const dir = DEV_BUNDLE_PATH_RE.exec(source)?.[1];
+
+    if (dir === undefined) {
+        throw new Error("dev init module carries no staged bundle path");
+    }
+
+    return dir;
+};
+
+const startServeMode = async (): Promise<ServeHarness> => {
+    const plugin = createResourcesPlugin();
+    await initPlugin(plugin, "serve", tmpDir.path);
+
+    return { plugin, stagingDir: readDevStagingDir(plugin) };
+};
+
+const releaseOpenPlugins = (): void => {
+    for (const plugin of openPlugins) {
+        callCloseBundle(plugin);
+    }
+
+    openPlugins.length = 0;
+};
 
 const waitTicks = async (n = 2): Promise<void> => {
     for (let i = 0; i < n; i++) {
         await new Promise((resolve) => setImmediate(resolve));
     }
+};
+
+const expectCloseReleasesStagingDir = async (close: (server: FakeServer) => void): Promise<void> => {
+    const { plugin, stagingDir } = await startServeMode();
+    const server = createFakeServer(vi.fn());
+    (plugin.configureServer as ConfigureServerHook).call(plugin, server);
+    expect(existsSync(stagingDir)).toBe(true);
+    close(server);
+    expect(existsSync(stagingDir)).toBe(false);
 };
 
 const setupTrackedAssetServer = async (assetName: string): Promise<WatcherHarness> => {
@@ -117,33 +174,17 @@ const setupTrackedAssetServer = async (assetName: string): Promise<WatcherHarnes
     return { assetPath, server, refresh };
 };
 
-class FakeEmitter {
-    #listeners: Map<string, ((...args: unknown[]) => void)[]> = new Map();
-
-    on(event: string, listener: (...args: unknown[]) => void): void {
-        const entries = this.#listeners.get(event) ?? [];
-        entries.push(listener);
-        this.#listeners.set(event, entries);
-    }
-
-    emit(event: string, ...args: unknown[]): void {
-        const listeners = this.#listeners.get(event) ?? [];
-
-        for (const listener of listeners) {
-            listener(...args);
-        }
-    }
-}
+afterEach(releaseOpenPlugins);
 
 describe("gtkxResources (plugin shape)", () => {
     it("returns a plugin with the expected name and pre-enforce", () => {
-        const plugin = gtkxResources();
+        const plugin = createResourcesPlugin();
         expect(plugin.name).toBe("gtkx:resources");
         expect(plugin.enforce).toBe("pre");
     });
 
     it("config declares an assetsInclude regex covering known asset extensions", async () => {
-        const plugin = gtkxResources();
+        const plugin = createResourcesPlugin();
         const root = mkdtempSync(join(tmpdir(), "gtkx-resources-test-"));
         writeFileSync(join(root, "gtkx.config.ts"), "export default { applicationId: \"org.gtkx.app\" };\n");
 
@@ -193,7 +234,7 @@ describe("gtkxResources (resolveId)", () => {
     });
 
     it("strips a query string before resolving and carries the relative path", async () => {
-        const plugin = gtkxResources();
+        const plugin = createResourcesPlugin();
         const resolve = vi.fn(() => Promise.resolve({ id: "/abs/data/logo.png" }));
         const result = await (plugin.resolveId as ResolveIdHook).call({ resolve }, "#data/logo.png?inline");
         expect(resolve).toHaveBeenCalledWith("#data/logo.png", undefined, expect.objectContaining({ skipSelf: true }));
@@ -205,7 +246,7 @@ describe("gtkxResources (init module)", () => {
     setupTmpDir();
 
     it("renders the build-mode init module with a Resource.load bootstrap", async () => {
-        const plugin = gtkxResources();
+        const plugin = createResourcesPlugin();
         await initPlugin(plugin, "build", tmpDir.path, "org.gtk.Demo4");
         const out = (plugin.load as LoadHook)(VIRTUAL_INIT) as string;
         expect(out).toContain("Resource.load");
@@ -218,7 +259,7 @@ describe("gtkxResources (init module)", () => {
     it.skipIf(!hasGlibCompileResources())(
         "renders the dev-mode init module with a refresh-capable Resource.load",
         async () => {
-            const plugin = gtkxResources();
+            const plugin = createResourcesPlugin();
             await initPlugin(plugin, "serve", tmpDir.path, "org.gtk.Demo4");
             const assetPath = writeDataAsset("logo.png", Buffer.from([0x89, 0x50, 0x4E, 0x47]));
             (plugin.load as LoadHook)(virtualAssetId(assetPath, "logo.png"));
@@ -229,6 +270,48 @@ describe("gtkxResources (init module)", () => {
             expect(out).toContain("gtkx-resources-dev-");
         },
     );
+});
+
+describe("gtkxResources (dev staging dir)", () => {
+    setupTmpDir();
+
+    it("removes the dev staging directory when the bundle closes", async () => {
+        const { plugin, stagingDir } = await startServeMode();
+        expect(existsSync(stagingDir)).toBe(true);
+        callCloseBundle(plugin);
+        expect(existsSync(stagingDir)).toBe(false);
+        callCloseBundle(plugin);
+    });
+
+    it("removes the dev staging directory when the http server closes", async () => {
+        await expectCloseReleasesStagingDir((server) => {
+            server.httpServer.emit("close");
+        });
+    });
+
+    it("removes the dev staging directory when the watcher closes", async () => {
+        await expectCloseReleasesStagingDir((server) => {
+            server.watcher.emit("close");
+        });
+    });
+
+    it("stages a fresh directory once the released one is gone", async () => {
+        const { plugin, stagingDir } = await startServeMode();
+        callCloseBundle(plugin);
+        const restaged = readDevStagingDir(plugin);
+        expect(restaged).not.toBe(stagingDir);
+        expect(existsSync(restaged)).toBe(true);
+        callCloseBundle(plugin);
+        expect(existsSync(restaged)).toBe(false);
+    });
+
+    it("drops its process exit listener when the staging directory is released", async () => {
+        const before = process.listenerCount("exit");
+        const { plugin } = await startServeMode();
+        expect(process.listenerCount("exit")).toBe(before + 1);
+        callCloseBundle(plugin);
+        expect(process.listenerCount("exit")).toBe(before);
+    });
 });
 
 describe("gtkxResources (resource prefix)", () => {
@@ -244,7 +327,7 @@ describe("gtkxResources (asset load)", () => {
     setupTmpDir();
 
     it("returns undefined for non-virtual ids", async () => {
-        const plugin = gtkxResources();
+        const plugin = createResourcesPlugin();
         await initPlugin(plugin, "build", tmpDir.path);
         expect((plugin.load as LoadHook)("/abs/path/foo.ts")).toBeUndefined();
     });
@@ -267,13 +350,13 @@ describe("gtkxResources (buildEnd)", () => {
     setupTmpDir();
 
     it("is a no-op when no assets were imported", async () => {
-        const plugin = gtkxResources();
+        const plugin = createResourcesPlugin();
         await initPlugin(plugin, "build", tmpDir.path);
         expectBuildEndIsNoop(plugin.buildEnd as BuildEndHook);
     });
 
     it.skipIf(!hasGlibCompileResources())("compiles tracked assets into a single .gresource and emits it", async () => {
-        const plugin = gtkxResources();
+        const plugin = createResourcesPlugin();
         await initPlugin(plugin, "build", tmpDir.path, "org.gtk.Demo4");
         const assetPath = writeDataAsset("logo.png", Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]));
         (plugin.load as LoadHook)(virtualAssetId(assetPath, "logo.png"));
@@ -335,7 +418,7 @@ describe("gtkxResources (watcher: untracked event)", () => {
     setupTmpDir();
 
     it("ignores file events for untracked paths", async () => {
-        const plugin = gtkxResources();
+        const plugin = createResourcesPlugin();
         await initPlugin(plugin, "serve", tmpDir.path);
         const refresh = vi.fn();
         const server = createFakeServer(refresh);

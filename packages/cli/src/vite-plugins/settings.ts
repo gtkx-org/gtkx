@@ -1,12 +1,11 @@
 import type { ModuleNode, Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { error, errorMessage, info } from "@gtkx/utils";
-import { mkdtempSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { AssetEmitter } from "./asset-emitter.js";
 import { prependBanner } from "../internal/banner.js";
 import { resolveDataDir } from "../internal/data-dir.js";
-import { removeTempDir, withStagingDir } from "../internal/staging-dir.js";
+import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
 import { compileSchemas } from "../settings/compile.js";
 import { parseSchemaXml, SchemaParseError } from "../settings/parser.js";
 import { renderRuntimeModule } from "../settings/render.js";
@@ -14,13 +13,12 @@ import { emitSchemaEnv, prependSchemaDir, SCHEMA_SUFFIX, stageSchema } from "../
 import { createVirtualNamespace } from "./virtual-module.js";
 
 type PluginState = {
-    schemaDir: string | null;
+    schemaDir: RetainedStagingDir;
     rootDir: string | null;
     dataDir: string | null;
     isBuild: boolean;
     trackedSchemas: Map<string, string>;
     buildSchemas: Set<string>;
-    cleanupProcessExit: (() => void) | null;
 };
 
 type PluginContext = AssetEmitter & {
@@ -28,6 +26,7 @@ type PluginContext = AssetEmitter & {
 };
 
 const VIRTUAL_PREFIX = "\0gtkx-settings:";
+const SCHEMA_STAGING_PREFIX = "schemas";
 const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const SCHEMA_ENV_BANNER = [
@@ -40,50 +39,26 @@ const SCHEMA_ENV_BANNER = [
 ].join("\n");
 
 const ensureSchemaDir = (state: PluginState): string => {
-    if (!state.schemaDir) {
-        const runnerDir = process.env.GTKX_DEV_SCHEMA_DIR;
+    const existing = state.schemaDir.getPath();
 
-        if (runnerDir) {
-            state.schemaDir = runnerDir;
-
-            return runnerDir;
-        }
-
-        const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-"));
-        state.schemaDir = dir;
-
-        const cleanup = (): void => {
-            removeTempDir(dir);
-        };
-
-        state.cleanupProcessExit = cleanup;
-        process.once("exit", cleanup);
+    if (existing !== null) {
+        return existing;
     }
 
-    return state.schemaDir;
-};
+    const runnerDir = process.env.GTKX_DEV_SCHEMA_DIR;
 
-const releaseSchemaDir = (state: PluginState): void => {
-    if (!state.schemaDir) {
-        return;
-    }
-
-    if (state.cleanupProcessExit) {
-        removeTempDir(state.schemaDir);
-        process.removeListener("exit", state.cleanupProcessExit);
-        state.cleanupProcessExit = null;
-    }
-
-    state.schemaDir = null;
+    return runnerDir ? state.schemaDir.adopt(runnerDir) : state.schemaDir.retain();
 };
 
 const compileSchemaDir = (state: PluginState): void => {
-    if (!state.schemaDir) {
+    const dir = state.schemaDir.getPath();
+
+    if (dir === null) {
         return;
     }
 
-    compileSchemas(state.schemaDir);
-    process.env.GSETTINGS_SCHEMA_DIR = prependSchemaDir(state.schemaDir, process.env.GSETTINGS_SCHEMA_DIR);
+    compileSchemas(dir);
+    process.env.GSETTINGS_SCHEMA_DIR = prependSchemaDir(dir, process.env.GSETTINGS_SCHEMA_DIR);
 };
 
 const syncSchemaEnv = (state: PluginState): void => {
@@ -204,13 +179,12 @@ const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDev
 };
 
 const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
-    server.httpServer?.once("close", () => {
-        releaseSchemaDir(state);
-    });
+    const onClose = (): void => {
+        state.schemaDir.release();
+    };
 
-    server.watcher.once("close", () => {
-        releaseSchemaDir(state);
-    });
+    server.httpServer?.once("close", onClose);
+    server.watcher.once("close", onClose);
 
     const refreshSchemaTypes = (file: string): void => {
         if (file.endsWith(SCHEMA_SUFFIX)) {
@@ -224,13 +198,12 @@ const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
 
 function gtkxSettings(): Plugin {
     const state: PluginState = {
-        schemaDir: null,
+        schemaDir: createRetainedStagingDir(SCHEMA_STAGING_PREFIX),
         rootDir: null,
         dataDir: null,
         isBuild: false,
         trackedSchemas: new Map(),
         buildSchemas: new Set(),
-        cleanupProcessExit: null,
     };
 
     return {
@@ -274,7 +247,7 @@ function gtkxSettings(): Plugin {
         },
 
         closeBundle() {
-            releaseSchemaDir(state);
+            state.schemaDir.release();
         },
 
         handleHotUpdate({ file, server }) {

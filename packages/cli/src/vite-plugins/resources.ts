@@ -2,15 +2,14 @@ import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
 import { error, info, sortStrings } from "@gtkx/utils";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { AssetEmitter } from "./asset-emitter.js";
 import { DATA_IMPORT_PREFIX, resolveDataDir } from "../internal/data-dir.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 import { loadModuleExclusively } from "../internal/module-loads.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
-import { withStagingDir } from "../internal/staging-dir.js";
+import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
 import { renderInitModule } from "./resource-init-module.js";
 import {
@@ -36,7 +35,7 @@ type PluginState = {
     isBuild: boolean;
     entries: Map<string, ResourceEntry>;
     sourcePaths: Set<string>;
-    devStagingDir: string | null;
+    stagingDir: RetainedStagingDir;
     devBundlePath: string;
     server: ViteDevServer | null;
     compiledSignature: string;
@@ -46,6 +45,7 @@ type PluginState = {
 const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 const RESOURCE_COMPILER = "glib-compile-resources";
 const MANIFEST_PREFIX = "/";
+const DEV_STAGING_PREFIX = "resources-dev";
 
 const deriveResourcePrefix = (applicationId: string): string => `/${applicationId.replaceAll(".", "/")}`;
 
@@ -94,12 +94,13 @@ const runCompiler = (sourceDir: string, manifest: string, outputPath: string): B
 };
 
 const ensureStagingDir = (state: PluginState): void => {
-    if (state.devStagingDir) {
-        return;
-    }
+    state.devBundlePath = join(state.stagingDir.retain(), BUNDLE_FILENAME);
+};
 
-    state.devStagingDir = mkdtempSync(join(tmpdir(), "gtkx-resources-dev-"));
-    state.devBundlePath = join(state.devStagingDir, BUNDLE_FILENAME);
+const releaseStagingDir = (state: PluginState): void => {
+    state.stagingDir.release();
+    state.devBundlePath = "";
+    state.compiledSignature = "";
 };
 
 const entriesSignature = (state: PluginState): string => sortStrings(state.entries.keys()).join("\0");
@@ -272,6 +273,12 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
         void refreshTrackedSource(state, file);
     };
 
+    const onClose = (): void => {
+        releaseStagingDir(state);
+    };
+
+    server.httpServer?.once("close", onClose);
+    server.watcher.once("close", onClose);
     server.watcher.on("change", onFileEvent);
     server.watcher.on("add", onFileEvent);
 };
@@ -305,7 +312,7 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin 
         isBuild: false,
         entries: new Map(),
         sourcePaths: new Set(),
-        devStagingDir: null,
+        stagingDir: createRetainedStagingDir(DEV_STAGING_PREFIX),
         devBundlePath: "",
         server: null,
         compiledSignature: "",
@@ -351,6 +358,10 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin 
 
         buildEnd() {
             emitBuildBundle(this, state);
+        },
+
+        closeBundle() {
+            releaseStagingDir(state);
         },
     };
 }
