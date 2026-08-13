@@ -5,6 +5,8 @@ type Relations = {
     rpm: string[];
 };
 
+const GLES_SONAME = "libGLESv2.so.2()(64bit)";
+
 const BASE_DEPENDS: Relations = {
     deb: ["hicolor-icon-theme", "adwaita-icon-theme", "gsettings-desktop-schemas"],
     rpm: ["hicolor-icon-theme", "adwaita-icon-theme", "gsettings-desktop-schemas"],
@@ -12,7 +14,7 @@ const BASE_DEPENDS: Relations = {
 
 const DEPENDS_BY_LIBRARY: Record<string, Relations> = {
     "Adw-1": { deb: ["libadwaita-1-0"], rpm: ["libadwaita"] },
-    "Gtk-4.0": { deb: ["libgtk-4-1"], rpm: ["gtk4"] },
+    "Gtk-4.0": { deb: ["libgtk-4-1"], rpm: ["gtk4", GLES_SONAME] },
     "GtkSource-5": { deb: ["libgtksourceview-5-0"], rpm: ["gtksourceview5"] },
     "WebKit-6.0": { deb: ["libwebkitgtk-6.0-4"], rpm: ["webkitgtk6.0"] },
 };

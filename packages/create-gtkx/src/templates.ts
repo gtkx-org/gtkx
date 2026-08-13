@@ -1,4 +1,4 @@
-import { sortStrings } from "@gtkx/utils";
+import { sortStrings, sourceStringLiteral } from "@gtkx/utils";
 import ejs from "ejs";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -28,6 +28,6 @@ const listTemplates = (): string[] =>
     );
 
 const renderFile = async (templateName: string, context: TemplateContext): Promise<string> =>
-    ejs.renderFile(join(getTemplatesDir(), `${templateName}.ejs`), context);
+    ejs.renderFile(join(getTemplatesDir(), `${templateName}.ejs`), { ...context, sourceStringLiteral });
 
 export { listTemplates, renderFile, type TemplateContext };

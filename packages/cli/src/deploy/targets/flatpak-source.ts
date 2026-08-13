@@ -10,11 +10,15 @@ import {
     detectPackageManager,
     GENERATED_SOURCES,
     installCommandFor,
+    type PackageManager,
     resolveGitSource,
 } from "./flatpak-sources.js";
 
 const NODE_EXTENSION_PATH = "/usr/lib/sdk/node24";
 const LAUNCHER_FILENAME = "launcher.sh";
+const MODULE_BUILD_ROOT = "/run/build";
+const NPM_CACHE_DIR = "flatpak-node/npm-cache";
+const YARN_MIRROR_DIR = "flatpak-node/yarn-mirror";
 const PLAIN_ARGUMENT = /^[\w./-]+$/;
 const QUOTE_ESCAPE = String.raw`'\''`;
 
@@ -89,6 +93,16 @@ const iconInstallCommands = (settings: DeploySettings): string[] => {
         ));
 };
 
+const offlineEnvFor = (manager: PackageManager, settings: DeploySettings): Record<string, string> => {
+    const moduleDir = `${MODULE_BUILD_ROOT}/${settings.binaryName}`;
+
+    if (manager === "yarn") {
+        return { YARN_OFFLINE_MIRROR: `${moduleDir}/${YARN_MIRROR_DIR}` };
+    }
+
+    return { npm_config_cache: `${moduleDir}/${NPM_CACHE_DIR}`, npm_config_offline: "true" };
+};
+
 const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
     const settings = payload.settings;
     const manager = detectPackageManager(settings);
@@ -99,7 +113,7 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
         buildsystem: "simple",
         "build-options": {
             "append-path": `${NODE_EXTENSION_PATH}/bin`,
-            env: { npm_config_nodedir: NODE_EXTENSION_PATH },
+            env: { npm_config_nodedir: NODE_EXTENSION_PATH, ...offlineEnvFor(manager, settings) },
             strip: false,
             "no-debuginfo": true,
         },

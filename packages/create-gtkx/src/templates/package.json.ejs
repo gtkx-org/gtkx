@@ -5,9 +5,9 @@
     "description": "A GTK4 application built with GTKX",
     "license": "MIT",
 <% if (developerEmail) { -%>
-    "author": "<%= developerName %> <<%= developerEmail %>>",
+    "author": <%- sourceStringLiteral(`${developerName} <${developerEmail}>`) %>,
 <% } else { -%>
-    "author": "<%= developerName %>",
+    "author": <%- sourceStringLiteral(developerName) %>,
 <% } -%>
     "type": "module",
     "imports": {

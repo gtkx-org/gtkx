@@ -1,34 +1,42 @@
 import { mkdtempSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import type { DigestRequest } from "../download.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
-import { cachedDigest, cacheDir, downloadFile, publishedDigest } from "../download.js";
+import { cacheDir, downloadFile } from "../download.js";
 
 const NFPM_VERSION = "2.47.0";
 const NFPM_BASE_URL = `https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}`;
-const CHECKSUMS_FILE = "checksums.txt";
 
 const NFPM_ASSET_ARCH: Record<string, string> = {
     arm64: "arm64",
     x64: "x86_64",
 };
 
-const assetNameFor = (arch: string): string => {
+const NFPM_DIGESTS: Record<string, string> = {
+    arm64: "1c0f5f2999b9a974bfb04fdb0cc3306096de530ac5dbb25d739cc5f5219c919c",
+    x86_64: "0660ca602b2d2d2ae4781a06c692b3eeb9d437ffea05b831d76e41f4a3188783",
+};
+
+const assetArchFor = (arch: string): string => {
     const assetArch = NFPM_ASSET_ARCH[arch];
 
     if (assetArch === undefined) {
         throw new Error(`nfpm has no Linux build for ${arch}`);
     }
 
-    return `nfpm_${NFPM_VERSION}_Linux_${assetArch}.tar.gz`;
+    return assetArch;
 };
 
-const digestRequest = (assetName: string, dir: string): DigestRequest => ({
-    url: `${NFPM_BASE_URL}/${CHECKSUMS_FILE}`,
-    dest: join(dir, `${assetName}.sha256`),
-    assetName,
-    subject: `nfpm ${NFPM_VERSION}`,
-});
+const assetNameFor = (arch: string): string => `nfpm_${NFPM_VERSION}_Linux_${assetArchFor(arch)}.tar.gz`;
+
+const digestFor = (arch: string): string => {
+    const digest = NFPM_DIGESTS[assetArchFor(arch)];
+
+    if (digest === undefined) {
+        throw new Error(`nfpm ${NFPM_VERSION} has no pinned digest for ${arch}`);
+    }
+
+    return digest;
+};
 
 const extractNfpm = (archive: string, binary: string): void => {
     const dir = mkdtempSync(`${binary}-`);
@@ -43,14 +51,12 @@ const extractNfpm = (archive: string, binary: string): void => {
 
 const downloadNfpm = async (dir: string, binary: string): Promise<string> => {
     const assetName = assetNameFor(process.arch);
-    const request = digestRequest(assetName, dir);
 
     const archive = await downloadFile({
         url: `${NFPM_BASE_URL}/${assetName}`,
         dest: join(dir, assetName),
         label: `nfpm ${NFPM_VERSION}`,
-        sha256: await cachedDigest(request),
-        freshSha256: () => publishedDigest(request),
+        sha256: digestFor(process.arch),
     });
 
     extractNfpm(archive, binary);

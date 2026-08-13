@@ -124,5 +124,6 @@ export {
     GENERATED_SOURCES,
     generateNodeSources,
     installCommandFor,
+    type PackageManager,
     resolveGitSource,
 };
