@@ -1,26 +1,24 @@
+import type { ParamSpec } from "@gtkx/gi/gobject";
+import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import { Object as GObject, ParamFlags, paramSpecGtype, TYPE_OBJECT, TYPE_STRING, Value } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getClassType, registerClass, t, TYPE_GTYPE } from "@gtkx/runtime";
+import { getClassType, registerClass, resolveType, t, TYPE_GTYPE } from "@gtkx/runtime";
 import { fromValue, getValueType, toValue } from "@gtkx/runtime/internal";
 import { describe, expect, it } from "vitest";
-import { createTypeNameFactory } from "../helpers/unique-name.js";
-import { watchNotify } from "./helpers.js";
 
-const uniqueName = createTypeNameFactory("_");
+const widgetType = getClassType(Gtk.Widget);
+const buttonType = getClassType(Gtk.Button);
+const orientationType = resolveType("libgtk-4.so.1", "gtk_orientation_get_type");
 
-const makeKindHolderClass = () => {
-    class KindHolder extends GObject {
-        declare kind: bigint;
-    }
+class GtypeHolder extends GObject {
+    declare kind: bigint;
+}
 
-    registerClass(KindHolder, {
-        typeName: uniqueName("GtkxKindHolder"),
-        properties: { kind: paramSpecGtype("kind", null, null, TYPE_OBJECT, ParamFlags.READWRITE) },
-    });
-
-    return KindHolder;
-};
+registerClass(GtypeHolder, {
+    typeName: `GtkxGtypeHolder_${String(process.pid)}`,
+    properties: { kind: paramSpecGtype("kind", null, null, TYPE_OBJECT, ParamFlags.READWRITE) },
+});
 
 describe("GValue conversion for GType", () => {
     it("round-trips a GType through the gtype descriptor", () => {
@@ -36,13 +34,12 @@ describe("GValue conversion for GType", () => {
 
 describe("generated GType property accessors", () => {
     it("reads itemType off a Gio.ListStore", () => {
-        const store = new Gio.ListStore({ itemType: getClassType(Gtk.Widget) });
-        expect(store.itemType).toBe(getClassType(Gtk.Widget));
+        const store = new Gio.ListStore({ itemType: widgetType });
+        expect(store.itemType).toBe(widgetType);
     });
 
     it("reads itemType off a Gtk.SingleSelection", () => {
-        const store = new Gio.ListStore({ itemType: getClassType(Gtk.Widget) });
-        const selection = new Gtk.SingleSelection({ model: store });
+        const selection = new Gtk.SingleSelection({ model: new Gio.ListStore({ itemType: widgetType }) });
         expect(selection.itemType).toBe(selection.getItemType());
     });
 
@@ -50,31 +47,38 @@ describe("generated GType property accessors", () => {
         const list = new Gtk.StringList({});
         expect(list.itemType).toBe(list.getItemType());
     });
+
+    it("reads enumType off an Adw.EnumListModel", () => {
+        const model = new Adw.EnumListModel({ enumType: orientationType });
+        expect(model.enumType).toBe(orientationType);
+        expect(model.itemType).toBe(model.getItemType());
+    });
 });
 
 describe("registerClass with a paramSpecGtype property", () => {
     it("reads the pspec default of a never-written property", () => {
-        const KindHolder = makeKindHolderClass();
-        expect(new KindHolder().kind).toBe(TYPE_OBJECT);
+        expect(new GtypeHolder().kind).toBe(TYPE_OBJECT);
     });
 
     it("takes the GType through the constructor", () => {
-        const KindHolder = makeKindHolderClass();
-        expect(new KindHolder({ kind: getClassType(Gtk.Button) }).kind).toBe(getClassType(Gtk.Button));
+        expect(new GtypeHolder({ kind: buttonType }).kind).toBe(buttonType);
     });
 
     it("writes and reads the property after construction", () => {
-        const KindHolder = makeKindHolderClass();
-        const holder = new KindHolder();
-        const seen = watchNotify(holder);
-        holder.kind = getClassType(Gtk.Widget);
-        expect(holder.kind).toBe(getClassType(Gtk.Widget));
+        const holder = new GtypeHolder();
+        const seen: string[] = [];
+
+        holder.on("notify", (...args: unknown[]) => {
+            seen.push((args[0] as ParamSpec).getName());
+        });
+
+        holder.kind = widgetType;
+        expect(holder.kind).toBe(widgetType);
         expect(seen).toEqual(["kind"]);
     });
 
     it("refuses a value that is not a GType", () => {
-        const KindHolder = makeKindHolderClass();
-        const holder = new KindHolder();
+        const holder = new GtypeHolder();
 
         expect(() => Reflect.set(holder, "kind", "widget")).toThrow(
             /cannot set property 'kind' to "widget"; the property holds values of type 'GType'/,
@@ -82,8 +86,7 @@ describe("registerClass with a paramSpecGtype property", () => {
     });
 
     it("refuses a GType outside the range the pspec allows", () => {
-        const KindHolder = makeKindHolderClass();
-        const holder = new KindHolder();
+        const holder = new GtypeHolder();
 
         expect(() => {
             holder.kind = TYPE_STRING;
@@ -91,11 +94,10 @@ describe("registerClass with a paramSpecGtype property", () => {
     });
 
     it("serves the GType back through g_object_get_property", () => {
-        const KindHolder = makeKindHolderClass();
-        const holder = new KindHolder({ kind: getClassType(Gtk.Widget) });
+        const holder = new GtypeHolder({ kind: widgetType });
         const read = new Value();
         read.init(TYPE_GTYPE);
         holder.getProperty("kind", read);
-        expect(read.getGtype()).toBe(getClassType(Gtk.Widget));
+        expect(read.getGtype()).toBe(widgetType);
     });
 });
