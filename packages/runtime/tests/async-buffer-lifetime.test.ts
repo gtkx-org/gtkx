@@ -1,7 +1,15 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import { getHandle, promisify, t } from "@gtkx/runtime";
-import { closeSync, mkdtempSync, readFileSync, readSync, rmSync } from "node:fs";
+import {
+    closeSync,
+    existsSync,
+    mkdtempSync,
+    readFileSync,
+    readSync,
+    rmSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -18,6 +26,14 @@ const payload = Array.from({ length: PAYLOAD_LENGTH }, (_, index) => (index % 25
 const sentinel = Array.from({ length: PAYLOAD_LENGTH }, () => 0);
 const directory = mkdtempSync(join(tmpdir(), "gtkx-async-buffer-"));
 
+const asyncReadyCallback = {
+    type: t.callback([t.object("borrowed"), t.object("borrowed"), t.uint64], t.void, {
+        hasUserData: true,
+        userDataIndex: 2,
+        scope: "async",
+    }),
+};
+
 const replaceContentsAsync = t.fn("libgio-2.0.so.0", "g_file_replace_contents_async", {
     args: [
         { type: t.object("borrowed") },
@@ -27,13 +43,17 @@ const replaceContentsAsync = t.fn("libgio-2.0.so.0", "g_file_replace_contents_as
         { type: t.boolean },
         { type: t.flags("libgio-2.0.so.0", "g_file_create_flags_get_type", false) },
         { type: t.object("borrowed") },
-        {
-            type: t.callback([t.object("borrowed"), t.object("borrowed"), t.uint64], t.void, {
-                hasUserData: true,
-                userDataIndex: 2,
-                scope: "async",
-            }),
-        },
+        asyncReadyCallback,
+    ],
+    returns: t.void,
+});
+
+const readAsync = t.fn("libgio-2.0.so.0", "g_file_read_async", {
+    args: [
+        { type: t.object("borrowed") },
+        { type: t.int32 },
+        { type: t.object("borrowed") },
+        asyncReadyCallback,
     ],
     returns: t.void,
 });
@@ -125,6 +145,33 @@ const replaceContentsFromOverwrittenView = async (path: string): Promise<void> =
     await written;
 };
 
+const replaceContentsWith = (file: Gio.File, callback: unknown): void => {
+    replaceContentsAsync(
+        getHandle(file),
+        payload,
+        payload.length,
+        null,
+        false,
+        Gio.FileCreateFlags.NONE,
+        null,
+        callback,
+    );
+};
+
+const replaceContentsFromOwnCallback = async (path: string): Promise<void> => {
+    const file = Gio.File.newForPath(path);
+
+    const written: Promise<void> = new Promise((resolve) => {
+        replaceContentsWith(file, (_source: unknown, result: Gio.AsyncResult) => {
+            file.replaceContentsFinish(result);
+            resolve();
+        });
+    });
+
+    claimFreedStashes();
+    await written;
+};
+
 const expectWrittenBytesToSurvive = async (name: string, write: WriteToPath): Promise<void> => {
     for (let round = 0; round < ROUNDS; round += 1) {
         const path = join(directory, `${name}-${String(round)}.dat`);
@@ -133,11 +180,11 @@ const expectWrittenBytesToSurvive = async (name: string, write: WriteToPath): Pr
     }
 };
 
-describe("async calls taking a borrowed array", () => {
-    afterAll(() => {
-        rmSync(directory, { force: true, recursive: true });
-    });
+afterAll(() => {
+    rmSync(directory, { force: true, recursive: true });
+});
 
+describe("async calls taking a borrowed array", () => {
     it("writes the given bytes through replaceContentsAsync", () =>
         expectWrittenBytesToSurvive("replace-contents", replaceContents));
 
@@ -151,6 +198,30 @@ describe("async calls taking a borrowed array", () => {
 
     it("writes the bytes a typed array held when the call was made", () =>
         expectWrittenBytesToSurvive("view", replaceContentsFromOverwrittenView));
+
+    it("writes the given bytes for a completion callback the caller wrote itself", () =>
+        expectWrittenBytesToSurvive("own-callback", replaceContentsFromOwnCallback));
+});
+
+describe("async calls made without a completion callback", () => {
+    it("refuses a call that lends the callee memory, before the callee runs", () => {
+        const path = join(directory, "no-callback.dat");
+
+        expect(() => {
+            replaceContentsWith(Gio.File.newForPath(path), null);
+        }).toThrow(/pass a completion callback/);
+
+        expect(existsSync(path)).toBe(false);
+    });
+
+    it("makes a call that lends the callee nothing", () => {
+        const path = join(directory, "read-async.dat");
+        writeFileSync(path, Uint8Array.from(payload));
+
+        expect(() => {
+            readAsync(getHandle(Gio.File.newForPath(path)), 0, null, null);
+        }).not.toThrow();
+    });
 });
 
 describe("calls whose scope-async callback never reports a completion", () => {

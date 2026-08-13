@@ -292,6 +292,10 @@ impl StashStorage {
         &self.data
     }
 
+    pub fn lends_memory(&self) -> bool {
+        !matches!(self.data, StashData::Unit)
+    }
+
     pub fn byte_len(&self) -> Option<usize> {
         match &self.data {
             StashData::U8Vec(v) | StashData::Buffer(v) => Some(size_of_val(v.as_slice())),

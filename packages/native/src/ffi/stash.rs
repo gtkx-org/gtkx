@@ -3,7 +3,7 @@ use std::ffi::c_void;
 
 use libffi::middle as libffi;
 
-use crate::ffi::closure::ClosureState;
+use crate::ffi::closure::{ClosureData, ClosureState};
 
 mod storage;
 
@@ -82,6 +82,10 @@ impl CallbackValue {
         self.pending_transfer.take();
     }
 
+    pub fn closure_data(&self) -> Option<&ClosureData> {
+        self.held_state.map(|state| unsafe { (*state).data_ref() })
+    }
+
     pub fn fn_ptr(&self) -> *mut c_void {
         self.fn_ptr
     }
@@ -139,6 +143,10 @@ impl Stash {
             Self::Callback(callback) => callback.disarm_pending_transfer(),
             _ => {}
         }
+    }
+
+    pub fn lends_memory(&self) -> bool {
+        matches!(self, Self::Storage(storage) if storage.lends_memory())
     }
 
     /// # Safety

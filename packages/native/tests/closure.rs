@@ -643,7 +643,9 @@ fn a_fired_oneshot_outlives_its_idle_cleanup_until_the_calling_frame_lets_go() {
         assert_eq!(calls.get(), 1);
 
         callback_value.disarm_pending_transfer();
-        let data = unsafe { &*callback_value.state_ptr().cast::<ClosureState>() }.data_ref();
+        let data = callback_value
+            .closure_data()
+            .expect("the callback still holds its closure");
         let frees_before = COUNTED_FREES.load(Ordering::Relaxed);
         data.retain_container(stash_that_counts_its_drop());
         assert_eq!(COUNTED_FREES.load(Ordering::Relaxed), frees_before);
