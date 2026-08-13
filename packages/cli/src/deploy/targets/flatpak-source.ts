@@ -5,17 +5,18 @@ import { renderDbusService } from "../freedesktop/dbus-service.js";
 import { renderDesktopEntry } from "../freedesktop/desktop-entry.js";
 import { renderMetainfo } from "../freedesktop/metainfo.js";
 import { optional } from "../nfpm/optional.js";
+import { iconPathFor } from "../payload/icons.js";
 import { renderLauncher } from "../payload/launcher.js";
 import { DESTINATION, type FlatpakModule, postInstallCommands, validationCommands } from "./flatpak-prebuilt.js";
 import {
     detectPackageManager,
     GENERATED_SOURCES,
     installCommandFor,
+    nodeExtensionPathFor,
     type PackageManager,
     resolveGitSource,
 } from "./flatpak-sources.js";
 
-const NODE_EXTENSION_PATH = "/usr/lib/sdk/node24";
 const LAUNCHER_FILENAME = "launcher.sh";
 const MODULE_BUILD_ROOT = "/run/build";
 const RUNTIME_PREFIX = "/app";
@@ -41,11 +42,11 @@ const pathArgument = (value: string): string => shellArgument(value.startsWith("
 const installCommand = (source: string, destination: string, mode: string): string =>
     `install -D${mode} ${pathArgument(source)} ${destination}`;
 
-const runtimeInstallCommands = (settings: DeploySettings): string[] => {
+const runtimeInstallCommands = (settings: DeploySettings, nodeExtensionPath: string): string[] => {
     const lib = `${DESTINATION}/lib/${settings.binaryName}`;
 
     return [
-        installCommand(`${NODE_EXTENSION_PATH}/bin/node`, `${lib}/node`, "m755"),
+        installCommand(`${nodeExtensionPath}/bin/node`, `${lib}/node`, "m755"),
         installCommand("dist/bundle.js", `${lib}/bundle.js`, "m644"),
         installCommand("dist/gtkx.node", `${lib}/gtkx.node`, "m755"),
         "test ! -f dist/gtkx.gresource || " + installCommand("dist/gtkx.gresource", `${lib}/gtkx.gresource`, "m644"),
@@ -95,19 +96,25 @@ const schemaInstallCommands = (settings: DeploySettings): string[] =>
         );
     });
 
+const iconInstallCommand = (settings: DeploySettings, source: string, rel: string): string =>
+    installCommand(
+        projectRelative(settings, source),
+        `${DESTINATION}/share/icons/${shellArgument(rel.replaceAll("\\", "/"))}`,
+        "m644",
+    );
+
 const iconInstallCommands = (settings: DeploySettings): string[] => {
-    const iconsDir = settings.paths.iconsDir;
+    const { iconsDir, iconFile } = settings.paths;
+
+    if (iconFile !== null) {
+        return [iconInstallCommand(settings, iconFile, iconPathFor(settings, iconFile))];
+    }
 
     if (iconsDir === null) {
         return [];
     }
 
-    return listFilesRecursive(iconsDir).map((icon) =>
-        installCommand(
-            projectRelative(settings, icon.absPath),
-            `${DESTINATION}/share/icons/${shellArgument(icon.rel.replaceAll("\\", "/"))}`,
-            "m644",
-        ));
+    return listFilesRecursive(iconsDir).map((icon) => iconInstallCommand(settings, icon.absPath, icon.rel));
 };
 
 const offlineEnvFor = (manager: PackageManager, settings: DeploySettings): Record<string, string> => {
@@ -124,13 +131,14 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
     const settings = payload.settings;
     const manager = detectPackageManager(settings);
     const postInstall = postInstallCommands(payload);
+    const nodeExtensionPath = nodeExtensionPathFor(settings);
 
     return {
         name: settings.binaryName,
         buildsystem: "simple",
         "build-options": {
-            "append-path": `${NODE_EXTENSION_PATH}/bin`,
-            env: { npm_config_nodedir: NODE_EXTENSION_PATH, ...offlineEnvFor(manager, settings) },
+            "append-path": `${nodeExtensionPath}/bin`,
+            env: { npm_config_nodedir: nodeExtensionPath, ...offlineEnvFor(manager, settings) },
             strip: false,
             "no-debuginfo": true,
         },
@@ -145,7 +153,7 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
         "build-commands": [
             installCommandFor(manager),
             "npx gtkx build",
-            ...runtimeInstallCommands(settings),
+            ...runtimeInstallCommands(settings, nodeExtensionPath),
             ...metadataInstallCommands(settings),
             ...schemaInstallCommands(settings),
             ...iconInstallCommands(settings),

@@ -2,6 +2,7 @@ import type { DeployPayload, DeploySettings } from "../types.js";
 import { optional } from "../nfpm/optional.js";
 import { flatpakPrebuiltModule } from "./flatpak-prebuilt.js";
 import { flatpakSourceModule } from "./flatpak-source.js";
+import { nodeExtensionFor } from "./flatpak-sources.js";
 
 type FlatpakManifest = Record<string, unknown>;
 
@@ -9,7 +10,6 @@ const DEFAULT_BRANCH = "stable";
 const DEFAULT_RUNTIME = "org.gnome.Platform";
 const DEFAULT_RUNTIME_VERSION = "50";
 const DEFAULT_SDK = "org.gnome.Sdk";
-const DEFAULT_NODE_EXTENSION = "org.freedesktop.Sdk.Extension.node24";
 const DEFAULT_FINISH_ARGS = ["--share=ipc", "--socket=wayland", "--socket=fallback-x11", "--device=dri"];
 const DEFAULT_CLEANUP = ["/include", "/share/pkgconfig", "*.la", "*.a"];
 
@@ -18,7 +18,7 @@ const isSourceMode = (settings: DeploySettings): boolean => settings.deploy.flat
 
 const sdkExtensionsFor = (settings: DeploySettings): string[] => {
     const flatpak = settings.deploy.flatpak ?? {};
-    const nodeExtension = isSourceMode(settings) ? [flatpak.nodeExtension ?? DEFAULT_NODE_EXTENSION] : [];
+    const nodeExtension = isSourceMode(settings) ? [nodeExtensionFor(settings)] : [];
 
     return [...nodeExtension, ...(flatpak.sdkExtensions ?? [])];
 };

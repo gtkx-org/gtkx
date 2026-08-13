@@ -40,12 +40,14 @@ const themeDirFor = (file: string): string => {
 const stageIconTree = (root: string, iconsDir: string): StagedFile[] =>
     listFilesRecursive(iconsDir).map((file) => copyInto(root, join(SHARE_ICONS, file.rel), file.absPath));
 
-const stageIconFile = (settings: DeploySettings, root: string, iconFile: string): StagedFile[] => {
+const iconPathFor = (settings: DeploySettings, iconFile: string): string => {
     const extension = ICON_EXTENSIONS.find((candidate) => iconFile.endsWith(candidate)) ?? ".png";
-    const rel = join(SHARE_ICONS, themeDirFor(iconFile), `${settings.applicationId}${extension}`);
 
-    return [copyInto(root, rel, iconFile)];
+    return join(themeDirFor(iconFile), `${settings.applicationId}${extension}`);
 };
+
+const stageIconFile = (settings: DeploySettings, root: string, iconFile: string): StagedFile[] =>
+    [copyInto(root, join(SHARE_ICONS, iconPathFor(settings, iconFile)), iconFile)];
 
 const assertApplicationIcon = (settings: DeploySettings, staged: StagedFile[]): void => {
     if (staged.some((file) => isApplicationIcon(settings, file.rel))) {
@@ -75,4 +77,4 @@ const stageIcons = (settings: DeploySettings, root: string): StagedFile[] => {
     return staged;
 };
 
-export { getIconSize, stageIcons };
+export { getIconSize, iconPathFor, stageIcons };

@@ -23,6 +23,9 @@ type GitRevision = {
 const GENERATED_SOURCES = "generated-sources.json";
 const GENERATOR = "flatpak-node-generator";
 const FETCHABLE_URL = /^https?:\/\//;
+const DEFAULT_NODE_EXTENSION = "org.freedesktop.Sdk.Extension.node24";
+const NODE_EXTENSION_PREFIX = "org.freedesktop.Sdk.Extension.";
+const SDK_EXTENSION_ROOT = "/usr/lib/sdk";
 
 const LOCKFILE_BY_MANAGER: Record<PackageManager, string> = {
     npm: "package-lock.json",
@@ -57,6 +60,22 @@ const detectPackageManager = (settings: DeploySettings): PackageManager => {
 };
 
 const installCommandFor = (manager: PackageManager): string => INSTALL_COMMAND[manager];
+
+const nodeExtensionFor = (settings: DeploySettings): string =>
+    settings.deploy.flatpak?.nodeExtension ?? DEFAULT_NODE_EXTENSION;
+
+const nodeExtensionPathFor = (settings: DeploySettings): string => {
+    const extension = nodeExtensionFor(settings);
+
+    if (!extension.startsWith(NODE_EXTENSION_PREFIX)) {
+        throw new Error(
+            `Cannot resolve where "${extension}" mounts: the sandbox installs Node SDK extensions under ` +
+            `${SDK_EXTENSION_ROOT}, so \`deploy.flatpak.nodeExtension\` has to be an ${NODE_EXTENSION_PREFIX}* id.`,
+        );
+    }
+
+    return `${SDK_EXTENSION_ROOT}/${extension.slice(NODE_EXTENSION_PREFIX.length)}`;
+};
 
 const resolveSourceUrl = (settings: DeploySettings): string => {
     const url = settings.deploy.flatpak?.source?.url ?? gitRemoteUrl(settings.paths.root);
@@ -145,6 +164,8 @@ export {
     GENERATED_SOURCES,
     generateNodeSources,
     installCommandFor,
+    nodeExtensionFor,
+    nodeExtensionPathFor,
     type PackageManager,
     resolveGitSource,
 };

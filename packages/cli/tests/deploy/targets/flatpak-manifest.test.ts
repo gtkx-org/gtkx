@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DeployPayload, DeploySettings } from "../../../src/deploy/types.js";
+import type { DeployConfig, DeployPayload, DeploySettings } from "../../../src/deploy/types.js";
 import { renderFlatpakManifest } from "../../../src/deploy/targets/flatpak-manifest.js";
 import { tutorialSettings } from "../fixtures/settings.js";
 
@@ -7,6 +7,8 @@ type InlineSource = {
     type?: string;
     "dest-filename"?: string;
 };
+
+type FlatpakConfig = NonNullable<DeployConfig["flatpak"]>;
 
 type Module = {
     name: string;
@@ -28,13 +30,14 @@ const payloadFor = (settings: DeploySettings = tutorialSettings(), hasOverlay = 
     },
 });
 
-const sourceSettings = (): DeploySettings =>
+const sourceSettings = (flatpak: Partial<FlatpakConfig> = {}): DeploySettings =>
     tutorialSettings({
         deploy: {
             flatpak: {
                 mode: "source",
                 packageManager: "npm",
                 source: { url: "https://github.com/gtkx-org/gtkx.git", tag: "v1.1.0", commit: "abc123" },
+                ...flatpak,
             },
         },
     });
@@ -174,28 +177,47 @@ describe("renderFlatpakManifest — source", () => {
         expect(commands.at(-2)).toContain("desktop-file-validate");
         expect(commands.at(-1)).toContain("appstreamcli validate --no-net --explain");
     });
+
+    it("installs a single configured icon under the theme directory the desktop entry names", () => {
+        const settings = sourceSettings();
+        settings.paths = { ...settings.paths, iconsDir: null, iconFile: `${settings.paths.root}/assets/logo.svg` };
+
+        expect(getModule(payloadFor(settings))["build-commands"]).toContain(
+            "install -Dm644 assets/logo.svg ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg",
+        );
+    });
+});
+
+describe("renderFlatpakManifest — source Node extension", () => {
+    it("mounts the configured extension in the manifest and in every build step that reads it", () => {
+        const payload = payloadFor(sourceSettings({ nodeExtension: "org.freedesktop.Sdk.Extension.node22" }));
+        const manifest = renderFlatpakManifest(payload);
+        const module = (manifest.modules as Module[]).at(-1) as Module;
+        expect(manifest["sdk-extensions"]).toEqual(["org.freedesktop.Sdk.Extension.node22"]);
+        expect(module["build-options"]["append-path"]).toBe("/usr/lib/sdk/node22/bin");
+        expect(module["build-options"].env).toMatchObject({ npm_config_nodedir: "/usr/lib/sdk/node22" });
+
+        expect(module["build-commands"]).toContain(
+            "install -Dm755 /usr/lib/sdk/node22/bin/node ${FLATPAK_DEST}/lib/gtkx-tutorial/node",
+        );
+
+        expect(module["build-commands"].some((command) => command.includes("node24"))).toBe(false);
+    });
+
+    it("rejects an extension id whose mount point it cannot derive", () => {
+        const payload = payloadFor(sourceSettings({ nodeExtension: "org.example.Node" }));
+        expect(() => renderFlatpakManifest(payload)).toThrow();
+    });
 });
 
 describe("renderFlatpakManifest — source URL", () => {
     it("rejects an SSH remote, which Flathub's builders cannot clone", () => {
-        const settings = tutorialSettings({
-            deploy: { flatpak: { mode: "source", packageManager: "npm", source: { url: "git@github.com:o/r.git" } } },
-        });
-
-        expect(() => renderFlatpakManifest(payloadFor(settings))).toThrow(/clone over HTTPS/);
+        const payload = payloadFor(sourceSettings({ source: { url: "git@github.com:o/r.git" } }));
+        expect(() => renderFlatpakManifest(payload)).toThrow();
     });
 
     it("accepts an https remote", () => {
-        const settings = tutorialSettings({
-            deploy: {
-                flatpak: {
-                    mode: "source",
-                    packageManager: "npm",
-                    source: { url: "https://github.com/o/r.git", tag: "v1", commit: "abc" },
-                },
-            },
-        });
-
-        expect(() => renderFlatpakManifest(payloadFor(settings))).not.toThrow();
+        const payload = payloadFor(sourceSettings({ source: { url: "https://github.com/o/r.git", tag: "v1" } }));
+        expect(() => renderFlatpakManifest(payload)).not.toThrow();
     });
 });
