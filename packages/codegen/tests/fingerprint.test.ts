@@ -57,6 +57,27 @@ const JSX_ELEMENT_COUNTS: [string, unknown][] = [
     ["an array", [12]],
 ];
 
+const GIR_SEARCH_PATH: string[] = ["/usr/share/gir-1.0"];
+const OTHER_GIR_SEARCH_PATH: string[] = ["/opt/gir-1.0"];
+
+const REQUESTED_GIR_PATHS: [string, string[]][] = [
+    ["no GIR search path", []],
+    ["a GIR search path", GIR_SEARCH_PATH],
+];
+
+const PATHLESS_SENTINEL_CASES: [string, string[], boolean][] = [
+    ["stays fresh while none is requested", [], true],
+    ["goes stale once one is requested", GIR_SEARCH_PATH, false],
+];
+
+const GI_STALE_CASES: [string, unknown, string[]][] = REQUESTED_GIR_PATHS.flatMap(([pathName, girPath]) =>
+    GI_SENTINELS.map(([name, sentinel]): [string, unknown, string[]] => [
+        `${name}, asked for ${pathName}`,
+        sentinel,
+        girPath,
+    ]),
+);
+
 const docsFingerprint = (overrides: Partial<DocsFingerprintInput> = {}): string =>
     computeDocsFingerprint([], ["Gtk-4.0"], [], { ...docsInput, ...overrides }).value;
 
@@ -84,8 +105,8 @@ describe("computeGiFingerprint", () => {
     });
 
     it("changes when the GIR search path changes", () => {
-        const base = computeGiFingerprint([], ["Gtk-4.0"], ["/usr/share/gir-1.0"]).value;
-        expect(computeGiFingerprint([], ["Gtk-4.0"], ["/opt/gir-1.0"]).value).not.toBe(base);
+        const base = computeGiFingerprint([], ["Gtk-4.0"], GIR_SEARCH_PATH).value;
+        expect(computeGiFingerprint([], ["Gtk-4.0"], OTHER_GIR_SEARCH_PATH).value).not.toBe(base);
     });
 });
 
@@ -100,14 +121,14 @@ describe("isGiStoreFresh", () => {
         rmSync(storeDir, { recursive: true, force: true });
     });
 
-    it("accepts a sentinel it wrote itself", () => {
-        writeSentinel(storeDir, computeGiFingerprint([], ["Gtk-4.0"], []));
-        expect(isGiStoreFresh(storeDir, ["Gtk-4.0"], [])).toBe(true);
+    it.each(REQUESTED_GIR_PATHS)("accepts a sentinel it wrote itself for %s", (_name, girPath) => {
+        writeSentinel(storeDir, computeGiFingerprint([], ["Gtk-4.0"], girPath));
+        expect(isGiStoreFresh(storeDir, ["Gtk-4.0"], girPath)).toBe(true);
     });
 
-    it("accepts a sentinel that recorded no GIR search path", () => {
+    it.each(PATHLESS_SENTINEL_CASES)("a sentinel that recorded no GIR search path %s", (_name, girPath, isFresh) => {
         writeSentinel(storeDir, { ...computeGiFingerprint([], ["Gtk-4.0"], []), girPath: undefined });
-        expect(isGiStoreFresh(storeDir, ["Gtk-4.0"], [])).toBe(true);
+        expect(isGiStoreFresh(storeDir, ["Gtk-4.0"], girPath)).toBe(isFresh);
     });
 
     it("treats a sentinel recorded for other libraries as stale", () => {
@@ -115,9 +136,14 @@ describe("isGiStoreFresh", () => {
         expect(isGiStoreFresh(storeDir, ["Gtk-4.0"], [])).toBe(false);
     });
 
-    it.each(GI_SENTINELS)("treats a sentinel with %s as stale", (_name, sentinel) => {
+    it("treats a sentinel recorded for another GIR search path as stale", () => {
+        writeSentinel(storeDir, computeGiFingerprint([], ["Gtk-4.0"], OTHER_GIR_SEARCH_PATH));
+        expect(isGiStoreFresh(storeDir, ["Gtk-4.0"], GIR_SEARCH_PATH)).toBe(false);
+    });
+
+    it.each(GI_STALE_CASES)("treats a sentinel with %s as stale", (_name, sentinel, girPath) => {
         writeSentinel(storeDir, sentinel);
-        expect(isGiStoreFresh(storeDir, ["Gtk-4.0"], [])).toBe(false);
+        expect(isGiStoreFresh(storeDir, ["Gtk-4.0"], girPath)).toBe(false);
     });
 });
 
@@ -156,9 +182,19 @@ describe("isDocsOutputFresh", () => {
         expect(isDocsOutputFresh(outDir, ["Gtk-4.0"], [], docsInput)).toBe(true);
     });
 
+    it("accepts a sentinel it wrote itself for a GIR search path", () => {
+        writeSentinel(outDir, computeDocsFingerprint([], ["Gtk-4.0"], GIR_SEARCH_PATH, docsInput));
+        expect(isDocsOutputFresh(outDir, ["Gtk-4.0"], GIR_SEARCH_PATH, docsInput)).toBe(true);
+    });
+
     it("treats a sentinel recorded for other docs inputs as stale", () => {
         writeSentinel(outDir, computeDocsFingerprint([], ["Gtk-4.0"], [], { ...docsInput, basePath: "/reference" }));
         expect(isDocsOutputFresh(outDir, ["Gtk-4.0"], [], docsInput)).toBe(false);
+    });
+
+    it("treats a sentinel recorded for another GIR search path as stale", () => {
+        writeSentinel(outDir, computeDocsFingerprint([], ["Gtk-4.0"], OTHER_GIR_SEARCH_PATH, docsInput));
+        expect(isDocsOutputFresh(outDir, ["Gtk-4.0"], GIR_SEARCH_PATH, docsInput)).toBe(false);
     });
 
     it.each(DOCS_SENTINELS)("treats a sentinel with %s as stale", (_name, sentinel) => {

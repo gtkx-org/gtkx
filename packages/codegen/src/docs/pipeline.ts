@@ -1,5 +1,5 @@
 import { sortStringsBy } from "@gtkx/utils";
-import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
     computeDocsFingerprint,
@@ -10,6 +10,7 @@ import {
 import { Library } from "../gir/library.js";
 import { namespaceDirectory } from "../gir/namespace.js";
 import { arrayGuard, hasFields, isString } from "../guards.js";
+import { readJsonFile } from "../json.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
@@ -224,13 +225,7 @@ const isDocsManifest = (value: unknown): value is DocsManifest =>
     hasFields<DocsManifest>(value, { generator: isGeneratorTag, namespaces: arrayGuard(isDocsNamespace) });
 
 const readDocsManifest = (manifestPath: string): DocsManifest | undefined => {
-    let parsed: unknown;
-
-    try {
-        parsed = JSON.parse(readFileSync(manifestPath, "utf8")) as unknown;
-    } catch {
-        return undefined;
-    }
+    const parsed = readJsonFile(manifestPath);
 
     return isDocsManifest(parsed) ? parsed : undefined;
 };

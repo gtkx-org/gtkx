@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { arrayGuard, hasFields, isNumber, isString, optionalGuard } from "./guards.js";
+import { readJsonFile } from "./json.js";
 
 type GiFingerprint = {
     value: string;
@@ -87,19 +88,7 @@ const computeGiFingerprint = (
     girPath,
 });
 
-const readSentinel = (storeDir: string): unknown => {
-    const sentinelPath = join(storeDir, FINGERPRINT_FILENAME);
-
-    if (!existsSync(sentinelPath)) {
-        return undefined;
-    }
-
-    try {
-        return JSON.parse(readFileSync(sentinelPath, "utf8")) as unknown;
-    } catch {
-        return undefined;
-    }
-};
+const readSentinel = (storeDir: string): unknown => readJsonFile(join(storeDir, FINGERPRINT_FILENAME));
 
 const isGiFingerprint = (value: unknown): value is GiFingerprint =>
     hasFields<GiFingerprint>(value, {
