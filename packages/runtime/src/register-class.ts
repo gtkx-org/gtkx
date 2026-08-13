@@ -134,6 +134,14 @@ type RegisterClassOptions<TInstance extends object, TProperties extends Record<s
      * which a `freeze_notify` batch collects; a write of the value the property already holds is
      * dropped and emits none.
      *
+     * `null` and `undefined` are values of a type only where the ParamSpec's own type holds NULL,
+     * which is a string, string-array, boxed, object, interface, param, variant or pointer
+     * property. Every other one, so every integer, floating-point, boolean, enum, flags and GType
+     * property, refuses both with the same `TypeError` it refuses a string with, and keeps the
+     * value it already holds. The one place `undefined` means something else is the constructor,
+     * which reads it as the property not being given at all and leaves it at the ParamSpec's
+     * default, so a property is never handed a value it cannot serve back.
+     *
      * A class that defines the camelCase member itself owns the property: its own accessor decides
      * what a write means, the other two spellings forward to it, and the type's property slots read
      * and write it rather than the generated storage.
