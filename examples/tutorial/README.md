@@ -13,7 +13,7 @@
 - Styling with `@gtkx/css`, on top of the Adwaita style classes the widgets already carry.
 - Desktop notifications built with `Gio.Notification`, including action buttons that route back into the app.
 - Persistence to `$XDG_DATA_HOME` with the Node.js standard library: `node:fs` writes a temp file, then `renameSync` swaps it into place.
-- Packaging: a Node.js Single Executable Application under `scripts/`, and a Flatpak under [`flatpak/`](flatpak/README.md).
+- Packaging: one `deploy` block in `gtkx.config.ts` turns the app into a Flatpak, a `.deb`, an `.rpm`, and an AppImage with `npm run deploy`.
 
 `gtkx.config.ts` declares `Gtk-4.0` and `Adw-1`, with the application ID `com.gtkx.tutorial`.
 
@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-`npm run build` writes `dist/bundle.mjs`, which `npm start` runs with Node.js. `npm run bundle` and `npm run build:sea` produce a single executable.
+`npm run build` writes `dist/bundle.mjs`, which `npm start` runs with Node.js. `npm run deploy` packages the app for distribution into `build/out/`.
 
 To validate it against the packages in this repository instead of the published ones, run this from the repository root:
 

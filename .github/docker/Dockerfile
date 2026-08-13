@@ -41,6 +41,14 @@ RUN apt-get update \
         shared-mime-info \
         hicolor-icon-theme \
         librsvg2-common \
+        desktop-file-utils \
+        flatpak-builder \
+        appstream \
+        dpkg-dev \
+        rpm \
+        binutils \
+        file \
+        xz-utils \
         fontconfig \
         fonts-noto-core \
         fonts-dejavu-core \
@@ -75,7 +83,7 @@ ENV RUSTUP_MAX_RETRIES=10
 ENV CARGO_HTTP_MULTIPLEXING=false
 
 ARG RUST_VERSION=1.97.1
-ARG RUST_NIGHTLY=nightly-2026-08-08
+ARG RUST_NIGHTLY=nightly-2026-08-12
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 

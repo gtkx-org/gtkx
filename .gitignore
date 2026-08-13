@@ -6,6 +6,7 @@
 /.playwright-mcp
 /.pnpm-store/
 /CLAUDE.md
+build/
 coverage/
 dist/
 gschemas.compiled

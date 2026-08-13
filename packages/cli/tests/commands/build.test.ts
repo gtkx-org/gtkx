@@ -26,7 +26,7 @@ const firstBuildArgs = (): Parameters<typeof buildApp>[0] => {
 };
 
 vi.mock("../../src/builder.js", () => ({
-    build: vi.fn(() => Promise.resolve("dist/bundle.js")),
+    build: vi.fn(() => Promise.resolve("dist/bundle.mjs")),
 }));
 
 vi.mock("../../src/codegen/run-codegen.js", async () => {

@@ -266,7 +266,7 @@ with the application itself now an element you render. The changes are mechanica
 
 ## What's next
 
-1.0 freezes the surface, not the pace. The [roadmap](https://github.com/orgs/gtkx-org/projects/1) is public, and the next items are scoped: a [`gtkx deploy`](https://github.com/gtkx-org/gtkx/issues/477) command that builds and publishes to Flatpak or DEB/RPM, [`@gtkx/animated`](https://github.com/gtkx-org/gtkx/issues/478) on top of React Spring, [`@gtkx/navigation`](https://github.com/gtkx-org/gtkx/issues/479) on top of Adwaita and React Navigation, and [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480) for React Hook Form-driven Adwaita forms. If something else should come first, say so on the [issue tracker](https://github.com/gtkx-org/gtkx/issues); that is how the list gets ordered.
+1.0 freezes the surface, not the pace. The [roadmap](https://github.com/orgs/gtkx-org/projects/1) is public, and the next items are scoped: a [`gtkx deploy`](https://github.com/gtkx-org/gtkx/issues/477) command that builds and publishes to Flatpak or DEB/RPM (shipped in [1.1](/blog/gtkx-1-1)), [`@gtkx/animated`](https://github.com/gtkx-org/gtkx/issues/478) on top of React Spring, [`@gtkx/navigation`](https://github.com/gtkx-org/gtkx/issues/479) on top of Adwaita and React Navigation, and [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480) for React Hook Form-driven Adwaita forms. If something else should come first, say so on the [issue tracker](https://github.com/gtkx-org/gtkx/issues); that is how the list gets ordered.
 
 ## Thanks, and where to start
 

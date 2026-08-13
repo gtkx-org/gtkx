@@ -1,6 +1,6 @@
 {
     "name": "gtkx-tutorial",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "private": true,
     "license": "MPL-2.0",
     "description": "Tasks app from the GTKX tutorial",
@@ -15,19 +15,14 @@
         "test": "vitest run",
         "typecheck": "gtkx codegen && tsc",
         "start": "node dist/bundle.mjs",
-        "bundle": "gtkx build && node scripts/bundle.ts",
-        "bundle:postject": "node scripts/bundle-postject.ts",
-        "build:sea": "bash scripts/build-sea.sh",
-        "flatpak:lint": "desktop-file-validate flatpak/com.gtkx.tutorial.desktop && appstreamcli validate --no-net flatpak/com.gtkx.tutorial.metainfo.xml && bash flatpak/check-activation.sh",
-        "flatpak:sources": "bash flatpak/generate-sources.sh",
-        "flatpak:build": "bash flatpak/build.sh"
+        "deploy": "gtkx deploy"
     },
     "dependencies": {
         "@gtkx/components": "^1.0.0",
         "@gtkx/css": "^1.0.0",
         "@gtkx/react": "^1.0.0",
         "react": "^19.2.8",
-        "zustand": "^5.0.14"
+        "zustand": "^5.0.15"
     },
     "devDependencies": {
         "@gtkx/cli": "^1.0.0",
@@ -35,13 +30,12 @@
         "@gtkx/testing": "^1.0.0",
         "@types/node": "^26.2.0",
         "@types/react": "^19.2.18",
-        "esbuild": "^0.28.1",
-        "postject": "1.0.0-alpha.6",
         "typescript": "^7.0.2",
         "vitest": "^4.1.10"
     },
     "allowScripts": {
-        "esbuild": true,
         "@swc/core": true
-    }
+    },
+    "author": "GTKX <hello@gtkx.dev>",
+    "homepage": "https://gtkx.dev"
 }

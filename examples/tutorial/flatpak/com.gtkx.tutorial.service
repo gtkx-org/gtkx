@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name=com.gtkx.tutorial
-Exec=/app/bin/gtkx-tutorial --gapplication-service

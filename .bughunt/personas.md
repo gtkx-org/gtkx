@@ -145,7 +145,7 @@ keyboard shortcuts and a shortcuts window, `GSettings`-backed preferences, an ap
 
 Then: resize the window across breakpoints, navigate every route, open and close every dialog twice,
 toggle every preference, trigger every toast, run the whole flow with the app started cold and with
-it started from `dist/bundle.js` after `gtkx build`.
+it started from `dist/bundle.mjs` after `gtkx build`.
 
 Report anything that crashes, warns, renders wrong, loses state, or that the HIG says should be
 possible and GTKX cannot express.
@@ -264,7 +264,7 @@ Uses `@gtkx/mcp` to control a running app, the way an AI assistant or an automat
 Takes a working app all the way to something distributable, exactly as `examples/tutorial` documents
 (`scripts/bundle.ts`, `scripts/build-sea.sh`, `flatpak/`).
 
-- `gtkx build` then `node dist/bundle.js` from the project root, from `/`, and from another user's
+- `gtkx build` then `node dist/bundle.mjs` from the project root, from `/`, and from another user's
   home. Asset resolution must work in all three.
 - `gtkx build --asset-base ../share/my-app` and a real install layout under a prefix.
 - The Node single-executable bundle: build it, run it, check it finds the native addon, the GIR data,
@@ -320,7 +320,7 @@ bar to clear before it starts. To bring it back, add `perf` to the even-round ro
 Hunts performance defects a user would feel. A slow path is a defect when it is disproportionate, not
 merely when it is measurable, so every finding needs a baseline that makes the number mean something.
 
-- **Startup.** Time from `node dist/bundle.js` to a mapped window, cold and warm. Compare against a
+- **Startup.** Time from `node dist/bundle.mjs` to a mapped window, cold and warm. Compare against a
   plain GTK4 C or PyGObject app doing the same thing. Where does the time go: native addon load,
   store import, codegen check, React mount?
 - **The generated store.** Its size on disk, its parse time, how much of it a trivial app actually

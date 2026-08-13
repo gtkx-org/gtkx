@@ -11,7 +11,7 @@
         "preview": "vitepress preview"
     },
     "devDependencies": {
-        "shiki": "^4.4.2",
+        "shiki": "^4.4.3",
         "typedoc": "^0.28.20",
         "typedoc-plugin-markdown": "^4.12.0",
         "typedoc-vitepress-theme": "^1.1.3",

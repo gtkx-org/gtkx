@@ -3,6 +3,7 @@ import type { z } from "zod";
 type IssuePath = (string | number)[];
 
 const CONFIG_PREFIX = "gtkx.config.ts:";
+const UNRECOGNIZED_KEY_REASON = "is not a recognized key";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
@@ -37,12 +38,27 @@ const dottedPath = (segments: PropertyKey[]): string => {
 const isStandaloneIssue = (issue: z.core.$ZodIssue): boolean =>
     "params" in issue && isRecord(issue.params) && issue.params.standalone === true;
 
-const formatIssue = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string => {
+const unrecognizedKeyPath = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string | undefined => {
     if (issue.code === "unrecognized_keys") {
         const [key] = issue.keys;
-        const path = dottedPath(key === undefined ? fullPath : [...fullPath, key]);
 
-        return `${CONFIG_PREFIX} \`${path}\` is not a recognized key`;
+        return dottedPath(key === undefined ? fullPath : [...fullPath, key]);
+    }
+
+    return issue.code === "invalid_key" ? dottedPath(fullPath) : undefined;
+};
+
+const keyRejectionReason = (issue: z.core.$ZodIssue): string => {
+    const nested = issue.code === "invalid_key" ? issue.issues[0] : undefined;
+
+    return nested?.code === "custom" ? nested.message : UNRECOGNIZED_KEY_REASON;
+};
+
+const formatIssue = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string => {
+    const unrecognized = unrecognizedKeyPath(issue, fullPath);
+
+    if (unrecognized !== undefined) {
+        return `${CONFIG_PREFIX} \`${unrecognized}\` ${keyRejectionReason(issue)}`;
     }
 
     if (isStandaloneIssue(issue)) {

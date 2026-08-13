@@ -83,10 +83,18 @@ const removeAppProject = (project: AppProject): void => {
     rmSync(project.root, { recursive: true, force: true });
 };
 
+const deployedEnvironment = (): NodeJS.ProcessEnv => {
+    const environment = { ...process.env };
+    delete environment.NODE_PATH;
+
+    return environment;
+};
+
 const runNode = (file: string): AppRun => {
     const result = spawnSync(process.execPath, [file], {
         cwd: dirname(file),
         encoding: "utf8",
+        env: deployedEnvironment(),
         timeout: RUN_TIMEOUT,
     });
 
@@ -111,6 +119,7 @@ export {
     type AppRun,
     buildAppProject,
     createAppProject,
+    deployedEnvironment,
     installBundle,
     probeAppProject,
     removeAppProject,

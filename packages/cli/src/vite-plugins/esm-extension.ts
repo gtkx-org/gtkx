@@ -1,3 +1,4 @@
 const ESM_EXTENSION = ".mjs";
+const BUNDLE_FILENAME = `bundle${ESM_EXTENSION}`;
 
-export { ESM_EXTENSION };
+export { BUNDLE_FILENAME, ESM_EXTENSION };

@@ -468,3 +468,189 @@ describe("validateConfig (elements.config)", () => {
         expect(resolveOmittedProps(elements)).toEqual({ GtkButton: ["child"] });
     });
 });
+
+describe("validateConfig (deploy) — accepted shapes", () => {
+    it("accepts an empty deploy block", () => {
+        expect(() => {
+            validateWithAppId({ deploy: {} });
+        }).not.toThrow();
+    });
+
+    it("accepts every deploy target", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { targets: ["appimage", "deb", "flatpak", "rpm"] } });
+        }).not.toThrow();
+    });
+
+    it("accepts a fully populated deploy block", () => {
+        expect(() => {
+            validateWithAppId({
+                deploy: {
+                    name: "Tasks",
+                    genericName: "Task Manager",
+                    binaryName: "gtkx-tutorial",
+                    summary: "Manage your tasks and to-dos",
+                    description: ["A task manager built with GTKX."],
+                    categories: ["Office", "ProjectManagement"],
+                    keywords: ["Task", "Todo"],
+                    developer: { id: "dev.gtkx", name: "GTKX", email: "hello@gtkx.dev" },
+                    homepage: "https://gtkx.dev",
+                    urls: { bugtracker: "https://github.com/gtkx-org/gtkx/issues" },
+                    screenshots: [{ file: "assets/screenshot.png", caption: "Browsing", isDefault: true }],
+                    releases: [{ version: "1.0.0", date: "2026-07-13", notes: ["Initial release."] }],
+                    branding: { light: "#3584e4", dark: "#1a5fb4" },
+                    contentRating: { "violence-cartoon": "none" },
+                    isDbusActivatable: true,
+                    desktopEntry: { "X-GNOME-UsesNotifications": "true" },
+                    epoch: 0,
+                    flatpak: { mode: "source", runtimeVersion: "50" },
+                    deb: { section: "gnome" },
+                    rpm: { group: "Applications/Productivity" },
+                    appimage: { compression: "zstd" },
+                    targets: ["flatpak"],
+                },
+            });
+        }).not.toThrow();
+    });
+});
+
+describe("validateConfig (deploy) — rejected shapes", () => {
+    it("rejects an unknown deploy key", () => {
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", deploy: { sumary: "typo" } });
+        }).toThrow("`deploy.sumary` is not a recognized key");
+    });
+
+    it("rejects an unknown AppStream url kind", () => {
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", deploy: { urls: { bugs: "https://a.b" } } });
+        }).toThrow("`deploy.urls.bugs` is not a recognized key");
+    });
+
+    it("rejects a release date that is not an ISO date", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { releases: [{ version: "1.0.0", date: "2026-7-3" }] } });
+        }).toThrow("`deploy.releases[0].date` must be an ISO date (YYYY-MM-DD)");
+    });
+
+    it("rejects a branding color that is not #rrggbb", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { branding: { light: "blue", dark: "#000000" } } });
+        }).toThrow("`deploy.branding.light` must be a #rrggbb color");
+    });
+
+    it("rejects a negative epoch", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { epoch: -1 } });
+        }).toThrow("`deploy.epoch` must be a non-negative integer");
+    });
+
+    it("rejects a fractional epoch", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { epoch: 1.5 } });
+        }).toThrow("`deploy.epoch` must be a non-negative integer");
+    });
+
+    it("rejects an unknown deploy target", () => {
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", deploy: { targets: ["snap"] } });
+        }).toThrow("`deploy.targets[0]` must be one of appimage, deb, flatpak, rpm");
+    });
+});
+
+describe("validateConfig (deploy) — rejected values", () => {
+    it("rejects an empty description paragraph", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { description: ["kept", ""] } });
+        }).toThrow("`deploy.description[1]` must be a non-empty description paragraph");
+    });
+
+    it("rejects a homepage that is not an absolute URL", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { homepage: "gtkx.dev" } });
+        }).toThrow("`deploy.homepage` must be an absolute URL");
+    });
+
+    it("rejects an unknown flatpak mode", () => {
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", deploy: { flatpak: { mode: "other" } } });
+        }).toThrow('`deploy.flatpak.mode` must be "prebuilt" or "source"');
+    });
+
+    it("rejects an unknown content rating intensity", () => {
+        expect(() => {
+            validateUnknown({
+                applicationId: "org.gtk.Test",
+                deploy: { contentRating: { "violence-cartoon": "severe" } },
+            });
+        }).toThrow("`deploy.contentRating.violence-cartoon` must be one of intense, mild, moderate, none");
+    });
+
+    it("rejects a signing block missing its key file", () => {
+        expect(() => {
+            validateUnknown({ applicationId: "org.gtk.Test", deploy: { signing: { rpm: {} } } });
+        }).toThrow("`deploy.signing.rpm.keyFile` must be a path to a PGP key file");
+    });
+});
+
+describe("resolveConfig (deploy)", () => {
+    it("leaves the resolved config untouched by a deploy block", () => {
+        const base = resolveConfig({ applicationId: "org.example.App" });
+        const withDeploy = resolveConfig({ applicationId: "org.example.App", deploy: { name: "App" } });
+        expect(withDeploy).toEqual(base);
+    });
+});
+
+describe("validateConfig (deploy.extraFiles)", () => {
+    it("accepts a prefix-relative destination", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { extraFiles: { "share/extra/notes.txt": "NOTES.md" } } });
+        }).not.toThrow();
+    });
+
+    it("rejects an absolute destination, and says why", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { extraFiles: { "/etc/passwd": "NOTES.md" } } });
+        }).toThrow("`deploy.extraFiles./etc/passwd` must be a destination path inside the install prefix");
+    });
+
+    it("rejects a destination that climbs out of the prefix", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { extraFiles: { "share/../../etc/passwd": "NOTES.md" } } });
+        }).toThrow("must be a destination path inside the install prefix");
+    });
+
+    it("rejects an empty destination", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { extraFiles: { "": "NOTES.md" } } });
+        }).toThrow("must be a destination path inside the install prefix");
+    });
+});
+
+describe("validateConfig (deploy.extraFiles) — separators", () => {
+    it("rejects a destination containing a backslash, which is never a POSIX path segment", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { extraFiles: { "share\\evil": "NOTES.md" } } });
+        }).toThrow("must be a destination path inside the install prefix");
+    });
+});
+
+describe("validateConfig (deploy.screenshots)", () => {
+    it("accepts a screenshot given as an absolute url", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { screenshots: [{ url: "https://example.com/one.png" }] } });
+        }).not.toThrow();
+    });
+
+    it("accepts a screenshot given as a project-relative file", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { screenshots: [{ file: "assets/one.png" }] } });
+        }).not.toThrow();
+    });
+
+    it("rejects a screenshot that names no image at all", () => {
+        expect(() => {
+            validateWithAppId({ deploy: { screenshots: [{ caption: "no image" }] } });
+        }).toThrow("`deploy.screenshots[0]` must have either a `url` or a `file`");
+    });
+});

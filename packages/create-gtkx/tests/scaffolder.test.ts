@@ -278,11 +278,33 @@ describe("scaffold (top-level generated files)", () => {
         expect(content).toContain('libraries: ["Gtk-4.0"]');
     });
 
-    it("writes .gitignore with node_modules and dist", async () => {
+    it("writes a deploy block so the app packages without further configuration", async () => {
+        await run();
+        const content = read(`${TEST_DIR}/test-app/gtkx.config.ts`);
+        expect(content).toContain("deploy: {");
+        expect(content).toContain('categories: ["Utility"]');
+    });
+
+    it("names the application icon after the application id, which the desktop entry points at", async () => {
+        await run();
+        const icon = `${TEST_DIR}/test-app/data/icons/hicolor/scalable/apps/org.test.app.svg`;
+        expect(read(icon)).toContain("<svg");
+    });
+
+    it("writes the identity fields that packaging needs into package.json", async () => {
+        await run();
+        const manifest = read(`${TEST_DIR}/test-app/package.json`);
+        expect(manifest).toContain('"license"');
+        expect(manifest).toContain('"author"');
+        expect(manifest).toContain('"deploy": "gtkx deploy"');
+    });
+
+    it("ignores node_modules, the build output, and the packaged artifacts", async () => {
         await run();
         const content = read(`${TEST_DIR}/test-app/.gitignore`);
         expect(content).toContain("node_modules/");
         expect(content).toContain("dist/");
+        expect(content).toContain("build/");
     });
 });
 

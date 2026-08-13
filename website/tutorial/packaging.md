@@ -1,5 +1,5 @@
 ---
-description: "Give the finished app an icon, a desktop entry, AppStream metadata, and a single executable."
+description: "Give the finished app an icon, a desktop entry, AppStream metadata, and installable packages."
 ---
 
 # Appendix B: Making It a Real Application
@@ -36,80 +36,9 @@ dist/bundle.mjs                                                  4,067.30 kB │
 [gtkx] Build complete: dist/bundle.mjs
 ```
 
-Everything except the bundle is found at runtime relative to the executable: the bundle prepends its own directory to `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, and loads `gtkx.node` from beside `process.execPath`. Keep them together and the app is self-contained. Move `bundle.mjs` on its own and the settings schema goes missing on the first `useSetting` call.
+Everything except the bundle is found at runtime relative to the bundle itself: it prepends its own directory to `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, and loads `gtkx.node` from beside itself. Keep them together and the app is self-contained. Move `bundle.mjs` on its own and the settings schema goes missing on the first `useSetting` call.
 
-`node dist/bundle.mjs` runs the app on any machine with GTK4 and Adwaita installed. That works, but it is not yet something a user can double-click.
-
-## A single executable
-
-Node.js can embed a script into a copy of the `node` binary as a [Single Executable Application](https://nodejs.org/api/single-executable-applications.html), giving one file that needs no `node` on the target machine. Three scripts do the work, and the two tools they call are needed only at build time:
-
-```bash
-npm install -D esbuild postject
-```
-
-```json
-"scripts": {
-  "bundle": "gtkx build && node scripts/bundle.ts",
-  "bundle:postject": "node scripts/bundle-postject.ts",
-  "build:sea": "bash scripts/build-sea.sh"
-}
-```
-
-`bundle` re-emits the app as CommonJS with esbuild, because a single executable cannot use ESM, and swaps the native addon for a shim that loads `gtkx.node` from beside `process.execPath`. `bundle:postject` vendors the `postject` CLI into `vendor/postject.cjs` as one self-contained file, so the injection step works offline. `build:sea` generates the blob, copies the `node` binary, and injects the blob into the copy. All three are in [`examples/tutorial/scripts/`](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial/scripts), ready to copy into your own project.
-
-`sea-config.json` tells Node.js what to embed:
-
-```json
-{
-    "main": "dist/bundle.cjs",
-    "output": "dist/sea-prep.blob",
-    "disableExperimentalSEAWarning": true,
-    "useCodeCache": true
-}
-```
-
-Run them in order:
-
-```bash
-npm run bundle && npm run bundle:postject && npm run build:sea
-```
-
-The last step ends with:
-
-```
-SEA build complete!
-  Binary: dist/app
-  Native: dist/gtkx.node
-
-To run: ./dist/app
-```
-
-## The desktop entry
-
-A desktop entry makes the app something the desktop knows about, not a path you type. It is an INI file whose name matches the application ID.
-
-Create `flatpak/com.gtkx.tutorial.desktop`:
-
-```ini
-[Desktop Entry]
-Name=Tasks
-GenericName=Task Manager
-Comment=Manage your tasks and to-dos
-Exec=gtkx-tutorial
-Icon=com.gtkx.tutorial
-Terminal=false
-Type=Application
-Categories=Office;ProjectManagement;
-Keywords=Task;Tasks;Todo;To-do;Checklist;
-StartupNotify=true
-X-GNOME-UsesNotifications=true
-DBusActivatable=true
-```
-
-`Exec` is the command, so the binary has to be installed under that name and on `PATH`. `Icon` is the application ID, which is how it resolves against the icon theme. `Categories` decides where the app appears in a launcher that groups by category, and `Keywords` adds search terms beyond the name.
-
-`X-GNOME-UsesNotifications=true` gives the app its own row in the desktop's notification settings, so the reminders from [Reminders That Reach the Desktop](/tutorial/reminders) can be tuned or silenced there. `DBusActivatable=true` lets the desktop start the app over D-Bus instead of running `Exec` directly. That is how a reminder's **Mark Complete** button reaches the `app.complete-task` action when the app is closed: the desktop activates the application by its ID, delivers the action, and the app handles it on startup.
+`node dist/bundle.mjs` runs the app on any machine with GTK4, Adwaita, and Node.js 24 installed. That works, but it is not yet something a user can double-click.
 
 ## Icons
 
@@ -120,7 +49,7 @@ data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg
 data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg
 ```
 
-`hicolor` is the fallback theme every icon theme inherits from, `scalable` is where SVGs go, and `apps` is the context. The file name is the application ID, which both the desktop entry's `Icon` key and the About dialog's `applicationIcon` prop look up. Since the tree already matches the theme, installing it is a plain recursive copy into a share directory.
+`hicolor` is the fallback theme every icon theme inherits from, `scalable` is where SVGs go, and `apps` is the context. The file name is the application ID, which both the desktop entry's `Icon` key and the About dialog's `applicationIcon` prop look up.
 
 The full-color icon is a 128 by 128 SVG. The symbolic variant is a separate 16 by 16 drawing in a single flat fill, so the desktop can recolor it for a dark header bar or a notification badge.
 
@@ -134,99 +63,157 @@ The full-color icon is a 128 by 128 SVG. The symbolic variant is a separate 16 b
 </svg>
 ```
 
-## AppStream metadata
+## Telling the desktop about the app
 
-A software center needs more than a name and an icon. The rest lives in an AppStream metainfo file, which is also what Flathub validates on submission.
+A desktop entry makes the app something the desktop knows about rather than a path you type, and an AppStream metainfo file is what a software center reads. Both are generated, from one block in `gtkx.config.ts`:
 
-Create `flatpak/com.gtkx.tutorial.metainfo.xml`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<component type="desktop-application">
-    <id>com.gtkx.tutorial</id>
-    <name>Tasks</name>
-    <summary>Manage your tasks and to-dos</summary>
-    <metadata_license>CC0-1.0</metadata_license>
-    <project_license>MPL-2.0</project_license>
-    <developer id="dev.gtkx">
-        <name>GTKX</name>
-    </developer>
-    <description>
-        <p>
-            A task manager built with GTKX, demonstrating how to build React-based
-            GTK4 and Adwaita desktop applications. It shows an adaptive sidebar
-            layout, boxed lists, a task editor, GSettings-backed preferences, undo
-            toasts, drag-to-reorder, desktop notifications, and local JSON
-            persistence.
-        </p>
-    </description>
-    <launchable type="desktop-id">com.gtkx.tutorial.desktop</launchable>
-    <url type="homepage">https://gtkx.dev</url>
-    <url type="bugtracker">https://github.com/gtkx-org/gtkx/issues</url>
-    <url type="vcs-browser">https://github.com/gtkx-org/gtkx</url>
-    <provides>
-        <binary>gtkx-tutorial</binary>
-    </provides>
-    <screenshots>
-        <screenshot type="default">
-            <image>https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial/assets/screenshot.png</image>
-            <caption>Browsing task lists in the sidebar</caption>
-        </screenshot>
-        <screenshot>
-            <image>https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial/assets/screenshot-editor.png</image>
-            <caption>Editing a task</caption>
-        </screenshot>
-    </screenshots>
-    <releases>
-        <release version="1.0.0" date="2026-07-13">
-            <description>
-                <p>Initial release.</p>
-            </description>
-        </release>
-    </releases>
-    <content_rating type="oars-1.1" />
-    <branding>
-        <color type="primary" scheme_preference="light">#3584e4</color>
-        <color type="primary" scheme_preference="dark">#1a5fb4</color>
-    </branding>
-</component>
+```ts
+deploy: {
+    name: "Tasks",
+    genericName: "Task Manager",
+    binaryName: "gtkx-tutorial",
+    summary: "Manage your tasks and to-dos",
+    description: [
+        "A task manager built with GTKX, demonstrating how to build React-based GTK4 and Adwaita "
+        + "desktop applications.",
+        "It shows an adaptive sidebar layout, boxed lists, a task editor, GSettings-backed preferences, "
+        + "undo toasts, drag-to-reorder, desktop notifications, and local JSON persistence.",
+    ],
+    categories: ["Office", "ProjectManagement"],
+    keywords: ["Task", "Tasks", "Todo", "To-do", "Checklist"],
+    developer: { id: "dev.gtkx", name: "GTKX", email: "hello@gtkx.dev" },
+    homepage: "https://gtkx.dev",
+    urls: {
+        bugtracker: "https://github.com/gtkx-org/gtkx/issues",
+        "vcs-browser": "https://github.com/gtkx-org/gtkx",
+    },
+    screenshots: [
+        { file: "assets/screenshot.png", caption: "Browsing task lists in the sidebar", isDefault: true },
+        { file: "assets/screenshot-editor.png", caption: "Editing a task" },
+    ],
+    releases: [{ version: "1.0.0", date: "2026-07-13", notes: ["Initial release."] }],
+    branding: { light: "#3584e4", dark: "#1a5fb4" },
+    contentRating: {},
+    isDbusActivatable: true,
+    desktopEntry: { "X-GNOME-UsesNotifications": "true" },
+    screenshotBaseUrl: "https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial",
+    targets: ["flatpak", "deb", "rpm", "appimage"],
+},
 ```
 
-The identifiers have to agree: `id` is the application ID you set in `gtkx.config.ts`, `launchable` names the desktop entry file, and `provides`/`binary` names the command in `Exec`. `metadata_license` covers this XML file, `project_license` covers the app. A software center fetches screenshot images over the network, so they need public URLs rather than local paths. `branding` gives a software center accent colors to theme the listing with.
+Most of it is optional. `name`, `version`, `license`, `developer`, and `homepage` all fall back to `package.json`, and `summary` falls back to its `description`, so the smallest working block is a `summary` and a `categories` list. The tutorial spells everything out because it doubles as a reference.
 
-Both files have validators, wired up as one script:
+Two keys earn their place. `X-GNOME-UsesNotifications` gives the app its own row in the desktop's notification settings, so the reminders from [Reminders That Reach the Desktop](/tutorial/reminders) can be tuned or silenced there. `isDbusActivatable` lets the desktop start the app over D-Bus instead of running the command directly, which is how a reminder's **Mark Complete** button reaches the `app.complete-task` action when the app is closed.
+
+`categories` also decides where the app appears in a launcher that groups by category, and it is what the deb `Section` and the rpm `Group` are derived from.
+
+`screenshotBaseUrl` turns each local `file` into the public URL the metainfo needs, because a software center fetches screenshots over the network. Leave it out and it is derived from the git remote.
+
+## One command
 
 ```bash
-npm run flatpak:lint
+npm run deploy
 ```
 
-That runs `desktop-file-validate` on the entry and `appstreamcli validate --no-net` on the metainfo. Fix what they report before installing anything: the desktop silently ignores a malformed entry, so the app never shows up.
+```
+[gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to appimage, deb, flatpak, rpm
+[gtkx] Validated the desktop entry and the metainfo
+[gtkx] Building ~/tasks/src/index.tsx
+[gtkx] Build complete: dist/bundle.mjs
+[gtkx] Bundled Node.js v24.19.0 (100.8 MiB, glibc >= 2.28)
+[gtkx] Staged 12 files into build/stage
+[gtkx] Wrote build/targets/appimage/AppRun
+[gtkx] Wrote build/targets/deb/nfpm.yaml
+[gtkx] Wrote build/targets/flatpak/com.gtkx.tutorial.yml
+[gtkx] Wrote build/targets/rpm/nfpm.yaml
+[gtkx] Built build/out/Tasks-1.0.0-x86_64.AppImage (36.6 MiB)
+[gtkx] Built build/out/gtkx-tutorial_1.0.0-1_amd64.deb (40.2 MiB)
+[gtkx] Built build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (31.2 MiB)
+[gtkx] Built build/out/gtkx-tutorial-1.0.0-1.x86_64.rpm (40.1 MiB)
+[gtkx] Deploy complete: 4 artifacts in build/out
+```
 
-## Installing into a user prefix
+The desktop entry and the metainfo are validated in the second step, before the build, so a bad category or a missing summary fails in about two seconds rather than after everything else has run.
 
-`~/.local` is the per-user counterpart of `/usr`, and the desktop searches it by default. Install the binary and its neighbors into `~/.local/bin`, and the metadata into `~/.local/share`:
+The third line matters: Node.js is bundled into the package. GTKX needs Node.js 24, Debian 13 ships 20, and Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` fetches the official build matching yours, verifies its checksum, and caches it, which is where most of each package's size comes from.
+
+## What is inside
+
+Every package installs the same tree, under `/usr` here and under `/app` in the Flatpak:
+
+```
+/usr/bin/gtkx-tutorial                                    a launcher script
+/usr/lib/gtkx-tutorial/node                               the bundled Node.js
+/usr/lib/gtkx-tutorial/bundle.mjs                         the app
+/usr/lib/gtkx-tutorial/gtkx.node                          the native addon
+/usr/lib/gtkx-tutorial/gschemas.compiled                  the compiled schema
+/usr/share/applications/com.gtkx.tutorial.desktop         generated
+/usr/share/dbus-1/services/com.gtkx.tutorial.service      generated
+/usr/share/metainfo/com.gtkx.tutorial.metainfo.xml        generated
+/usr/share/icons/hicolor/**/apps/com.gtkx.tutorial.svg    from data/icons
+/usr/share/glib-2.0/schemas/com.gtkx.tutorial.gschema.xml from data/
+```
+
+The launcher resolves the other files from its own location, so nothing is hardcoded to `/usr` and the same tree works in a Flatpak and inside an AppImage.
+
+The D-Bus service file is there because `isDbusActivatable` is set. The two travel together: a desktop entry that declares `DBusActivatable=true` with no service file naming the command to start is an app the desktop cannot activate, and `flatpak build-export` refuses to export it at all. The AppImage is the exception, since it has no fixed install path to name in a service file, so its desktop entry is written without the key instead.
+
+## Installing it
 
 ```bash
-install -Dm755 dist/app ~/.local/bin/gtkx-tutorial
-install -Dm755 dist/gtkx.node ~/.local/bin/gtkx.node
-install -Dm644 dist/gschemas.compiled ~/.local/bin/gschemas.compiled
-install -Dm644 flatpak/com.gtkx.tutorial.desktop ~/.local/share/applications/com.gtkx.tutorial.desktop
-install -Dm644 flatpak/com.gtkx.tutorial.metainfo.xml ~/.local/share/metainfo/com.gtkx.tutorial.metainfo.xml
-cp -r data/icons/hicolor ~/.local/share/icons/
-update-desktop-database ~/.local/share/applications
-gtk4-update-icon-cache -f -t ~/.local/share/icons/hicolor
+sudo apt install ./build/out/gtkx-tutorial_1.0.0-1_amd64.deb
+sudo dnf install ./build/out/gtkx-tutorial-1.0.0-1.x86_64.rpm
+flatpak install --user ./build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak
+chmod +x build/out/Tasks-1.0.0-x86_64.AppImage && ./build/out/Tasks-1.0.0-x86_64.AppImage
 ```
 
-The binary, the native addon, and the compiled schema share a directory because that is where the running executable looks for them. The cache commands tell the desktop to notice the new files immediately rather than at the next login.
+Open the overview and type **Tasks**. The app appears with its own blue checklist icon rather than a generic placeholder, and pressing Enter launches it. Open the desktop's notification settings and Tasks is listed there as an app that sends notifications.
 
-## Run it
+The deb and the rpm install no maintainer scripts. Refreshing the desktop, icon, and schema caches is left to the distribution's own triggers, which is what a well-behaved package does.
 
-Run `./dist/app` from the project directory. Tasks opens with your seeded lists, and closing and reopening it shows the same tasks, because the store still reads and writes `XDG_DATA_HOME` exactly as it did under `npm run dev`.
+## Reviewing what was generated
 
-Then install with the commands above, open the overview, and type **Tasks**. The app appears with its own blue checklist icon rather than a generic placeholder, and pressing Enter launches it. Open the desktop's notification settings and Tasks is listed there as an app that sends notifications.
+```bash
+npm run deploy -- --print-manifests
+```
 
-For the negative check, move `dist/gschemas.compiled` out of `~/.local/bin` and launch again from a terminal. The app aborts on the first settings read with a GLib error naming the `com.gtkx.tutorial` schema as not installed. Put the file back and it starts.
+writes and validates the metadata and every target's manifest, then stops without packaging. `build/metadata/com.gtkx.tutorial.desktop` comes out as:
+
+```ini
+[Desktop Entry]
+Type=Application
+Name=Tasks
+GenericName=Task Manager
+Comment=Manage your tasks and to-dos
+Exec=gtkx-tutorial
+Icon=com.gtkx.tutorial
+Terminal=false
+Categories=Office;ProjectManagement;
+Keywords=Task;Tasks;Todo;To-do;Checklist;
+StartupNotify=true
+StartupWMClass=com.gtkx.tutorial
+DBusActivatable=true
+X-GNOME-UsesNotifications=true
+```
+
+The identifiers agree because they come from one source: `Icon` is the application ID from [Your First Window](/tutorial/your-first-window), `Exec` is `binaryName`, and the metainfo's `launchable` points back at this file.
+
+## When a tool is missing
+
+`gtkx deploy` needs `desktop-file-validate` and `appstreamcli` for the metadata, and `flatpak-builder` for the Flatpak. It lists everything missing at once, with the install line for your distribution:
+
+```
+[gtkx] error Cannot deploy: 1 required tool is missing.
+
+  flatpak-builder           builds the Flatpak
+                            sudo dnf install flatpak-builder
+                            or: flatpak install --user -y flathub org.flatpak.Builder
+
+Narrow the run with --target if you do not need every package format.
+```
+
+`nfpm` for the deb and rpm, and `appimagetool` for the AppImage, are downloaded and checksum-verified on first use, so building a `.deb` on Fedora needs nothing installed.
 
 ## Next
 
-Appendix C builds this same set of files into a sandboxed, distributable package: [Shipping It on Flathub](/tutorial/flatpak).
+Appendix C submits the Flatpak to a store that builds it from source: [Shipping It on Flathub](/tutorial/flatpak).

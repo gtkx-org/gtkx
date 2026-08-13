@@ -1,7 +1,7 @@
 import { join, posix } from "node:path";
 import { type InlineConfig, mergeConfig, build as viteBuild } from "vite";
 import { gtkxBuiltUrl } from "./vite-plugins/built-url.js";
-import { ESM_EXTENSION } from "./vite-plugins/esm-extension.js";
+import { BUNDLE_FILENAME, ESM_EXTENSION } from "./vite-plugins/esm-extension.js";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
 import { gtkxNative } from "./vite-plugins/native.js";
 import { gtkxSelfContained } from "./vite-plugins/self-contained.js";
@@ -14,11 +14,10 @@ type BuildOptions = {
 };
 
 const BUILD_MODE = "production";
-const BUNDLE_STEM = "bundle";
 const CHUNK_STEM = "[name]-[hash]";
 const DEFAULT_OUT_DIR = "dist";
 const DEFAULT_ASSETS_DIR = "assets";
-const ENTRY_FILE_NAMES = BUNDLE_STEM + ESM_EXTENSION;
+const ENTRY_FILE_NAMES = BUNDLE_FILENAME;
 
 const buildDefaults: InlineConfig = {
     build: {

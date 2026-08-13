@@ -49,6 +49,11 @@ type StartRegistryOptions = {
     resetsStorage?: boolean | undefined;
 };
 
+type AppLaunch = {
+    command: string;
+    args: string[];
+};
+
 type HeadlessDisplay = {
     startHeadlessDisplay: (options: { size: string; compositor: "sway" | "weston" }) => Promise<() => void>;
     resolveHeadlessOptions: (provided: object) => { size: string; compositor: "sway" | "weston" };
@@ -325,9 +330,9 @@ async function loadHeadlessDisplay(): Promise<HeadlessDisplay> {
     return (await import(pathToFileURL(modulePath).href)) as HeadlessDisplay;
 }
 
-function runBuiltAppUntilStable(appDir: string, env: NodeJS.ProcessEnv): Promise<void> {
+function runBuiltAppUntilStable(appDir: string, env: NodeJS.ProcessEnv, launch: AppLaunch): Promise<void> {
     return new Promise((resolve, reject) => {
-        const child = spawn(process.execPath, ["dist/bundle.mjs"], {
+        const child = spawn(launch.command, launch.args, {
             cwd: appDir,
             env,
             stdio: ["ignore", "pipe", "pipe"],
@@ -355,10 +360,11 @@ function runBuiltAppUntilStable(appDir: string, env: NodeJS.ProcessEnv): Promise
 
         child.on("exit", (code, signal) => {
             clearTimeout(timer);
+            const command = [launch.command, ...launch.args].join(" ");
 
             reject(
                 new Error(
-                    `Built app "node dist/bundle.mjs" exited early (code ${String(code ?? "null")}, ` +
+                    `Built app "${command}" exited early (code ${String(code ?? "null")}, ` +
                     `signal ${signal ?? "null"}) before it was confirmed running:\n${output}`,
                 ),
             );
@@ -366,15 +372,19 @@ function runBuiltAppUntilStable(appDir: string, env: NodeJS.ProcessEnv): Promise
     });
 }
 
-async function verifyBuiltAppStarts(appDir: string): Promise<void> {
+async function verifyAppStarts(appDir: string, launch: AppLaunch): Promise<void> {
     const { startHeadlessDisplay, resolveHeadlessOptions, STATIC_HEADLESS_ENV } = await loadHeadlessDisplay();
     const teardown = await startHeadlessDisplay(resolveHeadlessOptions({}));
 
     try {
-        await runBuiltAppUntilStable(appDir, { ...process.env, ...STATIC_HEADLESS_ENV });
+        await runBuiltAppUntilStable(appDir, { ...process.env, ...STATIC_HEADLESS_ENV }, launch);
     } finally {
         teardown();
     }
+}
+
+async function verifyBuiltAppStarts(appDir: string): Promise<void> {
+    await verifyAppStarts(appDir, { command: process.execPath, args: ["dist/bundle.mjs"] });
 }
 
 export {
@@ -384,6 +394,7 @@ export {
     runAsync,
     startRegistry,
     withRegistry,
+    verifyAppStarts,
     verifyBuiltAppStarts,
     type RegistryContext,
 };

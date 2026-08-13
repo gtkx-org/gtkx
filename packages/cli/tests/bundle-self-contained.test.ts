@@ -1,5 +1,5 @@
+import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, rmSync } from "node:fs";
-import { createRequire } from "node:module";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -8,6 +8,7 @@ import {
     type AppRun,
     buildAppProject,
     createAppProject,
+    deployedEnvironment,
     installBundle,
     removeAppProject,
     runNode,
@@ -117,13 +118,16 @@ const versionLiteral = (version: string): RegExp => {
 };
 
 const canResolveFromInstall = (installDir: string, specifier: string): boolean => {
-    try {
-        createRequire(join(installDir, BUNDLE_NAME)).resolve(specifier);
+    const from = JSON.stringify(join(installDir, BUNDLE_NAME));
+    const source = `require("node:module").createRequire(${from}).resolve(${JSON.stringify(specifier)})`;
 
-        return true;
-    } catch {
-        return false;
-    }
+    const run = spawnSync(process.execPath, ["-e", source], {
+        cwd: installDir,
+        encoding: "utf8",
+        env: deployedEnvironment(),
+    });
+
+    return run.status === 0;
 };
 
 describe("gtkx build (self-contained bundle)", () => {

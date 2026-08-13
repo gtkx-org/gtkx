@@ -134,5 +134,6 @@ Pass `projectRoot`, any directory inside the project, absolute or relative, to c
 
 ## Next
 
+- [Deploying](/guide/deploying) packages the app for Flatpak, deb, rpm, and AppImage.
 - The [API reference](/reference/) documents the GTKX packages themselves.
 - The [tutorial's testing chapter](/tutorial/testing) applies the queries and events behind these tools to the Tasks app.
