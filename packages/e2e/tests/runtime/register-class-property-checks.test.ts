@@ -6,6 +6,7 @@ import {
     paramSpecBoolean,
     paramSpecDouble,
     paramSpecEnum,
+    paramSpecFloat,
     paramSpecInt,
     paramSpecObject,
     paramSpecString,
@@ -29,6 +30,9 @@ const probeProperties = (): Record<string, ParamSpec> => ({
     stamp: paramSpecString("stamp", null, null, "", ParamFlags.READWRITE | ParamFlags.CONSTRUCT_ONLY),
     red: paramSpecInt("red", null, null, 0, 255, 0, ParamFlags.READWRITE),
     ratio: paramSpecDouble("ratio", null, null, 0, 1, 0, ParamFlags.READWRITE),
+    span: paramSpecDouble("span", null, null, -Infinity, Infinity, Infinity, ParamFlags.READWRITE),
+    reach: paramSpecFloat("reach", null, null, -Infinity, Infinity, Infinity, ParamFlags.READWRITE),
+    gain: paramSpecFloat("gain", null, null, 0, 1, 0, ParamFlags.READWRITE),
     frozen: paramSpecInt("frozen", null, null, 0, 255, 7, ParamFlags.READABLE),
     lax: paramSpecInt("lax", null, null, 0, 10, 0, ParamFlags.READWRITE | ParamFlags.LAX_VALIDATION),
     label: paramSpecString("label", null, null, "", ParamFlags.READWRITE),
@@ -51,6 +55,12 @@ const makeProbeClass = () => {
         declare red: number;
 
         declare ratio: number;
+
+        declare span: number;
+
+        declare reach: number;
+
+        declare gain: number;
 
         declare frozen: number;
 
@@ -160,6 +170,85 @@ describe("registerClass — property ranges", () => {
     });
 });
 
+describe("registerClass — properties whose ParamSpec range admits infinity", () => {
+    it("writes the infinite default one instance serves onto another", () => {
+        const Probe = makeProbeClass();
+        const source = new Probe();
+        const target = new Probe();
+        target.span = 5;
+        target.span = source.span;
+        expect(source.span).toBe(Infinity);
+        expect(target.span).toBe(Infinity);
+    });
+
+    it("takes the declared infinite default at construction and both infinities after it", () => {
+        const Probe = makeProbeClass();
+        expect(new Probe({ span: Infinity }).span).toBe(Infinity);
+        const probe = new Probe();
+        probe.span = -Infinity;
+        expect(probe.span).toBe(-Infinity);
+    });
+
+    it("takes an infinite value on a float property whose range admits it", () => {
+        const Probe = makeProbeClass();
+        const probe = new Probe();
+        probe.reach = 5;
+        probe.reach = Infinity;
+        expect(probe.reach).toBe(Infinity);
+        expect(new Probe({ reach: -Infinity }).reach).toBe(-Infinity);
+    });
+
+    it("refuses NaN even where the range admits every finite number", () => {
+        const probe = expectRefusal(
+            (target) => {
+                target.span = NaN;
+            },
+            RangeError,
+            /'span' to NaN.+invalid or out of range for type 'gdouble'/,
+        );
+
+        expect(probe.span).toBe(Infinity);
+    });
+});
+
+describe("registerClass — floating-point property ranges", () => {
+    it("refuses an infinity a bounded double's range excludes as out of range", () => {
+        const probe = expectRefusal(
+            (target) => {
+                target.ratio = Infinity;
+            },
+            RangeError,
+            /'ratio' to Infinity.+out of range for type 'gdouble'.+would put 1 in its place/,
+        );
+
+        expect(probe.ratio).toBe(0);
+    });
+
+    it("refuses a float a bounded ParamSpec's range excludes as out of range", () => {
+        const probe = expectRefusal(
+            (target) => {
+                target.gain = 5;
+            },
+            RangeError,
+            /'gain' to 5.+out of range for type 'gfloat'.+would put 1 in its place/,
+        );
+
+        expect(probe.gain).toBe(0);
+    });
+
+    it("refuses a finite magnitude no gfloat holds as a type mismatch", () => {
+        const probe = expectRefusal(
+            (target) => {
+                target.gain = 1e300;
+            },
+            TypeError,
+            /'gain' to 1e\+300; the property holds values of type 'gfloat'/,
+        );
+
+        expect(probe.gain).toBe(0);
+    });
+});
+
 describe("registerClass — read-only properties", () => {
     it("refuses a write to a property the ParamSpec marks read-only", () => {
         const probe = expectRefusal(
@@ -213,7 +302,7 @@ describe("registerClass — property types", () => {
 
         expect(() => {
             probe.ratio = NaN;
-        }).toThrow(/'ratio' to NaN; the property holds values of type 'gdouble'/);
+        }).toThrow(/'ratio' to NaN.+invalid or out of range for type 'gdouble'.+would put NaN in its place/);
 
         expect(probe.red).toBe(0);
         expect(probe.ratio).toBe(0);

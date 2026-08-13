@@ -78,7 +78,7 @@ const SCALAR_GUARDS: Map<bigint, ValueGuard> = new Map([
     [TYPE_INT64, wideIntegerGuardFor(INT64_MINIMUM, INT64_MAXIMUM)],
     [TYPE_UINT64, isWideUnsignedValue],
     [TYPE_FLOAT, isFloatValue],
-    [TYPE_DOUBLE, isDoubleValue],
+    [TYPE_DOUBLE, isNumberValue],
     [TYPE_POINTER, isNullValue],
 ]);
 
@@ -118,12 +118,12 @@ function isStrvValue(value: unknown): boolean {
     return value == null || (Array.isArray(value) && value.every((item) => typeof item === "string"));
 }
 
-function isDoubleValue(value: unknown): boolean {
-    return typeof value === "number" && Number.isFinite(value);
+function isNumberValue(value: unknown): boolean {
+    return typeof value === "number";
 }
 
 function isFloatValue(value: unknown): boolean {
-    return isDoubleValue(value) && Math.abs(value as number) <= FLOAT_MAXIMUM;
+    return isNumberValue(value) && (!Number.isFinite(value) || Math.abs(value as number) <= FLOAT_MAXIMUM);
 }
 
 function isAnyValue(): boolean {
