@@ -52,7 +52,6 @@ const UINT32_MAXIMUM = 4_294_967_295;
 const INT64_MINIMUM = -(2n ** 63n);
 const INT64_MAXIMUM = 2n ** 63n - 1n;
 const UINT64_MAXIMUM = 2n ** 64n - 1n;
-const FLOAT_MAXIMUM = 3.4028234663852886e38;
 
 const WRAPPED_FUNDAMENTALS: Set<bigint> = new Set([
     TYPE_BOXED,
@@ -77,7 +76,7 @@ const SCALAR_GUARDS: Map<bigint, ValueGuard> = new Map([
     [TYPE_ULONG, isWideUnsignedValue],
     [TYPE_INT64, wideIntegerGuardFor(INT64_MINIMUM, INT64_MAXIMUM)],
     [TYPE_UINT64, isWideUnsignedValue],
-    [TYPE_FLOAT, isFloatValue],
+    [TYPE_FLOAT, isNumberValue],
     [TYPE_DOUBLE, isNumberValue],
     [TYPE_POINTER, isNullValue],
 ]);
@@ -120,10 +119,6 @@ function isStrvValue(value: unknown): boolean {
 
 function isNumberValue(value: unknown): boolean {
     return typeof value === "number";
-}
-
-function isFloatValue(value: unknown): boolean {
-    return isNumberValue(value) && (!Number.isFinite(value) || Math.abs(value as number) <= FLOAT_MAXIMUM);
 }
 
 function isAnyValue(): boolean {

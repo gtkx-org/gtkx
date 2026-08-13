@@ -29,16 +29,15 @@ import {
 import * as Gtk from "@gtkx/gi/gtk";
 import { getClassType, registerClass, resolveType, TYPE_LONG } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
+import { expectThrown, thrownBy, uniqueName, valueOfType } from "./helpers.js";
 
 type NullishCase = { name: string; type: string; written: unknown; fallback: unknown };
 type RefusedCase = NullishCase & { refused: unknown; described: string };
 type HoldingCase = { name: string; hold: () => unknown; fallback: unknown; constructed: unknown };
-type ErrorClass = new (...args: never[]) => Error;
 
 const buttonType = getClassType(Gtk.Button);
 const orientationType = resolveType("libgtk-4.so.1", "gtk_orientation_get_type");
 const stateFlagsType = resolveType("libgtk-4.so.1", "gtk_state_flags_get_type");
-const names = { next: 0 };
 const intType = typeFromName("gint");
 const strvType = typeFromName("GStrv");
 const objectType = typeFromName("GtkLabel");
@@ -100,40 +99,11 @@ const SERVED_BACK = [
 
 const NOT_GIVEN: { name: string; fallback: unknown }[] = [...REFUSING, ...HOLDING_NULL];
 
-const uniqueName = (prefix: string): string => {
-    names.next += 1;
-
-    return `${prefix}_${String(process.pid)}_${String(names.next)}`;
-};
-
 const refusalFor = (entry: NullishCase, written: string): RegExp =>
     new RegExp(
         String.raw`^Probe\.${entry.name}: cannot set property '${entry.name}' to ${written}; ` +
         `the property holds values of type '${entry.type}'$`,
     );
-
-const thrownBy = (write: () => unknown): unknown => {
-    try {
-        write();
-    } catch (error) {
-        return error;
-    }
-
-    return undefined;
-};
-
-const expectThrown = (write: () => unknown, kind: ErrorClass, message: RegExp): void => {
-    const thrown = thrownBy(write);
-    expect(thrown).toBeInstanceOf(kind);
-    expect((thrown as Error).message).toMatch(message);
-};
-
-const valueOfType = (type: bigint): Value => {
-    const value = new Value();
-    value.init(type);
-
-    return value;
-};
 
 const notifiedNames = (instance: GObject): string[] => {
     const seen: string[] = [];
