@@ -18,16 +18,16 @@
         "deploy": "gtkx deploy"
     },
     "dependencies": {
-        "@gtkx/components": "^1.0.0",
-        "@gtkx/css": "^1.0.0",
-        "@gtkx/react": "^1.0.0",
+        "@gtkx/components": "^1.1.0",
+        "@gtkx/css": "^1.1.0",
+        "@gtkx/react": "^1.1.0",
         "react": "^19.2.8",
         "zustand": "^5.0.15"
     },
     "devDependencies": {
-        "@gtkx/cli": "^1.0.0",
-        "@gtkx/config": "^1.0.0",
-        "@gtkx/testing": "^1.0.0",
+        "@gtkx/cli": "^1.1.0",
+        "@gtkx/config": "^1.1.0",
+        "@gtkx/testing": "^1.1.0",
         "@types/node": "^26.2.0",
         "@types/react": "^19.2.18",
         "typescript": "^7.0.2",
