@@ -56,6 +56,13 @@ describe("getApplicationInstance", () => {
         expect(getApplicationInstance(application)).toBe("unregistered");
     });
 
+    it("keeps reporting an unregistered instance for a command line the application refused", () => {
+        const application = trackUniqueApplication(uniqueAppId());
+        expect(runApplication(application, ["probe", "--nope"])).toEqual({ isPrimary: false, exitStatus: 1 });
+        expect(application.getIsRegistered()).toBe(false);
+        expect(getApplicationInstance(application)).toBe("unregistered");
+    });
+
     it("tells an application that shut down apart from one that never registered", () => {
         const application = runAndQuitApplication();
         expect(application.getIsRegistered()).toBe(false);

@@ -76,7 +76,12 @@ type Harness = HarnessMocks & {
     server: FakeServer;
     plugins: Plugin[];
     applicationId: string | null;
+    state: HarnessState;
+};
+
+type HarnessState = {
     waitCalls: WaitCall[];
+    applicationInstance: ApplicationInstance;
 };
 
 type WaitCall = { timeoutMs: number; shouldKeepWaiting: () => boolean };
@@ -243,11 +248,11 @@ const buildDeps = (
     mocks: HarnessMocks,
     plugins: Plugin[],
     overrides: HarnessOverrides,
-    waitCalls: WaitCall[],
+    state: HarnessState,
 ): DevRunnerDeps => ({
     createServer: mocks.createServer,
     waitForApplicationId: (timeoutMs, shouldKeepWaiting) => {
-        waitCalls.push({ timeoutMs, shouldKeepWaiting });
+        state.waitCalls.push({ timeoutMs, shouldKeepWaiting });
         overrides.whileWaiting?.();
 
         return Promise.resolve(overrides.applicationId ?? null);
@@ -257,7 +262,7 @@ const buildDeps = (
     stopMcpClient: mocks.stopMcp,
     watchApplicationShutdown: mocks.watchAppShutdown,
     watchUncaughtErrors: mocks.watchUncaughtErrors,
-    getApplicationInstance: () => overrides.applicationInstance ?? "primary",
+    getApplicationInstance: () => state.applicationInstance,
     installShutdownHandlers: mocks.installShutdownHandlers,
     quitDefaultApplication: mocks.quitDefaultApp,
     performRefresh: mocks.performRefresh,
@@ -273,15 +278,19 @@ const buildHarness = (overrides: HarnessOverrides = {}): Harness => {
     const server = createFakeServer();
     const plugins = PLUGIN_NAMES.map((name) => ({ name })) as Plugin[];
     const mocks = buildMocks(server, overrides);
-    const waitCalls: WaitCall[] = [];
+
+    const state: HarnessState = {
+        waitCalls: [],
+        applicationInstance: overrides.applicationInstance ?? "primary",
+    };
 
     return {
         ...mocks,
         server,
         plugins,
-        waitCalls,
+        state,
         applicationId: overrides.applicationId ?? null,
-        deps: buildDeps(mocks, plugins, overrides, waitCalls),
+        deps: buildDeps(mocks, plugins, overrides, state),
     };
 };
 
@@ -382,13 +391,32 @@ const installedUncaughtErrorHandler = (harness: Harness): OnCause => {
     return onUncaughtError;
 };
 
-const startWithDeadApplication = async (instance: ApplicationInstance, cause: Error): Promise<Harness> => {
+const startWithDeadApplication = async (
+    instance: ApplicationInstance,
+    cause: Error,
+    applicationId: string | null = "com.example.app",
+): Promise<Harness> => {
     const harness: Harness = buildHarness({
-        applicationId: "com.example.app",
+        applicationId,
         applicationInstance: instance,
         whileWaiting: () => {
             installedUncaughtErrorHandler(harness)(cause);
         },
+    });
+
+    await startRunner(harness);
+
+    return harness;
+};
+
+const startDyingAfterAttach = async (cause: Error): Promise<Harness> => {
+    const harness: Harness = buildHarness({ applicationId: "com.example.app" });
+
+    harness.startMcp.mockImplementationOnce(() => {
+        harness.state.applicationInstance = "shutDown";
+        installedUncaughtErrorHandler(harness)(cause);
+
+        return Promise.resolve();
     });
 
     await startRunner(harness);
@@ -962,13 +990,13 @@ describe("createDevRunner (an entry that fails to load)", () => {
         const stderrSpy = captureStderr();
         const harness = await startWithFailingEntry(new Error("boom"));
         stderrSpy.mockRestore();
-        const [wait] = harness.waitCalls;
+        const [wait] = harness.state.waitCalls;
         expect(wait?.shouldKeepWaiting()).toBe(false);
     });
 
     it("keeps polling for the application while the entry is healthy", async () => {
         const harness = await startAppHarness();
-        const [wait] = harness.waitCalls;
+        const [wait] = harness.state.waitCalls;
         expect(wait?.shouldKeepWaiting()).toBe(true);
     });
 });
@@ -991,6 +1019,39 @@ describe("createDevRunner (an application that died before the runner attached)"
         const harness = await startWithDeadApplication("unregistered", new Error("boom"));
         defineModule(harness, "/x/y.ts");
         await emitChangeAndFlush(harness, "/x/y.ts", 2);
+        stderrSpy.mockRestore();
+        expect(harness.performRefresh).not.toHaveBeenCalled();
+        expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
+    });
+
+    it("parks the session when the error struck before any application was mounted", async () => {
+        const stderrSpy = captureStderr();
+        const cause = new Error("PROBE: throw before the application was created");
+        const harness = await startWithDeadApplication("unregistered", cause, null);
+        stderrSpy.mockRestore();
+        const messages = loggedMessages(harness);
+        expect(messages.some((m) => m.includes("Entry did not mount an application"))).toBe(true);
+        expect(messages.some((m) => m.includes("HMR enabled"))).toBe(false);
+        expect(messages.some((m) => m.includes(PARKED))).toBe(true);
+    });
+});
+
+describe("createDevRunner (an application that died right after the runner attached)", () => {
+    it("parks the session instead of announcing Fast Refresh over a dead application", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startDyingAfterAttach(new Error("PROBE: throw inside useEffect"));
+        const written = collectLogged(stderrSpy);
+        stderrSpy.mockRestore();
+        const messages = loggedMessages(harness);
+        expect(messages.some((m) => m.includes("HMR enabled"))).toBe(false);
+        expect(messages.some((m) => m.includes(PARKED))).toBe(true);
+        expect(written).toContain("PROBE: throw inside useEffect");
+    });
+
+    it("restarts on the next save instead of Fast Refreshing a boundary into a dead application", async () => {
+        const stderrSpy = captureStderr();
+        const harness = await startDyingAfterAttach(new Error("boom"));
+        await emitBoundaryChange(harness, "/x/y.ts");
         stderrSpy.mockRestore();
         expect(harness.performRefresh).not.toHaveBeenCalled();
         expect(harness.exit).toHaveBeenCalledWith(RESTART_EXIT_CODE);
