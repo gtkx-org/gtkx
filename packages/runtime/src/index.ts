@@ -40,14 +40,7 @@ export {
     wrapHandle,
 } from "./registry.js";
 /** @public */
-export {
-    connectSignal,
-    disconnectSignal,
-    emitSignal,
-    getSignalBaseName,
-    type EmitReturn,
-    type SignalHandler,
-} from "./signal.js";
+export { connectSignal, disconnectSignal, emitSignal, getSignalBaseName, type SignalHandler } from "./signal.js";
 /** @public */
 export { t } from "./t.js";
 /** @public */
