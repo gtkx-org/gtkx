@@ -1,10 +1,12 @@
+use std::ffi::c_void;
+
 use libffi::middle;
-use native::ffi;
 use native::ffi::codec::{
     BigIntCodec, BoxedCodec, BufferCodec, CallbackCodec, CallbackScope, Codec, Decoder,
     DestroyNotifyKind, Encoder, FundamentalCodec, IntegerCodec, Ownership, ReadCtx, RefCodec,
     StructCodec, VoidCodec,
 };
+use native::ffi::{self, StashData, StashStorage};
 use test_support as helpers;
 use test_support::napi_mock;
 
@@ -171,6 +173,36 @@ fn ref_read_from_value_source_errors() {
         let result =
             unsafe { i32_ref_codec().read(&env, ReadCtx::value(std::ptr::null_mut(), "ctx")) };
         assert!(result.is_err());
+    });
+}
+
+#[test]
+fn ref_decode_unsupported_inner_errors() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let mut backing: u64 = 0;
+        let ptr = (&raw mut backing).cast::<c_void>();
+        let stash = ffi::Stash::Storage(StashStorage::new(ptr, StashData::Unit));
+
+        for inner in [
+            Codec::Void(VoidCodec),
+            Codec::Buffer(BufferCodec),
+            Codec::Callback(callback_codec()),
+            Codec::Ref(i32_ref_codec()),
+        ] {
+            assert!(!RefCodec::supports_inner(&inner));
+            let ref_codec = RefCodec {
+                inner_codec: Box::new(inner),
+                inout: false,
+            };
+            let Err(error) = ref_codec.decode(&env, &stash) else {
+                panic!("a Ref inner that cannot be read should be reported, not decoded");
+            };
+            assert!(
+                format!("{error:#}").contains("Unsupported ref inner codec for reading"),
+                "{error:#}"
+            );
+        }
     });
 }
 
