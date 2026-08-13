@@ -38,6 +38,16 @@
     "scripts": {
         "release": "tsx ../../scripts/release-package.ts"
     },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            }
+        }
+    },
     "dependencies": {
         "picocolors": "^1.1.1"
     },

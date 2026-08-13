@@ -115,6 +115,18 @@ impl Decoder for CallbackCodec {}
 impl PtrWriter for CallbackCodec {}
 
 impl CallbackCodec {
+    #[must_use]
+    pub fn is_async_completion(&self) -> bool {
+        self.scope == CallbackScope::Async
+            && self.has_user_data
+            && self.user_data_index == Some(2)
+            && matches!(*self.return_codec, Codec::Void(_))
+            && matches!(
+                self.arg_codecs.as_slice(),
+                [Codec::Object(_), Codec::Object(_), _]
+            )
+    }
+
     fn null_callback_value(&self) -> ffi::Stash {
         ffi::Stash::Callback(ffi::CallbackValue::new(
             std::ptr::null_mut(),

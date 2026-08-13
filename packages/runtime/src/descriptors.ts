@@ -135,6 +135,12 @@ type FundamentalOptions = {
     isInline?: boolean;
 };
 
+type FundamentalLifecycle = {
+    sharedLibrary: string;
+    refFnName: string;
+    unrefFnName: string;
+};
+
 /** How a plain C struct is stored and wrapped. */
 type StructOptions = {
     /** The caller owns the storage the callee fills, so a decoded value is borrowed instead of copied. */
@@ -181,6 +187,7 @@ const voidT: VoidDescriptor = { kind: "void" };
 const unicharT: UnicharDescriptor = { kind: "unichar" };
 /** Descriptor for an opaque `gpointer`, taken from a typed array's memory or a numeric address. */
 const bufferT: BufferDescriptor = { kind: "buffer" };
+const fundamentalLifecycles: Map<string, FundamentalLifecycle> = new Map();
 
 /**
  * Builds a descriptor for a C string, whose optional length sizes the caller-allocated buffer
@@ -290,6 +297,15 @@ const structT = (ownership: Ownership = "borrowed", options: StructOptions = {})
     return result;
 };
 
+const recordFundamentalLifecycle = (typeName: string, lifecycle: FundamentalLifecycle): void => {
+    if (!fundamentalLifecycles.has(typeName)) {
+        fundamentalLifecycles.set(typeName, lifecycle);
+    }
+};
+
+const fundamentalLifecycleFor = (typeName: string): FundamentalLifecycle | undefined =>
+    fundamentalLifecycles.get(typeName);
+
 /** Builds a descriptor for a fundamental type whose lifetime is managed by named ref and unref functions. */
 const fundamentalT = (
     sharedLibrary: string,
@@ -302,6 +318,7 @@ const fundamentalT = (
 
     if (options.typeName !== undefined) {
         result.typeName = options.typeName;
+        recordFundamentalLifecycle(options.typeName, { sharedLibrary, refFnName, unrefFnName });
     }
 
     if (options.wrapperClass !== undefined) {
@@ -451,6 +468,7 @@ export {
     flagsT,
     boxedT,
     structT,
+    fundamentalLifecycleFor,
     fundamentalT,
     arrayT,
     listT,

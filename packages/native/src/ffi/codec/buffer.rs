@@ -39,6 +39,13 @@ impl Encoder for BufferCodec {
         }
     }
 
+    fn encode_owned(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        match value::TypedView::from_unknown(env, value)? {
+            Some(view) => Ok(ffi::Stash::Storage(owned_view_storage(&view))),
+            None => self.encode(env, value),
+        }
+    }
+
     reject_return_codec!("Buffer");
 }
 

@@ -4,6 +4,16 @@
     "description": "Internal ESLint flat config and custom lint rules for the GTKX workspace",
     "private": true,
     "type": "module",
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            }
+        }
+    },
     "exports": {
         "./package.json": "./package.json",
         ".": "./src/index.ts"

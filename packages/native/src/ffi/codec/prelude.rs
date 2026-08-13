@@ -263,6 +263,23 @@ where
     container
 }
 
+pub(super) fn owned_view_storage(view: &value::TypedView) -> ffi::StashStorage {
+    match view.kind() {
+        value::ViewKind::Int8 => view.to_vec::<i8>().into(),
+        value::ViewKind::Uint8 | value::ViewKind::Uint8Clamped | value::ViewKind::DataView => {
+            view.to_vec::<u8>().into()
+        }
+        value::ViewKind::Int16 => view.to_vec::<i16>().into(),
+        value::ViewKind::Uint16 => view.to_vec::<u16>().into(),
+        value::ViewKind::Int32 => view.to_vec::<i32>().into(),
+        value::ViewKind::Uint32 => view.to_vec::<u32>().into(),
+        value::ViewKind::Float32 => view.to_vec::<f32>().into(),
+        value::ViewKind::Float64 => view.to_vec::<f64>().into(),
+        value::ViewKind::BigInt64 => view.to_vec::<i64>().into(),
+        value::ViewKind::BigUint64 => view.to_vec::<u64>().into(),
+    }
+}
+
 pub(super) fn full_transfer_stash(ptr: *mut c_void, release: ffi::ReleaseKind) -> ffi::Stash {
     ffi::Stash::Storage(ffi::StashStorage::unit(ptr).with_pending_transfer(ptr, release))
 }

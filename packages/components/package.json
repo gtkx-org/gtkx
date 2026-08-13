@@ -46,6 +46,16 @@
         "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts",
         "release": "tsx ../../scripts/release-package.ts"
     },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            }
+        }
+    },
     "engines": {
         "node": ">=24"
     },

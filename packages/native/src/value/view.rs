@@ -114,6 +114,18 @@ impl TypedView {
         self.kind
     }
 
+    #[must_use]
+    pub fn to_vec<T: Copy>(&self) -> Vec<T> {
+        if self.ptr.is_null() {
+            return Vec::new();
+        }
+
+        unsafe {
+            std::slice::from_raw_parts(self.ptr.cast::<T>(), self.byte_length / size_of::<T>())
+        }
+        .to_vec()
+    }
+
     fn from_typed_array(env: &Env, value: &Unknown<'_>) -> Result<Self> {
         let mut raw_kind: sys::napi_typedarray_type = sys::TypedarrayType::int8_array;
         let mut length = 0usize;

@@ -23,6 +23,12 @@
     },
     "nx": {
         "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            },
             "test:asan": {
                 "cache": true,
                 "inputs": [

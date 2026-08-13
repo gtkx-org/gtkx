@@ -1,6 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, c_char, c_void};
 use std::rc::Rc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use gtk4::glib;
 use napi::bindgen_prelude::External;
@@ -134,6 +135,33 @@ fn stash_that_panics_on_drop() -> Stash {
         std::ptr::null_mut(),
         StashData::List(ListData {
             ops: &PANICKING_LIST_OPS,
+            ptr: std::ptr::dangling_mut(),
+            should_free: true,
+            payload: ListPayload::Handles(Vec::new()),
+        }),
+    ))
+}
+
+static COUNTED_FREES: AtomicUsize = AtomicUsize::new(0);
+
+fn counting_free(_list: *mut c_void) {
+    COUNTED_FREES.fetch_add(1, Ordering::Relaxed);
+}
+
+static COUNTING_LIST_OPS: ListOps = ListOps {
+    label: "counting list",
+    pending: ReleaseKind::GFree,
+    prepend: passthrough_prepend,
+    node: end_node,
+    free: counting_free,
+    free_full: counting_free,
+};
+
+fn stash_that_counts_its_drop() -> Stash {
+    Stash::Storage(StashStorage::new(
+        std::ptr::null_mut(),
+        StashData::List(ListData {
+            ops: &COUNTING_LIST_OPS,
             ptr: std::ptr::dangling_mut(),
             should_free: true,
             payload: ListPayload::Handles(Vec::new()),
@@ -596,6 +624,34 @@ fn a_oneshot_closure_releases_its_resources_once_via_the_idle() {
             napi_mock::count("napi_delete_reference"),
             deletions_before + 1
         );
+        assert!(napi_mock::fatal_exceptions().is_empty());
+    });
+}
+
+#[test]
+fn a_fired_oneshot_outlives_its_idle_cleanup_until_the_calling_frame_lets_go() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (js_fn, calls) = counting_function(|_, _| napi_mock::fake_undefined());
+        let state = void_closure(&env, js_fn, true);
+        let call: unsafe extern "C" fn() = unsafe { std::mem::transmute(state.code_ptr) };
+        let callback_value =
+            native::ffi::CallbackValue::new_pending_transfer(state.code_ptr, true, None, state);
+
+        unsafe { call() };
+        drain_default_context();
+        assert_eq!(calls.get(), 1);
+
+        callback_value.disarm_pending_transfer();
+        let data = callback_value
+            .closure_data()
+            .expect("the callback still holds its closure");
+        let frees_before = COUNTED_FREES.load(Ordering::Relaxed);
+        data.retain_container(stash_that_counts_its_drop());
+        assert_eq!(COUNTED_FREES.load(Ordering::Relaxed), frees_before);
+
+        drop(callback_value);
+        assert_eq!(COUNTED_FREES.load(Ordering::Relaxed), frees_before + 1);
         assert!(napi_mock::fatal_exceptions().is_empty());
     });
 }

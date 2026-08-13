@@ -178,6 +178,10 @@ pub trait Encoder {
         }
     }
 
+    fn encode_owned(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        self.encode(env, value)
+    }
+
     fn object_ptr_context(&self) -> &'static str {
         "object"
     }

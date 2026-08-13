@@ -2,7 +2,7 @@ use std::ffi::CString;
 
 use anyhow::bail;
 pub use container::{ArrayBounds, ArrayKind};
-use container::{ArrayContainer, ArrayContainerCodec};
+use container::{ArrayContainer, ArrayContainerCodec, ViewEncoding};
 use item::ItemCodec;
 
 use super::prelude::*;
@@ -90,11 +90,22 @@ impl Encoder for ArrayCodec {
             return self.container.encode(self, *env, &items);
         }
         if let Some(view) = TypedView::from_unknown(env, value)? {
-            return self.container.encode_buffer_view(self, &view);
+            return self
+                .container
+                .encode_buffer_view(self, &view, ViewEncoding::Passthrough);
         }
         match value.get_type()? {
             ValueType::Null | ValueType::Undefined => Ok(ffi::Stash::Ptr(std::ptr::null_mut())),
             _ => bail_expected!("an Array", "array"),
+        }
+    }
+
+    fn encode_owned(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        match TypedView::from_unknown(env, value)? {
+            Some(view) => self
+                .container
+                .encode_buffer_view(self, &view, ViewEncoding::Copy),
+            None => self.encode(env, value),
         }
     }
 }
@@ -470,10 +481,11 @@ impl ArrayCodec {
         }
     }
 
-    fn buffer_view_passthrough(
+    fn buffer_view_stash(
         &self,
         view: &TypedView,
         expected_length: Option<usize>,
+        encoding: ViewEncoding,
     ) -> anyhow::Result<ffi::Stash> {
         anyhow::ensure!(
             self.ownership.is_borrowed(),
@@ -493,7 +505,10 @@ impl ArrayCodec {
             view.kind(),
             self.item_codec
         );
-        Ok(ffi::Stash::Ptr(view.ptr()))
+        Ok(match encoding {
+            ViewEncoding::Passthrough => ffi::Stash::Ptr(view.ptr()),
+            ViewEncoding::Copy => ffi::Stash::Storage(owned_view_storage(view)),
+        })
     }
 
     fn decode_ptr_iter<'e>(

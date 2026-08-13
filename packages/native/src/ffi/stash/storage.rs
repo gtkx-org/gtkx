@@ -292,6 +292,10 @@ impl StashStorage {
         &self.data
     }
 
+    pub fn owns_element_buffer(&self) -> bool {
+        self.byte_len().is_some()
+    }
+
     pub fn byte_len(&self) -> Option<usize> {
         match &self.data {
             StashData::U8Vec(v) | StashData::Buffer(v) => Some(size_of_val(v.as_slice())),

@@ -70,9 +70,9 @@ pub struct ClosureData {
     pub arg_codecs: Vec<Codec>,
     pub return_codec: Codec,
     pub user_data_index: Option<usize>,
-    pub is_oneshot: bool,
+    is_oneshot: bool,
     pub state_ptr: Cell<*mut ClosureState>,
-    pub oneshot_fired: Cell<bool>,
+    oneshot_fired: Cell<bool>,
     in_flight: Cell<u32>,
     pending_destroy: Cell<bool>,
     retained_strings: RefCell<HashMap<CString, *mut c_char>>,
@@ -132,6 +132,7 @@ pub struct ClosureState {
     closure: std::mem::ManuallyDrop<libffi::Closure<'static>>,
     pub code_ptr: *mut c_void,
     data: *mut ClosureData,
+    holds: Cell<u32>,
 }
 
 impl std::fmt::Debug for ClosureState {
@@ -174,6 +175,22 @@ impl ClosureState {
             closure: std::mem::ManuallyDrop::new(closure),
             code_ptr,
             data,
+            holds: Cell::new(1),
+        }
+    }
+
+    pub(crate) fn hold(&self) {
+        self.holds.set(self.holds.get() + 1);
+    }
+
+    pub(crate) unsafe fn release(state: *mut Self) {
+        if state.is_null() {
+            return;
+        }
+        let holds = unsafe { (*state).holds.get() }.saturating_sub(1);
+        unsafe { (*state).holds.set(holds) };
+        if holds == 0 {
+            drop(unsafe { Box::from_raw(state) });
         }
     }
 
@@ -194,13 +211,14 @@ impl ClosureState {
     /// # Safety
     ///
     /// `user_data` must be a pointer obtained from `Box::into_raw` on a `Box<ClosureState>` (which
-    /// is what `ClosureState::boxed` produces) and must still be live. This takes ownership of that
-    /// box and frees it, along with the `ClosureData` and the libffi closure it owns, so the caller
-    /// must not use `user_data`, the closure's code pointer, or any trampoline installed from it
-    /// afterwards, and must invoke this at most once per pointer. Invoking it from inside the
-    /// callback itself is allowed: the release is then deferred until the invocation returns. When
-    /// called off the thread the Node environment was installed on, the drop is deferred onto that
-    /// thread, so the pointer must stay valid until it runs.
+    /// is what `ClosureState::boxed` produces) and must still be live. This drops the hold the
+    /// callee was given, freeing the box along with the `ClosureData` and the libffi closure it
+    /// owns once no other hold is left, so the caller must not use `user_data`, the closure's code
+    /// pointer, or any trampoline installed from it afterwards, and must invoke this at most once
+    /// per pointer. Invoking it from inside the callback itself is allowed: the release is then
+    /// deferred until the invocation returns. When called off the thread the Node environment was
+    /// installed on, the release is deferred onto that thread, so the pointer must stay valid until
+    /// it runs.
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
         guard_ffi_boundary("callback destroy notify", || {
             let state_ptr = user_data.cast::<Self>();
@@ -209,13 +227,13 @@ impl ClosureState {
             }
 
             if node_env::is_installed_on_current_thread() {
-                drop(unsafe { Box::from_raw(state_ptr) });
+                unsafe { Self::release(state_ptr) };
                 return;
             }
 
             let state_address = user_data as usize;
             node_env::invoke_on_install_thread("callback destroy notify", move || {
-                drop(unsafe { Box::from_raw(state_address as *mut Self) });
+                unsafe { Self::release(state_address as *mut Self) };
             });
         });
     }
@@ -619,7 +637,7 @@ unsafe extern "C" fn closure_entry(
     if let Some(ptr) = state_ptr {
         glib::idle_add_local_once(move || {
             guard_ffi_boundary("callback one-shot cleanup", || {
-                drop(unsafe { Box::from_raw(ptr) });
+                unsafe { ClosureState::release(ptr) };
             });
         });
     }

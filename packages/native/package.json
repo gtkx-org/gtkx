@@ -84,6 +84,12 @@
             ]
         },
         "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            },
             "build": {
                 "dependsOn": [],
                 "cache": true,

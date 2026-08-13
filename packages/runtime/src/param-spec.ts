@@ -13,6 +13,7 @@ import {
     TYPE_ENUM,
     TYPE_FLAGS,
     TYPE_FLOAT,
+    TYPE_GTYPE,
     TYPE_INT,
     TYPE_INT64,
     TYPE_INTERFACE,
@@ -61,6 +62,8 @@ const WRAPPED_FUNDAMENTALS: Set<bigint> = new Set([
     TYPE_VARIANT,
 ]);
 
+const isWideUnsignedValue: ValueGuard = wideIntegerGuardFor(0n, UINT64_MAXIMUM);
+
 const SCALAR_GUARDS: Map<bigint, ValueGuard> = new Map([
     [TYPE_BOOLEAN, isBooleanValue],
     [TYPE_STRING, isStringValue],
@@ -71,9 +74,9 @@ const SCALAR_GUARDS: Map<bigint, ValueGuard> = new Map([
     [TYPE_ENUM, integerGuardFor(INT32_MINIMUM, INT32_MAXIMUM)],
     [TYPE_FLAGS, integerGuardFor(0, UINT32_MAXIMUM)],
     [TYPE_LONG, wideIntegerGuardFor(INT64_MINIMUM, INT64_MAXIMUM)],
-    [TYPE_ULONG, wideIntegerGuardFor(0n, UINT64_MAXIMUM)],
+    [TYPE_ULONG, isWideUnsignedValue],
     [TYPE_INT64, wideIntegerGuardFor(INT64_MINIMUM, INT64_MAXIMUM)],
-    [TYPE_UINT64, wideIntegerGuardFor(0n, UINT64_MAXIMUM)],
+    [TYPE_UINT64, isWideUnsignedValue],
     [TYPE_FLOAT, isFloatValue],
     [TYPE_DOUBLE, isDoubleValue],
     [TYPE_POINTER, isNullValue],
@@ -173,11 +176,20 @@ function wrappedGuardFor(valueType: bigint): ValueGuard {
     return (value) => value == null || typeIsA(resolveGtype(value), valueType);
 }
 
+function exactGuardFor(valueType: bigint): ValueGuard | undefined {
+    if (valueType === TYPE_GTYPE) {
+        return isWideUnsignedValue;
+    }
+
+    return valueType === getStrvType() ? isStrvValue : undefined;
+}
+
 function valueGuardFor(valueType: bigint): ValueGuard {
     assertParamLayout();
+    const exact = exactGuardFor(valueType);
 
-    if (valueType === getStrvType()) {
-        return isStrvValue;
+    if (exact !== undefined) {
+        return exact;
     }
 
     const fundamental = typeFundamental(valueType);
