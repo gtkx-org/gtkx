@@ -1,5 +1,8 @@
 import { keepAlive, quit as nativeQuit } from "@gtkx/native";
 import { isDerivedApplication, type LocalCommandLineApplication, shutDownThroughRun } from "./application-class.js";
+import { bind } from "./bind.js";
+import { objectT, voidT } from "./descriptors.js";
+import { getHandle } from "./registry.js";
 
 /**
  * The GIO and GTK application surface {@link runApplication} and {@link quitApplication} drive, so any
@@ -13,11 +16,6 @@ type ApplicationLike = {
     getIsRemote?(): boolean;
     /** Registers the application with the session, returning whether it succeeded. */
     register(cancellable: null): boolean;
-    /**
-     * Claims the process-wide default `Gio.Application.getDefault()` returns, which GLib otherwise
-     * assigns only to the first application ever constructed in the process.
-     */
-    setDefault(): void;
     /** Emits `activate`, bringing up the application's initial user interface. */
     activate(): void;
     /**
@@ -49,9 +47,12 @@ type RunApplicationResult = {
     exitStatus: number;
 };
 
+const GIO_LIB = "libgio-2.0.so.0";
 const shutdownCallbacks: (() => void)[] = [];
 const startedApplications: WeakSet<object> = new WeakSet();
 const shutDownApplications: WeakSet<object> = new WeakSet();
+const readDefaultApplication = bind(GIO_LIB, "g_application_get_default", [], objectT("borrowed"));
+const writeDefaultApplication = bind(GIO_LIB, "g_application_set_default", [objectT("borrowed")], voidT);
 /**
  * Runs every registered exit callback and shuts down the native runtime. Safe to
  * call more than once; only the first call takes effect.
@@ -112,6 +113,18 @@ const restartApplication = (application: ApplicationLike): number => {
     return 0;
 };
 
+const claimDefaultApplication = (application: ApplicationLike): void => {
+    writeDefaultApplication(getHandle(application));
+};
+
+const releaseDefaultApplication = (application: ApplicationLike): void => {
+    if (readDefaultApplication() !== application) {
+        return;
+    }
+
+    writeDefaultApplication(null);
+};
+
 /**
  * Reports whether this process owns the application ID, only reaches the process that owns it, or holds
  * no registration at all. Registration alone cannot tell the first two apart, because registering as a
@@ -146,10 +159,11 @@ const getApplicationInstance = (application: ApplicationLike): ApplicationInstan
  * user interface may be built here, because a remote application has no `GtkApplicationImpl` and
  * attaching a window to it crashes.
  *
- * The application also claims the process-wide default `Gio.Application.getDefault()` returns, since
- * GLib assigns that at construction only while no default is set yet and drops it only at finalize.
- * A process that mounts an application element more than once therefore reads the application it is
- * running back out of GIO, not the first one it ever built.
+ * An application this leaves registered also takes the process-wide default `Gio.Application.getDefault()`
+ * returns, and one whose start left it unregistered gives that default up instead of keeping it. GLib
+ * assigns the default at construction only while none is set and drops it only at finalize, so a process
+ * that mounts an application element more than once would otherwise read back the first application it
+ * ever built rather than the one it is running.
  *
  * @param application The application to start.
  * @param argv The command line, whose first entry names the program as `--help` should print it.
@@ -164,13 +178,19 @@ const runApplication = (application: ApplicationLike, argv: string[]): RunApplic
         );
     }
 
-    application.setDefault();
-
     const exitStatus = startedApplications.has(application)
         ? restartApplication(application)
         : startApplication(application, argv);
 
-    const isPrimary = getApplicationInstance(application) === "primary";
+    const instance = getApplicationInstance(application);
+
+    if (instance === "unregistered") {
+        releaseDefaultApplication(application);
+    } else {
+        claimDefaultApplication(application);
+    }
+
+    const isPrimary = instance === "primary";
 
     if (isPrimary) {
         keepAlive(true);
@@ -187,6 +207,10 @@ const runApplication = (application: ApplicationLike, argv: string[]): RunApplic
  * GLib's own shutdown is reachable once per application: reaching it marks the application as
  * quitting, which GLib never undoes. An application that has already quit falls back to emitting
  * `shutdown`, which releases the runtime and leaves the registration for GLib to drop at finalize.
+ *
+ * The process-wide default {@link runApplication} claimed is given up here too, so
+ * `Gio.Application.getDefault()` never hands back the torn-down application: GLib clears that default
+ * only at finalize, which a garbage-collected wrapper reaches arbitrarily late or never.
  *
  * @param application The application to shut down.
  */
@@ -207,6 +231,8 @@ const quitApplication = (application: ApplicationLike): void => {
         shutDownApplications.add(application);
         application.emit("shutdown");
     }
+
+    releaseDefaultApplication(application);
 };
 
 export {
