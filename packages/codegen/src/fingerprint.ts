@@ -1,9 +1,10 @@
-import { isRecord, sortStrings } from "@gtkx/utils";
+import { sortStrings } from "@gtkx/utils";
 import { createHash } from "node:crypto";
 import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { arrayGuard, hasFields, isNumber, isString, optionalGuard } from "./guards.js";
 
 type GiFingerprint = {
     value: string;
@@ -100,18 +101,19 @@ const readSentinel = (storeDir: string): unknown => {
     }
 };
 
-const isStringArray = (value: unknown): value is string[] =>
-    Array.isArray(value) && value.every((entry) => typeof entry === "string");
-
 const isGiFingerprint = (value: unknown): value is GiFingerprint =>
-    isRecord(value) && typeof value.value === "string" && isStringArray(value.girFiles) &&
-    isStringArray(value.libraries) && (value.girPath === undefined || isStringArray(value.girPath));
+    hasFields<GiFingerprint>(value, {
+        value: isString,
+        girFiles: arrayGuard(isString),
+        libraries: arrayGuard(isString),
+        girPath: optionalGuard(arrayGuard(isString)),
+    });
 
 const isDocsFingerprint = (value: unknown): value is DocsFingerprint =>
-    isRecord(value) && typeof value.value === "string" && isGiFingerprint(value.gi);
+    hasFields<DocsFingerprint>(value, { value: isString, gi: isGiFingerprint });
 
 const isJsxFingerprint = (value: unknown): value is JsxFingerprint =>
-    isRecord(value) && typeof value.value === "string" && typeof value.intrinsicElementCount === "number";
+    hasFields<JsxFingerprint>(value, { value: isString, intrinsicElementCount: isNumber });
 
 const recordedGiValue = (sentinel: GiFingerprint, libraries: string[], girPath: string[]): string | undefined => {
     if (!hasMatchingRecordedInputs(sentinel, libraries, girPath)) {

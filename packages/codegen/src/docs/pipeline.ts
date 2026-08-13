@@ -1,4 +1,4 @@
-import { isRecord, sortStringsBy } from "@gtkx/utils";
+import { sortStringsBy } from "@gtkx/utils";
 import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
@@ -9,6 +9,7 @@ import {
 } from "../fingerprint.js";
 import { Library } from "../gir/library.js";
 import { namespaceDirectory } from "../gir/namespace.js";
+import { arrayGuard, hasFields, isString } from "../guards.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
@@ -206,16 +207,21 @@ const isChildEntry = (value: unknown): value is string =>
     typeof value === "string" && value.length > 0 && value !== "." && value !== ".." &&
     !value.includes("/") && !value.includes("\\");
 
+const isGeneratorTag = (value: unknown): value is string => value === MANIFEST_GENERATOR;
+
 const isDocsElementLink = (value: unknown): value is DocsElementLink =>
-    isRecord(value) && typeof value.text === "string" && typeof value.link === "string";
+    hasFields<DocsElementLink>(value, { text: isString, link: isString });
 
 const isDocsNamespace = (value: unknown): value is DocsNamespace =>
-    isRecord(value) && typeof value.name === "string" && isChildEntry(value.directory) &&
-    typeof value.link === "string" && Array.isArray(value.elements) && value.elements.every(isDocsElementLink);
+    hasFields<DocsNamespace>(value, {
+        name: isString,
+        directory: isChildEntry,
+        link: isString,
+        elements: arrayGuard(isDocsElementLink),
+    });
 
 const isDocsManifest = (value: unknown): value is DocsManifest =>
-    isRecord(value) && value.generator === MANIFEST_GENERATOR && Array.isArray(value.namespaces) &&
-    value.namespaces.every(isDocsNamespace);
+    hasFields<DocsManifest>(value, { generator: isGeneratorTag, namespaces: arrayGuard(isDocsNamespace) });
 
 const readDocsManifest = (manifestPath: string): DocsManifest | undefined => {
     let parsed: unknown;

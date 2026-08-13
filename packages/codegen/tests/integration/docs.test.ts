@@ -18,7 +18,37 @@ const workDir = mkdtempSync(join(REPO_ROOT, "node_modules", ".gtkx-docs-test-"))
 const defaultOutDir = join(workDir, "default");
 const MANIFEST_FILE = "manifest.json";
 const MANIFEST_GENERATOR = "gtkx-docs";
+const GTK_NAMESPACE = { name: "Gtk", directory: "gtk", link: "/reference/gtk/", elements: [] };
 const defaultResult = writeDocs({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir: defaultOutDir });
+
+const MALFORMED_MANIFESTS: [string, string, unknown][] = [
+    ["namespaces that are not an array", "manifest-unlisted", { generator: MANIFEST_GENERATOR, namespaces: "gtk" }],
+    [
+        "a namespace holding only a directory",
+        "manifest-sparse",
+        { generator: MANIFEST_GENERATOR, namespaces: [{ directory: "gtk" }] },
+    ],
+    [
+        "a namespace that records no elements",
+        "manifest-elementless",
+        { generator: MANIFEST_GENERATOR, namespaces: [{ name: "Gtk", directory: "gtk", link: "/reference/gtk/" }] },
+    ],
+    [
+        "elements that are not links",
+        "manifest-unlinked",
+        { generator: MANIFEST_GENERATOR, namespaces: [{ ...GTK_NAMESPACE, elements: [{ text: "GtkButton" }] }] },
+    ],
+    [
+        "a directory that is not a string",
+        "manifest-numeric-directory",
+        { generator: MANIFEST_GENERATOR, namespaces: [{ ...GTK_NAMESPACE, directory: 7 }] },
+    ],
+    [
+        "a generator another tool wrote",
+        "manifest-foreign-generator",
+        { generator: "some-other-tool", namespaces: [GTK_NAMESPACE] },
+    ],
+];
 
 const page = (outDir: string, path: string): string => readFileSync(join(outDir, path), "utf8");
 const docsOptions = (outDir: string): DocsOptions => ({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir });
@@ -367,9 +397,9 @@ describe("writeDocs over a directory it generated", () => {
         expect(existsSync(join(outDir, "gtk", "button.md"))).toBe(true);
     });
 
-    it("rejects a manifest missing the namespace fields it reports", () => {
-        const outDir = generatedDir("partial-manifest");
-        writeManifest(outDir, { generator: MANIFEST_GENERATOR, namespaces: [{ directory: "gtk" }] });
+    it.each(MALFORMED_MANIFESTS)("rejects a manifest with %s", (_name, dirName, manifest) => {
+        const outDir = generatedDir(dirName);
+        writeManifest(outDir, manifest);
         expectRefusal(outDir, `holds no ${MANIFEST_FILE} written by \`gtkx docs\``);
         expect(existsSync(join(outDir, "gtk", "button.md"))).toBe(true);
     });
