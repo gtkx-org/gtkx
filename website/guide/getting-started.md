@@ -62,7 +62,7 @@ The key belongs at the top level of the file, alongside `packages:` and `allowBu
 
 The watcher waits for a file to stop changing before it reports a save, so a patch lands about 50 ms after the last write instead of on the first one. That is what keeps a formatter's write followed by the editor's own write, or a `git checkout`, from patching a revision that is already superseded. Once the module has loaded, the runner re-reads the file and confirms that what it holds is the module Vite evaluated for this pass, then loads the file again when the contents moved in between or when the answer came from a load that had started before it: what reaches the window is the revision on disk. A file that has not settled after several of those attempts is left for the save that follows, and `gtkx dev` says so on stderr rather than reporting a Fast Refresh it dropped.
 
-`npm run build` bundles the app to `dist/bundle.js`, and `npm start` runs that bundle with `node` on any machine carrying the GTK4 runtime libraries, plus Adwaita once you bind it. Turning it into an installable program with a desktop entry and icons is covered in [Appendix B: Packaging](/tutorial/packaging).
+`npm run build` bundles the app to `dist/bundle.mjs`, and `npm start` runs that bundle with `node` on any machine carrying the GTK4 runtime libraries, plus Adwaita once you bind it. Turning it into an installable program with a desktop entry and icons is covered in [Appendix B: Packaging](/tutorial/packaging).
 
 ## Project structure
 

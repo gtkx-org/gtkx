@@ -2,11 +2,17 @@ import type { ApplicationInstance } from "@gtkx/runtime";
 import type { InlineConfig, Plugin } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
-import { createChangeQueue } from "./change-queue.js";
+import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
+import { isMissingImport, missingImportName } from "./missing-import.js";
 import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js";
 import { RESTART_EXIT_CODE } from "./supervisor.js";
-import { createDevServerConfig, type DevServer, type DevServerChangedModule } from "./vite-dev-server.js";
+import {
+    createDevServerConfig,
+    type DevServer,
+    type DevServerChangedModule,
+    type DevServerWatchEvent,
+} from "./vite-dev-server.js";
 
 type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
 
@@ -44,6 +50,7 @@ type DevSession = {
     controller: ShutdownController;
     refreshTracker: RefreshTracker;
     failure: FailureTracker;
+    pendingSaves: Map<string, string>;
 };
 
 type SettledLoad = {
@@ -59,7 +66,10 @@ type SettleAttempt = {
 const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
 const OWNED_ID_EXIT_CODE = 1;
 const LOAD_ATTEMPT_LIMIT = 5;
+const WATCH_EVENTS: DevServerWatchEvent[] = ["add", "change", "unlink"];
 const SKIP_REASON = `did not settle in ${String(LOAD_ATTEMPT_LIMIT)} attempts; save it again to patch the window.`;
+const SAVE_ACTION = "File changed";
+const RETRY_ACTION = "Retrying pending save";
 
 const announceFailure = (server: DevServer, cause: unknown): void => {
     if (cause instanceof Error) {
@@ -75,7 +85,12 @@ const parkSession = (session: DevSession): void => {
 
 const requestRestart = async (session: DevSession): Promise<never> => {
     session.deps.log("Full restart (process restart)");
-    await session.server.close();
+
+    try {
+        await session.server.close();
+    } catch (error_) {
+        error("Error closing server before the restart:", error_);
+    }
 
     return session.deps.exit(RESTART_EXIT_CODE);
 };
@@ -190,19 +205,20 @@ const refreshChangedModule = async (
         return;
     }
 
+    session.pendingSaves.delete(changedPath);
     session.deps.log("Running Fast Refresh...");
     session.deps.performRefresh();
     session.deps.log("Fast Refresh complete");
 };
 
-const handleFileChange = async (session: DevSession, changedPath: string): Promise<void> => {
+const applyModuleChange = async (session: DevSession, changedPath: string, action: string): Promise<void> => {
     const module = session.server.moduleGraph.getModuleById(changedPath);
 
     if (!module) {
         return;
     }
 
-    session.deps.log(`File changed: ${changedPath}`);
+    session.deps.log(`${action}: ${changedPath}`);
 
     if (requiresRestart(session, module)) {
         await requestRestart(session);
@@ -211,6 +227,74 @@ const handleFileChange = async (session: DevSession, changedPath: string): Promi
     }
 
     await refreshChangedModule(session, changedPath, module);
+};
+
+const awaitMissingImport = (session: DevSession, changedPath: string, cause: unknown): void => {
+    const missingName = missingImportName(cause);
+
+    if (missingName === null) {
+        session.pendingSaves.delete(changedPath);
+
+        return;
+    }
+
+    session.pendingSaves.set(changedPath, missingName);
+};
+
+const applySave = async (session: DevSession, changedPath: string, action: string): Promise<void> => {
+    try {
+        await applyModuleChange(session, changedPath, action);
+    } catch (error_) {
+        if (session.controller.isShuttingDown()) {
+            return;
+        }
+
+        awaitMissingImport(session, changedPath, error_);
+        error("Hot reload failed:", error_);
+    }
+};
+
+const savesAwaiting = (session: DevSession, createdPath: string): string[] =>
+    [...session.pendingSaves]
+        .filter(([, missingName]) => isMissingImport(createdPath, missingName))
+        .map(([changedPath]) => changedPath);
+
+const retryPendingSaves = async (session: DevSession, waiting: string[]): Promise<void> => {
+    for (const changedPath of waiting) {
+        if (session.controller.isShuttingDown()) {
+            return;
+        }
+
+        session.pendingSaves.delete(changedPath);
+        await applySave(session, changedPath, RETRY_ACTION);
+    }
+};
+
+const handleFileCreate = async (session: DevSession, createdPath: string): Promise<void> => {
+    const waiting = savesAwaiting(session, createdPath);
+
+    if (waiting.length === 0) {
+        return;
+    }
+
+    session.deps.log(`File created: ${createdPath}`);
+
+    if (session.failure.isDown()) {
+        await requestRestart(session);
+
+        return;
+    }
+
+    await retryPendingSaves(session, waiting);
+};
+
+const handleFileRemove = async (session: DevSession, removedPath: string): Promise<void> => {
+    if (!session.server.moduleGraph.getModuleById(removedPath)) {
+        return;
+    }
+
+    session.deps.log(`File removed: ${removedPath}`);
+    await requestRestart(session);
 };
 
 const createShutdownController = (server: DevServer, deps: DevRunnerDeps): ShutdownController => {
@@ -231,28 +315,34 @@ const createShutdownController = (server: DevServer, deps: DevRunnerDeps): Shutd
     };
 };
 
-const reloadChangedFile = async (session: DevSession, changedPath: string): Promise<void> => {
+const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {
     if (session.controller.isShuttingDown()) {
         return;
     }
 
-    try {
-        await handleFileChange(session, changedPath);
-    } catch (error_) {
-        if (session.controller.isShuttingDown()) {
-            return;
-        }
+    if (change.event === "add") {
+        await handleFileCreate(session, change.path);
 
-        error("Hot reload failed:", error_);
+        return;
     }
+
+    if (change.event === "unlink") {
+        await handleFileRemove(session, change.path);
+
+        return;
+    }
+
+    await applySave(session, change.path, SAVE_ACTION);
 };
 
-const onFileChange = (session: DevSession): ((changedPath: string) => void) => {
-    const queue = createChangeQueue((changedPath) => reloadChangedFile(session, changedPath));
+const watchProjectFiles = (session: DevSession): void => {
+    const queue = createChangeQueue((change) => applyChange(session, change));
 
-    return (changedPath) => {
-        queue.enqueue(changedPath);
-    };
+    for (const event of WATCH_EVENTS) {
+        session.server.watcher.on(event, (path) => {
+            queue.enqueue({ event, path });
+        });
+    }
 };
 
 const onShutdownSignal = (session: DevSession): (() => Promise<void>) => async () => {
@@ -401,6 +491,7 @@ const loadEntry = async (session: DevSession, entryPath: string): Promise<void> 
     try {
         await loadModuleExclusively(session.server, entryPath);
     } catch (error_) {
+        awaitMissingImport(session, entryPath, error_);
         session.failure.fail(error_);
     }
 };
@@ -431,6 +522,7 @@ const createSession = (server: DevServer, deps: DevRunnerDeps): DevSession => {
         failure: createFailureTracker((cause) => {
             announceFailure(server, cause);
         }, refreshTracker.isRefreshing),
+        pendingSaves: new Map(),
     };
 };
 
@@ -444,7 +536,7 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
             session.failure.report(cause);
         });
 
-        server.watcher.on("change", onFileChange(session));
+        watchProjectFiles(session);
         await loadEntry(session, entryPath);
         await attachApplication(session);
         announceReady(session);

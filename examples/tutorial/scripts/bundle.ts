@@ -16,7 +16,7 @@ async function bundle() {
     console.log("Bundling for SEA...");
 
     await esbuild.build({
-        entryPoints: [join(projectRoot, "dist/bundle.js")],
+        entryPoints: [join(projectRoot, "dist/bundle.mjs")],
         bundle: true,
         platform: "node",
         target: "node24",

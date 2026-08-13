@@ -1,6 +1,7 @@
 import type { InlineConfig, Plugin } from "vite";
 
 type DevServerModule = object;
+type DevServerWatchEvent = "add" | "change" | "unlink";
 
 type DevServerChangedModule = DevServerModule & {
     importers: Iterable<DevServerModule>;
@@ -19,7 +20,7 @@ type DevServer = {
     ssrLoadModule(id: string): Promise<Record<string, unknown>>;
     ssrFixStacktrace(cause: Error): void;
     watcher: {
-        on(event: "change", listener: (changedPath: string) => void): void;
+        on(event: DevServerWatchEvent, listener: (changedPath: string) => void): void;
     };
 };
 
@@ -46,4 +47,4 @@ const createDevServerConfig = (root: string, plugins: Plugin[]): InlineConfig =>
     },
 });
 
-export { createDevServerConfig, type DevServer, type DevServerChangedModule };
+export { createDevServerConfig, type DevServer, type DevServerChangedModule, type DevServerWatchEvent };

@@ -227,7 +227,7 @@ The drag and drop from the task row above is testable the same way, with `userEv
 
 ## The dev loop
 
-`gtkx dev` provides Fast Refresh and restarts the app when a change is not patchable. `gtkx build` bundles to `dist/bundle.js`. React Compiler runs over your sources unless you turn it off.
+`gtkx dev` provides Fast Refresh and restarts the app when a change is not patchable. `gtkx build` bundles to `dist/bundle.mjs`. React Compiler runs over your sources unless you turn it off.
 
 Assets imported through `#data/*` are staged, compiled with `glib-compile-resources`, and registered at startup, so an import gives you a `resource://` URI and changing the file re-registers the bundle without a restart. A GSettings schema is an import too, and its keys are typed:
 

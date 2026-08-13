@@ -14,7 +14,7 @@
         "codegen": "gtkx codegen",
         "test": "vitest run",
         "typecheck": "gtkx codegen && tsc",
-        "start": "node dist/bundle.js",
+        "start": "node dist/bundle.mjs",
         "bundle": "gtkx build && node scripts/bundle.ts",
         "bundle:postject": "node scripts/bundle-postject.ts",
         "build:sea": "bash scripts/build-sea.sh",

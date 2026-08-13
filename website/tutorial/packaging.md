@@ -30,15 +30,15 @@ dist/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg      0.49 kB │
 dist/gschemas.compiled                                               0.63 kB
 dist/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg               1.47 kB │ gzip:   0.38 kB
 dist/gtkx.node                                                   1,624.69 kB
-dist/bundle.js                                                   4,067.30 kB │ gzip: 510.94 kB
+dist/bundle.mjs                                                  4,067.30 kB │ gzip: 510.94 kB
 
 ✓ built in 694ms
-[gtkx] Build complete: dist/bundle.js
+[gtkx] Build complete: dist/bundle.mjs
 ```
 
-Everything except the bundle is found at runtime relative to the executable: the bundle prepends its own directory to `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, and loads `gtkx.node` from beside `process.execPath`. Keep them together and the app is self-contained. Move `bundle.js` on its own and the settings schema goes missing on the first `useSetting` call.
+Everything except the bundle is found at runtime relative to the executable: the bundle prepends its own directory to `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, and loads `gtkx.node` from beside `process.execPath`. Keep them together and the app is self-contained. Move `bundle.mjs` on its own and the settings schema goes missing on the first `useSetting` call.
 
-`node dist/bundle.js` runs the app on any machine with GTK4 and Adwaita installed. That works, but it is not yet something a user can double-click.
+`node dist/bundle.mjs` runs the app on any machine with GTK4 and Adwaita installed. That works, but it is not yet something a user can double-click.
 
 ## A single executable
 

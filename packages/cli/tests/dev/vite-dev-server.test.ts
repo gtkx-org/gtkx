@@ -3,12 +3,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer, type Plugin, type ViteDevServer } from "vite";
 import { describe, expect, it } from "vitest";
+import { missingImportName } from "../../src/dev/missing-import.js";
 import { createDevServerConfig } from "../../src/dev/vite-dev-server.js";
 
 const BURST_WRITES = 20;
 const BURST_INTERVAL_MS = 10;
 const QUIET_PERIOD_MS = 400;
 const WATCH_TEST_TIMEOUT_MS = 30_000;
+const LIFECYCLE_WAIT_MS = WATCH_TEST_TIMEOUT_MS / 4;
+const WATCH_EVENTS = ["add", "change", "unlink"] as const;
+const THEME_SOURCE = "export const marker = 'dark';\n";
+const IMPORTING_APP = "import { marker as theme } from './theme.js';\nexport const marker = theme;\n";
 
 const isKeptInternal = (patterns: RegExp[], id: string): boolean => patterns.some((pattern) => pattern.test(id));
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -32,28 +37,109 @@ const burstWrites = async (file: string): Promise<void> => {
     }
 };
 
-const reportedRevisions = async (): Promise<string[]> => {
+const watchProbe = async (probe: (server: ViteDevServer, root: string) => Promise<void>): Promise<void> => {
     const root = mkdtempSync(join(tmpdir(), "gtkx-dev-watch-"));
-    const file = join(root, "app.tsx");
-    writeFileSync(file, marker(0));
+    writeFileSync(join(root, "app.tsx"), marker(0));
     const server = await createServer({ ...createDevServerConfig(root, []), logLevel: "silent" });
-    const reported: string[] = [];
-
-    server.watcher.on("change", (changed) => {
-        reported.push(readFileSync(changed, "utf8"));
-    });
 
     try {
         await waitUntil(() => isWatching(server, "app.tsx"), WATCH_TEST_TIMEOUT_MS / 2);
-        await burstWrites(file);
-        await waitUntil(() => reported.length > 0, WATCH_TEST_TIMEOUT_MS / 2);
-        await delay(QUIET_PERIOD_MS);
+        await probe(server, root);
     } finally {
         await server.close();
         rmSync(root, { recursive: true, force: true });
     }
+};
+
+const reportedRevisions = async (): Promise<string[]> => {
+    const reported: string[] = [];
+
+    await watchProbe(async (server, root) => {
+        server.watcher.on("change", (changed) => {
+            reported.push(readFileSync(changed, "utf8"));
+        });
+
+        await burstWrites(join(root, "app.tsx"));
+        await waitUntil(() => reported.length > 0, WATCH_TEST_TIMEOUT_MS / 2);
+        await delay(QUIET_PERIOD_MS);
+    });
 
     return reported;
+};
+
+const collectEvents = (server: ViteDevServer): string[] => {
+    const events: string[] = [];
+
+    for (const event of WATCH_EVENTS) {
+        server.watcher.on(event, (watched: string) => {
+            events.push(`${event} ${watched}`);
+        });
+    }
+
+    return events;
+};
+
+const invalidateWithImporters = (server: ViteDevServer, id: string): void => {
+    const module = server.moduleGraph.getModuleById(id);
+
+    if (!module) {
+        return;
+    }
+
+    server.moduleGraph.invalidateModule(module);
+
+    for (const importer of module.importers) {
+        server.moduleGraph.invalidateModule(importer);
+    }
+};
+
+const reloadModule = async (server: ViteDevServer, id: string): Promise<string> => {
+    invalidateWithImporters(server, id);
+
+    try {
+        const loaded: Record<string, unknown> = await server.ssrLoadModule(id);
+
+        return String(loaded.marker);
+    } catch (error) {
+        return error instanceof Error ? error.message : String(error);
+    }
+};
+
+const reloadsAcrossMissingImport = async (): Promise<string[]> => {
+    const reloads: string[] = [];
+
+    await watchProbe(async (server, root) => {
+        const app = join(root, "app.tsx");
+        const theme = join(root, "theme.ts");
+        const events = collectEvents(server);
+        reloads.push(await reloadModule(server, app));
+        writeFileSync(app, IMPORTING_APP);
+        await waitUntil(() => events.includes(`change ${app}`), LIFECYCLE_WAIT_MS);
+        reloads.push(await reloadModule(server, app));
+        writeFileSync(theme, THEME_SOURCE);
+        await waitUntil(() => events.includes(`add ${theme}`), LIFECYCLE_WAIT_MS);
+        reloads.push(await reloadModule(server, app));
+    });
+
+    return reloads;
+};
+
+const removedModuleReport = async (): Promise<{ events: string[]; removed: string; isStillKnown: boolean }> => {
+    const report = { events: [] as string[], removed: "", isStillKnown: false };
+
+    await watchProbe(async (server, root) => {
+        const theme = join(root, "theme.ts");
+        report.events = collectEvents(server);
+        report.removed = theme;
+        writeFileSync(theme, THEME_SOURCE);
+        await waitUntil(() => report.events.includes(`add ${theme}`), LIFECYCLE_WAIT_MS);
+        await server.ssrLoadModule(theme);
+        rmSync(theme);
+        await waitUntil(() => report.events.includes(`unlink ${theme}`), LIFECYCLE_WAIT_MS);
+        report.isStillKnown = Boolean(server.moduleGraph.getModuleById(theme));
+    });
+
+    return report;
 };
 
 describe("createDevServerConfig", () => {
@@ -106,4 +192,26 @@ describe("createDevServerConfig", () => {
             expect(isKeptInternal(noExternal, id), `${id} must be external`).toBe(false);
         }
     });
+});
+
+describe("createDevServerConfig (the watcher it configures)", () => {
+    it(
+        "reports a file created after startup and loads the import that was missing until it appeared",
+        { timeout: WATCH_TEST_TIMEOUT_MS },
+        async () => {
+            const reloads = await reloadsAcrossMissingImport();
+            expect(reloads).toEqual(["0", expect.stringContaining("Does the file exist?"), "dark"]);
+            expect(missingImportName(reloads[1])).toBe("theme");
+        },
+    );
+
+    it(
+        "reports a deleted file while its module is still on the graph, so the runner can act on it",
+        { timeout: WATCH_TEST_TIMEOUT_MS },
+        async () => {
+            const report = await removedModuleReport();
+            expect(report.events).toEqual([`add ${report.removed}`, `unlink ${report.removed}`]);
+            expect(report.isStillKnown).toBe(true);
+        },
+    );
 });

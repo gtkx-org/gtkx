@@ -1,3 +1,4 @@
+import { extname } from "node:path";
 import { describe, expect, it } from "vitest";
 import { gtkxWorker } from "../../src/vite-plugins/worker.js";
 
@@ -27,7 +28,9 @@ type QuotedConstruction = {
 };
 
 const MODULE_ID = "/project/src/app.tsx";
-const WORKER_CHUNK = /^workers\/worker-[0-9a-f]{8}\.js$/;
+const CANONICAL_WORKER = 'const worker = new Worker(new URL("./worker.ts", import.meta.url));';
+const ESM_EXTENSION = ".mjs";
+const WORKER_CHUNK = /^workers\/worker-[0-9a-f]{8}\.mjs$/;
 
 const QUOTED_CONSTRUCTIONS: QuotedConstruction[] = [
     { kind: "a string literal", source: "const doc = \"new Worker(new URL('./worker.ts', import.meta.url))\";" },
@@ -65,9 +68,16 @@ describe("gtkxWorker (plugin shape)", () => {
     });
 });
 
+describe("gtkxWorker (chunk extension)", () => {
+    it("names the chunk .mjs so node loads it as ESM wherever the output lands", async () => {
+        const run = await runTransform(CANONICAL_WORKER);
+        expect(extname(run.emitted[0]?.fileName ?? "")).toBe(ESM_EXTENSION);
+    });
+});
+
 describe("gtkxWorker (inline worker URLs)", () => {
     it("emits a chunk and rewrites the URL for the canonical form", async () => {
-        const run = await runTransform('const worker = new Worker(new URL("./worker.ts", import.meta.url));');
+        const run = await runTransform(CANONICAL_WORKER);
         const fileName = run.emitted[0]?.fileName ?? "";
         expect(run.emitted).toHaveLength(1);
         expect(run.emitted[0]?.id).toBe("/project/src/worker.ts");

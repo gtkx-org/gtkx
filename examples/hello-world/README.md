@@ -21,7 +21,7 @@ Install and build the workspace once from the repository root, then:
 pnpm --filter hello-world dev
 ```
 
-`gtkx dev` starts the dev server with Fast Refresh: edit `src/app.tsx` and the running window updates in place. `pnpm --filter hello-world build` writes `dist/bundle.js`, which `pnpm --filter hello-world start` runs with Node.js.
+`gtkx dev` starts the dev server with Fast Refresh: edit `src/app.tsx` and the running window updates in place. `pnpm --filter hello-world build` writes `dist/bundle.mjs`, which `pnpm --filter hello-world start` runs with Node.js.
 
 ## Learn more
 
