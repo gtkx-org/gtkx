@@ -133,6 +133,7 @@ describe("defaultDevRunnerDeps (plugins)", () => {
 
         expect(names).toEqual([
             "gtkx:config",
+            "gtkx:store-links",
             "gtkx:undeclared-library",
             "gtkx:settings",
             "gtkx:icons",

@@ -1,5 +1,5 @@
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
-import { getShadowingStorePaths } from "@gtkx/codegen/internal";
+import { getShadowingStorePaths, sweepProjectStaging } from "@gtkx/codegen/internal";
 import { type Config, loadConfig } from "@gtkx/config";
 import {
     resolveElementComponents,
@@ -67,6 +67,7 @@ const removeStores = (paths: string[]): void => {
 };
 
 const removeShadowingStores = (cwd: string): void => {
+    sweepProjectStaging(cwd);
     removeStores(getShadowingStorePaths(cwd));
 };
 

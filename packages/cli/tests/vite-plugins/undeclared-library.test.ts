@@ -1,28 +1,13 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { ResolveIdHook } from "./plugin-hook-types.js";
 import { gtkxUndeclaredLibrary } from "../../src/vite-plugins/undeclared-library.js";
+import { getLinkDir, installPackage, setupProjectRoot, writeStore } from "./store-project.js";
 
 type ConfigHook = (config: { root?: string }) => void;
-type ProjectRootRef = { root: string };
 
-const project = setupProjectRoot();
-
-function setupProjectRoot(): ProjectRootRef {
-    const ref: ProjectRootRef = { root: "" };
-
-    beforeEach(() => {
-        ref.root = mkdtempSync(join(tmpdir(), "gtkx-undeclared-library-test-"));
-    });
-
-    afterEach(() => {
-        rmSync(ref.root, { recursive: true, force: true });
-    });
-
-    return ref;
-}
+const project = setupProjectRoot("gtkx-undeclared-library-test-");
 
 const setupProject = (root: string, girFiles: string[]): string => {
     const girDir = join(root, "gir-1.0");
@@ -38,25 +23,6 @@ const setupProject = (root: string, girFiles: string[]): string => {
     );
 
     return girDir;
-};
-
-const installRuntime = (root: string): void => {
-    const dir = join(root, "node_modules", "@gtkx", "runtime");
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "@gtkx/runtime", version: "1.0.0" }));
-};
-
-const writeGiStore = (root: string, namespaces: string[]): string => {
-    const storeDir = join(root, "node_modules", ".gtkx", "gi");
-    mkdirSync(storeDir, { recursive: true });
-
-    const exports = Object.fromEntries(
-        namespaces.map((namespace) => [`./${namespace}`, { default: `./${namespace}/index.js` }]),
-    );
-
-    writeFileSync(join(storeDir, "package.json"), JSON.stringify({ name: "@gtkx/gi", version: "1.0.0", exports }));
-
-    return storeDir;
 };
 
 const resolveMissing = (source: string): Promise<string | undefined | null> => {
@@ -131,20 +97,20 @@ describe("gtkxUndeclaredLibrary (resolveId)", () => {
 describe("gtkxUndeclaredLibrary (store diagnostics)", () => {
     it("reports an unreachable store instead of blaming the libraries list", async () => {
         setupProject(project.root, ["Bindable-1.gir"]);
-        installRuntime(project.root);
-        const storeDir = writeGiStore(project.root, ["bindable"]);
+        installPackage(project.root, "runtime");
+        const storeDir = writeStore(project.root, "gi", ["bindable"]);
 
         await expect(resolveMissing("@gtkx/gi/bindable")).rejects.toThrow(
             `Cannot resolve "@gtkx/gi/bindable": the generated store in ${storeDir} does provide "bindable", ` +
-            `but its link at ${join(project.root, "node_modules", "@gtkx", "gi")} is not on the module ` +
+            `but its link at ${getLinkDir(project.root, "gi")} is not on the module ` +
             "resolution path of",
         );
     });
 
     it("still blames the libraries list when the store lacks the namespace", async () => {
         setupProject(project.root, ["Bindable-1.gir"]);
-        installRuntime(project.root);
-        writeGiStore(project.root, []);
+        installPackage(project.root, "runtime");
+        writeStore(project.root, "gi", []);
         await expect(resolveMissing("@gtkx/gi/bindable")).rejects.toThrow('Add "Bindable-1" to `libraries`');
     });
 });

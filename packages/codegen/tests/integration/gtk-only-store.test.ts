@@ -1,22 +1,13 @@
 import { toCamelIdentifier } from "@gtkx/utils";
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { runCodegen } from "../../src/index.js";
 import { constructionGuard } from "../helpers/construction-guard.js";
+import { GIR_PATH } from "../helpers/gir-path.js";
+import { isolateProject } from "../helpers/isolated-project.js";
 import { storeUnit } from "../helpers/store-unit.js";
-
-const GIR_PATH = ["/usr/share/gir-1.0"];
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
-const REACT_PACKAGE = join(REPO_ROOT, "packages", "react");
-
-const PEER_PACKAGES: [string, string][] = [
-    ["@gtkx/runtime", join(REPO_ROOT, "packages", "runtime")],
-    ["react", join(REPO_ROOT, "node_modules", "react")],
-    ["@types/react", join(REPO_ROOT, "node_modules", "@types", "react")],
-];
 
 const workDir = mkdtempSync(join(tmpdir(), "gtkx-gtk-only-"));
 const projectModules = join(workDir, "node_modules");
@@ -67,24 +58,6 @@ const MARSHALABLE: [string, string][] = [
     ["gdk", "gdk_display_map_keyval"],
     ["gtk", "gtk_gesture_stylus_get_backlog"],
 ];
-
-const isolateProject = (): void => {
-    const target = join(projectModules, "@gtkx", "react");
-    mkdirSync(dirname(target), { recursive: true });
-
-    cpSync(REACT_PACKAGE, target, {
-        recursive: true,
-        filter: (source) => !source.split(/[/\\]/).includes("node_modules"),
-    });
-
-    symlinkSync(join(REACT_PACKAGE, "node_modules"), join(target, "node_modules"), "dir");
-
-    for (const [name, source] of PEER_PACKAGES) {
-        const link = join(projectModules, name);
-        mkdirSync(dirname(link), { recursive: true });
-        symlinkSync(source, link, "dir");
-    }
-};
 
 const storeOptions = () => ({
     gi: storeUnit(projectModules, "gi"),
@@ -142,7 +115,7 @@ describe("a project that declares Gtk-4.0 without Adw-1", () => {
     const { gi, jsx } = storeOptions();
 
     it("writes and type-checks the whole store", async () => {
-        isolateProject();
+        isolateProject(projectModules);
 
         const result = await runCodegen({
             libraries: ["Gtk-4.0"],

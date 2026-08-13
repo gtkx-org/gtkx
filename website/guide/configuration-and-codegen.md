@@ -45,6 +45,19 @@ Codegen writes packages into `node_modules/.gtkx` and links them into `node_modu
 
 In a workspace whose package manager hoists (npm and yarn do; pnpm does not), that one `node_modules` is the workspace root's, so a single store serves every package in the workspace. The store binds whichever `libraries` the last codegen run declared: give the workspace packages that use GTKX the same `libraries` list, or each one regenerates the shared store on the next `gtkx dev` or `gtkx build`. `gtkx codegen --force` likewise rewrites the shared store rather than a private copy. Codegen refuses to run when the `@gtkx` packages are split across `node_modules` directories, for instance `@gtkx/cli` hoisted to the workspace root while `@gtkx/react` is installed in a package below it, because no single store location can serve both.
 
+Because the store is absent from your `package.json`, `npm install` classifies those two links as extraneous packages and deletes them, on every run and with no arguments needed, while `node_modules/.gtkx` stays untouched. Every `gtkx` command restores them before it does anything else, and a running `gtkx dev` restores them the moment the app imports a binding, so an install in the middle of a session costs nothing. TypeScript resolves through the same links, and nothing restores them for `npx tsc --noEmit` or your editor's language server, so scaffolded projects map both specifiers onto the store itself. A project scaffolded before that was added wants the same entry in its `tsconfig.json`, pointing at whichever `node_modules` holds the store:
+
+```json
+{
+    "compilerOptions": {
+        "paths": {
+            "@gtkx/gi/*": ["./node_modules/.gtkx/gi/*/index.d.ts", "./node_modules/.gtkx/gi/*.d.ts"],
+            "@gtkx/jsx/*": ["./node_modules/.gtkx/jsx/*/index.d.ts", "./node_modules/.gtkx/jsx/*.d.ts"]
+        }
+    }
+}
+```
+
 A few bindings take a NUL-terminated C string that GIR describes as a byte array (`GLib.Variant.newBytestring(string: number[])`), so the value silently stops at the first zero byte. Binary payloads go through `GLib.Bytes` and `GLib.Variant.newFromBytes`.
 
 ## The JSX prop model

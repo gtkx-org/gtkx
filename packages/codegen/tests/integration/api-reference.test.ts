@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { type ApiReference, loadApiReference } from "../../src/index.js";
+import { GIR_PATH } from "../helpers/gir-path.js";
 
 type PageResult = Extract<ReturnType<ApiReference["lookup"]>, { outcome: "page" }>;
 
-const GIR_PATH = ["/usr/share/gir-1.0"];
 const reference = loadApiReference({ libraries: ["Gtk-4.0", "Adw-1"], girPath: GIR_PATH });
 
 const DBUS_CONNECTION_NEW_SIGNATURE =
@@ -57,6 +57,14 @@ const registerClassPageTests = (): void => {
         expect(page).not.toContain("(self: Gtk.Button) => void");
         expect(page).toContain("## Methods");
         expect(page).toContain("setLabel(label: string): void");
+    });
+
+    it("documents both directions of a property that reads and writes different types", () => {
+        const page = pageFor("Gtk.Button");
+        const properties = page.slice(page.indexOf("## Properties"), page.indexOf("## Signals"));
+        expect(properties).toContain("`string | null` · default `null` · writes `string`");
+        expect(properties).toContain("`Gtk.Widget | null`\n");
+        expect(properties).not.toContain("`Gtk.Widget | null` · writes");
     });
 
     it("omits properties whose names are claimed by generated methods", () => {

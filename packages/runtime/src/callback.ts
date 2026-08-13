@@ -2,7 +2,7 @@ import { copy, type Descriptor } from "@gtkx/native";
 import type { CallbackDescriptor, RefDescriptor } from "./descriptors.js";
 import { fromNative, toNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
-import { splitTupleResult } from "./tuple.js";
+import { hasSurfacedPrimary, skippedReturnValue, splitTupleResult } from "./tuple.js";
 import { copyValue } from "./value.js";
 import { popSeedFrame, pushSeedFrame, type RefSeeds } from "./vfunc-seeds.js";
 
@@ -15,6 +15,7 @@ type OutParamGroups = { lengthLinks: LengthLink[]; valueParams: OutParam[] };
 type CallbackSpec = {
     argDescriptors: Descriptor[];
     returnDescriptor: Descriptor;
+    isReturnSkipped?: boolean;
     userDataIndex?: number;
 };
 
@@ -22,6 +23,8 @@ type CallbackPlan = {
     fn: Callback;
     effectiveTypes: Descriptor[];
     returnDescriptor: Descriptor;
+    hasPrimary: boolean;
+    skippedReturn: unknown;
     start: number;
     receiver: CallbackReceiver;
     hasOutParams: boolean;
@@ -233,27 +236,30 @@ const trimCallbackInputs = (plan: CallbackPlan, wrapped: unknown[]): unknown[] =
     return wrapped;
 };
 
+const nativeReturn = (plan: CallbackPlan, primary: unknown): unknown =>
+    toNative(plan.returnDescriptor, plan.hasPrimary ? primary : plan.skippedReturn);
+
 const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
-    const { effectiveTypes, returnDescriptor } = plan;
+    const { effectiveTypes } = plan;
     wrapCallbackArgs(effectiveTypes, rawArgs);
     const thisArg = getThisArg(plan.receiver, rawArgs);
 
     if (!plan.hasOutParams) {
-        return toNative(returnDescriptor, plan.fn.apply(thisArg, trimCallbackInputs(plan, rawArgs)));
+        return nativeReturn(plan, plan.fn.apply(thisArg, trimCallbackInputs(plan, rawArgs)));
     }
 
     const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, rawArgs, plan.start);
     const result = applyCallback(plan, thisArg, inputs, outParams);
 
     if (outParams.length === 0) {
-        return toNative(returnDescriptor, result);
+        return nativeReturn(plan, result);
     }
 
     const { lengthLinks, valueParams } = groupOutParams(outParams);
-    const { primary, outValues } = splitTupleResult(result, returnDescriptor.kind !== "void", valueParams.length);
+    const { primary, outValues } = splitTupleResult(result, plan.hasPrimary, valueParams.length);
     writeFoldedLengths(lengthLinks, writeOutParams(valueParams, outValues));
 
-    return toNative(returnDescriptor, primary);
+    return nativeReturn(plan, primary);
 };
 
 const getEffectiveTypes = (spec: CallbackSpec): Descriptor[] => {
@@ -277,6 +283,8 @@ function wrapCallback(fn: Callback, spec: CallbackSpec, receiver: CallbackReceiv
         fn,
         effectiveTypes,
         returnDescriptor: spec.returnDescriptor,
+        hasPrimary: hasSurfacedPrimary(spec.returnDescriptor, spec.isReturnSkipped),
+        skippedReturn: skippedReturnValue(spec.returnDescriptor, spec.isReturnSkipped),
         start,
         receiver,
         hasOutParams: haveOutParamArgs(effectiveTypes, start),

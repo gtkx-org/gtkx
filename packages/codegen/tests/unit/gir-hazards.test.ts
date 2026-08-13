@@ -143,3 +143,24 @@ describe("a namespace whose members shadow what they inherit", () => {
         expect(clash).not.toContain("unsigned long long");
     });
 });
+
+describe("an interface whose method shadows a member of what it extends", () => {
+    it("omits a member the root prerequisite declares with another signature", () => {
+        expect(clash).toContain('export interface Serial extends Omit<GObject.Object, "getProperty"> {');
+    });
+
+    it("omits a member the prerequisite inherits from its own root", () => {
+        expect(clash).toContain('export interface Tap extends Omit<Serial, "setProperty"> {');
+    });
+
+    it("omits a member the prerequisite class inherits from an ancestor", () => {
+        expect(clash).toContain('export interface Probe extends Omit<Derived, "isLive"> {');
+    });
+
+    it("omits the same members from an implementor's clause and its merged interface", () => {
+        const dropped = '"getProperty" | "addEventListener" | "off" | "on" | "once" | "removeEventListener"';
+        const omissions = `Omit<Serial, ${dropped}>`;
+        expect(clash).toContain(`export class Holder extends GObject.Object implements ${omissions} {`);
+        expect(clash).toContain(`export interface Holder extends ${omissions} {}`);
+    });
+});

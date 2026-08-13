@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, parse, relative, sep } from "node:path";
 import type { StoreOptions } from "./store-fs.js";
+import { sweepStagingDirs } from "../staging.js";
 
 /**
  * Where a project's generated stores live, ready to spread into `runCodegen`. `jsx` is null when the
@@ -162,6 +163,21 @@ const getShadowingStorePaths = (projectRoot: string): string[] => {
     return storePaths(nodeModules);
 };
 
+const stagingRoots = (projectRoot: string): string[] => {
+    const nodeModules = join(projectRoot, "node_modules");
+    const anchored = findStoreNodeModules(projectRoot);
+
+    return anchored === null || anchored === nodeModules ? [nodeModules] : [nodeModules, anchored];
+};
+
+const sweepProjectStaging = (projectRoot: string): void => {
+    for (const nodeModules of stagingRoots(projectRoot)) {
+        for (const name of STORE_NAMES) {
+            sweepStagingDirs(join(nodeModules, STORE_DIR, name));
+        }
+    }
+};
+
 /**
  * Resolves where a project's `@gtkx/gi` and `@gtkx/jsx` stores belong, from the project root alone. The
  * result supplies every `runCodegen` input except `libraries` and `girPath`, so a caller that has
@@ -196,4 +212,4 @@ const resolveStore = (projectRoot: string): ResolvedStore => {
     };
 };
 
-export { getShadowingStorePaths, resolveStore, type ResolvedStore };
+export { getShadowingStorePaths, resolveStore, sweepProjectStaging, type ResolvedStore };

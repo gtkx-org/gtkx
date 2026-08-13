@@ -1,3 +1,11 @@
+import type { Descriptor } from "@gtkx/native";
+
+const hasSurfacedPrimary = (returnDescriptor: Descriptor, isReturnSkipped: boolean | undefined): boolean =>
+    returnDescriptor.kind !== "void" && isReturnSkipped !== true;
+
+const skippedReturnValue = (returnDescriptor: Descriptor, isReturnSkipped: boolean | undefined): unknown =>
+    isReturnSkipped === true && returnDescriptor.kind === "boolean" ? true : undefined;
+
 const packTupleResult = (outs: unknown[], primary: unknown, hasPrimary: boolean): unknown => {
     if (hasPrimary) {
         return outs.length === 0 ? primary : [primary, ...outs];
@@ -34,4 +42,4 @@ const splitTupleResult = (
     return { primary: undefined, outValues: Array.isArray(result) ? result : [] };
 };
 
-export { packTupleResult, splitTupleResult };
+export { hasSurfacedPrimary, packTupleResult, skippedReturnValue, splitTupleResult };

@@ -116,6 +116,7 @@ describe("build (plugin order)", () => {
 
         expect(pluginNames).toEqual([
             "gtkx:config",
+            "gtkx:store-links",
             "gtkx:undeclared-library",
             "gtkx:settings",
             "gtkx:icons",
@@ -138,6 +139,7 @@ describe("build (plugin order)", () => {
 
         expect(pluginNames.slice(1)).toEqual([
             "gtkx:config",
+            "gtkx:store-links",
             "gtkx:undeclared-library",
             "gtkx:settings",
             "gtkx:icons",

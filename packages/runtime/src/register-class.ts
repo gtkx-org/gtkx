@@ -355,7 +355,7 @@ function buildDiscoveredVfunc(
         ...descriptor,
         methodName,
         argDescriptors,
-        fn: wrapVfunc(fn, argDescriptors, descriptor.returnDescriptor),
+        fn: wrapVfunc(fn, argDescriptors, descriptor),
     };
 }
 
@@ -388,9 +388,17 @@ function discoverClassVfuncs(klass: AnyClass, methods: MethodTable): DiscoveredV
 function wrapVfunc(
     fn: VfuncFn,
     argDescriptors: NativeRegisterClassVfunc["argDescriptors"],
-    returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"],
+    descriptor: VfuncDescriptor,
 ): VfuncFn {
-    return wrapCallback(fn as (...args: unknown[]) => unknown, { argDescriptors, returnDescriptor }, "this");
+    return wrapCallback(
+        fn as (...args: unknown[]) => unknown,
+        {
+            argDescriptors,
+            returnDescriptor: descriptor.returnDescriptor,
+            isReturnSkipped: descriptor.isReturnSkipped === true,
+        },
+        "this",
+    );
 }
 
 function discoverInterfaceBindings(
@@ -489,7 +497,7 @@ function buildPropertyVfunc(
         ...descriptor,
         methodName,
         argDescriptors,
-        fn: wrapVfunc(fn, argDescriptors, descriptor.returnDescriptor),
+        fn: wrapVfunc(fn, argDescriptors, descriptor),
     };
 }
 

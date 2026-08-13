@@ -43,6 +43,22 @@ type SignalConnectSpec = {
     isAfter: boolean;
 };
 
+/** How a signal emission marshals the value the emission returns. */
+type EmitReturn = {
+    /** Descriptor for the signal's return value. */
+    descriptor: Descriptor;
+    /**
+     * GIR marks the value as one the bindings do not surface, so the emission still gives the
+     * closures somewhere to write it and then leaves it out of the result.
+     */
+    isReturnSkipped?: boolean;
+};
+
+type EmitValues = {
+    values: ExternalObject<Handle>[];
+    reads: (() => unknown)[];
+};
+
 /** One argument of a signal emission: how to marshal it, plus the value to marshal. */
 type EmitArg = Arg & {
     /**
@@ -221,47 +237,46 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
     return isInoutArg(arg) ? outValueForDescriptor(arg.type, arg.value) : outValueForDescriptor(arg.type);
 };
 
+const collectEmitValues = (instance: object, args: EmitArg[]): EmitValues => {
+    const collected: EmitValues = { values: [toValue(objectT("full"), instance)], reads: [] };
+
+    for (const arg of args) {
+        const { value, read } = createEmitValue(arg);
+        collected.values.push(value);
+
+        if (read) {
+            collected.reads.push(read);
+        }
+    }
+
+    return collected;
+};
+
+const readEmitOutputs = (reads: (() => unknown)[]): unknown[] => reads.map((read) => read());
+
 /**
  * Emits a signal on an instance with the given arguments and returns its result
  * combined with any output-argument values.
  * @param instance Emitter to emit the signal on.
  * @param signal Signal name, optionally including a `::detail` suffix.
  * @param args Arguments to pass, including output and inout arguments.
- * @param returnDescriptor Descriptor for the signal's return value, omitted when it returns void.
+ * @param returns How to marshal the signal's return value, omitted when it returns void.
  */
-function emitSignal(instance: object, signal: string, args: EmitArg[], returnDescriptor?: Descriptor): unknown {
+function emitSignal(instance: object, signal: string, args: EmitArg[], returns?: EmitReturn): unknown {
     const signalId = getSignalId(instance, signal);
     const detail = getSignalDetailQuark(signal);
-    const values: ExternalObject<Handle>[] = [toValue(objectT("full"), instance)];
-    const reads: (() => unknown)[] = [];
+    const { values, reads } = collectEmitValues(instance, args);
 
-    for (const arg of args) {
-        const { value, read } = createEmitValue(arg);
-        values.push(value);
+    if (returns === undefined) {
+        gSignalEmitv(values, signalId, detail, undefined);
 
-        if (read) {
-            reads.push(read);
-        }
+        return packTupleResult(readEmitOutputs(reads), undefined, false);
     }
 
-    if (returnDescriptor !== undefined) {
-        const returnValue = newValueForDescriptor(returnDescriptor);
-        gSignalEmitv(values, signalId, detail, returnValue);
+    const returnValue = newValueForDescriptor(returns.descriptor);
+    gSignalEmitv(values, signalId, detail, returnValue);
 
-        return packTupleResult(
-            reads.map((read) => read()),
-            fromValue(returnValue),
-            true,
-        );
-    }
-
-    gSignalEmitv(values, signalId, detail, undefined);
-
-    return packTupleResult(
-        reads.map((read) => read()),
-        undefined,
-        false,
-    );
+    return packTupleResult(readEmitOutputs(reads), fromValue(returnValue), returns.isReturnSkipped !== true);
 }
 
 export {
@@ -272,5 +287,6 @@ export {
     hasSignalListener,
     isSignalHandlerConnected,
     untrackConnection,
+    type EmitReturn,
     type SignalHandler,
 };

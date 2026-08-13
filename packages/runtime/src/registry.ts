@@ -38,6 +38,12 @@ type VfuncDescriptor = {
     /** Descriptor for the value the slot returns. */
     returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"];
     /**
+     * GIR marks the slot's return value as one the bindings do not surface, so a call through the
+     * slot drops it and an implementation of the slot reports success in its place, while
+     * `VfuncDescriptor.returnDescriptor` keeps the C type the slot is called against either way.
+     */
+    isReturnSkipped?: boolean;
+    /**
      * The slot takes a trailing `GError**` that `VfuncDescriptor.argDescriptors` leaves out, the
      * way GIR leaves it out of a callable's parameters. A call through the slot has to append it
      * or it passes one argument fewer than the implementation reads.

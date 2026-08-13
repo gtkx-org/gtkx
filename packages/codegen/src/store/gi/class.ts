@@ -183,14 +183,14 @@ const renderClassMembers = (
     const accessors: ResolvedAccessor[] = [];
 
     for (const property of klass.properties) {
-        const inheritedType = inheritedPropertyTypes.get(toCamelIdentifier(property.name));
+        const inheritedTypes = inheritedPropertyTypes.get(toCamelIdentifier(property.name));
 
         const accessor = resolveAccessor({
             context,
             property,
             claimedNames,
             methodByName: scope.methodByName,
-            inheritedType,
+            inheritedTypes,
             inheritedNames,
         });
 

@@ -2,10 +2,11 @@ import type { GirFunction } from "../../src/gir/function.js";
 import { Library } from "../../src/gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../../src/gir/namespace.js";
 import { generateNamespaceModule } from "../../src/store/gi/pipeline.js";
+import { GIR_PATH } from "./gir-path.js";
 
 type LocatedCallable = { namespace: GirNamespace; callable: GirFunction };
 
-const library = Library.load(["Gtk-4.0", "Adw-1"], ["/usr/share/gir-1.0"]);
+const library = Library.load(["Gtk-4.0", "Adw-1"], GIR_PATH);
 
 const giModules = library.namespaces
     .values()

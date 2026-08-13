@@ -5,9 +5,13 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { checkModules, compileProject, type SourceModule } from "../../src/compile.js";
 import { compileStore } from "../../src/store/compile-store.js";
+import { runningStagingName, strandedStagingName } from "../helpers/staging.js";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
-const FAILED_CHECK_DIR = ".gtkx-check-failed";
+const CHECK_DIR = ".gtkx-check";
+const FAILED_CHECK_DIR = `${CHECK_DIR}.failed`;
+const LEGACY_CHECK_DIR = `${CHECK_DIR}-orphan`;
+const WORKING_MODULES: SourceModule[] = [{ fileName: "ok.ts", source: "export const answer: number = 42;\n" }];
 const tempDirs: string[] = [];
 
 const BROKEN_MODULES: SourceModule[] = [
@@ -29,6 +33,18 @@ const createTempDir = (): string => {
 
 const checkTestModules = (resolveFrom: string, modules: SourceModule[]): void => {
     checkModules({ modules, resolveFrom, label: "the test modules" });
+};
+
+const checkDirEntries = (resolveFrom: string): string[] =>
+    readdirSync(join(resolveFrom, "node_modules"))
+        .filter((entry) => entry.startsWith(CHECK_DIR))
+        .toSorted((a, b) => a.localeCompare(b));
+
+const stageCheckDir = (resolveFrom: string, name: string): string => {
+    const staged = join(resolveFrom, "node_modules", name);
+    mkdirSync(staged, { recursive: true });
+
+    return staged;
 };
 
 const compileStoreFrom = (files: SourceModule[]): string => {
@@ -118,6 +134,24 @@ describe("checkModules", () => {
     });
 });
 
+describe("checkModules, when a killed run stranded its staging directory", () => {
+    it("removes it, removes what an older release named differently, and stages nothing of its own", () => {
+        const resolveFrom = createTempDir();
+        stageCheckDir(resolveFrom, strandedStagingName(CHECK_DIR));
+        stageCheckDir(resolveFrom, LEGACY_CHECK_DIR);
+        checkTestModules(resolveFrom, WORKING_MODULES);
+        expect(checkDirEntries(resolveFrom)).toEqual([]);
+    });
+
+    it("keeps the staging directory of a check that is still going", () => {
+        const resolveFrom = createTempDir();
+        const running = runningStagingName(CHECK_DIR);
+        stageCheckDir(resolveFrom, running);
+        checkTestModules(resolveFrom, WORKING_MODULES);
+        expect(checkDirEntries(resolveFrom)).toEqual([running]);
+    });
+});
+
 describe("checkModules, when the modules do not type-check", () => {
     it("keeps the checked sources at the directory its message names", () => {
         const resolveFrom = createTempDir();
@@ -127,9 +161,8 @@ describe("checkModules, when the modules do not type-check", () => {
             checkTestModules(resolveFrom, BROKEN_MODULES);
         }).toThrow(kept);
 
-        const checkDirs = readdirSync(join(resolveFrom, "node_modules"));
         expect(existsSync(join(kept, "empty.ts"))).toBe(true);
-        expect(checkDirs.filter((entry) => entry.startsWith(".gtkx-check-"))).toEqual([FAILED_CHECK_DIR]);
+        expect(checkDirEntries(resolveFrom)).toEqual([FAILED_CHECK_DIR]);
     });
 
     it("removes a kept failure once the modules check out", () => {
@@ -139,7 +172,7 @@ describe("checkModules, when the modules do not type-check", () => {
             checkTestModules(resolveFrom, BROKEN_MODULES);
         }).toThrow();
 
-        checkTestModules(resolveFrom, [{ fileName: "ok.ts", source: "export const answer: number = 42;\n" }]);
+        checkTestModules(resolveFrom, WORKING_MODULES);
         expect(existsSync(join(resolveFrom, "node_modules", FAILED_CHECK_DIR))).toBe(false);
     });
 });

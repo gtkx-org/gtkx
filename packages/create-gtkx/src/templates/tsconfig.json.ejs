@@ -9,7 +9,11 @@
         "resolveJsonModule": true,
         "lib": ["esnext"],
         "types": ["node", "react"],
-        "noEmit": true
+        "noEmit": true,
+        "paths": {
+            "@gtkx/gi/*": ["./node_modules/.gtkx/gi/*/index.d.ts", "./node_modules/.gtkx/gi/*.d.ts"],
+            "@gtkx/jsx/*": ["./node_modules/.gtkx/jsx/*/index.d.ts", "./node_modules/.gtkx/jsx/*.d.ts"]
+        }
     },
 <% if (shouldIncludeTesting) { -%>
     "include": ["src/**/*", "tests/**/*"]

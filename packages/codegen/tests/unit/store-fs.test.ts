@@ -1,8 +1,9 @@
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildManifest, writeStore } from "../../src/store/store-fs.js";
+import { buildManifest, ensureStoreLink, writeStore } from "../../src/store/store-fs.js";
+import { legacyStagingName, runningStagingName, strandedStagingName } from "../helpers/staging.js";
 
 const EMPTY_MODULE = "";
 const WORKING_MODULE = "export const answer: number = 42;\n";
@@ -18,17 +19,31 @@ const createRoot = (): string => {
 
 const getStoreDir = (root: string): string => join(root, "node_modules", ".gtkx", "gi");
 const getFailedStoreDir = (root: string): string => `${getStoreDir(root)}.failed`;
+const getLinkDir = (root: string): string => join(root, "node_modules", "@gtkx", "gi");
+const getLinkedModule = (root: string): string => join(getLinkDir(root), "glib", "glib.js");
+
+const linkGiStore = (root: string): void => {
+    ensureStoreLink({ storeDir: getStoreDir(root), linkDir: getLinkDir(root) });
+};
 
 const writeGiStore = (root: string, glibSource: string): void => {
     writeStore({
         storeDir: getStoreDir(root),
-        linkDir: join(root, "node_modules", "@gtkx", "gi"),
+        linkDir: getLinkDir(root),
         files: [
             { fileName: "glib/glib.ts", source: glibSource },
             { fileName: "gdk/gdk.ts", source: IMPORTER_MODULE },
         ],
         manifest: buildManifest({ name: "@gtkx/gi", version: "1.0.0", exports: {} }),
     });
+};
+
+const stageDir = (root: string, name: string): string => {
+    const staged = join(root, "node_modules", ".gtkx", name);
+    mkdirSync(join(staged, "glib"), { recursive: true });
+    writeFileSync(join(staged, "glib", "glib.ts"), WORKING_MODULE);
+
+    return staged;
 };
 
 const getBrokenStoreError = (root: string): Error => {
@@ -63,6 +78,74 @@ describe("writeStore", () => {
                 manifest: buildManifest({ name: "@gtkx/gi", version: "1.0.0", exports: {} }),
             });
         }).toThrow(`Cannot write the generated store to ${storeDir}`);
+    });
+});
+
+describe("ensureStoreLink", () => {
+    it("recreates a link an install pruned from an intact store", () => {
+        const root = createRoot();
+        writeGiStore(root, WORKING_MODULE);
+        rmSync(getLinkDir(root), { recursive: true, force: true });
+        linkGiStore(root);
+        expect(existsSync(getLinkedModule(root))).toBe(true);
+    });
+
+    it("repoints a link an install left on another package", () => {
+        const root = createRoot();
+        writeGiStore(root, WORKING_MODULE);
+        const other = join(root, "node_modules", ".gtkx", "other");
+        mkdirSync(other, { recursive: true });
+        rmSync(getLinkDir(root), { recursive: true, force: true });
+        symlinkSync(other, getLinkDir(root), "dir");
+        linkGiStore(root);
+        expect(existsSync(getLinkedModule(root))).toBe(true);
+    });
+
+    it("leaves the link alone when no store was ever written", () => {
+        const root = createRoot();
+        linkGiStore(root);
+        expect(existsSync(getLinkDir(root))).toBe(false);
+    });
+
+    it("keeps the link on the store across a rewrite", () => {
+        const root = createRoot();
+        writeGiStore(root, WORKING_MODULE);
+        writeGiStore(root, WORKING_MODULE);
+        expect(existsSync(getLinkedModule(root))).toBe(true);
+    });
+});
+
+describe("writeStore, when a killed run stranded its staging directory", () => {
+    it("removes the staging directory whose run no longer exists", () => {
+        const root = createRoot();
+        const stranded = stageDir(root, strandedStagingName("gi"));
+        writeGiStore(root, WORKING_MODULE);
+        expect(existsSync(stranded)).toBe(false);
+    });
+
+    it("removes a staging directory an older release named without its run", () => {
+        const root = createRoot();
+        const stranded = stageDir(root, legacyStagingName("gi"));
+        writeGiStore(root, WORKING_MODULE);
+        expect(existsSync(stranded)).toBe(false);
+    });
+
+    it("keeps the staging directory of a run that is still going", () => {
+        const root = createRoot();
+        const running = stageDir(root, runningStagingName("gi"));
+        writeGiStore(root, WORKING_MODULE);
+        expect(existsSync(join(running, "glib", "glib.ts"))).toBe(true);
+    });
+
+    it("keeps the siblings that are not staging directories", () => {
+        const root = createRoot();
+        const storeParent = join(root, "node_modules", ".gtkx");
+        stageDir(root, strandedStagingName("gi"));
+        mkdirSync(join(storeParent, "jsx"), { recursive: true });
+        writeFileSync(join(storeParent, "env.d.ts"), "");
+        writeGiStore(root, WORKING_MODULE);
+        const entries = readdirSync(storeParent).toSorted((a, b) => a.localeCompare(b));
+        expect(entries).toEqual(["env.d.ts", "gi", "jsx"]);
     });
 });
 

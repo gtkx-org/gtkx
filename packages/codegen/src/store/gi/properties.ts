@@ -9,7 +9,7 @@ import { propertyDoc, type ResolvedAccessor, resolveOwnerAccessor } from "./prop
 const PROPERTIES_SUFFIX = "Properties";
 
 const propertyEntry = (accessor: ResolvedAccessor): string =>
-    `${propertyDoc(accessor.property)}${accessor.jsName}: ${accessor.tsType};`;
+    `${propertyDoc(accessor.property)}${accessor.jsName}: ${accessor.readType};`;
 
 const interfaceEntries = (context: ModuleContext, klass: GirClass): string[] => {
     const entries: string[] = [];

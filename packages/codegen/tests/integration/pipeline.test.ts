@@ -23,6 +23,7 @@ import {
     type ResolvedQualifiedInterface,
 } from "../../src/store/jsx/intrinsic-elements.js";
 import { generateJsxFiles } from "../../src/store/jsx/pipeline.js";
+import { callDescriptorFor } from "../helpers/emitted-spec.js";
 import { giModules, library } from "../helpers/library.js";
 
 type WalkedCallable = { parameters: GirParameter[]; returnValue: GirReturnValue };
@@ -37,6 +38,24 @@ const BUS_GET_SIGNATURE =
     "export function busGet(busType: BusType, cancellable?: Cancellable | null): Promise<DBusConnection> {";
 
 const BUS_GET_PROMISIFY_CALL = "return promisify(gBusGet, busGetFinish, cancellable, busType);";
+
+const SKIP_ANNOTATED_SPLITTERS: [string, string][] = [
+    [
+        "g_uri_split",
+        "static split(uriRef: string, flags: UriFlags): " +
+        "[string | null, string | null, string | null, number, string, string | null, string | null]",
+    ],
+    [
+        "g_uri_split_network",
+        "static splitNetwork(uriString: string, flags: UriFlags): [string | null, string | null, number]",
+    ],
+    [
+        "g_uri_split_with_user",
+        "static splitWithUser(uriRef: string, flags: UriFlags): [string | null, string | null, string | null, " +
+        "string | null, string | null, number, string, string | null, string | null]",
+    ],
+];
+
 const THROWS_TAG = "@throws A `GLib.Error` carrying the failing operation's domain, code, and message.";
 
 const DBUS_CONNECTION_NEW_SIGNATURE =
@@ -534,15 +553,25 @@ describe("codegen return-value convention", () => {
         expect(source).toContain("getGroups(): [string[], number]");
     });
 
-    it("drops a skip-annotated return value from the surfaced result", () => {
+    it.each(SKIP_ANNOTATED_SPLITTERS)(
+        "drops the skip-annotated return of %s from the declaration and from the call descriptor alike",
+        (cIdentifier, declaration) => {
+            const source = giSource("glib");
+            expect(source).toContain(declaration);
+            expect(callDescriptorFor(source, cIdentifier)).toContain("returns: t.boolean, isReturnSkipped: true");
+        },
+    );
+
+    it("leaves no declaration behind that counts the skipped return as an element", () => {
+        expect(giSource("glib")).not.toContain("[boolean, string, string, string, number, string, string, string]");
+    });
+
+    it("surfaces the return value of a throwing function GIR does not skip", () => {
         const source = giSource("glib");
-
-        expect(source).toContain(
-            "static split(uriRef: string, flags: UriFlags): " +
-            "[string | null, string | null, string | null, number, string, string | null, string | null]",
-        );
-
-        expect(source).not.toContain("[boolean, string, string, string, number, string, string, string]");
+        const descriptor = callDescriptorFor(source, "g_file_get_contents");
+        expect(source).toContain("export function fileGetContents(filename: string): [boolean, number[]]");
+        expect(descriptor).toContain("returns: t.boolean");
+        expect(descriptor).not.toContain("isReturnSkipped");
     });
 });
 
@@ -583,8 +612,9 @@ describe("codegen notify detail signals", () => {
 describe("codegen property maps", () => {
     it("maps each introduced property to its accessor type and chains the parent map", () => {
         const source = giSource("gtk");
+        const properties = declarationFrom(moduleSource("gtk"), "export interface ButtonProperties");
         expect(source).toContain("export interface ButtonProperties extends WidgetProperties {");
-        expect(source).toContain("label: string;");
+        expect(properties).toContain("label: string | null;");
         expect(source).toContain("__properties__: ButtonProperties;");
     });
 
@@ -607,6 +637,28 @@ describe("codegen property maps", () => {
         const body = properties.slice(0, properties.indexOf("}"));
         expect(body).toContain("active: boolean;");
         expect(body).not.toContain("group:");
+    });
+});
+
+describe("codegen property accessor types", () => {
+    it("reads a nullable getter as nullable rather than casting it to the setter's type", () => {
+        const button = declarationFrom(moduleSource("gtk"), "export class Button extends (Widget as StaticBase");
+        expect(button).toContain("getLabel(): string | null {");
+        expect(button).toContain("get label(): string | null {\n        return this.getLabel();\n    }");
+        expect(button).toContain("set label(value: string) {\n        this.setLabel(value);\n    }");
+    });
+
+    it("splits an interface member into a get and set pair when the two types differ", () => {
+        const chooser = declarationFrom(moduleSource("gtk"), "export interface FileChooser extends GObject.Object {");
+        expect(chooser).toContain("get filter(): FileFilter | null;\n    set filter(value: FileFilter);");
+    });
+
+    it("casts no delegate getter's result in any generated module", () => {
+        const offenders = giModules
+            .filter(({ source }) => /return this\.\w+\(\) as /.test(source))
+            .map(({ directory }) => directory);
+
+        expect(offenders, `modules casting a delegate getter: ${offenders.join(", ")}`).toEqual([]);
     });
 });
 

@@ -52,6 +52,8 @@ import {
 } from "./descriptor.js";
 import { carrayFor, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
 
+type PrimaryReturnKind = "surfaced" | "void" | "skipped";
+
 type ArgIndexOptions = {
     argIndexOffset: number;
     argIndexMap: Map<number, number> | undefined;
@@ -134,8 +136,19 @@ const isVoidRef = (library: Library, ref: TypeId | undefined): boolean =>
 const isInlineCallbackRef = (library: Library, ref: TypeId | undefined): boolean =>
     ref !== undefined && library.typeFor(ref)?.kind === "callback" && library.nameFor(ref) === undefined;
 
+const primaryReturnKind = (library: Library, returnValue: GirReturnValue): PrimaryReturnKind => {
+    if (isVoidRef(library, returnValue.type)) {
+        return "void";
+    }
+
+    return returnValue.skip ? "skipped" : "surfaced";
+};
+
 const shouldOmitPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
-    isVoidRef(library, returnValue.type) || returnValue.skip;
+    primaryReturnKind(library, returnValue) !== "surfaced";
+
+const isSkippedPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
+    primaryReturnKind(library, returnValue) === "skipped";
 
 const argIndexOptions = (options: RenderDescriptorOptions): ArgIndexOptions => ({
     argIndexOffset: options.argIndexOffset ?? 0,
@@ -314,7 +327,7 @@ const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
     return declared?.closureIndex ?? userDataIndexByName(parameters);
 };
 
-const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number | undefined): string | undefined => {
+const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number | undefined): string[] => {
     const options: string[] = [];
 
     if (owningParameter.destroyIndex !== undefined) {
@@ -333,7 +346,7 @@ const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number
         options.push(`scope: ${sourceStringLiteral(owningParameter.scope)}`);
     }
 
-    return options.length > 0 ? `{ ${options.join(", ")} }` : undefined;
+    return options;
 };
 
 const renderCallbackType = (
@@ -352,15 +365,14 @@ const renderCallbackType = (
         (parameter, index) => argOverrides?.get(index) ?? renderParamDescriptor(context, parameter, parameter.type),
     );
 
-    const returnRef = callback.returnValue.type;
+    const { returnValue } = callback;
 
-    const returnType = isVoidRef(context.library, returnRef)
-        ? tVoid
-        : renderDescriptor(context, returnRef, callback.returnValue.transferOwnership);
-
-    const optionsArg = callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters));
-
-    return tCallback(argTypes, returnType, optionsArg);
+    return tCallback({
+        argTypes,
+        returns: renderDescriptor(context, returnValue.type, returnValue.transferOwnership),
+        isReturnSkipped: isSkippedPrimaryReturn(context.library, returnValue),
+        options: callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters)),
+    });
 };
 
 const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership): string => {
@@ -767,6 +779,8 @@ const aliasExpression = (
 
 export {
     isInlineCallbackRef,
+    isSkippedPrimaryReturn,
+    primaryReturnKind,
     shouldOmitPrimaryReturn,
     renderDescriptor,
     isScalarRef,

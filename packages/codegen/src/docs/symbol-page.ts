@@ -400,8 +400,15 @@ const getAccessNotes = (accessor: ResolvedAccessor): string[] => {
         return ["read-only"];
     }
 
-    return accessor.hasGetter ? [] : ["write-only"];
+    if (!accessor.hasGetter) {
+        return ["write-only"];
+    }
+
+    return accessor.readType === accessor.writeType ? [] : [`writes \`${accessor.writeType}\``];
 };
+
+const documentedAccessorType = (accessor: ResolvedAccessor): string =>
+    accessor.hasGetter ? accessor.readType : accessor.writeType;
 
 const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, seen: Set<string>): MetaDocEntry[] => {
     const entries: MetaDocEntry[] = [];
@@ -423,7 +430,7 @@ const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, 
         entries.push({
             name: accessor.jsName,
             meta: propertyMetaLine({
-                type: accessor.tsType,
+                type: documentedAccessorType(accessor),
                 property,
                 accessNotes: getAccessNotes(accessor),
                 origin: owner.origin,

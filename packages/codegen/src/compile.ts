@@ -1,8 +1,9 @@
 import { errorMessage, normalizeError } from "@gtkx/utils";
-import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
+import { createStagingDir, sweepStrandedDirs } from "./staging.js";
 
 type ProjectFile = {
     fileName: string;
@@ -59,7 +60,9 @@ const CHECK_OPTIONS = {
     noEmit: true,
 };
 
-const FAILED_CHECK_DIR = ".gtkx-check-failed";
+const CHECK_DIR = ".gtkx-check";
+const FAILED_CHECK_DIR = `${CHECK_DIR}.failed`;
+const LEGACY_CHECK_PREFIX = `${CHECK_DIR}-`;
 
 const FORMAT_HOST: ts.FormatDiagnosticsHost = {
     getCanonicalFileName: (fileName) => fileName,
@@ -225,10 +228,16 @@ const compileProject = (params: CompileProjectParams): void => {
     }
 };
 
+const stageCheckProject = (checkRoot: string): string => {
+    const projectDir = createStagingDir(join(checkRoot, CHECK_DIR));
+    sweepStrandedDirs(checkRoot, LEGACY_CHECK_PREFIX);
+
+    return projectDir;
+};
+
 const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; label: string }): void => {
     const checkRoot = join(params.resolveFrom, "node_modules");
-    mkdirSync(checkRoot, { recursive: true });
-    const projectDir = mkdtempSync(join(checkRoot, ".gtkx-check-"));
+    const projectDir = stageCheckProject(checkRoot);
     const keepAt = join(checkRoot, FAILED_CHECK_DIR);
 
     try {

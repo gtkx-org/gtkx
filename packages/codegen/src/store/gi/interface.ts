@@ -4,7 +4,7 @@ import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../analysis/inheritance.js";
 import { omittedTypeRef, prerequisiteConflicts } from "../../analysis/interface-conflicts.js";
-import { resolveInterfaces } from "../../gir/ancestry.js";
+import { resolveClassOrInterface, resolveInterfaces } from "../../gir/ancestry.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
@@ -217,24 +217,20 @@ const appendInterfaceTypes = (
 
 const prerequisiteRef = (context: ModuleContext, iface: GirClass, name: string): string | undefined => {
     const ref = resolvePrerequisiteReference(context, name);
-    const resolved = context.library.resolveType(context.namespace.name, name);
+    const base = resolveClassOrInterface(context.library, context.namespace.name, name);
 
-    if (ref === undefined || (resolved?.kind !== "class" && resolved?.kind !== "interface")) {
+    if (ref === undefined || base === undefined) {
         return undefined;
     }
 
-    return omittedTypeRef(ref, prerequisiteConflicts(context.library, iface, resolved.value));
+    return omittedTypeRef(ref, prerequisiteConflicts(context.library, iface, base));
 };
 
 const rootPrerequisiteRef = (context: ModuleContext, iface: GirClass): string => {
     const ref = context.qualify("GObject", "Object");
-    const resolved = context.library.resolveType("GObject", "Object");
+    const base = resolveClassOrInterface(context.library, "GObject", "Object");
 
-    if (resolved?.kind !== "class") {
-        return ref;
-    }
-
-    return omittedTypeRef(ref, prerequisiteConflicts(context.library, iface, resolved.value));
+    return base === undefined ? ref : omittedTypeRef(ref, prerequisiteConflicts(context.library, iface, base));
 };
 
 const interfaceTypeExtends = (context: ModuleContext, iface: GirClass): string => {
