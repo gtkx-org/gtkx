@@ -1,13 +1,23 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "../src/builder.js";
 
 type AppBuildOptions = { project: AppProject; outDir: string };
+type AppProbe = { emitted: string[]; project: AppProject; reported: string; run: AppRun };
+type AppProbeOptions = AppProjectOptions & { outDir: string };
 type AppProject = { root: string; entry: string };
-type AppProjectOptions = { applicationId: string; entry: string; packageType: string; prefix: string };
+
+type AppProjectOptions = {
+    applicationId: string;
+    entry: string;
+    modules?: Record<string, string> | undefined;
+    packageType: string;
+    prefix: string;
+};
+
 type AppRun = { status: number | null; stdout: string; stderr: string };
 
 const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
@@ -28,6 +38,12 @@ const appConfig = (applicationId: string): string =>
 const appManifest = (packageType: string): string =>
     `${JSON.stringify({ name: PROJECT_NAME, type: packageType }, null, 4)}\n`;
 
+const writeModules = (root: string, modules: Record<string, string>): void => {
+    for (const [name, source] of Object.entries(modules)) {
+        writeFileSync(join(root, "src", name), source);
+    }
+};
+
 const createAppProject = (options: AppProjectOptions): AppProject => {
     const root = mkdtempSync(join(tmpdir(), options.prefix));
     const entry = join(root, "src", ENTRY_NAME);
@@ -36,6 +52,7 @@ const createAppProject = (options: AppProjectOptions): AppProject => {
     writeFileSync(join(root, "package.json"), appManifest(options.packageType));
     writeFileSync(join(root, "gtkx.config.mjs"), appConfig(options.applicationId));
     writeFileSync(entry, options.entry);
+    writeModules(root, options.modules ?? {});
 
     return { root, entry };
 };
@@ -65,4 +82,25 @@ const runNode = (file: string): AppRun => {
     return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 };
 
-export { type AppProject, type AppRun, buildAppProject, createAppProject, removeAppProject, runNode };
+const probeAppProject = async (options: AppProbeOptions): Promise<AppProbe> => {
+    const project = createAppProject(options);
+    const reported = await buildAppProject({ project, outDir: options.outDir });
+
+    return {
+        emitted: readdirSync(join(project.root, options.outDir), { recursive: true, encoding: "utf8" }),
+        project,
+        reported,
+        run: runNode(join(project.root, reported)),
+    };
+};
+
+export {
+    type AppProbe,
+    type AppProject,
+    type AppRun,
+    buildAppProject,
+    createAppProject,
+    probeAppProject,
+    removeAppProject,
+    runNode,
+};

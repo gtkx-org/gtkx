@@ -1,7 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { join } from "node:path";
 import { type InlineConfig, mergeConfig, build as viteBuild } from "vite";
 import { gtkxBuiltUrl } from "./vite-plugins/built-url.js";
+import { esmExtension } from "./vite-plugins/esm-extension.js";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
 import { gtkxNative } from "./vite-plugins/native.js";
 import { gtkxSelfContained } from "./vite-plugins/self-contained.js";
@@ -14,10 +14,7 @@ type BuildOptions = {
 };
 
 const BUILD_MODE = "production";
-const MANIFEST_NAME = "package.json";
-const MODULE_PACKAGE_TYPE = "module";
-const BUNDLE_NAME = "bundle.js";
-const ESM_BUNDLE_NAME = "bundle.mjs";
+const BUNDLE_STEM = "bundle";
 const DEFAULT_OUT_DIR = "dist";
 
 const buildDefaults: InlineConfig = {
@@ -32,57 +29,15 @@ const buildDefaults: InlineConfig = {
     },
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-    value !== null && typeof value === "object" && !Array.isArray(value);
-
-const nearestManifest = (dir: string): string | null => {
-    const candidate = join(dir, MANIFEST_NAME);
-
-    if (existsSync(candidate)) {
-        return candidate;
-    }
-
-    const parent = dirname(dir);
-
-    return parent === dir ? null : nearestManifest(parent);
-};
-
-const parseManifest = (manifestPath: string): unknown => {
-    try {
-        return JSON.parse(readFileSync(manifestPath, "utf8"));
-    } catch {
-        return null;
-    }
-};
-
-const packageType = (root: string): string | null => {
-    const manifestPath = nearestManifest(resolve(root));
-
-    if (manifestPath === null) {
-        return null;
-    }
-
-    const manifest = parseManifest(manifestPath);
-
-    if (!isRecord(manifest)) {
-        return null;
-    }
-
-    return typeof manifest.type === "string" ? manifest.type : null;
-};
-
-const bundleName = (root: string): string =>
-    packageType(root) === MODULE_PACKAGE_TYPE ? BUNDLE_NAME : ESM_BUNDLE_NAME;
-
 const build = async (options: BuildOptions): Promise<string> => {
     const { entry, assetBase, vite: viteConfig } = options;
     const root = viteConfig?.root ?? process.cwd();
-    const entryFileNames = bundleName(root);
+    const entryFileNames = BUNDLE_STEM + esmExtension(root);
 
     const forced: InlineConfig = {
         plugins: [
             ...gtkxVitePlugins(BUILD_MODE),
-            gtkxWorker(),
+            gtkxWorker(root),
             gtkxBuiltUrl(assetBase),
             gtkxNative(root),
             gtkxSelfContained(),

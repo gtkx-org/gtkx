@@ -1,6 +1,7 @@
 import type { Plugin, Rollup } from "vite";
 import { createHash } from "node:crypto";
 import { basename, extname } from "node:path";
+import { esmExtension } from "./esm-extension.js";
 import { stripQuery } from "./strip-query.js";
 
 type WorkerReplacement = {
@@ -12,6 +13,7 @@ type WorkerReplacement = {
 type EmitContext = {
     context: Rollup.PluginContext;
     emitted: Map<string, string>;
+    extension: string;
 };
 
 type SourceRange = {
@@ -52,6 +54,8 @@ const NON_CODE = new RegExp(
     "g",
 );
 
+const WORKER_DIR = "workers";
+
 const SUGGESTED_EXTENSIONS: Record<string, string[]> = {
     ".cjs": [".cts"],
     ".js": [".ts", ".tsx"],
@@ -59,12 +63,12 @@ const SUGGESTED_EXTENSIONS: Record<string, string[]> = {
     ".mjs": [".mts"],
 };
 
-const workerFileName = (id: string): string => {
+const workerFileName = (id: string, extension: string): string => {
     const path = stripQuery(id);
     const stem = basename(path, extname(path));
     const digest = createHash("sha256").update(id).digest("hex").slice(0, 8);
 
-    return `workers/${stem}-${digest}.js`;
+    return `${WORKER_DIR}/${stem}-${digest}${extension}`;
 };
 
 const nonCodeRanges = (code: string): SourceRange[] =>
@@ -129,7 +133,7 @@ const claimWorker = (emit: EmitContext, resolvedId: string): string => {
         return existing;
     }
 
-    const fileName = workerFileName(resolvedId);
+    const fileName = workerFileName(resolvedId, emit.extension);
     emit.emitted.set(resolvedId, fileName);
     emit.context.emitFile({ type: "chunk", id: resolvedId, fileName });
 
@@ -219,15 +223,16 @@ const transformWorkerUrls = async (emit: EmitContext, code: string, id: string):
     return replacements.length === 0 ? null : { code: applyReplacements(code, replacements), map: null };
 };
 
-function gtkxWorker(): Plugin {
+function gtkxWorker(root: string): Plugin {
     const emitted: Map<string, string> = new Map();
+    const extension = esmExtension(root);
 
     return {
         name: "gtkx:worker",
         apply: "build",
 
         transform(code, id) {
-            return transformWorkerUrls({ context: this, emitted }, code, id);
+            return transformWorkerUrls({ context: this, emitted, extension }, code, id);
         },
     };
 }
