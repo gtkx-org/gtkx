@@ -1,5 +1,6 @@
 /* eslint-disable gtkx/no-library-prefix */
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { sortStrings } from "@gtkx/utils";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
@@ -8,6 +9,7 @@ import { writeDocs } from "../../src/internal.js";
 import { readBuiltinElements } from "../../src/react/element-config.js";
 
 type DocsOptions = Parameters<typeof writeDocs>[0];
+type EscapingGir = { name: string; dir: string; namespace: string; element: string; reason: string };
 
 const GIR_PATH = ["/usr/share/gir-1.0"];
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
@@ -50,6 +52,25 @@ const MALFORMED_MANIFESTS: [string, string, unknown][] = [
     ],
 ];
 
+const ESCAPE_LIBRARY = "Escape-1.0";
+
+const ESCAPING_GIR_NAMES: EscapingGir[] = [
+    {
+        name: "a namespace that climbs out of it",
+        dir: "escaping-namespace",
+        namespace: "../escape",
+        element: "Widget",
+        reason: "the GIR namespace ../escape maps to `../escape`",
+    },
+    {
+        name: "an element that climbs out of it",
+        dir: "escaping-element",
+        namespace: "Escape",
+        element: "../../evil",
+        reason: "the element EscapeWidget maps to `../../evil`",
+    },
+];
+
 const page = (outDir: string, path: string): string => readFileSync(join(outDir, path), "utf8");
 const docsOptions = (outDir: string): DocsOptions => ({ libraries: ["Gtk-4.0"], girPath: GIR_PATH, outDir });
 
@@ -75,6 +96,29 @@ const generatedDir = (name: string): string => {
 
 const writeManifest = (outDir: string, manifest: unknown): void => {
     writeFileSync(join(outDir, MANIFEST_FILE), JSON.stringify(manifest));
+};
+
+const escapingGir = (namespaceName: string, className: string): string =>
+    [
+        "<?xml version=\"1.0\"?>",
+        "<repository version=\"1.2\">",
+        "  <include name=\"GObject\" version=\"2.0\"/>",
+        `  <namespace name="${namespaceName}" version="1.0" c:identifier-prefixes="Escape"`,
+        "             c:symbol-prefixes=\"escape\">",
+        `    <class name="${className}" c:symbol-prefix="widget" c:type="EscapeWidget"`,
+        "           parent=\"GObject.Object\" glib:type-name=\"EscapeWidget\"",
+        "           glib:get-type=\"escape_widget_get_type\"/>",
+        "  </namespace>",
+        "</repository>",
+        "",
+    ].join("\n");
+
+const escapingGirDir = (name: string, namespaceName: string, className: string): string => {
+    const girDir = join(workDir, name);
+    mkdirSync(girDir, { recursive: true });
+    writeFileSync(join(girDir, `${ESCAPE_LIBRARY}.gir`), escapingGir(namespaceName, className));
+
+    return girDir;
 };
 
 const inputVariants = (outDir: string): { rebased: DocsOptions; withOmitted: DocsOptions; withProps: DocsOptions } => {
@@ -376,6 +420,23 @@ describe("writeDocs over a manifest that reaches outside the output directory", 
         expectRefusal(outDir, `holds no ${MANIFEST_FILE} written by \`gtkx docs\``);
         expect(existsSync(join(root, "package.json"))).toBe(true);
         expect(existsSync(join(root, "src", "index.ts"))).toBe(true);
+    });
+});
+
+describe("writeDocs given GIR names that reach outside the output directory", () => {
+    it.each(ESCAPING_GIR_NAMES)("refuses $name, writing nothing", ({ dir, namespace, element, reason }) => {
+        const root = join(workDir, dir);
+        const outDir = join(root, "docs");
+        mkdirSync(outDir, { recursive: true });
+        writeFileSync(join(root, "package.json"), "{}\n");
+        const girDir = escapingGirDir(`${dir}-gir`, namespace, element);
+
+        expect(() => writeDocs({ libraries: [ESCAPE_LIBRARY], girPath: [girDir, ...GIR_PATH], outDir })).toThrow(
+            `Refusing to generate documentation outside the output directory: ${reason}`,
+        );
+
+        expect(sortStrings(readdirSync(root))).toEqual(["docs", "package.json"]);
+        expect(readdirSync(outDir)).toEqual([]);
     });
 });
 

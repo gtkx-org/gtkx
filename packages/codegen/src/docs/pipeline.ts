@@ -156,6 +156,28 @@ const buildElementLinks = (elements: GlibNamedClass[], basePath: string): Map<st
     return linkByGlibName;
 };
 
+const isEntryInsideOutDir = (value: string): boolean =>
+    value.length > 0 && value !== "." && value !== ".." && !value.includes("/") && !value.includes("\\");
+
+const isChildEntry = (value: unknown): value is string => isString(value) && isEntryInsideOutDir(value);
+
+const ownedEntry = (entry: string, source: string): string => {
+    if (isEntryInsideOutDir(entry)) {
+        return entry;
+    }
+
+    throw new Error(
+        `Refusing to generate documentation outside the output directory: ${source} maps to \`${entry}\`, ` +
+        "which is not an entry inside it. The GIR that declares it is malformed.",
+    );
+};
+
+const elementPagePath = (directory: string, entry: GlibNamedClass): string => {
+    const slug = ownedEntry(elementSlug(entry.klass.name), `the element ${entry.glibName}`);
+
+    return `${directory}/${slug}.md`;
+};
+
 const namespacePages = (input: {
     name: string;
     elements: GlibNamedClass[];
@@ -164,7 +186,7 @@ const namespacePages = (input: {
     pageContext: ElementPageContext;
 }): NamespacePages => {
     const { name, elements, basePath, linkByGlibName, pageContext } = input;
-    const directory = name.toLowerCase();
+    const directory = ownedEntry(namespaceDirectory({ name }), `the GIR namespace ${name}`);
 
     const docs: DocsNamespace = {
         name,
@@ -174,7 +196,7 @@ const namespacePages = (input: {
     };
 
     const pages: Page[] = elements.map((entry) => ({
-        path: `${directory}/${elementSlug(entry.klass.name)}.md`,
+        path: elementPagePath(directory, entry),
         content: renderElementPage(entry, pageContext),
     }));
 
@@ -203,10 +225,6 @@ const generatePages = (options: DocsOptions, basePath: string, library: Library)
 
     return { pages, namespaces };
 };
-
-const isChildEntry = (value: unknown): value is string =>
-    typeof value === "string" && value.length > 0 && value !== "." && value !== ".." &&
-    !value.includes("/") && !value.includes("\\");
 
 const isGeneratorTag = (value: unknown): value is string => value === MANIFEST_GENERATOR;
 
