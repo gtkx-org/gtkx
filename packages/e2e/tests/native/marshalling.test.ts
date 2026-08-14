@@ -87,4 +87,12 @@ describe("marshalling across the napi boundary (2)", () => {
         expect(() => GLib.fileGetContents(oversized.path)).toThrow();
         await expect(Gio.File.newForPath(oversized.path).loadContentsAsync(null)).rejects.toThrow();
     });
+
+    it("hands back byte arrays as typed arrays, whichever form they were passed in", () => {
+        const encoded = GLib.base64Encode(new Uint8Array([104, 105]));
+        expect(GLib.base64Decode(encoded)).toEqual(new Uint8Array([104, 105]));
+        expect(GLib.ByteArray.append(new Uint8Array([1, 2]), new Uint8Array([3]))).toEqual(new Uint8Array([1, 2, 3]));
+        expect(GLib.ByteArray.append([1, 2], [3])).toEqual(new Uint8Array([1, 2, 3]));
+        expect(GLib.fileGetContents(pathForSize(0))).toEqual([true, new Uint8Array()]);
+    });
 });
