@@ -1,11 +1,9 @@
+import { errorCode } from "@gtkx/utils";
 import { mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 const STAGING_SUFFIX = ".tmp-";
 const OWNER_PATTERN = /^(?<pid>\d+)-/;
-
-const errorCode = (error: unknown): string | undefined =>
-    error instanceof Error && "code" in error && typeof error.code === "string" ? error.code : undefined;
 
 const isOwnerRunning = (pid: number): boolean => {
     if (!Number.isSafeInteger(pid) || pid <= 0) {

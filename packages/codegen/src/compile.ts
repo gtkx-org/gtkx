@@ -1,4 +1,4 @@
-import { errorMessage, normalizeError } from "@gtkx/utils";
+import { errorCode, errorMessage, normalizeError } from "@gtkx/utils";
 import { existsSync, mkdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -92,13 +92,13 @@ const linkToolingModules = (projectDir: string): (() => void) => {
 };
 
 const ensureModuleScope = (projectDir: string): void => {
-    const manifest = join(projectDir, "package.json");
-
-    if (existsSync(manifest)) {
-        return;
+    try {
+        writeFileSync(join(projectDir, "package.json"), ESM_SCOPE_MANIFEST, { flag: "wx" });
+    } catch (error) {
+        if (errorCode(error) !== "EEXIST") {
+            throw error;
+        }
     }
-
-    writeFileSync(manifest, ESM_SCOPE_MANIFEST);
 };
 
 const isProjectFile = (rel: string): boolean =>
