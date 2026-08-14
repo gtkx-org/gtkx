@@ -56,6 +56,7 @@ const createEnvironment = (workspace: Workspace): NodeJS.ProcessEnv => ({
     ...process.env,
     PATH: `${workspace.binDir}:${process.env.PATH ?? ""}`,
     GTKX_PACKAGE_MANAGER_LOG: workspace.logPath,
+    ...(process.env.GTKX_COVERAGE_DIR !== undefined && { NODE_V8_COVERAGE: process.env.GTKX_COVERAGE_DIR }),
 });
 
 const readInstalls = (logPath: string): string[] =>

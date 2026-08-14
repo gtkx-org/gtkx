@@ -56,7 +56,7 @@
                 ]
             },
             "coverage": {
-                "command": "rm -rf coverage/subprocess && NODE_V8_COVERAGE=\"$PWD/coverage/subprocess\" vitest run --coverage && tsx ./scripts/subprocess-coverage.ts",
+                "command": "rm -rf coverage/subprocess && GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage && tsx ./scripts/subprocess-coverage.ts",
                 "cache": true,
                 "dependsOn": [
                     "codegen",

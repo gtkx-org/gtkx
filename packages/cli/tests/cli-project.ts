@@ -93,6 +93,11 @@ const cliEnvironment = (): NodeJS.ProcessEnv => {
     const environment = { ...process.env };
     delete environment.NODE_ENV;
     delete environment.NODE_PATH;
+    const coverageDir = process.env.GTKX_COVERAGE_DIR;
+
+    if (coverageDir !== undefined) {
+        environment.NODE_V8_COVERAGE = coverageDir;
+    }
 
     return environment;
 };
@@ -104,6 +109,13 @@ const runCli = (project: CliProject, args: string[]): CliRun => {
         env: cliEnvironment(),
         timeout: CLI_TIMEOUT,
     });
+
+    if (result.status === null) {
+        throw new Error(
+            `gtkx ${args.join(" ")} did not exit on its own: killed by ${result.signal ?? "an unknown signal"} ` +
+            `after ${String(CLI_TIMEOUT)}ms. ${result.stdout}${result.stderr}`,
+        );
+    }
 
     return { status: result.status, output: `${result.stdout}${result.stderr}` };
 };

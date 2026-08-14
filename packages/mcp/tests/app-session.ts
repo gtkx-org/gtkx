@@ -92,6 +92,7 @@ const childEnvironment = (runtimeDir: string): Record<string, string> => {
 
     return {
         ...inheritedEnvironment(),
+        ...(process.env.GTKX_COVERAGE_DIR !== undefined && { NODE_V8_COVERAGE: process.env.GTKX_COVERAGE_DIR }),
         GTKX_DISABLE_PREFLIGHT: "1",
         XDG_RUNTIME_DIR: runtimeDir,
         WAYLAND_DISPLAY: display.startsWith("/") ? display : join(parent, display),
