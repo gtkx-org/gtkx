@@ -187,7 +187,7 @@ describe("registerClass — properties a pointer or string-array type backs", ()
         const read = new Value();
         read.init(TYPE_POINTER);
         anchor.getProperty("target", read);
-        expect(read.getPointer()).toBe(0);
+        expect(read.getPointer()).toBe(0n);
         anchor.setProperty("target", read);
         expect(anchor.target).toBeNull();
     });

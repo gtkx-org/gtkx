@@ -791,17 +791,17 @@ describe("registerClass — implements, interface properties a pointer type back
         const top = createToplevelAdopter();
         const read = pointerValue();
         top.getProperty("icon-list", read);
-        expect(read.getPointer()).toBe(0);
+        expect(read.getPointer()).toBe(0n);
         top.setProperty("icon-list", pointerValue());
         top.getProperty("icon-list", read);
-        expect(read.getPointer()).toBe(0);
+        expect(read.getPointer()).toBe(0n);
     });
 
     it("reads the pointer property GDtlsClientConnection declares", () => {
         const client = new DtlsClient() as DtlsClient & Gio.DtlsClientConnection;
         const read = pointerValue();
         client.getProperty("accepted-cas", read);
-        expect(read.getPointer()).toBe(0);
+        expect(read.getPointer()).toBe(0n);
     });
 
     it("reads and writes the string-array property GDtlsConnection declares", () => {

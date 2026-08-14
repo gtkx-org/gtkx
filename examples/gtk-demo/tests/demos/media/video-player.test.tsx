@@ -7,7 +7,7 @@ import { describe, expect, it, type MockInstance, vi } from "vitest";
 import { videoPlayerDemo } from "../../../src/demos/media/video-player.js";
 import { findButton, renderDemo } from "../../test-utils.js";
 
-type SetFileSpy = MockInstance<Gtk.Video["setFile"]>;
+type SetFileSpy = MockInstance<(value: Gio.File | null) => void>;
 
 const FAKE_VIDEO_PATH = join(tmpdir(), "fake-video.webm");
 
@@ -118,7 +118,7 @@ describe("videoPlayerDemo video and actions", () => {
     );
 
     it("applies the GTK Logo file to the video when the Logo button is clicked", async () => {
-        const setFileSpy = vi.spyOn(Gtk.Video.prototype, "setFile").mockImplementation((): void => undefined);
+        const setFileSpy = vi.spyOn(Gtk.Video.prototype, "file", "set").mockImplementation((): void => undefined);
 
         try {
             await renderDemo(videoPlayerDemo);
@@ -151,7 +151,7 @@ describe("videoPlayerDemo video and actions", () => {
 describe("videoPlayerDemo remote media", () => {
     it("applies the Big Buck Bunny remote file to the video when the BBB button is clicked", async () => {
         const errorSpy = vi.spyOn(console, "error").mockImplementation((): void => undefined);
-        const setFileSpy = vi.spyOn(Gtk.Video.prototype, "setFile").mockImplementation((): void => undefined);
+        const setFileSpy = vi.spyOn(Gtk.Video.prototype, "file", "set").mockImplementation((): void => undefined);
 
         try {
             await renderDemo(videoPlayerDemo);
@@ -168,7 +168,7 @@ describe("videoPlayerDemo remote media", () => {
 
 describe("videoPlayerDemo open dialog", () => {
     it("applies the picked file to the video when the Open dialog resolves", async () => {
-        const setFileSpy = vi.spyOn(Gtk.Video.prototype, "setFile").mockImplementation((): void => undefined);
+        const setFileSpy = vi.spyOn(Gtk.Video.prototype, "file", "set").mockImplementation((): void => undefined);
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
         openSpy.mockResolvedValue(Gio.File.newForPath(FAKE_VIDEO_PATH));
 
@@ -189,7 +189,7 @@ describe("videoPlayerDemo open dialog", () => {
 
     it("logs an error and leaves the video file unchanged when the open dialog is dismissed", async () => {
         const errorSpy = vi.spyOn(console, "error").mockImplementation((): void => undefined);
-        const setFileSpy = vi.spyOn(Gtk.Video.prototype, "setFile").mockImplementation((): void => undefined);
+        const setFileSpy = vi.spyOn(Gtk.Video.prototype, "file", "set").mockImplementation((): void => undefined);
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
         openSpy.mockRejectedValue(new Error("cancelled"));
 
