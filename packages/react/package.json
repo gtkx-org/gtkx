@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/react",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "React reconciler that renders GTK4 object trees, with the portals, signal handling, and hooks GTKX apps use",
     "keywords": [
         "gtkx",
