@@ -10,7 +10,8 @@
     ],
     "ignoreDependencies": [
         "^@gtkx/gi(/.*)?$",
-        "^@gtkx/jsx(/.*)?$"
+        "^@gtkx/jsx(/.*)?$",
+        "c8"
     ],
     "ignoreIssues": {
         "**/gtkx.config.ts": [

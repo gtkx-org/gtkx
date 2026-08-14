@@ -56,7 +56,7 @@
                 ]
             },
             "coverage": {
-                "command": "vitest run --coverage",
+                "command": "rm -rf coverage/subprocess && NODE_V8_COVERAGE=\"$PWD/coverage/subprocess\" vitest run --coverage && tsx ./scripts/subprocess-coverage.ts",
                 "cache": true,
                 "dependsOn": [
                     "codegen",
@@ -76,7 +76,8 @@
                     {
                         "externalDependencies": [
                             "vitest",
-                            "@vitest/coverage-v8"
+                            "@vitest/coverage-v8",
+                            "c8"
                         ]
                     }
                 ],
@@ -158,6 +159,7 @@
         "@types/node": "catalog:",
         "@types/react": "catalog:",
         "@vitest/coverage-v8": "catalog:",
+        "c8": "^12.0.0",
         "eslint": "^10.8.1",
         "jiti": "^2.7.0",
         "knip": "^6.32.2",
