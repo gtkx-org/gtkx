@@ -4,6 +4,7 @@ use std::ffi::{CStr, c_char, c_int, c_void};
 use std::rc::Rc;
 
 use napi::{Env, sys};
+use native::value::ViewKind;
 
 pub type FnImpl = Rc<dyn Fn(&[sys::napi_value]) -> sys::napi_value>;
 
@@ -466,7 +467,7 @@ pub fn read_bytes(value: sys::napi_value) -> Option<Vec<u8>> {
             byte_offset,
             ..
         } => {
-            if *length == 0 {
+            if *length == 0 || data.is_null() {
                 return Some(Vec::new());
             }
 
@@ -1001,14 +1002,29 @@ pub unsafe extern "C" fn napi_create_typedarray(
     result: *mut sys::napi_value,
 ) -> sys::napi_status {
     record("napi_create_typedarray");
-    let data = match fv(arraybuffer) {
-        Some(FakeValue::ArrayBuffer { data, .. }) => *data,
-        _ => std::ptr::null_mut(),
+    let Some(FakeValue::ArrayBuffer {
+        data,
+        length: buffer_length,
+        ..
+    }) = fv(arraybuffer)
+    else {
+        return sys::Status::napi_invalid_arg;
     };
+    let Ok(view_kind) = ViewKind::try_from(kind) else {
+        return sys::Status::napi_invalid_arg;
+    };
+    let fits = length
+        .checked_mul(view_kind.element_size())
+        .and_then(|span| byte_offset.checked_add(span))
+        .is_some_and(|end| end <= *buffer_length);
+
+    if !fits {
+        return sys::Status::napi_invalid_arg;
+    }
     unsafe {
         *result = alloc(FakeValue::TypedArray {
             kind,
-            data,
+            data: *data,
             length,
             byte_offset,
             shared: false,
