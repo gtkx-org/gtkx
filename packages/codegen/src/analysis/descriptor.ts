@@ -156,6 +156,7 @@ const tUint8: string = T.uint8;
 const tUint32: string = T.uint32;
 const tInt32: string = T.int32;
 const tUint64: string = T.uint64;
+const tBiguint64: string = T.biguint64;
 const tGtype: string = T.gtype;
 const tBuffer: string = T.buffer;
 
@@ -296,6 +297,7 @@ export {
     tUint32,
     tInt32,
     tUint64,
+    tBiguint64,
     tGtype,
     tBuffer,
     tScalar,

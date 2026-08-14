@@ -28,6 +28,7 @@ import {
     type Ownership,
     type ScalarDescriptorName,
     tArray,
+    tBiguint64,
     tBoxed,
     tByteArray,
     tCallback,
@@ -387,7 +388,7 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership):
     }
 
     if (category === "pointer") {
-        return tUint64;
+        return tBiguint64;
     }
 
     if (category === "gtype") {

@@ -10,7 +10,7 @@ type WrapReturnOptions = {
     valueExpression: string;
 };
 
-const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["gtype", "bigint64", "biguint64"]);
+const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["gtype", "bigint64", "biguint64", "pointer"]);
 
 const wrapReturnValue = (context: ModuleContext, options: WrapReturnOptions): string => {
     const { ref, isNullable, valueExpression } = options;

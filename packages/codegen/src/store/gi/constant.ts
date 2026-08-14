@@ -7,7 +7,7 @@ import { isEmittableEntity } from "../../gir/emittable.js";
 import { getDoc } from "./doc-spec.js";
 
 const TRUE_VALUES: Set<string> = new Set(["true", "1"]);
-const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["bigint64", "biguint64", "gtype"]);
+const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["bigint64", "biguint64", "gtype", "pointer"]);
 
 const generateConstant = (context: ModuleContext, constant: GirConstant): void => {
     if (!isEmittableEntity(constant)) {

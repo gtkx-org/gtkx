@@ -110,7 +110,7 @@ const PRIMITIVE_TS_TYPE: Record<PrimitiveCategory, string> = {
     float64: "number",
     string: "string",
     unichar: "string",
-    pointer: "number",
+    pointer: "bigint",
 };
 
 const primitiveCategory = (name: string): PrimitiveCategory | undefined => PRIMITIVE_BY_NAME.get(name);
