@@ -121,9 +121,9 @@ const renderRecordConstructor = (context: ModuleContext, spec: RecordConstructor
 
     const statements = [
         ...superCall,
-        `const handle = alloc(${allocArgs(context, record, size).join(", ")});`,
+        `const __handle = alloc(${allocArgs(context, record, size).join(", ")});`,
         ...renderFieldWrites(context, slots),
-        "setHandle(this, handle);",
+        "setHandle(this, __handle);",
     ];
 
     return renderBlock(`constructor(props: ${className}ConstructorProps = {})`, statements.join("\n"));
@@ -151,7 +151,7 @@ const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): str
     const write = emitFieldWrite(context, {
         descriptor,
         slot: entry.slot,
-        targetExpr: "handle",
+        targetExpr: "__handle",
         valueExpr: `props.${name}`,
     });
 

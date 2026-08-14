@@ -114,7 +114,7 @@ const returnStatements = (call: string, returned: EmittedReturn, outs: OutArg[])
         return [`${call};`, tail];
     }
 
-    return [`const result = ${call};`, `return [${returned.expr("result")}, ${outValues.join(", ")}];`];
+    return [`const __result = ${call};`, `return [${returned.expr("__result")}, ${outValues.join(", ")}];`];
 };
 
 const renderCommand = (
@@ -135,7 +135,7 @@ const renderCommand = (
     const seeds = outs.map((out) => out.seed);
     const bindExpression = glBind(command.name, descriptors, returned.descriptor);
     const isInline = plan.params.some((paramPlan) => paramPlan.kind === "string-out");
-    const bindingName = isInline ? "binding" : toCamelIdentifier(command.name);
+    const bindingName = isInline ? "__binding" : toCamelIdentifier(command.name);
 
     const body = [
         ...seeds,
@@ -252,12 +252,14 @@ const deriveGenSingular = (
     const descriptors = [...prefix.map((arg) => arg.descriptor), countScalar.descriptor, tRef(outScalar.descriptor)];
     usedTypes.add(outScalar.tsAlias);
     const signature = prefix.map((arg) => `${arg.name}: ${arg.tsType}`).join(", ");
-    const callArgs = [...prefix.map((arg) => arg.name), "1", "out"].join(", ");
+    const callArgs = [...prefix.map((arg) => arg.name), "1", "__out"].join(", ");
     const jsDoc = genSingularJsDoc({ plan, provenance, docs }, prefix, shape);
 
-    const body = ["    const out = { value: 0 };", `    ${bindingName}(${callArgs});`, "    return out.value;"].join(
-        "\n",
-    );
+    const body = [
+        "    const __out = { value: 0 };",
+        `    ${bindingName}(${callArgs});`,
+        "    return __out.value;",
+    ].join("\n");
 
     const binding = glBind(plan.command.name, renderDescriptorList(descriptors), tVoid);
 

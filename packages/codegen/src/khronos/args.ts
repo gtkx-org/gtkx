@@ -204,7 +204,7 @@ const buildOutArg = (options: BuildArgOptions, track: (alias: string) => string)
         throw new Error(`Parameter index ${String(index)} out of range on ${command.name}`);
     }
 
-    const cellName = `out${String(outIndex)}`;
+    const cellName = `__out${String(outIndex)}`;
     const cell: OutArgCell = { isOut: true, cellName, paramIndex: index };
 
     return { ...cell, ...outArgFields({ command, plan, param, cellName, track }) };
