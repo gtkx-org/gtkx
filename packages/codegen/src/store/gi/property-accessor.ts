@@ -54,7 +54,11 @@ const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined
 };
 
 const declaredPropertyType = (context: ModuleContext, property: GirProperty): string =>
-    renderTsType(context, property.type, isNullablePropertyType(context, property.type));
+    renderTsType(
+        context,
+        property.type,
+        property.defaultValue === "NULL" || isNullablePropertyType(context, property.type),
+    );
 
 const isSkippedAccessor = (args: PropertyAccessorArgs, jsName: string): boolean =>
     !args.property.introspectable ||
