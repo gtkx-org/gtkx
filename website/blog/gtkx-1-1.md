@@ -1,5 +1,5 @@
 ---
-title: "GTKX 1.1: gtkx deploy"
+title: "GTKX 1.1: Introducing gtkx deploy"
 description: "GTKX 1.1 adds gtkx deploy, which builds a Flatpak, a .deb, an .rpm, or an AppImage from a GTKX project. The desktop entry, the AppStream metadata, the Flatpak manifest, and the package control files are generated from a deploy block in gtkx.config.ts."
 image: /tasks-screenshot.png
 ---
