@@ -482,7 +482,7 @@ describe("userEvent.clear (2)", () => {
         const locked = await renderScoped(<GtkEntry text="Locked" editable={false} />);
         await expect(userEvent.clear(await locked.findByRole(Gtk.AccessibleRole.TEXT_BOX))).rejects.toThrow();
         const refusing = await renderScoped(<GtkEntry text="abc" />);
-        const blocked = await refusing.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        const blocked = await refusing.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
 
         blocked.connect("delete-text", () => {
             GObject.signalStopEmissionByName(blocked, "delete-text");

@@ -214,8 +214,12 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
 
         const handleGetChildPosition = vi.fn((_widget: Gtk.Widget, allocation: Gdk.Rectangle) => {
             expect(allocation).toBeInstanceOf(Gdk.Rectangle);
+            allocation.x = 11;
+            allocation.y = 22;
+            allocation.width = 33;
+            allocation.height = 44;
 
-            return [true, new Gdk.Rectangle({ x: 11, y: 22, width: 33, height: 44 })];
+            return true;
         });
 
         overlay.connect("get-child-position", handleGetChildPosition);
