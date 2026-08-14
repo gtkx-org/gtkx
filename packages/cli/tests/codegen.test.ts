@@ -179,8 +179,8 @@ describe("gtkx codegen (a project that does not declare itself a module)", () =>
 
     it("writes stores that are still ECMAScript modules", () => {
         expect(state.status).toBe(0);
-        expect(generatedModule(state.project, "jsx", "metadata.js")).not.toContain("require(");
-        expect(generatedModule(state.project, "gi", "gtk", "gtk.js")).not.toContain("require(");
+        expect(generatedModule(state.project, "jsx", "metadata.js")).not.toContain("__esModule");
+        expect(generatedModule(state.project, "gi", "gtk", "gtk.js")).not.toContain("__esModule");
     });
 });
 
