@@ -48,6 +48,21 @@ const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
 const SIGNALS_SUFFIX = "Signals";
 const SIGNAL_EMIT_SUFFIX = "SignalEmit";
 
+const DEPRECATED_SIGNAL_ALIASES: Map<string, string> = new Map([
+    ["addEventListener", "on"],
+    ["removeEventListener", "off"],
+]);
+
+const deprecatedAliasDoc = (method: string): string => {
+    const replacement = DEPRECATED_SIGNAL_ALIASES.get(method);
+
+    if (replacement === undefined) {
+        return "";
+    }
+
+    return `/** @deprecated Since 1.2. Use \`${replacement}\` instead. Removed in v2. */\n`;
+};
+
 const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] => {
     if (klass.glibGetType === undefined) {
         return [];
@@ -210,7 +225,10 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
     if (!isRootObject) {
         const chainable = (methods: string[], trailing: string): void => {
             for (const method of methods) {
-                lines.push(`${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K]${trailing}): this;`);
+                lines.push(
+                    deprecatedAliasDoc(method) +
+                    `${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K]${trailing}): this;`,
+                );
             }
         };
 

@@ -11,7 +11,9 @@ const chainingHandler = vi.fn();
 const onClicked: RegisterClicked = (button, handler) => button.on("clicked", handler);
 const onceClicked: RegisterClicked = (button, handler) => button.once("clicked", handler);
 const offClicked: RegisterClicked = (button, handler) => button.off("clicked", handler);
+// eslint-disable-next-line @typescript-eslint/no-deprecated -- covers the alias until it is removed in v2
 const addClickedListener: RegisterClicked = (button, handler) => button.addEventListener("clicked", handler);
+// eslint-disable-next-line @typescript-eslint/no-deprecated -- covers the alias until it is removed in v2
 const removeClickedListener: RegisterClicked = (button, handler) => button.removeEventListener("clicked", handler);
 const createClickedTarget = (): ClickedTarget => ({ button: new Gtk.Button(), handler: vi.fn() });
 
