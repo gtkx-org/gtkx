@@ -3,9 +3,10 @@ use glib::translate::{IntoGlibPtr, ToGlibPtr};
 
 use super::super::prelude::*;
 use super::ArrayCodec;
-use super::container::ArrayContainer;
+use super::container::{ArrayContainer, BufferViewSupport, ViewEncoding};
 use crate::ffi::codec::IntegerCodec;
 use crate::ffi::{StashData, StashStorage};
+use crate::value::TypedView;
 
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 fn checked_byte(n: f64) -> anyhow::Result<u8> {
@@ -37,23 +38,20 @@ impl ArrayContainer for GByteArrayCodec {
             })
             .collect::<anyhow::Result<Vec<u8>>>()?;
 
-        let byte_array = glib::ByteArray::from(bytes.as_slice());
-        let should_free = codec.ownership.is_borrowed();
-        let (ptr, owned) = if should_free {
-            let ptr = ToGlibPtr::<*mut glib::ffi::GByteArray>::to_glib_none(&byte_array).0;
-            (ptr, Some(byte_array))
-        } else {
-            let ptr = IntoGlibPtr::<*mut glib::ffi::GByteArray>::into_glib_ptr(byte_array);
-            (ptr, None)
-        };
+        Ok(Self::stash_bytes(codec, &bytes))
+    }
 
-        let storage = StashStorage::new(ptr.cast::<c_void>(), StashData::GByteArray(owned));
-        Ok(finalize_container_stash(
-            storage,
-            should_free,
-            Vec::new(),
-            ffi::ReleaseKind::GByteArrayUnref,
-        ))
+    fn buffer_view_support(&self) -> BufferViewSupport {
+        BufferViewSupport::Contiguous(None)
+    }
+
+    fn encode_buffer_view(
+        &self,
+        codec: &ArrayCodec,
+        view: &TypedView,
+        _encoding: ViewEncoding,
+    ) -> anyhow::Result<ffi::Stash> {
+        Ok(Self::stash_bytes(codec, &view.to_vec::<u8>()))
     }
 
     fn decode<'e>(
@@ -91,5 +89,28 @@ impl ArrayContainer for GByteArrayCodec {
 
     fn name(&self) -> &'static str {
         "GByteArray"
+    }
+}
+
+impl GByteArrayCodec {
+    fn stash_bytes(codec: &ArrayCodec, bytes: &[u8]) -> ffi::Stash {
+        let byte_array = glib::ByteArray::from(bytes);
+        let should_free = codec.ownership.is_borrowed();
+        let (ptr, owned) = if should_free {
+            let ptr = ToGlibPtr::<*mut glib::ffi::GByteArray>::to_glib_none(&byte_array).0;
+            (ptr, Some(byte_array))
+        } else {
+            let ptr = IntoGlibPtr::<*mut glib::ffi::GByteArray>::into_glib_ptr(byte_array);
+            (ptr, None)
+        };
+
+        let storage = StashStorage::new(ptr.cast::<c_void>(), StashData::GByteArray(owned));
+
+        finalize_container_stash(
+            storage,
+            should_free,
+            Vec::new(),
+            ffi::ReleaseKind::GByteArrayUnref,
+        )
     }
 }

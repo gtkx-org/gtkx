@@ -22,11 +22,15 @@ const buildToast = (options: ToastOptions): Adw.Toast => {
     const toast = new Adw.Toast(props);
 
     if (onButtonClicked != null) {
-        toast.on("button-clicked", onButtonClicked);
+        toast.on("button-clicked", () => {
+            onButtonClicked(toast);
+        });
     }
 
     if (onDismissed != null) {
-        toast.on("dismissed", onDismissed);
+        toast.on("dismissed", () => {
+            onDismissed(toast);
+        });
     }
 
     return toast;
