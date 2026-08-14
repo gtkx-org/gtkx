@@ -53,7 +53,7 @@ const settleWindow = async (
     findFailure: WindowFailureReporter,
     action: SettleAction,
 ): Promise<void> => {
-    const timeout = getConfig().actionabilityTimeout;
+    const timeout = getConfig().windowActivationTimeout;
 
     await new Promise<void>((resolve) => {
         scheduleWhenWindowReady(window, (target) => findFailure(target) === null, timeout, resolve);
@@ -210,7 +210,7 @@ const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
  * such as focus is already readable when it resolves. A presented harness window is waited on until
  * it is itself active; a window the caller or the tree owns is waited on until the application holds
  * activation, since only a present can claim it. Rendering into a container that is not shown waits
- * for nothing, and a window that never becomes readable within `actionabilityTimeout` throws an
+ * for nothing, and a window that never becomes readable within `windowActivationTimeout` throws an
  * error naming the condition that failed rather than resolving with unreadable platform state. A
  * tree mounted into a container that sits outside every toplevel, or inside a window that is not
  * visible, is out of reach of a pointer and a keyboard, so every `userEvent` helper aimed at it

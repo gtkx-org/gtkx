@@ -15,12 +15,16 @@ type Config = {
     /** Default timeout in milliseconds for async utilities such as waitFor. */
     asyncUtilTimeout: number;
 
-    /**
-     * Timeout in milliseconds for waiting on a window to become usable: how long `render` waits for
-     * the window it shows the tree in to be laid out and activated, and how long a user event waits
-     * for its widget to become actionable.
-     */
+    /** Timeout in milliseconds a user event waits for its widget to become actionable. */
     actionabilityTimeout: number;
+
+    /**
+     * Timeout in milliseconds `render` waits for the window it shows the tree in to be laid out and
+     * activated. A window becoming active is a round trip through the compositor rather than an
+     * in-process check, so this is far longer than {@link Config.actionabilityTimeout}: it bounds
+     * how long a window that never activates takes to report, and costs nothing when one does.
+     */
+    windowActivationTimeout: number;
 };
 
 /**
@@ -34,6 +38,7 @@ const defaultConfig: Config = {
     getElementError: defaultGetElementError,
     asyncUtilTimeout: 1000,
     actionabilityTimeout: 500,
+    windowActivationTimeout: 5000,
 };
 
 const currentConfig: Config = { ...defaultConfig };

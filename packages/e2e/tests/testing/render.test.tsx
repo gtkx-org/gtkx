@@ -294,7 +294,7 @@ describe("render window activation (2)", () => {
     });
 
     it("throws when the window it rendered into never becomes readable", async () => {
-        configure({ actionabilityTimeout: IMPATIENT_SETTLE_MS });
+        configure({ windowActivationTimeout: IMPATIENT_SETTLE_MS });
 
         await withHostWindow(async (host, content) => {
             host.present();
