@@ -69,6 +69,15 @@ type PlainTypeMembersOptions = {
     hasGtype: boolean;
 };
 
+const RUNTIME_OWNED_LIFETIME_METHODS: Set<string> = new Set([
+    "force_floating",
+    "free",
+    "ref",
+    "ref_sink",
+    "take_ref",
+    "unref",
+]);
+
 const renderInstanceMethodSignature: InstanceMemberRenderer = instanceMemberRenderer(
     (context, callable, { name, finishFn }) =>
         `${memberDoc(context, callable, finishFn)}${memberSignatureText(context, callable, name, { finishFn })};`,
@@ -373,6 +382,7 @@ const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boo
     callable.introspectable &&
     callable.shadowedBy === undefined &&
     callable.cIdentifier !== undefined &&
+    !RUNTIME_OWNED_LIFETIME_METHODS.has(callable.name) &&
     !hasUnmarshalableParam(context, callable);
 
 const constructorMemberName = (girName: string): string | undefined => {

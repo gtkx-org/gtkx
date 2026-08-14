@@ -467,7 +467,7 @@ const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => 
 };
 
 const structArraySetterStatements = (context: ModuleContext, options: StructArrayAccessorOptions): string => {
-    const { elementDescriptor, offset, elementSize, elementFields } = options;
+    const { elementDescriptor, offset, elementSize, elementFields, lengthExpr } = options;
     const writes: string[] = [];
 
     appendElementWriteStatements(context, {
@@ -482,7 +482,7 @@ const structArraySetterStatements = (context: ModuleContext, options: StructArra
     return [
         `const __descriptor = ${elementDescriptor};`,
         `const __array = read(getHandle(this), __descriptor, ${String(offset)}) as ReturnType<typeof getHandle>;`,
-        "for (const [__index, __element] of __value.entries()) {",
+        `for (const [__index, __element] of __value.slice(0, ${lengthExpr}).entries()) {`,
         indent(loop, 1),
         "}",
         `write(getHandle(this), __descriptor, ${String(offset)}, __array);`,

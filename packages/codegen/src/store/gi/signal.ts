@@ -68,7 +68,7 @@ const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] 
 
     const connectDefault = isRootObject
         ? "default:\n    throw new globalThis.Error(\"Unknown signal '\" + signal + \"'\");"
-        : "default:\n    return super.connect(signal, handler, isAfter);";
+        : "default:\n    return super.connect(signal as never, handler as never, isAfter);";
 
     const emitDefault = isRootObject
         ? "default:\n    throw new globalThis.Error(\"Unknown signal '\" + sigName + \"'\");"
@@ -191,7 +191,6 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
     const lines = [
         `__signals__?: ${map};`,
         `connect<K extends keyof ${map}>(signal: K, handler: ${map}[K], isAfter?: boolean): number;`,
-        `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, isAfter?: boolean): number;`,
         `emit<K extends keyof ${emitMap}>(sigName: K, ...args: ${emitMap}[K]["args"]): ${emitMap}[K]["result"];`,
         "emit(sigName: string, ...args: unknown[]): unknown;",
     ];
@@ -199,10 +198,7 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
     if (!isRootObject) {
         const chainable = (methods: string[], trailing: string): void => {
             for (const method of methods) {
-                lines.push(
-                    `${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K]${trailing}): this;`,
-                    `${method}(signal: string, handler: ${SIGNAL_HANDLER_TYPE}${trailing}): this;`,
-                );
+                lines.push(`${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K]${trailing}): this;`);
             }
         };
 

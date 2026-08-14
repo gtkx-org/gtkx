@@ -11,6 +11,7 @@ import {
     type InheritedMethods,
 } from "../../analysis/inheritance.js";
 import {
+    areCallablesAssignable,
     type ClaimedMembers,
     claimInterfaceMembers,
     inheritedMembers,
@@ -92,7 +93,7 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
 
     generateBindings(context, callables);
     const parentExpression = resolveParent(context, klass);
-    const extendsClause = renderExtendsClause(context, parentExpression, callables);
+    const extendsClause = renderExtendsClause(context, parentExpression, klass, callables);
     const implemented = resolveImplementedRefs(context, klass);
     const typeRefs = implemented.map((ref) => omittedTypeRef(ref.typeRef, ref.conflicts));
     const implementsClause = typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
@@ -337,16 +338,72 @@ const resolveImplementedRefs = (context: ModuleContext, klass: GirClass): Implem
     return refs;
 };
 
+const classCallables = (klass: GirClass): Callables => ({
+    constructors: klass.constructors,
+    functions: klass.functions,
+    methods: klass.methods,
+});
+
+const resolveParentClass = (context: ModuleContext, klass: GirClass): ResolvedAncestor | undefined => {
+    const parent = getParentRef(klass);
+
+    if (parent === undefined) {
+        return undefined;
+    }
+
+    const resolved = context.library.resolveType(parent.namespaceName ?? context.namespace.name, parent.typeName);
+
+    return resolved?.kind === "class" ? { klass: resolved.value, namespaceName: resolved.namespace.name } : undefined;
+};
+
+const addAncestorStatics = (context: ModuleContext, klass: GirClass, table: Map<string, GirFunction>): void => {
+    const members = staticMembers(context, classCallables(klass));
+
+    for (const member of members) {
+        if (!table.has(member.name)) {
+            table.set(member.name, member.callable);
+        }
+    }
+};
+
+const inheritedStatics = (context: ModuleContext, klass: GirClass): Map<string, GirFunction> => {
+    const table: Map<string, GirFunction> = new Map();
+    const parent = resolveParentClass(context, klass);
+
+    if (parent === undefined) {
+        return table;
+    }
+
+    for (const ancestor of ancestorChain(context.library, parent.klass, parent.namespaceName)) {
+        addAncestorStatics(context, ancestor.klass, table);
+    }
+
+    return table;
+};
+
+const shadowedStaticNames = (context: ModuleContext, klass: GirClass, callables: Callables): string[] => {
+    const inherited = inheritedStatics(context, klass);
+
+    return staticMembers(context, callables)
+        .filter((member) => {
+            const shadowed = inherited.get(member.name);
+
+            return shadowed !== undefined && !areCallablesAssignable(context.library, member.callable, shadowed);
+        })
+        .map((member) => member.name);
+};
+
 const renderExtendsClause = (
     context: ModuleContext,
     parentExpression: string | undefined,
+    klass: GirClass,
     callables: Callables,
 ): string => {
     if (parentExpression === undefined) {
         return "";
     }
 
-    const staticNames = staticMembers(context, callables).map((member) => member.name);
+    const staticNames = shadowedStaticNames(context, klass, callables);
 
     if (staticNames.length === 0) {
         return ` extends ${parentExpression}`;
