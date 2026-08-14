@@ -115,6 +115,11 @@ impl ArrayCodec {
         length: usize,
     ) -> anyhow::Result<Unknown<'e>> {
         let codec = self.item_codec("sized array")?;
+
+        if codec.is_byte() {
+            return Ok(unsafe { value::js_byte_array(env, ptr.cast::<u8>(), length) }?);
+        }
+
         let values = self.decode_contiguous(env, codec, ptr.cast::<u8>(), length)?;
         build_js_array(env, values)
     }
@@ -129,7 +134,7 @@ impl ArrayCodec {
             return None;
         };
         if ptr.is_null() {
-            return Some(build_js_array(env, Vec::new()));
+            return Some(self.decode_empty_sequence(env, "sized array"));
         }
         Some(self.decode_sized_array(env, *ptr, length))
     }

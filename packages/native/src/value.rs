@@ -62,6 +62,25 @@ pub fn checked_array_length(length: usize) -> Result<u32> {
         })
 }
 
+/// Copies `len` bytes out of `data` into a fresh `Uint8Array`, the representation a byte array
+/// reaches JavaScript as. The bytes are copied rather than viewed, so the result outlives whatever
+/// owned the source memory.
+///
+/// # Safety
+///
+/// `data` must point at `len` readable bytes, or be null when `len` is zero.
+pub unsafe fn js_byte_array(env: &Env, data: *const u8, len: usize) -> Result<Unknown<'_>> {
+    checked_array_length(len)?;
+
+    let bytes = if len == 0 || data.is_null() {
+        Vec::new()
+    } else {
+        unsafe { std::slice::from_raw_parts(data, len) }.to_vec()
+    };
+
+    Uint8Array::new(bytes).into_unknown(env)
+}
+
 pub fn js_array<'e>(env: &'e Env, items: Vec<Unknown<'e>>) -> Result<Unknown<'e>> {
     let length = checked_array_length(items.len())?;
     let mut js_array = env.create_array(length)?;

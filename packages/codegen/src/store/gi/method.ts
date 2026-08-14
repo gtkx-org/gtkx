@@ -19,7 +19,7 @@ import {
     inputParameters,
     parameterIdentifier,
 } from "../../analysis/param-structure.js";
-import { renderTsType } from "../../analysis/ts-type.js";
+import { renderParameterTsType, renderTsType } from "../../analysis/ts-type.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
 import { hasUnknownArrayLength, type TypeId } from "../../gir/type-id.js";
 import { areClosuresInvoked } from "./closure-invocation.js";
@@ -120,7 +120,7 @@ const parameterAnnotation = (context: ModuleContext, fn: GirFunction, parameter:
         return comparator;
     }
 
-    const base = renderTsType(context, parameter.type, parameter.nullable);
+    const base = renderParameterTsType(context, parameter.type, parameter.nullable);
 
     return requiresClosureAnnotation(context, fn, parameter) ? closureAnnotation(context, base) : base;
 };

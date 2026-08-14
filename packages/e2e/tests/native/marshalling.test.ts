@@ -80,7 +80,7 @@ describe("marshalling across the napi boundary (2)", () => {
     });
 
     it("decodes an array out-param below the JavaScript array limit", () => {
-        expect(GLib.fileGetContents(pathForSize(8))).toEqual([true, [0, 0, 0, 0, 0, 0, 0, 0]]);
+        expect(GLib.fileGetContents(pathForSize(8))).toEqual([true, new Uint8Array(8)]);
     });
 
     it("throws instead of aborting for an array out-param beyond that limit, synchronously or not", async () => {

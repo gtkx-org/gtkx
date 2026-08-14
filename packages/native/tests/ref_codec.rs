@@ -55,8 +55,11 @@ fn assert_array_decodes_empty(env: &Env, array_codec: ArrayCodec, stash: &ffi::S
     let decoded = ref_codec
         .decode_with_context(env, stash, &[], &[])
         .expect("array decode should succeed");
-    let arr = napi_mock::read_array(decoded.raw()).expect("expected an array value");
-    assert!(arr.is_empty());
+    let length = napi_mock::read_array(decoded.raw())
+        .map(|items| items.len())
+        .or_else(|| napi_mock::read_bytes(decoded.raw()).map(|bytes| bytes.len()))
+        .expect("expected an array or typed array value");
+    assert_eq!(length, 0);
 }
 
 fn with_i32_storage_ref(value: i32, f: impl FnOnce(&ffi::Stash, &RefCodec)) {
@@ -483,7 +486,7 @@ fn decode_with_context_array_ptr_slot_stash_null_inner_yields_empty_array() {
         let decoded = ref_codec
             .decode_with_context(&env, &stash, &[], &[])
             .expect("array ptr_slot_stash null inner decode should succeed");
-        let arr = napi_mock::read_array(decoded.raw()).expect("expected an array value");
+        let arr = napi_mock::read_bytes(decoded.raw()).expect("expected a typed array");
         assert!(arr.is_empty());
     });
 }

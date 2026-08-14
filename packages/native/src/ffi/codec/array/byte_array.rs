@@ -2,8 +2,8 @@ use anyhow::bail;
 use glib::translate::{IntoGlibPtr, ToGlibPtr};
 
 use super::super::prelude::*;
+use super::ArrayCodec;
 use super::container::ArrayContainer;
-use super::{ArrayCodec, build_js_array};
 use crate::ffi::codec::IntegerCodec;
 use crate::ffi::{StashData, StashStorage};
 
@@ -65,7 +65,7 @@ impl ArrayContainer for GByteArrayCodec {
     ) -> anyhow::Result<Unknown<'e>> {
         let _ = codec;
         let Some(ptr) = stash.as_non_null_ptr("GByteArray")? else {
-            return build_js_array(env, Vec::new());
+            return Ok(unsafe { value::js_byte_array(env, std::ptr::null(), 0) }?);
         };
 
         let byte_array = ptr.cast::<glib::ffi::GByteArray>();
@@ -86,11 +86,7 @@ impl ArrayContainer for GByteArrayCodec {
 
         drop(adopted);
 
-        let values = bytes
-            .into_iter()
-            .map(|b| Ok(f64::from(b).into_unknown(env)?))
-            .collect::<anyhow::Result<Vec<_>>>()?;
-        build_js_array(env, values)
+        Ok(unsafe { value::js_byte_array(env, bytes.as_ptr(), bytes.len()) }?)
     }
 
     fn name(&self) -> &'static str {

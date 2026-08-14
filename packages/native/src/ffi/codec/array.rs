@@ -119,11 +119,11 @@ impl Decoder for ArrayCodec {
         &self,
         env: &'e Env,
         ptr: *mut c_void,
-        _context: &str,
+        context: &str,
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         if ptr.is_null() {
-            return build_js_array(env, Vec::new());
+            return self.decode_empty_sequence(env, context);
         }
         self.container
             .decode(self, env, &ffi::Stash::Ptr(ptr), transfer)
@@ -321,6 +321,18 @@ impl ArrayCodec {
                 )
             })
             .collect()
+    }
+
+    pub(crate) fn decode_empty_sequence<'e>(
+        &self,
+        env: &'e Env,
+        context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if self.item_codec(context).is_ok_and(ItemCodec::is_byte) {
+            return Ok(unsafe { value::js_byte_array(env, std::ptr::null(), 0) }?);
+        }
+
+        build_js_array(env, Vec::new())
     }
 
     fn item_codec(&self, context: &str) -> anyhow::Result<ItemCodec> {

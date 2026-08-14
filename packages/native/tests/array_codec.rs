@@ -136,6 +136,10 @@ fn array<'e>(env: &'e Env, items: &[sys::napi_value]) -> Unknown<'e> {
     napi_mock::to_unknown(env, napi_mock::fake_array(items))
 }
 
+fn decoded_bytes(value: &Unknown<'_>) -> Vec<u8> {
+    napi_mock::read_bytes(value.raw()).expect("expected a typed array")
+}
+
 fn decoded_items(value: &Unknown<'_>) -> Vec<sys::napi_value> {
     napi_mock::read_array(value.raw()).expect("expected array")
 }
@@ -790,7 +794,7 @@ fn encode_gbytearray_roundtrips() {
         let val = array(&env, &[number(1.0), number(2.0), number(255.0)]);
         let encoded = descriptor.encode(&env, val).unwrap();
         let decoded = descriptor.decode(&env, &encoded).unwrap();
-        assert_eq!(decoded_items(&decoded).len(), 3);
+        assert_eq!(decoded_bytes(&decoded).len(), 3);
     });
 }
 
@@ -1304,7 +1308,7 @@ fn decode_null_ptr_yields_empty_array() {
         let decoded = descriptor
             .decode(&env, &Stash::Ptr(std::ptr::null_mut()))
             .unwrap();
-        assert!(decoded_items(&decoded).is_empty());
+        assert!(decoded_bytes(&decoded).is_empty());
     });
 }
 
@@ -1542,14 +1546,14 @@ fn decode_gbytearray_from_ptr_and_empty() {
         let decoded = descriptor
             .decode(&env, &Stash::Ptr(ba.cast::<c_void>()))
             .unwrap();
-        assert_eq!(decoded_items(&decoded).len(), 3);
+        assert_eq!(decoded_bytes(&decoded).len(), 3);
         unsafe { glib::ffi::g_byte_array_unref(ba) };
 
         let empty = unsafe { glib::ffi::g_byte_array_new() };
         let decoded = descriptor
             .decode(&env, &Stash::Ptr(empty.cast::<c_void>()))
             .unwrap();
-        assert!(decoded_items(&decoded).is_empty());
+        assert!(decoded_bytes(&decoded).is_empty());
         unsafe { glib::ffi::g_byte_array_unref(empty) };
     });
 }
@@ -1572,7 +1576,7 @@ fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
         let decoded = descriptor
             .decode(&env, &Stash::Ptr(ba.cast::<c_void>()))
             .unwrap();
-        assert_eq!(decoded_items(&decoded).len(), 2);
+        assert_eq!(decoded_bytes(&decoded).len(), 2);
         unsafe { glib::ffi::g_byte_array_unref(ba) };
     });
 }
@@ -1589,7 +1593,7 @@ fn decode_gbytearray_null_yields_empty() {
         let decoded = descriptor
             .decode(&env, &Stash::Ptr(std::ptr::null_mut()))
             .unwrap();
-        assert!(decoded_items(&decoded).is_empty());
+        assert!(decoded_bytes(&decoded).is_empty());
     });
 }
 
@@ -1742,7 +1746,7 @@ fn a_cursor_array_decodes_the_tail_of_the_base_buffer() {
         let decoded = descriptor
             .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
             .unwrap();
-        assert_eq!(decoded_items(&decoded).len(), 2);
+        assert_eq!(decoded_bytes(&decoded).len(), 2);
     });
 }
 
@@ -1757,7 +1761,7 @@ fn a_cursor_array_at_the_end_of_the_base_buffer_decodes_to_nothing() {
         let decoded = descriptor
             .decode_with_context(&env, &stash, &ffi_args, &arg_codecs)
             .unwrap();
-        assert!(decoded_items(&decoded).is_empty());
+        assert!(decoded_bytes(&decoded).is_empty());
     });
 }
 
@@ -1792,7 +1796,7 @@ fn a_cursor_array_null_pointer_decodes_to_nothing() {
                 &arg_codecs,
             )
             .unwrap();
-        assert!(decoded_items(&decoded).is_empty());
+        assert!(decoded_bytes(&decoded).is_empty());
     });
 }
 
@@ -1955,7 +1959,7 @@ fn ptr_to_value_gbytearray() {
         };
         let value =
             unsafe { descriptor.read(&env, ReadCtx::value(ba.cast::<c_void>(), "array")) }.unwrap();
-        assert_eq!(decoded_items(&value).len(), 1);
+        assert_eq!(decoded_bytes(&value).len(), 1);
         unsafe { glib::ffi::g_byte_array_unref(ba) };
     });
 }

@@ -1,8 +1,8 @@
 use anyhow::bail;
 
 use super::super::prelude::*;
+use super::ArrayCodec;
 use super::container::ArrayContainer;
-use super::{ArrayCodec, build_js_array};
 use crate::ffi::codec::Codec;
 
 #[derive(Debug, Clone)]
@@ -86,7 +86,7 @@ impl ArrayContainer for CursorArrayCodec {
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr(self.name())? else {
-            return build_js_array(env, Vec::new());
+            return codec.decode_empty_sequence(env, self.name());
         };
         let length = self.remaining_items(codec, ptr, ffi_args, arg_codecs)?;
 

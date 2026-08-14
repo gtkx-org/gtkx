@@ -39,6 +39,10 @@ impl ItemCodec {
         })
     }
 
+    pub(super) fn is_byte(self) -> bool {
+        matches!(self, Self::Integer(IntegerCodec::U8))
+    }
+
     pub(super) fn accepts_buffer_view(self, view_kind: ViewKind) -> bool {
         match self {
             Self::Integer(kind) | Self::EnumFlags(kind) => matches!(
