@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { gcUntil } from "./helpers/native-utils.js";
 import { createTypeNameFactory } from "./helpers/unique-name.js";
 
-type EscapedReceiver = { getData: (key: string) => number | null };
+type EscapedReceiver = { getData: (key: string) => bigint | null };
 
 const REVOKED_RECEIVER = /only valid until the override returns/;
 const uniqueName = createTypeNameFactory("_");

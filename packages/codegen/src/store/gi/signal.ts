@@ -129,13 +129,25 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
         (signal) => `${signalDoc(signal)}${sourceStringLiteral(signal.name)}: ${renderEntry(context, signal)};`,
     );
 
-    const entries = [...signalEntries, ...renderNotifyDetailEntries(context, klass, suffix)];
+    const entries = [
+        ...signalEntries,
+        ...renderNotifyDetailEntries(context, klass, suffix),
+        ...renderCustomNotifyEntry(context, klass, suffix),
+    ];
 
     return renderBracedOrEmpty(`export interface ${className}${suffix}${extendsClause}`, entries.join("\n"));
 };
 
 const signalDoc = (signal: GirCallable): string =>
     renderJsDoc(signal.doc, undefined, handlerSpec(signal, signal.parameters));
+
+const renderCustomNotifyEntry = (context: ModuleContext, klass: GirClass, suffix: string): string[] => {
+    if (context.namespace.name !== "GObject" || klass.name !== "Object") {
+        return [];
+    }
+
+    return [`[detail: \`notify::\${string}\`]: ${gobjectObjectMapRef(context, suffix)}["notify"];`];
+};
 
 const renderNotifyDetailEntries = (context: ModuleContext, klass: GirClass, suffix: string): string[] => {
     const notifyValue = `${gobjectObjectMapRef(context, suffix)}["notify"]`;
