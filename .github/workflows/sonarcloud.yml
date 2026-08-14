@@ -27,7 +27,7 @@ env:
 jobs:
   sonarcloud:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       GTKX_MAX_WORKERS: "2"
     steps:

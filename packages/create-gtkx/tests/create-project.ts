@@ -31,7 +31,8 @@ const CLI_ARGV = ["--conditions=source", "--import", "tsx", CLI_ENTRY];
 const PACKAGE_MANAGERS = ["corepack", "pnpm", "npm", "yarn"];
 const PROJECT_NAME = "my-app";
 const APPLICATION_ID = "com.example.myapp";
-const CREATE_TIMEOUT_MS = 120_000;
+const COVERAGE_SLOWDOWN = 3;
+const CREATE_TIMEOUT_MS = 120_000 * (process.env.GTKX_COVERAGE_DIR === undefined ? 1 : COVERAGE_SLOWDOWN);
 const LOG_NAME = "package-manager.log";
 
 const shimSource = (exitCode: number): string =>

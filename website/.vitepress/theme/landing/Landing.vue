@@ -12,9 +12,9 @@ import Showcase from "./Showcase.vue";
 <template>
   <div class="landing">
     <a class="skip-link" href="#main">Skip to content</a>
-    <a class="ann" href="/blog/gtkx-1-0">
+    <a class="ann" href="/blog/gtkx-1-1">
       <span class="ann__tag">NEW</span>
-      <span class="ann__txt">GTKX 1.0: The React framework for Linux</span>
+      <span class="ann__txt">GTKX 1.1: Introducing gtkx deploy</span>
       <span class="ann__arrow" aria-hidden="true">→</span>
     </a>
     <Nav />
