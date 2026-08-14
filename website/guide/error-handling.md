@@ -13,7 +13,7 @@ GErrors come only from GI bindings. Everything else in a GTKX app throws ordinar
 
 ## What you catch: `GLib.Error`
 
-A thrown GError is an instance of `GLib.Error` from `@gtkx/gi/glib`, and that class extends the built-in `Error`. On top of the standard `Error` surface it exposes three fields:
+A thrown GError is an instance of `GLib.Error` from `@gtkx/gi/glib`, and that class extends the built-in `Error`. On top of the standard `Error` surface it exposes these fields:
 
 - **`message`**: the human-readable description GLib produced.
 - **`domain`**: the error domain, a number.

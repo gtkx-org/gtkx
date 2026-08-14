@@ -264,7 +264,7 @@ Give it its accelerator in `src/app.tsx`:
 
 The accelerator string spells the key by name: `comma` is the GDK key name, and `<Control>,` does not parse.
 
-And put it in the menu, in `src/components/main-menu.tsx`. It joins the Keyboard Shortcuts section rather than starting one of its own, so the menu keeps its three groups:
+And put it in the menu, in `src/components/main-menu.tsx`. It joins the Keyboard Shortcuts section rather than starting one of its own, so the menu keeps the groups it has:
 
 ```diff
      { section: [{ label: "New Task", action: "win.new" }] },

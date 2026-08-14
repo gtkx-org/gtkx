@@ -12,6 +12,7 @@ type CliProjectOptions = {
     config?: string | undefined;
     files?: Record<string, string> | undefined;
     hasStore?: boolean | undefined;
+    packageType?: string | undefined;
 };
 
 const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
@@ -26,7 +27,7 @@ const STORE_NAMES = ["gi", "jsx"];
 const WORKSPACE_PACKAGES = ["components", "config", "css", "native", "react", "runtime", "testing", "utils"];
 const REGISTRY_PACKAGES = ["@types", "csstype", "react", "tsx"];
 const STORE_LIBRARIES = ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"];
-const MANIFEST = { name: "gtkx-cli-project", version: "1.0.0", type: "module" };
+const MANIFEST = { name: "gtkx-cli-project", version: "1.0.0" };
 
 const writeProjectFiles = (root: string, files: Record<string, string>): void => {
     for (const [name, contents] of Object.entries(files)) {
@@ -73,7 +74,8 @@ const createCliProject = (options: CliProjectOptions): CliProject => {
         installStore(nodeModules);
     }
 
-    writeFileSync(join(root, "package.json"), `${JSON.stringify(MANIFEST, null, 4)}\n`);
+    const manifest = { ...MANIFEST, type: options.packageType ?? "module" };
+    writeFileSync(join(root, "package.json"), `${JSON.stringify(manifest, null, 4)}\n`);
     writeProjectFiles(root, options.files ?? {});
 
     if (options.config !== undefined) {

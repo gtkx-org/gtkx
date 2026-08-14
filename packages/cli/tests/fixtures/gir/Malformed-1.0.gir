@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="Malformed"
+             version="1.0"
+             shared-library="libmalformed.so.0"
+             c:identifier-prefixes="Malformed"
+             c:symbol-prefixes="malformed">
+    <constant name="EOT_STR" value="" c:type="MALFORMED_EOT_STR">
+      <type name="utf8" c:type="gchar*"/>
+    </constant>
+  </namespace>
+</repository>

@@ -361,7 +361,7 @@ import { AppShortcuts } from "./app-shortcuts.js";
 >
 ```
 
-Escape and Delete now have keys behind them, so the two buttons in the open task's header can name them the way the New Task button does. In `src/components/content-pane.tsx`:
+Escape and Delete now have keys behind them, so the back and delete buttons in the open task's header can name them the way the New Task button does. In `src/components/content-pane.tsx`:
 
 ```diff
      <GtkButton

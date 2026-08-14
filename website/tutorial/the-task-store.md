@@ -196,7 +196,7 @@ export const TaskList = () => {
 
 Add `AdwEntryRow` to the import from `@gtkx/jsx/adw`.
 
-`onEntryActivated` shows the two rules that govern every signal in GTKX. **A signal prop is `on` followed by the signal name in PascalCase**, so `entry-activated` becomes `onEntryActivated`, and any signal in the GTK4 or Adwaita documentation translates the same way. **The widget that emitted the signal arrives as the last argument**, the `self` above. This signal carries nothing else, so `self` is the only parameter. When a signal does carry arguments, they come first and the emitter follows them.
+`onEntryActivated` shows the rules that govern every signal in GTKX. **A signal prop is `on` followed by the signal name in PascalCase**, so `entry-activated` becomes `onEntryActivated`, and any signal in the GTK4 or Adwaita documentation translates the same way. **The widget that emitted the signal arrives as the last argument**, the `self` above. This signal carries nothing else, so `self` is the only parameter. When a signal does carry arguments, they come first and the emitter follows them.
 
 `self` is what lets the handler clear the entry. Nothing binds this entry's text to a prop, so GTK4 owns it. Read the typed value with `self.text`, and clear it by assigning to the same property. This uncontrolled approach fits whenever a widget's value only matters at the moment it is submitted. Widgets whose value must stay in sync with the store are wired the other way, with a value prop and its change signal, and the next chapter builds one.
 

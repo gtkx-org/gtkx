@@ -29,7 +29,7 @@ Every object family has a singular helper next to the plural one: `genBuffer()` 
 
 ## The GtkGLArea signal flow
 
-`GtkGLArea` is the element you draw into. GTK4 gives it a `Gdk.GLContext` and a framebuffer, then emits four signals:
+`GtkGLArea` is the element you draw into. GTK4 gives it a `Gdk.GLContext` and a framebuffer, then emits these signals:
 
 - `onRealize` fires when the area gets its context: compile shaders and upload geometry.
 - `onResize` receives the framebuffer width and height: set `viewport`.

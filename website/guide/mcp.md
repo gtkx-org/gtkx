@@ -11,7 +11,7 @@ description: "Give AI coding agents eyes and hands on your running app: the @gtk
 
 ## Setup
 
-Two packages belong in the project's dev dependencies. `@gtkx/mcp` carries the `gtkx-mcp` binary the MCP client launches, and `@gtkx/testing` backs every widget tool. A scaffolded project already depends on `@gtkx/mcp`, and one scaffolded with the testing option has `@gtkx/testing` too. Otherwise install them:
+`@gtkx/mcp` carries the `gtkx-mcp` binary the MCP client launches, and `@gtkx/testing` backs every widget tool. Both belong in the project's dev dependencies. A scaffolded project already depends on `@gtkx/mcp`, and one scaffolded with the testing option has `@gtkx/testing` too. Otherwise install them:
 
 ::: code-group
 
@@ -104,7 +104,7 @@ The widget tools fail until an app is running under `gtkx dev`.
 
 Each match comes back with its ID and the same summary `gtkx_get_widget_props` returns, with no descendants: a match that has children carries `hiddenChildren`, the count of its direct children left out. The widget tools run through [`@gtkx/testing`](/guide/testing), so these queries match `findAllByRole`, `findAllByText`, `findAllByName`, and `findAllByLabelText` exactly, and anything learned about querying in tests transfers directly.
 
-**`gtkx_get_widget_props`** takes a `widgetId` and returns a fixed summary of that widget (type, accessible role, name, text, sensitivity, visibility, and CSS classes) followed by the same summary for a subtree of descendants bounded twice: eight levels deep, which `maxDepth` raises or lowers (`0` returns the widget on its own), and thirty widgets in all whatever the depth. Any widget whose own direct children were left out carries `hiddenChildren`, their count, so drilling in is one more call with that widget's ID. Pass `properties` with GObject property names, kebab-case or camelCase, to read named properties as well.
+**`gtkx_get_widget_props`** takes a `widgetId` and returns a fixed summary of that widget (type, accessible role, name, text, sensitivity, visibility, and CSS classes) followed by the same summary for a subtree of descendants bounded by depth and by count: eight levels deep, which `maxDepth` raises or lowers (`0` returns the widget on its own), and thirty widgets in all whatever the depth. Any widget whose own direct children were left out carries `hiddenChildren`, their count, so drilling in is one more call with that widget's ID. Pass `properties` with GObject property names, kebab-case or camelCase, to read named properties as well.
 
 **`gtkx_take_screenshot`** captures a window and returns it as base64 PNG image content. `windowId` selects a window (defaulting to the first), and an optional absolute `path` also writes the PNG to disk on the app's machine.
 
@@ -118,11 +118,11 @@ Every widget tool call is routed to the app with a 30 second timeout, so a hung 
 
 **`gtkx_type`** types `text` into an editable widget such as a `GtkEntry` or `GtkTextView`. Pass `clear: true` to empty the widget first.
 
-**`gtkx_fire_event`** emits an arbitrary GTK4 `signal` on a widget, with an optional `args` array, for interactions the other two do not cover: `close-request` on a window, or a custom signal the code connects to.
+**`gtkx_fire_event`** emits an arbitrary GTK4 `signal` on a widget, with an optional `args` array, for interactions the others do not cover: `close-request` on a window, or a custom signal the code connects to.
 
 ### API reference
 
-The reference tools answer from the same GObject-Introspection data the bindings are generated from, so they document exactly what a project's generated bindings export. They need no running app, but a project with `codegen: false` has no bindings to document. All three take an optional `projectRoot`.
+The reference tools answer from the same GObject-Introspection data the bindings are generated from, so they document exactly what a project's generated bindings export. They need no running app, but a project with `codegen: false` has no bindings to document. They all take an optional `projectRoot`.
 
 **`gtkx_list_api`** without arguments returns an overview of every namespace the configured libraries pull in, with symbol and JSX element counts. With a `namespace` it lists that namespace's symbols grouped by kind.
 

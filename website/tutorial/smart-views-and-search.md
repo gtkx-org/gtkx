@@ -12,7 +12,7 @@ The sidebar reaches a list, but not everything due today, everything you starred
 
 `Selection` had one shape, so the sidebar could compare `selection.listId` and be done. A smart view is a selection with no list behind it, so the union gets a second variant.
 
-Add both to `src/types.ts`:
+Add them to `src/types.ts`:
 
 ```diff
 +export type SmartView = "all" | "today" | "important" | "trash";
@@ -488,7 +488,7 @@ export const emptyState = (selection: Selection, query: string): EmptyState => {
 
 A query outranks the view: when you searched and found nothing, the search is what you want explained. An empty user list borrows the All Tasks wording, since the advice is the same.
 
-Render it below the list box in `src/components/task-list.tsx`, inside a vertical box so the two stack inside the clamp:
+Render it below the list box in `src/components/task-list.tsx`, inside a vertical box so they stack inside the clamp:
 
 ```tsx
 // ...
@@ -522,7 +522,7 @@ const listId = addListId(selection, lists);
 
 Pure functions over selected arrays. No new state, and nothing written to disk.
 
-`listId` is the third of the three expressions the union broke. The add row still reads `selection.listId`, which no longer type-checks and would file the task under the wrong list from a smart view, so point it at the derived value:
+`listId` is the last of the expressions the union broke. The add row still reads `selection.listId`, which no longer type-checks and would file the task under the wrong list from a smart view, so point it at the derived value:
 
 ```diff
  <AdwEntryRow

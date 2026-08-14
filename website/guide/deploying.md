@@ -4,7 +4,7 @@ description: "Turn a GTKX project into a Flatpak, a .deb, an .rpm, or an AppImag
 
 # Deploying
 
-`gtkx deploy` turns a project into installable packages. Everything it needs comes from one `deploy` block in `gtkx.config.ts`, and everything derivable is derived, so a small app configures three or four keys and never writes a desktop entry, an AppStream file, a Flatpak manifest, or a package control file by hand.
+`gtkx deploy` turns a project into installable packages. Everything it needs comes from one `deploy` block in `gtkx.config.ts`, and everything derivable is derived, so a small app configures a handful of keys and never writes a desktop entry, an AppStream file, a Flatpak manifest, or a package control file by hand.
 
 ```bash
 gtkx deploy
@@ -22,7 +22,7 @@ gtkx deploy
 [gtkx] Deploy complete: 1 artifacts in build/out
 ```
 
-## The four targets
+## Supported targets
 
 | Target | Produces | Who it is for |
 | --- | --- | --- |
@@ -97,7 +97,7 @@ share/icons/hicolor/**/apps/<id>.svg          copied from data/icons
 share/glib-2.0/schemas/<id>*.gschema.xml      copied from data/
 ```
 
-`bundle.mjs`, `gtkx.node`, and the compiled schemas are siblings because the built bundle resolves all three relative to itself. The launcher resolves everything from its own location, so the same tree works at `/usr`, at `/app`, and inside an AppImage mount point.
+`bundle.mjs`, `gtkx.node`, and the compiled schemas are siblings because the built bundle resolves them all relative to itself. The launcher resolves everything from its own location, so the same tree works at `/usr`, at `/app`, and inside an AppImage mount point.
 
 ## Why Node.js is bundled
 
@@ -122,7 +122,7 @@ GTKX needs Node.js 24, and Debian 13 ships 20 while Ubuntu 26.04 ships 22, so th
 
 `nfpm` and `appimagetool` are downloaded, checksum-verified, and cached under `~/.cache/gtkx/`, so building a `.deb` on Fedora and an `.rpm` on Debian both work without installing anything distribution-specific. Only the archives are cached, and each is re-verified against its published checksum before it is reused, so a corrupted cache is discarded and re-fetched rather than packaged.
 
-When a required tool is missing, `gtkx deploy` lists every one of them at once, with the install command for your distribution. `--print-manifests` needs none of the packaging tools, only the two validators.
+When a required tool is missing, `gtkx deploy` lists every one of them at once, with the install command for your distribution. `--print-manifests` needs none of the packaging tools, only the validators.
 
 ## Reviewing what it generates
 
@@ -140,7 +140,9 @@ W: com.example.Tasks:~: url-homepage-missing
 
 Fix it in gtkx.config.ts:
   url-homepage-missing: set `deploy.homepage`, or `homepage` in package.json
-``` `--skip-build` packages what is already in `dist/` instead of rebuilding, and `--out` changes the output directory, which defaults to `build`.
+```
+
+`--skip-build` packages what is already in `dist/` instead of rebuilding, and `--out` changes the output directory, which defaults to `build`.
 
 ## Escape hatches
 

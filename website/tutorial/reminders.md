@@ -170,7 +170,7 @@ Cold start shows why that matters. Click Mark Complete with the app closed, and 
 
 ## What delivery depends on
 
-The desktop grants a notification based on the application's installed identity, not on anything in the running process. Two keys in the desktop entry decide it, and you write that file in [Appendix B](/tutorial/packaging):
+The desktop grants a notification based on the application's installed identity, not on anything in the running process. These keys in the desktop entry decide it, and you write that file in [Appendix B](/tutorial/packaging):
 
 - `DBusActivatable=true` lets the desktop start the application over D-Bus to deliver an action, which makes Mark Complete work when nothing is running.
 - `X-GNOME-UsesNotifications=true` lists Tasks in the desktop's notification settings, where you can silence it.

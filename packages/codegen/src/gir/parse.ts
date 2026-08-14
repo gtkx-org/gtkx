@@ -5,6 +5,11 @@ type RawNode = Record<string, unknown>;
 
 const GIR_LABEL = "GIR file";
 
+const GIR_MALFORMED_REMEDY =
+    "No XML parser can read this file, so report it to whoever ships it. To get past it now, name the " +
+    "libraries you need explicitly in `libraries` and leave this one out, or put a corrected copy of the " +
+    "file in a directory listed in `girPath`, which is searched ahead of the system location.";
+
 const MULTI_TAGS: Set<string> = new Set([
     "include",
     "class",
@@ -44,7 +49,7 @@ function renameReservedTag(tag: string): string {
 }
 
 const parseGirFile = (path: string): RawNode =>
-    parseXmlFile({ parser: PARSER, label: GIR_LABEL, path }) as RawNode;
+    parseXmlFile({ parser: PARSER, label: GIR_LABEL, path, malformedRemedy: GIR_MALFORMED_REMEDY }) as RawNode;
 
 const attr = (node: RawNode | undefined, name: string): string | undefined => {
     if (node === undefined) {

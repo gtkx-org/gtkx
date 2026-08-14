@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <package name="digitname-1.0"/>
+  <namespace name="DigitName"
+             version="1.0"
+             shared-library="libdigitname.so.0"
+             c:identifier-prefixes="DigitName"
+             c:symbol-prefixes="digit_name">
+    <enumeration name="80211Mode"
+                 glib:type-name="DigitName80211Mode"
+                 glib:get-type="digit_name_80211_mode_get_type"
+                 c:type="DigitName80211Mode">
+      <member name="unknown" value="0" c:identifier="DIGIT_NAME_802_11_MODE_UNKNOWN"/>
+      <member name="infra" value="1" c:identifier="DIGIT_NAME_802_11_MODE_INFRA"/>
+    </enumeration>
+    <class name="Radio"
+           c:symbol-prefix="radio"
+           c:type="DigitNameRadio"
+           parent="GObject.Object"
+           glib:type-name="DigitNameRadio"
+           glib:get-type="digit_name_radio_get_type">
+      <method name="get_mode" c:identifier="digit_name_radio_get_mode">
+        <return-value transfer-ownership="none">
+          <type name="80211Mode" c:type="DigitName80211Mode"/>
+        </return-value>
+      </method>
+    </class>
+  </namespace>
+</repository>

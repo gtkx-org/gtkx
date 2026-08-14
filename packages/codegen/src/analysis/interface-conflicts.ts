@@ -217,21 +217,18 @@ const prerequisiteConflicts = (library: Library, iface: GirClass, base: Resolved
     return names;
 };
 
-const omittedTypeRef = (typeRef: string, omissions: string[]): string => {
-    if (omissions.length === 0) {
-        return typeRef;
-    }
+const omittedKeys = (omissions: string[]): string =>
+    [...new Set(omissions)].map((name) => JSON.stringify(name)).join(" | ");
 
-    const keys = [...new Set(omissions)].map((name) => JSON.stringify(name)).join(" | ");
-
-    return `Omit<${typeRef}, ${keys}>`;
-};
+const omittedTypeRef = (typeRef: string, omissions: string[]): string =>
+    omissions.length === 0 ? typeRef : `Omit<${typeRef}, ${omittedKeys(omissions)}>`;
 
 export {
     type ClaimedMembers,
     claimInterfaceMembers,
     inheritedMembers,
     interfaceConflicts,
+    omittedKeys,
     omittedTypeRef,
     prerequisiteConflicts,
 };

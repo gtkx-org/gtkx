@@ -187,7 +187,7 @@ const requireSingle =
  * @param queryAllBy Finds every widget the family matches.
  * @param getMultipleError Builds the error thrown when a single-match variant finds more than one widget.
  * @param getMissingError Builds the error thrown when a required match is missing.
- * @returns The five variants, in the order `[queryBy, getAllBy, getBy, findAllBy, findBy]`.
+ * @returns The variants, in the order `[queryBy, getAllBy, getBy, findAllBy, findBy]`.
  */
 const buildQueries = <Args extends unknown[]>(
     queryAllBy: QueryAllBy<Args>,

@@ -8,7 +8,7 @@ description: "Give the finished app an icon, a desktop entry, AppStream metadata
 
 ## What the build produces
 
-Leave the dev server running. `gtkx build` writes to `dist/`, which the dev server never reads, so the two coexist.
+Leave the dev server running. `gtkx build` writes to `dist/`, which the dev server never reads, so they coexist.
 
 ```bash
 npm run build
@@ -102,7 +102,7 @@ deploy: {
 
 Most of it is optional. `name`, `version`, `license`, `developer`, and `homepage` all fall back to `package.json`, and `summary` falls back to its `description`, so the smallest working block is a `summary` and a `categories` list. The tutorial spells everything out because it doubles as a reference.
 
-Two keys earn their place. `X-GNOME-UsesNotifications` gives the app its own row in the desktop's notification settings, so the reminders from [Reminders That Reach the Desktop](/tutorial/reminders) can be tuned or silenced there. `isDbusActivatable` lets the desktop start the app over D-Bus instead of running the command directly, which is how a reminder's **Mark Complete** button reaches the `app.complete-task` action when the app is closed.
+A few keys earn their place. `X-GNOME-UsesNotifications` gives the app its own row in the desktop's notification settings, so the reminders from [Reminders That Reach the Desktop](/tutorial/reminders) can be tuned or silenced there. `isDbusActivatable` lets the desktop start the app over D-Bus instead of running the command directly, which is how a reminder's **Mark Complete** button reaches the `app.complete-task` action when the app is closed.
 
 `categories` also decides where the app appears in a launcher that groups by category, and it is what the deb `Section` and the rpm `Group` are derived from.
 

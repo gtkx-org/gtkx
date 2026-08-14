@@ -8,7 +8,7 @@ import { StyleSheet } from "./stylesheet.js";
 /** A `cx` argument: a non-empty class name, or a boolean or nullish value that is dropped. */
 type CxToken = string | boolean | undefined | null;
 
-/** The `css`, `cx` and `injectGlobal` trio bound to one GTK4 stylesheet and its cache of inserted styles. */
+/** The `css`, `cx` and `injectGlobal` helpers bound to one GTK4 stylesheet and its cache of inserted styles. */
 type Css = {
     /**
      * Serializes the given style interpolations, inserts the resulting rules into the stylesheet, and

@@ -63,6 +63,7 @@ const CHECK_OPTIONS = {
 const CHECK_DIR = ".gtkx-check";
 const FAILED_CHECK_DIR = `${CHECK_DIR}.failed`;
 const LEGACY_CHECK_PREFIX = `${CHECK_DIR}-`;
+const ESM_SCOPE_MANIFEST = `${JSON.stringify({ type: "module" }, null, 4)}\n`;
 
 const FORMAT_HOST: ts.FormatDiagnosticsHost = {
     getCanonicalFileName: (fileName) => fileName,
@@ -88,6 +89,16 @@ const linkToolingModules = (projectDir: string): (() => void) => {
     return () => {
         rmSync(link, { force: true });
     };
+};
+
+const ensureModuleScope = (projectDir: string): void => {
+    const manifest = join(projectDir, "package.json");
+
+    if (existsSync(manifest)) {
+        return;
+    }
+
+    writeFileSync(manifest, ESM_SCOPE_MANIFEST);
 };
 
 const isProjectFile = (rel: string): boolean =>
@@ -215,6 +226,7 @@ const runProgram = (params: CompileProjectParams): ts.Diagnostic[] => {
 };
 
 const compileProject = (params: CompileProjectParams): void => {
+    ensureModuleScope(params.projectDir);
     const unlinkToolingModules = linkToolingModules(params.projectDir);
 
     try {

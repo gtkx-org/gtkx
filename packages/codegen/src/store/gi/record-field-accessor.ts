@@ -366,6 +366,21 @@ const visitInlineStructFields = (
     }
 };
 
+const inlineLeafCount = (context: ModuleContext, fields: GirField[]): number => {
+    let count = 0;
+
+    visitInlineStructFields(context, fields, 0, {
+        leaf: () => {
+            count += 1;
+        },
+        nested: (_jsName, nested) => {
+            count += inlineLeafCount(context, nested);
+        },
+    });
+
+    return count;
+};
+
 const elementAccessExpr = (descriptor: string, offset: number): string =>
     `read(__array, ${descriptor}, __base + ${String(offset)})`;
 
@@ -543,7 +558,7 @@ const resolveStructArray = (context: ModuleContext, target: StructArrayTarget): 
 
     const shape = resolveStructArrayShape(context, elements, siblingFields);
 
-    if (shape === undefined) {
+    if (shape === undefined || inlineLeafCount(context, elements.elementFields) === 0) {
         return undefined;
     }
 

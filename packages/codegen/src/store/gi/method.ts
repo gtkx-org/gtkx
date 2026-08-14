@@ -1,4 +1,4 @@
-import { camelCase, sourceStringLiteral } from "@gtkx/utils";
+import { camelCase, escapeIdentifierStart, sourceStringLiteral } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
@@ -86,12 +86,7 @@ type PlanArgsContext = {
     folded: Set<number>;
 };
 
-const memberName = (girName: string): string => {
-    const camel = camelCase(girName);
-
-    return /^\d/.test(camel) ? `_${camel}` : camel;
-};
-
+const memberName = (girName: string): string => escapeIdentifierStart(camelCase(girName));
 const methodExportName = (fn: GirFunction): string => memberName(fn.name);
 
 const arrayLengthArgument = (source: GirParameter, sourceIndex: number): string => {

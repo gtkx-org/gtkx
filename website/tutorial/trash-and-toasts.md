@@ -74,7 +74,7 @@ const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
 
 ## Restoring
 
-`moveToTrash` from [Completing, Starring, and Deleting](/tutorial/completing-and-deleting) only flips the `deleted` flag, so the task is still in the array, still in the file on disk, and already showing in the Trash view you added in [Smart Views, Filters, and Search](/tutorial/smart-views-and-search). Add the two moves that flag implies: put the task back, or remove it for good.
+`moveToTrash` from [Completing, Starring, and Deleting](/tutorial/completing-and-deleting) only flips the `deleted` flag, so the task is still in the array, still in the file on disk, and already showing in the Trash view you added in [Smart Views, Filters, and Search](/tutorial/smart-views-and-search). Add the moves that flag implies: put the task back, or remove it for good.
 
 In `src/store/tasks.ts`, add to the slice type and to the creator:
 
@@ -122,7 +122,7 @@ The store needs to know which task the dialog is asking about. In `src/store/ui.
 
 `askDeleteTask` sets both fields at once, so a delete dialog is never showing without a task behind it. Passing `null` dismisses it.
 
-Add both new kinds to `src/types.ts`. `delete-task` is the confirmation you build next, and `new-list` is the form dialog later on this page:
+Add the new kinds to `src/types.ts`. `delete-task` is the confirmation you build next, and `new-list` is the form dialog later on this page:
 
 ```diff
 -export type DialogKind = "none" | "about" | "shortcuts";

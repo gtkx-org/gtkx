@@ -1,5 +1,6 @@
-import { existsSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBRARIES } from "./cli-project.js";
 
@@ -7,6 +8,7 @@ type BrokenCase = { title: string; config: string | undefined };
 
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
+const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
 
 const GI_MODULES = [
     join("gtk", "gtk.js"),
@@ -24,9 +26,19 @@ const BROKEN_CASES: BrokenCase[] = [
     { title: "a configuration whose libraries are empty", config: `${HEAD}, libraries: [] };\n` },
     { title: "a configuration whose gir path is not a list", config: `${HEAD}, girPath: 5 };\n` },
     { title: "a library that has no GIR file installed", config: `${HEAD}, libraries: ["Absent-1.0"] };\n` },
+    {
+        title: "a GIR file that is not well-formed XML",
+        config: `${HEAD}, libraries: ["Malformed-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])} };\n`,
+    },
 ];
 
 const config = (body: string): string => `${HEAD}${body} };\n`;
+
+const fixtureConfig = (library: string): string =>
+    config(`, libraries: ${JSON.stringify([library])}, girPath: ${JSON.stringify([FIXTURE_GIR])}`);
+
+const generatedModule = (project: CliProject, ...segments: string[]): string =>
+    readFileSync(join(project.nodeModules, ".gtkx", ...segments), "utf8");
 
 const storePath = (project: CliProject, ...segments: string[]): string =>
     join(project.nodeModules, ".gtkx", ...segments);
@@ -112,6 +124,63 @@ describe("gtkx codegen (a project that generates no store)", () => {
         markStore(state.project);
         expect(runCli(state.project, ["codegen", "--force"]).status).not.toBe(0);
         expect(isStoreMarked(state.project)).toBe(true);
+    });
+});
+
+describe("gtkx codegen (libraries the generated types have to escape)", () => {
+    it("binds a class whose static narrows the one it inherits", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-statics-",
+            config: fixtureConfig("StaticNarrow-1.0"),
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            expect(generatedModule(project, "gi", "staticnarrow", "staticnarrow.d.ts")).toContain("StaticBase<");
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("binds a type whose GIR name starts with a digit", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-digit-",
+            config: fixtureConfig("DigitName-1.0"),
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            expect(generatedModule(project, "gi", "digitname", "digitname.d.ts")).toContain("enum _80211Mode");
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx codegen (a project that does not declare itself a module)", () => {
+    const state: { project: CliProject; status: number | null } = {
+        project: { root: "", nodeModules: "" },
+        status: null,
+    };
+
+    beforeAll(() => {
+        state.project = createCliProject({
+            prefix: "gtkx-cli-codegen-commonjs-",
+            config: config(""),
+            packageType: "commonjs",
+        });
+
+        state.status = runCli(state.project, ["codegen"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it("writes stores that are still ECMAScript modules", () => {
+        expect(state.status).toBe(0);
+        expect(generatedModule(state.project, "jsx", "metadata.js")).not.toContain("require(");
+        expect(generatedModule(state.project, "gi", "gtk", "gtk.js")).not.toContain("require(");
     });
 });
 

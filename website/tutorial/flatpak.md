@@ -4,7 +4,7 @@ description: "Install the Flatpak you built, see which sandbox permissions the a
 
 # Appendix C: Shipping It on Flathub
 
-[Appendix B](/tutorial/packaging) built four packages. This page is about one of them.
+[Appendix B](/tutorial/packaging) built the packages. This page is about one of them.
 
 A Flatpak bundles the app with a pinned platform, so it sees the same Adwaita it was built against on any distribution. The finished app runs in a sandbox, and the permissions it asks for are the part worth planning.
 
@@ -44,11 +44,11 @@ The task is there. Check that your everyday copy of the app is untouched:
 ls ~/.local/share/com.gtkx.tutorial/
 ```
 
-That directory still holds the tasks you added throughout this tutorial, with no `Ship it` among them. The two stores are independent, share one storage backend, and need no branch anywhere in your code.
+That directory still holds the tasks you added throughout this tutorial, with no `Ship it` among them. The stores are independent, share one storage backend, and need no branch anywhere in your code.
 
 ## What the sandbox does not grant
 
-The generated manifest asks for four permissions, and you can replace them with `deploy.flatpak.finishArgs`:
+The generated manifest asks for these permissions, and you can replace them with `deploy.flatpak.finishArgs`:
 
 ```yaml
 finish-args:
@@ -68,7 +68,7 @@ Those grant a window on screen and hardware rendering. There is no `--filesystem
 
 Permissions are the one part of packaging that stays a deliberate decision, which is why `finishArgs` is hand-authored rather than derived. A short list backed by portals is the quickest thing for a reviewer to approve.
 
-## The two modes
+## The modes
 
 What you just built uses `deploy.flatpak.mode: "prebuilt"`, the default. It copies the tree `gtkx deploy` staged into the sandbox, which needs no network inside the build and takes seconds.
 
@@ -80,7 +80,7 @@ deploy: {
 },
 ```
 
-`source` mode changes four things. The module's source becomes a `git` source pinned to your release rather than your working tree. It adds the `org.freedesktop.Sdk.Extension.node24` SDK extension, since the GNOME SDK carries no Node.js and the sandbox now has to run the build. It vendors every npm dependency ahead of time with [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node), because the build sandbox has no network and `npm ci --offline` has to resolve from a local cache. And it carries the generated desktop entry, metainfo, and launcher as inline sources, so nothing generated has to be committed to your repository.
+`source` mode changes what the manifest carries. The module's source becomes a `git` source pinned to your release rather than your working tree. It adds the `org.freedesktop.Sdk.Extension.node24` SDK extension, since the GNOME SDK carries no Node.js and the sandbox now has to run the build. It vendors every npm dependency ahead of time with [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node), because the build sandbox has no network and `npm ci --offline` has to resolve from a local cache. And it carries the generated desktop entry, metainfo, and launcher as inline sources, so nothing generated has to be committed to your repository.
 
 Install the generator once:
 
@@ -94,7 +94,7 @@ Then produce the manifest without building anything:
 npm run deploy -- --target flatpak --print-manifests
 ```
 
-That writes `build/targets/flatpak/com.gtkx.tutorial.yml` and `generated-sources.json`, which are the two files a submission needs.
+That writes `build/targets/flatpak/com.gtkx.tutorial.yml` and `generated-sources.json`, which are the files a submission needs.
 
 ## Submitting
 

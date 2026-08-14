@@ -98,6 +98,8 @@ const writeStore = (params: WriteStoreParams): void => {
 };
 
 const buildTempStore = (tmp: string, params: WriteStoreParams): void => {
+    writePackageJson(tmp, params.manifest);
+
     for (const file of params.files) {
         writeSourceFile(tmp, file.fileName, file.source);
     }
@@ -109,7 +111,6 @@ const buildTempStore = (tmp: string, params: WriteStoreParams): void => {
         ...(params.requiresEnvReference !== undefined && { requiresEnvReference: params.requiresEnvReference }),
     });
 
-    writePackageJson(tmp, params.manifest);
     const rawFiles = params.rawFiles ?? [];
 
     for (const raw of rawFiles) {

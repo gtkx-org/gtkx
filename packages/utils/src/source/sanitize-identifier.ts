@@ -1,3 +1,4 @@
+import { escapeIdentifierStart } from "./escape-identifier-start.ts";
 import { escapeReserved } from "./escape-reserved.ts";
 
 const RESERVED: Set<string> = new Set([
@@ -52,7 +53,7 @@ const RESERVED: Set<string> = new Set([
 ]);
 
 function sanitizeIdentifier(name: string): string {
-    return escapeReserved(name, RESERVED);
+    return escapeIdentifierStart(escapeReserved(name, RESERVED));
 }
 
 export { RESERVED, sanitizeIdentifier };

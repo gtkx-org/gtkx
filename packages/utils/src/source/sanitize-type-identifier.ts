@@ -1,3 +1,4 @@
+import { escapeIdentifierStart } from "./escape-identifier-start.ts";
 import { escapeReserved } from "./escape-reserved.ts";
 import { RESERVED } from "./sanitize-identifier.ts";
 
@@ -16,7 +17,7 @@ const TYPE_RESERVED: Set<string> = new Set([
 ]);
 
 function sanitizeTypeIdentifier(name: string): string {
-    return escapeReserved(name, TYPE_RESERVED);
+    return escapeIdentifierStart(escapeReserved(name, TYPE_RESERVED));
 }
 
 export { sanitizeTypeIdentifier };

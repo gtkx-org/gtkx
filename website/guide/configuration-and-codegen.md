@@ -45,7 +45,7 @@ A few bindings take a NUL-terminated C string that GIR describes as a byte array
 
 ## The JSX prop model
 
-Every GIR class descending from `GObject` becomes an intrinsic element whose props follow five rules:
+Every GIR class descending from `GObject` becomes an intrinsic element whose props follow these rules:
 
 - **Properties become camelCase props.** Writable, construct, and construct-only properties become optional props: `show-title-buttons` is `showTitleButtons`.
 - **Almost every property gets a notify handler.** `onNotifyX` receives `(value, self)`, read-only properties included, so you can observe what GTK4 changes on its own. The element-accepting object properties below are the exception: they carry their value as a child element instead.

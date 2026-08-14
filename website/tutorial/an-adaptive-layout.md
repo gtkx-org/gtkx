@@ -10,9 +10,9 @@ Drag the window edge inward and a problem shows. The `widthRequest={360}` you se
 
 Adwaita's answer is to stop showing both panes at once. Below a width you choose, the split view collapses to a single pane showing either the sidebar or the content, with a back button in the header to move between them. The widget can already do this. You need to tell it when to collapse and which pane to show.
 
-## Two more fields
+## Fields for the collapse state
 
-Both describe what the interface is doing right now, so they belong in the UI slice, which `partialize` excludes so it starts fresh at every launch. A window that opened narrow last time should not force a narrow layout onto a wide window today.
+They describe what the interface is doing right now, so they belong in the UI slice, which `partialize` excludes so it starts fresh at every launch. A window that opened narrow last time should not force a narrow layout onto a wide window today.
 
 In `src/store/ui.ts`, add the fields and their setters:
 

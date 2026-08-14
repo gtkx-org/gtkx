@@ -61,7 +61,7 @@ type Camelized<TName extends string> = TName extends `${infer THead}-${infer TTa
 
 /**
  * The names a registered class carries in its property map: every key of
- * `RegisterClassOptions.properties` in camelCase, whichever of the three spellings it was written in.
+ * `RegisterClassOptions.properties` in camelCase, whichever spelling it was written in.
  * A `properties` object given a type of its own rather than left to inference has `string` for its key
  * type and names nothing, because a name only known as `string` addresses no member in particular.
  */
@@ -129,7 +129,7 @@ type RegisterClassOptions<TInstance extends object, TProperties extends Record<s
      * A write the ParamSpec would refuse throws rather than reaching GObject, which reports such a
      * write as a GLib critical and drops it: a `TypeError` for a read-only or construct-only
      * property and for a value of a type the property cannot hold, and a `RangeError` for a value
-     * the ParamSpec rejects. The same two checks run over a value handed to the constructor, where
+     * the ParamSpec rejects. The same checks run over a value handed to the constructor, where
      * a construct-only property is the one that is writable. An accepted write emits one `notify`,
      * which a `freeze_notify` batch collects; a write of the value the property already holds is
      * dropped and emits none.
@@ -165,7 +165,7 @@ type RegisterClassOptions<TInstance extends object, TProperties extends Record<s
      * write of `null` to that member both land 0, where a `gint` installed here refuses both.
      *
      * A class that defines the camelCase member itself owns the property: its own accessor decides
-     * what a write means, the other two spellings forward to it, and the type's property slots read
+     * what a write means, the other spellings forward to it, and the type's property slots read
      * and write it rather than the generated storage.
      */
     properties?: TProperties;

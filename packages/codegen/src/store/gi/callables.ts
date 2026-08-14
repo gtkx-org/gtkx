@@ -408,6 +408,20 @@ const renderStaticSignature = (
     };
 };
 
+const staticMemberName = (
+    context: ModuleContext,
+    callable: GirFunction,
+    resolveName: (girName: string) => string | undefined,
+): string | undefined => {
+    if (!isEmittableCallable(context, callable)) {
+        return undefined;
+    }
+
+    const name = resolveName(callable.name);
+
+    return name !== undefined && isEmittableMemberName(name) ? name : undefined;
+};
+
 const collectStaticMembers = (
     context: ModuleContext,
     group: GirFunction[],
@@ -416,7 +430,7 @@ const collectStaticMembers = (
     const members: StaticMember[] = [];
 
     for (const callable of group) {
-        const name = isEmittableCallable(context, callable) ? resolveName(callable.name) : undefined;
+        const name = staticMemberName(context, callable, resolveName);
 
         if (name !== undefined) {
             members.push({ callable, name });
@@ -427,12 +441,9 @@ const collectStaticMembers = (
 };
 
 const staticMembers = (context: ModuleContext, callables: Callables): StaticMember[] => [
-    ...collectStaticMembers(context, callables.constructors, constructorMemberName),
+    ...collectStaticMembers(context, callables.constructors, memberName),
     ...collectStaticMembers(context, callables.functions, memberName),
 ];
-
-const constructorMemberNames = (context: ModuleContext, constructors: GirFunction[]): string[] =>
-    collectStaticMembers(context, constructors, constructorMemberName).map((member) => member.name);
 
 const collectStaticEntries = (
     context: ModuleContext,
@@ -516,7 +527,6 @@ export {
     indexMethodsByName,
     isEmittableCallable,
     renderStaticSignature,
-    constructorMemberNames,
     renderStaticHead,
     renderPlainTypeMembers,
     staticMembers,

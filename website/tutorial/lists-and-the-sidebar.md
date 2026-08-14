@@ -242,13 +242,13 @@ The `(...a)` spread matters here. Zustand hands a state creator `set`, `get`, an
 
 `PersistedState` and `partialize` both gain `lists`, which puts your lists in the JSON file alongside your tasks. `selection` is absent from both, so it starts at Personal on every launch.
 
-## The two panes
+## The panes
 
 `AdwNavigationSplitView` shows a sidebar and a content area side by side, and folds into a single pane on a narrow window, which the next chapter turns on.
 
 Its `sidebar` and `content` are container slots, the same idea as `topBar` on `AdwToolbarView`. Each takes an `AdwNavigationPage`, the unit Adwaita treats as one pane: a page has a title, and it is what the navigation moves between.
 
-A page carries no header bar of its own, so each supplies its own `AdwToolbarView` with its own `AdwHeaderBar`. The two headers hold different controls, and once collapsed only one is on screen at a time.
+A page carries no header bar of its own, so each supplies its own `AdwToolbarView` with its own `AdwHeaderBar`. The headers hold different controls, and once collapsed only one is on screen at a time.
 
 This has outgrown `app.tsx`, so the window moves into `src/components/window.tsx`:
 

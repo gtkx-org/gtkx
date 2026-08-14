@@ -11,12 +11,13 @@ import type { Mixin, MixinReceiver } from "./mixin.js";
 import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
 
 /**
- * Static side of class `C` with its construct signature preserved but the member
- * named `K` (default `"new"`) removed. The signature is kept abstract so an abstract
- * `C` survives it: a subclass extends the result, and only the subclass's own
- * declaration decides whether `new` reaches it.
+ * Static side of class `C` with its construct signature preserved but the members named `K`
+ * removed. A generated class lists every static it declares itself, so a static it narrows never
+ * has to stay assignable to the one it shadows. The signature is kept abstract so an abstract `C`
+ * survives it: a subclass extends the result, and only the subclass's own declarations decide
+ * which statics reach it.
  */
-type StaticBase<C, K extends PropertyKey = "new"> = Omit<C, K> &
+type StaticBase<C, K extends PropertyKey> = Omit<C, K> &
     (C extends abstract new (...args: infer A) => infer R ? abstract new (...args: A) => R : never);
 
 /** One overridable vtable slot: where it sits in the vtable struct and how it is marshalled. */

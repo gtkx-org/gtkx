@@ -182,7 +182,7 @@ A `declare`d member cannot stand in, because TypeScript reads it as a field and 
 
 ### Slots you leave to the interface
 
-A slot no method fills keeps whatever the interface installs by default, or nothing at all. Many entry points guard the slot for null and answer not-supported, but some call it outright: a class adopting `Gio.ListModel` without all three of its slots crashes the process the moment something asks for an item count. Fill every slot the class adopts. `Gtk.SelectionModel` needs care, since its defaults for `is_selected` and `get_selection_in_range` recurse into each other until the stack runs out: fill `vfuncIsSelected`, `vfuncGetSelectionInRange`, or both.
+A slot no method fills keeps whatever the interface installs by default, or nothing at all. Many entry points guard the slot for null and answer not-supported, but some call it outright: a class adopting `Gio.ListModel` without all of its slots crashes the process the moment something asks for an item count. Fill every slot the class adopts. `Gtk.SelectionModel` needs care, since its defaults for `is_selected` and `get_selection_in_range` recurse into each other until the stack runs out: fill `vfuncIsSelected`, `vfuncGetSelectionInRange`, or both.
 
 ### What instances gain
 
@@ -209,11 +209,11 @@ Inside the class, `declare` the members it calls on itself, such as `declare ite
 
 ### Why not extend a class that already has it
 
-`Gio.ListStore` implements `GListModel`, so extending it and overriding the three slots looks like a shortcut. It is not one: its own storage stays there, still empty, still answering everything the overrides do not, so `getNItems()` and the `n-items` property consumers bind to disagree. Adopt `Gio.ListModel` with `implements` instead, leaving no parent state to contradict the class.
+`Gio.ListStore` implements `GListModel`, so extending it and overriding the slots looks like a shortcut. It is not one: its own storage stays there, still empty, still answering everything the overrides do not, so `getNItems()` and the `n-items` property consumers bind to disagree. Adopt `Gio.ListModel` with `implements` instead, leaving no parent state to contradict the class.
 
 ## Elements that cannot be children
 
-The reconciler places a child only where a behavior on the parent claims it, so nesting a GObject inside an element that does not claim it throws rather than dropping it. The error it throws names three remedies, one per nesting: pass the object to the parent prop that takes it, such as `<GtkPaned startChild={…}>`; portal it to `rootElement` with `createPortal` when it is nested only so it lives and dies with the component around it, which [Modals and Portals](/guide/modals-and-portals) covers; or register an `attach` behavior for the parent, or an ancestor type, with `defineElements`, as [Advanced: Customizing elements](/guide/configuration-and-codegen#advanced-customizing-elements) describes. GTKX ships that portal wrapper for `GtkSizeGroup` itself, which is why the element can sit among the widgets it groups.
+The reconciler places a child only where a behavior on the parent claims it, so nesting a GObject inside an element that does not claim it throws rather than dropping it. The error it throws names the remedies, one per nesting: pass the object to the parent prop that takes it, such as `<GtkPaned startChild={…}>`; portal it to `rootElement` with `createPortal` when it is nested only so it lives and dies with the component around it, which [Modals and Portals](/guide/modals-and-portals) covers; or register an `attach` behavior for the parent, or an ancestor type, with `defineElements`, as [Advanced: Customizing elements](/guide/configuration-and-codegen#advanced-customizing-elements) describes. GTKX ships that portal wrapper for `GtkSizeGroup` itself, which is why the element can sit among the widgets it groups.
 
 ## Rendering a registered class
 

@@ -15,6 +15,7 @@ import {
     claimInterfaceMembers,
     inheritedMembers,
     interfaceConflicts,
+    omittedKeys,
     omittedTypeRef,
 } from "../../analysis/interface-conflicts.js";
 import { ancestorChain, getParentRef, type ResolvedAncestor } from "../../gir/ancestry.js";
@@ -22,13 +23,13 @@ import { isEmittableEntity } from "../../gir/emittable.js";
 import { indentMembers } from "../../writer/emit.js";
 import {
     type Callables,
-    constructorMemberNames,
     dedupeCallables,
     generateBindings,
     type InstanceScope,
     instanceScope,
     renderClassInstanceMember,
     renderStaticHead,
+    staticMembers,
 } from "./callables.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
 import { getDoc } from "./doc-spec.js";
@@ -345,16 +346,15 @@ const renderExtendsClause = (
         return "";
     }
 
-    const constructorNames = constructorMemberNames(context, callables.constructors);
+    const staticNames = staticMembers(context, callables).map((member) => member.name);
 
-    if (constructorNames.length === 0) {
+    if (staticNames.length === 0) {
         return ` extends ${parentExpression}`;
     }
 
     context.addRuntimeTypeImport("StaticBase");
-    const omitted = constructorNames.map((name) => JSON.stringify(name)).join(" | ");
 
-    return ` extends (${parentExpression} as StaticBase<typeof ${parentExpression}, ${omitted}>)`;
+    return ` extends (${parentExpression} as StaticBase<typeof ${parentExpression}, ${omittedKeys(staticNames)}>)`;
 };
 
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {
