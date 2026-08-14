@@ -161,7 +161,7 @@ Explore the [example apps](https://github.com/gtkx-org/gtkx/tree/main/examples):
 
 ## Status
 
-GTKX 1.0 is released.
+GTKX is stable and ready for production use.
 
 ## Contributing
 
