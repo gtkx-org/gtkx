@@ -5,11 +5,9 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts",
         "test:asan": "tsx ../../scripts/asan-e2e.ts"
     },
     "devDependencies": {
-        "@codspeed/vitest-plugin": "^5.7.1",
         "@gtkx/config": "workspace:*",
         "@gtkx/gl": "workspace:*",
         "@gtkx/native": "workspace:*",

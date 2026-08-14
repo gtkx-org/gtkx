@@ -13,7 +13,6 @@ gschemas.compiled
 node_modules/
 out-tsc/
 packages/**/README.md
-.codspeed/
 packages/gl/src/generated/
 packages/native/npm/*/package.json
 website/reference/

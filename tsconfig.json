@@ -3,13 +3,11 @@
     "include": [
         "**/scripts",
         "**/vitest.config.ts",
-        "**/vitest.bench.config.ts",
         "**/vite.config.ts",
         "**/gtkx.config.ts",
         "vitest.config.base.ts",
         "gtkx.config.base.ts",
         "eslint.config.ts",
-        "packages/*/bench/**/*.tsx",
         "packages/*/env.d.ts",
         "packages/e2e/elements.ts",
         "packages/native/main.d.ts",

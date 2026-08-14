@@ -10,10 +10,8 @@
         "production": [
             "default",
             "!{projectRoot}/tests/**/*",
-            "!{projectRoot}/bench/**/*",
             "!{projectRoot}/tsconfig.test.json",
-            "!{projectRoot}/vitest.config.ts",
-            "!{projectRoot}/vitest.bench.config.ts"
+            "!{projectRoot}/vitest.config.ts"
         ],
         "sharedGlobals": [
             "{workspaceRoot}/tsconfig.base.json",
@@ -130,15 +128,6 @@
                 "@gtkx/components:build",
                 "@gtkx/css:build",
                 "@gtkx/gl:build"
-            ]
-        },
-        "bench": {
-            "cache": false,
-            "parallelism": false,
-            "dependsOn": [
-                "gtkx:codegen",
-                "build",
-                "^build"
             ]
         },
         "release": {

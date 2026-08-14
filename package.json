@@ -7,7 +7,6 @@
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
     "scripts": {
-        "bench": "nx run-many -t bench",
         "build": "nx run-many -t build",
         "codegen": "nx run-many -t codegen",
         "coverage": "nx run-many -t coverage",

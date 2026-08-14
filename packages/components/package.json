@@ -43,7 +43,6 @@
         "src"
     ],
     "scripts": {
-        "bench": "NODE_ENV=production vitest bench --run --config vitest.bench.config.ts",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "nx": {
@@ -68,7 +67,6 @@
         "react": "^19.2"
     },
     "devDependencies": {
-        "@codspeed/vitest-plugin": "^5.7.1",
         "@gtkx/config": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",
