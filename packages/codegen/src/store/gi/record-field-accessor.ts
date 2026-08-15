@@ -482,8 +482,8 @@ const structArraySetterStatements = (context: ModuleContext, options: StructArra
     return [
         `const __descriptor = ${elementDescriptor};`,
         `const __array = read(getHandle(this), __descriptor, ${String(offset)}) as ReturnType<typeof getHandle>;`,
-        `for (const [__index, __element] of __value.slice(0, ${lengthExpr}).entries()) {`,
-        indent(loop, 1),
+        "for (const [__index, __element] of __value.entries()) {",
+        indent(`if (__index >= ${lengthExpr}) {\n    break;\n}\n\n${loop}`, 1),
         "}",
         `write(getHandle(this), __descriptor, ${String(offset)}, __array);`,
     ].join("\n");
