@@ -116,13 +116,13 @@ GTKX needs Node.js 24, and Debian 13 ships 20 while Ubuntu 26.04 ships 22, so th
 | Target | Needs | Fetched automatically |
 | --- | --- | --- |
 | `flatpak` | `flatpak`, and either `flatpak-builder` or the `org.flatpak.Builder` Flatpak | the GNOME runtime |
-| `flatpak` with `mode: "source"` | the above, plus `flatpak-node-generator`, from git master for a pnpm project | |
+| `flatpak` with `mode: "source"` | the above, plus `flatpak-node-generator`, supporting `--pnpm-store-version` for a pnpm project | |
 | `deb`, `rpm` | | `nfpm` |
 | `appimage` | `file` | `appimagetool` and the AppImage runtime |
 
 `nfpm` and `appimagetool` are downloaded, checksum-verified, and cached under `~/.cache/gtkx/`, so building a `.deb` on Fedora and an `.rpm` on Debian both work without installing anything distribution-specific. Only the archives are cached, and each is re-verified against its published checksum before it is reused, so a corrupted cache is discarded and re-fetched rather than packaged.
 
-A pnpm project needs `flatpak-node-generator` from git master, because the option that picks the layout of the vendored pnpm store is newer than its last tagged release. `gtkx deploy` checks the copy on your `PATH` and treats one without it as missing. npm and yarn projects work with any release.
+A pnpm project needs a `flatpak-node-generator` that supports `--pnpm-store-version`, the option that picks the layout of the vendored pnpm store. `gtkx deploy` checks the copy on your `PATH` for that option and treats one without it as missing. The option is newer than the generator's last tagged release, so for now it means installing from the project's default branch. npm and yarn projects work with any release.
 
 When a required tool is missing, `gtkx deploy` lists every one of them at once, with the install command for your distribution. `--print-manifests` needs none of the packaging tools, only the validators.
 
