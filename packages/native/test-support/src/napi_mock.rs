@@ -462,18 +462,22 @@ pub fn read_array(value: sys::napi_value) -> Option<Vec<sys::napi_value>> {
 pub fn read_bytes(value: sys::napi_value) -> Option<Vec<u8>> {
     match fv(value)? {
         FakeValue::TypedArray {
+            kind,
             data,
             length,
             byte_offset,
             ..
         } => {
-            if *length == 0 || data.is_null() {
+            let element_size = ViewKind::try_from(*kind).ok()?.element_size();
+            let byte_length = length.checked_mul(element_size)?;
+
+            if byte_length == 0 || data.is_null() {
                 return Some(Vec::new());
             }
 
             let base = unsafe { data.cast::<u8>().add(*byte_offset) };
 
-            Some(unsafe { std::slice::from_raw_parts(base, *length) }.to_vec())
+            Some(unsafe { std::slice::from_raw_parts(base, byte_length) }.to_vec())
         }
         _ => None,
     }
