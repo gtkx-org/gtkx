@@ -51,6 +51,14 @@ impl ArrayContainer for GByteArrayCodec {
         view: &TypedView,
         _encoding: ViewEncoding,
     ) -> anyhow::Result<ffi::Stash> {
+        let item = codec.item_codec("GByteArray")?;
+
+        anyhow::ensure!(
+            item.accepts_buffer_view(view.kind()),
+            "A {} cannot supply GByteArray bytes",
+            view.kind()
+        );
+
         Ok(Self::stash_bytes(codec, &view.to_vec::<u8>()))
     }
 
@@ -61,9 +69,8 @@ impl ArrayContainer for GByteArrayCodec {
         stash: &ffi::Stash,
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
-        let _ = codec;
         let Some(ptr) = stash.as_non_null_ptr("GByteArray")? else {
-            return Ok(unsafe { value::js_byte_array(env, std::ptr::null(), 0) }?);
+            return codec.decode_empty_sequence(env);
         };
 
         let byte_array = ptr.cast::<glib::ffi::GByteArray>();
@@ -84,7 +91,7 @@ impl ArrayContainer for GByteArrayCodec {
 
         drop(adopted);
 
-        Ok(unsafe { value::js_byte_array(env, bytes.as_ptr(), bytes.len()) }?)
+        codec.decode_bytes_or_items(env, bytes.as_ptr(), bytes.len(), "GByteArray")
     }
 
     fn name(&self) -> &'static str {
