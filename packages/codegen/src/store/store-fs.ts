@@ -50,7 +50,6 @@ type WriteStoreParams = {
     files: SourceModule[];
     manifest: Manifest;
     rawFiles?: RawFile[];
-    requiresEnvReference?: boolean;
 };
 
 const STORE_DIR_MODE = 0o755;
@@ -104,13 +103,7 @@ const buildTempStore = (tmp: string, params: WriteStoreParams): void => {
         writeSourceFile(tmp, file.fileName, file.source);
     }
 
-    compileStore({
-        storeDir: tmp,
-        files: params.files,
-        packageName: params.manifest.name,
-        ...(params.requiresEnvReference !== undefined && { requiresEnvReference: params.requiresEnvReference }),
-    });
-
+    compileStore({ storeDir: tmp, files: params.files, packageName: params.manifest.name });
     const rawFiles = params.rawFiles ?? [];
 
     for (const raw of rawFiles) {

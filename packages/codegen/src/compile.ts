@@ -14,10 +14,19 @@ type SourceModule = ProjectFile & {
     source: string;
 };
 
-type CompileProjectParams = {
+type ProjectContext = {
     projectDir: string;
     files: ProjectFile[];
+    label: string;
+};
+
+type CompileProjectParams = ProjectContext & {
     compilerOptions: Record<string, unknown>;
+};
+
+type EmitModulesParams = {
+    projectDir: string;
+    files: SourceModule[];
     label: string;
 };
 
@@ -60,6 +69,20 @@ const CHECK_OPTIONS = {
     noEmit: true,
 };
 
+const EMIT_OPTIONS = {
+    declaration: true,
+    isolatedDeclarations: true,
+    removeComments: false,
+};
+
+const EMIT_COMPILER_OPTIONS = ts.convertCompilerOptionsFromJson(
+    { ...BASE_COMPILER_OPTIONS, ...EMIT_OPTIONS },
+    ".",
+).options;
+
+const TS_EXTENSION_PATTERN = /\.tsx?$/;
+const DECLARATION_EXTENSION = ".d.ts";
+const JAVASCRIPT_EXTENSION = ".js";
 const CHECK_DIR = ".gtkx-check";
 const FAILED_CHECK_DIR = `${CHECK_DIR}.failed`;
 const LEGACY_CHECK_PREFIX = `${CHECK_DIR}-`;
@@ -171,17 +194,17 @@ const originLines = (diagnosed: DiagnosedFile[], files: ProjectFile[]): string[]
         ([origin, generated]) => `Generated from ${origin}: ${[...generated].join(", ")}`,
     );
 
-const diagnosticError = (params: CompileProjectParams, diagnostics: ts.Diagnostic[]): Error => {
+const diagnosticError = (params: ProjectContext, diagnostics: ts.Diagnostic[]): Error => {
     const diagnosed = projectDiagnosticFiles(diagnostics, params.projectDir);
     const { label } = params;
 
     if (diagnosed.length === 0) {
-        return new Error(`Type checking ${label} failed:\n${ts.formatDiagnostics(diagnostics, FORMAT_HOST).trim()}`);
+        return new Error(`Compiling ${label} failed:\n${ts.formatDiagnostics(diagnostics, FORMAT_HOST).trim()}`);
     }
 
     const lines = [...diagnosed.map((entry) => entry.text), ...originLines(diagnosed, params.files)];
 
-    return new Error(`Type checking ${label} found ${String(diagnosed.length)} error(s):\n${lines.join("\n")}`);
+    return new Error(`Compiling ${label} found ${String(diagnosed.length)} error(s):\n${lines.join("\n")}`);
 };
 
 const keepFailedProject = (input: FailedProjectInput): Error => {
@@ -223,6 +246,38 @@ const runProgram = (params: CompileProjectParams): ts.Diagnostic[] => {
     }
 
     return [...program.emit().diagnostics];
+};
+
+const replaceExtension = (fileName: string, extension: string): string =>
+    `${fileName.replace(TS_EXTENSION_PATTERN, "")}${extension}`;
+
+const emitModule = (module: SourceModule, projectDir: string): ts.Diagnostic[] => {
+    const fileName = join(projectDir, module.fileName);
+    const options = { compilerOptions: EMIT_COMPILER_OPTIONS, fileName };
+    const declaration = ts.transpileDeclaration(module.source, options);
+    const javascript = ts.transpileModule(module.source, options);
+    const diagnostics = [...declaration.diagnostics ?? [], ...javascript.diagnostics ?? []];
+
+    if (diagnostics.length > 0) {
+        return diagnostics;
+    }
+
+    writeFileSync(replaceExtension(fileName, DECLARATION_EXTENSION), declaration.outputText);
+    writeFileSync(replaceExtension(fileName, JAVASCRIPT_EXTENSION), javascript.outputText);
+
+    return [];
+};
+
+const emitModules = (params: EmitModulesParams): void => {
+    const diagnostics: ts.Diagnostic[] = [];
+
+    for (const module of params.files) {
+        diagnostics.push(...emitModule(module, params.projectDir));
+    }
+
+    if (diagnostics.length > 0) {
+        throw diagnosticError(params, diagnostics);
+    }
 };
 
 const compileProject = (params: CompileProjectParams): void => {
@@ -273,4 +328,4 @@ const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; la
     rmSync(keepAt, { recursive: true, force: true });
 };
 
-export { compileProject, checkModules, keepFailedProject, type ProjectFile, type SourceModule };
+export { checkModules, emitModules, keepFailedProject, type SourceModule };
