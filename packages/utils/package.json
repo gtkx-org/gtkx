@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/utils",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Cross-package utilities shared by the GTKX packages and toolchain: logging, error formatting, string and class helpers",
     "keywords": [
         "gtkx",

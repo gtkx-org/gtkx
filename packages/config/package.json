@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/config",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "gtkx.config.ts schema, loader, and the element-prop mapping language shared across the GTKX toolchain",
     "keywords": [
         "gtkx",
