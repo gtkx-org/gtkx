@@ -28,7 +28,6 @@ type PropertyAccessorArgs = {
     context: ModuleContext;
     property: GirProperty;
     claimedNames: Set<string>;
-    methodByName: Map<string, GirFunction>;
     inheritedTypes?: InheritedAccessorTypes | undefined;
     inheritedNames?: Set<string> | undefined;
 };
@@ -96,7 +95,6 @@ const resolveOwnerAccessor = (
     property: GirProperty,
     methods: GirFunction[],
 ): ResolvedAccessor | undefined => {
-    const methodByName: Map<string, GirFunction> = new Map();
     const claimedNames: Set<string> = new Set();
 
     for (const method of methods) {
@@ -104,11 +102,10 @@ const resolveOwnerAccessor = (
             continue;
         }
 
-        methodByName.set(method.name, method);
         claimedNames.add(methodExportName(method));
     }
 
-    return resolveAccessor({ context, property, claimedNames, methodByName });
+    return resolveAccessor({ context, property, claimedNames });
 };
 
 const resolveAccessorTypes = (

@@ -534,7 +534,6 @@ export {
     dedupeCallables,
     generateBindings,
     matchStaticFinishFunction,
-    indexMethodsByName,
     isEmittableCallable,
     renderStaticSignature,
     renderStaticHead,

@@ -191,7 +191,6 @@ const renderClassMembers = (
             context,
             property,
             claimedNames,
-            methodByName: scope.methodByName,
             inheritedTypes,
             inheritedNames,
         });

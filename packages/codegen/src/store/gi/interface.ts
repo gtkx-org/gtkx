@@ -336,11 +336,11 @@ const collectMethodMembers = (options: MethodMemberOptions): string[] => {
 };
 
 const collectPropertyMembers = (options: PropertyMemberOptions): string[] => {
-    const { context, iface, scope, renderers, claimedNames } = options;
+    const { context, iface, renderers, claimedNames } = options;
     const members: string[] = [];
 
     for (const property of iface.properties) {
-        const block = renderers.renderProperty({ context, property, claimedNames, methodByName: scope.methodByName });
+        const block = renderers.renderProperty({ context, property, claimedNames });
 
         if (block !== undefined) {
             members.push(block);

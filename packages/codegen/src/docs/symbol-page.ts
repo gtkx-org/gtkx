@@ -16,7 +16,6 @@ import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../gir/primitives.js";
 import { callableSpec } from "../store/gi/callable-doc.js";
 import {
     dedupeCallables,
-    indexMethodsByName,
     instanceScope,
     matchStaticFinishFunction,
     renderInstanceMethodSignature,
@@ -146,7 +145,6 @@ type MemberOwner = {
 type PropertyAccessorSetup = {
     context: ModuleContext;
     claimedNames: Set<string>;
-    methodByName: Map<string, GirFunction>;
 };
 
 type ResolvedRecordField = NonNullable<ReturnType<typeof resolveRecordFieldEntry>>;
@@ -391,7 +389,6 @@ const propertyAccessorSetup = (
     return {
         context: docsSignatureContext(owner.namespace, library),
         claimedNames,
-        methodByName: indexMethodsByName(dedupeCallables(owner.klass.methods)),
     };
 };
 
@@ -418,7 +415,6 @@ const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, 
             context: setup.context,
             property,
             claimedNames: setup.claimedNames,
-            methodByName: setup.methodByName,
         });
 
         if (accessor === undefined || seen.has(accessor.jsName)) {
