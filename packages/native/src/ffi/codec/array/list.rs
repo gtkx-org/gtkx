@@ -2,7 +2,7 @@ use std::ffi::CString;
 
 use super::super::prelude::*;
 use super::container::ArrayContainer;
-use super::{ArrayCodec, ArrayKindEncoder, build_js_array, dup_strings_to_glib, transfer_items};
+use super::{ArrayCodec, ArrayKindEncoder, dup_strings_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
 
@@ -36,7 +36,7 @@ impl ArrayContainer for ListArrayCodec {
     ) -> anyhow::Result<Unknown<'e>> {
         let ops = self.ops;
         let Some(ptr) = stash.as_non_null_ptr(ops.label)? else {
-            return build_js_array(env, Vec::new());
+            return codec.decode_empty_sequence(env);
         };
 
         let mut current = ptr;

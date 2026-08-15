@@ -153,6 +153,7 @@ pub enum Descriptor {
         size_param_index: Option<u32>,
         fixed_size: Option<u32>,
         element_size: Option<u32>,
+        is_bytes: Option<bool>,
     },
     Hashtable {
         #[napi(ts_type = "Descriptor")]
@@ -293,6 +294,7 @@ impl Descriptor {
                 size_param_index,
                 fixed_size,
                 element_size,
+                is_bytes,
             } => Codec::Array(
                 ArrayCodec::new(
                     item_descriptor.into_codec()?,
@@ -304,6 +306,7 @@ impl Descriptor {
                         fixed_size,
                     },
                     element_size.map(|n| n as usize),
+                    is_bytes.unwrap_or(false),
                 )
                 .map_err(|error| Error::from_reason(error.to_string()))?,
             ),

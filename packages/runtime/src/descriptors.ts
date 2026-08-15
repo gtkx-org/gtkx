@@ -116,6 +116,8 @@ type ArrayOptions = {
     sizeParamIndex?: number | undefined;
     /** Element count of a fixed-length array. */
     fixedSize?: number | undefined;
+    /** Whether the array carries raw bytes, and so decodes to a `Uint8Array` rather than to numbers. */
+    isBytes?: boolean | undefined;
 };
 
 /** Where a cursor array's base buffer and total length come from. */
@@ -360,40 +362,52 @@ const arrayT = (
         result.fixedSize = options.fixedSize;
     }
 
+    if (options?.isBytes === true) {
+        result.isBytes = true;
+    }
+
     return result;
 };
 
 /** Builds a descriptor for a `GList` of items. */
-const listT = (itemDescriptor: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
-    arrayT(itemDescriptor, "glist", ownership);
+const listT = (
+    itemDescriptor: Descriptor,
+    ownership: Ownership = "borrowed",
+    options: ArrayOptions = {},
+): ArrayDescriptor => arrayT(itemDescriptor, "glist", ownership, options);
 
 /** Builds a descriptor for a `GSList` of items. */
-const slistT = (itemDescriptor: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
-    arrayT(itemDescriptor, "gslist", ownership);
+const slistT = (
+    itemDescriptor: Descriptor,
+    ownership: Ownership = "borrowed",
+    options: ArrayOptions = {},
+): ArrayDescriptor => arrayT(itemDescriptor, "gslist", ownership, options);
 
 /** Builds a descriptor for a `GPtrArray` of items. */
-const ptrArrayT = (itemDescriptor: Descriptor, ownership: Ownership = "borrowed"): ArrayDescriptor =>
-    arrayT(itemDescriptor, "gptrarray", ownership);
+const ptrArrayT = (
+    itemDescriptor: Descriptor,
+    ownership: Ownership = "borrowed",
+    options: ArrayOptions = {},
+): ArrayDescriptor => arrayT(itemDescriptor, "gptrarray", ownership, options);
 
-/** Builds a descriptor for a `GArray` of items, optionally with an explicit element size. */
+/** Builds a descriptor for a `GArray` of items. */
 const gArrayT = (
     itemDescriptor: Descriptor,
     ownership: Ownership = "borrowed",
-    elementSize?: number,
-): ArrayDescriptor =>
-    arrayT(itemDescriptor, "garray", ownership, elementSize === undefined ? undefined : { elementSize });
+    options: ArrayOptions = {},
+): ArrayDescriptor => arrayT(itemDescriptor, "garray", ownership, options);
 
 /** Builds a descriptor for a `GByteArray`. */
 const byteArrayT = (ownership: Ownership = "borrowed"): ArrayDescriptor =>
-    arrayT(uint8T, "gbytearray", ownership);
+    arrayT(uint8T, "gbytearray", ownership, { isBytes: true });
 
 /** Builds a descriptor for a C array whose length is carried by another argument. */
 const sizedArrayT = (
     itemDescriptor: Descriptor,
     sizeParamIndex: number,
     ownership: Ownership = "borrowed",
-    elementSize?: number,
-): ArrayDescriptor => arrayT(itemDescriptor, "sized", ownership, { sizeParamIndex, elementSize });
+    options: ArrayOptions = {},
+): ArrayDescriptor => arrayT(itemDescriptor, "sized", ownership, { ...options, sizeParamIndex });
 
 /**
  * Builds a descriptor for an out pointer into the buffer another argument supplied, decoded as the
@@ -403,16 +417,16 @@ const cursorArrayT = (
     itemDescriptor: Descriptor,
     bounds: CursorBounds,
     ownership: Ownership = "borrowed",
-    elementSize?: number,
-): ArrayDescriptor => arrayT(itemDescriptor, "cursor", ownership, { ...bounds, elementSize });
+    options: ArrayOptions = {},
+): ArrayDescriptor => arrayT(itemDescriptor, "cursor", ownership, { ...options, ...bounds });
 
 /** Builds a descriptor for a C array of a fixed length. */
 const fixedArrayT = (
     itemDescriptor: Descriptor,
     fixedSize: number,
     ownership: Ownership = "borrowed",
-    elementSize?: number,
-): ArrayDescriptor => arrayT(itemDescriptor, "fixed", ownership, { fixedSize, elementSize });
+    options: ArrayOptions = {},
+): ArrayDescriptor => arrayT(itemDescriptor, "fixed", ownership, { ...options, fixedSize });
 
 const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOptions): void => {
     if (options.hasDestroy !== undefined) {

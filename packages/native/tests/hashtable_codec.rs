@@ -118,6 +118,7 @@ fn gptrarray_codec_of(item_codec: Codec) -> Codec {
             Ownership::Borrowed,
             ArrayBounds::NONE,
             None,
+            false,
         )
         .expect("valid gptrarray codec"),
     )
@@ -1044,6 +1045,7 @@ fn hashtable_encode_value_destroy_error_releases_string_key() {
                 Ownership::Borrowed,
                 ArrayBounds::NONE,
                 None,
+                false,
             )
             .expect("valid gptrarray codec"),
         );

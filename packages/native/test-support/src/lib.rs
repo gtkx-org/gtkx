@@ -356,6 +356,7 @@ pub fn i32_array_codec(size: u32) -> ArrayCodec {
         Ownership::Borrowed,
         ArrayBounds::fixed(size),
         None,
+        false,
     )
     .expect("valid fixed array codec")
 }
@@ -367,6 +368,7 @@ pub fn f32_array_codec() -> ArrayCodec {
         Ownership::Borrowed,
         ArrayBounds::sized(1),
         None,
+        false,
     )
     .expect("valid sized array codec")
 }

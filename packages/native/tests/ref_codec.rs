@@ -41,6 +41,7 @@ fn u8_array_ref_codec() -> RefCodec {
                 Ownership::Borrowed,
                 ArrayBounds::NONE,
                 None,
+                true,
             )
             .expect("valid array codec"),
         ),
@@ -504,6 +505,7 @@ fn decode_with_context_array_string_items_not_freed_by_ref() {
             Ownership::Full,
             ArrayBounds::NONE,
             None,
+            false,
         )
         .expect("valid array codec");
         assert_array_decodes_empty(&env, array_codec, &stash);
@@ -525,6 +527,7 @@ fn decode_with_context_array_container_released_by_array_decoder() {
             Ownership::Full,
             ArrayBounds::NONE,
             None,
+            false,
         )
         .expect("valid array codec");
         assert_array_decodes_empty(&env, array_codec, &stash);
@@ -545,6 +548,7 @@ fn decode_with_context_garray_container_released_by_array_decoder() {
             Ownership::Full,
             ArrayBounds::NONE,
             None,
+            false,
         )
         .expect("valid garray codec");
         assert_array_decodes_empty(&env, array_codec, &stash);
@@ -563,6 +567,7 @@ fn decode_with_context_array_non_string_items_freed_by_ref() {
             Ownership::Full,
             ArrayBounds::fixed(0),
             None,
+            false,
         )
         .expect("valid fixed array codec");
         assert_array_decodes_empty(&env, array_codec, &stash);
@@ -585,6 +590,7 @@ fn decode_with_context_array_non_ptr_slot_stash_uses_storage_pointer() {
             Ownership::Borrowed,
             ArrayBounds::NONE,
             None,
+            false,
         )
         .expect("valid array codec");
         assert_array_decodes_empty(&env, array_codec, &stash);
@@ -853,6 +859,7 @@ fn strv_ref_codec() -> RefCodec {
                 Ownership::Full,
                 ArrayBounds::NONE,
                 None,
+                false,
             )
             .expect("valid array codec"),
         ),
@@ -937,6 +944,7 @@ fn encode_length_bounded_array_passes_the_caller_allocated_buffer_itself() {
                     Ownership::Borrowed,
                     ArrayBounds::sized(0),
                     None,
+                    false,
                 )
                 .expect("valid sized array codec"),
             ),

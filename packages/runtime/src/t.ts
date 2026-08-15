@@ -69,7 +69,7 @@ type T = {
     slist: typeof helpers.slistT;
     /** Builds a descriptor for a `GPtrArray` of items. */
     ptrArray: typeof helpers.ptrArrayT;
-    /** Builds a descriptor for a `GArray` of items, optionally with an explicit element size. */
+    /** Builds a descriptor for a `GArray` of items. */
     gArray: typeof helpers.gArrayT;
     /** Builds a descriptor for a `GByteArray`. */
     byteArray: typeof helpers.byteArrayT;

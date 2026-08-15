@@ -40,7 +40,7 @@ const MARSHAL_T = callbackT(
         CLOSURE_T,
         MARSHAL_VALUE_T,
         uint32T,
-        sizedArrayT(MARSHAL_VALUE_T, N_PARAM_VALUES_INDEX, "borrowed", VALUE_SIZE),
+        sizedArrayT(MARSHAL_VALUE_T, N_PARAM_VALUES_INDEX, "borrowed", { elementSize: VALUE_SIZE }),
         uint64T,
         uint64T,
     ],

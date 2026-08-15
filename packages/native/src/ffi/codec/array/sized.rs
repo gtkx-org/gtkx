@@ -1,8 +1,8 @@
 use anyhow::bail;
 
 use super::super::prelude::*;
+use super::ArrayCodec;
 use super::container::{ArrayContainer, BufferViewSupport};
-use super::{ArrayCodec, build_js_array};
 use crate::ffi::codec::Codec;
 
 #[derive(Debug, Clone)]
@@ -114,14 +114,7 @@ impl ArrayCodec {
         ptr: *mut c_void,
         length: usize,
     ) -> anyhow::Result<Unknown<'e>> {
-        let codec = self.item_codec("sized array")?;
-
-        if codec.is_byte() {
-            return Ok(unsafe { value::js_byte_array(env, ptr.cast::<u8>(), length) }?);
-        }
-
-        let values = self.decode_contiguous(env, codec, ptr.cast::<u8>(), length)?;
-        build_js_array(env, values)
+        self.decode_bytes_or_items(env, ptr.cast::<u8>(), length, "sized array")
     }
 
     fn decode_sized_from_stash<'e>(
@@ -134,7 +127,7 @@ impl ArrayCodec {
             return None;
         };
         if ptr.is_null() {
-            return Some(self.decode_empty_sequence(env, "sized array"));
+            return Some(self.decode_empty_sequence(env));
         }
         Some(self.decode_sized_array(env, *ptr, length))
     }

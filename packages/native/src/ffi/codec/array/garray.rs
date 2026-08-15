@@ -3,7 +3,7 @@ use anyhow::bail;
 use super::super::prelude::*;
 use super::container::ArrayContainer;
 use super::item::ItemCodec;
-use super::{ArrayCodec, build_js_array, dup_strings_to_glib, transfer_items};
+use super::{ArrayCodec, dup_strings_to_glib, transfer_items};
 use crate::ffi::codec::{Codec, FloatCodec};
 use crate::ffi::{StashData, StashStorage};
 
@@ -80,14 +80,13 @@ impl ArrayContainer for GArrayCodec {
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GArray")? else {
-            return build_js_array(env, Vec::new());
+            return codec.decode_empty_sequence(env);
         };
 
-        let item = codec.item_codec("GArray")?;
         let g_array = ptr as *const glib::ffi::GArray;
         let data = unsafe { (*g_array).data as *const u8 };
         let len = unsafe { (*g_array).len as usize };
-        let values = codec.decode_contiguous(env, item, data, len);
+        let decoded = codec.decode_bytes_or_items(env, data, len, "GArray");
 
         if transfer.is_full() {
             let storage_owns = matches!(stash, ffi::Stash::Storage(_));
@@ -96,7 +95,7 @@ impl ArrayContainer for GArrayCodec {
             }
         }
 
-        build_js_array(env, values?)
+        decoded
     }
 
     fn name(&self) -> &'static str {

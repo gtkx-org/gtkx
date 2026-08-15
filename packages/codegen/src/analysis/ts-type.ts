@@ -12,7 +12,7 @@ import {
     type TypeId,
 } from "../gir/type-id.js";
 import { gtypeTsType } from "../store/gi/gtype-binding.js";
-import { primitiveCategoryFor } from "./type-shape.js";
+import { isByteSequence } from "./type-shape.js";
 
 type ReferenceName = {
     namespaceName: string;
@@ -99,9 +99,6 @@ const renderContainerType = (
     return renderSequenceType(library, target, type);
 };
 
-const isByteSequence = (library: Library, type: CArrayType | ListType): boolean =>
-    type.kind === "list" ? type.flavor === "gbytearray" : primitiveCategoryFor(library, type.element) === "uint8";
-
 const renderSequenceType = (library: Library, target: TsTypeTarget, type: CArrayType | ListType): string => {
     if (type.kind === "carray" && hasUnknownArrayLength(type)) {
         return "number";
@@ -133,18 +130,22 @@ const moduleTarget = (context: ModuleContext): TsTypeTarget => ({
     renderGtype: () => gtypeTsType(context),
 });
 
-const renderTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string => {
-    const base = renderBaseType(context.library, moduleTarget(context), ref);
+const renderModuleType = (
+    context: ModuleContext,
+    ref: TypeId | undefined,
+    isNullable: boolean,
+    widen: (base: string) => string,
+): string => {
+    const base = widen(renderBaseType(context.library, moduleTarget(context), ref));
 
     return isNullable ? `${base} | null` : base;
 };
 
-const renderParameterTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string => {
-    const base = renderBaseType(context.library, moduleTarget(context), ref);
-    const widened = base === BYTE_ARRAY_TYPE ? BYTE_ARRAY_INPUT_TYPE : base;
+const renderTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string =>
+    renderModuleType(context, ref, isNullable, (base) => base);
 
-    return isNullable ? `${widened} | null` : widened;
-};
+const renderParameterTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string =>
+    renderModuleType(context, ref, isNullable, (base) => (base === BYTE_ARRAY_TYPE ? BYTE_ARRAY_INPUT_TYPE : base));
 
 const recordTypeTarget = (
     library: Library,

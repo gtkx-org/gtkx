@@ -1,6 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
+import { t } from "@gtkx/runtime";
 import { mkdtempSync, rmSync, truncateSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -94,5 +95,21 @@ describe("marshalling across the napi boundary (2)", () => {
         expect(GLib.ByteArray.append(new Uint8Array([1, 2]), new Uint8Array([3]))).toEqual(new Uint8Array([1, 2, 3]));
         expect(GLib.ByteArray.append([1, 2], [3])).toEqual(new Uint8Array([1, 2, 3]));
         expect(GLib.fileGetContents(pathForSize(0))).toEqual([true, new Uint8Array()]);
+    });
+
+    it("throws when a byte array descriptor is declared over a wider element", () => {
+        expect(() =>
+            t.fn("libglib-2.0.so.0", "g_utf8_validate", {
+                args: [{ type: t.sizedArray(t.int16, 1, "borrowed", { isBytes: true }) }, { type: t.int64 }],
+                returns: t.boolean,
+            }),
+        ).toThrow();
+    });
+
+    it("throws when a byte array argument is given a view of the wrong element type", () => {
+        // @ts-expect-error an Int16Array is not one of the byte-array input types
+        expect(() => GLib.ByteArray.append(new Int16Array([1, 2]), new Uint8Array([3]))).toThrow();
+        // @ts-expect-error a DataView is not one of the byte-array input types
+        expect(() => GLib.ByteArray.append(new DataView(new ArrayBuffer(2)), new Uint8Array([3]))).toThrow();
     });
 });

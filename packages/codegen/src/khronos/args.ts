@@ -2,6 +2,7 @@ import { toCamelIdentifier } from "@gtkx/utils";
 import type { GlCommand, GlParam } from "./model.js";
 import type { CommandPlan, GlScalar, ParamPlan, ReturnPlan } from "./plan.js";
 import {
+    type ArrayLayout,
     tArray,
     tBoolean,
     tBuffer,
@@ -50,6 +51,7 @@ type BuildArgOptions = {
 };
 
 const OUT_PLAN_KINDS: Set<string> = new Set(["ref-out", "ref-array-out", "ref-fixed-out", "string-out"]);
+const NUMERIC_LAYOUT: ArrayLayout = { isBytes: false };
 
 const scalarAliasOrGroup = (scalar: GlScalar, group: string | undefined): string =>
     group !== undefined && scalar.isGroupBearing === true ? group : scalar.tsAlias;
@@ -122,12 +124,13 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
             return inArg(name, "string", tString("borrowed"));
         }
         case "string-array-in": {
-            return inArg(name, "string[]", tArray(tString("borrowed")));
+            return inArg(name, "string[]", tArray(tString("borrowed"), undefined, NUMERIC_LAYOUT));
         }
         case "array-in": {
             track(scalarAliasOrGroup(plan.scalar, param.group));
+            const descriptor = tArray(plan.scalar.descriptor, undefined, NUMERIC_LAYOUT);
 
-            return inArg(name, arrayInTsType(plan.scalar, param.group), tArray(plan.scalar.descriptor));
+            return inArg(name, arrayInTsType(plan.scalar, param.group), descriptor);
         }
         case "buffer": {
             return inArg(name, `ArrayBufferView | ${track("GLintptr")} | null`, tBuffer);
@@ -136,7 +139,7 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
             return inArg(name, track("GLintptr"), tUint64);
         }
         case "byte-offset-array": {
-            return inArg(name, `${track("GLintptr")}[]`, tArray(tUint64));
+            return inArg(name, `${track("GLintptr")}[]`, tArray(tUint64, undefined, NUMERIC_LAYOUT));
         }
         case "ref-array-out":
         case "ref-fixed-out":
@@ -165,14 +168,14 @@ const outArgFields = (options: OutArgFieldsOptions): OutArgFields => {
             return {
                 seed: `const ${cellName} = { value: new Array<number>(${lenIdentifier}).fill(0) };`,
                 tsType: `${track(scalarAliasOrGroup(plan.scalar, param.group))}[]`,
-                descriptor: tRef(tSizedArray(plan.scalar.descriptor, sizeIndex)),
+                descriptor: tRef(tSizedArray(plan.scalar.descriptor, sizeIndex, undefined, NUMERIC_LAYOUT)),
             };
         }
         case "ref-fixed-out": {
             return {
                 seed: `const ${cellName} = { value: new Array<number>(${String(plan.length)}).fill(0) };`,
                 tsType: `${track(plan.scalar.tsAlias)}[]`,
-                descriptor: tRef(tFixedArray(plan.scalar.descriptor, plan.length)),
+                descriptor: tRef(tFixedArray(plan.scalar.descriptor, plan.length, undefined, NUMERIC_LAYOUT)),
             };
         }
         case "string-out": {

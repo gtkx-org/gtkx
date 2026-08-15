@@ -87,6 +87,11 @@ type FundamentalOptions = {
 
 type ListDescriptorName = "list" | "slist" | "ptrArray" | "gArray";
 
+type ArrayLayout = {
+    elementSize?: number | undefined;
+    isBytes: boolean;
+};
+
 type BindArgs = {
     libExpr: string;
     symbolExpr: string;
@@ -233,41 +238,59 @@ const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceSt
 const tList = (name: ListDescriptorName, element: string, ownership: Ownership): string =>
     call(name, [element, sourceStringLiteral(ownership)]);
 
-const tArray = (element: string, ownership?: Ownership, elementSize?: number): string =>
+const arrayLayoutArg = (ownership: Ownership | undefined, layout: ArrayLayout): string | undefined => {
+    if (ownership === undefined) {
+        return undefined;
+    }
+
+    const entries = [
+        layout.elementSize === undefined ? undefined : `elementSize: ${String(layout.elementSize)}`,
+        layout.isBytes ? "isBytes: true" : undefined,
+    ].filter((entry): entry is string => entry !== undefined);
+
+    return entries.length === 0 ? undefined : `{ ${entries.join(", ")} }`;
+};
+
+const tArray = (element: string, ownership: Ownership | undefined, layout: ArrayLayout): string =>
     call("array", [
         element,
         ownership === undefined ? undefined : sourceStringLiteral("array"),
         ownership === undefined ? undefined : sourceStringLiteral(ownership),
-        elementSize === undefined ? undefined : `{ elementSize: ${String(elementSize)} }`,
+        arrayLayoutArg(ownership, layout),
     ]);
 
 const tSizedArray = (
     element: string,
     lengthIndex: number,
-    ownership?: Ownership,
-    elementSize?: number,
+    ownership: Ownership | undefined,
+    layout: ArrayLayout,
 ): string =>
     call("sizedArray", [
         element,
         String(lengthIndex),
         ownership === undefined ? undefined : sourceStringLiteral(ownership),
-        elementSize === undefined ? undefined : String(elementSize),
+        arrayLayoutArg(ownership, layout),
     ]);
 
-const tCursorArray = (element: string, bounds: GirCursorBounds, ownership?: Ownership, elementSize?: number): string =>
+const tCursorArray = (
+    element: string,
+    bounds: GirCursorBounds,
+    ownership: Ownership | undefined,
+    layout: ArrayLayout,
+): string =>
     call("cursorArray", [
         element,
         `{ baseParamIndex: ${String(bounds.baseIndex)}, sizeParamIndex: ${String(bounds.lengthIndex)} }`,
         ownership === undefined ? undefined : sourceStringLiteral(ownership),
-        elementSize === undefined ? undefined : String(elementSize),
+        arrayLayoutArg(ownership, layout),
     ]);
 
-const tFixedArray = (element: string, length: number, ownership?: Ownership, elementSize?: number): string =>
+const tFixedArray = (element: string, length: number, ownership: Ownership | undefined, layout: ArrayLayout): string =>
     call("fixedArray", [
         element,
         String(length),
         ownership === undefined ? undefined : sourceStringLiteral(ownership),
-        elementSize === undefined ? undefined : String(elementSize),
+        arrayLayoutArg(ownership, layout),
     ]);
 
 const tCallback = (spec: CallbackSpecParts): string => {
@@ -320,6 +343,7 @@ export {
     tCallback,
     tBind,
     tFn,
+    type ArrayLayout,
     type Ownership,
     type ScalarDescriptorName,
     type ListDescriptorName,

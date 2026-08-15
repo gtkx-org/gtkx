@@ -12,8 +12,15 @@ use native::value::{TypedView, ViewKind};
 use test_support as helpers;
 
 fn array_of(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayCodec {
-    ArrayCodec::new(Box::new(item), kind, ownership, ArrayBounds::NONE, None)
-        .expect("valid array codec")
+    ArrayCodec::new(
+        Box::new(item),
+        kind,
+        ownership,
+        ArrayBounds::NONE,
+        None,
+        false,
+    )
+    .expect("valid array codec")
 }
 
 fn sized_array_of(item: Codec, size_index: u32, ownership: Ownership) -> ArrayCodec {
@@ -23,6 +30,7 @@ fn sized_array_of(item: Codec, size_index: u32, ownership: Ownership) -> ArrayCo
         ownership,
         ArrayBounds::sized(size_index),
         None,
+        false,
     )
     .expect("valid sized array codec")
 }
@@ -34,6 +42,7 @@ fn fixed_array_of(item: Codec, size: u32, ownership: Ownership) -> ArrayCodec {
         ownership,
         ArrayBounds::fixed(size),
         None,
+        false,
     )
     .expect("valid fixed array codec")
 }

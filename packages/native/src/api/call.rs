@@ -287,6 +287,7 @@ mod tests {
                 Ownership::Borrowed,
                 ArrayBounds::sized(1),
                 None,
+                true,
             )
             .expect("a sized byte array codec"),
         )

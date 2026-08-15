@@ -26,6 +26,7 @@ pub struct ArrayCodec {
     pub item_codec: Box<Codec>,
     pub ownership: Ownership,
     pub element_size: Option<usize>,
+    pub(crate) is_bytes: bool,
     pub(crate) container: ArrayContainerCodec,
 }
 
@@ -36,11 +37,18 @@ impl ArrayCodec {
         ownership: Ownership,
         bounds: ArrayBounds,
         element_size: Option<usize>,
+        is_bytes: bool,
     ) -> anyhow::Result<Self> {
+        anyhow::ensure!(
+            !is_bytes || ItemCodec::from_codec(&item_codec).is_some_and(ItemCodec::is_byte),
+            "A byte array descriptor needs a u8 item codec, got {item_codec:?}"
+        );
+
         Ok(Self {
             item_codec,
             ownership,
             element_size,
+            is_bytes,
             container: ArrayContainerCodec::from_kind(kind, bounds)?,
         })
     }
@@ -119,11 +127,11 @@ impl Decoder for ArrayCodec {
         &self,
         env: &'e Env,
         ptr: *mut c_void,
-        context: &str,
+        _context: &str,
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         if ptr.is_null() {
-            return self.decode_empty_sequence(env, context);
+            return self.decode_empty_sequence(env);
         }
         self.container
             .decode(self, env, &ffi::Stash::Ptr(ptr), transfer)
@@ -323,16 +331,28 @@ impl ArrayCodec {
             .collect()
     }
 
-    pub(crate) fn decode_empty_sequence<'e>(
-        &self,
-        env: &'e Env,
-        context: &str,
-    ) -> anyhow::Result<Unknown<'e>> {
-        if self.item_codec(context).is_ok_and(ItemCodec::is_byte) {
+    pub(crate) fn decode_empty_sequence<'e>(&self, env: &'e Env) -> anyhow::Result<Unknown<'e>> {
+        if self.is_bytes {
             return Ok(unsafe { value::js_byte_array(env, std::ptr::null(), 0) }?);
         }
 
         build_js_array(env, Vec::new())
+    }
+
+    pub(crate) fn decode_bytes_or_items<'e>(
+        &self,
+        env: &'e Env,
+        data: *const u8,
+        len: usize,
+        context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if self.is_bytes {
+            return Ok(unsafe { value::js_byte_array(env, data, len) }?);
+        }
+
+        let values = self.decode_contiguous(env, self.item_codec(context)?, data, len)?;
+
+        build_js_array(env, values)
     }
 
     fn item_codec(&self, context: &str) -> anyhow::Result<ItemCodec> {

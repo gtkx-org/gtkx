@@ -58,6 +58,7 @@ fn gobject_glist_type_of(container: Ownership) -> Codec {
             container,
             ArrayBounds::NONE,
             None,
+            false,
         )
         .expect("valid glist codec"),
     )
@@ -71,6 +72,7 @@ fn string_array_type_of(item: Ownership, container: Ownership, kind: ArrayKind) 
             container,
             ArrayBounds::NONE,
             None,
+            false,
         )
         .expect("valid array codec"),
     )

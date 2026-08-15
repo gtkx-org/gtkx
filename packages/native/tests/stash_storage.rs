@@ -486,6 +486,7 @@ fn string_full_item_array_type(kind: ArrayKind, container_ownership: Ownership) 
         container_ownership,
         ArrayBounds::NONE,
         None,
+        false,
     )
     .expect("valid array codec")
 }
@@ -549,6 +550,7 @@ fn encode_gbytearray_full_ownership_unrefs_when_call_never_happens() {
             Ownership::Full,
             ArrayBounds::NONE,
             None,
+            false,
         )
         .expect("valid gbytearray codec");
         let env = helpers::fake_env();

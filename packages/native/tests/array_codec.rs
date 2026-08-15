@@ -60,9 +60,28 @@ fn u16_zero_terminated_full() -> ArrayCodec {
     )
 }
 
+fn byte_array_codec(kind: ArrayKind, ownership: Ownership) -> ArrayCodec {
+    ArrayCodec::new(
+        Box::new(Codec::Integer(IntegerCodec::U8)),
+        kind,
+        ownership,
+        ArrayBounds::NONE,
+        None,
+        true,
+    )
+    .expect("valid byte array codec")
+}
+
 fn array_codec(item: Codec, kind: ArrayKind, ownership: Ownership) -> ArrayCodec {
-    ArrayCodec::new(Box::new(item), kind, ownership, ArrayBounds::NONE, None)
-        .expect("valid array codec")
+    ArrayCodec::new(
+        Box::new(item),
+        kind,
+        ownership,
+        ArrayBounds::NONE,
+        None,
+        false,
+    )
+    .expect("valid array codec")
 }
 
 fn sized_array_type(item: Codec, size_index: u32, ownership: Ownership) -> ArrayCodec {
@@ -72,6 +91,7 @@ fn sized_array_type(item: Codec, size_index: u32, ownership: Ownership) -> Array
         ownership,
         ArrayBounds::sized(size_index),
         None,
+        false,
     )
     .expect("valid sized array codec")
 }
@@ -83,6 +103,7 @@ fn fixed_array_type(item: Codec, size: u32, ownership: Ownership) -> ArrayCodec 
         ownership,
         ArrayBounds::fixed(size),
         None,
+        false,
     )
     .expect("valid fixed array codec")
 }
@@ -786,11 +807,7 @@ fn encode_gslist_handles_rejects_null() {
 fn encode_gbytearray_roundtrips() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::U8),
-            ArrayKind::GByteArray,
-            Ownership::Borrowed,
-        );
+        let descriptor = byte_array_codec(ArrayKind::GByteArray, Ownership::Borrowed);
         let val = array(&env, &[number(1.0), number(2.0), number(255.0)]);
         let encoded = descriptor.encode(&env, val).unwrap();
         let decoded = descriptor.decode(&env, &encoded).unwrap();
@@ -1300,11 +1317,7 @@ fn encode_integer_array_into_storage() {
 fn decode_null_ptr_yields_empty_array() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::U8),
-            ArrayKind::Array,
-            Ownership::Full,
-        );
+        let descriptor = byte_array_codec(ArrayKind::Array, Ownership::Full);
         let decoded = descriptor
             .decode(&env, &Stash::Ptr(std::ptr::null_mut()))
             .unwrap();
@@ -1532,11 +1545,7 @@ fn decode_gptrarray_null_yields_empty() {
 fn decode_gbytearray_from_ptr_and_empty() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::U8),
-            ArrayKind::GByteArray,
-            Ownership::Borrowed,
-        );
+        let descriptor = byte_array_codec(ArrayKind::GByteArray, Ownership::Borrowed);
         let bytes = [1u8, 2, 3];
         let ba = unsafe {
             let ba = glib::ffi::g_byte_array_sized_new(3);
@@ -1562,11 +1571,7 @@ fn decode_gbytearray_from_ptr_and_empty() {
 fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::U8),
-            ArrayKind::GByteArray,
-            Ownership::Full,
-        );
+        let descriptor = byte_array_codec(ArrayKind::GByteArray, Ownership::Full);
         let bytes = [7u8, 8];
         let ba = unsafe {
             let ba = glib::ffi::g_byte_array_sized_new(2);
@@ -1585,11 +1590,7 @@ fn decode_gbytearray_full_ownership_unrefs_raw_ptr() {
 fn decode_gbytearray_null_yields_empty() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::U8),
-            ArrayKind::GByteArray,
-            Ownership::Full,
-        );
+        let descriptor = byte_array_codec(ArrayKind::GByteArray, Ownership::Full);
         let decoded = descriptor
             .decode(&env, &Stash::Ptr(std::ptr::null_mut()))
             .unwrap();
@@ -1708,6 +1709,18 @@ fn decode_with_context_fixed_rejects_non_ptr() {
     });
 }
 
+fn cursor_byte_array_type(ownership: Ownership) -> ArrayCodec {
+    ArrayCodec::new(
+        Box::new(Codec::Integer(IntegerCodec::U8)),
+        ArrayKind::Cursor,
+        ownership,
+        ArrayBounds::cursor(0, 1),
+        None,
+        true,
+    )
+    .expect("valid cursor byte array codec")
+}
+
 fn cursor_array_type(item: Codec, ownership: Ownership) -> ArrayCodec {
     ArrayCodec::new(
         Box::new(item),
@@ -1715,6 +1728,7 @@ fn cursor_array_type(item: Codec, ownership: Ownership) -> ArrayCodec {
         ownership,
         ArrayBounds::cursor(0, 1),
         None,
+        false,
     )
     .expect("valid cursor array codec")
 }
@@ -1739,7 +1753,7 @@ fn cursor_args(data: &[u8]) -> ([Stash; 2], [Codec; 2]) {
 fn a_cursor_array_decodes_the_tail_of_the_base_buffer() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = cursor_array_type(Codec::Integer(IntegerCodec::U8), Ownership::Borrowed);
+        let descriptor = cursor_byte_array_type(Ownership::Borrowed);
         let data: Vec<u8> = vec![1, 2, 3, 4];
         let (ffi_args, arg_codecs) = cursor_args(&data);
         let stash = Stash::Ptr(unsafe { data.as_ptr().add(2) } as *mut c_void);
@@ -1754,7 +1768,7 @@ fn a_cursor_array_decodes_the_tail_of_the_base_buffer() {
 fn a_cursor_array_at_the_end_of_the_base_buffer_decodes_to_nothing() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = cursor_array_type(Codec::Integer(IntegerCodec::U8), Ownership::Borrowed);
+        let descriptor = cursor_byte_array_type(Ownership::Borrowed);
         let data: Vec<u8> = vec![1, 2, 3];
         let (ffi_args, arg_codecs) = cursor_args(&data);
         let stash = Stash::Ptr(unsafe { data.as_ptr().add(3) } as *mut c_void);
@@ -1769,7 +1783,7 @@ fn a_cursor_array_at_the_end_of_the_base_buffer_decodes_to_nothing() {
 fn a_cursor_array_outside_the_base_buffer_is_rejected() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = cursor_array_type(Codec::Integer(IntegerCodec::U8), Ownership::Borrowed);
+        let descriptor = cursor_byte_array_type(Ownership::Borrowed);
         let data: Vec<u8> = vec![1, 2, 3];
         let (ffi_args, arg_codecs) = cursor_args(&data);
         let stash = Stash::Ptr(unsafe { data.as_ptr().add(4) } as *mut c_void);
@@ -1785,7 +1799,7 @@ fn a_cursor_array_outside_the_base_buffer_is_rejected() {
 fn a_cursor_array_null_pointer_decodes_to_nothing() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = cursor_array_type(Codec::Integer(IntegerCodec::U8), Ownership::Borrowed);
+        let descriptor = cursor_byte_array_type(Ownership::Borrowed);
         let data: Vec<u8> = Vec::new();
         let (ffi_args, arg_codecs) = cursor_args(&data);
         let decoded = descriptor
@@ -1804,7 +1818,7 @@ fn a_cursor_array_null_pointer_decodes_to_nothing() {
 fn a_cursor_array_cannot_be_encoded() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = cursor_array_type(Codec::Integer(IntegerCodec::U8), Ownership::Borrowed);
+        let descriptor = cursor_byte_array_type(Ownership::Borrowed);
         assert!(descriptor.encode(&env, array(&env, &[])).is_err());
     });
 }
@@ -1813,7 +1827,7 @@ fn a_cursor_array_cannot_be_encoded() {
 fn a_cursor_array_cannot_be_decoded_without_its_base_buffer() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = cursor_array_type(Codec::Integer(IntegerCodec::U8), Ownership::Borrowed);
+        let descriptor = cursor_byte_array_type(Ownership::Borrowed);
         let data: Vec<u8> = vec![7];
         assert!(
             descriptor
@@ -1946,11 +1960,7 @@ fn ptr_to_value_gptrarray() {
 fn ptr_to_value_gbytearray() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::U8),
-            ArrayKind::GByteArray,
-            Ownership::Borrowed,
-        );
+        let descriptor = byte_array_codec(ArrayKind::GByteArray, Ownership::Borrowed);
         let bytes = [9u8];
         let ba = unsafe {
             let ba = glib::ffi::g_byte_array_sized_new(1);
@@ -2225,11 +2235,7 @@ fn encode_gslist_strings_full_container_borrowed_elements_releases_spine_when_ca
 fn encode_gbytearray_full_ownership_releases_when_call_never_happens() {
     helpers::run(|| {
         let env = helpers::fake_env();
-        let descriptor = array_codec(
-            Codec::Integer(IntegerCodec::U8),
-            ArrayKind::GByteArray,
-            Ownership::Full,
-        );
+        let descriptor = byte_array_codec(ArrayKind::GByteArray, Ownership::Full);
         let val = array(&env, &[number(1.0), number(2.0)]);
         let encoded = descriptor.encode(&env, val).unwrap();
         let Stash::Storage(storage) = &encoded else {
@@ -2364,6 +2370,7 @@ fn inline_pair_codec(ownership: Ownership, kind: ArrayKind, size_index: Option<u
             fixed_size: None,
         },
         Some(size_of::<InlinePair>()),
+        false,
     )
     .expect("valid inline array codec")
 }
@@ -2457,6 +2464,7 @@ fn an_inline_struct_array_decodes_elements_by_value() {
             Ownership::Borrowed,
             ArrayBounds::fixed(2),
             Some(size_of::<InlinePair>()),
+            false,
         )
         .expect("valid fixed inline array codec");
 

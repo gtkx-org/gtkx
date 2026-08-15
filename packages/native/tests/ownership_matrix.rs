@@ -209,6 +209,7 @@ fn array_of(
         size_param_index: sized,
         fixed_size: fixed,
         element_size: None,
+        is_bytes: None,
     }
 }
 

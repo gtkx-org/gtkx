@@ -50,7 +50,7 @@ impl ArrayContainer for GPtrArrayCodec {
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GPtrArray")? else {
-            return super::build_js_array(env, Vec::new());
+            return codec.decode_empty_sequence(env);
         };
 
         let ptr_array = ptr.cast::<glib::ffi::GPtrArray>();
