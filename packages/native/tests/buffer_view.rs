@@ -112,6 +112,37 @@ fn assert_passthrough(item: Codec, view_kind: ViewKind) {
 }
 
 #[test]
+fn a_view_into_the_middle_of_its_buffer_encodes_from_its_own_start() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let mut data: Vec<u8> = (0u8..8).collect();
+        let base = data.as_mut_ptr().cast::<c_void>();
+        let offset = 3usize;
+        let view = helpers::napi_mock::to_unknown(
+            &env,
+            helpers::napi_mock::fake_typed_array(TypedarrayType::uint8_array, base, 4, offset),
+        );
+        let encoded = encode_view(
+            &array_of(
+                Codec::Integer(IntegerCodec::U8),
+                ArrayKind::Array,
+                Ownership::Borrowed,
+            ),
+            env,
+            view,
+        )
+        .expect("a byte view should encode");
+        let Stash::Ptr(ptr) = encoded else {
+            panic!("expected a pointer passthrough, got {encoded:?}");
+        };
+        assert_eq!(
+            ptr,
+            unsafe { base.cast::<u8>().add(offset) }.cast::<c_void>()
+        );
+    });
+}
+
+#[test]
 fn buffer_view_kind_resolves_every_napi_tag() {
     let expectations = [
         (TypedarrayType::int8_array, ViewKind::Int8),

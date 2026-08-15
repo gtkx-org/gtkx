@@ -1184,7 +1184,7 @@ unsafe fn write_view_info(
             *length = view_length;
         }
         if !data.is_null() {
-            *data = view_data;
+            *data = view_data.cast::<u8>().add(view_offset).cast::<c_void>();
         }
         if !arraybuffer.is_null() {
             *arraybuffer = alloc(if view_shared {
