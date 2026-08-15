@@ -61,7 +61,8 @@ const resolvePnpmPin = (settings: DeploySettings): PnpmPin => {
     if (!field.startsWith(PNPM_PREFIX)) {
         throw new Error(
             `Cannot vendor pnpm for the Flathub sandbox: "packageManager" is "${field}" but the offline install ` +
-            "resolves from a pnpm lockfile. Point both at pnpm, or set `deploy.flatpak.packageManager`.",
+            "resolves from a pnpm lockfile. Run `corepack use pnpm@<version>` to pin it to pnpm, or point " +
+            "`deploy.flatpak.packageManager` at the manager whose lockfile the build should install from.",
         );
     }
 
