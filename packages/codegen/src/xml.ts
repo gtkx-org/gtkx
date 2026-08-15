@@ -75,7 +75,11 @@ const offendingLine = (xml: string, error: unknown): string => {
 
     const text = xml.split("\n")[line - 1];
 
-    return text === undefined ? "" : `\n    ${escapeControlCodes(text.trim())}`;
+    if (text === undefined) {
+        return "";
+    }
+
+    return `\n    ${escapeControlCodes(text.replace(/^[ \t]+/, "").replace(/\r$/, ""))}`;
 };
 
 const remedySuffix = (input: XmlFileInput, xml: string, error: unknown): string => {
