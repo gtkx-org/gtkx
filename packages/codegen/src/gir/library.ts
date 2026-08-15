@@ -331,13 +331,12 @@ class Library {
         return this.namespacesByName;
     }
 
-    /** Paths of the `.gir` files that were read, in the order they were discovered. */
     /** Whether byte sequences render as `Uint8Array` rather than `number[]`. */
     public get isByteArrayTyped(): boolean {
         return this.isByteArrayTypedValue;
     }
 
-    /** Every `.gir` file that was read while loading this library. */
+    /** Paths of the `.gir` files that were read, in the order they were discovered. */
     public get girFiles(): string[] {
         return this.girFilesValue;
     }
