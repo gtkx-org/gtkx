@@ -47,11 +47,13 @@ const PACKAGE_FOR_TOOL: Record<string, FamilyPackages> = {
     tar: { arch: "tar", debian: "tar", fedora: "tar", suse: "tar" },
 };
 
+const GENERATOR_SOURCE = "git+https://github.com/flatpak/flatpak-builder-tools.git#subdirectory=node";
+
 const EXTRA_HINTS: Record<string, string[]> = {
     "flatpak-builder": ["or: flatpak install --user -y flathub org.flatpak.Builder"],
     "flatpak-node-generator": [
-        "pipx install git+https://github.com/flatpak/flatpak-builder-tools.git#subdirectory=node",
-        "add --force when it is installed but too old to vendor pnpm",
+        `pipx install ${GENERATOR_SOURCE}`,
+        `or, when the installed copy is too old to vendor pnpm: pipx install --force ${GENERATOR_SOURCE}`,
     ],
 };
 
