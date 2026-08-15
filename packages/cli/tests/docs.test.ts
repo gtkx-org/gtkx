@@ -1,7 +1,14 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBRARIES } from "./cli-project.js";
+import {
+    type CliProject,
+    createCliProject,
+    removeCliProject,
+    runCli,
+    STORE_FUTURE,
+    STORE_LIBRARIES,
+} from "./cli-project.js";
 
 const APPLICATION_ID = "com.gtkx.clidocs";
 const OUT_DIR = join("site", "elements");
@@ -15,7 +22,8 @@ const REJECTED_OUT_DIRS = ["", ".", "..", "../sibling", "docs/../..", "/elsewher
 
 const config = (body = ""): string =>
     `export default { applicationId: "${APPLICATION_ID}", ` +
-    `libraries: ${JSON.stringify(STORE_LIBRARIES)}${body} };\n`;
+    `libraries: ${JSON.stringify(STORE_LIBRARIES)}, ` +
+    `future: ${JSON.stringify(STORE_FUTURE)}${body} };\n`;
 
 const docsDir = (project: CliProject): string => join(project.root, OUT_DIR);
 
