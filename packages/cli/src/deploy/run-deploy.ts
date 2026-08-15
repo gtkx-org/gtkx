@@ -22,11 +22,13 @@ import { DEFAULT_TARGETS, parseTargetList, targetsFor } from "./registry.js";
 import { resolveDeploySettings } from "./settings/index.js";
 import { readPackageManifest } from "./settings/package-manifest.js";
 import { missingDeployError } from "./settings/starter.js";
+import { detectPackageManager } from "./targets/flatpak-sources.js";
 import {
     APPSTREAMCLI,
     assertTools,
     DESKTOP_FILE_VALIDATE,
     FLATPAK_NODE_GENERATOR,
+    FLATPAK_NODE_GENERATOR_PNPM,
     probeTools,
     STRIP,
     TAR,
@@ -93,7 +95,11 @@ const warnMissingNetwork = (settings: DeploySettings): void => {
 const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
     const isFlatpakSource = settings.deploy.flatpak?.mode === "source";
 
-    return isFlatpakSource && targets.some((target) => target.name === "flatpak") ? [FLATPAK_NODE_GENERATOR] : [];
+    if (!isFlatpakSource || targets.every((target) => target.name !== "flatpak")) {
+        return [];
+    }
+
+    return detectPackageManager(settings) === "pnpm" ? [FLATPAK_NODE_GENERATOR_PNPM] : [FLATPAK_NODE_GENERATOR];
 };
 
 const isNodeRequired = (targets: DeployTarget[], settings: DeploySettings): boolean =>

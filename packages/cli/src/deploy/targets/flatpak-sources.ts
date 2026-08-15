@@ -5,8 +5,11 @@ import type { DeploySettings } from "../types.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
 import { gitRemoteUrl, runGit } from "../git.js";
 import { optional } from "../nfpm/optional.js";
+import { FLATPAK_NODE_GENERATOR, GENERATOR_PNPM_OPTION } from "../tools.js";
+import { pnpmInstallCommand, type PnpmPin, pnpmStoreVersionFor, resolvePnpmPin } from "./flatpak-pnpm.js";
 
 type PackageManager = "npm" | "pnpm" | "yarn";
+type VendoredManager = Exclude<PackageManager, "pnpm">;
 
 type GitSource = {
     type: "git";
@@ -21,7 +24,7 @@ type GitRevision = {
 };
 
 const GENERATED_SOURCES = "generated-sources.json";
-const GENERATOR = "flatpak-node-generator";
+const COMMIT_PEEL = "^{commit}";
 const FETCHABLE_URL = /^https?:\/\//;
 const DEFAULT_NODE_EXTENSION = "org.freedesktop.Sdk.Extension.node24";
 const NODE_EXTENSION_PREFIX = "org.freedesktop.Sdk.Extension.";
@@ -33,9 +36,8 @@ const LOCKFILE_BY_MANAGER: Record<PackageManager, string> = {
     yarn: "yarn.lock",
 };
 
-const INSTALL_COMMAND: Record<PackageManager, string> = {
+const INSTALL_COMMAND: Record<VendoredManager, string> = {
     npm: "npm ci --offline",
-    pnpm: "pnpm install --offline --frozen-lockfile",
     yarn: "yarn install --offline",
 };
 
@@ -59,7 +61,11 @@ const detectPackageManager = (settings: DeploySettings): PackageManager => {
     return found;
 };
 
-const installCommandFor = (manager: PackageManager): string => INSTALL_COMMAND[manager];
+const pnpmPinFor = (settings: DeploySettings, manager: PackageManager): PnpmPin | null =>
+    manager === "pnpm" ? resolvePnpmPin(settings) : null;
+
+const installCommandFor = (settings: DeploySettings, manager: PackageManager): string =>
+    manager === "pnpm" ? pnpmInstallCommand(resolvePnpmPin(settings)) : INSTALL_COMMAND[manager];
 
 const nodeExtensionFor = (settings: DeploySettings): string =>
     settings.deploy.flatpak?.nodeExtension ?? DEFAULT_NODE_EXTENSION;
@@ -98,6 +104,19 @@ const resolveSourceUrl = (settings: DeploySettings): string => {
     return url;
 };
 
+const commitForTag = (root: string, tag: string): string => {
+    const commit = runGit(root, ["rev-parse", `${tag}${COMMIT_PEEL}`]);
+
+    if (commit === null) {
+        throw new Error(
+            `Cannot pin the Flathub source to "${tag}": Flathub builds a fixed tree, not a movable tag, and that ` +
+            `tag does not resolve in ${root}. Create or fetch it, or set \`deploy.flatpak.source.commit\`.`,
+        );
+    }
+
+    return commit;
+};
+
 const configuredRevision = (settings: DeploySettings): GitRevision | null => {
     const source = settings.deploy.flatpak?.source ?? {};
 
@@ -105,7 +124,11 @@ const configuredRevision = (settings: DeploySettings): GitRevision | null => {
         return { ...optional("tag", source.tag), commit: source.commit };
     }
 
-    return source.tag === undefined ? null : { tag: source.tag };
+    if (source.tag === undefined) {
+        return null;
+    }
+
+    return { tag: source.tag, commit: commitForTag(settings.paths.root, source.tag) };
 };
 
 const workingTreeRevision = (settings: DeploySettings): GitRevision => {
@@ -141,7 +164,10 @@ const isolateLockfile = (root: string, lockfile: string): string => {
     return dir;
 };
 
-const generateNodeSources = (settings: DeploySettings, manager: PackageManager): void => {
+const storeVersionArgs = (pin: PnpmPin | null): string[] =>
+    pin === null ? [] : [GENERATOR_PNPM_OPTION, pnpmStoreVersionFor(pin)];
+
+const generateNodeSources = (settings: DeploySettings, manager: PackageManager, pin: PnpmPin | null): void => {
     const lockfile = settings.deploy.flatpak?.lockfile ?? LOCKFILE_BY_MANAGER[manager];
     const output = generatedSourcesPath(settings);
     mkdirSync(dirname(output), { recursive: true });
@@ -149,9 +175,9 @@ const generateNodeSources = (settings: DeploySettings, manager: PackageManager):
 
     try {
         runCliTool({
-            tool: GENERATOR,
-            args: [manager, join(isolated, basename(lockfile)), "-o", output],
-            target: "the offline npm sources",
+            tool: FLATPAK_NODE_GENERATOR.command,
+            args: [manager, join(isolated, basename(lockfile)), ...storeVersionArgs(pin), "-o", output],
+            target: "the offline dependency sources",
             shouldStream: true,
         });
     } finally {
@@ -167,5 +193,6 @@ export {
     nodeExtensionFor,
     nodeExtensionPathFor,
     type PackageManager,
+    pnpmPinFor,
     resolveGitSource,
 };

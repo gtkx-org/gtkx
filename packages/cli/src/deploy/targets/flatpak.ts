@@ -6,7 +6,7 @@ import type { DeployArtifact, DeployManifest, DeployPayload, DeploySettings, Dep
 import { runCliTool } from "../../internal/run-cli-tool.js";
 import { APPSTREAMCLI, DESKTOP_FILE_VALIDATE, FLATPAK, FLATPAK_BUILDER } from "../tools.js";
 import { branchFor, renderFlatpakManifest } from "./flatpak-manifest.js";
-import { detectPackageManager, generateNodeSources } from "./flatpak-sources.js";
+import { detectPackageManager, generateNodeSources, pnpmPinFor } from "./flatpak-sources.js";
 
 type BuilderInvocation = {
     tool: string;
@@ -45,7 +45,8 @@ const renderManifests = (payload: DeployPayload): DeployManifest[] => {
     const settings = payload.settings;
 
     if (isSourceMode(settings)) {
-        generateNodeSources(settings, detectPackageManager(settings));
+        const manager = detectPackageManager(settings);
+        generateNodeSources(settings, manager, pnpmPinFor(settings, manager));
     }
 
     return [{

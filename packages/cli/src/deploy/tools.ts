@@ -10,6 +10,8 @@ type ToolReport = {
 
 const DETAIL_COLUMN = 26;
 const FLATPAK_BUILDER_REF = "org.flatpak.Builder";
+const FLATPAK_NODE_GENERATOR_COMMAND = "flatpak-node-generator";
+const GENERATOR_PNPM_OPTION = "--pnpm-store-version";
 
 const APPSTREAMCLI: DeployTool = {
     command: "appstreamcli",
@@ -44,9 +46,14 @@ const FLATPAK_BUILDER: DeployTool = {
 };
 
 const FLATPAK_NODE_GENERATOR: DeployTool = {
-    command: "flatpak-node-generator",
-    purpose: "vendors the npm dependencies a Flathub build installs offline",
+    command: FLATPAK_NODE_GENERATOR_COMMAND,
+    purpose: "vendors the dependencies a Flathub build installs offline",
     isOptional: false,
+};
+
+const FLATPAK_NODE_GENERATOR_PNPM: DeployTool = {
+    ...FLATPAK_NODE_GENERATOR,
+    isPresent: () => hasGeneratorPnpmSupport(),
 };
 
 const STRIP: DeployTool = {
@@ -69,6 +76,18 @@ const isFlatpakRefInstalled = (ref: string): boolean => {
     }
 
     return spawnSync(flatpak, ["info", ref], { stdio: "ignore" }).status === 0;
+};
+
+const hasGeneratorPnpmSupport = (): boolean => {
+    const generator = tryResolveExecutable(FLATPAK_NODE_GENERATOR_COMMAND);
+
+    if (generator === undefined) {
+        return false;
+    }
+
+    const help = spawnSync(generator, ["--help"], { encoding: "utf8" });
+
+    return help.error === undefined && help.output.join("").includes(GENERATOR_PNPM_OPTION);
 };
 
 const isToolPresent = (tool: DeployTool): boolean =>
@@ -123,6 +142,8 @@ const warnMissingOptional = (report: ToolReport): void => {
 export {
     APPSTREAMCLI,
     FLATPAK_NODE_GENERATOR,
+    FLATPAK_NODE_GENERATOR_PNPM,
+    GENERATOR_PNPM_OPTION,
     assertTools,
     DESKTOP_FILE_VALIDATE,
     FILE_TOOL,

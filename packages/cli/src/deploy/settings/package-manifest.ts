@@ -13,6 +13,7 @@ type PackageManifest = {
     description: string | null;
     license: string | null;
     homepage: string | null;
+    packageManager: string | null;
     author: ManifestAuthor;
 };
 
@@ -59,6 +60,7 @@ const readPackageManifest = (root: string): PackageManifest => {
         description: optionalString(manifest.description),
         license: optionalString(manifest.license),
         homepage: optionalString(manifest.homepage),
+        packageManager: optionalString(manifest.packageManager),
         author: parseAuthor(manifest.author),
     };
 };

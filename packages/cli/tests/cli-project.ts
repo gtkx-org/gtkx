@@ -1,3 +1,4 @@
+import { resolveExecutable } from "@gtkx/utils";
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -28,7 +29,8 @@ const WORKSPACE_PACKAGES = ["components", "config", "css", "native", "react", "r
 const REGISTRY_PACKAGES = ["@types", "csstype", "react", "tsx"];
 const STORE_LIBRARIES = ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"];
 const STORE_FUTURE = { v2ByteArrays: true };
-const MANIFEST = { name: "gtkx-cli-project", version: "1.0.0" };
+const MANIFEST = { name: "gtkx-cli-project", version: "1.0.0", type: "module" };
+const GIT_IDENTITY = ["-c", "user.email=probe@gtkx.dev", "-c", "user.name=Probe", "-c", "commit.gpgsign=false"];
 
 const writeProjectFiles = (root: string, files: Record<string, string>): void => {
     for (const [name, contents] of Object.entries(files)) {
@@ -93,6 +95,20 @@ const removeCliProject = (project: CliProject): void => {
     rmSync(project.root, { recursive: true, force: true });
 };
 
+const runProjectGit = (project: CliProject, args: string[]): void => {
+    const result = spawnSync(resolveExecutable("git"), args, { cwd: project.root, encoding: "utf8" });
+
+    if (result.status !== 0) {
+        throw new Error(`git ${args.join(" ")} failed in ${project.root}: ${result.stderr}`);
+    }
+};
+
+const initGitRepo = (project: CliProject, tag: string): void => {
+    runProjectGit(project, ["init", "--quiet"]);
+    runProjectGit(project, [...GIT_IDENTITY, "commit", "--allow-empty", "--quiet", "--message", "probe"]);
+    runProjectGit(project, ["tag", tag]);
+};
+
 const cliEnvironment = (): NodeJS.ProcessEnv => {
     const environment = { ...process.env };
     delete environment.NODE_ENV;
@@ -106,11 +122,11 @@ const cliEnvironment = (): NodeJS.ProcessEnv => {
     return environment;
 };
 
-const runCli = (project: CliProject, args: string[]): CliRun => {
+const runCli = (project: CliProject, args: string[], overrides: NodeJS.ProcessEnv = {}): CliRun => {
     const result = spawnSync(process.execPath, [...CLI_ARGV, ...args, "--cwd", project.root], {
         cwd: WORKSPACE_ROOT,
         encoding: "utf8",
-        env: cliEnvironment(),
+        env: { ...cliEnvironment(), ...overrides },
         timeout: CLI_TIMEOUT,
     });
 
@@ -134,6 +150,7 @@ const startCli = (project: CliProject, args: string[]): ChildProcess =>
 export {
     type CliProject,
     createCliProject,
+    initGitRepo,
     listProjectFiles,
     removeCliProject,
     runCli,

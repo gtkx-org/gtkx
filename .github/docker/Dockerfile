@@ -48,6 +48,7 @@ RUN apt-get update \
         rpm \
         binutils \
         file \
+        pipx \
         xz-utils \
         fontconfig \
         fonts-noto-core \
@@ -56,6 +57,14 @@ RUN apt-get update \
         libadwaita-1-0-dbgsym \
         libglib2.0-0t64-dbgsym \
     && rm -rf /var/lib/apt/lists/*
+
+ARG FLATPAK_BUILDER_TOOLS=737c0085912f9f7dabf9341d4608e2a77a51a73a
+ENV PIPX_HOME=/opt/pipx
+ENV PIPX_BIN_DIR=/usr/local/bin
+RUN pipx install \
+        "git+https://github.com/flatpak/flatpak-builder-tools.git@${FLATPAK_BUILDER_TOOLS}#subdirectory=node" \
+    && flatpak-node-generator --help | grep -q -- --pnpm-store-version \
+    && chmod -R a+rX /opt/pipx
 
 COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
 RUN fc-cache -f

@@ -116,11 +116,13 @@ GTKX needs Node.js 24, and Debian 13 ships 20 while Ubuntu 26.04 ships 22, so th
 | Target | Needs | Fetched automatically |
 | --- | --- | --- |
 | `flatpak` | `flatpak`, and either `flatpak-builder` or the `org.flatpak.Builder` Flatpak | the GNOME runtime |
-| `flatpak` with `mode: "source"` | the above, plus `flatpak-node-generator` | |
+| `flatpak` with `mode: "source"` | the above, plus `flatpak-node-generator`, from git master for a pnpm project | |
 | `deb`, `rpm` | | `nfpm` |
 | `appimage` | `file` | `appimagetool` and the AppImage runtime |
 
 `nfpm` and `appimagetool` are downloaded, checksum-verified, and cached under `~/.cache/gtkx/`, so building a `.deb` on Fedora and an `.rpm` on Debian both work without installing anything distribution-specific. Only the archives are cached, and each is re-verified against its published checksum before it is reused, so a corrupted cache is discarded and re-fetched rather than packaged.
+
+A pnpm project needs `flatpak-node-generator` from git master, because the option that picks the layout of the vendored pnpm store is newer than its last tagged release. `gtkx deploy` checks the copy on your `PATH` and treats one without it as missing. npm and yarn projects work with any release.
 
 When a required tool is missing, `gtkx deploy` lists every one of them at once, with the install command for your distribution. `--print-manifests` needs none of the packaging tools, only the validators.
 
@@ -161,6 +163,8 @@ If the build stops at `Failure spawning rofiles-fuse`, it is running somewhere F
 ## Publishing on Flathub
 
 `gtkx deploy --target flatpak` builds from the tree it just staged, which is fast and fully offline, but Flathub builds every submission from source. `deploy.flatpak.mode: "source"` emits a manifest that does exactly that: a `git` source pinned to your release, dependencies vendored offline with [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node), and the generated metadata carried inline so nothing generated has to be committed.
+
+The lockfile in your project root picks which package manager the sandbox installs with, and npm, pnpm, and yarn all work. pnpm takes one extra source, because the Node SDK extension ships no pnpm and the sandbox has no network to fetch one, so the manifest vendors the pnpm tarball itself. The version comes from `packageManager` in your `package.json`: write it with `corepack use pnpm@<version>`, which records the `sha512` digest every Flathub source has to carry. Pin pnpm 10, or 11.3.0 and newer, where `--trust-lockfile` skips the registry check the sandbox cannot complete.
 
 [Shipping It on Flathub](/tutorial/flatpak) walks through the submission.
 

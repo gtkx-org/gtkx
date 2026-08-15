@@ -8,6 +8,7 @@ import { renderMetainfo } from "../freedesktop/metainfo.js";
 import { optional } from "../nfpm/optional.js";
 import { iconPathFor } from "../payload/icons.js";
 import { renderLauncher } from "../payload/launcher.js";
+import { pnpmPathFor, type PnpmPin, pnpmSources } from "./flatpak-pnpm.js";
 import { DESTINATION, type FlatpakModule, postInstallCommands, validationCommands } from "./flatpak-prebuilt.js";
 import {
     detectPackageManager,
@@ -15,6 +16,7 @@ import {
     installCommandFor,
     nodeExtensionPathFor,
     type PackageManager,
+    pnpmPinFor,
     resolveGitSource,
 } from "./flatpak-sources.js";
 
@@ -118,19 +120,29 @@ const iconInstallCommands = (settings: DeploySettings): string[] => {
     return listFilesRecursive(iconsDir).map((icon) => iconInstallCommand(settings, icon.absPath, icon.rel));
 };
 
-const offlineEnvFor = (manager: PackageManager, settings: DeploySettings): Record<string, string> => {
-    const moduleDir = `${MODULE_BUILD_ROOT}/${settings.binaryName}`;
+const moduleDirFor = (settings: DeploySettings): string => `${MODULE_BUILD_ROOT}/${settings.binaryName}`;
 
-    if (manager === "yarn") {
-        return { YARN_OFFLINE_MIRROR: `${moduleDir}/${YARN_MIRROR_DIR}` };
+const offlineEnvFor = (manager: PackageManager, settings: DeploySettings): Record<string, string> => {
+    if (manager === "pnpm") {
+        return {};
     }
 
-    return { npm_config_cache: `${moduleDir}/${NPM_CACHE_DIR}`, npm_config_offline: "true" };
+    if (manager === "yarn") {
+        return { YARN_OFFLINE_MIRROR: `${moduleDirFor(settings)}/${YARN_MIRROR_DIR}` };
+    }
+
+    return { npm_config_cache: `${moduleDirFor(settings)}/${NPM_CACHE_DIR}`, npm_config_offline: "true" };
 };
+
+const appendPathFor = (settings: DeploySettings, pin: PnpmPin | null, nodeExtensionPath: string): string =>
+    pin === null
+        ? `${nodeExtensionPath}/bin`
+        : `${pnpmPathFor(moduleDirFor(settings))}:${nodeExtensionPath}/bin`;
 
 const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
     const settings = payload.settings;
     const manager = detectPackageManager(settings);
+    const pin = pnpmPinFor(settings, manager);
     const postInstall = postInstallCommands(payload);
     const nodeExtensionPath = nodeExtensionPathFor(settings);
 
@@ -138,13 +150,14 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
         name: settings.binaryName,
         buildsystem: "simple",
         "build-options": {
-            "append-path": `${nodeExtensionPath}/bin`,
+            "append-path": appendPathFor(settings, pin, nodeExtensionPath),
             env: { npm_config_nodedir: nodeExtensionPath, ...offlineEnvFor(manager, settings) },
             strip: false,
             "no-debuginfo": true,
         },
         sources: [
             resolveGitSource(settings),
+            ...(pin === null ? [] : pnpmSources(pin, moduleDirFor(settings))),
             GENERATED_SOURCES,
             inlineSource(`${settings.applicationId}.desktop`, renderDesktopEntry(settings)),
             inlineSource(`${settings.applicationId}.metainfo.xml`, renderMetainfo(settings)),
@@ -152,7 +165,7 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
             ...activationSource(settings),
         ],
         "build-commands": [
-            installCommandFor(manager),
+            installCommandFor(settings, manager),
             "npx gtkx build",
             ...runtimeInstallCommands(settings, nodeExtensionPath),
             ...metadataInstallCommands(settings),

@@ -107,6 +107,8 @@ flatpak: {
 },
 ```
 
+A tag on its own is enough, as long as it exists in your checkout: Flathub builds a fixed tree rather than following a movable tag, so `gtkx deploy` resolves the tag to its commit and writes both into the manifest.
+
 Commit `package.json` and your lockfile so the offline install resolves, tag the release, and push.
 
 The pull request goes to [flathub/flathub](https://github.com/flathub/flathub), against the `new-pr` branch, carrying the manifest named after your application ID and `generated-sources.json` beside it. Before opening it, check the manifest the way Flathub's own CI does:
