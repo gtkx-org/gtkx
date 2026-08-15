@@ -124,7 +124,7 @@ Scaffold a new app with the `create-gtkx` initializer:
 npm create gtkx
 ```
 
-The same command works with other package managers: `pnpm create gtkx` or `yarn create gtkx`.
+The same command works with other package managers: `pnpm create gtkx`, `yarn create gtkx`, or `bun create gtkx`.
 
 Then run your new app:
 

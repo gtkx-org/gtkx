@@ -4,6 +4,7 @@ const PACKAGE_MANAGERS = [
     { value: "pnpm", label: "pnpm", devCommand: "pnpm dev", addCommand: "pnpm add", isRecommended: true },
     { value: "npm", label: "npm", devCommand: "npm run dev", addCommand: "npm install", isRecommended: false },
     { value: "yarn", label: "yarn", devCommand: "yarn dev", addCommand: "yarn add", isRecommended: false },
+    { value: "bun", label: "bun", devCommand: "bun run dev", addCommand: "bun add", isRecommended: false },
 ] as const;
 
 const PACKAGE_MANAGER_VALUES: PackageManager[] = PACKAGE_MANAGERS.map((manager) => manager.value);

@@ -27,6 +27,12 @@ const writeYarnAllowance = (root: string): void => {
     });
 };
 
+const writeBunAllowance = (root: string): void => {
+    updateManifest(root, (manifest) => {
+        manifest.trustedDependencies = [...BUILT_DEPENDENCIES];
+    });
+};
+
 const writeBuildAllowance = (root: string, packageManager: PackageManager): void => {
     if (packageManager === "pnpm") {
         writePnpmAllowance(root);
@@ -36,6 +42,12 @@ const writeBuildAllowance = (root: string, packageManager: PackageManager): void
 
     if (packageManager === "yarn") {
         writeYarnAllowance(root);
+
+        return;
+    }
+
+    if (packageManager === "bun") {
+        writeBunAllowance(root);
 
         return;
     }

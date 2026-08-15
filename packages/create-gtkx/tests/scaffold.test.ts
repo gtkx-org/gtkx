@@ -109,6 +109,18 @@ describe("create-gtkx and the package manager it scaffolds for", () => {
             removeRun(yarnRun);
         }
     });
+
+    it("records the build allowance bun understands and installs through bun", () => {
+        const run = runCreate({ args: ["--no-interactive", "--application-id", APPLICATION_ID, "-p", "bun"] });
+
+        try {
+            expect(run.status).toBe(0);
+            expect(readManifest(run).trustedDependencies).toEqual(["@swc/core", "esbuild"]);
+            expect(run.installs.join("\n")).toContain("bun add");
+        } finally {
+            removeRun(run);
+        }
+    });
 });
 
 describe("create-gtkx and a directory that already holds files", () => {
@@ -158,7 +170,7 @@ describe("create-gtkx refusing to scaffold", () => {
 
     it("fails on a package manager it does not know", () => {
         const run = runCreate({
-            args: ["--no-interactive", "--application-id", APPLICATION_ID, "--package-manager", "bun"],
+            args: ["--no-interactive", "--application-id", APPLICATION_ID, "--package-manager", "deno"],
         });
 
         try {
