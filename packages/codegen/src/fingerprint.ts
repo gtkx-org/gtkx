@@ -7,6 +7,13 @@ import packageManifest from "../package.json" with { type: "json" };
 import { arrayGuard, hasFields, isNumber, isString, optionalGuard } from "./guards.js";
 import { readJsonFile } from "./json.js";
 
+type GiInputs = {
+    girFiles: string[];
+    libraries: string[];
+    girPath: string[];
+    isByteArrayTyped: boolean;
+};
+
 type GiFingerprint = {
     value: string;
     girFiles: string[];
@@ -56,15 +63,17 @@ const overrideFiles = (): string[] => {
         .map((entry: Dirent) => join(entry.parentPath, entry.name));
 };
 
-const hashGi = (girFiles: string[], libraries: string[], girPath: string[]): string => {
+const hashGi = (inputs: GiInputs): string => {
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
     hash.update("\n");
-    hash.update(sortAlpha(libraries));
+    hash.update(sortAlpha(inputs.libraries));
     hash.update("\n");
-    hash.update(sortAlpha(girPath));
+    hash.update(sortAlpha(inputs.girPath));
     hash.update("\n");
-    const hashedFiles = sortStrings([...girFiles, ...overrideFiles()]);
+    hash.update(String(inputs.isByteArrayTyped));
+    hash.update("\n");
+    const hashedFiles = sortStrings([...inputs.girFiles, ...overrideFiles()]);
 
     for (const file of hashedFiles) {
         hash.update("\n");
@@ -76,15 +85,11 @@ const hashGi = (girFiles: string[], libraries: string[], girPath: string[]): str
     return hash.digest("hex");
 };
 
-const computeGiFingerprint = (
-    girFiles: string[],
-    libraries: string[],
-    girPath: string[],
-): GiFingerprint => ({
-    value: hashGi(girFiles, libraries, girPath),
-    girFiles,
-    libraries,
-    girPath,
+const computeGiFingerprint = (inputs: GiInputs): GiFingerprint => ({
+    value: hashGi(inputs),
+    girFiles: inputs.girFiles,
+    libraries: inputs.libraries,
+    girPath: inputs.girPath,
 });
 
 const readSentinel = (storeDir: string): unknown => readJsonFile(join(storeDir, FINGERPRINT_FILENAME));
@@ -103,30 +108,27 @@ const isDocsFingerprint = (value: unknown): value is DocsFingerprint =>
 const isJsxFingerprint = (value: unknown): value is JsxFingerprint =>
     hasFields<JsxFingerprint>(value, { value: isString, intrinsicElementCount: isNumber });
 
-const recordedGiValue = (sentinel: GiFingerprint, libraries: string[], girPath: string[]): string | undefined => {
-    if (!hasMatchingRecordedInputs(sentinel, libraries, girPath)) {
+const recordedGiValue = (sentinel: GiFingerprint, inputs: GiInputs): string | undefined => {
+    if (!hasMatchingRecordedInputs(sentinel, inputs)) {
         return undefined;
     }
 
     try {
-        return hashGi(sentinel.girFiles, sentinel.libraries, girPath);
+        return hashGi({ ...inputs, girFiles: sentinel.girFiles, libraries: sentinel.libraries });
     } catch {
         return undefined;
     }
 };
 
-const isGiStoreFresh = (
-    giStoreDir: string,
-    libraries: string[],
-    girPath: string[],
-): boolean => {
+const isGiStoreFresh = (giStoreDir: string, inputs: GiInputs): boolean => {
     const sentinel = readSentinel(giStoreDir);
 
-    return isGiFingerprint(sentinel) && recordedGiValue(sentinel, libraries, girPath) === sentinel.value;
+    return isGiFingerprint(sentinel) && recordedGiValue(sentinel, inputs) === sentinel.value;
 };
 
-const hasMatchingRecordedInputs = (sentinel: GiFingerprint, libraries: string[], girPath: string[]): boolean =>
-    sortAlpha(sentinel.libraries) === sortAlpha(libraries) && sortAlpha(sentinel.girPath ?? []) === sortAlpha(girPath);
+const hasMatchingRecordedInputs = (sentinel: GiFingerprint, inputs: GiInputs): boolean =>
+    sortAlpha(sentinel.libraries) === sortAlpha(inputs.libraries) &&
+    sortAlpha(sentinel.girPath ?? []) === sortAlpha(inputs.girPath);
 
 const hashDocs = (giValue: string, input: DocsFingerprintInput): string =>
     createHash("sha256")
@@ -140,30 +142,20 @@ const hashDocs = (giValue: string, input: DocsFingerprintInput): string =>
         )
         .digest("hex");
 
-const computeDocsFingerprint = (
-    girFiles: string[],
-    libraries: string[],
-    girPath: string[],
-    input: DocsFingerprintInput,
-): DocsFingerprint => {
-    const gi = computeGiFingerprint(girFiles, libraries, girPath);
+const computeDocsFingerprint = (inputs: GiInputs, input: DocsFingerprintInput): DocsFingerprint => {
+    const gi = computeGiFingerprint(inputs);
 
     return { value: hashDocs(gi.value, input), gi };
 };
 
-const isDocsOutputFresh = (
-    outDir: string,
-    libraries: string[],
-    girPath: string[],
-    input: DocsFingerprintInput,
-): boolean => {
+const isDocsOutputFresh = (outDir: string, inputs: GiInputs, input: DocsFingerprintInput): boolean => {
     const sentinel = readSentinel(outDir);
 
     if (!isDocsFingerprint(sentinel)) {
         return false;
     }
 
-    const giValue = recordedGiValue(sentinel.gi, libraries, girPath);
+    const giValue = recordedGiValue(sentinel.gi, inputs);
 
     return giValue !== undefined && hashDocs(giValue, input) === sentinel.value;
 };
@@ -217,6 +209,7 @@ export {
     computeJsxFingerprint,
     jsxStoreFreshness,
     type DocsFingerprintInput,
+    type GiInputs,
     type GiFingerprint,
     type JsxFingerprintInput,
 };

@@ -8,6 +8,7 @@ import {
     listProjectFiles,
     removeCliProject,
     runCli,
+    STORE_FUTURE,
     STORE_LIBRARIES,
 } from "./cli-project.js";
 
@@ -88,7 +89,8 @@ const BROKEN_ENTRIES: BrokenEntry[] = [
 ];
 
 const config = (libraries: string[], body = ""): string =>
-    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(libraries)}${body} };\n`;
+    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(libraries)}, ` +
+    `future: ${JSON.stringify(STORE_FUTURE)}${body} };\n`;
 
 const appFiles = (entry: string): Record<string, string> => ({
     "package.json": `${JSON.stringify(MANIFEST, null, 4)}\n`,

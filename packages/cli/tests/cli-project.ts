@@ -27,6 +27,7 @@ const STORE_NAMES = ["gi", "jsx"];
 const WORKSPACE_PACKAGES = ["components", "config", "css", "native", "react", "runtime", "testing", "utils"];
 const REGISTRY_PACKAGES = ["@types", "csstype", "react", "tsx"];
 const STORE_LIBRARIES = ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"];
+const STORE_FUTURE = { v2ByteArrays: true };
 const MANIFEST = { name: "gtkx-cli-project", version: "1.0.0" };
 
 const writeProjectFiles = (root: string, files: Record<string, string>): void => {
@@ -137,5 +138,6 @@ export {
     removeCliProject,
     runCli,
     startCli,
+    STORE_FUTURE,
     STORE_LIBRARIES,
 };

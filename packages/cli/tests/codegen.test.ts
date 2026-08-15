@@ -6,6 +6,13 @@ import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBR
 
 type BrokenCase = { title: string; config: string | undefined };
 
+type ByteSequenceCase = {
+    title: string;
+    v2ByteArrays: boolean | undefined;
+    declarations: string[];
+    bindings: string[];
+};
+
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
@@ -32,10 +39,43 @@ const BROKEN_CASES: BrokenCase[] = [
     },
 ];
 
+const BYTE_SEQUENCE_CASES: ByteSequenceCase[] = [
+    {
+        title: "represents byte sequences as numbers unless the project opts in",
+        v2ByteArrays: undefined,
+        declarations: [
+            "readSized(): number[]",
+            "readByteArray(): number[]",
+            "writeSized(data: Uint8Array | number[]): void",
+            "readNumbers(): number[]",
+        ],
+        bindings: ['t.array(t.uint8, "gbytearray"'],
+    },
+    {
+        title: "represents byte sequences as typed arrays once the project opts in",
+        v2ByteArrays: true,
+        declarations: [
+            "readSized(): Uint8Array",
+            "readByteArray(): Uint8Array",
+            "writeSized(data: Uint8Array | number[]): void",
+            "readNumbers(): number[]",
+        ],
+        bindings: ["isBytes: true", "t.byteArray("],
+    },
+];
+
 const config = (body: string): string => `${HEAD}${body} };\n`;
 
 const fixtureConfig = (library: string): string =>
     config(`, libraries: ${JSON.stringify([library])}, girPath: ${JSON.stringify([FIXTURE_GIR])}`);
+
+const byteSeqConfig = (v2ByteArrays: boolean | undefined): string => {
+    const future = v2ByteArrays === undefined ? "" : `, future: { v2ByteArrays: ${String(v2ByteArrays)} }`;
+
+    return config(
+        `, libraries: ["ByteSeq-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`,
+    );
+};
 
 const generatedModule = (project: CliProject, ...segments: string[]): string =>
     readFileSync(join(project.nodeModules, ".gtkx", ...segments), "utf8");
@@ -151,6 +191,45 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
         try {
             expect(runCli(project, ["codegen"]).status).toBe(0);
             expect(generatedModule(project, "gi", "digitname", "digitname.d.ts")).toContain("enum _80211Mode");
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx codegen (byte sequence representation)", () => {
+    it.each(BYTE_SEQUENCE_CASES)("$title", ({ v2ByteArrays, declarations, bindings }) => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-bytes-",
+            config: byteSeqConfig(v2ByteArrays),
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            const emitted = generatedModule(project, "gi", "byteseq", "byteseq.d.ts");
+            const emittedBindings = generatedModule(project, "gi", "byteseq", "byteseq.js");
+            expect(declarations.filter((text) => !emitted.includes(text))).toEqual([]);
+            expect(bindings.filter((text) => !emittedBindings.includes(text))).toEqual([]);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("regenerates a fresh store when the byte sequence setting changes", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-bytes-flip-",
+            config: byteSeqConfig(true),
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            markStore(project);
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            expect(isStoreMarked(project)).toBe(true);
+            writeFileSync(join(project.root, "gtkx.config.ts"), byteSeqConfig(undefined));
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            expect(isStoreMarked(project)).toBe(false);
+            expect(generatedModule(project, "gi", "byteseq", "byteseq.d.ts")).toContain("readSized(): number[]");
         } finally {
             removeCliProject(project);
         }

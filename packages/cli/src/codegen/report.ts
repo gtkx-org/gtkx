@@ -17,6 +17,10 @@ const formatCodegenResult = (result: RunCodegenResult, totalMs: number): string[
         details.push(`girPath=${result.girPath.join(":")}`);
     }
 
+    if (result.future && result.future.length > 0) {
+        details.push(`future=${result.future.join(", ")}`);
+    }
+
     details.push(
         `${String(result.namespaces)} namespaces, ${String(result.intrinsicElements)} intrinsic elements ` +
         `in ${String(result.duration)}ms (total ${String(totalMs)}ms)`,

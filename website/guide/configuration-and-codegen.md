@@ -33,6 +33,7 @@ export default defineConfig({
 - **`codegen: false`**: skips generation, so the project imports whatever binding store is already installed.
 - **`userEventSignals`**: signals, keyed by GLib type name, that GTKX suppresses while writing to a widget itself. Entries merge into the defaults.
 - **`elements`**: the [element customizations](#advanced-customizing-elements): `behaviors` is the module default-exporting your `defineElements` map, `config` sets per-type codegen output (`component`, `props`, `omittedProps`, `isLazy`).
+- **`future`**: opts into behavior that becomes the default in the next major. See [Future flags](#future-flags).
 
 ## What codegen emits
 
@@ -41,7 +42,30 @@ Codegen writes packages into `node_modules/.gtkx` and links them into `node_modu
 - **`@gtkx/gi`** is the introspected API, one subpath per namespace (`@gtkx/gi/gtk`, `@gtkx/gi/adw`): the classes, enums, and functions you call imperatively, for refs and values such as `Gtk.Orientation.VERTICAL`.
 - **`@gtkx/jsx`** is the React layer, likewise per namespace (`@gtkx/jsx/gtk`, `@gtkx/jsx/adw`): a PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a `React.JSX.IntrinsicElements` augmentation.
 
-A few bindings take a NUL-terminated C string that GIR describes as a byte array (`GLib.Variant.newBytestring(string: number[])`), so the value silently stops at the first zero byte. Binary payloads go through `GLib.Bytes` and `GLib.Variant.newFromBytes`.
+A few bindings take a NUL-terminated C string that GIR describes as a byte array (`GLib.Variant.newBytestring`), so the value silently stops at the first zero byte. Binary payloads go through `GLib.Bytes` and `GLib.Variant.newFromBytes`.
+
+## Future flags
+
+The `future` block opts into behavior that becomes the default in the next major version, so you can migrate one change at a time instead of all at once during an upgrade. Every flag is off by default, and codegen never warns about one you have not set.
+
+```ts
+export default defineConfig({
+    applicationId: "com.example.Tasks",
+    future: { v2ByteArrays: true },
+});
+```
+
+Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
+
+- **`v2ByteArrays`**: represents GIR byte sequences as `Uint8Array` instead of `number[]`. It covers `guint8` C arrays and `GByteArray`, in return values, out parameters, record fields, and properties. It does not cover the handwritten Cairo overrides or the OpenGL bindings, which already use typed arrays.
+
+Parameters accept `Uint8Array | number[]` either way, so turning the flag on never breaks a call site that passes values *in*. What changes is what you get *back*: `GLib.fileGetContents` returns `[boolean, Uint8Array]` rather than `[boolean, number[]]`, so code that calls `.push`, `.concat`, `Array.isArray`, or `JSON.stringify` on a result needs updating. Flip the flag and run `tsc`: every site that needs attention is a type error.
+
+Changing a flag invalidates the generated store, so the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates it automatically.
+
+### When a flag graduates
+
+In the next major the new behavior becomes unconditional and the key is removed. Leaving `v2ByteArrays: true` behind will be accepted as a no-op with a single warning naming the key, and `v2ByteArrays: false` will be a configuration error, because at that point it can no longer be honored.
 
 ## The JSX prop model
 

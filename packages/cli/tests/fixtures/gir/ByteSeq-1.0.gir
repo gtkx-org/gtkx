@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <package name="byteseq-1.0"/>
+  <namespace name="ByteSeq"
+             version="1.0"
+             shared-library="libbyteseq.so.0"
+             c:identifier-prefixes="ByteSeq"
+             c:symbol-prefixes="byte_seq">
+    <class name="Blob"
+           c:symbol-prefix="blob"
+           c:type="ByteSeqBlob"
+           parent="GObject.Object"
+           glib:type-name="ByteSeqBlob"
+           glib:get-type="byte_seq_blob_get_type">
+      <method name="read_sized" c:identifier="byte_seq_blob_read_sized">
+        <return-value transfer-ownership="full">
+          <array length="0" c:type="guint8*">
+            <type name="guint8" c:type="guint8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <parameter name="length" direction="out" caller-allocates="0" transfer-ownership="full">
+            <type name="gsize" c:type="gsize*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="read_byte_array" c:identifier="byte_seq_blob_read_byte_array">
+        <return-value transfer-ownership="full">
+          <type name="GLib.ByteArray" c:type="GByteArray*"/>
+        </return-value>
+      </method>
+      <method name="write_sized" c:identifier="byte_seq_blob_write_sized">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="data" transfer-ownership="none">
+            <array length="1" c:type="const guint8*">
+              <type name="guint8" c:type="guint8"/>
+            </array>
+          </parameter>
+          <parameter name="length" transfer-ownership="none">
+            <type name="gsize" c:type="gsize"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="read_numbers" c:identifier="byte_seq_blob_read_numbers">
+        <return-value transfer-ownership="full">
+          <array length="0" c:type="gint16*">
+            <type name="gint16" c:type="gint16"/>
+          </array>
+        </return-value>
+        <parameters>
+          <parameter name="length" direction="out" caller-allocates="0" transfer-ownership="full">
+            <type name="gsize" c:type="gsize*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+  </namespace>
+</repository>

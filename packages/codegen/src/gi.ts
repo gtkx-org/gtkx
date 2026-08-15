@@ -9,10 +9,11 @@ type GiCodegenOptions = {
     gi: StoreOptions;
     libraries: string[];
     girPath: string[];
+    isByteArrayTyped: boolean;
 };
 
 const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
-    const { gi, libraries, girPath } = options;
+    const { gi, libraries, girPath, isByteArrayTyped } = options;
 
     const namespaces: GiNamespaceInput[] = Array.from(library.namespaces.values(), (namespace) => ({
         directory: namespaceDirectory(namespace),
@@ -20,7 +21,13 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
         girFile: namespace.girFile,
     }));
 
-    const fingerprint = computeGiFingerprint(library.girFiles, [...libraries], [...girPath]);
+    const fingerprint = computeGiFingerprint({
+        girFiles: library.girFiles,
+        libraries: [...libraries],
+        girPath: [...girPath],
+        isByteArrayTyped,
+    });
+
     writeGiStore(gi, namespaces, fingerprint);
 
     return library.namespaces.size;

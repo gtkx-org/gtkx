@@ -5,6 +5,7 @@ import {
     computeDocsFingerprint,
     type DocsFingerprintInput,
     FINGERPRINT_FILENAME,
+    type GiInputs,
     isDocsOutputFresh,
 } from "../fingerprint.js";
 import { Library } from "../gir/library.js";
@@ -37,6 +38,7 @@ type DocsOptions = {
     props?: ElementProps;
     omittedProps?: OmittedProps;
     isForced?: boolean;
+    isByteArrayTyped?: boolean;
 };
 
 type DocsManifest = {
@@ -253,6 +255,13 @@ const outDirRefusal = (outDir: string, reason: string): Error =>
         "empty directory or at one gtkx generated, or remove it yourself first.",
     );
 
+const giInputs = (options: DocsOptions, girFiles: string[]): GiInputs => ({
+    girFiles,
+    libraries: options.libraries,
+    girPath: options.girPath,
+    isByteArrayTyped: options.isByteArrayTyped === true,
+});
+
 const assertOwnedOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): void => {
     const stats = statSync(options.outDir, { throwIfNoEntry: false });
 
@@ -301,7 +310,7 @@ const cachedDocsResult = (
         return undefined;
     }
 
-    if (!isDocsOutputFresh(options.outDir, options.libraries, options.girPath, input)) {
+    if (!isDocsOutputFresh(options.outDir, giInputs(options, []), input)) {
         return undefined;
     }
 
@@ -335,18 +344,15 @@ const writeDocs = (options: DocsOptions): DocsResult => {
     }
 
     assertOwnedOutDir(options, previous);
-    const library = Library.load(options.libraries, options.girPath);
+    const library = Library.load(options.libraries, options.girPath, options.isByteArrayTyped === true);
     const { pages, namespaces } = generatePages(options, input.basePath, library);
     clearOutDir(options, previous);
     mkdirSync(options.outDir, { recursive: true });
     const manifest: DocsManifest = { generator: MANIFEST_GENERATOR, namespaces };
     writeFileSync(manifestPath, JSON.stringify(manifest));
     writePages(options.outDir, pages);
-
-    writeFileSync(
-        join(options.outDir, FINGERPRINT_FILENAME),
-        JSON.stringify(computeDocsFingerprint(library.girFiles, options.libraries, options.girPath, input)),
-    );
+    const fingerprint = computeDocsFingerprint(giInputs(options, library.girFiles), input);
+    writeFileSync(join(options.outDir, FINGERPRINT_FILENAME), JSON.stringify(fingerprint));
 
     return { isRegenerated: true, namespaces };
 };

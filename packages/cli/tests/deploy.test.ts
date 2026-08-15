@@ -7,6 +7,7 @@ import {
     listProjectFiles,
     removeCliProject,
     runCli,
+    STORE_FUTURE,
     STORE_LIBRARIES,
 } from "./cli-project.js";
 
@@ -69,7 +70,8 @@ const EXPECTED_MANIFESTS = [
 
 const config = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
-    `    libraries: ${JSON.stringify(STORE_LIBRARIES)},\n${body}};\n`;
+    `    libraries: ${JSON.stringify(STORE_LIBRARIES)},\n` +
+    `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
 const projectFiles = (): Record<string, string> => ({
     "package.json": `${JSON.stringify(MANIFEST, null, 4)}\n`,

@@ -84,10 +84,12 @@ class Library {
      *
      * @param libraries GIR identifiers to load, such as `Gtk-4.0`.
      * @param girPath Directories searched, in order, for each `.gir` file.
+     * @param isByteArrayTyped Whether byte sequences render as `Uint8Array` rather than `number[]`.
      * @returns A library holding every namespace that was parsed.
      */
-    static load(libraries: string[], girPath: string[]): Library {
+    static load(libraries: string[], girPath: string[], isByteArrayTyped = false): Library {
         const library = new Library();
+        library.isByteArrayTypedValue = isByteArrayTyped;
         this.drive(library, libraries, girPath);
 
         return library;
@@ -99,6 +101,7 @@ class Library {
     private nsIdByName: Map<string, number> = new Map();
     private typeTables: TypeTable[] = [];
     private girFilesValue: string[] = [];
+    private isByteArrayTypedValue = false;
 
     /** Creates a library with no namespaces loaded; {@link Library.load} builds a populated one. */
     constructor() {
@@ -329,6 +332,12 @@ class Library {
     }
 
     /** Paths of the `.gir` files that were read, in the order they were discovered. */
+    /** Whether byte sequences render as `Uint8Array` rather than `number[]`. */
+    public get isByteArrayTyped(): boolean {
+        return this.isByteArrayTypedValue;
+    }
+
+    /** Every `.gir` file that was read while loading this library. */
     public get girFiles(): string[] {
         return this.girFilesValue;
     }

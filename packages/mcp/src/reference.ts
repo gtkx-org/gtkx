@@ -193,7 +193,13 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
     }
 
     const libraries = resolveLibraries(config.libraries, girPath);
-    const reference = loadApiReference({ libraries, girPath });
+
+    const reference = loadApiReference({
+        libraries,
+        girPath,
+        isByteArrayTyped: config.future?.v2ByteArrays === true,
+    });
+
     const watched = [watchFile(resolve(root, configFile)), ...reference.girFiles.map((file) => watchFile(file))];
 
     return { reference, root, watched };

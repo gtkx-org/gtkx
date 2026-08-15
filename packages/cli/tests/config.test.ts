@@ -36,6 +36,7 @@ const REJECTED_CONFIGS: RejectedConfig[] = [
     { title: "user event signals that are not a table", config: `${HEAD}, userEventSignals: 5 };\n` },
     { title: "an elements section that is not an object", config: `${HEAD}, elements: "all" };\n` },
     { title: "a deploy section that is not shaped like one", config: `${HEAD}, deploy: { categories: 5 } };\n` },
+    { title: "a future flag that is not a boolean", config: `${HEAD}, future: { v2ByteArrays: 5 } };\n` },
 ];
 
 const buildWith = (config: string): CliProject => {

@@ -39,6 +39,8 @@ type CodegenRunnerOptions = {
     userOmittedProps?: OmittedProps;
     /** Regenerates both stores even when their fingerprints are fresh. */
     isForced?: boolean;
+    /** Emits GIR byte sequences as `Uint8Array` rather than `number[]`; defaults to false. */
+    isByteArrayTyped?: boolean;
 };
 
 /** What a `runCodegen` run produced. */
@@ -157,12 +159,14 @@ const emitStoresWithConfig = async (config: {
     girPath: string[];
 }): Promise<StoreResult> => {
     const { options, gi, jsx, libraries, girPath } = config;
+    const isByteArrayTyped = options.isByteArrayTyped === true;
     let library: Library | undefined;
-    const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath));
-    const isGiRegenerated = options.isForced === true || !isGiStoreFresh(gi.storeDir, libraries, girPath);
+    const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath, isByteArrayTyped));
+    const giInputs = { girFiles: [] as string[], libraries, girPath, isByteArrayTyped };
+    const isGiRegenerated = options.isForced === true || !isGiStoreFresh(gi.storeDir, giInputs);
 
     const namespaces = isGiRegenerated
-        ? runGiCodegen(loadLibrary(), { gi, libraries, girPath })
+        ? runGiCodegen(loadLibrary(), { gi, libraries, girPath, isByteArrayTyped })
         : 0;
 
     if (jsx === undefined) {

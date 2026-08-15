@@ -24,6 +24,8 @@ type ApiReferenceOptions = {
     props?: ElementProps;
     /** GObject properties the project omits from generated props; without it pages show props that do not exist. */
     omittedProps?: OmittedProps;
+    /** Describes GIR byte sequences as `Uint8Array` rather than `number[]`; defaults to false. */
+    isByteArrayTyped?: boolean;
 };
 
 /** Narrows an `ApiReference.symbols` enumeration. */
@@ -371,7 +373,7 @@ class ApiReference {
         this.libraries = options.libraries;
         this.props = options.props ?? {};
         this.omittedProps = options.omittedProps ?? {};
-        this.library = Library.load(options.libraries, options.girPath);
+        this.library = Library.load(options.libraries, options.girPath, options.isByteArrayTyped === true);
         this.elementContext = { library: this.library, linkFor: (): string | undefined => undefined };
         this.buildIndex();
     }

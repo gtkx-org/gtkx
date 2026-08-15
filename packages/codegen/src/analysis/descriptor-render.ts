@@ -42,6 +42,7 @@ import {
     tHashTable,
     tInt32,
     tList,
+    tNumericByteArray,
     tObject,
     tRef,
     tScalar,
@@ -222,7 +223,7 @@ const listExpression = (
     const ownership = transferOwnership(transfer);
 
     if (type.flavor === "gbytearray") {
-        return tByteArray(ownership);
+        return context.library.isByteArrayTyped ? tByteArray(ownership) : tNumericByteArray(ownership);
     }
 
     const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), indexOptions);
@@ -719,7 +720,8 @@ const cursorArrayExpression = (
 
 const arrayLayout = (context: ModuleContext, ref: CArrayType, options: ArgIndexOptions): ArrayLayout => ({
     elementSize: inlineElementSize(context, ref, options.hasOutIndirection),
-    isBytes: !hasUnknownArrayLength(ref) && isByteSequence(context.library, ref),
+    isBytes:
+        context.library.isByteArrayTyped && !hasUnknownArrayLength(ref) && isByteSequence(context.library, ref),
 });
 
 const arrayExpression = (

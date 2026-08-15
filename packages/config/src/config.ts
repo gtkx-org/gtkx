@@ -30,8 +30,9 @@ type ResolvedReactCompilerOptions = ReactCompilerOptions & {
 
 /**
  * User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`: the GIR libraries
- * to bind and where to find them, the GApplication id, per-element configuration, and the React
- * Compiler, codegen, and user event signal settings.
+ * to bind and where to find them, the GApplication id, per-element configuration, the React
+ * Compiler, codegen, and user event signal settings, and the `future` block opting into behavior
+ * that becomes the default in the next major version.
  */
 type Config = z.infer<typeof configSchema>;
 type ModuleExport = z.infer<typeof moduleExportSchema>;
@@ -180,8 +181,13 @@ const elementsSchema = z.object({
     config: z.record(z.string(), elementConfigSchema).optional(),
 });
 
+const futureSchema = z.object({
+    v2ByteArrays: z.boolean({ error: "must be a boolean" }).optional(),
+});
+
 /** Schema every `gtkx.config.ts` is validated against, and the source of the {@link Config} type. */
 const configSchema = z.object({
+    future: futureSchema.optional(),
     libraries: librariesSchema.optional(),
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
     applicationId: applicationIdSchema,

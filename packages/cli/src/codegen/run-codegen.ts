@@ -36,6 +36,7 @@ type RunCodegenResult = {
     girPath?: string[] | undefined;
     configFile?: string | undefined;
     libraries?: string[] | undefined;
+    future?: string[] | undefined;
 };
 
 type CodegenOptionsInput = {
@@ -43,6 +44,7 @@ type CodegenOptionsInput = {
     libraries: string[];
     girPath: string[];
     elements: Config["elements"];
+    isByteArrayTyped: boolean;
 };
 
 type PreparedCodegen = CodegenInputs & { isForced: boolean };
@@ -71,9 +73,10 @@ const removeShadowingStores = (cwd: string): void => {
     removeStores(getShadowingStorePaths(cwd));
 };
 
-const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsInput) => ({
+const codegenOptions = ({ store, libraries, girPath, elements, isByteArrayTyped }: CodegenOptionsInput) => ({
     libraries,
     girPath,
+    isByteArrayTyped,
     gi: {
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
@@ -93,6 +96,11 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
     userLazyElements: resolveLazyElements(elements),
     userOmittedProps: resolveOmittedProps(elements),
 });
+
+const enabledFutureFlags = (config: Config): string[] =>
+    Object.entries(config.future ?? {})
+        .filter(([, value]) => value === true)
+        .map(([name]) => name);
 
 const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
     isRegenerated: false,
@@ -153,6 +161,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
             libraries,
             girPath,
             elements: config.elements,
+            isByteArrayTyped: config.future?.v2ByteArrays === true,
         }),
         isForced,
     });
@@ -165,6 +174,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
         girPath,
         configFile,
         libraries,
+        future: enabledFutureFlags(config),
     };
 };
 

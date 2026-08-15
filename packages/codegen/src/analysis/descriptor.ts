@@ -235,6 +235,13 @@ const tFlags = (lib: string, typeFnName: string, isSigned: boolean): string =>
 
 const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceStringLiteral(ownership)]);
 
+const tNumericByteArray = (ownership: Ownership): string =>
+    call("array", [
+        tUint8,
+        sourceStringLiteral("gbytearray"),
+        sourceStringLiteral(ownership),
+    ]);
+
 const tList = (name: ListDescriptorName, element: string, ownership: Ownership): string =>
     call(name, [element, sourceStringLiteral(ownership)]);
 
@@ -335,6 +342,7 @@ export {
     tEnum,
     tFlags,
     tByteArray,
+    tNumericByteArray,
     tList,
     tArray,
     tSizedArray,

@@ -8,6 +8,7 @@ import {
     removeCliProject,
     runCli,
     startCli,
+    STORE_FUTURE,
     STORE_LIBRARIES,
 } from "./cli-project.js";
 
@@ -62,7 +63,8 @@ export { App };
 const appSource = (revision: string): string => `${APP_HEAD}${JSON.stringify(revision)}${APP_BODY}`;
 
 const config = (): string =>
-    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)} };\n`;
+    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)}, ` +
+    `future: ${JSON.stringify(STORE_FUTURE)} };\n`;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
