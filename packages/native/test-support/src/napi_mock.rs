@@ -1168,37 +1168,46 @@ pub unsafe extern "C" fn napi_is_arraybuffer(
     ok!()
 }
 
-#[allow(clippy::too_many_arguments)]
-unsafe fn write_view_info(
+struct ViewInfo {
+    data: *mut c_void,
+    length: usize,
+    byte_length: usize,
+    byte_offset: usize,
+    shared: bool,
+}
+
+struct ViewInfoOut {
     length: *mut usize,
     data: *mut *mut c_void,
     arraybuffer: *mut sys::napi_value,
     byte_offset: *mut usize,
-    view_data: *mut c_void,
-    view_length: usize,
-    view_offset: usize,
-    view_shared: bool,
-) {
+}
+
+unsafe fn write_view_info(out: &ViewInfoOut, view: &ViewInfo) {
     unsafe {
-        if !length.is_null() {
-            *length = view_length;
+        if !out.length.is_null() {
+            *out.length = view.length;
         }
-        if !data.is_null() {
-            *data = view_data.cast::<u8>().add(view_offset).cast::<c_void>();
+        if !out.data.is_null() {
+            *out.data = view
+                .data
+                .cast::<u8>()
+                .add(view.byte_offset)
+                .cast::<c_void>();
         }
-        if !arraybuffer.is_null() {
-            *arraybuffer = alloc(if view_shared {
+        if !out.arraybuffer.is_null() {
+            *out.arraybuffer = alloc(if view.shared {
                 FakeValue::SharedArrayBuffer
             } else {
                 FakeValue::ArrayBuffer {
-                    data: view_data,
-                    length: view_length,
+                    data: view.data,
+                    length: view.byte_offset + view.byte_length,
                     owned: None,
                 }
             });
         }
-        if !byte_offset.is_null() {
-            *byte_offset = view_offset;
+        if !out.byte_offset.is_null() {
+            *out.byte_offset = view.byte_offset;
         }
     }
 }
@@ -1224,19 +1233,27 @@ pub unsafe extern "C" fn napi_get_typedarray_info(
     else {
         return sys::Status::napi_invalid_arg;
     };
+    let Ok(view_kind) = ViewKind::try_from(*kind) else {
+        return sys::Status::napi_invalid_arg;
+    };
     unsafe {
         if !type_.is_null() {
             *type_ = *kind;
         }
         write_view_info(
-            length,
-            data,
-            arraybuffer,
-            byte_offset,
-            *view_data,
-            *view_len,
-            *view_off,
-            *shared,
+            &ViewInfoOut {
+                length,
+                data,
+                arraybuffer,
+                byte_offset,
+            },
+            &ViewInfo {
+                data: *view_data,
+                length: *view_len,
+                byte_length: *view_len * view_kind.element_size(),
+                byte_offset: *view_off,
+                shared: *shared,
+            },
         );
     }
     ok!()
@@ -1263,14 +1280,19 @@ pub unsafe extern "C" fn napi_get_dataview_info(
     };
     unsafe {
         write_view_info(
-            bytelength,
-            data,
-            arraybuffer,
-            byte_offset,
-            *view_data,
-            *byte_length,
-            *view_off,
-            *shared,
+            &ViewInfoOut {
+                length: bytelength,
+                data,
+                arraybuffer,
+                byte_offset,
+            },
+            &ViewInfo {
+                data: *view_data,
+                length: *byte_length,
+                byte_length: *byte_length,
+                byte_offset: *view_off,
+                shared: *shared,
+            },
         );
     }
     ok!()
