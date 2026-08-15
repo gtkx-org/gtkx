@@ -69,14 +69,23 @@ const CHECK_OPTIONS = {
     noEmit: true,
 };
 
-const EMIT_OPTIONS = {
+const DECLARATION_EMIT = {
     declaration: true,
     isolatedDeclarations: true,
     removeComments: false,
 };
 
-const EMIT_COMPILER_OPTIONS = ts.convertCompilerOptionsFromJson(
-    { ...BASE_COMPILER_OPTIONS, ...EMIT_OPTIONS },
+const MODULE_EMIT = {
+    removeComments: false,
+};
+
+const DECLARATION_OPTIONS = ts.convertCompilerOptionsFromJson(
+    { ...BASE_COMPILER_OPTIONS, ...DECLARATION_EMIT },
+    ".",
+).options;
+
+const MODULE_OPTIONS = ts.convertCompilerOptionsFromJson(
+    { ...BASE_COMPILER_OPTIONS, ...MODULE_EMIT },
     ".",
 ).options;
 
@@ -251,11 +260,16 @@ const runProgram = (params: CompileProjectParams): ts.Diagnostic[] => {
 const replaceExtension = (fileName: string, extension: string): string =>
     `${fileName.replace(TS_EXTENSION_PATTERN, "")}${extension}`;
 
+const transpileOptions = (compilerOptions: ts.CompilerOptions, fileName: string): ts.TranspileOptions => ({
+    compilerOptions,
+    fileName,
+    reportDiagnostics: true,
+});
+
 const emitModule = (module: SourceModule, projectDir: string): ts.Diagnostic[] => {
     const fileName = join(projectDir, module.fileName);
-    const options = { compilerOptions: EMIT_COMPILER_OPTIONS, fileName };
-    const declaration = ts.transpileDeclaration(module.source, options);
-    const javascript = ts.transpileModule(module.source, options);
+    const declaration = ts.transpileDeclaration(module.source, transpileOptions(DECLARATION_OPTIONS, fileName));
+    const javascript = ts.transpileModule(module.source, transpileOptions(MODULE_OPTIONS, fileName));
     const diagnostics = [...declaration.diagnostics ?? [], ...javascript.diagnostics ?? []];
 
     if (diagnostics.length > 0) {
