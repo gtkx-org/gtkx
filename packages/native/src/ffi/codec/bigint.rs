@@ -135,6 +135,26 @@ impl BigIntCodec {
                 .map(Into::into),
         }
     }
+
+    pub(super) fn to_pointer_words(
+        self,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<Vec<*mut c_void>> {
+        array
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| {
+                let int = self
+                    .integer_from_value(v)
+                    .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))?;
+                let word = usize::try_from(int).map_err(|_| {
+                    anyhow::anyhow!("Array element {i}: value {int} is not a valid pointer")
+                })?;
+
+                Ok(word as *mut c_void)
+            })
+            .collect()
+    }
 }
 
 pub(super) fn bigint_to_unknown(env: &Env, value: i128) -> anyhow::Result<Unknown<'_>> {

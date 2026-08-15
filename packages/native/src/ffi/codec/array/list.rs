@@ -3,7 +3,7 @@ use std::ffi::CString;
 use super::super::prelude::*;
 use super::container::ArrayContainer;
 use super::{ArrayCodec, ArrayKindEncoder, dup_strings_to_glib, transfer_items};
-use crate::ffi::codec::Codec;
+use crate::ffi::codec::{BigIntCodec, Codec};
 use crate::ffi::{StashData, StashStorage};
 
 #[derive(Debug, Clone)]
@@ -133,5 +133,23 @@ impl ArrayKindEncoder for ListEncoder {
         let list = ffi::build_list(self.0, &ptrs);
         let payload = ffi::ListPayload::Handles(handles);
         Ok(self.finalize_list(list, should_free, payload, acquired))
+    }
+
+    fn encode_pointer_words(
+        &self,
+        kind: BigIntCodec,
+        array: &[Unknown<'_>],
+        ownership: Ownership,
+    ) -> Option<anyhow::Result<ffi::Stash>> {
+        Some(kind.to_pointer_words(array).map(|words| {
+            let list = ffi::build_list(self.0, &words);
+
+            self.finalize_list(
+                list,
+                ownership.is_borrowed(),
+                ffi::ListPayload::Handles(Vec::new()),
+                Vec::new(),
+            )
+        }))
     }
 }

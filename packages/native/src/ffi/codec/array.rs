@@ -7,7 +7,7 @@ use item::ItemCodec;
 
 use super::prelude::*;
 use super::string::str_to_glib_full;
-use crate::ffi::codec::{Codec, FloatCodec};
+use crate::ffi::codec::{BigIntCodec, Codec, FloatCodec};
 use crate::value::TypedView;
 
 mod byte_array;
@@ -195,6 +195,15 @@ trait ArrayKindEncoder {
         item_codec: &Codec,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::Stash>;
+
+    fn encode_pointer_words(
+        &self,
+        _kind: BigIntCodec,
+        _array: &[Unknown<'_>],
+        _ownership: Ownership,
+    ) -> Option<anyhow::Result<ffi::Stash>> {
+        None
+    }
 }
 
 fn release_transfers(transfers: Vec<ffi::PendingTransfer>) {
@@ -416,6 +425,10 @@ impl ArrayCodec {
                 kind.to_stash_storage(&Self::extract_terminated_numbers(array, zero_terminated)?),
             ),
             ItemCodec::BigInt(kind) => {
+                if let Some(result) = encoder.encode_pointer_words(kind, array, self.ownership) {
+                    return result;
+                }
+
                 let storage = if zero_terminated {
                     let mut items = array.to_vec();
                     items.push(0f64.into_unknown(&env)?);
@@ -543,6 +556,21 @@ impl ArrayCodec {
         })
     }
 
+    fn decode_ptr_item<'e>(
+        &self,
+        env: &'e Env,
+        item_ptr: *mut c_void,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if matches!(&*self.item_codec, Codec::BigInt(_)) {
+            return unsafe {
+                self.item_codec
+                    .read(env, ReadCtx::value(item_ptr, "pointer array element"))
+            };
+        }
+
+        self.item_codec.decode(env, &ffi::Stash::Ptr(item_ptr))
+    }
+
     fn decode_ptr_iter<'e>(
         &self,
         env: &'e Env,
@@ -551,7 +579,7 @@ impl ArrayCodec {
     ) -> anyhow::Result<Unknown<'e>> {
         let mut values = Vec::with_capacity(ptrs.size_hint().0);
         let result = ptrs.into_iter().try_for_each(|item_ptr| {
-            values.push(self.item_codec.decode(env, &ffi::Stash::Ptr(item_ptr))?);
+            values.push(self.decode_ptr_item(env, item_ptr)?);
             anyhow::Ok(())
         });
         release();

@@ -1,6 +1,7 @@
 use super::super::prelude::*;
 use super::container::ArrayContainer;
 use super::{ArrayCodec, transfer_items};
+use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
 
 fn element_count(len: usize) -> anyhow::Result<u32> {
@@ -18,8 +19,12 @@ impl ArrayContainer for GPtrArrayCodec {
         _env: Env,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
-        let handles = ArrayCodec::extract_handles(array)?;
-        let (ptrs, acquired) = transfer_items(&handles, &codec.item_codec, "GPtrArray")?;
+        let (ptrs, acquired) = if let Codec::BigInt(kind) = &*codec.item_codec {
+            (kind.to_pointer_words(array)?, Vec::new())
+        } else {
+            let handles = ArrayCodec::extract_handles(array)?;
+            transfer_items(&handles, &codec.item_codec, "GPtrArray")?
+        };
         let ptr_array = unsafe { glib::ffi::g_ptr_array_sized_new(element_count(ptrs.len())?) };
         for ptr in ptrs {
             unsafe { glib::ffi::g_ptr_array_add(ptr_array, ptr) };
