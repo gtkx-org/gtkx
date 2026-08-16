@@ -295,6 +295,13 @@ describe("gtkx codegen (record fields and the GType a type registers)", () => {
         expect(declarations()).not.toContain(`${jsName}?:`);
     });
 
+    it("tags an interface that registers a GType", () => {
+        expect(state.status).toBe(0);
+        const declared = classBody(declarations(), "Provider");
+        expect(declared).toContain("class Provider ");
+        expect(declared).toContain("__type__");
+    });
+
     it("leaves a record that registers no GType without one", () => {
         expect(state.status).toBe(0);
         const declared = classBody(declarations(), "Plain");
