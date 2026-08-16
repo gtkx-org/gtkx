@@ -48,7 +48,12 @@ const getClickPoint = (clicked: Gtk.Widget, carrier: Gtk.Widget): PressPoint => 
     return { x: bounds.getX() + bounds.getWidth() / 2, y: bounds.getY() + bounds.getHeight() / 2 };
 };
 
-const emitGesture = (point: PressPoint, controllers: Gtk.GestureClick[], nPress: number, signal: string): void => {
+const emitGesture = (
+    point: PressPoint,
+    controllers: Gtk.GestureClick[],
+    nPress: number,
+    signal: ClickPhase,
+): void => {
     for (const controller of controllers) {
         controller.emit(signal, nPress, point.x, point.y);
     }

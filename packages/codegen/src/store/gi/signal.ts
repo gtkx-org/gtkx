@@ -1,5 +1,5 @@
 import { camelCase, sourceStringLiteral } from "@gtkx/utils";
-import type { GirClass } from "../../gir/class.js";
+import type { GirClass, GirSignal } from "../../gir/class.js";
 import type { GirCallable, GirParameter, GirReturnValue } from "../../gir/parameter.js";
 import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
@@ -139,30 +139,26 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
     const { context, klass, className, isParentlessObjectSubclass, suffix, renderEntry } = spec;
     const extendsRefs = signalMapParentRefs(context, klass, isParentlessObjectSubclass, suffix);
     const extendsClause = extendsRefs.length === 0 ? "" : ` extends ${extendsRefs.join(", ")}`;
+    const signals = collectClassSignals(context, klass);
 
-    const signalEntries = collectClassSignals(context, klass).map(
-        (signal) => `${signalDoc(signal)}${sourceStringLiteral(signal.name)}: ${renderEntry(context, signal)};`,
-    );
+    const signalEntries = signals.flatMap((signal) => {
+        const value = renderEntry(context, signal);
+        const entry = `${signalDoc(signal)}${sourceStringLiteral(signal.name)}: ${value};`;
 
-    const entries = [
-        ...signalEntries,
-        ...renderNotifyDetailEntries(context, klass, suffix),
-        ...renderCustomNotifyEntry(context, klass, suffix),
-    ];
+        if (!signal.isDetailed) {
+            return [entry];
+        }
+
+        return [entry, `[detail: \`${signal.name}::\${string}\`]: ${value};`];
+    });
+
+    const entries = [...signalEntries, ...renderNotifyDetailEntries(context, klass, suffix)];
 
     return renderBracedOrEmpty(`export interface ${className}${suffix}${extendsClause}`, entries.join("\n"));
 };
 
 const signalDoc = (signal: GirCallable): string =>
     renderJsDoc(signal.doc, undefined, handlerSpec(signal, signal.parameters));
-
-const renderCustomNotifyEntry = (context: ModuleContext, klass: GirClass, suffix: string): string[] => {
-    if (context.namespace.name !== "GObject" || klass.name !== "Object") {
-        return [];
-    }
-
-    return [`[detail: \`notify::\${string}\`]: ${gobjectObjectMapRef(context, suffix)}["notify"];`];
-};
 
 const renderNotifyDetailEntries = (context: ModuleContext, klass: GirClass, suffix: string): string[] => {
     const notifyValue = `${gobjectObjectMapRef(context, suffix)}["notify"]`;
@@ -219,10 +215,11 @@ const renderSignalConnectInterface = (className: string, isRootObject: boolean):
         `__signals__?: ${map};`,
         `connect<K extends keyof ${map}>(signal: K, handler: ${map}[K], isAfter?: boolean): number;`,
         `emit<K extends keyof ${emitMap}>(sigName: K, ...args: ${emitMap}[K]["args"]): ${emitMap}[K]["result"];`,
-        "emit(sigName: string, ...args: unknown[]): unknown;",
     ];
 
-    if (!isRootObject) {
+    if (isRootObject) {
+        lines.push("emit(sigName: string, ...args: unknown[]): unknown;");
+    } else {
         const chainable = (methods: string[], trailing: string): void => {
             for (const method of methods) {
                 lines.push(
@@ -382,7 +379,7 @@ const renderCallback = (context: ModuleContext, signal: GirCallable): string => 
 const forEachInterfaceSignal = (
     context: ModuleContext,
     klass: GirClass,
-    consider: (signal: GirCallable) => void,
+    consider: (signal: GirSignal) => void,
 ): void => {
     for (const iface of resolveInterfaces(context.library, context.namespace.name, klass.implements)) {
         for (const signal of iface.klass.signals) {
@@ -391,12 +388,12 @@ const forEachInterfaceSignal = (
     }
 };
 
-const collectClassSignals = (context: ModuleContext, klass: GirClass): GirCallable[] => {
+const collectClassSignals = (context: ModuleContext, klass: GirClass): GirSignal[] => {
     const inheritedNames = collectInheritedSignalNames(context, klass);
     const seen: Set<string> = new Set();
-    const result: GirCallable[] = [];
+    const result: GirSignal[] = [];
 
-    const consider = (signal: GirCallable): void => {
+    const consider = (signal: GirSignal): void => {
         const name = camelCase(signal.name);
 
         if (!signal.introspectable || inheritedNames.has(name) || seen.has(name)) {

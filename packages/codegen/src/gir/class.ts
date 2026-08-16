@@ -11,6 +11,12 @@ type GirVirtualMethod = GirCallable & {
     invoker: string | undefined;
 };
 
+/** A `<glib:signal>` on a class or interface. */
+type GirSignal = GirCallable & {
+    /** Whether the signal takes a `::detail` suffix, so `changed::key` reaches only that detail. */
+    isDetailed: boolean;
+};
+
 /** A `<class>` or `<interface>` declared by a GIR namespace. */
 type GirClass = {
     /** Name GIR gives the type, without its namespace prefix. */
@@ -54,7 +60,7 @@ type GirClass = {
     /** GObject properties the type declares. */
     properties: GirProperty[];
     /** GObject signals the type declares. */
-    signals: GirCallable[];
+    signals: GirSignal[];
     /** Virtual methods the type declares, carrying the documentation their vtable slots are generated from. */
     vfuncs: GirVirtualMethod[];
 };
@@ -88,8 +94,11 @@ const classFromNode = (node: RawNode, isInterface: boolean, context: ParseContex
     constructors: getChildren(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
     functions: getChildren(node, "function").map((fn) => functionFromNode(fn, context)),
     properties: getChildren(node, "property").map((property) => propertyFromNode(property, context)),
-    signals: getChildren(node, "glib:signal").map((signal) => parseCallable(signal, context)),
+    signals: getChildren(node, "glib:signal").map((signal) => ({
+        ...parseCallable(signal, context),
+        isDetailed: isAttrTrue(signal, "detailed"),
+    })),
     vfuncs: virtualMethodsFromNode(node, context),
 });
 
-export { classFromNode, type GirClass, type GirVirtualMethod };
+export { classFromNode, type GirClass, type GirSignal, type GirVirtualMethod };

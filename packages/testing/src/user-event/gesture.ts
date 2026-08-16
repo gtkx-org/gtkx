@@ -15,6 +15,8 @@ type DropOptions = {
     y?: number;
 };
 
+type DragPhase = "drag-begin" | "drag-update" | "drag-end";
+
 /** A drag offset relative to the drag start point. */
 type DragOffset = {
     /** Horizontal distance from the drag start point, in pixels. */
@@ -168,7 +170,7 @@ const patchDragState = (controller: Gtk.GestureDrag, start: DragOffset, offset: 
     };
 };
 
-const emitToControllers = (controllers: Gtk.GestureDrag[], signal: string, x: number, y: number): void => {
+const emitToControllers = (controllers: Gtk.GestureDrag[], signal: DragPhase, x: number, y: number): void => {
     for (const controller of controllers) {
         controller.emit(signal, x, y);
     }

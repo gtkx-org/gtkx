@@ -1,3 +1,4 @@
+import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it, vi } from "vitest";
 import "@gtkx/gi/gobject";
@@ -48,6 +49,32 @@ describe("emitSignal — inheritance and errors", () => {
 
     it("throws on an unknown signal at the GObject root", () => {
         const button = new Gtk.Button();
-        expect(() => button.emit("not-a-real-signal")).toThrow(/Unknown signal 'not-a-real-signal'/);
+
+        expect(() => (button as GObject.Object).emit("not-a-real-signal")).toThrow(
+            /Unknown signal 'not-a-real-signal'/,
+        );
+    });
+});
+
+describe("emitSignal — detailed signals", () => {
+    it("delivers a detailed emission only to handlers watching that detail", () => {
+        const bar = new Gtk.LevelBar();
+        const scoped = vi.fn();
+        const undetailed = vi.fn();
+        bar.on("offset-changed::low", scoped);
+        bar.on("offset-changed", undetailed);
+        bar.emit("offset-changed::low", "low");
+        bar.emit("offset-changed::high", "high");
+        expect(scoped).toHaveBeenCalledExactlyOnceWith("low");
+        expect(undetailed).toHaveBeenCalledTimes(2);
+    });
+
+    it("delivers a notify detail only for the property that changed", () => {
+        const button = new Gtk.Button();
+        const scoped = vi.fn();
+        button.on("notify::label", scoped);
+        button.setLabel("changed");
+        button.setOpacity(0.5);
+        expect(scoped).toHaveBeenCalledOnce();
     });
 });

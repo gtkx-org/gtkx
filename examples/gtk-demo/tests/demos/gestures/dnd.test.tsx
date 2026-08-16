@@ -93,7 +93,7 @@ const beginItemDrag = async (item: Gtk.Label): Promise<Gtk.DragSource> => {
     }
 
     await act(() => {
-        dragSource.emit("drag-begin", null);
+        (dragSource as GObject.Object).emit("drag-begin", null);
     });
 
     return dragSource;
@@ -356,7 +356,7 @@ describe("dndDemo item drag-source side effects", () => {
         });
 
         await act(() => {
-            dragSource.emit("drag-end", null, false);
+            (dragSource as GObject.Object).emit("drag-end", null, false);
         });
 
         await waitFor(() => {
@@ -380,7 +380,7 @@ describe("dndDemo item drag-source side effects", () => {
         });
 
         await act(() => {
-            dragSource.emit("drag-begin", null);
+            (dragSource as GObject.Object).emit("drag-begin", null);
         });
 
         await waitFor(() => {
