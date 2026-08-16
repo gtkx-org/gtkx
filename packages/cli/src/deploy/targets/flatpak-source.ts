@@ -1,3 +1,4 @@
+import { existsSync, realpathSync } from "node:fs";
 import { posix, relative, resolve } from "node:path";
 import type { DeployPayload, DeploySettings } from "../types.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
@@ -148,7 +149,10 @@ const iconInstallCommands = (settings: DeploySettings): string[] => {
 };
 
 const assertInsideProject = (settings: DeploySettings, installed: InstalledFile): void => {
-    if (isInside(settings.paths.root, installed.resolved)) {
+    const { resolved } = installed;
+    const target = existsSync(resolved) ? realpathSync(resolved) : resolved;
+
+    if (isInside(settings.paths.root, target)) {
         return;
     }
 

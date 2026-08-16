@@ -1,4 +1,13 @@
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+    chmodSync,
+    existsSync,
+    mkdtempSync,
+    readFileSync,
+    rmSync,
+    statSync,
+    symlinkSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -462,6 +471,33 @@ describe("gtkx deploy (flatpak source mode payload)", () => {
             expect(appModule["build-commands"]).toContain(LICENSE_INSTALL);
         } finally {
             removeCliProject(project);
+            rmSync(shim, { recursive: true, force: true });
+        }
+    });
+});
+
+describe("gtkx deploy (flatpak source mode escapes)", () => {
+    it("fails when an extra file is a symlink pointing outside the checkout", () => {
+        const shim = stubGenerator();
+        const outside = mkdtempSync(join(tmpdir(), "gtkx-cli-deploy-linked-"));
+        const target = join(outside, "helper.sh");
+        writeFileSync(target, HELPER_SCRIPT);
+        const extra = `        extraFiles: { "${HELPER_DESTINATION}": "helper.sh" },\n`;
+
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-symlink-",
+            config: sourceConfig(PINNED_SOURCE, extra),
+            files: npmSourceFiles(),
+            hasStore: true,
+        });
+
+        try {
+            symlinkSync(target, join(project.root, "helper.sh"));
+            const env = { PATH: `${shim}:${process.env.PATH ?? ""}` };
+            expect(runCli(project, SOURCE_ARGS, env).status).not.toBe(0);
+        } finally {
+            removeCliProject(project);
+            rmSync(outside, { recursive: true, force: true });
             rmSync(shim, { recursive: true, force: true });
         }
     });

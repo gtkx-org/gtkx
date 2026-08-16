@@ -86,7 +86,7 @@ const warnMissingDisplay = (settings: DeploySettings, finishArgs: string[]): voi
 
     warn(
         `The flatpak permissions grant no display socket, so ${settings.name} will start without a window. ` +
-        "Add `--socket=wayland` to `deploy.flatpak.finishArgs`.",
+        "Grant one through `deploy.flatpak.finishArgs`, such as `--socket=wayland`.",
     );
 };
 
