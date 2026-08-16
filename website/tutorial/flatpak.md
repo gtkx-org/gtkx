@@ -58,7 +58,7 @@ finish-args:
   - --device=dri
 ```
 
-Those grant a window on screen and hardware rendering. There is no `--filesystem`, no `--share=network`, and no `--talk-name` for the notification service. Tasks reads and writes your data, sends desktop notifications, and stores preferences with none of those. Anything you list in `finishArgs` is appended to that baseline, so asking for `--share=network` still leaves you a window; to give one of these up, ask for its negation, such as `--nosocket=wayland`.
+Those grant a window on screen and hardware rendering. There is no `--filesystem`, no `--share=network`, and no `--talk-name` for the notification service. Tasks reads and writes your data, sends desktop notifications, and stores preferences with none of those.
 
 **No filesystem permission**, thanks to a decision from [Saving Tasks Between Runs](/tutorial/saving-to-disk). The storage backend resolves its directory from `XDG_DATA_HOME`, which Flatpak sets to the app's private directory before the process starts. The code that found `~/.local/share/com.gtkx.tutorial` on your machine finds `~/.var/app/com.gtkx.tutorial/data/com.gtkx.tutorial` inside the sandbox, unchanged. A hardcoded path, or one built from `homedir()` alone, would need `--filesystem=home`, and Flathub reviewers would ask why.
 

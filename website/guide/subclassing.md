@@ -18,7 +18,7 @@ class Counter extends GObject {}
 registerClass(Counter, { typeName: "ExampleCounter" });
 ```
 
-The new type is on the class as a static `__gtype__`, which is what every API taking a GType wants: `Gio.ListStore.new(Counter.__gtype__)`. It is read off the class it is accessed on rather than inherited, so it answers `TYPE_INVALID` from `@gtkx/runtime` until `registerClass` has run, and a further subclass of `Counter` reports its own type once registered rather than the one above it.
+The new type is on the class as a static `__gtype__`, which is what APIs taking a GType want: `Gio.ListStore.new(Counter.__gtype__)`. Each class reports its own type rather than inheriting one, and answers `TYPE_INVALID` until `registerClass` has run.
 
 ## Properties
 

@@ -65,7 +65,7 @@ const columns: ColumnViewColumn<Employee>[] = [
 />
 ```
 
-Nesting `ListItem.children` turns a `ColumnView` into a tree as well, driven by the same `expandedIds` and `onExpandedChange`. The first column draws the expander for every row, and with it the depth indentation, so the columns after it stay lined up at each depth; hiding that column with `visible: false` hands the expander to the next one along. Expansion itself belongs to the row rather than to the expander, so `expandedIds` opens and closes rows whether or not the user clicks one.
+Nesting `ListItem.children` turns a `ColumnView` into a tree as well, driven by the same `expandedIds` and `onExpandedChange`. The first column draws the expander and the depth indentation, leaving the columns after it aligned at every depth; hiding it with `visible: false` hands the expander to the next column along.
 
 ### DropDown
 
