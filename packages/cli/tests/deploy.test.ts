@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -20,6 +20,7 @@ type FlatpakSource = {
     sha512?: string;
     tag?: string;
     commit?: string;
+    contents?: string;
     "dest-filename"?: string;
 };
 
@@ -29,7 +30,9 @@ type FlatpakModule = {
     "build-commands": string[];
 };
 
-type FlatpakManifest = { modules: FlatpakModule[] };
+type FlatpakManifest = { modules: FlatpakModule[]; "finish-args": string[]; cleanup: string[] };
+type NfpmContent = { dst: string; file_info?: { mode: number } };
+type NfpmConfig = { contents: NfpmContent[] };
 type DeployProbe = { project: CliProject; status: number | null };
 
 type DeploySetup = {
@@ -37,6 +40,7 @@ type DeploySetup = {
     config: string;
     files: Record<string, string>;
     args: string[];
+    executables?: string[] | undefined;
 };
 
 const APPLICATION_ID = "com.gtkx.clideploy";
@@ -69,6 +73,25 @@ const NPM_LOCKFILE_NAME = "package-lock.json";
 const NPM_INSTALL = "npm ci --offline";
 const GENERATED_SOURCES = join("targets", "flatpak", "generated-sources.json");
 const MANIFEST_PATH = join("targets", "flatpak", `${APPLICATION_ID}.yml`);
+const NFPM_PATH = join("targets", "deb", "nfpm.yaml");
+const MODE_MASK = 0o7777;
+const HELPER_SOURCE = join("tools", "helper.sh");
+const NOTES_SOURCE = join("tools", "notes.txt");
+const HELPER_DESTINATION = join("lib", BINARY_NAME, "helper.sh");
+const NOTES_DESTINATION = join("share", BINARY_NAME, "notes.txt");
+const SECRET_DESTINATION = join("lib", BINARY_NAME, "secret.conf");
+const HELPER_PACKAGE_PATH = `/usr/lib/${BINARY_NAME}/helper.sh`;
+const FLATPAK_DEST = "${FLATPAK_DEST}";
+const MIME_TYPE = "application/x-gtkx-probe";
+const MIME_FILENAME = `${APPLICATION_ID}.xml`;
+const MIME_INSTALL = `install -Dm644 ${MIME_FILENAME} ${FLATPAK_DEST}/share/mime/packages/${MIME_FILENAME}`;
+const HELPER_INSTALL = `install -Dm755 tools/helper.sh ${FLATPAK_DEST}/lib/${BINARY_NAME}/helper.sh`;
+const LICENSE_INSTALL = `install -Dm644 LICENSE ${FLATPAK_DEST}/share/licenses/${BINARY_NAME}/LICENSE`;
+const DEFAULT_FINISH_ARGS = ["--share=ipc", "--socket=wayland", "--socket=fallback-x11", "--device=dri"];
+const DEFAULT_CLEANUP = ["/include", "/share/pkgconfig", "*.la", "*.a"];
+const MERGED_NEGATIONS = ["--share=ipc", "--device=dri", "--nosocket=wayland", "--nosocket=fallback-x11"];
+const HELPER_SCRIPT = "#!/bin/sh\necho probe\n";
+const NOTES = "Probe notes.\n";
 
 const PACKAGE_INTEGRITY = "sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9" +
     "cGvNp6NZWZUBlbGXYxxng==";
@@ -94,7 +117,31 @@ const DEPLOY_FIELDS = `        name: "Deploy Probe",
         homepage: "https://gtkx.dev",
         license: "MPL-2.0",`;
 
-const DEPLOY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n    },\n`;
+const EXTRA_FILES = `        extraFiles: {
+            "lib/${BINARY_NAME}/helper.sh": "tools/helper.sh",
+            "share/${BINARY_NAME}/notes.txt": "tools/notes.txt",
+            "lib/${BINARY_NAME}/secret.conf": { source: "tools/notes.txt", mode: "600" },
+        },
+`;
+
+const PERMISSIONS = `        flatpak: { finishArgs: ["--share=network"], cleanup: ["/man"] },
+`;
+
+const NO_DISPLAY = `        flatpak: { finishArgs: ["--nosocket=wayland", "--nosocket=fallback-x11"], cleanup: [] },
+`;
+
+const SOURCE_PAYLOAD = `        fileAssociations: [{ extension: "probe", mimeType: "${MIME_TYPE}" }],
+        extraFiles: { "lib/${BINARY_NAME}/helper.sh": "tools/helper.sh" },
+`;
+
+const BAD_MODE = `        extraFiles: {
+            "share/${BINARY_NAME}/notes.txt": { source: "tools/notes.txt", mode: "8" },
+        },
+`;
+
+const DEPLOY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${EXTRA_FILES}${PERMISSIONS}    },\n`;
+const NO_DISPLAY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${NO_DISPLAY}    },\n`;
+const BAD_MODE_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${BAD_MODE}    },\n`;
 
 const LOCKFILE = `lockfileVersion: '9.0'
 
@@ -184,14 +231,19 @@ const config = (body: string): string =>
     `    libraries: ${JSON.stringify(STORE_LIBRARIES)},\n` +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
-const sourceConfig = (source: string): string =>
-    config(`    deploy: {\n${DEPLOY_FIELDS}\n        flatpak: { mode: "source", source: ${source} },\n    },\n`);
+const sourceConfig = (source: string, extra = ""): string =>
+    config(
+        `    deploy: {\n${DEPLOY_FIELDS}\n${extra}` +
+        `        flatpak: { mode: "source", source: ${source} },\n    },\n`,
+    );
 
 const projectFiles = (): Record<string, string> => ({
     "package.json": `${JSON.stringify(MANIFEST, null, 4)}\n`,
     LICENSE: "Mozilla Public License Version 2.0\n",
     [join("data", ICON_PATH)]: "<svg/>\n",
     [join("src", "index.tsx")]: APP_SOURCE,
+    [HELPER_SOURCE]: HELPER_SCRIPT,
+    [NOTES_SOURCE]: NOTES,
 });
 
 const sourceFiles = (pin: string): Record<string, string> => ({
@@ -207,10 +259,14 @@ const npmSourceFiles = (): Record<string, string> => ({
 
 const outputNames = (project: CliProject): string[] => listProjectFiles(project, OUT_DIR);
 
-const flatpakModule = (project: CliProject): FlatpakModule => {
+const flatpakManifest = (project: CliProject): FlatpakManifest => {
     const contents = readFileSync(join(project.root, OUT_DIR, MANIFEST_PATH), "utf8");
-    const manifest = parse(contents) as FlatpakManifest;
-    const appModule = manifest.modules.at(-1);
+
+    return parse(contents) as FlatpakManifest;
+};
+
+const flatpakModule = (project: CliProject): FlatpakModule => {
+    const appModule = flatpakManifest(project).modules.at(-1);
 
     if (appModule === undefined) {
         throw new Error(`${MANIFEST_PATH} declares no modules`);
@@ -219,7 +275,20 @@ const flatpakModule = (project: CliProject): FlatpakModule => {
     return appModule;
 };
 
+const stagedMode = (project: CliProject, destination: string): number =>
+    statSync(join(project.root, OUT_DIR, "stage", destination)).mode & MODE_MASK;
+
+const packagedMode = (project: CliProject, destination: string): number | undefined => {
+    const contents = readFileSync(join(project.root, OUT_DIR, NFPM_PATH), "utf8");
+    const nfpm = parse(contents) as NfpmConfig;
+
+    return nfpm.contents.find((entry) => entry.dst === destination)?.file_info?.mode;
+};
+
 const isSourceEntry = (entry: FlatpakSource | string): entry is FlatpakSource => typeof entry !== "string";
+
+const findInlineSource = (appModule: FlatpakModule, fileName: string): FlatpakSource | undefined =>
+    appModule.sources.filter(isSourceEntry).find((entry) => entry["dest-filename"] === fileName);
 
 const findSource = (appModule: FlatpakModule, type: string): FlatpakSource | undefined =>
     appModule.sources.filter(isSourceEntry).find((entry) => entry.type === type);
@@ -234,11 +303,16 @@ const stubGenerator = (): string => {
 };
 
 const deployProbe = (setup: DeploySetup): DeployProbe => {
-    const { args, ...options } = setup;
+    const { args, executables = [], ...options } = setup;
     const probe: DeployProbe = { project: { root: "", nodeModules: "" }, status: null };
 
     beforeAll(() => {
         probe.project = createCliProject({ ...options, hasStore: true });
+
+        for (const name of executables) {
+            chmodSync(join(probe.project.root, name), 0o755);
+        }
+
         probe.status = runCli(probe.project, args).status;
     });
 
@@ -270,6 +344,7 @@ describe("gtkx deploy (manifests only)", () => {
         config: config(DEPLOY_BLOCK),
         files: projectFiles(),
         args: ["deploy", "--print-manifests", "--target", TARGETS],
+        executables: [HELPER_SOURCE],
     });
 
     it("writes the freedesktop metadata and a manifest per target", () => {
@@ -281,6 +356,40 @@ describe("gtkx deploy (manifests only)", () => {
     it("stages the built application beside them", () => {
         const staged = new Set(outputNames(state.project).filter((name) => name.startsWith(STAGE_PREFIX)));
         expect(EXPECTED_STAGED.filter((name) => !staged.has(name))).toEqual([]);
+    });
+
+    it("installs an extra file with the mode it has and the mode it was given", () => {
+        expect(state.status).toBe(0);
+        expect(stagedMode(state.project, HELPER_DESTINATION)).toBe(0o755);
+        expect(stagedMode(state.project, NOTES_DESTINATION)).toBe(0o644);
+        expect(stagedMode(state.project, SECRET_DESTINATION)).toBe(0o600);
+        expect(packagedMode(state.project, HELPER_PACKAGE_PATH)).toBe(0o755);
+    });
+
+    it("merges the configured finish-args and cleanup into the defaults", () => {
+        const manifest = flatpakManifest(state.project);
+        expect(manifest["finish-args"]).toEqual([...DEFAULT_FINISH_ARGS, "--share=network"]);
+        expect(manifest.cleanup).toEqual([...DEFAULT_CLEANUP, "/man"]);
+    });
+});
+
+describe("gtkx deploy (flatpak defaults a config drops)", () => {
+    it("drops the sockets it negates and the cleanup it empties, keeping every other default", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-sockets-",
+            config: config(NO_DISPLAY_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, SOURCE_ARGS).status).toBe(0);
+            const manifest = flatpakManifest(project);
+            expect(manifest["finish-args"]).toEqual(MERGED_NEGATIONS);
+            expect(manifest.cleanup).toEqual([]);
+        } finally {
+            removeCliProject(project);
+        }
     });
 });
 
@@ -331,6 +440,57 @@ describe("gtkx deploy (flatpak source mode without pnpm)", () => {
     });
 });
 
+describe("gtkx deploy (flatpak source mode payload)", () => {
+    it("installs the extra files, the MIME package, and the license the prebuilt tree carries", () => {
+        const shim = stubGenerator();
+
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-payload-",
+            config: sourceConfig(PINNED_SOURCE, SOURCE_PAYLOAD),
+            files: npmSourceFiles(),
+            hasStore: true,
+        });
+
+        try {
+            chmodSync(join(project.root, HELPER_SOURCE), 0o755);
+            const env = { PATH: `${shim}:${process.env.PATH ?? ""}` };
+            expect(runCli(project, SOURCE_ARGS, env).status).toBe(0);
+            const appModule = flatpakModule(project);
+            expect(findInlineSource(appModule, MIME_FILENAME)?.contents).toContain(MIME_TYPE);
+            expect(appModule["build-commands"]).toContain(MIME_INSTALL);
+            expect(appModule["build-commands"]).toContain(HELPER_INSTALL);
+            expect(appModule["build-commands"]).toContain(LICENSE_INSTALL);
+        } finally {
+            removeCliProject(project);
+            rmSync(shim, { recursive: true, force: true });
+        }
+    });
+
+    it("fails when an extra file lives outside the checkout it builds from", () => {
+        const shim = stubGenerator();
+        const outside = mkdtempSync(join(tmpdir(), "gtkx-cli-deploy-outside-"));
+        const source = join(outside, "helper.sh");
+        writeFileSync(source, HELPER_SCRIPT);
+        const extra = `        extraFiles: { "${HELPER_DESTINATION}": ${JSON.stringify(source)} },\n`;
+
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-escape-",
+            config: sourceConfig(PINNED_SOURCE, extra),
+            files: npmSourceFiles(),
+            hasStore: true,
+        });
+
+        try {
+            const env = { PATH: `${shim}:${process.env.PATH ?? ""}` };
+            expect(runCli(project, SOURCE_ARGS, env).status).not.toBe(0);
+        } finally {
+            removeCliProject(project);
+            rmSync(outside, { recursive: true, force: true });
+            rmSync(shim, { recursive: true, force: true });
+        }
+    });
+});
+
 describe("gtkx deploy (flatpak source revisions)", () => {
     it("pins the commit behind a configured tag", () => {
         const project = createCliProject({
@@ -364,6 +524,21 @@ describe("gtkx deploy (projects it refuses to package)", () => {
         try {
             expect(runCli(project, ["deploy", "--print-manifests"]).status).not.toBe(0);
             expect(existsSync(join(project.root, OUT_DIR))).toBe(false);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("fails over an extra file mode that is not octal", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-mode-",
+            config: config(BAD_MODE_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, ["deploy", "--print-manifests"]).status).not.toBe(0);
         } finally {
             removeCliProject(project);
         }

@@ -9,6 +9,7 @@ export { createElementComponent } from "./components/element.js";
 export { createPortaledComponent } from "./components/portaled.js";
 /** @internal */
 export { createWindowComponent } from "./components/window.js";
+export { useLatestRef } from "./hooks/use-latest-ref.js";
 export { useMergedRef } from "./hooks/use-merged-refs.js";
 export type * from "./prop-types.js";
 export { settleAccessible } from "./reconciler/apply-props.js";

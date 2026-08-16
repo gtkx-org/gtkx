@@ -7,6 +7,7 @@ const EXECUTABLE_MODE = 0o755;
 const READABLE_MODE = 0o644;
 const EXECUTABLE_SUFFIXES = [".node", ".so"];
 const MODE_MASK = 0o7777;
+const EXECUTE_MASK = 0o111;
 
 const modeFor = (rel: string): number => {
     const name = rel.split("/").at(-1) ?? rel;
@@ -44,8 +45,11 @@ const writeInto = (root: string, rel: string, contents: string, mode = READABLE_
 
 const sourceMode = (path: string): number => statSync(path).mode & MODE_MASK;
 
+const executableModeFor = (path: string): number =>
+    (sourceMode(path) & EXECUTE_MASK) === 0 ? READABLE_MODE : EXECUTABLE_MODE;
+
 const copyTree = (root: string, relBase: string, sourceDir: string): StagedFile[] =>
     listFilesRecursive(sourceDir)
         .map((file) => copyInto(root, join(relBase, file.rel), file.absPath, sourceMode(file.absPath)));
 
-export { copyInto, copyTree, EXECUTABLE_MODE, writeInto };
+export { copyInto, copyTree, EXECUTABLE_MODE, executableModeFor, writeInto };

@@ -1,7 +1,7 @@
 import type { ParamSpec } from "@gtkx/gi/gobject";
 import type { RefProp } from "@gtkx/react";
 import type { RenderHookResult } from "@gtkx/testing";
-import type { ComponentProps, Ref, RefCallback } from "react";
+import type { ComponentProps, ForwardedRef, ReactNode, Ref, RefCallback } from "react";
 import * as GObject from "@gtkx/gi/gobject";
 import { ParamFlags, paramSpecInt, paramSpecString } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -10,7 +10,7 @@ import { useProperty, useSignal } from "@gtkx/react";
 import { useMergedRef } from "@gtkx/react/internal";
 import { registerClass } from "@gtkx/runtime";
 import { act, render, renderHook, waitFor } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, forwardRef, memo } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createTypeNameFactory } from "../helpers/unique-name.js";
 
@@ -24,6 +24,7 @@ type AddressableNames<T extends GObject.Object> = keyof NonNullable<T["__propert
 type IsConstructible<T> = T extends new (...args: never) => unknown ? true : false;
 type LabelTargetProps = { object: RefProp<Gtk.Label> };
 type LabelTargetResult = RenderHookResult<string | undefined, LabelTargetProps>;
+type TickProbeProps = { button: Gtk.Button; tick: number; seen: number[] };
 
 type Target = {
     id: number;
@@ -94,6 +95,42 @@ const Annotated = registerClass(
     },
     { typeName: uniqueName("GtkxUsePropertyAnnotated"), properties: ANNOTATED_PROPERTIES },
 );
+
+const MemoTickProbe = memo(TickProbeImpl);
+const ImmediateTickProbe = memo(ImmediateTickProbeImpl);
+const ForwardedTickProbe = forwardRef<Gtk.Label | null, TickProbeProps>(ForwardedTickProbeImpl);
+
+function TickProbeImpl({ button, tick, seen }: TickProbeProps): ReactNode {
+    useSignal(button, "clicked", () => {
+        seen.push(tick);
+    });
+
+    return <GtkLabel>{String(tick)}</GtkLabel>;
+}
+
+function ImmediateTickProbeImpl({ button, tick, seen }: TickProbeProps): ReactNode {
+    useSignal(
+        button,
+        "clicked",
+        () => {
+            seen.push(tick);
+        },
+        { isImmediate: true },
+    );
+
+    return <GtkLabel>{String(tick)}</GtkLabel>;
+}
+
+function ForwardedTickProbeImpl(
+    { button, tick, seen }: TickProbeProps,
+    ref: ForwardedRef<Gtk.Label | null>,
+): ReactNode {
+    useSignal(button, "clicked", () => {
+        seen.push(tick);
+    });
+
+    return <GtkLabel ref={ref}>{String(tick)}</GtkLabel>;
+}
 
 function deref<T>(ref: { current: T | null }): T {
     const value = ref.current;
@@ -571,6 +608,84 @@ describe("useSignal (options and lifecycle) (2)", () => {
         });
 
         expect(handler).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("useSignal (wrapped components) (1)", () => {
+    it("runs the latest handler of a memo-wrapped component", async () => {
+        const button = new Gtk.Button();
+        const seen: number[] = [];
+        const { rerender } = await render(<MemoTickProbe button={button} tick={1} seen={seen} />);
+        await rerender(<MemoTickProbe button={button} tick={2} seen={seen} />);
+
+        await act(() => {
+            button.emit("clicked");
+        });
+
+        expect(seen).toEqual([2]);
+    });
+
+    it("runs the latest handler of a forwardRef-wrapped component", async () => {
+        const button = new Gtk.Button();
+        const seen: number[] = [];
+        const ref = createRef<Gtk.Label>();
+        const { rerender } = await render(<ForwardedTickProbe ref={ref} button={button} tick={1} seen={seen} />);
+        await rerender(<ForwardedTickProbe ref={ref} button={button} tick={2} seen={seen} />);
+
+        await act(() => {
+            button.emit("clicked");
+        });
+
+        expect(deref(ref)).toBeInstanceOf(Gtk.Label);
+        expect(seen).toEqual([2]);
+    });
+});
+
+describe("useSignal (wrapped components) (2)", () => {
+    it("does not reconnect a memo-wrapped component when only the handler changes", async () => {
+        const button = new Gtk.Button();
+        const seen: number[] = [];
+        const { rerender } = await render(<ImmediateTickProbe button={button} tick={1} seen={seen} />);
+        await rerender(<ImmediateTickProbe button={button} tick={2} seen={seen} />);
+
+        await act(() => {
+            button.emit("clicked");
+        });
+
+        expect(seen).toEqual([1, 2]);
+    });
+
+    it("reconnects a memo-wrapped component when the object changes", async () => {
+        const first = new Gtk.Button();
+        const second = new Gtk.Button();
+        const seen: number[] = [];
+        const { rerender } = await render(<MemoTickProbe button={first} tick={1} seen={seen} />);
+        await rerender(<MemoTickProbe button={second} tick={2} seen={seen} />);
+
+        await act(() => {
+            first.emit("clicked");
+        });
+
+        expect(seen).toEqual([]);
+
+        await act(() => {
+            second.emit("clicked");
+        });
+
+        expect(seen).toEqual([2]);
+    });
+
+    it("stops running a memo-wrapped component's handler after unmount", async () => {
+        const button = new Gtk.Button();
+        const seen: number[] = [];
+        const { unmount } = await render(<MemoTickProbe button={button} tick={1} seen={seen} />);
+        await unmount();
+
+        await act(() => {
+            button.emit("clicked");
+        });
+
+        expect(seen).toEqual([]);
     });
 });
 

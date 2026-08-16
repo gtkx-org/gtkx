@@ -6,6 +6,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, within } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { allRows, dataRows } from "./helpers/column-rows.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
 type Person = { name: string };
@@ -33,8 +34,6 @@ const columns = [
     },
 ];
 
-const allRows = (view: Gtk.ColumnView): Gtk.Widget[] => within(view).getAllByRole(Gtk.AccessibleRole.ROW);
-const dataRows = (view: Gtk.ColumnView): Gtk.Widget[] => allRows(view).slice(1);
 const rowFocusables = (view: Gtk.ColumnView): boolean[] => dataRows(view).map((row) => row.getFocusable());
 
 const expectRowText = (row: Gtk.Widget, property: RowTextProperty, expected: string | null): void => {

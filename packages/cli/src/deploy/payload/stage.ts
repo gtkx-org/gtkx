@@ -7,7 +7,7 @@ import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderCopyright } from "../freedesktop/copyright.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
 import { renderDesktopEntry } from "../freedesktop/desktop-entry.js";
-import { copyInto, EXECUTABLE_MODE, writeInto } from "./copy-tree.js";
+import { copyInto, EXECUTABLE_MODE, executableModeFor, writeInto } from "./copy-tree.js";
 import { stageIcons } from "./icons.js";
 import { NODE_FILENAME, renderLauncher } from "./launcher.js";
 import { stageSchemas } from "./schemas.js";
@@ -40,6 +40,7 @@ const PREFIX_FOR: Record<DeployTargetName, string> = {
 };
 
 const libDirFor = (settings: DeploySettings): string => `lib/${settings.binaryName}`;
+const licenseDestination = (settings: DeploySettings): string => `${SHARE_LICENSES}/${settings.binaryName}/LICENSE`;
 const isIconAsset = (rel: string): boolean => rel === DIST_ICONS_DIR || rel.startsWith(`${DIST_ICONS_DIR}/`);
 
 const stageRuntimeFiles = (settings: DeploySettings, root: string): StagedFile[] => {
@@ -66,8 +67,11 @@ const stageMetadata = (settings: DeploySettings, root: string, metadata: StagedM
 ];
 
 const stageExtraFiles = (settings: DeploySettings, root: string): StagedFile[] =>
-    Object.entries(settings.extraFiles).map(([destination, source]) =>
-        copyInto(root, destination, resolve(settings.paths.root, source)));
+    settings.extraFiles.map((file) => {
+        const source = resolve(settings.paths.root, file.source);
+
+        return copyInto(root, file.destination, source, file.mode ?? executableModeFor(source));
+    });
 
 const byRelativePath = (files: StagedFile[]): StagedFile[] => {
     const latest: Map<string, StagedFile> = new Map();
@@ -129,9 +133,7 @@ const stageOverlay = (settings: DeploySettings, target: DeployTargetName): Stage
 
     return [
         ...activation,
-        ...(licenseFile === null
-            ? []
-            : [copyInto(root, join(SHARE_LICENSES, settings.binaryName, "LICENSE"), licenseFile)]),
+        ...(licenseFile === null ? [] : [copyInto(root, licenseDestination(settings), licenseFile)]),
     ];
 };
 
@@ -142,4 +144,4 @@ const stageOverlays = (settings: DeploySettings): Record<DeployTargetName, Stage
     rpm: stageOverlay(settings, "rpm"),
 });
 
-export { type StagedMetadata, stageOverlays, stagePayload };
+export { licenseDestination, type StagedMetadata, stageOverlays, stagePayload };

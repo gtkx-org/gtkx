@@ -95,6 +95,8 @@ share/applications/<id>.desktop               generated
 share/metainfo/<id>.metainfo.xml              generated
 share/icons/hicolor/**/apps/<id>.svg          copied from data/icons
 share/glib-2.0/schemas/<id>*.gschema.xml      copied from data/
+share/mime/packages/<id>.xml                  generated, when you declare fileAssociations
+<destination>                                 every deploy.extraFiles entry
 ```
 
 `bundle.mjs`, `gtkx.node`, and the compiled schemas are siblings because the built bundle resolves them all relative to itself. The launcher resolves everything from its own location, so the same tree works at `/usr`, at `/app`, and inside an AppImage mount point.
@@ -151,10 +153,11 @@ Fix it in gtkx.config.ts:
 The generated files are complete, but nothing is a dead end:
 
 - `deploy.desktopEntry` adds or overrides desktop entry keys.
-- `deploy.flatpak.finishArgs` replaces the sandbox permissions, which default to a window and hardware rendering and nothing else.
+- `deploy.flatpak.finishArgs` adds sandbox permissions to the defaults `--share=ipc`, `--socket=wayland`, `--socket=fallback-x11`, and `--device=dri`, which grant a window and hardware rendering and nothing else. The defaults come first, your arguments follow, and duplicates collapse. To drop a default, ask for its negation rather than restating the list: `--nosocket=wayland`, `--unshare=ipc`, and `--nodevice=dri` each remove the matching default instead of sitting beside it, so the emitted `finish-args` never contradicts itself. If nothing in the result grants a display socket, `gtkx deploy` warns, because an app without one starts and never shows a window; a list you wrote that omits `--share=network` for an app declaring `WebKit-6.0` gets a warning of its own, since its pages would never load.
+- `deploy.flatpak.cleanup` adds cleanup patterns to the defaults, which are `/include`, `/share/pkgconfig`, `*.la`, and `*.a`. Unlike finish-args this one is additive only, because flatpak-builder has no negation for a cleanup pattern. An empty array is the one way past that, and turns cleanup off altogether, which is what a project that has to keep its headers or its static libraries in the prefix wants.
 - `deploy.flatpak.modules` and `deploy.flatpak.buildCommands` add modules and build steps.
 - `deploy.depends` and `deploy.relations` add package relationships per format.
-- `deploy.extraFiles` maps prefix-relative destinations to files in the project.
+- `deploy.extraFiles` maps prefix-relative destinations to files in the project. Each entry keeps the source file's executable bit, so a helper binary arrives executable without a maintainer script; anything else is installed `644`. Write `{ source: "tools/helper", mode: "755" }` instead of a plain path to set the mode yourself, which is what a checkout that lost the bit, or a file that has to be `600`, needs.
 - `deploy.scripts` supplies maintainer scripts. Without them the packages rely on the distribution's own triggers to refresh the desktop, icon, and schema caches, which is what a well-behaved package should do.
 - `deploy.signing` signs the `.deb`, the `.rpm`, the Flatpak repository, or the AppImage.
 
@@ -163,6 +166,8 @@ If the build stops at `Failure spawning rofiles-fuse`, it is running somewhere F
 ## Publishing on Flathub
 
 `gtkx deploy --target flatpak` builds from the tree it just staged, which is fast and fully offline, but Flathub builds every submission from source. `deploy.flatpak.mode: "source"` emits a manifest that does exactly that: a `git` source pinned to your release, dependencies vendored offline with [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node), and the generated metadata carried inline so nothing generated has to be committed.
+
+Source mode installs everything the prebuilt tree carries. The MIME package your `fileAssociations` generate rides along inline, like the desktop entry and the metainfo. Your license file and every `deploy.extraFiles` entry are installed straight out of the checkout, which means each of them has to live inside the repository and be committed: one that points outside fails the deploy with an explanation rather than quietly going missing from the build.
 
 The lockfile in your project root picks which package manager the sandbox installs with, and npm, pnpm, and yarn all work. pnpm takes one extra source, because the Node SDK extension ships no pnpm and the sandbox has no network to fetch one, so the manifest vendors the pnpm tarball itself. The version comes from `packageManager` in your `package.json`: write it with `corepack use pnpm@<version>`, which records the `sha512` digest every Flathub source has to carry. Pin pnpm 10, or 11.3.0 and newer, where `--trust-lockfile` skips the registry check the sandbox cannot complete.
 

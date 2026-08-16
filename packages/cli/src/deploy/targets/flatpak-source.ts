@@ -1,13 +1,17 @@
-import { posix, relative } from "node:path";
+import { posix, relative, resolve } from "node:path";
 import type { DeployPayload, DeploySettings } from "../types.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
 import { renderDesktopEntry } from "../freedesktop/desktop-entry.js";
 import { renderMetainfo } from "../freedesktop/metainfo.js";
+import { renderMimePackage } from "../freedesktop/mime-package.js";
 import { optional } from "../nfpm/optional.js";
+import { executableModeFor } from "../payload/copy-tree.js";
 import { iconPathFor } from "../payload/icons.js";
 import { renderLauncher } from "../payload/launcher.js";
+import { licenseDestination } from "../payload/stage.js";
+import { isInside } from "../settings/paths.js";
 import { pnpmPathFor, type PnpmPin, pnpmSources } from "./flatpak-pnpm.js";
 import { DESTINATION, type FlatpakModule, postInstallCommands, validationCommands } from "./flatpak-prebuilt.js";
 import {
@@ -20,6 +24,12 @@ import {
     resolveGitSource,
 } from "./flatpak-sources.js";
 
+type InstalledFile = {
+    destination: string;
+    source: string;
+    resolved: string;
+};
+
 const LAUNCHER_FILENAME = "launcher.sh";
 const MODULE_BUILD_ROOT = "/run/build";
 const RUNTIME_PREFIX = "/app";
@@ -27,6 +37,7 @@ const NPM_CACHE_DIR = "flatpak-node/npm-cache";
 const YARN_MIRROR_DIR = "flatpak-node/yarn-mirror";
 const PLAIN_ARGUMENT = /^[\w./-]+$/;
 const QUOTE_ESCAPE = String.raw`'\''`;
+const OCTAL_RADIX = 8;
 
 const inlineSource = (fileName: string, contents: string): FlatpakModule => ({
     type: "inline",
@@ -74,6 +85,21 @@ const activationInstallCommands = (settings: DeploySettings): string[] =>
             )]
         : [];
 
+const mimeSources = (settings: DeploySettings): FlatpakModule[] => {
+    const contents = renderMimePackage(settings);
+
+    return contents === null ? [] : [inlineSource(`${settings.applicationId}.xml`, contents)];
+};
+
+const mimeInstallCommands = (settings: DeploySettings): string[] =>
+    settings.fileAssociations.length === 0
+        ? []
+        : [installCommand(
+                `${settings.applicationId}.xml`,
+                `${DESTINATION}/share/mime/packages/${settings.applicationId}.xml`,
+                "m644",
+            )];
+
 const metadataInstallCommands = (settings: DeploySettings): string[] => [
     installCommand(
         `${settings.applicationId}.desktop`,
@@ -86,6 +112,7 @@ const metadataInstallCommands = (settings: DeploySettings): string[] => [
         "m644",
     ),
     ...activationInstallCommands(settings),
+    ...mimeInstallCommands(settings),
 ];
 
 const schemaInstallCommands = (settings: DeploySettings): string[] =>
@@ -119,6 +146,45 @@ const iconInstallCommands = (settings: DeploySettings): string[] => {
 
     return listFilesRecursive(iconsDir).map((icon) => iconInstallCommand(settings, icon.absPath, icon.rel));
 };
+
+const assertInsideProject = (settings: DeploySettings, installed: InstalledFile): void => {
+    if (isInside(settings.paths.root, installed.resolved)) {
+        return;
+    }
+
+    throw new Error(
+        `Cannot install "${installed.destination}" from "${installed.source}": a source-mode manifest builds from ` +
+        `your git checkout, so every file it installs has to live inside ${settings.paths.root} and be committed. ` +
+        "Move it into the project, or drop it from the source build.",
+    );
+};
+
+const licenseInstallCommands = (settings: DeploySettings): string[] => {
+    const licenseFile = settings.paths.licenseFile;
+
+    if (licenseFile === null) {
+        return [];
+    }
+
+    const destination = licenseDestination(settings);
+    assertInsideProject(settings, { destination, source: licenseFile, resolved: licenseFile });
+    const target = `${DESTINATION}/${shellArgument(destination)}`;
+
+    return [installCommand(projectRelative(settings, licenseFile), target, "m644")];
+};
+
+const extraFileInstallCommands = (settings: DeploySettings): string[] =>
+    settings.extraFiles.map((file) => {
+        const resolved = resolve(settings.paths.root, file.source);
+        assertInsideProject(settings, { destination: file.destination, source: file.source, resolved });
+        const mode = file.mode ?? executableModeFor(resolved);
+
+        return installCommand(
+            projectRelative(settings, resolved),
+            `${DESTINATION}/${shellArgument(file.destination)}`,
+            `m${mode.toString(OCTAL_RADIX)}`,
+        );
+    });
 
 const moduleDirFor = (settings: DeploySettings): string => `${MODULE_BUILD_ROOT}/${settings.binaryName}`;
 
@@ -161,6 +227,7 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
             GENERATED_SOURCES,
             inlineSource(`${settings.applicationId}.desktop`, renderDesktopEntry(settings)),
             inlineSource(`${settings.applicationId}.metainfo.xml`, renderMetainfo(settings)),
+            ...mimeSources(settings),
             inlineSource(LAUNCHER_FILENAME, renderLauncher(settings)),
             ...activationSource(settings),
         ],
@@ -171,6 +238,8 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
             ...metadataInstallCommands(settings),
             ...schemaInstallCommands(settings),
             ...iconInstallCommands(settings),
+            ...licenseInstallCommands(settings),
+            ...extraFileInstallCommands(settings),
             ...(settings.deploy.flatpak?.buildCommands ?? []),
             ...validationCommands(settings),
         ],

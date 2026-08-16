@@ -112,4 +112,4 @@ const resolvePaths = (request: PathsRequest): DeployPaths => {
     };
 };
 
-export { resolvePaths };
+export { isInside, resolvePaths };

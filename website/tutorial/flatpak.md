@@ -48,7 +48,7 @@ That directory still holds the tasks you added throughout this tutorial, with no
 
 ## What the sandbox does not grant
 
-The generated manifest asks for these permissions, and you can replace them with `deploy.flatpak.finishArgs`:
+The generated manifest asks for these permissions, and `deploy.flatpak.finishArgs` adds to them:
 
 ```yaml
 finish-args:
@@ -58,7 +58,7 @@ finish-args:
   - --device=dri
 ```
 
-Those grant a window on screen and hardware rendering. There is no `--filesystem`, no `--share=network`, and no `--talk-name` for the notification service. Tasks reads and writes your data, sends desktop notifications, and stores preferences with none of those.
+Those grant a window on screen and hardware rendering. There is no `--filesystem`, no `--share=network`, and no `--talk-name` for the notification service. Tasks reads and writes your data, sends desktop notifications, and stores preferences with none of those. Anything you list in `finishArgs` is appended to that baseline, so asking for `--share=network` still leaves you a window; to give one of these up, ask for its negation, such as `--nosocket=wayland`.
 
 **No filesystem permission**, thanks to a decision from [Saving Tasks Between Runs](/tutorial/saving-to-disk). The storage backend resolves its directory from `XDG_DATA_HOME`, which Flatpak sets to the app's private directory before the process starts. The code that found `~/.local/share/com.gtkx.tutorial` on your machine finds `~/.var/app/com.gtkx.tutorial/data/com.gtkx.tutorial` inside the sandbox, unchanged. A hardcoded path, or one built from `homedir()` alone, would need `--filesystem=home`, and Flathub reviewers would ask why.
 
@@ -66,7 +66,7 @@ Those grant a window on screen and hardware rendering. There is no `--filesystem
 
 **No network permission**, because the app never opens a socket. Everything it knows lives in one JSON file and one GSettings schema.
 
-Permissions are the one part of packaging that stays a deliberate decision, which is why `finishArgs` is hand-authored rather than derived. A short list backed by portals is the quickest thing for a reviewer to approve.
+Permissions are the one part of packaging that stays a deliberate decision, which is why anything beyond that baseline is hand-authored rather than derived. A short list backed by portals is the quickest thing for a reviewer to approve.
 
 ## The modes
 

@@ -279,7 +279,7 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
         rules: { "unicorn/no-process-exit": "off" },
     },
     {
-        files: ["packages/cli/src/deploy/**/*.ts", "packages/cli/tests/deploy/**/*.ts"],
+        files: ["packages/cli/src/deploy/**/*.ts", "packages/cli/tests/deploy.test.ts"],
         rules: { "@typescript-eslint/naming-convention": "off" },
     },
     ...scopeTo(TESTS, [vitest.configs.recommended]),

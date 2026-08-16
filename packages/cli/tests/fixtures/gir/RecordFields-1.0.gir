@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <package name="recordfields-1.0"/>
+  <namespace name="RecordFields"
+             version="1.0"
+             shared-library="librecordfields.so.0"
+             c:identifier-prefixes="RecordFields"
+             c:symbol-prefixes="record_fields">
+    <record name="Iface"
+            c:type="RecordFieldsIface"
+            c:symbol-prefix="iface"
+            glib:type-name="RecordFieldsIface"
+            glib:get-type="record_fields_iface_get_type">
+      <field name="name" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </field>
+    </record>
+    <record name="Entry"
+            c:type="RecordFieldsEntry"
+            c:symbol-prefix="entry"
+            glib:type-name="RecordFieldsEntry"
+            glib:get-type="record_fields_entry_get_type">
+      <field name="key" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </field>
+    </record>
+    <record name="Node"
+            c:type="RecordFieldsNode"
+            c:symbol-prefix="node"
+            glib:type-name="RecordFieldsNode"
+            glib:get-type="record_fields_node_get_type">
+      <field name="ref_count" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+      <field name="interfaces" writable="1">
+        <array c:type="RecordFieldsIface**">
+          <type name="Iface" c:type="RecordFieldsIface*"/>
+        </array>
+      </field>
+      <field name="entries" writable="1">
+        <array length="3" zero-terminated="0" c:type="RecordFieldsEntry**">
+          <type name="Entry" c:type="RecordFieldsEntry*"/>
+        </array>
+      </field>
+      <field name="n_entries" writable="1">
+        <type name="guint" c:type="guint"/>
+      </field>
+      <field name="links" writable="1">
+        <type name="GLib.List" c:type="GList*">
+          <type name="gpointer" c:type="gpointer"/>
+        </type>
+      </field>
+    </record>
+    <record name="Plain" c:type="RecordFieldsPlain" c:symbol-prefix="plain">
+      <field name="value" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+    </record>
+    <class name="Widget"
+           c:symbol-prefix="widget"
+           c:type="RecordFieldsWidget"
+           parent="GObject.Object"
+           glib:type-name="RecordFieldsWidget"
+           glib:get-type="record_fields_widget_get_type"/>
+    <class name="Loose"
+           c:symbol-prefix="loose"
+           c:type="RecordFieldsLoose"
+           parent="GObject.Object"/>
+    <interface name="Provider"
+               c:symbol-prefix="provider"
+               c:type="RecordFieldsProvider"
+               glib:type-name="RecordFieldsProvider"
+               glib:get-type="record_fields_provider_get_type"/>
+  </namespace>
+</repository>

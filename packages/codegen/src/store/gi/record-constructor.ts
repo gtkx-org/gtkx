@@ -11,7 +11,7 @@ import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { type Callables, staticMembers } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
 import { renderSourceGtype } from "./gtype-binding.js";
-import { emitFieldWrite, isEmittableField, isInlineField } from "./record-field-accessor.js";
+import { emitFieldWrite, isEmittableField, isInlineField, isStorableFieldType } from "./record-field-accessor.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
 import { isConstructibleRecord } from "./value-marshalable.js";
 
@@ -25,7 +25,9 @@ type RecordConstructorSpec = {
 };
 
 const isWritableFieldSlot = (context: ModuleContext, entry: RecordFieldSlot): entry is WritableFieldSlot =>
-    entry.field.writable && isEmittableField(context, entry.field);
+    entry.field.writable &&
+    isEmittableField(context, entry.field) &&
+    isStorableFieldType(context, entry.field.type);
 
 const renderRecordConstructorPropsInterface = (
     context: ModuleContext,

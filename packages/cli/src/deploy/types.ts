@@ -51,6 +51,12 @@ type DeployFileAssociation = {
     description: string | null;
 };
 
+type DeployExtraFile = {
+    destination: string;
+    source: string;
+    mode: number | null;
+};
+
 type DeployDesktopAction = {
     id: string;
     name: string;
@@ -118,7 +124,7 @@ type DeploySettings = {
     desktopActions: DeployDesktopAction[];
     desktopEntry: Record<string, string>;
     isDbusActivatable: boolean;
-    extraFiles: Record<string, string>;
+    extraFiles: DeployExtraFile[];
     versions: DeployVersions;
     arch: DeployArch;
     paths: DeployPaths;
@@ -157,6 +163,7 @@ export type {
     DeployConfig,
     DeployDesktopAction,
     DeployDeveloper,
+    DeployExtraFile,
     DeployFileAssociation,
     DeployManifest,
     DeployPaths,

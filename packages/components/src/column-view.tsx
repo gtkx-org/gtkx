@@ -15,13 +15,14 @@ type SortTarget = { view: Gtk.ColumnView; column: Gtk.ColumnViewColumn | null };
 
 type ColumnCellsProps = {
     column: ColumnViewColumn<never>;
+    hasExpander: boolean;
     collection: Collection;
     expandedIds: string[] | null | undefined;
     expanderDescriptions: ExpanderDescriptions | null | undefined;
     size: CellSize;
 };
 
-type ColumnListProps = Omit<ColumnCellsProps, "column"> & {
+type ColumnListProps = Omit<ColumnCellsProps, "column" | "hasExpander"> & {
     columns: ColumnViewColumn<never>[];
 };
 
@@ -44,6 +45,9 @@ const COLUMN_VIEW_PROPS = [
     "children",
     "ref",
 ] as const satisfies (keyof ColumnViewProps)[];
+
+const expanderIndexFor = (columns: ColumnViewColumn<never>[]): number =>
+    columns.findIndex((column) => column.visible !== false);
 
 const columnById = (view: Gtk.ColumnView, id: string): Gtk.ColumnViewColumn | null => {
     const columns = view.getColumns();
@@ -131,7 +135,14 @@ const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns:
     }, [view, sortColumn, sortOrder, columns]);
 };
 
-const ColumnCells = ({ column, collection, expandedIds, expanderDescriptions, size }: ColumnCellsProps): ReactNode => {
+const ColumnCells = ({
+    column,
+    hasExpander,
+    collection,
+    expandedIds,
+    expanderDescriptions,
+    size,
+}: ColumnCellsProps): ReactNode => {
     const cells = useItemCells(size);
     const rest = omit(column, ["id", "renderCell", "isSortable"]);
 
@@ -147,6 +158,7 @@ const ColumnCells = ({ column, collection, expandedIds, expanderDescriptions, si
                 registry={cells}
                 render={column.renderCell}
                 collection={collection}
+                hasExpander={hasExpander}
                 expandedIds={expandedIds}
                 expanderDescriptions={expanderDescriptions}
             />
@@ -154,17 +166,21 @@ const ColumnCells = ({ column, collection, expandedIds, expanderDescriptions, si
     );
 };
 
-const ColumnList = ({ columns, collection, expandedIds, expanderDescriptions, size }: ColumnListProps): ReactNode =>
-    columns.map((column) => (
+const ColumnList = ({ columns, collection, expandedIds, expanderDescriptions, size }: ColumnListProps): ReactNode => {
+    const expanderIndex = expanderIndexFor(columns);
+
+    return columns.map((column, index) => (
         <ColumnCells
             key={column.id}
             column={column}
+            hasExpander={index === expanderIndex}
             collection={collection}
             expandedIds={expandedIds}
             expanderDescriptions={expanderDescriptions}
             size={size}
         />
     ));
+};
 
 /**
  * Renders a Gtk.ColumnView from declarative items or sections and a columns array,

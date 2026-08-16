@@ -13,6 +13,9 @@ type ByteSequenceCase = {
     bindings: string[];
 };
 
+type OmittedFieldCase = { title: string; jsName: string };
+type GtypeCase = { title: string; className: string };
+
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
@@ -64,6 +67,30 @@ const BYTE_SEQUENCE_CASES: ByteSequenceCase[] = [
     },
 ];
 
+const RECORD_FIELD_ACCESSORS = [
+    "get refCount(): number;",
+    "set refCount(value: number);",
+    "get interfaces(): Iface[];",
+];
+
+const ARRAY_WRITES = ["set interfaces(", "interfaces?:", "props.interfaces"];
+
+const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
+    { title: "an array whose length lives in a sibling field", jsName: "entries" },
+    { title: "a linked list", jsName: "links" },
+];
+
+const GTYPE_CASES: GtypeCase[] = [
+    { title: "a record", className: "Node" },
+    { title: "a class", className: "Widget" },
+    { title: "an interface", className: "Provider" },
+];
+
+const GTYPE_LESS_CASES: GtypeCase[] = [
+    { title: "a record", className: "Plain" },
+    { title: "a class", className: "Loose" },
+];
+
 const config = (body: string): string => `${HEAD}${body} };\n`;
 
 const fixtureConfig = (library: string): string =>
@@ -94,6 +121,16 @@ const isStoreMarked = (project: CliProject): boolean => existsSync(storePath(pro
 
 const expectModules = (directory: string, modules: string[]): void => {
     expect(modules.filter((name) => !existsSync(join(directory, name)))).toEqual([]);
+};
+
+const omittedMentions = (source: string, jsName: string): string[] =>
+    [`${jsName}:`, `get ${jsName}(`, `set ${jsName}(`].filter((text) => source.includes(text));
+
+const classBody = (source: string, className: string): string => {
+    const start = source.indexOf(`class ${className} `);
+    const end = source.indexOf("\n}", start);
+
+    return start === -1 || end === -1 ? "" : source.slice(start, end);
 };
 
 describe("gtkx codegen", () => {
@@ -194,6 +231,66 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
         } finally {
             removeCliProject(project);
         }
+    });
+});
+
+describe("gtkx codegen (record fields and the GType a type registers)", () => {
+    const state: { project: CliProject; status: number | null } = {
+        project: { root: "", nodeModules: "" },
+        status: null,
+    };
+
+    const declarations = (): string => generatedModule(state.project, "gi", "recordfields", "recordfields.d.ts");
+    const bindings = (): string => generatedModule(state.project, "gi", "recordfields", "recordfields.js");
+
+    beforeAll(() => {
+        state.project = createCliProject({
+            prefix: "gtkx-cli-codegen-fields-",
+            config: fixtureConfig("RecordFields-1.0"),
+        });
+
+        state.status = runCli(state.project, ["codegen"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it("reads a null-terminated array field through an accessor", () => {
+        expect(state.status).toBe(0);
+        const declared = classBody(declarations(), "Node");
+        expect(RECORD_FIELD_ACCESSORS.filter((text) => !declared.includes(text))).toEqual([]);
+        const bound = classBody(bindings(), "Node");
+        expect(bound).toMatch(/get interfaces\(\) \{\s+return fromNative\(\w+, read\(getHandle\(this\), \w+, 8\)\);/);
+    });
+
+    it("stores no array field, through an accessor or through the constructor", () => {
+        expect(state.status).toBe(0);
+        const emitted = `${declarations()}${bindings()}`;
+        expect(ARRAY_WRITES.filter((text) => emitted.includes(text))).toEqual([]);
+        expect(declarations()).toContain("refCount?:");
+    });
+
+    it.each(GTYPE_CASES)("exposes on $title the GType it registers", ({ className }) => {
+        expect(state.status).toBe(0);
+        expect(classBody(declarations(), className)).toContain("static get __gtype__(): bigint;");
+        expect(classBody(bindings(), className)).toContain("return getClassType(this);");
+    });
+
+    it.each(OMITTED_FIELD_CASES)("declares no member for $title", ({ jsName }) => {
+        expect(state.status).toBe(0);
+        const emitted = `${classBody(declarations(), "Node")}${classBody(bindings(), "Node")}`;
+        expect(emitted).toContain("get interfaces(): Iface[];");
+        expect(omittedMentions(emitted, jsName)).toEqual([]);
+        expect(declarations()).not.toContain(`${jsName}?:`);
+    });
+
+    it.each(GTYPE_LESS_CASES)("leaves $title that registers no GType without one", ({ className }) => {
+        expect(state.status).toBe(0);
+        const declared = classBody(declarations(), className);
+        expect(declared).toContain(`class ${className} `);
+        expect(declared).not.toMatch(/__g?type__/);
+        expect(classBody(bindings(), className)).not.toContain("__gtype__");
     });
 });
 

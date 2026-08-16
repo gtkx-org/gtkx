@@ -6,7 +6,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, render, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import type { TreeFixture, TreeName } from "./helpers/trees.js";
-import { expanderNamed, listRowByName } from "./helpers/expanders.js";
+import { expanderCount, expanderNamed, listRowByName } from "./helpers/expanders.js";
 import { renderListView, renderStatefulListView } from "./helpers/list-fixtures.js";
 import { expectRowTexts, rowTexts } from "./helpers/row-texts.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
@@ -186,6 +186,12 @@ describe("ListView tree expansion", () => {
         await expectRowTexts(ref, ["Parent", "Child 1", "Child 2"]);
         await rerender(parentWithChildren, { expandedIds: [] });
         await expectRowTexts(ref, ["Parent"]);
+    });
+
+    it("draws exactly one expander on each row of a single-column tree", async () => {
+        const { ref } = await renderListView<TreeName>(parentWithChildren, { expandedIds: ["parent"] });
+        await expectRowTexts(ref, ["Parent", "Child 1", "Child 2"]);
+        expect(expanderCount()).toBe(3);
     });
 
     it("hands the renderer the depth and the expansion state of each row", async () => {

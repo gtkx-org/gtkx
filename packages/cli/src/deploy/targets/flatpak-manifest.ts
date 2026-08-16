@@ -12,9 +12,75 @@ const DEFAULT_RUNTIME_VERSION = "50";
 const DEFAULT_SDK = "org.gnome.Sdk";
 const DEFAULT_FINISH_ARGS = ["--share=ipc", "--socket=wayland", "--socket=fallback-x11", "--device=dri"];
 const DEFAULT_CLEANUP = ["/include", "/share/pkgconfig", "*.la", "*.a"];
+const DISPLAY_SOCKETS = ["fallback-x11", "wayland", "x11"];
+const SOCKET_ARG = "--socket=";
+const NO_SOCKET_ARG = "--nosocket=";
+
+const NEGATED_ARGS: [string, string][] = [
+    ["--device=", "--nodevice="],
+    ["--share=", "--unshare="],
+    [SOCKET_ARG, NO_SOCKET_ARG],
+];
 
 const branchFor = (settings: DeploySettings): string => settings.deploy.flatpak?.branch ?? DEFAULT_BRANCH;
 const isSourceMode = (settings: DeploySettings): boolean => settings.deploy.flatpak?.mode === "source";
+
+const negationFor = (arg: string): string | null => {
+    const negated = NEGATED_ARGS.find(([prefix]) => arg.startsWith(prefix));
+
+    if (negated === undefined) {
+        return null;
+    }
+
+    const [prefix, negation] = negated;
+
+    return `${negation}${arg.slice(prefix.length)}`;
+};
+
+const mergeArgs = (defaults: string[], overrides: string[]): string[] => {
+    const kept = defaults.filter((arg) => {
+        const negation = negationFor(arg);
+
+        return negation === null || !overrides.includes(negation);
+    });
+
+    return [...new Set([...kept, ...overrides])];
+};
+
+const finishArgsFor = (settings: DeploySettings): string[] =>
+    mergeArgs(DEFAULT_FINISH_ARGS, settings.deploy.flatpak?.finishArgs ?? []);
+
+const cleanupFor = (settings: DeploySettings): string[] => {
+    const cleanup = settings.deploy.flatpak?.cleanup;
+
+    if (cleanup === undefined) {
+        return DEFAULT_CLEANUP;
+    }
+
+    return cleanup.length === 0 ? [] : mergeArgs(DEFAULT_CLEANUP, cleanup);
+};
+
+const grantedSockets = (args: string[]): Set<string> => {
+    const granted: Set<string> = new Set();
+
+    for (const arg of args) {
+        if (arg.startsWith(SOCKET_ARG)) {
+            granted.add(arg.slice(SOCKET_ARG.length));
+        }
+
+        if (arg.startsWith(NO_SOCKET_ARG)) {
+            granted.delete(arg.slice(NO_SOCKET_ARG.length));
+        }
+    }
+
+    return granted;
+};
+
+const hasDisplaySocket = (args: string[]): boolean => {
+    const granted = grantedSockets(args);
+
+    return DISPLAY_SOCKETS.some((socket) => granted.has(socket));
+};
 
 const sdkExtensionsFor = (settings: DeploySettings): string[] => {
     const flatpak = settings.deploy.flatpak ?? {};
@@ -46,16 +112,15 @@ const runtimeKeys = (settings: DeploySettings): FlatpakManifest => {
 
 const renderFlatpakManifest = (payload: DeployPayload): FlatpakManifest => {
     const settings = payload.settings;
-    const flatpak = settings.deploy.flatpak ?? {};
 
     return {
         id: settings.applicationId,
         ...runtimeKeys(settings),
         command: settings.binaryName,
-        "finish-args": flatpak.finishArgs ?? DEFAULT_FINISH_ARGS,
-        cleanup: flatpak.cleanup ?? DEFAULT_CLEANUP,
+        "finish-args": finishArgsFor(settings),
+        cleanup: cleanupFor(settings),
         modules: modulesFor(payload),
     };
 };
 
-export { branchFor, renderFlatpakManifest };
+export { branchFor, finishArgsFor, hasDisplaySocket, renderFlatpakManifest };

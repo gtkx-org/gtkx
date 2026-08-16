@@ -1,8 +1,9 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { ElementType, ReactNode, Ref } from "react";
 import { GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
+import { useLatestRef } from "@gtkx/react/internal";
 import { omit } from "@gtkx/utils";
-import { useEffectEvent, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { DropDownOwnProps, ListItemRenderArgs, ListItemRenderer } from "../types.js";
 import type { Collection } from "./collection.js";
 import { ItemPortals, useItemCells, useSectionHeader } from "./cells.js";
@@ -144,7 +145,7 @@ const useDropDownSelection = (options: SelectionOptions): NotifySelectedHandler 
     const known = useRef<string | null>(null);
     const [applyState] = useState<ApplyState>(newApplyState);
 
-    const syncKnownSelection = useEffectEvent((position: number): void => {
+    const syncKnownSelection = (position: number): void => {
         const effectiveId = collection.idAt(position);
 
         if (effectiveId === null) {
@@ -155,7 +156,9 @@ const useDropDownSelection = (options: SelectionOptions): NotifySelectedHandler 
 
         const { onSelectionChanged } = options.props;
         updateKnownSelection({ known, onSelectionChanged }, effectiveId, selectedId);
-    });
+    };
+
+    const syncRef = useLatestRef(syncKnownSelection);
 
     useLayoutEffect(() => {
         if (widget === null) {
@@ -164,8 +167,8 @@ const useDropDownSelection = (options: SelectionOptions): NotifySelectedHandler 
 
         const position = resolvePosition(widget, collection, selectedId);
         applySelectedPosition(widget, position, applyState);
-        syncKnownSelection(position);
-    }, [widget, collection, selectedId, applyState]);
+        syncRef.current(position);
+    }, [syncRef, widget, collection, selectedId, applyState]);
 
     return (value, self) => {
         dispatchSelectedNotify({ options, known, state: applyState }, value, self);

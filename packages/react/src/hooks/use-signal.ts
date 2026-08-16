@@ -1,7 +1,8 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
-import { useEffectEvent, useLayoutEffect } from "react";
+import { useLayoutEffect } from "react";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
+import { useLatestRef } from "./use-latest-ref.js";
 
 /** The signal map `T` declares, from signal name to handler signature. */
 type Signals<T extends GObject.Object> = NonNullable<T["__signals__"]>;
@@ -31,12 +32,8 @@ type UseSignalOptions = {
 /**
  * Connects a handler to a GObject signal for the lifetime of the component, reconnecting when the object changes.
  *
- * Each emission runs the handler from the latest render, so it does not have to be stable and a
+ * Each emission runs the handler from the latest committed render, so it does not have to be stable and a
  * changing handler never reconnects the signal.
- *
- * On React 19.2 this does not hold inside a component wrapped in `memo` or `forwardRef`, where every emission
- * runs the handler captured on the first render. Keep the calling component unwrapped, or read the values the
- * handler needs off the GObject itself. React fixes this on the 19.3 line.
  *
  * @param signal The signal name, optionally with a `::detail` suffix.
  * @param options `isAfter` runs the handler after the default handler; `isImmediate` also invokes it on connect.
@@ -47,7 +44,7 @@ function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
     handler: TypedSignalHandler<T, S>,
     { isAfter = false, isImmediate = false }: UseSignalOptions = {},
 ): void {
-    const emit = useEffectEvent(handler as SignalHandler);
+    const handlerRef = useLatestRef<SignalHandler>(handler as SignalHandler);
 
     useLayoutEffect(() => {
         const resolved = resolveRefProp(object);
@@ -56,6 +53,7 @@ function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
             return;
         }
 
+        const emit: SignalHandler = (...args) => handlerRef.current(...args);
         resolved.on(signal, emit, isAfter);
 
         if (isImmediate) {
@@ -65,7 +63,7 @@ function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
         return () => {
             resolved.off(signal, emit);
         };
-    }, [object, signal, isAfter, isImmediate]);
+    }, [handlerRef, object, signal, isAfter, isImmediate]);
 }
 
 export { useSignal };

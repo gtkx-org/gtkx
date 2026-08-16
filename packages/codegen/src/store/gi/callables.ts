@@ -7,7 +7,7 @@ import { renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
 import { callableDoc, callableSpec } from "./callable-doc.js";
 import { renderFnExpression } from "./function.js";
-import { gtypeMemberDeclaration } from "./gtype-binding.js";
+import { gtypeMemberDeclaration, gtypeStaticMember } from "./gtype-binding.js";
 import {
     finishCallExpression,
     memberName,
@@ -66,7 +66,7 @@ type PlainTypeMembersOptions = {
     context: ModuleContext;
     className: string;
     callables: Callables;
-    hasGtype: boolean;
+    gtypeExpr: string | undefined;
 };
 
 const RUNTIME_OWNED_LIFETIME_METHODS: Set<string> = new Set([
@@ -514,11 +514,11 @@ const renderPlainInstanceMethods = (
 const renderPlainTypeMembers = (
     options: PlainTypeMembersOptions,
 ): { members: string[]; claimedNames: Set<string> } => {
-    const { context, className, callables, hasGtype } = options;
+    const { context, className, callables, gtypeExpr } = options;
     const claimedNames: Set<string> = new Set();
 
     const members: string[] = [
-        ...(hasGtype ? [gtypeMemberDeclaration(context)] : []),
+        ...(gtypeExpr === undefined ? [] : [gtypeMemberDeclaration(context), gtypeStaticMember(context)]),
         ...renderStaticHead(context, callables, className),
         ...renderPlainInstanceMethods(context, callables.methods, claimedNames),
     ];

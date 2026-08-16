@@ -65,6 +65,8 @@ const columns: ColumnViewColumn<Employee>[] = [
 />
 ```
 
+Nesting `ListItem.children` turns a `ColumnView` into a tree as well, driven by the same `expandedIds` and `onExpandedChange`. The first column draws the expander for every row, and with it the depth indentation, so the columns after it stay lined up at each depth; hiding that column with `visible: false` hands the expander to the next one along. Expansion itself belongs to the row rather than to the expander, so `expandedIds` opens and closes rows whether or not the user clicks one.
+
 ### DropDown
 
 `DropDown<T, S>` takes `items`, or `sections` plus `renderHeader`, with single controlled selection through `selectedId` and `onSelectionChanged`. `renderItem` is optional and draws both the button face and the popup rows, `renderListItem` overrides the popup rows on their own, and with neither given each value is shown as a label.

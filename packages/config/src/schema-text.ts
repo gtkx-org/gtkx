@@ -28,11 +28,10 @@ const fileExtension = (message: string): z.ZodString =>
 const relativePath = (message: string): z.ZodString =>
     z.string({ error: message }).refine((value) => isRelativePath(value), { error: message });
 
-const relativePathRecord = (
+const relativePathRecord = <Value extends z.ZodType>(
     keyMessage: string,
-    valueMessage: string,
+    value: Value,
     recordMessage: string,
-): z.ZodRecord<z.ZodString, z.ZodString> =>
-    z.record(relativePath(keyMessage), text(valueMessage), { error: recordMessage });
+): z.ZodRecord<z.ZodString, Value> => z.record(relativePath(keyMessage), value, { error: recordMessage });
 
 export { fileExtension, flag, relativePathRecord, text, textList, textRecord, url };

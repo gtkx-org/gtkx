@@ -633,7 +633,7 @@ const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: 
     const entries: MetaDocEntry[] = [];
 
     for (const slot of slots) {
-        const field = resolveRecordFieldEntry(context, slot, claimedNames);
+        const field = resolveRecordFieldEntry(context, slot, claimedNames, record.fields);
 
         if (field === undefined) {
             continue;

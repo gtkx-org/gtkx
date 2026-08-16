@@ -21,7 +21,7 @@ import {
     renderStaticHead,
 } from "./callables.js";
 import { annotationSpec, getDoc } from "./doc-spec.js";
-import { renderSourceGtype } from "./gtype-binding.js";
+import { gtypeStaticMember, renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
 import {
     type PropertyAccessorArgs,
@@ -378,7 +378,7 @@ const renderInterfaceClass = (context: ModuleContext, options: InterfaceClassOpt
     const members: string[] = [];
 
     if (gtypeExpr !== undefined) {
-        members.push(renderInterfaceHasInstance(context, className, gtypeExpr));
+        members.push(renderInterfaceHasInstance(context, className, gtypeExpr), gtypeStaticMember(context));
     }
 
     members.push(...renderStaticHead(context, callables, className), renderInterfaceBrand(context, implRef));

@@ -99,6 +99,7 @@ type ItemCellProps = {
     entry: CellEntry<Gtk.ListItem>;
     render: ListItemRenderer<never>;
     collection: Collection;
+    hasExpander: boolean;
     expandedIds: string[] | null | undefined;
     expanderDescriptions: ExpanderDescriptions | null | undefined;
 };
@@ -107,6 +108,7 @@ type ItemPortalsProps = {
     registry: CellRegistry<Gtk.ListItem>;
     render: ListItemRenderer<never>;
     collection: Collection;
+    hasExpander?: boolean | undefined;
     expandedIds?: string[] | null | undefined;
     expanderDescriptions?: ExpanderDescriptions | null | undefined;
 };
@@ -410,6 +412,7 @@ function wrapExpander(
 function itemBody(
     slot: ItemSlot | null,
     render: ListItemRenderer<never>,
+    hasExpander: boolean,
     descriptions: ExpanderDescriptions | null | undefined,
 ): ReactNode {
     if (slot === null) {
@@ -417,8 +420,9 @@ function itemBody(
     }
 
     const renderItem = render as ListItemRenderer<unknown>;
+    const content = renderItem(slot.args);
 
-    return wrapExpander(slot, renderItem(slot.args), descriptions);
+    return hasExpander ? wrapExpander(slot, content, descriptions) : content;
 }
 
 function rowText(value: string | undefined): string | null {
@@ -455,9 +459,16 @@ function applyRowProps(host: Gtk.ColumnViewRow, props: ResolvedRowProps): void {
     host.setSelectable(props.isSelectable);
 }
 
-function ItemCellImpl({ entry, render, collection, expandedIds, expanderDescriptions }: ItemCellProps): ReactNode {
+function ItemCellImpl({
+    entry,
+    render,
+    collection,
+    hasExpander,
+    expandedIds,
+    expanderDescriptions,
+}: ItemCellProps): ReactNode {
     const slot = useItemSlot(entry, collection, expandedIds);
-    const body = itemBody(slot, render, expanderDescriptions);
+    const body = itemBody(slot, render, hasExpander, expanderDescriptions);
 
     return createPortal(body, entry.host, entry.key);
 }
@@ -492,6 +503,7 @@ const ItemPortals = ({
     registry,
     render,
     collection,
+    hasExpander,
     expandedIds,
     expanderDescriptions,
 }: ItemPortalsProps): ReactNode =>
@@ -501,6 +513,7 @@ const ItemPortals = ({
             entry={entry}
             render={render}
             collection={collection}
+            hasExpander={hasExpander ?? true}
             expandedIds={expandedIds}
             expanderDescriptions={expanderDescriptions}
         />

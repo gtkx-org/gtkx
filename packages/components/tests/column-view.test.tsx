@@ -12,6 +12,7 @@ import {
     expectLargeReordering,
     expectReordering,
 } from "./helpers/collection-view.js";
+import { dataRows } from "./helpers/column-rows.js";
 import { renderColumnView } from "./helpers/list-fixtures.js";
 import { expectRowTexts } from "./helpers/row-texts.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
@@ -71,9 +72,6 @@ const cellText = (cell: Gtk.Widget): string => {
 
     return label ? (getWidgetText(label) ?? "") : "";
 };
-
-const dataRows = (columnView: Gtk.ColumnView): Gtk.Widget[] =>
-    within(columnView).getAllByRole(Gtk.AccessibleRole.ROW).slice(1);
 
 const rowCellTexts = (row: Gtk.Widget): string[] =>
     within(row)

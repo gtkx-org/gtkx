@@ -27,11 +27,15 @@ const URL_KINDS = [
 
 const BOOLEAN_ERROR = "must be a boolean";
 const EPOCH_ERROR = "must be a non-negative integer";
+const EXTRA_FILE_ERROR = "must be a source path or a { source, mode } entry";
+const FILE_MODE_ERROR = "must be an octal file mode such as 755";
+const FILE_MODE_PATTERN = /^[0-7]{3,4}$/;
 const HEX_COLOR_ERROR = "must be a #rrggbb color";
 const HEX_COLOR_PATTERN = /^#[\dA-Fa-f]{6}$/;
 const KEY_FILE_ERROR = "must be a path to a PGP key file";
 const KEY_ID_ERROR = "must be a PGP key id";
 const SCRIPT_ERROR = "must be a path to a shell script";
+const SOURCE_PATH_ERROR = "must be a source path";
 const SPDX_ERROR = "must be an SPDX license expression";
 const URL_ERROR = "must be an absolute URL";
 const VERSION_ERROR = "must be a version string";
@@ -84,6 +88,13 @@ const brandingSchema = z.strictObject({
     light: hexColorSchema,
     dark: hexColorSchema,
 });
+
+const extraFileSchema = z.strictObject({
+    source: text(SOURCE_PATH_ERROR),
+    mode: z.string({ error: FILE_MODE_ERROR }).regex(FILE_MODE_PATTERN, { error: FILE_MODE_ERROR }).optional(),
+});
+
+const extraFileEntrySchema = z.union([text(SOURCE_PATH_ERROR), extraFileSchema], { error: EXTRA_FILE_ERROR });
 
 const nodeRuntimeSchema = z.strictObject({
     source: z.enum(NODE_SOURCES, { error: "must be one of download, host, path" }).optional(),
@@ -243,8 +254,8 @@ const deploySchema = z.strictObject({
     isDbusActivatable: flag(BOOLEAN_ERROR).optional(),
     extraFiles: relativePathRecord(
         "must be a destination path inside the install prefix, without a leading slash or a .. segment",
-        "must be a source path",
-        "must be a record of prefix-relative destinations to source paths",
+        extraFileEntrySchema,
+        "must be a record of prefix-relative destinations to source paths or { source, mode } entries",
     ).optional(),
     depends: relationsSchema.optional(),
     relations: extraRelationsSchema.optional(),

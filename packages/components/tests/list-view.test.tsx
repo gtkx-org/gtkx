@@ -10,6 +10,7 @@ import {
     expectLargeReordering,
     expectReordering,
 } from "./helpers/collection-view.js";
+import { expanderCount } from "./helpers/expanders.js";
 import {
     firstSecondItems,
     firstSecondThirdItems,
@@ -314,5 +315,11 @@ describe("GridView", () => {
         expect(screen.getByRole(Gtk.AccessibleRole.GRID)).toBe(ref.current);
         expect(ref.current).toHaveObjectProperty("singleClickActivate", true);
         expectNoBoxBetween(screen.getByText("First"), ref.current);
+    });
+
+    it("ignores nested children and draws no expander", async () => {
+        const { ref } = await renderGridView([branchA, leafB]);
+        expect(labelTexts(ref.current)).toEqual(["A", "B"]);
+        expect(expanderCount()).toBe(0);
     });
 });

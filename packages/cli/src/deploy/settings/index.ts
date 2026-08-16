@@ -9,6 +9,7 @@ import type {
 } from "../types.js";
 import { resolveArch } from "./arch.js";
 import { resolveExecToken, resolveFileAssociations, resolveMimeTypes } from "./exec.js";
+import { resolveExtraFiles } from "./extra-files.js";
 import {
     type IdentityRequest,
     resolveBinaryName,
@@ -177,7 +178,7 @@ const resolveDeploySettings = (request: SettingsRequest): DeploySettings => {
         ...identitySlice(core),
         ...metadataSlice(request.root, core),
         ...desktopSlice(deploy),
-        extraFiles: deploy.extraFiles ?? {},
+        extraFiles: resolveExtraFiles(deploy),
         versions: core.versions,
         arch: resolveArch(),
         paths: resolvePaths({ root: request.root, deploy, outDirOverride: request.outDirOverride }),

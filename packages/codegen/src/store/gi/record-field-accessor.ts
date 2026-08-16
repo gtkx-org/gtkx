@@ -9,6 +9,7 @@ import type { ModuleContext } from "../../writer/context.js";
 import { isInlineCallbackRef, renderDescriptor } from "../../analysis/descriptor-render.js";
 import { tStruct } from "../../analysis/descriptor.js";
 import { renderTsType } from "../../analysis/ts-type.js";
+import { isUnboundedArray } from "../../analysis/type-shape.js";
 import { indent, renderBlock } from "../../writer/emit.js";
 import { getDoc } from "./doc-spec.js";
 import { bitMask, computeRecordFieldSlots, mergeBitfield, type RecordFieldSlot } from "./record-layout.js";
@@ -25,6 +26,10 @@ type FieldWriteSpec = {
 type AdmittedField = {
     field: GirField & { type: TypeId };
     jsName: string;
+};
+
+type AccessibleField = AdmittedField & {
+    isSettable: boolean;
 };
 
 type RecordFieldEntry = {
@@ -167,12 +172,49 @@ const admitField = (
     return { field, jsName };
 };
 
+const isNullTerminatedArrayField = (context: ModuleContext, ref: TypeId): boolean => {
+    const type = context.library.typeFor(ref);
+
+    return type?.kind === "carray" && isUnboundedArray(type) && type.arrayCType?.endsWith("*") === true;
+};
+
+const isAccessibleFieldType = (context: ModuleContext, ref: TypeId): boolean =>
+    isAccessorEligibleType(context, ref) || isNullTerminatedArrayField(context, ref);
+
+const isStorableFieldType = (context: ModuleContext, ref: TypeId): boolean => {
+    const kind = context.library.typeFor(ref)?.kind;
+
+    return kind !== "carray" && kind !== "list" && kind !== "hashtable";
+};
+
+const admitAccessibleField = (
+    context: ModuleContext,
+    slot: RecordFieldSlot,
+    claimedNames: Set<string>,
+    siblingFields: GirField[],
+): AccessibleField | undefined => {
+    const admitted = admitField(context, slot, claimedNames);
+
+    if (admitted === undefined) {
+        return undefined;
+    }
+
+    const { field, jsName } = admitted;
+    const target: StructArrayTarget = { field, jsName, slot: slot.slot, siblingFields };
+    const hasStructArray = resolveStructArray(context, target) !== undefined;
+    const hasAccessor = hasStructArray || isAccessibleFieldType(context, field.type);
+    const isSettable = field.writable && (hasStructArray || isStorableFieldType(context, field.type));
+
+    return hasAccessor ? { ...admitted, isSettable } : undefined;
+};
+
 const resolveRecordFieldEntry = (
     context: ModuleContext,
     slot: RecordFieldSlot,
     claimedNames: Set<string>,
+    siblingFields: GirField[],
 ): RecordFieldEntry | undefined => {
-    const admitted = admitField(context, slot, claimedNames);
+    const admitted = admitAccessibleField(context, slot, claimedNames, siblingFields);
 
     if (admitted === undefined) {
         return undefined;
@@ -181,7 +223,7 @@ const resolveRecordFieldEntry = (
     return {
         jsName: admitted.jsName,
         tsType: renderTsType(context, admitted.field.type, false),
-        isWritable: admitted.field.writable,
+        isWritable: admitted.isSettable,
         doc: admitted.field.doc,
         annotations: admitted.field.annotations,
     };
@@ -193,7 +235,7 @@ const renderRecordFieldAccessor = (
     claimedNames: Set<string>,
     siblingFields: GirField[],
 ): string | undefined => {
-    const admitted = admitField(context, slot, claimedNames);
+    const admitted = admitAccessibleField(context, slot, claimedNames, siblingFields);
 
     if (admitted === undefined) {
         return undefined;
@@ -205,12 +247,6 @@ const renderRecordFieldAccessor = (
 
     if (structArray !== undefined) {
         return `${doc}${structArray}`;
-    }
-
-    if (!isAccessorEligibleType(context, field.type)) {
-        const tsType = renderTsType(context, field.type, false);
-
-        return `${doc}declare ${jsName}: ${tsType};`;
     }
 
     const descriptor = context.hoistDescriptor(
@@ -230,7 +266,7 @@ const renderRecordFieldAccessor = (
 
     const blocks: string[] = [getterBlock(accessorOptions)];
 
-    if (field.writable) {
+    if (admitted.isSettable) {
         blocks.push(setterBlock(accessorOptions));
     }
 
@@ -654,6 +690,7 @@ const setterBlock = (options: AccessorOptions): string =>
 export {
     isEmittableField,
     isInlineField,
+    isStorableFieldType,
     emitFieldWrite,
     resolveRecordFieldEntry,
     renderRecordFieldAccessor,

@@ -1,4 +1,5 @@
-import { startTransition, useEffectEvent, useLayoutEffect, useState } from "react";
+import { useLatestRef } from "@gtkx/react/internal";
+import { startTransition, useLayoutEffect, useState } from "react";
 import type { Collection } from "./collection.js";
 
 type ControlledIds = string[] | null | undefined;
@@ -20,13 +21,11 @@ function useControlledSync(options: ControlledSyncOptions): () => void {
         });
     };
 
-    const apply = useEffectEvent((next: ControlledIds): void => {
-        options.apply(next);
-    });
+    const applyRef = useLatestRef(options.apply);
 
     useLayoutEffect(() => {
-        apply(ids);
-    }, [widget, collection, ids, drift]);
+        applyRef.current(ids);
+    }, [applyRef, widget, collection, ids, drift]);
 
     return markDrift;
 }

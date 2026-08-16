@@ -34,7 +34,7 @@ import {
 } from "./callables.js";
 import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
 import { getDoc } from "./doc-spec.js";
-import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
+import { gtypeMemberDeclaration, gtypeStaticMember, renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
 import { renderPropertyDeclarations } from "./properties.js";
 import { renderResolvedPropertyAccessor, resolveAccessor, type ResolvedAccessor } from "./property-accessor.js";
@@ -59,6 +59,14 @@ type MemberDeclarationsOptions = {
 };
 
 type ClassMembers = { members: string[]; accessors: ResolvedAccessor[] };
+
+type ClassMembersOptions = {
+    context: ModuleContext;
+    klass: GirClass;
+    callables: Callables;
+    gtypeExpr: string | undefined;
+    hasParent: boolean;
+};
 
 type ImplementedRefOptions = {
     context: ModuleContext;
@@ -97,7 +105,16 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
     const implemented = resolveImplementedRefs(context, klass);
     const typeRefs = implemented.map((ref) => omittedTypeRef(ref.typeRef, ref.conflicts));
     const implementsClause = typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
-    const { members, accessors } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
+    const gtypeExpr = renderSourceGtype(context, klass);
+
+    const { members, accessors } = renderClassMembers({
+        context,
+        klass,
+        callables,
+        gtypeExpr,
+        hasParent: parentExpression !== undefined,
+    });
+
     const body = indentMembers(members);
     const doc = getDoc(klass);
     const modifier = klass.isAbstract ? "abstract " : "";
@@ -115,7 +132,7 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
 
     appendMemberDeclarations({ context, klass, className, accessors, implemented });
     appendInstallMixins(context, className, implemented);
-    appendClassRegistrations(context, klass, className);
+    appendClassRegistrations(context, klass, className, gtypeExpr);
 };
 
 const appendMemberDeclarations = (options: MemberDeclarationsOptions): void => {
@@ -150,15 +167,14 @@ const appendInterfaceMerge = (
     });
 };
 
-const renderClassMembers = (
-    context: ModuleContext,
-    klass: GirClass,
-    callables: Callables,
-    hasParent: boolean,
-): ClassMembers => {
+const renderClassMembers = (options: ClassMembersOptions): ClassMembers => {
+    const { context, klass, callables, gtypeExpr } = options;
     const className = sanitizeTypeIdentifier(klass.name);
-    const members: string[] = [gtypeMemberDeclaration(context)];
-    const constructorBlock = renderClassConstructor(context, klass, className, hasParent);
+
+    const members: string[] =
+        gtypeExpr === undefined ? [] : [gtypeMemberDeclaration(context), gtypeStaticMember(context)];
+
+    const constructorBlock = renderClassConstructor(context, klass, className, options.hasParent);
 
     if (constructorBlock !== undefined) {
         members.push(constructorBlock);
@@ -239,9 +255,12 @@ const appendInstallMixins = (context: ModuleContext, className: string, implemen
     ]);
 };
 
-const appendClassRegistrations = (context: ModuleContext, klass: GirClass, className: string): void => {
-    const gtypeExpr = renderSourceGtype(context, klass);
-
+const appendClassRegistrations = (
+    context: ModuleContext,
+    klass: GirClass,
+    className: string,
+    gtypeExpr: string | undefined,
+): void => {
     appendWrapperClassRegistration(context, {
         className,
         gtypeExpr,
