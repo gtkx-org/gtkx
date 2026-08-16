@@ -19,9 +19,25 @@ type StagedFile = {
 
 type NodeRuntime = {
     path: string;
+    licenseFile: string | null;
     version: string;
     glibcFloor: string | null;
     isStripped: boolean;
+};
+
+type Notice = {
+    subject: string;
+    license: string;
+    source: string | null;
+    copyright: string[];
+    text: string | null;
+};
+
+type NoticeSection = {
+    title: string;
+    files: string[];
+    summary: string[];
+    notices: Notice[];
 };
 
 type DeployDeveloper = {
@@ -136,6 +152,7 @@ type DeployPayload = {
     settings: DeploySettings;
     node: NodeRuntime | null;
     stage: StagedFile[];
+    notices: NoticeSection[];
     overlays: Record<DeployTargetName, StagedFile[]>;
 };
 
@@ -176,6 +193,8 @@ export type {
     DeployTool,
     DeployVersions,
     NodeRuntime,
+    Notice,
+    NoticeSection,
     PackageFamily,
     StagedFile,
 };

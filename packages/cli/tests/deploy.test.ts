@@ -235,6 +235,65 @@ const EXPECTED_MANIFESTS = [
     MANIFEST_PATH,
 ];
 
+const COPYRIGHT_PATH = join("overlay", "deb", "share", "doc", BINARY_NAME, "copyright");
+const NOTICES_FILENAME = "THIRD-PARTY-NOTICES";
+const NOTICE_TARGETS = ["appimage", "flatpak", "rpm"];
+const PACKAGES_MANIFEST = "gtkx-packages.json";
+const NODE_STANZA = `Files: lib/${BINARY_NAME}/node`;
+const NATIVE_STANZA = `Files: lib/${BINARY_NAME}/gtkx.node`;
+const BUNDLE_STANZA = `Files: lib/${BINARY_NAME}/bundle.mjs`;
+const COPYRIGHT_FORMAT = "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/";
+const NOTICES_HEADING = "THIRD-PARTY NOTICES";
+const MIT_SENTENCE = "Permission is hereby granted, free of charge";
+const GTKX_SOURCE = "Source: https://github.com/gtkx-org/gtkx";
+const PLATFORM_LIBRARY = "GTK (LGPL-2.1-or-later): https://gitlab.gnome.org/GNOME/gtk";
+const PLATFORM_SECTION = "Platform libraries";
+const PLATFORM_SOURCE = "Source: https://gitlab.gnome.org/GNOME/gtk";
+const DEPENDENCY_NAME = "probe-dependency";
+const DEPENDENCY_VERSION = "1.0.0";
+const UNDECLARED_LICENSE = "License: unknown";
+const RUNTIME_BINARY = join("runtime", "bin", "node");
+const RUNTIME_LICENSE = join("runtime", "LICENSE");
+const NODE_LICENSE_TEXT = "Node.js probe license, standing in for the release archive.";
+const OWN_LICENSE_TEXT = "Probe proprietary license, all rights reserved, and not Node's.";
+const APPLICATION_STANZA = "Deploy Probe (MPL-2.0)";
+const DEPENDENCY_SECTION = "Bundled JavaScript dependencies";
+const BARE_APP_SOURCE = "process.env.PROBE_LABEL = \"probe\";\n";
+const NOTICES_DEST = `${FLATPAK_DEST}/share/licenses/${BINARY_NAME}/${NOTICES_FILENAME}`;
+const NOTICES_INSTALL = `install -Dm644 ${NOTICES_FILENAME} ${NOTICES_DEST}`;
+
+const DEPENDENCY_MANIFEST = {
+    name: DEPENDENCY_NAME,
+    version: DEPENDENCY_VERSION,
+    type: "module",
+    main: "index.js",
+};
+
+const DEPENDENCY_SOURCE = `const probeLabel = "probe";
+
+export { probeLabel };
+`;
+
+const NOTICES_APP_SOURCE = `import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
+import { createRoot } from "@gtkx/react";
+import { probeLabel } from "${DEPENDENCY_NAME}";
+
+process.env.PROBE_LABEL = probeLabel;
+
+createRoot().render(
+    <GtkApplication>
+        <GtkApplicationWindow title="Probe">
+            <GtkLabel label="probe" />
+        </GtkApplicationWindow>
+    </GtkApplication>,
+);
+`;
+
+const RUNTIME_NODE = `        node: { source: "path", path: "${RUNTIME_BINARY}" },
+`;
+
+const NOTICES_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${RUNTIME_NODE}    },\n`;
+
 const config = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
     `    libraries: ${JSON.stringify(STORE_LIBRARIES)},\n` +
@@ -255,6 +314,25 @@ const projectFiles = (): Record<string, string> => ({
     [NOTES_SOURCE]: NOTES,
 });
 
+const noticesFiles = (): Record<string, string> => ({
+    ...projectFiles(),
+    [join("src", "index.tsx")]: NOTICES_APP_SOURCE,
+    [join("node_modules", DEPENDENCY_NAME, "package.json")]: `${JSON.stringify(DEPENDENCY_MANIFEST, null, 4)}\n`,
+    [join("node_modules", DEPENDENCY_NAME, "index.js")]: DEPENDENCY_SOURCE,
+    [RUNTIME_BINARY]: "",
+    [RUNTIME_LICENSE]: `${NODE_LICENSE_TEXT}\n`,
+});
+
+const strangeRuntimeFiles = (): Record<string, string> => ({
+    ...noticesFiles(),
+    [RUNTIME_LICENSE]: `${OWN_LICENSE_TEXT}\n`,
+});
+
+const bareFiles = (): Record<string, string> => ({
+    ...projectFiles(),
+    [join("src", "index.tsx")]: BARE_APP_SOURCE,
+});
+
 const sourceFiles = (pin: string): Record<string, string> => ({
     ...projectFiles(),
     "package.json": `${JSON.stringify({ ...MANIFEST, packageManager: pin }, null, 4)}\n`,
@@ -267,6 +345,15 @@ const npmSourceFiles = (): Record<string, string> => ({
 });
 
 const outputNames = (project: CliProject): string[] => listProjectFiles(project, OUT_DIR);
+
+const outputFile = (project: CliProject, ...segments: string[]): string =>
+    readFileSync(join(project.root, OUT_DIR, ...segments), "utf8");
+
+const noticesFor = (project: CliProject, target: string): string =>
+    outputFile(project, join("overlay", target, "share", "licenses", BINARY_NAME, NOTICES_FILENAME));
+
+const stanzaFor = (copyright: string, files: string): string =>
+    copyright.split("\nFiles: ").find((stanza) => stanza.startsWith(`${files}\n`)) ?? "";
 
 const flatpakManifest = (project: CliProject): FlatpakManifest => {
     const contents = readFileSync(join(project.root, OUT_DIR, MANIFEST_PATH), "utf8");
@@ -450,7 +537,7 @@ describe("gtkx deploy (flatpak source mode without pnpm)", () => {
 });
 
 describe("gtkx deploy (flatpak source mode payload)", () => {
-    it("installs the extra files, the MIME package, and the license the prebuilt tree carries", () => {
+    it("installs the extra files, the MIME package, the license, and the third-party notices", () => {
         const shim = stubGenerator();
 
         const project = createCliProject({
@@ -469,6 +556,8 @@ describe("gtkx deploy (flatpak source mode payload)", () => {
             expect(appModule["build-commands"]).toContain(MIME_INSTALL);
             expect(appModule["build-commands"]).toContain(HELPER_INSTALL);
             expect(appModule["build-commands"]).toContain(LICENSE_INSTALL);
+            expect(appModule["build-commands"]).toContain(NOTICES_INSTALL);
+            expect(findInlineSource(appModule, NOTICES_FILENAME)?.contents).toContain(NOTICES_HEADING);
         } finally {
             removeCliProject(project);
             rmSync(shim, { recursive: true, force: true });
@@ -542,6 +631,129 @@ describe("gtkx deploy (flatpak source revisions)", () => {
             const git = findSource(flatpakModule(project), "git");
             expect(git?.tag).toBe(SOURCE_TAG);
             expect(git?.commit).toMatch(COMMIT_PATTERN);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx deploy (third-party notices)", () => {
+    const state = deployProbe({
+        prefix: "gtkx-cli-deploy-notices-",
+        config: config(NOTICES_BLOCK),
+        files: noticesFiles(),
+        args: ["deploy", "--print-manifests", "--target", TARGETS],
+    });
+
+    it("writes a machine-readable copyright with a stanza for everything the package carries", () => {
+        const copyright = outputFile(state.project, COPYRIGHT_PATH);
+        expect(state.status).toBe(0);
+        expect(copyright).toContain(COPYRIGHT_FORMAT);
+        expect(copyright).toContain(NODE_STANZA);
+        expect(copyright).toContain(NATIVE_STANZA);
+        expect(copyright).toContain(BUNDLE_STANZA);
+        expect(copyright).toContain(GTKX_SOURCE);
+        expect(copyright).toContain(MIT_SENTENCE);
+        expect(copyright).toContain(PLATFORM_LIBRARY);
+    });
+
+    it("installs the notices on every target that carries no copyright file", () => {
+        for (const target of NOTICE_TARGETS) {
+            const notices = noticesFor(state.project, target);
+            expect(notices).toContain(NOTICES_HEADING);
+            expect(notices).toContain(MIT_SENTENCE);
+            expect(notices).toContain(PLATFORM_SECTION);
+            expect(notices).toContain(PLATFORM_SOURCE);
+        }
+    });
+
+    it("keeps the build metadata it collects them from out of the package", () => {
+        const staged = outputNames(state.project);
+        expect(staged).not.toContain(join(STAGE_PREFIX, "lib", BINARY_NAME, PACKAGES_MANIFEST));
+        expect(staged).toContain(join(STAGE_PREFIX, "lib", BINARY_NAME, "bundle.mjs"));
+    });
+
+    it("carries the license of the runtime it is pointed at", () => {
+        expect(outputFile(state.project, COPYRIGHT_PATH)).toContain(NODE_LICENSE_TEXT);
+        expect(noticesFor(state.project, "rpm")).toContain(NODE_LICENSE_TEXT);
+    });
+
+    it("lists a bundled dependency that declares no license at all", () => {
+        const notices = noticesFor(state.project, "rpm");
+        expect(notices).toContain(`${DEPENDENCY_NAME} ${DEPENDENCY_VERSION}`);
+        expect(notices).toContain(UNDECLARED_LICENSE);
+    });
+
+    it("keeps the application's own terms on the file its own code is compiled into", () => {
+        const bundle = stanzaFor(outputFile(state.project, COPYRIGHT_PATH), BUNDLE_STANZA.replace("Files: ", ""));
+        expect(bundle).toContain(APPLICATION_STANZA);
+        expect(bundle).toContain(`${DEPENDENCY_NAME} ${DEPENDENCY_VERSION}`);
+    });
+});
+
+describe("gtkx deploy (a runtime with a license of its own)", () => {
+    const state = deployProbe({
+        prefix: "gtkx-cli-deploy-strange-runtime-",
+        config: config(NOTICES_BLOCK),
+        files: strangeRuntimeFiles(),
+        args: ["deploy", "--print-manifests", "--target", "rpm"],
+    });
+
+    it("publishes no license beside the runtime that is not the runtime's", () => {
+        expect(state.status).toBe(0);
+        expect(noticesFor(state.project, "rpm")).not.toContain(OWN_LICENSE_TEXT);
+    });
+});
+
+describe("gtkx deploy (a bundle with nothing third-party in it)", () => {
+    const state = deployProbe({
+        prefix: "gtkx-cli-deploy-bare-bundle-",
+        config: config(DEPLOY_BLOCK),
+        files: bareFiles(),
+        args: ["deploy", "--print-manifests", "--target", "rpm"],
+    });
+
+    it("leaves out the dependency section rather than heading an empty one", () => {
+        expect(state.status).toBe(0);
+        expect(noticesFor(state.project, "rpm")).not.toContain(DEPENDENCY_SECTION);
+    });
+});
+
+describe("gtkx deploy (a build whose packages have moved)", () => {
+    it("still names a dependency whose recorded directory is gone", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-moved-",
+            config: config(NOTICES_BLOCK),
+            files: noticesFiles(),
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            rmSync(join(project.root, "node_modules", DEPENDENCY_NAME), { recursive: true, force: true });
+            const args = ["deploy", "--print-manifests", "--skip-build", "--target", "rpm"];
+            expect(runCli(project, args).status).toBe(0);
+            expect(noticesFor(project, "rpm")).toContain(`${DEPENDENCY_NAME} ${DEPENDENCY_VERSION}`);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx deploy (a build it cannot account for)", () => {
+    it("fails when the build it packages recorded no bundled packages", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-stale-build-",
+            config: config(DEPLOY_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            rmSync(join(project.root, "dist", PACKAGES_MANIFEST));
+            const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
+            expect(runCli(project, args).status).not.toBe(0);
         } finally {
             removeCliProject(project);
         }

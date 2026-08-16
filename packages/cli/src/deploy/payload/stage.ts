@@ -1,12 +1,14 @@
 import { sortStringsBy } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { DeploySettings, DeployTargetName, NodeRuntime, StagedFile } from "../types.js";
+import type { DeploySettings, DeployTargetName, NodeRuntime, NoticeSection, StagedFile } from "../types.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
+import { BUNDLED_PACKAGES_FILENAME } from "../../vite-plugins/bundled-packages.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderCopyright } from "../freedesktop/copyright.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
 import { renderDesktopEntry } from "../freedesktop/desktop-entry.js";
+import { renderNotices } from "../notices/render.js";
 import { copyInto, EXECUTABLE_MODE, executableModeFor, writeInto } from "./copy-tree.js";
 import { stageIcons } from "./icons.js";
 import { NODE_FILENAME, renderLauncher } from "./launcher.js";
@@ -25,6 +27,8 @@ type StagedMetadata = {
 };
 
 const DIST_ICONS_DIR = "icons";
+const NOTICES_FILENAME = "THIRD-PARTY-NOTICES";
+const NODE_LICENSE_FILENAME = "LICENSE";
 const SHARE_APPLICATIONS = "share/applications";
 const SHARE_METAINFO = "share/metainfo";
 const SHARE_MIME_PACKAGES = "share/mime/packages";
@@ -40,8 +44,14 @@ const PREFIX_FOR: Record<DeployTargetName, string> = {
 };
 
 const libDirFor = (settings: DeploySettings): string => `lib/${settings.binaryName}`;
-const licenseDestination = (settings: DeploySettings): string => `${SHARE_LICENSES}/${settings.binaryName}/LICENSE`;
+const licenseDirFor = (settings: DeploySettings): string => `${SHARE_LICENSES}/${settings.binaryName}`;
+const licenseDestination = (settings: DeploySettings): string => `${licenseDirFor(settings)}/LICENSE`;
+const noticesDestination = (settings: DeploySettings): string => `${licenseDirFor(settings)}/${NOTICES_FILENAME}`;
 const isIconAsset = (rel: string): boolean => rel === DIST_ICONS_DIR || rel.startsWith(`${DIST_ICONS_DIR}/`);
+const isBuildMetadata = (rel: string): boolean => rel === BUNDLED_PACKAGES_FILENAME;
+
+const nodeLicenseDestination = (settings: DeploySettings): string =>
+    `${licenseDirFor(settings)}/${NODE_FILENAME}/${NODE_LICENSE_FILENAME}`;
 
 const stageRuntimeFiles = (settings: DeploySettings, root: string): StagedFile[] => {
     const dist = settings.paths.dist;
@@ -51,7 +61,7 @@ const stageRuntimeFiles = (settings: DeploySettings, root: string): StagedFile[]
     }
 
     return listFilesRecursive(dist)
-        .filter((file) => !isIconAsset(file.rel))
+        .filter((file) => !isIconAsset(file.rel) && !isBuildMetadata(file.rel))
         .map((file) => copyInto(root, join(libDirFor(settings), file.rel), file.absPath));
 };
 
@@ -118,7 +128,7 @@ const stageActivation = (settings: DeploySettings, root: string, target: DeployT
     )];
 };
 
-const stageOverlay = (settings: DeploySettings, target: DeployTargetName): StagedFile[] => {
+const stageOverlay = (settings: DeploySettings, target: DeployTargetName, notices: NoticeSection[]): StagedFile[] => {
     const root = join(settings.paths.overlay, target);
     rmSync(root, { recursive: true, force: true, maxRetries: 5 });
     const licenseFile = settings.paths.licenseFile;
@@ -127,21 +137,33 @@ const stageOverlay = (settings: DeploySettings, target: DeployTargetName): Stage
     if (target === "deb") {
         return [
             ...activation,
-            writeInto(root, join(SHARE_DOC, settings.binaryName, "copyright"), renderCopyright(settings)),
+            writeInto(root, join(SHARE_DOC, settings.binaryName, "copyright"), renderCopyright(settings, notices)),
         ];
     }
 
     return [
         ...activation,
         ...(licenseFile === null ? [] : [copyInto(root, licenseDestination(settings), licenseFile)]),
+        writeInto(root, noticesDestination(settings), renderNotices(settings, notices)),
     ];
 };
 
-const stageOverlays = (settings: DeploySettings): Record<DeployTargetName, StagedFile[]> => ({
-    appimage: stageOverlay(settings, "appimage"),
-    deb: stageOverlay(settings, "deb"),
-    flatpak: stageOverlay(settings, "flatpak"),
-    rpm: stageOverlay(settings, "rpm"),
+const stageOverlays = (
+    settings: DeploySettings,
+    notices: NoticeSection[],
+): Record<DeployTargetName, StagedFile[]> => ({
+    appimage: stageOverlay(settings, "appimage", notices),
+    deb: stageOverlay(settings, "deb", notices),
+    flatpak: stageOverlay(settings, "flatpak", notices),
+    rpm: stageOverlay(settings, "rpm", notices),
 });
 
-export { licenseDestination, type StagedMetadata, stageOverlays, stagePayload };
+export {
+    licenseDestination,
+    nodeLicenseDestination,
+    NOTICES_FILENAME,
+    noticesDestination,
+    type StagedMetadata,
+    stageOverlays,
+    stagePayload,
+};

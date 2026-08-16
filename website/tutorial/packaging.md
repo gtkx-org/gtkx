@@ -29,6 +29,7 @@ computing gzip size...
 dist/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg      0.49 kB │ gzip:   0.28 kB
 dist/gschemas.compiled                                               0.63 kB
 dist/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg               1.47 kB │ gzip:   0.38 kB
+dist/gtkx-packages.json                                              1.94 kB │ gzip:   0.35 kB
 dist/gtkx.node                                                   1,624.69 kB
 dist/bundle.mjs                                                  4,067.30 kB │ gzip: 510.94 kB
 
@@ -136,7 +137,7 @@ Note the third line: Node.js is bundled into the package. GTKX needs Node.js 24,
 
 ## What is inside
 
-Every package installs the same tree, under `/usr` here and under `/app` in the Flatpak:
+Every package installs the same tree, under `/usr` here and under `/app` in the Flatpak, apart from where the notices land:
 
 ```
 /usr/bin/gtkx-tutorial                                    a launcher script
@@ -149,7 +150,12 @@ Every package installs the same tree, under `/usr` here and under `/app` in the 
 /usr/share/metainfo/com.gtkx.tutorial.metainfo.xml        generated
 /usr/share/icons/hicolor/**/apps/com.gtkx.tutorial.svg    from data/icons
 /usr/share/glib-2.0/schemas/com.gtkx.tutorial.gschema.xml from data/
+/usr/share/licenses/gtkx-tutorial/LICENSE                 your LICENSE, every target but deb
+/usr/share/licenses/gtkx-tutorial/THIRD-PARTY-NOTICES     generated, every target but deb
+/usr/share/doc/gtkx-tutorial/copyright                    generated, deb only
 ```
+
+The last three are the terms of everything in the package that you did not write: the bundled Node.js, GTKX, and every npm package the bundle reaches. The deb carries them in the [machine-readable copyright format](https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/) that Debian expects, and the other targets carry the same material as a plain text file. See [Deploying](/guide/deploying#third-party-notices).
 
 The launcher resolves the other files from its own location, so nothing is hardcoded to `/usr` and the same tree works in a Flatpak and inside an AppImage.
 

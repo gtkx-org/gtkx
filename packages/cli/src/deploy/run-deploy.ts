@@ -17,6 +17,7 @@ import { renderMetainfo } from "./freedesktop/metainfo.js";
 import { renderMimePackage } from "./freedesktop/mime-package.js";
 import { validateDesktopEntry, validateMetainfo } from "./freedesktop/validate.js";
 import { resolveNodeRuntime } from "./node-runtime/index.js";
+import { collectNotices } from "./notices/collect.js";
 import { type StagedMetadata, stageOverlays, stagePayload } from "./payload/stage.js";
 import { DEFAULT_TARGETS, parseTargetList, targetsFor } from "./registry.js";
 import { resolveDeploySettings } from "./settings/index.js";
@@ -185,8 +186,9 @@ const buildPayload = async (
 
     const stage = stagePayload({ settings, node, metadata });
     info(`Staged ${String(stage.length)} files into ${displayPath(settings, settings.paths.stage)}`);
+    const notices = collectNotices({ settings, node });
 
-    return { settings, node, stage, overlays: stageOverlays(settings) };
+    return { settings, node, stage, notices, overlays: stageOverlays(settings, notices) };
 };
 
 const renderTargetManifests = (

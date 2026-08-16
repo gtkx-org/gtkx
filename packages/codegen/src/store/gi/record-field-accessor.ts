@@ -175,7 +175,7 @@ const admitField = (
 const isNullTerminatedArrayField = (context: ModuleContext, ref: TypeId): boolean => {
     const type = context.library.typeFor(ref);
 
-    return type?.kind === "carray" && isUnboundedArray(type) && type.arrayCType?.endsWith("*") === true;
+    return type?.kind === "carray" && isUnboundedArray(type) && type.elementCType?.endsWith("*") === true;
 };
 
 const isAccessibleFieldType = (context: ModuleContext, ref: TypeId): boolean =>

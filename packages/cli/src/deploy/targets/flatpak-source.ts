@@ -8,10 +8,11 @@ import { renderDesktopEntry } from "../freedesktop/desktop-entry.js";
 import { renderMetainfo } from "../freedesktop/metainfo.js";
 import { renderMimePackage } from "../freedesktop/mime-package.js";
 import { optional } from "../nfpm/optional.js";
+import { renderNotices } from "../notices/render.js";
 import { executableModeFor } from "../payload/copy-tree.js";
 import { iconPathFor } from "../payload/icons.js";
 import { renderLauncher } from "../payload/launcher.js";
-import { licenseDestination } from "../payload/stage.js";
+import { licenseDestination, nodeLicenseDestination, NOTICES_FILENAME, noticesDestination } from "../payload/stage.js";
 import { isInside } from "../settings/paths.js";
 import { pnpmPathFor, type PnpmPin, pnpmSources } from "./flatpak-pnpm.js";
 import { DESTINATION, type FlatpakModule, postInstallCommands, validationCommands } from "./flatpak-prebuilt.js";
@@ -177,6 +178,16 @@ const licenseInstallCommands = (settings: DeploySettings): string[] => {
     return [installCommand(projectRelative(settings, licenseFile), target, "m644")];
 };
 
+const noticesInstallCommands = (settings: DeploySettings): string[] => {
+    const extensionLicense = `${nodeExtensionPathFor(settings)}/LICENSE`;
+    const nodeTarget = `${DESTINATION}/${shellArgument(nodeLicenseDestination(settings))}`;
+
+    return [
+        installCommand(NOTICES_FILENAME, `${DESTINATION}/${shellArgument(noticesDestination(settings))}`, "m644"),
+        `test ! -f ${extensionLicense} || ${installCommand(extensionLicense, nodeTarget, "m644")}`,
+    ];
+};
+
 const extraFileInstallCommands = (settings: DeploySettings): string[] =>
     settings.extraFiles.map((file) => {
         const resolved = resolve(settings.paths.root, file.source);
@@ -233,6 +244,7 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
             inlineSource(`${settings.applicationId}.metainfo.xml`, renderMetainfo(settings)),
             ...mimeSources(settings),
             inlineSource(LAUNCHER_FILENAME, renderLauncher(settings)),
+            inlineSource(NOTICES_FILENAME, renderNotices(settings, payload.notices)),
             ...activationSource(settings),
         ],
         "build-commands": [
@@ -243,6 +255,7 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
             ...schemaInstallCommands(settings),
             ...iconInstallCommands(settings),
             ...licenseInstallCommands(settings),
+            ...noticesInstallCommands(settings),
             ...extraFileInstallCommands(settings),
             ...(settings.deploy.flatpak?.buildCommands ?? []),
             ...validationCommands(settings),

@@ -143,6 +143,24 @@ fn report_pending_exception(raw: sys::napi_env) {
     }
 }
 
+pub fn raise_fatal(message: &str) {
+    let Some(env) = try_env() else {
+        return;
+    };
+
+    let raw = env.raw();
+    let error = napi::Error::new(Status::GenericFailure, message.to_owned());
+
+    unsafe {
+        let mut handle_scope: sys::napi_handle_scope = std::ptr::null_mut();
+        if sys::napi_open_handle_scope(raw, &raw mut handle_scope) != sys::Status::napi_ok {
+            return;
+        }
+        sys::napi_fatal_exception(raw, napi::JsError::from(error).into_value(raw));
+        sys::napi_close_handle_scope(raw, handle_scope);
+    }
+}
+
 #[cfg(test)]
 pub(crate) fn run_installed<R>(f: impl FnOnce() -> R) -> R {
     test_support::run(|| {

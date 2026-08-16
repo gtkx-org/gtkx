@@ -1,5 +1,5 @@
 import type * as Gio from "@gtkx/gi/gio";
-import { packVariant, parseVariantType, unpackVariant, type VariantValue } from "./variant.js";
+import { fromVariant, toVariant, type VariantValue } from "@gtkx/runtime";
 
 /** Maps each key of a GSettings schema to its kind: a GVariant type string, or `enum` or `flags`. */
 type SettingsSchemaKeys = Record<string, string>;
@@ -43,16 +43,12 @@ const ACCESSORS: Record<string, SettingAccessor<number> | undefined> = {
     },
 };
 
-const defaultAccessor = (kind: string): SettingAccessor => {
-    const node = parseVariantType(kind);
-
-    return {
-        get: (settings: Gio.Settings, key: string) => unpackVariant(node, settings.getValue(key)),
-        set: (settings: Gio.Settings, key: string, value: unknown) => {
-            settings.setValue(key, packVariant(node, value));
-        },
-    };
-};
+const defaultAccessor = (kind: string): SettingAccessor => ({
+    get: (settings: Gio.Settings, key: string) => fromVariant(kind, settings.getValue(key)),
+    set: (settings: Gio.Settings, key: string, value: unknown) => {
+        settings.setValue(key, toVariant(kind, value));
+    },
+});
 
 const resolveSettingAccessor = <K extends SettingsSchemaKeys, P extends keyof K>(
     settings: Gio.Settings,

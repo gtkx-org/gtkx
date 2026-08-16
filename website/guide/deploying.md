@@ -86,17 +86,20 @@ The application icon is the one thing that has to exist: `data/icons/hicolor/sca
 Every target installs the same tree, under `/usr` for deb, rpm, and AppImage, and under `/app` for Flatpak:
 
 ```
-bin/<binaryName>                              a launcher script
-lib/<binaryName>/node                         the bundled Node.js
-lib/<binaryName>/bundle.mjs                   the app
-lib/<binaryName>/gtkx.node                    the native addon
-lib/<binaryName>/gschemas.compiled            compiled settings schemas
-share/applications/<id>.desktop               generated
-share/metainfo/<id>.metainfo.xml              generated
-share/icons/hicolor/**/apps/<id>.svg          copied from data/icons
-share/glib-2.0/schemas/<id>*.gschema.xml      copied from data/
-share/mime/packages/<id>.xml                  generated, when you declare fileAssociations
-<destination>                                 every deploy.extraFiles entry
+bin/<binaryName>                                 a launcher script
+lib/<binaryName>/node                            the bundled Node.js
+lib/<binaryName>/bundle.mjs                      the app
+lib/<binaryName>/gtkx.node                       the native addon
+lib/<binaryName>/gschemas.compiled               compiled settings schemas
+share/applications/<id>.desktop                  generated
+share/metainfo/<id>.metainfo.xml                 generated
+share/icons/hicolor/**/apps/<id>.svg             copied from data/icons
+share/glib-2.0/schemas/<id>*.gschema.xml         copied from data/
+share/mime/packages/<id>.xml                     generated, when you declare fileAssociations
+share/licenses/<binaryName>/LICENSE              your license file, on every target but deb
+share/licenses/<binaryName>/THIRD-PARTY-NOTICES  generated, on every target but deb
+share/doc/<binaryName>/copyright                 generated, deb only
+<destination>                                    every deploy.extraFiles entry
 ```
 
 `bundle.mjs`, `gtkx.node`, and the compiled schemas are siblings because the built bundle resolves them all relative to itself. The launcher resolves everything from its own location, so the same tree works at `/usr`, at `/app`, and inside an AppImage mount point.
@@ -110,6 +113,26 @@ GTKX needs Node.js 24, and Debian 13 ships 20 while Ubuntu 26.04 ships 22, so th
 - `"download"` (default) fetches and verifies the official build.
 - `"host"` copies the Node.js running the build. Fully offline, but rejected with an explanation when that binary links against something the target machine will not have, which is the case for the Node.js packages Fedora and Debian ship.
 - `"path"` uses `deploy.node.path`.
+
+## Third-party notices
+
+A package carries software its author did not write: the Node.js runtime, GTKX itself, and every npm package the bundle reaches. Every deploy generates the notices for all of it and installs them.
+
+| Target | Where they land |
+| --- | --- |
+| `deb` | `share/doc/<binaryName>/copyright`, in the [machine-readable copyright format](https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/), with a `Files:` stanza per file it carries |
+| `rpm`, `appimage`, `flatpak` | `share/licenses/<binaryName>/THIRD-PARTY-NOTICES`, beside your own `LICENSE` |
+
+Four things are collected, each on its own:
+
+- **The bundled Node.js.** Its `LICENSE` is extracted from the release archive the deploy already downloaded and verified. That one file is the aggregate notice covering V8, OpenSSL, ICU, libuv, zlib, brotli, llhttp, and everything else Node.js embeds. With `deploy.node.source: "host"` or `"path"` there is no archive, so the license is looked for beside the binary, at `<dir>/LICENSE` and `<dir>/../LICENSE`, which is where an official release unpacks it. A file found there is taken only when its text names Node.js, so pointing `deploy.node.path` at a binary inside your own project does not publish your project's `LICENSE` as Node's. When no Node.js license is found, the deploy warns and the notices name the runtime with a link to its license in place of the text.
+- **GTKX.** The MPL-2.0 notice, the GTKX modules that went into the bundle, and a pointer to the source of the release they came from, which is what section 3.2(a) of that license asks you to give whoever receives the executable. The native addon also statically links Rust crates GTKX did not write, so the section says so and names the licenses they carry — MIT, Apache-2.0, ISC, and Unicode-3.0 — with a pointer to the manifest that records which crates and which versions went in.
+- **The JavaScript dependencies.** `gtkx build` records which packages the module graph of `dist/bundle.mjs` actually reaches, resolving every module id back through the pnpm symlinks to the package that owns it, and writes each one's name, version, and directory relative to `dist/` to `dist/gtkx-packages.json`. The deploy reads each package's license file, or its SPDX identifier when it ships no file, and reproduces what it finds, holder by holder. A package that declares neither is still listed, and the deploy warns naming it, because terms nobody recorded are the one thing generated notices cannot settle for you. A package whose recorded directory is no longer there — a pruned `node_modules`, or a `dist/` moved to another machine — is still listed by the name and version the build recorded, with a warning of its own, rather than dropped.
+- **The introspected libraries.** GTK, libadwaita, GtkSourceView, and WebKitGTK are reached through GObject introspection and resolved when the app runs, from the host system or from the GNOME runtime. No copy of them is in the package. The native addon does link GLib, GObject, and GIO against the copies already installed on the machine, which makes it a work that uses those libraries, so the section carries what LGPL-2.1 section 6 asks of one: the notice that they are used and covered by that license, the address the license itself is published at, and the address each library's own copyright notice is published at. Linking against an installed shared library is the mechanism section 6(b) allows, so their source does not have to travel with the package.
+
+`dist/gtkx-packages.json` is build metadata and never reaches a package. `--skip-build` reads it out of the `dist/` it packages, so a tree built by an older `gtkx build` has to be built once more. `--print-manifests` downloads nothing, so a preview carries the link to the Node.js license rather than its text.
+
+`deploy.flatpak.mode: "source"` builds in the sandbox instead of packaging a staged tree, so the notices ride along as an inline source and install exactly where the prebuilt mode installs them. That build takes its runtime from the Node SDK extension rather than from an archive. It installs the license file that extension ships as `share/licenses/<binaryName>/node/LICENSE` when the extension ships one, and installs nothing when it does not, which is what the notices say: they name the license and the address it is published at rather than claiming a file is there.
 
 ## Tools you need installed
 

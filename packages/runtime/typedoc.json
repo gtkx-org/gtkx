@@ -6,6 +6,7 @@
         "FinishResult",
         "InterfaceLayout",
         "MixinReceiver",
+        "Parse",
         "RegisterClassOptions",
         "RegisteredClass",
         "SignalConnectSpec",

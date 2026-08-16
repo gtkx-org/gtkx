@@ -6,6 +6,12 @@ import { runCliTool } from "../../internal/run-cli-tool.js";
 import { downloadNode } from "./download.js";
 import { readElfInfo } from "./elf.js";
 import { assertPortableNode } from "./guard.js";
+import { licenseBesideNode } from "./license.js";
+
+type StagedRuntime = {
+    path: string;
+    licenseFile: string | null;
+};
 
 const BYTES_PER_MIB = 1024 * 1024;
 const EXECUTABLE_MODE = 0o755;
@@ -47,14 +53,14 @@ const stageNode = (settings: DeploySettings, sourcePath: string): string => {
     return staged;
 };
 
-const stageDownloadedNode = async (settings: DeploySettings, version: string): Promise<string> => {
-    const staged = await downloadNode(version, settings.arch.node, settings.paths.runtime);
-    chmodSync(staged, EXECUTABLE_MODE);
+const stageDownloadedNode = async (settings: DeploySettings, version: string): Promise<StagedRuntime> => {
+    const downloaded = await downloadNode(version, settings.arch.node, settings.paths.runtime);
+    chmodSync(downloaded.path, EXECUTABLE_MODE);
 
-    return staged;
+    return downloaded;
 };
 
-const stageFromSource = async (settings: DeploySettings, version: string, source: string): Promise<string> => {
+const stageFromSource = async (settings: DeploySettings, version: string, source: string): Promise<StagedRuntime> => {
     if (source === "download") {
         return stageDownloadedNode(settings, version);
     }
@@ -62,7 +68,7 @@ const stageFromSource = async (settings: DeploySettings, version: string, source
     const sourcePath = sourcePathFor(settings);
     assertPortableNode(readElfInfo(sourcePath), source);
 
-    return stageNode(settings, sourcePath);
+    return { path: stageNode(settings, sourcePath), licenseFile: licenseBesideNode(sourcePath) };
 };
 
 const resolveNodeRuntime = async (settings: DeploySettings): Promise<NodeRuntime> => {
@@ -70,11 +76,11 @@ const resolveNodeRuntime = async (settings: DeploySettings): Promise<NodeRuntime
     const source = node.source ?? "download";
     const version = node.version ?? process.versions.node;
     const staged = await stageFromSource(settings, version, source);
-    const isStripped = node.shouldStrip === false ? false : didStripBinary(staged);
-    const elf = readElfInfo(staged);
-    info(`Bundled Node.js v${version} (${megabytes(staged)} MiB, glibc >= ${elf.glibcFloor ?? "unknown"})`);
+    const isStripped = node.shouldStrip === false ? false : didStripBinary(staged.path);
+    const elf = readElfInfo(staged.path);
+    info(`Bundled Node.js v${version} (${megabytes(staged.path)} MiB, glibc >= ${elf.glibcFloor ?? "unknown"})`);
 
-    return { path: staged, version, glibcFloor: elf.glibcFloor, isStripped };
+    return { ...staged, version, glibcFloor: elf.glibcFloor, isStripped };
 };
 
-export { resolveNodeRuntime };
+export { resolveNodeRuntime, sourcePathFor };

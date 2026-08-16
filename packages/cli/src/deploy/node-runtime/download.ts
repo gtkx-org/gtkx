@@ -3,10 +3,17 @@ import { join } from "node:path";
 import type { DigestRequest } from "../download.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
 import { cachedDigest, cacheDir, downloadFile, publishedDigest } from "../download.js";
+import { LICENSE_FILENAME } from "./license.js";
+
+type DownloadedNode = {
+    path: string;
+    licenseFile: string;
+};
 
 const DIST_BASE_URL = "https://nodejs.org/dist";
-const STRIP_COMPONENTS = "2";
+const STRIP_COMPONENTS = "1";
 const CHECKSUMS_FILE = "SHASUMS256.txt";
+const NODE_PATH = "bin/node";
 
 const releaseName = (version: string, arch: string): string => `node-v${version}-linux-${arch}`;
 
@@ -18,15 +25,17 @@ const digestRequest = (version: string, assetName: string, dir: string): DigestR
 });
 
 const extractNode = (archive: string, dir: string, version: string, arch: string): void => {
+    const release = releaseName(version, arch);
+
     runCliTool({
         tool: "tar",
         args: ["-xJf", archive, "-C", dir, "--strip-components", STRIP_COMPONENTS,
-            `${releaseName(version, arch)}/bin/node`],
+            `${release}/${NODE_PATH}`, `${release}/${LICENSE_FILENAME}`],
         target: `Node.js ${version}`,
     });
 };
 
-const downloadNode = async (version: string, arch: string, destDir: string): Promise<string> => {
+const downloadNode = async (version: string, arch: string, destDir: string): Promise<DownloadedNode> => {
     const assetName = `${releaseName(version, arch)}.tar.xz`;
     const dir = cacheDir(["node", `${version}-linux-${arch}`]);
     const request = digestRequest(version, assetName, dir);
@@ -42,7 +51,7 @@ const downloadNode = async (version: string, arch: string, destDir: string): Pro
     mkdirSync(destDir, { recursive: true });
     extractNode(archive, destDir, version, arch);
 
-    return join(destDir, "node");
+    return { path: join(destDir, NODE_PATH), licenseFile: join(destDir, LICENSE_FILENAME) };
 };
 
 export { downloadNode };

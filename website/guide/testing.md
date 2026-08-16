@@ -129,6 +129,8 @@ expect(grid).toHaveAccessibleProperty(Gtk.AccessibleProperty.SORT, Gtk.Accessibl
 Tests written this way double as a basic accessibility audit: a widget `getByRole` cannot find by name is usually one that is missing an accessible label.
 :::
 
+A test also fails when the code under test provokes a GLib `CRITICAL` or a panic inside the GTKX addon. Those cannot be thrown out of the call that caused them, so GTKX raises them as an uncaught exception, which the runner reports against the test that was running. The failure names the contract that was broken, or the Rust file and line that panicked. Levels below `CRITICAL` stay as stderr lines and fail nothing. [Error Handling](/guide/error-handling#failures-nothing-can-throw) covers the channel and the one handler that overrides it.
+
 ## A simple example
 
 A minimal counter component, tested end to end. The test renders it, finds the button by role, clicks it twice, and asserts on the resulting label text:

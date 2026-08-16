@@ -1,6 +1,7 @@
 import { join, posix } from "node:path";
 import { type InlineConfig, mergeConfig, build as viteBuild } from "vite";
 import { gtkxBuiltUrl } from "./vite-plugins/built-url.js";
+import { gtkxBundledPackages } from "./vite-plugins/bundled-packages.js";
 import { BUNDLE_FILENAME, ESM_EXTENSION } from "./vite-plugins/esm-extension.js";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
 import { gtkxNative } from "./vite-plugins/native.js";
@@ -42,6 +43,7 @@ const build = async (options: BuildOptions): Promise<string> => {
             gtkxWorker(),
             gtkxBuiltUrl(assetBase),
             gtkxNative(root),
+            gtkxBundledPackages(root),
             gtkxSelfContained(),
         ],
         build: {

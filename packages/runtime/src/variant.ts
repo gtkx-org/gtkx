@@ -269,8 +269,8 @@ const unpackChildren = (variant: GLib.Variant, unpackChild: (child: GLib.Variant
 };
 
 const unpackPair = (key: VariantTypeNode, value: VariantTypeNode, entry: GLib.Variant): [unknown, unknown] => [
-    unpackVariant(key, entry.getChildValue(0)),
-    unpackVariant(value, entry.getChildValue(1)),
+    unpackNode(key, entry.getChildValue(0)),
+    unpackNode(value, entry.getChildValue(1)),
 ];
 
 const unpackDict = (
@@ -291,16 +291,16 @@ const unpackDict = (
 const unpackMaybe = (element: VariantTypeNode, variant: GLib.Variant): unknown => {
     const child = variant.getMaybe();
 
-    return child === null ? null : unpackVariant(element, child);
+    return child === null ? null : unpackNode(element, child);
 };
 
-const unpackVariant = (node: VariantTypeNode, variant: GLib.Variant): unknown => {
+const unpackNode = (node: VariantTypeNode, variant: GLib.Variant): unknown => {
     switch (node.kind) {
         case "basic": {
             return unpackBasic[node.code](variant);
         }
         case "array": {
-            return unpackChildren(variant, (child) => unpackVariant(node.element, child));
+            return unpackChildren(variant, (child) => unpackNode(node.element, child));
         }
         case "dict": {
             return unpackDict(node, variant);
@@ -309,7 +309,7 @@ const unpackVariant = (node: VariantTypeNode, variant: GLib.Variant): unknown =>
             return unpackPair(node.key, node.value, variant);
         }
         case "tuple": {
-            return node.items.map((item, index) => unpackVariant(item, variant.getChildValue(index)));
+            return node.items.map((item, index) => unpackNode(item, variant.getChildValue(index)));
         }
         case "maybe": {
             return unpackMaybe(node.element, variant);
@@ -349,7 +349,7 @@ function packSignature(value: unknown): GLib.Variant {
 }
 
 const packEntry = (key: VariantTypeNode, value: VariantTypeNode, pair: [unknown, unknown]): GLib.Variant =>
-    GLib.Variant.newDictEntry(packVariant(key, pair[0]), packVariant(value, pair[1]));
+    GLib.Variant.newDictEntry(packNode(key, pair[0]), packNode(value, pair[1]));
 
 const dictEntries = (value: unknown): [unknown, unknown][] =>
     value instanceof Map ? [...value] : Object.entries(value as Record<string, unknown>);
@@ -366,10 +366,10 @@ const packDict = (
 const packMaybe = (node: { elementTypeString: string; element: VariantTypeNode }, value: unknown): GLib.Variant =>
     GLib.Variant.newMaybe(
         GLib.VariantType.new(node.elementTypeString),
-        value === null ? null : packVariant(node.element, value),
+        value === null ? null : packNode(node.element, value),
     );
 
-const packVariant = (node: VariantTypeNode, value: unknown): GLib.Variant => {
+const packNode = (node: VariantTypeNode, value: unknown): GLib.Variant => {
     switch (node.kind) {
         case "basic": {
             return packBasic[node.code](value);
@@ -377,7 +377,7 @@ const packVariant = (node: VariantTypeNode, value: unknown): GLib.Variant => {
         case "array": {
             return GLib.Variant.newArray(
                 GLib.VariantType.new(node.elementTypeString),
-                (value as unknown[]).map((item) => packVariant(node.element, item)),
+                (value as unknown[]).map((item) => packNode(node.element, item)),
             );
         }
         case "dict": {
@@ -388,7 +388,7 @@ const packVariant = (node: VariantTypeNode, value: unknown): GLib.Variant => {
         }
         case "tuple": {
             return GLib.Variant.newTuple(
-                node.items.map((item, index) => packVariant(item, (value as unknown[])[index])),
+                node.items.map((item, index) => packNode(item, (value as unknown[])[index])),
             );
         }
         case "maybe": {
@@ -397,4 +397,31 @@ const packVariant = (node: VariantTypeNode, value: unknown): GLib.Variant => {
     }
 };
 
-export { parseVariantType, unpackVariant, packVariant, type VariantValue };
+/**
+ * Packs a JavaScript value into the `GLib.Variant` a GVariant type string describes, building the
+ * nested arrays, dictionaries, tuples and maybes the type calls for. A type string given as a
+ * literal also types `value`, so `"as"` takes an array of strings, `"a{sv}"` a record of variants,
+ * `"(si)"` a string and a number pair, and a 64-bit type a `bigint`.
+ * @param typeString GVariant type of the variant to build, such as `"a{sv}"`.
+ * @param value Value to pack, shaped the way `typeString` describes.
+ * @returns The packed variant.
+ * @throws {Error} When the type string is not one complete GVariant type, or when a value packed as
+ * an object path or a type signature is not a valid one.
+ */
+const toVariant = <S extends string>(typeString: S, value: VariantValue<S>): GLib.Variant =>
+    packNode(parseVariantType(typeString), value);
+
+/**
+ * Unpacks a `GLib.Variant` into the JavaScript value a GVariant type string describes, the inverse
+ * of {@link toVariant}. A dictionary keyed by strings unpacks to a record and one keyed by anything
+ * else to a `Map`, an array to an array, a tuple to an array of its members, a maybe to its value or
+ * `null`, and a nested variant to the `GLib.Variant` itself.
+ * @param typeString GVariant type the variant holds, such as `"a{sv}"`.
+ * @param variant Variant to read, which has to hold that type.
+ * @returns The unpacked value, typed from `typeString` when it is given as a literal.
+ * @throws {Error} When the type string is not one complete GVariant type.
+ */
+const fromVariant = <S extends string>(typeString: S, variant: GLib.Variant): VariantValue<S> =>
+    unpackNode(parseVariantType(typeString), variant) as VariantValue<S>;
+
+export { fromVariant, toVariant, type VariantValue };

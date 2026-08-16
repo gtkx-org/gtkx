@@ -13,6 +13,7 @@ type PackageManifest = {
     description: string | null;
     license: string | null;
     homepage: string | null;
+    repository: string | null;
     packageManager: string | null;
     author: ManifestAuthor;
 };
@@ -27,6 +28,14 @@ const parseAuthorString = (author: string): ManifestAuthor => {
     const groups = AUTHOR_PATTERN.exec(author)?.groups;
 
     return { name: optionalString(groups?.name), email: optionalString(groups?.email) };
+};
+
+const parseRepository = (repository: unknown): string | null => {
+    if (isRecord(repository)) {
+        return optionalString(repository.url);
+    }
+
+    return optionalString(repository);
 };
 
 const parseAuthor = (author: unknown): ManifestAuthor => {
@@ -60,6 +69,7 @@ const readPackageManifest = (root: string): PackageManifest => {
         description: optionalString(manifest.description),
         license: optionalString(manifest.license),
         homepage: optionalString(manifest.homepage),
+        repository: parseRepository(manifest.repository),
         packageManager: optionalString(manifest.packageManager),
         author: parseAuthor(manifest.author),
     };

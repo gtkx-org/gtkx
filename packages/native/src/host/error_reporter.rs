@@ -1,5 +1,3 @@
-use napi::{Error, Status};
-
 use super::node_env;
 
 pub(crate) fn report(error: &anyhow::Error) {
@@ -9,18 +7,13 @@ pub(crate) fn report(error: &anyhow::Error) {
 pub(crate) fn report_str(message: &str) {
     eprintln!("gtkx: {message}");
     if node_env::is_installed_on_current_thread() {
-        raise_fatal(message.to_owned());
+        node_env::raise_fatal(message);
     } else {
         let message = message.to_owned();
-        node_env::invoke_on_install_thread("fatal error report", move || raise_fatal(message));
+        node_env::invoke_on_install_thread("fatal error report", move || {
+            node_env::raise_fatal(&message);
+        });
     }
-}
-
-fn raise_fatal(message: String) {
-    let Some(env) = node_env::try_env() else {
-        return;
-    };
-    env.fatal_exception(Error::new(Status::GenericFailure, message));
 }
 
 pub(crate) trait ReportErr<T> {
