@@ -42,7 +42,7 @@ Codegen writes packages into `node_modules/.gtkx` and links them into `node_modu
 - **`@gtkx/gi`** is the introspected API, one subpath per namespace (`@gtkx/gi/gtk`, `@gtkx/gi/adw`): the classes, enums, and functions you call imperatively, for refs and values such as `Gtk.Orientation.VERTICAL`.
 - **`@gtkx/jsx`** is the React layer, likewise per namespace (`@gtkx/jsx/gtk`, `@gtkx/jsx/adw`): a PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a `React.JSX.IntrinsicElements` augmentation.
 
-Every generated class, record, and interface GObject registers a type for carries it as a static `__gtype__`, which is what APIs taking a GType want: `Gio.ListStore.new(Gtk.StringObject.__gtype__)`. Types GIR gives no `get-type` function carry no such static. [Subclassing](/guide/subclassing) covers what your own registered classes report.
+A generated class, record, or interface with a registered GType exposes it as a static `__gtype__`, which is what APIs taking a GType want: `Gio.ListStore.new(Gtk.StringObject.__gtype__)`. Types without a `get-type` function in GIR carry no such static. [Subclassing](/guide/subclassing) covers what your own registered classes report.
 
 Record fields appear as accessors: a getter wherever the read lands on the right memory, and a setter only where a field slot can hold what it stores. `null`-terminated pointer arrays read, so `Gio.DBusNodeInfo.interfaces` hands back its array, but they are read-only and absent from the record's constructor props, since the slot cannot keep an array alive. Fields whose element count lives in a sibling field, and `GList` or `GSList` links, carry no accessor and are absent from the class.
 
