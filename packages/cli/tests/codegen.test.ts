@@ -14,7 +14,6 @@ type ByteSequenceCase = {
 };
 
 type OmittedFieldCase = { title: string; jsName: string };
-type GtypeCase = { title: string; className: string };
 
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
@@ -78,17 +77,6 @@ const ARRAY_WRITES = ["set interfaces(", "interfaces?:", "props.interfaces"];
 const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
     { title: "an array whose length lives in a sibling field", jsName: "entries" },
     { title: "a linked list", jsName: "links" },
-];
-
-const GTYPE_CASES: GtypeCase[] = [
-    { title: "a record", className: "Node" },
-    { title: "a class", className: "Widget" },
-    { title: "an interface", className: "Provider" },
-];
-
-const GTYPE_LESS_CASES: GtypeCase[] = [
-    { title: "a record", className: "Plain" },
-    { title: "a class", className: "Loose" },
 ];
 
 const config = (body: string): string => `${HEAD}${body} };\n`;
@@ -271,12 +259,6 @@ describe("gtkx codegen (record fields and the GType a type registers)", () => {
         expect(declarations()).toContain("refCount?:");
     });
 
-    it.each(GTYPE_CASES)("exposes on $title the GType it registers", ({ className }) => {
-        expect(state.status).toBe(0);
-        expect(classBody(declarations(), className)).toContain("static get __gtype__(): bigint;");
-        expect(classBody(bindings(), className)).toContain("return getClassType(this);");
-    });
-
     it.each(OMITTED_FIELD_CASES)("declares no member for $title", ({ jsName }) => {
         expect(state.status).toBe(0);
         const emitted = `${classBody(declarations(), "Node")}${classBody(bindings(), "Node")}`;
@@ -285,12 +267,11 @@ describe("gtkx codegen (record fields and the GType a type registers)", () => {
         expect(declarations()).not.toContain(`${jsName}?:`);
     });
 
-    it.each(GTYPE_LESS_CASES)("leaves $title that registers no GType without one", ({ className }) => {
+    it("leaves a record that registers no GType without one", () => {
         expect(state.status).toBe(0);
-        const declared = classBody(declarations(), className);
-        expect(declared).toContain(`class ${className} `);
-        expect(declared).not.toMatch(/__g?type__/);
-        expect(classBody(bindings(), className)).not.toContain("__gtype__");
+        const declared = classBody(declarations(), "Plain");
+        expect(declared).toContain("class Plain ");
+        expect(declared).not.toContain("__type__");
     });
 });
 

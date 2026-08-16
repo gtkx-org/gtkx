@@ -12,14 +12,6 @@ import { computeRecordFieldSlots } from "./record-layout.js";
 import { appendWrapperClassRegistration } from "./registration.js";
 import { isConstructibleRecord } from "./value-marshalable.js";
 
-type RecordMembersOptions = {
-    context: ModuleContext;
-    record: GirRecord;
-    className: string;
-    callables: Callables;
-    gtypeExpr: string | undefined;
-};
-
 const isGErrorRecord = (context: ModuleContext, record: GirRecord): boolean =>
     context.namespace.name === "GLib" && record.glibGetType === "g_error_get_type";
 
@@ -38,8 +30,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     };
 
     generateBindings(context, callables);
-    const gtypeExpr = renderSourceGtype(context, record);
-    const members = renderRecordMembers({ context, record, className, callables, gtypeExpr });
+    const members = renderRecordMembers(context, record, className, callables);
     const body = indentMembers(members);
     const heritage = isErrorSubclass ? " extends globalThis.Error" : "";
     const doc = getDoc(record);
@@ -59,16 +50,29 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
         });
     }
 
+    const gtypeExpr = renderSourceGtype(context, record);
+
     appendWrapperClassRegistration(context, {
         className,
         gtypeExpr,
     });
 };
 
-const renderRecordMembers = (options: RecordMembersOptions): string[] => {
-    const { context, record, className, callables, gtypeExpr } = options;
+const renderRecordMembers = (
+    context: ModuleContext,
+    record: GirRecord,
+    className: string,
+    callables: Callables,
+): string[] => {
     const isErrorSubclass = isGErrorRecord(context, record);
-    const { members, claimedNames } = renderPlainTypeMembers({ context, className, callables, gtypeExpr });
+
+    const { members, claimedNames } = renderPlainTypeMembers({
+        context,
+        className,
+        callables,
+        hasGtype: record.glibGetType !== undefined,
+    });
+
     members.unshift(renderRecordConstructor(context, { record, className, callables, isErrorSubclass }));
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
 

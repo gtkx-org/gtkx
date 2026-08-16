@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/css",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "description": "Emotion-flavored CSS-in-JS that compiles to real GTK4 CSS and installs it on the default display",
     "keywords": [
         "gtkx",

@@ -18,8 +18,6 @@ class Counter extends GObject {}
 registerClass(Counter, { typeName: "ExampleCounter" });
 ```
 
-The new type is on the class as a static `__gtype__`, which is what APIs taking a GType want: `Gio.ListStore.new(Counter.__gtype__)`. Each class reports its own type rather than inheriting one, and answers `TYPE_INVALID` until `registerClass` has run.
-
 ## Properties
 
 `properties` installs GObject properties on the new type, keyed by the name JavaScript addresses each one by and valued with its `GObject.ParamSpec`. Bind the call to a name: the installed names reach the type system only through what it returns.
