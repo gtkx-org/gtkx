@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <package name="inlinearray-1.0"/>
+  <namespace name="InlineArray"
+             version="1.0"
+             shared-library="libinlinearray.so.0"
+             c:identifier-prefixes="InlineArray"
+             c:symbol-prefixes="inline_array">
+    <record name="Corner"
+            c:type="InlineArrayCorner"
+            c:symbol-prefix="corner"
+            glib:type-name="InlineArrayCorner"
+            glib:get-type="inline_array_corner_get_type">
+      <field name="width" writable="1">
+        <type name="gdouble" c:type="gdouble"/>
+      </field>
+      <field name="height" writable="1">
+        <type name="gdouble" c:type="gdouble"/>
+      </field>
+      <method name="scale" c:identifier="inline_array_corner_scale">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="factor" transfer-ownership="none">
+            <type name="gdouble" c:type="gdouble"/>
+          </parameter>
+        </parameters>
+      </method>
+    </record>
+    <record name="Span" c:type="InlineArraySpan" c:symbol-prefix="span">
+      <field name="start" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+      <field name="stop" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+    </record>
+    <record name="Slot" c:type="InlineArraySlot" c:symbol-prefix="slot">
+      <field name="value" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+      <field name="owner" writable="1">
+        <type name="gpointer" c:type="gpointer"/>
+      </field>
+    </record>
+    <record name="Chain" c:type="InlineArrayChain" c:symbol-prefix="chain">
+      <field name="n_links" writable="1">
+        <type name="guint" c:type="guint"/>
+      </field>
+      <field name="links" writable="1">
+        <array length="0" zero-terminated="0" c:type="InlineArraySpan*">
+          <type name="Span" c:type="InlineArraySpan"/>
+        </array>
+      </field>
+    </record>
+    <record name="Frame"
+            c:type="InlineArrayFrame"
+            c:symbol-prefix="frame"
+            glib:type-name="InlineArrayFrame"
+            glib:get-type="inline_array_frame_get_type">
+      <field name="axes" writable="1">
+        <array fixed-size="4">
+          <type name="gdouble" c:type="gdouble"/>
+        </array>
+      </field>
+      <field name="corners" writable="1">
+        <array fixed-size="2">
+          <type name="Corner" c:type="InlineArrayCorner"/>
+        </array>
+      </field>
+      <field name="spans" writable="1">
+        <array fixed-size="2">
+          <type name="Span" c:type="InlineArraySpan"/>
+        </array>
+      </field>
+      <field name="handles" writable="1">
+        <array fixed-size="2">
+          <type name="Corner" c:type="InlineArrayCorner*"/>
+        </array>
+      </field>
+      <field name="names" writable="1">
+        <array c:type="gchar**">
+          <type name="utf8" c:type="gchar*"/>
+        </array>
+      </field>
+      <field name="buffer" writable="1">
+        <array fixed-size="2" c:type="gdouble*">
+          <type name="gdouble" c:type="gdouble"/>
+        </array>
+      </field>
+      <field name="slots" writable="1">
+        <array fixed-size="2">
+          <type name="Slot" c:type="InlineArraySlot"/>
+        </array>
+      </field>
+    </record>
+  </namespace>
+</repository>

@@ -1,6 +1,7 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirAnnotations } from "../../gir/annotations.js";
 import type { GirField } from "../../gir/field.js";
+import type { PrimitiveCategory } from "../../gir/primitives.js";
 import type { GirRecord } from "../../gir/record.js";
 import type { FieldSlot } from "../../gir/size.js";
 import type { TypeId } from "../../gir/type-id.js";
@@ -9,10 +10,16 @@ import type { ModuleContext } from "../../writer/context.js";
 import { isInlineCallbackRef, renderDescriptor } from "../../analysis/descriptor-render.js";
 import { tStruct } from "../../analysis/descriptor.js";
 import { renderTsType } from "../../analysis/ts-type.js";
-import { isUnboundedArray } from "../../analysis/type-shape.js";
+import { isByteSequence, isUnboundedArray } from "../../analysis/type-shape.js";
 import { indent, renderBlock } from "../../writer/emit.js";
 import { getDoc } from "./doc-spec.js";
-import { bitMask, computeRecordFieldSlots, mergeBitfield, type RecordFieldSlot } from "./record-layout.js";
+import {
+    bitMask,
+    computeRecordFieldSlots,
+    inlineArrayStride,
+    mergeBitfield,
+    type RecordFieldSlot,
+} from "./record-layout.js";
 import { wrapReturnValue } from "./return-wrap.js";
 import { isValueMarshalable } from "./value-marshalable.js";
 
@@ -97,6 +104,22 @@ type AccessorOptions = {
     descriptor: string;
     slot: FieldSlot;
     fieldType: TypeId;
+};
+
+type InlineArrayResolution = {
+    element: TypeId;
+    count: number;
+    stride: number;
+    isTypedByteArray: boolean;
+};
+
+type InlineArrayAccessorOptions = {
+    context: ModuleContext;
+    jsName: string;
+    tsType: string;
+    descriptor: string;
+    offset: number;
+    resolution: InlineArrayResolution;
 };
 
 const isMarshalableField = (context: ModuleContext, field: GirField): boolean => {
@@ -187,6 +210,9 @@ const isStorableFieldType = (context: ModuleContext, ref: TypeId): boolean => {
     return kind !== "carray" && kind !== "list" && kind !== "hashtable";
 };
 
+const hasArrayAccessor = (context: ModuleContext, target: StructArrayTarget): boolean =>
+    resolveInlineArray(context, target) !== undefined || resolveStructArray(context, target) !== undefined;
+
 const admitAccessibleField = (
     context: ModuleContext,
     slot: RecordFieldSlot,
@@ -201,9 +227,9 @@ const admitAccessibleField = (
 
     const { field, jsName } = admitted;
     const target: StructArrayTarget = { field, jsName, slot: slot.slot, siblingFields };
-    const hasStructArray = resolveStructArray(context, target) !== undefined;
-    const hasAccessor = hasStructArray || isAccessibleFieldType(context, field.type);
-    const isSettable = field.writable && (hasStructArray || isStorableFieldType(context, field.type));
+    const hasArray = hasArrayAccessor(context, target);
+    const hasAccessor = hasArray || isAccessibleFieldType(context, field.type);
+    const isSettable = field.writable && (hasArray || isStorableFieldType(context, field.type));
 
     return hasAccessor ? { ...admitted, isSettable } : undefined;
 };
@@ -243,10 +269,11 @@ const renderRecordFieldAccessor = (
 
     const { field, jsName } = admitted;
     const doc = getDoc(field);
-    const structArray = renderStructArrayAccessor(context, { field, jsName, slot: slot.slot, siblingFields });
+    const target: StructArrayTarget = { field, jsName, slot: slot.slot, siblingFields };
+    const arrayAccessor = renderInlineArrayAccessor(context, target) ?? renderStructArrayAccessor(context, target);
 
-    if (structArray !== undefined) {
-        return `${doc}${structArray}`;
+    if (arrayAccessor !== undefined) {
+        return `${doc}${arrayAccessor}`;
     }
 
     const descriptor = context.hoistDescriptor(
@@ -295,7 +322,7 @@ const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean =>
             return context.library.nameFor(ref) !== undefined;
         }
         case "carray": {
-            return type.fixedSize !== undefined;
+            return type.fixedSize !== undefined && type.arrayCType?.endsWith("*") === true;
         }
         case "list":
         case "hashtable":
@@ -338,15 +365,96 @@ const resolveInlineStructFields = (
     return type.value.fields;
 };
 
+const isInlineScalarCategory = (category: PrimitiveCategory, isBehindPointer: boolean): boolean => {
+    if (category === "pointer") {
+        return true;
+    }
+
+    return !isBehindPointer && category !== "void" && category !== "unichar" && category !== "string";
+};
+
+const isInlineArrayElement = (context: ModuleContext, ref: TypeId | undefined, cType: string | undefined): boolean => {
+    const type = ref === undefined ? undefined : context.library.typeFor(ref);
+
+    if (type === undefined) {
+        return false;
+    }
+
+    const isBehindPointer = cType?.endsWith("*") === true;
+
+    switch (type.kind) {
+        case "primitive": {
+            return isInlineScalarCategory(type.category, isBehindPointer);
+        }
+        case "enum": {
+            return !isBehindPointer;
+        }
+        case "record": {
+            return (
+                resolveInlineStructFields(context, ref, cType) !== undefined &&
+                isValueMarshalable(context, type.namespace.name, type.value)
+            );
+        }
+        case "alias": {
+            return isInlineArrayElement(context, type.value.target, cType ?? type.value.targetCType);
+        }
+        case "callback":
+        case "carray":
+        case "class":
+        case "hashtable":
+        case "interface":
+        case "list":
+        case "varargs": {
+            return false;
+        }
+    }
+};
+
+const inlineArrayType = (
+    context: ModuleContext,
+    target: StructArrayTarget,
+): Extract<GirType, { kind: "carray" }> | undefined => {
+    const { field, slot } = target;
+
+    if (field.type === undefined || slot.bitWidth !== undefined) {
+        return undefined;
+    }
+
+    const type = context.library.typeFor(field.type);
+
+    if (type?.kind !== "carray" || type.fixedSize === undefined) {
+        return undefined;
+    }
+
+    return type.arrayCType?.endsWith("*") === true ? undefined : type;
+};
+
+const resolveInlineArray = (context: ModuleContext, target: StructArrayTarget): InlineArrayResolution | undefined => {
+    const type = inlineArrayType(context, target);
+
+    if (type?.fixedSize === undefined || !isInlineArrayElement(context, type.element, type.elementCType)) {
+        return undefined;
+    }
+
+    const stride = inlineArrayStride(context, type);
+
+    if (stride === 0) {
+        return undefined;
+    }
+
+    return {
+        element: type.element,
+        count: type.fixedSize,
+        stride,
+        isTypedByteArray: context.library.isByteArrayTyped && isByteSequence(context.library, type),
+    };
+};
+
 const arrayLengthExpression = (
     arrayRef: Extract<GirType, { kind: "carray" }>,
     siblingFields: GirField[],
 ): string | undefined => {
-    if (arrayRef.fixedSize !== undefined) {
-        return String(arrayRef.fixedSize);
-    }
-
-    if (arrayRef.lengthParameterIndex === undefined) {
+    if (arrayRef.fixedSize !== undefined || arrayRef.lengthParameterIndex === undefined) {
         return undefined;
     }
 
@@ -604,6 +712,82 @@ const resolveStructArray = (context: ModuleContext, target: StructArrayTarget): 
         lengthExpr: shape.lengthExpr,
         elementSize: shape.elementSize,
     };
+};
+
+const inlineArrayElementOffset = (options: InlineArrayAccessorOptions): string =>
+    `${String(options.offset)} + __index * ${String(options.resolution.stride)}`;
+
+const inlineArrayGetterBlock = (options: InlineArrayAccessorOptions): string => {
+    const { context, jsName, tsType, descriptor, resolution } = options;
+    const container = resolution.isTypedByteArray ? `new ${tsType}(${String(resolution.count)})` : "[]";
+
+    const element = wrapReturnValue(context, {
+        ref: resolution.element,
+        isNullable: false,
+        valueExpression: `read(getHandle(this), ${descriptor}, ${inlineArrayElementOffset(options)})`,
+    });
+
+    const body = [
+        `const __result: ${tsType} = ${container};`,
+        `for (let __index = 0; __index < ${String(resolution.count)}; __index++) {`,
+        indent(`__result[__index] = ${element};`, 1),
+        "}",
+        "return __result;",
+    ].join("\n");
+
+    return renderBlock(`get ${jsName}(): ${tsType}`, body);
+};
+
+const inlineArraySetterBlock = (options: InlineArrayAccessorOptions): string => {
+    const { jsName, tsType, descriptor, resolution } = options;
+
+    const write =
+        `write(getHandle(this), ${descriptor}, ${inlineArrayElementOffset(options)}, ` +
+        `toNative(${descriptor}, __element));`;
+
+    const body = [
+        "for (const [__index, __element] of __value.entries()) {",
+        indent(`if (__index >= ${String(resolution.count)}) {\n    break;\n}\n\n${write}`, 1),
+        "}",
+    ].join("\n");
+
+    return renderBlock(`set ${jsName}(__value: ${tsType})`, body);
+};
+
+const renderInlineArrayAccessor = (context: ModuleContext, target: StructArrayTarget): string | undefined => {
+    const resolution = resolveInlineArray(context, target);
+
+    if (resolution === undefined) {
+        return undefined;
+    }
+
+    const { field, jsName, slot } = target;
+    context.addRuntimeImport("read");
+    context.addRuntimeImport("getHandle");
+    context.addRuntimeImport("t");
+
+    const options: InlineArrayAccessorOptions = {
+        context,
+        jsName,
+        tsType: renderTsType(context, field.type, false),
+        descriptor: context.hoistDescriptor(renderDescriptor(context, resolution.element, "none", { isInline: true })),
+        offset: slot.byteOffset,
+        resolution,
+    };
+
+    const blocks: string[] = [];
+
+    if (field.readable) {
+        blocks.push(inlineArrayGetterBlock(options));
+    }
+
+    if (field.writable) {
+        context.addRuntimeImport("write");
+        context.addRuntimeImport("toNative");
+        blocks.push(inlineArraySetterBlock(options));
+    }
+
+    return blocks.length === 0 ? undefined : blocks.join("\n\n");
 };
 
 const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTarget): string | undefined => {

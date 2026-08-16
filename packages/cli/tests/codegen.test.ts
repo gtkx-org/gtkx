@@ -74,6 +74,34 @@ const RECORD_FIELD_ACCESSORS = [
 
 const ARRAY_WRITES = ["set interfaces(", "interfaces?:", "props.interfaces"];
 
+const INLINE_ARRAY_ACCESSORS = [
+    "get axes(): number[];",
+    "set axes(__value: number[]);",
+    "get corners(): Corner[];",
+    "set corners(__value: Corner[]);",
+    "get spans(): Span[];",
+    "set spans(__value: Span[]);",
+];
+
+const INLINE_ELEMENT_DESCRIPTORS = [
+    '"inline_array_corner_get_type", isInline: true, size: 16 }',
+    't.struct("borrowed", { size: 8, wrapperClass: Span, isInline: true })',
+];
+
+const INLINE_ARRAY_FIELDS = ["axes", "corners", "spans"];
+const POINTER_ARRAY_FIELDS = ["names", "buffer"];
+const OMITTED_ARRAY_FIELDS = ["handles", "slots"];
+const AXES_GETTER = /get axes\(\) \{\s+const __result = \[\];\s+for \(let __index = 0; __index < 4/u;
+const AXES_READ = /__result\[__index\] = read\(getHandle\(this\), \w+, 0 \+ __index \* 8\);/u;
+const AXES_SETTER = /set axes\(__value\) \{\s+for \(const \[__index, __element\] of __value\.entries/u;
+const AXES_BOUND = /if \(__index >= 4\) \{\s+break;\s+\}/u;
+const AXES_WRITE = /write\(getHandle\(this\), (\w+), 0 \+ __index \* 8, toNative\(\1, __element\)\);/u;
+const CORNER_READ = /__result\[__index\] = fromNative\(\w+, read\(getHandle\(this\), \w+, 32 \+ __index \* 16\)\)/u;
+const CORNER_WRITE = /write\(getHandle\(this\), (\w+), 32 \+ __index \* 16, toNative\(\1, __element\)\);/u;
+const POINTER_ARRAY_GETTER = /get buffer\(\) \{\s+return fromNative\(/u;
+const LENGTH_BOUNDED_READ = /read\(getHandle\(this\), t\.struct\("borrowed", \{ size: this\.nLinks \* 8 \}\), 8\)/u;
+const AXES_EMISSION = [AXES_GETTER, AXES_READ, AXES_SETTER, AXES_BOUND, AXES_WRITE];
+
 const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
     { title: "an array whose length lives in a sibling field", jsName: "entries" },
     { title: "a linked list", jsName: "links" },
@@ -272,6 +300,64 @@ describe("gtkx codegen (record fields and the GType a type registers)", () => {
         const declared = classBody(declarations(), "Plain");
         expect(declared).toContain("class Plain ");
         expect(declared).not.toContain("__type__");
+    });
+});
+
+describe("gtkx codegen (fixed-size array fields stored inline)", () => {
+    const state: { project: CliProject; status: number | null } = {
+        project: { root: "", nodeModules: "" },
+        status: null,
+    };
+
+    const declarations = (): string => generatedModule(state.project, "gi", "inlinearray", "inlinearray.d.ts");
+    const bindings = (): string => generatedModule(state.project, "gi", "inlinearray", "inlinearray.js");
+
+    beforeAll(() => {
+        state.project = createCliProject({
+            prefix: "gtkx-cli-codegen-inline-",
+            config: fixtureConfig("InlineArray-1.0"),
+        });
+
+        state.status = runCli(state.project, ["codegen"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it("reads and writes an array of numbers element by element", () => {
+        expect(state.status).toBe(0);
+        const declared = classBody(declarations(), "Frame");
+        expect(INLINE_ARRAY_ACCESSORS.filter((text) => !declared.includes(text))).toEqual([]);
+        const bound = classBody(bindings(), "Frame");
+        expect(AXES_EMISSION.filter((pattern) => !pattern.test(bound))).toEqual([]);
+    });
+
+    it("reads and writes a record element as an instance of its own type", () => {
+        expect(state.status).toBe(0);
+        const bound = classBody(bindings(), "Frame");
+        expect(bound).toMatch(CORNER_READ);
+        expect(bound).toMatch(CORNER_WRITE);
+        expect(INLINE_ELEMENT_DESCRIPTORS.filter((text) => !bindings().includes(text))).toEqual([]);
+    });
+
+    it("stores through the array fields that live inline and through no other", () => {
+        expect(state.status).toBe(0);
+        const emitted = `${classBody(declarations(), "Frame")}${classBody(bindings(), "Frame")}`;
+        expect(INLINE_ARRAY_FIELDS.filter((name) => !emitted.includes(`set ${name}(`))).toEqual([]);
+        expect(POINTER_ARRAY_FIELDS.filter((name) => emitted.includes(`set ${name}(`))).toEqual([]);
+        expect(POINTER_ARRAY_FIELDS.filter((name) => !emitted.includes(`get ${name}(`))).toEqual([]);
+        expect(classBody(bindings(), "Frame")).toMatch(POINTER_ARRAY_GETTER);
+    });
+
+    it("reaches an array the way it is stored and declares no member when it cannot", () => {
+        expect(state.status).toBe(0);
+        const frame = `${classBody(declarations(), "Frame")}${classBody(bindings(), "Frame")}`;
+        expect(frame).toContain("get axes(");
+        expect(OMITTED_ARRAY_FIELDS.flatMap((name) => omittedMentions(frame, name))).toEqual([]);
+        const chain = classBody(bindings(), "Chain");
+        expect(chain).toMatch(LENGTH_BOUNDED_READ);
+        expect(chain).toContain("set links(");
     });
 });
 

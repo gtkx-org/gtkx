@@ -56,6 +56,9 @@ const recordInlineSize = (context: ModuleContext, record: ResolvedRecordValue): 
     return size > 0 ? size : undefined;
 };
 
+const inlineArrayStride = (context: ModuleContext, array: Extract<GirType, { kind: "carray" }>): number =>
+    layoutOfType(context, array.element, array.elementCType, new Set()).size;
+
 const bitMask = (width: number): number => {
     if (width >= 32) {
         return 0xFF_FF_FF_FF;
@@ -224,4 +227,11 @@ const resolveAliasLayout = (
     return layoutOfType(context, ref, resolved.value.targetCType, visited);
 };
 
-export { computeRecordFieldSlots, recordInlineSize, bitMask, mergeBitfield, type RecordFieldSlot };
+export {
+    computeRecordFieldSlots,
+    inlineArrayStride,
+    recordInlineSize,
+    bitMask,
+    mergeBitfield,
+    type RecordFieldSlot,
+};
