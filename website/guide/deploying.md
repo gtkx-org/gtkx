@@ -180,7 +180,7 @@ The generated files are complete, but nothing is a dead end:
 - `deploy.flatpak.cleanup` adds cleanup patterns to the defaults `/include`, `/share/pkgconfig`, `*.la`, and `*.a`. There is no negation for a pattern; an empty array turns cleanup off altogether, for a project that has to keep its headers or static libraries in the prefix.
 - `deploy.flatpak.modules` and `deploy.flatpak.buildCommands` add modules and build steps.
 - `deploy.depends` and `deploy.relations` add package relationships per format.
-- `deploy.extraFiles` maps prefix-relative destinations to files in the project. An entry keeps its source file's executable bit and is installed `644` otherwise. Write `{ source: "tools/helper", mode: "755" }` in place of a plain path to set the mode yourself.
+- `deploy.extraFiles` maps prefix-relative destinations to source paths, each resolved against the project root. An entry keeps its source file's executable bit and is installed `644` otherwise. Write `{ source: "tools/helper", mode: "755" }` in place of a plain path to set the mode yourself.
 - `deploy.scripts` supplies maintainer scripts. Without them the packages rely on the distribution's own triggers to refresh the desktop, icon, and schema caches, which is what a well-behaved package should do.
 - `deploy.signing` signs the `.deb`, the `.rpm`, the Flatpak repository, or the AppImage.
 

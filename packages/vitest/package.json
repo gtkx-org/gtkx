@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/vitest",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "description": "Vitest plugin for GTKX applications with headless Wayland display isolation",
     "keywords": [
         "gtkx",
