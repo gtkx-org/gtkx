@@ -101,7 +101,24 @@ import * as Adw from "@gtkx/gi/adw";
 Adw.StyleManager.getDefault().setColorScheme(Adw.ColorScheme.FORCE_DARK);
 ```
 
-Every theme color re-resolves automatically when the scheme flips. To vary your own rules by scheme, wrap them in `@media (prefers-color-scheme: dark)` inside a `css` template. The [Preferences and Theming](/tutorial/preferences-and-theming) tutorial chapter walks the complete pattern.
+Every theme color re-resolves automatically when the scheme flips. To vary your own rules by scheme, wrap them in `@media (prefers-color-scheme: dark)` inside a `css` template:
+
+```ts
+import { css } from "@gtkx/css";
+
+export const card = css`
+    background: var(--card-bg-color);
+    box-shadow: 0 1px 3px var(--shade-color);
+
+    @media (prefers-color-scheme: dark) {
+        box-shadow: none;
+    }
+`;
+```
+
+The query follows whatever the app resolves to, so it tracks both the desktop's preference and a scheme the app forces through `Adw.StyleManager`. `@media (prefers-contrast: more)` follows the system's high-contrast preference the same way, and `@media (prefers-reduced-motion: reduce)` does too on GTK 4.22 or later.
+
+The [Preferences and Theming](/tutorial/preferences-and-theming) tutorial chapter builds a preference that switches the scheme at runtime.
 
 ## Next
 

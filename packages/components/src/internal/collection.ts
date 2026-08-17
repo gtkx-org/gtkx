@@ -1,33 +1,36 @@
 import type { ListItem } from "../types.js";
 import type { CollectionIndex } from "./collection-index.js";
 import type { CollectionModel, SlotRef } from "./collection-model.js";
+import type { MatchedRows } from "./tree-order.js";
 import { slotPathAt, slotRefFor } from "./collection-model.js";
-import { findPositions } from "./tree-order.js";
+import { findIds, findRows } from "./tree-order.js";
 
 type Collection = Pick<CollectionModel, "model" | "expansion" | "rowAt"> & {
     isTree: boolean;
     itemAt: (ref: SlotRef) => ListItem | undefined;
     sectionFor: (levelPath: string) => unknown;
     idAt: (position: number) => string | null;
+    idsAt: (positions: number[]) => string[];
     pathAt: (position: number) => string | null;
     positionFor: (id: string) => number;
-    positionsFor: (ids: string[]) => number[];
+    rowsFor: (ids: string[]) => MatchedRows;
 };
 
-const NO_POSITIONS: number[] = [];
+const NO_ROWS: MatchedRows = { positions: [], ids: [] };
+const NO_IDS: string[] = [];
 
-function positionsFor(collectionModel: CollectionModel, ids: string[]): number[] {
+function rowsFor(collectionModel: CollectionModel, ids: string[]): MatchedRows {
     if (ids.length === 0) {
-        return NO_POSITIONS;
+        return NO_ROWS;
     }
 
     const { expansion } = collectionModel;
 
-    return findPositions(expansion.index, expansion.slots, new Set(ids));
+    return findRows(expansion.index, expansion.slots, new Set(ids));
 }
 
 function positionFor(collectionModel: CollectionModel, id: string): number {
-    const [first = -1] = positionsFor(collectionModel, [id]);
+    const [first = -1] = rowsFor(collectionModel, [id]).positions;
 
     return first;
 }
@@ -60,6 +63,16 @@ function pathAt(collectionModel: CollectionModel, position: number): string | nu
     return slotPathAt(ref.store, ref.slot);
 }
 
+function idsAt(collectionModel: CollectionModel, positions: number[]): string[] {
+    if (positions.length === 0) {
+        return NO_IDS;
+    }
+
+    const { expansion } = collectionModel;
+
+    return findIds(expansion.index, expansion.slots, new Set(positions));
+}
+
 function isCollectionIdle(collection: Collection): boolean {
     const { expansion } = collection;
 
@@ -75,9 +88,10 @@ function createCollection(collectionModel: CollectionModel, index: CollectionInd
         itemAt: (ref) => itemAt(index, ref),
         sectionFor: index.sectionFor,
         idAt: (position) => idAt(collectionModel, index, position),
+        idsAt: (positions) => idsAt(collectionModel, positions),
         pathAt: (position) => pathAt(collectionModel, position),
         positionFor: (id) => positionFor(collectionModel, id),
-        positionsFor: (ids) => positionsFor(collectionModel, ids),
+        rowsFor: (ids) => rowsFor(collectionModel, ids),
     };
 }
 

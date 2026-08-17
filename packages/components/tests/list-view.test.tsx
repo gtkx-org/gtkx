@@ -305,6 +305,54 @@ describe("ListView selection modes", () => {
     });
 });
 
+describe("ListView selection across many rows", () => {
+    it("selects every row when selectedIds names the whole list", async () => {
+        const onSelectionChanged = vi.fn();
+        const everyId = hundredItems.map((item) => item.id);
+
+        const { ref } = await renderListView(hundredItems, {
+            selectionMode: Gtk.SelectionMode.MULTIPLE,
+            selected: everyId,
+            onSelectionChanged,
+        });
+
+        await waitFor(() => {
+            const selection = getSelectionModel(ref).getSelection();
+            expect(selection.getSize()).toBe(BigInt(hundredItems.length));
+            expect(selection.getMinimum()).toBe(0);
+            expect(selection.getMaximum()).toBe(hundredItems.length - 1);
+        });
+
+        expect(onSelectionChanged).toHaveBeenLastCalledWith(everyId);
+    });
+
+    it("narrows a whole-list selection to scattered rows and then to none", async () => {
+        const onSelectionChanged = vi.fn();
+        const options = { selectionMode: Gtk.SelectionMode.MULTIPLE, onSelectionChanged };
+        const everyId = hundredItems.map((item) => item.id);
+        const scattered = ["item-0", "item-50", "item-99"];
+        const { ref, rerender } = await renderListView(hundredItems, { ...options, selected: everyId });
+        await rerender(hundredItems, { ...options, selected: scattered });
+
+        await waitFor(() => {
+            const selection = getSelectionModel(ref).getSelection();
+            expect(selection.getSize()).toBe(3n);
+            expect(selection.contains(0)).toBe(true);
+            expect(selection.contains(50)).toBe(true);
+            expect(selection.contains(99)).toBe(true);
+        });
+
+        expect(onSelectionChanged).toHaveBeenLastCalledWith(scattered);
+        await rerender(hundredItems, { ...options, selected: [] });
+
+        await waitFor(() => {
+            expect(getSelectionModel(ref).getSelection().getSize()).toBe(0n);
+        });
+
+        expect(onSelectionChanged).toHaveBeenLastCalledWith([]);
+    });
+});
+
 describe("GridView", () => {
     it("draws a cell per item and reorders them to match the items array", async () => {
         await expectReordering(gridViewView);

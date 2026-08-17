@@ -32,6 +32,7 @@ const crossLevelTree = (): ListItem<TreeName>[] => [
 ];
 
 const repeatedLeafTree = (): ListItem<TreeName>[] => [treeBranch("p", [treeLeaf("leaf")]), treeLeaf("leaf")];
+const shiftingTree = (): ListItem<TreeName>[] => [treeBranch("p", [treeLeaf("x")]), treeLeaf("y")];
 
 const expectSelectedPositions = (ref: RefObject<Gtk.ListView>, expected: number[]): Promise<void> =>
     waitFor(() => {
@@ -149,5 +150,62 @@ describe("ListView tree selection over repeated ids", () => {
         await waitFor(() => {
             expect(onSelectionChanged).toHaveBeenLastCalledWith(["a b"]);
         });
+    });
+});
+
+describe("ListView tree selection while rows shift", () => {
+    it("keeps reporting the selected id after a controlled expansion moves it down", async () => {
+        const onSelectionChanged = vi.fn();
+        const items = shiftingTree();
+
+        const options = {
+            selected: ["y"],
+            selectionMode: Gtk.SelectionMode.MULTIPLE,
+            onSelectionChanged,
+        };
+
+        const { ref, rerender } = await renderListView<TreeName>(items, { ...options, expandedIds: [] });
+
+        await waitFor(() => {
+            expect(getSelectionModel(ref).isSelected(1)).toBe(true);
+        });
+
+        await rerender(items, { ...options, expandedIds: NESTED_ONLY });
+        await expectRowTexts(ref, ["p", "x", "y"]);
+
+        await waitFor(() => {
+            const model = getSelectionModel(ref);
+            expect(model.isSelected(2)).toBe(true);
+            expect(model.isSelected(1)).toBe(false);
+        });
+
+        expect(onSelectionChanged).toHaveBeenLastCalledWith(["y"]);
+    });
+
+    it("keeps reporting the selected id after the widget expands a branch on its own", async () => {
+        const onSelectionChanged = vi.fn();
+        const items = shiftingTree();
+
+        const { ref } = await renderStatefulListView<TreeName>(items, {
+            selected: ["y"],
+            selectionMode: Gtk.SelectionMode.MULTIPLE,
+            onSelectionChanged,
+        });
+
+        await waitFor(() => {
+            expect(getSelectionModel(ref).isSelected(1)).toBe(true);
+        });
+
+        await act(() => {
+            getTreeRow(getSelectionModel(ref), 0).setExpanded(true);
+        });
+
+        await expectRowTexts(ref, ["p", "x", "y"]);
+
+        await waitFor(() => {
+            expect(getSelectionModel(ref).isSelected(2)).toBe(true);
+        });
+
+        expect(onSelectionChanged).toHaveBeenLastCalledWith(["y"]);
     });
 });

@@ -14,6 +14,11 @@ type VisibleOrder = {
     expandedIds: string[];
 };
 
+type MatchedRows = {
+    positions: number[];
+    ids: string[];
+};
+
 type RowVisitor = (row: VisibleRow) => void;
 
 type WalkOptions = {
@@ -182,16 +187,38 @@ function buildVisibleOrder(index: CollectionIndex, slots: SlotMap): VisibleOrder
     return walkVisible({ index, slots });
 }
 
-function findPositions(index: CollectionIndex, slots: SlotMap, ids: Set<string>): number[] {
-    const found: number[] = [];
+function findRows(index: CollectionIndex, slots: SlotMap, ids: Set<string>): MatchedRows {
+    const positions: number[] = [];
+    const found: string[] = [];
 
     walkVisible({
         index,
         slots,
         visit: (row) => {
-            if (ids.has(row.item.id)) {
-                found.push(row.position);
+            if (!ids.has(row.item.id)) {
+                return;
             }
+
+            positions.push(row.position);
+            found.push(row.item.id);
+        },
+    });
+
+    return { positions, ids: found };
+}
+
+function findIds(index: CollectionIndex, slots: SlotMap, positions: Set<number>): string[] {
+    const found: string[] = [];
+
+    walkVisible({
+        index,
+        slots,
+        visit: (row) => {
+            if (!positions.has(row.position)) {
+                return;
+            }
+
+            found.push(row.item.id);
         },
     });
 
@@ -201,8 +228,10 @@ function findPositions(index: CollectionIndex, slots: SlotMap, ids: Set<string>)
 export {
     buildVisibleOrder,
     expandedPathsFor,
-    findPositions,
+    findIds,
+    findRows,
     walkVisible,
+    type MatchedRows,
     type VisibleOrder,
     type WalkOptions,
 };
