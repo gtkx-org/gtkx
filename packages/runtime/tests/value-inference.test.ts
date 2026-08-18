@@ -128,6 +128,13 @@ describe("the GType inferred from a number or an array", () => {
         expect(heldType(Infinity)).toBe(TYPE_DOUBLE);
     });
 
+    it("is gint64 and guint64 at the bounds of the 64-bit range", () => {
+        expect(heldType(-(2n ** 63n))).toBe(TYPE_INT64);
+        expect(held(-(2n ** 63n))).toBe(-(2n ** 63n));
+        expect(heldType(2n ** 64n - 1n)).toBe(TYPE_UINT64);
+        expect(held(2n ** 64n - 1n)).toBe(2n ** 64n - 1n);
+    });
+
     it("is GStrv for an empty array", () => {
         expect(heldType([])).toBe(typeFromName("GStrv"));
         expect(held([])).toEqual([]);
@@ -149,6 +156,14 @@ describe("a value no GType can be inferred from", () => {
 
     it("throws for an array holding anything but strings", () => {
         expect(() => Gtk.ConstantExpression.newForValue([1, 2] as unknown as JsValue)).toThrow(ValueMarshalError);
+    });
+
+    it("throws for a bigint below the signed 64-bit range", () => {
+        expect(() => Gtk.ConstantExpression.newForValue(-(2n ** 63n) - 1n)).toThrow(ValueMarshalError);
+    });
+
+    it("throws for a bigint above the unsigned 64-bit range", () => {
+        expect(() => Gtk.ConstantExpression.newForValue(2n ** 64n)).toThrow(ValueMarshalError);
     });
 
     it("throws for a plain object", () => {

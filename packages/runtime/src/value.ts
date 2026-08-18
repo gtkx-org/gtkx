@@ -23,7 +23,14 @@ import {
 } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_SIZE, VALUE_T, VARIANT_T } from "./library.js";
 import { toNative } from "./native-value.js";
-import { INT32_MAXIMUM, INT32_MINIMUM, INT64_MAXIMUM, resolveGtype } from "./param-spec.js";
+import {
+    INT32_MAXIMUM,
+    INT32_MINIMUM,
+    INT64_MAXIMUM,
+    INT64_MINIMUM,
+    resolveGtype,
+    UINT64_MAXIMUM,
+} from "./param-spec.js";
 import { describeValueKind, getHandle, getWrapperClass, wrapHandle, wrapObject } from "./registry.js";
 import {
     getStrvType,
@@ -473,7 +480,10 @@ const numberValueGType = (jsValue: number): bigint =>
     Number.isSafeInteger(jsValue) && jsValue >= INT32_MINIMUM && jsValue <= INT32_MAXIMUM ? TYPE_INT : TYPE_DOUBLE;
 
 const arrayValueGType = (jsValue: unknown[]): bigint => (isStringArray(jsValue) ? getStrvType() : TYPE_INVALID);
-const bigintValueGType = (jsValue: bigint): bigint => (jsValue > INT64_MAXIMUM ? TYPE_UINT64 : TYPE_INT64);
+const wideValueGType = (jsValue: bigint): bigint => (jsValue > INT64_MAXIMUM ? TYPE_UINT64 : TYPE_INT64);
+
+const bigintValueGType = (jsValue: bigint): bigint =>
+    jsValue < INT64_MINIMUM || jsValue > UINT64_MAXIMUM ? TYPE_INVALID : wideValueGType(jsValue);
 
 const wrapperValueGType = (jsValue: object): bigint =>
     Array.isArray(jsValue) ? arrayValueGType(jsValue) : resolveGtype(jsValue);
@@ -506,6 +516,11 @@ function inferValueGType(jsValue: unknown): bigint {
     }
 }
 
+const marshalFailure = (jsValue: unknown): string =>
+    typeof jsValue === "bigint"
+        ? `Cannot marshal ${String(jsValue)} into a GObject.Value: outside the range of gint64 and guint64`
+        : `Cannot marshal ${describeValueKind(jsValue)} into a GObject.Value`;
+
 const isValueInstance = (jsValue: unknown): boolean =>
     typeof jsValue === "object" && jsValue !== null && typeIsA(resolveGtype(jsValue), resolveBoxedType(VALUE_T));
 
@@ -524,7 +539,7 @@ function toValueHandle(jsValue: unknown): ExternalObject<Handle> {
     const type = inferValueGType(jsValue);
 
     if (type === TYPE_INVALID) {
-        throw new ValueMarshalError(`Cannot marshal ${describeValueKind(jsValue)} into a GObject.Value`);
+        throw new ValueMarshalError(marshalFailure(jsValue));
     }
 
     const value = newValueForType(type);

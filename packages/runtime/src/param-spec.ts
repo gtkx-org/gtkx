@@ -49,9 +49,9 @@ const UINT8_MAXIMUM = 255;
 const INT32_MINIMUM = -2_147_483_648;
 const INT32_MAXIMUM = 2_147_483_647;
 const UINT32_MAXIMUM = 4_294_967_295;
-const INT64_MINIMUM = -(2n ** 63n);
+const INT64_MINIMUM: bigint = -(2n ** 63n);
 const INT64_MAXIMUM: bigint = 2n ** 63n - 1n;
-const UINT64_MAXIMUM = 2n ** 64n - 1n;
+const UINT64_MAXIMUM: bigint = 2n ** 64n - 1n;
 
 const WRAPPED_FUNDAMENTALS: Set<bigint> = new Set([
     TYPE_BOXED,
@@ -228,10 +228,12 @@ export {
     INT32_MAXIMUM,
     INT32_MINIMUM,
     INT64_MAXIMUM,
+    INT64_MINIMUM,
     isParamConstructOnly,
     isParamLaxlyValidated,
     isParamWritable,
     resolveGtype,
+    UINT64_MAXIMUM,
     type ValueGuard,
     valueGuardFor,
     wasParamValueModified,

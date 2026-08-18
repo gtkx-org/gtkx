@@ -67,7 +67,7 @@ What each JavaScript value infers to:
 | boolean | `gboolean` |
 | number, whole and within `gint` range | `gint` |
 | any other number | `gdouble` |
-| `bigint` | `gint64`, or `guint64` from 2^63 up |
+| `bigint` | `gint64`, or `guint64` from 2^63 up; outside the 64-bit range it throws |
 | array of strings | `GStrv` |
 | a wrapper instance | the GType it carries |
 
