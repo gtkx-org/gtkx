@@ -24,6 +24,14 @@ type TypeTable = {
     index: Map<string, number>;
 };
 
+/** Behavior a project opted into ahead of the next major version, through the `future` block of its config. */
+type FutureBehavior = {
+    /** Whether byte sequences render as `Uint8Array` rather than `number[]`. */
+    isByteArrayTyped?: boolean;
+    /** Whether a `GObject.Value` a binding hands back surfaces as what it holds rather than as the value. */
+    isValueUnwrapped?: boolean;
+};
+
 /** A namespace whose header has been read and whose shell is registered, before its body is parsed. */
 type DiscoveredNamespace = {
     /** Attributes and includes read from the namespace's GIR file. */
@@ -84,12 +92,13 @@ class Library {
      *
      * @param libraries GIR identifiers to load, such as `Gtk-4.0`.
      * @param girPath Directories searched, in order, for each `.gir` file.
-     * @param isByteArrayTyped Whether byte sequences render as `Uint8Array` rather than `number[]`.
+     * @param future Behavior the project opted into ahead of the next major version.
      * @returns A library holding every namespace that was parsed.
      */
-    static load(libraries: string[], girPath: string[], isByteArrayTyped = false): Library {
+    static load(libraries: string[], girPath: string[], future: FutureBehavior = {}): Library {
         const library = new Library();
-        library.isByteArrayTypedValue = isByteArrayTyped;
+        library.isByteArrayTypedValue = future.isByteArrayTyped === true;
+        library.isValueUnwrappedValue = future.isValueUnwrapped === true;
         this.drive(library, libraries, girPath);
 
         return library;
@@ -102,6 +111,7 @@ class Library {
     private typeTables: TypeTable[] = [];
     private girFilesValue: string[] = [];
     private isByteArrayTypedValue = false;
+    private isValueUnwrappedValue = false;
 
     /** Creates a library with no namespaces loaded; {@link Library.load} builds a populated one. */
     constructor() {
@@ -334,6 +344,11 @@ class Library {
     /** Whether byte sequences render as `Uint8Array` rather than `number[]`. */
     public get isByteArrayTyped(): boolean {
         return this.isByteArrayTypedValue;
+    }
+
+    /** Whether a `GObject.Value` a binding hands back surfaces as what it holds rather than as the value. */
+    public get isValueUnwrapped(): boolean {
+        return this.isValueUnwrappedValue;
     }
 
     /** Paths of the `.gir` files that were read, in the order they were discovered. */

@@ -260,10 +260,7 @@ function createRotationTransform(halfW: number, halfH: number, angle: number): G
     return t;
 }
 
-const createContentProvider = (itemId: string) =>
-    Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.TYPE_STRING, (v) => {
-        v.setString(itemId);
-    }));
+const createContentProvider = (itemId: string) => Gdk.ContentProvider.newForValue(itemId);
 
 function ColorSwatch({ color }: { color: string }) {
     const dynamicStyle = css`
@@ -274,9 +271,7 @@ function ColorSwatch({ color }: { color: string }) {
         const rgba = new Gdk.RGBA();
         rgba.parse(color);
 
-        return Gdk.ContentProvider.newForValue(GObject.buildValue(gdkRgbaType, (v) => {
-            v.setBoxed(rgba);
-        }));
+        return Gdk.ContentProvider.newForValue(rgba);
     };
 
     return (
@@ -289,11 +284,7 @@ function ColorSwatch({ color }: { color: string }) {
 }
 
 function CssPatternSwatch({ id, cssClass }: { id: string; cssClass: string }) {
-    const createClassProvider = () => {
-        return Gdk.ContentProvider.newForValue(GObject.buildValue(GObject.TYPE_STRING, (v) => {
-            v.setString(cssClass);
-        }));
-    };
+    const createClassProvider = () => Gdk.ContentProvider.newForValue(cssClass);
 
     return (
         <GtkBox

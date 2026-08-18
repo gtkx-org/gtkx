@@ -198,6 +198,7 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
         libraries,
         girPath,
         isByteArrayTyped: config.future?.v2ByteArrays === true,
+        isValueUnwrapped: config.future?.v2ValueReturns === true,
     });
 
     const watched = [watchFile(resolve(root, configFile)), ...reference.girFiles.map((file) => watchFile(file))];

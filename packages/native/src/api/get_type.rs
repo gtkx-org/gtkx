@@ -1,32 +1,81 @@
+use std::ffi::c_void;
+
 use glib::gobject_ffi;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::handle::Handle;
 
-fn gobject_type(handle: &Handle) -> u64 {
-    let Some(gobject_ptr) = handle.as_gobject_ptr() else {
-        return 0;
-    };
-
-    let instance = gobject_ptr.cast::<gobject_ffi::GTypeInstance>();
+fn read_type_tag(ptr: *mut c_void) -> glib::ffi::GType {
+    let instance = ptr.cast::<gobject_ffi::GTypeInstance>();
     let g_class = unsafe { (*instance).g_class };
 
     if g_class.is_null() {
         return 0;
     }
 
-    let type_ = unsafe { (*g_class).g_type };
-
-    type_ as u64
+    unsafe { (*g_class).g_type }
 }
 
-/// Returns the `GType` of the `GObject` referenced by `handle`, or 0 when the handle does not
-/// reference a `GObject`.
+fn gobject_type(handle: &Handle) -> glib::ffi::GType {
+    let Some(gobject_ptr) = handle.as_gobject_ptr() else {
+        return 0;
+    };
+
+    read_type_tag(gobject_ptr.cast::<c_void>())
+}
+
+fn is_instantiatable(type_: glib::ffi::GType) -> bool {
+    unsafe { gobject_ffi::g_type_test_flags(type_, gobject_ffi::G_TYPE_FLAG_INSTANTIATABLE) != 0 }
+}
+
+fn is_a(type_: glib::ffi::GType, ancestor: glib::ffi::GType) -> bool {
+    unsafe { gobject_ffi::g_type_is_a(type_, ancestor) != 0 }
+}
+
+/// Reads the type tag of a fundamental instance, which only the instantiatable fundamentals carry:
+/// `GtkExpression` and `GskRenderNode` begin with a `GTypeInstance`, while `GVariant` does not, so
+/// `declared_type` decides whether there is a tag to read at all. A tag that does not descend from
+/// the declared type is discarded rather than trusted.
+fn fundamental_type(handle: &Handle, declared_type: u64) -> glib::ffi::GType {
+    let Ok(declared) = glib::ffi::GType::try_from(declared_type) else {
+        return 0;
+    };
+
+    if declared == 0 || !is_instantiatable(declared) {
+        return 0;
+    }
+
+    let Some(ptr) = handle.as_fundamental_ptr() else {
+        return 0;
+    };
+
+    let type_ = read_type_tag(ptr);
+
+    if type_ == 0 || !is_a(type_, declared) {
+        return 0;
+    }
+
+    type_
+}
+
+/// Returns the `GType` of the instance `handle` references, or 0 when it carries no type tag.
+/// A `GObject` always carries one. A fundamental instance carries one only when the type the
+/// binding declares, passed as `declaredType`, is instantiatable.
 #[napi(catch_unwind)]
-pub fn get_type(handle: &External<Handle>) -> Result<BigInt> {
-    let type_ = gobject_type(handle);
-    Ok(BigInt::from(type_))
+pub fn get_type(handle: &External<Handle>, declared_type: Option<BigInt>) -> Result<BigInt> {
+    let type_ = match declared_type.map(|value| value.get_u64().1) {
+        Some(declared) => fundamental_type(handle, declared),
+        None => 0,
+    };
+
+    let resolved = if type_ == 0 {
+        gobject_type(handle)
+    } else {
+        type_
+    };
+
+    Ok(BigInt::from(resolved as u64))
 }
 
 #[cfg(test)]
@@ -62,8 +111,30 @@ mod tests {
             let handle = Handle::decoded_gobject(obj.clone());
             assert_eq!(
                 gobject_type(&handle),
-                glib::Object::static_type().into_glib() as u64
+                glib::Object::static_type().into_glib()
             );
+            handle.release_owned();
+            drop(obj);
+        });
+    }
+
+    #[test]
+    fn reads_no_fundamental_type_for_a_type_that_carries_no_tag() {
+        test_support::run(|| {
+            let variant = glib::Variant::from(1_u32);
+            let handle = Handle::from_glib_borrow(variant.as_ptr().cast());
+            let declared = glib::Variant::static_type().into_glib() as u64;
+
+            assert_eq!(fundamental_type(&handle, declared), 0);
+        });
+    }
+
+    #[test]
+    fn reads_no_fundamental_type_without_a_declared_type() {
+        test_support::run(|| {
+            let (obj, _, _) = test_support::fresh_gobject();
+            let handle = Handle::decoded_gobject(obj.clone());
+            assert_eq!(fundamental_type(&handle, 0), 0);
             handle.release_owned();
             drop(obj);
         });

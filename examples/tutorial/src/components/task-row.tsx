@@ -64,9 +64,7 @@ export const TaskRow = ({ task }: { task: Task }) => {
                             onPrepare={(x, y, self) => {
                                 const row = self.getWidget();
                                 if (row) self.setIcon(Gtk.WidgetPaintable.new(row), Math.round(x), Math.round(y));
-                                return Gdk.ContentProvider.newForValue(
-                                    GObject.buildValue(GObject.TYPE_STRING, (value) => value.setString(task.id)),
-                                );
+                                return Gdk.ContentProvider.newForValue(task.id);
                             }}
                         />
                         <GtkDropTarget

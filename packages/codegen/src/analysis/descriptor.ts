@@ -104,6 +104,7 @@ type FnSpecParts = {
     args: string;
     returns: string;
     isReturnSkipped: boolean;
+    isReturnUnpacked: boolean;
     canThrow: boolean;
 };
 
@@ -114,6 +115,7 @@ type CallbackSpecParts = {
 };
 
 const SKIPPED_RETURN_ENTRY = "isReturnSkipped: true";
+const UNPACKED_RETURN_ENTRY = "isReturnUnpacked: true";
 
 const T: DescriptorNames = {
     bind: "t.bind",
@@ -313,12 +315,13 @@ const tBind = (args: BindArgs): string =>
 
 const tFn = (lib: string, cIdentifier: string, spec: FnSpecParts): string => {
     const skipEntry = spec.isReturnSkipped ? `, ${SKIPPED_RETURN_ENTRY}` : "";
+    const unpackEntry = spec.isReturnUnpacked ? `, ${UNPACKED_RETURN_ENTRY}` : "";
     const throwsEntry = spec.canThrow ? ", canThrow: true" : "";
 
     return call("fn", [
         sourceStringLiteral(lib),
         sourceStringLiteral(cIdentifier),
-        `{ args: ${spec.args}, returns: ${spec.returns}${skipEntry}${throwsEntry} }`,
+        `{ args: ${spec.args}, returns: ${spec.returns}${skipEntry}${unpackEntry}${throwsEntry} }`,
     ]);
 };
 

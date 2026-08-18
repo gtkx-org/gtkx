@@ -48,6 +48,7 @@ const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | u
         args: arrayLiteral(params),
         returns: returnPlan.descriptor,
         isReturnSkipped: returnPlan.isSkipped,
+        isReturnUnpacked: returnPlan.isUnpacked,
         canThrow: fn.throws,
     });
 };

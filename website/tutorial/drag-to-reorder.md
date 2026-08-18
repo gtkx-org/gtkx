@@ -67,9 +67,7 @@ export const TaskRow = ({ task }: { task: Task }) => {
                     onPrepare={(x, y, self) => {
                         const row = self.getWidget();
                         if (row) self.setIcon(Gtk.WidgetPaintable.new(row), Math.round(x), Math.round(y));
-                        return Gdk.ContentProvider.newForValue(
-                            GObject.buildValue(GObject.TYPE_STRING, (value) => value.setString(task.id)),
-                        );
+                        return Gdk.ContentProvider.newForValue(task.id);
                     }}
                 />
             }
@@ -80,7 +78,7 @@ export const TaskRow = ({ task }: { task: Task }) => {
 
 `actions={Gdk.DragAction.MOVE}` says this drag moves its payload rather than copying or linking it, which is what the cursor shape and the drop target both check.
 
-`onPrepare` runs once, when GTK4 decides the pointer has traveled far enough to count as a drag rather than a click. It returns the payload. A drag payload is a `Gdk.ContentProvider` wrapping a `GValue`, GObject's boxed-value type, and `GObject.buildValue` builds one from the type and a callback that fills it. Here the payload is the task's id, which is all the drop side needs to look the task up.
+`onPrepare` runs once, when GTK4 decides the pointer has traveled far enough to count as a drag rather than a click. It returns the payload. A drag payload is a `Gdk.ContentProvider` wrapping a `GValue`, GObject's boxed-value type, and passing the id straight to `newForValue` is enough: anywhere a `GObject.Value` is expected, GTKX infers the GType from the JavaScript value, and a string becomes `gchararray`. Here the payload is the task's id, which is all the drop side needs to look the task up.
 
 The same handler gives the drag a picture. `self.getWidget()` returns the widget the controller is attached to, this row, and `Gtk.WidgetPaintable.new(row)` turns it into something drawable, so the ghost following your pointer is a live rendering of the row. The `x` and `y` are the point inside the row where the drag started. Passing them as the hotspot pins the ghost to the cursor at the spot you grabbed, instead of snapping the row's corner under the pointer.
 
@@ -220,9 +218,7 @@ export const TaskRow = ({ task }: { task: Task }) => {
                             onPrepare={(x, y, self) => {
                                 const row = self.getWidget();
                                 if (row) self.setIcon(Gtk.WidgetPaintable.new(row), Math.round(x), Math.round(y));
-                                return Gdk.ContentProvider.newForValue(
-                                    GObject.buildValue(GObject.TYPE_STRING, (value) => value.setString(task.id)),
-                                );
+                                return Gdk.ContentProvider.newForValue(task.id);
                             }}
                         />
                         <GtkDropTarget

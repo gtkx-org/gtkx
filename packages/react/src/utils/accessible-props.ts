@@ -201,42 +201,50 @@ function buildRelation(relation: Gtk.AccessibleRelation, type: AccessibleValueTy
     };
 }
 
+const initValue = (gtype: GObject.Type, populate: (value: GObject.Value) => void): GObject.Value => {
+    const value = new GObject.Value();
+    value.init(gtype);
+    populate(value);
+
+    return value;
+};
+
 const buildValue = (descriptor: AccessibleDescriptor, jsValue: unknown): GObject.Value => {
     switch (descriptor.type) {
         case "string": {
-            return GObject.buildValue(GObject.TYPE_STRING, (v) => {
+            return initValue(GObject.TYPE_STRING, (v) => {
                 v.setString(jsValue as string);
             });
         }
         case "boolean": {
-            return GObject.buildValue(GObject.TYPE_BOOLEAN, (v) => {
+            return initValue(GObject.TYPE_BOOLEAN, (v) => {
                 v.setBoolean(jsValue as boolean);
             });
         }
         case "optionalBoolean": {
-            return GObject.buildValue(GObject.TYPE_INT, (v) => {
+            return initValue(GObject.TYPE_INT, (v) => {
                 v.setInt(jsValue === true ? 1 : 0);
             });
         }
         case "int": {
-            return GObject.buildValue(GObject.TYPE_INT, (v) => {
+            return initValue(GObject.TYPE_INT, (v) => {
                 v.setInt(jsValue as number);
             });
         }
         case "double": {
-            return GObject.buildValue(GObject.TYPE_DOUBLE, (v) => {
+            return initValue(GObject.TYPE_DOUBLE, (v) => {
                 v.setDouble(jsValue as number);
             });
         }
         case "object": {
-            return GObject.buildValue(GObject.TYPE_OBJECT, (v) => {
+            return initValue(GObject.TYPE_OBJECT, (v) => {
                 v.setObject(jsValue as GObject.Object | null);
             });
         }
         case "list": {
             const list = Gtk.AccessibleList.newFromList(jsValue as Gtk.Accessible[]);
 
-            return GObject.buildValue(Gtk.AccessibleList.prototype.__type__, (v) => {
+            return initValue(Gtk.AccessibleList.prototype.__type__, (v) => {
                 v.setBoxed(list);
             });
         }

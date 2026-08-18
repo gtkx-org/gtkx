@@ -1,6 +1,14 @@
-import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
+import type { AnyClass } from "@gtkx/utils";
+import { type Descriptor, type ExternalObject, getType, type Handle } from "@gtkx/native";
 import type { ArrayDescriptor, FundamentalDescriptor, HashTableDescriptor, StructDescriptor } from "./descriptors.js";
-import { getHandle, getWrapperClass, wrapCallScopedObject, wrapHandle, wrapObject } from "./registry.js";
+import {
+    getHandle,
+    getWrapperClass,
+    resolveWrapperClass,
+    wrapCallScopedObject,
+    wrapHandle,
+    wrapObject,
+} from "./registry.js";
 import { resolveDescriptorType } from "./type.js";
 
 type MarshalledKind = "object" | "struct" | "boxed" | "fundamental" | "array" | "hashtable";
@@ -37,13 +45,24 @@ function boxedFromNative(descriptor: Descriptor, value: unknown): unknown {
         : wrapHandle(value as ExternalObject<Handle>, getWrapperClass(resolveDescriptorType(descriptor)));
 }
 
+function fundamentalWrapperClass(descriptor: FundamentalDescriptor, handle: ExternalObject<Handle>): AnyClass {
+    const declaredType = resolveDescriptorType(descriptor);
+
+    return (
+        descriptor.wrapperClass ??
+        resolveWrapperClass(getType(handle, declaredType)) ??
+        getWrapperClass(declaredType)
+    );
+}
+
 function fundamentalFromNative(descriptor: FundamentalDescriptor, value: unknown): unknown {
-    return value == null
-        ? null
-        : wrapHandle(
-                value as ExternalObject<Handle>,
-                descriptor.wrapperClass ?? getWrapperClass(resolveDescriptorType(descriptor)),
-            );
+    if (value == null) {
+        return null;
+    }
+
+    const handle = value as ExternalObject<Handle>;
+
+    return wrapHandle(handle, fundamentalWrapperClass(descriptor, handle));
 }
 
 function hashTableFromNative(descriptor: HashTableDescriptor, value: unknown): unknown {

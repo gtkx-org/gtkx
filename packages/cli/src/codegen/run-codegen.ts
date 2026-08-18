@@ -45,6 +45,7 @@ type CodegenOptionsInput = {
     girPath: string[];
     elements: Config["elements"];
     isByteArrayTyped: boolean;
+    isValueUnwrapped: boolean;
 };
 
 type PreparedCodegen = CodegenInputs & { isForced: boolean };
@@ -73,10 +74,10 @@ const removeShadowingStores = (cwd: string): void => {
     removeStores(getShadowingStorePaths(cwd));
 };
 
-const codegenOptions = ({ store, libraries, girPath, elements, isByteArrayTyped }: CodegenOptionsInput) => ({
+const codegenOptions = ({ store, libraries, girPath, elements, ...future }: CodegenOptionsInput) => ({
     libraries,
     girPath,
-    isByteArrayTyped,
+    ...future,
     gi: {
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
@@ -162,6 +163,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
             girPath,
             elements: config.elements,
             isByteArrayTyped: config.future?.v2ByteArrays === true,
+            isValueUnwrapped: config.future?.v2ValueReturns === true,
         }),
         isForced,
     });

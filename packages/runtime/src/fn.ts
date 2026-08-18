@@ -1,7 +1,7 @@
 import type { CallDescriptor, Descriptor, ExternalObject, Ref } from "@gtkx/native";
 import { call, bind as nativeBind } from "@gtkx/native";
 import type { RefSeeds } from "./vfunc-seeds.js";
-import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, requiresInputArg } from "./arg.js";
+import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, isUnpackedArg, requiresInputArg } from "./arg.js";
 import { wrapCallbackValue } from "./callback.js";
 import { boxedT, refT } from "./descriptors.js";
 import { checkError } from "./error.js";
@@ -9,6 +9,7 @@ import { LIB } from "./library.js";
 import { fromNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { hasSurfacedPrimary, packTupleResult } from "./tuple.js";
+import { fromValue } from "./value.js";
 
 /** The signature a native function is bound against. */
 type FnSpec = {
@@ -29,6 +30,8 @@ type FnSpec = {
      * architectures.
      */
     fixedArgCount?: number;
+    /** The callee returns a `GValue`, surfaced as what it holds rather than as the value itself. */
+    isReturnUnpacked?: boolean;
 };
 
 type ArgSpec = {
@@ -36,6 +39,7 @@ type ArgSpec = {
     index: number;
     isRef: boolean;
     isCallerAllocated: boolean;
+    isUnpacked: boolean;
     requiresInput: boolean;
     inputIndex: number;
     isOutParam: boolean;
@@ -70,6 +74,7 @@ const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
             index,
             isRef,
             isCallerAllocated: isCallerAllocatedArg(arg),
+            isUnpacked: isUnpackedArg(arg),
             requiresInput,
             inputIndex: requiresInput ? inputCursor++ : -1,
             isOutParam,
@@ -108,6 +113,14 @@ const buildNativeValue = (spec: ArgSpec, inputs: unknown[], seeds: RefSeeds | un
 const buildNativeValues = (plans: ArgSpec[], inputs: unknown[], seeds: RefSeeds | undefined): unknown[] =>
     plans.map((plan) => buildNativeValue(plan, inputs, seeds));
 
+const unpackValue = (value: unknown): unknown => (value == null ? null : fromValue(getHandle(value)));
+
+const readCallerAllocated = (plan: ArgSpec, inputs: unknown[]): unknown => {
+    const wrapper = inputs[plan.inputIndex];
+
+    return plan.isUnpacked ? unpackValue(wrapper) : wrapper;
+};
+
 const readOutParams = (outPlans: ArgSpec[], inputs: unknown[], nativeValues: unknown[]): unknown[] => {
     if (outPlans.length === 0) {
         return NO_OUT_PARAMS;
@@ -115,7 +128,7 @@ const readOutParams = (outPlans: ArgSpec[], inputs: unknown[], nativeValues: unk
 
     return Array.from(outPlans, (plan) =>
         plan.isCallerAllocated
-            ? inputs[plan.inputIndex]
+            ? readCallerAllocated(plan, inputs)
             : fromNative(plan.arg.type, (nativeValues[plan.index] as Ref).value));
 };
 
@@ -137,14 +150,18 @@ const resizeInputs = (inputs: unknown[], argCount: number): unknown[] => {
     return inputs;
 };
 
+const returnReader = (spec: FnSpec): ((nativeResult: unknown) => unknown) =>
+    spec.isReturnUnpacked === true
+        ? (nativeResult) => unpackValue(fromNative(spec.returns, nativeResult))
+        : (nativeResult) => fromNative(spec.returns, nativeResult);
+
 const directCallable = (
     descriptor: ExternalObject<CallDescriptor>,
-    returnDescriptor: Descriptor,
+    readReturn: (nativeResult: unknown) => unknown,
     hasPrimary: boolean,
     argCount: number,
 ): ((...inputs: unknown[]) => unknown) => {
-    const marshal = (inputs: unknown[]): unknown =>
-        fromNative(returnDescriptor, call(descriptor, resizeInputs(inputs, argCount)));
+    const marshal = (inputs: unknown[]): unknown => readReturn(call(descriptor, resizeInputs(inputs, argCount)));
 
     if (hasPrimary) {
         return (...inputs) => marshal(inputs);
@@ -165,17 +182,14 @@ function fromNativeCallable(
     const plans = buildArgSpecs(args);
     const outPlans = plans.filter((plan) => plan.isOutParam);
     const arePassThrough = plans.every((plan, index) => isPassThroughPlan(plan, index));
+    const readReturn = returnReader(spec);
 
     if (!canThrow && arePassThrough) {
-        return directCallable(descriptor, returnDescriptor, hasPrimary, plans.length);
+        return directCallable(descriptor, readReturn, hasPrimary, plans.length);
     }
 
     const shape = (inputs: unknown[], nativeValues: unknown[], nativeResult: unknown): unknown =>
-        packTupleResult(
-            readOutParams(outPlans, inputs, nativeValues),
-            fromNative(returnDescriptor, nativeResult),
-            hasPrimary,
-        );
+        packTupleResult(readOutParams(outPlans, inputs, nativeValues), readReturn(nativeResult), hasPrimary);
 
     if (canThrow) {
         return (...inputs) => {

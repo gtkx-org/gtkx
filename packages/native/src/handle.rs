@@ -276,6 +276,17 @@ impl Handle {
         (!ptr.is_null()).then(|| ptr.cast::<glib::gobject_ffi::GObject>())
     }
 
+    #[must_use]
+    pub fn as_fundamental_ptr(&self) -> Option<*mut c_void> {
+        let HandleKind::Fundamental(fundamental) = &self.inner.kind else {
+            return None;
+        };
+
+        let ptr = fundamental.as_ptr();
+
+        (!ptr.is_null()).then_some(ptr)
+    }
+
     /// Hands the owned reference over to the caller, which becomes responsible for releasing it.
     #[must_use]
     pub fn take_owned(&self) -> Option<glib::Object> {

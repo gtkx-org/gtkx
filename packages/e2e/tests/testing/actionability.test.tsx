@@ -181,12 +181,7 @@ const beginDrag = (window: Gtk.Window): Gdk.Drag => {
         throw new Error("the display has no pointer to drag with");
     }
 
-    const content = Gdk.ContentProvider.newForValue(
-        GObject.buildValue(GObject.TYPE_STRING, (value) => {
-            value.setString("payload");
-        }),
-    );
-
+    const content = Gdk.ContentProvider.newForValue("payload");
     const surface = window.getSurface();
 
     if (surface === null) {

@@ -46,6 +46,52 @@ Record fields appear as accessors: a getter wherever the read lands on the right
 
 A few bindings take a NUL-terminated C string that GIR describes as a byte array (`GLib.Variant.newBytestring`), so the value silently stops at the first zero byte. Binary payloads go through `GLib.Bytes` and `GLib.Variant.newFromBytes`.
 
+## Passing a GValue
+
+A `GObject.Value` is GObject's boxed value: a GType plus a payload of that type. Every parameter that takes one is typed `GObject.Value | JsValue`, as is every `GObject.Value` argument of an emitted signal, so you can pass the JavaScript value itself and the GType is inferred from it:
+
+```ts
+Gdk.ContentProvider.newForValue("payload");             // gchararray
+Gdk.ContentProvider.newForValue(rgba);                  // GdkRGBA
+widget.updateProperty([Gtk.AccessibleProperty.LABEL], ["Save"]);
+dropTarget.emit("drop", "payload", x, y);
+```
+
+A signal *handler* still receives a `GObject.Value`, since a handler for a binding transform produces its result by writing into the value it is given.
+
+What each JavaScript value infers to:
+
+| Value | GType |
+| --- | --- |
+| string | `gchararray` |
+| boolean | `gboolean` |
+| number, whole and within `gint` range | `gint` |
+| any other number | `gdouble` |
+| `bigint` | `gint64`, or `guint64` from 2^63 up |
+| array of strings | `GStrv` |
+| a wrapper instance | the GType it carries |
+
+Inference covers what a JavaScript value can say on its own, which leaves two cases for an explicitly initialized value:
+
+**A GType no JavaScript value names.** `guchar`, `guint`, `gfloat`, `glong`, enumerations, flags, and a GValue holding a GType are unreachable, since a number infers as `gint` or `gdouble` and a GType is a `bigint`. Name the type yourself:
+
+```ts
+const value = new GObject.Value();
+value.init(GObject.TYPE_UCHAR);
+value.setUchar(200);
+```
+
+**A payload negotiated by an interface GType.** A wrapper infers its own concrete type, so a `Gdk.Texture` becomes `GdkMemoryTexture` and a file from `Gio.File.newForPath` becomes `GLocalFile`. Clipboard and drag-and-drop match GTypes exactly, so a drop target declaring `types={[Gio.File.prototype.__type__]}` never sees a provider built from a bare file. Initialize the value to the interface instead:
+
+```ts
+const value = new GObject.Value();
+value.init(Gio.File.prototype.__type__);
+value.setObject(file);
+Gdk.ContentProvider.newForValue(value);
+```
+
+Passing a `GObject.Value` you built yourself always works, wherever inference would guess something else.
+
 ## Future flags
 
 The `future` block opts into behavior that becomes the default in the next major version, so you can migrate one change at a time instead of all at once during an upgrade. Every flag is off by default, and codegen never warns about one you have not set.
@@ -60,6 +106,7 @@ export default defineConfig({
 Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
 
 - **`v2ByteArrays`**: represents GIR byte sequences as `Uint8Array` instead of `number[]`. It covers `guint8` C arrays and `GByteArray`, in return values, out parameters, record fields, and properties. It does not cover the handwritten Cairo overrides or the OpenGL bindings, which already use typed arrays.
+- **`v2ValueReturns`**: hands back what a `GObject.Value` holds rather than the value itself, the mirror of the inference above. It covers the bindings whose return type or caller-allocated out parameter is a `GValue`: `Gtk.DropTarget.getValue`, `Gtk.ConstantExpression.getValue`, `Gdk.Clipboard.readValueAsync`, `Gtk.Builder.valueFromStringType`, `Gtk.TreeModel.getValue`, and a handful more. Their type becomes `unknown`, since GIR says nothing about what the value holds, so the call site asserts the type it asked for: `(await clipboard.readValueAsync(Gio.File.prototype.__type__, 0, null)) as Gio.File`. Signal parameters and properties keep handing over a `GObject.Value`, which a handler for a binding transform writes into.
 
 Parameters accept `Uint8Array | number[]` either way, so turning the flag on never breaks a call site that passes values *in*. What changes is what you get *back*: `GLib.fileGetContents` returns `[boolean, Uint8Array]` rather than `[boolean, number[]]`, so code that calls `.push`, `.concat`, `Array.isArray`, or `JSON.stringify` on a result needs updating. Flip the flag and run `tsc`: every site that needs attention is a type error.
 

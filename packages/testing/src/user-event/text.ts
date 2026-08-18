@@ -1,5 +1,4 @@
 import * as Gdk from "@gtkx/gi/gdk";
-import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { EDITABLE_ROLES, type EditableTarget, getEditableDelegate, isEditable, readEditableText } from "../editable.js";
 import { formatRoleList } from "../role-helpers.js";
@@ -179,11 +178,7 @@ const applyInitialSelection = (widget: EditableTarget, options: TypeOptions): vo
 };
 
 const writeClipboardText = (widget: Gtk.Widget, text: string): void => {
-    const value = GObject.buildValue(GObject.TYPE_STRING, (v) => {
-        v.setString(text);
-    });
-
-    widget.getClipboard().set(value);
+    widget.getClipboard().set(text);
 };
 
 const resetClipboard = (): void => {

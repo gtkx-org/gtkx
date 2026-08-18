@@ -15,6 +15,13 @@ type ByteSequenceCase = {
 
 type OmittedFieldCase = { title: string; jsName: string };
 
+type ValueReturnCase = {
+    title: string;
+    v2ValueReturns: boolean | undefined;
+    declarations: string[];
+    bindings: string[];
+};
+
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
@@ -66,6 +73,33 @@ const BYTE_SEQUENCE_CASES: ByteSequenceCase[] = [
     },
 ];
 
+const VALUE_PARAMETER_DECLARATIONS = [
+    "store(value: GObject.Value | JsValue): void",
+    "storeMaybe(value: GObject.Value | JsValue | null): void",
+    "storeAll(values: (GObject.Value | JsValue)[]): void",
+];
+
+const VALUE_PARAMETER_BINDINGS = [
+    "valueBoxHolderStore(getHandle(this), toValueHandle(value))",
+    "valueBoxHolderStoreMaybe(getHandle(this), tryToValueHandle(value))",
+    "values.map((item) => toValueHandle(item))",
+];
+
+const VALUE_RETURN_CASES: ValueReturnCase[] = [
+    {
+        title: "hands back the value itself unless the project opts in",
+        v2ValueReturns: undefined,
+        declarations: ["peek(): GObject.Value", "fill(): [boolean, GObject.Value]"],
+        bindings: ['{ type: t.boxed("GValue"'],
+    },
+    {
+        title: "hands back what the value holds once the project opts in",
+        v2ValueReturns: true,
+        declarations: ["peek(): unknown", "fill(): [boolean, unknown]"],
+        bindings: ["isReturnUnpacked: true", "isUnpacked: true"],
+    },
+];
+
 const RECORD_FIELD_ACCESSORS = [
     "get refCount(): number;",
     "set refCount(value: number);",
@@ -111,6 +145,12 @@ const config = (body: string): string => `${HEAD}${body} };\n`;
 
 const fixtureConfig = (library: string): string =>
     config(`, libraries: ${JSON.stringify([library])}, girPath: ${JSON.stringify([FIXTURE_GIR])}`);
+
+const valueBoxConfig = (v2ValueReturns: boolean | undefined): string => {
+    const future = v2ValueReturns === undefined ? "" : `, future: { v2ValueReturns: ${String(v2ValueReturns)} }`;
+
+    return config(`, libraries: ["ValueBox-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
+};
 
 const byteSeqConfig = (v2ByteArrays: boolean | undefined): string => {
     const future = v2ByteArrays === undefined ? "" : `, future: { v2ByteArrays: ${String(v2ByteArrays)} }`;
@@ -401,6 +441,62 @@ describe("gtkx codegen (byte sequence representation)", () => {
             expect(runCli(project, ["codegen"]).status).toBe(0);
             expect(isStoreMarked(project)).toBe(false);
             expect(generatedModule(project, "gi", "byteseq", "byteseq.d.ts")).toContain("readSized(): number[]");
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx codegen (values a binding takes and hands back)", () => {
+    it("takes a JavaScript value wherever a GValue is expected", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-values-",
+            config: valueBoxConfig(undefined),
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            const emitted = generatedModule(project, "gi", "valuebox", "valuebox.d.ts");
+            const emittedBindings = generatedModule(project, "gi", "valuebox", "valuebox.js");
+            expect(VALUE_PARAMETER_DECLARATIONS.filter((text) => !emitted.includes(text))).toEqual([]);
+            expect(VALUE_PARAMETER_BINDINGS.filter((text) => !emittedBindings.includes(text))).toEqual([]);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it.each(VALUE_RETURN_CASES)("$title", ({ v2ValueReturns, declarations, bindings }) => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-value-returns-",
+            config: valueBoxConfig(v2ValueReturns),
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            const emitted = generatedModule(project, "gi", "valuebox", "valuebox.d.ts");
+            const emittedBindings = generatedModule(project, "gi", "valuebox", "valuebox.js");
+            expect(declarations.filter((text) => !emitted.includes(text))).toEqual([]);
+            expect(bindings.filter((text) => !emittedBindings.includes(text))).toEqual([]);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("regenerates a fresh store when the value return setting changes", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-value-returns-flip-",
+            config: valueBoxConfig(true),
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            markStore(project);
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            expect(isStoreMarked(project)).toBe(true);
+            writeFileSync(join(project.root, "gtkx.config.ts"), valueBoxConfig(undefined));
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            expect(isStoreMarked(project)).toBe(false);
+            expect(generatedModule(project, "gi", "valuebox", "valuebox.d.ts")).toContain("peek(): GObject.Value");
         } finally {
             removeCliProject(project);
         }

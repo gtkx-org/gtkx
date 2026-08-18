@@ -3,7 +3,7 @@ import { type AnyClass } from "@gtkx/utils";
 import { bind } from "./bind.js";
 import { boxedT, callbackT, sizedArrayT, structT, uint32T, uint64T, voidT } from "./descriptors.js";
 import { CLOSURE_SIZE, LIB, VALUE_SIZE, VALUE_T } from "./library.js";
-import { getClassType, getHandle, getWrapperClass, instanceClassName, wrapHandle } from "./registry.js";
+import { describeValueKind, getClassType, getHandle, getWrapperClass, wrapHandle } from "./registry.js";
 import { resolveBoxedType, typeIsA } from "./type.js";
 import { fromValue, getValueType, intoValue } from "./value.js";
 
@@ -70,18 +70,6 @@ const getNestedValue = (param: ExternalObject<Handle>): object | null =>
 const fromParamValue = (param: ExternalObject<Handle>): unknown =>
     getValueType(param) === resolveBoxedType(VALUE_T) ? getNestedValue(param) : fromValue(param);
 
-function describeValue(value: unknown): string {
-    if (value === null) {
-        return "null";
-    }
-
-    if (typeof value !== "object") {
-        return typeof value;
-    }
-
-    return instanceClassName(value);
-}
-
 function marshalFor(callback: ClosureCallback): (...args: unknown[]) => void {
     return (_closure: unknown, returnValue: unknown, _count: unknown, paramValues: unknown): void => {
         const values = paramValues as ExternalObject<Handle>[];
@@ -119,7 +107,7 @@ function toClosure(value: unknown): ExternalObject<Handle> {
         return getHandle(value);
     }
 
-    throw new ClosureMarshalError(`Cannot marshal ${describeValue(value)} into a GObject.Closure`);
+    throw new ClosureMarshalError(`Cannot marshal ${describeValueKind(value)} into a GObject.Closure`);
 }
 
 /** Same as {@link toClosure}, but passes a null or undefined value through as no closure at all. */

@@ -7,6 +7,8 @@ import { type Type, Value } from "../gobject.js";
  * @param gtype GType the value holds.
  * @param populate Called with the initialized value to write the contents.
  * @returns The populated value.
+ * @deprecated Since 1.3. Pass the value itself where a `Value` is expected, or build one with `new Value()`
+ * and `init` when it has to hold a GType inference cannot name. Removed in v2.
  */
 export const buildValue = (gtype: Type, populate: (value: Value) => void): Value => {
     const value = new Value();

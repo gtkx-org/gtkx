@@ -53,24 +53,32 @@ type SavedDragState = {
     previousOffset: DragInstancePatch["getOffset"];
 };
 
+const initValue = (gtype: GObject.Type, populate: (value: GObject.Value) => void): GObject.Value => {
+    const value = new GObject.Value();
+    value.init(gtype);
+    populate(value);
+
+    return value;
+};
+
 const buildDropValue = (content: DropContent): GObject.Value => {
     if (content instanceof GObject.Value) {
         return content;
     }
 
     if (typeof content === "string") {
-        return GObject.buildValue(GObject.TYPE_STRING, (v) => {
+        return initValue(GObject.TYPE_STRING, (v) => {
             v.setString(content);
         });
     }
 
     if (typeof content === "boolean") {
-        return GObject.buildValue(GObject.TYPE_BOOLEAN, (v) => {
+        return initValue(GObject.TYPE_BOOLEAN, (v) => {
             v.setBoolean(content);
         });
     }
 
-    return GObject.buildValue(GObject.TYPE_DOUBLE, (v) => {
+    return initValue(GObject.TYPE_DOUBLE, (v) => {
         v.setDouble(content);
     });
 };

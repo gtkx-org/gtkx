@@ -79,7 +79,15 @@ export {
     valueIsA,
 } from "./type.js";
 /** @public */
-export { getBoxedValue, setBoxedValue } from "./value.js";
+export {
+    fromValue,
+    getBoxedValue,
+    type JsValue,
+    setBoxedValue,
+    toValueHandle,
+    tryToValueHandle,
+    ValueMarshalError,
+} from "./value.js";
 /** @public */
 export { fromVariant, toVariant, type VariantValue } from "./variant.js";
 /** @public */

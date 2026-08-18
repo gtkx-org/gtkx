@@ -41,6 +41,8 @@ type CodegenRunnerOptions = {
     isForced?: boolean;
     /** Emits GIR byte sequences as `Uint8Array` rather than `number[]`; defaults to false. */
     isByteArrayTyped?: boolean;
+    /** Surfaces a `GObject.Value` a binding hands back as what it holds rather than as the value; defaults to false. */
+    isValueUnwrapped?: boolean;
 };
 
 /** What a `runCodegen` run produced. */
@@ -160,13 +162,15 @@ const emitStoresWithConfig = async (config: {
 }): Promise<StoreResult> => {
     const { options, gi, jsx, libraries, girPath } = config;
     const isByteArrayTyped = options.isByteArrayTyped === true;
+    const isValueUnwrapped = options.isValueUnwrapped === true;
+    const future = { isByteArrayTyped, isValueUnwrapped };
     let library: Library | undefined;
-    const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath, isByteArrayTyped));
-    const giInputs = { girFiles: [] as string[], libraries, girPath, isByteArrayTyped };
+    const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath, future));
+    const giInputs = { girFiles: [] as string[], libraries, girPath, ...future };
     const isGiRegenerated = options.isForced === true || !isGiStoreFresh(gi.storeDir, giInputs);
 
     const namespaces = isGiRegenerated
-        ? runGiCodegen(loadLibrary(), { gi, libraries, girPath, isByteArrayTyped })
+        ? runGiCodegen(loadLibrary(), { gi, libraries, girPath, ...future })
         : 0;
 
     if (jsx === undefined) {

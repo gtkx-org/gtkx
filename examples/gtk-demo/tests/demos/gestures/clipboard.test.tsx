@@ -369,8 +369,7 @@ describe("clipboardDemo color source", () => {
         await userEvent.click(copyButton);
         const rgbaType = GObject.typeFromName("GdkRGBA");
         await expectClipboardHolds(rgbaType);
-        const value = await getDefaultClipboard().readValueAsync(rgbaType, 0, null);
-        const rgba = value.getBoxed<Gdk.RGBA>();
+        const rgba = (await getDefaultClipboard().readValueAsync(rgbaType, 0, null)) as Gdk.RGBA;
         expect(rgba.red).toBeCloseTo(0.2, 2);
         expect(rgba.green).toBeCloseTo(0.4, 2);
         expect(rgba.blue).toBeCloseTo(0.6, 2);

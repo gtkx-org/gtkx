@@ -378,6 +378,18 @@ function instanceClassName(instance: object): string {
     return (instance as { constructor?: { name?: string } }).constructor?.name ?? "object";
 }
 
+function describeValueKind(value: unknown): string {
+    if (value === null) {
+        return "null";
+    }
+
+    if (typeof value !== "object") {
+        return typeof value;
+    }
+
+    return instanceClassName(value);
+}
+
 /** Returns the native handle bound to a wrapper instance, throwing if none is set. */
 function getHandle(instance: object): ExternalObject<Handle> {
     const handle = handleMap.get(instance);
@@ -420,6 +432,7 @@ function getInterfaceProperties(type: bigint): Record<string, InterfaceProperty>
 }
 
 export {
+    describeValueKind,
     getClassType,
     getInstanceType,
     markDerivedClass,

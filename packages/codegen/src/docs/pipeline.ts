@@ -39,6 +39,7 @@ type DocsOptions = {
     omittedProps?: OmittedProps;
     isForced?: boolean;
     isByteArrayTyped?: boolean;
+    isValueUnwrapped?: boolean;
 };
 
 type DocsManifest = {
@@ -260,6 +261,7 @@ const giInputs = (options: DocsOptions, girFiles: string[]): GiInputs => ({
     libraries: options.libraries,
     girPath: options.girPath,
     isByteArrayTyped: options.isByteArrayTyped === true,
+    isValueUnwrapped: options.isValueUnwrapped === true,
 });
 
 const assertOwnedOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): void => {
@@ -344,7 +346,12 @@ const writeDocs = (options: DocsOptions): DocsResult => {
     }
 
     assertOwnedOutDir(options, previous);
-    const library = Library.load(options.libraries, options.girPath, options.isByteArrayTyped === true);
+
+    const library = Library.load(options.libraries, options.girPath, {
+        isByteArrayTyped: options.isByteArrayTyped === true,
+        isValueUnwrapped: options.isValueUnwrapped === true,
+    });
+
     const { pages, namespaces } = generatePages(options, input.basePath, library);
     clearOutDir(options, previous);
     mkdirSync(options.outDir, { recursive: true });

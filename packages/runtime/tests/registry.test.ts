@@ -1,5 +1,6 @@
 import type { Type } from "@gtkx/gi/gobject";
 import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
 import { typeFromName, typeName } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getHandle, getInstanceType } from "@gtkx/runtime";
@@ -143,5 +144,24 @@ describe("interface wrapping via composed classes", () => {
         const first = searchEntry.getFirstAccessibleChild();
         const second = searchEntry.getFirstAccessibleChild();
         expect(first).toBe(second);
+    });
+});
+
+describe("a binding returning a fundamental instance", () => {
+    it("wraps it in the class registered for the type the instance carries", () => {
+        const expression = Gtk.ConstantExpression.newForValue("payload");
+        expect(expression).toBeInstanceOf(Gtk.ConstantExpression);
+        expect(expression.getValue()).toBe("payload");
+    });
+
+    it("wraps a property expression in its own class", () => {
+        const expression = Gtk.PropertyExpression.new(Gtk.Label.prototype.__type__, null, "label");
+        expect(expression).toBeInstanceOf(Gtk.PropertyExpression);
+    });
+
+    it("wraps a variant in its own class, which carries no type tag to read", () => {
+        const parsed = GLib.Variant.parse(null, "'text'", null, null);
+        expect(parsed).toBeInstanceOf(GLib.Variant);
+        expect(parsed.getString()).toEqual(["text", 4]);
     });
 });

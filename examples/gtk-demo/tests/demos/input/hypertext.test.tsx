@@ -1,6 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { act, fireEvent, getAllControllers, getController, screen, userEvent } from "@gtkx/testing";
+import { tryResolveExecutable } from "@gtkx/utils";
 import { describe, expect, it, vi } from "vitest";
 import { hypertextDemo } from "../../../src/demos/input/hypertext.js";
 import { readBufferText, renderDemo } from "../../test-utils.js";
@@ -203,7 +204,7 @@ describe("hypertextDemo speaker icon", () => {
         const gesture = getController(speaker, Gtk.GestureClick);
         await fireEvent(gesture, "pressed", 1, 0, 0);
         expect(spawnMock).toHaveBeenCalledTimes(1);
-        expect(spawnMock.mock.calls[0]?.[0]).toBe("espeak-ng");
+        expect(spawnMock.mock.calls[0]?.[0]).toBe(tryResolveExecutable("espeak-ng") ?? "espeak-ng");
         expect(spawnMock.mock.calls[0]?.[1]).toEqual(["tag"]);
     });
 });

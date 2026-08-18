@@ -26,6 +26,8 @@ type ApiReferenceOptions = {
     omittedProps?: OmittedProps;
     /** Describes GIR byte sequences as `Uint8Array` rather than `number[]`; defaults to false. */
     isByteArrayTyped?: boolean;
+    /** Describes what a `GObject.Value` a binding hands back holds, rather than the value itself; off by default. */
+    isValueUnwrapped?: boolean;
 };
 
 /** Narrows an `ApiReference.symbols` enumeration. */
@@ -373,7 +375,12 @@ class ApiReference {
         this.libraries = options.libraries;
         this.props = options.props ?? {};
         this.omittedProps = options.omittedProps ?? {};
-        this.library = Library.load(options.libraries, options.girPath, options.isByteArrayTyped === true);
+
+        this.library = Library.load(options.libraries, options.girPath, {
+            isByteArrayTyped: options.isByteArrayTyped === true,
+            isValueUnwrapped: options.isValueUnwrapped === true,
+        });
+
         this.elementContext = { library: this.library, linkFor: (): string | undefined => undefined };
         this.buildIndex();
     }

@@ -50,7 +50,7 @@ const INT32_MINIMUM = -2_147_483_648;
 const INT32_MAXIMUM = 2_147_483_647;
 const UINT32_MAXIMUM = 4_294_967_295;
 const INT64_MINIMUM = -(2n ** 63n);
-const INT64_MAXIMUM = 2n ** 63n - 1n;
+const INT64_MAXIMUM: bigint = 2n ** 63n - 1n;
 const UINT64_MAXIMUM = 2n ** 64n - 1n;
 
 const WRAPPED_FUNDAMENTALS: Set<bigint> = new Set([
@@ -225,9 +225,13 @@ function assertParamLayout(): void {
 export {
     getParamFlags,
     getParamValueType,
+    INT32_MAXIMUM,
+    INT32_MINIMUM,
+    INT64_MAXIMUM,
     isParamConstructOnly,
     isParamLaxlyValidated,
     isParamWritable,
+    resolveGtype,
     type ValueGuard,
     valueGuardFor,
     wasParamValueModified,

@@ -17,7 +17,7 @@ import {
     resolvePrerequisiteReference,
 } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
-import { renderTsType } from "../../analysis/ts-type.js";
+import { renderParameterTsType, renderTsType } from "../../analysis/ts-type.js";
 import { resolveInterfaces } from "../../gir/ancestry.js";
 import { isCallerAllocatedOut, isOutParameter } from "../../gir/parameter.js";
 import { renderJsDoc } from "../../writer/doc.js";
@@ -259,7 +259,7 @@ const renderResultType = (
 const renderSignalEmitEntry = (context: ModuleContext, signal: GirCallable): string => {
     const args = renderHandlerParameters(
         signal.parameters,
-        (ref, nullable) => renderTsType(context, ref, nullable),
+        (ref, nullable) => renderParameterTsType(context, ref, nullable),
         isCallerAllocatedOut,
     );
 

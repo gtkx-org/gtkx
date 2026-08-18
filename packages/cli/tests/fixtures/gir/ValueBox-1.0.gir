@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <package name="valuebox-1.0"/>
+  <namespace name="ValueBox"
+             version="1.0"
+             shared-library="libvaluebox.so.0"
+             c:identifier-prefixes="ValueBox"
+             c:symbol-prefixes="value_box">
+    <class name="Holder"
+           c:symbol-prefix="holder"
+           c:type="ValueBoxHolder"
+           parent="GObject.Object"
+           glib:type-name="ValueBoxHolder"
+           glib:get-type="value_box_holder_get_type">
+      <method name="store" c:identifier="value_box_holder_store">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Holder" c:type="ValueBoxHolder*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <type name="GObject.Value" c:type="const GValue*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="store_maybe" c:identifier="value_box_holder_store_maybe">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Holder" c:type="ValueBoxHolder*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none" nullable="1" allow-none="1">
+            <type name="GObject.Value" c:type="const GValue*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="store_all" c:identifier="value_box_holder_store_all">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Holder" c:type="ValueBoxHolder*"/>
+          </instance-parameter>
+          <parameter name="values" transfer-ownership="none">
+            <array length="1" c:type="const GValue*">
+              <type name="GObject.Value" c:type="GValue"/>
+            </array>
+          </parameter>
+          <parameter name="n_values" transfer-ownership="none">
+            <type name="gsize" c:type="gsize"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="peek" c:identifier="value_box_holder_peek">
+        <return-value transfer-ownership="none">
+          <type name="GObject.Value" c:type="const GValue*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Holder" c:type="ValueBoxHolder*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="fill" c:identifier="value_box_holder_fill">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Holder" c:type="ValueBoxHolder*"/>
+          </instance-parameter>
+          <parameter name="value" direction="out" caller-allocates="1" transfer-ownership="none">
+            <type name="GObject.Value" c:type="GValue*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+  </namespace>
+</repository>

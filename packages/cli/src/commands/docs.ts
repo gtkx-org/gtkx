@@ -79,6 +79,7 @@ const docs = defineCommand({
             omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
             isForced: args.force,
             isByteArrayTyped: config.future?.v2ByteArrays === true,
+            isValueUnwrapped: config.future?.v2ValueReturns === true,
         });
 
         if (!isRegenerated) {

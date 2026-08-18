@@ -12,6 +12,7 @@ import {
     type TypeId,
 } from "../gir/type-id.js";
 import { gtypeTsType } from "../store/gi/gtype-binding.js";
+import { isValueTypeName } from "../store/gi/param-marshal.js";
 import { isByteSequence } from "./type-shape.js";
 
 type ReferenceName = {
@@ -25,6 +26,11 @@ type TsTypeTarget = {
     byteArrayType: string;
     renderNamed: (resolved: GirType | undefined, name: ReferenceName) => string;
     renderGtype: () => string;
+};
+
+type ModuleTypeOptions = {
+    byteArrayType: string;
+    isValueWidened: boolean;
 };
 
 const BYTE_ARRAY_TYPE = "Uint8Array";
@@ -101,6 +107,8 @@ const renderContainerType = (
     return renderSequenceType(library, target, type);
 };
 
+const parenthesizeUnion = (rendered: string): string => (rendered.includes(" | ") ? `(${rendered})` : rendered);
+
 const renderSequenceType = (library: Library, target: TsTypeTarget, type: CArrayType | ListType): string => {
     if (type.kind === "carray" && hasUnknownArrayLength(type)) {
         return "number";
@@ -110,7 +118,7 @@ const renderSequenceType = (library: Library, target: TsTypeTarget, type: CArray
         return target.byteArrayType;
     }
 
-    return `${renderBaseType(library, target, type.element)}[]`;
+    return `${parenthesizeUnion(renderBaseType(library, target, type.element))}[]`;
 };
 
 const renderNamedType = (
@@ -128,11 +136,23 @@ const renderNamedType = (
 const getByteArrayType = (library: Library): string =>
     library.isByteArrayTyped ? BYTE_ARRAY_TYPE : NUMBER_ARRAY_TYPE;
 
-const moduleTarget = (context: ModuleContext, byteArrayType: string): TsTypeTarget => ({
+const renderNamedModuleType = (context: ModuleContext, name: ReferenceName, isValueWidened: boolean): string => {
+    const qualified = context.qualify(name.namespaceName, name.typeName);
+
+    if (!isValueWidened || !isValueTypeName(name)) {
+        return qualified;
+    }
+
+    context.addRuntimeTypeImport("JsValue");
+
+    return `${qualified} | JsValue`;
+};
+
+const moduleTarget = (context: ModuleContext, options: ModuleTypeOptions): TsTypeTarget => ({
     containerStyle: "map",
     callbackType: "((...args: any[]) => any)",
-    byteArrayType,
-    renderNamed: (_resolved, name) => context.qualify(name.namespaceName, name.typeName),
+    byteArrayType: options.byteArrayType,
+    renderNamed: (_resolved, name) => renderNamedModuleType(context, name, options.isValueWidened),
     renderGtype: () => gtypeTsType(context),
 });
 
@@ -140,18 +160,25 @@ const renderModuleType = (
     context: ModuleContext,
     ref: TypeId | undefined,
     isNullable: boolean,
-    byteArrayType: string,
+    options: ModuleTypeOptions,
 ): string => {
-    const base = renderBaseType(context.library, moduleTarget(context, byteArrayType), ref);
+    const base = renderBaseType(context.library, moduleTarget(context, options), ref);
 
     return isNullable ? `${base} | null` : base;
 };
 
 const renderTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string =>
-    renderModuleType(context, ref, isNullable, getByteArrayType(context.library));
+    renderModuleType(context, ref, isNullable, {
+        byteArrayType: getByteArrayType(context.library),
+        isValueWidened: false,
+    });
 
-const renderParameterTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string =>
-    renderModuleType(context, ref, isNullable, BYTE_ARRAY_INPUT_TYPE);
+const renderParameterTsType = (
+    context: ModuleContext,
+    ref: TypeId | undefined,
+    isNullable = false,
+    isValueWidened = true,
+): string => renderModuleType(context, ref, isNullable, { byteArrayType: BYTE_ARRAY_INPUT_TYPE, isValueWidened });
 
 const recordTypeTarget = (
     library: Library,
