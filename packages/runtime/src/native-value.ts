@@ -46,13 +46,13 @@ function boxedFromNative(descriptor: Descriptor, value: unknown): unknown {
 }
 
 function fundamentalWrapperClass(descriptor: FundamentalDescriptor, handle: ExternalObject<Handle>): AnyClass {
+    if (descriptor.wrapperClass !== undefined) {
+        return descriptor.wrapperClass;
+    }
+
     const declaredType = resolveDescriptorType(descriptor);
 
-    return (
-        descriptor.wrapperClass ??
-        resolveWrapperClass(getType(handle, declaredType)) ??
-        getWrapperClass(declaredType)
-    );
+    return resolveWrapperClass(getType(handle, declaredType)) ?? getWrapperClass(declaredType);
 }
 
 function fundamentalFromNative(descriptor: FundamentalDescriptor, value: unknown): unknown {

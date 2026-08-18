@@ -28,6 +28,7 @@ import {
     INT32_MINIMUM,
     INT64_MAXIMUM,
     INT64_MINIMUM,
+    isStringArray,
     resolveGtype,
     UINT64_MAXIMUM,
 } from "./param-spec.js";
@@ -474,9 +475,6 @@ function intoValue(value: ExternalObject<Handle>, jsValue: unknown): void {
     valueWriterFor(getValueType(value))(value, jsValue);
 }
 
-const isStringArray = (jsValue: unknown[]): boolean =>
-    [...jsValue].every((item) => typeof item === "string");
-
 const numberValueGType = (jsValue: number): bigint =>
     Number.isSafeInteger(jsValue) && jsValue >= INT32_MINIMUM && jsValue <= INT32_MAXIMUM ? TYPE_INT : TYPE_DOUBLE;
 
@@ -486,13 +484,15 @@ const wideValueGType = (jsValue: bigint): bigint => (jsValue > INT64_MAXIMUM ? T
 const bigintValueGType = (jsValue: bigint): bigint =>
     jsValue < INT64_MINIMUM || jsValue > UINT64_MAXIMUM ? TYPE_INVALID : wideValueGType(jsValue);
 
-const wrapperValueGType = (jsValue: object): bigint =>
-    Array.isArray(jsValue) ? arrayValueGType(jsValue) : resolveGtype(jsValue);
+const objectValueGType = (jsValue: object | null, wrapperType: bigint): bigint => {
+    if (jsValue === null) {
+        return TYPE_INVALID;
+    }
 
-const objectValueGType = (jsValue: object | null): bigint =>
-    jsValue === null ? TYPE_INVALID : wrapperValueGType(jsValue);
+    return Array.isArray(jsValue) ? arrayValueGType(jsValue) : wrapperType;
+};
 
-function inferValueGType(jsValue: unknown): bigint {
+function inferValueGType(jsValue: unknown, wrapperType: bigint): bigint {
     switch (typeof jsValue) {
         case "string": {
             return TYPE_STRING;
@@ -507,7 +507,7 @@ function inferValueGType(jsValue: unknown): bigint {
             return bigintValueGType(jsValue);
         }
         case "object": {
-            return objectValueGType(jsValue);
+            return objectValueGType(jsValue, wrapperType);
         }
         case "function":
         case "symbol":
@@ -522,8 +522,8 @@ const marshalFailure = (jsValue: unknown): string =>
         ? `Cannot marshal ${String(jsValue)} into a GObject.Value: outside the range of gint64 and guint64`
         : `Cannot marshal ${describeValueKind(jsValue)} into a GObject.Value`;
 
-const isValueInstance = (jsValue: unknown): boolean =>
-    typeof jsValue === "object" && jsValue !== null && typeIsA(resolveGtype(jsValue), resolveBoxedType(VALUE_T));
+const wrapperGType = (jsValue: unknown): bigint =>
+    typeof jsValue === "object" && jsValue !== null ? resolveGtype(jsValue) : TYPE_INVALID;
 
 /**
  * Marshals a value passed where a `GObject.Value` is expected into a value handle: an already-built
@@ -533,11 +533,13 @@ const isValueInstance = (jsValue: unknown): boolean =>
  * @throws {ValueMarshalError} When no GType can be inferred from the value.
  */
 function toValueHandle(jsValue: unknown): ExternalObject<Handle> {
-    if (isValueInstance(jsValue)) {
+    const wrapperType = wrapperGType(jsValue);
+
+    if (typeIsA(wrapperType, resolveBoxedType(VALUE_T))) {
         return getHandle(jsValue as object);
     }
 
-    const type = inferValueGType(jsValue);
+    const type = inferValueGType(jsValue, wrapperType);
 
     if (type === TYPE_INVALID) {
         throw new ValueMarshalError(marshalFailure(jsValue));

@@ -77,12 +77,14 @@ const VALUE_PARAMETER_DECLARATIONS = [
     "store(value: GObject.Value | JsValue): void",
     "storeMaybe(value: GObject.Value | JsValue | null): void",
     "storeAll(values: (GObject.Value | JsValue)[]): void",
+    "fillInPlace(value: GObject.Value): void",
 ];
 
 const VALUE_PARAMETER_BINDINGS = [
     "valueBoxHolderStore(getHandle(this), toValueHandle(value))",
     "valueBoxHolderStoreMaybe(getHandle(this), tryToValueHandle(value))",
     "values.map((item) => toValueHandle(item))",
+    "valueBoxHolderFillInPlace(getHandle(this), getHandle(value))",
 ];
 
 const VALUE_RETURN_CASES: ValueReturnCase[] = [

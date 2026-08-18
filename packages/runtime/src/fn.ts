@@ -1,4 +1,4 @@
-import type { CallDescriptor, Descriptor, ExternalObject, Ref } from "@gtkx/native";
+import type { CallDescriptor, Descriptor, ExternalObject, Handle, Ref } from "@gtkx/native";
 import { call, bind as nativeBind } from "@gtkx/native";
 import type { RefSeeds } from "./vfunc-seeds.js";
 import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, isUnpackedArg, requiresInputArg } from "./arg.js";
@@ -9,7 +9,8 @@ import { LIB } from "./library.js";
 import { fromNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { hasSurfacedPrimary, packTupleResult } from "./tuple.js";
-import { fromValue } from "./value.js";
+import { TYPE_INVALID } from "./type.js";
+import { fromValue, getValueType } from "./value.js";
 
 /** The signature a native function is bound against. */
 type FnSpec = {
@@ -113,12 +114,22 @@ const buildNativeValue = (spec: ArgSpec, inputs: unknown[], seeds: RefSeeds | un
 const buildNativeValues = (plans: ArgSpec[], inputs: unknown[], seeds: RefSeeds | undefined): unknown[] =>
     plans.map((plan) => buildNativeValue(plan, inputs, seeds));
 
-const unpackValue = (value: unknown): unknown => (value == null ? null : fromValue(getHandle(value)));
+const unpackValueHandle = (handle: ExternalObject<Handle> | null): unknown => {
+    if (handle === null || getValueType(handle) === TYPE_INVALID) {
+        return null;
+    }
+
+    return fromValue(handle);
+};
 
 const readCallerAllocated = (plan: ArgSpec, inputs: unknown[]): unknown => {
     const wrapper = inputs[plan.inputIndex];
 
-    return plan.isUnpacked ? unpackValue(wrapper) : wrapper;
+    if (!plan.isUnpacked) {
+        return wrapper;
+    }
+
+    return unpackValueHandle(wrapper == null ? null : getHandle(wrapper));
 };
 
 const readOutParams = (outPlans: ArgSpec[], inputs: unknown[], nativeValues: unknown[]): unknown[] => {
@@ -152,7 +163,7 @@ const resizeInputs = (inputs: unknown[], argCount: number): unknown[] => {
 
 const returnReader = (spec: FnSpec): ((nativeResult: unknown) => unknown) =>
     spec.isReturnUnpacked === true
-        ? (nativeResult) => unpackValue(fromNative(spec.returns, nativeResult))
+        ? (nativeResult) => unpackValueHandle((nativeResult ?? null) as ExternalObject<Handle> | null)
         : (nativeResult) => fromNative(spec.returns, nativeResult);
 
 const directCallable = (

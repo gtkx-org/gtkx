@@ -165,3 +165,9 @@ describe("a binding returning a fundamental instance", () => {
         expect(parsed.getString()).toEqual(["text", 4]);
     });
 });
+
+describe("a fundamental descriptor that names its wrapper class", () => {
+    it("wraps without resolving a GType the descriptor does not carry", () => {
+        expect(GLib.AsyncQueue.new()).toBeInstanceOf(GLib.AsyncQueue);
+    });
+});

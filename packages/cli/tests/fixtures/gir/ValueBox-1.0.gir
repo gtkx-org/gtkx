@@ -61,6 +61,19 @@
           </parameter>
         </parameters>
       </method>
+      <method name="fill_in_place" c:identifier="value_box_holder_fill_in_place">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Holder" c:type="ValueBoxHolder*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <type name="GObject.Value" c:type="GValue*"/>
+          </parameter>
+        </parameters>
+      </method>
       <method name="peek" c:identifier="value_box_holder_peek">
         <return-value transfer-ownership="none">
           <type name="GObject.Value" c:type="const GValue*"/>

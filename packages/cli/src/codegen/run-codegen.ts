@@ -77,7 +77,8 @@ const removeShadowingStores = (cwd: string): void => {
 const codegenOptions = ({ store, libraries, girPath, elements, ...future }: CodegenOptionsInput) => ({
     libraries,
     girPath,
-    ...future,
+    isByteArrayTyped: future.isByteArrayTyped,
+    isValueUnwrapped: future.isValueUnwrapped,
     gi: {
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,

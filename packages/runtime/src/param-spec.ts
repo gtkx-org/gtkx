@@ -113,8 +113,18 @@ function isStringValue(value: unknown): boolean {
     return value == null || typeof value === "string";
 }
 
+function isStringArray(value: unknown[]): boolean {
+    for (const item of value) {
+        if (typeof item !== "string") {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 function isStrvValue(value: unknown): boolean {
-    return value == null || (Array.isArray(value) && value.every((item) => typeof item === "string"));
+    return value == null || (Array.isArray(value) && isStringArray(value));
 }
 
 function isNumberValue(value: unknown): boolean {
@@ -230,6 +240,7 @@ export {
     INT64_MAXIMUM,
     INT64_MINIMUM,
     isParamConstructOnly,
+    isStringArray,
     isParamLaxlyValidated,
     isParamWritable,
     resolveGtype,
