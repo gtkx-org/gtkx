@@ -84,6 +84,7 @@ mod tests {
     use glib::translate::IntoGlib as _;
 
     use super::*;
+    use crate::handle::Fundamental;
 
     #[test]
     fn returns_zero_for_a_null_object_handle() {
@@ -126,6 +127,38 @@ mod tests {
             let declared = glib::Variant::static_type().into_glib() as u64;
 
             assert_eq!(fundamental_type(&handle, declared), 0);
+        });
+    }
+
+    #[test]
+    fn reads_the_concrete_type_of_a_fundamental_instance() {
+        test_support::run(|| {
+            let pspec = test_support::make_bool_param_spec();
+            let handle = Handle::from(unsafe { Fundamental::from_glib_none(pspec, None, None) });
+            let declared = gobject_ffi::G_TYPE_PARAM;
+            assert_eq!(
+                fundamental_type(&handle, declared as u64),
+                glib::ParamSpecBoolean::static_type().into_glib()
+            );
+            unsafe {
+                gobject_ffi::g_param_spec_unref(pspec.cast());
+            }
+        });
+    }
+
+    #[test]
+    fn reads_no_fundamental_type_from_a_handle_whose_borrow_has_ended() {
+        test_support::run(|| {
+            let pspec = test_support::make_bool_param_spec();
+            let handle = Handle::from(unsafe { Fundamental::from_glib_none(pspec, None, None) });
+            handle.invalidate();
+            assert_eq!(
+                fundamental_type(&handle, gobject_ffi::G_TYPE_PARAM as u64),
+                0
+            );
+            unsafe {
+                gobject_ffi::g_param_spec_unref(pspec.cast());
+            }
         });
     }
 
