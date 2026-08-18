@@ -42,6 +42,7 @@ fn rgba_boxed_type_of(ownership: Ownership) -> Codec {
 
 fn gvariant_fundamental_type_of(ownership: Ownership) -> Codec {
     Codec::Fundamental(FundamentalCodec {
+        caller_allocated: false,
         ownership,
         shared_library: "libglib-2.0.so.0".to_string(),
         ref_fn_name: "g_variant_ref_sink".to_string(),

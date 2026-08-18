@@ -755,7 +755,7 @@ fn a_closure_notify_destroy_that_lands_mid_invocation_is_deferred_until_it_retur
     });
 }
 
-fn assert_transfer_full_return_yields_null_and_reports(return_codec: Codec, expected: &str) {
+fn assert_transfer_full_return_yields_null(return_codec: Codec) -> String {
     let env = helpers::fake_env();
     let backing = unsafe { glib::ffi::g_malloc0(16) };
     let js_fn = napi_mock::fake_function(move |_| {
@@ -781,10 +781,17 @@ fn assert_transfer_full_return_yields_null_and_reports(return_codec: Codec, expe
         returned.is_null(),
         "the C caller must not receive a pointer whose ownership never transferred"
     );
-    assert!(single_fatal_message().contains(expected));
     assert!(napi_mock::pending_exception().is_none());
 
+    let message = single_fatal_message();
+
     unsafe { glib::ffi::g_free(backing) };
+
+    message
+}
+
+fn assert_transfer_full_return_yields_null_and_reports(return_codec: Codec, expected: &str) {
+    assert!(assert_transfer_full_return_yields_null(return_codec).contains(expected));
 }
 
 #[test]
@@ -811,6 +818,7 @@ fn a_transfer_full_fundamental_return_with_unresolvable_fns_yields_null_and_repo
     helpers::run(|| {
         assert_transfer_full_return_yields_null_and_reports(
             Codec::Fundamental(FundamentalCodec {
+                caller_allocated: false,
                 ownership: Ownership::Full,
                 shared_library: "libgobject-2.0.so.0".to_owned(),
                 ref_fn_name: "gtkx_missing_fundamental_ref".to_owned(),
@@ -822,18 +830,26 @@ fn a_transfer_full_fundamental_return_with_unresolvable_fns_yields_null_and_repo
     });
 }
 
+fn struct_return_codec(size: Option<usize>) -> Codec {
+    Codec::Struct(StructCodec {
+        ownership: Ownership::Full,
+        size,
+        caller_allocated: false,
+        inline: false,
+    })
+}
+
 #[test]
 fn a_transfer_full_struct_return_with_an_unknown_size_yields_null_and_reports() {
     helpers::run(|| {
-        assert_transfer_full_return_yields_null_and_reports(
-            Codec::Struct(StructCodec {
-                ownership: Ownership::Full,
-                size: None,
-                caller_allocated: false,
-                inline: false,
-            }),
-            "its size is unknown",
-        );
+        assert_transfer_full_return_yields_null(struct_return_codec(None));
+    });
+}
+
+#[test]
+fn a_transfer_full_struct_return_with_a_known_size_yields_null_and_reports() {
+    helpers::run(|| {
+        assert_transfer_full_return_yields_null(struct_return_codec(Some(16)));
     });
 }
 

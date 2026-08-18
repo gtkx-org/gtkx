@@ -816,7 +816,7 @@ Context.prototype.copyClipRectangleList = function (): Array<{
         cairoRectangleListDestroy(listHandle);
         return [];
     }
-    const rectsArray = read(listHandle, t.struct("full", { size: numRectangles * 32 }), 8) as ExternalObject<Handle>;
+    const rectsArray = read(listHandle, t.struct("borrowed", { size: numRectangles * 32 }), 8) as ExternalObject<Handle>;
     const result: Array<{ x: number; y: number; width: number; height: number }> = [];
 
     for (let i = 0; i < numRectangles; i++) {

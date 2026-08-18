@@ -77,6 +77,11 @@ type RecordPlacement = {
     isInline?: boolean;
 };
 
+type RecordLayout = {
+    isCallerAllocated: boolean;
+    isInline: boolean;
+};
+
 type FundamentalDescriptor = {
     lib: string;
     refFunc: string;
@@ -84,6 +89,7 @@ type FundamentalDescriptor = {
     typeName: string | undefined;
     ownership: Ownership;
     wrapperClass?: string | undefined;
+    isCallerAllocated?: boolean | undefined;
     isInline?: boolean | undefined;
 };
 
@@ -103,6 +109,7 @@ type FundamentalRecordOptions = {
     unrefFunc: string;
     ownership: Ownership;
     wrapperClass: string | undefined;
+    isCallerAllocated: boolean;
     isInline: boolean;
 };
 
@@ -401,12 +408,13 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership):
 };
 
 const renderFundamental = (descriptor: FundamentalDescriptor): string => {
-    const { lib, refFunc, unrefFunc, typeName, ownership, wrapperClass, isInline } = descriptor;
+    const { lib, refFunc, unrefFunc, typeName, ownership, wrapperClass, isCallerAllocated, isInline } = descriptor;
 
     return tFundamental(lib, refFunc, unrefFunc, {
         ownership,
         typeName,
         wrapperClass,
+        isCallerAllocated,
         isInline,
     });
 };
@@ -529,6 +537,11 @@ const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): s
     return tObject("borrowed");
 };
 
+const recordLayout = (placement: RecordPlacement): RecordLayout => ({
+    isCallerAllocated: placement.isCallerAllocated ?? false,
+    isInline: placement.isInline ?? false,
+});
+
 const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; unrefFunc: string | undefined } => ({
     refFunc: record.glibRefFunc ?? record.copyFunc,
     unrefFunc: record.glibUnrefFunc ?? record.freeFunc,
@@ -563,7 +576,7 @@ const structExpression = (
 };
 
 const fundamentalRecordExpression = (options: FundamentalRecordOptions): string => {
-    const { resolved, lib, refFunc, unrefFunc, ownership, wrapperClass, isInline } = options;
+    const { resolved, lib, refFunc, unrefFunc, ownership, wrapperClass, isCallerAllocated, isInline } = options;
 
     return renderFundamental({
         lib,
@@ -572,6 +585,7 @@ const fundamentalRecordExpression = (options: FundamentalRecordOptions): string 
         typeName: resolved.value.glibTypeName,
         ownership,
         wrapperClass,
+        isCallerAllocated,
         isInline,
     });
 };
@@ -606,17 +620,24 @@ const plainRecordExpression = (
     placement: RecordPlacement,
 ): string => {
     const record = resolved.value;
-
-    const layout = {
-        isCallerAllocated: placement.isCallerAllocated ?? false,
-        isInline: placement.isInline ?? false,
-    };
+    const layout = recordLayout(placement);
 
     if (record.glibGetType === undefined) {
         return structExpression(context, resolved, ownership, layout);
     }
 
     return boxedRecordExpression({ context, resolved, ownership, ...layout, typeFnName: record.glibGetType });
+};
+
+const isPlainStruct = (resolved: Extract<EntityType, { kind: "record" }>): boolean => {
+    const record = resolved.value;
+    const { refFunc, unrefFunc } = recordRefPair(record);
+
+    if (refFunc !== undefined && unrefFunc !== undefined && resolved.namespace.sharedLibrary !== undefined) {
+        return false;
+    }
+
+    return record.glibGetType === undefined;
 };
 
 const recordExpression = (
@@ -641,7 +662,7 @@ const recordExpression = (
             unrefFunc,
             ownership,
             wrapperClass,
-            isInline: placement.isInline ?? false,
+            ...recordLayout(placement),
         });
     }
 
@@ -789,6 +810,8 @@ const aliasExpression = (
 };
 
 export {
+    isPlainStruct,
+    transferOwnership,
     isInlineCallbackRef,
     isSkippedPrimaryReturn,
     isVoidPrimaryReturn,

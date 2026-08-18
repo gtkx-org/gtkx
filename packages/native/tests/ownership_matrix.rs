@@ -186,6 +186,7 @@ fn struct_of(ownership: Ownership, size: Option<u32>, is_inline: bool) -> Descri
 
 fn fundamental(ownership: Ownership, ref_fn_name: &str, is_inline: bool) -> Descriptor {
     Descriptor::Fundamental {
+        is_caller_allocated: None,
         ownership,
         shared_library: GOBJECT.to_owned(),
         ref_fn_name: ref_fn_name.to_owned(),
@@ -335,6 +336,18 @@ fn d_fundamental_borrowed() -> Descriptor {
 
 fn d_fundamental_full() -> Descriptor {
     fundamental(Ownership::Full, "g_param_spec_ref", false)
+}
+
+fn d_fundamental_caller_allocated() -> Descriptor {
+    Descriptor::Fundamental {
+        is_caller_allocated: Some(true),
+        ownership: Ownership::Borrowed,
+        shared_library: GOBJECT.to_owned(),
+        ref_fn_name: "g_param_spec_ref".to_owned(),
+        unref_fn_name: "g_param_spec_unref".to_owned(),
+        type_name: None,
+        is_inline: Some(false),
+    }
 }
 
 fn d_fundamental_inline() -> Descriptor {
@@ -756,7 +769,7 @@ const CELLS: &[Cell] = &[
         check: writes(
             Subject::Block,
             SlotInit::Uninitialized,
-            stores(Stored::Copy, false, 0, 0),
+            Effect::Refuses("not registered as a boxed type"),
         ),
     },
     Cell {
@@ -1070,7 +1083,7 @@ const CELLS: &[Cell] = &[
             Subject::Rgba,
             Ownership::Full,
             Via::PointerSlot,
-            decodes(Stored::Copy, 0, 0),
+            decodes(Stored::Alias, 0, -1),
         ),
     },
     Cell {
@@ -1170,7 +1183,7 @@ const CELLS: &[Cell] = &[
         ),
     },
     Cell {
-        name: "fundamental · transfer-full · read refs on top of the transfer",
+        name: "fundamental · transfer-full · callback arg read",
         emitted: 237,
         on_path: 0,
         descriptor: d_fundamental_full,
@@ -1178,7 +1191,19 @@ const CELLS: &[Cell] = &[
             Subject::ParamSpec,
             Ownership::Full,
             Via::PointerSlot,
-            decodes(Stored::Alias, 1, 0),
+            decodes(Stored::Alias, 0, -1),
+        ),
+    },
+    Cell {
+        name: "fundamental · caller-allocated · out read",
+        emitted: 0,
+        on_path: 0,
+        descriptor: d_fundamental_caller_allocated,
+        check: reads(
+            Subject::ParamSpec,
+            Ownership::Borrowed,
+            Via::PointerSlot,
+            decodes(Stored::Alias, 0, 0),
         ),
     },
     Cell {

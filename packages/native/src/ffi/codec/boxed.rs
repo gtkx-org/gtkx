@@ -69,6 +69,17 @@ impl BoxedCodec {
         }
     }
 
+    fn adopted(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
+        let Some(type_) = self.type_()? else {
+            bail!(
+                "Cannot take ownership of boxed type '{}': no type available, so nothing names the \
+                 function that would free it",
+                self.type_name
+            );
+        };
+        Ok(Boxed::from_glib_full(type_, ptr).into())
+    }
+
     fn copied(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
         let Some(type_) = self.type_()? else {
             bail!(
@@ -179,12 +190,15 @@ impl Decoder for BoxedCodec {
         })
     }
 
-    read_value_non_null!(|self, env, ptr, _transfer| {
+    read_value_non_null!(|self, env, ptr, transfer| {
         if self.free_fn_name.is_some() || self.caller_allocated {
             return Ok(value::handle_to_unknown(
                 env,
                 Handle::from_glib_borrow(ptr),
             )?);
+        }
+        if transfer.is_full() {
+            return Ok(value::handle_to_unknown(env, self.adopted(ptr)?)?);
         }
         Ok(value::handle_to_unknown(env, self.copied(ptr)?)?)
     });

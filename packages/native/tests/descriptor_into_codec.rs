@@ -133,6 +133,7 @@ fn string_object_boxed_struct_and_fundamental_descriptors_map_to_their_codecs() 
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_fn_name: "g_param_spec_ref".to_owned(),
         unref_fn_name: "g_param_spec_unref".to_owned(),
+        is_caller_allocated: None,
         is_inline: None,
         type_name: None,
     };

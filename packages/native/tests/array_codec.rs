@@ -117,6 +117,7 @@ fn gobject_item_codec(ownership: Ownership) -> Codec {
 
 fn unresolvable_fundamental_item_codec() -> Codec {
     Codec::Fundamental(FundamentalCodec {
+        caller_allocated: false,
         ownership: Ownership::Full,
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_fn_name: "no_such_array_ref_symbol_12345".to_owned(),

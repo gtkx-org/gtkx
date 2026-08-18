@@ -2,6 +2,9 @@ use anyhow::bail;
 
 use super::prelude::*;
 use crate::handle::Handle;
+use crate::host::error_reporter::ReportErr as _;
+
+const LENT_ONLY: &str = "a plain struct is not registered as a boxed type, so nothing names the function that would free it: it can only be lent (transfer none), never handed over";
 
 #[derive(Debug, Clone)]
 pub struct StructCodec {
@@ -16,26 +19,24 @@ impl Encoder for StructCodec {
         "Struct object"
     }
 
-    fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
-        if self.ownership.is_borrowed() || self.size.is_none() {
-            return None;
-        }
-        Some(ffi::ReleaseKind::GFree)
-    }
-
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
-        ref_for_full_transfer(self.ownership, ptr, |ptr| {
-            let Some(size) = self.size else {
-                bail!(
-                    "Cannot transfer ownership of struct: its size is unknown, so no copy can be made for the callee"
-                );
-            };
-            Ok(unsafe { glib::ffi::g_memdup2(ptr.cast_const(), size) })
-        })
+        self.ensure_lent()?;
+
+        Ok(ptr)
     }
 }
 
 impl StructCodec {
+    fn ensure_lent(&self) -> anyhow::Result<()> {
+        Self::ensure_lent_transfer(self.ownership)
+    }
+
+    fn ensure_lent_transfer(transfer: Ownership) -> anyhow::Result<()> {
+        anyhow::ensure!(transfer.is_borrowed(), "{LENT_ONLY}");
+
+        Ok(())
+    }
+
     fn borrow_or_copy(&self, ptr: *mut c_void) -> Handle {
         self.size.map_or_else(
             || Handle::from_glib_borrow(ptr),
@@ -63,7 +64,6 @@ impl StructCodec {
     }
 
     fn write_pointer_slot(
-        &self,
         slot: ffi::Slot,
         value: Unknown<'_>,
         init: SlotInit,
@@ -75,12 +75,7 @@ impl StructCodec {
             return Ok(None);
         }
         if !init.is_initialized() {
-            let out_ptr = if self.ownership.is_full() {
-                unsafe { glib::ffi::g_memdup2(src_ptr.cast_const(), size) }
-            } else {
-                src_ptr
-            };
-            unsafe { slot.store(out_ptr) };
+            unsafe { slot.store(src_ptr) };
             return Ok(None);
         }
         let dest_ptr = unsafe { slot.load() };
@@ -100,17 +95,19 @@ impl Decoder for StructCodec {
     }
 
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
-        self.decode_call_non_null(env, stash, "Struct", |struct_ptr| {
-            let handle = match self.ownership {
-                Ownership::Full => Handle::owned_struct(struct_ptr),
-                Ownership::Borrowed => self.borrow_or_copy(struct_ptr),
-            };
+        self.ensure_lent()?;
 
-            Ok(value::handle_to_unknown(env, handle)?)
+        self.decode_call_non_null(env, stash, "Struct", |struct_ptr| {
+            Ok(value::handle_to_unknown(
+                env,
+                self.borrow_or_copy(struct_ptr),
+            )?)
         })
     }
 
-    read_value_non_null!(|self, env, ptr, _transfer| {
+    read_value_non_null!(|self, env, ptr, transfer| {
+        Self::ensure_lent_transfer(transfer)?;
+
         let handle = if self.caller_allocated {
             Handle::from_glib_borrow(ptr)
         } else {
@@ -122,7 +119,19 @@ impl Decoder for StructCodec {
 }
 
 impl PtrWriter for StructCodec {
-    write_return_transferred!("Struct return: cannot transfer ownership");
+    fn write_return_to_ptr(
+        &self,
+        _env: &Env,
+        ret: ffi::Slot,
+        value: &std::result::Result<Unknown<'_>, ()>,
+    ) {
+        if self.ensure_lent().report_err("Struct return").is_none() {
+            unsafe { ret.store(std::ptr::null_mut()) };
+            return;
+        }
+
+        write_return_object_ptr(ret, value, |ptr| ptr);
+    }
 
     fn write_value_to_ptr(
         &self,
@@ -134,8 +143,11 @@ impl PtrWriter for StructCodec {
         if self.inline {
             return self.write_inline(slot, value);
         }
+
+        self.ensure_lent()?;
+
         match self.size {
-            Some(size) => self.write_pointer_slot(slot, value, init, size),
+            Some(size) => Self::write_pointer_slot(slot, value, init, size),
             None => write_object_ptr(slot, value, "Struct field write"),
         }
     }

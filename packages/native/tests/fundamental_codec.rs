@@ -30,6 +30,7 @@ fn fundamental_with_fns(
     unref_fn_name: &str,
 ) -> FundamentalCodec {
     FundamentalCodec {
+        caller_allocated: false,
         ownership,
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_fn_name: ref_fn_name.to_owned(),
@@ -48,6 +49,13 @@ fn fundamental_without_ref_fn(ownership: Ownership) -> FundamentalCodec {
 
 fn fundamental_without_unref_fn(ownership: Ownership) -> FundamentalCodec {
     fundamental_with_fns(ownership, "g_param_spec_ref", "")
+}
+
+fn fundamental_caller_allocated() -> FundamentalCodec {
+    FundamentalCodec {
+        caller_allocated: true,
+        ..fundamental(Ownership::Borrowed)
+    }
 }
 
 fn fundamental_with_unresolvable_symbols(ownership: Ownership) -> FundamentalCodec {
@@ -325,6 +333,84 @@ fn decode_full_takes_ownership() {
             .decode(&env, &ffi::Stash::Ptr(pspec))
             .expect("full decode should succeed");
         assert!(napi_mock::read_external(decoded.raw()).is_some());
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before);
+    });
+}
+
+fn read_callback_arg<'e>(
+    env: &'e Env,
+    codec: &FundamentalCodec,
+    ptr: *mut c_void,
+    transfer: Ownership,
+) -> Unknown<'e> {
+    let slot: *mut c_void = ptr;
+
+    unsafe {
+        Decoder::read(
+            codec,
+            env,
+            ReadCtx::slot((&raw const slot).cast::<c_void>(), "callback arg")
+                .with_transfer(transfer),
+        )
+    }
+    .expect("a fundamental callback argument reads")
+}
+
+#[test]
+fn a_caller_allocated_out_parameter_aliases_the_storage_it_was_given() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let pspec = create_param_spec();
+        let before = unsafe { param_spec_refcount(pspec) };
+
+        let value = read_callback_arg(
+            &env,
+            &fundamental_caller_allocated(),
+            pspec,
+            Ownership::Borrowed,
+        );
+
+        assert_eq!(
+            native::value::handle_ptr(value, "caller-allocated out").expect("a pointer"),
+            pspec
+        );
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before);
+
+        release_param_spec_refs(pspec, 1);
+    });
+}
+
+#[test]
+fn a_lent_callback_argument_takes_its_own_reference() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let pspec = create_param_spec();
+        let before = unsafe { param_spec_refcount(pspec) };
+
+        let value = read_callback_arg(
+            &env,
+            &fundamental(Ownership::Borrowed),
+            pspec,
+            Ownership::Borrowed,
+        );
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before + 1);
+
+        napi_mock::collect(value.raw());
+        assert_eq!(unsafe { param_spec_refcount(pspec) }, before);
+
+        release_param_spec_refs(pspec, 1);
+    });
+}
+
+#[test]
+fn a_handed_over_callback_argument_adopts_the_reference_it_was_given() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let pspec = create_param_spec();
+        let before = unsafe { param_spec_refcount(pspec) };
+
+        read_callback_arg(&env, &fundamental(Ownership::Full), pspec, Ownership::Full);
+
         assert_eq!(unsafe { param_spec_refcount(pspec) }, before);
     });
 }

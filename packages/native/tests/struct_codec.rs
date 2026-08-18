@@ -113,68 +113,96 @@ fn write_return_object_ptr_transfers_non_null_pointer() {
     });
 }
 
-fn encode_full_sized_copy(env: &Env, original: *mut c_void) -> ffi::Stash {
-    let encoded = struct_codec(Ownership::Full, Some(size_of::<u64>()))
-        .encode(env, handle_value_of(env, original))
-        .expect("full encode should succeed");
-    let copy = encoded
-        .as_ptr("struct argument")
-        .expect("encoded stash should carry a pointer");
-    assert!(!copy.is_null());
-    assert_ne!(copy, original);
-    assert_eq!(unsafe { *(copy as *const u64) }, unsafe {
-        *(original as *const u64)
-    });
-    encoded
-}
-
-#[test]
-fn encode_full_sized_frees_copy_when_call_never_happens() {
+fn assert_transfer_full_encode_is_refused(size: Option<usize>) {
     test_support::run(|| {
         let env = test_support::fake_env();
         let source: u64 = 0x5AFE_C0DE_5AFE_C0DE;
         let original = &raw const source as *mut c_void;
 
-        let encoded = encode_full_sized_copy(&env, original);
-        let copy = encoded.as_ptr("struct argument").unwrap();
-
-        drain_g_freed();
-        drop(encoded);
-        let frees_of_copy = drain_g_freed()
-            .iter()
-            .filter(|&&ptr| ptr == copy as usize)
-            .count();
-        assert_eq!(
-            frees_of_copy, 1,
-            "dropping an undisarmed stash must free the transfer copy exactly once"
+        assert!(
+            struct_codec(Ownership::Full, size)
+                .encode(&env, handle_value_of(&env, original))
+                .is_err()
         );
+        assert_eq!(source, 0x5AFE_C0DE_5AFE_C0DE);
     });
 }
 
 #[test]
-fn encode_full_sized_disarm_leaves_copy_for_callee() {
+fn encode_transfer_full_is_refused_for_a_sized_struct() {
+    assert_transfer_full_encode_is_refused(Some(size_of::<u64>()));
+}
+
+#[test]
+fn encode_transfer_full_is_refused_for_an_unsized_struct() {
+    assert_transfer_full_encode_is_refused(None);
+}
+
+#[test]
+fn encode_borrowed_lends_the_pointer_it_was_given() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let source: u64 = 0xFEED_FACE_FEED_FACE;
         let original = &raw const source as *mut c_void;
 
-        let encoded = encode_full_sized_copy(&env, original);
-        let copy = encoded.as_ptr("struct argument").unwrap();
+        let encoded = struct_codec(Ownership::Borrowed, Some(size_of::<u64>()))
+            .encode(&env, handle_value_of(&env, original))
+            .expect("a transfer-none struct argument is lent as it stands");
+
+        assert_eq!(
+            encoded.as_ptr("struct argument").expect("a pointer"),
+            original
+        );
 
         drain_g_freed();
-        encoded.disarm_pending_transfer();
         drop(encoded);
-        assert!(
-            !drain_g_freed().contains(&(copy as usize)),
-            "a disarmed stash must leave the callee-owned copy untouched"
-        );
-        assert_eq!(unsafe { *(copy as *const u64) }, 0xFEED_FACE_FEED_FACE);
-        unsafe { glib::ffi::g_free(copy) };
+        assert!(drain_g_freed().is_empty());
     });
 }
 
 #[test]
-fn write_return_full_with_size_writes_a_distinct_copy() {
+fn decode_transfer_full_return_is_refused() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let source: u64 = 0x1234_5678_9ABC_DEF0;
+        let original = &raw const source as *mut c_void;
+
+        assert!(
+            Decoder::decode(
+                &struct_codec(Ownership::Full, Some(size_of::<u64>())),
+                &env,
+                &ffi::Stash::Ptr(original),
+            )
+            .is_err()
+        );
+    });
+}
+
+#[test]
+fn decode_borrowed_return_copies_a_sized_struct() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let source: u64 = 0x1234_5678_9ABC_DEF0;
+        let original = &raw const source as *mut c_void;
+
+        let decoded = Decoder::decode(
+            &struct_codec(Ownership::Borrowed, Some(size_of::<u64>())),
+            &env,
+            &ffi::Stash::Ptr(original),
+        )
+        .expect("a transfer-none struct return decodes");
+        let decoded_ptr = native::value::handle_ptr(decoded, "struct return").expect("a pointer");
+
+        assert_ne!(decoded_ptr, original);
+        assert_eq!(
+            unsafe { *(decoded_ptr as *const u64) },
+            0x1234_5678_9ABC_DEF0
+        );
+    });
+}
+
+#[test]
+fn write_return_full_with_size_writes_null_and_reports() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let source: u64 = 0x1234_5678_9ABC_DEF0;
@@ -186,13 +214,30 @@ fn write_return_full_with_size_writes_a_distinct_copy() {
             &Ok(handle_value_of(&env, original)),
         );
 
-        assert!(!slot.is_null());
-        assert_ne!(slot, original);
-        assert_eq!(unsafe { *(slot as *const u64) }, 0x1234_5678_9ABC_DEF0);
-        assert_eq!(source, 0x1234_5678_9ABC_DEF0);
-        assert!(napi_mock::fatal_exceptions().is_empty());
+        assert!(slot.is_null());
+        assert_eq!(napi_mock::fatal_exceptions().len(), 1);
+    });
+}
 
-        unsafe { glib::ffi::g_free(slot) };
+#[test]
+fn write_value_transfer_full_into_an_uninitialized_slot_is_refused() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let source: u64 = 7;
+        let original = &raw const source as *mut c_void;
+        let mut slot: *mut c_void = std::ptr::null_mut();
+
+        assert!(
+            PtrWriter::write_value_to_ptr(
+                &struct_codec(Ownership::Full, Some(size_of::<u64>())),
+                &env,
+                unsafe { Slot::new((&raw mut slot).cast::<c_void>()) },
+                handle_value_of(&env, original),
+                SlotInit::Uninitialized,
+            )
+            .is_err()
+        );
+        assert!(slot.is_null());
     });
 }
 
@@ -243,6 +288,27 @@ fn write_return_object_ptr_writes_null_for_non_object_ok() {
             Ok(napi_mock::to_unknown(&env, napi_mock::fake_double(3.0)));
         let slot = write_return_into_slot(&env, &struct_type(), &value);
         assert!(slot.is_null());
+    });
+}
+
+#[test]
+fn a_handed_over_struct_callback_argument_is_refused() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let source: u64 = 9;
+        let slot = (&raw const source).cast_mut().cast::<c_void>();
+
+        assert!(
+            unsafe {
+                Decoder::read(
+                    &struct_codec(Ownership::Full, Some(size_of::<u64>())),
+                    &env,
+                    ReadCtx::slot((&raw const slot).cast::<c_void>(), "callback arg")
+                        .with_transfer(Ownership::Full),
+                )
+            }
+            .is_err()
+        );
     });
 }
 

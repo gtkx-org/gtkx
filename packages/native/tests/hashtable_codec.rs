@@ -44,10 +44,6 @@ fn drain_g_memduped() -> Vec<usize> {
     G_MEMDUPED.with_borrow_mut(std::mem::take)
 }
 
-fn frees_of(freed: &[usize], ptr: usize) -> usize {
-    freed.iter().filter(|&&freed_ptr| freed_ptr == ptr).count()
-}
-
 fn num(n: f64) -> sys::napi_value {
     napi_mock::fake_double(n)
 }
@@ -157,6 +153,7 @@ fn full_gobject_codec() -> Codec {
 
 fn full_variant_fundamental_encoder(ref_fn_name: &str, unref_fn_name: &str) -> HashTableEntryCodec {
     HashTableEntryCodec::Handle(Box::new(Codec::Fundamental(FundamentalCodec {
+        caller_allocated: false,
         ownership: Ownership::Full,
         shared_library: "libglib-2.0.so.0".to_owned(),
         ref_fn_name: ref_fn_name.to_owned(),
@@ -167,6 +164,7 @@ fn full_variant_fundamental_encoder(ref_fn_name: &str, unref_fn_name: &str) -> H
 
 fn param_spec_fundamental_codec() -> Codec {
     Codec::Fundamental(FundamentalCodec {
+        caller_allocated: false,
         ownership: Ownership::Full,
         shared_library: "libgobject-2.0.so.0".to_owned(),
         ref_fn_name: "g_param_spec_ref".to_owned(),
@@ -615,14 +613,6 @@ fn native_handle_encoder_hash_equal_and_free() {
 }
 
 #[test]
-fn full_sized_struct_encoder_installs_g_free_destroy() {
-    assert_hash_equal_and_free(
-        &HashTableEntryCodec::Handle(Box::new(full_struct_codec(Some(size_of::<u64>())))),
-        true,
-    );
-}
-
-#[test]
 fn full_gobject_encoder_installs_unref_destroy() {
     let encoder = HashTableEntryCodec::Handle(Box::new(Codec::Object(ObjectCodec {
         ownership: Ownership::Full,
@@ -890,6 +880,7 @@ fn handle_entry_encode_unresolvable_transfer_ref_fails_without_leaking() {
         let before = unsafe { helpers::param_spec_refcount(pspec) };
 
         let unresolvable = Codec::Fundamental(FundamentalCodec {
+            caller_allocated: false,
             ownership: Ownership::Full,
             shared_library: "libgobject-2.0.so.0".to_owned(),
             ref_fn_name: "no_such_hashtable_ref_symbol_54321".to_owned(),
@@ -1096,11 +1087,7 @@ fn hashtable_encode_second_tuple_error_unwinds_inserted_entries() {
     });
 }
 
-fn encode_single_struct_copy(
-    env: &Env,
-    value_codec: Codec,
-    value: sys::napi_value,
-) -> (Stash, usize) {
+fn assert_full_struct_element_is_refused(value_codec: Codec, value: sys::napi_value, env: &Env) {
     let ht = ht_codec(
         Codec::Integer(IntegerCodec::I32),
         value_codec,
@@ -1109,70 +1096,43 @@ fn encode_single_struct_copy(
     let input = list(&[tuple(num(1.0), value)]);
 
     drain_g_memduped();
-    let encoded = ht
-        .encode(env, napi_mock::to_unknown(env, input))
-        .expect("encoding should succeed");
-    let duped = drain_g_memduped();
-    assert_eq!(duped.len(), 1, "encoding must copy the struct once");
-    (encoded, duped[0])
-}
 
-fn assert_copy_freed_once_on_drop(encoded: Stash, copy: usize, what: &str) {
-    drain_g_freed();
-    drop(encoded);
-    assert_eq!(
-        frees_of(&drain_g_freed(), copy),
-        1,
-        "the table teardown must free the transferred {what} copy exactly once"
-    );
+    assert!(ht.encode(env, napi_mock::to_unknown(env, input)).is_err());
+    assert!(drain_g_memduped().is_empty());
 }
 
 #[test]
-fn full_sized_struct_value_copy_freed_once_on_table_unref() {
+fn full_sized_struct_value_is_refused_by_the_table() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let source: u64 = 0x5AFE_C0DE_1234_5678;
         let original = (&raw const source).cast_mut().cast::<c_void>();
 
-        let (encoded, copy) = encode_single_struct_copy(
-            &env,
+        assert_full_struct_element_is_refused(
             full_struct_codec(Some(size_of::<u64>())),
             object_raw(&env, Handle::from_glib_borrow(original)),
+            &env,
         );
-
-        let Stash::Storage(storage) = &encoded else {
-            panic!("Expected Storage ffi value")
-        };
-        let table = storage.ptr().cast::<glib::ffi::GHashTable>();
-        let stored =
-            unsafe { glib::ffi::g_hash_table_lookup(table, std::ptr::without_provenance(1)) };
-        assert_eq!(stored as usize, copy);
-        assert_ne!(stored, original);
-        assert_eq!(unsafe { *(stored as *const u64) }, source);
-
-        assert_copy_freed_once_on_drop(encoded, copy, "struct value");
     });
 }
 
 #[test]
-fn full_sized_struct_ptr_array_element_copy_freed_once_on_table_unref() {
+fn full_sized_struct_ptr_array_element_is_refused_by_the_table() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let source: u64 = 0xDECA_FBAD_0BAD_F00D;
         let original = (&raw const source).cast_mut().cast::<c_void>();
 
-        let (encoded, copy) = encode_single_struct_copy(
-            &env,
+        assert_full_struct_element_is_refused(
             gptrarray_codec_of(full_struct_codec(Some(size_of::<u64>()))),
             list(&[object_raw(&env, Handle::from_glib_borrow(original))]),
+            &env,
         );
-
-        assert_copy_freed_once_on_drop(encoded, copy, "struct element");
     });
 }
 
 #[test]
-fn hashtable_encode_value_error_frees_transferred_struct_key_copy() {
+fn hashtable_encode_full_struct_key_is_refused_without_copying() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let ht = ht_codec(
@@ -1188,19 +1148,9 @@ fn hashtable_encode_value_error_frees_transferred_struct_key_copy() {
         )]);
 
         drain_g_memduped();
-        drain_g_freed();
-        let err = ht
-            .encode(&env, napi_mock::to_unknown(&env, input))
-            .expect_err("value encode must fail");
-        assert!(err.to_string().contains("Expected boolean in GHashTable"));
 
-        let duped = drain_g_memduped();
-        assert_eq!(duped.len(), 1, "the struct key must be copied once");
-        assert_eq!(
-            frees_of(&drain_g_freed(), duped[0]),
-            1,
-            "a failed value encode must free the transferred struct key copy exactly once"
-        );
+        assert!(ht.encode(&env, napi_mock::to_unknown(&env, input)).is_err());
+        assert!(drain_g_memduped().is_empty());
     });
 }
 
@@ -1221,13 +1171,7 @@ fn hashtable_encode_full_unsized_struct_value_errors_without_copying() {
         )]);
 
         drain_g_memduped();
-        let err = ht
-            .encode(&env, napi_mock::to_unknown(&env, input))
-            .expect_err("unsized full struct value must fail");
-        assert!(
-            err.to_string()
-                .contains("Cannot transfer ownership of struct GHashTable elements")
-        );
+        assert!(ht.encode(&env, napi_mock::to_unknown(&env, input)).is_err());
         assert!(drain_g_memduped().is_empty());
     });
 }

@@ -82,6 +82,7 @@ type FundamentalOptions = {
     ownership: Ownership;
     typeName: string | undefined;
     wrapperClass: string | undefined;
+    isCallerAllocated?: boolean | undefined;
     isInline?: boolean | undefined;
 };
 
@@ -218,6 +219,7 @@ const tFundamental = (lib: string, refFunc: string, unrefFunc: string, options: 
             `ownership: ${sourceStringLiteral(options.ownership)}`,
             options.typeName === undefined ? undefined : `typeName: ${sourceStringLiteral(options.typeName)}`,
             options.wrapperClass === undefined ? undefined : `wrapperClass: ${options.wrapperClass}`,
+            options.isCallerAllocated === true ? "isCallerAllocated: true" : undefined,
             options.isInline === true ? "isInline: true" : undefined,
         ]),
     ]);

@@ -1,11 +1,18 @@
-import type { GirCallable, GirParameter } from "../gir/parameter.js";
+import type { GirCallable, GirParameter, ParameterTransfer } from "../gir/parameter.js";
 import type { CArrayType, TypeId } from "../gir/type-id.js";
 import type { GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
 import { isCallerAllocatedOut, isInoutParameter } from "../gir/parameter.js";
-import { isCollectibleCallerOut, isHandlePassedInPlace, underlyingType } from "../store/gi/param-marshal.js";
+import {
+    isCollectibleCallerOut,
+    isHandlePassedInPlace,
+    isRecordInout,
+    underlyingType,
+} from "../store/gi/param-marshal.js";
 import { recordInlineSize } from "../store/gi/record-layout.js";
-import { isScalarRef } from "./descriptor-render.js";
+import { isPlainStruct, isScalarRef, transferOwnership } from "./descriptor-render.js";
+
+type UnmarshalableSubject = GirCallable & { instance?: GirParameter | undefined };
 
 const POINTER_DEPTH = 1;
 
@@ -143,12 +150,32 @@ const isTypeErasedCallback = (context: ModuleContext, parameter: GirParameter): 
     return type?.kind === "callback" && type.value.parameters.length === 0;
 };
 
+const isRefusedTransfer = (
+    context: ModuleContext,
+    ref: TypeId | undefined,
+    transfer: ParameterTransfer,
+): boolean => {
+    if (ref === undefined || transferOwnership(transfer) !== "full") {
+        return false;
+    }
+
+    const type = underlyingType(context, ref);
+
+    return type?.kind === "record" && isPlainStruct(type);
+};
+
+const isLentInPlace = (context: ModuleContext, parameter: GirParameter): boolean =>
+    isCallerAllocatedOut(parameter) || isRecordInout(context, parameter);
+
+const isRefusedParamTransfer = (context: ModuleContext, parameter: GirParameter): boolean =>
+    !isLentInPlace(context, parameter) && isRefusedTransfer(context, parameter.type, parameter.transferOwnership);
+
 const isUnmarshalableCallParam = (context: ModuleContext, parameter: GirParameter): boolean => {
     if (parameter.isVarargs) {
         return false;
     }
 
-    if (isTypeErasedCallback(context, parameter)) {
+    if (isTypeErasedCallback(context, parameter) || isRefusedParamTransfer(context, parameter)) {
         return true;
     }
 
@@ -163,7 +190,9 @@ const isUnmarshalableCallParam = (context: ModuleContext, parameter: GirParamete
     return hasIndirectionMismatch(context, parameter);
 };
 
-const hasUnmarshalableParam = (context: ModuleContext, callable: GirCallable): boolean =>
+const hasUnmarshalableParam = (context: ModuleContext, callable: UnmarshalableSubject): boolean =>
+    (callable.instance !== undefined && isRefusedParamTransfer(context, callable.instance)) ||
+    isRefusedTransfer(context, callable.returnValue.type, callable.returnValue.transferOwnership) ||
     callable.parameters.some((parameter) => isUnmarshalableCallParam(context, parameter));
 
 export { hasUnmarshalableParam };

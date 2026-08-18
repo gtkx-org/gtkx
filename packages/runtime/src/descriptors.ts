@@ -136,6 +136,8 @@ type FundamentalOptions = {
     typeName?: string;
     /** Class a decoded value is wrapped in, instead of the one registered for `typeName`. */
     wrapperClass?: AnyClass;
+    /** The caller owns the storage the callee fills, so a decoded value is borrowed instead of acquired. */
+    isCallerAllocated?: boolean;
     /** The value is embedded in the containing struct rather than reached through a pointer. */
     isInline?: boolean;
 };
@@ -328,6 +330,10 @@ const fundamentalT = (
 
     if (options.wrapperClass !== undefined) {
         result.wrapperClass = options.wrapperClass;
+    }
+
+    if (options.isCallerAllocated) {
+        result.isCallerAllocated = true;
     }
 
     if (options.isInline) {

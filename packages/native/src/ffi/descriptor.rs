@@ -142,6 +142,7 @@ pub enum Descriptor {
         ref_fn_name: String,
         unref_fn_name: String,
         type_name: Option<String>,
+        is_caller_allocated: Option<bool>,
         is_inline: Option<bool>,
     },
     Array {
@@ -272,12 +273,14 @@ impl Descriptor {
                 ref_fn_name,
                 unref_fn_name,
                 type_name: _,
+                is_caller_allocated,
                 is_inline,
             } => Codec::Fundamental(FundamentalCodec {
                 ownership,
                 shared_library,
                 ref_fn_name,
                 unref_fn_name,
+                caller_allocated: is_caller_allocated.unwrap_or(false),
                 inline: is_inline.unwrap_or(false),
             }),
             nested => nested.into_nested_codec()?,

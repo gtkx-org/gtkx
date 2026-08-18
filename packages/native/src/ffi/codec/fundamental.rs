@@ -10,6 +10,7 @@ pub struct FundamentalCodec {
     pub shared_library: String,
     pub ref_fn_name: String,
     pub unref_fn_name: String,
+    pub caller_allocated: bool,
     pub inline: bool,
 }
 
@@ -72,9 +73,20 @@ impl Decoder for FundamentalCodec {
         })
     }
 
-    read_value_non_null!(|self, env, ptr, _transfer| {
+    read_value_non_null!(|self, env, ptr, transfer| {
+        if self.caller_allocated {
+            return Ok(value::handle_to_unknown(
+                env,
+                Handle::from_glib_borrow(ptr),
+            )?);
+        }
+
         let (ref_fn, unref_fn) = self.lookup_fns()?;
-        let fundamental = unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) };
+        let fundamental = if transfer.is_full() {
+            unsafe { Fundamental::from_glib_full(ptr, unref_fn) }
+        } else {
+            unsafe { Fundamental::from_glib_none(ptr, ref_fn, unref_fn) }
+        };
         Ok(value::handle_to_unknown(env, fundamental.into())?)
     });
 }

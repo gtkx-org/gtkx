@@ -616,15 +616,71 @@ fn struct_encode_keeps_pointer() {
     });
 }
 
+fn read_boxed_callback_arg(
+    env: &Env,
+    codec: &BoxedCodec,
+    ptr: *mut c_void,
+    transfer: Ownership,
+) -> *mut c_void {
+    let slot: *mut c_void = ptr;
+    let value = unsafe {
+        Decoder::read(
+            codec,
+            env,
+            ReadCtx::slot((&raw const slot).cast::<c_void>(), "callback arg")
+                .with_transfer(transfer),
+        )
+    }
+    .expect("a boxed callback argument reads");
+
+    handle_ptr(value, "callback arg").expect("a handle pointer")
+}
+
 #[test]
-fn struct_decode_full_takes_ownership() {
+fn a_lent_boxed_callback_argument_is_copied() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (type_, original) = rgba_boxed_alloc();
+
+        let copy = read_boxed_callback_arg(
+            &env,
+            &boxed(Ownership::Borrowed),
+            original,
+            Ownership::Borrowed,
+        );
+
+        assert_ne!(copy, original);
+
+        free_rgba(type_, original);
+    });
+}
+
+#[test]
+fn a_handed_over_boxed_callback_argument_adopts_the_pointer() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let (_type, original) = rgba_boxed_alloc();
+
+        let adopted =
+            read_boxed_callback_arg(&env, &boxed(Ownership::Full), original, Ownership::Full);
+
+        assert_eq!(adopted, original);
+    });
+}
+
+#[test]
+fn struct_decode_full_is_refused() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let raw = unsafe { glib::ffi::g_malloc0(64) };
-        let decoded = struct_type(Ownership::Full, None)
-            .decode(&env, &ffi::Stash::Ptr(raw))
-            .expect("struct full decode should succeed");
-        assert_is_handle(&decoded);
+
+        assert!(
+            struct_type(Ownership::Full, None)
+                .decode(&env, &ffi::Stash::Ptr(raw))
+                .is_err()
+        );
+
+        unsafe { glib::ffi::g_free(raw) };
     });
 }
 
