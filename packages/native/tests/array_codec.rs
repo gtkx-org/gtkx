@@ -898,14 +898,12 @@ fn encode_garray_enum_flags_roundtrips() {
 }
 
 #[test]
-fn encode_garray_handles_roundtrips() {
+fn encode_garray_plain_struct_without_flat_layout_rejects() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let descriptor = array_codec(struct_item_codec(), ArrayKind::GArray, Ownership::Borrowed);
         let val = array(&env, &[object(&env, boxed_handle())]);
-        let encoded = descriptor.encode(&env, val).unwrap();
-        let decoded = descriptor.decode(&env, &encoded).unwrap();
-        assert_eq!(decoded_items(&decoded).len(), 1);
+        assert!(descriptor.encode(&env, val).is_err());
     });
 }
 
@@ -1491,6 +1489,21 @@ fn decode_garray_null_yields_empty() {
         );
         let decoded = descriptor
             .decode(&env, &Stash::Ptr(std::ptr::null_mut()))
+            .unwrap();
+        assert!(decoded_items(&decoded).is_empty());
+    });
+}
+
+#[test]
+fn decode_garray_empty_plain_struct_without_layout_yields_empty() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = array_codec(struct_item_codec(), ArrayKind::GArray, Ownership::Full);
+        let element_size =
+            u32::try_from(size_of::<*mut c_void>()).expect("pointer size fits in a guint");
+        let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, element_size, 0) };
+        let decoded = descriptor
+            .decode(&env, &Stash::Ptr(g_array.cast::<c_void>()))
             .unwrap();
         assert!(decoded_items(&decoded).is_empty());
     });

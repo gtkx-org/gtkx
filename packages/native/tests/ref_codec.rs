@@ -10,7 +10,7 @@ use native::api::call::call;
 use native::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Decoder, Encoder,
     EnumFlagsCodec, EnumFlagsKind, FloatCodec, HashTableCodec, IntegerCodec, ObjectCodec,
-    Ownership, ReadCtx, RefCodec, StringCodec, UnicharCodec,
+    Ownership, ReadCtx, RefCodec, StringCodec, StructInputPolicy, StructOutputPolicy, UnicharCodec,
 };
 use native::ffi::descriptor::{Descriptor, NestedDescriptor};
 use native::ffi::{self, StashData, StashStorage};
@@ -604,6 +604,53 @@ fn ref_descriptor(inner: Descriptor, inout: Option<bool>) -> Descriptor {
     }
 }
 
+#[repr(C)]
+struct RefPod {
+    number: i32,
+    ratio: f64,
+}
+
+fn struct_descriptor(ownership: Ownership) -> Descriptor {
+    Descriptor::Struct {
+        ownership,
+        size: Some(u32::try_from(size_of::<RefPod>()).expect("pod size should fit in u32")),
+        input_policy: Some(if ownership.is_borrowed() {
+            StructInputPolicy::Borrow
+        } else {
+            StructInputPolicy::Reject
+        }),
+        output_policy: Some(if ownership.is_borrowed() {
+            StructOutputPolicy::ShallowCopy
+        } else {
+            StructOutputPolicy::Reject
+        }),
+        is_caller_allocated: None,
+        is_inline: None,
+    }
+}
+
+fn pod_value(env: &Env, pod: &mut RefPod) -> napi::sys::napi_value {
+    External::new(Handle::from_glib_borrow((&raw mut *pod).cast::<c_void>()))
+        .into_unknown(env)
+        .expect("wrapping the pod handle should succeed")
+        .raw()
+}
+
+fn atomic_pointer_inout_descriptor(ownership: Ownership) -> Vec<Descriptor> {
+    vec![
+        ref_descriptor(struct_descriptor(ownership), Some(true)),
+        struct_descriptor(Ownership::Borrowed),
+        struct_descriptor(Ownership::Borrowed),
+    ]
+}
+
+fn ref_handle_ptr(env: &Env, value: napi::sys::napi_value) -> *mut c_void {
+    let property = napi_mock::read_object_property(value, "value")
+        .expect("the inout reference should contain a value");
+    native::value::handle_ptr(napi_mock::to_unknown(env, property), "inout result")
+        .expect("the inout result should carry a handle")
+}
+
 fn gerror_ref_descriptor() -> Descriptor {
     ref_descriptor(
         Descriptor::Boxed {
@@ -782,6 +829,115 @@ fn call_writes_back_a_gint64_inout_parameter_from_g_time_zone_adjust_time() {
 
         assert_eq!(ref_value_bigint(time), Some(seed));
         unsafe { glib::ffi::g_time_zone_unref(zone) };
+    });
+}
+
+#[test]
+fn call_writes_back_a_replaced_plain_struct_pointer_as_a_snapshot() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = bind(
+            GLIB.to_owned(),
+            "g_atomic_pointer_compare_and_exchange".to_owned(),
+            atomic_pointer_inout_descriptor(Ownership::Borrowed),
+            Descriptor::Boolean,
+            None,
+        )
+        .expect("bind should succeed");
+        let mut original = RefPod {
+            number: 1,
+            ratio: 0.25,
+        };
+        let mut replacement = RefPod {
+            number: 20,
+            ratio: 0.75,
+        };
+        let original_value = pod_value(&env, &mut original);
+        let replacement_value = pod_value(&env, &mut replacement);
+        let inout = napi_mock::fake_object(&[("value", original_value)]);
+        let values = value_array(&env, &[inout, original_value, replacement_value]);
+
+        let exchanged = call(&env, &descriptor, values).expect("the call should succeed");
+        let output_ptr = ref_handle_ptr(&env, inout);
+        replacement.number = 90;
+        replacement.ratio = 9.0;
+        let output = unsafe { &*output_ptr.cast::<RefPod>() };
+
+        assert_eq!(napi_mock::read_bool(exchanged.raw()), Some(true));
+        assert_ne!(output_ptr, (&raw mut replacement).cast::<c_void>());
+        assert_eq!((output.number, output.ratio), (20, 0.75));
+        assert_eq!((original.number, original.ratio), (1, 0.25));
+    });
+}
+
+#[test]
+fn call_snapshots_a_plain_struct_when_the_pointer_is_unchanged() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = bind(
+            GLIB.to_owned(),
+            "g_atomic_pointer_compare_and_exchange".to_owned(),
+            atomic_pointer_inout_descriptor(Ownership::Borrowed),
+            Descriptor::Boolean,
+            None,
+        )
+        .expect("bind should succeed");
+        let mut original = RefPod {
+            number: i32::MIN,
+            ratio: -1.5,
+        };
+        let mut other = RefPod {
+            number: 2,
+            ratio: 0.5,
+        };
+        let mut replacement = RefPod {
+            number: i32::MAX,
+            ratio: 1.5,
+        };
+        let original_value = pod_value(&env, &mut original);
+        let other_value = pod_value(&env, &mut other);
+        let replacement_value = pod_value(&env, &mut replacement);
+        let inout = napi_mock::fake_object(&[("value", original_value)]);
+        let values = value_array(&env, &[inout, other_value, replacement_value]);
+
+        let exchanged = call(&env, &descriptor, values).expect("the call should succeed");
+        let output_ptr = ref_handle_ptr(&env, inout);
+        original.number = 0;
+        original.ratio = 0.0;
+        let output = unsafe { &*output_ptr.cast::<RefPod>() };
+
+        assert_eq!(napi_mock::read_bool(exchanged.raw()), Some(false));
+        assert_ne!(output_ptr, (&raw mut original).cast::<c_void>());
+        assert_eq!((output.number, output.ratio), (i32::MIN, -1.5));
+    });
+}
+
+#[test]
+fn call_rejects_a_transfer_full_plain_struct_inout() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let descriptor = bind(
+            GLIB.to_owned(),
+            "g_atomic_pointer_compare_and_exchange".to_owned(),
+            atomic_pointer_inout_descriptor(Ownership::Full),
+            Descriptor::Boolean,
+            None,
+        )
+        .expect("bind should succeed");
+        let mut original = RefPod {
+            number: 1,
+            ratio: 0.25,
+        };
+        let mut replacement = RefPod {
+            number: 2,
+            ratio: 0.5,
+        };
+        let original_value = pod_value(&env, &mut original);
+        let replacement_value = pod_value(&env, &mut replacement);
+        let inout = napi_mock::fake_object(&[("value", original_value)]);
+        let values = value_array(&env, &[inout, original_value, replacement_value]);
+
+        assert!(call(&env, &descriptor, values).is_err());
     });
 }
 

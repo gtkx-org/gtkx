@@ -1,7 +1,7 @@
 import type { CallDescriptor, Descriptor, ExternalObject, Ref } from "@gtkx/native";
 import { call, bind as nativeBind } from "@gtkx/native";
 import type { RefSeeds } from "./vfunc-seeds.js";
-import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, requiresInputArg } from "./arg.js";
+import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg, isRefArg, requiresInputArg } from "./arg.js";
 import { wrapCallbackValue } from "./callback.js";
 import { boxedT, refT } from "./descriptors.js";
 import { checkError } from "./error.js";
@@ -45,7 +45,9 @@ const NO_OUT_PARAMS: unknown[] = [];
 
 const buildNativeArgTypes = (args: Arg[], canThrow: boolean): Descriptor[] => {
     const nativeArgTypes = args.map((argSpec) =>
-        argSpec.direction !== undefined && argSpec.isCallerAllocated !== true ? refT(argSpec.type) : argSpec.type,
+        argSpec.direction !== undefined && argSpec.isCallerAllocated !== true
+            ? refT(argSpec.type, isInoutArg(argSpec))
+            : argSpec.type,
     );
 
     if (canThrow) {
@@ -211,4 +213,16 @@ function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: un
     return fromNativeCallable(descriptor, spec);
 }
 
-export { buildNativeArgTypes, fn, fromNativeCallable };
+/**
+ * Builds a throwing function for a GIR callable whose native ABI cannot be marshalled safely.
+ *
+ * @param symbol Native symbol retained for diagnostics.
+ * @returns A callable that always throws without resolving or invoking the native symbol.
+ */
+function unsupportedFn(symbol: string): () => never {
+    return () => {
+        throw new Error(`Cannot invoke unsupported native callable '${symbol}'`);
+    };
+}
+
+export { buildNativeArgTypes, fn, fromNativeCallable, unsupportedFn };

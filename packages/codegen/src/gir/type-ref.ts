@@ -10,6 +10,17 @@ const getElementRef = (node: RawNode, context: ParseContext): TypeId => {
     return elementNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(elementNode, context);
 };
 
+const listTypeRefFromNode = (node: RawNode, context: ParseContext, flavor: ListFlavor): TypeId => {
+    const elementNode = getChild(node, "type");
+
+    return context.addContainer({
+        kind: "list",
+        flavor,
+        element: elementNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(elementNode, context),
+        elementCType: elementNode === undefined ? undefined : attr(elementNode, "c:type"),
+    });
+};
+
 const typeRefFromNode = (parent: RawNode | undefined, context: ParseContext): TypeId | undefined => {
     if (parent === undefined) {
         return undefined;
@@ -57,7 +68,7 @@ const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId =
     const listFlavor = LIST_FLAVOR_BY_NAME_LOOKUP.get(name);
 
     if (listFlavor !== undefined) {
-        return context.addContainer({ kind: "list", flavor: listFlavor, element: getElementRef(typeNode, context) });
+        return listTypeRefFromNode(typeNode, context, listFlavor);
     }
 
     if (name === "GLib.HashTable") {
@@ -74,14 +85,14 @@ const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId =
 };
 
 const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId => {
-    const element = getElementRef(arrayNode, context);
     const arrayName = attr(arrayNode, "name");
     const listFlavor = arrayName === undefined ? undefined : LIST_FLAVOR_BY_NAME_LOOKUP.get(arrayName);
 
     if (listFlavor !== undefined) {
-        return context.addContainer({ kind: "list", flavor: listFlavor, element });
+        return listTypeRefFromNode(arrayNode, context, listFlavor);
     }
 
+    const element = getElementRef(arrayNode, context);
     const elementNode = getChild(arrayNode, "type");
 
     const carray: CArrayType = {

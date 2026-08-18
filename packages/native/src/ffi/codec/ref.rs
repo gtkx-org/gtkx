@@ -77,11 +77,18 @@ impl Encoder for RefCodec {
         let is_nullish = matches!(inner_type, ValueType::Null | ValueType::Undefined);
 
         if self.inner_codec.is_handle_backed() {
-            return if is_nullish {
-                Ok(Self::null_ptr_stash())
-            } else {
-                bail!("Expected Null for Ref<Boxed/Struct/Object/Fundamental>")
-            };
+            if is_nullish {
+                return Ok(Self::null_ptr_stash());
+            }
+
+            if self.inout
+                && let Codec::Struct(struct_codec) = &*self.inner_codec
+            {
+                let encoded = struct_codec.encode(env, inner)?;
+                return Ok(Self::slot_stash(encoded.as_ptr("Ref<Struct> input")?, None));
+            }
+
+            bail!("Expected Null for Ref<Boxed/Struct/Object/Fundamental>")
         }
 
         match &*self.inner_codec {

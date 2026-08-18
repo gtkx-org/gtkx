@@ -185,22 +185,49 @@ const elementStructPolicies = (
         ),
 });
 
+const listStructInputPolicy = (
+    type: ListType,
+    transfer: ParameterTransfer,
+    hasFlatRecordLayout: boolean,
+): StructInputPolicy => {
+    if (hasFlatRecordLayout) {
+        return "borrow";
+    }
+
+    if (type.flavor === "gptrarray" || type.flavor === "garray") {
+        return "reject";
+    }
+
+    return ELEMENT_STRUCT_INPUT_POLICIES[transfer];
+};
+
+const listStructOutputPolicy = (
+    type: ListType,
+    hasFlatRecordLayout: boolean,
+    policy: StructOutputPolicy,
+): StructOutputPolicy => {
+    if (hasFlatRecordLayout || type.flavor !== "garray") {
+        return policy;
+    }
+
+    return "reject";
+};
+
 const listStructPolicies = (
     type: ListType,
     transfer: ParameterTransfer,
     options: Pick<ArgIndexOptions, "structInputPolicy" | "structOutputPolicy">,
+    hasFlatRecordLayout: boolean,
 ): { structInputPolicy: StructInputPolicy; structOutputPolicy: StructOutputPolicy } => {
-    const requiresRecordInputRejection = type.flavor === "garray" || type.flavor === "gptrarray";
-    const input = requiresRecordInputRejection ? "reject" : ELEMENT_STRUCT_INPUT_POLICIES[transfer];
-
     const policies = elementStructPolicies(transfer, options, {
-        input,
+        input: listStructInputPolicy(type, transfer, hasFlatRecordLayout),
         transferNoneOutput: "shallowCopy",
+        transferFullOutput: hasFlatRecordLayout ? "shallowCopy" : undefined,
     });
 
     return {
         ...policies,
-        structOutputPolicy: type.flavor === "garray" ? "reject" : policies.structOutputPolicy,
+        structOutputPolicy: listStructOutputPolicy(type, hasFlatRecordLayout, policies.structOutputPolicy),
     };
 };
 
@@ -305,12 +332,32 @@ const listExpression = (
         return context.library.isByteArrayTyped ? tByteArray(ownership) : tNumericByteArray(ownership);
     }
 
+    const elementSize = flatGArrayRecordSize(context, type);
+
     const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), {
         ...indexOptions,
-        ...listStructPolicies(type, transfer, indexOptions),
+        ...listStructPolicies(type, transfer, indexOptions, elementSize !== undefined),
     });
 
-    return tList(LIST_HELPERS[type.flavor], element, ownership);
+    return tList(LIST_HELPERS[type.flavor], element, ownership, { elementSize, isBytes: false });
+};
+
+const flatGArrayRecordSize = (context: ModuleContext, type: ListType): number | undefined => {
+    if (type.flavor !== "garray" || type.elementCType?.endsWith("*") === true) {
+        return undefined;
+    }
+
+    const element = context.library.typeFor(type.element);
+
+    if (
+        element?.kind !== "record" ||
+        element.value.glibGetType !== undefined ||
+        !isGjsSimpleRecord(context, element.namespace.name, element.value)
+    ) {
+        return undefined;
+    }
+
+    return recordInlineSize(context, element.value);
 };
 
 const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): GirCallback | undefined => {

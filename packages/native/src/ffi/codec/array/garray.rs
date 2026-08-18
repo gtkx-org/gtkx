@@ -19,13 +19,12 @@ fn element_count(len: usize, what: &str) -> anyhow::Result<u32> {
 #[derive(Debug, Clone)]
 pub(crate) struct GArrayCodec;
 
-impl ArrayContainer for GArrayCodec {
-    fn encode(
-        &self,
-        codec: &ArrayCodec,
-        _env: Env,
-        array: &[Unknown<'_>],
-    ) -> anyhow::Result<ffi::Stash> {
+impl GArrayCodec {
+    fn element_size(codec: &ArrayCodec) -> anyhow::Result<usize> {
+        if matches!(&*codec.item_codec, Codec::Struct(_)) && codec.element_size.is_none() {
+            bail!("Cannot marshal a GArray of plain structs without a known flat element layout");
+        }
+
         let inline_size = codec.inline_element_size();
         let item_size = codec.item_element_size();
         let element_size = codec.element_size.or(item_size).ok_or_else(|| {
@@ -44,7 +43,18 @@ impl ArrayContainer for GArrayCodec {
             );
         }
 
-        let element_size = element_count(element_size, "element size")?;
+        Ok(element_size)
+    }
+}
+
+impl ArrayContainer for GArrayCodec {
+    fn encode(
+        &self,
+        codec: &ArrayCodec,
+        _env: Env,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<ffi::Stash> {
+        let element_size = element_count(Self::element_size(codec)?, "element size")?;
         let reserved_size = element_count(array.len(), "length")?;
         let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, element_size, reserved_size) };
 
@@ -84,9 +94,21 @@ impl ArrayContainer for GArrayCodec {
         };
 
         let g_array = ptr as *const glib::ffi::GArray;
+        let actual_element_size =
+            unsafe { glib::ffi::g_array_get_element_size(g_array.cast_mut()) as usize };
         let data = unsafe { (*g_array).data as *const u8 };
         let len = unsafe { (*g_array).len as usize };
-        let decoded = codec.decode_bytes_or_items(env, data, len, "GArray");
+        let decoded = if len == 0 {
+            codec.decode_empty_sequence(env)
+        } else {
+            Self::element_size(codec).and_then(|expected_element_size| {
+                anyhow::ensure!(
+                    actual_element_size == expected_element_size,
+                    "GArray element size {actual_element_size} does not match the expected {expected_element_size}-byte layout"
+                );
+                codec.decode_bytes_or_items(env, data, len, "GArray")
+            })
+        };
 
         if transfer.is_full() {
             let storage_owns = matches!(stash, ffi::Stash::Storage(_));

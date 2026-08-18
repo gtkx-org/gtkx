@@ -44,7 +44,8 @@ type DescriptorName =
     "fixedArray" |
     "cursorArray" |
     "callback" |
-    "fn";
+    "fn" |
+    "unsupportedFn";
 
 type DescriptorNames = { [K in DescriptorName]: `t.${K}` };
 
@@ -157,6 +158,7 @@ const T: DescriptorNames = {
     cursorArray: "t.cursorArray",
     callback: "t.callback",
     fn: "t.fn",
+    unsupportedFn: "t.unsupportedFn",
 };
 
 const tVoid: string = T.void;
@@ -254,9 +256,6 @@ const tNumericByteArray = (ownership: Ownership): string =>
         sourceStringLiteral(ownership),
     ]);
 
-const tList = (name: ListDescriptorName, element: string, ownership: Ownership): string =>
-    call(name, [element, sourceStringLiteral(ownership)]);
-
 const arrayLayoutArg = (ownership: Ownership | undefined, layout: ArrayLayout): string | undefined => {
     if (ownership === undefined) {
         return undefined;
@@ -269,6 +268,13 @@ const arrayLayoutArg = (ownership: Ownership | undefined, layout: ArrayLayout): 
 
     return entries.length === 0 ? undefined : `{ ${entries.join(", ")} }`;
 };
+
+const tList = (
+    name: ListDescriptorName,
+    element: string,
+    ownership: Ownership,
+    layout: ArrayLayout,
+): string => call(name, [element, sourceStringLiteral(ownership), arrayLayoutArg(ownership, layout)]);
 
 const tArray = (element: string, ownership: Ownership | undefined, layout: ArrayLayout): string =>
     call("array", [
@@ -332,6 +338,8 @@ const tFn = (lib: string, cIdentifier: string, spec: FnSpecParts): string => {
     ]);
 };
 
+const tUnsupportedFn = (cIdentifier: string): string => call("unsupportedFn", [sourceStringLiteral(cIdentifier)]);
+
 export {
     tVoid,
     tBoolean,
@@ -363,6 +371,7 @@ export {
     tCallback,
     tBind,
     tFn,
+    tUnsupportedFn,
     type ArrayLayout,
     type Ownership,
     type ScalarDescriptorName,

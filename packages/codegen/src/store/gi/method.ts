@@ -9,6 +9,7 @@ import {
     renderSelfDescriptor,
     shouldOmitPrimaryReturn,
 } from "../../analysis/descriptor-render.js";
+import { callableCapability, isCallableStubbed } from "../../analysis/param-capability.js";
 import {
     arrayLengthSources,
     closureAndDestroyIndices,
@@ -153,17 +154,30 @@ const renderInputParameters = (context: ModuleContext, fn: GirFunction, options:
     return parts.join(", ");
 };
 
-const isReturnedOutParameter = (context: ModuleContext, parameter: GirParameter): boolean =>
+const isReturnedCallerOut = (
+    context: ModuleContext,
+    parameter: GirParameter,
+    shouldIncludeUnknownCallerOut: boolean,
+): boolean =>
+    isCallerAllocatedOut(parameter) &&
+    (shouldIncludeUnknownCallerOut || isCollectibleCallerOut(context, parameter));
+
+const isReturnedOutParameter = (
+    context: ModuleContext,
+    parameter: GirParameter,
+    shouldIncludeUnknownCallerOut: boolean,
+): boolean =>
     isOutParameter(parameter) ||
-    (isCallerAllocatedOut(parameter) && isCollectibleCallerOut(context, parameter)) ||
+    isReturnedCallerOut(context, parameter, shouldIncludeUnknownCallerOut) ||
     isInoutParameter(parameter);
 
 const returnedOutParameters = (context: ModuleContext, fn: GirFunction): InputParameter[] => {
     const folded = foldedLengthIndices(context.library, fn);
+    const shouldIncludeUnknownCallerOut = isCallableStubbed(callableCapability(context, fn));
     const result: InputParameter[] = [];
 
     for (const [index, parameter] of fn.parameters.entries()) {
-        if (isReturnedOutParameter(context, parameter) && !folded.has(index)) {
+        if (isReturnedOutParameter(context, parameter, shouldIncludeUnknownCallerOut) && !folded.has(index)) {
             result.push({ parameter, index });
         }
     }
@@ -328,7 +342,23 @@ const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): b
     return context.library.typeFor(ref)?.kind === "callback";
 };
 
-const renderMethodBody = (context: ModuleContext, fn: GirFunction, options: WriteMethodBodyOptions): string => {
+const renderStubbedMethodBody = (
+    context: ModuleContext,
+    fn: GirFunction,
+    options: WriteMethodBodyOptions,
+): string | undefined => {
+    if (!isCallableStubbed(callableCapability(context, fn))) {
+        return undefined;
+    }
+
+    const { bindingExpression, returnTypeOverride } = options;
+    const callExpression = `${bindingExpression}()`;
+    const annotation = returnTypeOverride ?? renderMethodReturnType(context, fn);
+
+    return annotation === "void" ? `${callExpression};` : `return ${callExpression};`;
+};
+
+const renderNativeMethodBody = (context: ModuleContext, fn: GirFunction, options: WriteMethodBodyOptions): string => {
     const { bindingExpression, returnTypeOverride } = options;
 
     const inputs = planCallArgs(context, fn)
@@ -339,6 +369,12 @@ const renderMethodBody = (context: ModuleContext, fn: GirFunction, options: Writ
     const annotation = returnTypeOverride ?? renderMethodReturnType(context, fn);
 
     return annotation === "void" ? `${callExpression};` : `return ${callExpression} as ${annotation};`;
+};
+
+const renderMethodBody = (context: ModuleContext, fn: GirFunction, options: WriteMethodBodyOptions): string => {
+    const stubbed = renderStubbedMethodBody(context, fn, options);
+
+    return stubbed ?? renderNativeMethodBody(context, fn, options);
 };
 
 const paramDescriptorLiteral = (descriptor: string, options: ParamDescriptorOptions): string => {

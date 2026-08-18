@@ -52,6 +52,8 @@ type ListType = {
     flavor: ListFlavor;
     /** Type the container's elements marshal as, which the list descriptor wraps. */
     element: TypeId;
+    /** C declaration of an element, which distinguishes flat values from pointers in a `GArray`. */
+    elementCType: string | undefined;
 };
 
 /** A `GLib.HashTable`. */

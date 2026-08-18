@@ -1,8 +1,8 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { tFn } from "../../analysis/descriptor.js";
-import { callableCapability, isCallableEmittable } from "../../analysis/param-capability.js";
+import { tFn, tUnsupportedFn } from "../../analysis/descriptor.js";
+import { callableCapability, isCallableEmittable, isCallableStubbed } from "../../analysis/param-capability.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
 import { callableDoc } from "./callable-doc.js";
@@ -32,6 +32,12 @@ type NamespaceFunctionOptions = {
 const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | undefined => {
     if (fn.cIdentifier === undefined) {
         return undefined;
+    }
+
+    if (isCallableStubbed(callableCapability(context, fn))) {
+        context.addRuntimeImport("t");
+
+        return tUnsupportedFn(fn.cIdentifier);
     }
 
     const library = context.namespace.sharedLibrary;

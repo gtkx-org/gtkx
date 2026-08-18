@@ -19,7 +19,11 @@ type RecordMarshalModule = {
     Choice: new () => object;
     Managed: new () => object;
     Pod: new () => object;
+    fillOpaque: () => object;
+    inspectOpaqueValues: (values: object[]) => void;
     inspectPods: (pods: object[]) => void;
+    replacePodContainer: (pod: object) => object;
+    replacePodFull: (pod: object) => object;
     takeChoice: (choice: object) => void;
     takeManaged: (managed: object) => void;
     takePod: (pod: object) => void;
@@ -112,10 +116,36 @@ const CORNER_WRITE = /write\(getHandle\(this\), (\w+), 32 \+ __index \* 16, toNa
 const POINTER_ARRAY_GETTER = /get buffer\(\) \{\s+return fromNative\(/u;
 const LENGTH_BOUNDED_READ = /t\.struct\("borrowed", \{[^}]*size: this\.nLinks \* 8 \}\)/u;
 const AXES_EMISSION = [AXES_GETTER, AXES_READ, AXES_SETTER, AXES_BOUND, AXES_WRITE];
-const SUPPORTED_RECORD_CALLABLES = ["borrowPod(", "fillPod(", "fillPodFull(", "returnPointer("];
+
+const SUPPORTED_RECORD_CALLABLES = [
+    "borrowPod(",
+    "createFlatPods(",
+    "fillPod(",
+    "fillPodFull(",
+    "getFlatPods(",
+    "inspectFlatPods(",
+    "mutatePodInPlace(",
+    "replacePod(",
+    "returnPointer(",
+    "takeFlatPods(",
+];
+
+const FLAT_GARRAY_DESCRIPTORS = [
+    't.gArray(t.struct("borrowed", { inputPolicy: "borrow", outputPolicy: "shallowCopy", size: 4, ' +
+    'wrapperClass: Pod }), "borrowed", { elementSize: 4 })',
+    't.gArray(t.struct("full", { inputPolicy: "borrow", outputPolicy: "shallowCopy", size: 4, ' +
+    'wrapperClass: Pod }), "full", { elementSize: 4 })',
+];
+
+const OPAQUE_GARRAY_DESCRIPTOR =
+    't.gArray(t.struct("borrowed", { inputPolicy: "reject", outputPolicy: "reject", wrapperClass: Opaque }), ' +
+    '"borrowed")';
 
 const RETAINED_RECORD_CALLABLES = [
+    "fillOpaque(): Opaque",
     "inspectPods(",
+    "replacePodContainer(",
+    "replacePodFull(",
     "returnPodFull(",
     "takeManaged(",
     "takeChoice(",
@@ -126,6 +156,33 @@ const RETAINED_RECORD_CALLABLES = [
 const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
     { title: "an array whose length lives in a sibling field", jsName: "entries" },
     { title: "a linked list", jsName: "links" },
+];
+
+const unsupportedRecordInvocations = (generated: RecordMarshalModule): (() => void)[] => [
+    () => {
+        generated.fillOpaque();
+    },
+    () => {
+        generated.inspectOpaqueValues([]);
+    },
+    () => {
+        generated.inspectPods([new generated.Pod()]);
+    },
+    () => {
+        generated.replacePodContainer(new generated.Pod());
+    },
+    () => {
+        generated.replacePodFull(new generated.Pod());
+    },
+    () => {
+        generated.takeChoice(new generated.Choice());
+    },
+    () => {
+        generated.takeManaged(new generated.Managed());
+    },
+    () => {
+        generated.takePod(new generated.Pod());
+    },
 ];
 
 const config = (body: string): string => `${HEAD}${body} };\n`;
@@ -435,6 +492,7 @@ describe("gtkx codegen (plain record call marshalling)", () => {
     };
 
     const declarations = (): string => generatedModule(state.project, "gi", "recordmarshal", "recordmarshal.d.ts");
+    const bindings = (): string => generatedModule(state.project, "gi", "recordmarshal", "recordmarshal.js");
 
     beforeAll(() => {
         state.project = createCliProject({
@@ -453,33 +511,35 @@ describe("gtkx codegen (plain record call marshalling)", () => {
         expect(state.status).toBe(0);
         const declared = declarations();
         expect(SUPPORTED_RECORD_CALLABLES.filter((name) => !declared.includes(name))).toEqual([]);
+
+        expect(bindings()).toContain(
+            '{ type: t.struct("borrowed", { inputPolicy: "borrow", outputPolicy: "shallowCopy", ' +
+            'size: 4, wrapperClass: Pod }), direction: "inout" }',
+        );
+
+        expect(FLAT_GARRAY_DESCRIPTORS.filter((descriptor) => !bindings().includes(descriptor))).toEqual([]);
     });
 
-    it("retains rejected transfers and unions while omitting an impossible caller allocation", () => {
+    it("retains rejected transfers, unions, and impossible caller allocations", () => {
         expect(state.status).toBe(0);
         const declared = declarations();
         expect(RETAINED_RECORD_CALLABLES.filter((name) => !declared.includes(name))).toEqual([]);
-        expect(declared).not.toContain("fillOpaque(");
+        const generatedBindings = bindings();
+        expect(generatedBindings).toContain('t.unsupportedFn("record_marshal_fill_opaque")');
+        expect(generatedBindings).not.toContain('t.fn("librecordmarshal.so.0", "record_marshal_fill_opaque"');
+        expect(generatedBindings).toContain(OPAQUE_GARRAY_DESCRIPTOR);
+
+        expect(generatedBindings).toContain(
+            '{ type: t.struct("borrowed", { inputPolicy: "borrow", outputPolicy: "shallowCopy", ' +
+            'size: 4, wrapperClass: Pod, isCallerAllocated: true }), direction: "inout", isCallerAllocated: true }',
+        );
     });
 
     it("throws when a retained unsupported callable is invoked", async () => {
         const modulePath = storePath(state.project, "gi", "recordmarshal", "recordmarshal.js");
         const generated = (await import(pathToFileURL(modulePath).href)) as RecordMarshalModule;
 
-        for (const invoke of [
-            () => {
-                generated.inspectPods([new generated.Pod()]);
-            },
-            () => {
-                generated.takeChoice(new generated.Choice());
-            },
-            () => {
-                generated.takeManaged(new generated.Managed());
-            },
-            () => {
-                generated.takePod(new generated.Pod());
-            },
-        ]) {
+        for (const invoke of unsupportedRecordInvocations(generated)) {
             expect(invoke).toThrow();
         }
     });

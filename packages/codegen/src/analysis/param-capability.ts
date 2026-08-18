@@ -3,7 +3,12 @@ import type { CArrayType, TypeId } from "../gir/type-id.js";
 import type { GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
 import { isCallerAllocatedOut, isInoutParameter } from "../gir/parameter.js";
-import { isCollectibleCallerOut, isHandlePassedInPlace, underlyingType } from "../store/gi/param-marshal.js";
+import {
+    isCollectibleCallerOut,
+    isHandlePassedInPlace,
+    isPointerReplacingRecord,
+    underlyingType,
+} from "../store/gi/param-marshal.js";
 import { recordInlineSize } from "../store/gi/record-layout.js";
 import { isScalarRef } from "./descriptor-render.js";
 
@@ -24,7 +29,7 @@ type CapabilityIssueLocation =
 
 type CapabilityIssue = {
     code: CapabilityIssueCode;
-    disposition: "omit" | "runtime";
+    disposition: "omit" | "runtime" | "stub";
     location: CapabilityIssueLocation;
 };
 
@@ -126,6 +131,13 @@ const declaredIndirection = (parameter: GirParameter): number | undefined => {
     return cType.split("*").length - 1;
 };
 
+const inoutIndirection = (context: ModuleContext, parameter: GirParameter, base: number): number => {
+    const hasAdditionalPointer =
+        isPointerReplacingRecord(context, parameter) || isScalarRef(context.library, parameter.type);
+
+    return base + Number(hasAdditionalPointer);
+};
+
 const marshalledIndirection = (context: ModuleContext, parameter: GirParameter): number | undefined => {
     const base = baseIndirection(context, parameter.type);
 
@@ -137,8 +149,8 @@ const marshalledIndirection = (context: ModuleContext, parameter: GirParameter):
         return base;
     }
 
-    if (isInoutParameter(parameter) && !isScalarRef(context.library, parameter.type)) {
-        return base;
+    if (isInoutParameter(parameter)) {
+        return inoutIndirection(context, parameter, base);
     }
 
     return base + POINTER_DEPTH;
@@ -316,7 +328,11 @@ const parameterIssues = (
     const structural = structuralParameterIssueCode(context, parameter);
 
     if (structural !== undefined) {
-        issues.push({ code: structural, disposition: "omit", location });
+        issues.push({
+            code: structural,
+            disposition: structural === "invalid-caller-allocated-record-layout" ? "stub" : "omit",
+            location,
+        });
     }
 
     return issues;
@@ -357,4 +373,7 @@ const callableCapability = (context: ModuleContext, callable: CallableSignature)
 
 const isCallableEmittable = (capability: CallableCapability): boolean => capability.kind !== "unsupported";
 
-export { callableCapability, isCallableEmittable };
+const isCallableStubbed = (capability: CallableCapability): boolean =>
+    isCallableEmittable(capability) && capability.issues.some((issue) => issue.disposition === "stub");
+
+export { callableCapability, isCallableEmittable, isCallableStubbed };

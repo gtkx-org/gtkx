@@ -1,6 +1,6 @@
 import { bind } from "./bind.js";
 import * as helpers from "./descriptors.js";
-import { fn } from "./fn.js";
+import { fn, unsupportedFn } from "./fn.js";
 
 /** The descriptor factories and function binders exposed as {@link t}. */
 type T = {
@@ -86,6 +86,8 @@ type T = {
      * arguments into the result.
      */
     fn: typeof fn;
+    /** Builds a throwing stub for a GIR callable that cannot safely reach native code. */
+    unsupportedFn: typeof unsupportedFn;
 };
 
 /**
@@ -132,6 +134,7 @@ const t: T = {
     cursorArray: helpers.cursorArrayT,
     callback: helpers.callbackT,
     fn,
+    unsupportedFn,
 };
 
 export { t };

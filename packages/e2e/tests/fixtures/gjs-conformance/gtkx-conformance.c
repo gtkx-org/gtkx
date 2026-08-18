@@ -4,9 +4,13 @@ static GtkxConformancePod static_pod;
 static GtkxConformanceTextPod static_text_pod;
 static GtkxConformanceNumberUnion static_number_union;
 static GtkxConformancePod array_pods[2];
+static GtkxConformancePod replacement_pod;
+static GArray *borrowed_flat_pods;
 static gpointer borrowed_pod_data[] = { &array_pods[0], &array_pods[1] };
 static GPtrArray borrowed_pods = { borrowed_pod_data, G_N_ELEMENTS(borrowed_pod_data) };
 static guint8 opaque_storage;
+static guint caller_allocated_opaque_count;
+static guint full_inout_count;
 static guint output_cleanup_count;
 
 static void
@@ -27,6 +31,26 @@ sum_pod_array(const GtkxConformancePod *pods, gsize length)
     }
 
     return (gint32) total;
+}
+
+static void
+sync_borrowed_flat_pods(void)
+{
+    if (borrowed_flat_pods == NULL) {
+        borrowed_flat_pods = g_array_sized_new(
+            FALSE,
+            FALSE,
+            sizeof(GtkxConformancePod),
+            G_N_ELEMENTS(array_pods)
+        );
+        g_array_append_vals(borrowed_flat_pods, array_pods, G_N_ELEMENTS(array_pods));
+
+        return;
+    }
+
+    for (guint index = 0; index < G_N_ELEMENTS(array_pods); index++) {
+        g_array_index(borrowed_flat_pods, GtkxConformancePod, index) = array_pods[index];
+    }
 }
 
 /**
@@ -159,6 +183,52 @@ gtkx_conformance_fill_pod_full(gint32 number, gdouble ratio, GtkxConformancePod 
 }
 
 /**
+ * gtkx_conformance_replace_pod:
+ * @pod: (inout) (transfer none): the record pointer to replace
+ */
+void
+gtkx_conformance_replace_pod(GtkxConformancePod **pod)
+{
+    replacement_pod.number = (*pod)->number + 1;
+    replacement_pod.ratio = (*pod)->ratio + 0.5;
+    *pod = &replacement_pod;
+}
+
+/**
+ * gtkx_conformance_replace_pod_full:
+ * @pod: (inout) (transfer none): the record pointer to replace
+ */
+void
+gtkx_conformance_replace_pod_full(GtkxConformancePod **pod)
+{
+    full_inout_count++;
+    gtkx_conformance_replace_pod(pod);
+}
+
+/**
+ * gtkx_conformance_set_replacement_pod:
+ * @number: the replacement record's new integer value
+ * @ratio: the replacement record's new floating-point value
+ */
+void
+gtkx_conformance_set_replacement_pod(gint32 number, gdouble ratio)
+{
+    replacement_pod.number = number;
+    replacement_pod.ratio = ratio;
+}
+
+/**
+ * gtkx_conformance_get_full_inout_count:
+ *
+ * Returns: the number of transfer-full inout calls that reached C
+ */
+guint
+gtkx_conformance_get_full_inout_count(void)
+{
+    return full_inout_count;
+}
+
+/**
  * gtkx_conformance_sum_pod_array_none:
  * @pods: (array length=length) (transfer none): the records to sum
  * @length: the number of records
@@ -206,6 +276,50 @@ gtkx_conformance_sum_pod_array_full(GtkxConformancePod *pods, gsize length)
 }
 
 /**
+ * gtkx_conformance_sum_pod_garray_none:
+ * @pods: (transfer none) (element-type GtkxConformancePod): the records to sum
+ *
+ * Returns: the sum of every record field
+ */
+gint32
+gtkx_conformance_sum_pod_garray_none(const GArray *pods)
+{
+    return sum_pod_array((const GtkxConformancePod *) pods->data, pods->len);
+}
+
+/**
+ * gtkx_conformance_sum_pod_garray_container:
+ * @pods: (transfer container) (element-type GtkxConformancePod): the records to sum
+ *
+ * Returns: the sum of every record field
+ */
+gint32
+gtkx_conformance_sum_pod_garray_container(GArray *pods)
+{
+    gint32 total = sum_pod_array((const GtkxConformancePod *) pods->data, pods->len);
+
+    g_array_unref(pods);
+
+    return total;
+}
+
+/**
+ * gtkx_conformance_sum_pod_garray_full:
+ * @pods: (transfer full) (element-type GtkxConformancePod): the records to sum
+ *
+ * Returns: the sum of every record field
+ */
+gint32
+gtkx_conformance_sum_pod_garray_full(GArray *pods)
+{
+    gint32 total = sum_pod_array((const GtkxConformancePod *) pods->data, pods->len);
+
+    g_array_unref(pods);
+
+    return total;
+}
+
+/**
  * gtkx_conformance_set_array_pods:
  * @first_number: the first record's integer value
  * @first_ratio: the first record's floating-point value
@@ -224,6 +338,63 @@ gtkx_conformance_set_array_pods(
     array_pods[0].ratio = first_ratio;
     array_pods[1].number = second_number;
     array_pods[1].ratio = second_ratio;
+    sync_borrowed_flat_pods();
+}
+
+/**
+ * gtkx_conformance_get_borrowed_flat_pods:
+ *
+ * Returns: (transfer none) (element-type GtkxConformancePod): the static flat records
+ */
+GArray *
+gtkx_conformance_get_borrowed_flat_pods(void)
+{
+    sync_borrowed_flat_pods();
+
+    return borrowed_flat_pods;
+}
+
+static GArray *
+copy_flat_pods(void)
+{
+    GArray *pods = g_array_sized_new(FALSE, FALSE, sizeof(GtkxConformancePod), G_N_ELEMENTS(array_pods));
+
+    g_array_append_vals(pods, array_pods, G_N_ELEMENTS(array_pods));
+
+    return pods;
+}
+
+/**
+ * gtkx_conformance_create_container_flat_pods:
+ *
+ * Returns: (transfer container) (element-type GtkxConformancePod): a new array of flat records
+ */
+GArray *
+gtkx_conformance_create_container_flat_pods(void)
+{
+    return copy_flat_pods();
+}
+
+/**
+ * gtkx_conformance_create_full_flat_pods:
+ *
+ * Returns: (transfer full) (element-type GtkxConformancePod): a new array of flat records
+ */
+GArray *
+gtkx_conformance_create_full_flat_pods(void)
+{
+    return copy_flat_pods();
+}
+
+/**
+ * gtkx_conformance_create_empty_opaque_flat:
+ *
+ * Returns: (transfer full) (element-type GtkxConformanceOpaque): an empty array with opaque elements
+ */
+GArray *
+gtkx_conformance_create_empty_opaque_flat(void)
+{
+    return g_array_new(FALSE, FALSE, 1);
 }
 
 /**
@@ -322,6 +493,28 @@ guint
 gtkx_conformance_get_output_cleanup_count(void)
 {
     return output_cleanup_count;
+}
+
+/**
+ * gtkx_conformance_fill_opaque:
+ * @opaque: (out caller-allocates) (transfer none): opaque storage to populate
+ */
+void
+gtkx_conformance_fill_opaque(GtkxConformanceOpaque *opaque)
+{
+    (void) opaque;
+    caller_allocated_opaque_count++;
+}
+
+/**
+ * gtkx_conformance_get_caller_allocated_opaque_count:
+ *
+ * Returns: the number of opaque caller-allocated calls that reached C
+ */
+guint
+gtkx_conformance_get_caller_allocated_opaque_count(void)
+{
+    return caller_allocated_opaque_count;
 }
 
 /**

@@ -9,18 +9,6 @@ import { isConstructibleRecord } from "./value-marshalable.js";
 type TypeName = { namespaceName: string; typeName: string };
 type CallerOutAllocation = TypeName & ({ strategy: "construct" } | { strategy: "allocate"; size: number });
 
-const isHandlePassedInPlace = (context: ModuleContext, parameter: GirParameter): boolean => {
-    if (parameter.direction !== "out" && parameter.direction !== "inout") {
-        return false;
-    }
-
-    return (
-        (parameter.callerAllocates || parameter.direction === "inout") &&
-        parameter.type !== undefined &&
-        isHandlePassing(context, parameter.type)
-    );
-};
-
 const underlyingType = (context: ModuleContext, ref: TypeId): GirType | undefined => {
     const type = context.library.typeFor(ref);
 
@@ -110,6 +98,24 @@ const isAllocatableCallerOut = (context: ModuleContext, parameter: GirParameter)
 const isRecordInout = (context: ModuleContext, parameter: GirParameter): boolean =>
     isInoutParameter(parameter) && underlyingParamKind(context, parameter) === "record";
 
+const isPointerReplacingRecord = (context: ModuleContext, parameter: GirParameter): boolean =>
+    !parameter.callerAllocates &&
+    isRecordInout(context, parameter) &&
+    (parameter.cType?.split("*").length ?? 1) > 2;
+
+const isHandlePassedInPlace = (context: ModuleContext, parameter: GirParameter): boolean => {
+    if (parameter.direction !== "out" && parameter.direction !== "inout") {
+        return false;
+    }
+
+    return (
+        (parameter.callerAllocates ||
+            (parameter.direction === "inout" && !isPointerReplacingRecord(context, parameter))) &&
+            parameter.type !== undefined &&
+            isHandlePassing(context, parameter.type)
+    );
+};
+
 const isHandlePassing = (context: ModuleContext, ref: TypeId): boolean => {
     const type = context.library.typeFor(ref);
 
@@ -150,6 +156,7 @@ export {
     isHandlePassedInPlace,
     isCollectibleCallerOut,
     isRecordInout,
+    isPointerReplacingRecord,
     isHandlePassing,
     renderCallerOutInstance,
     underlyingType,

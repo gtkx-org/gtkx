@@ -9,12 +9,15 @@ type ScenarioName = "edge" |
     "fullPodContainer" |
     "gerror" |
     "happy" |
+    "inoutTransferFull" |
+    "invalidFlatPodArray" |
     "invalidInlinePodArray" |
     "lifecycleTransferFull" |
     "opaqueContainer" |
     "outputCleanup" |
     "transferFull" |
-    "transferFullReturn";
+    "transferFullReturn" |
+    "unknownCallerAllocated";
 
 type ConformanceHarness = {
     dispose: () => void;
@@ -28,6 +31,7 @@ type CommandOptions = {
 
 const RESULT_MARKER = "GTKX_CONFORMANCE_RESULT:";
 const FULL_RETURN_FUNCTIONS = ["create_full_pod", "get_null_full_pod"];
+const FULL_PARAMETER_FUNCTIONS = [{ functionName: "replace_pod_full", parameterName: "pod" }];
 const FUNCTION_END = "    </function>";
 const fixtureDir = resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures/gjs-conformance");
 const e2eDir = resolve(fixtureDir, "../../..");
@@ -98,13 +102,49 @@ const normalizeFullReturnDeclaration = (source: string, functionName: string): s
     return `${source.slice(0, functionStart)}${normalized}${source.slice(declarationEnd)}`;
 };
 
-const normalizeFullReturns = (buildDir: string): { gir: string; typelib: string } => {
+const normalizeFullParameterDeclaration = (
+    source: string,
+    functionName: string,
+    parameterName: string,
+): string => {
+    const functionStart = source.indexOf(`    <function name="${functionName}"`);
+    const functionEnd = source.indexOf(FUNCTION_END, functionStart);
+    const parameterStart = source.indexOf(`<parameter name="${parameterName}"`, functionStart);
+    const parameterEnd = source.indexOf("</parameter>", parameterStart);
+
+    if (
+        functionStart === -1 ||
+        functionEnd === -1 ||
+        parameterStart === -1 ||
+        parameterEnd === -1 ||
+        parameterStart > functionEnd ||
+        parameterEnd > functionEnd
+    ) {
+        throw new Error(`The scanner omitted ${functionName}.${parameterName} from the conformance GIR`);
+    }
+
+    const declarationEnd = parameterEnd + "</parameter>".length;
+    const declaration = source.slice(parameterStart, declarationEnd);
+    const normalized = declaration.replace('transfer-ownership="none"', 'transfer-ownership="full"');
+
+    if (normalized === declaration) {
+        throw new Error(`The ${functionName}.${parameterName} ownership could not be normalized`);
+    }
+
+    return `${source.slice(0, parameterStart)}${normalized}${source.slice(declarationEnd)}`;
+};
+
+const normalizeOwnership = (buildDir: string): { gir: string; typelib: string } => {
     const gir = join(buildDir, "GtkxConformance-1.0.gir");
     const typelib = join(buildDir, "GtkxConformance-1.0.typelib");
     let source = readFileSync(gir, "utf8");
 
     for (const functionName of FULL_RETURN_FUNCTIONS) {
         source = normalizeFullReturnDeclaration(source, functionName);
+    }
+
+    for (const { functionName, parameterName } of FULL_PARAMETER_FUNCTIONS) {
+        source = normalizeFullParameterDeclaration(source, functionName, parameterName);
     }
 
     writeFileSync(gir, source);
@@ -124,7 +164,7 @@ const createGjsConformanceHarness = async (): Promise<ConformanceHarness> => {
     try {
         await runCommand(meson, ["setup", buildDir, fixtureDir, "--buildtype=debugoptimized"]);
         await runCommand(meson, ["compile", "-C", buildDir]);
-        const normalized = normalizeFullReturns(buildDir);
+        const normalized = normalizeOwnership(buildDir);
         const normalizedTypelib = `${normalized.typelib}.normalized`;
         await runCommand(girCompiler, [normalized.gir, `--output=${normalizedTypelib}`]);
         renameSync(normalizedTypelib, normalized.typelib);

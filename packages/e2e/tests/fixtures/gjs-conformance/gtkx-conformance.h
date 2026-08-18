@@ -88,6 +88,14 @@ void gtkx_conformance_fill_pod_none(gint32 number, gdouble ratio, GtkxConformanc
 
 void gtkx_conformance_fill_pod_full(gint32 number, gdouble ratio, GtkxConformancePod *pod);
 
+void gtkx_conformance_replace_pod(GtkxConformancePod **pod);
+
+void gtkx_conformance_replace_pod_full(GtkxConformancePod **pod);
+
+void gtkx_conformance_set_replacement_pod(gint32 number, gdouble ratio);
+
+guint gtkx_conformance_get_full_inout_count(void);
+
 gint32 gtkx_conformance_sum_pod_array_none(
     const GtkxConformancePod *pods,
     gsize length
@@ -103,12 +111,26 @@ gint32 gtkx_conformance_sum_pod_array_full(
     gsize length
 );
 
+gint32 gtkx_conformance_sum_pod_garray_none(const GArray *pods);
+
+gint32 gtkx_conformance_sum_pod_garray_container(GArray *pods);
+
+gint32 gtkx_conformance_sum_pod_garray_full(GArray *pods);
+
 void gtkx_conformance_set_array_pods(
     gint32 first_number,
     gdouble first_ratio,
     gint32 second_number,
     gdouble second_ratio
 );
+
+GArray *gtkx_conformance_get_borrowed_flat_pods(void);
+
+GArray *gtkx_conformance_create_container_flat_pods(void);
+
+GArray *gtkx_conformance_create_full_flat_pods(void);
+
+GArray *gtkx_conformance_create_empty_opaque_flat(void);
 
 GPtrArray *gtkx_conformance_get_borrowed_pods(void);
 
@@ -126,6 +148,10 @@ void gtkx_conformance_create_rejected_then_owned(
 );
 
 guint gtkx_conformance_get_output_cleanup_count(void);
+
+void gtkx_conformance_fill_opaque(GtkxConformanceOpaque *opaque);
+
+guint gtkx_conformance_get_caller_allocated_opaque_count(void);
 
 const GtkxConformanceOpaque *gtkx_conformance_get_null_opaque(void);
 

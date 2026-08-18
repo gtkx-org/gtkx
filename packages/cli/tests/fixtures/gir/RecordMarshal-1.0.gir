@@ -115,6 +115,56 @@
         </parameter>
       </parameters>
     </function>
+    <function name="inspect_flat_pods" c:identifier="record_marshal_inspect_flat_pods">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="pods" transfer-ownership="none">
+          <array name="GLib.Array" c:type="GArray*">
+            <type name="Pod"/>
+          </array>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="take_flat_pods" c:identifier="record_marshal_take_flat_pods">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="pods" transfer-ownership="full">
+          <array name="GLib.Array" c:type="GArray*">
+            <type name="Pod"/>
+          </array>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="get_flat_pods" c:identifier="record_marshal_get_flat_pods">
+      <return-value transfer-ownership="none">
+        <array name="GLib.Array" c:type="GArray*">
+          <type name="Pod"/>
+        </array>
+      </return-value>
+    </function>
+    <function name="create_flat_pods" c:identifier="record_marshal_create_flat_pods">
+      <return-value transfer-ownership="full">
+        <array name="GLib.Array" c:type="GArray*">
+          <type name="Pod"/>
+        </array>
+      </return-value>
+    </function>
+    <function name="inspect_opaque_values" c:identifier="record_marshal_inspect_opaque_values">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="values" transfer-ownership="none">
+          <array name="GLib.Array" c:type="GArray*">
+            <type name="Opaque"/>
+          </array>
+        </parameter>
+      </parameters>
+    </function>
     <function name="return_pod_full" c:identifier="record_marshal_return_pod_full">
       <return-value transfer-ownership="full">
         <type name="Pod" c:type="RecordMarshalPod*"/>
@@ -127,6 +177,46 @@
       <parameters>
         <parameter name="choice" transfer-ownership="none">
           <type name="Choice" c:type="RecordMarshalChoice*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="replace_pod" c:identifier="record_marshal_replace_pod">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="pod" direction="inout" caller-allocates="0" transfer-ownership="none">
+          <type name="Pod" c:type="RecordMarshalPod**"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="mutate_pod_in_place" c:identifier="record_marshal_mutate_pod_in_place">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="pod" direction="inout" caller-allocates="0" transfer-ownership="none">
+          <type name="Pod" c:type="RecordMarshalPod*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="replace_pod_full" c:identifier="record_marshal_replace_pod_full">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="pod" direction="inout" caller-allocates="0" transfer-ownership="full">
+          <type name="Pod" c:type="RecordMarshalPod**"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="replace_pod_container" c:identifier="record_marshal_replace_pod_container">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="pod" direction="inout" caller-allocates="0" transfer-ownership="container">
+          <type name="Pod" c:type="RecordMarshalPod**"/>
         </parameter>
       </parameters>
     </function>
