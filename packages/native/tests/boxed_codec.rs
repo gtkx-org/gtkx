@@ -13,6 +13,7 @@ use napi::{Env, JsValue as _};
 use native::ffi;
 use native::ffi::codec::{
     BoxedCodec, Decoder, Encoder, Ownership, PtrWriter, ReadCtx, SlotInit, StructCodec,
+    StructInputPolicy, StructOutputPolicy,
 };
 use native::handle::Handle;
 use native::value::handle_ptr;
@@ -39,6 +40,16 @@ fn struct_type(ownership: Ownership, size: Option<usize>) -> StructCodec {
     StructCodec {
         ownership,
         size,
+        input_policy: if ownership.is_borrowed() {
+            StructInputPolicy::Borrow
+        } else {
+            StructInputPolicy::Reject
+        },
+        output_policy: if ownership.is_borrowed() && size.is_some() {
+            StructOutputPolicy::ShallowCopy
+        } else {
+            StructOutputPolicy::Reject
+        },
         caller_allocated: false,
         inline: false,
     }
@@ -617,14 +628,16 @@ fn struct_encode_keeps_pointer() {
 }
 
 #[test]
-fn struct_decode_full_takes_ownership() {
+fn struct_decode_full_is_rejected() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let raw = unsafe { glib::ffi::g_malloc0(64) };
-        let decoded = struct_type(Ownership::Full, None)
-            .decode(&env, &ffi::Stash::Ptr(raw))
-            .expect("struct full decode should succeed");
-        assert_is_handle(&decoded);
+        assert!(
+            struct_type(Ownership::Full, None)
+                .decode(&env, &ffi::Stash::Ptr(raw))
+                .is_err()
+        );
+        unsafe { glib::ffi::g_free(raw) };
     });
 }
 
@@ -648,14 +661,15 @@ fn struct_decode_borrowed_with_size_copies() {
 }
 
 #[test]
-fn struct_decode_borrowed_without_size_is_unowned() {
+fn struct_decode_borrowed_without_size_is_rejected() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let raw = unsafe { glib::ffi::g_malloc0(64) };
-        let decoded = struct_type(Ownership::Borrowed, None)
-            .decode(&env, &ffi::Stash::Ptr(raw))
-            .expect("struct unowned decode should succeed");
-        assert_is_handle(&decoded);
+        assert!(
+            struct_type(Ownership::Borrowed, None)
+                .decode(&env, &ffi::Stash::Ptr(raw))
+                .is_err()
+        );
 
         unsafe { glib::ffi::g_free(raw) };
     });
@@ -675,40 +689,40 @@ fn struct_ptr_to_value_null_yields_null() {
 }
 
 #[test]
-fn struct_ptr_to_value_defensive_copies_regardless_of_ownership_tag() {
+fn struct_ptr_to_value_copies_borrowed_and_rejects_full() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let raw = unsafe { glib::ffi::g_malloc0(64) };
 
-        for ownership in [Ownership::Borrowed, Ownership::Full] {
-            let value =
-                unsafe { struct_type(ownership, Some(64)).read(&env, ReadCtx::value(raw, "ctx")) }
-                    .expect("struct ptr_to_value should succeed");
-            let ptr = handle_ptr(value, "ctx").expect("expected Object value");
-            assert_ne!(
-                ptr, raw,
-                "struct ptr_to_value must produce an independent copy when size is known"
-            );
+        let value = unsafe {
+            struct_type(Ownership::Borrowed, Some(64)).read(&env, ReadCtx::value(raw, "ctx"))
         }
+        .expect("borrowed struct ptr_to_value should succeed");
+        let ptr = handle_ptr(value, "ctx").expect("expected Object value");
+        assert_ne!(ptr, raw);
+
+        assert!(
+            unsafe {
+                struct_type(Ownership::Full, Some(64)).read(&env, ReadCtx::value(raw, "ctx"))
+            }
+            .is_err()
+        );
 
         unsafe { glib::ffi::g_free(raw) };
     });
 }
 
 #[test]
-fn struct_ptr_to_value_without_size_wraps_unowned() {
+fn struct_ptr_to_value_without_size_is_rejected() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let raw = unsafe { glib::ffi::g_malloc0(64) };
 
-        let value = unsafe {
-            struct_type(Ownership::Borrowed, None).read(&env, ReadCtx::value(raw, "ctx"))
-        }
-        .expect("struct ptr_to_value without size should succeed");
-        let ptr = handle_ptr(value, "ctx").expect("expected Object value");
-        assert_eq!(
-            ptr, raw,
-            "without size the wrapper aliases the source pointer; the parent allocation owns it"
+        assert!(
+            unsafe {
+                struct_type(Ownership::Borrowed, None).read(&env, ReadCtx::value(raw, "ctx"))
+            }
+            .is_err()
         );
 
         unsafe { glib::ffi::g_free(raw) };

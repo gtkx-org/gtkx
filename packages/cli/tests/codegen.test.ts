@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBRARIES } from "./cli-project.js";
 
@@ -14,6 +14,16 @@ type ByteSequenceCase = {
 };
 
 type OmittedFieldCase = { title: string; jsName: string };
+
+type RecordMarshalModule = {
+    Choice: new () => object;
+    Managed: new () => object;
+    Pod: new () => object;
+    inspectPods: (pods: object[]) => void;
+    takeChoice: (choice: object) => void;
+    takeManaged: (managed: object) => void;
+    takePod: (pod: object) => void;
+};
 
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
@@ -85,7 +95,8 @@ const INLINE_ARRAY_ACCESSORS = [
 
 const INLINE_ELEMENT_DESCRIPTORS = [
     '"inline_array_corner_get_type", isInline: true, size: 16 }',
-    't.struct("borrowed", { size: 8, wrapperClass: Span, isInline: true })',
+    't.struct("borrowed", { inputPolicy: "borrow", outputPolicy: "shallowCopy", ' +
+    "size: 8, wrapperClass: Span, isInline: true })",
 ];
 
 const INLINE_ARRAY_FIELDS = ["axes", "corners", "spans"];
@@ -99,8 +110,18 @@ const AXES_WRITE = /write\(getHandle\(this\), (\w+), 0 \+ __index \* 8, toNative
 const CORNER_READ = /__result\[__index\] = fromNative\(\w+, read\(getHandle\(this\), \w+, 32 \+ __index \* 16\)\)/u;
 const CORNER_WRITE = /write\(getHandle\(this\), (\w+), 32 \+ __index \* 16, toNative\(\1, __element\)\);/u;
 const POINTER_ARRAY_GETTER = /get buffer\(\) \{\s+return fromNative\(/u;
-const LENGTH_BOUNDED_READ = /read\(getHandle\(this\), t\.struct\("borrowed", \{ size: this\.nLinks \* 8 \}\), 8\)/u;
+const LENGTH_BOUNDED_READ = /t\.struct\("borrowed", \{[^}]*size: this\.nLinks \* 8 \}\)/u;
 const AXES_EMISSION = [AXES_GETTER, AXES_READ, AXES_SETTER, AXES_BOUND, AXES_WRITE];
+const SUPPORTED_RECORD_CALLABLES = ["borrowPod(", "fillPod(", "fillPodFull(", "returnPointer("];
+
+const RETAINED_RECORD_CALLABLES = [
+    "inspectPods(",
+    "returnPodFull(",
+    "takeManaged(",
+    "takeChoice(",
+    "takePod(",
+    "takePodContainer(",
+];
 
 const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
     { title: "an array whose length lives in a sibling field", jsName: "entries" },
@@ -403,6 +424,63 @@ describe("gtkx codegen (byte sequence representation)", () => {
             expect(generatedModule(project, "gi", "byteseq", "byteseq.d.ts")).toContain("readSized(): number[]");
         } finally {
             removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx codegen (plain record call marshalling)", () => {
+    const state: { project: CliProject; status: number | null } = {
+        project: { root: "", nodeModules: "" },
+        status: null,
+    };
+
+    const declarations = (): string => generatedModule(state.project, "gi", "recordmarshal", "recordmarshal.d.ts");
+
+    beforeAll(() => {
+        state.project = createCliProject({
+            prefix: "gtkx-cli-codegen-record-marshal-",
+            config: fixtureConfig("RecordMarshal-1.0"),
+        });
+
+        state.status = runCli(state.project, ["codegen"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it("declares the supported plain-record callables", () => {
+        expect(state.status).toBe(0);
+        const declared = declarations();
+        expect(SUPPORTED_RECORD_CALLABLES.filter((name) => !declared.includes(name))).toEqual([]);
+    });
+
+    it("retains rejected transfers and unions while omitting an impossible caller allocation", () => {
+        expect(state.status).toBe(0);
+        const declared = declarations();
+        expect(RETAINED_RECORD_CALLABLES.filter((name) => !declared.includes(name))).toEqual([]);
+        expect(declared).not.toContain("fillOpaque(");
+    });
+
+    it("throws when a retained unsupported callable is invoked", async () => {
+        const modulePath = storePath(state.project, "gi", "recordmarshal", "recordmarshal.js");
+        const generated = (await import(pathToFileURL(modulePath).href)) as RecordMarshalModule;
+
+        for (const invoke of [
+            () => {
+                generated.inspectPods([new generated.Pod()]);
+            },
+            () => {
+                generated.takeChoice(new generated.Choice());
+            },
+            () => {
+                generated.takeManaged(new generated.Managed());
+            },
+            () => {
+                generated.takePod(new generated.Pod());
+            },
+        ]) {
+            expect(invoke).toThrow();
         }
     });
 });

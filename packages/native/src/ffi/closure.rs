@@ -337,6 +337,10 @@ impl ClosureData {
         arg_ptr: *const c_void,
         siblings: &[Stash],
     ) -> anyhow::Result<Unknown<'e>> {
+        if let Codec::Struct(struct_codec) = codec {
+            let ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
+            return struct_codec.read_callback_arg(env, ptr);
+        }
         if !matches!(codec, Codec::Array(_)) {
             return unsafe {
                 codec.read(

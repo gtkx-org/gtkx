@@ -19,6 +19,12 @@ fn execute_call<'e>(
     let arg_codecs = &descriptor.arg_codecs;
     let completion_index = completion_callback_index(arg_codecs);
 
+    for (i, codec) in arg_codecs.iter().enumerate() {
+        codec
+            .ensure_call_arg_supported()
+            .with_context(|| format!("validating arg {i} of {label}"))?;
+    }
+
     let stashes = arg_codecs
         .iter()
         .zip(values)
@@ -165,16 +171,33 @@ fn write_ref_updates(
     values: &[Unknown<'_>],
     stashes: &[ffi::Stash],
 ) -> anyhow::Result<()> {
+    let mut first_error = None;
+
     for (i, (codec, &value)) in arg_codecs.iter().zip(values).enumerate() {
-        if matches!(codec, Codec::Ref(_))
-            && !matches!(value.get_type()?, ValueType::Null | ValueType::Undefined)
-        {
+        let update = (|| {
+            if !matches!(codec, Codec::Ref(_))
+                || matches!(value.get_type()?, ValueType::Null | ValueType::Undefined)
+            {
+                return Ok(());
+            }
+
             let new_value = codec.decode_with_context(env, &stashes[i], stashes, arg_codecs)?;
             let mut js_obj = Object::from_raw(env.raw(), value.raw());
             js_obj.set_named_property("value", new_value)?;
+            anyhow::Ok(())
+        })();
+
+        if first_error.is_none()
+            && let Err(error) = update
+        {
+            first_error = Some(error);
         }
     }
-    Ok(())
+
+    match first_error {
+        Some(error) => Err(error),
+        None => Ok(()),
+    }
 }
 
 /// Invokes a previously bound native function, encoding `values` and decoding the return value

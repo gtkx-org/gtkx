@@ -128,7 +128,9 @@ const layoutOfType = (
             return pointerOr(occurrenceCType, () => layoutOfPrimitive(type.category));
         }
         case "carray": {
-            return arrayLayout(context, type, visited);
+            return isPointerCType(occurrenceCType) || isPointerCType(type.arrayCType)
+                ? POINTER_LAYOUT
+                : arrayLayout(context, type, visited);
         }
         case "list":
         case "hashtable":
@@ -149,6 +151,8 @@ const layoutOfType = (
         }
     }
 };
+
+const isPointerCType = (cType: string | undefined): boolean => cType?.endsWith("*") === true;
 
 const arrayLayout = (
     context: ModuleContext,

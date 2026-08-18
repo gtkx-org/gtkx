@@ -7,7 +7,8 @@ use native::ffi;
 use native::ffi::Slot;
 use native::ffi::codec::{
     BooleanCodec, CallbackCodec, CallbackScope, Codec, Decoder, DestroyNotifyKind, Encoder,
-    IntegerCodec, Ownership, PtrWriter, ReadCtx, SlotInit, StructCodec, VoidCodec,
+    IntegerCodec, Ownership, PtrWriter, ReadCtx, SlotInit, StructCodec, StructInputPolicy,
+    StructOutputPolicy, VoidCodec,
 };
 use native::ffi::descriptor::Descriptor;
 use test_support as helpers;
@@ -73,6 +74,8 @@ fn transfer_release_matches_codec_ownership() {
         let plain_struct = StructCodec {
             ownership: Ownership::Full,
             size: None,
+            input_policy: StructInputPolicy::Reject,
+            output_policy: StructOutputPolicy::Reject,
             caller_allocated: false,
             inline: false,
         };
@@ -84,6 +87,8 @@ fn struct_codec() -> StructCodec {
     StructCodec {
         ownership: Ownership::Borrowed,
         size: Some(8),
+        input_policy: StructInputPolicy::Borrow,
+        output_policy: StructOutputPolicy::ShallowCopy,
         caller_allocated: false,
         inline: false,
     }

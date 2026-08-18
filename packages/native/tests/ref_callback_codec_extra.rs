@@ -4,8 +4,8 @@ use libffi::middle;
 use native::ffi::codec::{
     BigIntCodec, BooleanCodec, BoxedCodec, BufferCodec, CallbackCodec, CallbackScope, Codec,
     Decoder, DestroyNotifyKind, Encoder, EnumFlagsCodec, EnumFlagsKind, FloatCodec,
-    FundamentalCodec, IntegerCodec, Ownership, ReadCtx, RefCodec, StructCodec, UnicharCodec,
-    VoidCodec,
+    FundamentalCodec, IntegerCodec, Ownership, ReadCtx, RefCodec, StructCodec, StructInputPolicy,
+    StructOutputPolicy, UnicharCodec, VoidCodec,
 };
 use native::ffi::{self, StashData, StashStorage};
 use test_support as helpers;
@@ -40,6 +40,8 @@ fn struct_codec() -> StructCodec {
     StructCodec {
         ownership: Ownership::Borrowed,
         size: None,
+        input_policy: StructInputPolicy::Borrow,
+        output_policy: StructOutputPolicy::Reject,
         caller_allocated: false,
         inline: false,
     }

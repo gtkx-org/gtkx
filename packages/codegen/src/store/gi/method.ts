@@ -503,7 +503,10 @@ const planCallerOut = (
     parameter: GirParameter,
     argIndex: ArgIndexOptions,
 ): CallArgPlan => {
-    const descriptor = renderDescriptor(context, parameter.type, "none", argIndex);
+    const descriptor = renderDescriptor(context, parameter.type, "none", {
+        ...argIndex,
+        isCallerAllocated: true,
+    });
 
     if (isCollectibleCallerOut(context, parameter)) {
         context.addRuntimeImport("getHandle");
@@ -515,6 +518,21 @@ const planCallerOut = (
     }
 
     return { paramLiteral: paramDescriptorLiteral(descriptor, {}), inputExpr: "undefined" };
+};
+
+const renderInPlaceRecordDescriptor = (
+    context: ModuleContext,
+    parameter: GirParameter,
+    argIndex: ArgIndexOptions,
+): string => {
+    const shouldRejectTransfer = parameter.transferOwnership !== "none";
+
+    return renderDescriptor(context, parameter.type, "none", {
+        ...argIndex,
+        isCallerAllocated: true,
+        structInputPolicy: shouldRejectTransfer ? "reject" : undefined,
+        structOutputPolicy: shouldRejectTransfer ? "reject" : undefined,
+    });
 };
 
 const planInoutParam = (
@@ -531,7 +549,7 @@ const planInoutParam = (
     const { fn, index, argIndex, isConsumed, lengthSource } = options;
 
     if (isHandlePassedInPlace(context, parameter)) {
-        const descriptor = renderDescriptor(context, parameter.type, "none", argIndex);
+        const descriptor = renderInPlaceRecordDescriptor(context, parameter, argIndex);
 
         return {
             paramLiteral: paramDescriptorLiteral(descriptor, {

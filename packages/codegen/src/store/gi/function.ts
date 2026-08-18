@@ -2,7 +2,7 @@ import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { tFn } from "../../analysis/descriptor.js";
-import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
+import { callableCapability, isCallableEmittable } from "../../analysis/param-capability.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
 import { callableDoc } from "./callable-doc.js";
@@ -75,7 +75,7 @@ const canEmitNamespaceFunction = (context: ModuleContext, fn: GirFunction): bool
     !isMovedOntoEmittedMember(context, fn) &&
     fn.shadowedBy === undefined &&
     fn.cIdentifier !== undefined &&
-    !hasUnmarshalableParam(context, fn);
+    isCallableEmittable(callableCapability(context, fn));
 
 const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
     if (!canEmitNamespaceFunction(context, fn)) {

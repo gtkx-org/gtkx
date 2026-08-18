@@ -1,5 +1,6 @@
 use native::ffi::codec::{
     ArrayKind, BigIntCodec, Codec, DestroyNotifyKind, FloatCodec, IntegerCodec, Ownership,
+    StructInputPolicy, StructOutputPolicy,
 };
 use native::ffi::descriptor::{Descriptor, Descriptors, NestedDescriptor};
 
@@ -123,6 +124,8 @@ fn string_object_boxed_struct_and_fundamental_descriptors_map_to_their_codecs() 
     let struct_ = Descriptor::Struct {
         ownership: Ownership::Borrowed,
         size: Some(8),
+        input_policy: Some(StructInputPolicy::Borrow),
+        output_policy: Some(StructOutputPolicy::ShallowCopy),
         is_caller_allocated: None,
         is_inline: None,
     };

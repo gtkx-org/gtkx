@@ -41,7 +41,7 @@ pub use object::ObjectCodec;
 pub(crate) use object::{release_construction_ref, tracked_gobject_value};
 pub use r#ref::RefCodec;
 pub use string::{StringCodec, str_to_glib_full};
-pub use r#struct::StructCodec;
+pub use r#struct::{StructCodec, StructInputPolicy, StructOutputPolicy};
 pub use unichar::UnicharCodec;
 pub use void::VoidCodec;
 
@@ -403,6 +403,25 @@ pub enum Codec {
 }
 
 impl Codec {
+    pub(crate) unsafe fn read_inline_array_item<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        context: &str,
+    ) -> anyhow::Result<Unknown<'e>> {
+        match self {
+            Self::Struct(codec) => codec.read_inline_array_item(env, ptr),
+            _ => unsafe { self.read(env, ReadCtx::value(ptr, context)) },
+        }
+    }
+
+    pub(crate) fn ensure_call_arg_supported(&self) -> anyhow::Result<()> {
+        match self {
+            Self::Struct(codec) => codec.ensure_input_supported(),
+            _ => Ok(()),
+        }
+    }
+
     #[must_use]
     pub fn transfer(&self) -> Ownership {
         match self {

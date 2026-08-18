@@ -236,6 +236,30 @@ jobs:
           command: pnpm exec nx fix-ci
           install: "false"
 
+  gjs-conformance:
+    name: GJS conformance (${{ matrix.arch }})
+    needs: [changes, image-manifest]
+    if: *code-changed
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86-64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Compare GJS and GTKX marshaling
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm exec nx run @gtkx/e2e:test:conformance
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
+
   asan:
     needs: [changes, image-manifest]
     if: *code-changed

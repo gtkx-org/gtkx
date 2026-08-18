@@ -25,6 +25,9 @@ RUN apt-get update \
         libwebkitgtk-6.0-dev \
         libgirepository1.0-dev \
         gobject-introspection \
+        gjs \
+        meson \
+        ninja-build \
         gvfs \
         libgles2 \
         libgl1-mesa-dri \

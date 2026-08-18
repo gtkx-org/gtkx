@@ -332,9 +332,10 @@ impl ArrayCodec {
 
         (0..len)
             .map(|index| unsafe {
-                self.item_codec.read(
+                self.item_codec.read_inline_array_item(
                     env,
-                    ReadCtx::value(data.add(index * stride).cast_mut().cast(), "array element"),
+                    data.add(index * stride).cast_mut().cast(),
+                    "array element",
                 )
             })
             .collect()

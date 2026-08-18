@@ -8,6 +8,7 @@ use napi::{Env, JsValue as _};
 use native::api::read::read;
 use native::ffi::codec::{
     ArrayKind, Codec, Decoder as _, Ownership, PtrWriter as _, ReadCtx, SlotInit,
+    StructInputPolicy, StructOutputPolicy,
 };
 use native::ffi::descriptor::{Descriptor, Descriptors, NestedDescriptor};
 use native::ffi::{PendingTransfer, Slot};
@@ -179,6 +180,18 @@ fn struct_of(ownership: Ownership, size: Option<u32>, is_inline: bool) -> Descri
     Descriptor::Struct {
         ownership,
         size,
+        input_policy: Some(if ownership.is_borrowed() {
+            StructInputPolicy::Borrow
+        } else {
+            StructInputPolicy::Reject
+        }),
+        output_policy: Some(if ownership.is_full() {
+            StructOutputPolicy::Reject
+        } else if size.is_some() {
+            StructOutputPolicy::ShallowCopy
+        } else {
+            StructOutputPolicy::Borrow
+        }),
         is_caller_allocated: Some(false),
         is_inline: Some(is_inline),
     }
@@ -324,6 +337,8 @@ fn d_struct_caller_allocated() -> Descriptor {
     Descriptor::Struct {
         ownership: Ownership::Borrowed,
         size: Some(RGBA_SIZE),
+        input_policy: Some(StructInputPolicy::Borrow),
+        output_policy: Some(StructOutputPolicy::ShallowCopy),
         is_caller_allocated: Some(true),
         is_inline: Some(false),
     }
@@ -756,7 +771,7 @@ const CELLS: &[Cell] = &[
         check: writes(
             Subject::Block,
             SlotInit::Uninitialized,
-            stores(Stored::Copy, false, 0, 0),
+            Effect::Refuses("plain struct"),
         ),
     },
     Cell {

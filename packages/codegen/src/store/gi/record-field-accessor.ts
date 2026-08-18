@@ -808,6 +808,8 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
         jsName,
         tsType: renderTsType(context, fieldType, false),
         elementDescriptor: tStruct("borrowed", {
+            inputPolicy: "borrow",
+            outputPolicy: "shallowCopy",
             size: `${lengthExpr} * ${String(elementSize)}`,
             wrapperClass: undefined,
             isCallerAllocated: false,

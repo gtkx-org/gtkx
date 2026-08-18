@@ -8,7 +8,8 @@ use native::Handle;
 use native::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, Codec, Decoder, Encoder,
     EnumFlagsCodec, EnumFlagsKind, FloatCodec, FundamentalCodec, IntegerCodec, ObjectCodec,
-    Ownership, PtrWriter, ReadCtx, RefCodec, SlotInit, StringCodec, StructCodec,
+    Ownership, PtrWriter, ReadCtx, RefCodec, SlotInit, StringCodec, StructCodec, StructInputPolicy,
+    StructOutputPolicy,
 };
 use native::ffi::{GArrayData, ListData, ListPayload, Slot, Stash, StashData};
 use test_support as helpers;
@@ -23,6 +24,8 @@ fn struct_item_codec() -> Codec {
     Codec::Struct(StructCodec {
         ownership: Ownership::Borrowed,
         size: Some(size_of::<gtk4::gdk::ffi::GdkRGBA>()),
+        input_policy: StructInputPolicy::Borrow,
+        output_policy: StructOutputPolicy::ShallowCopy,
         caller_allocated: false,
         inline: false,
     })
@@ -2359,6 +2362,8 @@ fn inline_pair_codec(ownership: Ownership, kind: ArrayKind, size_index: Option<u
         Box::new(Codec::Struct(StructCodec {
             ownership: Ownership::Borrowed,
             size: Some(size_of::<InlinePair>()),
+            input_policy: StructInputPolicy::Borrow,
+            output_policy: StructOutputPolicy::ShallowCopy,
             caller_allocated: false,
             inline: false,
         })),
@@ -2457,6 +2462,8 @@ fn an_inline_struct_array_decodes_elements_by_value() {
             Box::new(Codec::Struct(StructCodec {
                 ownership: Ownership::Borrowed,
                 size: Some(size_of::<InlinePair>()),
+                input_policy: StructInputPolicy::Borrow,
+                output_policy: StructOutputPolicy::ShallowCopy,
                 caller_allocated: false,
                 inline: false,
             })),

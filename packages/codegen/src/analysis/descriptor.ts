@@ -3,6 +3,8 @@ import type { GirCursorBounds } from "../gir/parameter.js";
 import { joinArgs } from "../writer/emit.js";
 
 type Ownership = "borrowed" | "full";
+type StructInputPolicy = "borrow" | "reject";
+type StructOutputPolicy = "borrow" | "shallowCopy" | "reject";
 
 type DescriptorName =
     | "bind" |
@@ -72,6 +74,8 @@ type BoxedOptions = {
 };
 
 type StructOptions = {
+    inputPolicy: StructInputPolicy;
+    outputPolicy: StructOutputPolicy;
     size: number | string | undefined;
     wrapperClass: string | undefined;
     isCallerAllocated: boolean;
@@ -199,6 +203,8 @@ const tStruct = (ownership: Ownership, options: StructOptions): string =>
     call("struct", [
         sourceStringLiteral(ownership),
         optionsObject([
+            `inputPolicy: ${sourceStringLiteral(options.inputPolicy)}`,
+            `outputPolicy: ${sourceStringLiteral(options.outputPolicy)}`,
             options.size === undefined ? undefined : `size: ${String(options.size)}`,
             options.wrapperClass === undefined ? undefined : `wrapperClass: ${options.wrapperClass}`,
             options.isCallerAllocated ? "isCallerAllocated: true" : undefined,
@@ -207,7 +213,13 @@ const tStruct = (ownership: Ownership, options: StructOptions): string =>
     ]);
 
 const tInlineStruct = (): string =>
-    tStruct("borrowed", { size: undefined, wrapperClass: undefined, isCallerAllocated: false });
+    tStruct("borrowed", {
+        inputPolicy: "borrow",
+        outputPolicy: "borrow",
+        size: undefined,
+        wrapperClass: undefined,
+        isCallerAllocated: false,
+    });
 
 const tFundamental = (lib: string, refFunc: string, unrefFunc: string, options: FundamentalOptions): string =>
     call("fundamental", [

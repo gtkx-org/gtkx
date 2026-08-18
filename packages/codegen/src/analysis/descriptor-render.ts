@@ -22,7 +22,7 @@ import {
 } from "../gir/type-id.js";
 import { isRecordInout } from "../store/gi/param-marshal.js";
 import { computeRecordFieldSlots, recordInlineSize } from "../store/gi/record-layout.js";
-import { isValueMarshalable } from "../store/gi/value-marshalable.js";
+import { isGjsSimpleRecord } from "../store/gi/simple-record.js";
 import {
     type ArrayLayout,
     type ListDescriptorName,
@@ -56,12 +56,16 @@ import {
 import { carrayFor, isByteSequence, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
 
 type PrimaryReturnKind = "surfaced" | "void" | "skipped";
+type StructInputPolicy = "borrow" | "reject";
+type StructOutputPolicy = "borrow" | "shallowCopy" | "reject";
 
 type ArgIndexOptions = {
     argIndexOffset: number;
     argIndexMap: Map<number, number> | undefined;
     cursor: GirCursorBounds | undefined;
     hasOutIndirection: boolean;
+    structInputPolicy: StructInputPolicy | undefined;
+    structOutputPolicy: StructOutputPolicy | undefined;
 };
 
 type CursorArgIndexOptions = ArgIndexOptions & { cursor: GirCursorBounds };
@@ -75,6 +79,21 @@ type RenderDescriptorOptions = Partial<ArgIndexOptions> & {
 type RecordPlacement = {
     isCallerAllocated?: boolean;
     isInline?: boolean;
+    inputPolicy?: StructInputPolicy | undefined;
+    outputPolicy?: StructOutputPolicy | undefined;
+};
+
+type NormalizedRecordPlacement = {
+    isCallerAllocated: boolean;
+    isInline: boolean;
+    inputPolicy: StructInputPolicy | undefined;
+    outputPolicy: StructOutputPolicy | undefined;
+};
+
+type ElementStructPolicyOptions = {
+    input?: StructInputPolicy | undefined;
+    transferNoneOutput: StructOutputPolicy;
+    transferFullOutput?: StructOutputPolicy | undefined;
 };
 
 type FundamentalDescriptor = {
@@ -115,6 +134,12 @@ const LIST_HELPERS: Record<Exclude<ListFlavor, "gbytearray">, ListDescriptorName
 
 const FLOATING_FUNDAMENTALS: Set<string> = new Set(["GParam"]);
 
+const ELEMENT_STRUCT_INPUT_POLICIES: Record<ParameterTransfer, StructInputPolicy> = {
+    container: "reject",
+    full: "reject",
+    none: "borrow",
+};
+
 const mapArgIndex = (options: ArgIndexOptions, girIndex: number): number =>
     options.argIndexMap?.get(girIndex) ?? girIndex + options.argIndexOffset;
 
@@ -132,6 +157,52 @@ const transferOwnership = (transfer: ParameterTransfer): Ownership => {
 
 const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =>
     transfer === "container" ? "none" : transfer;
+
+const elementStructOutputPolicy = (
+    transfer: ParameterTransfer,
+    transferNonePolicy: StructOutputPolicy,
+    transferFullPolicy: StructOutputPolicy,
+): StructOutputPolicy => {
+    if (transfer === "full") {
+        return transferFullPolicy;
+    }
+
+    return transfer === "none" ? transferNonePolicy : "shallowCopy";
+};
+
+const elementStructPolicies = (
+    transfer: ParameterTransfer,
+    options: Pick<ArgIndexOptions, "structInputPolicy" | "structOutputPolicy">,
+    policies: ElementStructPolicyOptions,
+): { structInputPolicy: StructInputPolicy; structOutputPolicy: StructOutputPolicy } => ({
+    structInputPolicy: options.structInputPolicy ?? policies.input ?? ELEMENT_STRUCT_INPUT_POLICIES[transfer],
+    structOutputPolicy:
+        options.structOutputPolicy ??
+        elementStructOutputPolicy(
+            transfer,
+            policies.transferNoneOutput,
+            policies.transferFullOutput ?? "reject",
+        ),
+});
+
+const listStructPolicies = (
+    type: ListType,
+    transfer: ParameterTransfer,
+    options: Pick<ArgIndexOptions, "structInputPolicy" | "structOutputPolicy">,
+): { structInputPolicy: StructInputPolicy; structOutputPolicy: StructOutputPolicy } => {
+    const requiresRecordInputRejection = type.flavor === "garray" || type.flavor === "gptrarray";
+    const input = requiresRecordInputRejection ? "reject" : ELEMENT_STRUCT_INPUT_POLICIES[transfer];
+
+    const policies = elementStructPolicies(transfer, options, {
+        input,
+        transferNoneOutput: "shallowCopy",
+    });
+
+    return {
+        ...policies,
+        structOutputPolicy: type.flavor === "garray" ? "reject" : policies.structOutputPolicy,
+    };
+};
 
 const isVoidRef = (library: Library, ref: TypeId | undefined): boolean =>
     ref === undefined || primitiveCategoryFor(library, ref) === "void";
@@ -161,6 +232,8 @@ const argIndexOptions = (options: RenderDescriptorOptions): ArgIndexOptions => (
     argIndexMap: options.argIndexMap,
     cursor: options.cursor,
     hasOutIndirection: options.hasOutIndirection === true,
+    structInputPolicy: options.structInputPolicy,
+    structOutputPolicy: options.structOutputPolicy,
 });
 
 const renderDescriptor = (
@@ -206,8 +279,14 @@ const renderDescriptor = (
         }
         case "hashtable": {
             const elementTransfer = deriveElementTransfer(transfer);
-            const key = renderDescriptor(context, type.key, elementTransfer, indexOptions);
-            const value = renderDescriptor(context, type.value, elementTransfer, indexOptions);
+
+            const elementOptions = {
+                ...indexOptions,
+                ...elementStructPolicies(transfer, indexOptions, { transferNoneOutput: "shallowCopy" }),
+            };
+
+            const key = renderDescriptor(context, type.key, elementTransfer, elementOptions);
+            const value = renderDescriptor(context, type.value, elementTransfer, elementOptions);
 
             return tHashTable(key, value, ownership);
         }
@@ -226,7 +305,10 @@ const listExpression = (
         return context.library.isByteArrayTyped ? tByteArray(ownership) : tNumericByteArray(ownership);
     }
 
-    const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), indexOptions);
+    const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), {
+        ...indexOptions,
+        ...listStructPolicies(type, transfer, indexOptions),
+    });
 
     return tList(LIST_HELPERS[type.flavor], element, ownership);
 };
@@ -544,18 +626,74 @@ const requiresFallbackClass = (record: ResolvedRecord): boolean => {
     return record.glibGetType === undefined;
 };
 
+const isUnregisteredUnion = (record: ResolvedRecord): boolean =>
+    record.isUnion && record.glibGetType === undefined;
+
+const canShallowCopyStruct = (
+    context: ModuleContext,
+    resolved: Extract<EntityType, { kind: "record" }>,
+    options: { isCallerAllocated: boolean; isInline: boolean },
+    size: number | undefined,
+): boolean => {
+    if (size === undefined) {
+        return false;
+    }
+
+    if (options.isCallerAllocated || options.isInline) {
+        return true;
+    }
+
+    return isGjsSimpleRecord(context, resolved.namespace.name, resolved.value);
+};
+
+const structInputPolicy = (
+    record: ResolvedRecord,
+    ownership: Ownership,
+    options: NormalizedRecordPlacement,
+): StructInputPolicy => {
+    if (isUnregisteredUnion(record) && options.inputPolicy === undefined && !options.isInline) {
+        return "reject";
+    }
+
+    return options.inputPolicy ?? (ownership === "full" ? "reject" : "borrow");
+};
+
+const shallowCopyStructPolicy = (canShallowCopy: boolean): StructOutputPolicy =>
+    canShallowCopy ? "shallowCopy" : "reject";
+
+const requestedStructOutputPolicy = (
+    requested: StructOutputPolicy | undefined,
+    canShallowCopy: boolean,
+): StructOutputPolicy | undefined =>
+    requested === "shallowCopy" ? shallowCopyStructPolicy(canShallowCopy) : requested;
+
+const defaultStructOutputPolicy = (ownership: Ownership, canShallowCopy: boolean): StructOutputPolicy =>
+    ownership === "full" ? "reject" : shallowCopyStructPolicy(canShallowCopy);
+
+const structOutputPolicy = (
+    ownership: Ownership,
+    options: NormalizedRecordPlacement,
+    canShallowCopy: boolean,
+): StructOutputPolicy => {
+    return requestedStructOutputPolicy(options.outputPolicy, canShallowCopy) ??
+        defaultStructOutputPolicy(ownership, canShallowCopy);
+};
+
 const structExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "record" }>,
     ownership: Ownership,
-    options: { isCallerAllocated: boolean; isInline: boolean },
+    options: NormalizedRecordPlacement,
 ): string => {
-    const { size } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
+    const record = resolved.value;
+    const size = recordInlineSize(context, record);
     const wrapperClass = context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(resolved.value.name));
-    const isCopyable = isValueMarshalable(context, resolved.namespace.name, resolved.value);
+    const canShallowCopy = canShallowCopyStruct(context, resolved, options, size);
 
     return tStruct(ownership, {
-        size: isCopyable && size > 0 ? size : undefined,
+        inputPolicy: structInputPolicy(record, ownership, options),
+        outputPolicy: structOutputPolicy(ownership, options, canShallowCopy),
+        size,
         wrapperClass,
         isCallerAllocated: options.isCallerAllocated,
         isInline: options.isInline,
@@ -603,20 +741,51 @@ const plainRecordExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "record" }>,
     ownership: Ownership,
-    placement: RecordPlacement,
+    placement: NormalizedRecordPlacement,
 ): string => {
     const record = resolved.value;
 
-    const layout = {
-        isCallerAllocated: placement.isCallerAllocated ?? false,
-        isInline: placement.isInline ?? false,
-    };
-
     if (record.glibGetType === undefined) {
-        return structExpression(context, resolved, ownership, layout);
+        return structExpression(context, resolved, ownership, placement);
     }
 
-    return boxedRecordExpression({ context, resolved, ownership, ...layout, typeFnName: record.glibGetType });
+    return boxedRecordExpression({ context, resolved, ownership, ...placement, typeFnName: record.glibGetType });
+};
+
+const normalizedRecordPlacement = (placement: RecordPlacement): NormalizedRecordPlacement => ({
+    isCallerAllocated: placement.isCallerAllocated ?? false,
+    isInline: placement.isInline ?? false,
+    inputPolicy: placement.inputPolicy,
+    outputPolicy: placement.outputPolicy,
+});
+
+const lifecycleRecordExpression = (
+    context: ModuleContext,
+    resolved: Extract<EntityType, { kind: "record" }>,
+    ownership: Ownership,
+    placement: NormalizedRecordPlacement,
+): string | undefined => {
+    const record = resolved.value;
+    const { refFunc, unrefFunc } = recordRefPair(record);
+    const lib = resolved.namespace.sharedLibrary;
+
+    if (refFunc === undefined || unrefFunc === undefined || lib === undefined) {
+        return undefined;
+    }
+
+    const wrapperClass = requiresFallbackClass(record)
+        ? context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(record.name))
+        : undefined;
+
+    return fundamentalRecordExpression({
+        resolved,
+        lib,
+        refFunc,
+        unrefFunc,
+        ownership,
+        wrapperClass,
+        isInline: placement.isInline,
+    });
 };
 
 const recordExpression = (
@@ -626,26 +795,15 @@ const recordExpression = (
     placement: RecordPlacement = {},
 ): string => {
     const record = resolved.value;
-    const { refFunc, unrefFunc } = recordRefPair(record);
-    const lib = resolved.namespace.sharedLibrary;
+    const layout = normalizedRecordPlacement(placement);
 
-    if (refFunc !== undefined && unrefFunc !== undefined && lib !== undefined) {
-        const wrapperClass = requiresFallbackClass(record)
-            ? context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(record.name))
-            : undefined;
-
-        return fundamentalRecordExpression({
-            resolved,
-            lib,
-            refFunc,
-            unrefFunc,
-            ownership,
-            wrapperClass,
-            isInline: placement.isInline ?? false,
-        });
+    if (record.glibGetType === undefined) {
+        return structExpression(context, resolved, ownership, layout);
     }
 
-    return plainRecordExpression(context, resolved, ownership, placement);
+    const lifecycleExpression = lifecycleRecordExpression(context, resolved, ownership, layout);
+
+    return lifecycleExpression ?? plainRecordExpression(context, resolved, ownership, layout);
 };
 
 const rawEnumDescriptor = (isSigned: boolean): string => (isSigned ? tInt32 : tUint32);
@@ -679,6 +837,8 @@ const expressionForResolved = (
             return recordExpression(context, resolved, ownership, {
                 isCallerAllocated: options.isCallerAllocated ?? false,
                 isInline: options.isInline ?? false,
+                inputPolicy: options.structInputPolicy,
+                outputPolicy: options.structOutputPolicy,
             });
         }
         case "enum": {
@@ -695,12 +855,24 @@ const elementExpression = (
     ref: CArrayType,
     transfer: ParameterTransfer,
     options: ArgIndexOptions,
-): string =>
-    renderDescriptor(context, ref.element, deriveElementTransfer(transfer), {
+): string => {
+    const hasInlineRecordLayout = inlineElementSize(context, ref, options.hasOutIndirection) !== undefined;
+
+    return renderDescriptor(context, ref.element, deriveElementTransfer(transfer), {
         ...options,
+        ...elementStructPolicies(
+            transfer,
+            options,
+            {
+                input: hasInlineRecordLayout ? "borrow" : ELEMENT_STRUCT_INPUT_POLICIES[transfer],
+                transferFullOutput: hasInlineRecordLayout ? "shallowCopy" : "reject",
+                transferNoneOutput: ref.lengthParameterIndex === undefined ? "shallowCopy" : "borrow",
+            },
+        ),
         cursor: undefined,
         hasOutIndirection: false,
     });
+};
 
 const cursorArrayExpression = (
     context: ModuleContext,

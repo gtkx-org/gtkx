@@ -8,6 +8,7 @@
         "test:asan": "tsx ../../scripts/asan-e2e.ts"
     },
     "devDependencies": {
+        "@gtkx/codegen": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/gl": "workspace:*",
         "@gtkx/native": "workspace:*",
@@ -24,6 +25,19 @@
                 "options": {
                     "cwd": ".",
                     "command": "eslint {projectRoot}"
+                }
+            },
+            "test:conformance": {
+                "cache": false,
+                "dependsOn": [
+                    "@gtkx/codegen:build",
+                    "@gtkx/native:build",
+                    "@gtkx/runtime:build"
+                ],
+                "executor": "nx:run-commands",
+                "options": {
+                    "command": "vitest run --config vitest-conformance.config.mjs",
+                    "cwd": "packages/e2e"
                 }
             },
             "test:asan": {

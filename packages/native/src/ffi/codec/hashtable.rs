@@ -71,12 +71,7 @@ impl HashTableEntryCodec {
                 "Boxed GHashTable elements with full ownership are unsupported: a GHashTable destroy notify cannot release a boxed copy"
             ),
             Codec::Struct(struct_codec) if struct_codec.ownership.is_full() => {
-                if struct_codec.size.is_none() {
-                    bail!(
-                        "Cannot transfer ownership of struct GHashTable elements: their size is unknown, so no copy can be made for the table"
-                    );
-                }
-                Ok(Some(glib::ffi::g_free))
+                bail!("Transfer-full plain struct GHashTable elements are unsupported")
             }
             _ => Ok(None),
         }

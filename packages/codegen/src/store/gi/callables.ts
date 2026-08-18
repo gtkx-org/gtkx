@@ -2,7 +2,7 @@ import { toCamelIdentifier, uniqBy } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
 import type { JsDocSpec } from "../../writer/doc.js";
-import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
+import { callableCapability, isCallableEmittable } from "../../analysis/param-capability.js";
 import { renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
 import { callableDoc, callableSpec } from "./callable-doc.js";
@@ -383,7 +383,7 @@ const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boo
     callable.shadowedBy === undefined &&
     callable.cIdentifier !== undefined &&
     !RUNTIME_OWNED_LIFETIME_METHODS.has(callable.name) &&
-    !hasUnmarshalableParam(context, callable);
+    isCallableEmittable(callableCapability(context, callable));
 
 const constructorMemberName = (girName: string): string | undefined => {
     const camel = memberName(girName);

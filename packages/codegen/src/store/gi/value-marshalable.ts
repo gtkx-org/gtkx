@@ -4,21 +4,19 @@ import type { GirRecord } from "../../gir/record.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { isGjsSimpleRecord } from "./simple-record.js";
 
 type Scope = { context: ModuleContext; seen: Set<string> };
 
 const POINTER_CATEGORIES: Set<PrimitiveCategory> = new Set<PrimitiveCategory>(["string", "pointer"]);
 
 const recordKey = (namespaceName: string, record: GirRecord): string => `${namespaceName}.${record.name}`;
-
-const hasOwnCopySemantics = (record: GirRecord): boolean =>
-    record.glibGetType !== undefined ||
-    ((record.glibRefFunc ?? record.copyFunc) !== undefined && (record.glibUnrefFunc ?? record.freeFunc) !== undefined);
-
 const isOpaqueRecord = (record: GirRecord): boolean => record.opaque || record.disguised;
 
 const isValueSafeArray = (scope: Scope, type: Extract<GirType, { kind: "carray" }>): boolean =>
-    type.fixedSize !== undefined && isValueSafeRef(scope, type.element, type.elementCType);
+    type.fixedSize !== undefined &&
+    type.arrayCType?.endsWith("*") !== true &&
+    isValueSafeRef(scope, type.element, type.elementCType);
 
 const isValueSafeAlias = (scope: Scope, type: Extract<GirType, { kind: "alias" }>): boolean =>
     isValueSafeRef(scope, type.value.target, type.value.targetCType);
@@ -69,7 +67,7 @@ const isValueSafeField = (scope: Scope, field: GirField): boolean =>
 function isValueSafeRecord(scope: Scope, namespaceName: string, record: GirRecord): boolean {
     const key = recordKey(namespaceName, record);
 
-    if (scope.seen.has(key) || record.fields.length === 0) {
+    if (isOpaqueRecord(record) || scope.seen.has(key) || record.fields.length === 0) {
         return false;
     }
 
@@ -84,6 +82,7 @@ const isValueMarshalable = (context: ModuleContext, namespaceName: string, recor
     isValueSafeRecord({ context, seen: new Set<string>() }, namespaceName, record);
 
 const isConstructibleRecord = (context: ModuleContext, namespaceName: string, record: GirRecord): boolean =>
-    !isOpaqueRecord(record) && (hasOwnCopySemantics(record) || isValueMarshalable(context, namespaceName, record));
+    !isOpaqueRecord(record) &&
+    (record.glibGetType !== undefined || isGjsSimpleRecord(context, namespaceName, record));
 
 export { isConstructibleRecord, isValueMarshalable };

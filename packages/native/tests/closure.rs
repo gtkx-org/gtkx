@@ -9,7 +9,7 @@ use napi::{Env, JsValue as _, sys};
 use native::ffi::closure::ClosureState;
 use native::ffi::codec::{
     BoxedCodec, Codec, FloatCodec, FundamentalCodec, IntegerCodec, ObjectCodec, Ownership,
-    RefCodec, StringCodec, StructCodec, VoidCodec,
+    RefCodec, StringCodec, StructCodec, StructInputPolicy, StructOutputPolicy, VoidCodec,
 };
 use native::ffi::{
     ListData, ListNode, ListOps, ListPayload, ReleaseKind, Stash, StashData, StashStorage,
@@ -200,6 +200,8 @@ fn borrowed_struct_codec(size: Option<usize>) -> Codec {
     Codec::Struct(StructCodec {
         ownership: Ownership::Borrowed,
         size,
+        input_policy: StructInputPolicy::Borrow,
+        output_policy: StructOutputPolicy::Reject,
         caller_allocated: false,
         inline: false,
     })
@@ -242,7 +244,7 @@ fn a_borrowed_struct_argument_stops_reaching_its_memory_when_the_callback_return
 }
 
 #[test]
-fn a_copied_struct_argument_keeps_reaching_its_own_memory_after_the_callback_returns() {
+fn a_sized_struct_argument_stops_reaching_its_memory_when_the_callback_returns() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let seen = Rc::new(RefCell::new(Vec::new()));
@@ -254,12 +256,8 @@ fn a_copied_struct_argument_keeps_reaching_its_own_memory_after_the_callback_ret
 
         let handle = argument_handle(&env, single_argument_of(&seen));
 
-        assert!(
-            !handle.is_invalidated(),
-            "an argument copied out of the caller's memory owns what it points at"
-        );
-        assert!(!handle.as_ptr().is_null());
-        assert_ne!(handle.as_ptr(), block);
+        assert!(handle.is_invalidated());
+        assert!(handle.as_ptr().is_null());
 
         unsafe { glib::ffi::g_free(block) };
     });
@@ -823,16 +821,18 @@ fn a_transfer_full_fundamental_return_with_unresolvable_fns_yields_null_and_repo
 }
 
 #[test]
-fn a_transfer_full_struct_return_with_an_unknown_size_yields_null_and_reports() {
+fn a_transfer_full_struct_return_yields_null_and_reports() {
     helpers::run(|| {
         assert_transfer_full_return_yields_null_and_reports(
             Codec::Struct(StructCodec {
                 ownership: Ownership::Full,
                 size: None,
+                input_policy: StructInputPolicy::Reject,
+                output_policy: StructOutputPolicy::Reject,
                 caller_allocated: false,
                 inline: false,
             }),
-            "its size is unknown",
+            "plain struct",
         );
     });
 }

@@ -20,6 +20,9 @@
         "packages/e2e/elements.ts": [
             "exports"
         ],
+        "packages/e2e/vitest-conformance.config.mjs": [
+            "exports"
+        ],
         "packages/react/src/prop-types.ts": [
             "types"
         ],
@@ -71,7 +74,12 @@
         "packages/e2e": {
             "entry": [
                 "gtkx.config.ts!",
-                "elements.ts"
+                "elements.ts",
+                "tests/fixtures/gjs-conformance/*-runner.mjs!",
+                "vitest-conformance.config.mjs!"
+            ],
+            "ignoreDependencies": [
+                "gi"
             ]
         },
         "packages/gl": {

@@ -1,5 +1,5 @@
 import gtkx from "@gtkx/vitest";
-import { defineConfig, mergeConfig } from "vitest/config";
+import { configDefaults, defineConfig, mergeConfig } from "vitest/config";
 import { sourceResolveConfig } from "../../vitest.config.base.js";
 
 export default mergeConfig(
@@ -7,6 +7,7 @@ export default mergeConfig(
     defineConfig({
         plugins: [gtkx()],
         test: {
+            exclude: [...configDefaults.exclude, "tests/native/gjs-conformance.test.ts"],
             name: "e2e",
             setupFiles: ["./tests/setup.ts"],
             execArgv: ["--expose-gc"],

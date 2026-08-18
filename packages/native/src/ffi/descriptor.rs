@@ -7,7 +7,7 @@ use crate::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, BoxedCodec, BufferCodec,
     CallbackCodec, CallbackScope, Codec, DestroyNotifyKind, EnumFlagsCodec, EnumFlagsKind,
     FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, RefCodec,
-    StringCodec, StructCodec, UnicharCodec, VoidCodec,
+    StringCodec, StructCodec, StructInputPolicy, StructOutputPolicy, UnicharCodec, VoidCodec,
 };
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
@@ -133,6 +133,8 @@ pub enum Descriptor {
     Struct {
         ownership: Ownership,
         size: Option<u32>,
+        input_policy: Option<StructInputPolicy>,
+        output_policy: Option<StructOutputPolicy>,
         is_caller_allocated: Option<bool>,
         is_inline: Option<bool>,
     },
@@ -258,14 +260,18 @@ impl Descriptor {
             Self::Struct {
                 ownership,
                 size,
+                input_policy,
+                output_policy,
                 is_caller_allocated,
                 is_inline,
-            } => Codec::Struct(StructCodec {
+            } => Self::struct_codec(
                 ownership,
-                size: size.map(|n| n as usize),
-                caller_allocated: is_caller_allocated.unwrap_or(false),
-                inline: is_inline.unwrap_or(false),
-            }),
+                size,
+                input_policy,
+                output_policy,
+                is_caller_allocated,
+                is_inline,
+            ),
             Self::Fundamental {
                 ownership,
                 shared_library,
@@ -370,6 +376,42 @@ impl Descriptor {
             } else {
                 IntegerCodec::U32
             },
+        })
+    }
+
+    fn struct_codec(
+        ownership: Ownership,
+        size: Option<u32>,
+        input_policy: Option<StructInputPolicy>,
+        output_policy: Option<StructOutputPolicy>,
+        is_caller_allocated: Option<bool>,
+        is_inline: Option<bool>,
+    ) -> Codec {
+        let caller_allocated = is_caller_allocated.unwrap_or(false);
+        let input_policy = input_policy.unwrap_or_else(|| {
+            if ownership.is_borrowed() || caller_allocated {
+                StructInputPolicy::Borrow
+            } else {
+                StructInputPolicy::Reject
+            }
+        });
+        let output_policy = output_policy.unwrap_or_else(|| {
+            if ownership.is_full() && !caller_allocated {
+                StructOutputPolicy::Reject
+            } else if size.is_some() {
+                StructOutputPolicy::ShallowCopy
+            } else {
+                StructOutputPolicy::Borrow
+            }
+        });
+
+        Codec::Struct(StructCodec {
+            ownership,
+            size: size.map(|n| n as usize),
+            input_policy,
+            output_policy,
+            caller_allocated,
+            inline: is_inline.unwrap_or(false),
         })
     }
 

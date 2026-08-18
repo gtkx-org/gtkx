@@ -1,4 +1,4 @@
-import type { GirCallable, GirParameter } from "../gir/parameter.js";
+import type { GirCallable, GirParameter, GirReturnValue, ParameterTransfer } from "../gir/parameter.js";
 import type { CArrayType, TypeId } from "../gir/type-id.js";
 import type { GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
@@ -6,6 +6,42 @@ import { isCallerAllocatedOut, isInoutParameter } from "../gir/parameter.js";
 import { isCollectibleCallerOut, isHandlePassedInPlace, underlyingType } from "../store/gi/param-marshal.js";
 import { recordInlineSize } from "../store/gi/record-layout.js";
 import { isScalarRef } from "./descriptor-render.js";
+
+type CapabilityIssueCode =
+    "caller-allocated-array-length" |
+    "invalid-caller-allocated-record-layout" |
+    "parameter-indirection-mismatch" |
+    "plain-record-input-transfer" |
+    "plain-record-output-transfer" |
+    "type-erased-callback" |
+    "unregistered-union" |
+    "unsupported-caller-allocated-type";
+
+type CapabilityIssueLocation =
+    { kind: "instance" } |
+    { kind: "parameter"; index: number } |
+    { kind: "return" };
+
+type CapabilityIssue = {
+    code: CapabilityIssueCode;
+    disposition: "omit" | "runtime";
+    location: CapabilityIssueLocation;
+};
+
+type CallableCapability = {
+    kind: "supported" | "runtime-rejected" | "unsupported";
+    issues: CapabilityIssue[];
+};
+
+type CallableSignature = GirCallable & { instance?: GirParameter | undefined };
+
+type RecordOccurrence = {
+    ref: TypeId | undefined;
+    transfer: ParameterTransfer;
+    input: boolean;
+    output: boolean;
+    location: CapabilityIssueLocation;
+};
 
 const POINTER_DEPTH = 1;
 
@@ -122,6 +158,85 @@ const isUnmarshalableCallerOut = (context: ModuleContext, parameter: GirParamete
     return !isCollectibleCallerOut(context, parameter) && !parameter.optional;
 };
 
+const resolvedRecord = (
+    context: ModuleContext,
+    ref: TypeId | undefined,
+): Extract<GirType, { kind: "record" }> | undefined => {
+    if (ref === undefined) {
+        return undefined;
+    }
+
+    const type = underlyingType(context, ref);
+
+    return type?.kind === "record" ? type : undefined;
+};
+
+const isPlainRecord = (type: Extract<GirType, { kind: "record" }>): boolean =>
+    type.value.glibGetType === undefined;
+
+const isOwnershipTransfer = (transfer: ParameterTransfer): boolean => transfer !== "none";
+
+const isUnregisteredUnion = (type: Extract<GirType, { kind: "record" }>): boolean =>
+    type.value.isUnion && type.value.glibGetType === undefined;
+
+const isTransferredPlainRecord = (
+    type: Extract<GirType, { kind: "record" }>,
+    transfer: ParameterTransfer,
+): boolean => isPlainRecord(type) && isOwnershipTransfer(transfer);
+
+const plainRecordTransferIssues = (occurrence: RecordOccurrence): CapabilityIssue[] => {
+    const issues: CapabilityIssue[] = [];
+
+    if (occurrence.input) {
+        issues.push({
+            code: "plain-record-input-transfer",
+            disposition: "runtime",
+            location: occurrence.location,
+        });
+    }
+
+    if (occurrence.output) {
+        issues.push({
+            code: "plain-record-output-transfer",
+            disposition: "runtime",
+            location: occurrence.location,
+        });
+    }
+
+    return issues;
+};
+
+const recordTransferIssues = (context: ModuleContext, occurrence: RecordOccurrence): CapabilityIssue[] => {
+    const type = resolvedRecord(context, occurrence.ref);
+
+    if (type === undefined) {
+        return [];
+    }
+
+    if (isUnregisteredUnion(type) && occurrence.input) {
+        return [{ code: "unregistered-union", disposition: "runtime", location: occurrence.location }];
+    }
+
+    if (!isTransferredPlainRecord(type, occurrence.transfer)) {
+        return [];
+    }
+
+    return plainRecordTransferIssues(occurrence);
+};
+
+const hasInvalidCallerAllocatedRecordLayout = (
+    context: ModuleContext,
+    parameter: GirParameter,
+): boolean => {
+    if (!isCallerAllocatedOut(parameter)) {
+        return false;
+    }
+
+    const type = resolvedRecord(context, parameter.type);
+
+    return type !== undefined && recordInlineSize(context, type.value) === undefined;
+};
+
 const hasIndirectionMismatch = (context: ModuleContext, parameter: GirParameter): boolean => {
     const declared = declaredIndirection(parameter);
     const marshalled = marshalledIndirection(context, parameter);
@@ -143,27 +258,103 @@ const isTypeErasedCallback = (context: ModuleContext, parameter: GirParameter): 
     return type?.kind === "callback" && type.value.parameters.length === 0;
 };
 
-const isUnmarshalableCallParam = (context: ModuleContext, parameter: GirParameter): boolean => {
+const callerAllocatedIssueCode = (
+    context: ModuleContext,
+    parameter: GirParameter,
+): CapabilityIssueCode | undefined => {
+    if (hasInvalidCallerAllocatedRecordLayout(context, parameter)) {
+        return "invalid-caller-allocated-record-layout";
+    }
+
+    if (!isUnmarshalableCallerOut(context, parameter)) {
+        return undefined;
+    }
+
+    return hasCallerSuppliedLength(context, parameter)
+        ? "caller-allocated-array-length"
+        : "unsupported-caller-allocated-type";
+};
+
+const structuralParameterIssueCode = (
+    context: ModuleContext,
+    parameter: GirParameter,
+): CapabilityIssueCode | undefined => {
     if (parameter.isVarargs) {
-        return false;
+        return undefined;
     }
 
     if (isTypeErasedCallback(context, parameter)) {
-        return true;
+        return "type-erased-callback";
     }
 
     if (parameter.direction === "in") {
-        return false;
+        return undefined;
     }
 
     if (isCallerAllocatedOut(parameter)) {
-        return isUnmarshalableCallerOut(context, parameter);
+        return callerAllocatedIssueCode(context, parameter);
     }
 
-    return hasIndirectionMismatch(context, parameter);
+    return hasIndirectionMismatch(context, parameter) ? "parameter-indirection-mismatch" : undefined;
 };
 
-const hasUnmarshalableParam = (context: ModuleContext, callable: GirCallable): boolean =>
-    callable.parameters.some((parameter) => isUnmarshalableCallParam(context, parameter));
+const parameterIssues = (
+    context: ModuleContext,
+    parameter: GirParameter,
+    location: CapabilityIssueLocation,
+): CapabilityIssue[] => {
+    const isCallerAllocated = isCallerAllocatedOut(parameter);
 
-export { hasUnmarshalableParam };
+    const issues = recordTransferIssues(context, {
+        ref: parameter.type,
+        transfer: parameter.transferOwnership,
+        input: parameter.direction !== "out",
+        output: parameter.direction !== "in" && !isCallerAllocated,
+        location,
+    });
+
+    const structural = structuralParameterIssueCode(context, parameter);
+
+    if (structural !== undefined) {
+        issues.push({ code: structural, disposition: "omit", location });
+    }
+
+    return issues;
+};
+
+const returnIssues = (context: ModuleContext, returnValue: GirReturnValue): CapabilityIssue[] =>
+    recordTransferIssues(context, {
+        ref: returnValue.type,
+        transfer: returnValue.transferOwnership,
+        input: false,
+        output: true,
+        location: { kind: "return" },
+    });
+
+const capabilityKind = (issues: CapabilityIssue[]): CallableCapability["kind"] => {
+    if (issues.some((issue) => issue.disposition === "omit")) {
+        return "unsupported";
+    }
+
+    return issues.length === 0 ? "supported" : "runtime-rejected";
+};
+
+const callableCapability = (context: ModuleContext, callable: CallableSignature): CallableCapability => {
+    const issues: CapabilityIssue[] = [];
+
+    if (callable.instance !== undefined) {
+        issues.push(...parameterIssues(context, callable.instance, { kind: "instance" }));
+    }
+
+    for (const [index, parameter] of callable.parameters.entries()) {
+        issues.push(...parameterIssues(context, parameter, { kind: "parameter", index }));
+    }
+
+    issues.push(...returnIssues(context, callable.returnValue));
+
+    return { kind: capabilityKind(issues), issues };
+};
+
+const isCallableEmittable = (capability: CallableCapability): boolean => capability.kind !== "unsupported";
+
+export { callableCapability, isCallableEmittable };

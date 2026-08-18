@@ -150,12 +150,21 @@ type FundamentalLifecycle = {
 type StructOptions = {
     /** The caller owns the storage the callee fills, so a decoded value is borrowed instead of copied. */
     isCallerAllocated?: boolean;
+    /** Whether the struct pointer may be borrowed for an input argument. */
+    inputPolicy?: StructDescriptor["inputPolicy"];
     /** The value is embedded in the containing struct rather than reached through a pointer. */
     isInline?: boolean;
-    /** Byte size of the struct, needed to copy it rather than borrow the pointer. */
+    /** Whether an output value may be shallow-copied into JavaScript-owned storage. */
+    outputPolicy?: StructDescriptor["outputPolicy"];
+    /** Byte size of the struct, used for layout and an explicitly permitted shallow copy. */
     size?: number;
     /** Class a decoded value is wrapped in, instead of the one registered for its GType. */
     wrapperClass?: AnyClass;
+};
+
+type StructPolicies = {
+    inputPolicy: NonNullable<StructDescriptor["inputPolicy"]>;
+    outputPolicy: NonNullable<StructDescriptor["outputPolicy"]>;
 };
 
 /** Descriptor for a `gint8`, marshalled as a number. */
@@ -279,9 +288,29 @@ const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescriptor =
     return result;
 };
 
+const structPolicies = (
+    ownership: Ownership,
+    options: StructOptions,
+): StructPolicies => {
+    const outputPolicy = options.size === undefined ? "borrow" : "shallowCopy";
+
+    const defaults: StructPolicies = ownership === "borrowed" || options.isCallerAllocated === true
+        ? { inputPolicy: "borrow", outputPolicy }
+        : { inputPolicy: "reject", outputPolicy: "reject" };
+
+    return {
+        inputPolicy: options.inputPolicy ?? defaults.inputPolicy,
+        outputPolicy: options.outputPolicy ?? defaults.outputPolicy,
+    };
+};
+
 /** Builds a descriptor for a plain C struct. */
 const structT = (ownership: Ownership = "borrowed", options: StructOptions = {}): StructDescriptor => {
-    const result: StructDescriptor = { kind: "struct", ownership };
+    const result: StructDescriptor = {
+        kind: "struct",
+        ownership,
+        ...structPolicies(ownership, options),
+    };
 
     if (options.size !== undefined) {
         result.size = options.size;

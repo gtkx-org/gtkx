@@ -1,0 +1,144 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <package name="recordmarshal-1.0"/>
+  <namespace name="RecordMarshal"
+             version="1.0"
+             shared-library="librecordmarshal.so.0"
+             c:identifier-prefixes="RecordMarshal"
+             c:symbol-prefixes="record_marshal">
+    <record name="Pod" c:type="RecordMarshalPod" c:symbol-prefix="pod">
+      <field name="value" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+    </record>
+    <record name="PointerRecord" c:type="RecordMarshalPointerRecord" c:symbol-prefix="pointer_record">
+      <field name="data" writable="1">
+        <type name="gpointer" c:type="gpointer"/>
+      </field>
+    </record>
+    <record name="Managed"
+            c:type="RecordMarshalManaged"
+            c:symbol-prefix="managed"
+            copy-function="record_marshal_managed_copy"
+            free-function="record_marshal_managed_free">
+      <field name="value" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+    </record>
+    <record name="Opaque" c:type="RecordMarshalOpaque" c:symbol-prefix="opaque" opaque="1"/>
+    <union name="Choice" c:type="RecordMarshalChoice" c:symbol-prefix="choice">
+      <field name="integer" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+      <field name="decimal" writable="1">
+        <type name="gfloat" c:type="gfloat"/>
+      </field>
+    </union>
+    <function name="borrow_pod" c:identifier="record_marshal_borrow_pod">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="pod" transfer-ownership="none">
+          <type name="Pod" c:type="RecordMarshalPod*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="return_pointer" c:identifier="record_marshal_return_pointer">
+      <return-value transfer-ownership="none">
+        <type name="PointerRecord" c:type="RecordMarshalPointerRecord*"/>
+      </return-value>
+    </function>
+    <function name="fill_pod" c:identifier="record_marshal_fill_pod">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="pod" direction="out" caller-allocates="1" transfer-ownership="none">
+          <type name="Pod" c:type="RecordMarshalPod*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="fill_pod_full" c:identifier="record_marshal_fill_pod_full">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="pod" direction="out" caller-allocates="1" transfer-ownership="full">
+          <type name="Pod" c:type="RecordMarshalPod*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="take_pod" c:identifier="record_marshal_take_pod">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="pod" transfer-ownership="full">
+          <type name="Pod" c:type="RecordMarshalPod*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="take_managed" c:identifier="record_marshal_take_managed">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="managed" transfer-ownership="full">
+          <type name="Managed" c:type="RecordMarshalManaged*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="take_pod_container" c:identifier="record_marshal_take_pod_container">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="pod" transfer-ownership="container">
+          <type name="Pod" c:type="RecordMarshalPod*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="inspect_pods" c:identifier="record_marshal_inspect_pods">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="pods" transfer-ownership="none">
+          <array name="GLib.PtrArray" c:type="GPtrArray*">
+            <type name="Pod" c:type="RecordMarshalPod*"/>
+          </array>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="return_pod_full" c:identifier="record_marshal_return_pod_full">
+      <return-value transfer-ownership="full">
+        <type name="Pod" c:type="RecordMarshalPod*"/>
+      </return-value>
+    </function>
+    <function name="take_choice" c:identifier="record_marshal_take_choice">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="choice" transfer-ownership="none">
+          <type name="Choice" c:type="RecordMarshalChoice*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="fill_opaque" c:identifier="record_marshal_fill_opaque">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="opaque" direction="out" caller-allocates="1" transfer-ownership="none">
+          <type name="Opaque" c:type="RecordMarshalOpaque*"/>
+        </parameter>
+      </parameters>
+    </function>
+  </namespace>
+</repository>

@@ -3,12 +3,15 @@ use std::ffi::c_void;
 use gtk4::glib;
 use napi::bindgen_prelude::{External, Unknown};
 use napi::{Env, JsValue as _};
+use native::Handle;
 use native::api::read::read;
 use native::api::write::write;
 use native::ffi::Slot;
-use native::ffi::codec::{Decoder, Encoder, Ownership, PtrWriter, ReadCtx, SlotInit, StructCodec};
+use native::ffi::codec::{
+    Decoder, Encoder, Ownership, PtrWriter, ReadCtx, SlotInit, StructCodec, StructInputPolicy,
+    StructOutputPolicy,
+};
 use native::ffi::descriptor::Descriptor;
-use native::{Handle, ffi};
 use test_support::{napi_mock, write_return_into_slot};
 
 test_support::g_free_recorder!();
@@ -17,6 +20,8 @@ fn struct_type() -> StructCodec {
     StructCodec {
         ownership: Ownership::Borrowed,
         size: None,
+        input_policy: StructInputPolicy::Borrow,
+        output_policy: StructOutputPolicy::Reject,
         caller_allocated: false,
         inline: false,
     }
@@ -26,6 +31,16 @@ fn struct_codec(ownership: Ownership, size: Option<usize>) -> StructCodec {
     StructCodec {
         ownership,
         size,
+        input_policy: if ownership.is_borrowed() {
+            StructInputPolicy::Borrow
+        } else {
+            StructInputPolicy::Reject
+        },
+        output_policy: if ownership.is_borrowed() && size.is_some() {
+            StructOutputPolicy::ShallowCopy
+        } else {
+            StructOutputPolicy::Reject
+        },
         caller_allocated: false,
         inline: false,
     }
@@ -59,8 +74,14 @@ fn null_guarded_runs_decode_for_non_null_pointer() {
         let env = test_support::fake_env();
         let source: u64 = 0xDEAD_BEEF;
         let ptr = &raw const source as *mut c_void;
-        let decoded =
-            unsafe { Decoder::read(&struct_type(), &env, ReadCtx::value(ptr, "ctx")) }.unwrap();
+        let decoded = unsafe {
+            Decoder::read(
+                &struct_codec(Ownership::Borrowed, Some(size_of::<u64>())),
+                &env,
+                ReadCtx::value(ptr, "ctx"),
+            )
+        }
+        .unwrap();
         assert!(napi_mock::read_external(decoded.raw()).is_some());
     });
 }
@@ -113,86 +134,18 @@ fn write_return_object_ptr_transfers_non_null_pointer() {
     });
 }
 
-fn encode_full_sized_copy(env: &Env, original: *mut c_void) -> ffi::Stash {
-    let encoded = struct_codec(Ownership::Full, Some(size_of::<u64>()))
-        .encode(env, handle_value_of(env, original))
-        .expect("full encode should succeed");
-    let copy = encoded
-        .as_ptr("struct argument")
-        .expect("encoded stash should carry a pointer");
-    assert!(!copy.is_null());
-    assert_ne!(copy, original);
-    assert_eq!(unsafe { *(copy as *const u64) }, unsafe {
-        *(original as *const u64)
-    });
-    encoded
-}
-
 #[test]
-fn encode_full_sized_frees_copy_when_call_never_happens() {
+fn encode_full_sized_is_rejected_even_with_a_borrow_policy() {
     test_support::run(|| {
         let env = test_support::fake_env();
         let source: u64 = 0x5AFE_C0DE_5AFE_C0DE;
         let original = &raw const source as *mut c_void;
+        let codec = StructCodec {
+            input_policy: StructInputPolicy::Borrow,
+            ..struct_codec(Ownership::Full, Some(size_of::<u64>()))
+        };
 
-        let encoded = encode_full_sized_copy(&env, original);
-        let copy = encoded.as_ptr("struct argument").unwrap();
-
-        drain_g_freed();
-        drop(encoded);
-        let frees_of_copy = drain_g_freed()
-            .iter()
-            .filter(|&&ptr| ptr == copy as usize)
-            .count();
-        assert_eq!(
-            frees_of_copy, 1,
-            "dropping an undisarmed stash must free the transfer copy exactly once"
-        );
-    });
-}
-
-#[test]
-fn encode_full_sized_disarm_leaves_copy_for_callee() {
-    test_support::run(|| {
-        let env = test_support::fake_env();
-        let source: u64 = 0xFEED_FACE_FEED_FACE;
-        let original = &raw const source as *mut c_void;
-
-        let encoded = encode_full_sized_copy(&env, original);
-        let copy = encoded.as_ptr("struct argument").unwrap();
-
-        drain_g_freed();
-        encoded.disarm_pending_transfer();
-        drop(encoded);
-        assert!(
-            !drain_g_freed().contains(&(copy as usize)),
-            "a disarmed stash must leave the callee-owned copy untouched"
-        );
-        assert_eq!(unsafe { *(copy as *const u64) }, 0xFEED_FACE_FEED_FACE);
-        unsafe { glib::ffi::g_free(copy) };
-    });
-}
-
-#[test]
-fn write_return_full_with_size_writes_a_distinct_copy() {
-    test_support::run(|| {
-        let env = test_support::fake_env();
-        let source: u64 = 0x1234_5678_9ABC_DEF0;
-        let original = &raw const source as *mut c_void;
-
-        let slot = write_return_into_slot(
-            &env,
-            &struct_codec(Ownership::Full, Some(size_of::<u64>())),
-            &Ok(handle_value_of(&env, original)),
-        );
-
-        assert!(!slot.is_null());
-        assert_ne!(slot, original);
-        assert_eq!(unsafe { *(slot as *const u64) }, 0x1234_5678_9ABC_DEF0);
-        assert_eq!(source, 0x1234_5678_9ABC_DEF0);
-        assert!(napi_mock::fatal_exceptions().is_empty());
-
-        unsafe { glib::ffi::g_free(slot) };
+        assert!(codec.encode(&env, handle_value_of(&env, original)).is_err());
     });
 }
 
@@ -270,6 +223,8 @@ fn inline_struct_codec() -> StructCodec {
     StructCodec {
         ownership: Ownership::Borrowed,
         size: Some(size_of::<InlineRecord>()),
+        input_policy: StructInputPolicy::Borrow,
+        output_policy: StructOutputPolicy::ShallowCopy,
         caller_allocated: false,
         inline: true,
     }
@@ -279,6 +234,8 @@ fn struct_descriptor(is_inline: Option<bool>) -> Descriptor {
     Descriptor::Struct {
         ownership: Ownership::Borrowed,
         size: Some(8),
+        input_policy: Some(StructInputPolicy::Borrow),
+        output_policy: Some(StructOutputPolicy::ShallowCopy),
         is_caller_allocated: None,
         is_inline,
     }

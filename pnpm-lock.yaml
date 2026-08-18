@@ -386,6 +386,9 @@ importers:
 
   packages/e2e:
     devDependencies:
+      '@gtkx/codegen':
+        specifier: workspace:*
+        version: link:../codegen
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config
