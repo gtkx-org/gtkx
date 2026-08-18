@@ -4,6 +4,7 @@ use glib::gobject_ffi;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
+use crate::api::type_from_bigint;
 use crate::handle::Handle;
 
 fn read_type_tag(ptr: *mut c_void) -> glib::ffi::GType {
@@ -37,12 +38,8 @@ fn is_a(type_: glib::ffi::GType, ancestor: glib::ffi::GType) -> bool {
 /// `GtkExpression` and `GskRenderNode` begin with a `GTypeInstance`, while `GVariant` does not, so
 /// `declared_type` decides whether there is a tag to read at all. A tag that does not descend from
 /// the declared type is discarded rather than trusted.
-fn fundamental_type(handle: &Handle, declared_type: u64) -> glib::ffi::GType {
-    let Ok(declared) = glib::ffi::GType::try_from(declared_type) else {
-        return 0;
-    };
-
-    if declared == 0 || !is_instantiatable(declared) {
+fn fundamental_type(handle: &Handle, declared: glib::ffi::GType) -> glib::ffi::GType {
+    if !is_instantiatable(declared) {
         return 0;
     }
 
@@ -64,10 +61,13 @@ fn fundamental_type(handle: &Handle, declared_type: u64) -> glib::ffi::GType {
 /// binding declares, passed as `declaredType`, is instantiatable.
 #[napi(catch_unwind)]
 pub fn get_type(handle: &External<Handle>, declared_type: Option<BigInt>) -> Result<BigInt> {
-    let type_ = match declared_type.map(|value| value.get_u64().1) {
-        Some(declared) => fundamental_type(handle, declared),
-        None => 0,
-    };
+    use glib::translate::IntoGlib as _;
+
+    let declared = declared_type
+        .map(|value| type_from_bigint(&value, "get_type: declared"))
+        .transpose()?;
+
+    let type_ = declared.map_or(0, |declared| fundamental_type(handle, declared.into_glib()));
 
     let resolved = if type_ == 0 {
         gobject_type(handle)
@@ -124,7 +124,7 @@ mod tests {
         test_support::run(|| {
             let variant = glib::Variant::from(1_u32);
             let handle = Handle::from_glib_borrow(variant.as_ptr().cast());
-            let declared = glib::Variant::static_type().into_glib() as u64;
+            let declared = glib::Variant::static_type().into_glib();
 
             assert_eq!(fundamental_type(&handle, declared), 0);
         });
@@ -137,7 +137,7 @@ mod tests {
             let handle = Handle::from(unsafe { Fundamental::from_glib_none(pspec, None, None) });
             let declared = gobject_ffi::G_TYPE_PARAM;
             assert_eq!(
-                fundamental_type(&handle, declared as u64),
+                fundamental_type(&handle, declared),
                 glib::ParamSpecBoolean::static_type().into_glib()
             );
             unsafe {
@@ -152,10 +152,7 @@ mod tests {
             let pspec = test_support::make_bool_param_spec();
             let handle = Handle::from(unsafe { Fundamental::from_glib_none(pspec, None, None) });
             handle.invalidate();
-            assert_eq!(
-                fundamental_type(&handle, gobject_ffi::G_TYPE_PARAM as u64),
-                0
-            );
+            assert_eq!(fundamental_type(&handle, gobject_ffi::G_TYPE_PARAM), 0);
             unsafe {
                 gobject_ffi::g_param_spec_unref(pspec.cast());
             }
@@ -163,13 +160,16 @@ mod tests {
     }
 
     #[test]
-    fn reads_no_fundamental_type_without_a_declared_type() {
+    fn reads_no_fundamental_type_for_an_invalid_declared_type() {
         test_support::run(|| {
-            let (obj, _, _) = test_support::fresh_gobject();
-            let handle = Handle::decoded_gobject(obj.clone());
+            let pspec = test_support::make_bool_param_spec();
+            let handle = Handle::from(unsafe { Fundamental::from_glib_none(pspec, None, None) });
+
             assert_eq!(fundamental_type(&handle, 0), 0);
-            handle.release_owned();
-            drop(obj);
+
+            unsafe {
+                gobject_ffi::g_param_spec_unref(pspec.cast());
+            }
         });
     }
 }
