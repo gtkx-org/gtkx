@@ -166,6 +166,12 @@ describe("a value no GType can be inferred from", () => {
         expect(() => Gtk.ConstantExpression.newForValue(2n ** 64n)).toThrow(ValueMarshalError);
     });
 
+    it("throws for an array with holes in it", () => {
+        const sparse: string[] = ["one"];
+        sparse.length = 3;
+        expect(() => Gtk.ConstantExpression.newForValue(sparse)).toThrow(ValueMarshalError);
+    });
+
     it("throws for a plain object", () => {
         expect(() => Gtk.ConstantExpression.newForValue({} as unknown as JsValue)).toThrow(ValueMarshalError);
     });

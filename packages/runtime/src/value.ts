@@ -474,7 +474,8 @@ function intoValue(value: ExternalObject<Handle>, jsValue: unknown): void {
     valueWriterFor(getValueType(value))(value, jsValue);
 }
 
-const isStringArray = (jsValue: unknown[]): boolean => jsValue.every((item) => typeof item === "string");
+const isStringArray = (jsValue: unknown[]): boolean =>
+    [...jsValue].every((item) => typeof item === "string");
 
 const numberValueGType = (jsValue: number): bigint =>
     Number.isSafeInteger(jsValue) && jsValue >= INT32_MINIMUM && jsValue <= INT32_MAXIMUM ? TYPE_INT : TYPE_DOUBLE;

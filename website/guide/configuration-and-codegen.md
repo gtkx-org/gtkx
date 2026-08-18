@@ -48,7 +48,7 @@ A few bindings take a NUL-terminated C string that GIR describes as a byte array
 
 ## Passing a GValue
 
-A `GObject.Value` is GObject's boxed value: a GType plus a payload of that type. Every parameter that takes one is typed `GObject.Value | JsValue`, as is every `GObject.Value` argument of an emitted signal, so you can pass the JavaScript value itself and the GType is inferred from it:
+A `GObject.Value` is GObject's boxed value: a GType plus a payload of that type. Every parameter that takes one as an input is typed `GObject.Value | JsValue`, as is every `GObject.Value` argument of an emitted signal, so you can pass the JavaScript value itself and the GType is inferred from it:
 
 ```ts
 Gdk.ContentProvider.newForValue("payload");             // gchararray
