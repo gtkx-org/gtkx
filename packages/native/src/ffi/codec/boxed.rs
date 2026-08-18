@@ -56,13 +56,18 @@ impl BoxedCodec {
         })
     }
 
-    fn boxed_with_free_fn(&self, ptr: *mut c_void, free_fn_name: &str) -> anyhow::Result<Handle> {
+    fn boxed_with_free_fn(
+        &self,
+        ptr: *mut c_void,
+        free_fn_name: &str,
+        transfer: Ownership,
+    ) -> anyhow::Result<Handle> {
         let library_name = self.shared_library.as_deref().unwrap_or("(no library)");
 
         let free_fn = Self::lookup_free_fn(library_name, free_fn_name)
             .map_err(|e| anyhow::anyhow!("Cannot decode boxed '{}': {e}", self.type_name))?;
 
-        if self.ownership.is_full() {
+        if transfer.is_full() {
             Ok(Boxed::from_glib_full_with_free_fn(ptr, free_fn).into())
         } else {
             Ok(Handle::from_glib_borrow(ptr))
@@ -174,7 +179,7 @@ impl Decoder for BoxedCodec {
             if let Some(free_fn_name) = self.free_fn_name.as_deref() {
                 return Ok(value::handle_to_unknown(
                     env,
-                    self.boxed_with_free_fn(ptr, free_fn_name)?,
+                    self.boxed_with_free_fn(ptr, free_fn_name, self.ownership)?,
                 )?);
             }
 
@@ -191,10 +196,16 @@ impl Decoder for BoxedCodec {
     }
 
     read_value_non_null!(|self, env, ptr, transfer| {
-        if self.free_fn_name.is_some() || self.caller_allocated {
+        if self.caller_allocated {
             return Ok(value::handle_to_unknown(
                 env,
                 Handle::from_glib_borrow(ptr),
+            )?);
+        }
+        if let Some(free_fn_name) = self.free_fn_name.as_deref() {
+            return Ok(value::handle_to_unknown(
+                env,
+                self.boxed_with_free_fn(ptr, free_fn_name, transfer)?,
             )?);
         }
         if transfer.is_full() {

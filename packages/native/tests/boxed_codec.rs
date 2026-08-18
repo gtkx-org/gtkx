@@ -928,10 +928,31 @@ mod free_fn {
         });
     }
 
+    fn callback_arg_wrapper(descriptor: &BoxedCodec, env: &Env, ptr: *mut c_void) -> *mut c_void {
+        let slot: *mut c_void = ptr;
+        let value = unsafe {
+            descriptor.read(
+                env,
+                ReadCtx::slot((&raw const slot).cast::<c_void>(), "callback arg")
+                    .with_transfer(Ownership::Full),
+            )
+        }
+        .expect("a handed-over free-fn argument reads");
+
+        handle_ptr(value, "ctx").expect("expected Object value")
+    }
+
     #[test]
-    fn ptr_to_value_full_with_free_fn_owns_pointer() {
+    fn a_lent_free_fn_value_wraps_without_owning() {
         helpers::run(|| {
             assert_free_fn_wrapper_aliases(Ownership::Full, ptr_to_value_wrapper, false);
+        });
+    }
+
+    #[test]
+    fn a_handed_over_free_fn_argument_adopts_the_pointer() {
+        helpers::run(|| {
+            assert_free_fn_wrapper_aliases(Ownership::Borrowed, callback_arg_wrapper, true);
         });
     }
 
