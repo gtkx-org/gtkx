@@ -2,7 +2,7 @@ import { GridView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/jsx/gtk";
 import { existsSync } from "node:fs";
-import { createContext, useContext, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-minesweeper.tsx?raw";
 
@@ -147,6 +147,7 @@ const playGameSound = (didWin: boolean, soundStreamRef: React.RefObject<Gtk.Medi
         return;
     }
 
+    soundStreamRef.current?.clear();
     const stream = Gtk.MediaFile.newForFilename(path);
     stream.setVolume(1);
     stream.play();
@@ -209,6 +210,14 @@ function MinesweeperProvider({ children }: DemoProviderProps) {
     const [gameState, setGameState] = useState<GameState>("playing");
     const soundStreamRef = useRef<Gtk.MediaFile | null>(null);
 
+    useEffect(
+        () => () => {
+            soundStreamRef.current?.clear();
+            soundStreamRef.current = null;
+        },
+        [],
+    );
+
     const handleCellClick = (index: number) => {
         const outcome = resolveCellClick(board, gameState, index);
 
@@ -225,6 +234,8 @@ function MinesweeperProvider({ children }: DemoProviderProps) {
     };
 
     const resetGame = () => {
+        soundStreamRef.current?.clear();
+        soundStreamRef.current = null;
         setBoard(createBoard());
         setGameState("playing");
     };
