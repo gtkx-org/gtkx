@@ -520,11 +520,13 @@ describe("gtkx codegen (plain record call marshalling)", () => {
         expect(FLAT_GARRAY_DESCRIPTORS.filter((descriptor) => !bindings().includes(descriptor))).toEqual([]);
     });
 
-    it("retains rejected transfers, unions, and impossible caller allocations", () => {
+    it("retains rejected transfers and omits variadic callables", () => {
         expect(state.status).toBe(0);
         const declared = declarations();
         expect(RETAINED_RECORD_CALLABLES.filter((name) => !declared.includes(name))).toEqual([]);
+        expect(declared).not.toContain("formatPod(");
         const generatedBindings = bindings();
+        expect(generatedBindings).not.toContain("record_marshal_format_pod");
         expect(generatedBindings).toContain('t.unsupportedFn("record_marshal_fill_opaque")');
         expect(generatedBindings).not.toContain('t.fn("librecordmarshal.so.0", "record_marshal_fill_opaque"');
         expect(generatedBindings).toContain(OPAQUE_GARRAY_DESCRIPTOR);

@@ -20,7 +20,8 @@ type CapabilityIssueCode =
     "plain-record-output-transfer" |
     "type-erased-callback" |
     "unregistered-union" |
-    "unsupported-caller-allocated-type";
+    "unsupported-caller-allocated-type" |
+    "variadic-parameter";
 
 type CapabilityIssueLocation =
     { kind: "instance" } |
@@ -292,7 +293,7 @@ const structuralParameterIssueCode = (
     parameter: GirParameter,
 ): CapabilityIssueCode | undefined => {
     if (parameter.isVarargs) {
-        return undefined;
+        return "variadic-parameter";
     }
 
     if (isTypeErasedCallback(context, parameter)) {

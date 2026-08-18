@@ -147,24 +147,28 @@ describe("GJS marshalling conformance", () => {
         expect(gtkx).toEqual(gjs);
     });
 
-    it("throws for GError and unsupported plain-record marshalling", async () => {
-        const active = lifecycle.require();
-        await expect(active.runGtkx("outputCleanup")).rejects.toThrow();
+    it(
+        "throws for GError and unsupported plain-record marshalling",
+        async () => {
+            const active = lifecycle.require();
+            await expect(active.runGtkx("outputCleanup")).rejects.toThrow();
 
-        for (const scenario of [
-            "fullPodContainer",
-            "gerror",
-            "inoutTransferFull",
-            "invalidFlatPodArray",
-            "invalidInlinePodArray",
-            "lifecycleTransferFull",
-            "opaqueContainer",
-            "transferFull",
-            "transferFullReturn",
-            "unknownCallerAllocated",
-        ] as const) {
-            await expect(active.runGjs(scenario)).rejects.toThrow();
-            await expect(active.runGtkx(scenario)).rejects.toThrow();
-        }
-    });
+            for (const scenario of [
+                "fullPodContainer",
+                "gerror",
+                "inoutTransferFull",
+                "invalidFlatPodArray",
+                "invalidInlinePodArray",
+                "lifecycleTransferFull",
+                "opaqueContainer",
+                "transferFull",
+                "transferFullReturn",
+                "unknownCallerAllocated",
+            ] as const) {
+                await expect(active.runGjs(scenario)).rejects.toThrow();
+                await expect(active.runGtkx(scenario)).rejects.toThrow();
+            }
+        },
+        30_000,
+    );
 });

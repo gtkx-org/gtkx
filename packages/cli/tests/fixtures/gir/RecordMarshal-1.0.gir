@@ -230,5 +230,18 @@
         </parameter>
       </parameters>
     </function>
+    <function name="format_pod" c:identifier="record_marshal_format_pod">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="format" transfer-ownership="none">
+          <type name="utf8" c:type="const gchar*"/>
+        </parameter>
+        <parameter name="..." transfer-ownership="none">
+          <varargs/>
+        </parameter>
+      </parameters>
+    </function>
   </namespace>
 </repository>
