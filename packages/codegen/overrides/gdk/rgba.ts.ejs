@@ -5,6 +5,8 @@ import { RGBA as GeneratedRGBA } from "../gdk.js";
  *
  * @param value a CSS color string, such as `#rgb`, `rgb(r,g,b)`, or a named color
  * @returns the parsed color
+ * @deprecated Since 1.3. Use `new RGBA()` and `parse`, which reports whether the string was understood, or
+ * `new RGBA({ red, green, blue, alpha })` when the components are known. Removed in v2.
  */
 const create = (value: string): GeneratedRGBA => {
     const rgba = new GeneratedRGBA();
@@ -22,7 +24,17 @@ const create = (value: string): GeneratedRGBA => {
  * (1.0, 1.0, 1.0, 1.0) is opaque white. Other values will
  * be clamped to this range when drawing.
  */
-export const RGBA: typeof GeneratedRGBA & { create: typeof create } = Object.assign(GeneratedRGBA, { create });
+export const RGBA: typeof GeneratedRGBA & {
+    /**
+     * Parses a CSS color string into a new `RGBA`.
+     *
+     * @param value a CSS color string, such as `#rgb`, `rgb(r,g,b)`, or a named color
+     * @returns the parsed color
+     * @deprecated Since 1.3. Use `new RGBA()` and `parse`, which reports whether the string was understood, or
+     * `new RGBA({ red, green, blue, alpha })` when the components are known. Removed in v2.
+     */
+    create: typeof create;
+} = Object.assign(GeneratedRGBA, { create });
 
 /**
  * Represents a color, in a way that is compatible with cairo's notion of color.

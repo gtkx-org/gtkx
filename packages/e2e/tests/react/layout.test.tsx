@@ -217,7 +217,7 @@ function VflBox({ boxRef, lines }: { boxRef: RefObject<Gtk.Box | null>; lines: s
 }
 
 const translate = (x: number, y: number): Gsk.Transform | null =>
-    Gsk.Transform.new().translate(Graphene.Point.create(x, y));
+    Gsk.Transform.new().translate(new Graphene.Point({ x, y }));
 
 const expectPositionAt = (fixed: Gtk.Fixed, widget: Gtk.Widget, x: number, y: number): Promise<void> =>
     waitFor(() => {

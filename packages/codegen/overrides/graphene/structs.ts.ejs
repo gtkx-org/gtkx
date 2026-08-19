@@ -6,6 +6,7 @@ import { Point as GeneratedPoint, Rect as GeneratedRect, Size as GeneratedSize }
  * @param x the X coordinate
  * @param y the Y coordinate
  * @returns the initialized point
+ * @deprecated Since 1.3. Use `new Point({ x, y })` instead. Removed in v2.
  */
 const createPoint = (x: number, y: number): GeneratedPoint => {
     const point = GeneratedPoint.alloc();
@@ -21,6 +22,8 @@ const createPoint = (x: number, y: number): GeneratedPoint => {
  * @param width the width of the rectangle
  * @param height the height of the rectangle
  * @returns the initialized rectangle
+ * @deprecated Since 1.3. Use `new Rect({ origin: new Point({ x, y }), size: new Size({ width, height }) })`
+ * instead. Removed in v2.
  */
 const createRect = (x: number, y: number, width: number, height: number): GeneratedRect => {
     const rect = GeneratedRect.alloc();
@@ -34,6 +37,7 @@ const createRect = (x: number, y: number, width: number, height: number): Genera
  * @param width the width
  * @param height the height
  * @returns the initialized size
+ * @deprecated Since 1.3. Use `new Size({ width, height })` instead. Removed in v2.
  */
 const createSize = (width: number, height: number): GeneratedSize => {
     const size = GeneratedSize.alloc();
@@ -42,7 +46,17 @@ const createSize = (width: number, height: number): GeneratedSize => {
 };
 
 /** A point with two coordinates. */
-export const Point: typeof GeneratedPoint & { create: typeof createPoint } = Object.assign(GeneratedPoint, {
+export const Point: typeof GeneratedPoint & {
+    /**
+     * Allocates a new `Point` and initializes it to the given coordinates.
+     *
+     * @param x the X coordinate
+     * @param y the Y coordinate
+     * @returns the initialized point
+     * @deprecated Since 1.3. Use `new Point({ x, y })` instead. Removed in v2.
+     */
+    create: typeof createPoint;
+} = Object.assign(GeneratedPoint, {
     create: createPoint,
 });
 
@@ -63,7 +77,20 @@ export type Point = GeneratedPoint;
  * will internally operate on a normalized copy; all functions returning a
  * `graphene_rect_t` will always return a normalized rectangle.
  */
-export const Rect: typeof GeneratedRect & { create: typeof createRect } = Object.assign(GeneratedRect, {
+export const Rect: typeof GeneratedRect & {
+    /**
+     * Allocates a new `Rect` and initializes it to the given origin and size.
+     *
+     * @param x the X coordinate of the origin
+     * @param y the Y coordinate of the origin
+     * @param width the width of the rectangle
+     * @param height the height of the rectangle
+     * @returns the initialized rectangle
+     * @deprecated Since 1.3. Use `new Rect({ origin: new Point({ x, y }), size: new Size({ width, height }) })`
+     * instead. Removed in v2.
+     */
+    create: typeof createRect;
+} = Object.assign(GeneratedRect, {
     create: createRect,
 });
 
@@ -84,7 +111,17 @@ export const Rect: typeof GeneratedRect & { create: typeof createRect } = Object
 export type Rect = GeneratedRect;
 
 /** A size. */
-export const Size: typeof GeneratedSize & { create: typeof createSize } = Object.assign(GeneratedSize, {
+export const Size: typeof GeneratedSize & {
+    /**
+     * Allocates a new `Size` and initializes it to the given width and height.
+     *
+     * @param width the width
+     * @param height the height
+     * @returns the initialized size
+     * @deprecated Since 1.3. Use `new Size({ width, height })` instead. Removed in v2.
+     */
+    create: typeof createSize;
+} = Object.assign(GeneratedSize, {
     create: createSize,
 });
 
