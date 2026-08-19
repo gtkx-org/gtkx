@@ -90,6 +90,7 @@ fn enum_and_flags_descriptors_pick_integer_storage_by_sign() {
         shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn_name: "gtk_state_flags_get_type".to_owned(),
         is_signed: false,
+        mask: None,
     };
     assert!(matches!(codec(unsigned_flags), Codec::EnumFlags(_)));
 }

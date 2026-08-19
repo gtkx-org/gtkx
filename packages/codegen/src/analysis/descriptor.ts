@@ -234,8 +234,13 @@ const tHashTable = (key: string, value: string, ownership: Ownership): string =>
 const tEnum = (lib: string, typeFnName: string, isSigned: boolean): string =>
     call("enum", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(isSigned)]);
 
-const tFlags = (lib: string, typeFnName: string, isSigned: boolean): string =>
-    call("flags", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(isSigned)]);
+const tFlags = (lib: string, typeFnName: string, isSigned: boolean, mask?: number): string =>
+    call("flags", [
+        sourceStringLiteral(lib),
+        sourceStringLiteral(typeFnName),
+        String(isSigned),
+        mask === undefined ? undefined : `0x${mask.toString(16)}`,
+    ]);
 
 const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceStringLiteral(ownership)]);
 

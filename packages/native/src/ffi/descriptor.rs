@@ -107,6 +107,7 @@ pub enum Descriptor {
         shared_library: String,
         get_type_fn_name: String,
         is_signed: bool,
+        mask: Option<u32>,
     },
     Boolean,
     String {
@@ -216,16 +217,19 @@ impl Descriptor {
                 shared_library,
                 get_type_fn_name,
                 is_signed,
+                None,
             ),
             Self::Flags {
                 shared_library,
                 get_type_fn_name,
                 is_signed,
+                mask,
             } => Self::enum_flags(
                 EnumFlagsKind::Flags,
                 shared_library,
                 get_type_fn_name,
                 is_signed,
+                mask,
             ),
             Self::String { ownership, length } => Codec::String(StringCodec {
                 ownership,
@@ -366,6 +370,7 @@ impl Descriptor {
         shared_library: String,
         get_type_fn_name: String,
         is_signed: bool,
+        mask: Option<u32>,
     ) -> Codec {
         Codec::EnumFlags(EnumFlagsCodec {
             kind,
@@ -376,6 +381,7 @@ impl Descriptor {
             } else {
                 IntegerCodec::U32
             },
+            mask,
         })
     }
 

@@ -679,16 +679,20 @@ const recordExpression = (
 
 const rawEnumDescriptor = (isSigned: boolean): string => (isSigned ? tInt32 : tUint32);
 
+const flagsMask = (resolved: Extract<EntityType, { kind: "enum" }>): number =>
+    resolved.value.members.reduce((mask, member) => (mask | Number(member.value)) >>> 0, 0);
+
 const enumExpression = (resolved: Extract<EntityType, { kind: "enum" }>): string => {
     const getter = resolved.value.glibGetType;
     const isSigned = resolved.value.members.some((member) => member.value.startsWith("-"));
     const lib = resolved.namespace.sharedLibrary;
+    const isBitfield = resolved.value.kind === "bitfield";
 
     if (getter === undefined || getter === "" || lib === undefined) {
-        return rawEnumDescriptor(isSigned);
+        return isBitfield ? tFlags("", "", isSigned, flagsMask(resolved)) : rawEnumDescriptor(isSigned);
     }
 
-    return resolved.value.kind === "bitfield" ? tFlags(lib, getter, isSigned) : tEnum(lib, getter, isSigned);
+    return isBitfield ? tFlags(lib, getter, isSigned) : tEnum(lib, getter, isSigned);
 };
 
 const expressionForResolved = (

@@ -251,6 +251,7 @@ fn array_encode_accepts_views_for_enum_flags_storage() {
         shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn_name: "gtk_orientation_get_type".to_owned(),
         storage: IntegerCodec::I32,
+        mask: None,
     };
     assert_passthrough(Codec::EnumFlags(enum_flags), ViewKind::Int32);
 }

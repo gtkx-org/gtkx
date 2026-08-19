@@ -15,6 +15,13 @@ fn enum_member_from_f64(n: f64) -> anyhow::Result<i32> {
     Ok(n as i32)
 }
 
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn flags_bits_from_f64(storage: IntegerCodec, n: f64) -> anyhow::Result<u32> {
+    storage.check_range(n)?;
+
+    Ok(n as i64 as u32)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EnumFlagsKind {
     Enum,
@@ -27,6 +34,7 @@ pub struct EnumFlagsCodec {
     pub shared_library: String,
     pub get_type_fn_name: String,
     pub storage: IntegerCodec,
+    pub mask: Option<u32>,
 }
 
 impl IntegerBacked for EnumFlagsCodec {
@@ -58,16 +66,48 @@ impl EnumFlagsCodec {
         }
         Ok(())
     }
+
+    fn flags_mask(&self) -> anyhow::Result<Option<u32>> {
+        if self.get_type_fn_name.is_empty() {
+            return Ok(self.mask);
+        }
+        let type_ = self.resolve_type()?;
+
+        ffi::library_cache::FfiCache::with(|state| state.flags_mask(type_, &self.get_type_fn_name))
+            .map(Some)
+    }
+
+    fn validate_flags_value(&self, bits: u32) -> anyhow::Result<()> {
+        let Some(mask) = self.flags_mask()? else {
+            return Ok(());
+        };
+        if bits & mask != bits {
+            let name = if self.get_type_fn_name.is_empty() {
+                "the flags type"
+            } else {
+                self.get_type_fn_name.as_str()
+            };
+            anyhow::bail!(
+                "Flags value 0x{bits:x} contains bits that are not valid for {name} (mask 0x{mask:x})"
+            );
+        }
+        Ok(())
+    }
 }
 
 impl EnumFlagsCodec {
     fn validate(&self, value: Unknown<'_>) -> anyhow::Result<()> {
-        if self.kind != EnumFlagsKind::Enum || !matches!(value.get_type()?, ValueType::Number) {
+        if !matches!(value.get_type()?, ValueType::Number) {
             return Ok(());
         }
         let n = value::read_napi::<f64>(value)?;
 
-        self.validate_enum_value(enum_member_from_f64(n)?)
+        match self.kind {
+            EnumFlagsKind::Enum => self.validate_enum_value(enum_member_from_f64(n)?),
+            EnumFlagsKind::Flags => {
+                self.validate_flags_value(flags_bits_from_f64(self.storage, n)?)
+            }
+        }
     }
 }
 

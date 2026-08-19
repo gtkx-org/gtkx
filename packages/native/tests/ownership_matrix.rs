@@ -479,6 +479,7 @@ fn d_flags() -> Descriptor {
         shared_library: GTK.to_owned(),
         get_type_fn_name: "gtk_state_flags_get_type".to_owned(),
         is_signed: false,
+        mask: None,
     }
 }
 

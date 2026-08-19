@@ -41,6 +41,7 @@ fn enum_flags_item_codec() -> Codec {
         shared_library: "Gtk".to_string(),
         get_type_fn_name: "gtk_orientation_get_type".to_string(),
         storage: IntegerCodec::I32,
+        mask: None,
     })
 }
 

@@ -210,6 +210,7 @@ impl FundamentalFnCache {
 pub struct FfiCache {
     pub libs: LibraryCache,
     pub fundamental_fns: FundamentalFnCache,
+    flags_masks: HashMap<glib::Type, u32>,
 }
 
 impl Default for FfiCache {
@@ -217,6 +218,7 @@ impl Default for FfiCache {
         Self {
             libs: LibraryCache::new(),
             fundamental_fns: FundamentalFnCache::new(),
+            flags_masks: HashMap::new(),
         }
     }
 }
@@ -280,6 +282,21 @@ impl FfiCache {
     ) -> anyhow::Result<glib::Type> {
         self.libs
             .resolve_type_optional(library_name, get_type_fn_name)
+    }
+
+    pub fn flags_mask(&mut self, type_: glib::Type, get_type_fn_name: &str) -> anyhow::Result<u32> {
+        if let Some(mask) = self.flags_masks.get(&type_) {
+            return Ok(*mask);
+        }
+        let flags_class = glib::FlagsClass::with_type(type_).ok_or_else(|| {
+            anyhow::anyhow!("{get_type_fn_name} (Type {type_}) is not a flags type")
+        })?;
+        let mask = flags_class
+            .values()
+            .iter()
+            .fold(0, |mask, value| mask | value.value());
+        self.flags_masks.insert(type_, mask);
+        Ok(mask)
     }
 
     pub fn library(&mut self, library_name: &str) -> anyhow::Result<&Library> {

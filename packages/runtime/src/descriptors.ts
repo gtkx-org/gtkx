@@ -235,13 +235,25 @@ const enumT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): En
     isSigned,
 });
 
-/** Builds a descriptor for a flags type, resolving its GType from the named `get_type` function. */
-const flagsT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): FlagsDescriptor => ({
-    kind: "flags",
-    sharedLibrary,
-    getTypeFnName: typeFnName,
-    isSigned,
-});
+/**
+ * Builds a descriptor for a flags type, resolving its GType from the named `get_type` function.
+ * For flags without a registered GType, pass empty library and function names and supply `mask`,
+ * the union of all valid bits, which invalid combinations are rejected against.
+ */
+const flagsT = (sharedLibrary: string, typeFnName: string, isSigned: boolean, mask?: number): FlagsDescriptor => {
+    const result: FlagsDescriptor = {
+        kind: "flags",
+        sharedLibrary,
+        getTypeFnName: typeFnName,
+        isSigned,
+    };
+
+    if (mask !== undefined) {
+        result.mask = mask;
+    }
+
+    return result;
+};
 
 const applyBoxedNames = (result: BoxedDescriptor, options: BoxedOptions): void => {
     if (options.sharedLibrary !== undefined) {
