@@ -50,6 +50,7 @@ type JsxFingerprint = {
 
 const FINGERPRINT_FILENAME = ".codegen-fingerprint.json";
 const CODEGEN_VERSION: string = packageManifest.version;
+const STORE_FORMAT_VERSION = 2;
 const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "overrides");
 
 const sortAlpha = (values: string[]): string => sortStrings(values).join(",");
@@ -67,6 +68,8 @@ const overrideFiles = (): string[] => {
 const hashGi = (inputs: GiInputs): string => {
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
+    hash.update("\n");
+    hash.update(String(STORE_FORMAT_VERSION));
     hash.update("\n");
     hash.update(sortAlpha(inputs.libraries));
     hash.update("\n");
@@ -174,6 +177,7 @@ const hashJsx = (input: JsxFingerprintInput): string =>
         .update(
             JSON.stringify([
                 CODEGEN_VERSION,
+                STORE_FORMAT_VERSION,
                 input.reactVersion,
                 serializeModuleExports(input.components),
                 sortStrings(input.lazyElements),

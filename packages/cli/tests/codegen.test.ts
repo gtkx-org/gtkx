@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBRARIES } from "./cli-project.js";
 
@@ -14,6 +15,8 @@ type ByteSequenceCase = {
 };
 
 type OmittedFieldCase = { title: string; jsName: string };
+type DocumentedModuleCase = { title: string; store: string; stem: string; docs: string[] };
+type HoverCase = { title: string; text: string; doc: string };
 
 type ValueReturnCase = {
     title: string;
@@ -143,6 +146,61 @@ const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
     { title: "a linked list", jsName: "links" },
 ];
 
+const NOTE_DOC = "Holds a short piece of text the user jotted down.";
+const READ_DOC = "Reads the note back in the given tone.";
+const COMMENT = /\/\*|\/\//u;
+
+const DOCUMENTED_MODULE_CASES: DocumentedModuleCase[] = [
+    {
+        title: "a namespace the bindings come from",
+        store: "gi",
+        stem: join("documented", "documented"),
+        docs: [
+            `/** ${NOTE_DOC} */`,
+            "/** Read the note out across the room. */",
+            `* ${READ_DOC}`,
+            "* @param tone How loudly to read it.",
+            "* @deprecated Since 1.0. Use `read()` with Tone.LOUD instead.",
+        ],
+    },
+    {
+        title: "a namespace the elements come from",
+        store: "jsx",
+        stem: join("documented", "documented"),
+        docs: [`/** ${NOTE_DOC} */`],
+    },
+    {
+        title: "a hand-written override",
+        store: "gi",
+        stem: join("gobject", "overrides", "object"),
+        docs: ["* @param handlerId Id of the handler to disconnect."],
+    },
+];
+
+const HOVER_PROBE = [
+    'import { Note, Tone } from "@gtkx/gi/documented";',
+    'import { DocumentedNote } from "@gtkx/jsx/documented";',
+    "",
+    "export const note = new Note();",
+    "note.read(Tone.LOUD);",
+    "export const element = <DocumentedNote />;",
+    "",
+].join("\n");
+
+const HOVER_CASES: HoverCase[] = [
+    { title: "a method", text: "read(", doc: READ_DOC },
+    { title: "an element", text: "DocumentedNote />", doc: NOTE_DOC },
+];
+
+const HOVER_OPTIONS: ts.CompilerOptions = {
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    target: ts.ScriptTarget.ESNext,
+    jsx: ts.JsxEmit.ReactJSX,
+    strict: true,
+    skipLibCheck: true,
+};
+
 const config = (body: string): string => `${HEAD}${body} };\n`;
 
 const fixtureConfig = (library: string): string =>
@@ -189,6 +247,32 @@ const classBody = (source: string, className: string): string => {
     const end = source.indexOf("\n}", start);
 
     return start === -1 || end === -1 ? "" : source.slice(start, end);
+};
+
+const hoverHost = (project: CliProject, filePath: string): ts.LanguageServiceHost => ({
+    getCompilationSettings: () => HOVER_OPTIONS,
+    getScriptFileNames: () => [filePath],
+    getScriptVersion: () => "1",
+    getScriptSnapshot: (name) => {
+        const text = ts.sys.readFile(name);
+
+        return text === undefined ? undefined : ts.ScriptSnapshot.fromString(text);
+    },
+    getCurrentDirectory: () => project.root,
+    getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
+    fileExists: (name) => ts.sys.fileExists(name),
+    readFile: (name) => ts.sys.readFile(name),
+    readDirectory: (...args) => ts.sys.readDirectory(...args),
+    directoryExists: (name) => ts.sys.directoryExists(name),
+    getDirectories: (name) => ts.sys.getDirectories(name),
+});
+
+const hoverDoc = (project: CliProject, fileName: string, text: string): string => {
+    const filePath = join(project.root, fileName);
+    const service = ts.createLanguageService(hoverHost(project, filePath));
+    const info = service.getQuickInfoAtPosition(filePath, readFileSync(filePath, "utf8").indexOf(text));
+
+    return ts.displayPartsToString(info?.documentation);
 };
 
 describe("gtkx codegen", () => {
@@ -289,6 +373,39 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
         } finally {
             removeCliProject(project);
         }
+    });
+});
+
+describe("gtkx codegen (where the documentation goes)", () => {
+    const state: { project: CliProject; status: number | null } = {
+        project: { root: "", nodeModules: "" },
+        status: null,
+    };
+
+    beforeAll(() => {
+        state.project = createCliProject({
+            prefix: "gtkx-cli-codegen-docs-",
+            config: fixtureConfig("Documented-1.0"),
+            files: { "src/probe.tsx": HOVER_PROBE },
+        });
+
+        state.status = runCli(state.project, ["codegen"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it.each(DOCUMENTED_MODULE_CASES)("documents $title in its declaration alone", ({ store, stem, docs }) => {
+        expect(state.status).toBe(0);
+        const declared = generatedModule(state.project, store, `${stem}.d.ts`);
+        expect(docs.filter((text) => !declared.includes(text))).toEqual([]);
+        expect(generatedModule(state.project, store, `${stem}.js`)).not.toMatch(COMMENT);
+    });
+
+    it.each(HOVER_CASES)("surfaces the documentation of $title on hover", ({ text, doc }) => {
+        expect(state.status).toBe(0);
+        expect(hoverDoc(state.project, join("src", "probe.tsx"), text)).toContain(doc);
     });
 });
 

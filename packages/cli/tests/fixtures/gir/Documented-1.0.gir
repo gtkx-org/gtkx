@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <package name="documented-1.0"/>
+  <namespace name="Documented"
+             version="1.0"
+             shared-library="libdocumented.so.0"
+             c:identifier-prefixes="Documented"
+             c:symbol-prefixes="documented">
+    <enumeration name="Tone"
+                 glib:type-name="DocumentedTone"
+                 glib:get-type="documented_tone_get_type"
+                 c:type="DocumentedTone">
+      <doc xml:space="preserve">How loudly a note is read back.</doc>
+      <member name="quiet" value="0" c:identifier="DOCUMENTED_TONE_QUIET">
+        <doc xml:space="preserve">Read the note under the breath.</doc>
+      </member>
+      <member name="loud" value="1" c:identifier="DOCUMENTED_TONE_LOUD">
+        <doc xml:space="preserve">Read the note out across the room.</doc>
+      </member>
+    </enumeration>
+    <class name="Note"
+           c:symbol-prefix="note"
+           c:type="DocumentedNote"
+           parent="GObject.Object"
+           glib:type-name="DocumentedNote"
+           glib:get-type="documented_note_get_type">
+      <doc xml:space="preserve">Holds a short piece of text the user jotted down.</doc>
+      <method name="read" c:identifier="documented_note_read">
+        <doc xml:space="preserve">Reads the note back in the given tone.</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Note" c:type="DocumentedNote*"/>
+          </instance-parameter>
+          <parameter name="tone" transfer-ownership="none">
+            <doc xml:space="preserve">How loudly to read it.</doc>
+            <type name="Tone" c:type="DocumentedTone"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="shout" c:identifier="documented_note_shout" deprecated="1" deprecated-version="1.0">
+        <doc xml:space="preserve">Reads the note back as loudly as possible.</doc>
+        <doc-deprecated xml:space="preserve">Use read() with Tone.LOUD instead.</doc-deprecated>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Note" c:type="DocumentedNote*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+    </class>
+  </namespace>
+</repository>
