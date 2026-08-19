@@ -95,6 +95,13 @@ const gSignalConnectClosure = bind(
     uint64T,
 );
 
+const gSignalOverrideClassClosure = bind(
+    LIB,
+    "g_signal_override_class_closure",
+    [uint32T, biguint64T, CLOSURE_T],
+    voidT,
+);
+
 /** Returns the signal name without its detail suffix (the part after `::`). */
 const getSignalBaseName = (signal: string): string => {
     const detailIndex = signal.indexOf("::");
@@ -225,6 +232,16 @@ function connectSignal(instance: object, signal: string, spec: SignalConnectSpec
     return handlerId;
 }
 
+function overrideSignalClassClosure(type: bigint, signal: string, handler: SignalHandler): void {
+    const signalId = gSignalLookup(signal, type) as number;
+
+    if (signalId === 0) {
+        return;
+    }
+
+    gSignalOverrideClassClosure(signalId, type, toClosure(handler));
+}
+
 function connectClosureSignal(instance: object, signal: string, handler: SignalHandler, isAfter: boolean): number {
     const closure = toClosure((...args: unknown[]) => handler(...args.slice(1)));
     const handlerId = gSignalConnectClosure(getHandle(instance), signal, closure, isAfter) as number;
@@ -327,6 +344,7 @@ export {
     emitSignal,
     hasSignalListener,
     isSignalHandlerConnected,
+    overrideSignalClassClosure,
     untrackConnection,
     type SignalHandler,
 };

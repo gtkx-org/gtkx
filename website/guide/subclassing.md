@@ -156,7 +156,28 @@ guard.emit("close-request"); // true
 
 `SignalFlags.DETAILED` lets handlers connect to and emissions carry a `::detail` suffix, so `alert::red` reaches the handlers on that detail plus the ones on plain `alert`.
 
-`registerClass` throws for a name that is not a valid signal name, a name the parent type or a listed interface already carries, the same name declared under both spellings, a GType that cannot hold a value, and an accumulator outside the two above. Default handlers on the class itself are not part of `signals`: the signals are created with no class closure, so only connected handlers run.
+`registerClass` throws for a name that is not a valid signal name, a name the parent type or a listed interface already carries, the same name declared under both spellings, a GType that cannot hold a value, and an accumulator outside the two above.
+
+## Default handlers
+
+A method named `on<SignalName>` — the signal's name in camelCase after the `on`, so `onClicked` for `clicked` and `onProgressChanged` for `progress-changed` — becomes that signal's default handler, whether an ancestor type or an implemented interface brings the signal or the same call declares it under `signals`:
+
+```ts
+class LoggingDownloaderBase extends GObject {
+    onProgressChanged(url: string, percent: number): void {
+        console.log(url, percent);
+    }
+}
+
+const LoggingDownloader = registerClass(LoggingDownloaderBase, {
+    typeName: "ExampleLoggingDownloader",
+    signals: { "progress-changed": { paramTypes: [TYPE_STRING, TYPE_INT] } },
+});
+
+new LoggingDownloader().emit("progress-changed", "https://example.com", 40); // logs
+```
+
+The method is installed as a class-closure override, the way GJS installs `on_`-prefixed methods, so it runs on every emission, on the instances a native caller creates included, in the stage the signal's flags name rather than alongside connected handlers: a `RUN_FIRST` signal runs it before them, a `RUN_LAST` one after. It receives the emission's arguments without the leading emitter, with `this` bound to the emitter, and what it returns becomes the emission's result when the signal declares one. A subclass registering its own `on<SignalName>` replaces the handler for its instances, and `super.on<SignalName>()` reaches the replaced one. An `on`-prefixed method naming no signal the type carries is left alone as the ordinary method it is, so a helper like `onFrobnicate` stays a plain method.
 
 ## Class-level setup
 

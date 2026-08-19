@@ -7,7 +7,7 @@ import {
     type RegisterClassSignal as NativeRegisterClassSignal,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
 } from "@gtkx/native";
-import { type AnyClass, getParentClass, walkClassChain } from "@gtkx/utils";
+import { type AnyClass, getParentClass, kebabCase, walkClassChain } from "@gtkx/utils";
 import { wrapCallback } from "./callback.js";
 import { insertMixinLayer } from "./mixin.js";
 import {
@@ -34,6 +34,7 @@ import {
     type DeclaredSignalTypes,
     emitDeclaredSignal,
     getSignalBaseName,
+    overrideSignalClassClosure,
     type SignalHandler,
 } from "./signal.js";
 import { TYPE_INTERFACE, TYPE_INVALID, TYPE_NONE, typeFundamental, typeInterfaces, typeIsA } from "./type.js";
@@ -308,9 +309,10 @@ type RegisterClassOptions<
      * returns becomes the emission's return value when the signal declares one.
      *
      * The declared parameter GTypes rule the emission: `emit` converts each argument into a
-     * `GValue` of the declared type and throws for a value that type cannot hold. Handlers
-     * declared by the class itself as `vfunc`-style default handlers are not supported: the
-     * signals are created with no class closure, so only connected handlers run.
+     * `GValue` of the declared type and throws for a value that type cannot hold. The signals
+     * are created with no class closure of their own, but a method named `on<SignalName>`
+     * becomes the signal's default handler, the way every `on`-prefixed method that names a
+     * signal the type carries does; see {@link registerClass}.
      */
     signals?: TSignals;
 };
@@ -359,6 +361,7 @@ const PROPERTY_VFUNC_SPECS: PropertyVfuncSpec[] = [
 
 const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec) => spec.methodName));
 const TYPE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9\-_+]{2,}$/;
+const SIGNAL_OVERRIDE_PATTERN = /^on[A-Z]/;
 
 /**
  * Registers a subclass of a wrapper class as a new GType, wiring up any class and interface
@@ -384,6 +387,19 @@ const TYPE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9\-_+]{2,}$/;
  *
  * Declare every slot as a method: a class field holding a function, such as `vfuncGetNItems = () => 1`,
  * is assigned to each instance after registration and never reaches the vtable.
+ *
+ * A method named `on<SignalName>` — the signal's name in camelCase after the `on`, so `onClicked`
+ * for `clicked` and `onItemsChanged` for `items-changed` — becomes that signal's default handler
+ * when the type carries the signal, whether an ancestor type or an implemented interface brings it
+ * or `RegisterClassOptions.signals` declares it. The method is installed as a class-closure
+ * override, so it runs on every emission, on the instances a native caller creates included, in
+ * the stage the signal's flags name rather than alongside connected handlers. It receives the
+ * emission's arguments without the leading emitter, with `this` bound to the emitter, and what it
+ * returns becomes the emission's result when the signal declares one. The same discovery walks the
+ * prototype chain vfunc discovery walks, and a subclass registering its own `on<SignalName>`
+ * replaces the handler for its instances, where `super.on<SignalName>()` reaches the replaced one.
+ * An `on`-prefixed method naming no signal the type carries is left alone as the ordinary method
+ * it is.
  *
  * An override of `vfuncConstructed` runs from inside the base constructor, before JavaScript
  * installs the subclass's field initializers and runs its constructor body, so a field still
@@ -438,6 +454,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     const newType: bigint = nativeRegisterClass(name, parentType, nativeOptions);
     registerClassType(klass, newType);
     markDerivedClass(klass);
+    installSignalOverrides(newType, methods);
     applyInterfaceMixins(klass, adoptedTypes, inheritedNames);
     installDeclaredSignalMethods(klass, signals.table, members.names);
     invokeClassInit(options, newType);
@@ -724,6 +741,20 @@ function buildPropertyVfunc(
 }
 
 const canonicalSignalName = (name: string): string => name.replaceAll("_", "-");
+
+function installSignalOverrides(newType: bigint, methods: MethodTable): void {
+    for (const [methodName, fn] of methods) {
+        if (!SIGNAL_OVERRIDE_PATTERN.test(methodName)) {
+            continue;
+        }
+
+        const handler = fn as (...args: unknown[]) => unknown;
+
+        overrideSignalClassClosure(newType, kebabCase(methodName.slice(2)), (...args: unknown[]) =>
+            handler.apply(args[0], args.slice(1)),
+        );
+    }
+}
 
 function resolveSignalGType(klass: AnyClass, signalName: string, role: string, entry: SignalGType): bigint {
     if (typeof entry === "bigint") {
