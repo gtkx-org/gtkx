@@ -3,10 +3,12 @@ import type { TypedClass } from "./type.js";
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind, createBindCache } from "./bind.js";
 import { wrapCallback } from "./callback.js";
+import { toClosure } from "./closure.js";
 import {
     arrayT,
     biguint64T,
     booleanT,
+    boxedT,
     type CallbackDescriptor,
     objectT,
     stringT,
@@ -21,7 +23,9 @@ import {
     fromValue,
     getBoxedValue,
     inoutValueForBoxedDescriptor,
+    intoValue,
     newValueForDescriptor,
+    newValueForType,
     outValueForBoxedDescriptor,
     outValueForDescriptor,
     toValue,
@@ -29,6 +33,11 @@ import {
 
 /** Function invoked when a connected GObject signal is emitted. */
 type SignalHandler = (...args: unknown[]) => unknown;
+
+type DeclaredSignalTypes = {
+    paramTypes: bigint[];
+    returnType?: bigint;
+};
 
 /** The marshalling and handler that make up a single signal connection. */
 type SignalConnectSpec = {
@@ -77,6 +86,14 @@ const gSignalHandlerIsConnected = bind(
 );
 
 const gSignalHandlerDisconnect = bind(LIB, "g_signal_handler_disconnect", [objectT("borrowed"), uint64T], voidT);
+const CLOSURE_T = boxedT("GClosure", { sharedLibrary: LIB, getTypeFnName: "g_closure_get_type" });
+
+const gSignalConnectClosure = bind(
+    LIB,
+    "g_signal_connect_closure",
+    [objectT("borrowed"), stringT("borrowed"), CLOSURE_T, booleanT],
+    uint64T,
+);
 
 /** Returns the signal name without its detail suffix (the part after `::`). */
 const getSignalBaseName = (signal: string): string => {
@@ -208,6 +225,38 @@ function connectSignal(instance: object, signal: string, spec: SignalConnectSpec
     return handlerId;
 }
 
+function connectClosureSignal(instance: object, signal: string, handler: SignalHandler, isAfter: boolean): number {
+    const closure = toClosure((...args: unknown[]) => handler(...args.slice(1)));
+    const handlerId = gSignalConnectClosure(getHandle(instance), signal, closure, isAfter) as number;
+    trackConnection(instance, getSignalBaseName(signal), handlerId);
+
+    return handlerId;
+}
+
+function emitDeclaredSignal(instance: object, signal: string, types: DeclaredSignalTypes, args: unknown[]): unknown {
+    const { paramTypes, returnType } = types;
+    const signalId = getSignalId(instance, signal);
+    const detail = getSignalDetailQuark(signal);
+    const values = [toValue(objectT("full"), instance)];
+
+    for (const [index, paramType] of paramTypes.entries()) {
+        const value = newValueForType(paramType);
+        intoValue(value, args[index]);
+        values.push(value);
+    }
+
+    if (returnType === undefined) {
+        gSignalEmitv(values, signalId, detail, undefined);
+
+        return undefined;
+    }
+
+    const returnValue = newValueForType(returnType);
+    gSignalEmitv(values, signalId, detail, returnValue);
+
+    return fromValue(returnValue);
+}
+
 const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: () => unknown } => {
     if (!isOutputArg(arg)) {
         return { value: toValue(arg.type, arg.value) };
@@ -270,8 +319,11 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returns?:
 
 export {
     getSignalBaseName,
+    connectClosureSignal,
     connectSignal,
+    type DeclaredSignalTypes,
     disconnectSignal,
+    emitDeclaredSignal,
     emitSignal,
     hasSignalListener,
     isSignalHandlerConnected,
