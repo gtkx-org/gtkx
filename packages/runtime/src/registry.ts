@@ -1,6 +1,7 @@
 import {
     type ExternalObject,
     getType,
+    getTypeClass,
     getWrapper,
     type Handle,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
@@ -8,7 +9,15 @@ import {
 } from "@gtkx/native";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
 import { copyLayerMembers, type Mixin, type MixinReceiver } from "./mixin.js";
-import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
+import {
+    TYPE_INVALID,
+    TYPE_OBJECT,
+    type TypedClass,
+    typeInterfaces,
+    typeIsA,
+    typeName,
+    typeParent,
+} from "./type.js";
 
 /**
  * Static side of class `C` with its construct signature preserved but the members named `K`
@@ -225,6 +234,51 @@ function getClassStructClass(type: bigint): AnyClass | undefined {
     }
 
     return composed;
+}
+
+function peekedTypeLabel(type: bigint | AnyClass, gtype: bigint): string {
+    const name = typeName(gtype);
+
+    if (name !== null) {
+        return name;
+    }
+
+    return typeof type === "bigint" ? String(type) : type.name;
+}
+
+/**
+ * Returns a GObject type's class struct, wrapped in the class-struct wrapper classes registered
+ * for the type's ancestry, such as `Gtk.WidgetClass` composed with `GObject.ObjectClass` for a
+ * widget type. The class is referenced so it exists even before the type's first instance, and
+ * the reference is deliberately never released: once created, a class struct lives for the rest
+ * of the process. Backs the `peek` statics of generated GTypeStruct wrappers, such as
+ * `GObject.ObjectClass.peek` and `Gtk.WidgetClass.peek`.
+ *
+ * @param type GType to peek the class struct of, or a registered wrapper class of the type.
+ * @param base When given, wrapper class of the type the peeked type must derive from; the peek
+ * throws for a type outside that lineage. Without it any GObject type is accepted.
+ * @returns The wrapped class struct.
+ */
+function peekTypeClass(type: bigint | AnyClass, base?: AnyClass): object {
+    const gtype = typeof type === "bigint" ? type : getClassType(type);
+
+    if (!typeIsA(gtype, TYPE_OBJECT)) {
+        throw new TypeError(`peekTypeClass: '${peekedTypeLabel(type, gtype)}' is not a GObject type`);
+    }
+
+    if (base !== undefined && !typeIsA(gtype, getClassType(base))) {
+        throw new TypeError(`peekTypeClass: '${peekedTypeLabel(type, gtype)}' does not derive from '${base.name}'`);
+    }
+
+    const structClass = getClassStructClass(gtype);
+
+    if (structClass === undefined) {
+        throw new TypeError(
+            `peekTypeClass: no ancestor of '${peekedTypeLabel(type, gtype)}' registers a class struct wrapper`,
+        );
+    }
+
+    return wrapHandle(getTypeClass(gtype), structClass);
 }
 
 function resolveAncestorType(ancestor: AnyClass): bigint | undefined {
@@ -504,6 +558,7 @@ export {
     getClassType,
     getInstanceType,
     markDerivedClass,
+    peekTypeClass,
     registerClassStruct,
     registerClassType,
     registerWrapperClass,

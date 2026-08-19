@@ -228,6 +228,17 @@ registerClass(CardWidget, {
 
 The wrapper serves the members of every class struct in the parent chain on one object: a widget subclass sees `Gtk.WidgetClass` and `GObject.ObjectClass` members alike, so annotate the parameter as whichever of those types the hook needs — a non-widget subclass would take `GObject.ObjectClass` and reach `findProperty` or `listProperties`. The hook runs after `class_init` has installed the vfuncs, properties and signals declared in the same call, so they are already visible there. An exception it throws propagates out of `registerClass`, though the type itself stays registered: GObject has no way to unregister a static type.
 
+Outside registration, the same class-level surface is reachable through the `peek` static on the generated GTypeStruct wrappers: `GObject.ObjectClass.peek` accepts any GObject type — a wrapper class or a raw GType — and hands back its class struct, and `Gtk.WidgetClass.peek` does the same for types deriving from `Gtk.Widget`, throwing for anything else. Peeking references the class so it exists even before the type's first instance, and the reference is deliberately never released, matching the process-long lifetime of a class struct. Reserve it for reads and other calls that are safe outside `class_init`, such as introspection:
+
+```ts
+import { ObjectClass } from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+
+ObjectClass.peek(Gtk.Label).findProperty("label"); // the ParamSpec of Gtk.Label's label property
+ObjectClass.peek(Gtk.Label).listProperties(); // every ParamSpec the type carries
+Gtk.WidgetClass.peek(Gtk.Button).getCssName(); // "button"
+```
+
 ## Overriding virtual functions
 
 Every vtable slot a parent type exposes is a `vfunc`-prefixed member on its wrapper class: `GtkWidgetClass.measure` is `vfuncMeasure`, `GObjectClass.constructed` is `vfuncConstructed`. Override the member and `registerClass` installs it into the new type's vtable.

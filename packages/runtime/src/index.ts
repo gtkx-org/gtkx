@@ -35,6 +35,7 @@ export {
     getHandle,
     getInstanceType,
     getWrapperClass,
+    peekTypeClass,
     registerClassStruct,
     registerInterface,
     registerWrapperClass,
