@@ -203,9 +203,15 @@ const resolveFundamentalType = (descriptor: FundamentalDescriptor): bigint => {
     throw new Error("Cannot resolve gtype for fundamental type without a typeName");
 };
 
+const getByteArrayType = (): bigint => resolveType(LIB, "g_byte_array_get_type");
+
 function resolveArrayType(descriptor: ArrayDescriptor): bigint {
     if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") {
         return getStrvType();
+    }
+
+    if (descriptor.arrayKind === "gbytearray") {
+        return getByteArrayType();
     }
 
     throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
@@ -272,6 +278,7 @@ export {
     TYPE_GTYPE,
     TYPE_VARIANT,
     TYPE_UNICHAR,
+    getByteArrayType,
     getErrorType,
     getStrvType,
     isResolvableDescriptor,

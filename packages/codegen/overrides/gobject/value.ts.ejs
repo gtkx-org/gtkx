@@ -21,6 +21,9 @@ Value.prototype.getBoxed = function <T = unknown>(this: Value): T {
     return getBoxedValue(getHandle(this)) as T;
 };
 
-Value.prototype.setBoxed = function (this: Value, boxed: object | null): void {
+Value.prototype.setBoxed = function (
+    this: Value,
+    boxed: object | string | number | bigint | boolean | null,
+): void {
     setBoxedValue(getHandle(this), boxed);
 };

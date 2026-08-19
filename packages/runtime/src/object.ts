@@ -5,7 +5,7 @@ import { objectT, stringT, voidT } from "./descriptors.js";
 import { LIB, VALUE_T } from "./library.js";
 import { type ConstructProperty, constructPropertyFor } from "./properties.js";
 import { getHandle, registerWrapper } from "./registry.js";
-import { fromValue, newValueForDescriptor, toValue } from "./value.js";
+import { fromValueForDescriptor, newValueForDescriptor, toValue } from "./value.js";
 
 /**
  * One construct property a wrapper class accepts: the canonical `GObject` name it is set under,
@@ -165,7 +165,7 @@ function getObjectProperty(obj: object, propertyName: string, descriptor: Descri
     const value = newValueForDescriptor(descriptor);
     gObjectGetProperty(getHandle(obj), propertyName, value);
 
-    return fromValue(value);
+    return fromValueForDescriptor(descriptor, value);
 }
 
 /**

@@ -19,6 +19,7 @@ import { typeName } from "./type.js";
 import {
     fromValue,
     newValueForType,
+    valueGuardOverrideFor,
     type ValueNarrower,
     valueNarrowerFor,
     type ValueWriter,
@@ -102,7 +103,7 @@ function checkFor(handle: ExternalObject<Handle>, name: string): PropertyCheck {
         handle,
         flags: getParamFlags(handle),
         valueType,
-        canHoldValue: valueGuardFor(valueType),
+        canHoldValue: valueGuardOverrideFor(valueType) ?? valueGuardFor(valueType),
         narrowValue: valueNarrowerFor(valueType),
     };
 }
