@@ -9,6 +9,7 @@ use glib::translate::{Borrowed, from_glib_borrow};
 use napi::bindgen_prelude::*;
 use napi::{Env, sys};
 
+use crate::handle::surface;
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
 
@@ -187,12 +188,17 @@ pub unsafe fn schedule_cleanup(
                 drop(borrow_object(gobject).steal_qdata::<Rc<WrapperHandle>>(quark()));
             }
             delete_reference(napi_ref);
+            let borrowed = unsafe { borrow_object(gobject) };
+            let doomed_surface = surface::awaits_destroy(&borrowed).then(|| (*borrowed).clone());
             unsafe {
                 glib::gobject_ffi::g_object_remove_toggle_ref(
                     gobject,
                     Some(on_toggle_notify),
                     std::ptr::null_mut(),
                 );
+            }
+            if let Some(object) = doomed_surface {
+                surface::release(object);
             }
         });
     });
