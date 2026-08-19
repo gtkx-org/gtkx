@@ -184,9 +184,15 @@ describe("a binding handing a value back", () => {
     });
 
     it("surfaces what a value read back from the clipboard holds", async () => {
-        const clipboard = Gdk.Display.getDefault()?.getClipboard();
-        clipboard?.set("copied");
-        expect(await clipboard?.readValueAsync(TYPE_STRING, 0, null)).toBe("copied");
+        const display = Gdk.Display.getDefault();
+
+        if (display === null) {
+            throw new Error("reading the clipboard back needs a display");
+        }
+
+        const clipboard = display.getClipboard();
+        clipboard.set("copied");
+        expect(await clipboard.readValueAsync(TYPE_STRING, 0, null)).toBe("copied");
     });
 
     it("surfaces null for a value holding nothing", () => {
