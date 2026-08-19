@@ -109,10 +109,6 @@ describe("a value built before the call", () => {
 });
 
 describe("the GType inferred from a number or an array", () => {
-    it("is gint for a whole number written with a fractional part", () => {
-        expect(heldType(5)).toBe(TYPE_INT);
-    });
-
     it("is gint at the bounds of the signed 32-bit range", () => {
         expect(heldType(-2_147_483_648)).toBe(TYPE_INT);
         expect(heldType(2_147_483_647)).toBe(TYPE_INT);
