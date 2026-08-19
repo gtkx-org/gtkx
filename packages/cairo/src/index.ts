@@ -1,16 +1,13 @@
-import "./legacy/font-face.js";
-import "./legacy/scaled-font.js";
-
-/** @public */
-export { Device, FontFace, ScaledFont } from "./base.js";
 /** @public */
 export { Context } from "./context.js";
 /** @public */
+export { Device } from "./device.js";
+/** @public */
 export * from "./enums.js";
 /** @public */
-export { FtFontFace, FtSynthesize, ToyFontFace } from "./legacy/font-face.js";
+export { FontFace, FtFontFace, FtSynthesize, ToyFontFace } from "./font-face.js";
 /** @public */
-export { FontOptions } from "./legacy/font-options.js";
+export { FontOptions } from "./font-options.js";
 /** @public */
 export { Matrix } from "./matrix.js";
 /** @public */
@@ -19,6 +16,8 @@ export { Path } from "./path.js";
 export { LinearPattern, MeshPattern, Pattern, RadialPattern } from "./pattern.js";
 /** @public */
 export { Region } from "./region.js";
+/** @public */
+export { ScaledFont } from "./scaled-font.js";
 /** @public */
 export * from "./structs.js";
 /** @public */

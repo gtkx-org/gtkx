@@ -15,7 +15,7 @@ import {
 import type { RectangleInt } from "./structs.js";
 import type { DeviceOffset, DeviceScale, FallbackResolution, InkExtents, RectangleData } from "./types.js";
 import { type Content, type Format, type Status, SurfaceType } from "./enums.js";
-import { FontOptions } from "./legacy/font-options.js";
+import { FontOptions } from "./font-options.js";
 import {
     bindCairo,
     type BoundFunction,
