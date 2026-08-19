@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { gcUntil } from "./helpers/native-utils.js";
 import { createTypeNameFactory } from "./helpers/unique-name.js";
 
-type EscapedReceiver = { getData: (key: string) => bigint | null };
+type EscapedReceiver = { isFloating: () => boolean };
 
 const REVOKED_RECEIVER = /only valid until the override returns/;
 const uniqueName = createTypeNameFactory("_");
@@ -70,7 +70,7 @@ describe("a teardown receiver GTKX built for the call", () => {
             throw new Error("the override never ran");
         }
 
-        expect(() => receiver.getData("gtkx")).toThrow(REVOKED_RECEIVER);
+        expect(() => receiver.isFloating()).toThrow(REVOKED_RECEIVER);
         expect(getType(getHandle(receiver))).toBe(TYPE_INVALID);
     });
 });
