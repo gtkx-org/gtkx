@@ -20,6 +20,7 @@ import {
     parameterIdentifier,
 } from "../../analysis/param-structure.js";
 import { renderParameterTsType, renderTsType } from "../../analysis/ts-type.js";
+import { primitiveCategoryFor } from "../../analysis/type-shape.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter, isOutParameter } from "../../gir/parameter.js";
 import { hasUnknownArrayLength, type TypeId } from "../../gir/type-id.js";
 import { areClosuresInvoked } from "./closure-invocation.js";
@@ -270,13 +271,35 @@ const renderCancellableExpression = (parameters: GirParameter[], cancellableInde
     return parameter === undefined ? "null" : parameterIdentifier(parameter, cancellableIndex);
 };
 
+const shouldTrimFinishBoolean = (context: ModuleContext, finishFn: GirFunction): boolean =>
+    context.library.isFinishTrimmed &&
+    finishFn.throws &&
+    !shouldOmitPrimaryReturn(context.library, finishFn.returnValue) &&
+    primitiveCategoryFor(context.library, finishFn.returnValue.type) === "boolean" &&
+    returnedOutParameters(context, finishFn).length > 0;
+
+const promisifiedFinishExpression = (
+    context: ModuleContext,
+    finishFn: GirFunction,
+    finishExpression: string,
+): string => {
+    if (!shouldTrimFinishBoolean(context, finishFn)) {
+        return finishExpression;
+    }
+
+    context.addRuntimeImport("trimFinish");
+
+    return `trimFinish(${finishExpression})`;
+};
+
 const renderPromisifiedBody = (
     context: ModuleContext,
     asyncFn: GirFunction,
-    finishExpression: string,
+    finishTarget: { fn: GirFunction; expression: string },
     bindingExpression: string,
 ): string => {
     context.addRuntimeImport("promisify");
+    const finish = promisifiedFinishExpression(context, finishTarget.fn, finishTarget.expression);
     const cancellableIndex = findCancellableIndex(context, asyncFn.parameters);
 
     const promisifyContext: PromisifyContext = {
@@ -297,7 +320,7 @@ const renderPromisifiedBody = (
     const cancellableExpression = renderCancellableExpression(asyncFn.parameters, cancellableIndex);
     const leadingArguments = leadingExpressions.length > 0 ? `, ${leadingExpressions.join(", ")}` : "";
 
-    return `return promisify(${bindingExpression}, ${finishExpression}, ${cancellableExpression}${leadingArguments});`;
+    return `return promisify(${bindingExpression}, ${finish}, ${cancellableExpression}${leadingArguments});`;
 };
 
 const finishCallExpression = (asyncFn: GirFunction, finishFn: GirFunction, ownerName: string): string =>
@@ -340,7 +363,12 @@ const renderPromisifiedSignature = (
         isOptionalExtra: (parameter) => isCancellable(context, parameter),
     });
 
-    const finishReturn = renderMethodReturnType(context, finishFn);
+    const finishReturn = shouldTrimFinishBoolean(context, finishFn)
+        ? foldOutParamShape(
+                undefined,
+                returnedOutParameters(context, finishFn).map(({ parameter }) => renderOutTsType(context, parameter)),
+            )
+        : renderMethodReturnType(context, finishFn);
 
     return { signature, returnType: `Promise<${finishReturn}>` };
 };
@@ -775,6 +803,7 @@ export {
     renderPromisifiedBody,
     finishCallExpression,
     renderPromisifiedSignature,
+    shouldTrimFinishBoolean,
     renderMethodBody,
     renderReturnDescriptor,
     planCallArgs,

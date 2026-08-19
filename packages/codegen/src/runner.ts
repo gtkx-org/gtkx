@@ -43,6 +43,8 @@ type CodegenRunnerOptions = {
     isByteArrayTyped?: boolean;
     /** Surfaces a `GObject.Value` a binding hands back as what it holds rather than as the value; defaults to false. */
     isValueUnwrapped?: boolean;
+    /** Drops the leading success boolean from promisified results of a throwing finish; defaults to false. */
+    isFinishTrimmed?: boolean;
 };
 
 /** What a `runCodegen` run produced. */
@@ -163,7 +165,8 @@ const emitStoresWithConfig = async (config: {
     const { options, gi, jsx, libraries, girPath } = config;
     const isByteArrayTyped = options.isByteArrayTyped === true;
     const isValueUnwrapped = options.isValueUnwrapped === true;
-    const future = { isByteArrayTyped, isValueUnwrapped };
+    const isFinishTrimmed = options.isFinishTrimmed === true;
+    const future = { isByteArrayTyped, isValueUnwrapped, isFinishTrimmed };
     let library: Library | undefined;
     const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath, future));
     const giInputs = { girFiles: [] as string[], libraries, girPath, ...future };

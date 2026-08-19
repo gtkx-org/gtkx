@@ -194,19 +194,19 @@ describe("async calls made without a completion callback", () => {
         expect(existsSync(path)).toBe(false);
     });
 
-    it("makes a call that lends the callee a borrowed string", () => {
+    it("makes a call that lends the callee a borrowed string", async () => {
         const path = join(directory, "bytes-etag.dat");
 
-        expect(() => {
-            Gio.File.newForPath(path).replaceContentsBytesAsync(
-                GLib.Bytes.new(payload),
-                "some-etag",
-                false,
-                Gio.FileCreateFlags.NONE,
-                null,
-                null,
-            );
-        }).not.toThrow();
+        const written = Gio.File.newForPath(path).replaceContentsBytesAsync(
+            GLib.Bytes.new(payload),
+            "some-etag",
+            false,
+            Gio.FileCreateFlags.NONE,
+            null,
+        );
+
+        await expect(written).resolves.toBeDefined();
+        expect(existsSync(path)).toBe(true);
     });
 });
 

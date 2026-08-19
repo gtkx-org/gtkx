@@ -13,6 +13,7 @@ type GiInputs = {
     girPath: string[];
     isByteArrayTyped: boolean;
     isValueUnwrapped: boolean;
+    isFinishTrimmed: boolean;
 };
 
 type GiFingerprint = {
@@ -75,6 +76,8 @@ const hashGi = (inputs: GiInputs): string => {
     hash.update(String(inputs.isByteArrayTyped));
     hash.update("\n");
     hash.update(String(inputs.isValueUnwrapped));
+    hash.update("\n");
+    hash.update(String(inputs.isFinishTrimmed));
     hash.update("\n");
     const hashedFiles = sortStrings([...inputs.girFiles, ...overrideFiles()]);
 

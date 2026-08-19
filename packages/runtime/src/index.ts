@@ -24,7 +24,7 @@ export {
     setObjectProperty,
 } from "./object.js";
 /** @public */
-export { promisify } from "./promisify.js";
+export { promisify, trimFinish } from "./promisify.js";
 /** @public */
 export { type Interface, registerClass } from "./register-class.js";
 /** @public */

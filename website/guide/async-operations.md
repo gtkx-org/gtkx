@@ -15,6 +15,8 @@ loadContentsAsync(cancellable?: Cancellable | null): Promise<[boolean, number[],
 
 A failed call rejects, so the leading success boolean can be skipped with `const [, contents] = await file.loadContentsAsync(null);`. A call whose C return is void and that has a single out-parameter resolves to that value directly instead of a tuple.
 
+Under the [`v2FinishResults` future flag](/guide/configuration-and-codegen#future-flags) the boolean is dropped from the promise entirely: `loadContentsAsync` resolves to `[Uint8Array, string | null]`, and a call left with a single out-parameter, such as `replaceContentsAsync`, resolves to that value directly. The finish methods themselves, like `loadContentsFinish`, keep the boolean.
+
 ## Awaiting async operations
 
 GTK4 reports a dismissed dialog as an error rather than as a return value, so a `catch` matching `Gtk.DialogError.DISMISSED` returns quietly:

@@ -118,6 +118,10 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
 
   Unlike the byte sequence flag, this one only changes what comes *back*; the `GObject.Value | JsValue` parameter widening is not part of it and applies either way. `tsc` reports every return site that needs attention, since `unknown` cannot be used without an assertion.
 
+- **`v2FinishResults`**: drops the leading success boolean from what a promisified async method resolves to. It covers every pair whose finish function reports failure by throwing and hands results back through out parameters, where the boolean is always `true`: `Gio.File.loadContentsAsync` resolves to `[Uint8Array, string | null]` rather than `[boolean, Uint8Array, string | null]`, and a call left with a single out parameter resolves to that value directly, so `Gio.File.replaceContentsAsync` resolves to the new etag rather than `[boolean, string | null]`. The finish methods themselves, like `loadContentsFinish`, keep the boolean, as do async methods whose finish returns only the boolean.
+
+  Flip the flag and run `tsc`: destructuring sites written for the old tuple, such as `const [, contents] = await file.loadContentsAsync(null)`, become type errors pointing at what to update.
+
 Changing a flag invalidates the generated store, so the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates it automatically.
 
 ### When a flag graduates

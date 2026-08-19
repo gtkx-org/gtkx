@@ -11,10 +11,11 @@ type GiCodegenOptions = {
     girPath: string[];
     isByteArrayTyped: boolean;
     isValueUnwrapped: boolean;
+    isFinishTrimmed: boolean;
 };
 
 const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
-    const { gi, libraries, girPath, isByteArrayTyped, isValueUnwrapped } = options;
+    const { gi, libraries, girPath, isByteArrayTyped, isValueUnwrapped, isFinishTrimmed } = options;
 
     const namespaces: GiNamespaceInput[] = Array.from(library.namespaces.values(), (namespace) => ({
         directory: namespaceDirectory(namespace),
@@ -28,6 +29,7 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
         girPath: [...girPath],
         isByteArrayTyped,
         isValueUnwrapped,
+        isFinishTrimmed,
     });
 
     writeGiStore(gi, namespaces, fingerprint);

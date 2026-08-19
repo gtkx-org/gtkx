@@ -1,6 +1,7 @@
 import type { GirAnnotations } from "./annotations.js";
 import type { ParseContext } from "./type-id.js";
 import { type CursorParameterNames, PARAMETERS_MISSING_ARRAY_EXTENT } from "./cursor-overrides.js";
+import { FUNCTIONS_MISSING_FINISH_FUNC } from "./finish-overrides.js";
 import { PARAMETERS_MISSING_NULLABLE_ANNOTATION } from "./nullable-overrides.js";
 import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallable } from "./parameter.js";
 import { attr, getChild, type RawNode } from "./parse.js";
@@ -23,7 +24,10 @@ type GirFunction = {
     movedTo: string | undefined;
     /** Name of the callable that shadows this one, from the GIR's `shadowed-by` annotation. */
     shadowedBy: string | undefined;
-    /** Name of the callable that completes this asynchronous one, from the GIR's `glib:finish-func`. */
+    /**
+     * Name of the callable that completes this asynchronous one, from the GIR's `glib:finish-func`
+     * or a GTKX override for a GIR that lacks the annotation.
+     */
     finishFunc: string | undefined;
     /** The instance the callable is invoked on, absent for constructors and namespace-level functions. */
     instance: GirParameter | undefined;
@@ -84,17 +88,28 @@ const bindMissingArrayExtent = (fn: GirFunction): GirFunction => {
     return fn;
 };
 
+const annotatedFinishFunc = (node: RawNode, cIdentifier: string | undefined): string | undefined => {
+    const annotated = attr(node, "glib:finish-func");
+
+    if (annotated !== undefined) {
+        return annotated;
+    }
+
+    return cIdentifier === undefined ? undefined : FUNCTIONS_MISSING_FINISH_FUNC.get(cIdentifier);
+};
+
 const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => {
     const instanceNode = getChild(getChild(node, "parameters"), "instance-parameter");
+    const cIdentifier = attr(node, "c:identifier");
 
     return bindMissingArrayExtent(
         relaxMissingNullable({
             ...parseCallable(node, context),
             name: attr(node, "shadows") ?? attr(node, "name") ?? "",
-            cIdentifier: attr(node, "c:identifier"),
+            cIdentifier,
             movedTo: attr(node, "moved-to"),
             shadowedBy: attr(node, "shadowed-by"),
-            finishFunc: attr(node, "glib:finish-func"),
+            finishFunc: annotatedFinishFunc(node, cIdentifier),
             instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode, context),
         }),
     );

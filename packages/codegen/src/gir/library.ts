@@ -30,6 +30,8 @@ type FutureBehavior = {
     isByteArrayTyped?: boolean;
     /** Whether a `GObject.Value` a binding hands back surfaces as what it holds rather than as the value. */
     isValueUnwrapped?: boolean;
+    /** Whether a promisified result drops the leading success boolean of a throwing finish function. */
+    isFinishTrimmed?: boolean;
 };
 
 /** A namespace whose header has been read and whose shell is registered, before its body is parsed. */
@@ -99,6 +101,7 @@ class Library {
         const library = new Library();
         library.isByteArrayTypedValue = future.isByteArrayTyped === true;
         library.isValueUnwrappedValue = future.isValueUnwrapped === true;
+        library.isFinishTrimmedValue = future.isFinishTrimmed === true;
         this.drive(library, libraries, girPath);
 
         return library;
@@ -112,6 +115,7 @@ class Library {
     private girFilesValue: string[] = [];
     private isByteArrayTypedValue = false;
     private isValueUnwrappedValue = false;
+    private isFinishTrimmedValue = false;
 
     /** Creates a library with no namespaces loaded; {@link Library.load} builds a populated one. */
     constructor() {
@@ -349,6 +353,11 @@ class Library {
     /** Whether a `GObject.Value` a binding hands back surfaces as what it holds rather than as the value. */
     public get isValueUnwrapped(): boolean {
         return this.isValueUnwrappedValue;
+    }
+
+    /** Whether a promisified result drops the leading success boolean of a throwing finish function. */
+    public get isFinishTrimmed(): boolean {
+        return this.isFinishTrimmedValue;
     }
 
     /** Paths of the `.gir` files that were read, in the order they were discovered. */

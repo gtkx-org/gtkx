@@ -22,6 +22,13 @@ type ValueReturnCase = {
     bindings: string[];
 };
 
+type FinishResultCase = {
+    title: string;
+    v2FinishResults: boolean | undefined;
+    declarations: string[];
+    bindings: string[];
+};
+
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
@@ -102,6 +109,27 @@ const VALUE_RETURN_CASES: ValueReturnCase[] = [
     },
 ];
 
+const FINISH_RESULT_CASES: FinishResultCase[] = [
+    {
+        title: "resolves promisified results with the leading boolean unless the project opts in",
+        v2FinishResults: undefined,
+        declarations: [
+            "runAsync(): Promise<[boolean, string, number]>",
+            "probeAsync(): Promise<boolean>",
+        ],
+        bindings: ["promisify(asyncPairJobRunAsync, this.runFinish.bind(this)"],
+    },
+    {
+        title: "resolves promisified results without the leading boolean once the project opts in",
+        v2FinishResults: true,
+        declarations: [
+            "runAsync(): Promise<[string, number]>",
+            "probeAsync(): Promise<boolean>",
+        ],
+        bindings: ["promisify(asyncPairJobRunAsync, trimFinish(this.runFinish.bind(this))"],
+    },
+];
+
 const RECORD_FIELD_ACCESSORS = [
     "get refCount(): number;",
     "set refCount(value: number);",
@@ -152,6 +180,12 @@ const valueBoxConfig = (v2ValueReturns: boolean | undefined): string => {
     const future = v2ValueReturns === undefined ? "" : `, future: { v2ValueReturns: ${String(v2ValueReturns)} }`;
 
     return config(`, libraries: ["ValueBox-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
+};
+
+const asyncPairConfig = (v2FinishResults: boolean | undefined): string => {
+    const future = v2FinishResults === undefined ? "" : `, future: { v2FinishResults: ${String(v2FinishResults)} }`;
+
+    return config(`, libraries: ["AsyncPair-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
 };
 
 const byteSeqConfig = (v2ByteArrays: boolean | undefined): string => {
@@ -477,6 +511,23 @@ describe("gtkx codegen (values a binding takes and hands back)", () => {
             expect(runCli(project, ["codegen"]).status).toBe(0);
             const emitted = generatedModule(project, "gi", "valuebox", "valuebox.d.ts");
             const emittedBindings = generatedModule(project, "gi", "valuebox", "valuebox.js");
+            expect(declarations.filter((text) => !emitted.includes(text))).toEqual([]);
+            expect(bindings.filter((text) => !emittedBindings.includes(text))).toEqual([]);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it.each(FINISH_RESULT_CASES)("$title", ({ v2FinishResults, declarations, bindings }) => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-finish-results-",
+            config: asyncPairConfig(v2FinishResults),
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            const emitted = generatedModule(project, "gi", "asyncpair", "asyncpair.d.ts");
+            const emittedBindings = generatedModule(project, "gi", "asyncpair", "asyncpair.js");
             expect(declarations.filter((text) => !emitted.includes(text))).toEqual([]);
             expect(bindings.filter((text) => !emittedBindings.includes(text))).toEqual([]);
         } finally {
