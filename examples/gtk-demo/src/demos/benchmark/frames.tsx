@@ -165,12 +165,8 @@ class ColorWidget extends Gtk.Widget {
         color.green = (1 - this.t) * this.color1.green + this.t * this.color2.green;
         color.blue = (1 - this.t) * this.color1.blue + this.t * this.color2.blue;
         color.alpha = 1;
-
-        const bounds = new Graphene.Rect({
-            origin: new Graphene.Point({ x: 0, y: 0 }),
-            size: new Graphene.Size({ width, height }),
-        });
-
+        const bounds = new Graphene.Rect();
+        bounds.init(0, 0, width, height);
         snapshot.appendColor(color, bounds);
     }
 }
