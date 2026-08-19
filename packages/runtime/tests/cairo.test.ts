@@ -8,6 +8,7 @@ import {
     HintMetrics,
     HintStyle,
     ImageSurface,
+    LinearPattern,
     LineCap,
     LineJoin,
     Matrix,
@@ -15,6 +16,7 @@ import {
     Operator,
     Pattern,
     PatternType,
+    RadialPattern,
     RecordingSurface,
     RectangleInt,
     Region,
@@ -23,6 +25,8 @@ import {
     Surface,
     SurfaceType,
 } from "@gtkx/gi/cairo";
+import * as Graphene from "@gtkx/gi/graphene";
+import * as Gsk from "@gtkx/gi/gsk";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -926,7 +930,7 @@ describe("Surface — finish", () => {
         const surface = createTestSurface();
         surface.finish();
         expect(surface.status()).toBe(Status.SUCCESS);
-        expect(Context.create(surface).status()).toBe(Status.SURFACE_FINISHED);
+        expect(() => Context.create(surface)).toThrow();
     });
 });
 
@@ -1154,5 +1158,131 @@ describe("RecordingSurface", () => {
     it("constructs a bounded surface and reports its extents", () => {
         const surface = new RecordingSurface(Content.COLOR_ALPHA, { x: 0, y: 0, width: 100, height: 50 });
         expect(surface.getExtents()).toEqual({ x: 0, y: 0, width: 100, height: 50 });
+    });
+});
+
+describe("Reference ownership", () => {
+    it("creates a context holding the only reference", () => {
+        const ctx = Context.create(createTestSurface());
+        expect(ctx.getReferenceCount()).toBe(1);
+    });
+
+    it("creates a group pattern holding the only reference", () => {
+        const ctx = createTestContext();
+        ctx.pushGroup();
+        expect(ctx.popGroup().getReferenceCount()).toBe(1);
+    });
+
+    it("creates similar surfaces holding the only reference", () => {
+        const surface = createTestSurface();
+        expect(Surface.createSimilar(surface, Content.COLOR_ALPHA, 10, 10).getReferenceCount()).toBe(1);
+        expect(Surface.createSimilarImage(surface, Format.ARGB32, 10, 10).getReferenceCount()).toBe(1);
+    });
+});
+
+describe("Surface subtypes", () => {
+    it("returns the target of an image-backed context as an image surface", () => {
+        const ctx = Context.create(ImageSurface.create(Format.ARGB32, 40, 20));
+        const target = ctx.getTarget();
+        expect(target).toBeInstanceOf(ImageSurface);
+        expect(target).toBeInstanceOf(Surface);
+        expect(target instanceof ImageSurface ? target.getWidth() : null).toBe(40);
+        expect(ctx.getGroupTarget()).toBeInstanceOf(ImageSurface);
+    });
+
+    it("returns the target of a recording-backed context as a recording surface", () => {
+        const ctx = Context.create(new RecordingSurface(Content.COLOR_ALPHA));
+        const target = ctx.getTarget();
+        expect(target).toBeInstanceOf(RecordingSurface);
+        expect(target).not.toBeInstanceOf(ImageSurface);
+        expect(target instanceof RecordingSurface ? target.getExtents() : undefined).toBeNull();
+    });
+
+    it("throws when creating a similar surface with an invalid size", () => {
+        expect(() => Surface.createSimilar(createTestSurface(), Content.COLOR_ALPHA, -1, -1)).toThrow();
+    });
+});
+
+describe("Pattern subtypes", () => {
+    it("returns the source set on a context as its concrete pattern class", () => {
+        const ctx = createTestContext();
+        ctx.setSource(Pattern.createLinear(0, 0, 10, 10));
+        const source = ctx.getSource();
+        expect(source).toBeInstanceOf(LinearPattern);
+
+        expect(source instanceof LinearPattern ? source.getLinearPoints() : null).toEqual({
+            x0: 0,
+            y0: 0,
+            x1: 10,
+            y1: 10,
+        });
+
+        ctx.setSource(Pattern.createRadial(0, 0, 1, 0, 0, 2));
+        expect(ctx.getSource()).toBeInstanceOf(RadialPattern);
+    });
+
+    it("returns a solid source as the base pattern class", () => {
+        const ctx = createTestContext();
+        ctx.setSourceRgb(1, 0, 0);
+        const source = ctx.getSource();
+        expect(source).toBeInstanceOf(Pattern);
+        expect(source).not.toBeInstanceOf(LinearPattern);
+        expect(source.getType()).toBe(PatternType.SOLID);
+    });
+
+    it("throws when reading the surface of a solid pattern", () => {
+        expect(() => Pattern.createRgb(1, 0, 0).getSurface()).toThrow();
+    });
+});
+
+describe("Pattern.getSurface", () => {
+    it("returns the surface of a surface pattern as its concrete subclass", () => {
+        const surface = ImageSurface.create(Format.ARGB32, 30, 10);
+        const pattern = Pattern.createForSurface(surface);
+        const retrieved = pattern.getSurface();
+        expect(retrieved).toBeInstanceOf(ImageSurface);
+        expect(retrieved instanceof ImageSurface ? retrieved.getWidth() : null).toBe(30);
+    });
+
+    it("returns a recording surface pattern's surface as a recording surface", () => {
+        const pattern = Pattern.createForSurface(new RecordingSurface(Content.COLOR_ALPHA));
+        expect(pattern.getSurface()).toBeInstanceOf(RecordingSurface);
+    });
+
+    it("throws for a gradient pattern", () => {
+        expect(() => Pattern.createLinear(0, 0, 1, 1).getSurface()).toThrow();
+    });
+});
+
+describe("Error statuses", () => {
+    it("keeps successful factories silent", () => {
+        expect(ImageSurface.create(Format.ARGB32, 1, 1).status()).toBe(Status.SUCCESS);
+        expect(Pattern.createRgb(0, 0, 0).status()).toBe(Status.SUCCESS);
+    });
+
+    it("throws when loading a missing PNG", () => {
+        expect(() => ImageSurface.createFromPng("/nonexistent/definitely-missing.png")).toThrow();
+    });
+
+    it("throws when creating an image surface with an invalid size", () => {
+        expect(() => ImageSurface.create(Format.ARGB32, -5, -5)).toThrow();
+        expect(() => new ImageSurface(Format.ARGB32, -5, -5)).toThrow();
+    });
+
+    it("throws when creating a context on a finished surface", () => {
+        const surface = createTestSurface();
+        surface.finish();
+        expect(() => Context.create(surface)).toThrow();
+    });
+});
+
+describe("Generated bindings returning cairo boxed types", () => {
+    it("wraps a cairo node's surface and context as override classes", () => {
+        const node = Gsk.CairoNode.new(new Graphene.Rect().init(0, 0, 10, 10));
+        const ctx = node.getDrawContext();
+        expect(ctx).toBeInstanceOf(Context);
+        ctx.setSourceRgb(1, 0, 0);
+        ctx.paint();
+        expect(node.getSurface()).toBeInstanceOf(RecordingSurface);
     });
 });

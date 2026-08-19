@@ -32,7 +32,14 @@ import {
     resolveGtype,
     UINT64_MAXIMUM,
 } from "./param-spec.js";
-import { describeValueKind, getHandle, getWrapperClass, wrapHandle, wrapObject } from "./registry.js";
+import {
+    describeValueKind,
+    getHandle,
+    getWrapperClass,
+    resolveWrapperClassFor,
+    wrapHandle,
+    wrapObject,
+} from "./registry.js";
 import {
     getStrvType,
     isResolvableDescriptor,
@@ -297,7 +304,7 @@ const newBoxedValue = (
 
 /**
  * Duplicates the boxed value held by a GValue and returns the copy wrapped in the
- * class registered for its GType, or null when the GValue holds no boxed type.
+ * class its GType resolves to, or null when the GValue holds no boxed type.
  */
 function getBoxedValue(value: ExternalObject<Handle>): object | null {
     const type = getValueType(value);
@@ -306,10 +313,13 @@ function getBoxedValue(value: ExternalObject<Handle>): object | null {
         return null;
     }
 
-    const cls = getWrapperClass(type);
     const boxed = dupBoxedBind(getBoxedTypeName(type))(value) as ExternalObject<Handle> | null;
 
-    return wrapHandle(boxed, cls);
+    if (boxed === null) {
+        return null;
+    }
+
+    return wrapHandle(boxed, resolveWrapperClassFor(type, boxed) ?? getWrapperClass(type));
 }
 
 /** Stores a boxed object, or null, into a GValue that holds a boxed type. */

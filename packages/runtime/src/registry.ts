@@ -58,6 +58,12 @@ type VfuncDescriptor = {
  */
 type VfuncRegistry = Record<string, VfuncDescriptor>;
 type WrapperBinding = (handle: ExternalObject<Handle>, instance: object) => void;
+/**
+ * Picks the wrapper class for a handle whose GType alone does not tell which class it belongs to,
+ * such as a cairo surface whose kind lives in `cairo_surface_get_type` rather than in the GType.
+ * Returning null falls back to the class registered for the GType.
+ */
+type WrapperResolver = (handle: ExternalObject<Handle>) => AnyClass | null;
 
 /**
  * How one property an interface declares reaches the vtable, given as the interface's own accessor
@@ -93,6 +99,7 @@ const composedClassRegistry: Map<bigint, AnyClass> = new Map();
 const handleMap: WeakMap<object, ExternalObject<Handle>> = new WeakMap();
 const vfuncRegistry: WeakMap<object, VfuncRegistry> = new WeakMap();
 const interfaceLayoutRegistry: Map<bigint, InterfaceLayout> = new Map();
+const wrapperResolvers: Map<bigint, WrapperResolver> = new Map();
 const wrapperClasses: WeakSet<AnyClass> = new WeakSet();
 const derivedClasses: WeakSet<AnyClass> = new WeakSet();
 
@@ -198,6 +205,24 @@ function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, layout?: I
     if (layout) {
         interfaceLayoutRegistry.set(type, layout);
     }
+}
+
+/**
+ * Registers a resolver consulted before the class registry when a handle of exactly `type`
+ * is wrapped without an explicit class, so one GType can map to several wrapper classes.
+ * @param type GType whose handles the resolver inspects.
+ * @param resolver Picks the wrapper class for a handle, or returns null to use the registered one.
+ */
+function registerWrapperResolver(type: bigint, resolver: WrapperResolver): void {
+    if (type === TYPE_INVALID) {
+        return;
+    }
+
+    wrapperResolvers.set(type, resolver);
+}
+
+function resolveWrapperClassFor(type: bigint, handle: ExternalObject<Handle>): AnyClass | null {
+    return wrapperResolvers.get(type)?.(handle) ?? null;
 }
 
 /**
@@ -348,7 +373,7 @@ function createWrapper(handle: ExternalObject<Handle>): object {
         throw new Error("Cannot resolve runtime GLib type from handle");
     }
 
-    const cls = resolveComposedClass(runtimeType);
+    const cls = resolveWrapperClassFor(runtimeType, handle) ?? resolveComposedClass(runtimeType);
 
     if (!cls) {
         throw new Error(`Expected registered GLib type, got type ${String(runtimeType)}`);
@@ -438,6 +463,8 @@ export {
     markDerivedClass,
     registerClassType,
     registerWrapperClass,
+    registerWrapperResolver,
+    resolveWrapperClassFor,
     registerInterface,
     wrapHandle,
     getWrapperClass,
@@ -456,4 +483,5 @@ export {
     type InterfaceProperty,
     type StaticBase,
     type VfuncDescriptor,
+    type WrapperResolver,
 };

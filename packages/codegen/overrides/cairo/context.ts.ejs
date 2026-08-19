@@ -1,4 +1,15 @@
-import { alloc, type ExternalObject, getHandle, type Handle, read, t, wrapHandle, write } from "@gtkx/runtime";
+import {
+    alloc,
+    type ExternalObject,
+    getClassType,
+    getHandle,
+    type Handle,
+    read,
+    registerWrapperResolver,
+    t,
+    wrapHandle,
+    write,
+} from "@gtkx/runtime";
 import type {
     Antialias,
     Content,
@@ -15,6 +26,9 @@ import type {
 import { Context, FontFace, Pattern, ScaledFont, Surface } from "../cairo.js";
 import { FontOptions as FontOptionsConstructor } from "./font-options.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
+import { wrapPattern } from "./pattern.js";
+import { checkStatus } from "./status.js";
+import { wrapSurface } from "./surface.js";
 
 const { bind } = t;
 const CONTEXT_T = t.boxed("CairoContext", {
@@ -684,7 +698,7 @@ const cairoGetTarget = bind(
     }),
 );
 Context.prototype.getTarget = function (): Surface {
-    return wrapHandle(cairoGetTarget(getHandle(this)) as ExternalObject<Handle>, Surface) as Surface;
+    return wrapSurface(cairoGetTarget(getHandle(this)) as ExternalObject<Handle>);
 };
 
 const cairoSetSourceSurface = bind(
@@ -738,7 +752,7 @@ const cairoGetSource = bind(
     }),
 );
 Context.prototype.getSource = function (): Pattern {
-    return wrapHandle(cairoGetSource(getHandle(this)) as ExternalObject<Handle>, Pattern) as Pattern;
+    return wrapPattern(cairoGetSource(getHandle(this)) as ExternalObject<Handle>);
 };
 
 const EXTENTS_ARGS = [CONTEXT_T, t.ref(t.float64), t.ref(t.float64), t.ref(t.float64), t.ref(t.float64)];
@@ -1001,7 +1015,7 @@ const cairoPopGroup = bind(
     }),
 );
 Context.prototype.popGroup = function (): Pattern {
-    return wrapHandle(cairoPopGroup(getHandle(this)) as ExternalObject<Handle>, Pattern) as Pattern;
+    return wrapPattern(cairoPopGroup(getHandle(this)) as ExternalObject<Handle>);
 };
 
 const cairoPopGroupToSource = bind("libcairo.so.2", "cairo_pop_group_to_source", [CONTEXT_T], t.void);
@@ -1020,7 +1034,7 @@ const cairoGetGroupTarget = bind(
     }),
 );
 Context.prototype.getGroupTarget = function (): Surface {
-    return wrapHandle(cairoGetGroupTarget(getHandle(this)) as ExternalObject<Handle>, Surface) as Surface;
+    return wrapSurface(cairoGetGroupTarget(getHandle(this)) as ExternalObject<Handle>);
 };
 
 const cairoSetFontFace = bind(
@@ -1199,14 +1213,22 @@ const cairoCreate = bind(
             getTypeFnName: "cairo_gobject_surface_get_type",
         }),
     ],
-    CONTEXT_T,
+    t.boxed("CairoContext", {
+        ownership: "full",
+        sharedLibrary: "libcairo-gobject.so.2",
+        getTypeFnName: "cairo_gobject_context_get_type",
+    }),
 );
 
 class ContextImpl extends Context {
     static create(surface: Surface): ContextImpl {
-        return wrapHandle(cairoCreate(getHandle(surface)) as ExternalObject<Handle>, ContextImpl);
+        const handle = cairoCreate(getHandle(surface)) as ExternalObject<Handle>;
+        checkStatus(cairoStatus(handle) as Status, "context");
+        return wrapHandle(handle, ContextImpl);
     }
 }
+
+registerWrapperResolver(getClassType(Context), () => ContextImpl);
 
 export { ContextImpl as Context };
 

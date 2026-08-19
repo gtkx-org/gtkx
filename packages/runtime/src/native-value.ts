@@ -5,6 +5,7 @@ import {
     getHandle,
     getWrapperClass,
     resolveWrapperClass,
+    resolveWrapperClassFor,
     wrapCallScopedObject,
     wrapHandle,
     wrapObject,
@@ -40,9 +41,14 @@ function collectionFromNative(descriptor: ArrayDescriptor, value: unknown): unkn
 }
 
 function boxedFromNative(descriptor: Descriptor, value: unknown): unknown {
-    return value == null
-        ? null
-        : wrapHandle(value as ExternalObject<Handle>, getWrapperClass(resolveDescriptorType(descriptor)));
+    if (value == null) {
+        return null;
+    }
+
+    const handle = value as ExternalObject<Handle>;
+    const type = resolveDescriptorType(descriptor);
+
+    return wrapHandle(handle, resolveWrapperClassFor(type, handle) ?? getWrapperClass(type));
 }
 
 function fundamentalWrapperClass(descriptor: FundamentalDescriptor, handle: ExternalObject<Handle>): AnyClass {

@@ -1,8 +1,18 @@
-import { type ExternalObject, getHandle, type Handle, t, wrapHandle } from "@gtkx/runtime";
-import type { Content, Format, RectangleInt, Status, SurfaceType } from "../cairo.js";
-import { Surface } from "../cairo.js";
+import {
+    type ExternalObject,
+    getClassType,
+    getHandle,
+    type Handle,
+    registerWrapperResolver,
+    t,
+    wrapHandle,
+} from "@gtkx/runtime";
+import type { Content, Format, RectangleInt, Status } from "../cairo.js";
+import { Surface, SurfaceType } from "../cairo.js";
 import { FontOptions } from "./font-options.js";
 import { ImageSurface } from "./image-surface.js";
+import { RecordingSurface } from "./recording-surface.js";
+import { checkSurface } from "./status.js";
 
 const { bind } = t;
 const SURFACE_T = t.boxed("CairoSurface", {
@@ -41,18 +51,36 @@ declare module "../cairo.js" {
 
     namespace Surface {
         function createSimilar(other: Surface, content: Content, width: number, height: number): Surface;
-        function createSimilarImage(other: Surface, format: Format, width: number, height: number): Surface;
+        function createSimilarImage(other: Surface, format: Format, width: number, height: number): ImageSurface;
         function createForRectangle(target: Surface, x: number, y: number, width: number, height: number): Surface;
     }
 }
 
 type SurfaceStatic = {
     createSimilar(other: Surface, content: Content, width: number, height: number): Surface;
-    createSimilarImage(other: Surface, format: Format, width: number, height: number): Surface;
+    createSimilarImage(other: Surface, format: Format, width: number, height: number): ImageSurface;
     createForRectangle(target: Surface, x: number, y: number, width: number, height: number): Surface;
 };
 
 const SurfaceWithStatics = Surface as typeof Surface & SurfaceStatic;
+
+const cairoSurfaceGetType = bind("libcairo.so.2", "cairo_surface_get_type", [SURFACE_T], t.int32);
+const cairoSurfaceStatus = bind("libcairo.so.2", "cairo_surface_status", [SURFACE_T], t.int32);
+
+const surfaceClassFor = (handle: ExternalObject<Handle>): typeof Surface => {
+    switch (cairoSurfaceGetType(handle) as SurfaceType) {
+        case SurfaceType.IMAGE:
+            return ImageSurface;
+        case SurfaceType.RECORDING:
+            return RecordingSurface;
+        default:
+            return Surface;
+    }
+};
+
+export const wrapSurface = (handle: ExternalObject<Handle>): Surface => wrapHandle(handle, surfaceClassFor(handle));
+
+registerWrapperResolver(getClassType(Surface), surfaceClassFor);
 
 const cairoSurfaceCreateSimilar = bind(
     "libcairo.so.2",
@@ -65,7 +93,7 @@ const cairoSurfaceCreateSimilar = bind(
     }),
 );
 SurfaceWithStatics.createSimilar = (other: Surface, content: Content, width: number, height: number): Surface => {
-    return wrapHandle(cairoSurfaceCreateSimilar(getHandle(other), content, width, height) as ExternalObject<Handle>, Surface);
+    return wrapSurface(checkSurface(cairoSurfaceCreateSimilar(getHandle(other), content, width, height) as ExternalObject<Handle>));
 };
 
 const cairoSurfaceCreateSimilarImage = bind(
@@ -78,8 +106,11 @@ const cairoSurfaceCreateSimilarImage = bind(
         getTypeFnName: "cairo_gobject_surface_get_type",
     }),
 );
-SurfaceWithStatics.createSimilarImage = (other: Surface, format: Format, width: number, height: number): Surface => {
-    return wrapHandle(cairoSurfaceCreateSimilarImage(getHandle(other), format, width, height) as ExternalObject<Handle>, Surface);
+SurfaceWithStatics.createSimilarImage = (other: Surface, format: Format, width: number, height: number): ImageSurface => {
+    return wrapHandle(
+        checkSurface(cairoSurfaceCreateSimilarImage(getHandle(other), format, width, height) as ExternalObject<Handle>),
+        ImageSurface,
+    );
 };
 
 const cairoSurfaceCreateForRectangle = bind(
@@ -99,7 +130,9 @@ SurfaceWithStatics.createForRectangle = (
     width: number,
     height: number,
 ): Surface => {
-    return wrapHandle(cairoSurfaceCreateForRectangle(getHandle(target), x, y, width, height) as ExternalObject<Handle>, Surface);
+    return wrapSurface(
+        checkSurface(cairoSurfaceCreateForRectangle(getHandle(target), x, y, width, height) as ExternalObject<Handle>),
+    );
 };
 
 const cairoSurfaceWriteToPng = bind(
@@ -112,7 +145,6 @@ Surface.prototype.writeToPng = function (filename: string): Status {
     return cairoSurfaceWriteToPng(getHandle(this), filename) as Status;
 };
 
-const cairoSurfaceStatus = bind("libcairo.so.2", "cairo_surface_status", [SURFACE_T], t.int32);
 Surface.prototype.status = function (): Status {
     return cairoSurfaceStatus(getHandle(this)) as Status;
 };
@@ -240,7 +272,6 @@ Surface.prototype.getFallbackResolution = function (): { xPixelsPerInch: number;
     return { xPixelsPerInch: xRef.value, yPixelsPerInch: yRef.value };
 };
 
-const cairoSurfaceGetType = bind("libcairo.so.2", "cairo_surface_get_type", [SURFACE_T], t.int32);
 Surface.prototype.getType = function (): SurfaceType {
     return cairoSurfaceGetType(getHandle(this)) as SurfaceType;
 };

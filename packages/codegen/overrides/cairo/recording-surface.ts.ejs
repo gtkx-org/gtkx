@@ -1,6 +1,7 @@
 import { alloc, type ExternalObject, getHandle, type Handle, read, setHandle, t, write } from "@gtkx/runtime";
 import type { Content } from "../cairo.js";
 import { Surface } from "../cairo.js";
+import { checkSurface } from "./status.js";
 
 const { bind } = t;
 const RECT_T = t.boxed("cairo_rectangle_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" });
@@ -69,7 +70,7 @@ export class RecordingSurface extends Surface {
         } else {
             handle = cairoRecordingSurfaceCreateUnbounded(content, 0) as ExternalObject<Handle>;
         }
-        setHandle(this, handle);
+        setHandle(this, checkSurface(handle));
     }
 
     static create(

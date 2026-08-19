@@ -1,6 +1,7 @@
 import { type ExternalObject, getHandle, type Handle, read, setHandle, t, wrapHandle } from "@gtkx/runtime";
 import type { Format } from "../cairo.js";
 import { Surface } from "../cairo.js";
+import { checkSurface } from "./status.js";
 
 const { bind } = t;
 
@@ -76,15 +77,18 @@ const cairoImageSurfaceGetStride = bind(
 export class ImageSurface extends Surface {
     constructor(format: Format, width: number, height: number) {
         super();
-        setHandle(this, cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>);
+        setHandle(this, checkSurface(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>));
     }
 
     static create(format: Format, width: number, height: number): ImageSurface {
-        return wrapHandle(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>, ImageSurface);
+        return wrapHandle(
+            checkSurface(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>),
+            ImageSurface,
+        );
     }
 
     static createFromPng(filename: string): ImageSurface {
-        return wrapHandle(cairoImageSurfaceCreateFromPng(filename) as ExternalObject<Handle>, ImageSurface);
+        return wrapHandle(checkSurface(cairoImageSurfaceCreateFromPng(filename) as ExternalObject<Handle>), ImageSurface);
     }
 
     getWidth(): number {

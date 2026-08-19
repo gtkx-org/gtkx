@@ -35,9 +35,11 @@ export {
     getWrapperClass,
     registerInterface,
     registerWrapperClass,
+    registerWrapperResolver,
     type StaticBase,
     setHandle,
     wrapHandle,
+    type WrapperResolver,
 } from "./registry.js";
 /** @public */
 export { connectSignal, disconnectSignal, emitSignal, getSignalBaseName, type SignalHandler } from "./signal.js";

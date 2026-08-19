@@ -1,0 +1,25 @@
+import { type ExternalObject, type Handle, t } from "@gtkx/runtime";
+import { Status } from "../cairo.js";
+
+const { bind } = t;
+const SURFACE_T = t.boxed("CairoSurface", {
+    ownership: "borrowed",
+    sharedLibrary: "libcairo-gobject.so.2",
+    getTypeFnName: "cairo_gobject_surface_get_type",
+});
+
+const cairoStatusToString = bind("libcairo.so.2", "cairo_status_to_string", [t.int32], t.string("borrowed"));
+const cairoSurfaceStatus = bind("libcairo.so.2", "cairo_surface_status", [SURFACE_T], t.int32);
+
+export const checkStatus = (status: Status, subject: string): void => {
+    if (status === Status.SUCCESS) {
+        return;
+    }
+
+    throw new Error(`cairo error on ${subject}: "${cairoStatusToString(status) as string}" (${status})`);
+};
+
+export const checkSurface = (handle: ExternalObject<Handle>): ExternalObject<Handle> => {
+    checkStatus(cairoSurfaceStatus(handle) as Status, "surface");
+    return handle;
+};

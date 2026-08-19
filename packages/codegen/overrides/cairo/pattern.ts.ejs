@@ -1,7 +1,17 @@
-import { type ExternalObject, getHandle, type Handle, t, wrapHandle } from "@gtkx/runtime";
-import { type Extend, type Filter, Pattern, type PatternType, type Status, type Surface } from "../cairo.js";
+import {
+    type ExternalObject,
+    getClassType,
+    getHandle,
+    type Handle,
+    registerWrapperResolver,
+    t,
+    wrapHandle,
+} from "@gtkx/runtime";
+import { type Extend, type Filter, Pattern, PatternType, type Status, type Surface } from "../cairo.js";
 import { type PathData, parsePath } from "./context.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
+import { checkStatus } from "./status.js";
+import { wrapSurface } from "./surface.js";
 
 const { bind } = t;
 const PATTERN_T = t.boxed("CairoPattern", {
@@ -44,6 +54,7 @@ declare module "../cairo.js" {
         getMatrix(): CairoMatrix;
         getType(): PatternType;
         getReferenceCount(): number;
+        getSurface(): Surface;
     }
 
     namespace Pattern {
@@ -194,6 +205,37 @@ Pattern.prototype.getType = function (): PatternType {
 const cairoPatternGetReferenceCount = bind("libcairo.so.2", "cairo_pattern_get_reference_count", [PATTERN_T], t.int32);
 Pattern.prototype.getReferenceCount = function (): number {
     return cairoPatternGetReferenceCount(getHandle(this)) as number;
+};
+
+const cairoPatternGetSurface = bind(
+    "libcairo.so.2",
+    "cairo_pattern_get_surface",
+    [
+        PATTERN_T,
+        t.ref(
+            t.boxed("CairoSurface", {
+                ownership: "borrowed",
+                sharedLibrary: "libcairo-gobject.so.2",
+                getTypeFnName: "cairo_gobject_surface_get_type",
+            }),
+        ),
+    ],
+    t.int32,
+);
+Pattern.prototype.getSurface = function (): Surface {
+    const surfaceRef: { value: ExternalObject<Handle> | null } = { value: null };
+    checkStatus(cairoPatternGetSurface(getHandle(this), surfaceRef) as Status, "pattern");
+
+    if (surfaceRef.value === null) {
+        throw new Error("cairo pattern has no surface");
+    }
+
+    return wrapSurface(surfaceRef.value);
+};
+
+const checkPattern = <T extends Pattern>(pattern: T): T => {
+    checkStatus(pattern.status(), "pattern");
+    return pattern;
 };
 
 const cairoPatternGetLinearPoints = bind(
@@ -389,7 +431,7 @@ const cairoPatternCreateRgb = bind(
     }),
 );
 PatternWithStatics.createRgb = (red: number, green: number, blue: number): Pattern => {
-    return wrapHandle(cairoPatternCreateRgb(red, green, blue) as ExternalObject<Handle>, Pattern);
+    return checkPattern(wrapHandle(cairoPatternCreateRgb(red, green, blue) as ExternalObject<Handle>, Pattern));
 };
 
 const cairoPatternCreateRgba = bind(
@@ -403,7 +445,7 @@ const cairoPatternCreateRgba = bind(
     }),
 );
 PatternWithStatics.createRgba = (red: number, green: number, blue: number, alpha: number): Pattern => {
-    return wrapHandle(cairoPatternCreateRgba(red, green, blue, alpha) as ExternalObject<Handle>, Pattern);
+    return checkPattern(wrapHandle(cairoPatternCreateRgba(red, green, blue, alpha) as ExternalObject<Handle>, Pattern));
 };
 
 const cairoPatternCreateLinear = bind(
@@ -417,7 +459,7 @@ const cairoPatternCreateLinear = bind(
     }),
 );
 PatternWithStatics.createLinear = (x0: number, y0: number, x1: number, y1: number): LinearPattern => {
-    return wrapHandle(cairoPatternCreateLinear(x0, y0, x1, y1) as ExternalObject<Handle>, LinearPattern);
+    return checkPattern(wrapHandle(cairoPatternCreateLinear(x0, y0, x1, y1) as ExternalObject<Handle>, LinearPattern));
 };
 
 const cairoPatternCreateRadial = bind(
@@ -438,7 +480,9 @@ PatternWithStatics.createRadial = (
     cy1: number,
     radius1: number,
 ): RadialPattern => {
-    return wrapHandle(cairoPatternCreateRadial(cx0, cy0, radius0, cx1, cy1, radius1) as ExternalObject<Handle>, RadialPattern);
+    return checkPattern(
+        wrapHandle(cairoPatternCreateRadial(cx0, cy0, radius0, cx1, cy1, radius1) as ExternalObject<Handle>, RadialPattern),
+    );
 };
 
 const cairoPatternCreateMesh = bind(
@@ -452,7 +496,7 @@ const cairoPatternCreateMesh = bind(
     }),
 );
 PatternWithStatics.createMesh = (): MeshPattern => {
-    return wrapHandle(cairoPatternCreateMesh() as ExternalObject<Handle>, MeshPattern);
+    return checkPattern(wrapHandle(cairoPatternCreateMesh() as ExternalObject<Handle>, MeshPattern));
 };
 
 const cairoPatternCreateForSurface = bind(
@@ -472,5 +516,22 @@ const cairoPatternCreateForSurface = bind(
     }),
 );
 PatternWithStatics.createForSurface = (surface: Surface): Pattern => {
-    return wrapHandle(cairoPatternCreateForSurface(getHandle(surface)) as ExternalObject<Handle>, Pattern);
+    return checkPattern(wrapHandle(cairoPatternCreateForSurface(getHandle(surface)) as ExternalObject<Handle>, Pattern));
 };
+
+const patternClassFor = (handle: ExternalObject<Handle>): typeof Pattern => {
+    switch (cairoPatternGetType(handle) as PatternType) {
+        case PatternType.LINEAR:
+            return LinearPattern;
+        case PatternType.RADIAL:
+            return RadialPattern;
+        case PatternType.MESH:
+            return MeshPattern;
+        default:
+            return Pattern;
+    }
+};
+
+export const wrapPattern = (handle: ExternalObject<Handle>): Pattern => wrapHandle(handle, patternClassFor(handle));
+
+registerWrapperResolver(getClassType(Pattern), patternClassFor);
