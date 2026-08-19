@@ -271,6 +271,7 @@ const appendClassStructRegistration = (
 
     const structName = sanitizeTypeIdentifier(resolved.value.name);
     context.addRuntimeImport("registerClassStruct");
+
     context.module.appendRegistration(`registerClassStruct(${className}, ${structName});`, [
         className,
         structName,
