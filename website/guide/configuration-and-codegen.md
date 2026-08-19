@@ -48,7 +48,7 @@ A few bindings take a NUL-terminated C string that GIR describes as a byte array
 
 ## Passing a GValue
 
-A `GObject.Value` is GObject's boxed value: a GType plus a payload of that type. Every parameter that takes one as an input is typed `GObject.Value | JsValue`, as is every `GObject.Value` argument of an emitted signal, so you can pass the JavaScript value itself and the GType is inferred from it:
+A `GObject.Value` is GObject's boxed value: a GType plus a payload of that type. Every parameter the callee only reads — a `const GValue *` in C — is typed `GObject.Value | JsValue`, as is every `GObject.Value` argument of an emitted signal, so you can pass the JavaScript value itself and the GType is inferred from it:
 
 ```ts
 Gdk.ContentProvider.newForValue("payload");             // gchararray
@@ -84,7 +84,7 @@ value.init(GObject.TYPE_UCHAR);
 value.setUchar(200);
 ```
 
-**A `GValue` the callee fills in.** Inference applies where the C signature marks the value `const`, which is where the callee only reads it. A mutable `GValue *` is storage the callee initializes itself — `Gtk.Expression.evaluate`, `Gdk.Display.getSetting`, `Gtk.accessiblePropertyInitValue` — so those parameters keep taking a `GObject.Value` you allocate with `new GObject.Value()`.
+**A `GValue` the callee fills in.** A mutable `GValue *` is storage the callee initializes itself — `Gtk.Expression.evaluate`, `Gdk.Display.getSetting`, `Gtk.accessiblePropertyInitValue` — so those parameters are typed `GObject.Value` alone and take one you allocate with `new GObject.Value()`. Handing them an already-initialized value is what `g_value_init` refuses.
 
 **A payload negotiated by an interface GType.** A wrapper infers its own concrete type, so a `Gdk.Texture` becomes `GdkMemoryTexture` and a file from `Gio.File.newForPath` becomes `GLocalFile`. Clipboard and drag-and-drop match GTypes exactly, so a drop target declaring `types={[Gio.File.prototype.__type__]}` never sees a provider built from a bare file. Initialize the value to the interface instead:
 
