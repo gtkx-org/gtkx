@@ -65,6 +65,23 @@ Writes go through those accessors, which validate against the ParamSpec and emit
 
 A key is read in camelCase however it is written, so `dewPoint`, `dew_point` and `dew-point` name the same member. Its ParamSpec has to carry the canonical spelling, lowercase words joined by dashes: `paramSpecInt("dew-point", …)` under a `dewPoint` key. That is the name GObject emits `notify` under, and `registerClass` throws on a mismatch.
 
+### Inspecting a ParamSpec
+
+Every `GObject.ParamSpec` — one built with a `paramSpec*` constructor, one a `notify` handler receives, or one `listProperties` and `findProperty` return — carries readonly getters describing the property it stands for. `name`, `nick` and `blurb` return what `getName`, `getNick` and `getBlurb` return; `flags` is the `ParamFlags` bitfield the spec was created with, so a mask like `spec.flags & ParamFlags.CONSTRUCT_ONLY` tells a construct-only property apart; `valueType` is the GType of the values the property holds; and `ownerType` is the GType the spec is installed on — `TYPE_INVALID` until it is installed on one.
+
+```ts
+class Inspector extends Gtk.Label {}
+
+registerClass(Inspector, {
+    typeName: "ExampleInspector",
+    classInit: (typeStruct: GObject.ObjectClass) => {
+        for (const spec of typeStruct.listProperties()) {
+            console.log(spec.name, spec.flags, spec.valueType, spec.ownerType);
+        }
+    },
+});
+```
+
 ### Properties and the hooks
 
 `useProperty` from `@gtkx/react` takes the properties a registered class installs the same way it takes the ones a generated class arrives with:

@@ -1,0 +1,57 @@
+import { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "@gtkx/runtime";
+import { type ParamFlags, ParamSpec, type Type } from "../gobject.js";
+
+declare module "../gobject.js" {
+    interface ParamSpec {
+        /** The `GParamFlags` the spec was created with, such as `ParamFlags.READWRITE` or `ParamFlags.CONSTRUCT_ONLY`. */
+        readonly flags: ParamFlags;
+
+        /** GType of the values the spec describes, such as `TYPE_INT` for a `paramSpecInt` spec. */
+        readonly valueType: Type;
+
+        /** GType the spec is installed on, or `TYPE_INVALID` while it is not installed on any type. */
+        readonly ownerType: Type;
+
+        /** Canonical name of the spec, as `getName` returns it. */
+        readonly name: string;
+
+        /** Nickname of the spec, as `getNick` returns it. */
+        readonly nick: string;
+
+        /** Short description of the spec, as `getBlurb` returns it. */
+        readonly blurb: string | null;
+    }
+}
+
+Object.defineProperties(ParamSpec.prototype, {
+    flags: {
+        get(this: ParamSpec): ParamFlags {
+            return getParamSpecFlags(this) as ParamFlags;
+        },
+    },
+    valueType: {
+        get(this: ParamSpec): Type {
+            return getParamSpecValueType(this);
+        },
+    },
+    ownerType: {
+        get(this: ParamSpec): Type {
+            return getParamSpecOwnerType(this);
+        },
+    },
+    name: {
+        get(this: ParamSpec): string {
+            return this.getName();
+        },
+    },
+    nick: {
+        get(this: ParamSpec): string {
+            return this.getNick();
+        },
+    },
+    blurb: {
+        get(this: ParamSpec): string | null {
+            return this.getBlurb();
+        },
+    },
+});

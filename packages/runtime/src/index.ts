@@ -24,6 +24,8 @@ export {
     setObjectProperty,
 } from "./object.js";
 /** @public */
+export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "./param-spec.js";
+/** @public */
 export { promisify } from "./promisify.js";
 /** @public */
 export { type Interface, registerClass, type SignalGType, type SignalSpec } from "./register-class.js";
