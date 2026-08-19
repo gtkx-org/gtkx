@@ -7,7 +7,7 @@ description: "Turning a TypeScript class into a new GType with registerClass: pr
 
 JSX never needs a subclass. You reach for one when something outside the render tree has to be a GObject in its own right: a list model backing a `GtkListView`, a widget that controls its own measuring, or a type you name in a `GtkBuilder` file.
 
-`registerClass` from `@gtkx/runtime` registers such a class as a new GType. It must extend a generated wrapper class, directly or through subclasses of your own. `typeName` defaults to the class's name, and GType names share one process-wide namespace, so prefix yours with something specific to the app.
+`registerClass` from `@gtkx/runtime` registers such a class as a new GType. It must extend a generated wrapper class, directly or through subclasses of your own. `typeName` defaults to the class's name, and GType names share one process-wide namespace, so prefix yours with something specific to the app. Whichever way it arrives, the name has to be one GType accepts — at least three characters, starting with a letter or underscore, the rest letters, digits, `-`, `_` or `+` — and any other name throws.
 
 ```ts
 import { Object as GObject } from "@gtkx/gi/gobject";
@@ -16,6 +16,21 @@ import { registerClass } from "@gtkx/runtime";
 class Counter extends GObject {}
 
 registerClass(Counter, { typeName: "ExampleCounter" });
+```
+
+## Abstract types
+
+`abstract: true` registers the type the way `G_TYPE_FLAG_ABSTRACT` marks a C type: it serves only as a base. Registered subclasses instantiate as usual and inherit its vfunc overrides, but constructing the class itself throws, whether from JavaScript or from a native caller.
+
+```ts
+class Shape extends GObject {}
+registerClass(Shape, { typeName: "ExampleShape", abstract: true });
+
+class Circle extends Shape {}
+registerClass(Circle, { typeName: "ExampleCircle" });
+
+new Circle(); // fine
+new Shape(); // throws
 ```
 
 ## Properties

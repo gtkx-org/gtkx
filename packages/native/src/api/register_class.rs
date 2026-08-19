@@ -82,6 +82,9 @@ pub struct RegisterClassOptions {
     pub interfaces: Option<Vec<RegisterClassInterface>>,
     /// Properties to install on the class.
     pub properties: Option<Vec<RegisterClassProperty>>,
+    /// Registers the type with `G_TYPE_FLAG_ABSTRACT`, so only its subtypes can be instantiated.
+    #[napi(js_name = "abstract")]
+    pub is_abstract: Option<bool>,
 }
 
 impl TryFrom<RegisterClassVfunc> for ResolvedVfunc {
@@ -150,6 +153,7 @@ struct ResolvedOptions {
     vfuncs: Vec<ResolvedVfunc>,
     interfaces: Vec<ResolvedInterface>,
     properties: Vec<ResolvedProperty>,
+    type_flags: gobject_ffi::GTypeFlags,
 }
 
 impl TryFrom<RegisterClassOptions> for ResolvedOptions {
@@ -157,6 +161,11 @@ impl TryFrom<RegisterClassOptions> for ResolvedOptions {
 
     fn try_from(options: RegisterClassOptions) -> Result<Self> {
         Ok(Self {
+            type_flags: if options.is_abstract.unwrap_or(false) {
+                gobject_ffi::G_TYPE_FLAG_ABSTRACT
+            } else {
+                0
+            },
             vfuncs: options
                 .vfuncs
                 .unwrap_or_default()
@@ -413,6 +422,7 @@ struct ClassRegistration {
     vfuncs: Vec<ResolvedVfunc>,
     interfaces: Vec<ResolvedInterface>,
     properties: Vec<ResolvedProperty>,
+    type_flags: gobject_ffi::GTypeFlags,
 }
 
 impl ClassRegistration {
@@ -469,6 +479,7 @@ impl ClassRegistration {
             vfuncs,
             interfaces,
             properties,
+            type_flags,
         } = self;
 
         let class_data = Box::into_raw(Box::new(ClassInit {
@@ -496,7 +507,7 @@ impl ClassRegistration {
                 parent_type.into_glib(),
                 name.as_ptr(),
                 &raw const info,
-                0,
+                type_flags,
             )
         };
 
@@ -651,6 +662,7 @@ pub fn register_class(
             vfuncs: resolved.vfuncs,
             interfaces: resolved.interfaces,
             properties: resolved.properties,
+            type_flags: resolved.type_flags,
         }
         .execute(),
     )?;
@@ -719,6 +731,7 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: Vec::new(),
                 properties: Vec::new(),
+                type_flags: 0,
             };
             let type_ = request.execute().expect("registration should succeed");
             assert_ne!(type_, 0);
@@ -738,6 +751,7 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: Vec::new(),
                 properties: Vec::new(),
+                type_flags: 0,
             };
             assert!(request.execute().is_err());
         });
@@ -752,6 +766,7 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: vec![plain_interface(glib::Object::static_type())],
                 properties: Vec::new(),
+                type_flags: 0,
             };
             let error = request
                 .execute()
@@ -770,6 +785,7 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: vec![plain_interface(gtk4::Editable::static_type())],
                 properties: Vec::new(),
+                type_flags: 0,
             };
             let error = request
                 .execute()
@@ -791,6 +807,7 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: vec![plain_interface(plugin_type)],
                 properties: Vec::new(),
+                type_flags: 0,
             };
             let type_ = request
                 .execute()
@@ -809,6 +826,7 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: vec![plain_interface(list_model_type())],
                 properties: Vec::new(),
+                type_flags: 0,
             };
             let type_ = request
                 .execute()
@@ -830,6 +848,7 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: vec![plain_interface(plugin_type)],
                 properties: Vec::new(),
+                type_flags: 0,
             };
             let type_ = request
                 .execute()
@@ -847,6 +866,7 @@ mod tests {
             vfuncs: Vec::new(),
             interfaces: Vec::new(),
             properties: Vec::new(),
+            type_flags: 0,
         }
         .execute()
         .expect("registration should succeed");
@@ -958,6 +978,7 @@ mod tests {
                 vfuncs,
             )],
             properties: Vec::new(),
+            type_flags: 0,
         }
     }
 
@@ -1047,6 +1068,7 @@ mod tests {
                     plain_interface(list_model_type()),
                 ],
                 properties: Vec::new(),
+                type_flags: 0,
             };
             let type_ = request
                 .execute()
@@ -1067,6 +1089,7 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: vec![plain_interface(gtk4::SelectionModel::static_type())],
                 properties: Vec::new(),
+                type_flags: 0,
             };
             let error = request
                 .execute()
@@ -1084,6 +1107,7 @@ mod tests {
             vfuncs: Vec::new(),
             interfaces,
             properties: Vec::new(),
+            type_flags: 0,
         }
         .execute()
         .expect("an adopted interface should register");

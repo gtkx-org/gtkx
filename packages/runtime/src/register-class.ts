@@ -104,8 +104,18 @@ type RegisteredClass<TClass extends AnyClass, TProperties> =
 
 /** What {@link registerClass} adds to the new GType beyond the vtable slots it discovers on the class. */
 type RegisterClassOptions<TInstance extends object, TProperties extends Record<string, PropertySpec>> = {
-    /** Name to register the new GType under, defaulting to the class's own name. */
+    /**
+     * Name to register the new GType under, defaulting to the class's own name. Either way the
+     * name has to be a valid GType name: at least three characters, starting with a letter or
+     * underscore, the rest letters, digits, `-`, `_` or `+`. Any other name throws a `TypeError`.
+     */
     typeName?: string;
+    /**
+     * Registers the new GType abstract, the way `G_TYPE_FLAG_ABSTRACT` marks a C type: the class
+     * still serves as a parent for further registered subclasses, which instantiate as usual, but
+     * constructing it directly throws, whether from JavaScript or from a native caller.
+     */
+    abstract?: boolean;
     /**
      * Interfaces the new type implements on top of the ones it inherits, given as the interface values
      * themselves, such as `Gio.ListModel`. Their vtable slots are filled from the `vfunc`-prefixed methods on
@@ -208,6 +218,7 @@ const PROPERTY_VFUNC_SPECS: PropertyVfuncSpec[] = [
 ];
 
 const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec) => spec.methodName));
+const TYPE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9\-_+]{2,}$/;
 
 /**
  * Registers a subclass of a wrapper class as a new GType, wiring up any class and interface
@@ -215,7 +226,8 @@ const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec
  * `RegisterClassOptions.implements` names.
  *
  * Throws when the class does not extend a registered wrapper class, when it has no derivable type
- * name, when an entry in `RegisterClassOptions.implements` is not a registered interface, when a
+ * name or the name is not a valid GType name, when an entry in
+ * `RegisterClassOptions.implements` is not a registered interface, when a
  * listed interface has a prerequisite that neither the parent type nor another listed interface meets,
  * and when an entry in `RegisterClassOptions.properties` names its `GObject.ParamSpec` something other
  * than the canonical spelling of the key it sits under.
@@ -252,12 +264,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
         throw new TypeError(`registerClass: ${klass.name} must extend a registered wrapper class`);
     }
 
-    const name = options.typeName ?? klass.name;
-
-    if (!name) {
-        throw new Error("registerClass: cannot derive a GType name (anonymous class with no typeName option)");
-    }
-
+    const name = resolveTypeName(klass, options);
     const declaredTypes = resolveInterfaceTypes(klass, options.implements ?? []);
     const adoptedTypes = declaredTypes.filter((gtype) => !typeIsA(parentType, gtype));
     const properties = options.properties ?? {};
@@ -271,13 +278,30 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
 
     const claimedMethodNames = new Set(classVfuncs.map((vfunc) => vfunc.methodName));
     const interfaceBindings = discoverInterfaceBindings(methods, parentType, declaredTypes, claimedMethodNames);
-    const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings, properties);
+    const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings, properties, options.abstract ?? false);
     const newType: bigint = nativeRegisterClass(name, parentType, nativeOptions);
     registerClassType(klass, newType);
     markDerivedClass(klass);
     applyInterfaceMixins(klass, adoptedTypes, inheritedNames);
 
     return klass;
+}
+
+function resolveTypeName(klass: AnyClass, options: AnyRegisterClassOptions): string {
+    const name = options.typeName ?? klass.name;
+
+    if (!name) {
+        throw new TypeError("registerClass: cannot derive a GType name (anonymous class with no typeName option)");
+    }
+
+    if (!TYPE_NAME_PATTERN.test(name)) {
+        throw new TypeError(
+            `registerClass: '${name}' is not a valid GType name (a letter or underscore, then at ` +
+            "least two more characters, all from A-Z, a-z, 0-9, '-', '_' and '+')",
+        );
+    }
+
+    return name;
 }
 
 function resolveInterfaceType(klass: AnyClass, entry: AnyClass): bigint {
@@ -546,30 +570,27 @@ function toNativeOptions(
     classVfuncs: DiscoveredVfunc[],
     interfaceBindings: InterfaceVfuncBinding[],
     properties: Record<string, PropertySpec>,
+    isAbstract: boolean,
 ): NativeRegisterClassOptions | undefined {
-    const hasInterfaces = interfaceBindings.length > 0;
-    const hasClassVfuncs = classVfuncs.length > 0;
-    const hasProperties = Object.keys(properties).length > 0;
-
-    if (!hasClassVfuncs && !hasInterfaces && !hasProperties) {
-        return undefined;
-    }
-
     const options: NativeRegisterClassOptions = {};
 
-    if (hasProperties) {
+    if (isAbstract) {
+        options.abstract = true;
+    }
+
+    if (Object.keys(properties).length > 0) {
         options.properties = toNativeProperties(properties);
     }
 
-    if (hasClassVfuncs) {
+    if (classVfuncs.length > 0) {
         options.vfuncs = [...classVfuncs];
     }
 
-    if (hasInterfaces) {
+    if (interfaceBindings.length > 0) {
         options.interfaces = interfaceBindings.map((binding) => toNativeInterface(binding));
     }
 
-    return options;
+    return Object.keys(options).length > 0 ? options : undefined;
 }
 
 export { type Interface, registerClass };
