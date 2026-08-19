@@ -11,7 +11,7 @@ type Scheduler = {
     fallbackTimer: Timer | null;
     flushedAt: number;
     isTicking: boolean;
-    stalledUntil: Map<Gtk.Widget, number>;
+    stalledUntil: WeakMap<Gtk.Widget, number>;
     ticks: number;
 };
 
@@ -26,7 +26,7 @@ const scheduler: Scheduler = {
     fallbackTimer: null,
     flushedAt: 0,
     isTicking: false,
-    stalledUntil: new Map(),
+    stalledUntil: new WeakMap(),
     ticks: 0,
 };
 
