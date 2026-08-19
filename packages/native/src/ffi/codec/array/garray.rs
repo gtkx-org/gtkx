@@ -178,6 +178,11 @@ impl ArrayCodec {
                 unsafe { Self::append_vals(g_array, storage.ptr(), array.len()) }?;
                 Ok(Vec::new())
             }
+            ItemCodec::Unichar => {
+                let storage: StashStorage = Self::extract_codepoints(array)?.into();
+                unsafe { Self::append_vals(g_array, storage.ptr(), array.len()) }?;
+                Ok(Vec::new())
+            }
             ItemCodec::Pointer => self.append_handle_values_to_garray(g_array, array),
             ItemCodec::String => {
                 unsafe extern "C" fn free_garray_string_element(slot: glib::ffi::gpointer) {

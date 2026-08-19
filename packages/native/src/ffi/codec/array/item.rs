@@ -10,6 +10,7 @@ pub(super) enum ItemCodec {
     BigInt(BigIntCodec),
     Float(FloatCodec),
     Boolean,
+    Unichar,
     Pointer,
     String,
 }
@@ -25,6 +26,7 @@ impl ItemCodec {
             Codec::BigInt(kind) => Self::BigInt(*kind),
             Codec::Float(kind) => Self::Float(*kind),
             Codec::Boolean(_) => Self::Boolean,
+            Codec::Unichar(_) => Self::Unichar,
             Codec::String(_) => Self::String,
             Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_) => {
                 unreachable!("handle-backed codecs are classified as pointers above")
@@ -34,8 +36,7 @@ impl ItemCodec {
             | Codec::Buffer(_)
             | Codec::HashTable(_)
             | Codec::Callback(_)
-            | Codec::Ref(_)
-            | Codec::Unichar(_) => return None,
+            | Codec::Ref(_) => return None,
         })
     }
 
@@ -56,6 +57,7 @@ impl ItemCodec {
                     | (IntegerCodec::I64, ViewKind::BigInt64)
                     | (IntegerCodec::U64, ViewKind::BigUint64)
             ),
+            Self::Unichar => view_kind == ViewKind::Uint32,
             Self::Float(FloatCodec::F32) => view_kind == ViewKind::Float32,
             Self::Float(FloatCodec::F64) => view_kind == ViewKind::Float64,
             Self::BigInt(kind) => matches!(
@@ -73,6 +75,7 @@ impl ItemCodec {
             Self::Float(FloatCodec::F32) => size_of::<f32>(),
             Self::Float(FloatCodec::F64) => size_of::<f64>(),
             Self::Boolean => size_of::<i32>(),
+            Self::Unichar => size_of::<u32>(),
             Self::Pointer | Self::String => size_of::<*mut c_void>(),
         }
     }

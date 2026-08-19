@@ -178,7 +178,8 @@ impl ArrayCodec {
             | ItemCodec::EnumFlags(_)
             | ItemCodec::BigInt(_)
             | ItemCodec::Float(_)
-            | ItemCodec::Boolean) => Self::decode_zero_terminated_contiguous(
+            | ItemCodec::Boolean
+            | ItemCodec::Unichar) => Self::decode_zero_terminated_contiguous(
                 env,
                 codec.element_size(),
                 *ptr,

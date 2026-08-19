@@ -251,6 +251,13 @@ impl ArrayCodec {
             .collect()
     }
 
+    fn extract_codepoints(array: &[Unknown<'_>]) -> anyhow::Result<Vec<u32>> {
+        array
+            .iter()
+            .map(|&v| super::unichar::codepoint_from_value(v))
+            .collect()
+    }
+
     fn extract_booleans(array: &[Unknown<'_>]) -> anyhow::Result<Vec<i32>> {
         array
             .iter()
@@ -448,6 +455,13 @@ impl ArrayCodec {
                 }
                 self.finish_scalar_storage(booleans.into())
             }
+            ItemCodec::Unichar => {
+                let mut codepoints = Self::extract_codepoints(array)?;
+                if zero_terminated {
+                    codepoints.push(0);
+                }
+                self.finish_scalar_storage(codepoints.into())
+            }
             ItemCodec::String => {
                 let dup_items =
                     matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());
@@ -516,6 +530,17 @@ impl ArrayCodec {
             ItemCodec::Boolean => unsafe { std::slice::from_raw_parts(data.cast::<i32>(), len) }
                 .iter()
                 .map(|&v| Ok((v != 0).into_unknown(env)?))
+                .collect(),
+            ItemCodec::Unichar => (0..len)
+                .map(|index| unsafe {
+                    self.item_codec.read(
+                        env,
+                        ReadCtx::slot(
+                            data.add(index * size_of::<u32>()).cast::<c_void>(),
+                            "array element",
+                        ),
+                    )
+                })
                 .collect(),
             ItemCodec::Pointer | ItemCodec::String => {
                 let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
