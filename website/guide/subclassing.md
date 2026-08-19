@@ -65,6 +65,27 @@ Writes go through those accessors, which validate against the ParamSpec and emit
 
 A key is read in camelCase however it is written, so `dewPoint`, `dew_point` and `dew-point` name the same member. Its ParamSpec has to carry the canonical spelling, lowercase words joined by dashes: `paramSpecInt("dew-point", …)` under a `dewPoint` key. That is the name GObject emits `notify` under, and `registerClass` throws on a mismatch.
 
+### Overriding an inherited property
+
+`paramSpecOverride` redeclares a property a parent class or an implemented interface already carries, the way `g_param_spec_override` does in C. Installing the spec it returns gives the subclass its own storage and `notify` emission for the property, while the value type, flags and default stay the ones the overridden spec declares:
+
+```ts
+import { paramSpecOverride } from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
+
+class TrackedRevealerBase extends Gtk.Widget {
+    declare visible: boolean;
+}
+
+const TrackedRevealer = registerClass(TrackedRevealerBase, {
+    typeName: "ExampleTrackedRevealer",
+    properties: { visible: paramSpecOverride("visible", Gtk.Widget) },
+});
+```
+
+The second argument names where the property comes from: a wrapper class, an interface, or a raw GType. It works the same for an interface property the class redeclares explicitly — `paramSpecOverride("orientation", Gtk.Orientable)` under an `orientation` key on a class that lists `Gtk.Orientable` in `implements` — though interface properties are overridden automatically, so reach for the explicit spelling only to pick the property's id or pair it with your own accessors. The call throws when the source declares no property under the given name.
+
 ### Inspecting a ParamSpec
 
 Every `GObject.ParamSpec` — one built with a `paramSpec*` constructor, one a `notify` handler receives, or one `listProperties` and `findProperty` return — carries readonly getters describing the property it stands for. `name`, `nick` and `blurb` return what `getName`, `getNick` and `getBlurb` return; `flags` is the `ParamFlags` bitfield the spec was created with, so a mask like `spec.flags & ParamFlags.CONSTRUCT_ONLY` tells a construct-only property apart; `valueType` is the GType of the values the property holds; and `ownerType` is the GType the spec is installed on — `TYPE_INVALID` until it is installed on one.

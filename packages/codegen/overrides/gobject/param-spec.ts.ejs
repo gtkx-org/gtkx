@@ -1,0 +1,84 @@
+import type { AnyClass, ExternalObject, Handle } from "@gtkx/runtime";
+import { getClassType, t, TYPE_INTERFACE, TYPE_OBJECT, typeIsA, typeName, wrapHandle } from "@gtkx/runtime";
+import { ParamSpec, type Type } from "../gobject.js";
+
+const LIB = "libgobject-2.0.so.0";
+const CLASS_T = t.struct("borrowed");
+const PSPEC_T = t.fundamental(LIB, "g_param_spec_ref_sink", "g_param_spec_unref", {
+    ownership: "borrowed",
+    typeName: "GParam",
+});
+
+const typeClassRef = t.bind(LIB, "g_type_class_ref", [t.gtype], CLASS_T);
+const typeClassUnref = t.bind(LIB, "g_type_class_unref", [CLASS_T], t.void);
+const classFindProperty = t.bind(LIB, "g_object_class_find_property", [CLASS_T, t.string("borrowed")], PSPEC_T);
+const defaultInterfaceRef = t.bind(LIB, "g_type_default_interface_ref", [t.gtype], CLASS_T);
+const defaultInterfaceUnref = t.bind(LIB, "g_type_default_interface_unref", [CLASS_T], t.void);
+const interfaceFindProperty = t.bind(
+    LIB,
+    "g_object_interface_find_property",
+    [CLASS_T, t.string("borrowed")],
+    PSPEC_T,
+);
+const newParamSpecOverride = t.bind(LIB, "g_param_spec_override", [t.string("borrowed"), PSPEC_T], PSPEC_T);
+
+const sourceLabel = (source: Type | AnyClass, gtype: Type): string =>
+    typeName(gtype) ?? (typeof source === "function" ? source.name : String(source));
+
+const findInterfaceProperty = (gtype: Type, name: string): ExternalObject<Handle> | null => {
+    const vtable = defaultInterfaceRef(gtype) as ExternalObject<Handle>;
+
+    try {
+        return interfaceFindProperty(vtable, name) as ExternalObject<Handle> | null;
+    } finally {
+        defaultInterfaceUnref(vtable);
+    }
+};
+
+const findClassProperty = (gtype: Type, name: string): ExternalObject<Handle> | null => {
+    const klass = typeClassRef(gtype) as ExternalObject<Handle>;
+
+    try {
+        return classFindProperty(klass, name) as ExternalObject<Handle> | null;
+    } finally {
+        typeClassUnref(klass);
+    }
+};
+
+const findSourceProperty = (source: Type | AnyClass, name: string): ExternalObject<Handle> => {
+    const gtype = typeof source === "bigint" ? source : getClassType(source);
+    const isInterface = typeIsA(gtype, TYPE_INTERFACE);
+
+    if (!isInterface && !typeIsA(gtype, TYPE_OBJECT)) {
+        throw new TypeError(
+            `paramSpecOverride: '${sourceLabel(source, gtype)}' is neither a registered object class nor an interface`,
+        );
+    }
+
+    const pspec = isInterface ? findInterfaceProperty(gtype, name) : findClassProperty(gtype, name);
+
+    if (pspec === null) {
+        throw new TypeError(`paramSpecOverride: type '${sourceLabel(source, gtype)}' has no property named '${name}'`);
+    }
+
+    return pspec;
+};
+
+/**
+ * Creates a `ParamSpec` that redirects to the property `source` declares under `name`, for
+ * redeclaring in a subclass a property a parent class or an implemented interface already
+ * carries — the equivalent of `g_param_spec_override`, which introspection does not expose.
+ *
+ * Installing the returned spec through the `properties` option of `registerClass` gives the
+ * subclass its own storage and change notification for the property, while its value type,
+ * flags and default stay the ones the overridden spec declares.
+ *
+ * Throws when `source` is neither a GType nor a registered class or interface, and when it
+ * declares no property under `name`.
+ *
+ * @param name Canonical name of the property to override.
+ * @param source The GType, wrapper class or interface declaring the property.
+ * @returns The override spec, ready to install on a subclass.
+ */
+export const paramSpecOverride = (name: string, source: Type | AnyClass): ParamSpec =>
+    wrapHandle(newParamSpecOverride(name, findSourceProperty(source, name)) as ExternalObject<Handle>, ParamSpec);

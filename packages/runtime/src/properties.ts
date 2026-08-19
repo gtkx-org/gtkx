@@ -8,6 +8,7 @@ import {
     getParamFlags,
     getParamValueType,
     isParamConstructOnly,
+    isParamExplicitlyNotified,
     isParamLaxlyValidated,
     isParamWritable,
     type ValueGuard,
@@ -414,6 +415,14 @@ function readCurrent(instance: object, accessor: PropertyAccessor): unknown {
         : (instance as Record<string, unknown>)[member];
 }
 
+function storeCurrent(instance: Record<symbol, unknown>, accessor: PropertyAccessor, value: unknown): void {
+    if (isParamExplicitlyNotified(accessor.flags)) {
+        writeStored(instance, accessor, value);
+    } else {
+        storeValue(instance, accessor, value);
+    }
+}
+
 function writeCurrent(instance: object, accessor: PropertyAccessor, value: unknown): void {
     const setter = accessor.delegate?.setter;
 
@@ -432,7 +441,7 @@ function writeCurrent(instance: object, accessor: PropertyAccessor, value: unkno
     const member = backingMemberFor(instance, accessor);
 
     if (member === undefined) {
-        storeValue(instance as Record<symbol, unknown>, accessor, value);
+        storeCurrent(instance as Record<symbol, unknown>, accessor, value);
 
         return;
     }
