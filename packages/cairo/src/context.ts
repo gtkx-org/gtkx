@@ -34,7 +34,7 @@ import type {
     RectangleData,
     TextExtents,
 } from "./types.js";
-import { FontFace, Pattern, ScaledFont, Surface } from "./base.js";
+import { FontFace, ScaledFont } from "./base.js";
 import { FontOptions } from "./legacy/font-options.js";
 import {
     bindCairo,
@@ -59,6 +59,8 @@ import {
 } from "./lib.js";
 import { allocMatrix, Matrix } from "./matrix.js";
 import { parsePath } from "./path.js";
+import { Pattern } from "./pattern.js";
+import { Surface } from "./surface.js";
 import {
     allocClusterBuffer,
     allocFontExtents,

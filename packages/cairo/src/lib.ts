@@ -25,6 +25,18 @@ const SURFACE_T: BoxedDescriptor = t.boxed("CairoSurface", {
     getTypeFnName: "cairo_gobject_surface_get_type",
 });
 
+const SURFACE_FULL_T: BoxedDescriptor = t.boxed("CairoSurface", {
+    ownership: "full",
+    sharedLibrary: CAIRO_GOBJECT_LIBRARY,
+    getTypeFnName: "cairo_gobject_surface_get_type",
+});
+
+const DEVICE_T: BoxedDescriptor = t.boxed("CairoDevice", {
+    ownership: "borrowed",
+    sharedLibrary: CAIRO_GOBJECT_LIBRARY,
+    getTypeFnName: "cairo_gobject_device_get_type",
+});
+
 const PATTERN_T: BoxedDescriptor = t.boxed("CairoPattern", {
     ownership: "borrowed",
     sharedLibrary: CAIRO_GOBJECT_LIBRARY,
@@ -68,6 +80,11 @@ const SCALED_FONT_T: BoxedDescriptor = t.boxed("CairoScaledFont", {
 });
 
 const MATRIX_T: BoxedDescriptor = t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: CAIRO_LIBRARY });
+
+const RECTANGLE_T: BoxedDescriptor = t.boxed("cairo_rectangle_t", {
+    ownership: "borrowed",
+    sharedLibrary: CAIRO_LIBRARY,
+});
 
 const RECTANGLE_INT_T: BoxedDescriptor = t.boxed("cairo_rectangle_int_t", {
     ownership: "borrowed",
@@ -120,6 +137,7 @@ export {
     cairoGType,
     CONTEXT_FULL_T,
     CONTEXT_T,
+    DEVICE_T,
     DOUBLE_BUFFER_T,
     FONT_EXTENTS_T,
     FONT_FACE_T,
@@ -132,9 +150,11 @@ export {
     RECTANGLE_INT_ARRAY_T,
     RECTANGLE_INT_T,
     RECTANGLE_LIST_T,
+    RECTANGLE_T,
     REGION_FULL_T,
     REGION_T,
     SCALED_FONT_T,
+    SURFACE_FULL_T,
     SURFACE_T,
     TEXT_CLUSTER_T,
     TEXT_EXTENTS_T,

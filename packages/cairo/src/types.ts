@@ -153,6 +153,84 @@ type RgbaColor = {
     alpha: number;
 };
 
+/** A color stop of a gradient pattern: its offset along the gradient and its color. */
+type ColorStop = {
+    /** Position of the stop along the gradient, from 0 at the start to 1 at the end. */
+    offset: number;
+    /** Red component. */
+    red: number;
+    /** Green component. */
+    green: number;
+    /** Blue component. */
+    blue: number;
+    /** Alpha component. */
+    alpha: number;
+};
+
+/** The two end points of a linear gradient in pattern space. */
+type LinearPoints = {
+    /** Horizontal coordinate of the start point. */
+    x0: number;
+    /** Vertical coordinate of the start point. */
+    y0: number;
+    /** Horizontal coordinate of the end point. */
+    x1: number;
+    /** Vertical coordinate of the end point. */
+    y1: number;
+};
+
+/** The two circles of a radial gradient in pattern space. */
+type RadialCircles = {
+    /** Horizontal center of the start circle. */
+    x0: number;
+    /** Vertical center of the start circle. */
+    y0: number;
+    /** Radius of the start circle. */
+    r0: number;
+    /** Horizontal center of the end circle. */
+    x1: number;
+    /** Vertical center of the end circle. */
+    y1: number;
+    /** Radius of the end circle. */
+    r1: number;
+};
+
+/** The offset a surface adds to device coordinates. */
+type DeviceOffset = {
+    /** Horizontal offset in device units. */
+    xOffset: number;
+    /** Vertical offset in device units. */
+    yOffset: number;
+};
+
+/** The scale a surface applies between user and device units. */
+type DeviceScale = {
+    /** Horizontal scale factor. */
+    xScale: number;
+    /** Vertical scale factor. */
+    yScale: number;
+};
+
+/** The resolution a surface falls back to when it rasterizes vector content. */
+type FallbackResolution = {
+    /** Horizontal pixels per inch. */
+    xPixelsPerInch: number;
+    /** Vertical pixels per inch. */
+    yPixelsPerInch: number;
+};
+
+/** The area a recording surface has been drawn on, in its coordinate space. */
+type InkExtents = {
+    /** Horizontal position of the left edge. */
+    x0: number;
+    /** Vertical position of the top edge. */
+    y0: number;
+    /** Width of the drawn area. */
+    width: number;
+    /** Height of the drawn area. */
+    height: number;
+};
+
 /** @deprecated Since 1.3. Props of the generated stub constructor that `@gtkx/cairo` replaced; removed in v2. */
 type ContextConstructorProps = Record<string, never>;
 /** @deprecated Since 1.3. Props of the generated stub constructor that `@gtkx/cairo` replaced; removed in v2. */
@@ -174,25 +252,32 @@ export type {
     CairoGlyph,
     CairoTextCluster,
     ClosePathSegment,
+    ColorStop,
     /** @deprecated Since 1.3. Removed in v2. */
     ContextConstructorProps,
     CurveToSegment,
     DashPattern,
     /** @deprecated Since 1.3. Removed in v2. */
     DeviceConstructorProps,
+    DeviceOffset,
+    DeviceScale,
     Distance,
     Extents,
+    FallbackResolution,
     FontExtents,
     /** @deprecated Since 1.3. Removed in v2. */
     FontFaceConstructorProps,
     /** @deprecated Since 1.3. Removed in v2. */
     FontOptionsConstructorProps,
+    InkExtents,
+    LinearPoints,
     LineToSegment,
     MoveToSegment,
     PathData,
     /** @deprecated Since 1.3. Removed in v2. */
     PatternConstructorProps,
     Point,
+    RadialCircles,
     RectangleData,
     /** @deprecated Since 1.3. Removed in v2. */
     RegionConstructorProps,
