@@ -25,7 +25,7 @@ import {
     registerClassType,
     type VfuncDescriptor,
 } from "./registry.js";
-import { TYPE_INTERFACE, TYPE_INVALID, typeFundamental, typeInterfaces, typeIsA } from "./type.js";
+import { TYPE_INTERFACE, TYPE_INVALID, typeFundamental, typeInterfaces, typeIsA, typeName } from "./type.js";
 import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor } from "./vfunc.js";
 
 /**
@@ -201,6 +201,8 @@ type ArgPatch = { isCallerAllocated: true } | { isCallScoped: true };
 const INSTANCE_ARG_INDEX = 0;
 const VALUE_ARG_INDEX = 2;
 const TEARDOWN_VFUNC_NAMES: Set<string> = new Set(["dispose", "finalize"]);
+const ASYNC_INITABLE_TYPE_NAME = "GAsyncInitable";
+const INIT_ASYNC_METHOD_NAME = "vfuncInitAsync";
 
 const PROPERTY_VFUNC_SPECS: PropertyVfuncSpec[] = [
     { methodName: GET_PROPERTY_VFUNC, isValueOut: true, makeDispatch: makeGetProperty },
@@ -217,8 +219,10 @@ const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec
  * Throws when the class does not extend a registered wrapper class, when it has no derivable type
  * name, when an entry in `RegisterClassOptions.implements` is not a registered interface, when a
  * listed interface has a prerequisite that neither the parent type nor another listed interface meets,
- * and when an entry in `RegisterClassOptions.properties` names its `GObject.ParamSpec` something other
- * than the canonical spelling of the key it sits under.
+ * when the list names `Gio.AsyncInitable` and no method on the chain fills `vfuncInitAsync`, since
+ * the default `init_async` would run `vfuncInit` on a worker thread, and when an entry in
+ * `RegisterClassOptions.properties` names its `GObject.ParamSpec` something other than the canonical
+ * spelling of the key it sits under.
  *
  * A slot is filled from the `vfunc`-prefixed methods on the class's prototype chain, up to but not
  * including the registered ancestor the class extends, so a method an intermediate base class
@@ -262,6 +266,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     const adoptedTypes = declaredTypes.filter((gtype) => !typeIsA(parentType, gtype));
     const properties = options.properties ?? {};
     const { methods, inheritedNames } = collectInstanceMembers(klass);
+    checkAsyncInitable(klass, declaredTypes, methods);
     const dispatch = buildPropertyDispatch({ klass, properties, adoptedTypes });
 
     const classVfuncs = [
@@ -296,6 +301,17 @@ function resolveInterfaceType(klass: AnyClass, entry: AnyClass): bigint {
 
 function resolveInterfaceTypes(klass: AnyClass, entries: AnyClass[]): bigint[] {
     return [...new Set(entries.map((entry) => resolveInterfaceType(klass, entry)))];
+}
+
+function checkAsyncInitable(klass: AnyClass, declaredTypes: bigint[], methods: MethodTable): void {
+    const isAsyncInitable = declaredTypes.some((gtype) => typeName(gtype) === ASYNC_INITABLE_TYPE_NAME);
+
+    if (isAsyncInitable && !methods.has(INIT_ASYNC_METHOD_NAME)) {
+        throw new TypeError(
+            `registerClass: ${klass.name} implements Gio.AsyncInitable without overriding 'vfuncInitAsync'; ` +
+            "the default 'init_async' would run 'vfuncInit' on a worker thread",
+        );
+    }
 }
 
 function applyInterfaceMixins(klass: AnyClass, adoptedTypes: bigint[], inheritedNames: Set<string>): void {
