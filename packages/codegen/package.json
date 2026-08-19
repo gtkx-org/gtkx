@@ -62,7 +62,7 @@
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@types/node": "catalog:",
-        "fast-xml-parser": "^5.10.1",
+        "fast-xml-parser": "^5.11.0",
         "fast-xml-validator": "^1.4.2",
         "typescript": "catalog:"
     }
