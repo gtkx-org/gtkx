@@ -3,8 +3,11 @@ use std::collections::HashMap;
 use std::ffi::{CString, c_char, c_void};
 
 use ::libffi::{low as libffi_low, middle as libffi};
+use glib::prelude::StaticType as _;
+use glib::translate::IntoGlib as _;
 use napi::bindgen_prelude::{
-    Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object, Unknown,
+    BigInt, FromNapiValue as _, Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object,
+    Unknown,
 };
 use napi::{Env, ValueType};
 
@@ -70,6 +73,7 @@ pub struct ClosureData {
     pub arg_codecs: Vec<Codec>,
     pub return_codec: Codec,
     pub user_data_index: Option<usize>,
+    can_throw: bool,
     is_oneshot: bool,
     pub state_ptr: Cell<*mut ClosureState>,
     oneshot_fired: Cell<bool>,
@@ -87,6 +91,7 @@ impl ClosureData {
         arg_codecs: Vec<Codec>,
         return_codec: Codec,
         user_data_index: Option<usize>,
+        can_throw: bool,
         is_oneshot: bool,
     ) -> Self {
         Self {
@@ -94,6 +99,7 @@ impl ClosureData {
             arg_codecs,
             return_codec,
             user_data_index,
+            can_throw,
             is_oneshot,
             state_ptr: Cell::new(std::ptr::null_mut()),
             oneshot_fired: Cell::new(false),
@@ -165,6 +171,10 @@ impl ClosureState {
             cif_arg_types.push(codec.libffi_type());
         }
 
+        if data_ref.can_throw {
+            cif_arg_types.push(libffi::Type::pointer());
+        }
+
         let cif_return_type: libffi::Type = data_ref.return_codec.libffi_type();
         let cif = libffi::Cif::new(cif_arg_types, cif_return_type);
 
@@ -200,9 +210,17 @@ impl ClosureState {
         arg_codecs: Vec<Codec>,
         return_codec: Codec,
         user_data_index: Option<usize>,
+        can_throw: bool,
         is_oneshot: bool,
     ) -> Box<Self> {
-        let data = ClosureData::new(js_fn, arg_codecs, return_codec, user_data_index, is_oneshot);
+        let data = ClosureData::new(
+            js_fn,
+            arg_codecs,
+            return_codec,
+            user_data_index,
+            can_throw,
+            is_oneshot,
+        );
         Box::new(Self::new(data))
     }
 }
@@ -455,7 +473,7 @@ impl ClosureData {
             Ok(()) => {}
             Err(CallbackError::Thrown(error)) => {
                 self.write_return(&env, result, &Err(()));
-                unsafe { napi::JsError::from(error).throw_into(env.raw()) };
+                unsafe { self.deliver_thrown(&env, error, args) };
             }
             Err(CallbackError::Infrastructure(e)) => {
                 error_reporter::report(&anyhow::anyhow!(
@@ -467,6 +485,27 @@ impl ClosureData {
         }
 
         state_ptr
+    }
+
+    unsafe fn deliver_thrown(&self, env: &Env, error: napi::Error, args: *const *const c_void) {
+        if !self.can_throw {
+            unsafe { napi::JsError::from(error).throw_into(env.raw()) };
+            return;
+        }
+
+        let error_arg = unsafe { *args.add(self.arg_codecs.len()) };
+        let error_out = unsafe {
+            error_arg
+                .cast::<*mut *mut glib::ffi::GError>()
+                .read_unaligned()
+        };
+
+        if error_out.is_null() || !unsafe { *error_out }.is_null() {
+            unsafe { napi::JsError::from(error).throw_into(env.raw()) };
+            return;
+        }
+
+        unsafe { *error_out = gerror_from_thrown(env, error) };
     }
 
     fn write_return(&self, env: &Env, result: *mut c_void, value: &Result<Unknown<'_>, ()>) {
@@ -588,6 +627,65 @@ fn string_from_unknown(value: Unknown<'_>) -> Option<String> {
     match value.get_type().ok()? {
         ValueType::String => value::read_napi::<String>(value).ok(),
         _ => None,
+    }
+}
+
+fn js_error_quark() -> u32 {
+    glib::Quark::from_str("gtkx-js-error-quark").into_glib()
+}
+
+fn new_gerror(domain: u32, code: i32, message: &str) -> *mut glib::ffi::GError {
+    let c_message = CString::new(message.as_bytes()).unwrap_or_default();
+    unsafe { glib::ffi::g_error_new_literal(domain, code, c_message.as_ptr()) }
+}
+
+fn wrapped_gerror_parts(env: &Env, thrown: Unknown<'_>) -> Option<(u32, i32, String)> {
+    if thrown.get_type().ok()? != ValueType::Object {
+        return None;
+    }
+    let obj = Object::from_raw(env.raw(), thrown.raw());
+    let type_tag: Unknown<'_> = obj.get_named_property("__type__").ok()?;
+    if type_tag.get_type().ok()? != ValueType::BigInt {
+        return None;
+    }
+    let (gtype, lossless) = value::read_napi::<BigInt>(type_tag).ok()?.get_i128();
+    let gerror_gtype = i128::try_from(glib::Error::static_type().into_glib()).ok()?;
+    if !lossless || gtype != gerror_gtype {
+        return None;
+    }
+    let domain: u32 = obj.get_named_property("domain").ok()?;
+    let code: i32 = obj.get_named_property("code").ok()?;
+    let message: String = obj.get_named_property("message").ok()?;
+
+    Some((domain, code, message))
+}
+
+fn thrown_message(env: &Env, thrown: Unknown<'_>) -> String {
+    let value_type = thrown.get_type().unwrap_or(ValueType::Unknown);
+    match value_type {
+        ValueType::Object => Object::from_raw(env.raw(), thrown.raw())
+            .get_named_property::<String>("message")
+            .ok()
+            .filter(|message| !message.is_empty())
+            .unwrap_or_else(|| String::from("JavaScript exception with no message")),
+        ValueType::String => value::read_napi::<String>(thrown)
+            .unwrap_or_else(|_| String::from("JavaScript string exception")),
+        _ => format!("JavaScript {value_type:?} value thrown"),
+    }
+}
+
+fn gerror_from_thrown(env: &Env, error: napi::Error) -> *mut glib::ffi::GError {
+    let raw = unsafe { napi::JsError::from(error).into_value(env.raw()) };
+    match unsafe { Unknown::from_napi_value(env.raw(), raw) } {
+        Ok(thrown) => match wrapped_gerror_parts(env, thrown) {
+            Some((domain, code, message)) => new_gerror(domain, code, &message),
+            None => new_gerror(js_error_quark(), 0, &thrown_message(env, thrown)),
+        },
+        Err(_) => new_gerror(
+            js_error_quark(),
+            0,
+            "JavaScript exception could not be read",
+        ),
     }
 }
 

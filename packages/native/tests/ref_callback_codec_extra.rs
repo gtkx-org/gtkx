@@ -19,6 +19,7 @@ fn callback_codec() -> CallbackCodec {
         destroy_kind: DestroyNotifyKind::default(),
         has_user_data: false,
         user_data_index: None,
+        can_throw: false,
         scope: CallbackScope::Call,
     }
 }

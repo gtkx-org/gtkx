@@ -63,6 +63,7 @@ fn string_return_closure(env: &Env, js_fn: sys::napi_value) -> (Box<ClosureState
         borrowed_string_codec(),
         None,
         false,
+        false,
     );
     let call: StringReturn = unsafe { std::mem::transmute(state.code_ptr) };
     (state, call)
@@ -76,6 +77,7 @@ fn i32_return_closure(env: &Env, js_fn: sys::napi_value) -> (Box<ClosureState>, 
         vec![Codec::Integer(IntegerCodec::I32)],
         Codec::Integer(IntegerCodec::I32),
         None,
+        false,
         false,
     );
     let call: I32Return = unsafe { std::mem::transmute(state.code_ptr) };
@@ -94,6 +96,7 @@ fn void_closure(env: &Env, js_fn: sys::napi_value, oneshot: bool) -> Box<Closure
         Vec::new(),
         Codec::Void(VoidCodec),
         None,
+        false,
         oneshot,
     )
 }
@@ -182,6 +185,7 @@ fn ptr_arg_closure(
         vec![arg_codec],
         Codec::Void(VoidCodec),
         None,
+        false,
         false,
     );
     let call: PtrArgCall = unsafe { std::mem::transmute(state.code_ptr) };
@@ -339,6 +343,7 @@ fn invocation_marshals_arguments_and_writes_the_return() {
             Codec::Integer(IntegerCodec::I32),
             None,
             false,
+            false,
         );
         let call: unsafe extern "C" fn(i32, f64, *const c_char) -> i32 =
             unsafe { std::mem::transmute(state.code_ptr) };
@@ -383,6 +388,7 @@ fn the_user_data_argument_is_not_passed_to_js() {
             Codec::Void(VoidCodec),
             Some(1),
             false,
+            false,
         );
         let call: unsafe extern "C" fn(i32, i64) = unsafe { std::mem::transmute(state.code_ptr) };
 
@@ -405,6 +411,7 @@ fn ref_i32_closure(env: &Env, js_fn: sys::napi_value, inout: bool) -> Box<Closur
         vec![Codec::Ref(ref_codec)],
         Codec::Void(VoidCodec),
         None,
+        false,
         false,
     )
 }
@@ -488,6 +495,7 @@ fn ref_pure_out_pointer_parameters_are_seeded_null_without_reading_the_slot() {
             vec![Codec::Ref(ref_codec)],
             Codec::Void(VoidCodec),
             None,
+            false,
             false,
         );
         let call: unsafe extern "C" fn(*mut *const c_char) =
@@ -573,6 +581,7 @@ fn a_borrowed_container_return_stays_valid_after_the_call() {
             Vec::new(),
             Codec::Array(helpers::i32_array_codec(3)),
             None,
+            false,
             false,
         );
         let call: unsafe extern "C" fn() -> *const i32 =
@@ -770,6 +779,7 @@ fn assert_transfer_full_return_yields_null(return_codec: Codec) -> String {
         Vec::new(),
         return_codec,
         None,
+        false,
         false,
     );
     let call: unsafe extern "C" fn() -> *mut c_void =

@@ -180,6 +180,10 @@ class Sectioned extends (GObject as SplicedBase<Gtk.SectionModel>) implements Gt
 
 A `declare`d member cannot stand in, because TypeScript reads it as a field and a field is not reachable through `super`. Naming the spliced base makes every slot an override, so under `noImplicitOverride` all of them need the `override` keyword.
 
+### Throwing out of a slot you fill
+
+A slot whose C signature ends with a `GError**`, such as `Gio.Initable`'s `vfuncInit`, reports failure by throwing. A thrown `GLib.Error` reaches the C caller with its domain, code and message intact, and any other thrown value becomes a GError in a GTKX-owned domain carrying the value's message, while the slot returns its failure value (`false`, `null` or `0`). A caller that reads the error back out through a binding, `Gio.Initable.init()` for instance, receives it as a thrown `GLib.Error` again, so [Error Handling](/guide/error-handling) applies end to end. A slot without that `GError**` has no channel to deliver an exception through, so throwing from one raises the exception as uncaught instead: see [Failures nothing can throw](/guide/error-handling#failures-nothing-can-throw).
+
 ### Slots you leave to the interface
 
 A slot no method fills keeps whatever the interface installs by default, or nothing at all. Many entry points guard the slot for null and answer not-supported, but some call it outright: a class adopting `Gio.ListModel` without all of its slots crashes the process the moment something asks for an item count. Fill every slot the class adopts. `Gtk.SelectionModel` needs care, since its defaults for `is_selected` and `get_selection_in_range` recurse into each other until the stack runs out: fill `vfuncIsSelected`, `vfuncGetSelectionInRange`, or both.

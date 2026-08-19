@@ -340,7 +340,11 @@ const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
     return declared?.closureIndex ?? userDataIndexByName(parameters);
 };
 
-const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number | undefined): string[] => {
+const callbackOptionsArg = (
+    owningParameter: GirParameter,
+    userDataIndex: number | undefined,
+    canThrow: boolean,
+): string[] => {
     const options: string[] = [];
 
     if (owningParameter.destroyIndex !== undefined) {
@@ -353,6 +357,10 @@ const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number
 
     if (userDataIndex !== undefined) {
         options.push(`userDataIndex: ${String(userDataIndex)}`);
+    }
+
+    if (canThrow) {
+        options.push("canThrow: true");
     }
 
     if (owningParameter.scope !== undefined) {
@@ -383,7 +391,7 @@ const renderCallbackType = (
     return tCallback({
         argTypes,
         returns: renderDescriptor(context, returnValue.type, returnValue.transferOwnership),
-        options: callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters)),
+        options: callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters), callback.throws),
     });
 };
 

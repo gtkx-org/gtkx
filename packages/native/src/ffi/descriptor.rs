@@ -172,6 +172,7 @@ pub enum Descriptor {
         destroy_kind: Option<DestroyNotifyKind>,
         has_user_data: Option<bool>,
         user_data_index: Option<u32>,
+        can_throw: Option<bool>,
         scope: Option<CallbackScope>,
     },
     Ref {
@@ -329,6 +330,7 @@ impl Descriptor {
                 destroy_kind,
                 has_user_data,
                 user_data_index,
+                can_throw,
                 scope,
             } => {
                 let has_destroy = has_destroy.unwrap_or(false);
@@ -344,6 +346,7 @@ impl Descriptor {
                     destroy_kind: destroy_kind.unwrap_or_default(),
                     has_user_data,
                     user_data_index: user_data_index.map(|n| n as usize),
+                    can_throw: can_throw.unwrap_or(false),
                     scope: Self::callback_scope(scope, has_destroy, has_user_data),
                 })
             }

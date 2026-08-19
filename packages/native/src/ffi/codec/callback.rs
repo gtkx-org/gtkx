@@ -37,6 +37,7 @@ pub struct CallbackCodec {
     pub destroy_kind: DestroyNotifyKind,
     pub has_user_data: bool,
     pub user_data_index: Option<usize>,
+    pub can_throw: bool,
     pub scope: CallbackScope,
 }
 
@@ -78,6 +79,7 @@ impl Encoder for CallbackCodec {
             self.arg_codecs.clone(),
             (*self.return_codec).clone(),
             self.user_data_index,
+            self.can_throw,
             is_oneshot,
         );
         let fn_ptr = state.code_ptr;

@@ -176,6 +176,7 @@ fn callback_descriptor(destroy_kind: Option<DestroyNotifyKind>) -> Descriptor {
         destroy_kind,
         has_user_data: Some(true),
         user_data_index: Some(1),
+        can_throw: None,
         scope: None,
     }
 }

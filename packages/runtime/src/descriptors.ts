@@ -102,6 +102,11 @@ type CallbackOptions = {
     hasUserData?: boolean;
     /** Position of `user_data` among the callback's own arguments, dropped before the closure is called. */
     userDataIndex?: number;
+    /**
+     * The callback's C signature ends with a `GError**`, which receives a `GError` built from
+     * whatever the JavaScript function throws while the callback returns its failure value.
+     */
+    canThrow?: boolean;
     /** Lifetime of the closure; defaults to `notified` when `hasDestroy` is set and `call` otherwise. */
     scope?: CallbackDescriptor["scope"];
 };
@@ -434,7 +439,7 @@ const fixedArrayT = (
     options: ArrayOptions = {},
 ): ArrayDescriptor => arrayT(itemDescriptor, "fixed", ownership, { ...options, fixedSize });
 
-const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOptions): void => {
+const applyClosureLifetimeOptions = (result: CallbackDescriptor, options: CallbackOptions): void => {
     if (options.hasDestroy !== undefined) {
         result.hasDestroy = options.hasDestroy;
     }
@@ -442,6 +447,14 @@ const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOption
     if (options.destroyKind !== undefined) {
         result.destroyKind = options.destroyKind;
     }
+
+    if (options.scope !== undefined) {
+        result.scope = options.scope;
+    }
+};
+
+const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOptions): void => {
+    applyClosureLifetimeOptions(result, options);
 
     if (options.hasUserData !== undefined) {
         result.hasUserData = options.hasUserData;
@@ -451,8 +464,8 @@ const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOption
         result.userDataIndex = options.userDataIndex;
     }
 
-    if (options.scope !== undefined) {
-        result.scope = options.scope;
+    if (options.canThrow !== undefined) {
+        result.canThrow = options.canThrow;
     }
 };
 

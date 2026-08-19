@@ -43,6 +43,9 @@ pub struct RegisterClassVfunc {
     pub arg_descriptors: Vec<Descriptor>,
     /// Descriptor for the value the JavaScript implementation returns.
     pub return_descriptor: Descriptor,
+    /// The slot's C signature ends with a `GError**`, which receives a `GError` built from
+    /// whatever the JavaScript implementation throws.
+    pub can_throw: Option<bool>,
     /// The JavaScript function that implements the vfunc.
     #[napi(ts_type = "(...args: never[]) => unknown")]
     pub r#fn: VfuncCallback,
@@ -97,6 +100,7 @@ impl TryFrom<RegisterClassVfunc> for ResolvedVfunc {
                 .map(Descriptor::into_codec)
                 .collect::<Result<_>>()?,
             return_codec: vfunc.return_descriptor.into_codec()?,
+            can_throw: vfunc.can_throw.unwrap_or(false),
         })
     }
 }
@@ -184,6 +188,7 @@ struct ResolvedVfunc {
     js_fn: ClosureHandle,
     arg_codecs: Vec<Codec>,
     return_codec: Codec,
+    can_throw: bool,
 }
 
 struct ResolvedInterface {
@@ -217,12 +222,14 @@ impl ResolvedVfunc {
             js_fn,
             arg_codecs,
             return_codec,
+            can_throw,
         } = self;
         let state = ClosureState::new(ClosureData::new(
             js_fn,
             arg_codecs,
             return_codec,
             None,
+            can_throw,
             false,
         ));
         unsafe {
@@ -940,6 +947,7 @@ mod tests {
             .expect("a reference to the callback"),
             arg_codecs: Vec::new(),
             return_codec: Codec::Void(crate::ffi::codec::VoidCodec),
+            can_throw: false,
         }
     }
 

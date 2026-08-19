@@ -390,6 +390,7 @@ fn d_callback() -> Descriptor {
         destroy_kind: None,
         has_user_data: Some(false),
         user_data_index: None,
+        can_throw: None,
         scope: None,
     }
 }
