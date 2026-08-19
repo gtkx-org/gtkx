@@ -7,8 +7,10 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::api::{handle_newtype, native_result, type_from_bigint};
-use crate::ffi::codec::{Ownership, release_construction_ref, tracked_gobject_value};
-use crate::value::pending_wrapper;
+use crate::ffi::codec::{
+    Ownership, acquire_construction_ref, release_construction_ref, tracked_gobject_value,
+};
+use crate::value::{pending_wrapper, wrapper};
 
 type Associator<'a> = Function<'a, FnArgs<(Unknown<'a>, Unknown<'a>)>, ()>;
 
@@ -99,6 +101,7 @@ fn associate_constructed(
     wrapper: &Object<'_>,
     associate: &Associator<'_>,
 ) -> Result<()> {
+    unsafe { acquire_construction_ref(ptr) };
     let handle = native_result("new_object", unsafe {
         tracked_gobject_value(env, ptr, Ownership::Full)
     })?;
@@ -107,25 +110,35 @@ fn associate_constructed(
     associate.call(FnArgs::from((handle, wrapper)))
 }
 
-fn finish_construction(
-    env: &Env,
+fn finish_construction<'env>(
+    env: &'env Env,
     ptr: *mut gobject_ffi::GObject,
     guard: &pending_wrapper::PendingGuard,
     type_: glib::Type,
     wrapper: &Object<'_>,
     associate: &Associator<'_>,
-) -> Result<()> {
+) -> Result<Option<Object<'env>>> {
     match guard.claimed_instance() {
         Some(claimed) if claimed == ptr => {
             unsafe { release_construction_ref(ptr) };
 
-            Ok(())
+            Ok(None)
         }
         Some(_) => Err(Error::new(
             Status::GenericFailure,
             format!("new_object: another instance claimed the wrapper waiting for '{type_}'"),
         )),
-        None => associate_constructed(env, ptr, wrapper, associate),
+        None => {
+            if let Some(existing) = unsafe { wrapper::wrapper_value(env, ptr) } {
+                unsafe { release_construction_ref(ptr) };
+
+                return Ok(Some(existing));
+            }
+
+            associate_constructed(env, ptr, wrapper, associate)?;
+
+            Ok(None)
+        }
     }
 }
 
@@ -133,22 +146,25 @@ fn finish_construction(
 /// it by calling `associate` with the instance's handle and the wrapper. A type registered through
 /// `registerClass` binds them from its `instance_init`, before `constructed` runs, so a
 /// `constructed` override already sees a fully usable wrapper; any other type binds them once
-/// construction has returned.
+/// construction has returned. When construction hands back an instance that already carries a
+/// wrapper — it reached JavaScript and was wrapped before `g_object_new` returned — that existing
+/// wrapper is returned instead of binding `wrapper`, so the caller can adopt it; otherwise the
+/// call returns `null`.
 #[allow(clippy::needless_pass_by_value)]
 #[napi(catch_unwind)]
-pub fn new_object(
-    env: Env,
+pub fn new_object<'env>(
+    env: &'env Env,
     gtype: BigInt,
     names: Vec<String>,
     #[napi(ts_arg_type = "ExternalObject<Handle>[]")] values: Vec<ValueHandle>,
-    wrapper: Object<'_>,
+    wrapper: Object<'env>,
     #[napi(ts_arg_type = "(handle: ExternalObject<Handle>, wrapper: object) => void")]
-    associate: Associator<'_>,
-) -> Result<()> {
+    associate: Associator<'env>,
+) -> Result<Option<Object<'env>>> {
     let type_ = type_from_bigint(&gtype, "new_object:")?;
     let properties = ConstructProperties::new(names, &values)?;
     let guard = unsafe { pending_wrapper::push(type_.into_glib(), wrapper.raw(), associate.raw()) };
     let ptr = unsafe { construct(type_, &properties) }?;
 
-    finish_construction(&env, ptr, &guard, type_, &wrapper, &associate)
+    finish_construction(env, ptr, &guard, type_, &wrapper, &associate)
 }

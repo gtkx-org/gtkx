@@ -127,13 +127,18 @@ function constructPropertyForEntry(
  * Properties whose value is `undefined` are skipped. A type registered with
  * `registerClass` binds the wrapper before its `constructed` slot runs, so an
  * override of that slot already sees a usable instance.
+ * When construction returns an object that already has a wrapper — it reached
+ * JavaScript and was wrapped before `g_object_new` returned, for example a
+ * `Gtk.Window` observed through the toplevels list — that existing wrapper is
+ * returned instead of binding `wrapper`, so both references stay one object.
  *
  * @param gtype The GType of the object to construct.
  * @param props Property names mapped to the values to set them to.
  * @param wrapper The wrapper instance to bind to the new object.
- * @returns The handle of the newly created object.
+ * @returns The wrapper bound to the constructed object: `wrapper` itself, or
+ * the wrapper the object already had.
  */
-function newObjectWithProperties(gtype: bigint, props: object, wrapper: object): ExternalObject<Handle> {
+function newObjectWithProperties<T extends object>(gtype: bigint, props: object, wrapper: T): T {
     const names: string[] = [];
     const values: ExternalObject<Handle>[] = [];
     const bindings = constructBindingsFor(wrapper.constructor as AnyClass | undefined);
@@ -148,9 +153,13 @@ function newObjectWithProperties(gtype: bigint, props: object, wrapper: object):
         }
     }
 
-    newObject(gtype, names, values, wrapper, registerWrapper);
+    const existing = newObject(gtype, names, values, wrapper, registerWrapper);
 
-    return getHandle(wrapper);
+    if (existing !== null) {
+        return existing as T;
+    }
+
+    return wrapper;
 }
 
 /**
