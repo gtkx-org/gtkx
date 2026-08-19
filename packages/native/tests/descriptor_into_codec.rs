@@ -152,6 +152,7 @@ fn array_descriptor_recurses_into_its_item_codec() {
         fixed_size: Some(3),
         element_size: None,
         is_bytes: None,
+        is_caller_allocated: None,
     };
     assert!(matches!(codec(array), Codec::Array(_)));
 }
@@ -238,6 +239,7 @@ fn array_descriptor_propagates_codec_construction_errors() {
         fixed_size: None,
         element_size: None,
         is_bytes: None,
+        is_caller_allocated: None,
     };
     assert!(invalid.into_codec().is_err());
 }

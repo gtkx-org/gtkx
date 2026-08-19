@@ -5,6 +5,7 @@ import type { ModuleContext } from "../writer/context.js";
 import { isCallerAllocatedOut, isInoutParameter } from "../gir/parameter.js";
 import {
     isCollectibleCallerOut,
+    isFixedArrayCallerOut,
     isHandlePassedInPlace,
     isRecordInout,
     underlyingType,
@@ -124,6 +125,10 @@ const hasCallerSuppliedLength = (context: ModuleContext, parameter: GirParameter
 const isUnmarshalableCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
     if (hasCallerSuppliedLength(context, parameter)) {
         return true;
+    }
+
+    if (isFixedArrayCallerOut(context, parameter)) {
+        return false;
     }
 
     return !isCollectibleCallerOut(context, parameter) && !parameter.optional;

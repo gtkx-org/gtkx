@@ -12,6 +12,10 @@ impl FixedArrayCodec {
     pub(super) fn new(fixed_size: u32) -> Self {
         Self { fixed_size }
     }
+
+    pub(super) fn extent(&self) -> usize {
+        self.fixed_size as usize
+    }
 }
 
 impl ArrayContainer for FixedArrayCodec {

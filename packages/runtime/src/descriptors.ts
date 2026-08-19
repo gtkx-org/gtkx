@@ -123,6 +123,12 @@ type ArrayOptions = {
     fixedSize?: number | undefined;
     /** Whether the array carries raw bytes, and so decodes to a `Uint8Array` rather than to numbers. */
     isBytes?: boolean | undefined;
+    /**
+     * Whether the caller supplies the storage for a fixed-length out array: the runtime allocates
+     * a buffer of the element stride times the fixed element count, passes its pointer, and
+     * decodes the elements the callee wrote into it.
+     */
+    isCallerAllocated?: boolean | undefined;
 };
 
 /** Where a cursor array's base buffer and total length come from. */
@@ -360,6 +366,20 @@ const fundamentalT = (
     return result;
 };
 
+const applyArrayBounds = (result: ArrayDescriptor, options: ArrayOptions): void => {
+    if (options.baseParamIndex !== undefined) {
+        result.baseParamIndex = options.baseParamIndex;
+    }
+
+    if (options.sizeParamIndex !== undefined) {
+        result.sizeParamIndex = options.sizeParamIndex;
+    }
+
+    if (options.fixedSize !== undefined) {
+        result.fixedSize = options.fixedSize;
+    }
+};
+
 /** Builds a descriptor for an array of items in one of the supported container layouts. */
 const arrayT = (
     itemDescriptor: Descriptor,
@@ -369,24 +389,22 @@ const arrayT = (
 ): ArrayDescriptor => {
     const result: ArrayDescriptor = { kind: "array", itemDescriptor, arrayKind, ownership };
 
-    if (options?.elementSize !== undefined) {
+    if (options === undefined) {
+        return result;
+    }
+
+    applyArrayBounds(result, options);
+
+    if (options.elementSize !== undefined) {
         result.elementSize = options.elementSize;
     }
 
-    if (options?.baseParamIndex !== undefined) {
-        result.baseParamIndex = options.baseParamIndex;
-    }
-
-    if (options?.sizeParamIndex !== undefined) {
-        result.sizeParamIndex = options.sizeParamIndex;
-    }
-
-    if (options?.fixedSize !== undefined) {
-        result.fixedSize = options.fixedSize;
-    }
-
-    if (options?.isBytes === true) {
+    if (options.isBytes === true) {
         result.isBytes = true;
+    }
+
+    if (options.isCallerAllocated === true) {
+        result.isCallerAllocated = true;
     }
 
     return result;

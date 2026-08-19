@@ -41,7 +41,7 @@ impl CursorArrayCodec {
         let base = self.base_ptr(ffi_args)?;
         let items =
             ArrayCodec::size_from_args(ffi_args, arg_codecs, self.size_param_index as usize)?;
-        let stride = codec.cursor_stride()?;
+        let stride = codec.element_stride()?;
         let offset = (ptr as usize).wrapping_sub(base as usize);
 
         anyhow::ensure!(

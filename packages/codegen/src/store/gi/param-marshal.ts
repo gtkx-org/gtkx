@@ -1,8 +1,8 @@
 import { sanitizeTypeIdentifier } from "@gtkx/utils";
-import type { TypeId } from "../../gir/type-id.js";
+import type { CArrayType, TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { type GirParameter, isInoutParameter } from "../../gir/parameter.js";
+import { type GirParameter, isCallerAllocatedOut, isInoutParameter } from "../../gir/parameter.js";
 import { recordInlineSize } from "./record-layout.js";
 import { isConstructibleRecord } from "./value-marshalable.js";
 
@@ -104,6 +104,62 @@ const renderCallerOutInstance = (context: ModuleContext, parameter: GirParameter
 const isCollectibleCallerOut = (context: ModuleContext, parameter: GirParameter): boolean =>
     callerOutAllocation(context, parameter) !== undefined;
 
+const hasInlineElementStride = (context: ModuleContext, array: CArrayType): boolean => {
+    if (array.elementCType?.includes("*") === true) {
+        return false;
+    }
+
+    const element = underlyingType(context, array.element);
+
+    if (element === undefined) {
+        return false;
+    }
+
+    switch (element.kind) {
+        case "primitive": {
+            return (
+                element.category !== "void" &&
+                element.category !== "string" &&
+                element.category !== "pointer" &&
+                element.category !== "unichar" &&
+                element.category !== "gtype"
+            );
+        }
+        case "enum": {
+            return true;
+        }
+        case "record": {
+            return recordInlineSize(context, element.value) !== undefined;
+        }
+        case "alias":
+        case "callback":
+        case "carray":
+        case "class":
+        case "hashtable":
+        case "interface":
+        case "list":
+        case "varargs": {
+            return false;
+        }
+    }
+};
+
+const isFixedArrayCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
+    if (!isCallerAllocatedOut(parameter)) {
+        return false;
+    }
+
+    const type = parameter.type === undefined ? undefined : underlyingType(context, parameter.type);
+
+    return (
+        type?.kind === "carray" &&
+        type.fixedSize !== undefined &&
+        type.fixedSize > 0 &&
+        type.lengthParameterIndex === undefined &&
+        hasInlineElementStride(context, type)
+    );
+};
+
 const isAllocatableCallerOut = (context: ModuleContext, parameter: GirParameter): boolean =>
     underlyingParamKind(context, parameter) === "record" && isCollectibleCallerOut(context, parameter);
 
@@ -155,6 +211,7 @@ export {
     isValueTypeName,
     isHandlePassedInPlace,
     isCollectibleCallerOut,
+    isFixedArrayCallerOut,
     isRecordInout,
     isHandlePassing,
     renderCallerOutInstance,

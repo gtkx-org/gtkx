@@ -65,6 +65,7 @@ type ArgIndexOptions = {
 };
 
 type CursorArgIndexOptions = ArgIndexOptions & { cursor: GirCursorBounds };
+type CArrayExpressionOptions = ArgIndexOptions & { isCallerAllocated: boolean };
 
 type RenderDescriptorOptions = Partial<ArgIndexOptions> & {
     isCallerAllocated?: boolean;
@@ -206,7 +207,10 @@ const renderDescriptor = (
             return expressionForResolved(context, type, transfer, options);
         }
         case "carray": {
-            return arrayExpression(context, type, transfer, indexOptions);
+            return arrayExpression(context, type, transfer, {
+                ...indexOptions,
+                isCallerAllocated: options.isCallerAllocated === true,
+            });
         }
         case "list": {
             return listExpression(context, type, transfer, indexOptions);
@@ -733,6 +737,7 @@ const elementExpression = (
         ...options,
         cursor: undefined,
         hasOutIndirection: false,
+        isCallerAllocated: false,
     });
 
 const cursorArrayExpression = (
@@ -757,11 +762,14 @@ const arrayLayout = (context: ModuleContext, ref: CArrayType, options: ArgIndexO
         context.library.isByteArrayTyped && !hasUnknownArrayLength(ref) && isByteSequence(context.library, ref),
 });
 
+const fixedArrayLayout = (layout: ArrayLayout, isCallerAllocated: boolean): ArrayLayout =>
+    isCallerAllocated ? { ...layout, isCallerAllocated: true } : layout;
+
 const arrayExpression = (
     context: ModuleContext,
     ref: CArrayType,
     transfer: ParameterTransfer,
-    options: ArgIndexOptions,
+    options: CArrayExpressionOptions,
 ): string => {
     const { cursor } = options;
     const layout = arrayLayout(context, ref, options);
@@ -782,7 +790,7 @@ const arrayExpression = (
     }
 
     if (ref.fixedSize !== undefined) {
-        return tFixedArray(element, ref.fixedSize, ownership, layout);
+        return tFixedArray(element, ref.fixedSize, ownership, fixedArrayLayout(layout, options.isCallerAllocated));
     }
 
     return tArray(element, ownership, layout);

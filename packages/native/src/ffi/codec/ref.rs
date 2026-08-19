@@ -86,6 +86,15 @@ impl Encoder for RefCodec {
 
         match &*self.inner_codec {
             Codec::Array(array_codec) => {
+                if let Some(byte_len) = array_codec.caller_allocation_len()? {
+                    let allocation = ffi::CallerAllocation::zeroed(byte_len);
+
+                    return Ok(ffi::Stash::Storage(StashStorage::new(
+                        allocation.ptr(),
+                        StashData::CallerAllocation(allocation),
+                    )));
+                }
+
                 if inner_type == ValueType::Object
                     && inner.is_array()?
                     && Array::from_unknown(inner)?.len() > 0

@@ -28,6 +28,7 @@ import { itemComparatorArgDescriptors, itemComparatorTsType } from "./item-compa
 import {
     isClosureType,
     isCollectibleCallerOut,
+    isFixedArrayCallerOut,
     isHandlePassedInPlace,
     isHandlePassing,
     isValueType,
@@ -171,8 +172,9 @@ const renderInputParameters = (context: ModuleContext, fn: GirFunction, options:
 
 const isReturnedOutParameter = (context: ModuleContext, parameter: GirParameter): boolean =>
     isOutParameter(parameter) ||
-    (isCallerAllocatedOut(parameter) && isCollectibleCallerOut(context, parameter)) ||
-    isInoutParameter(parameter);
+    (isCallerAllocatedOut(parameter) &&
+        (isCollectibleCallerOut(context, parameter) || isFixedArrayCallerOut(context, parameter))) ||
+        isInoutParameter(parameter);
 
 const returnedOutParameters = (context: ModuleContext, fn: GirFunction): InputParameter[] => {
     const folded = foldedLengthIndices(context.library, fn);
@@ -576,13 +578,11 @@ const planCallerOut = (
     parameter: GirParameter,
     argIndex: ArgIndexOptions,
 ): CallArgPlan => {
-    const descriptor = renderDescriptor(context, parameter.type, "none", argIndex);
-
     if (isCollectibleCallerOut(context, parameter)) {
         context.addRuntimeImport("getHandle");
 
         return {
-            paramLiteral: paramDescriptorLiteral(descriptor, {
+            paramLiteral: paramDescriptorLiteral(renderDescriptor(context, parameter.type, "none", argIndex), {
                 direction: "out",
                 isCallerAllocated: true,
                 isUnpacked: isUnpackedOutParameter(context, parameter),
@@ -591,7 +591,22 @@ const planCallerOut = (
         };
     }
 
-    return { paramLiteral: paramDescriptorLiteral(descriptor, {}), inputExpr: "undefined" };
+    if (isFixedArrayCallerOut(context, parameter)) {
+        const descriptor = renderDescriptor(context, parameter.type, "none", {
+            ...argIndex,
+            isCallerAllocated: true,
+        });
+
+        return {
+            paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out" }),
+            inputExpr: undefined,
+        };
+    }
+
+    return {
+        paramLiteral: paramDescriptorLiteral(renderDescriptor(context, parameter.type, "none", argIndex), {}),
+        inputExpr: "undefined",
+    };
 };
 
 const planInoutParam = (

@@ -156,6 +156,7 @@ pub enum Descriptor {
         fixed_size: Option<u32>,
         element_size: Option<u32>,
         is_bytes: Option<bool>,
+        is_caller_allocated: Option<bool>,
     },
     Hashtable {
         #[napi(ts_type = "Descriptor")]
@@ -303,8 +304,9 @@ impl Descriptor {
                 fixed_size,
                 element_size,
                 is_bytes,
-            } => Codec::Array(
-                ArrayCodec::new(
+                is_caller_allocated,
+            } => {
+                let mut codec = ArrayCodec::new(
                     item_descriptor.into_codec()?,
                     array_kind,
                     ownership,
@@ -316,8 +318,14 @@ impl Descriptor {
                     element_size.map(|n| n as usize),
                     is_bytes.unwrap_or(false),
                 )
-                .map_err(|error| Error::from_reason(error.to_string()))?,
-            ),
+                .map_err(|error| Error::from_reason(error.to_string()))?;
+                if is_caller_allocated.unwrap_or(false) {
+                    codec = codec
+                        .caller_allocated()
+                        .map_err(|error| Error::from_reason(error.to_string()))?;
+                }
+                Codec::Array(codec)
+            }
             Self::Hashtable {
                 key_descriptor,
                 value_descriptor,

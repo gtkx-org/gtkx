@@ -91,6 +91,7 @@ type ListDescriptorName = "list" | "slist" | "ptrArray" | "gArray";
 type ArrayLayout = {
     elementSize?: number | undefined;
     isBytes: boolean;
+    isCallerAllocated?: boolean | undefined;
 };
 
 type BindArgs = {
@@ -262,6 +263,7 @@ const arrayLayoutArg = (ownership: Ownership | undefined, layout: ArrayLayout): 
     const entries = [
         layout.elementSize === undefined ? undefined : `elementSize: ${String(layout.elementSize)}`,
         layout.isBytes ? "isBytes: true" : undefined,
+        layout.isCallerAllocated === true ? "isCallerAllocated: true" : undefined,
     ].filter((entry): entry is string => entry !== undefined);
 
     return entries.length === 0 ? undefined : `{ ${entries.join(", ")} }`;

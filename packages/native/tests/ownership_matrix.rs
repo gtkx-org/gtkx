@@ -211,6 +211,7 @@ fn array_of(
         fixed_size: fixed,
         element_size: None,
         is_bytes: None,
+        is_caller_allocated: None,
     }
 }
 
