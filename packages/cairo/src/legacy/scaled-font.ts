@@ -3,9 +3,9 @@ import type { FontOptions } from "../base.js";
 import type { FontType, Status, TextClusterFlags } from "../enums.js";
 import type { CairoGlyph, CairoTextCluster, FontExtents, TextExtents } from "../types.js";
 import { FontFace, ScaledFont } from "../base.js";
-import { allocGlyphBuffer, readFontExtents, readTextExtents } from "./context.js";
+import { allocGlyphBuffer, readFontExtents, readTextExtents } from "../text.js";
 import { FontOptions as FontOptionsConstructor } from "./font-options.js";
-import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
+import { allocMatrix, type Matrix as CairoMatrix } from "../matrix.js";
 
 const { bind } = t;
 const SCALED_FONT_T = t.boxed("CairoScaledFont", {
@@ -192,7 +192,7 @@ const cairoScaledFontGetScaleMatrix = bind(
 );
 
 function readMatrixVia(self: ScaledFont, boundFn: (...args: unknown[]) => unknown): CairoMatrix {
-    const { handle, obj } = allocMatrix();
+    const { handle, matrix: obj } = allocMatrix();
     boundFn(getHandle(self), handle);
     return obj;
 }

@@ -4,7 +4,7 @@ import type { Extend, Filter, PatternType, Status } from "../enums.js";
 import type { PathData, RgbaColor } from "../types.js";
 import { Pattern } from "../base.js";
 import { parsePath } from "../path.js";
-import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
+import { allocMatrix, type Matrix as CairoMatrix } from "../matrix.js";
 
 const { bind } = t;
 const PATTERN_T = t.boxed("CairoPattern", {
@@ -177,7 +177,7 @@ const cairoPatternGetMatrix = bind(
     t.void,
 );
 Pattern.prototype.getMatrix = function (): CairoMatrix {
-    const { handle, obj } = allocMatrix();
+    const { handle, matrix: obj } = allocMatrix();
     cairoPatternGetMatrix(getHandle(this), handle);
     return obj;
 };

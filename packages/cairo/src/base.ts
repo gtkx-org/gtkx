@@ -1,24 +1,12 @@
 import { registerWrapperClass, resolveType } from "@gtkx/runtime";
 
 const CAIRO_GOBJECT_LIBRARY = "libcairo-gobject.so.2";
-const CONTEXT_TYPE = resolveType(CAIRO_GOBJECT_LIBRARY, "cairo_gobject_context_get_type");
 const DEVICE_TYPE = resolveType(CAIRO_GOBJECT_LIBRARY, "cairo_gobject_device_get_type");
 const SURFACE_TYPE = resolveType(CAIRO_GOBJECT_LIBRARY, "cairo_gobject_surface_get_type");
 const PATTERN_TYPE = resolveType(CAIRO_GOBJECT_LIBRARY, "cairo_gobject_pattern_get_type");
-const REGION_TYPE = resolveType(CAIRO_GOBJECT_LIBRARY, "cairo_gobject_region_get_type");
 const FONT_OPTIONS_TYPE = resolveType(CAIRO_GOBJECT_LIBRARY, "cairo_gobject_font_options_get_type");
 const FONT_FACE_TYPE = resolveType(CAIRO_GOBJECT_LIBRARY, "cairo_gobject_font_face_get_type");
 const SCALED_FONT_TYPE = resolveType(CAIRO_GOBJECT_LIBRARY, "cairo_gobject_scaled_font_get_type");
-
-/** A cairo drawing context (`cairo_t`), the object every drawing operation goes through. */
-class Context {
-    static {
-        registerWrapperClass(this, CONTEXT_TYPE);
-    }
-
-    /** GType of `CairoContext`, the boxed type this class is registered under. */
-    declare __type__: bigint;
-}
 
 /** A cairo device (`cairo_device_t`), the backend-specific object behind a surface. */
 class Device {
@@ -47,16 +35,6 @@ class Pattern {
     }
 
     /** GType of `CairoPattern`, the boxed type this class is registered under. */
-    declare __type__: bigint;
-}
-
-/** A cairo region (`cairo_region_t`), a set of integer rectangles. */
-class Region {
-    static {
-        registerWrapperClass(this, REGION_TYPE);
-    }
-
-    /** GType of `CairoRegion`, the boxed type this class is registered under. */
     declare __type__: bigint;
 }
 
@@ -90,4 +68,4 @@ class ScaledFont {
     declare __type__: bigint;
 }
 
-export { Context, Device, FontFace, FontOptions, Pattern, Region, ScaledFont, Surface };
+export { Device, FontFace, FontOptions, Pattern, ScaledFont, Surface };

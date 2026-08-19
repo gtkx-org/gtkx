@@ -58,6 +58,11 @@ type VfuncDescriptor = {
  */
 type VfuncRegistry = Record<string, VfuncDescriptor>;
 type WrapperBinding = (handle: ExternalObject<Handle>, instance: object) => void;
+/**
+ * Picks the wrapper class for one handle of a registered type, such as a subclass keyed on a tag the
+ * handle carries.
+ */
+type WrapperClassResolver = (handle: ExternalObject<Handle>) => AnyClass;
 
 /**
  * How one property an interface declares reaches the vtable, given as the interface's own accessor
@@ -95,6 +100,7 @@ const vfuncRegistry: WeakMap<object, VfuncRegistry> = new WeakMap();
 const interfaceLayoutRegistry: Map<bigint, InterfaceLayout> = new Map();
 const wrapperClasses: WeakSet<AnyClass> = new WeakSet();
 const derivedClasses: WeakSet<AnyClass> = new WeakSet();
+const wrapperClassResolvers: WeakMap<AnyClass, WrapperClassResolver> = new WeakMap();
 
 function setClassType(cls: AnyClass, type: bigint): void {
     (cls.prototype as { [K in keyof TypedClass]: TypedClass[K] }).__type__ = type;
@@ -156,6 +162,32 @@ function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistr
     }
 }
 
+/**
+ * Lets a class registered with `registerWrapperClass` pick a subclass for each handle it wraps, for
+ * types whose one GType covers several C-level subtypes, the way a cairo surface reports image or
+ * recording through `cairo_surface_get_type`. The resolver runs whenever a handle is wrapped as that
+ * class, explicitly or through its GType; a subclass passed to `wrapHandle` directly is used as given.
+ * @param cls Registered wrapper class whose handles the resolver classifies.
+ * @param resolver Returns the class to instantiate for one handle, `cls` itself included.
+ * @throws If `cls` is not a registered wrapper class.
+ */
+function registerWrapperClassResolver(cls: AnyClass, resolver: WrapperClassResolver): void {
+    if (!wrapperClasses.has(cls)) {
+        throw new Error(
+            `Cannot register a wrapper class resolver for ${cls.name}: ` +
+            "register the class with registerWrapperClass first",
+        );
+    }
+
+    wrapperClassResolvers.set(cls, resolver);
+}
+
+function chooseWrapperClass(cls: AnyClass, handle: ExternalObject<Handle>): AnyClass {
+    const resolver = wrapperClassResolvers.get(cls);
+
+    return resolver === undefined ? cls : resolver(handle);
+}
+
 function markDerivedClass(cls: AnyClass): void {
     derivedClasses.add(cls);
 }
@@ -204,8 +236,9 @@ function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, layout?: I
  * Wraps a native handle in a JS wrapper instance. With no class, resolves and
  * reuses the wrapper for the handle's runtime GType (composing interface mixins),
  * and hands back an instance that already carries a handle unchanged; with an
- * explicit class, creates a bare instance backed by the handle. Returns null for
- * a null or undefined handle.
+ * explicit class, creates a bare instance backed by the handle, of the subclass the
+ * class's `registerWrapperClassResolver` resolver picks when it has one. Returns null
+ * for a null or undefined handle.
  * @param handle Native handle to wrap.
  * @param cls Wrapper class to instantiate, or omitted to resolve it from the runtime type.
  */
@@ -229,7 +262,7 @@ function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: Any
         return getOrCreateWrapper(handle);
     }
 
-    const instance: object = Object.create(cls.prototype) as object;
+    const instance: object = Object.create(chooseWrapperClass(cls, handle).prototype) as object;
     setHandle(instance, handle);
 
     return instance;
@@ -438,6 +471,7 @@ export {
     markDerivedClass,
     registerClassType,
     registerWrapperClass,
+    registerWrapperClassResolver,
     registerInterface,
     wrapHandle,
     getWrapperClass,
@@ -456,4 +490,5 @@ export {
     type InterfaceProperty,
     type StaticBase,
     type VfuncDescriptor,
+    type WrapperClassResolver,
 };

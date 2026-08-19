@@ -93,6 +93,54 @@ type ClosePathSegment = {
 /** One segment of a path copied out of a context or a mesh pattern. */
 type PathData = MoveToSegment | LineToSegment | CurveToSegment | ClosePathSegment;
 
+/** A position in user or device space. */
+type Point = {
+    /** Horizontal coordinate. */
+    x: number;
+    /** Vertical coordinate. */
+    y: number;
+};
+
+/** A displacement in user or device space, unaffected by translation. */
+type Distance = {
+    /** Horizontal component. */
+    dx: number;
+    /** Vertical component. */
+    dy: number;
+};
+
+/** A bounding box given by its two opposite corners in user space. */
+type Extents = {
+    /** Left edge. */
+    x1: number;
+    /** Top edge. */
+    y1: number;
+    /** Right edge. */
+    x2: number;
+    /** Bottom edge. */
+    y2: number;
+};
+
+/** A dash pattern as a context reports it: alternating on and off lengths and the offset into them. */
+type DashPattern = {
+    /** Alternating on and off lengths in user space; empty for a solid line. */
+    dashes: number[];
+    /** Offset into the pattern at which the stroke starts. */
+    offset: number;
+};
+
+/** A rectangle as plain data, for the calls that take or return many at once. */
+type RectangleData = {
+    /** Horizontal position of the left edge. */
+    x: number;
+    /** Vertical position of the top edge. */
+    y: number;
+    /** Width of the rectangle. */
+    width: number;
+    /** Height of the rectangle. */
+    height: number;
+};
+
 /** A color with straight (non-premultiplied) components in the 0 to 1 range. */
 type RgbaColor = {
     /** Red component. */
@@ -129,8 +177,11 @@ export type {
     /** @deprecated Since 1.3. Removed in v2. */
     ContextConstructorProps,
     CurveToSegment,
+    DashPattern,
     /** @deprecated Since 1.3. Removed in v2. */
     DeviceConstructorProps,
+    Distance,
+    Extents,
     FontExtents,
     /** @deprecated Since 1.3. Removed in v2. */
     FontFaceConstructorProps,
@@ -141,6 +192,8 @@ export type {
     PathData,
     /** @deprecated Since 1.3. Removed in v2. */
     PatternConstructorProps,
+    Point,
+    RectangleData,
     /** @deprecated Since 1.3. Removed in v2. */
     RegionConstructorProps,
     RgbaColor,
