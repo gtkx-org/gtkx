@@ -11,6 +11,7 @@ import {
 } from "../store/gi/param-marshal.js";
 import { recordInlineSize } from "../store/gi/record-layout.js";
 import { isPlainStruct, isScalarRef, transferOwnership } from "./descriptor-render.js";
+import { closureAndDestroyIndices } from "./param-structure.js";
 
 type UnmarshalableSubject = GirCallable & { instance?: GirParameter | undefined };
 
@@ -150,6 +151,33 @@ const isTypeErasedCallback = (context: ModuleContext, parameter: GirParameter): 
     return type?.kind === "callback" && type.value.parameters.length === 0;
 };
 
+const isCallbackParam = (context: ModuleContext, parameter: GirParameter): boolean => {
+    const type = parameter.type === undefined ? undefined : underlyingType(context, parameter.type);
+
+    return type?.kind === "callback";
+};
+
+const hasDetachedClosure = (parameter: GirParameter, index: number): boolean => {
+    const userDataIndex = parameter.closureIndex;
+
+    if (userDataIndex !== undefined && userDataIndex !== index + 1) {
+        return true;
+    }
+
+    const notifyIndex = parameter.destroyIndex;
+
+    return notifyIndex !== undefined && notifyIndex !== index + (userDataIndex === undefined ? 1 : 2);
+};
+
+const hasDetachedCallback = (context: ModuleContext, parameters: GirParameter[]): boolean => {
+    const claimed = closureAndDestroyIndices({ parameters });
+
+    return parameters.some(
+        (parameter, index) =>
+            !claimed.has(index) && isCallbackParam(context, parameter) && hasDetachedClosure(parameter, index),
+    );
+};
+
 const isRefusedTransfer = (
     context: ModuleContext,
     ref: TypeId | undefined,
@@ -193,6 +221,7 @@ const isUnmarshalableCallParam = (context: ModuleContext, parameter: GirParamete
 const hasUnmarshalableParam = (context: ModuleContext, callable: UnmarshalableSubject): boolean =>
     (callable.instance !== undefined && isRefusedParamTransfer(context, callable.instance)) ||
     isRefusedTransfer(context, callable.returnValue.type, callable.returnValue.transferOwnership) ||
+    hasDetachedCallback(context, callable.parameters) ||
     callable.parameters.some((parameter) => isUnmarshalableCallParam(context, parameter));
 
 export { hasUnmarshalableParam };

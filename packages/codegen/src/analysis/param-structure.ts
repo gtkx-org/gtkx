@@ -61,7 +61,7 @@ const inputParameters = (library: Library, fn: GirFunction): InputParameter[] =>
     return result;
 };
 
-const closureAndDestroyIndices = (fn: GirFunction): Set<number> => {
+const closureAndDestroyIndices = (fn: Pick<GirCallable, "parameters">): Set<number> => {
     const indices: Set<number> = new Set();
 
     for (const parameter of fn.parameters) {
