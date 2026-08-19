@@ -971,10 +971,10 @@ describe("default-props reset on removal", () => {
 });
 
 describe("numeric props the property cannot hold as written", () => {
-    it("rounds a fraction written to a whole-number property", async () => {
+    it("truncates a fraction written to a whole-number property", async () => {
         const ref = createRef<Gtk.Label>();
         await render(<GtkLabel ref={ref} marginStart={12.6} label="x" />);
-        expect(ref.current).toHaveObjectProperty("marginStart", 13);
+        expect(ref.current).toHaveObjectProperty("marginStart", 12);
     });
 
     it("clamps a value outside the range the property allows", async () => {

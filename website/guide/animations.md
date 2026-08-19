@@ -38,7 +38,7 @@ const { count } = useSpring({ from: { count: 0 }, to: { count: 100 } });
 <AnimatedLabel label={count.to((value) => `${Math.round(value)}%`)} />;
 ```
 
-A value the property cannot hold as written is fitted to it: a spring headed for a whole-number property such as a margin is rounded, and a value outside the range a property allows, such as an `opacity` that a bouncy spring overshoots past 1 or a margin that dips below 0, is clamped to it. GTK margins cannot go negative, so slide a widget in by shrinking a margin rather than by growing one from a negative start.
+A value the property cannot hold as written is fitted to it: a spring headed for a whole-number property such as a margin is truncated toward zero, as JavaScript's own `ToInt32` does, and a value outside the range a property allows, such as an `opacity` that a bouncy spring overshoots past 1 or a margin that dips below 0, is clamped to it. GTK margins cannot go negative, so slide a widget in by shrinking a margin rather than by growing one from a negative start.
 
 The wrapper passes a `ref` through. A component of your own that forwards it to the widget it renders gets the same per-frame writes, while one that keeps the `ref` re-renders with the current values instead.
 

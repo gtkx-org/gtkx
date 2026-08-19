@@ -63,7 +63,7 @@ const Unpinned = ({ fixedRef }: { fixedRef: RefObject<Gtk.Fixed | null> }): Reac
     );
 };
 
-const Rounded = ({ boxRef }: { boxRef: RefObject<Gtk.Box | null> }): ReactNode => {
+const Truncated = ({ boxRef }: { boxRef: RefObject<Gtk.Box | null> }): ReactNode => {
     const { value } = useSpring({ from: { value: 12.7 }, to: { value: 12.7 } });
 
     return <AnimatedBox ref={boxRef} marginStart={value} />;
@@ -331,7 +331,7 @@ describe("animated - signal handlers", () => {
 });
 
 describe("animated - values the property cannot hold as written", () => {
-    it("rounds a spring to whole numbers for an integer property", async () => {
+    it("writes whole numbers to an integer property all along a spring", async () => {
         const boxRef = createRef<Gtk.Box>();
         const seen: number[] = [];
         await render(<WholeMargins boxRef={boxRef} seen={seen} />, ANIMATED);
@@ -345,12 +345,12 @@ describe("animated - values the property cannot hold as written", () => {
         expect([...distinct].every((value) => Number.isSafeInteger(value))).toBe(true);
     });
 
-    it("rounds to the nearest whole number", async () => {
+    it("truncates toward zero the way JavaScript does", async () => {
         const boxRef = createRef<Gtk.Box>();
-        await render(<Rounded boxRef={boxRef} />, ANIMATED);
+        await render(<Truncated boxRef={boxRef} />, ANIMATED);
 
         await waitFor(() => {
-            expect(boxRef.current).toHaveObjectProperty("marginStart", 13);
+            expect(boxRef.current).toHaveObjectProperty("marginStart", 12);
         });
     });
 

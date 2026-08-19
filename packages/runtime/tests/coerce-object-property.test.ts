@@ -11,11 +11,11 @@ type UnchangedCase = { property: string; written: unknown; described: string };
 const uniqueName = createTypeNameFactory("_");
 
 const WHOLE: WholeCase[] = [
-    { property: "margin-start", written: 12.6, coerced: 13, described: "rounds a fraction for a gint" },
+    { property: "margin-start", written: 12.6, coerced: 12, described: "truncates a fraction for a gint" },
     { property: "marginStart", written: 12.4, coerced: 12, described: "accepts the camelCased name" },
     { property: "margin-start", written: -5, coerced: 0, described: "clamps below the gint range" },
     { property: "margin-start", written: 1e9, coerced: 32_767, described: "clamps above the gint range" },
-    { property: "halign", written: 1.6, coerced: Gtk.Align.END, described: "rounds a fraction for an enum" },
+    { property: "halign", written: 1.6, coerced: Gtk.Align.START, described: "truncates a fraction for an enum" },
     { property: "opacity", written: 1.5, coerced: 1, described: "clamps a gdouble to its range" },
     { property: "opacity", written: 0.37, coerced: 0.37, described: "leaves a gdouble in range alone" },
     { property: "width-request", written: 40, coerced: 40, described: "leaves a whole gint alone" },
@@ -63,7 +63,7 @@ describe("coerceObjectProperty", () => {
 
     it("fits the construct properties a wrapper declares the same way", () => {
         const label = new Gtk.Label({ marginStart: 12.6, opacity: 1.5 });
-        expect(label.marginStart).toBe(13);
+        expect(label.marginStart).toBe(12);
         expect(label.opacity).toBe(1);
     });
 
@@ -71,7 +71,7 @@ describe("coerceObjectProperty", () => {
         const Probe = makeProbeClass();
         const probe = new Probe();
         expect(coerceObjectProperty(probe, "red", 300.2)).toBe(255);
-        expect(coerceObjectProperty(probe, "red", 127.5)).toBe(128);
+        expect(coerceObjectProperty(probe, "red", 127.5)).toBe(127);
         expect(coerceObjectProperty(probe, "count", -1)).toBe(0);
         expect(coerceObjectProperty(probe, "count", 10.4)).toBe(10);
     });

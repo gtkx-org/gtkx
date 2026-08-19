@@ -137,6 +137,19 @@ const PLAIN_VALUE_TYPES: Partial<Record<Descriptor["kind"], ValueType>> = {
     object: objectValueType,
 };
 
+const WHOLE_NUMBER_KINDS: Set<Descriptor["kind"]> = new Set([
+    "int8",
+    "int16",
+    "int32",
+    "uint8",
+    "uint16",
+    "uint32",
+    "int64",
+    "uint64",
+    "enum",
+    "flags",
+]);
+
 const PLAIN_VALUE_GETTERS: Map<bigint, ValueGetter> = new Map([
     [TYPE_BOOLEAN, booleanValueType.get],
     [TYPE_CHAR, scharValueType.get],
@@ -581,8 +594,13 @@ const resolveValueGType = (descriptor: Descriptor, nativeValue: unknown): bigint
     return nativeValue == null ? TYPE_OBJECT : getType(nativeValue as ExternalObject<Handle>);
 };
 
+const toWholeNumber = (descriptor: Descriptor, value: unknown): unknown =>
+    typeof value === "number" && Number.isFinite(value) && WHOLE_NUMBER_KINDS.has(descriptor.kind)
+        ? Math.trunc(value)
+        : value;
+
 function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle> {
-    const nativeValue = resolveNativeValue(descriptor, value);
+    const nativeValue = resolveNativeValue(descriptor, toWholeNumber(descriptor, value));
     const type = resolveValueGType(descriptor, nativeValue);
     const gValue = newValueForType(type);
     resolveValueType(descriptor).set(gValue, nativeValue);

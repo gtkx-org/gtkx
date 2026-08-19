@@ -251,14 +251,14 @@ function coercionCheckFor(gtype: bigint, name: string): PropertyCheck | null {
     return check;
 }
 
-function roundToWhole(check: PropertyCheck, value: number): number {
+function truncateToWhole(check: PropertyCheck, value: number): number {
     const range = WHOLE_NUMBER_RANGES.get(typeFundamental(check.valueType));
 
     if (range === undefined) {
         return value;
     }
 
-    return Math.min(range[1], Math.max(range[0], Math.round(value)));
+    return Math.min(range[1], Math.max(range[0], Math.trunc(value)));
 }
 
 function validatedNumber(check: PropertyCheck, number: number): number {
@@ -274,7 +274,7 @@ function validatedNumber(check: PropertyCheck, number: number): number {
 }
 
 function coerceNumber(check: PropertyCheck, value: number): number {
-    const number = roundToWhole(check, value);
+    const number = truncateToWhole(check, value);
 
     return check.canHoldValue(number) ? validatedNumber(check, number) : value;
 }
@@ -292,10 +292,11 @@ function coercePropertyValue(gtype: bigint, propertyName: string, value: unknown
 /**
  * Fits a number to what a GObject property accepts, the way an animation writing a value on every
  * frame needs: a fractional number headed for a property that holds whole numbers, such as a
- * `gint`, an enum, or flags, is rounded to the nearest one, and a number outside the range the
- * property's `GObject.ParamSpec` allows is clamped to it, so the write that follows never trips
- * GObject's range check. Anything that is not a finite number, a number the property cannot hold
- * at all, and a name the object installs no property under come back unchanged.
+ * `gint`, an enum, or flags, is truncated toward zero the way JavaScript's `ToInt32` is, and a
+ * number outside the range the property's `GObject.ParamSpec` allows is clamped to it, so the write
+ * that follows never trips GObject's range check. Anything that is not a finite number, a number
+ * the property cannot hold at all, and a name the object installs no property under come back
+ * unchanged.
  *
  * @param obj The object the value is about to be written to.
  * @param propertyName The property name, dashed or camelCased.
