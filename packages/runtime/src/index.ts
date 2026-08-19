@@ -26,13 +26,14 @@ export {
 /** @public */
 export { promisify } from "./promisify.js";
 /** @public */
-export { type Interface, registerClass } from "./register-class.js";
+export { type Interface, registerClass, type SignalGType, type SignalSpec } from "./register-class.js";
 /** @public */
 export {
     getClassType,
     getHandle,
     getInstanceType,
     getWrapperClass,
+    registerClassStruct,
     registerInterface,
     registerWrapperClass,
     type StaticBase,

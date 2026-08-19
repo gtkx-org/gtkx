@@ -94,6 +94,81 @@ const DIAL_PROPERTIES = {
 
 Only installed properties are addressable, since nothing notifies on a plain field or a method, and the inherited ones stay addressable too: `useProperty` still takes `"label"` on a `Gtk.Label` subclass.
 
+## Declaring signals
+
+`signals` creates GObject signals on the new type, keyed by signal name. Each one names the GTypes of its arguments, either as the numeric GType or as a class carrying one, and instances connect and emit by name the same way they do an inherited signal:
+
+```ts
+import { Object as GObject, SignalFlags } from "@gtkx/gi/gobject";
+import { registerClass, TYPE_INT, TYPE_STRING } from "@gtkx/runtime";
+
+class DownloaderBase extends GObject {}
+
+const Downloader = registerClass(DownloaderBase, {
+    typeName: "ExampleDownloader",
+    signals: {
+        "progress-changed": { paramTypes: [TYPE_STRING, TYPE_INT] },
+        finished: { flags: SignalFlags.RUN_LAST },
+    },
+});
+
+const downloader = new Downloader();
+downloader.connect("progress-changed", (url: string, percent: number) => console.log(url, percent));
+downloader.emit("progress-changed", "https://example.com", 40);
+```
+
+As with properties, bind the call to a name: the declared names reach `connect` and `emit` in the type system only through what `registerClass` returns. Every part of a spec is optional, so `{}` declares a signal with no arguments and no return value that runs its handlers in the default `RUN_FIRST` stage. The two word separators spell the same signal, `progress_changed` and `progress-changed` both reaching the one above, and `on`, `once` and `off` take the declared names the way `connect` does, as does `useSignal` from `@gtkx/react`. A handler receives the emission's arguments without the leading emitter, matching a generated signal.
+
+A signal that returns a value declares `returnType`, and what a handler returns becomes the emission's result. `accumulator` picks one of the two combiners GObject ships: `"first-wins"` stops the emission at the first handler and keeps its result, and `"true-handled"` runs handlers until one returns `true`, which requires a boolean `returnType`:
+
+```ts
+import { registerClass, TYPE_BOOLEAN } from "@gtkx/runtime";
+
+class GuardBase extends GObject {}
+
+const Guard = registerClass(GuardBase, {
+    typeName: "ExampleGuard",
+    signals: { "close-request": { returnType: TYPE_BOOLEAN, accumulator: "true-handled" } },
+});
+
+const guard = new Guard();
+guard.connect("close-request", () => false);
+guard.connect("close-request", () => true); // stops the emission
+guard.emit("close-request"); // true
+```
+
+`SignalFlags.DETAILED` lets handlers connect to and emissions carry a `::detail` suffix, so `alert::red` reaches the handlers on that detail plus the ones on plain `alert`.
+
+`registerClass` throws for a name that is not a valid signal name, a name the parent type or a listed interface already carries, the same name declared under both spellings, a GType that cannot hold a value, and an accumulator outside the two above. Default handlers on the class itself are not part of `signals`: the signals are created with no class closure, so only connected handlers run.
+
+## Class-level setup
+
+Some setup belongs to the type rather than to any instance. Two options cover it.
+
+`cssName` names what instances of a widget subclass match in CSS, the way `gtk_widget_class_set_css_name` does in C. It is applied from inside the type's `class_init`, so every instance is born with it, whether JavaScript or a native caller such as `GtkBuilder` creates it. It requires the class to extend `Gtk.Widget`; registering a non-widget with a `cssName` throws.
+
+`classInit` is a hook run once, synchronously, while `registerClass` registers the type. It receives the new type's class struct wrapped in its generated GTypeStruct wrapper, which is where class-level calls like `Gtk.WidgetClass.installAction`, `Gtk.WidgetClass.addShortcut` and `Gtk.WidgetClass.setLayoutManagerType` land:
+
+```ts
+import { getClassType, registerClass } from "@gtkx/runtime";
+import * as Gtk from "@gtkx/gi/gtk";
+
+class CardWidget extends Gtk.Widget {}
+
+registerClass(CardWidget, {
+    typeName: "ExampleCardWidget",
+    cssName: "card",
+    classInit: (typeStruct: Gtk.WidgetClass) => {
+        typeStruct.installAction("card.flip", null, (widget) => {
+            console.log("flipping", widget);
+        });
+        typeStruct.setLayoutManagerType(getClassType(Gtk.BoxLayout));
+    },
+});
+```
+
+The wrapper serves the members of every class struct in the parent chain on one object: a widget subclass sees `Gtk.WidgetClass` and `GObject.ObjectClass` members alike, so annotate the parameter as whichever of those types the hook needs — a non-widget subclass would take `GObject.ObjectClass` and reach `findProperty` or `listProperties`. The hook runs after `class_init` has installed the vfuncs, properties and signals declared in the same call, so they are already visible there. An exception it throws propagates out of `registerClass`, though the type itself stays registered: GObject has no way to unregister a static type.
+
 ## Overriding virtual functions
 
 Every vtable slot a parent type exposes is a `vfunc`-prefixed member on its wrapper class: `GtkWidgetClass.measure` is `vfuncMeasure`, `GObjectClass.constructed` is `vfuncConstructed`. Override the member and `registerClass` installs it into the new type's vtable.

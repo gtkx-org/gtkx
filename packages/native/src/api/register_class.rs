@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::ffi::c_void;
+use std::ffi::{CStr, CString, c_char, c_void};
 
 use glib::translate::{IntoGlib as _, from_glib_none};
 use glib::{self, gobject_ffi};
@@ -12,10 +12,16 @@ use crate::api::{handle_newtype, native_result, type_from_bigint};
 use crate::ffi::closure::{ClosureData, ClosureState};
 use crate::ffi::codec::Codec;
 use crate::ffi::descriptor::Descriptor;
+use crate::ffi::library_cache::FfiCache;
 use crate::handle::Handle;
 use crate::host::panic_handler::guard_ffi_boundary;
 use crate::host::{error_reporter, node_env};
 use crate::value::{self, ClosureHandle, pending_wrapper};
+
+type SetCssNameFn = unsafe extern "C" fn(*mut gobject_ffi::GObjectClass, *const c_char);
+
+const GTK_LIBRARY: &str = "libgtk-4.so.1";
+const SET_CSS_NAME_SYMBOL: &str = "gtk_widget_class_set_css_name";
 
 pub struct VfuncCallback(ClosureHandle);
 
@@ -73,7 +79,23 @@ pub struct RegisterClassProperty {
     pub pspec: PspecHandle,
 }
 
-/// Optional configuration for `registerClass`: vfunc overrides, implemented interfaces and properties.
+/// A signal the registered class creates on its type during class initialization.
+#[napi(object, object_to_js = false)]
+pub struct RegisterClassSignal {
+    /// Name to create the signal under. Must satisfy `g_signal_is_valid_name`.
+    pub name: String,
+    /// `GSignalFlags` bit mask, defaulting to `G_SIGNAL_RUN_FIRST`.
+    pub flags: Option<u32>,
+    /// `GType` of each argument an emission carries, defaulting to none.
+    pub param_types: Option<Vec<BigInt>>,
+    /// `GType` of the value an emission returns, defaulting to `G_TYPE_NONE`.
+    pub return_type: Option<BigInt>,
+    /// Built-in accumulator combining handler returns: `"first-wins"` or `"true-handled"`.
+    pub accumulator: Option<String>,
+}
+
+/// Optional configuration for `registerClass`: vfunc overrides, implemented interfaces, properties
+/// and signals.
 #[napi(object, object_to_js = false)]
 pub struct RegisterClassOptions {
     /// Virtual function overrides for the class itself.
@@ -82,9 +104,14 @@ pub struct RegisterClassOptions {
     pub interfaces: Option<Vec<RegisterClassInterface>>,
     /// Properties to install on the class.
     pub properties: Option<Vec<RegisterClassProperty>>,
+    /// Signals to create on the class.
+    pub signals: Option<Vec<RegisterClassSignal>>,
     /// Registers the type with `G_TYPE_FLAG_ABSTRACT`, so only its subtypes can be instantiated.
     #[napi(js_name = "abstract")]
     pub is_abstract: Option<bool>,
+    /// Name instances of the class carry in CSS, applied through `gtk_widget_class_set_css_name`
+    /// from inside the type's `class_init`. Requires `parentType` to be a `GtkWidget`.
+    pub css_name: Option<String>,
 }
 
 impl TryFrom<RegisterClassVfunc> for ResolvedVfunc {
@@ -148,12 +175,119 @@ impl TryFrom<RegisterClassProperty> for ResolvedProperty {
     }
 }
 
+fn signal_value_type(value: &BigInt, signal: &str, role: &str) -> Result<glib::ffi::GType> {
+    let type_ = type_from_bigint(value, &format!("register_class: signal '{signal}' {role}"))?;
+    let gtype = type_.into_glib();
+
+    if unsafe { gobject_ffi::g_type_check_is_value_type(gtype) } == glib::ffi::GFALSE {
+        return Err(Error::new(
+            Status::InvalidArg,
+            format!("register_class: signal '{signal}' {role} type '{type_}' cannot hold a value"),
+        ));
+    }
+
+    Ok(gtype)
+}
+
+fn signal_accumulator(
+    name: Option<&str>,
+    signal: &str,
+    return_type: glib::ffi::GType,
+) -> Result<gobject_ffi::GSignalAccumulator> {
+    match name {
+        None => Ok(None),
+        Some("first-wins") => Ok(Some(gobject_ffi::g_signal_accumulator_first_wins)),
+        Some("true-handled") => {
+            if return_type != glib::Type::BOOL.into_glib() {
+                return Err(Error::new(
+                    Status::InvalidArg,
+                    format!(
+                        "register_class: signal '{signal}' uses the 'true-handled' accumulator, \
+                         which requires a boolean return type"
+                    ),
+                ));
+            }
+
+            Ok(Some(gobject_ffi::g_signal_accumulator_true_handled))
+        }
+        Some(other) => Err(Error::new(
+            Status::InvalidArg,
+            format!(
+                "register_class: signal '{signal}' names unknown accumulator '{other}', \
+                 expected 'first-wins' or 'true-handled'"
+            ),
+        )),
+    }
+}
+
+impl TryFrom<RegisterClassSignal> for ResolvedSignal {
+    type Error = Error;
+
+    fn try_from(signal: RegisterClassSignal) -> Result<Self> {
+        let label = signal.name.clone();
+        let name = CString::new(signal.name).map_err(|_| {
+            Error::new(
+                Status::InvalidArg,
+                format!("register_class: signal name '{label}' contains a nul byte"),
+            )
+        })?;
+
+        if unsafe { gobject_ffi::g_signal_is_valid_name(name.as_ptr()) } == glib::ffi::GFALSE {
+            return Err(Error::new(
+                Status::InvalidArg,
+                format!("register_class: '{label}' is not a valid signal name"),
+            ));
+        }
+
+        let param_types = signal
+            .param_types
+            .unwrap_or_default()
+            .iter()
+            .enumerate()
+            .map(|(index, param)| signal_value_type(param, &label, &format!("parameter {index}")))
+            .collect::<Result<Vec<_>>>()?;
+
+        let return_type = match &signal.return_type {
+            Some(value) => signal_value_type(value, &label, "return")?,
+            None => glib::Type::UNIT.into_glib(),
+        };
+
+        let accumulator = signal_accumulator(signal.accumulator.as_deref(), &label, return_type)?;
+        let n_params = u32::try_from(param_types.len()).map_err(|_| {
+            Error::new(
+                Status::InvalidArg,
+                format!("register_class: signal '{label}' declares too many parameters"),
+            )
+        })?;
+
+        Ok(Self {
+            name,
+            flags: signal.flags.unwrap_or(gobject_ffi::G_SIGNAL_RUN_FIRST),
+            n_params,
+            param_types,
+            return_type,
+            accumulator,
+        })
+    }
+}
+
 #[derive(Default)]
 struct ResolvedOptions {
     vfuncs: Vec<ResolvedVfunc>,
     interfaces: Vec<ResolvedInterface>,
     properties: Vec<ResolvedProperty>,
+    signals: Vec<ResolvedSignal>,
     type_flags: gobject_ffi::GTypeFlags,
+    css_name: Option<CString>,
+}
+
+fn css_name_from_string(name: String) -> Result<CString> {
+    CString::new(name).map_err(|_| {
+        Error::new(
+            Status::InvalidArg,
+            "register_class: cssName contains a nul byte",
+        )
+    })
 }
 
 impl TryFrom<RegisterClassOptions> for ResolvedOptions {
@@ -184,6 +318,13 @@ impl TryFrom<RegisterClassOptions> for ResolvedOptions {
                 .into_iter()
                 .map(ResolvedProperty::try_from)
                 .collect::<Result<_>>()?,
+            signals: options
+                .signals
+                .unwrap_or_default()
+                .into_iter()
+                .map(ResolvedSignal::try_from)
+                .collect::<Result<_>>()?,
+            css_name: options.css_name.map(css_name_from_string).transpose()?,
         })
     }
 }
@@ -204,6 +345,46 @@ struct ResolvedInterface {
 struct ResolvedProperty {
     id: u32,
     pspec: *mut gobject_ffi::GParamSpec,
+}
+
+struct ResolvedSignal {
+    name: CString,
+    flags: gobject_ffi::GSignalFlags,
+    n_params: u32,
+    param_types: Vec<glib::ffi::GType>,
+    return_type: glib::ffi::GType,
+    accumulator: gobject_ffi::GSignalAccumulator,
+}
+
+impl ResolvedSignal {
+    fn canonical_name(&self) -> Vec<u8> {
+        self.name
+            .as_bytes()
+            .iter()
+            .map(|&byte| if byte == b'_' { b'-' } else { byte })
+            .collect()
+    }
+
+    fn display_name(&self) -> String {
+        self.name.to_string_lossy().into_owned()
+    }
+
+    unsafe fn install_into(mut self, gtype: glib::ffi::GType) {
+        unsafe {
+            gobject_ffi::g_signal_newv(
+                self.name.as_ptr(),
+                gtype,
+                self.flags,
+                std::ptr::null_mut(),
+                self.accumulator,
+                std::ptr::null_mut(),
+                None,
+                self.return_type,
+                self.n_params,
+                self.param_types.as_mut_ptr(),
+            );
+        }
+    }
 }
 
 impl ResolvedProperty {
@@ -329,7 +510,9 @@ unsafe extern "C" fn init_instance(instance: *mut gobject_ffi::GTypeInstance, _c
 struct ClassInit {
     vfuncs: Vec<ResolvedVfunc>,
     properties: Vec<ResolvedProperty>,
+    signals: Vec<ResolvedSignal>,
     interfaces: Vec<glib::Type>,
+    css_name: Option<(SetCssNameFn, CString)>,
     installed: Vec<ClosureState>,
 }
 
@@ -395,10 +578,19 @@ unsafe fn install_properties(
 
 unsafe fn apply_class_init(class_ptr: *mut c_void, class_data: *mut c_void) {
     let data = unsafe { &mut *class_data.cast::<ClassInit>() };
+    let gtype = unsafe { (*class_ptr.cast::<gobject_ffi::GTypeClass>()).g_type };
+
+    if let Some((set_css_name, name)) = &data.css_name {
+        unsafe { set_css_name(class_ptr.cast::<gobject_ffi::GObjectClass>(), name.as_ptr()) };
+    }
 
     for vfunc in std::mem::take(&mut data.vfuncs) {
         let state = unsafe { vfunc.install_into(class_ptr) };
         data.installed.push(state);
+    }
+
+    for signal in std::mem::take(&mut data.signals) {
+        unsafe { signal.install_into(gtype) };
     }
 
     unsafe {
@@ -422,7 +614,19 @@ struct ClassRegistration {
     vfuncs: Vec<ResolvedVfunc>,
     interfaces: Vec<ResolvedInterface>,
     properties: Vec<ResolvedProperty>,
+    signals: Vec<ResolvedSignal>,
     type_flags: gobject_ffi::GTypeFlags,
+    css_name: Option<CString>,
+}
+
+fn resolve_css_name_setter() -> anyhow::Result<SetCssNameFn> {
+    FfiCache::with(|cache| unsafe {
+        cache.resolve_symbol::<SetCssNameFn>(GTK_LIBRARY, SET_CSS_NAME_SYMBOL)
+    })
+}
+
+fn signal_known_on_type(name: &CStr, type_: glib::Type) -> bool {
+    unsafe { gobject_ffi::g_signal_lookup(name.as_ptr(), type_.into_glib()) != 0 }
 }
 
 impl ClassRegistration {
@@ -472,6 +676,78 @@ impl ClassRegistration {
         Ok(())
     }
 
+    fn validate_css_name(&self) -> anyhow::Result<()> {
+        if self.css_name.is_none() {
+            return Ok(());
+        }
+
+        let is_widget =
+            glib::Type::from_name("GtkWidget").is_some_and(|widget| self.parent_type.is_a(widget));
+
+        if !is_widget {
+            anyhow::bail!(
+                "register_class: cssName requires a GtkWidget parent, and '{}' is not one",
+                self.parent_type.name()
+            );
+        }
+
+        Ok(())
+    }
+
+    fn find_conflicting_signal(&self) -> Option<(String, glib::Type)> {
+        let parent_class = unsafe { gobject_ffi::g_type_class_ref(self.parent_type.into_glib()) };
+        let mut conflict = self
+            .signals
+            .iter()
+            .find(|signal| signal_known_on_type(&signal.name, self.parent_type))
+            .map(|signal| (signal.display_name(), self.parent_type));
+        unsafe { gobject_ffi::g_type_class_unref(parent_class) };
+
+        for iface in &self.interfaces {
+            if conflict.is_some() {
+                break;
+            }
+
+            let vtable =
+                unsafe { gobject_ffi::g_type_default_interface_ref(iface.type_.into_glib()) };
+            conflict = self
+                .signals
+                .iter()
+                .find(|signal| signal_known_on_type(&signal.name, iface.type_))
+                .map(|signal| (signal.display_name(), iface.type_));
+            unsafe { gobject_ffi::g_type_default_interface_unref(vtable) };
+        }
+
+        conflict
+    }
+
+    fn validate_signals(&self) -> anyhow::Result<()> {
+        if self.signals.is_empty() {
+            return Ok(());
+        }
+
+        let mut seen: HashSet<Vec<u8>> = HashSet::new();
+
+        for signal in &self.signals {
+            if !seen.insert(signal.canonical_name()) {
+                anyhow::bail!(
+                    "register_class: signal '{}' is declared more than once",
+                    signal.display_name()
+                );
+            }
+        }
+
+        if let Some((name, type_)) = self.find_conflicting_signal() {
+            anyhow::bail!(
+                "register_class: signal '{}' already exists on type '{}'",
+                name,
+                type_.name()
+            );
+        }
+
+        Ok(())
+    }
+
     fn register_type(self, class_size: u16, instance_size: u16) -> anyhow::Result<usize> {
         let Self {
             name,
@@ -479,13 +755,22 @@ impl ClassRegistration {
             vfuncs,
             interfaces,
             properties,
+            signals,
             type_flags,
+            css_name,
         } = self;
+
+        let css_name = match css_name {
+            Some(name) => Some((resolve_css_name_setter()?, name)),
+            None => None,
+        };
 
         let class_data = Box::into_raw(Box::new(ClassInit {
             vfuncs,
             properties,
+            signals,
             interfaces: adopted_interface_types(&interfaces, parent_type),
+            css_name,
             installed: Vec::new(),
         }));
 
@@ -624,6 +909,8 @@ impl ClassRegistration {
         let query = self.query_parent_type()?;
         self.validate_layout(&query)?;
         self.validate_interface_types()?;
+        self.validate_signals()?;
+        self.validate_css_name()?;
         self.interfaces = sort_interfaces(std::mem::take(&mut self.interfaces), self.parent_type)?;
 
         let class_size = fits_in_type_info_size(query.class_size, "class")?;
@@ -662,7 +949,9 @@ pub fn register_class(
             vfuncs: resolved.vfuncs,
             interfaces: resolved.interfaces,
             properties: resolved.properties,
+            signals: resolved.signals,
             type_flags: resolved.type_flags,
+            css_name: resolved.css_name,
         }
         .execute(),
     )?;
@@ -731,7 +1020,9 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: Vec::new(),
                 properties: Vec::new(),
+                signals: Vec::new(),
                 type_flags: 0,
+                css_name: None,
             };
             let type_ = request.execute().expect("registration should succeed");
             assert_ne!(type_, 0);
@@ -751,7 +1042,9 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: Vec::new(),
                 properties: Vec::new(),
+                signals: Vec::new(),
                 type_flags: 0,
+                css_name: None,
             };
             assert!(request.execute().is_err());
         });
@@ -766,7 +1059,9 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: vec![plain_interface(glib::Object::static_type())],
                 properties: Vec::new(),
+                signals: Vec::new(),
                 type_flags: 0,
+                css_name: None,
             };
             let error = request
                 .execute()
@@ -785,7 +1080,9 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: vec![plain_interface(gtk4::Editable::static_type())],
                 properties: Vec::new(),
+                signals: Vec::new(),
                 type_flags: 0,
+                css_name: None,
             };
             let error = request
                 .execute()
@@ -807,7 +1104,9 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: vec![plain_interface(plugin_type)],
                 properties: Vec::new(),
+                signals: Vec::new(),
                 type_flags: 0,
+                css_name: None,
             };
             let type_ = request
                 .execute()
@@ -826,7 +1125,9 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: vec![plain_interface(list_model_type())],
                 properties: Vec::new(),
+                signals: Vec::new(),
                 type_flags: 0,
+                css_name: None,
             };
             let type_ = request
                 .execute()
@@ -848,7 +1149,9 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: vec![plain_interface(plugin_type)],
                 properties: Vec::new(),
+                signals: Vec::new(),
                 type_flags: 0,
+                css_name: None,
             };
             let type_ = request
                 .execute()
@@ -866,7 +1169,9 @@ mod tests {
             vfuncs: Vec::new(),
             interfaces: Vec::new(),
             properties: Vec::new(),
+            signals: Vec::new(),
             type_flags: 0,
+            css_name: None,
         }
         .execute()
         .expect("registration should succeed");
@@ -978,7 +1283,9 @@ mod tests {
                 vfuncs,
             )],
             properties: Vec::new(),
+            signals: Vec::new(),
             type_flags: 0,
+            css_name: None,
         }
     }
 
@@ -1068,7 +1375,9 @@ mod tests {
                     plain_interface(list_model_type()),
                 ],
                 properties: Vec::new(),
+                signals: Vec::new(),
                 type_flags: 0,
+                css_name: None,
             };
             let type_ = request
                 .execute()
@@ -1089,7 +1398,9 @@ mod tests {
                 vfuncs: Vec::new(),
                 interfaces: vec![plain_interface(gtk4::SelectionModel::static_type())],
                 properties: Vec::new(),
+                signals: Vec::new(),
                 type_flags: 0,
+                css_name: None,
             };
             let error = request
                 .execute()
@@ -1107,7 +1418,9 @@ mod tests {
             vfuncs: Vec::new(),
             interfaces,
             properties: Vec::new(),
+            signals: Vec::new(),
             type_flags: 0,
+            css_name: None,
         }
         .execute()
         .expect("an adopted interface should register");
@@ -1174,6 +1487,47 @@ mod tests {
             );
 
             assert!(slots.iter().all(|slot| !slot.is_null()));
+        });
+    }
+
+    fn css_name_registration(name: &str, parent_type: glib::Type) -> ClassRegistration {
+        ClassRegistration {
+            name: gstring(name),
+            parent_type,
+            vfuncs: Vec::new(),
+            interfaces: Vec::new(),
+            properties: Vec::new(),
+            signals: Vec::new(),
+            type_flags: 0,
+            css_name: Some(CString::new("fancy").expect("a valid css name")),
+        }
+    }
+
+    #[test]
+    fn execute_rejects_a_css_name_on_a_non_widget_parent() {
+        test_support::run(|| {
+            let request = css_name_registration(
+                "GtkxRegisterClassCssNameNonWidgetType",
+                glib::Object::static_type(),
+            );
+            let error = request
+                .execute()
+                .expect_err("a css name on a non-widget must be rejected");
+            assert!(error.to_string().contains("GtkWidget"));
+            assert!(glib::Type::from_name("GtkxRegisterClassCssNameNonWidgetType").is_none());
+        });
+    }
+
+    #[test]
+    fn validate_css_name_accepts_a_widget_parent() {
+        test_support::run(|| {
+            let request = css_name_registration(
+                "GtkxRegisterClassCssNameWidgetType",
+                gtk4::Widget::static_type(),
+            );
+            request
+                .validate_css_name()
+                .expect("a widget parent should accept a css name");
         });
     }
 }

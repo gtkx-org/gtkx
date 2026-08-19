@@ -1,8 +1,10 @@
 import type { Descriptor } from "@gtkx/native";
 import {
+    getTypeClass,
     registerClass as nativeRegisterClass,
     type RegisterClassInterface as NativeRegisterClassInterface,
     type RegisterClassOptions as NativeRegisterClassOptions,
+    type RegisterClassSignal as NativeRegisterClassSignal,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
 } from "@gtkx/native";
 import { type AnyClass, getParentClass, walkClassChain } from "@gtkx/utils";
@@ -19,13 +21,22 @@ import {
     toNativeProperties,
 } from "./properties.js";
 import {
+    getClassStructClass,
     getClassType,
     getInterfaceMixin,
     markDerivedClass,
     registerClassType,
     type VfuncDescriptor,
+    wrapHandle,
 } from "./registry.js";
-import { TYPE_INTERFACE, TYPE_INVALID, typeFundamental, typeInterfaces, typeIsA } from "./type.js";
+import {
+    connectClosureSignal,
+    type DeclaredSignalTypes,
+    emitDeclaredSignal,
+    getSignalBaseName,
+    type SignalHandler,
+} from "./signal.js";
+import { TYPE_INTERFACE, TYPE_INVALID, TYPE_NONE, typeFundamental, typeInterfaces, typeIsA } from "./type.js";
 import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor } from "./vfunc.js";
 
 /**
@@ -70,15 +81,57 @@ type InstalledNames<TProperties> = string extends keyof TProperties
     : Camelized<Dashed<keyof TProperties & string>>;
 
 /**
+ * The base names the signal surface takes for the signals `RegisterClassOptions.signals` declares:
+ * each name as written, plus its canonical spelling with underscores turned into dashes, which
+ * GObject knows the signal by too.
+ */
+type DeclaredSignalBase<TSignals> = (keyof TSignals & string) | Dashed<keyof TSignals & string>;
+/**
+ * The names `connect` and `emit` take for one of the signals `RegisterClassOptions.signals`
+ * declares: each spelling of each name, plus its detailed form for a signal emitted with a
+ * `::detail` suffix.
+ */
+type DeclaredSignalName<TSignals> = DeclaredSignalBase<TSignals> | `${DeclaredSignalBase<TSignals>}::${string}`;
+
+/**
+ * The `connect` and `emit` signatures instances gain for the signals
+ * `RegisterClassOptions.signals` declares, widening the inherited ones, which take only the names
+ * introspection knows. A class declaring no signals gains nothing, since no name reaches the
+ * added signatures.
+ */
+type DeclaredSignalMethods<TSignals> = {
+    /**
+     * Type-level map from declared signal name to handler signature, feeding the hooks that
+     * address a signal by name, such as `useSignal` from `@gtkx/react`; no value ever carries it.
+     */
+    __signals__?: Record<DeclaredSignalBase<TSignals>, (...args: never[]) => unknown>;
+    /** Connects a handler to a signal `RegisterClassOptions.signals` declared. */
+    connect(
+        signal: DeclaredSignalName<TSignals>,
+        handler: (...args: never[]) => unknown,
+        isAfter?: boolean,
+    ): number;
+    /** Emits a signal `RegisterClassOptions.signals` declared. */
+    emit(sigName: DeclaredSignalName<TSignals>, ...args: unknown[]): unknown;
+    /** Connects a handler to a signal `RegisterClassOptions.signals` declared, for `off` to take off. */
+    on(sigName: DeclaredSignalName<TSignals>, callback: (...args: unknown[]) => unknown, isAfter?: boolean): unknown;
+    /** Connects a handler to a signal `RegisterClassOptions.signals` declared for one emission. */
+    once(sigName: DeclaredSignalName<TSignals>, callback: (...args: unknown[]) => unknown, isAfter?: boolean): unknown;
+    /** Disconnects a handler `on` or `once` connected to a signal `RegisterClassOptions.signals` declared. */
+    off(sigName: DeclaredSignalName<TSignals>, callback: (...args: unknown[]) => unknown): unknown;
+};
+
+/**
  * An instance of a registered class: everything the class itself declares, plus the property map the
  * hooks that address a property by name, such as `useProperty` from `@gtkx/react`, read the installed
  * names off. Each name is typed with the value type the class declares for the member of that name,
  * so a property the class does not `declare` contributes nothing.
  */
-type RegisteredInstance<TInstance, TProperties> = TInstance & {
-    /** Type-level map from installed property name to value type; no value ever carries it. */
-    __properties__: Pick<TInstance, InstalledNames<TProperties> & keyof TInstance>;
-};
+type RegisteredInstance<TInstance, TProperties, TSignals> = TInstance &
+    DeclaredSignalMethods<TSignals> & {
+        /** Type-level map from installed property name to value type; no value ever carries it. */
+        __properties__: Pick<TInstance, InstalledNames<TProperties> & keyof TInstance>;
+    };
 
 /**
  * The construct signature and prototype a registered class carries, both giving
@@ -92,18 +145,58 @@ type RegisteredConstructor<TClass, TArgs extends unknown[], TInstance> = {
     ? new (...args: TArgs) => TInstance
     : abstract new (...args: TArgs) => TInstance);
 
+/** The statics a registered class keeps from the class it was, joined with {@link RegisteredConstructor}. */
+type RegisteredParts<TClass, TArgs extends unknown[], TInstance> = Omit<TClass, "prototype"> &
+    RegisteredConstructor<TClass, TArgs, TInstance>;
+
 /**
  * The class {@link registerClass} hands back: the same class, with the same statics, whose instances
- * carry the properties `RegisterClassOptions.properties` installed. Binding the call to a name, rather
- * than discarding it, is what carries those names into the type system.
+ * carry the properties `RegisterClassOptions.properties` installed and take the signals
+ * `RegisterClassOptions.signals` declares by name. Binding the call to a name, rather than
+ * discarding it, is what carries those names into the type system.
  */
-type RegisteredClass<TClass extends AnyClass, TProperties> =
+type RegisteredClass<TClass extends AnyClass, TProperties, TSignals> =
     TClass extends abstract new (...args: infer TArgs) => infer TInstance
-        ? Omit<TClass, "prototype"> & RegisteredConstructor<TClass, TArgs, RegisteredInstance<TInstance, TProperties>>
+        ? RegisteredParts<TClass, TArgs, RegisteredInstance<TInstance, TProperties, TSignals>>
         : never;
 
+/**
+ * A GType in the form `RegisterClassOptions.signals` takes one: the numeric GType itself, such as
+ * `TYPE_STRING` from `@gtkx/gi/gobject`, or a class carrying one, which is any generated wrapper
+ * class and any class an earlier {@link registerClass} call registered.
+ */
+type SignalGType = bigint | AnyClass;
+
+/**
+ * One signal `RegisterClassOptions.signals` creates on the new type, sitting under the signal's
+ * name. Every part is optional: `{}` declares a signal with no arguments and no return value that
+ * runs its handlers in the default `RUN_FIRST` stage.
+ */
+type SignalSpec = {
+    /**
+     * `GObject.SignalFlags` bit mask for the signal, defaulting to `RUN_FIRST`. `DETAILED` lets
+     * handlers connect to and emissions name a `::detail` suffix.
+     */
+    flags?: number;
+    /** GType of each argument an emission carries, defaulting to none. */
+    paramTypes?: SignalGType[];
+    /** GType of the value an emission returns, defaulting to none. */
+    returnType?: SignalGType;
+    /**
+     * How the emission combines what its handlers return, limited to the two accumulators GObject
+     * ships: `"first-wins"` stops the emission at the first handler and keeps its result, and
+     * `"true-handled"` runs handlers until one returns `true`, which requires a boolean
+     * `returnType`. Without one, every handler runs and the last result stands.
+     */
+    accumulator?: "first-wins" | "true-handled";
+};
+
 /** What {@link registerClass} adds to the new GType beyond the vtable slots it discovers on the class. */
-type RegisterClassOptions<TInstance extends object, TProperties extends Record<string, PropertySpec>> = {
+type RegisterClassOptions<
+    TInstance extends object,
+    TProperties extends Record<string, PropertySpec>,
+    TSignals extends Record<string, SignalSpec>,
+> = {
     /**
      * Name to register the new GType under, defaulting to the class's own name. Either way the
      * name has to be a valid GType name: at least three characters, starting with a letter or
@@ -116,6 +209,27 @@ type RegisterClassOptions<TInstance extends object, TProperties extends Record<s
      * constructing it directly throws, whether from JavaScript or from a native caller.
      */
     abstract?: boolean;
+    /**
+     * Name instances of the new type carry in CSS, applied through `gtk_widget_class_set_css_name`
+     * from inside the type's `class_init`, so every instance is born with it, wherever it is
+     * created from. Requires the class to extend `Gtk.Widget`; registering a non-widget with a
+     * `cssName` throws.
+     */
+    cssName?: string;
+    /**
+     * Hook run once, synchronously, while `registerClass` registers the type, after its
+     * `class_init` has installed the vfuncs, properties and signals declared here. It receives the
+     * new type's class struct wrapped in its generated GTypeStruct wrapper, so class-level setup
+     * calls such as `Gtk.WidgetClass.installAction`, `Gtk.WidgetClass.addShortcut` and
+     * `Gtk.WidgetClass.setLayoutManagerType` have somewhere to land. The wrapper serves the
+     * members of every struct in the parent chain on one object: a widget subclass sees
+     * `Gtk.WidgetClass` and `GObject.ObjectClass` members alike, so the parameter can be declared
+     * as whichever of those types the hook needs. The class struct belongs to the type system for
+     * the life of the process, so keeping the wrapper around past the hook is safe, if rarely
+     * useful. An exception the hook throws propagates out of `registerClass`, with the type
+     * already registered: GObject offers no way to unregister a static type.
+     */
+    classInit?(typeStruct: object): void;
     /**
      * Interfaces the new type implements on top of the ones it inherits, given as the interface values
      * themselves, such as `Gio.ListModel`. Their vtable slots are filled from the `vfunc`-prefixed methods on
@@ -179,10 +293,30 @@ type RegisterClassOptions<TInstance extends object, TProperties extends Record<s
      * and write it rather than the generated storage.
      */
     properties?: TProperties;
+    /**
+     * Signals to create on the new type, keyed by signal name and valued with the
+     * {@link SignalSpec} describing each one. A name has to start with a letter, continue in
+     * letters, digits, `-` and `_`, and be new to the type: one an ancestor type or a listed
+     * interface already carries throws. The two word separators spell the same signal, so a
+     * signal declared as `data_changed` is connected to and emitted as `data-changed` too.
+     *
+     * Instances connect and emit by name through the same `connect`, `on`, `once`, `off` and
+     * `emit` surface inherited signals use: `registerClass` wraps `connect` and `emit` on the
+     * class's prototype to serve the declared names, unless the class defines the member itself,
+     * and hands every other name to the inherited implementation. A handler receives the
+     * emission's arguments without the leading emitter, matching a generated signal, and what it
+     * returns becomes the emission's return value when the signal declares one.
+     *
+     * The declared parameter GTypes rule the emission: `emit` converts each argument into a
+     * `GValue` of the declared type and throws for a value that type cannot hold. Handlers
+     * declared by the class itself as `vfunc`-style default handlers are not supported: the
+     * signals are created with no class closure, so only connected handlers run.
+     */
+    signals?: TSignals;
 };
 
 /** {@link RegisterClassOptions} with the widest instance and property types {@link registerClass} accepts. */
-type AnyRegisterClassOptions = RegisterClassOptions<object, Record<string, PropertySpec>>;
+type AnyRegisterClassOptions = RegisterClassOptions<object, Record<string, PropertySpec>, Record<string, SignalSpec>>;
 type VfuncFn = NativeRegisterClassVfunc["fn"];
 type DiscoveredVfunc = VfuncDescriptor & { methodName: string; fn: VfuncFn };
 type MethodTable = Map<string, VfuncFn>;
@@ -207,6 +341,12 @@ type PropertyVfuncSpec = {
 };
 
 type ArgPatch = { isCallerAllocated: true } | { isCallScoped: true };
+type DeclaredSignals = { native: NativeRegisterClassSignal[]; table: Map<string, DeclaredSignalTypes> };
+
+type SignalMethodHost = {
+    connect?: (signal: string, handler: SignalHandler, isAfter?: boolean) => number;
+    emit?: (sigName: string, ...args: unknown[]) => unknown;
+};
 
 const INSTANCE_ARG_INDEX = 0;
 const VALUE_ARG_INDEX = 2;
@@ -229,8 +369,13 @@ const TYPE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9\-_+]{2,}$/;
  * name or the name is not a valid GType name, when an entry in
  * `RegisterClassOptions.implements` is not a registered interface, when a
  * listed interface has a prerequisite that neither the parent type nor another listed interface meets,
- * and when an entry in `RegisterClassOptions.properties` names its `GObject.ParamSpec` something other
- * than the canonical spelling of the key it sits under.
+ * when an entry in `RegisterClassOptions.properties` names its `GObject.ParamSpec` something other
+ * than the canonical spelling of the key it sits under, when an entry in
+ * `RegisterClassOptions.signals` carries an invalid name, a name the type already knows, a GType
+ * that cannot hold a value, or an accumulator the spec does not admit, and when
+ * `RegisterClassOptions.cssName` is
+ * given for a class that does not extend `Gtk.Widget`. An exception thrown by
+ * `RegisterClassOptions.classInit` also propagates, after the type has already been registered.
  *
  * A slot is filled from the `vfunc`-prefixed methods on the class's prototype chain, up to but not
  * including the registered ancestor the class extends, so a method an intermediate base class
@@ -255,7 +400,11 @@ const TYPE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9\-_+]{2,}$/;
 function registerClass<
     T extends AnyClass,
     TProperties extends Record<string, PropertySpec> = Record<never, PropertySpec>,
->(klass: T, options?: RegisterClassOptions<T["prototype"], TProperties>): RegisteredClass<T, TProperties>;
+    TSignals extends Record<string, SignalSpec> = Record<never, SignalSpec>,
+>(
+    klass: T,
+    options?: RegisterClassOptions<T["prototype"], TProperties, TSignals>,
+): RegisteredClass<T, TProperties, TSignals>;
 
 function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): AnyClass {
     const parentType = resolveParentType(klass);
@@ -268,7 +417,9 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     const declaredTypes = resolveInterfaceTypes(klass, options.implements ?? []);
     const adoptedTypes = declaredTypes.filter((gtype) => !typeIsA(parentType, gtype));
     const properties = options.properties ?? {};
-    const { methods, inheritedNames } = collectInstanceMembers(klass);
+    const signals = resolveDeclaredSignals(klass, options.signals ?? {});
+    const members = collectInstanceMembers(klass);
+    const { methods, inheritedNames } = members;
     const dispatch = buildPropertyDispatch({ klass, properties, adoptedTypes });
 
     const classVfuncs = [
@@ -278,13 +429,34 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
 
     const claimedMethodNames = new Set(classVfuncs.map((vfunc) => vfunc.methodName));
     const interfaceBindings = discoverInterfaceBindings(methods, parentType, declaredTypes, claimedMethodNames);
-    const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings, properties, options.abstract ?? false);
+
+    const nativeOptions = withNativeSignals(
+        toNativeOptions(classVfuncs, interfaceBindings, properties, options),
+        signals.native,
+    );
+
     const newType: bigint = nativeRegisterClass(name, parentType, nativeOptions);
     registerClassType(klass, newType);
     markDerivedClass(klass);
     applyInterfaceMixins(klass, adoptedTypes, inheritedNames);
+    installDeclaredSignalMethods(klass, signals.table, members.names);
+    invokeClassInit(options, newType);
 
     return klass;
+}
+
+function invokeClassInit(options: AnyRegisterClassOptions, newType: bigint): void {
+    if (options.classInit === undefined) {
+        return;
+    }
+
+    const structClass = getClassStructClass(newType);
+
+    if (structClass === undefined) {
+        throw new Error("registerClass: no ancestor of the new type registers a class struct wrapper");
+    }
+
+    options.classInit(wrapHandle(getTypeClass(newType), structClass));
 }
 
 function resolveTypeName(klass: AnyClass, options: AnyRegisterClassOptions): string {
@@ -551,6 +723,145 @@ function buildPropertyVfunc(
     };
 }
 
+const canonicalSignalName = (name: string): string => name.replaceAll("_", "-");
+
+function resolveSignalGType(klass: AnyClass, signalName: string, role: string, entry: SignalGType): bigint {
+    if (typeof entry === "bigint") {
+        return entry;
+    }
+
+    const gtype = getClassType(entry);
+
+    if (gtype === TYPE_INVALID) {
+        throw new TypeError(
+            `registerClass: signal '${signalName}' of ${klass.name} names a class with no registered ` +
+            `GType as its ${role}`,
+        );
+    }
+
+    return gtype;
+}
+
+function resolveSignalReturnType(klass: AnyClass, name: string, spec: SignalSpec): bigint | undefined {
+    if (spec.returnType === undefined) {
+        return undefined;
+    }
+
+    const returnType = resolveSignalGType(klass, name, "return type", spec.returnType);
+
+    return returnType === TYPE_NONE ? undefined : returnType;
+}
+
+function resolveDeclaredSignal(
+    klass: AnyClass,
+    name: string,
+    spec: SignalSpec,
+): { native: NativeRegisterClassSignal; declared: DeclaredSignalTypes } {
+    const paramTypes = (spec.paramTypes ?? []).map((entry, index) =>
+        resolveSignalGType(klass, name, `parameter ${String(index)}`, entry),
+    );
+
+    const returnType = resolveSignalReturnType(klass, name, spec);
+    const native: NativeRegisterClassSignal = { name, paramTypes };
+    const declared: DeclaredSignalTypes = { paramTypes };
+
+    if (spec.flags !== undefined) {
+        native.flags = spec.flags;
+    }
+
+    if (spec.accumulator !== undefined) {
+        native.accumulator = spec.accumulator;
+    }
+
+    if (returnType !== undefined) {
+        native.returnType = returnType;
+        declared.returnType = returnType;
+    }
+
+    return { native, declared };
+}
+
+function resolveDeclaredSignals(klass: AnyClass, signals: Record<string, SignalSpec>): DeclaredSignals {
+    const native: NativeRegisterClassSignal[] = [];
+    const table: Map<string, DeclaredSignalTypes> = new Map();
+
+    for (const [name, spec] of Object.entries(signals)) {
+        const resolved = resolveDeclaredSignal(klass, name, spec);
+        native.push(resolved.native);
+        table.set(canonicalSignalName(name), resolved.declared);
+    }
+
+    return { native, table };
+}
+
+function inheritedSignalMethod<T>(inherited: T | undefined, signal: string): T {
+    if (inherited === undefined) {
+        throw new Error(`Unknown signal '${signal}'`);
+    }
+
+    return inherited;
+}
+
+function installDeclaredConnect(
+    proto: SignalMethodHost,
+    findDeclared: (signal: string) => DeclaredSignalTypes | undefined,
+): void {
+    const inheritedConnect = proto.connect;
+
+    proto.connect = function connect(
+        this: object,
+        signal: string,
+        handler: SignalHandler,
+        isAfter?: boolean,
+    ): number {
+        if (findDeclared(signal) === undefined) {
+            return inheritedSignalMethod(inheritedConnect, signal).call(this, signal, handler, isAfter);
+        }
+
+        return connectClosureSignal(this, signal, handler, isAfter ?? false);
+    };
+}
+
+function installDeclaredEmit(
+    proto: SignalMethodHost,
+    findDeclared: (signal: string) => DeclaredSignalTypes | undefined,
+): void {
+    const inheritedEmit = proto.emit;
+
+    proto.emit = function emit(this: object, sigName: string, ...args: unknown[]): unknown {
+        const declared = findDeclared(sigName);
+
+        if (declared === undefined) {
+            return inheritedSignalMethod(inheritedEmit, sigName).call(this, sigName, ...args);
+        }
+
+        return emitDeclaredSignal(this, sigName, declared, args);
+    };
+}
+
+function installDeclaredSignalMethods(
+    klass: AnyClass,
+    table: Map<string, DeclaredSignalTypes>,
+    definedNames: Set<string>,
+): void {
+    if (table.size === 0) {
+        return;
+    }
+
+    const proto = klass.prototype as SignalMethodHost;
+
+    const findDeclared = (signal: string): DeclaredSignalTypes | undefined =>
+        table.get(canonicalSignalName(getSignalBaseName(signal)));
+
+    if (!definedNames.has("connect")) {
+        installDeclaredConnect(proto, findDeclared);
+    }
+
+    if (!definedNames.has("emit")) {
+        installDeclaredEmit(proto, findDeclared);
+    }
+}
+
 function toNativeInterface(binding: InterfaceVfuncBinding): NativeRegisterClassInterface {
     const nativeInterface: NativeRegisterClassInterface = {
         type: binding.gtype,
@@ -566,17 +877,35 @@ function toNativeInterface(binding: InterfaceVfuncBinding): NativeRegisterClassI
     return nativeInterface;
 }
 
+function withNativeSignals(
+    options: NativeRegisterClassOptions | undefined,
+    signals: NativeRegisterClassSignal[],
+): NativeRegisterClassOptions | undefined {
+    if (signals.length === 0) {
+        return options;
+    }
+
+    return { ...options, signals };
+}
+
+function applyNativeTypeOptions(options: NativeRegisterClassOptions, source: AnyRegisterClassOptions): void {
+    if (source.abstract ?? false) {
+        options.abstract = true;
+    }
+
+    if (source.cssName !== undefined) {
+        options.cssName = source.cssName;
+    }
+}
+
 function toNativeOptions(
     classVfuncs: DiscoveredVfunc[],
     interfaceBindings: InterfaceVfuncBinding[],
     properties: Record<string, PropertySpec>,
-    isAbstract: boolean,
+    source: AnyRegisterClassOptions,
 ): NativeRegisterClassOptions | undefined {
     const options: NativeRegisterClassOptions = {};
-
-    if (isAbstract) {
-        options.abstract = true;
-    }
+    applyNativeTypeOptions(options, source);
 
     if (Object.keys(properties).length > 0) {
         options.properties = toNativeProperties(properties);
@@ -593,4 +922,4 @@ function toNativeOptions(
     return Object.keys(options).length > 0 ? options : undefined;
 }
 
-export { type Interface, registerClass };
+export { type Interface, registerClass, type SignalGType, type SignalSpec };
