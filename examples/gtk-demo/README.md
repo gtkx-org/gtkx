@@ -12,7 +12,8 @@ The demos live under `src/demos`, grouped by category:
 - **dialogs**: file and font pickers, printing, and page setup.
 - **gestures**: drag and drop, clipboard, cursors, and shortcut triggers.
 - **opengl**: `@gtkx/gl` driving `GtkGLArea`, with gears and a Shadertoy player.
-- **advanced**, **input**, **drawing**, **media**, **navigation**, **benchmark**, and **games** cover text rendering and font features, entries and text views, drawing areas and paintables, video playback, stacks and revealers, and a minesweeper.
+- **drawing**: `@gtkx/cairo` behind `GtkDrawingArea`, plus images and an SVG paintable.
+- **advanced**, **input**, **media**, **navigation**, **benchmark**, and **games** cover text rendering and font features, entries and text views, video playback, stacks and revealers, and a minesweeper.
 
 The shell around them uses `ListView` from `@gtkx/components` for the sidebar, a `GtkWindow` for demos that open their own window, and a `GSimpleAction` set wired to a `GMenu` and a `GtkShortcutController`. `tests/` exercises the app with `@gtkx/testing`.
 

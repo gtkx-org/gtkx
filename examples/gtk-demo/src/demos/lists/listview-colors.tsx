@@ -1,4 +1,4 @@
-import type { Context } from "@gtkx/gi/cairo";
+import type { Context } from "@gtkx/cairo";
 import { DropDown, GridView, type ListItemRenderer } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
