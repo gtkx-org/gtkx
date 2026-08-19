@@ -303,6 +303,10 @@ function coercePropertyValue(gtype: bigint, propertyName: string, value: unknown
  * @returns The value as the property accepts it.
  */
 function coerceObjectProperty(obj: object, propertyName: string, value: unknown): unknown {
+    if (typeof value !== "number") {
+        return value;
+    }
+
     const gtype = getInstanceType(obj);
 
     return gtype === TYPE_INVALID ? value : coercePropertyValue(gtype, propertyName, value);
