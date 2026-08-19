@@ -13,6 +13,7 @@ import { dirname, join, relative } from "node:path";
 import { keepFailedProject, type SourceModule } from "../compile.js";
 import { createStagingDir } from "../staging.js";
 import { compileStore } from "./compile-store.js";
+import { ensureExternalPackageLinks } from "./external-package-links.js";
 
 /** Where one generated store is written and how it is reached. */
 type StoreOptions = {
@@ -148,11 +149,15 @@ const isStoreLinked = (link: StoreLink): boolean => {
 };
 
 const ensureStoreLink = (link: StoreLink): void => {
-    if (!existsSync(join(link.storeDir, "package.json")) || isStoreLinked(link)) {
+    if (!existsSync(join(link.storeDir, "package.json"))) {
         return;
     }
 
-    symlinkRelative(link.linkDir, link.storeDir);
+    if (!isStoreLinked(link)) {
+        symlinkRelative(link.linkDir, link.storeDir);
+    }
+
+    ensureExternalPackageLinks(link.storeDir);
 };
 
 const storeWriteMessage = (storeDir: string, error: unknown): string =>
@@ -176,6 +181,7 @@ export {
     buildManifest,
     ensureStoreLink,
     namespaceBarrel,
+    symlinkRelative,
     writeStore,
     type StoreOptions,
     type RawFile,

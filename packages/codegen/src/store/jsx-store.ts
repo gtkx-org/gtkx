@@ -1,13 +1,24 @@
+import { sortStrings } from "@gtkx/utils";
 import type { JsxNamespaceFile } from "./jsx/pipeline.js";
 import type { RawFile } from "./store-fs.js";
 import { buildManifest, namespaceBarrel, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
 
-const writeJsxStore = (
-    options: StoreOptions,
-    namespaces: JsxNamespaceFile[],
-    metadata: string,
-    rawFiles: RawFile[],
-): void => {
+type WriteJsxStoreParams = {
+    options: StoreOptions;
+    namespaces: JsxNamespaceFile[];
+    metadata: string;
+    externalPackages: string[];
+    rawFiles: RawFile[];
+};
+
+const jsxPeerDependencies = (externalPackages: string[]): Record<string, string> =>
+    Object.fromEntries(
+        sortStrings(["@gtkx/gi", "@gtkx/react", "react", ...externalPackages]).map((name) => [name, "*"]),
+    );
+
+const writeJsxStore = (params: WriteJsxStoreParams): void => {
+    const { options, namespaces, metadata, externalPackages, rawFiles } = params;
+
     const exportsMap: Record<string, unknown> = {
         "./metadata": subpathExport("metadata"),
     };
@@ -27,7 +38,7 @@ const writeJsxStore = (
             name: "@gtkx/jsx",
             version: options.version,
             exports: exportsMap,
-            peerDependencies: { "@gtkx/gi": "*", "@gtkx/react": "*", react: "*" },
+            peerDependencies: jsxPeerDependencies(externalPackages),
         }),
         rawFiles,
     });

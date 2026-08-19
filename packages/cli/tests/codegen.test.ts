@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -25,6 +26,8 @@ type ValueReturnCase = {
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
+const CAIRO_PACKAGE = "@gtkx/cairo";
+const WORKSPACE_CAIRO = fileURLToPath(new URL("../../cairo", import.meta.url));
 
 const GI_MODULES = [
     join("gtk", "gtk.js"),
@@ -171,6 +174,15 @@ const storePath = (project: CliProject, ...segments: string[]): string =>
 const linkPath = (project: CliProject, ...segments: string[]): string =>
     join(project.nodeModules, "@gtkx", ...segments);
 
+const storeLocalCairoLink = (project: CliProject, store: string): string =>
+    storePath(project, store, "node_modules", "@gtkx", "cairo");
+
+const storeManifest = (project: CliProject, store: string): { peerDependencies?: Record<string, string> } =>
+    JSON.parse(generatedModule(project, store, "package.json")) as { peerDependencies?: Record<string, string> };
+
+const resolveCairoFrom = (project: CliProject): string =>
+    createRequire(storePath(project, "gi", "gtk", "gtk.js")).resolve(`${CAIRO_PACKAGE}/package.json`);
+
 const markStore = (project: CliProject): void => {
     writeFileSync(storePath(project, "gi", MARKER), "");
 };
@@ -214,6 +226,24 @@ describe("gtkx codegen", () => {
         expectModules(linkPath(state.project, "jsx"), JSX_MODULES);
     });
 
+    it("binds cairo through @gtkx/cairo and keeps the deprecated @gtkx/gi/cairo alias", () => {
+        expect(state.status).toBe(0);
+        expect(generatedModule(state.project, "gi", "gtk", "gtk.js")).toContain(`import "${CAIRO_PACKAGE}";`);
+
+        expect(generatedModule(state.project, "gi", "gtk", "gtk.d.ts"))
+            .toContain(`import * as cairo from "${CAIRO_PACKAGE}";`);
+
+        expect(generatedModule(state.project, "gi", "cairo", "index.js"))
+            .toContain(`export * from "${CAIRO_PACKAGE}";`);
+
+        expect(existsSync(storePath(state.project, "gi", "cairo", "cairo.js"))).toBe(false);
+        expect(storeManifest(state.project, "gi").peerDependencies?.[CAIRO_PACKAGE]).toBe("*");
+        expect(storeManifest(state.project, "jsx").peerDependencies?.[CAIRO_PACKAGE]).toBe("*");
+        const installed = realpathSync(join(state.project.nodeModules, "@gtkx", "cairo", "package.json"));
+        expect(realpathSync(resolveCairoFrom(state.project))).toBe(installed);
+        expect(existsSync(storeLocalCairoLink(state.project, "gi"))).toBe(false);
+    });
+
     it("leaves a fresh store alone, and restores a link an install pruned", () => {
         markStore(state.project);
         expect(runCli(state.project, ["codegen"]).status).toBe(0);
@@ -230,6 +260,43 @@ describe("gtkx codegen", () => {
         expect(isStoreMarked(state.project)).toBe(false);
         expectModules(storePath(state.project, "gi"), GI_MODULES);
         expectModules(storePath(state.project, "jsx"), JSX_MODULES);
+    });
+});
+
+describe("gtkx codegen (a project that does not install @gtkx/cairo)", () => {
+    const state: { project: CliProject; status: number | null } = {
+        project: { root: "", nodeModules: "" },
+        status: null,
+    };
+
+    beforeAll(() => {
+        state.project = createCliProject({
+            prefix: "gtkx-cli-codegen-nocairo-",
+            config: config(""),
+            omitPackages: ["cairo"],
+        });
+
+        state.status = runCli(state.project, ["codegen"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it("links the copy @gtkx/codegen depends on into both stores", () => {
+        expect(state.status).toBe(0);
+        expect(realpathSync(storeLocalCairoLink(state.project, "gi"))).toBe(realpathSync(WORKSPACE_CAIRO));
+        expect(realpathSync(storeLocalCairoLink(state.project, "jsx"))).toBe(realpathSync(WORKSPACE_CAIRO));
+        expect(realpathSync(resolveCairoFrom(state.project))).toBe(realpathSync(join(WORKSPACE_CAIRO, "package.json")));
+    });
+
+    it("keeps the link across runs and drops it once the project installs the package", () => {
+        expect(runCli(state.project, ["codegen"]).status).toBe(0);
+        expect(realpathSync(storeLocalCairoLink(state.project, "gi"))).toBe(realpathSync(WORKSPACE_CAIRO));
+        symlinkSync(WORKSPACE_CAIRO, join(state.project.nodeModules, "@gtkx", "cairo"), "dir");
+        expect(runCli(state.project, ["codegen"]).status).toBe(0);
+        expect(existsSync(storeLocalCairoLink(state.project, "gi"))).toBe(false);
+        expect(existsSync(storeLocalCairoLink(state.project, "jsx"))).toBe(false);
     });
 });
 

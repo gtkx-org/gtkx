@@ -49,6 +49,9 @@ importers:
 
   .:
     devDependencies:
+      '@gtkx/cairo':
+        specifier: workspace:*
+        version: link:packages/cairo
       '@gtkx/eslint':
         specifier: workspace:*
         version: link:packages/eslint
@@ -134,6 +137,9 @@ importers:
 
   examples/gtk-demo:
     dependencies:
+      '@gtkx/cairo':
+        specifier: workspace:*
+        version: link:../../packages/cairo
       '@gtkx/components':
         specifier: workspace:*
         version: link:../../packages/components
@@ -279,6 +285,9 @@ importers:
 
   packages/codegen:
     dependencies:
+      '@gtkx/cairo':
+        specifier: workspace:*
+        version: link:../cairo
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
@@ -402,6 +411,9 @@ importers:
 
   packages/e2e:
     devDependencies:
+      '@gtkx/cairo':
+        specifier: workspace:*
+        version: link:../cairo
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config

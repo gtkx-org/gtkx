@@ -21,6 +21,9 @@
         "path": "../../packages/components/tsconfig.lib.json"
       },
       {
+        "path": "../../packages/cairo/tsconfig.lib.json"
+      },
+      {
         "path": "../../packages/testing/tsconfig.lib.json"
       },
       {

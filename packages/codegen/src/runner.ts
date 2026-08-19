@@ -8,6 +8,7 @@ import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
 import { sweepStagingDirs } from "./staging.js";
+import { externalPackageNotices } from "./store/external-package-links.js";
 import { ensureStoreLink, type StoreOptions } from "./store/store-fs.js";
 
 type GlCodegenOptions = {
@@ -53,6 +54,8 @@ type CodegenRunnerResult = {
     namespaces: number;
     /** How many JSX elements the jsx store binds, zero when no jsx store was requested. */
     intrinsicElements: number;
+    /** Deprecation notices about how the store was wired, one line each; empty when nothing needs attention. */
+    notices: string[];
     /** Wall-clock duration of the run, in milliseconds. */
     duration: number;
 };
@@ -85,6 +88,7 @@ const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerR
         isRegenerated: store.isRegenerated,
         namespaces: store.namespaces,
         intrinsicElements: store.intrinsicElements,
+        notices: externalPackageNotices(options.gi.storeDir),
         duration: Date.now() - start,
     };
 };

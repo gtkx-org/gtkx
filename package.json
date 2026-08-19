@@ -147,6 +147,7 @@
         }
     },
     "devDependencies": {
+        "@gtkx/cairo": "workspace:*",
         "@gtkx/eslint": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",

@@ -4,6 +4,7 @@ import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import packageManifest from "../package.json" with { type: "json" };
+import { EXTERNAL_NAMESPACES } from "./gir/external-namespaces.js";
 import { arrayGuard, hasFields, isNumber, isString, optionalGuard } from "./guards.js";
 import { readJsonFile } from "./json.js";
 
@@ -67,6 +68,8 @@ const overrideFiles = (): string[] => {
 const hashGi = (inputs: GiInputs): string => {
     const hash = createHash("sha256");
     hash.update(CODEGEN_VERSION);
+    hash.update("\n");
+    hash.update(JSON.stringify(EXTERNAL_NAMESPACES));
     hash.update("\n");
     hash.update(sortAlpha(inputs.libraries));
     hash.update("\n");

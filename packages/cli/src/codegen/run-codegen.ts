@@ -7,7 +7,7 @@ import {
     resolveLazyElements,
     resolveOmittedProps,
 } from "@gtkx/config/internal";
-import { info } from "@gtkx/utils";
+import { info, warn } from "@gtkx/utils";
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { resolveDataDir } from "../internal/data-dir.js";
@@ -32,6 +32,7 @@ type RunCodegenResult = {
     isRegenerated: boolean;
     namespaces: number;
     intrinsicElements: number;
+    notices: string[];
     duration: number;
     girPath?: string[] | undefined;
     configFile?: string | undefined;
@@ -108,11 +109,18 @@ const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
     isRegenerated: false,
     namespaces: 0,
     intrinsicElements: 0,
+    notices: [],
     duration: 0,
     girPath: [],
     configFile,
     libraries: [],
 });
+
+const warnNotices = (notices: string[]): void => {
+    for (const notice of notices) {
+        warn(notice);
+    }
+};
 
 const regeneratedStorePaths = (store: CodegenStore): string[] => {
     if (store.react === null) {
@@ -169,10 +177,13 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
         isForced,
     });
 
+    warnNotices(result.notices);
+
     return {
         isRegenerated: result.isRegenerated,
         namespaces: result.namespaces,
         intrinsicElements: result.intrinsicElements,
+        notices: result.notices,
         duration: result.duration,
         girPath,
         configFile,

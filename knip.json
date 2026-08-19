@@ -37,6 +37,7 @@
                 "gtkx.config.base.ts"
             ],
             "ignoreDependencies": [
+                "@gtkx/cairo",
                 "@gtkx/runtime",
                 "@gtkx/native"
             ]
@@ -58,6 +59,11 @@
         },
         "packages/cairo": {
             "includeEntryExports": false
+        },
+        "packages/codegen": {
+            "ignoreDependencies": [
+                "@gtkx/cairo"
+            ]
         },
         "packages/components": {
             "includeEntryExports": false,

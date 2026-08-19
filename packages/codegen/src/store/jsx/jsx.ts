@@ -3,6 +3,7 @@ import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
+import { externalPackageFor } from "../../gir/external-namespaces.js";
 import { renderBlock } from "../../writer/emit.js";
 import { getDoc } from "../gi/doc-spec.js";
 import { elementPropTypeFor } from "./element-prop-imports.js";
@@ -48,7 +49,8 @@ const addGiNamespace = (imports: ImportsBuilder, namespaceName: string, alias: s
         return;
     }
 
-    imports.addNamespace(`@gtkx/gi/${namespaceName.toLowerCase()}`, alias, true);
+    const specifier = externalPackageFor(namespaceName) ?? `@gtkx/gi/${namespaceName.toLowerCase()}`;
+    imports.addNamespace(specifier, alias, true);
 };
 
 const addReactBuiltin = (imports: ImportsBuilder, name: string): void => {

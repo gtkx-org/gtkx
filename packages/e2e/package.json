@@ -8,6 +8,7 @@
         "test:asan": "tsx ../../scripts/asan-e2e.ts"
     },
     "devDependencies": {
+        "@gtkx/cairo": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/gl": "workspace:*",
         "@gtkx/native": "workspace:*",

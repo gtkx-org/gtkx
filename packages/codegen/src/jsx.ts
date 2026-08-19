@@ -6,6 +6,7 @@ import {
     type JsxFingerprintInput,
     jsxStoreFreshness,
 } from "./fingerprint.js";
+import { externalPackageFor } from "./gir/external-namespaces.js";
 import { type ModuleExport, readBuiltinElements } from "./react/element-config.js";
 import { writeJsxStore } from "./store/jsx-store.js";
 import { ELEMENTS_FILENAME, renderGeneratedElements } from "./store/jsx/generated-elements.js";
@@ -53,7 +54,9 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
         }
     }
 
-    const { namespaces, metadata, intrinsicElementCount, elements } = generateJsxFiles(options.getLibrary(), {
+    const library = options.getLibrary();
+
+    const { namespaces, metadata, intrinsicElementCount, elements } = generateJsxFiles(library, {
         reactSubexports: options.reactSubexports,
         components,
         lazyElements,
@@ -61,15 +64,36 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
         omittedProps,
     });
 
-    writeJsxStore(options.jsx, namespaces, metadata, [
-        {
-            relativePath: FINGERPRINT_FILENAME,
-            content: `${JSON.stringify(computeJsxFingerprint(fingerprintInput, intrinsicElementCount), null, 2)}\n`,
-        },
-        { relativePath: ELEMENTS_FILENAME, content: renderGeneratedElements(elements) },
-    ]);
+    writeJsxStore({
+        options: options.jsx,
+        namespaces,
+        metadata,
+        externalPackages: storeExternalPackages(library),
+        rawFiles: [
+            {
+                relativePath: FINGERPRINT_FILENAME,
+                content:
+                    `${JSON.stringify(computeJsxFingerprint(fingerprintInput, intrinsicElementCount), null, 2)}\n`,
+            },
+            { relativePath: ELEMENTS_FILENAME, content: renderGeneratedElements(elements) },
+        ],
+    });
 
     return { isRegenerated: true, intrinsicElementCount };
+};
+
+const storeExternalPackages = (library: Library): string[] => {
+    const packages: Set<string> = new Set();
+
+    for (const namespace of library.namespaces.values()) {
+        const packageName = externalPackageFor(namespace.name);
+
+        if (packageName !== undefined) {
+            packages.add(packageName);
+        }
+    }
+
+    return [...packages];
 };
 
 export { runJsxCodegen };
