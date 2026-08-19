@@ -82,6 +82,7 @@ type ParamDescriptorOptions = {
     isCallerAllocated?: boolean;
     isConsumed?: boolean;
     isUnpacked?: boolean;
+    isRequired?: boolean;
 };
 
 type ArgIndexOptions = {
@@ -418,6 +419,10 @@ const paramDescriptorLiteral = (descriptor: string, options: ParamDescriptorOpti
         parts.push("isUnpacked: true");
     }
 
+    if (options.isRequired === true) {
+        parts.push("isRequired: true");
+    }
+
     return `{ ${parts.join(", ")} }`;
 };
 
@@ -473,6 +478,8 @@ const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPlan[] =>
 
 const isSkippedPlanParameter = (parameter: GirParameter, index: number, closureIndices: Set<number>): boolean =>
     parameter.isVarargs || closureIndices.has(index);
+
+const isRequiredParameter = (parameter: GirParameter): boolean => !parameter.nullable && !parameter.optional;
 
 const planParameter = (
     context: ModuleContext,
@@ -608,6 +615,7 @@ const planInoutParam = (
                 direction: "inout",
                 isCallerAllocated: true,
                 isConsumed,
+                isRequired: isRequiredParameter(parameter),
             }),
             inputExpr: parameterIdentifier(parameter, index),
         };
@@ -619,7 +627,11 @@ const planInoutParam = (
     });
 
     return {
-        paramLiteral: paramDescriptorLiteral(descriptor, { direction: "inout", isConsumed }),
+        paramLiteral: paramDescriptorLiteral(descriptor, {
+            direction: "inout",
+            isConsumed,
+            isRequired: lengthSource === undefined && isRequiredParameter(parameter),
+        }),
         inputExpr:
             lengthSource === undefined
                 ? parameterCallExpression(context, parameter, index, { fn })
@@ -652,7 +664,7 @@ const planInParam = (
         );
 
     return {
-        paramLiteral: paramDescriptorLiteral(descriptor, {}),
+        paramLiteral: paramDescriptorLiteral(descriptor, { isRequired: isRequiredParameter(parameter) }),
         inputExpr: parameterCallExpression(context, parameter, index, { fn }),
     };
 };

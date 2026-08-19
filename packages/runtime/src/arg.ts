@@ -12,6 +12,8 @@ type Arg = {
     isConsumed?: boolean;
     /** When true, the argument is a `GValue` the callee fills in, packed into the result as what it holds. */
     isUnpacked?: boolean;
+    /** When true, the caller must provide the argument: `undefined` is rejected instead of reaching C as `NULL`. */
+    isRequired?: boolean;
 };
 
 const isOutputArg = (arg: Arg): boolean => arg.direction !== undefined;

@@ -149,6 +149,17 @@ const isPassThroughPlan = (plan: ArgSpec, index: number): boolean =>
     !plan.isCallerAllocated &&
     plan.arg.type.kind !== "callback";
 
+const requiredInputIndices = (plans: ArgSpec[]): number[] =>
+    plans.filter((plan) => plan.requiresInput && plan.arg.isRequired === true).map((plan) => plan.inputIndex);
+
+const assertRequiredInputs = (requiredIndices: number[], inputs: unknown[]): void => {
+    for (const index of requiredIndices) {
+        if (inputs[index] === undefined) {
+            throw new TypeError(`Missing required argument at position ${String(index + 1)}`);
+        }
+    }
+};
+
 const resizeInputs = (inputs: unknown[], argCount: number): unknown[] => {
     while (inputs.length < argCount) {
         inputs.push(undefined);
@@ -170,9 +181,16 @@ const directCallable = (
     descriptor: ExternalObject<CallDescriptor>,
     readReturn: (nativeResult: unknown) => unknown,
     hasPrimary: boolean,
-    argCount: number,
+    plans: ArgSpec[],
 ): ((...inputs: unknown[]) => unknown) => {
-    const marshal = (inputs: unknown[]): unknown => readReturn(call(descriptor, resizeInputs(inputs, argCount)));
+    const argCount = plans.length;
+    const requiredIndices = requiredInputIndices(plans);
+
+    const marshal = (inputs: unknown[]): unknown => {
+        assertRequiredInputs(requiredIndices, inputs);
+
+        return readReturn(call(descriptor, resizeInputs(inputs, argCount)));
+    };
 
     if (hasPrimary) {
         return (...inputs) => marshal(inputs);
@@ -196,14 +214,17 @@ function fromNativeCallable(
     const readReturn = returnReader(spec);
 
     if (!canThrow && arePassThrough) {
-        return directCallable(descriptor, readReturn, hasPrimary, plans.length);
+        return directCallable(descriptor, readReturn, hasPrimary, plans);
     }
+
+    const requiredIndices = requiredInputIndices(plans);
 
     const shape = (inputs: unknown[], nativeValues: unknown[], nativeResult: unknown): unknown =>
         packTupleResult(readOutParams(outPlans, inputs, nativeValues), readReturn(nativeResult), hasPrimary);
 
     if (canThrow) {
         return (...inputs) => {
+            assertRequiredInputs(requiredIndices, inputs);
             const nativeValues = buildNativeValues(plans, inputs, getRefSeeds?.());
             const errorRef: Ref = { value: null };
             nativeValues.push(errorRef);
@@ -215,6 +236,7 @@ function fromNativeCallable(
     }
 
     return (...inputs) => {
+        assertRequiredInputs(requiredIndices, inputs);
         const nativeValues = buildNativeValues(plans, inputs, getRefSeeds?.());
 
         return shape(inputs, nativeValues, call(descriptor, nativeValues));
