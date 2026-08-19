@@ -80,10 +80,11 @@ type ValueNarrower = (jsValue: unknown) => unknown;
  * JavaScript value a `GObject.Value` can be built from without being told which GType to hold, for the
  * parameters that take one. A string holds `gchararray`, a boolean `gboolean`, an integer within `gint`
  * range `gint` and any other number `gdouble`, a `bigint` `gint64` or `guint64` past its range, an array
- * of strings `GStrv`, and a wrapper instance the GType it carries. Reaching a GType inference cannot
- * name, such as `guchar` or an enumeration, takes an explicitly initialized `GObject.Value` instead.
+ * of strings `GStrv`, a wrapper instance the GType it carries, and `null` a NULL `gpointer`, which is
+ * what GJS infers for it and which few callees accept. Reaching a GType inference cannot name, such as
+ * `guchar` or an enumeration, takes an explicitly initialized `GObject.Value` instead.
  */
-type JsValue = string | number | bigint | boolean | string[] | TypedClass;
+type JsValue = string | number | bigint | boolean | string[] | TypedClass | null;
 
 const setBoxedCache = createBindCache();
 const setStaticBoxedCache = createBindCache();
@@ -486,7 +487,7 @@ const bigintValueGType = (jsValue: bigint): bigint =>
 
 const objectValueGType = (jsValue: object | null, wrapperType: bigint): bigint => {
     if (jsValue === null) {
-        return TYPE_INVALID;
+        return TYPE_POINTER;
     }
 
     return Array.isArray(jsValue) ? arrayValueGType(jsValue) : wrapperType;

@@ -70,6 +70,9 @@ What each JavaScript value infers to:
 | `bigint` | `gint64`, or `guint64` from 2^63 up; outside the 64-bit range it throws |
 | array of strings | `GStrv` |
 | a wrapper instance | the GType it carries |
+| `null` | a NULL `gpointer` |
+
+`null` infers a NULL `gpointer` because that is what GJS infers, so code ported from it behaves the same — but few callees accept a `gpointer`, and it is rarely what you want. A nullable parameter takes `null` as *no value at all*, passing the callee a NULL `GValue *`, and clearing a typed slot takes a value of that type holding nothing, such as `TYPE_OBJECT` with `setObject(null)`.
 
 Inference covers what a JavaScript value can say on its own, which leaves two cases for an explicitly initialized value:
 

@@ -10,6 +10,7 @@ import {
     TYPE_BOOLEAN,
     TYPE_DOUBLE,
     TYPE_INT64,
+    TYPE_POINTER,
     TYPE_STRING,
     TYPE_UINT64,
     typeFromName,
@@ -58,6 +59,11 @@ describe("a JavaScript value passed where a GObject.Value is expected", () => {
     it("holds a bigint past the signed range as guint64", () => {
         expect(heldType(2n ** 63n)).toBe(TYPE_UINT64);
         expect(held(2n ** 63n)).toBe(2n ** 63n);
+    });
+
+    it("holds null as a NULL gpointer, the way GJS does", () => {
+        expect(heldType(null)).toBe(TYPE_POINTER);
+        expect(held(null)).toBeNull();
     });
 
     it("holds an array of strings as GStrv", () => {
@@ -138,10 +144,6 @@ describe("the GType inferred from a number or an array", () => {
 });
 
 describe("a value no GType can be inferred from", () => {
-    it("throws for null", () => {
-        expect(() => Gtk.ConstantExpression.newForValue(null as unknown as JsValue)).toThrow(ValueMarshalError);
-    });
-
     it("throws for undefined", () => {
         expect(() => Gtk.ConstantExpression.newForValue(undefined as unknown as JsValue)).toThrow(ValueMarshalError);
     });
