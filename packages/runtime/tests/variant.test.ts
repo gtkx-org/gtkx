@@ -202,3 +202,84 @@ describe("a dictionary packed for a D-Bus call", () => {
         expect(count).toBe(2);
     });
 });
+
+describe("a byte array type", () => {
+    it("packs a Uint8Array and an array of byte values into the same variant GLib parses from its own text", () => {
+        const packed = toVariant("ay", new Uint8Array([1, 2, 3]));
+        expect(packed.equal(parse("@ay [1, 2, 3]"))).toBe(true);
+        expect(toVariant("ay", [1, 2, 3]).equal(packed)).toBe(true);
+        expect(packed.getTypeString()).toBe("ay");
+        const bytes = fromVariant("ay", toVariant("ay", [7, 8]));
+        expect(bytes).toBeInstanceOf(Uint8Array);
+        expect(bytes).toEqual(new Uint8Array([7, 8]));
+    });
+
+    it("carries empty and nested byte arrays through containers", () => {
+        const empty = new Uint8Array();
+        expect(fromVariant("ay", toVariant("ay", empty))).toEqual(empty);
+        expect(fromVariant("ay", toVariant("ay", []))).toEqual(empty);
+        const nested = toVariant("aay", [new Uint8Array([1]), [2, 3]]);
+        expect(fromVariant("aay", nested)).toEqual([new Uint8Array([1]), new Uint8Array([2, 3])]);
+        const present = toVariant("may", new Uint8Array([4]));
+        expect(fromVariant("may", present)).toEqual(new Uint8Array([4]));
+        expect(fromVariant("may", toVariant("may", null))).toBeNull();
+    });
+
+    it("is refused when packed from anything else", () => {
+        const byteArrayType = "ay" as string;
+        expect(() => toVariant(byteArrayType, "bytes")).toThrow();
+        expect(() => toVariant(byteArrayType, 7)).toThrow();
+        expect(() => toVariant(byteArrayType, null)).toThrow();
+        expect(() => toVariant(byteArrayType, { 0: 1 })).toThrow();
+    });
+});
+
+describe("a variant read without a type string", () => {
+    it("derives the shape from the variant's own type", () => {
+        expect(fromVariant(toVariant("i", -3))).toBe(-3);
+        expect(fromVariant(toVariant("(si)", ["a", 1]))).toEqual(["a", 1]);
+        expect(fromVariant(toVariant("a{ss}", { k: "v" }))).toEqual({ k: "v" });
+        const bytes = toVariant("ay", new Uint8Array([9]));
+        expect(fromVariant(bytes)).toEqual(new Uint8Array([9]));
+    });
+
+    it("keeps a nested variant boxed and reads empty containers", () => {
+        const boxed = toVariant("v", toVariant("i", 5));
+        expect(fromVariant(boxed)).toBeInstanceOf(GLib.Variant);
+        expect(fromVariant(toVariant("as", []))).toEqual([]);
+        expect(fromVariant(toVariant("ms", null))).toBeNull();
+    });
+
+    it("is refused when what it reads is not a variant", () => {
+        expect(() => fromVariant({} as GLib.Variant)).toThrow();
+    });
+});
+
+describe("a variant unpacked recursively", () => {
+    it("unwraps the variants a dictionary boxes its values in", () => {
+        const bytes = toVariant("ay", new Uint8Array([1, 2]));
+
+        const packed = toVariant("a{sv}", {
+            count: toVariant("i", 5),
+            data: toVariant("v", bytes),
+            name: toVariant("s", "hi"),
+        });
+
+        const expected = { count: 5, data: new Uint8Array([1, 2]), name: "hi" };
+        expect(fromVariant("a{sv}", packed, { recursive: true })).toEqual(expected);
+        expect(fromVariant(packed, { recursive: true })).toEqual(expected);
+    });
+
+    it("reads a variant boxed inside another all the way down", () => {
+        const doubled = toVariant("v", toVariant("v", toVariant("i", 8)));
+        expect(fromVariant("v", doubled, { recursive: true })).toBe(8);
+        expect(fromVariant("v", doubled, { recursive: false })).toBeInstanceOf(GLib.Variant);
+        expect(fromVariant("(si)", toVariant("(si)", ["a", 1]), { recursive: true })).toEqual(["a", 1]);
+        expect(fromVariant("mv", toVariant("mv", null), { recursive: true })).toBeNull();
+    });
+
+    it("is refused when the type string is not one complete GVariant type", () => {
+        expect(() => fromVariant("m", toVariant("q", 1), { recursive: true })).toThrow();
+        expect(() => fromVariant("qq", toVariant("q", 1), { recursive: true })).toThrow();
+    });
+});

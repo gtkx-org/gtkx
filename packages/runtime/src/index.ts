@@ -89,7 +89,16 @@ export {
     ValueMarshalError,
 } from "./value.js";
 /** @public */
-export { fromVariant, toVariant, type VariantValue } from "./variant.js";
+export {
+    type ByteArray,
+    type FromVariantOptions,
+    fromVariant,
+    type RecursiveFromVariantOptions,
+    type RecursiveVariantValue,
+    toVariant,
+    type VariantInput,
+    type VariantValue,
+} from "./variant.js";
 /** @public */
 export { callParent, callVfunc } from "./vfunc-call.js";
 /** @public */
