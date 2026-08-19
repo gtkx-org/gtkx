@@ -201,10 +201,10 @@ function composeClassStructClass(structs: AnyClass[]): AnyClass | undefined {
         return nearest;
     }
 
-    const composed: AnyClass = class {};
+    const composed: AnyClass = class extends nearest {};
     Object.defineProperty(composed, "name", { value: nearest.name });
 
-    for (const structClass of structs) {
+    for (const structClass of ancestors) {
         copyLayerMembers(composed, structClass.prototype);
     }
 
