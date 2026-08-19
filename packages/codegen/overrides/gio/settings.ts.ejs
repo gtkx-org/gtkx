@@ -1,0 +1,577 @@
+import { type ClosureCallback, registerWrapperClass, resolveType } from "@gtkx/runtime";
+import type * as GLib from "../../glib/glib.js";
+import type * as GObject from "../../gobject/gobject.js";
+import {
+    type Action,
+    Settings as GeneratedSettings,
+    type SettingsBackend,
+    type SettingsBindFlags,
+    type SettingsConstructorProps,
+    type SettingsGetMapping,
+    SettingsSchema,
+    type SettingsSchemaKey,
+    SettingsSchemaSource,
+} from "../gio.js";
+
+const settingsKeys: WeakMap<GeneratedSettings, Set<string>> = new WeakMap();
+const settingsChildren: WeakMap<GeneratedSettings, Set<string>> = new WeakMap();
+
+const isValidPath = (path: string): boolean => path.startsWith("/") && path.endsWith("/") && !path.includes("//");
+
+const lookupSchema = (schemaId: string): SettingsSchema => {
+    const schema = SettingsSchemaSource.getDefault()?.lookup(schemaId, true) ?? null;
+
+    if (schema === null) {
+        throw new Error(`GSettings schema '${schemaId}' is not installed`);
+    }
+
+    return schema;
+};
+
+const checkSchemaPath = (schema: SettingsSchema, path: string | null | undefined): void => {
+    const schemaPath = schema.getPath();
+
+    if (path == null) {
+        if (schemaPath === null) {
+            throw new Error(`Attempting to create GSettings for relocatable schema '${schema.getId()}' without a path`);
+        }
+
+        return;
+    }
+
+    if (!isValidPath(path)) {
+        throw new Error(`Path '${path}' given for GSettings schema '${schema.getId()}' is not a valid path`);
+    }
+
+    if (schemaPath !== null && schemaPath !== path) {
+        throw new Error(`GSettings created for path '${path}', but schema '${schema.getId()}' specifies '${schemaPath}'`);
+    }
+};
+
+const resolveConstructorSchema = (props: SettingsConstructorProps): SettingsSchema => {
+    if (props.settingsSchema != null) {
+        return props.settingsSchema;
+    }
+
+    const schemaId = props.schemaId ?? props.schema;
+
+    if (schemaId == null) {
+        throw new Error("One of properties 'schemaId' or 'settingsSchema' is required for Gio.Settings");
+    }
+
+    return lookupSchema(schemaId);
+};
+
+const settingsSchemaOf = (settings: GeneratedSettings): SettingsSchema => {
+    const schema = settings.settingsSchema;
+
+    if (schema == null) {
+        throw new Error("GSettings object carries no settings schema");
+    }
+
+    return schema;
+};
+
+const checkKey = (settings: GeneratedSettings, key: string): void => {
+    let keys = settingsKeys.get(settings);
+
+    if (keys === undefined) {
+        keys = new Set(settingsSchemaOf(settings).listKeys());
+        settingsKeys.set(settings, keys);
+    }
+
+    if (!keys.has(key)) {
+        throw new Error(`GSettings key '${key}' not found in schema '${settingsSchemaOf(settings).getId()}'`);
+    }
+};
+
+const checkChild = (settings: GeneratedSettings, name: string): void => {
+    let children = settingsChildren.get(settings);
+
+    if (children === undefined) {
+        children = new Set(settings.listChildren());
+        settingsChildren.set(settings, children);
+    }
+
+    if (!children.has(name)) {
+        throw new Error(`Child '${name}' not found in GSettings schema '${settingsSchemaOf(settings).getId()}'`);
+    }
+};
+
+/**
+ * The generated `Gio.Settings` with GLib's fatal misuses turned into JavaScript errors: constructing
+ * against an unknown schema id, instantiating a relocatable schema without a path, giving a path the
+ * schema contradicts, and passing a key or child the schema does not declare all throw an `Error`
+ * instead of aborting the process.
+ */
+class Settings extends GeneratedSettings {
+    constructor(props: SettingsConstructorProps = {}) {
+        checkSchemaPath(resolveConstructorSchema(props), props.path);
+        super(props);
+    }
+
+    /**
+     * Creates a new `Gio.Settings` object with the schema specified by `schemaId`.
+     *
+     * @param schemaId the ID of the schema
+     * @returns a new `Gio.Settings` object
+     * @throws An `Error` when the schema is not installed or is relocatable.
+     */
+    static new(schemaId: string): GeneratedSettings {
+        checkSchemaPath(lookupSchema(schemaId), null);
+
+        return super.new(schemaId);
+    }
+
+    /**
+     * Creates a new `Gio.Settings` object with a given schema, backend and path.
+     *
+     * @param schema the schema describing the settings
+     * @param backend the settings backend to use
+     * @param path the path to use
+     * @returns a new `Gio.Settings` object
+     * @throws An `Error` when the schema needs a path none was given for, or the given path contradicts it.
+     */
+    static newFull(schema: SettingsSchema, backend: SettingsBackend | null, path: string | null): GeneratedSettings {
+        checkSchemaPath(schema, path);
+
+        return super.newFull(schema, backend, path);
+    }
+
+    /**
+     * Creates a new `Gio.Settings` object with the schema specified by `schemaId` and a given backend.
+     *
+     * @param schemaId the ID of the schema
+     * @param backend the settings backend to use
+     * @returns a new `Gio.Settings` object
+     * @throws An `Error` when the schema is not installed or is relocatable.
+     */
+    static newWithBackend(schemaId: string, backend: SettingsBackend): GeneratedSettings {
+        checkSchemaPath(lookupSchema(schemaId), null);
+
+        return super.newWithBackend(schemaId, backend);
+    }
+
+    /**
+     * Creates a new `Gio.Settings` object with the schema specified by `schemaId`, a given backend, and
+     * instantiated at the given path.
+     *
+     * @param schemaId the ID of the schema
+     * @param backend the settings backend to use
+     * @param path the path to use
+     * @returns a new `Gio.Settings` object
+     * @throws An `Error` when the schema is not installed, the path is invalid, or the schema contradicts it.
+     */
+    static newWithBackendAndPath(schemaId: string, backend: SettingsBackend, path: string): GeneratedSettings {
+        checkSchemaPath(lookupSchema(schemaId), path);
+
+        return super.newWithBackendAndPath(schemaId, backend, path);
+    }
+
+    /**
+     * Creates a new `Gio.Settings` object with the relocatable schema specified by `schemaId`,
+     * instantiated at the given path.
+     *
+     * @param schemaId the ID of the schema
+     * @param path the path to use
+     * @returns a new `Gio.Settings` object
+     * @throws An `Error` when the schema is not installed, the path is invalid, or the schema contradicts it.
+     */
+    static newWithPath(schemaId: string, path: string): GeneratedSettings {
+        checkSchemaPath(lookupSchema(schemaId), path);
+
+        return super.newWithPath(schemaId, path);
+    }
+
+    /**
+     * Creates a binding between the `key` in this settings object and the property `property` of `object`.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    bind(key: string, object: GObject.Object, property: string, flags: SettingsBindFlags): void {
+        checkKey(this, key);
+        super.bind(key, object, property, flags);
+    }
+
+    /**
+     * Creates a binding between the `key` in this settings object and the property `property` of `object`,
+     * mapping values with `getMapping` and `setMapping`.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    bindWithMapping(
+        key: string,
+        object: GObject.Object,
+        property: string,
+        flags: SettingsBindFlags,
+        getMapping: GObject.Closure | null | ClosureCallback,
+        setMapping: GObject.Closure | null | ClosureCallback,
+    ): void {
+        checkKey(this, key);
+        super.bindWithMapping(key, object, property, flags, getMapping, setMapping);
+    }
+
+    /**
+     * Creates a binding between the writability of `key` and the property `property` of `object`.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    bindWritable(key: string, object: GObject.Object, property: string, inverted: boolean): void {
+        checkKey(this, key);
+        super.bindWritable(key, object, property, inverted);
+    }
+
+    /**
+     * Creates a `Gio.Action` corresponding to the given key.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    createAction(key: string): Action {
+        checkKey(this, key);
+
+        return super.createAction(key);
+    }
+
+    /**
+     * Gets the value that is stored at `key` as a boolean.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getBoolean(key: string): boolean {
+        checkKey(this, key);
+
+        return super.getBoolean(key);
+    }
+
+    /**
+     * Creates a child settings object for the given child of the schema.
+     *
+     * @throws An `Error` when the schema does not declare a child named `name`.
+     */
+    getChild(name: string): GeneratedSettings {
+        checkChild(this, name);
+
+        return super.getChild(name);
+    }
+
+    /**
+     * Gets the per-schema default value of `key`.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getDefaultValue(key: string): GLib.Variant | null {
+        checkKey(this, key);
+
+        return super.getDefaultValue(key);
+    }
+
+    /**
+     * Gets the value that is stored at `key` as a double.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getDouble(key: string): number {
+        checkKey(this, key);
+
+        return super.getDouble(key);
+    }
+
+    /**
+     * Gets the value that is stored at `key` as an enum value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getEnum(key: string): number {
+        checkKey(this, key);
+
+        return super.getEnum(key);
+    }
+
+    /**
+     * Gets the value that is stored at `key` as a flags value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getFlags(key: string): number {
+        checkKey(this, key);
+
+        return super.getFlags(key);
+    }
+
+    /**
+     * Gets the value that is stored at `key` as a 32-bit integer.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getInt(key: string): number {
+        checkKey(this, key);
+
+        return super.getInt(key);
+    }
+
+    /**
+     * Gets the value that is stored at `key` as a 64-bit integer.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getInt64(key: string): bigint {
+        checkKey(this, key);
+
+        return super.getInt64(key);
+    }
+
+    /**
+     * Gets the value that is stored at `key`, subject to application-level decoding by `mapping`.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getMapped(key: string, mapping: SettingsGetMapping): bigint | null {
+        checkKey(this, key);
+
+        return super.getMapped(key, mapping);
+    }
+
+    /**
+     * Queries the range of a key.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getRange(key: string): GLib.Variant {
+        checkKey(this, key);
+
+        return super.getRange(key);
+    }
+
+    /**
+     * Gets the value that is stored at `key` as a string.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getString(key: string): string {
+        checkKey(this, key);
+
+        return super.getString(key);
+    }
+
+    /**
+     * Gets the value that is stored at `key` as a string array.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getStrv(key: string): string[] {
+        checkKey(this, key);
+
+        return super.getStrv(key);
+    }
+
+    /**
+     * Gets the value that is stored at `key` as a 32-bit unsigned integer.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getUint(key: string): number {
+        checkKey(this, key);
+
+        return super.getUint(key);
+    }
+
+    /**
+     * Gets the value that is stored at `key` as a 64-bit unsigned integer.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getUint64(key: string): bigint {
+        checkKey(this, key);
+
+        return super.getUint64(key);
+    }
+
+    /**
+     * Gets the user-set value of `key`, if any.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getUserValue(key: string): GLib.Variant | null {
+        checkKey(this, key);
+
+        return super.getUserValue(key);
+    }
+
+    /**
+     * Gets the value that is stored at `key` as a `GLib.Variant`.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    getValue(key: string): GLib.Variant {
+        checkKey(this, key);
+
+        return super.getValue(key);
+    }
+
+    /**
+     * Finds out if the given key can be written.
+     *
+     * @throws An `Error` when the schema does not declare `name`.
+     */
+    isWritable(name: string): boolean {
+        checkKey(this, name);
+
+        return super.isWritable(name);
+    }
+
+    /**
+     * Checks if the given `value` is within the permitted range for `key`.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    rangeCheck(key: string, value: GLib.Variant): boolean {
+        checkKey(this, key);
+
+        return super.rangeCheck(key, value);
+    }
+
+    /**
+     * Resets `key` to its default value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    reset(key: string): void {
+        checkKey(this, key);
+        super.reset(key);
+    }
+
+    /**
+     * Sets `key` to a boolean value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    setBoolean(key: string, value: boolean): boolean {
+        checkKey(this, key);
+
+        return super.setBoolean(key, value);
+    }
+
+    /**
+     * Sets `key` to a double value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    setDouble(key: string, value: number): boolean {
+        checkKey(this, key);
+
+        return super.setDouble(key, value);
+    }
+
+    /**
+     * Sets `key` to an enum value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    setEnum(key: string, value: number): boolean {
+        checkKey(this, key);
+
+        return super.setEnum(key, value);
+    }
+
+    /**
+     * Sets `key` to a flags value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    setFlags(key: string, value: number): boolean {
+        checkKey(this, key);
+
+        return super.setFlags(key, value);
+    }
+
+    /**
+     * Sets `key` to a 32-bit integer value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    setInt(key: string, value: number): boolean {
+        checkKey(this, key);
+
+        return super.setInt(key, value);
+    }
+
+    /**
+     * Sets `key` to a 64-bit integer value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    setInt64(key: string, value: bigint): boolean {
+        checkKey(this, key);
+
+        return super.setInt64(key, value);
+    }
+
+    /**
+     * Sets `key` to a string value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    setString(key: string, value: string): boolean {
+        checkKey(this, key);
+
+        return super.setString(key, value);
+    }
+
+    /**
+     * Sets `key` to a string array value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    setStrv(key: string, value: string[] | null): boolean {
+        checkKey(this, key);
+
+        return super.setStrv(key, value);
+    }
+
+    /**
+     * Sets `key` to a 32-bit unsigned integer value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    setUint(key: string, value: number): boolean {
+        checkKey(this, key);
+
+        return super.setUint(key, value);
+    }
+
+    /**
+     * Sets `key` to a 64-bit unsigned integer value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    setUint64(key: string, value: bigint): boolean {
+        checkKey(this, key);
+
+        return super.setUint64(key, value);
+    }
+
+    /**
+     * Sets `key` to a `GLib.Variant` value.
+     *
+     * @throws An `Error` when the schema does not declare `key`.
+     */
+    setValue(key: string, value: GLib.Variant): boolean {
+        checkKey(this, key);
+
+        return super.setValue(key, value);
+    }
+}
+
+registerWrapperClass(Settings, resolveType("libgio-2.0.so.0", "g_settings_get_type"));
+
+const generatedGetKey = SettingsSchema.prototype.getKey;
+
+SettingsSchema.prototype.getKey = function getKey(name: string): SettingsSchemaKey {
+    if (!this.hasKey(name)) {
+        throw new Error(`GSettings key '${name}' not found in schema '${this.getId()}'`);
+    }
+
+    return generatedGetKey.call(this, name);
+};
+
+export { Settings };

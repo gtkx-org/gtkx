@@ -115,6 +115,13 @@
       <default>{'k', 'v'}</default>
       <summary>Key value pair</summary>
     </key>
+    <child name="nested" schema="com.gtkx.test.useSetting.nested"/>
+  </schema>
+  <schema id="com.gtkx.test.useSetting.nested" path="/com/gtkx/test/useSetting/nested/">
+    <key name="depth" type="i">
+      <default>1</default>
+      <summary>Nested depth</summary>
+    </key>
   </schema>
   <schema id="com.gtkx.test.useSetting.profile">
     <key name="title" type="s">

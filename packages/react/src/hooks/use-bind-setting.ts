@@ -23,6 +23,8 @@ type UseBindSettingOptions<K extends SettingsSchemaKeys> = {
 /**
  * Binds a GSettings key to a property of a GObject, keeping the two in sync until the component unmounts.
  * `property` is given in camelCase, and `flags` defaults to `Gio.SettingsBindFlags.DEFAULT`, a two-way bind.
+ *
+ * @throws When the schema is not installed, needs a path it was not given, or does not declare the key.
  */
 function useBindSetting<K extends SettingsSchemaKeys>({
     schema,
