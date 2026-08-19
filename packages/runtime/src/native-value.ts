@@ -7,6 +7,7 @@ import {
     resolveWrapperClass,
     resolveWrapperClassFor,
     wrapCallScopedObject,
+    wrapFundamentalHandle,
     wrapHandle,
     wrapObject,
 } from "./registry.js";
@@ -68,7 +69,7 @@ function fundamentalFromNative(descriptor: FundamentalDescriptor, value: unknown
 
     const handle = value as ExternalObject<Handle>;
 
-    return wrapHandle(handle, fundamentalWrapperClass(descriptor, handle));
+    return wrapFundamentalHandle(handle, fundamentalWrapperClass(descriptor, handle));
 }
 
 function hashTableFromNative(descriptor: HashTableDescriptor, value: unknown): unknown {

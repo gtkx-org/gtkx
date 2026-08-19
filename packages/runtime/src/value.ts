@@ -39,6 +39,7 @@ import {
     getHandle,
     getWrapperClass,
     resolveWrapperClassFor,
+    wrapFundamentalHandle,
     wrapHandle,
     wrapObject,
 } from "./registry.js";
@@ -441,11 +442,17 @@ const wrappedValueGetter = (fundamental: bigint): ValueGetter | undefined => {
         }
         case TYPE_PARAM: {
             return (value) =>
-                wrapHandle(paramValueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(TYPE_PARAM));
+                wrapFundamentalHandle(
+                    paramValueType.get(value) as ExternalObject<Handle> | null,
+                    getWrapperClass(TYPE_PARAM),
+                );
         }
         case TYPE_VARIANT: {
             return (value) =>
-                wrapHandle(variantValueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(TYPE_VARIANT));
+                wrapFundamentalHandle(
+                    variantValueType.get(value) as ExternalObject<Handle> | null,
+                    getWrapperClass(TYPE_VARIANT),
+                );
         }
         case TYPE_BOXED: {
             return getBoxedValue;
@@ -502,7 +509,8 @@ const customFundamentalGetter = (type: bigint): ValueGetter | undefined => {
         return undefined;
     }
 
-    return (value) => wrapHandle(valueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(type));
+    return (value) =>
+        wrapFundamentalHandle(valueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(type));
 };
 
 const customFundamentalSetter = (type: bigint): ValueType["set"] | undefined => {
