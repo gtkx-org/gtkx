@@ -62,6 +62,20 @@ const WRAPPED_FUNDAMENTALS: Set<bigint> = new Set([
 ]);
 
 const isWideUnsignedValue: ValueGuard = wideIntegerGuardFor(0n, UINT64_MAXIMUM);
+const MAX_SAFE: number = Number.MAX_SAFE_INTEGER;
+
+const WHOLE_NUMBER_RANGES: Map<bigint, [minimum: number, maximum: number]> = new Map([
+    [TYPE_CHAR, [INT8_MINIMUM, INT8_MAXIMUM]],
+    [TYPE_UCHAR, [0, UINT8_MAXIMUM]],
+    [TYPE_INT, [INT32_MINIMUM, INT32_MAXIMUM]],
+    [TYPE_UINT, [0, UINT32_MAXIMUM]],
+    [TYPE_ENUM, [INT32_MINIMUM, INT32_MAXIMUM]],
+    [TYPE_FLAGS, [0, UINT32_MAXIMUM]],
+    [TYPE_LONG, [-MAX_SAFE, MAX_SAFE]],
+    [TYPE_ULONG, [0, MAX_SAFE]],
+    [TYPE_INT64, [-MAX_SAFE, MAX_SAFE]],
+    [TYPE_UINT64, [0, MAX_SAFE]],
+]);
 
 const SCALAR_GUARDS: Map<bigint, ValueGuard> = new Map([
     [TYPE_BOOLEAN, isBooleanValue],
@@ -233,6 +247,7 @@ function assertParamLayout(): void {
 }
 
 export {
+    WHOLE_NUMBER_RANGES,
     getParamFlags,
     getParamValueType,
     INT32_MAXIMUM,

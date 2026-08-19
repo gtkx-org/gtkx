@@ -1,0 +1,78 @@
+{
+    "name": "@gtkx/animated",
+    "version": "1.2.2",
+    "description": "React Spring animations for GTKX: animated widget components driven by the GTK frame clock",
+    "keywords": [
+        "gtkx",
+        "gtk",
+        "gtk4",
+        "react",
+        "react-spring",
+        "animation",
+        "spring",
+        "linux",
+        "desktop"
+    ],
+    "homepage": "https://gtkx.dev",
+    "bugs": {
+        "url": "https://github.com/gtkx-org/gtkx/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/gtkx-org/gtkx.git",
+        "directory": "packages/animated"
+    },
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "type": "module",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "source": "./src/index.ts",
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "sideEffects": [
+        "./src/index.ts",
+        "./dist/index.js",
+        "./src/bootstrap.ts",
+        "./dist/bootstrap.js"
+    ],
+    "files": [
+        "dist",
+        "src"
+    ],
+    "scripts": {
+        "release": "tsx ../../scripts/release-package.ts"
+    },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            }
+        }
+    },
+    "engines": {
+        "node": ">=24"
+    },
+    "dependencies": {
+        "@gtkx/react": "workspace:*",
+        "@gtkx/runtime": "workspace:*",
+        "@react-spring/core": "^10.1.2",
+        "@react-spring/shared": "^10.1.2",
+        "@react-spring/types": "^10.1.2"
+    },
+    "peerDependencies": {
+        "react": "^19.2"
+    },
+    "devDependencies": {
+        "@gtkx/config": "workspace:*",
+        "@gtkx/testing": "workspace:*",
+        "@gtkx/vitest": "workspace:*",
+        "vitest": "catalog:"
+    }
+}

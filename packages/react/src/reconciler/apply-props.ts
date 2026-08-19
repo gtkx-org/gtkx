@@ -1,6 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
 import * as Gtk from "@gtkx/gi/gtk";
+import { coerceObjectProperty } from "@gtkx/runtime";
 import { drain, isDeepEqual, kebabCase } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
@@ -48,7 +49,7 @@ const writeValue = (object: GObject.Object, name: string, value: unknown): void 
     }
 
     applyWrite(() => {
-        Reflect.set(object, name, value);
+        Reflect.set(object, name, coerceObjectProperty(object, name, value));
     });
 };
 

@@ -22,6 +22,7 @@
     },
     "nx": {
         "implicitDependencies": [
+            "@gtkx/animated",
             "@gtkx/cli",
             "@gtkx/codegen",
             "@gtkx/components",
@@ -55,6 +56,7 @@
                 "cache": true,
                 "dependsOn": [
                     "gtkx:codegen",
+                    "@gtkx/animated:build",
                     "@gtkx/cli:build",
                     "@gtkx/codegen:build",
                     "@gtkx/components:build",

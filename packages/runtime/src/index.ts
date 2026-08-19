@@ -26,6 +26,8 @@ export {
 /** @public */
 export { promisify } from "./promisify.js";
 /** @public */
+export { coerceObjectProperty } from "./properties.js";
+/** @public */
 export { type Interface, registerClass } from "./register-class.js";
 /** @public */
 export {

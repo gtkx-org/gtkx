@@ -10,7 +10,7 @@ GTK4 and Adwaita are mature, and GtkBuilder XML can lay out an interface and bin
 - a React reconciler that exposes every GObject as a JSX element,
 - a CLI for scaffolding, development, and production builds,
 - a dev server with Fast Refresh that patches your running UI in place,
-- CSS-in-JS styling, high-level list and grid components, and dialogs that present on mount,
+- CSS-in-JS styling, React Spring animations, high-level list and grid components, and dialogs that present on mount,
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
