@@ -56,6 +56,9 @@
                 "src/env.d.ts!"
             ]
         },
+        "packages/cairo": {
+            "includeEntryExports": false
+        },
         "packages/components": {
             "includeEntryExports": false,
             "entry": [

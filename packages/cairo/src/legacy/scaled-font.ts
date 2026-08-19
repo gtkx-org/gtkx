@@ -1,15 +1,9 @@
 import { alloc, type ExternalObject, getHandle, type Handle, read, t, wrapHandle } from "@gtkx/runtime";
-import type { FontOptions, FontType, Status, TextClusterFlags } from "../cairo.js";
-import { FontFace, ScaledFont } from "../cairo.js";
-import {
-    allocGlyphBuffer,
-    type CairoGlyph,
-    type CairoTextCluster,
-    type FontExtents,
-    readFontExtents,
-    readTextExtents,
-    type TextExtents,
-} from "./context.js";
+import type { FontOptions } from "../base.js";
+import type { FontType, Status, TextClusterFlags } from "../enums.js";
+import type { CairoGlyph, CairoTextCluster, FontExtents, TextExtents } from "../types.js";
+import { FontFace, ScaledFont } from "../base.js";
+import { allocGlyphBuffer, readFontExtents, readTextExtents } from "./context.js";
 import { FontOptions as FontOptionsConstructor } from "./font-options.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 
@@ -24,7 +18,7 @@ const CLUSTER_BUF_REF = t.ref(
     t.boxed("cairo_text_cluster_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" }),
 );
 
-declare module "../cairo.js" {
+declare module "../base.js" {
     interface ScaledFont {
         status(): Status;
         extents(): FontExtents;
@@ -230,7 +224,7 @@ ScaledFont.prototype.getReferenceCount = function (): number {
     return cairoScaledFontGetReferenceCount(getHandle(this)) as number;
 };
 
-declare module "../cairo.js" {
+declare module "../base.js" {
     interface ScaledFont {
         textToGlyphs(x: number, y: number, text: string): [CairoGlyph[], CairoTextCluster[], TextClusterFlags];
     }

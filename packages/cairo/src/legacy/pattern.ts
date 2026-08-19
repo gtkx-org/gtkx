@@ -1,6 +1,9 @@
 import { type ExternalObject, getHandle, type Handle, t, wrapHandle } from "@gtkx/runtime";
-import { type Extend, type Filter, Pattern, type PatternType, type Status, type Surface } from "../cairo.js";
-import { type PathData, parsePath } from "./context.js";
+import type { Surface } from "../base.js";
+import type { Extend, Filter, PatternType, Status } from "../enums.js";
+import type { PathData, RgbaColor } from "../types.js";
+import { Pattern } from "../base.js";
+import { parsePath } from "../path.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 
 const { bind } = t;
@@ -9,13 +12,6 @@ const PATTERN_T = t.boxed("CairoPattern", {
     sharedLibrary: "libcairo-gobject.so.2",
     getTypeFnName: "cairo_gobject_pattern_get_type",
 });
-
-export type RgbaColor = {
-    red: number;
-    green: number;
-    blue: number;
-    alpha: number;
-};
 
 const readRgba = (
     fill: (red: { value: number }, green: { value: number }, blue: { value: number }, alpha: { value: number }) => void,
@@ -28,7 +24,7 @@ const readRgba = (
     return { red: redRef.value, green: greenRef.value, blue: blueRef.value, alpha: alphaRef.value };
 };
 
-declare module "../cairo.js" {
+declare module "../base.js" {
     interface Pattern {
         addColorStopRgb(offset: number, red: number, green: number, blue: number): void;
         addColorStopRgba(offset: number, red: number, green: number, blue: number, alpha: number): void;

@@ -1,0 +1,64 @@
+{
+    "name": "@gtkx/cairo",
+    "version": "1.2.2",
+    "description": "Cairo drawing bindings for GTKX: contexts, surfaces, patterns, fonts, regions and matrices behind the GTK draw callbacks",
+    "keywords": [
+        "gtkx",
+        "gtk",
+        "gtk4",
+        "cairo",
+        "drawing",
+        "graphics",
+        "linux",
+        "desktop"
+    ],
+    "homepage": "https://gtkx.dev",
+    "bugs": {
+        "url": "https://github.com/gtkx-org/gtkx/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/gtkx-org/gtkx.git",
+        "directory": "packages/cairo"
+    },
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "type": "module",
+    "sideEffects": true,
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "source": "./src/index.ts",
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "src"
+    ],
+    "scripts": {
+        "release": "tsx ../../scripts/release-package.ts"
+    },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            }
+        }
+    },
+    "engines": {
+        "node": ">=24"
+    },
+    "dependencies": {
+        "@gtkx/runtime": "workspace:*"
+    },
+    "devDependencies": {
+        "@gtkx/vitest": "workspace:*",
+        "@types/node": "catalog:",
+        "fast-xml-parser": "^5.10.1"
+    }
+}

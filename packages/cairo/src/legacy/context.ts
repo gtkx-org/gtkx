@@ -1,9 +1,9 @@
 import { alloc, type ExternalObject, getHandle, type Handle, read, t, wrapHandle, write } from "@gtkx/runtime";
+import type { FontOptions } from "../base.js";
 import type {
     Antialias,
     Content,
     FillRule,
-    FontOptions,
     FontSlant,
     FontWeight,
     LineCap,
@@ -11,8 +11,10 @@ import type {
     Operator,
     Status,
     TextClusterFlags,
-} from "../cairo.js";
-import { Context, FontFace, Pattern, ScaledFont, Surface } from "../cairo.js";
+} from "../enums.js";
+import type { CairoGlyph, CairoTextCluster, FontExtents, PathData, TextExtents } from "../types.js";
+import { Context, FontFace, Pattern, ScaledFont, Surface } from "../base.js";
+import { parsePath } from "../path.js";
 import { FontOptions as FontOptionsConstructor } from "./font-options.js";
 import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 
@@ -22,9 +24,6 @@ const CONTEXT_T = t.boxed("CairoContext", {
     sharedLibrary: "libcairo-gobject.so.2",
     getTypeFnName: "cairo_gobject_context_get_type",
 });
-
-export type CairoGlyph = { index: number; x: number; y: number };
-export type CairoTextCluster = { numBytes: number; numGlyphs: number };
 
 export const allocGlyphBuffer = (glyphs: CairoGlyph[]): ExternalObject<Handle> => {
     const buf = alloc(glyphs.length * 24);
@@ -38,7 +37,7 @@ export const allocGlyphBuffer = (glyphs: CairoGlyph[]): ExternalObject<Handle> =
     return buf;
 };
 
-export const allocClusterBuffer = (clusters: CairoTextCluster[]): ExternalObject<Handle> => {
+const allocClusterBuffer = (clusters: CairoTextCluster[]): ExternalObject<Handle> => {
     const buf = alloc(clusters.length * 8);
     let offset = 0;
     for (const cluster of clusters) {
@@ -47,23 +46,6 @@ export const allocClusterBuffer = (clusters: CairoTextCluster[]): ExternalObject
         offset += 8;
     }
     return buf;
-};
-
-export type TextExtents = {
-    xBearing: number;
-    yBearing: number;
-    width: number;
-    height: number;
-    xAdvance: number;
-    yAdvance: number;
-};
-
-export type FontExtents = {
-    ascent: number;
-    descent: number;
-    height: number;
-    maxXAdvance: number;
-    maxYAdvance: number;
 };
 
 export const readTextExtents = (handle: ExternalObject<Handle>): TextExtents => ({
@@ -83,72 +65,6 @@ export const readFontExtents = (handle: ExternalObject<Handle>): FontExtents => 
     maxYAdvance: read(handle, t.float64, 32) as number,
 });
 
-export type PathData =
-    | { type: "moveTo"; x: number; y: number }
-    | { type: "lineTo"; x: number; y: number }
-    | { type: "curveTo"; x1: number; y1: number; x2: number; y2: number; x3: number; y3: number }
-    | { type: "closePath" };
-
-const PATH_MOVE_TO = 0;
-const PATH_LINE_TO = 1;
-const PATH_CURVE_TO = 2;
-const PATH_CLOSE_PATH = 3;
-
-export const parsePath = (pathHandle: ExternalObject<Handle>): PathData[] => {
-    const numData = read(pathHandle, t.int32, 16) as number;
-    if (numData === 0) return [];
-
-    const dataArray = read(pathHandle, t.struct("borrowed", { size: numData * 16 }), 8) as ExternalObject<Handle>;
-    const result: PathData[] = [];
-    let i = 0;
-    while (i < numData) {
-        const base = i * 16;
-        const headerType = read(dataArray, t.int32, base) as number;
-        const length = read(dataArray, t.int32, base + 4) as number;
-        switch (headerType) {
-            case PATH_MOVE_TO: {
-                const ptBase = (i + 1) * 16;
-                result.push({
-                    type: "moveTo",
-                    x: read(dataArray, t.float64, ptBase) as number,
-                    y: read(dataArray, t.float64, ptBase + 8) as number,
-                });
-                break;
-            }
-            case PATH_LINE_TO: {
-                const ptBase = (i + 1) * 16;
-                result.push({
-                    type: "lineTo",
-                    x: read(dataArray, t.float64, ptBase) as number,
-                    y: read(dataArray, t.float64, ptBase + 8) as number,
-                });
-                break;
-            }
-            case PATH_CURVE_TO: {
-                const pt1 = (i + 1) * 16;
-                const pt2 = (i + 2) * 16;
-                const pt3 = (i + 3) * 16;
-                result.push({
-                    type: "curveTo",
-                    x1: read(dataArray, t.float64, pt1) as number,
-                    y1: read(dataArray, t.float64, pt1 + 8) as number,
-                    x2: read(dataArray, t.float64, pt2) as number,
-                    y2: read(dataArray, t.float64, pt2 + 8) as number,
-                    x3: read(dataArray, t.float64, pt3) as number,
-                    y3: read(dataArray, t.float64, pt3 + 8) as number,
-                });
-                break;
-            }
-            case PATH_CLOSE_PATH: {
-                result.push({ type: "closePath" });
-                break;
-            }
-        }
-        i += length;
-    }
-    return result;
-};
-
 const cairoVersion = t.bind("libcairo.so.2", "cairo_version", [], t.int32);
 const cairoVersionString = t.bind("libcairo.so.2", "cairo_version_string", [], t.string("borrowed"));
 
@@ -156,7 +72,7 @@ export const version = (): number => cairoVersion() as number;
 
 export const versionString = (): string => cairoVersionString() as string;
 
-declare module "../cairo.js" {
+declare module "../base.js" {
     interface Context {
         moveTo(x: number, y: number): void;
         lineTo(x: number, y: number): void;
@@ -955,7 +871,7 @@ Context.prototype.getReferenceCount = function (): number {
     return cairoGetReferenceCount(getHandle(this)) as number;
 };
 
-declare module "../cairo.js" {
+declare module "../base.js" {
     interface Context {
         pushGroup(): void;
         pushGroupWithContent(content: Content): void;
@@ -1210,7 +1126,7 @@ class ContextImpl extends Context {
 
 export { ContextImpl as Context };
 
-declare module "../cairo.js" {
+declare module "../base.js" {
     interface Context {
         tagBegin(tagName: string, attributes: string): void;
         tagEnd(tagName: string): void;

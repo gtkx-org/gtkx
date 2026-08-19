@@ -1,6 +1,6 @@
 import { type ExternalObject, getHandle, type Handle, t, wrapHandle } from "@gtkx/runtime";
-import type { FontSlant, FontType, FontWeight, Status } from "../cairo.js";
-import { FontFace } from "../cairo.js";
+import type { FontSlant, FontType, FontWeight, Status } from "../enums.js";
+import { FontFace } from "../base.js";
 
 const { bind } = t;
 const FONT_FACE_T = t.boxed("CairoFontFace", {
@@ -11,7 +11,7 @@ const FONT_FACE_T = t.boxed("CairoFontFace", {
 const FC_PATTERN_T = t.boxed("FcPattern", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" });
 const FT_FACE_T = t.boxed("FT_Face", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" });
 
-declare module "../cairo.js" {
+declare module "../base.js" {
     interface FontFace {
         status(): Status;
         getType(): FontType;
@@ -81,10 +81,19 @@ export class ToyFontFace extends FontFace {
     }
 }
 
-export enum FtSynthesize {
-    BOLD = 1,
-    OBLIQUE = 2,
-}
+/** One of the `FtSynthesize` flags a FreeType font face synthesizes. */
+export type FtSynthesize = (typeof FtSynthesize)[keyof typeof FtSynthesize];
+
+/**
+ * Styles a FreeType font face synthesizes when the font itself lacks them.
+ * @enum
+ */
+export const FtSynthesize = {
+    /** Embolden the glyphs. */
+    BOLD: 1,
+    /** Slant the glyphs. */
+    OBLIQUE: 2,
+} as const;
 
 export class FtFontFace extends FontFace {
     getSynthesize(): FtSynthesize {

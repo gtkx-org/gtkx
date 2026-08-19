@@ -1,5 +1,5 @@
 import { alloc, type ExternalObject, getHandle, type Handle, setHandle, t, wrapHandle } from "@gtkx/runtime";
-import type { Status } from "../cairo.js";
+import type { Status } from "../enums.js";
 
 const { bind } = t;
 

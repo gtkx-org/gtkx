@@ -1,6 +1,7 @@
 import { type ExternalObject, getHandle, type Handle, t, wrapHandle } from "@gtkx/runtime";
-import type { Content, Format, RectangleInt, Status, SurfaceType } from "../cairo.js";
-import { Surface } from "../cairo.js";
+import type { Content, Format, Status, SurfaceType } from "../enums.js";
+import type { RectangleInt } from "../structs.js";
+import { Surface } from "../base.js";
 import { FontOptions } from "./font-options.js";
 import { ImageSurface } from "./image-surface.js";
 
@@ -12,7 +13,7 @@ const SURFACE_T = t.boxed("CairoSurface", {
 });
 const DEVICE_T_NONE = t.boxed("CairoDevice", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" });
 
-declare module "../cairo.js" {
+declare module "../base.js" {
     interface Surface {
         writeToPng(filename: string): Status;
         status(): Status;

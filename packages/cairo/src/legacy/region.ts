@@ -1,6 +1,7 @@
 import { alloc, type ExternalObject, getHandle, type Handle, setHandle, t, wrapHandle, write } from "@gtkx/runtime";
-import type { RegionOverlap, Status } from "../cairo.js";
-import { RectangleInt, Region } from "../cairo.js";
+import type { RegionOverlap, Status } from "../enums.js";
+import { Region } from "../base.js";
+import { RectangleInt } from "../structs.js";
 
 const { bind } = t;
 const REGION_T = t.boxed("CairoRegion", {
@@ -10,7 +11,7 @@ const REGION_T = t.boxed("CairoRegion", {
 });
 const RECT_INT_ARRAY_T = t.boxed("cairo_rectangle_int_t[]", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" });
 
-declare module "../cairo.js" {
+declare module "../base.js" {
     interface Region {
         copy(): Region;
         status(): Status;

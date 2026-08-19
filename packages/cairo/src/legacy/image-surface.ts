@@ -1,6 +1,6 @@
 import { type ExternalObject, getHandle, type Handle, read, setHandle, t, wrapHandle } from "@gtkx/runtime";
-import type { Format } from "../cairo.js";
-import { Surface } from "../cairo.js";
+import type { Format } from "../enums.js";
+import { Surface } from "../base.js";
 
 const { bind } = t;
 

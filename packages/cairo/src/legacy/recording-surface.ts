@@ -1,6 +1,6 @@
 import { alloc, type ExternalObject, getHandle, type Handle, read, setHandle, t, write } from "@gtkx/runtime";
-import type { Content } from "../cairo.js";
-import { Surface } from "../cairo.js";
+import type { Content } from "../enums.js";
+import { Surface } from "../base.js";
 
 const { bind } = t;
 const RECT_T = t.boxed("cairo_rectangle_t", { ownership: "borrowed", sharedLibrary: "libcairo.so.2" });

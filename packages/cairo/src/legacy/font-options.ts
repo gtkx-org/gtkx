@@ -1,6 +1,6 @@
 import { type ExternalObject, getHandle, type Handle, setHandle, t } from "@gtkx/runtime";
-import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "../cairo.js";
-import { FontOptions } from "../cairo.js";
+import type { Antialias, HintMetrics, HintStyle, Status, SubpixelOrder } from "../enums.js";
+import { FontOptions } from "../base.js";
 
 const { bind } = t;
 const FONT_OPTIONS_T = t.boxed("CairoFontOptions", {
@@ -9,7 +9,7 @@ const FONT_OPTIONS_T = t.boxed("CairoFontOptions", {
     getTypeFnName: "cairo_gobject_font_options_get_type",
 });
 
-declare module "../cairo.js" {
+declare module "../base.js" {
     interface FontOptions {
         setHintStyle(hintStyle: HintStyle): void;
         getHintStyle(): HintStyle;
@@ -159,7 +159,7 @@ FontOptions.prototype.merge = function (other: FontOptions): void {
     cairoFontOptionsMerge(getHandle(this), getHandle(other));
 };
 
-declare module "../cairo.js" {
+declare module "../base.js" {
     interface FontOptions {
         status(): Status;
         hash(): number;
