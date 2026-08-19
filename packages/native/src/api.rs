@@ -16,6 +16,7 @@ pub mod read;
 pub mod register_class;
 pub mod resolve_type;
 pub mod set_wrapper;
+pub mod type_class;
 pub mod vtable;
 pub mod write;
 

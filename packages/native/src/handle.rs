@@ -187,6 +187,14 @@ impl Handle {
         HandleKind::Struct(ptr).into()
     }
 
+    /// A handle over memory that stays alive for the rest of the process, such as a registered
+    /// type's class struct. Nothing owns the memory through the handle, and no borrow scope ever
+    /// ends the borrow.
+    #[must_use]
+    pub fn process_static(ptr: *mut c_void) -> Self {
+        HandleKind::Borrowed(ptr).into()
+    }
+
     /// A handle over the `offset` bytes into `owner`, aliasing the owner's memory instead of
     /// copying it, and holding the owner alive for as long as the field handle exists.
     #[must_use]

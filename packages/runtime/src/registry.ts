@@ -7,7 +7,7 @@ import {
     setWrapper,
 } from "@gtkx/native";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
-import type { Mixin, MixinReceiver } from "./mixin.js";
+import { copyLayerMembers, type Mixin, type MixinReceiver } from "./mixin.js";
 import { TYPE_INVALID, type TypedClass, typeInterfaces, typeIsA, typeName, typeParent } from "./type.js";
 
 /**
@@ -88,6 +88,8 @@ type InterfaceLayout = {
 };
 
 const classRegistry: Map<bigint, AnyClass> = new Map();
+const classStructRegistry: Map<bigint, AnyClass> = new Map();
+const composedClassStructRegistry: Map<bigint, AnyClass> = new Map();
 const interfaceMixinRegistry: Map<bigint, Mixin> = new Map();
 const composedClassRegistry: Map<bigint, AnyClass> = new Map();
 const handleMap: WeakMap<object, ExternalObject<Handle>> = new WeakMap();
@@ -158,6 +160,71 @@ function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistr
 
 function markDerivedClass(cls: AnyClass): void {
     derivedClasses.add(cls);
+}
+
+/**
+ * Registers the wrapper class of a type's class struct, such as `Gtk.WidgetClass` for `Gtk.Widget`,
+ * so `registerClass` can hand a `classInit` hook the new type's class struct wrapped in it.
+ * @param cls Wrapper class of the type's instances, already registered through
+ * `registerWrapperClass`.
+ * @param structClass Wrapper class of the type's class struct.
+ */
+function registerClassStruct(cls: AnyClass, structClass: AnyClass): void {
+    const type = getClassType(cls);
+
+    if (type !== TYPE_INVALID) {
+        classStructRegistry.set(type, structClass);
+    }
+}
+
+function collectClassStructClasses(type: bigint): AnyClass[] {
+    const structs: AnyClass[] = [];
+    let current = type;
+
+    while (current !== TYPE_INVALID) {
+        const structClass = classStructRegistry.get(current);
+
+        if (structClass !== undefined) {
+            structs.push(structClass);
+        }
+
+        current = typeParent(current);
+    }
+
+    return structs;
+}
+
+function composeClassStructClass(structs: AnyClass[]): AnyClass | undefined {
+    const [nearest, ...ancestors] = structs;
+
+    if (nearest === undefined || ancestors.length === 0) {
+        return nearest;
+    }
+
+    const composed: AnyClass = class {};
+    Object.defineProperty(composed, "name", { value: nearest.name });
+
+    for (const structClass of structs) {
+        copyLayerMembers(composed, structClass.prototype);
+    }
+
+    return composed;
+}
+
+function getClassStructClass(type: bigint): AnyClass | undefined {
+    const cached = composedClassStructRegistry.get(type);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const composed = composeClassStructClass(collectClassStructClasses(type));
+
+    if (composed !== undefined) {
+        composedClassStructRegistry.set(type, composed);
+    }
+
+    return composed;
 }
 
 function resolveAncestorType(ancestor: AnyClass): bigint | undefined {
@@ -433,9 +500,11 @@ function getInterfaceProperties(type: bigint): Record<string, InterfaceProperty>
 
 export {
     describeValueKind,
+    getClassStructClass,
     getClassType,
     getInstanceType,
     markDerivedClass,
+    registerClassStruct,
     registerClassType,
     registerWrapperClass,
     registerInterface,

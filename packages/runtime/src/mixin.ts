@@ -89,4 +89,4 @@ function insertMixinLayer(target: AnyClass, mixin: Mixin, inheritedNames: Set<st
     Object.setPrototypeOf(target, layer);
 }
 
-export { insertMixinLayer, installMixins, type MixinReceiver, type Mixin };
+export { copyLayerMembers, insertMixinLayer, installMixins, type MixinReceiver, type Mixin };

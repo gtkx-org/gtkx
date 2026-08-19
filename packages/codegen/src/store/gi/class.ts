@@ -247,6 +247,34 @@ const appendClassRegistrations = (context: ModuleContext, klass: GirClass, class
         gtypeExpr,
         vfuncs: renderVfuncMetadata(context, klass),
     });
+
+    appendClassStructRegistration(context, klass, className, gtypeExpr);
+};
+
+const appendClassStructRegistration = (
+    context: ModuleContext,
+    klass: GirClass,
+    className: string,
+    gtypeExpr: string | undefined,
+): void => {
+    const typeStruct = klass.glibTypeStruct;
+
+    if (gtypeExpr === undefined || typeStruct === undefined) {
+        return;
+    }
+
+    const resolved = context.library.resolveType(context.namespace.name, typeStruct);
+
+    if (resolved?.kind !== "record" || !isEmittableEntity(resolved.value)) {
+        return;
+    }
+
+    const structName = sanitizeTypeIdentifier(resolved.value.name);
+    context.addRuntimeImport("registerClassStruct");
+    context.module.appendRegistration(`registerClassStruct(${className}, ${structName});`, [
+        className,
+        structName,
+    ]);
 };
 
 const addAncestorInterfaceKeys = (context: ModuleContext, ancestor: ResolvedAncestor, keys: Set<string>): void => {
