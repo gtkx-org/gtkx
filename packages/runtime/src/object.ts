@@ -175,8 +175,8 @@ function getObjectProperty(obj: object, propertyName: string, descriptor: Descri
  * using the descriptor. The descriptor converts what it is given rather than checking it against
  * the property's `GObject.ParamSpec`, so `null` and `undefined` written to a numeric or enum
  * property land 0, and a fractional number written to a whole-number property is truncated toward
- * zero the way JavaScript's `ToInt32` is, where the same writes to a property installed through
- * `registerClass` are refused with a `TypeError`.
+ * zero, where the same writes to a property installed through `registerClass` are refused with a
+ * `TypeError`.
  *
  * @param obj The object to write to.
  * @param propertyName The property name.
