@@ -1,7 +1,5 @@
 import { bind, type Descriptor, call as nativeCall } from "@gtkx/native";
 
-// eslint-disable-next-line gtkx/no-library-prefix
-const GTK_LIB = "libgtk-4.so.1";
 const GOBJECT_LIB = "libgobject-2.0.so.0";
 const BIGUINT64 = { kind: "biguint64" as const };
 
@@ -44,4 +42,4 @@ async function gcUntil(isSatisfied: () => boolean, maxRounds = 100): Promise<voi
     }
 }
 
-export { BIGUINT64, callArgs, forceGC, gcUntil, GOBJECT_LIB, GTK_LIB };
+export { BIGUINT64, callArgs, forceGC, gcUntil, GOBJECT_LIB };

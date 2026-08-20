@@ -1,5 +1,4 @@
 import { afterAll, afterEach, beforeAll } from "vitest";
-import { callArgs, GTK_LIB } from "./helpers/native-utils.js";
 
 const collectGarbage = (): void => {
     if (globalThis.gc) {
@@ -9,7 +8,6 @@ const collectGarbage = (): void => {
 
 beforeAll(async () => {
     await import("@gtkx/runtime");
-    callArgs(GTK_LIB, "gtk_init", [], { kind: "void" });
 });
 
 afterEach(collectGarbage);
