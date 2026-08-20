@@ -27,8 +27,18 @@ const HIDDEN_GLIB_FUNCTIONS = [
     "threadTryNew",
 ];
 
-const HIDDEN_OBJECT_METHODS = ["getData", "getQdata", "setData", "setQdata", "stealData", "stealQdata"];
-const HIDDEN_PARAM_SPEC_METHODS = ["getQdata", "setQdata", "stealQdata"];
+const HIDDEN_OBJECT_METHODS = [
+    "getData",
+    "getQdata",
+    "setData",
+    "setDataFull",
+    "setQdata",
+    "setQdataFull",
+    "stealData",
+    "stealQdata",
+];
+
+const HIDDEN_PARAM_SPEC_METHODS = ["getQdata", "setQdata", "setQdataFull", "stealQdata"];
 
 const expectHidden = (target: object, names: string[]): void => {
     for (const name of names) {
