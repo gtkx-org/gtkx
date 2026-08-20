@@ -32,7 +32,7 @@ import {
     resolveGtype,
     UINT64_MAXIMUM,
 } from "./param-spec.js";
-import { describeValueKind, getHandle, getWrapperClass, wrapHandle, wrapObject } from "./registry.js";
+import { coerceGType, describeValueKind, getHandle, getWrapperClass, wrapHandle, wrapObject } from "./registry.js";
 import {
     getStrvType,
     isResolvableDescriptor,
@@ -94,7 +94,15 @@ const peekPointerCache = createBindCache();
 const gValueInit = bind(LIB, "g_value_init", [VALUE_T, biguint64T], voidT);
 const gValueCopy = bind(LIB, "g_value_copy", [VALUE_T, VALUE_T], voidT);
 const booleanValueType = bindValueType("boolean", booleanT);
-const typeValueType = bindValueType("gtype", biguint64T);
+const boundTypeValueType = bindValueType("gtype", biguint64T);
+
+const typeValueType: ValueType = {
+    set: (value, jsValue) => {
+        boundTypeValueType.set(value, coerceGType(jsValue));
+    },
+    get: boundTypeValueType.get,
+};
+
 const scharValueType = bindValueType("schar", int8T);
 const ucharValueType = bindValueType("uchar", uint8T);
 const intValueType = bindValueType("int", int32T);

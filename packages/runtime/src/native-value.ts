@@ -1,7 +1,14 @@
 import type { AnyClass } from "@gtkx/utils";
 import { type Descriptor, type ExternalObject, getType, type Handle } from "@gtkx/native";
-import type { ArrayDescriptor, FundamentalDescriptor, HashTableDescriptor, StructDescriptor } from "./descriptors.js";
 import {
+    type ArrayDescriptor,
+    type FundamentalDescriptor,
+    type HashTableDescriptor,
+    isGtypeDescriptor,
+    type StructDescriptor,
+} from "./descriptors.js";
+import {
+    coerceGType,
     getHandle,
     getWrapperClass,
     resolveWrapperClass,
@@ -132,13 +139,18 @@ function hashTableToNative(descriptor: HashTableDescriptor, value: unknown): unk
 
 /**
  * Converts a JavaScript value into the raw form native code expects, unwrapping
- * object, struct, boxed, and fundamental wrappers back to their handles and
+ * object, struct, boxed, and fundamental wrappers back to their handles,
+ * resolving a class passed for a GType to the GType it was registered under, and
  * recursively converting arrays and maps according to the descriptor.
  *
  * @param descriptor Describes the native type to convert to.
  * @param value The JavaScript value to convert.
  */
 function toNative(descriptor: Descriptor, value: unknown): unknown {
+    if (isGtypeDescriptor(descriptor)) {
+        return coerceGType(value);
+    }
+
     if (!isMarshalledDescriptor(descriptor)) {
         return value;
     }

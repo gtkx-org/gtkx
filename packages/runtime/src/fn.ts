@@ -3,10 +3,10 @@ import { call, bind as nativeBind } from "@gtkx/native";
 import type { RefSeeds } from "./vfunc-seeds.js";
 import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, isUnpackedArg, requiresInputArg } from "./arg.js";
 import { wrapCallbackValue } from "./callback.js";
-import { boxedT, refT } from "./descriptors.js";
+import { boxedT, isGtypeDescriptor, refT } from "./descriptors.js";
 import { checkError } from "./error.js";
 import { LIB } from "./library.js";
-import { fromNative } from "./native-value.js";
+import { fromNative, toNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
 import { hasSurfacedPrimary, packTupleResult } from "./tuple.js";
 import { TYPE_INVALID } from "./type.js";
@@ -44,9 +44,13 @@ type ArgSpec = {
     requiresInput: boolean;
     inputIndex: number;
     isOutParam: boolean;
+    carriesGtype: boolean;
 };
 
 const NO_OUT_PARAMS: unknown[] = [];
+
+const hasGtypeInput = (descriptor: Descriptor): boolean =>
+    isGtypeDescriptor(descriptor) || (descriptor.kind === "array" && isGtypeDescriptor(descriptor.itemDescriptor));
 
 const buildNativeArgTypes = (args: Arg[], canThrow: boolean): Descriptor[] => {
     const nativeArgTypes = args.map((argSpec) =>
@@ -79,6 +83,7 @@ const buildArgSpecs = (args: Arg[]): ArgSpec[] => {
             requiresInput,
             inputIndex: requiresInput ? inputCursor++ : -1,
             isOutParam,
+            carriesGtype: hasGtypeInput(arg.type),
         };
     });
 };
@@ -89,8 +94,11 @@ const resolveCallerAllocated = (inputs: unknown[], inputIndex: number): unknown 
     return wrapper == null ? wrapper : getHandle(wrapper);
 };
 
+const inputValueFor = (spec: ArgSpec, inputs: unknown[]): unknown =>
+    spec.carriesGtype ? toNative(spec.arg.type, inputs[spec.inputIndex]) : inputs[spec.inputIndex];
+
 const buildRefValue = (spec: ArgSpec, inputs: unknown[], seeds: RefSeeds | undefined): Ref => ({
-    value: spec.requiresInput ? inputs[spec.inputIndex] : (seeds?.get(spec.index) ?? null),
+    value: spec.requiresInput ? inputValueFor(spec, inputs) : (seeds?.get(spec.index) ?? null),
 });
 
 const buildNativeValue = (spec: ArgSpec, inputs: unknown[], seeds: RefSeeds | undefined): unknown => {
@@ -108,7 +116,7 @@ const buildNativeValue = (spec: ArgSpec, inputs: unknown[], seeds: RefSeeds | un
         return wrapCallbackValue(arg.type, inputs[inputIndex]);
     }
 
-    return inputs[inputIndex];
+    return inputValueFor(spec, inputs);
 };
 
 const buildNativeValues = (plans: ArgSpec[], inputs: unknown[], seeds: RefSeeds | undefined): unknown[] =>
@@ -147,6 +155,7 @@ const isPassThroughPlan = (plan: ArgSpec, index: number): boolean =>
     plan.inputIndex === index &&
     !plan.isRef &&
     !plan.isCallerAllocated &&
+    !plan.carriesGtype &&
     plan.arg.type.kind !== "callback";
 
 const resizeInputs = (inputs: unknown[], argCount: number): unknown[] => {

@@ -11,7 +11,7 @@ import {
     type ListType,
     type TypeId,
 } from "../gir/type-id.js";
-import { gtypeTsType } from "../store/gi/gtype-binding.js";
+import { gtypeParamTsType, gtypeTsType } from "../store/gi/gtype-binding.js";
 import { isValueTypeName } from "../store/gi/param-marshal.js";
 import { isByteSequence } from "./type-shape.js";
 
@@ -31,6 +31,7 @@ type TsTypeTarget = {
 type ModuleTypeOptions = {
     byteArrayType: string;
     isValueWidened: boolean;
+    isGtypeWidened: boolean;
 };
 
 const BYTE_ARRAY_TYPE = "Uint8Array";
@@ -153,7 +154,7 @@ const moduleTarget = (context: ModuleContext, options: ModuleTypeOptions): TsTyp
     callbackType: "((...args: any[]) => any)",
     byteArrayType: options.byteArrayType,
     renderNamed: (_resolved, name) => renderNamedModuleType(context, name, options.isValueWidened),
-    renderGtype: () => gtypeTsType(context),
+    renderGtype: () => (options.isGtypeWidened ? gtypeParamTsType(context) : gtypeTsType(context)),
 });
 
 const renderModuleType = (
@@ -171,6 +172,7 @@ const renderTsType = (context: ModuleContext, ref: TypeId | undefined, isNullabl
     renderModuleType(context, ref, isNullable, {
         byteArrayType: getByteArrayType(context.library),
         isValueWidened: false,
+        isGtypeWidened: false,
     });
 
 const renderParameterTsType = (
@@ -178,7 +180,12 @@ const renderParameterTsType = (
     ref: TypeId | undefined,
     isNullable = false,
     isValueWidened = true,
-): string => renderModuleType(context, ref, isNullable, { byteArrayType: BYTE_ARRAY_INPUT_TYPE, isValueWidened });
+): string =>
+    renderModuleType(context, ref, isNullable, {
+        byteArrayType: BYTE_ARRAY_INPUT_TYPE,
+        isValueWidened,
+        isGtypeWidened: true,
+    });
 
 const recordTypeTarget = (
     library: Library,

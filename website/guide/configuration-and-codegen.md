@@ -46,6 +46,18 @@ Record fields appear as accessors: a getter wherever the read lands on the right
 
 A few bindings take a NUL-terminated C string that GIR describes as a byte array (`GLib.Variant.newBytestring`), so the value silently stops at the first zero byte. Binary payloads go through `GLib.Bytes` and `GLib.Variant.newFromBytes`.
 
+## Passing a GType
+
+Every parameter that takes a GType accepts the class registered under one alongside the numeric `bigint`: a generated wrapper class, a generated interface, or a class `registerClass` registered — the same classes whose GType `SomeClass.prototype.__type__` reads. Signal arguments declared as GTypes take a class the same way. The GType is the class's own registration, so a plain `class extends Gtk.Label {}` that never went through `registerClass` is rejected rather than resolving to its parent's type, as is any other class, object, or string:
+
+```ts
+const store = Gio.ListStore.new(Gtk.Label);     // same store as new(Gtk.Label.prototype.__type__)
+store.append(new Gtk.Label());
+GObject.typeName(Gtk.Label);                    // "GtkLabel"
+```
+
+Only the input direction widens: a return value, out parameter, or signal handler argument still hands back the numeric GType.
+
 ## Passing a GValue
 
 A `GObject.Value` is GObject's boxed value: a GType plus a payload of that type. Every parameter the callee only reads — a `const GValue *` in C — is typed `GObject.Value | JsValue`, as is every `GObject.Value` argument of an emitted signal, so you can pass the JavaScript value itself and the GType is inferred from it:
@@ -90,7 +102,7 @@ value.setUchar(200);
 
 ```ts
 const value = new GObject.Value();
-value.init(Gio.File.prototype.__type__);
+value.init(Gio.File);
 value.setObject(file);
 Gdk.ContentProvider.newForValue(value);
 ```
@@ -114,7 +126,7 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
 
   Parameters accept `Uint8Array | number[]` either way, so turning this flag on never breaks a call site that passes values *in*. What changes is what you get *back*: `GLib.fileGetContents` returns `[boolean, Uint8Array]` rather than `[boolean, number[]]`, so code that calls `.push`, `.concat`, `Array.isArray`, or `JSON.stringify` on a result needs updating. Flip the flag and run `tsc`: every site that needs attention is a type error.
 
-- **`v2ValueReturns`**: hands back what a `GObject.Value` holds rather than the value itself, the read-direction counterpart of the inference above. It covers the bindings whose return type or caller-allocated out parameter is a `GValue`: `Gtk.DropTarget.getValue`, `Gtk.ConstantExpression.getValue`, `Gdk.Clipboard.readValueAsync`, `Gtk.Builder.valueFromStringType`, `Gtk.TreeModel.getValue`, and a handful more. Their type becomes `unknown`, since GIR says nothing about what the value holds, so the call site asserts the type it asked for: `(await clipboard.readValueAsync(Gio.File.prototype.__type__, 0, null)) as Gio.File`. Signal parameters and properties keep handing over a `GObject.Value`, which a handler for a binding transform writes into.
+- **`v2ValueReturns`**: hands back what a `GObject.Value` holds rather than the value itself, the read-direction counterpart of the inference above. It covers the bindings whose return type or caller-allocated out parameter is a `GValue`: `Gtk.DropTarget.getValue`, `Gtk.ConstantExpression.getValue`, `Gdk.Clipboard.readValueAsync`, `Gtk.Builder.valueFromStringType`, `Gtk.TreeModel.getValue`, and a handful more. Their type becomes `unknown`, since GIR says nothing about what the value holds, so the call site asserts the type it asked for: `(await clipboard.readValueAsync(Gio.File, 0, null)) as Gio.File`. Signal parameters and properties keep handing over a `GObject.Value`, which a handler for a binding transform writes into.
 
   Unlike the byte sequence flag, this one only changes what comes *back*; the `GObject.Value | JsValue` parameter widening is not part of it and applies either way. `tsc` reports every return site that needs attention, since `unknown` cannot be used without an assertion.
 

@@ -196,6 +196,9 @@ const unicharT: UnicharDescriptor = { kind: "unichar" };
 const bufferT: BufferDescriptor = { kind: "buffer" };
 const fundamentalLifecycles: Map<string, FundamentalLifecycle> = new Map();
 
+const isGtypeDescriptor = (descriptor: Descriptor): descriptor is TypeDescriptor =>
+    descriptor.kind === "biguint64" && "type" in descriptor;
+
 /**
  * Builds a descriptor for a C string, whose optional length sizes the caller-allocated buffer
  * used when the string is passed by reference.
@@ -485,6 +488,7 @@ export {
     bigint64T,
     biguint64T,
     gtypeT,
+    isGtypeDescriptor,
     float32T,
     float64T,
     booleanT,

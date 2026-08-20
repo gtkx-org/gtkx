@@ -138,6 +138,16 @@ function getInstanceType(instance: object): bigint {
     return handle === undefined ? TYPE_INVALID : getType(handle);
 }
 
+function coerceGType(value: unknown): unknown {
+    if (typeof value !== "function") {
+        return value;
+    }
+
+    const type = getClassType(value as AnyClass);
+
+    return type === TYPE_INVALID ? value : type;
+}
+
 function registerClassType(cls: AnyClass, type: bigint): void {
     if (type === TYPE_INVALID) {
         return;
@@ -553,6 +563,7 @@ function getInterfaceProperties(type: bigint): Record<string, InterfaceProperty>
 }
 
 export {
+    coerceGType,
     describeValueKind,
     getClassStructClass,
     getClassType,
