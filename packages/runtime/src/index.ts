@@ -26,6 +26,8 @@ export {
 /** @public */
 export { promisify, trimFinish } from "./promisify.js";
 /** @public */
+export { matchAllRegex, matchRegex } from "./regex.js";
+/** @public */
 export { type Interface, registerClass } from "./register-class.js";
 /** @public */
 export {
@@ -35,11 +37,11 @@ export {
     getWrapperClass,
     registerInterface,
     registerWrapperClass,
-    registerWrapperResolver,
+    registerWrapperClassResolver,
     type StaticBase,
     setHandle,
     wrapHandle,
-    type WrapperResolver,
+    type WrapperClassResolver,
 } from "./registry.js";
 /** @public */
 export { connectSignal, disconnectSignal, emitSignal, getSignalBaseName, type SignalHandler } from "./signal.js";

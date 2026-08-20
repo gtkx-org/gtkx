@@ -2,6 +2,7 @@ import type { GirAnnotations } from "./annotations.js";
 import type { ParseContext } from "./type-id.js";
 import { type CursorParameterNames, PARAMETERS_MISSING_ARRAY_EXTENT } from "./cursor-overrides.js";
 import { FUNCTIONS_MISSING_FINISH_FUNC } from "./finish-overrides.js";
+import { HIDDEN_SYMBOLS } from "./hidden-symbols.js";
 import { PARAMETERS_MISSING_NULLABLE_ANNOTATION } from "./nullable-overrides.js";
 import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallable } from "./parameter.js";
 import { attr, getChild, type RawNode } from "./parse.js";
@@ -19,7 +20,7 @@ type GirFunction = {
     cIdentifier: string | undefined;
     /** Whether the C function takes a trailing `GError` out parameter and can fail. */
     throws: boolean;
-    /** Whether the GIR marks the callable as introspectable, and so bindable. */
+    /** Whether the callable is bindable: the GIR marks it introspectable and GTKX does not hide it. */
     introspectable: boolean;
     /** Qualified `Type.member` the GIR redirects the callable to, from its `moved-to` annotation. */
     movedTo: string | undefined;
@@ -115,12 +116,17 @@ const annotatedFinishFunc = (node: RawNode, cIdentifier: string | undefined): st
     return cIdentifier === undefined ? undefined : FUNCTIONS_MISSING_FINISH_FUNC.get(cIdentifier);
 };
 
+const isHiddenSymbol = (cIdentifier: string | undefined): boolean =>
+    cIdentifier !== undefined && HIDDEN_SYMBOLS.has(cIdentifier);
+
 const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => {
     const instanceNode = getChild(getChild(node, "parameters"), "instance-parameter");
+    const callable = parseCallable(node, context);
     const cIdentifier = attr(node, "c:identifier");
 
     const fn: GirFunction = {
-        ...parseCallable(node, context),
+        ...callable,
+        introspectable: callable.introspectable && !isHiddenSymbol(cIdentifier),
         name: attr(node, "shadows") ?? attr(node, "name") ?? "",
         cIdentifier,
         movedTo: attr(node, "moved-to"),

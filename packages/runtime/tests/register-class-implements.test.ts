@@ -29,7 +29,7 @@ type SplicedBase<T> = Omit<typeof GObject, never> & (new (props?: object) => GOb
 const LAST_POSITION = 0xFF_FF_FF_FF;
 const BUILDER_NUL_TERMINATED = -1;
 const uniqueName = createTypeNameFactory("_");
-const liveSurfaces = new Gio.ListStore({ itemType: TYPE_OBJECT });
+const undestroyableToplevels = new Gio.ListStore({ itemType: TYPE_OBJECT });
 const ChainBase = GObject as SplicedBase<Gtk.SectionModel>;
 
 function createSectionStore(items: GObject[], interfaces: SectionInterface[]): SectionStore {
@@ -126,8 +126,7 @@ function createToplevelAdopter(): Toplevel & Gdk.Toplevel {
 
     const clockSource = Gdk.Surface.newToplevel(display);
     const top = new Toplevel({ display, frameClock: clockSource.getFrameClock() }) as Toplevel & Gdk.Toplevel;
-    liveSurfaces.append(clockSource);
-    liveSurfaces.append(top);
+    undestroyableToplevels.append(top);
 
     return top;
 }

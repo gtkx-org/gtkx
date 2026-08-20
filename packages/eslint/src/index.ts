@@ -279,6 +279,10 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
         rules: { "unicorn/no-process-exit": "off" },
     },
     {
+        files: ["packages/cairo/src/**/*.ts"],
+        rules: { "max-params": ["error", { max: 6 }] },
+    },
+    {
         files: ["packages/cli/src/deploy/**/*.ts", "packages/cli/tests/deploy.test.ts"],
         rules: { "@typescript-eslint/naming-convention": "off" },
     },

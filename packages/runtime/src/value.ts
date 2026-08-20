@@ -38,7 +38,6 @@ import {
     describeValueKind,
     getHandle,
     getWrapperClass,
-    resolveWrapperClassFor,
     wrapFundamentalHandle,
     wrapHandle,
     wrapObject,
@@ -347,7 +346,7 @@ function getBoxedValue(value: ExternalObject<Handle>): object | null {
         return null;
     }
 
-    return wrapHandle(boxed, resolveWrapperClassFor(type, boxed) ?? getWrapperClass(type));
+    return wrapHandle(boxed, getWrapperClass(type));
 }
 
 /**

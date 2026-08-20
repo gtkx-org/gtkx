@@ -1,4 +1,4 @@
-import { Context, Format, ImageSurface, Status } from "@gtkx/gi/cairo";
+import { Context, Format, ImageSurface, Status } from "@gtkx/cairo";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";

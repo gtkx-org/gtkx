@@ -23,7 +23,6 @@ import {
     getHandle,
     getWrapperClass,
     resolveWrapperClass,
-    resolveWrapperClassFor,
     wrapCallScopedObject,
     wrapFundamentalHandle,
     wrapHandle,
@@ -70,7 +69,7 @@ function boxedFromNative(descriptor: Descriptor, value: unknown): unknown {
     const handle = value as ExternalObject<Handle>;
     const type = resolveDescriptorType(descriptor);
 
-    return wrapHandle(handle, resolveWrapperClassFor(type, handle) ?? getWrapperClass(type));
+    return wrapHandle(handle, getWrapperClass(type));
 }
 
 function fundamentalWrapperClass(descriptor: FundamentalDescriptor, handle: ExternalObject<Handle>): AnyClass {

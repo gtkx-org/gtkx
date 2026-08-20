@@ -1,4 +1,4 @@
-import { Content, Context, Format, ImageSurface, Operator, Surface } from "@gtkx/gi/cairo";
+import { Content, Context, Format, ImageSurface, Operator, Surface } from "@gtkx/cairo";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkGestureDrag, GtkLabel } from "@gtkx/jsx/gtk";
 import { useRef, useState } from "react";
