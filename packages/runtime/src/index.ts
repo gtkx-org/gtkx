@@ -28,6 +28,8 @@ export { promisify } from "./promisify.js";
 /** @public */
 export { coerceObjectProperty } from "./properties.js";
 /** @public */
+export { matchAllRegex, matchRegex } from "./regex.js";
+/** @public */
 export { type Interface, registerClass } from "./register-class.js";
 /** @public */
 export {
