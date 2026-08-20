@@ -248,11 +248,19 @@ const resolveRecordFieldEntry = (
 
     return {
         jsName: admitted.jsName,
-        tsType: renderTsType(context, admitted.field.type, false),
+        tsType: fieldTsType(context, admitted.field.type),
         isWritable: admitted.isSettable,
         doc: admitted.field.doc,
         annotations: admitted.field.annotations,
     };
+};
+
+const fieldTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string => {
+    if (ref !== undefined && context.library.typeFor(ref)?.kind === "callback") {
+        return isNullable ? "bigint | null" : "bigint";
+    }
+
+    return renderTsType(context, ref, isNullable);
 };
 
 const renderRecordFieldAccessor = (
@@ -280,7 +288,7 @@ const renderRecordFieldAccessor = (
         renderDescriptor(context, field.type, "none", { isInline: isInlineField(context, field) }),
     );
 
-    const tsType = renderTsType(context, field.type, false);
+    const tsType = fieldTsType(context, field.type);
 
     const accessorOptions: AccessorOptions = {
         context,
@@ -872,6 +880,7 @@ const setterBlock = (options: AccessorOptions): string =>
     );
 
 export {
+    fieldTsType,
     isEmittableField,
     isInlineField,
     isStorableFieldType,

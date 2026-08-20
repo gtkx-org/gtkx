@@ -6,12 +6,17 @@ import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { inputParameters, parameterIdentifier } from "../../analysis/param-structure.js";
-import { renderTsType } from "../../analysis/ts-type.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { type Callables, staticMembers } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
 import { renderSourceGtype } from "./gtype-binding.js";
-import { emitFieldWrite, isEmittableField, isInlineField, isStorableFieldType } from "./record-field-accessor.js";
+import {
+    emitFieldWrite,
+    fieldTsType,
+    isEmittableField,
+    isInlineField,
+    isStorableFieldType,
+} from "./record-field-accessor.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
 import { isConstructibleRecord } from "./value-marshalable.js";
 
@@ -42,7 +47,7 @@ const renderRecordConstructorPropsInterface = (
         .map(
             (entry) =>
                 `${getDoc(entry.field)}${toCamelIdentifier(entry.field.name)}?: ` +
-                `${renderTsType(context, entry.field.type, true)};`,
+                `${fieldTsType(context, entry.field.type, true)};`,
         );
 
     return renderBracedOrEmpty(head, lines.join("\n"));

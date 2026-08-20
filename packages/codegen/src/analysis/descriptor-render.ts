@@ -197,7 +197,7 @@ const renderDescriptor = (
             return tVoid;
         }
         case "callback": {
-            return tUint64;
+            return tBiguint64;
         }
         case "class":
         case "interface":

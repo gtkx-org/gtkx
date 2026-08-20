@@ -13,7 +13,7 @@ use napi::{Env, ValueType};
 
 use crate::ffi::Stash;
 use crate::ffi::codec::{
-    Codec, Decoder as _, Encoder as _, Ownership, PtrWriter as _, ReadCtx, SlotInit,
+    CallbackCodec, Codec, Decoder as _, Encoder as _, Ownership, PtrWriter as _, ReadCtx, SlotInit,
     str_to_glib_full,
 };
 use crate::handle::{BorrowScope, Handle};
@@ -168,7 +168,7 @@ impl ClosureState {
 
         let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_codecs.len());
         for codec in &data_ref.arg_codecs {
-            cif_arg_types.push(codec.libffi_type());
+            codec.append_ffi_arg_types(&mut cif_arg_types);
         }
 
         if data_ref.can_throw {
@@ -332,12 +332,18 @@ impl ClosureData {
         (!ptr.is_null()).then_some(ptr)
     }
 
+    fn total_ffi_slots(&self) -> usize {
+        self.arg_codecs.iter().map(ffi_slot_count).sum()
+    }
+
     unsafe fn sibling_stashes(&self, args: *const *const c_void) -> Vec<Stash> {
+        let mut slot = 0usize;
+
         self.arg_codecs
             .iter()
-            .enumerate()
-            .map(|(i, codec)| {
-                let arg_ptr = unsafe { *args.add(i) };
+            .map(|codec| {
+                let arg_ptr = unsafe { *args.add(slot) };
+                slot += ffi_slot_count(codec);
                 match codec {
                     Codec::Integer(kind) => {
                         kind.to_stash(unsafe { kind.read_ptr(arg_ptr.cast::<u8>()) })
@@ -401,13 +407,31 @@ impl ClosureData {
         let mut js_args = Vec::with_capacity(self.arg_codecs.len());
         let mut ref_slots: Vec<RefSlot<'e>> = Vec::new();
         let siblings = unsafe { self.sibling_stashes(args) };
+        let mut slot_index = 0usize;
 
         for (i, codec) in self.arg_codecs.iter().enumerate() {
+            let arg_slot = slot_index;
+            slot_index += ffi_slot_count(codec);
+
             if self.user_data_index == Some(i) {
                 continue;
             }
 
-            let arg_ptr = unsafe { *args.add(i) };
+            if let Codec::Callback(callback_codec) = codec {
+                let val = match unsafe { read_callback_arg(env, callback_codec, args, arg_slot) } {
+                    Ok(val) => val,
+                    Err(e) => {
+                        error_reporter::report(
+                            &e.context(format!("callback: failed to read arg {i}")),
+                        );
+                        value::js_null(env)?
+                    }
+                };
+                js_args.push(val);
+                continue;
+            }
+
+            let arg_ptr = unsafe { *args.add(arg_slot) };
             if let Codec::Ref(ref_codec) = codec {
                 let slot = unsafe { Self::read_ref_arg(env, ref_codec, arg_ptr) }?;
                 js_args.push(slot.obj);
@@ -493,7 +517,7 @@ impl ClosureData {
             return;
         }
 
-        let error_arg = unsafe { *args.add(self.arg_codecs.len()) };
+        let error_arg = unsafe { *args.add(self.total_ffi_slots()) };
         let error_out = unsafe {
             error_arg
                 .cast::<*mut *mut glib::ffi::GError>()
@@ -687,6 +711,36 @@ fn gerror_from_thrown(env: &Env, error: napi::Error) -> *mut glib::ffi::GError {
             "JavaScript exception could not be read",
         ),
     }
+}
+
+fn ffi_slot_count(codec: &Codec) -> usize {
+    let mut types: Vec<libffi::Type> = Vec::with_capacity(3);
+    codec.append_ffi_arg_types(&mut types);
+
+    types.len()
+}
+
+unsafe fn read_callback_arg<'e>(
+    env: &'e Env,
+    codec: &CallbackCodec,
+    args: *const *const c_void,
+    slot: usize,
+) -> anyhow::Result<Unknown<'e>> {
+    let fn_ptr = unsafe { (*args.add(slot)).cast::<*mut c_void>().read_unaligned() };
+
+    if fn_ptr.is_null() {
+        return Ok(value::js_null(env)?);
+    }
+
+    let mut target: Object<'e> = Object::new(env)?;
+    target.set_named_property("fnPtr", BigInt::from(fn_ptr as u64))?;
+
+    if codec.has_user_data {
+        let user_data = unsafe { (*args.add(slot + 1)).cast::<*mut c_void>().read_unaligned() };
+        target.set_named_property("userData", BigInt::from(user_data as u64))?;
+    }
+
+    Ok(target.to_unknown())
 }
 
 fn seed_ref<'e>(
