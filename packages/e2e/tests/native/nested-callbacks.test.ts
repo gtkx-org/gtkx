@@ -107,6 +107,20 @@ describe("nested callbacks — edge cases", () => {
 });
 
 describe("nested callbacks — error paths", () => {
+    it("throws when an async-scoped callback is invoked a second time", async () => {
+        const state: { callback: Gio.AsyncReadyCallback | null } = { callback: null };
+
+        const instance = createAsyncInitable("DoubleCompletion", (_self, _ioPriority, _cancellable, callback) => {
+            state.callback = callback;
+        });
+
+        const pending = instance.initAsync(0);
+        const stored = state.callback;
+        stored?.(instance, completedTask(instance, null), null);
+        await expect(pending).resolves.toBe(true);
+        expect(() => stored?.(instance, completedTask(instance, null), null)).toThrow();
+    });
+
     it("throws when the decoded callable receives a non-object source", async () => {
         const state: { callback: Gio.AsyncReadyCallback | null } = { callback: null };
 

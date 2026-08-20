@@ -121,12 +121,19 @@ function decodedCallbackCallable(
     target: DecodedCallbackTarget,
 ): (...inputs: unknown[]) => unknown {
     const canThrow = descriptor.canThrow === true;
+    const isOneShot = descriptor.scope === "async";
     const argDescriptors = canThrow ? [...descriptor.argDescriptors, errorRefDescriptor()] : descriptor.argDescriptors;
     let bound: ExternalObject<CallDescriptor> | undefined;
+    let isSpent = false;
 
     return (...inputs) => {
+        if (isSpent) {
+            throw new Error("An async-scoped callback was already invoked; its native caller has released it");
+        }
+
         bound ??= bindFunctionPointer(target.fnPtr, argDescriptors, descriptor.returnDescriptor, "decoded callback");
         const values = decodedCallbackValues(descriptor, target, inputs);
+        isSpent = isOneShot;
 
         if (!canThrow) {
             return fromNative(descriptor.returnDescriptor, call(bound, values));
@@ -177,7 +184,8 @@ function hashTableFromNative(descriptor: HashTableDescriptor, value: unknown): u
  * decoded from a native function pointer and its bound user data becomes a
  * callable function that invokes the native callback; it stays valid only as
  * long as the native caller keeps the pointer pair alive, which for an
- * async-scoped callback means until the first invocation.
+ * async-scoped callback means until the first invocation — calling one a
+ * second time throws instead of reaching the released native closure.
  *
  * @param descriptor Describes the native type of the value.
  * @param value The raw native value to convert.
