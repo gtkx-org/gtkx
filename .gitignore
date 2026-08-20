@@ -18,3 +18,4 @@ packages/native/npm/*/package.json
 website/reference/
 
 .local-registry/
+.agent.lock
