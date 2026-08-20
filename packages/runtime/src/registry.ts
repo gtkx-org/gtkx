@@ -183,12 +183,6 @@ function registerWrapperClassResolver(cls: AnyClass, resolver: WrapperClassResol
     wrapperClassResolvers.set(cls, resolver);
 }
 
-function chooseWrapperClass(cls: AnyClass, handle: ExternalObject<Handle>): AnyClass {
-    const resolver = wrapperClassResolvers.get(cls);
-
-    return resolver === undefined ? cls : resolver(handle);
-}
-
 function markDerivedClass(cls: AnyClass): void {
     derivedClasses.add(cls);
 }
@@ -263,7 +257,8 @@ function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: Any
         return getOrCreateWrapper(handle);
     }
 
-    const instance: object = Object.create(chooseWrapperClass(cls, handle).prototype) as object;
+    const resolver = wrapperClassResolvers.get(cls);
+    const instance: object = Object.create((resolver === undefined ? cls : resolver(handle)).prototype) as object;
     setHandle(instance, handle);
 
     return instance;
