@@ -46,13 +46,14 @@ const settle = <R extends object, T>(settlement: Settlement<R, T>, asyncResult: 
 /**
  * Wraps a finish function whose result leads with the success boolean of a throwing C call,
  * dropping that boolean: failure already surfaces as a thrown error, so the boolean is always
- * `true`. A single remaining value is handed back bare, several stay a tuple.
+ * `true`. A single remaining value is handed back bare, several stay a tuple. The finish result
+ * must carry at least one value beyond the boolean; a boolean-only finish needs no trimming.
  *
  * @param finish Extracts the boolean-led result from the async result passed to the completion callback.
  * @returns A finish function resolving to the result without its leading boolean.
  */
 const trimFinish =
-    <R extends object, T extends readonly [boolean, ...unknown[]]>(
+    <R extends object, T extends readonly [boolean, unknown, ...unknown[]]>(
         finish: FinishResult<R, T>,
     ): FinishResult<R, TrimmedFinish<T>> =>
         (result: R): TrimmedFinish<T> => {
