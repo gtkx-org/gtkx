@@ -295,10 +295,15 @@ const hoverHost = (project: CliProject, filePath: string): ts.LanguageServiceHos
 
 const hoverDoc = (project: CliProject, fileName: string, text: string): string => {
     const filePath = join(project.root, fileName);
+    const position = readFileSync(filePath, "utf8").indexOf(text);
+    expect(position).toBeGreaterThanOrEqual(0);
     const service = ts.createLanguageService(hoverHost(project, filePath));
-    const info = service.getQuickInfoAtPosition(filePath, readFileSync(filePath, "utf8").indexOf(text));
 
-    return ts.displayPartsToString(info?.documentation);
+    try {
+        return ts.displayPartsToString(service.getQuickInfoAtPosition(filePath, position)?.documentation);
+    } finally {
+        service.dispose();
+    }
 };
 
 describe("gtkx codegen", () => {

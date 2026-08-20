@@ -57,6 +57,7 @@ const FINGERPRINT_FILENAME = ".codegen-fingerprint.json";
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OVERRIDES_ROOT = join(PACKAGE_ROOT, "overrides");
 const requireFromCodegen = createRequire(import.meta.url);
+const codegenHashCache: Map<string, string> = new Map();
 
 const compareOrdinal = (a: string, b: string): number => {
     if (a < b) {
@@ -151,7 +152,7 @@ const hashPackageCode = (hash: Hash, label: string, root: string): void => {
     hashTree(hash, join(label, "dist"), join(root, "dist"));
 };
 
-const codegenHash = (): string => {
+const computeCodegenHash = (): string => {
     const hash = createHash("sha256");
     hash.update(dependencyVersions().join(","));
     hashPackageCode(hash, "codegen", PACKAGE_ROOT);
@@ -163,6 +164,19 @@ const codegenHash = (): string => {
     }
 
     return hash.digest("hex");
+};
+
+const codegenHash = (): string => {
+    const cached = codegenHashCache.get("codegen");
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const value = computeCodegenHash();
+    codegenHashCache.set("codegen", value);
+
+    return value;
 };
 
 const hashGi = (inputs: GiInputs): string => {
