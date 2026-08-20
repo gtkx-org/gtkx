@@ -1,5 +1,5 @@
-import { getHandle, t } from "@gtkx/runtime";
-import { MatchInfo, Regex, type RegexMatchFlags } from "../glib.js";
+import { matchAllRegex, matchRegex } from "@gtkx/runtime";
+import { type MatchInfo, Regex, type RegexMatchFlags } from "../glib.js";
 
 declare module "../glib.js" {
     interface Regex {
@@ -41,64 +41,12 @@ declare module "../glib.js" {
     }
 }
 
-const LIB = "libgobject-2.0.so.0,libglib-2.0.so.0";
-
-const bindMatchFull = (symbol: string) =>
-    t.fn(LIB, symbol, {
-        args: [
-            { type: t.boxed("GRegex", { ownership: "borrowed", sharedLibrary: LIB, getTypeFnName: "g_regex_get_type" }) },
-            { type: t.buffer },
-            { type: t.int64 },
-            { type: t.int32 },
-            { type: t.uint32 },
-            {
-                type: t.boxed("GMatchInfo", {
-                    ownership: "full",
-                    sharedLibrary: LIB,
-                    getTypeFnName: "g_match_info_get_type",
-                }),
-                direction: "out",
-            },
-        ],
-        returns: t.boolean,
-        canThrow: true,
-    });
-
-const gRegexMatchFull = bindMatchFull("g_regex_match_full");
-const gRegexMatchAllFull = bindMatchFull("g_regex_match_all_full");
-
-const subjectBytes = new WeakMap<MatchInfo, Uint8Array>();
-const encoder = new TextEncoder();
-
-const flattenSubject = (subject: string | string[]): string =>
-    Array.isArray(subject) ? subject.join("") : subject;
-
-const matchWithSubject = (
-    boundFn: (...inputs: unknown[]) => unknown,
-    regex: Regex,
-    subject: string | string[],
-    startPosition: number,
-    matchOptions: RegexMatchFlags,
-): [boolean, MatchInfo] => {
-    const bytes = encoder.encode(`${flattenSubject(subject)}\0`);
-    const result = boundFn(getHandle(regex), bytes, bytes.length - 1, startPosition, matchOptions) as [
-        boolean,
-        MatchInfo,
-    ];
-
-    if (result[1] instanceof MatchInfo) {
-        subjectBytes.set(result[1], bytes);
-    }
-
-    return result;
-};
-
 Regex.prototype.match = function match(string: string, matchOptions: RegexMatchFlags): [boolean, MatchInfo] {
-    return matchWithSubject(gRegexMatchFull, this, string, 0, matchOptions);
+    return matchRegex<MatchInfo>(this, string, 0, matchOptions);
 };
 
 Regex.prototype.matchAll = function matchAll(string: string, matchOptions: RegexMatchFlags): [boolean, MatchInfo] {
-    return matchWithSubject(gRegexMatchAllFull, this, string, 0, matchOptions);
+    return matchAllRegex<MatchInfo>(this, string, 0, matchOptions);
 };
 
 Regex.prototype.matchFull = function matchFull(
@@ -106,7 +54,7 @@ Regex.prototype.matchFull = function matchFull(
     startPosition: number,
     matchOptions: RegexMatchFlags,
 ): [boolean, MatchInfo] {
-    return matchWithSubject(gRegexMatchFull, this, string, startPosition, matchOptions);
+    return matchRegex<MatchInfo>(this, string, startPosition, matchOptions);
 };
 
 Regex.prototype.matchAllFull = function matchAllFull(
@@ -114,5 +62,5 @@ Regex.prototype.matchAllFull = function matchAllFull(
     startPosition: number,
     matchOptions: RegexMatchFlags,
 ): [boolean, MatchInfo] {
-    return matchWithSubject(gRegexMatchAllFull, this, string, startPosition, matchOptions);
+    return matchAllRegex<MatchInfo>(this, string, startPosition, matchOptions);
 };
