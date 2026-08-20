@@ -236,6 +236,7 @@ mod tests {
             destroy_kind: DestroyNotifyKind::DestroyNotify,
             has_user_data,
             user_data_index,
+            can_throw: false,
             scope: CallbackScope::Async,
         })
     }

@@ -91,6 +91,7 @@ type ListDescriptorName = "list" | "slist" | "ptrArray" | "gArray";
 type ArrayLayout = {
     elementSize?: number | undefined;
     isBytes: boolean;
+    isCallerAllocated?: boolean | undefined;
 };
 
 type BindArgs = {
@@ -234,8 +235,13 @@ const tHashTable = (key: string, value: string, ownership: Ownership): string =>
 const tEnum = (lib: string, typeFnName: string, isSigned: boolean): string =>
     call("enum", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(isSigned)]);
 
-const tFlags = (lib: string, typeFnName: string, isSigned: boolean): string =>
-    call("flags", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(isSigned)]);
+const tFlags = (lib: string, typeFnName: string, isSigned: boolean, mask?: number): string =>
+    call("flags", [
+        sourceStringLiteral(lib),
+        sourceStringLiteral(typeFnName),
+        String(isSigned),
+        mask === undefined ? undefined : `0x${mask.toString(16)}`,
+    ]);
 
 const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceStringLiteral(ownership)]);
 
@@ -257,6 +263,7 @@ const arrayLayoutArg = (ownership: Ownership | undefined, layout: ArrayLayout): 
     const entries = [
         layout.elementSize === undefined ? undefined : `elementSize: ${String(layout.elementSize)}`,
         layout.isBytes ? "isBytes: true" : undefined,
+        layout.isCallerAllocated === true ? "isCallerAllocated: true" : undefined,
     ].filter((entry): entry is string => entry !== undefined);
 
     return entries.length === 0 ? undefined : `{ ${entries.join(", ")} }`;

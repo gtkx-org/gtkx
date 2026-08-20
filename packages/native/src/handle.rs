@@ -303,6 +303,29 @@ impl Handle {
         (!ptr.is_null()).then_some(ptr)
     }
 
+    /// The pointer a fundamental handle references when the handle holds its own reference to the
+    /// instance, or `None` for a handle that merely borrows one. Only an owned pointer names the
+    /// same instance for the handle's whole lifetime, which is what makes it usable as an identity
+    /// key.
+    #[must_use]
+    pub fn as_owned_fundamental_ptr(&self) -> Option<*mut c_void> {
+        if self.is_invalidated() {
+            return None;
+        }
+
+        let HandleKind::Fundamental(fundamental) = &self.inner.kind else {
+            return None;
+        };
+
+        if !fundamental.is_owned() {
+            return None;
+        }
+
+        let ptr = fundamental.as_ptr();
+
+        (!ptr.is_null()).then_some(ptr)
+    }
+
     /// Hands the owned reference over to the caller, which becomes responsible for releasing it.
     #[must_use]
     pub fn take_owned(&self) -> Option<glib::Object> {

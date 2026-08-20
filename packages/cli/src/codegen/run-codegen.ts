@@ -47,6 +47,7 @@ type CodegenOptionsInput = {
     elements: Config["elements"];
     isByteArrayTyped: boolean;
     isValueUnwrapped: boolean;
+    isFinishTrimmed: boolean;
 };
 
 type PreparedCodegen = CodegenInputs & { isForced: boolean };
@@ -80,6 +81,7 @@ const codegenOptions = ({ store, libraries, girPath, elements, ...future }: Code
     girPath,
     isByteArrayTyped: future.isByteArrayTyped,
     isValueUnwrapped: future.isValueUnwrapped,
+    isFinishTrimmed: future.isFinishTrimmed,
     gi: {
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
@@ -173,6 +175,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
             elements: config.elements,
             isByteArrayTyped: config.future?.v2ByteArrays === true,
             isValueUnwrapped: config.future?.v2ValueReturns === true,
+            isFinishTrimmed: config.future?.v2FinishResults === true,
         }),
         isForced,
     });

@@ -90,6 +90,7 @@ fn enum_and_flags_descriptors_pick_integer_storage_by_sign() {
         shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn_name: "gtk_state_flags_get_type".to_owned(),
         is_signed: false,
+        mask: None,
     };
     assert!(matches!(codec(unsigned_flags), Codec::EnumFlags(_)));
 }
@@ -151,6 +152,7 @@ fn array_descriptor_recurses_into_its_item_codec() {
         fixed_size: Some(3),
         element_size: None,
         is_bytes: None,
+        is_caller_allocated: None,
     };
     assert!(matches!(codec(array), Codec::Array(_)));
 }
@@ -176,6 +178,7 @@ fn callback_descriptor(destroy_kind: Option<DestroyNotifyKind>) -> Descriptor {
         destroy_kind,
         has_user_data: Some(true),
         user_data_index: Some(1),
+        can_throw: None,
         scope: None,
     }
 }
@@ -236,6 +239,7 @@ fn array_descriptor_propagates_codec_construction_errors() {
         fixed_size: None,
         element_size: None,
         is_bytes: None,
+        is_caller_allocated: None,
     };
     assert!(invalid.into_codec().is_err());
 }

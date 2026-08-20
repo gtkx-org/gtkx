@@ -65,6 +65,7 @@ type ArgIndexOptions = {
 };
 
 type CursorArgIndexOptions = ArgIndexOptions & { cursor: GirCursorBounds };
+type CArrayExpressionOptions = ArgIndexOptions & { isCallerAllocated: boolean };
 
 type RenderDescriptorOptions = Partial<ArgIndexOptions> & {
     isCallerAllocated?: boolean;
@@ -196,7 +197,7 @@ const renderDescriptor = (
             return tVoid;
         }
         case "callback": {
-            return tUint64;
+            return tBiguint64;
         }
         case "class":
         case "interface":
@@ -206,7 +207,10 @@ const renderDescriptor = (
             return expressionForResolved(context, type, transfer, options);
         }
         case "carray": {
-            return arrayExpression(context, type, transfer, indexOptions);
+            return arrayExpression(context, type, transfer, {
+                ...indexOptions,
+                isCallerAllocated: options.isCallerAllocated === true,
+            });
         }
         case "list": {
             return listExpression(context, type, transfer, indexOptions);
@@ -340,7 +344,11 @@ const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
     return declared?.closureIndex ?? userDataIndexByName(parameters);
 };
 
-const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number | undefined): string[] => {
+const callbackOptionsArg = (
+    owningParameter: GirParameter,
+    userDataIndex: number | undefined,
+    canThrow: boolean,
+): string[] => {
     const options: string[] = [];
 
     if (owningParameter.destroyIndex !== undefined) {
@@ -353,6 +361,10 @@ const callbackOptionsArg = (owningParameter: GirParameter, userDataIndex: number
 
     if (userDataIndex !== undefined) {
         options.push(`userDataIndex: ${String(userDataIndex)}`);
+    }
+
+    if (canThrow) {
+        options.push("canThrow: true");
     }
 
     if (owningParameter.scope !== undefined) {
@@ -383,7 +395,7 @@ const renderCallbackType = (
     return tCallback({
         argTypes,
         returns: renderDescriptor(context, returnValue.type, returnValue.transferOwnership),
-        options: callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters)),
+        options: callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters), callback.throws),
     });
 };
 
@@ -671,16 +683,20 @@ const recordExpression = (
 
 const rawEnumDescriptor = (isSigned: boolean): string => (isSigned ? tInt32 : tUint32);
 
+const flagsMask = (resolved: Extract<EntityType, { kind: "enum" }>): number =>
+    resolved.value.members.reduce((mask, member) => (mask | Number(member.value)) >>> 0, 0);
+
 const enumExpression = (resolved: Extract<EntityType, { kind: "enum" }>): string => {
     const getter = resolved.value.glibGetType;
     const isSigned = resolved.value.members.some((member) => member.value.startsWith("-"));
     const lib = resolved.namespace.sharedLibrary;
+    const isBitfield = resolved.value.kind === "bitfield";
 
     if (getter === undefined || getter === "" || lib === undefined) {
-        return rawEnumDescriptor(isSigned);
+        return isBitfield ? tFlags("", "", isSigned, flagsMask(resolved)) : rawEnumDescriptor(isSigned);
     }
 
-    return resolved.value.kind === "bitfield" ? tFlags(lib, getter, isSigned) : tEnum(lib, getter, isSigned);
+    return isBitfield ? tFlags(lib, getter, isSigned) : tEnum(lib, getter, isSigned);
 };
 
 const expressionForResolved = (
@@ -721,6 +737,7 @@ const elementExpression = (
         ...options,
         cursor: undefined,
         hasOutIndirection: false,
+        isCallerAllocated: false,
     });
 
 const cursorArrayExpression = (
@@ -745,11 +762,14 @@ const arrayLayout = (context: ModuleContext, ref: CArrayType, options: ArgIndexO
         context.library.isByteArrayTyped && !hasUnknownArrayLength(ref) && isByteSequence(context.library, ref),
 });
 
+const fixedArrayLayout = (layout: ArrayLayout, isCallerAllocated: boolean): ArrayLayout =>
+    isCallerAllocated ? { ...layout, isCallerAllocated: true } : layout;
+
 const arrayExpression = (
     context: ModuleContext,
     ref: CArrayType,
     transfer: ParameterTransfer,
-    options: ArgIndexOptions,
+    options: CArrayExpressionOptions,
 ): string => {
     const { cursor } = options;
     const layout = arrayLayout(context, ref, options);
@@ -770,7 +790,7 @@ const arrayExpression = (
     }
 
     if (ref.fixedSize !== undefined) {
-        return tFixedArray(element, ref.fixedSize, ownership, layout);
+        return tFixedArray(element, ref.fixedSize, ownership, fixedArrayLayout(layout, options.isCallerAllocated));
     }
 
     return tArray(element, ownership, layout);

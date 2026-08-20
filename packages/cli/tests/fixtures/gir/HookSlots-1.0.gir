@@ -1,0 +1,118 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <package name="hookslots-1.0"/>
+  <namespace name="HookSlots"
+             version="1.0"
+             shared-library="libhookslots.so.0"
+             c:identifier-prefixes="HookSlots"
+             c:symbol-prefixes="hook_slots">
+    <callback name="HookFunc" c:type="HookSlotsHookFunc">
+      <return-value transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="value" transfer-ownership="none">
+          <type name="gint" c:type="gint"/>
+        </parameter>
+        <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1" closure="1">
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+      </parameters>
+    </callback>
+    <class name="Station"
+           c:symbol-prefix="station"
+           c:type="HookSlotsStation"
+           parent="GObject.Object"
+           glib:type-name="HookSlotsStation"
+           glib:get-type="hook_slots_station_get_type"
+           glib:type-struct="StationClass"/>
+    <record name="StationClass"
+            c:type="HookSlotsStationClass"
+            glib:is-gtype-struct-for="Station">
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+      <field name="bind">
+        <callback name="bind">
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+          <parameters>
+            <parameter name="self" transfer-ownership="none">
+              <type name="Station" c:type="HookSlotsStation*"/>
+            </parameter>
+            <parameter name="hook"
+                       transfer-ownership="none"
+                       nullable="1"
+                       allow-none="1"
+                       scope="async"
+                       closure="2">
+              <type name="HookFunc" c:type="HookSlotsHookFunc"/>
+            </parameter>
+            <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1">
+              <type name="gpointer" c:type="gpointer"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="watch">
+        <callback name="watch">
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+          <parameters>
+            <parameter name="self" transfer-ownership="none">
+              <type name="Station" c:type="HookSlotsStation*"/>
+            </parameter>
+            <parameter name="hook"
+                       transfer-ownership="none"
+                       nullable="1"
+                       allow-none="1"
+                       scope="notified"
+                       closure="2"
+                       destroy="3">
+              <type name="HookFunc" c:type="HookSlotsHookFunc"/>
+            </parameter>
+            <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1">
+              <type name="gpointer" c:type="gpointer"/>
+            </parameter>
+            <parameter name="destroy" transfer-ownership="none" nullable="1" allow-none="1" scope="async">
+              <type name="GLib.DestroyNotify" c:type="GDestroyNotify"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="defer">
+        <callback name="defer">
+          <return-value transfer-ownership="none">
+            <type name="none" c:type="void"/>
+          </return-value>
+          <parameters>
+            <parameter name="self" transfer-ownership="none">
+              <type name="Station" c:type="HookSlotsStation*"/>
+            </parameter>
+            <parameter name="hook"
+                       transfer-ownership="none"
+                       nullable="1"
+                       allow-none="1"
+                       scope="async"
+                       closure="3">
+              <type name="HookFunc" c:type="HookSlotsHookFunc"/>
+            </parameter>
+            <parameter name="stride" transfer-ownership="none">
+              <type name="gint" c:type="gint"/>
+            </parameter>
+            <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1">
+              <type name="gpointer" c:type="gpointer"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+    </record>
+  </namespace>
+</repository>

@@ -358,7 +358,7 @@ const renderPromisifiedCallable = (
     const body = renderPromisifiedBody(
         context,
         callable,
-        finishCallExpression(callable, finishFn, member.ownerName),
+        { fn: finishFn, expression: finishCallExpression(callable, finishFn, member.ownerName) },
         toCamelIdentifier(cIdentifier),
     );
 

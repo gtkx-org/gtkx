@@ -23,7 +23,7 @@ import { Context, Format, ImageSurface, Pattern, Status } from "@gtkx/cairo";
 
 `Surface`, `Pattern`, and `FontFace` are abstract: instances come from their `create*` statics, from a concrete subclass constructor such as `new ImageSurface(...)`, or from GTK. Whatever the source, an instance arrives as its concrete class, so `surface instanceof ImageSurface` narrows a surface GTK handed you, and `ctx.getSource() instanceof LinearPattern` holds after `ctx.setSource(Pattern.createLinear(...))`.
 
-Most operations report failure through a status instead of throwing: `ctx.status()`, `surface.status()`, and `pattern.status()` return a `Status`, and `statusToString(status)` describes it. The [@gtkx/cairo reference](/reference/@gtkx/cairo/) lists every class, enum, and type.
+Constructors and `create*` factories throw when cairo reports an error, so an invalid size or a missing file never yields a broken object. On an existing object, operations report failure through a status instead of throwing: `ctx.status()`, `surface.status()`, and `pattern.status()` return a `Status`, and `statusToString(status)` describes it. The [@gtkx/cairo reference](/reference/@gtkx/cairo/) lists every class, enum, and type.
 
 ## The GtkDrawingArea draw callback
 
@@ -70,7 +70,7 @@ const status = surface.writeToPng("circle.png");
 if (status !== Status.SUCCESS) throw new Error(statusToString(status));
 ```
 
-`surface.getData()` returns the raw pixel buffer as a `Uint8Array` for inspection, and `ImageSurface.createFromPng(path)` loads one back; check `status()` on the result, since a missing file reports `Status.FILE_NOT_FOUND` rather than throwing.
+`surface.getData()` returns the raw pixel buffer as a `Uint8Array` for inspection, and `ImageSurface.createFromPng(path)` loads one back, throwing if the file is missing or not a PNG.
 
 ## The deprecated `@gtkx/gi/cairo` alias
 

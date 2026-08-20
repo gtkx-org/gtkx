@@ -197,4 +197,11 @@ impl ArrayContainerCodec {
     pub(super) fn is_length_bounded(&self) -> bool {
         matches!(self, Self::Sized(_) | Self::Fixed(_) | Self::Cursor(_))
     }
+
+    pub(super) fn fixed_extent(&self) -> Option<usize> {
+        match self {
+            Self::Fixed(fixed) => Some(fixed.extent()),
+            _ => None,
+        }
+    }
 }

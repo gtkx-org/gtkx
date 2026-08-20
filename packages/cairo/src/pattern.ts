@@ -8,7 +8,6 @@ import {
     wrapHandle,
     type WrapperClassResolver,
 } from "@gtkx/runtime";
-import type { Surface } from "./surface.js";
 import type { ColorStop, LinearPoints, PathData, Point, RadialCircles, RgbaColor } from "./types.js";
 import { type Extend, type Filter, PatternType, type Status } from "./enums.js";
 import {
@@ -23,6 +22,8 @@ import {
 } from "./lib.js";
 import { allocMatrix, Matrix } from "./matrix.js";
 import { parsePath } from "./path.js";
+import { checkStatus } from "./status.js";
+import { Surface } from "./surface.js";
 
 type RgbaRefs = [
     red: { value: number },
@@ -91,6 +92,7 @@ const cairoPatternSetMatrix = bindCairo("cairo_pattern_set_matrix", [PATTERN_T, 
 const cairoPatternGetMatrix = bindCairo("cairo_pattern_get_matrix", [PATTERN_T, MATRIX_T], t.void);
 const cairoPatternGetType = bindCairo("cairo_pattern_get_type", [PATTERN_T], t.int32);
 const cairoPatternGetReferenceCount = bindCairo("cairo_pattern_get_reference_count", [PATTERN_T], t.int32);
+const cairoPatternGetSurface = bindCairo("cairo_pattern_get_surface", [PATTERN_T, t.ref(SURFACE_T)], t.int32);
 
 const cairoPatternGetLinearPoints = bindCairo(
     "cairo_pattern_get_linear_points",
@@ -155,6 +157,12 @@ const cairoMeshPatternGetCornerColorRgba = bindCairo(
 
 const wrapPattern = (handle: unknown): Pattern => wrapHandle(handle as ExternalObject<Handle>, Pattern);
 
+const checkPattern = <T extends Pattern>(pattern: T): T => {
+    checkStatus(pattern.status(), "pattern");
+
+    return pattern;
+};
+
 const readRgba = (fill: (...refs: RgbaRefs) => void): RgbaColor => {
     const red = { value: 0 };
     const green = { value: 0 };
@@ -203,17 +211,19 @@ abstract class Pattern {
 
     /** Creates an opaque solid-color pattern. */
     static createRgb(red: number, green: number, blue: number): Pattern {
-        return wrapPattern(cairoPatternCreateRgb(red, green, blue));
+        return checkPattern(wrapPattern(cairoPatternCreateRgb(red, green, blue)));
     }
 
     /** Creates a translucent solid-color pattern. */
     static createRgba(red: number, green: number, blue: number, alpha: number): Pattern {
-        return wrapPattern(cairoPatternCreateRgba(red, green, blue, alpha));
+        return checkPattern(wrapPattern(cairoPatternCreateRgba(red, green, blue, alpha)));
     }
 
     /** Creates a linear gradient between `(x0, y0)` and `(x1, y1)`; add stops with `addColorStopRgba`. */
     static createLinear(x0: number, y0: number, x1: number, y1: number): LinearPattern {
-        return wrapHandle(cairoPatternCreateLinear(x0, y0, x1, y1) as ExternalObject<Handle>, LinearPattern);
+        const handle = cairoPatternCreateLinear(x0, y0, x1, y1) as ExternalObject<Handle>;
+
+        return checkPattern(wrapHandle(handle, LinearPattern));
     }
 
     /** Creates a radial gradient between two circles; add stops with `addColorStopRgba`. */
@@ -227,17 +237,19 @@ abstract class Pattern {
     ): RadialPattern {
         const handle = cairoPatternCreateRadial(cx0, cy0, radius0, cx1, cy1, radius1) as ExternalObject<Handle>;
 
-        return wrapHandle(handle, RadialPattern);
+        return checkPattern(wrapHandle(handle, RadialPattern));
     }
 
     /** Creates an empty mesh gradient; describe its patches with the `MeshPattern` methods. */
     static createMesh(): MeshPattern {
-        return wrapHandle(cairoPatternCreateMesh() as ExternalObject<Handle>, MeshPattern);
+        return checkPattern(wrapHandle(cairoPatternCreateMesh() as ExternalObject<Handle>, MeshPattern));
     }
 
     /** Creates a pattern that paints with the content of `surface`. */
     static createForSurface(surface: Surface): Pattern {
-        return wrapPattern(cairoPatternCreateForSurface(getHandle(surface)));
+        const handle = getHandle(surface);
+
+        return checkPattern(wrapPattern(cairoPatternCreateForSurface(handle)));
     }
 
     /** GType of `CairoPattern`, the boxed type this class is registered under. */
@@ -317,6 +329,18 @@ abstract class Pattern {
     /** Returns the reference count of the pattern. */
     getReferenceCount(): number {
         return cairoPatternGetReferenceCount(getHandle(this)) as number;
+    }
+
+    /** Returns the surface of a surface pattern; throws for a pattern that has no surface. */
+    getSurface(): Surface {
+        const surface: { value: ExternalObject<Handle> | null } = { value: null };
+        checkStatus(cairoPatternGetSurface(getHandle(this), surface) as Status, "pattern");
+
+        if (surface.value === null) {
+            throw new Error("cairo pattern has no surface");
+        }
+
+        return wrapHandle(surface.value, Surface);
     }
 }
 

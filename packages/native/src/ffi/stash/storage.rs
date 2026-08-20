@@ -239,6 +239,36 @@ pub enum StashData {
     PtrSlot(Vec<*mut c_void>, Option<Box<StashStorage>>),
     StrV(glib::StrV),
     HashTable,
+    CallerAllocation(CallerAllocation),
+}
+
+/// A zero-initialized `g_malloc`ed buffer handed to a callee that fills it in place, kept at
+/// malloc alignment so SIMD-aligned element types can be written into it, and freed on drop.
+#[derive(Debug)]
+pub struct CallerAllocation {
+    ptr: *mut c_void,
+    byte_len: usize,
+}
+
+impl CallerAllocation {
+    #[must_use]
+    pub fn zeroed(byte_len: usize) -> Self {
+        Self {
+            ptr: unsafe { glib::ffi::g_malloc0(byte_len) },
+            byte_len,
+        }
+    }
+
+    #[must_use]
+    pub fn ptr(&self) -> *mut c_void {
+        self.ptr
+    }
+}
+
+impl Drop for CallerAllocation {
+    fn drop(&mut self) {
+        unsafe { glib::ffi::g_free(self.ptr) };
+    }
 }
 
 impl StashStorage {
@@ -308,6 +338,7 @@ impl StashStorage {
             StashData::I64Vec(v) => Some(size_of_val(v.as_slice())),
             StashData::F32Vec(v) => Some(size_of_val(v.as_slice())),
             StashData::F64Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::CallerAllocation(allocation) => Some(allocation.byte_len),
             StashData::Unit
             | StashData::StringArray(_, _)
             | StashData::ObjectArray(_, _)
@@ -380,7 +411,8 @@ impl Drop for StashStorage {
             | StashData::CString(_)
             | StashData::Buffer(_)
             | StashData::PtrSlot(_, _)
-            | StashData::StrV(_) => {}
+            | StashData::StrV(_)
+            | StashData::CallerAllocation(_) => {}
         }
     }
 }

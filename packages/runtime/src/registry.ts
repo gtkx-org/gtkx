@@ -1,10 +1,12 @@
 import {
     type ExternalObject,
+    getFundamentalWrapper,
     getType,
     getTypeClass,
     getWrapper,
     type Handle,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
+    setFundamentalWrapper,
     setWrapper,
 } from "@gtkx/native";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
@@ -409,6 +411,24 @@ function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: Any
     return instance;
 }
 
+function wrapFundamentalHandle(handle: ExternalObject<Handle> | null | undefined, cls: AnyClass): object | null {
+    if (handle === null || handle === undefined) {
+        return null;
+    }
+
+    const existing = getFundamentalWrapper(handle);
+
+    if (existing) {
+        return existing;
+    }
+
+    const instance: object = Object.create(cls.prototype) as object;
+    setHandle(instance, handle);
+    setFundamentalWrapper(handle, instance);
+
+    return instance;
+}
+
 /**
  * Returns the wrapper class registered for a GType, walking up to ancestor types,
  * and throws if none is registered.
@@ -619,6 +639,7 @@ export {
     registerWrapperClass,
     registerWrapperClassResolver,
     registerInterface,
+    wrapFundamentalHandle,
     wrapHandle,
     getWrapperClass,
     resolveWrapperClass,

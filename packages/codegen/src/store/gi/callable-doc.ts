@@ -12,7 +12,7 @@ import {
 } from "../../analysis/param-structure.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { annotationSpec, THROWS_TEXT } from "./doc-spec.js";
-import { isCallbackParameter, returnedOutParameters } from "./method.js";
+import { isCallbackParameter, returnedOutParameters, shouldTrimFinishBoolean } from "./method.js";
 
 type CallableDocOptions = {
     finishFn?: GirFunction | undefined;
@@ -53,9 +53,9 @@ const tupleReturnsText = (primary: string | undefined, outs: InputParameter[]): 
     return bullets.length === 0 ? undefined : `Tuple of:\n\n${bullets.join("\n")}`;
 };
 
-const returnsText = (context: ModuleContext, fn: GirFunction): string | undefined => {
+const returnsText = (context: ModuleContext, fn: GirFunction, isPrimaryTrimmed: boolean): string | undefined => {
     const outs = returnedOutParameters(context, fn);
-    const isPrimaryOmitted = shouldOmitPrimaryReturn(context.library, fn.returnValue);
+    const isPrimaryOmitted = isPrimaryTrimmed || shouldOmitPrimaryReturn(context.library, fn.returnValue);
     const primary = isPrimaryOmitted ? undefined : fn.returnValue.doc;
 
     if (outs.length === 0) {
@@ -92,7 +92,11 @@ const callableSpec = (context: ModuleContext, callable: GirFunction, options: Ca
         (parameter) => options.finishFn !== undefined && isCallbackParameter(context, parameter),
         options.renames,
     ),
-    returns: returnsText(context, options.finishFn ?? callable),
+    returns: returnsText(
+        context,
+        options.finishFn ?? callable,
+        options.finishFn !== undefined && shouldTrimFinishBoolean(context, options.finishFn),
+    ),
     throws: canCallableThrow(callable, options.finishFn) ? THROWS_TEXT : undefined,
 });
 

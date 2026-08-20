@@ -11,6 +11,7 @@ import type { JsDocSpec } from "../../writer/doc.js";
 import {
     isInlineCallbackRef,
     isScalarRef,
+    renderCallbackType,
     renderDescriptor,
     renderParamDescriptor,
 } from "../../analysis/descriptor-render.js";
@@ -19,7 +20,6 @@ import {
     handlerParameters,
     parameterIdentifier,
     renamesWithInstance,
-    renderHandlerParameters,
     renderHandlerResultType,
 } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
@@ -74,6 +74,12 @@ type Vtable = {
     slots: VtableSlot[];
 };
 
+type SlotParamPlan = {
+    parameters: GirParameter[];
+    argIndexMap: Map<number, number>;
+    decoded: Set<GirParameter>;
+};
+
 const PADDING_FIELD_NAME = /^(?:reserved|padding)\d*$/i;
 
 const UNCALLABLE_SLOT_KEYS: Set<string> = new Set([
@@ -86,6 +92,7 @@ const UNCALLABLE_SLOT_KEYS: Set<string> = new Set([
 const VTABLE_CACHE: WeakMap<GirClass, Vtable> = new WeakMap();
 const PROTECTED_SLOT_NOTE = "It is `protected`, so only a subclass chaining up reaches it.";
 const PUBLIC_SLOT_NOTE = "Calling it from anywhere else re-enters the slot on a live instance.";
+const OPAQUE_CALLBACK_NOTE = "Received as the raw address of the C function pointer.";
 
 const vfuncMemberName = (fieldName: string): string => `vfunc${pascalCase(fieldName)}`;
 
@@ -123,6 +130,79 @@ const vtableCallbackType = (context: ModuleContext, field: GirField): GirCallbac
     }
 
     return type.value;
+};
+
+const isCallbackParam = (context: ModuleContext, parameter: GirParameter): boolean =>
+    parameter.type !== undefined && context.library.typeFor(parameter.type)?.kind === "callback";
+
+const isDecodedCallbackParam = (context: ModuleContext, parameter: GirParameter, index: number): boolean =>
+    isCallbackParam(context, parameter) &&
+    parameter.closureIndex === index + 1 &&
+    parameter.destroyIndex === undefined;
+
+const decodedSlotParams = (context: ModuleContext, callback: GirCallback): Set<GirParameter> => {
+    const decoded: Set<GirParameter> = new Set();
+
+    for (const [index, parameter] of callback.parameters.entries()) {
+        if (isDecodedCallbackParam(context, parameter, index)) {
+            decoded.add(parameter);
+        }
+    }
+
+    return decoded;
+};
+
+const companionIndices = (decoded: Set<GirParameter>): Set<number> => {
+    const companions: Set<number> = new Set();
+
+    for (const parameter of decoded) {
+        if (parameter.closureIndex !== undefined) {
+            companions.add(parameter.closureIndex);
+        }
+    }
+
+    return companions;
+};
+
+const slotParamPlan = (context: ModuleContext, callback: GirCallback): SlotParamPlan => {
+    const decoded = decodedSlotParams(context, callback);
+    const companions = companionIndices(decoded);
+    const parameters: GirParameter[] = [];
+    const argIndexMap: Map<number, number> = new Map();
+
+    for (const [index, parameter] of callback.parameters.entries()) {
+        if (companions.has(index)) {
+            continue;
+        }
+
+        argIndexMap.set(index, parameters.length);
+        parameters.push(parameter);
+    }
+
+    return { parameters, argIndexMap, decoded };
+};
+
+const isOpaqueCallbackParam = (context: ModuleContext, plan: SlotParamPlan, parameter: GirParameter): boolean =>
+    isCallbackParam(context, parameter) && !plan.decoded.has(parameter);
+
+const renderSlotParamDescriptor = (context: ModuleContext, parameter: GirParameter, plan: SlotParamPlan): string => {
+    if (plan.decoded.has(parameter)) {
+        const callbackDescriptor = renderCallbackType(context, parameter.type, parameter);
+
+        if (callbackDescriptor !== undefined) {
+            return callbackDescriptor;
+        }
+    }
+
+    return renderParamDescriptor(context, parameter, parameter.type, { argIndexMap: plan.argIndexMap });
+};
+
+const renderSlotParamTsType = (context: ModuleContext, plan: SlotParamPlan, parameter: GirParameter): string => {
+    if (isOpaqueCallbackParam(context, plan, parameter)) {
+        return parameter.nullable ? "bigint | null" : "bigint";
+    }
+
+    return renderTsType(context, parameter.type, parameter.nullable);
 };
 
 const vtableSlotEntry = (
@@ -387,15 +467,35 @@ const hasCallableVfuncSlots = (context: ModuleContext, namespaceName: string, kl
 
 const slotDoc = (slot: VtableSlot): string | undefined => slot.vfunc?.doc ?? slot.field.doc ?? slot.callback.doc;
 
-const slotDocParameters = (slot: VtableSlot): GirParameter[] => {
+const slotParamDoc = (
+    context: ModuleContext,
+    plan: SlotParamPlan,
+    parameter: GirParameter,
+    doc: string | undefined,
+): string | undefined => {
+    if (!isOpaqueCallbackParam(context, plan, parameter)) {
+        return doc;
+    }
+
+    return doc === undefined ? OPAQUE_CALLBACK_NOTE : `${doc} ${OPAQUE_CALLBACK_NOTE}`;
+};
+
+const slotDocParameters = (context: ModuleContext, slot: VtableSlot): GirParameter[] => {
+    const plan = slotParamPlan(context, slot.callback);
     const [, ...parameters] = slot.callback.parameters;
     const vfuncParameters = slot.vfunc?.parameters ?? [];
 
-    return parameters.map((parameter, index) => ({ ...parameter, doc: vfuncParameters[index]?.doc ?? parameter.doc }));
+    return parameters
+        .map((parameter, index) => ({ parameter, index }))
+        .filter(({ index }) => plan.argIndexMap.has(index + 1))
+        .map(({ parameter, index }) => ({
+            ...parameter,
+            doc: slotParamDoc(context, plan, parameter, vfuncParameters[index]?.doc ?? parameter.doc),
+        }));
 };
 
-const slotDocSpec = (slot: VtableSlot): JsDocSpec => {
-    const parameters = slotDocParameters(slot);
+const slotDocSpec = (context: ModuleContext, slot: VtableSlot): JsDocSpec => {
+    const parameters = slotDocParameters(context, slot);
     const source = slot.vfunc ?? slot.callback;
 
     return {
@@ -446,12 +546,18 @@ const isCallableSlot = (context: ModuleContext, slot: VtableSlot): boolean =>
     !UNCALLABLE_SLOT_KEYS.has(slot.key) && !hasUnannotatedPointerParam(context, slot);
 
 const vfuncSlotSignature = (context: ModuleContext, slot: VtableSlot, isOptional = false): VfuncSignature => {
-    const [, ...parameters] = slot.callback.parameters;
+    const plan = slotParamPlan(context, slot.callback);
+    const [, ...parameters] = plan.parameters;
 
     const renderType = (ref: TypeId | undefined, isNullable: boolean): string =>
         renderTsType(context, ref, isNullable);
 
-    const signature = renderHandlerParameters(parameters, renderType).join(", ");
+    const signature = handlerParameters(parameters)
+        .map(
+            (parameter, index) =>
+                `${parameterIdentifier(parameter, index)}: ${renderSlotParamTsType(context, plan, parameter)}`)
+        .join(", ");
+
     const folded = foldedLengthParameters(context.library, slot.callback);
 
     const returnType = renderHandlerResultType({
@@ -470,13 +576,13 @@ const renderVfuncMember = (options: VfuncMemberOptions): string => {
     const { context, ownerRef, slot, mode, isProtected } = options;
     const { header, returnType } = vfuncSlotSignature(context, slot, mode === "requirement");
     const declaration = `${isProtected ? "protected " : ""}${header}`;
-    const doc = renderJsDoc(slotDoc(slot), vfuncMemberNote(options), slotDocSpec(slot));
+    const doc = renderJsDoc(slotDoc(slot), vfuncMemberNote(options), slotDocSpec(context, slot));
 
     if (mode !== "implementation") {
         return `${doc}${declaration};`;
     }
 
-    const [, ...parameters] = slot.callback.parameters;
+    const [, ...parameters] = slotParamPlan(context, slot.callback).parameters;
 
     const inputs = handlerParameters(parameters).map((parameter, index) =>
         parameterIdentifier(parameter, index));
@@ -511,9 +617,10 @@ const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): bo
 
 const renderVtableSlotDescriptor = (context: ModuleContext, vtable: Vtable, slot: VtableSlot): string => {
     const { key, field, callback, byteOffset } = slot;
+    const plan = slotParamPlan(context, callback);
 
-    const argDescriptors = callback.parameters
-        .map((param) => renderParamDescriptor(context, param, param.type))
+    const argDescriptors = plan.parameters
+        .map((param) => renderSlotParamDescriptor(context, param, plan))
         .join(", ");
 
     const returnDescriptor = renderDescriptor(

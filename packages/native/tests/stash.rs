@@ -32,7 +32,14 @@ fn js_func_ref(env: &Env) -> ClosureHandle {
 
 fn armed_callback_value(env: &Env, destroy_ptr: Option<*mut c_void>) -> CallbackValue {
     let js_fn = js_func_ref(env);
-    let data = ClosureData::new(js_fn, Vec::new(), Codec::Void(VoidCodec), None, false);
+    let data = ClosureData::new(
+        js_fn,
+        Vec::new(),
+        Codec::Void(VoidCodec),
+        None,
+        false,
+        false,
+    );
     let state = Box::new(ClosureState::new(data));
     let fn_ptr = state.code_ptr;
     CallbackValue::new_pending_transfer(fn_ptr, true, destroy_ptr, state)

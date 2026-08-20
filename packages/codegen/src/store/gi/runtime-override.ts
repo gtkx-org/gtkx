@@ -21,7 +21,7 @@ const RUNTIME_OVERRIDES: Map<string, RuntimeOverride> = new Map([
     [
         "g_value_set_boxed",
         {
-            signature: "boxed: object | null",
+            signature: "boxed: object | string | number | bigint | boolean | null",
             returnType: "void",
             body: 'throw new Error("g_value_set_boxed: runtime override not installed");',
             renames: [["v_boxed", "boxed"]],

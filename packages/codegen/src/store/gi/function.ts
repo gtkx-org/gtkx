@@ -133,7 +133,7 @@ const matchNamespaceFinish = (context: ModuleContext, fn: GirFunction): Namespac
 const renderPromisifiedNamespaceFunction = (options: NamespaceFunctionOptions, finish: NamespaceFinish): string => {
     const { context, fn, exportName, bindingName } = options;
     const { signature, returnType } = renderPromisifiedSignature(context, fn, finish.fn);
-    const body = renderPromisifiedBody(context, fn, finish.exportName, bindingName);
+    const body = renderPromisifiedBody(context, fn, { fn: finish.fn, expression: finish.exportName }, bindingName);
 
     return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
 };

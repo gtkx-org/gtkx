@@ -379,5 +379,6 @@ pub fn enum_codec() -> EnumFlagsCodec {
         shared_library: "libgtk-4.so.1".to_owned(),
         get_type_fn_name: "gtk_orientation_get_type".to_owned(),
         storage: IntegerCodec::I32,
+        mask: None,
     }
 }

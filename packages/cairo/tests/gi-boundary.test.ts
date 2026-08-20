@@ -17,6 +17,7 @@ import {
 } from "@gtkx/cairo";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Graphene from "@gtkx/gi/graphene";
+import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import * as PangoCairo from "@gtkx/gi/pangocairo";
@@ -99,5 +100,16 @@ describe("cairo values crossing the GI boundary", () => {
 
     it("throws when Gdk receives no surface", () => {
         expect(() => Gdk.cairoRegionCreateFromSurface(undefined as never)).toThrow();
+    });
+});
+
+describe("generated bindings returning cairo boxed values", () => {
+    it("wraps a cairo node's draw context as Context and its surface as a recording surface", () => {
+        const node = Gsk.CairoNode.new(new Graphene.Rect().init(0, 0, 10, 10));
+        const cr = node.getDrawContext();
+        expect(cr).toBeInstanceOf(Context);
+        cr.setSourceRgb(1, 0, 0);
+        cr.paint();
+        expect(node.getSurface()).toBeInstanceOf(RecordingSurface);
     });
 });

@@ -27,6 +27,7 @@ pub struct ArrayCodec {
     pub ownership: Ownership,
     pub element_size: Option<usize>,
     pub(crate) is_bytes: bool,
+    pub(crate) caller_allocated: bool,
     pub(crate) container: ArrayContainerCodec,
 }
 
@@ -49,8 +50,31 @@ impl ArrayCodec {
             ownership,
             element_size,
             is_bytes,
+            caller_allocated: false,
             container: ArrayContainerCodec::from_kind(kind, bounds)?,
         })
+    }
+
+    /// Marks the array as a caller-allocated out parameter: the runtime allocates the buffer the
+    /// callee fills in, sized as the element stride times the fixed element count.
+    pub fn caller_allocated(mut self) -> anyhow::Result<Self> {
+        anyhow::ensure!(
+            self.container.fixed_extent().is_some(),
+            "A caller-allocated array descriptor needs a fixed size"
+        );
+        self.element_stride()?;
+        self.caller_allocated = true;
+        Ok(self)
+    }
+
+    pub(crate) fn caller_allocation_len(&self) -> anyhow::Result<Option<usize>> {
+        if !self.caller_allocated {
+            return Ok(None);
+        }
+        let Some(extent) = self.container.fixed_extent() else {
+            bail!("A caller-allocated array descriptor needs a fixed size");
+        };
+        Ok(Some(self.element_stride()? * extent))
     }
 
     pub(crate) fn is_length_bounded(&self) -> bool {
@@ -251,6 +275,13 @@ impl ArrayCodec {
             .collect()
     }
 
+    fn extract_codepoints(array: &[Unknown<'_>]) -> anyhow::Result<Vec<u32>> {
+        array
+            .iter()
+            .map(|&v| super::unichar::codepoint_from_value(v))
+            .collect()
+    }
+
     fn extract_booleans(array: &[Unknown<'_>]) -> anyhow::Result<Vec<i32>> {
         array
             .iter()
@@ -290,11 +321,14 @@ impl ArrayCodec {
         self.element_size
     }
 
-    pub(super) fn cursor_stride(&self) -> anyhow::Result<usize> {
+    pub(super) fn element_stride(&self) -> anyhow::Result<usize> {
         self.inline_element_size()
             .or_else(|| self.item_element_size())
             .ok_or_else(|| {
-                anyhow::anyhow!("Unsupported cursor array item codec: {:?}", self.item_codec)
+                anyhow::anyhow!(
+                    "Unsupported item codec for a stride-based array: {:?}",
+                    self.item_codec
+                )
             })
     }
 
@@ -448,6 +482,13 @@ impl ArrayCodec {
                 }
                 self.finish_scalar_storage(booleans.into())
             }
+            ItemCodec::Unichar => {
+                let mut codepoints = Self::extract_codepoints(array)?;
+                if zero_terminated {
+                    codepoints.push(0);
+                }
+                self.finish_scalar_storage(codepoints.into())
+            }
             ItemCodec::String => {
                 let dup_items =
                     matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());
@@ -516,6 +557,17 @@ impl ArrayCodec {
             ItemCodec::Boolean => unsafe { std::slice::from_raw_parts(data.cast::<i32>(), len) }
                 .iter()
                 .map(|&v| Ok((v != 0).into_unknown(env)?))
+                .collect(),
+            ItemCodec::Unichar => (0..len)
+                .map(|index| unsafe {
+                    self.item_codec.read(
+                        env,
+                        ReadCtx::slot(
+                            data.add(index * size_of::<u32>()).cast::<c_void>(),
+                            "array element",
+                        ),
+                    )
+                })
                 .collect(),
             ItemCodec::Pointer | ItemCodec::String => {
                 let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };

@@ -211,6 +211,7 @@ fn array_of(
         fixed_size: fixed,
         element_size: None,
         is_bytes: None,
+        is_caller_allocated: None,
     }
 }
 
@@ -390,6 +391,7 @@ fn d_callback() -> Descriptor {
         destroy_kind: None,
         has_user_data: Some(false),
         user_data_index: None,
+        can_throw: None,
         scope: None,
     }
 }
@@ -478,6 +480,7 @@ fn d_flags() -> Descriptor {
         shared_library: GTK.to_owned(),
         get_type_fn_name: "gtk_state_flags_get_type".to_owned(),
         is_signed: false,
+        mask: None,
     }
 }
 

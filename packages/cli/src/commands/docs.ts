@@ -80,6 +80,7 @@ const docs = defineCommand({
             isForced: args.force,
             isByteArrayTyped: config.future?.v2ByteArrays === true,
             isValueUnwrapped: config.future?.v2ValueReturns === true,
+            isFinishTrimmed: config.future?.v2FinishResults === true,
         });
 
         if (!isRegenerated) {

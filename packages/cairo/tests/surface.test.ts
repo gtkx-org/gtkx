@@ -139,10 +139,8 @@ describe("ImageSurface", () => {
         expect(image.getFallbackResolution()).toEqual({ xPixelsPerInch: 72, yPixelsPerInch: 96 });
     });
 
-    it("reports a missing PNG file through the status instead of throwing", () => {
-        const missing = ImageSurface.createFromPng(join(outputDir, "missing.png"));
-        expect(missing).toBeInstanceOf(ImageSurface);
-        expect(missing.status()).toBe(Status.FILE_NOT_FOUND);
+    it("throws when loading a missing PNG file", () => {
+        expect(() => ImageSurface.createFromPng(join(outputDir, "missing.png"))).toThrow();
     });
 
     it("returns no data for an empty image surface", () => {

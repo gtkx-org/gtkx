@@ -27,6 +27,7 @@ import {
     SURFACE_FULL_T,
     SURFACE_T,
 } from "./lib.js";
+import { checkSurface } from "./status.js";
 
 const SURFACE_TYPE = cairoGType("cairo_gobject_surface_get_type");
 const RECTANGLE_SIZE = 32;
@@ -174,17 +175,25 @@ abstract class Surface {
 
     /** Creates a surface of the given `content` and size as compatible as possible with `other`. */
     static createSimilar(other: Surface, content: Content, width: number, height: number): Surface {
-        return wrapSurface(cairoSurfaceCreateSimilar(getHandle(other), content, width, height));
+        const handle = cairoSurfaceCreateSimilar(getHandle(other), content, width, height) as ExternalObject<Handle>;
+
+        return wrapSurface(checkSurface(handle));
     }
 
     /** Creates an image surface of the given `format` and size as compatible as possible with `other`. */
-    static createSimilarImage(other: Surface, format: Format, width: number, height: number): Surface {
-        return wrapSurface(cairoSurfaceCreateSimilarImage(getHandle(other), format, width, height));
+    static createSimilarImage(other: Surface, format: Format, width: number, height: number): ImageSurface {
+        const handle =
+            cairoSurfaceCreateSimilarImage(getHandle(other), format, width, height) as ExternalObject<Handle>;
+
+        return wrapHandle(checkSurface(handle), ImageSurface);
     }
 
     /** Creates a surface that draws onto the given rectangle of `target`. */
     static createForRectangle(target: Surface, x: number, y: number, width: number, height: number): Surface {
-        return wrapSurface(cairoSurfaceCreateForRectangle(getHandle(target), x, y, width, height));
+        const handle =
+            cairoSurfaceCreateForRectangle(getHandle(target), x, y, width, height) as ExternalObject<Handle>;
+
+        return wrapSurface(checkSurface(handle));
     }
 
     /** GType of `CairoSurface`, the boxed type this class is registered under. */
@@ -316,18 +325,21 @@ abstract class Surface {
 class ImageSurface extends Surface {
     /** Creates an image surface of the given pixel `format` and size, the same as `new ImageSurface(...)`. */
     static create(format: Format, width: number, height: number): ImageSurface {
-        return wrapHandle(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>, this);
+        return wrapHandle(
+            checkSurface(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>),
+            this,
+        );
     }
 
-    /** Loads a PNG file into a new image surface; a missing or invalid file yields a surface in an error status. */
+    /** Loads a PNG file into a new image surface; throws when the file is missing or invalid. */
     static createFromPng(filename: string): ImageSurface {
-        return wrapHandle(cairoImageSurfaceCreateFromPng(filename) as ExternalObject<Handle>, this);
+        return wrapHandle(checkSurface(cairoImageSurfaceCreateFromPng(filename) as ExternalObject<Handle>), this);
     }
 
     /** Creates an image surface of the given pixel `format` and size. */
     constructor(format: Format, width: number, height: number) {
         super();
-        setHandle(this, cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>);
+        setHandle(this, checkSurface(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>));
     }
 
     /** Returns the width of the surface in pixels. */
@@ -385,7 +397,7 @@ class RecordingSurface extends Surface {
     /** Creates a recording surface of the given `content`, bounded to `extents` or unbounded when omitted. */
     constructor(content: Content, extents?: RectangleData) {
         super();
-        setHandle(this, createRecordingSurface(content, extents));
+        setHandle(this, checkSurface(createRecordingSurface(content, extents)));
     }
 
     /** Returns the area that has been drawn on so far. */

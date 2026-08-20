@@ -2,7 +2,7 @@ import type { ExternalObject, Handle } from "@gtkx/native";
 import * as GdkPixbuf from "@gtkx/gi/gdkpixbuf";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getHandle, promisify, setHandle } from "@gtkx/runtime";
+import { getHandle, promisify, setHandle, trimFinish } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 const handle = (id: number): ExternalObject<Handle> => {
@@ -78,6 +78,32 @@ describe("promisify", () => {
         expect(cause).toBeInstanceOf(Error);
         expect((cause as Error).message).toBe("GTKX async operation started here");
         expect((cause as Error).stack).toContain("promisify.test.ts");
+    });
+});
+
+describe("trimFinish", () => {
+    it("hands a single remaining value back bare", () => {
+        const finish = trimFinish((result: { value: string }): [boolean, string] => [true, result.value]);
+        expect(finish({ value: "done" })).toBe("done");
+    });
+
+    it("keeps several remaining values a tuple", () => {
+        const finish = trimFinish((): [boolean, string, number] => [true, "done", 3]);
+        expect(finish({})).toEqual(["done", 3]);
+    });
+
+    it("rejects a boolean-only finish at the type level", () => {
+        // @ts-expect-error a finish result must carry a value beyond the success boolean
+        const finish = trimFinish((): [boolean] => [true]);
+        expect(finish).toBeTypeOf("function");
+    });
+
+    it("throws when the wrapped finish throws", () => {
+        const finish = trimFinish((): [boolean, string] => {
+            throw new Error("boom");
+        });
+
+        expect(() => finish({})).toThrow();
     });
 });
 

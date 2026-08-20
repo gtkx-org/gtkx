@@ -107,6 +107,7 @@ pub enum Descriptor {
         shared_library: String,
         get_type_fn_name: String,
         is_signed: bool,
+        mask: Option<u32>,
     },
     Boolean,
     String {
@@ -155,6 +156,7 @@ pub enum Descriptor {
         fixed_size: Option<u32>,
         element_size: Option<u32>,
         is_bytes: Option<bool>,
+        is_caller_allocated: Option<bool>,
     },
     Hashtable {
         #[napi(ts_type = "Descriptor")]
@@ -172,6 +174,7 @@ pub enum Descriptor {
         destroy_kind: Option<DestroyNotifyKind>,
         has_user_data: Option<bool>,
         user_data_index: Option<u32>,
+        can_throw: Option<bool>,
         scope: Option<CallbackScope>,
     },
     Ref {
@@ -215,16 +218,19 @@ impl Descriptor {
                 shared_library,
                 get_type_fn_name,
                 is_signed,
+                None,
             ),
             Self::Flags {
                 shared_library,
                 get_type_fn_name,
                 is_signed,
+                mask,
             } => Self::enum_flags(
                 EnumFlagsKind::Flags,
                 shared_library,
                 get_type_fn_name,
                 is_signed,
+                mask,
             ),
             Self::String { ownership, length } => Codec::String(StringCodec {
                 ownership,
@@ -298,8 +304,9 @@ impl Descriptor {
                 fixed_size,
                 element_size,
                 is_bytes,
-            } => Codec::Array(
-                ArrayCodec::new(
+                is_caller_allocated,
+            } => {
+                let mut codec = ArrayCodec::new(
                     item_descriptor.into_codec()?,
                     array_kind,
                     ownership,
@@ -311,8 +318,14 @@ impl Descriptor {
                     element_size.map(|n| n as usize),
                     is_bytes.unwrap_or(false),
                 )
-                .map_err(|error| Error::from_reason(error.to_string()))?,
-            ),
+                .map_err(|error| Error::from_reason(error.to_string()))?;
+                if is_caller_allocated.unwrap_or(false) {
+                    codec = codec
+                        .caller_allocated()
+                        .map_err(|error| Error::from_reason(error.to_string()))?;
+                }
+                Codec::Array(codec)
+            }
             Self::Hashtable {
                 key_descriptor,
                 value_descriptor,
@@ -329,6 +342,7 @@ impl Descriptor {
                 destroy_kind,
                 has_user_data,
                 user_data_index,
+                can_throw,
                 scope,
             } => {
                 let has_destroy = has_destroy.unwrap_or(false);
@@ -344,6 +358,7 @@ impl Descriptor {
                     destroy_kind: destroy_kind.unwrap_or_default(),
                     has_user_data,
                     user_data_index: user_data_index.map(|n| n as usize),
+                    can_throw: can_throw.unwrap_or(false),
                     scope: Self::callback_scope(scope, has_destroy, has_user_data),
                 })
             }
@@ -363,6 +378,7 @@ impl Descriptor {
         shared_library: String,
         get_type_fn_name: String,
         is_signed: bool,
+        mask: Option<u32>,
     ) -> Codec {
         Codec::EnumFlags(EnumFlagsCodec {
             kind,
@@ -373,6 +389,7 @@ impl Descriptor {
             } else {
                 IntegerCodec::U32
             },
+            mask,
         })
     }
 

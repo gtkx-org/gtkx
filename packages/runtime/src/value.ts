@@ -7,6 +7,7 @@ import {
     biguint64T,
     booleanT,
     boxedT,
+    byteArrayT,
     float32T,
     float64T,
     type FundamentalDescriptor,
@@ -31,9 +32,19 @@ import {
     isStringArray,
     resolveGtype,
     UINT64_MAXIMUM,
+    type ValueGuard,
 } from "./param-spec.js";
-import { coerceGType, describeValueKind, getHandle, getWrapperClass, wrapHandle, wrapObject } from "./registry.js";
 import {
+    coerceGType,
+    describeValueKind,
+    getHandle,
+    getWrapperClass,
+    wrapFundamentalHandle,
+    wrapHandle,
+    wrapObject,
+} from "./registry.js";
+import {
+    getByteArrayType,
     getStrvType,
     isResolvableDescriptor,
     resolveBoxedType,
@@ -126,6 +137,11 @@ const strvValueType: ValueType = {
     set: setStrvValue,
     get: bind(LIB, "g_value_get_boxed", [VALUE_T], arrayT(stringT("borrowed"))),
 };
+
+const setByteArrayBoxed = bind(LIB, "g_value_set_boxed", [VALUE_T, byteArrayT()], voidT);
+const getBoxedPointer = bind(LIB, "g_value_get_boxed", [VALUE_T], uint64T);
+const getBytesBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], byteArrayT());
+const getByteItemsBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], arrayT(uint8T, "gbytearray"));
 
 const PLAIN_VALUE_TYPES: Partial<Record<Descriptor["kind"], ValueType>> = {
     boolean: booleanValueType,
@@ -225,6 +241,20 @@ const boxedValueType = (type: bigint): ValueType => {
     return { set: setBoxedBind(name), get: dupBoxedBind(name) };
 };
 
+const byteArrayValueGetterFor = (isBytes: boolean): ValueGetter => {
+    const get = isBytes ? getBytesBoxed : getByteItemsBoxed;
+
+    return (value) => (getBoxedPointer(value) ? get(value) : null);
+};
+
+const byteArrayValueType = (descriptor: ArrayDescriptor): ValueType => ({
+    set: setByteArrayValue,
+    get: byteArrayValueGetterFor(descriptor.isBytes === true),
+});
+
+const isByteArraySource = (jsValue: unknown): jsValue is Uint8Array | number[] =>
+    jsValue instanceof Uint8Array || Array.isArray(jsValue);
+
 const enumOrFlagsValueType = (type: bigint): ValueType =>
     typeFundamental(type) === TYPE_FLAGS ? flagsValueType : enumValueType;
 
@@ -318,7 +348,8 @@ const newBoxedValue = (
 
 /**
  * Duplicates the boxed value held by a GValue and returns the copy wrapped in the
- * class registered for its GType, or null when the GValue holds no boxed type.
+ * class its GType resolves to, or null when the GValue holds no boxed type.
+ * A `GByteArray` payload is copied into a `Uint8Array` instead of being wrapped.
  */
 function getBoxedValue(value: ExternalObject<Handle>): object | null {
     const type = getValueType(value);
@@ -327,21 +358,63 @@ function getBoxedValue(value: ExternalObject<Handle>): object | null {
         return null;
     }
 
-    const cls = getWrapperClass(type);
+    if (type === getByteArrayType()) {
+        return byteArrayValueGetterFor(true)(value) as Uint8Array | null;
+    }
+
     const boxed = dupBoxedBind(getBoxedTypeName(type))(value) as ExternalObject<Handle> | null;
 
-    return wrapHandle(boxed, cls);
+    if (boxed === null) {
+        return null;
+    }
+
+    return wrapHandle(boxed, getWrapperClass(type));
 }
 
-/** Stores a boxed object, or null, into a GValue that holds a boxed type. */
-function setBoxedValue(value: ExternalObject<Handle>, boxed: object | null): void {
-    const name = getBoxedTypeName(getValueType(value));
-    setBoxedBind(name)(value, boxed === null ? null : getHandle(boxed));
+/**
+ * Stores a boxed object, or null, into a GValue that holds a boxed type. A GValue holding
+ * `G_TYPE_VALUE` also takes any other {@link JsValue}, which is boxed into a nested `GObject.Value`
+ * of the GType inferred from it, and one holding a `GByteArray` also takes the bytes as a
+ * `Uint8Array` or an array of byte values.
+ * @param value Handle of an initialized value to write into.
+ * @param boxed The boxed instance, bytes, or {@link JsValue} to store.
+ * @throws {ValueMarshalError} When the value cannot hold what was passed.
+ */
+function setBoxedValue(value: ExternalObject<Handle>, boxed: JsValue | object): void {
+    const type = getValueType(value);
+
+    if (type === resolveBoxedType(VALUE_T)) {
+        setBoxedBind("GValue")(value, boxed === null ? null : toValueHandle(boxed));
+
+        return;
+    }
+
+    if (type === getByteArrayType() && isByteArraySource(boxed)) {
+        setByteArrayBoxed(value, boxed);
+
+        return;
+    }
+
+    setWrappedBoxedValue(value, type, boxed);
+}
+
+function setWrappedBoxedValue(value: ExternalObject<Handle>, type: bigint, boxed: JsValue | object): void {
+    if (boxed !== null && typeof boxed !== "object") {
+        throw new ValueMarshalError(
+            `Cannot marshal ${describeValueKind(boxed)} into a '${getBoxedTypeName(type)}' value`,
+        );
+    }
+
+    setBoxedBind(getBoxedTypeName(type))(value, boxed === null ? null : getHandle(boxed));
 }
 
 const arrayValueType = (descriptor: ArrayDescriptor): ValueType => {
     if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") {
         return strvValueType;
+    }
+
+    if (descriptor.arrayKind === "gbytearray") {
+        return byteArrayValueType(descriptor);
     }
 
     throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
@@ -390,11 +463,17 @@ const wrappedValueGetter = (fundamental: bigint): ValueGetter | undefined => {
         }
         case TYPE_PARAM: {
             return (value) =>
-                wrapHandle(paramValueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(TYPE_PARAM));
+                wrapFundamentalHandle(
+                    paramValueType.get(value) as ExternalObject<Handle> | null,
+                    getWrapperClass(TYPE_PARAM),
+                );
         }
         case TYPE_VARIANT: {
             return (value) =>
-                wrapHandle(variantValueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(TYPE_VARIANT));
+                wrapFundamentalHandle(
+                    variantValueType.get(value) as ExternalObject<Handle> | null,
+                    getWrapperClass(TYPE_VARIANT),
+                );
         }
         case TYPE_BOXED: {
             return getBoxedValue;
@@ -422,6 +501,10 @@ function setStrvValue(value: ExternalObject<Handle>, nativeValue: unknown): void
     setStrvBoxed(value, nativeValue ?? null);
 }
 
+function setByteArrayValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
+    setByteArrayBoxed(value, nativeValue ?? null);
+}
+
 function setPointerValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
     if (nativeValue != null) {
         throw new Error("G_TYPE_POINTER non-null values cannot be marshalled from JS");
@@ -447,7 +530,8 @@ const customFundamentalGetter = (type: bigint): ValueGetter | undefined => {
         return undefined;
     }
 
-    return (value) => wrapHandle(valueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(type));
+    return (value) =>
+        wrapFundamentalHandle(valueType.get(value) as ExternalObject<Handle> | null, getWrapperClass(type));
 };
 
 const customFundamentalSetter = (type: bigint): ValueType["set"] | undefined => {
@@ -634,6 +718,24 @@ function fromValue(value: ExternalObject<Handle>): unknown {
     return get(value);
 }
 
+const fromValueForDescriptor = (descriptor: Descriptor, value: ExternalObject<Handle>): unknown =>
+    descriptor.kind === "array" && descriptor.arrayKind === "gbytearray"
+        ? byteArrayValueGetterFor(descriptor.isBytes === true)(value)
+        : fromValue(value);
+
+const inferredValueGuard: ValueGuard = (jsValue) => inferValueGType(jsValue, wrapperGType(jsValue)) !== TYPE_INVALID;
+
+const byteArrayValueGuard: ValueGuard = (jsValue) =>
+    jsValue == null || isByteArraySource(jsValue) || typeIsA(resolveGtype(jsValue), getByteArrayType());
+
+const valueGuardOverrideFor = (valueType: bigint): ValueGuard | undefined => {
+    if (valueType === resolveBoxedType(VALUE_T)) {
+        return inferredValueGuard;
+    }
+
+    return valueType === getByteArrayType() ? byteArrayValueGuard : undefined;
+};
+
 function newValueForDescriptor(descriptor: Descriptor): ExternalObject<Handle> {
     return newValueForType(resolveDescriptorType(descriptor));
 }
@@ -681,6 +783,8 @@ export {
     tryToValueHandle,
     ValueMarshalError,
     fromValue,
+    fromValueForDescriptor,
+    valueGuardOverrideFor,
     newValueForDescriptor,
     newValueForType,
     outValueForDescriptor,

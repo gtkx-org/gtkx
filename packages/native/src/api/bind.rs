@@ -19,6 +19,9 @@ pub(crate) enum CallTarget {
         vtable: VfuncVtable,
         byte_offset: usize,
     },
+    Pointer {
+        address: usize,
+    },
 }
 
 pub struct CallDescriptor {
@@ -74,6 +77,7 @@ impl CallDescriptor {
                 vtable,
                 byte_offset,
             } => CodePtr(resolve_vfunc_slot(*vtable, *byte_offset, &self.label)?),
+            CallTarget::Pointer { address } => CodePtr(*address as *mut c_void),
         };
         let _ = self.symbol.set(resolved);
 
@@ -209,6 +213,39 @@ pub fn bind(
         arg_codecs,
         return_codec,
         fixed_arg_count.map(|count| count as usize),
+    )))
+}
+
+/// Precompiles the argument and return marshalling of a call to a raw C function pointer into a
+/// reusable call descriptor that `call` can invoke. The pointer comes from a native caller that
+/// handed a callback into a JavaScript-implemented virtual function or callback, decoded as a
+/// bigint address; it must stay valid for as long as the descriptor is called through.
+#[allow(clippy::needless_pass_by_value)]
+#[napi(catch_unwind)]
+pub fn bind_function_pointer(
+    fn_ptr: BigInt,
+    arg_descriptors: Vec<Descriptor>,
+    return_descriptor: Descriptor,
+    label: String,
+) -> Result<External<CallDescriptor>> {
+    let (_, raw_address, lossless) = fn_ptr.get_u64();
+    let address = usize::try_from(raw_address).unwrap_or(0);
+
+    if !lossless || address == 0 {
+        return Err(Error::new(
+            Status::InvalidArg,
+            format!("{label}: a function pointer must be a non-zero address-sized value"),
+        ));
+    }
+
+    let (arg_codecs, return_codec) = into_codecs(arg_descriptors, return_descriptor)?;
+
+    Ok(External::new(prepare(
+        CallTarget::Pointer { address },
+        label,
+        arg_codecs,
+        return_codec,
+        None,
     )))
 }
 

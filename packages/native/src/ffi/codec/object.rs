@@ -19,11 +19,12 @@ unsafe fn acquire_decoded_ref(gobject_ptr: *mut glib::gobject_ffi::GObject, owne
     let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
     if is_floating {
         unsafe { glib::gobject_ffi::g_object_ref_sink(gobject_ptr) };
-        return;
     }
-    let pin_until_wrapper_adopts =
-        unsafe { keeps_own_construction_ref(gobject_ptr) && !wrapper::has_wrapper(gobject_ptr) };
-    if pin_until_wrapper_adopts {
+}
+
+pub(crate) unsafe fn acquire_construction_ref(gobject_ptr: *mut glib::gobject_ffi::GObject) {
+    let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
+    if !is_floating && unsafe { keeps_own_construction_ref(gobject_ptr) } {
         unsafe { glib::gobject_ffi::g_object_ref(gobject_ptr) };
     }
 }

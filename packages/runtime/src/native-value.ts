@@ -1,18 +1,33 @@
 import type { AnyClass } from "@gtkx/utils";
-import { type Descriptor, type ExternalObject, getType, type Handle } from "@gtkx/native";
+import {
+    bindFunctionPointer,
+    call,
+    type CallDescriptor,
+    type Descriptor,
+    type ExternalObject,
+    getType,
+    type Handle,
+    type Ref,
+} from "@gtkx/native";
 import {
     type ArrayDescriptor,
+    boxedT,
+    type CallbackDescriptor,
     type FundamentalDescriptor,
     type HashTableDescriptor,
     isGtypeDescriptor,
+    refT,
     type StructDescriptor,
 } from "./descriptors.js";
+import { checkError } from "./error.js";
+import { LIB } from "./library.js";
 import {
     coerceGType,
     getHandle,
     getWrapperClass,
     resolveWrapperClass,
     wrapCallScopedObject,
+    wrapFundamentalHandle,
     wrapHandle,
     wrapObject,
 } from "./registry.js";
@@ -20,6 +35,7 @@ import { resolveDescriptorType } from "./type.js";
 
 type MarshalledKind = "object" | "struct" | "boxed" | "fundamental" | "array" | "hashtable";
 type MarshalledDescriptor = Extract<Descriptor, { kind: MarshalledKind }>;
+type DecodedCallbackTarget = { fnPtr: bigint; userData?: bigint | undefined };
 
 const MARSHALLED_KINDS: Set<Descriptor["kind"]> = new Set<MarshalledKind>([
     "object",
@@ -29,6 +45,8 @@ const MARSHALLED_KINDS: Set<Descriptor["kind"]> = new Set<MarshalledKind>([
     "array",
     "hashtable",
 ]);
+
+const NULL_POINTER = 0n;
 
 function isMarshalledDescriptor(descriptor: Descriptor): descriptor is MarshalledDescriptor {
     return MARSHALLED_KINDS.has(descriptor.kind);
@@ -47,9 +65,14 @@ function collectionFromNative(descriptor: ArrayDescriptor, value: unknown): unkn
 }
 
 function boxedFromNative(descriptor: Descriptor, value: unknown): unknown {
-    return value == null
-        ? null
-        : wrapHandle(value as ExternalObject<Handle>, getWrapperClass(resolveDescriptorType(descriptor)));
+    if (value == null) {
+        return null;
+    }
+
+    const handle = value as ExternalObject<Handle>;
+    const type = resolveDescriptorType(descriptor);
+
+    return wrapHandle(handle, getWrapperClass(type));
 }
 
 function fundamentalWrapperClass(descriptor: FundamentalDescriptor, handle: ExternalObject<Handle>): AnyClass {
@@ -69,7 +92,76 @@ function fundamentalFromNative(descriptor: FundamentalDescriptor, value: unknown
 
     const handle = value as ExternalObject<Handle>;
 
-    return wrapHandle(handle, fundamentalWrapperClass(descriptor, handle));
+    return wrapFundamentalHandle(handle, fundamentalWrapperClass(descriptor, handle));
+}
+
+const errorRefDescriptor = (): Descriptor =>
+    refT(boxedT("GError", { ownership: "full", sharedLibrary: LIB, getTypeFnName: "g_error_get_type" }));
+
+function decodedCallbackValues(
+    descriptor: CallbackDescriptor,
+    target: DecodedCallbackTarget,
+    inputs: unknown[],
+): unknown[] {
+    const values: unknown[] = [];
+    let cursor = 0;
+
+    for (const [index, argDescriptor] of descriptor.argDescriptors.entries()) {
+        if (index === descriptor.userDataIndex) {
+            values.push(target.userData ?? NULL_POINTER);
+        } else {
+            values.push(toNative(argDescriptor, inputs[cursor]));
+            cursor += 1;
+        }
+    }
+
+    return values;
+}
+
+function decodedCallbackCallable(
+    descriptor: CallbackDescriptor,
+    target: DecodedCallbackTarget,
+): (...inputs: unknown[]) => unknown {
+    const canThrow = descriptor.canThrow === true;
+    const isOneShot = descriptor.scope === "async";
+    const argDescriptors = canThrow ? [...descriptor.argDescriptors, errorRefDescriptor()] : descriptor.argDescriptors;
+    let bound: ExternalObject<CallDescriptor> | undefined;
+    let isSpent = false;
+
+    return (...inputs) => {
+        if (isSpent) {
+            throw new Error("An async-scoped callback was already invoked; its native caller has released it");
+        }
+
+        bound ??= bindFunctionPointer(target.fnPtr, argDescriptors, descriptor.returnDescriptor, "decoded callback");
+        const values = decodedCallbackValues(descriptor, target, inputs);
+        isSpent = isOneShot;
+
+        if (!canThrow) {
+            return fromNative(descriptor.returnDescriptor, call(bound, values));
+        }
+
+        const errorRef: Ref = { value: null };
+        values.push(errorRef);
+        const result = call(bound, values);
+        checkError(errorRef);
+
+        return fromNative(descriptor.returnDescriptor, result);
+    };
+}
+
+function callbackFromNative(descriptor: CallbackDescriptor, value: unknown): unknown {
+    if (value == null) {
+        return value;
+    }
+
+    const target = value as Partial<DecodedCallbackTarget>;
+
+    if (typeof target.fnPtr !== "bigint") {
+        return value;
+    }
+
+    return decodedCallbackCallable(descriptor, { fnPtr: target.fnPtr, userData: target.userData });
 }
 
 function hashTableFromNative(descriptor: HashTableDescriptor, value: unknown): unknown {
@@ -90,12 +182,21 @@ function hashTableFromNative(descriptor: HashTableDescriptor, value: unknown): u
 /**
  * Converts a raw value returned from native code into its JavaScript form,
  * wrapping object, struct, boxed, and fundamental handles and recursively
- * converting arrays and hash tables according to the descriptor.
+ * converting arrays and hash tables according to the descriptor. A callback
+ * decoded from a native function pointer and its bound user data becomes a
+ * callable function that invokes the native callback; it stays valid only as
+ * long as the native caller keeps the pointer pair alive, which for an
+ * async-scoped callback means until the first invocation — calling one a
+ * second time throws instead of reaching the released native closure.
  *
  * @param descriptor Describes the native type of the value.
  * @param value The raw native value to convert.
  */
 function fromNative(descriptor: Descriptor, value: unknown): unknown {
+    if (descriptor.kind === "callback") {
+        return callbackFromNative(descriptor, value);
+    }
+
     if (!isMarshalledDescriptor(descriptor)) {
         return value;
     }

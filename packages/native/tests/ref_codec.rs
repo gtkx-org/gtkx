@@ -140,6 +140,7 @@ fn decode_enum_flags_reads_number() {
             shared_library: "libgobject-2.0.so.0".to_owned(),
             get_type_fn_name: "g_unused_get_type".to_owned(),
             storage: IntegerCodec::I32,
+            mask: None,
         };
         let ref_codec =
             RefCodec::new(Codec::EnumFlags(enum_flags), false).expect("valid Ref inner");

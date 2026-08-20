@@ -102,6 +102,11 @@ type CallbackOptions = {
     hasUserData?: boolean;
     /** Position of `user_data` among the callback's own arguments, dropped before the closure is called. */
     userDataIndex?: number;
+    /**
+     * The callback's C signature ends with a `GError**`, which receives a `GError` built from
+     * whatever the JavaScript function throws while the callback returns its failure value.
+     */
+    canThrow?: boolean;
     /** Lifetime of the closure; defaults to `notified` when `hasDestroy` is set and `call` otherwise. */
     scope?: CallbackDescriptor["scope"];
 };
@@ -118,6 +123,12 @@ type ArrayOptions = {
     fixedSize?: number | undefined;
     /** Whether the array carries raw bytes, and so decodes to a `Uint8Array` rather than to numbers. */
     isBytes?: boolean | undefined;
+    /**
+     * Whether the caller supplies the storage for a fixed-length out array: the runtime allocates
+     * a buffer of the element stride times the fixed element count, passes its pointer, and
+     * decodes the elements the callee wrote into it.
+     */
+    isCallerAllocated?: boolean | undefined;
 };
 
 /** Where a cursor array's base buffer and total length come from. */
@@ -233,13 +244,25 @@ const enumT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): En
     isSigned,
 });
 
-/** Builds a descriptor for a flags type, resolving its GType from the named `get_type` function. */
-const flagsT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): FlagsDescriptor => ({
-    kind: "flags",
-    sharedLibrary,
-    getTypeFnName: typeFnName,
-    isSigned,
-});
+/**
+ * Builds a descriptor for a flags type, resolving its GType from the named `get_type` function.
+ * For flags without a registered GType, pass empty library and function names and supply `mask`,
+ * the union of all valid bits, which invalid combinations are rejected against.
+ */
+const flagsT = (sharedLibrary: string, typeFnName: string, isSigned: boolean, mask?: number): FlagsDescriptor => {
+    const result: FlagsDescriptor = {
+        kind: "flags",
+        sharedLibrary,
+        getTypeFnName: typeFnName,
+        isSigned,
+    };
+
+    if (mask !== undefined) {
+        result.mask = mask;
+    }
+
+    return result;
+};
 
 const applyBoxedNames = (result: BoxedDescriptor, options: BoxedOptions): void => {
     if (options.sharedLibrary !== undefined) {
@@ -346,6 +369,20 @@ const fundamentalT = (
     return result;
 };
 
+const applyArrayBounds = (result: ArrayDescriptor, options: ArrayOptions): void => {
+    if (options.baseParamIndex !== undefined) {
+        result.baseParamIndex = options.baseParamIndex;
+    }
+
+    if (options.sizeParamIndex !== undefined) {
+        result.sizeParamIndex = options.sizeParamIndex;
+    }
+
+    if (options.fixedSize !== undefined) {
+        result.fixedSize = options.fixedSize;
+    }
+};
+
 /** Builds a descriptor for an array of items in one of the supported container layouts. */
 const arrayT = (
     itemDescriptor: Descriptor,
@@ -355,24 +392,22 @@ const arrayT = (
 ): ArrayDescriptor => {
     const result: ArrayDescriptor = { kind: "array", itemDescriptor, arrayKind, ownership };
 
-    if (options?.elementSize !== undefined) {
+    if (options === undefined) {
+        return result;
+    }
+
+    applyArrayBounds(result, options);
+
+    if (options.elementSize !== undefined) {
         result.elementSize = options.elementSize;
     }
 
-    if (options?.baseParamIndex !== undefined) {
-        result.baseParamIndex = options.baseParamIndex;
-    }
-
-    if (options?.sizeParamIndex !== undefined) {
-        result.sizeParamIndex = options.sizeParamIndex;
-    }
-
-    if (options?.fixedSize !== undefined) {
-        result.fixedSize = options.fixedSize;
-    }
-
-    if (options?.isBytes === true) {
+    if (options.isBytes === true) {
         result.isBytes = true;
+    }
+
+    if (options.isCallerAllocated === true) {
+        result.isCallerAllocated = true;
     }
 
     return result;
@@ -437,7 +472,7 @@ const fixedArrayT = (
     options: ArrayOptions = {},
 ): ArrayDescriptor => arrayT(itemDescriptor, "fixed", ownership, { ...options, fixedSize });
 
-const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOptions): void => {
+const applyClosureLifetimeOptions = (result: CallbackDescriptor, options: CallbackOptions): void => {
     if (options.hasDestroy !== undefined) {
         result.hasDestroy = options.hasDestroy;
     }
@@ -445,6 +480,14 @@ const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOption
     if (options.destroyKind !== undefined) {
         result.destroyKind = options.destroyKind;
     }
+
+    if (options.scope !== undefined) {
+        result.scope = options.scope;
+    }
+};
+
+const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOptions): void => {
+    applyClosureLifetimeOptions(result, options);
 
     if (options.hasUserData !== undefined) {
         result.hasUserData = options.hasUserData;
@@ -454,8 +497,8 @@ const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOption
         result.userDataIndex = options.userDataIndex;
     }
 
-    if (options.scope !== undefined) {
-        result.scope = options.scope;
+    if (options.canThrow !== undefined) {
+        result.canThrow = options.canThrow;
     }
 };
 

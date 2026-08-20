@@ -60,6 +60,14 @@ impl Fundamental {
     pub fn as_ptr(&self) -> *mut c_void {
         self.ptr
     }
+
+    /// Whether the wrapper holds its own reference to the instance, keeping the pointer valid for
+    /// as long as the wrapper exists.
+    #[inline]
+    #[must_use]
+    pub fn is_owned(&self) -> bool {
+        self.owned
+    }
 }
 
 impl Drop for Fundamental {

@@ -1,10 +1,12 @@
 import type { GirAnnotations } from "./annotations.js";
 import type { ParseContext } from "./type-id.js";
 import { type CursorParameterNames, PARAMETERS_MISSING_ARRAY_EXTENT } from "./cursor-overrides.js";
+import { FUNCTIONS_MISSING_FINISH_FUNC } from "./finish-overrides.js";
 import { HIDDEN_SYMBOLS } from "./hidden-symbols.js";
 import { PARAMETERS_MISSING_NULLABLE_ANNOTATION } from "./nullable-overrides.js";
 import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallable } from "./parameter.js";
 import { attr, getChild, type RawNode } from "./parse.js";
+import { RETURNS_MISSING_UCS4_ARRAY_TYPE } from "./ucs4-overrides.js";
 
 /** A callable declared by a GIR namespace, class, or record: a function, a method, or a constructor. */
 type GirFunction = {
@@ -24,7 +26,10 @@ type GirFunction = {
     movedTo: string | undefined;
     /** Name of the callable that shadows this one, from the GIR's `shadowed-by` annotation. */
     shadowedBy: string | undefined;
-    /** Name of the callable that completes this asynchronous one, from the GIR's `glib:finish-func`. */
+    /**
+     * Name of the callable that completes this asynchronous one, from the GIR's `glib:finish-func`
+     * or a GTKX override for a GIR that lacks the annotation.
+     */
     finishFunc: string | undefined;
     /** The instance the callable is invoked on, absent for constructors and namespace-level functions. */
     instance: GirParameter | undefined;
@@ -85,6 +90,32 @@ const bindMissingArrayExtent = (fn: GirFunction): GirFunction => {
     return fn;
 };
 
+const bindMissingUcs4ReturnArray = (fn: GirFunction, context: ParseContext): GirFunction => {
+    if (fn.cIdentifier !== undefined && RETURNS_MISSING_UCS4_ARRAY_TYPE.has(fn.cIdentifier)) {
+        fn.returnValue.type = context.addContainer({
+            kind: "carray",
+            element: context.addPrimitive("unichar"),
+            elementCType: "gunichar",
+            arrayCType: "gunichar*",
+            lengthParameterIndex: undefined,
+            fixedSize: undefined,
+            isZeroTerminated: true,
+        });
+    }
+
+    return fn;
+};
+
+const annotatedFinishFunc = (node: RawNode, cIdentifier: string | undefined): string | undefined => {
+    const annotated = attr(node, "glib:finish-func");
+
+    if (annotated !== undefined) {
+        return annotated;
+    }
+
+    return cIdentifier === undefined ? undefined : FUNCTIONS_MISSING_FINISH_FUNC.get(cIdentifier);
+};
+
 const isHiddenSymbol = (cIdentifier: string | undefined): boolean =>
     cIdentifier !== undefined && HIDDEN_SYMBOLS.has(cIdentifier);
 
@@ -93,18 +124,18 @@ const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => 
     const callable = parseCallable(node, context);
     const cIdentifier = attr(node, "c:identifier");
 
-    return bindMissingArrayExtent(
-        relaxMissingNullable({
-            ...callable,
-            introspectable: callable.introspectable && !isHiddenSymbol(cIdentifier),
-            name: attr(node, "shadows") ?? attr(node, "name") ?? "",
-            cIdentifier,
-            movedTo: attr(node, "moved-to"),
-            shadowedBy: attr(node, "shadowed-by"),
-            finishFunc: attr(node, "glib:finish-func"),
-            instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode, context),
-        }),
-    );
+    const fn: GirFunction = {
+        ...callable,
+        introspectable: callable.introspectable && !isHiddenSymbol(cIdentifier),
+        name: attr(node, "shadows") ?? attr(node, "name") ?? "",
+        cIdentifier,
+        movedTo: attr(node, "moved-to"),
+        shadowedBy: attr(node, "shadowed-by"),
+        finishFunc: annotatedFinishFunc(node, cIdentifier),
+        instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode, context),
+    };
+
+    return bindMissingUcs4ReturnArray(bindMissingArrayExtent(relaxMissingNullable(fn)), context);
 };
 
 export { functionFromNode, type GirFunction };

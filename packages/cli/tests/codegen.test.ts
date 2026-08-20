@@ -27,6 +27,13 @@ type ValueReturnCase = {
     bindings: string[];
 };
 
+type FinishResultCase = {
+    title: string;
+    v2FinishResults: boolean | undefined;
+    declarations: string[];
+    bindings: string[];
+};
+
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
@@ -106,6 +113,27 @@ const VALUE_RETURN_CASES: ValueReturnCase[] = [
         v2ValueReturns: true,
         declarations: ["peek(): unknown", "fill(): [boolean, unknown]"],
         bindings: ["isReturnUnpacked: true", "isUnpacked: true"],
+    },
+];
+
+const FINISH_RESULT_CASES: FinishResultCase[] = [
+    {
+        title: "resolves promisified results with the leading boolean unless the project opts in",
+        v2FinishResults: undefined,
+        declarations: [
+            "runAsync(): Promise<[boolean, string, number]>",
+            "probeAsync(): Promise<boolean>",
+        ],
+        bindings: ["promisify(asyncPairJobRunAsync, this.runFinish.bind(this)"],
+    },
+    {
+        title: "resolves promisified results without the leading boolean once the project opts in",
+        v2FinishResults: true,
+        declarations: [
+            "runAsync(): Promise<[string, number]>",
+            "probeAsync(): Promise<boolean>",
+        ],
+        bindings: ["promisify(asyncPairJobRunAsync, trimFinish(this.runFinish.bind(this))"],
     },
 ];
 
@@ -214,6 +242,12 @@ const valueBoxConfig = (v2ValueReturns: boolean | undefined): string => {
     const future = v2ValueReturns === undefined ? "" : `, future: { v2ValueReturns: ${String(v2ValueReturns)} }`;
 
     return config(`, libraries: ["ValueBox-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
+};
+
+const asyncPairConfig = (v2FinishResults: boolean | undefined): string => {
+    const future = v2FinishResults === undefined ? "" : `, future: { v2FinishResults: ${String(v2FinishResults)} }`;
+
+    return config(`, libraries: ["AsyncPair-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
 };
 
 const byteSeqConfig = (v2ByteArrays: boolean | undefined): string => {
@@ -721,6 +755,84 @@ describe("gtkx codegen (values a binding takes and hands back)", () => {
         } finally {
             removeCliProject(project);
         }
+    });
+});
+
+describe("gtkx codegen (promisified finish results)", () => {
+    it.each(FINISH_RESULT_CASES)("$title", ({ v2FinishResults, declarations, bindings }) => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-finish-results-",
+            config: asyncPairConfig(v2FinishResults),
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            const emitted = generatedModule(project, "gi", "asyncpair", "asyncpair.d.ts");
+            const emittedBindings = generatedModule(project, "gi", "asyncpair", "asyncpair.js");
+            expect(declarations.filter((text) => !emitted.includes(text))).toEqual([]);
+            expect(bindings.filter((text) => !emittedBindings.includes(text))).toEqual([]);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx codegen (callback arguments of vtable slots)", () => {
+    const state: { project: CliProject; status: number | null } = {
+        project: { root: "", nodeModules: "" },
+        status: null,
+    };
+
+    const declarations = (): string => generatedModule(state.project, "gi", "hookslots", "hookslots.d.ts");
+    const bindings = (): string => generatedModule(state.project, "gi", "hookslots", "hookslots.js");
+
+    beforeAll(() => {
+        state.project = createCliProject({
+            prefix: "gtkx-cli-codegen-hook-slots-",
+            config: fixtureConfig("HookSlots-1.0"),
+        });
+
+        state.status = runCli(state.project, ["codegen"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it("decodes a slot callback whose user data sits right after it", () => {
+        expect(state.status).toBe(0);
+
+        expect(bindings()).toContain(
+            't.callback([t.int32, t.biguint64], t.boolean, { hasUserData: true, userDataIndex: 1, scope: "async" })',
+        );
+
+        expect(declarations()).toContain("vfuncBind(hook: HookFunc | null): void;");
+    });
+
+    it("keeps a slot callback that carries a destroy notify opaque", () => {
+        expect(state.status).toBe(0);
+        const watchSlot = bindings().split('vfuncName: "watch"', 2)[1] ?? "";
+
+        expect(watchSlot).toContain(
+            'argDescriptors: [t.object("borrowed"), t.biguint64, t.biguint64, t.biguint64]',
+        );
+
+        expect(declarations()).toContain(
+            "vfuncWatch(hook: bigint | null, userData: bigint | null, destroy: bigint | null): void;",
+        );
+    });
+
+    it("keeps a slot callback whose user data is not adjacent opaque", () => {
+        expect(state.status).toBe(0);
+        const deferSlot = bindings().split('vfuncName: "defer"', 2)[1] ?? "";
+
+        expect(deferSlot).toContain(
+            'argDescriptors: [t.object("borrowed"), t.biguint64, t.int32, t.biguint64]',
+        );
+
+        expect(declarations()).toContain(
+            "vfuncDefer(hook: bigint | null, stride: number, userData: bigint | null): void;",
+        );
     });
 });
 

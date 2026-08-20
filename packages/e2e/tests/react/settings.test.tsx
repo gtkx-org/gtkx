@@ -261,9 +261,9 @@ describe("useSetting (typed refs: unknown keys)", () => {
 });
 
 describe("useSetting (variant types: arrays)", () => {
-    it("reads and writes byte arrays as number arrays", async () => {
-        expectTypeOf<Value<"payload">>().toEqualTypeOf<number[]>();
-        await expectSettingRoundTrip(SCHEMA, "payload", [1, 2], [3, 4, 5]);
+    it("reads and writes byte arrays as Uint8Array", async () => {
+        expectTypeOf<Value<"payload">>().toEqualTypeOf<Uint8Array>();
+        await expectSettingRoundTrip(SCHEMA, "payload", new Uint8Array([1, 2]), new Uint8Array([3, 4, 5]));
     });
 
     it("reads and writes int64 arrays as bigint arrays", async () => {

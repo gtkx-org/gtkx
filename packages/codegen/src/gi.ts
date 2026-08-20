@@ -12,6 +12,7 @@ type GiCodegenOptions = {
     girPath: string[];
     isByteArrayTyped: boolean;
     isValueUnwrapped: boolean;
+    isFinishTrimmed: boolean;
 };
 
 type SplitNamespaces = {
@@ -47,7 +48,7 @@ const splitNamespaces = (library: Library): SplitNamespaces => {
 };
 
 const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
-    const { gi, libraries, girPath, isByteArrayTyped, isValueUnwrapped } = options;
+    const { gi, libraries, girPath, isByteArrayTyped, isValueUnwrapped, isFinishTrimmed } = options;
     const { namespaces, externalNamespaces } = splitNamespaces(library);
 
     const fingerprint = computeGiFingerprint({
@@ -57,6 +58,7 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
         storeVersion: gi.version,
         isByteArrayTyped,
         isValueUnwrapped,
+        isFinishTrimmed,
     });
 
     writeGiStore(gi, namespaces, externalNamespaces, fingerprint);

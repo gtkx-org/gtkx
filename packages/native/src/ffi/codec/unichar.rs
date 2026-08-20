@@ -30,7 +30,7 @@ fn codepoint_from_inline_ptr(ptr: *mut c_void) -> u32 {
     ptr.addr() as u32
 }
 
-fn codepoint_from_value(value: Unknown<'_>) -> anyhow::Result<u32> {
+pub(super) fn codepoint_from_value(value: Unknown<'_>) -> anyhow::Result<u32> {
     match value.get_type()? {
         ValueType::String => {
             let s = value::read_napi::<String>(value)?;

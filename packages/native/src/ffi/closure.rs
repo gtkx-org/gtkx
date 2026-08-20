@@ -3,14 +3,17 @@ use std::collections::HashMap;
 use std::ffi::{CString, c_char, c_void};
 
 use ::libffi::{low as libffi_low, middle as libffi};
+use glib::prelude::StaticType as _;
+use glib::translate::IntoGlib as _;
 use napi::bindgen_prelude::{
-    Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object, Unknown,
+    BigInt, FromNapiValue as _, Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object,
+    Unknown,
 };
 use napi::{Env, ValueType};
 
 use crate::ffi::Stash;
 use crate::ffi::codec::{
-    Codec, Decoder as _, Encoder as _, Ownership, PtrWriter as _, ReadCtx, SlotInit,
+    CallbackCodec, Codec, Decoder as _, Encoder as _, Ownership, PtrWriter as _, ReadCtx, SlotInit,
     str_to_glib_full,
 };
 use crate::handle::{BorrowScope, Handle};
@@ -70,6 +73,7 @@ pub struct ClosureData {
     pub arg_codecs: Vec<Codec>,
     pub return_codec: Codec,
     pub user_data_index: Option<usize>,
+    can_throw: bool,
     is_oneshot: bool,
     pub state_ptr: Cell<*mut ClosureState>,
     oneshot_fired: Cell<bool>,
@@ -87,6 +91,7 @@ impl ClosureData {
         arg_codecs: Vec<Codec>,
         return_codec: Codec,
         user_data_index: Option<usize>,
+        can_throw: bool,
         is_oneshot: bool,
     ) -> Self {
         Self {
@@ -94,6 +99,7 @@ impl ClosureData {
             arg_codecs,
             return_codec,
             user_data_index,
+            can_throw,
             is_oneshot,
             state_ptr: Cell::new(std::ptr::null_mut()),
             oneshot_fired: Cell::new(false),
@@ -162,7 +168,11 @@ impl ClosureState {
 
         let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_codecs.len());
         for codec in &data_ref.arg_codecs {
-            cif_arg_types.push(codec.libffi_type());
+            codec.append_ffi_arg_types(&mut cif_arg_types);
+        }
+
+        if data_ref.can_throw {
+            cif_arg_types.push(libffi::Type::pointer());
         }
 
         let cif_return_type: libffi::Type = data_ref.return_codec.libffi_type();
@@ -200,9 +210,17 @@ impl ClosureState {
         arg_codecs: Vec<Codec>,
         return_codec: Codec,
         user_data_index: Option<usize>,
+        can_throw: bool,
         is_oneshot: bool,
     ) -> Box<Self> {
-        let data = ClosureData::new(js_fn, arg_codecs, return_codec, user_data_index, is_oneshot);
+        let data = ClosureData::new(
+            js_fn,
+            arg_codecs,
+            return_codec,
+            user_data_index,
+            can_throw,
+            is_oneshot,
+        );
         Box::new(Self::new(data))
     }
 }
@@ -314,12 +332,18 @@ impl ClosureData {
         (!ptr.is_null()).then_some(ptr)
     }
 
+    fn total_ffi_slots(&self) -> usize {
+        self.arg_codecs.iter().map(ffi_slot_count).sum()
+    }
+
     unsafe fn sibling_stashes(&self, args: *const *const c_void) -> Vec<Stash> {
+        let mut slot = 0usize;
+
         self.arg_codecs
             .iter()
-            .enumerate()
-            .map(|(i, codec)| {
-                let arg_ptr = unsafe { *args.add(i) };
+            .map(|codec| {
+                let arg_ptr = unsafe { *args.add(slot) };
+                slot += ffi_slot_count(codec);
                 match codec {
                     Codec::Integer(kind) => {
                         kind.to_stash(unsafe { kind.read_ptr(arg_ptr.cast::<u8>()) })
@@ -383,13 +407,31 @@ impl ClosureData {
         let mut js_args = Vec::with_capacity(self.arg_codecs.len());
         let mut ref_slots: Vec<RefSlot<'e>> = Vec::new();
         let siblings = unsafe { self.sibling_stashes(args) };
+        let mut slot_index = 0usize;
 
         for (i, codec) in self.arg_codecs.iter().enumerate() {
+            let arg_slot = slot_index;
+            slot_index += ffi_slot_count(codec);
+
             if self.user_data_index == Some(i) {
                 continue;
             }
 
-            let arg_ptr = unsafe { *args.add(i) };
+            if let Codec::Callback(callback_codec) = codec {
+                let val = match unsafe { read_callback_arg(env, callback_codec, args, arg_slot) } {
+                    Ok(val) => val,
+                    Err(e) => {
+                        error_reporter::report(
+                            &e.context(format!("callback: failed to read arg {i}")),
+                        );
+                        value::js_null(env)?
+                    }
+                };
+                js_args.push(val);
+                continue;
+            }
+
+            let arg_ptr = unsafe { *args.add(arg_slot) };
             if let Codec::Ref(ref_codec) = codec {
                 let slot = unsafe { Self::read_ref_arg(env, ref_codec, arg_ptr) }?;
                 js_args.push(slot.obj);
@@ -455,7 +497,7 @@ impl ClosureData {
             Ok(()) => {}
             Err(CallbackError::Thrown(error)) => {
                 self.write_return(&env, result, &Err(()));
-                unsafe { napi::JsError::from(error).throw_into(env.raw()) };
+                unsafe { self.deliver_thrown(&env, error, args) };
             }
             Err(CallbackError::Infrastructure(e)) => {
                 error_reporter::report(&anyhow::anyhow!(
@@ -467,6 +509,27 @@ impl ClosureData {
         }
 
         state_ptr
+    }
+
+    unsafe fn deliver_thrown(&self, env: &Env, error: napi::Error, args: *const *const c_void) {
+        if !self.can_throw {
+            unsafe { napi::JsError::from(error).throw_into(env.raw()) };
+            return;
+        }
+
+        let error_arg = unsafe { *args.add(self.total_ffi_slots()) };
+        let error_out = unsafe {
+            error_arg
+                .cast::<*mut *mut glib::ffi::GError>()
+                .read_unaligned()
+        };
+
+        if error_out.is_null() || !unsafe { *error_out }.is_null() {
+            unsafe { napi::JsError::from(error).throw_into(env.raw()) };
+            return;
+        }
+
+        unsafe { *error_out = gerror_from_thrown(env, error) };
     }
 
     fn write_return(&self, env: &Env, result: *mut c_void, value: &Result<Unknown<'_>, ()>) {
@@ -589,6 +652,95 @@ fn string_from_unknown(value: Unknown<'_>) -> Option<String> {
         ValueType::String => value::read_napi::<String>(value).ok(),
         _ => None,
     }
+}
+
+fn js_error_quark() -> u32 {
+    glib::Quark::from_str("gtkx-js-error-quark").into_glib()
+}
+
+fn new_gerror(domain: u32, code: i32, message: &str) -> *mut glib::ffi::GError {
+    let c_message = CString::new(message.as_bytes()).unwrap_or_default();
+    unsafe { glib::ffi::g_error_new_literal(domain, code, c_message.as_ptr()) }
+}
+
+fn wrapped_gerror_parts(env: &Env, thrown: Unknown<'_>) -> Option<(u32, i32, String)> {
+    if thrown.get_type().ok()? != ValueType::Object {
+        return None;
+    }
+    let obj = Object::from_raw(env.raw(), thrown.raw());
+    let type_tag: Unknown<'_> = obj.get_named_property("__type__").ok()?;
+    if type_tag.get_type().ok()? != ValueType::BigInt {
+        return None;
+    }
+    let (gtype, lossless) = value::read_napi::<BigInt>(type_tag).ok()?.get_i128();
+    let gerror_gtype = i128::try_from(glib::Error::static_type().into_glib()).ok()?;
+    if !lossless || gtype != gerror_gtype {
+        return None;
+    }
+    let domain: u32 = obj.get_named_property("domain").ok()?;
+    let code: i32 = obj.get_named_property("code").ok()?;
+    let message: String = obj.get_named_property("message").ok()?;
+
+    Some((domain, code, message))
+}
+
+fn thrown_message(env: &Env, thrown: Unknown<'_>) -> String {
+    let value_type = thrown.get_type().unwrap_or(ValueType::Unknown);
+    match value_type {
+        ValueType::Object => Object::from_raw(env.raw(), thrown.raw())
+            .get_named_property::<String>("message")
+            .ok()
+            .filter(|message| !message.is_empty())
+            .unwrap_or_else(|| String::from("JavaScript exception with no message")),
+        ValueType::String => value::read_napi::<String>(thrown)
+            .unwrap_or_else(|_| String::from("JavaScript string exception")),
+        _ => format!("JavaScript {value_type:?} value thrown"),
+    }
+}
+
+fn gerror_from_thrown(env: &Env, error: napi::Error) -> *mut glib::ffi::GError {
+    let raw = unsafe { napi::JsError::from(error).into_value(env.raw()) };
+    match unsafe { Unknown::from_napi_value(env.raw(), raw) } {
+        Ok(thrown) => match wrapped_gerror_parts(env, thrown) {
+            Some((domain, code, message)) => new_gerror(domain, code, &message),
+            None => new_gerror(js_error_quark(), 0, &thrown_message(env, thrown)),
+        },
+        Err(_) => new_gerror(
+            js_error_quark(),
+            0,
+            "JavaScript exception could not be read",
+        ),
+    }
+}
+
+fn ffi_slot_count(codec: &Codec) -> usize {
+    let mut types: Vec<libffi::Type> = Vec::with_capacity(3);
+    codec.append_ffi_arg_types(&mut types);
+
+    types.len()
+}
+
+unsafe fn read_callback_arg<'e>(
+    env: &'e Env,
+    codec: &CallbackCodec,
+    args: *const *const c_void,
+    slot: usize,
+) -> anyhow::Result<Unknown<'e>> {
+    let fn_ptr = unsafe { (*args.add(slot)).cast::<*mut c_void>().read_unaligned() };
+
+    if fn_ptr.is_null() {
+        return Ok(value::js_null(env)?);
+    }
+
+    let mut target: Object<'e> = Object::new(env)?;
+    target.set_named_property("fnPtr", BigInt::from(fn_ptr as u64))?;
+
+    if codec.has_user_data {
+        let user_data = unsafe { (*args.add(slot + 1)).cast::<*mut c_void>().read_unaligned() };
+        target.set_named_property("userData", BigInt::from(user_data as u64))?;
+    }
+
+    Ok(target.to_unknown())
 }
 
 fn seed_ref<'e>(

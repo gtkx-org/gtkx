@@ -29,6 +29,8 @@ type ApiReferenceOptions = {
     isByteArrayTyped?: boolean;
     /** Describes what a `GObject.Value` a binding hands back holds, rather than the value itself; off by default. */
     isValueUnwrapped?: boolean;
+    /** Describes promisified results of a throwing finish without their leading success boolean; off by default. */
+    isFinishTrimmed?: boolean;
 };
 
 /** Narrows an `ApiReference.symbols` enumeration. */
@@ -380,6 +382,7 @@ class ApiReference {
         this.library = Library.load(options.libraries, options.girPath, {
             isByteArrayTyped: options.isByteArrayTyped === true,
             isValueUnwrapped: options.isValueUnwrapped === true,
+            isFinishTrimmed: options.isFinishTrimmed === true,
         });
 
         this.elementContext = { library: this.library, linkFor: (): string | undefined => undefined };

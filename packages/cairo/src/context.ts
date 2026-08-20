@@ -61,6 +61,7 @@ import { allocMatrix, Matrix } from "./matrix.js";
 import { parsePath } from "./path.js";
 import { Pattern } from "./pattern.js";
 import { ScaledFont } from "./scaled-font.js";
+import { checkStatus } from "./status.js";
 import { Surface } from "./surface.js";
 import {
     allocClusterBuffer,
@@ -308,9 +309,11 @@ class Context {
     /** GType of `CairoContext`, the boxed type this class is registered under. */
     declare __type__: bigint;
 
-    /** Creates a context drawing onto `target`. */
+    /** Creates a context drawing onto `target`, throwing when it cannot be created, such as on a finished surface. */
     constructor(target: Surface) {
-        setHandle(this, cairoCreate(getHandle(target)) as ExternalObject<Handle>);
+        const handle = cairoCreate(getHandle(target)) as ExternalObject<Handle>;
+        checkStatus(cairoStatus(handle) as Status, "context");
+        setHandle(this, handle);
     }
 
     /** Begins a new sub-path at `(x, y)`, which becomes the current point. */

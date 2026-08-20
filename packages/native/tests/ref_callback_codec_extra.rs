@@ -19,6 +19,7 @@ fn callback_codec() -> CallbackCodec {
         destroy_kind: DestroyNotifyKind::default(),
         has_user_data: false,
         user_data_index: None,
+        can_throw: false,
         scope: CallbackScope::Call,
     }
 }
@@ -66,6 +67,7 @@ fn enum_flags_codec() -> EnumFlagsCodec {
         shared_library: "libgobject-2.0.so.0".to_owned(),
         get_type_fn_name: "g_unused_get_type".to_owned(),
         storage: IntegerCodec::I32,
+        mask: None,
     }
 }
 

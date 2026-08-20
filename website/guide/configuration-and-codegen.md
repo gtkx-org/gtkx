@@ -124,13 +124,17 @@ export default defineConfig({
 
 Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
 
-- **`v2ByteArrays`**: represents GIR byte sequences as `Uint8Array` instead of `number[]`. It covers `guint8` C arrays and `GByteArray`, in return values, out parameters, record fields, and properties. It does not cover `@gtkx/cairo` or `@gtkx/gl`, which already use typed arrays.
+- **`v2ByteArrays`**: represents GIR byte sequences as `Uint8Array` instead of `number[]`. It covers `guint8` C arrays and `GByteArray`, in return values, out parameters, record fields, and properties, and it sets what the runtime's `fromVariant` unpacks a byte array variant (`ay`) to. It does not cover `@gtkx/cairo` or `@gtkx/gl`, which already use typed arrays.
 
   Parameters accept `Uint8Array | number[]` either way, so turning this flag on never breaks a call site that passes values *in*. What changes is what you get *back*: `GLib.fileGetContents` returns `[boolean, Uint8Array]` rather than `[boolean, number[]]`, so code that calls `.push`, `.concat`, `Array.isArray`, or `JSON.stringify` on a result needs updating. Flip the flag and run `tsc`: every site that needs attention is a type error.
 
 - **`v2ValueReturns`**: hands back what a `GObject.Value` holds rather than the value itself, the read-direction counterpart of the inference above. It covers the bindings whose return type or caller-allocated out parameter is a `GValue`: `Gtk.DropTarget.getValue`, `Gtk.ConstantExpression.getValue`, `Gdk.Clipboard.readValueAsync`, `Gtk.Builder.valueFromStringType`, `Gtk.TreeModel.getValue`, and a handful more. Their type becomes `unknown`, since GIR says nothing about what the value holds, so the call site asserts the type it asked for: `(await clipboard.readValueAsync(Gio.File, 0, null)) as Gio.File`. Signal parameters and properties keep handing over a `GObject.Value`, which a handler for a binding transform writes into.
 
   Unlike the byte sequence flag, this one only changes what comes *back*; the `GObject.Value | JsValue` parameter widening is not part of it and applies either way. `tsc` reports every return site that needs attention, since `unknown` cannot be used without an assertion.
+
+- **`v2FinishResults`**: drops the leading success boolean from what a promisified async method resolves to. It covers every pair whose finish function reports failure by throwing and hands results back through out parameters, where the boolean is always `true`: `Gio.File.loadContentsAsync` resolves to `[Uint8Array, string | null]` rather than `[boolean, Uint8Array, string | null]`, and a call left with a single out parameter resolves to that value directly, so `Gio.File.replaceContentsAsync` resolves to the new etag rather than `[boolean, string | null]`. The finish methods themselves, like `loadContentsFinish`, keep the boolean, as do async methods whose finish returns only the boolean.
+
+  Flip the flag and run `tsc`: destructuring sites written for the old tuple, such as `const [, contents] = await file.loadContentsAsync(null)`, become type errors pointing at what to update.
 
 Changing a flag invalidates the generated store, so the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates it automatically.
 

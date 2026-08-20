@@ -13,6 +13,13 @@ type Settlement<R extends object, T> = {
     reject: (reason: Error) => void;
 };
 
+/** A finish result with its leading success boolean dropped: bare when one value remains, a tuple otherwise. */
+type TrimmedFinish<T> = T extends readonly [boolean, infer Only]
+    ? Only
+    : T extends readonly [boolean, ...infer Rest]
+        ? Rest
+        : never;
+
 const attachCreationStack = (error: unknown, creationStack: Error | undefined): void => {
     if (creationStack === undefined || !(error instanceof Error)) {
         return;
@@ -35,6 +42,25 @@ const settle = <R extends object, T>(settlement: Settlement<R, T>, asyncResult: 
         reject(error instanceof Error ? error : new Error(String(error)));
     }
 };
+
+/**
+ * Wraps a finish function whose result leads with the success boolean of a throwing C call,
+ * dropping that boolean: failure already surfaces as a thrown error, so the boolean is always
+ * `true`. A single remaining value is handed back bare, several stay a tuple. The finish result
+ * must carry at least one value beyond the boolean; a boolean-only finish needs no trimming.
+ *
+ * @param finish Extracts the boolean-led result from the async result passed to the completion callback.
+ * @returns A finish function resolving to the result without its leading boolean.
+ */
+const trimFinish =
+    <R extends object, T extends readonly [boolean, unknown, ...unknown[]]>(
+        finish: FinishResult<R, T>,
+    ): FinishResult<R, TrimmedFinish<T>> =>
+        (result: R): TrimmedFinish<T> => {
+            const [, ...rest] = finish(result);
+
+            return (rest.length === 1 ? rest[0] : rest) as TrimmedFinish<T>;
+        };
 
 /**
  * Wraps a GIO-style asynchronous function that takes a completion callback into a
@@ -64,4 +90,4 @@ const promisify = <R extends object, T>(
         });
     });
 
-export { promisify };
+export { promisify, trimFinish };

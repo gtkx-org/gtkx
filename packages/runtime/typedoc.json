@@ -1,17 +1,19 @@
 {
     "intentionallyNotExported": [
         "ApplicationLike",
+        "ByteArrayInput",
         "EmitArg",
         "ErrorLike",
         "FinishResult",
         "InterfaceLayout",
         "MixinReceiver",
-        "Parse",
+        "ParsedValue",
         "RegisterClassOptions",
         "RegisteredClass",
         "SignalConnectSpec",
         "SignalConnectable",
         "T",
+        "TrimmedFinish",
         "VfuncRegistry"
     ]
 }

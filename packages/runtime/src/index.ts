@@ -26,7 +26,7 @@ export {
 /** @public */
 export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "./param-spec.js";
 /** @public */
-export { promisify } from "./promisify.js";
+export { promisify, trimFinish } from "./promisify.js";
 /** @public */
 export { coerceObjectProperty, newParamSpecOverride } from "./properties.js";
 /** @public */
@@ -99,7 +99,16 @@ export {
     ValueMarshalError,
 } from "./value.js";
 /** @public */
-export { fromVariant, toVariant, type VariantValue } from "./variant.js";
+export {
+    type ByteArray,
+    type FromVariantOptions,
+    fromVariant,
+    type RecursiveFromVariantOptions,
+    type RecursiveVariantValue,
+    toVariant,
+    type VariantInput,
+    type VariantValue,
+} from "./variant.js";
 /** @public */
 export { callParent, callVfunc } from "./vfunc-call.js";
 /** @public */
