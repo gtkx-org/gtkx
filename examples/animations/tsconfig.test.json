@@ -1,0 +1,27 @@
+{
+    "extends": "../../tsconfig.test.json",
+    "include": ["tests/**/*.ts", "tests/**/*.tsx", "src/gtkx-env.d.ts"],
+    "references": [
+        {
+            "path": "./tsconfig.app.json"
+        },
+        {
+            "path": "../../packages/cli/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/config/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/react/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/runtime/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/animated/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/testing/tsconfig.lib.json"
+        }
+    ]
+}

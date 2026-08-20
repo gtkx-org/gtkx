@@ -63,7 +63,8 @@
                 "testMode": "run"
             },
             "exclude": [
-                "examples/gtk-demo/*"
+                "examples/gtk-demo/*",
+                "examples/animations/*"
             ]
         }
     ],

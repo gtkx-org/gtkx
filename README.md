@@ -157,6 +157,7 @@ Explore the [example apps](https://github.com/gtkx-org/gtkx/tree/main/examples):
 - [`hello-world`](https://github.com/gtkx-org/gtkx/tree/main/examples/hello-world): the counter above.
 - [`gtk-demo`](https://github.com/gtkx-org/gtkx/tree/main/examples/gtk-demo): a React port of the official GTK4 widget showcase, covering lists, dialogs, gestures, CSS, and OpenGL.
 - [`browser`](https://github.com/gtkx-org/gtkx/tree/main/examples/browser): a WebKitWebView-based web browser.
+- [`animations`](https://github.com/gtkx-org/gtkx/tree/main/examples/animations): a tour of `@gtkx/animated`, React Spring animations driven by the GTK frame clock.
 - [`tutorial`](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial): the Tasks app the documentation builds.
 
 ## Status
