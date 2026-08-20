@@ -1,6 +1,5 @@
 import type { Descriptor } from "@gtkx/native";
 import {
-    getTypeClass,
     registerClass as nativeRegisterClass,
     type RegisterClassInterface as NativeRegisterClassInterface,
     type RegisterClassOptions as NativeRegisterClassOptions,
@@ -24,6 +23,7 @@ import {
     getClassStructClass,
     getClassType,
     getInterfaceMixin,
+    getTypeClassHandle,
     markDerivedClass,
     registerClassType,
     type VfuncDescriptor,
@@ -37,7 +37,15 @@ import {
     overrideSignalClassClosure,
     type SignalHandler,
 } from "./signal.js";
-import { TYPE_INTERFACE, TYPE_INVALID, TYPE_NONE, typeFundamental, typeInterfaces, typeIsA } from "./type.js";
+import {
+    TYPE_INTERFACE,
+    TYPE_INVALID,
+    TYPE_NONE,
+    type TypedClass,
+    typeFundamental,
+    typeInterfaces,
+    typeIsA,
+} from "./type.js";
 import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor } from "./vfunc.js";
 
 /**
@@ -166,7 +174,7 @@ type RegisteredClass<TClass extends AnyClass, TProperties, TSignals> =
  * `TYPE_STRING` from `@gtkx/gi/gobject`, or a class carrying one, which is any generated wrapper
  * class and any class an earlier {@link registerClass} call registered.
  */
-type SignalGType = bigint | AnyClass;
+type SignalGType = bigint | AnyClass<TypedClass>;
 
 /**
  * One signal `RegisterClassOptions.signals` creates on the new type, sitting under the signal's
@@ -308,8 +316,9 @@ type RegisterClassOptions<
      * emission's arguments without the leading emitter, matching a generated signal, and what it
      * returns becomes the emission's return value when the signal declares one.
      *
-     * The declared parameter GTypes rule the emission: `emit` converts each argument into a
-     * `GValue` of the declared type and throws for a value that type cannot hold. The signals
+     * The declared parameter GTypes rule the emission: `emit` takes exactly one argument per
+     * declared parameter, throwing a `TypeError` for any other count, and converts each argument
+     * into a `GValue` of the declared type, throwing for a value that type cannot hold. The signals
      * are created with no class closure of their own, but a method named `on<SignalName>`
      * becomes the signal's default handler, the way every `on`-prefixed method that names a
      * signal the type carries does; see {@link registerClass}.
@@ -473,7 +482,7 @@ function invokeClassInit(options: AnyRegisterClassOptions, newType: bigint): voi
         throw new Error("registerClass: no ancestor of the new type registers a class struct wrapper");
     }
 
-    options.classInit(wrapHandle(getTypeClass(newType), structClass));
+    options.classInit(wrapHandle(getTypeClassHandle(newType), structClass));
 }
 
 function resolveTypeName(klass: AnyClass, options: AnyRegisterClassOptions): string {

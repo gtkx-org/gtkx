@@ -309,6 +309,23 @@ describe("registerClass — signal error paths: names and accumulators", () => {
     });
 });
 
+describe("registerClass — signal error paths: emission arity", () => {
+    it("throws when emit passes fewer arguments than the signal declares", () => {
+        const Registered = registerSignals("GtkxSignalUnderfed", {
+            fed: { paramTypes: [TYPE_STRING, TYPE_INT] },
+        });
+
+        const instance = new Registered();
+        expect(() => instance.emit("fed", "only")).toThrow();
+    });
+
+    it("throws when emit passes more arguments than the signal declares", () => {
+        const Registered = registerSignals("GtkxSignalOverfed", { fed: { paramTypes: [TYPE_INT] } });
+        const instance = new Registered();
+        expect(() => instance.emit("fed", 1, 2)).toThrow();
+    });
+});
+
 describe("registerClass — signal error paths: parameter types", () => {
     it("throws for an invalid parameter GType", () => {
         expect(() => registerSignals("GtkxSignalBadParam", { broken: { paramTypes: [0n] } })).toThrow();
@@ -320,6 +337,7 @@ describe("registerClass — signal error paths: parameter types", () => {
 
     it("throws for a parameter class with no registered GType", () => {
         class Plain {
+            declare __type__: bigint;
             marker = "no-gtype";
         }
 

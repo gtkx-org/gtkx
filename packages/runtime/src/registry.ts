@@ -106,6 +106,7 @@ const vfuncRegistry: WeakMap<object, VfuncRegistry> = new WeakMap();
 const interfaceLayoutRegistry: Map<bigint, InterfaceLayout> = new Map();
 const wrapperClasses: WeakSet<AnyClass> = new WeakSet();
 const derivedClasses: WeakSet<AnyClass> = new WeakSet();
+const typeClassHandles: Map<bigint, ExternalObject<Handle>> = new Map();
 
 function setClassType(cls: AnyClass, type: bigint): void {
     (cls.prototype as { [K in keyof TypedClass]: TypedClass[K] }).__type__ = type;
@@ -256,6 +257,19 @@ function peekedTypeLabel(type: bigint | AnyClass, gtype: bigint): string {
     return typeof type === "bigint" ? String(type) : type.name;
 }
 
+function getTypeClassHandle(gtype: bigint): ExternalObject<Handle> {
+    const cached = typeClassHandles.get(gtype);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const handle = getTypeClass(gtype);
+    typeClassHandles.set(gtype, handle);
+
+    return handle;
+}
+
 /**
  * Returns a GObject type's class struct, wrapped in the class-struct wrapper classes registered
  * for the type's ancestry, such as `Gtk.WidgetClass` composed with `GObject.ObjectClass` for a
@@ -288,7 +302,7 @@ function peekTypeClass(type: bigint | AnyClass, base?: AnyClass): object {
         );
     }
 
-    return wrapHandle(getTypeClass(gtype), structClass);
+    return wrapHandle(getTypeClassHandle(gtype), structClass);
 }
 
 function resolveAncestorType(ancestor: AnyClass): bigint | undefined {
@@ -568,6 +582,7 @@ export {
     getClassStructClass,
     getClassType,
     getInstanceType,
+    getTypeClassHandle,
     markDerivedClass,
     peekTypeClass,
     registerClassStruct,

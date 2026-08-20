@@ -252,6 +252,13 @@ function connectClosureSignal(instance: object, signal: string, handler: SignalH
 
 function emitDeclaredSignal(instance: object, signal: string, types: DeclaredSignalTypes, args: unknown[]): unknown {
     const { paramTypes, returnType } = types;
+
+    if (args.length !== paramTypes.length) {
+        throw new TypeError(
+            `emit: signal '${signal}' takes ${String(paramTypes.length)} arguments, got ${String(args.length)}`,
+        );
+    }
+
     const signalId = getSignalId(instance, signal);
     const detail = getSignalDetailQuark(signal);
     const values = [toValue(objectT("full"), instance)];

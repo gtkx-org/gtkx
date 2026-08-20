@@ -155,7 +155,7 @@ downloader.connect("progress-changed", (url: string, percent: number) => console
 downloader.emit("progress-changed", "https://example.com", 40);
 ```
 
-As with properties, bind the call to a name: the declared names reach `connect` and `emit` in the type system only through what `registerClass` returns. Every part of a spec is optional, so `{}` declares a signal with no arguments and no return value that runs its handlers in the default `RUN_FIRST` stage. The two word separators spell the same signal, `progress_changed` and `progress-changed` both reaching the one above, and `on`, `once` and `off` take the declared names the way `connect` does, as does `useSignal` from `@gtkx/react`. A handler receives the emission's arguments without the leading emitter, matching a generated signal.
+As with properties, bind the call to a name: the declared names reach `connect` and `emit` in the type system only through what `registerClass` returns. Every part of a spec is optional, so `{}` declares a signal with no arguments and no return value that runs its handlers in the default `RUN_FIRST` stage. The two word separators spell the same signal, `progress_changed` and `progress-changed` both reaching the one above, and `on`, `once` and `off` take the declared names the way `connect` does, as does `useSignal` from `@gtkx/react`. A handler receives the emission's arguments without the leading emitter, matching a generated signal. `emit` takes exactly one argument per declared parameter, throwing for any other count, and converts each argument into a `GValue` of the declared GType, throwing for a value that type cannot hold.
 
 A signal that returns a value declares `returnType`, and what a handler returns becomes the emission's result. `accumulator` picks one of the two combiners GObject ships: `"first-wins"` stops the emission at the first handler and keeps its result, and `"true-handled"` runs handlers until one returns `true`, which requires a boolean `returnType`:
 
@@ -199,6 +199,10 @@ new LoggingDownloader().emit("progress-changed", "https://example.com", 40); // 
 ```
 
 The method is installed as a class-closure override, the way GJS installs `on_`-prefixed methods, so it runs on every emission, on the instances a native caller creates included, in the stage the signal's flags name rather than alongside connected handlers: a `RUN_FIRST` signal runs it before them, a `RUN_LAST` one after. It receives the emission's arguments without the leading emitter, with `this` bound to the emitter, and what it returns becomes the emission's result when the signal declares one. A subclass registering its own `on<SignalName>` replaces the handler for its instances, and `super.on<SignalName>()` reaches the replaced one. An `on`-prefixed method naming no signal the type carries is left alone as the ordinary method it is, so a helper like `onFrobnicate` stays a plain method.
+
+::: warning
+The promotion applies to every `on<SignalName>` method, including one written before default handlers existed: a helper such as `onShow` on a widget subclass names the inherited `show` signal, so registering the class now runs it on every `show` emission. Rename such a helper if it is not meant to be the signal's default handler.
+:::
 
 ## Class-level setup
 
