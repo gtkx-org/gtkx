@@ -1,6 +1,8 @@
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBRARIES } from "./cli-project.js";
 
@@ -14,6 +16,9 @@ type ByteSequenceCase = {
 };
 
 type OmittedFieldCase = { title: string; jsName: string };
+type CodegenRunState = { project: CliProject; status: number | null; output: string };
+type DocumentedModuleCase = { title: string; store: string; stem: string; docs: string[] };
+type HoverCase = { title: string; text: string; doc: string };
 
 type ValueReturnCase = {
     title: string;
@@ -25,6 +30,8 @@ type ValueReturnCase = {
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
+const CAIRO_PACKAGE = "@gtkx/cairo";
+const WORKSPACE_CAIRO = fileURLToPath(new URL("../../cairo", import.meta.url));
 
 const GI_MODULES = [
     join("gtk", "gtk.js"),
@@ -33,7 +40,7 @@ const GI_MODULES = [
     "package.json",
 ];
 
-const JSX_MODULES = ["metadata.js", join("gtk", "gtk.js"), "package.json"];
+const JSX_MODULES = ["index.js", "metadata.js", join("gtk", "gtk.js"), "package.json"];
 const HEAD = `export default { applicationId: "${APPLICATION_ID}"`;
 
 const BROKEN_CASES: BrokenCase[] = [
@@ -143,6 +150,61 @@ const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
     { title: "a linked list", jsName: "links" },
 ];
 
+const NOTE_DOC = "Holds a short piece of text the user jotted down.";
+const READ_DOC = "Reads the note back in the given tone.";
+const COMMENT = /\/\*|\/\//u;
+
+const DOCUMENTED_MODULE_CASES: DocumentedModuleCase[] = [
+    {
+        title: "a namespace the bindings come from",
+        store: "gi",
+        stem: join("documented", "documented"),
+        docs: [
+            `/** ${NOTE_DOC} */`,
+            "/** Read the note out across the room. */",
+            `* ${READ_DOC}`,
+            "* @param tone How loudly to read it.",
+            "* @deprecated Since 1.0. Use `read()` with Tone.LOUD instead.",
+        ],
+    },
+    {
+        title: "a namespace the elements come from",
+        store: "jsx",
+        stem: join("documented", "documented"),
+        docs: [`/** ${NOTE_DOC} */`],
+    },
+    {
+        title: "a hand-written override",
+        store: "gi",
+        stem: join("gobject", "overrides", "object"),
+        docs: ["* @param handlerId Id of the handler to disconnect."],
+    },
+];
+
+const HOVER_PROBE = [
+    'import { Note, Tone } from "@gtkx/gi/documented";',
+    'import { DocumentedNote } from "@gtkx/jsx/documented";',
+    "",
+    "export const note = new Note();",
+    "note.read(Tone.LOUD);",
+    "export const element = <DocumentedNote />;",
+    "",
+].join("\n");
+
+const HOVER_CASES: HoverCase[] = [
+    { title: "a method", text: "read(", doc: READ_DOC },
+    { title: "an element", text: "DocumentedNote />", doc: NOTE_DOC },
+];
+
+const HOVER_OPTIONS: ts.CompilerOptions = {
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    target: ts.ScriptTarget.ESNext,
+    jsx: ts.JsxEmit.ReactJSX,
+    strict: true,
+    skipLibCheck: true,
+};
+
 const config = (body: string): string => `${HEAD}${body} };\n`;
 
 const fixtureConfig = (library: string): string =>
@@ -162,6 +224,19 @@ const byteSeqConfig = (v2ByteArrays: boolean | undefined): string => {
     );
 };
 
+const initialRunState = (): CodegenRunState => ({
+    project: { root: "", nodeModules: "" },
+    status: null,
+    output: "",
+});
+
+const runInitialCodegen = (state: CodegenRunState, options: Parameters<typeof createCliProject>[0]): void => {
+    state.project = createCliProject(options);
+    const run = runCli(state.project, ["codegen"]);
+    state.status = run.status;
+    state.output = run.output;
+};
+
 const generatedModule = (project: CliProject, ...segments: string[]): string =>
     readFileSync(join(project.nodeModules, ".gtkx", ...segments), "utf8");
 
@@ -171,6 +246,15 @@ const storePath = (project: CliProject, ...segments: string[]): string =>
 const linkPath = (project: CliProject, ...segments: string[]): string =>
     join(project.nodeModules, "@gtkx", ...segments);
 
+const storeLocalCairoLink = (project: CliProject, store: string): string =>
+    storePath(project, store, "node_modules", "@gtkx", "cairo");
+
+const storeManifest = (project: CliProject, store: string): { peerDependencies?: Record<string, string> } =>
+    JSON.parse(generatedModule(project, store, "package.json")) as { peerDependencies?: Record<string, string> };
+
+const resolveCairoFrom = (project: CliProject): string =>
+    createRequire(storePath(project, "gi", "gtk", "gtk.js")).resolve(`${CAIRO_PACKAGE}/package.json`);
+
 const markStore = (project: CliProject): void => {
     writeFileSync(storePath(project, "gi", MARKER), "");
 };
@@ -179,6 +263,11 @@ const isStoreMarked = (project: CliProject): boolean => existsSync(storePath(pro
 
 const expectModules = (directory: string, modules: string[]): void => {
     expect(modules.filter((name) => !existsSync(join(directory, name)))).toEqual([]);
+};
+
+const expectStoreAndLink = (project: CliProject, store: string, modules: string[]): void => {
+    expectModules(storePath(project, store), modules);
+    expectModules(linkPath(project, store), modules);
 };
 
 const omittedMentions = (source: string, jsName: string): string[] =>
@@ -191,15 +280,42 @@ const classBody = (source: string, className: string): string => {
     return start === -1 || end === -1 ? "" : source.slice(start, end);
 };
 
+const hoverHost = (project: CliProject, filePath: string): ts.LanguageServiceHost => ({
+    getCompilationSettings: () => HOVER_OPTIONS,
+    getScriptFileNames: () => [filePath],
+    getScriptVersion: () => "1",
+    getScriptSnapshot: (name) => {
+        const text = ts.sys.readFile(name);
+
+        return text === undefined ? undefined : ts.ScriptSnapshot.fromString(text);
+    },
+    getCurrentDirectory: () => project.root,
+    getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
+    fileExists: (name) => ts.sys.fileExists(name),
+    readFile: (name) => ts.sys.readFile(name),
+    readDirectory: (...args) => ts.sys.readDirectory(...args),
+    directoryExists: (name) => ts.sys.directoryExists(name),
+    getDirectories: (name) => ts.sys.getDirectories(name),
+});
+
+const hoverDoc = (project: CliProject, fileName: string, text: string): string => {
+    const filePath = join(project.root, fileName);
+    const position = readFileSync(filePath, "utf8").indexOf(text);
+    expect(position).toBeGreaterThanOrEqual(0);
+    const service = ts.createLanguageService(hoverHost(project, filePath));
+
+    try {
+        return ts.displayPartsToString(service.getQuickInfoAtPosition(filePath, position)?.documentation);
+    } finally {
+        service.dispose();
+    }
+};
+
 describe("gtkx codegen", () => {
-    const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
-        status: null,
-    };
+    const state = initialRunState();
 
     beforeAll(() => {
-        state.project = createCliProject({ prefix: "gtkx-cli-codegen-", config: config("") });
-        state.status = runCli(state.project, ["codegen"]).status;
+        runInitialCodegen(state, { prefix: "gtkx-cli-codegen-", config: config("") });
     });
 
     afterAll(() => {
@@ -208,10 +324,27 @@ describe("gtkx codegen", () => {
 
     it("writes both stores where the project imports them", () => {
         expect(state.status).toBe(0);
-        expectModules(storePath(state.project, "gi"), GI_MODULES);
-        expectModules(storePath(state.project, "jsx"), JSX_MODULES);
-        expectModules(linkPath(state.project, "gi"), GI_MODULES);
-        expectModules(linkPath(state.project, "jsx"), JSX_MODULES);
+        expectStoreAndLink(state.project, "gi", GI_MODULES);
+        expectStoreAndLink(state.project, "jsx", JSX_MODULES);
+    });
+
+    it("binds cairo through @gtkx/cairo and keeps the deprecated @gtkx/gi/cairo alias", () => {
+        expect(state.status).toBe(0);
+        expect(generatedModule(state.project, "gi", "gtk", "gtk.js")).toContain(`import "${CAIRO_PACKAGE}";`);
+
+        expect(generatedModule(state.project, "gi", "gtk", "gtk.d.ts"))
+            .toContain(`import * as cairo from "${CAIRO_PACKAGE}";`);
+
+        expect(generatedModule(state.project, "gi", "cairo", "index.js"))
+            .toContain(`export * from "${CAIRO_PACKAGE}";`);
+
+        expect(existsSync(storePath(state.project, "gi", "cairo", "cairo.js"))).toBe(false);
+        expect(storeManifest(state.project, "gi").peerDependencies?.[CAIRO_PACKAGE]).toBe("*");
+        expect(storeManifest(state.project, "jsx").peerDependencies?.[CAIRO_PACKAGE]).toBe("*");
+        const installed = realpathSync(join(state.project.nodeModules, "@gtkx", "cairo", "package.json"));
+        expect(realpathSync(resolveCairoFrom(state.project))).toBe(installed);
+        expect(existsSync(storeLocalCairoLink(state.project, "gi"))).toBe(false);
+        expect(state.output).not.toContain("add @gtkx/cairo to your dependencies");
     });
 
     it("leaves a fresh store alone, and restores a link an install pruned", () => {
@@ -224,12 +357,65 @@ describe("gtkx codegen", () => {
         expect(isStoreMarked(state.project)).toBe(true);
     });
 
+    it("regenerates a store that lacks the jsx index module", () => {
+        rmSync(storePath(state.project, "jsx", "index.js"), { force: true });
+        expect(runCli(state.project, ["codegen"]).status).toBe(0);
+        expectModules(storePath(state.project, "jsx"), JSX_MODULES);
+    });
+
     it("rebuilds the store from scratch when it is forced", () => {
         markStore(state.project);
         expect(runCli(state.project, ["codegen", "--force"]).status).toBe(0);
         expect(isStoreMarked(state.project)).toBe(false);
         expectModules(storePath(state.project, "gi"), GI_MODULES);
         expectModules(storePath(state.project, "jsx"), JSX_MODULES);
+    });
+});
+
+describe("gtkx codegen (a project that does not install @gtkx/cairo)", () => {
+    const state = initialRunState();
+
+    beforeAll(() => {
+        runInitialCodegen(state, {
+            prefix: "gtkx-cli-codegen-nocairo-",
+            config: config(""),
+            omitPackages: ["cairo"],
+        });
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it("links the copy @gtkx/codegen depends on into both stores", () => {
+        expect(state.status).toBe(0);
+        expect(realpathSync(storeLocalCairoLink(state.project, "gi"))).toBe(realpathSync(WORKSPACE_CAIRO));
+        expect(realpathSync(storeLocalCairoLink(state.project, "jsx"))).toBe(realpathSync(WORKSPACE_CAIRO));
+        expect(realpathSync(resolveCairoFrom(state.project))).toBe(realpathSync(join(WORKSPACE_CAIRO, "package.json")));
+        expect(state.output).toContain("add @gtkx/cairo to your dependencies");
+    });
+
+    it("fails when the fallback copy cannot be linked into the store", () => {
+        const storeModules = storePath(state.project, "gi", "node_modules");
+        rmSync(join(storeModules, "@gtkx"), { recursive: true, force: true });
+        chmodSync(storeModules, 0o555);
+
+        try {
+            expect(runCli(state.project, ["codegen"]).status).not.toBe(0);
+        } finally {
+            chmodSync(storeModules, 0o755);
+        }
+    });
+
+    it("keeps the link across runs and drops it once the project installs the package", () => {
+        expect(runCli(state.project, ["codegen"]).status).toBe(0);
+        expect(realpathSync(storeLocalCairoLink(state.project, "gi"))).toBe(realpathSync(WORKSPACE_CAIRO));
+        symlinkSync(WORKSPACE_CAIRO, join(state.project.nodeModules, "@gtkx", "cairo"), "dir");
+        const run = runCli(state.project, ["codegen"]);
+        expect(run.status).toBe(0);
+        expect(existsSync(storeLocalCairoLink(state.project, "gi"))).toBe(false);
+        expect(existsSync(storeLocalCairoLink(state.project, "jsx"))).toBe(false);
+        expect(run.output).toContain("is not declared in this project's package.json");
     });
 });
 
@@ -289,6 +475,39 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
         } finally {
             removeCliProject(project);
         }
+    });
+});
+
+describe("gtkx codegen (where the documentation goes)", () => {
+    const state: { project: CliProject; status: number | null } = {
+        project: { root: "", nodeModules: "" },
+        status: null,
+    };
+
+    beforeAll(() => {
+        state.project = createCliProject({
+            prefix: "gtkx-cli-codegen-docs-",
+            config: fixtureConfig("Documented-1.0"),
+            files: { "src/probe.tsx": HOVER_PROBE },
+        });
+
+        state.status = runCli(state.project, ["codegen"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it.each(DOCUMENTED_MODULE_CASES)("documents $title in its declaration alone", ({ store, stem, docs }) => {
+        expect(state.status).toBe(0);
+        const declared = generatedModule(state.project, store, `${stem}.d.ts`);
+        expect(docs.filter((text) => !declared.includes(text))).toEqual([]);
+        expect(generatedModule(state.project, store, `${stem}.js`)).not.toMatch(COMMENT);
+    });
+
+    it.each(HOVER_CASES)("surfaces the documentation of $title on hover", ({ text, doc }) => {
+        expect(state.status).toBe(0);
+        expect(hoverDoc(state.project, join("src", "probe.tsx"), text)).toContain(doc);
     });
 });
 

@@ -1,0 +1,66 @@
+import { matchAllRegex, matchRegex } from "@gtkx/runtime";
+import { type MatchInfo, Regex, type RegexMatchFlags } from "../glib.js";
+
+declare module "../glib.js" {
+    interface Regex {
+        /**
+         * Scans for a match in `string` for the pattern in `this`.
+         *
+         * The returned `MatchInfo` keeps the searched string alive, so its fetch
+         * methods stay valid for as long as the `MatchInfo` is reachable.
+         *
+         * @param string the string to scan for matches
+         * @param startPosition starting index of the string to match, in bytes
+         * @param matchOptions match options
+         * @returns Tuple of:
+         *
+         * - `result`: `true` if the string matched, `false` otherwise
+         * - `matchInfo`: pointer to location where to store the `GMatchInfo`, or `null` if you do not need it
+         * @throws A `GLib.Error` carrying the failing operation's domain, code, and message.
+         * @since 2.14
+         */
+        matchFull(string: string, startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
+        /**
+         * Using the DFA algorithm, scans for all the possible matches in `string`,
+         * including overlapping ones.
+         *
+         * The returned `MatchInfo` keeps the searched string alive, so its fetch
+         * methods stay valid for as long as the `MatchInfo` is reachable.
+         *
+         * @param string the string to scan for matches
+         * @param startPosition starting index of the string to match, in bytes
+         * @param matchOptions match options
+         * @returns Tuple of:
+         *
+         * - `result`: `true` if the string matched, `false` otherwise
+         * - `matchInfo`: pointer to location where to store the `GMatchInfo`, or `null` if you do not need it
+         * @throws A `GLib.Error` carrying the failing operation's domain, code, and message.
+         * @since 2.14
+         */
+        matchAllFull(string: string, startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
+    }
+}
+
+Regex.prototype.match = function match(string: string, matchOptions: RegexMatchFlags): [boolean, MatchInfo] {
+    return matchRegex<MatchInfo>(this, string, 0, matchOptions);
+};
+
+Regex.prototype.matchAll = function matchAll(string: string, matchOptions: RegexMatchFlags): [boolean, MatchInfo] {
+    return matchAllRegex<MatchInfo>(this, string, 0, matchOptions);
+};
+
+Regex.prototype.matchFull = function matchFull(
+    string: string | string[],
+    startPosition: number,
+    matchOptions: RegexMatchFlags,
+): [boolean, MatchInfo] {
+    return matchRegex<MatchInfo>(this, string, startPosition, matchOptions);
+};
+
+Regex.prototype.matchAllFull = function matchAllFull(
+    string: string | string[],
+    startPosition: number,
+    matchOptions: RegexMatchFlags,
+): [boolean, MatchInfo] {
+    return matchAllRegex<MatchInfo>(this, string, startPosition, matchOptions);
+};

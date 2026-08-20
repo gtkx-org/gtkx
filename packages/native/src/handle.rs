@@ -1,5 +1,6 @@
 mod boxed;
 mod fundamental;
+pub(crate) mod surface;
 
 use std::cell::{Cell, RefCell};
 use std::ffi::c_void;
@@ -314,7 +315,9 @@ impl Handle {
     /// Releases the reference the handle owns, for a caller that wants the handle to stop holding
     /// its instance alive rather than to take the instance over.
     pub fn release_owned(&self) {
-        drop(self.take_owned());
+        if let Some(object) = self.take_owned() {
+            surface::release(object);
+        }
     }
 
     #[must_use]
@@ -362,7 +365,7 @@ impl Drop for HandleKind {
         match self {
             Self::Object { owned, .. } => {
                 if let Some(object) = owned.take() {
-                    glib::idle_add_local_once(move || drop(object));
+                    glib::idle_add_local_once(move || surface::release(object));
                 }
             }
             Self::Struct(ptr) => unsafe { glib::ffi::g_free(*ptr) },

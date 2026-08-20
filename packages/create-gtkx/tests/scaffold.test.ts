@@ -66,6 +66,7 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
     it("installs the runtime and development dependencies through its package manager", () => {
         const installs = state.run.installs.join("\n");
         expect(installs).toContain("@gtkx/react");
+        expect(installs).toContain("@gtkx/cairo");
         expect(installs).toContain("@gtkx/cli");
         expect(installs).toContain("@gtkx/testing");
         expect(installs).toContain("typescript");

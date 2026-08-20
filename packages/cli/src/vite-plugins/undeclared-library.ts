@@ -15,7 +15,7 @@ type PluginState = {
 type GeneratedModule = {
     source: string;
     kind: string;
-    namespace: string;
+    namespace: string | null;
     importer: string;
 };
 
@@ -36,6 +36,10 @@ const findGirIdentifier = (girPath: string[], namespace: string): string | undef
     discoverGirNamespaces(girPath).find((identifier) => getNamespace(identifier) === namespace);
 
 const parseGeneratedModule = (source: string, importer: string | undefined): GeneratedModule | null => {
+    if (source === "@gtkx/jsx") {
+        return { source, kind: "jsx", namespace: null, importer: importer ?? "the project's sources" };
+    }
+
     const matched = GENERATED_MODULE_PATTERN.exec(source);
     const kind = matched?.[1];
     const namespace = matched?.[2];
@@ -57,7 +61,7 @@ const getStoreOptions = (root: string, kind: string): StoreOptions | null => {
     }
 };
 
-const hasNamespaceModule = (storeDir: string, namespace: string): boolean => {
+const hasStoreModule = (storeDir: string, exportKey: string): boolean => {
     const manifest = join(storeDir, "package.json");
 
     if (!existsSync(manifest)) {
@@ -66,43 +70,57 @@ const hasNamespaceModule = (storeDir: string, namespace: string): boolean => {
 
     const { exports } = JSON.parse(readFileSync(manifest, "utf8")) as { exports?: Record<string, unknown> };
 
-    return exports?.[`./${namespace}`] !== undefined;
+    return exports?.[exportKey] !== undefined;
 };
 
-const unreachableStoreError = (generated: GeneratedModule, options: StoreOptions): Error =>
-    new Error(
+const unreachableStoreError = (generated: GeneratedModule, options: StoreOptions): Error => {
+    const provided = generated.namespace === null ? "its index module" : `"${generated.namespace}"`;
+
+    return new Error(
         `Cannot resolve "${generated.source}": the generated store in ${options.storeDir} does provide ` +
-        `"${generated.namespace}", but its link at ${options.linkDir} is not on the module resolution path of ` +
+        `${provided}, but its link at ${options.linkDir} is not on the module resolution path of ` +
         `${generated.importer}. Codegen writes the store into the node_modules the installed @gtkx packages ` +
         "resolve from; install them where the importing file reaches them, then run gtkx codegen again.",
     );
+};
 
-const undeclaredLibraryError = (generated: GeneratedModule, girPath: string[]): Error => {
-    const identifier = findGirIdentifier(girPath, generated.namespace);
+const missingIndexError = (generated: GeneratedModule): Error =>
+    new Error(
+        `Cannot resolve "${generated.source}": the binding store has no index module. ` +
+        "Run gtkx codegen to regenerate the store.",
+    );
+
+const undeclaredLibraryError = (source: string, namespace: string, girPath: string[]): Error => {
+    const identifier = findGirIdentifier(girPath, namespace);
 
     if (identifier === undefined) {
         return new Error(
-            `Cannot resolve "${generated.source}": the binding store has no "${generated.namespace}" module, and no ` +
-            `GIR data for it was found in [${girPath.join(", ")}]. If "${generated.namespace}" is a library, ` +
+            `Cannot resolve "${source}": the binding store has no "${namespace}" module, and no ` +
+            `GIR data for it was found in [${girPath.join(", ")}]. If "${namespace}" is a library, ` +
             "install its gobject-introspection data package and add its GIR identifier to `libraries` in " +
             "gtkx.config.ts. Otherwise run gtkx codegen to regenerate the store.",
         );
     }
 
     return new Error(
-        `Cannot resolve "${generated.source}": the "${identifier}" bindings have not been generated. ` +
+        `Cannot resolve "${source}": the "${identifier}" bindings have not been generated. ` +
         `Add "${identifier}" to \`libraries\` in gtkx.config.ts, then run gtkx dev or gtkx build again.`,
     );
 };
 
 const unresolvedModuleError = async (state: PluginState, generated: GeneratedModule): Promise<Error> => {
     const options = getStoreOptions(state.root, generated.kind);
+    const exportKey = generated.namespace === null ? "." : `./${generated.namespace}`;
 
-    if (options !== null && hasNamespaceModule(options.storeDir, generated.namespace)) {
+    if (options !== null && hasStoreModule(options.storeDir, exportKey)) {
         return unreachableStoreError(generated, options);
     }
 
-    return undeclaredLibraryError(generated, await girSearchPaths(state));
+    if (generated.namespace === null) {
+        return missingIndexError(generated);
+    }
+
+    return undeclaredLibraryError(generated.source, generated.namespace, await girSearchPaths(state));
 };
 
 function gtkxUndeclaredLibrary(loadConfig: ConfigLoader = createConfigLoader()): Plugin {

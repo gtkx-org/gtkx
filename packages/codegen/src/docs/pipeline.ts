@@ -260,6 +260,7 @@ const giInputs = (options: DocsOptions, girFiles: string[]): GiInputs => ({
     girFiles,
     libraries: options.libraries,
     girPath: options.girPath,
+    storeVersion: undefined,
     isByteArrayTyped: options.isByteArrayTyped === true,
     isValueUnwrapped: options.isValueUnwrapped === true,
 });

@@ -14,15 +14,17 @@ import {
     type ValueGuard,
     valueGuardFor,
     wasParamValueModified,
+    WHOLE_NUMBER_RANGES,
 } from "./param-spec.js";
 import {
     getClassType,
     getHandle,
+    getInstanceType,
     getInterfaceProperties,
     instanceClassName,
     type InterfaceProperty,
 } from "./registry.js";
-import { TYPE_INTERFACE, TYPE_OBJECT, typeIsA, typeName } from "./type.js";
+import { TYPE_INTERFACE, TYPE_INVALID, TYPE_OBJECT, typeFundamental, typeIsA, typeName } from "./type.js";
 import {
     fromValue,
     newValueForType,
@@ -90,6 +92,7 @@ const paramSpecDefaultValue = bind(LIB, "g_param_spec_get_default_value", [PARAM
 const paramSpecName = bind(LIB, "g_param_spec_get_name", [PARAM_T], stringT("borrowed"));
 const typeClassRef = bind(LIB, "g_type_class_ref", [biguint64T], CLASS_T);
 const typeClassUnref = bind(LIB, "g_type_class_unref", [CLASS_T], voidT);
+const coercionChecks: Map<bigint, Map<string, PropertyCheck | null>> = new Map();
 const classFindProperty = bind(LIB, "g_object_class_find_property", [CLASS_T, stringT("borrowed")], PARAM_T);
 const defaultInterfaceRef = bind(LIB, "g_type_default_interface_ref", [biguint64T], CLASS_T);
 const defaultInterfaceUnref = bind(LIB, "g_type_default_interface_unref", [CLASS_T], voidT);
@@ -284,6 +287,97 @@ function constructValueFor(wrapper: object, check: PropertyCheck, value: unknown
     assertWritable(wrapper, check, value);
 
     return { name: check.propertyName, value: checkedValueFor(wrapper, check, value) };
+}
+
+function lookupCoercionCheck(gtype: bigint, name: string): PropertyCheck | null {
+    const klass = typeClassRef(gtype) as ExternalObject<Handle>;
+
+    try {
+        const pspec = findPropertySpec(klass, name);
+
+        return pspec === null ? null : checkFor(pspec, name);
+    } finally {
+        typeClassUnref(klass);
+    }
+}
+
+function coercionCheckFor(gtype: bigint, name: string): PropertyCheck | null {
+    let checks = coercionChecks.get(gtype);
+
+    if (checks === undefined) {
+        checks = new Map();
+        coercionChecks.set(gtype, checks);
+    }
+
+    let check = checks.get(name);
+
+    if (check === undefined) {
+        check = lookupCoercionCheck(gtype, name);
+        checks.set(name, check);
+    }
+
+    return check;
+}
+
+function truncateToWhole(check: PropertyCheck, value: number): number {
+    const range = WHOLE_NUMBER_RANGES.get(typeFundamental(check.valueType));
+
+    if (range === undefined) {
+        return value;
+    }
+
+    return Math.min(range[1], Math.max(range[0], Math.trunc(value)));
+}
+
+function validatedNumber(check: PropertyCheck, number: number): number {
+    check.scratch ??= newValueForType(check.valueType);
+
+    try {
+        writeHeld(check, check.scratch, number);
+    } catch {
+        return number;
+    }
+
+    return wasParamValueModified(check.handle, check.scratch) ? (fromValue(check.scratch) as number) : number;
+}
+
+function coerceNumber(check: PropertyCheck, value: number): number {
+    const number = truncateToWhole(check, value);
+
+    return check.canHoldValue(number) ? validatedNumber(check, number) : value;
+}
+
+function coercePropertyValue(gtype: bigint, propertyName: string, value: unknown): unknown {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+        return value;
+    }
+
+    const check = coercionCheckFor(gtype, propertyName);
+
+    return check === null ? value : coerceNumber(check, value);
+}
+
+/**
+ * Fits a number to what a GObject property accepts, the way an animation writing a value on every
+ * frame needs: a fractional number headed for a property that holds whole numbers, such as a
+ * `gint`, an enum, or flags, is truncated toward zero, and a number outside the range the
+ * property's `GObject.ParamSpec` allows is clamped to it, so the write that follows never trips
+ * GObject's range check. Anything that is not a finite number, a number the property cannot hold
+ * at all, and a name the object installs no property under come back unchanged.
+ *
+ * @param obj The object the value is about to be written to.
+ * @param propertyName The property name, dashed or camelCased.
+ * @param value The value about to be written.
+ * @returns The value as the property accepts it.
+ */
+function coerceObjectProperty(obj: object, propertyName: string, value: unknown): unknown {
+    if (typeof value !== "number") {
+        return value;
+    }
+
+    const gtype = getInstanceType(obj);
+
+    return gtype === TYPE_INVALID ? value : coercePropertyValue(gtype, propertyName, value);
 }
 
 function constructPropertyFor(
@@ -612,6 +706,8 @@ function toNativeProperties(properties: Record<string, PropertySpec>): RegisterC
 
 export {
     buildPropertyDispatch,
+    coerceObjectProperty,
+    coercePropertyValue,
     constructPropertyFor,
     GET_PROPERTY_VFUNC,
     makeGetProperty,

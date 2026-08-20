@@ -1,4 +1,4 @@
-import type { Context } from "@gtkx/gi/cairo";
+import type { Context } from "@gtkx/cairo";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import * as PangoCairo from "@gtkx/gi/pangocairo";

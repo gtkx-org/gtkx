@@ -28,7 +28,9 @@ export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from 
 /** @public */
 export { promisify } from "./promisify.js";
 /** @public */
-export { newParamSpecOverride } from "./properties.js";
+export { coerceObjectProperty, newParamSpecOverride } from "./properties.js";
+/** @public */
+export { matchAllRegex, matchRegex } from "./regex.js";
 /** @public */
 export { type Interface, registerClass, type SignalGType, type SignalSpec } from "./register-class.js";
 /** @public */
@@ -41,9 +43,11 @@ export {
     registerClassStruct,
     registerInterface,
     registerWrapperClass,
+    registerWrapperClassResolver,
     type StaticBase,
     setHandle,
     wrapHandle,
+    type WrapperClassResolver,
 } from "./registry.js";
 /** @public */
 export { connectSignal, disconnectSignal, emitSignal, getSignalBaseName, type SignalHandler } from "./signal.js";

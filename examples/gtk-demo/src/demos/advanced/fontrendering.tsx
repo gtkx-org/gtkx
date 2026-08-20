@@ -1,5 +1,4 @@
 import type * as Gdk from "@gtkx/gi/gdk";
-import { DropDown } from "@gtkx/components";
 import {
     Antialias,
     Content,
@@ -11,7 +10,8 @@ import {
     HintStyle,
     ImageSurface,
     Surface,
-} from "@gtkx/gi/cairo";
+} from "@gtkx/cairo";
+import { DropDown } from "@gtkx/components";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";

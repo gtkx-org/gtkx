@@ -42,6 +42,8 @@ Codegen writes packages into `node_modules/.gtkx` and links them into `node_modu
 - **`@gtkx/gi`** is the introspected API, one subpath per namespace (`@gtkx/gi/gtk`, `@gtkx/gi/adw`): the classes, enums, and functions you call imperatively, for refs and values such as `Gtk.Orientation.VERTICAL`.
 - **`@gtkx/jsx`** is the React layer, likewise per namespace (`@gtkx/jsx/gtk`, `@gtkx/jsx/adw`): a PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a `React.JSX.IntrinsicElements` augmentation.
 
+The `cairo` namespace is provided by the [`@gtkx/cairo`](/guide/cairo) package rather than generated; the store re-exports it as `@gtkx/gi/cairo` for backward compatibility.
+
 Record fields appear as accessors: a getter wherever the read lands on the right memory, and a setter only where a field slot can hold what it stores. `null`-terminated pointer arrays read, so `Gio.DBusNodeInfo.interfaces` hands back its array, but they are read-only and absent from the record's constructor props, since the slot cannot keep an array alive. Fields whose element count lives in a sibling field, and `GList` or `GSList` links, carry no accessor and are absent from the class.
 
 A few bindings take a NUL-terminated C string that GIR describes as a byte array (`GLib.Variant.newBytestring`), so the value silently stops at the first zero byte. Binary payloads go through `GLib.Bytes` and `GLib.Variant.newFromBytes`.
@@ -122,7 +124,7 @@ export default defineConfig({
 
 Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
 
-- **`v2ByteArrays`**: represents GIR byte sequences as `Uint8Array` instead of `number[]`. It covers `guint8` C arrays and `GByteArray`, in return values, out parameters, record fields, and properties. It does not cover the handwritten Cairo overrides or the OpenGL bindings, which already use typed arrays.
+- **`v2ByteArrays`**: represents GIR byte sequences as `Uint8Array` instead of `number[]`. It covers `guint8` C arrays and `GByteArray`, in return values, out parameters, record fields, and properties. It does not cover `@gtkx/cairo` or `@gtkx/gl`, which already use typed arrays.
 
   Parameters accept `Uint8Array | number[]` either way, so turning this flag on never breaks a call site that passes values *in*. What changes is what you get *back*: `GLib.fileGetContents` returns `[boolean, Uint8Array]` rather than `[boolean, number[]]`, so code that calls `.push`, `.concat`, `Array.isArray`, or `JSON.stringify` on a result needs updating. Flip the flag and run `tsc`: every site that needs attention is a type error.
 

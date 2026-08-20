@@ -124,6 +124,7 @@
             "dependsOn": [
                 "gtkx:codegen",
                 "@gtkx/vitest:build",
+                "@gtkx/cairo:build",
                 "@gtkx/cli:build",
                 "@gtkx/components:build",
                 "@gtkx/css:build",
@@ -141,6 +142,7 @@
             "dependsOn": [
                 "gtkx:codegen",
                 "@gtkx/vitest:build",
+                "@gtkx/cairo:build",
                 "@gtkx/cli:build",
                 "@gtkx/components:build",
                 "@gtkx/css:build",

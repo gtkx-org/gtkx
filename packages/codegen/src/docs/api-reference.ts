@@ -3,6 +3,7 @@ import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirRecord } from "../gir/record.js";
 import { isEmittableEntity } from "../gir/emittable.js";
+import { externalPackageFor } from "../gir/external-namespaces.js";
 import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
@@ -406,6 +407,10 @@ class ApiReference {
 
     private buildIndex(): void {
         for (const namespace of this.library.namespaces.values()) {
+            if (externalPackageFor(namespace.name) !== undefined) {
+                continue;
+            }
+
             this.indexNamespace(namespace);
         }
 
@@ -482,7 +487,7 @@ class ApiReference {
         const lower = name.toLowerCase();
 
         for (const namespace of this.library.namespaces.values()) {
-            if (namespace.name.toLowerCase() === lower) {
+            if (namespace.name.toLowerCase() === lower && externalPackageFor(namespace.name) === undefined) {
                 return namespace;
             }
         }

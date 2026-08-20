@@ -14,6 +14,7 @@ type CliProjectOptions = {
     files?: Record<string, string> | undefined;
     hasStore?: boolean | undefined;
     packageType?: string | undefined;
+    omitPackages?: string[] | undefined;
 };
 
 const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
@@ -25,7 +26,7 @@ const CLI_TIMEOUT = 300_000 * (process.env.GTKX_COVERAGE_DIR === undefined ? 1 :
 const STORE_DIR = ".gtkx";
 const SCOPE = "@gtkx";
 const STORE_NAMES = ["gi", "jsx"];
-const WORKSPACE_PACKAGES = ["components", "config", "css", "native", "react", "runtime", "testing", "utils"];
+const WORKSPACE_PACKAGES = ["cairo", "components", "config", "css", "native", "react", "runtime", "testing", "utils"];
 const REGISTRY_PACKAGES = ["@types", "csstype", "react", "tsx"];
 const STORE_LIBRARIES = ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"];
 const STORE_FUTURE = { v2ByteArrays: true };
@@ -46,8 +47,12 @@ const linkInto = (nodeModules: string, name: string, target: string): void => {
     symlinkSync(target, link, "dir");
 };
 
-const installPeers = (nodeModules: string): void => {
+const installPeers = (nodeModules: string, omitPackages: string[]): void => {
     for (const name of WORKSPACE_PACKAGES) {
+        if (omitPackages.includes(name)) {
+            continue;
+        }
+
         linkInto(nodeModules, join(SCOPE, name), join(WORKSPACE_ROOT, "packages", name));
     }
 
@@ -55,6 +60,17 @@ const installPeers = (nodeModules: string): void => {
         linkInto(nodeModules, name, join(WORKSPACE_MODULES, name));
     }
 };
+
+const manifestDependencies = (omitPackages: string[]): Record<string, string> =>
+    Object.fromEntries(
+        WORKSPACE_PACKAGES.filter((name) => !omitPackages.includes(name)).map((name) => [`${SCOPE}/${name}`, "*"]),
+    );
+
+const projectManifest = (options: CliProjectOptions): Record<string, unknown> => ({
+    ...MANIFEST,
+    type: options.packageType ?? "module",
+    dependencies: manifestDependencies(options.omitPackages ?? []),
+});
 
 const installStore = (nodeModules: string): void => {
     cpSync(join(WORKSPACE_MODULES, STORE_DIR), join(nodeModules, STORE_DIR), {
@@ -71,14 +87,13 @@ const createCliProject = (options: CliProjectOptions): CliProject => {
     const root = mkdtempSync(join(tmpdir(), options.prefix));
     const nodeModules = join(root, "node_modules");
     mkdirSync(join(nodeModules, SCOPE), { recursive: true });
-    installPeers(nodeModules);
+    installPeers(nodeModules, options.omitPackages ?? []);
 
     if (options.hasStore === true) {
         installStore(nodeModules);
     }
 
-    const manifest = { ...MANIFEST, type: options.packageType ?? "module" };
-    writeFileSync(join(root, "package.json"), `${JSON.stringify(manifest, null, 4)}\n`);
+    writeFileSync(join(root, "package.json"), `${JSON.stringify(projectManifest(options), null, 4)}\n`);
     writeProjectFiles(root, options.files ?? {});
 
     if (options.config !== undefined) {

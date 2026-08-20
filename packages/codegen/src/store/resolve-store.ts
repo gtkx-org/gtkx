@@ -24,6 +24,7 @@ const SCOPE = "@gtkx";
 const STORE_NAMES: string[] = ["gi", "jsx"];
 
 const STORE_CONSUMERS: string[] = [
+    "@gtkx/animated",
     "@gtkx/cli",
     "@gtkx/components",
     "@gtkx/css",
@@ -213,4 +214,4 @@ const resolveStore = (projectRoot: string): ResolvedStore => {
     };
 };
 
-export { getShadowingStorePaths, resolveStore, sweepProjectStaging, type ResolvedStore };
+export { getShadowingStorePaths, nodeModulesChain, resolveStore, sweepProjectStaging, type ResolvedStore };
