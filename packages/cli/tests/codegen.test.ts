@@ -518,23 +518,6 @@ describe("gtkx codegen (values a binding takes and hands back)", () => {
         }
     });
 
-    it.each(FINISH_RESULT_CASES)("$title", ({ v2FinishResults, declarations, bindings }) => {
-        const project = createCliProject({
-            prefix: "gtkx-cli-codegen-finish-results-",
-            config: asyncPairConfig(v2FinishResults),
-        });
-
-        try {
-            expect(runCli(project, ["codegen"]).status).toBe(0);
-            const emitted = generatedModule(project, "gi", "asyncpair", "asyncpair.d.ts");
-            const emittedBindings = generatedModule(project, "gi", "asyncpair", "asyncpair.js");
-            expect(declarations.filter((text) => !emitted.includes(text))).toEqual([]);
-            expect(bindings.filter((text) => !emittedBindings.includes(text))).toEqual([]);
-        } finally {
-            removeCliProject(project);
-        }
-    });
-
     it("regenerates a fresh store when the value return setting changes", () => {
         const project = createCliProject({
             prefix: "gtkx-cli-codegen-value-returns-flip-",
@@ -550,6 +533,25 @@ describe("gtkx codegen (values a binding takes and hands back)", () => {
             expect(runCli(project, ["codegen"]).status).toBe(0);
             expect(isStoreMarked(project)).toBe(false);
             expect(generatedModule(project, "gi", "valuebox", "valuebox.d.ts")).toContain("peek(): GObject.Value");
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx codegen (promisified finish results)", () => {
+    it.each(FINISH_RESULT_CASES)("$title", ({ v2FinishResults, declarations, bindings }) => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-finish-results-",
+            config: asyncPairConfig(v2FinishResults),
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            const emitted = generatedModule(project, "gi", "asyncpair", "asyncpair.d.ts");
+            const emittedBindings = generatedModule(project, "gi", "asyncpair", "asyncpair.js");
+            expect(declarations.filter((text) => !emitted.includes(text))).toEqual([]);
+            expect(bindings.filter((text) => !emittedBindings.includes(text))).toEqual([]);
         } finally {
             removeCliProject(project);
         }
