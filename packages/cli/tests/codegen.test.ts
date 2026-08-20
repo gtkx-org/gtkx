@@ -558,6 +558,65 @@ describe("gtkx codegen (promisified finish results)", () => {
     });
 });
 
+describe("gtkx codegen (callback arguments of vtable slots)", () => {
+    const state: { project: CliProject; status: number | null } = {
+        project: { root: "", nodeModules: "" },
+        status: null,
+    };
+
+    const declarations = (): string => generatedModule(state.project, "gi", "hookslots", "hookslots.d.ts");
+    const bindings = (): string => generatedModule(state.project, "gi", "hookslots", "hookslots.js");
+
+    beforeAll(() => {
+        state.project = createCliProject({
+            prefix: "gtkx-cli-codegen-hook-slots-",
+            config: fixtureConfig("HookSlots-1.0"),
+        });
+
+        state.status = runCli(state.project, ["codegen"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it("decodes a slot callback whose user data sits right after it", () => {
+        expect(state.status).toBe(0);
+
+        expect(bindings()).toContain(
+            't.callback([t.int32, t.biguint64], t.boolean, { hasUserData: true, userDataIndex: 1, scope: "async" })',
+        );
+
+        expect(declarations()).toContain("vfuncBind(hook: HookFunc | null): void;");
+    });
+
+    it("keeps a slot callback that carries a destroy notify opaque", () => {
+        expect(state.status).toBe(0);
+        const watchSlot = bindings().split('vfuncName: "watch"', 2)[1] ?? "";
+
+        expect(watchSlot).toContain(
+            'argDescriptors: [t.object("borrowed"), t.biguint64, t.biguint64, t.biguint64]',
+        );
+
+        expect(declarations()).toContain(
+            "vfuncWatch(hook: bigint | null, userData: bigint | null, destroy: bigint | null): void;",
+        );
+    });
+
+    it("keeps a slot callback whose user data is not adjacent opaque", () => {
+        expect(state.status).toBe(0);
+        const deferSlot = bindings().split('vfuncName: "defer"', 2)[1] ?? "";
+
+        expect(deferSlot).toContain(
+            'argDescriptors: [t.object("borrowed"), t.biguint64, t.int32, t.biguint64]',
+        );
+
+        expect(declarations()).toContain(
+            "vfuncDefer(hook: bigint | null, stride: number, userData: bigint | null): void;",
+        );
+    });
+});
+
 describe("gtkx codegen (a project that does not declare itself a module)", () => {
     const state: { project: CliProject; status: number | null } = {
         project: { root: "", nodeModules: "" },

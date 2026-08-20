@@ -77,6 +77,7 @@ type Vtable = {
 type SlotParamPlan = {
     parameters: GirParameter[];
     argIndexMap: Map<number, number>;
+    decoded: Set<GirParameter>;
 };
 
 const PADDING_FIELD_NAME = /^(?:reserved|padding)\d*$/i;
@@ -134,28 +135,29 @@ const vtableCallbackType = (context: ModuleContext, field: GirField): GirCallbac
 const isCallbackParam = (context: ModuleContext, parameter: GirParameter): boolean =>
     parameter.type !== undefined && context.library.typeFor(parameter.type)?.kind === "callback";
 
-const isDecodedCallbackParam = (context: ModuleContext, parameter: GirParameter): boolean =>
-    isCallbackParam(context, parameter) && parameter.closureIndex !== undefined;
+const isDecodedCallbackParam = (context: ModuleContext, parameter: GirParameter, index: number): boolean =>
+    isCallbackParam(context, parameter) &&
+    parameter.closureIndex === index + 1 &&
+    parameter.destroyIndex === undefined;
 
-const isOpaqueCallbackParam = (context: ModuleContext, parameter: GirParameter): boolean =>
-    isCallbackParam(context, parameter) && parameter.closureIndex === undefined;
-
-const addCompanionIndices = (companions: Set<number>, parameter: GirParameter, index: number): void => {
-    if (parameter.closureIndex !== undefined && parameter.closureIndex !== index) {
-        companions.add(parameter.closureIndex);
-    }
-
-    if (parameter.destroyIndex !== undefined && parameter.destroyIndex !== index) {
-        companions.add(parameter.destroyIndex);
-    }
-};
-
-const slotCompanionIndices = (context: ModuleContext, callback: GirCallback): Set<number> => {
-    const companions: Set<number> = new Set();
+const decodedSlotParams = (context: ModuleContext, callback: GirCallback): Set<GirParameter> => {
+    const decoded: Set<GirParameter> = new Set();
 
     for (const [index, parameter] of callback.parameters.entries()) {
-        if (isDecodedCallbackParam(context, parameter)) {
-            addCompanionIndices(companions, parameter, index);
+        if (isDecodedCallbackParam(context, parameter, index)) {
+            decoded.add(parameter);
+        }
+    }
+
+    return decoded;
+};
+
+const companionIndices = (decoded: Set<GirParameter>): Set<number> => {
+    const companions: Set<number> = new Set();
+
+    for (const parameter of decoded) {
+        if (parameter.closureIndex !== undefined) {
+            companions.add(parameter.closureIndex);
         }
     }
 
@@ -163,7 +165,8 @@ const slotCompanionIndices = (context: ModuleContext, callback: GirCallback): Se
 };
 
 const slotParamPlan = (context: ModuleContext, callback: GirCallback): SlotParamPlan => {
-    const companions = slotCompanionIndices(context, callback);
+    const decoded = decodedSlotParams(context, callback);
+    const companions = companionIndices(decoded);
     const parameters: GirParameter[] = [];
     const argIndexMap: Map<number, number> = new Map();
 
@@ -176,11 +179,14 @@ const slotParamPlan = (context: ModuleContext, callback: GirCallback): SlotParam
         parameters.push(parameter);
     }
 
-    return { parameters, argIndexMap };
+    return { parameters, argIndexMap, decoded };
 };
 
+const isOpaqueCallbackParam = (context: ModuleContext, plan: SlotParamPlan, parameter: GirParameter): boolean =>
+    isCallbackParam(context, parameter) && !plan.decoded.has(parameter);
+
 const renderSlotParamDescriptor = (context: ModuleContext, parameter: GirParameter, plan: SlotParamPlan): string => {
-    if (isDecodedCallbackParam(context, parameter)) {
+    if (plan.decoded.has(parameter)) {
         const callbackDescriptor = renderCallbackType(context, parameter.type, parameter);
 
         if (callbackDescriptor !== undefined) {
@@ -191,8 +197,8 @@ const renderSlotParamDescriptor = (context: ModuleContext, parameter: GirParamet
     return renderParamDescriptor(context, parameter, parameter.type, { argIndexMap: plan.argIndexMap });
 };
 
-const renderSlotParamTsType = (context: ModuleContext, parameter: GirParameter): string => {
-    if (isOpaqueCallbackParam(context, parameter)) {
+const renderSlotParamTsType = (context: ModuleContext, plan: SlotParamPlan, parameter: GirParameter): string => {
+    if (isOpaqueCallbackParam(context, plan, parameter)) {
         return parameter.nullable ? "bigint | null" : "bigint";
     }
 
@@ -461,8 +467,13 @@ const hasCallableVfuncSlots = (context: ModuleContext, namespaceName: string, kl
 
 const slotDoc = (slot: VtableSlot): string | undefined => slot.vfunc?.doc ?? slot.field.doc ?? slot.callback.doc;
 
-const slotParamDoc = (context: ModuleContext, parameter: GirParameter, doc: string | undefined): string | undefined => {
-    if (!isOpaqueCallbackParam(context, parameter)) {
+const slotParamDoc = (
+    context: ModuleContext,
+    plan: SlotParamPlan,
+    parameter: GirParameter,
+    doc: string | undefined,
+): string | undefined => {
+    if (!isOpaqueCallbackParam(context, plan, parameter)) {
         return doc;
     }
 
@@ -470,16 +481,16 @@ const slotParamDoc = (context: ModuleContext, parameter: GirParameter, doc: stri
 };
 
 const slotDocParameters = (context: ModuleContext, slot: VtableSlot): GirParameter[] => {
-    const companions = slotCompanionIndices(context, slot.callback);
+    const plan = slotParamPlan(context, slot.callback);
     const [, ...parameters] = slot.callback.parameters;
     const vfuncParameters = slot.vfunc?.parameters ?? [];
 
     return parameters
         .map((parameter, index) => ({ parameter, index }))
-        .filter(({ index }) => !companions.has(index + 1))
+        .filter(({ index }) => plan.argIndexMap.has(index + 1))
         .map(({ parameter, index }) => ({
             ...parameter,
-            doc: slotParamDoc(context, parameter, vfuncParameters[index]?.doc ?? parameter.doc),
+            doc: slotParamDoc(context, plan, parameter, vfuncParameters[index]?.doc ?? parameter.doc),
         }));
 };
 
@@ -535,7 +546,8 @@ const isCallableSlot = (context: ModuleContext, slot: VtableSlot): boolean =>
     !UNCALLABLE_SLOT_KEYS.has(slot.key) && !hasUnannotatedPointerParam(context, slot);
 
 const vfuncSlotSignature = (context: ModuleContext, slot: VtableSlot, isOptional = false): VfuncSignature => {
-    const [, ...parameters] = slotParamPlan(context, slot.callback).parameters;
+    const plan = slotParamPlan(context, slot.callback);
+    const [, ...parameters] = plan.parameters;
 
     const renderType = (ref: TypeId | undefined, isNullable: boolean): string =>
         renderTsType(context, ref, isNullable);
@@ -543,7 +555,7 @@ const vfuncSlotSignature = (context: ModuleContext, slot: VtableSlot, isOptional
     const signature = handlerParameters(parameters)
         .map(
             (parameter, index) =>
-                `${parameterIdentifier(parameter, index)}: ${renderSlotParamTsType(context, parameter)}`)
+                `${parameterIdentifier(parameter, index)}: ${renderSlotParamTsType(context, plan, parameter)}`)
         .join(", ");
 
     const folded = foldedLengthParameters(context.library, slot.callback);
