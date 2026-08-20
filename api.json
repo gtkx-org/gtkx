@@ -1,5 +1,6 @@
 {
     "entrypoints": [
+        "@gtkx/animated",
         "@gtkx/cairo",
         "@gtkx/cli/env",
         "@gtkx/cli/vitest-plugin",

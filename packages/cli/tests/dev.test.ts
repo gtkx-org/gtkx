@@ -36,7 +36,8 @@ const App = () => <Absent;
 export { App };
 `;
 
-const APP_HEAD = `import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
+const APP_HEAD = `import { GtkLabel } from "@gtkx/jsx";
+import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { useEffect } from "react";
 
 const REVISION = `;

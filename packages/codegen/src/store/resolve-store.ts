@@ -24,6 +24,7 @@ const SCOPE = "@gtkx";
 const STORE_NAMES: string[] = ["gi", "jsx"];
 
 const STORE_CONSUMERS: string[] = [
+    "@gtkx/animated",
     "@gtkx/cli",
     "@gtkx/components",
     "@gtkx/css",

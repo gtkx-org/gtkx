@@ -20,15 +20,20 @@ const writeJsxStore = (params: WriteJsxStoreParams): void => {
     const { options, namespaces, metadata, externalPackages, rawFiles } = params;
 
     const exportsMap: Record<string, unknown> = {
+        ".": subpathExport("index"),
         "./metadata": subpathExport("metadata"),
     };
 
     const files = [{ fileName: "metadata.ts", source: metadata }];
+    const indexExports: string[] = [];
 
     for (const { directory, source } of namespaces) {
         files.push({ fileName: `${directory}/${directory}.tsx`, source }, namespaceBarrel(directory));
         exportsMap[`./${directory}`] = subpathExport(`${directory}/index`);
+        indexExports.push(`export * from "./${directory}/index.js";`);
     }
+
+    files.push({ fileName: "index.ts", source: `${indexExports.join("\n")}\n` });
 
     writeStore({
         storeDir: options.storeDir,

@@ -122,4 +122,4 @@ The [Preferences and Theming](/tutorial/preferences-and-theming) tutorial chapte
 
 ## Next
 
-Continue with [Cairo](/guide/cairo) to draw 2D graphics inside a widget.
+Continue with [Animations](/guide/animations) to drive widget properties with springs.

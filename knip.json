@@ -57,6 +57,12 @@
                 "src/env.d.ts!"
             ]
         },
+        "packages/animated": {
+            "includeEntryExports": false,
+            "entry": [
+                "gtkx.config.ts!"
+            ]
+        },
         "packages/cairo": {
             "includeEntryExports": false
         },

@@ -224,7 +224,7 @@ const restrictAdwImports = (message: string, extra: string[]): Linter.RulesRecor
     "@typescript-eslint/no-restricted-imports": [
         "error",
         {
-            paths: ["@gtkx/gi/adw", "@gtkx/jsx/adw", ...extra].map((name) => ({ name, message })),
+            paths: ["@gtkx/gi/adw", "@gtkx/jsx", "@gtkx/jsx/adw", ...extra].map((name) => ({ name, message })),
         },
     ],
 });
@@ -264,7 +264,11 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
     ...NX_CONFIGS,
     documentPublicApi(root, surface),
     classifyEntrypoints(surface),
-    { files: CORE_SOURCES, ignores: ADW_SOURCES, rules: restrictAdwImports(ADW_CORE_MESSAGE, []) },
+    {
+        files: CORE_SOURCES,
+        ignores: [...ADW_SOURCES, "packages/animated/src/**"],
+        rules: restrictAdwImports(ADW_CORE_MESSAGE, []),
+    },
     {
         files: ["packages/react/src/**/*.{ts,tsx}", "packages/components/src/**/*.{ts,tsx}"],
         ignores: ADW_SOURCES,
