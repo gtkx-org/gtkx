@@ -81,6 +81,7 @@ const docs = defineCommand({
             isByteArrayTyped: config.future?.v2ByteArrays === true,
             isValueUnwrapped: config.future?.v2ValueReturns === true,
             isFinishTrimmed: config.future?.v2FinishResults === true,
+            isInoutInPlace: config.future?.v2InoutReturns === true,
         });
 
         if (!isRegenerated) {

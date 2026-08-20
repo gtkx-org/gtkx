@@ -185,6 +185,7 @@ const futureSchema = z.object({
     v2ByteArrays: z.boolean({ error: "must be a boolean" }).optional(),
     v2ValueReturns: z.boolean({ error: "must be a boolean" }).optional(),
     v2FinishResults: z.boolean({ error: "must be a boolean" }).optional(),
+    v2InoutReturns: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
 /** Schema every `gtkx.config.ts` is validated against, and the source of the {@link Config} type. */

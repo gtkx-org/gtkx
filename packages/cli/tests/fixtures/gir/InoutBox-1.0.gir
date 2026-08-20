@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <package name="inoutbox-1.0"/>
+  <namespace name="InoutBox"
+             version="1.0"
+             shared-library="libinoutbox.so.0"
+             c:identifier-prefixes="InoutBox"
+             c:symbol-prefixes="inout_box">
+    <record name="Spot"
+            c:type="InoutBoxSpot"
+            c:symbol-prefix="spot"
+            glib:type-name="InoutBoxSpot"
+            glib:get-type="inout_box_spot_get_type">
+      <field name="x" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+      <field name="y" writable="1">
+        <type name="gint" c:type="gint"/>
+      </field>
+    </record>
+    <class name="Walker"
+           c:symbol-prefix="walker"
+           c:type="InoutBoxWalker"
+           parent="GObject.Object"
+           glib:type-name="InoutBoxWalker"
+           glib:get-type="inout_box_walker_get_type">
+      <method name="step" c:identifier="inout_box_walker_step">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Walker" c:type="InoutBoxWalker*"/>
+          </instance-parameter>
+          <parameter name="spot" direction="inout" caller-allocates="1" transfer-ownership="none">
+            <type name="Spot" c:type="InoutBoxSpot*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="recenter" c:identifier="inout_box_walker_recenter">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Walker" c:type="InoutBoxWalker*"/>
+          </instance-parameter>
+          <parameter name="spot" direction="inout" caller-allocates="1" transfer-ownership="none">
+            <type name="Spot" c:type="InoutBoxSpot*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="advance" c:identifier="inout_box_walker_advance">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Walker" c:type="InoutBoxWalker*"/>
+          </instance-parameter>
+          <parameter name="offset" direction="inout" caller-allocates="0" transfer-ownership="full">
+            <type name="gint" c:type="gint*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="locate" c:identifier="inout_box_walker_locate">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Walker" c:type="InoutBoxWalker*"/>
+          </instance-parameter>
+          <parameter name="spot" direction="inout" caller-allocates="1" transfer-ownership="none">
+            <type name="Spot" c:type="InoutBoxSpot*"/>
+          </parameter>
+          <parameter name="name" direction="out" caller-allocates="0" transfer-ownership="full">
+            <type name="utf8" c:type="gchar**"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+  </namespace>
+</repository>

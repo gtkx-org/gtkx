@@ -34,6 +34,13 @@ type FinishResultCase = {
     bindings: string[];
 };
 
+type InoutReturnCase = {
+    title: string;
+    v2InoutReturns: boolean | undefined;
+    declarations: string[];
+    bindings: string[];
+};
+
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
@@ -56,6 +63,7 @@ const BROKEN_CASES: BrokenCase[] = [
     { title: "a configuration whose libraries are empty", config: `${HEAD}, libraries: [] };\n` },
     { title: "a configuration whose gir path is not a list", config: `${HEAD}, girPath: 5 };\n` },
     { title: "a library that has no GIR file installed", config: `${HEAD}, libraries: ["Absent-1.0"] };\n` },
+    { title: "a future flag that is not a boolean", config: `${HEAD}, future: { v2InoutReturns: "soon" } };\n` },
     {
         title: "a GIR file that is not well-formed XML",
         config: `${HEAD}, libraries: ["Malformed-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])} };\n`,
@@ -134,6 +142,34 @@ const FINISH_RESULT_CASES: FinishResultCase[] = [
             "probeAsync(): Promise<boolean>",
         ],
         bindings: ["promisify(asyncPairJobRunAsync, trimFinish(this.runFinish.bind(this))"],
+    },
+];
+
+const INOUT_RETURN_CASES: InoutReturnCase[] = [
+    {
+        title: "returns an inout record alongside the result unless the project opts in",
+        v2InoutReturns: undefined,
+        declarations: [
+            "step(spot: Spot): [boolean, Spot]",
+            "recenter(spot: Spot): Spot",
+            "advance(offset: number): [boolean, number]",
+            "locate(spot: Spot): [boolean, Spot, string]",
+        ],
+        bindings: ['direction: "inout", isCallerAllocated: true, isRequired: true }'],
+    },
+    {
+        title: "mutates an inout record in place once the project opts in",
+        v2InoutReturns: true,
+        declarations: [
+            "step(spot: Spot): boolean",
+            "recenter(spot: Spot): void",
+            "advance(offset: number): [boolean, number]",
+            "locate(spot: Spot): [boolean, string]",
+        ],
+        bindings: [
+            'direction: "inout", isCallerAllocated: true, isConsumed: true, isRequired: true }',
+            't.int32, direction: "inout", isRequired: true }',
+        ],
     },
 ];
 
@@ -248,6 +284,12 @@ const asyncPairConfig = (v2FinishResults: boolean | undefined): string => {
     const future = v2FinishResults === undefined ? "" : `, future: { v2FinishResults: ${String(v2FinishResults)} }`;
 
     return config(`, libraries: ["AsyncPair-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
+};
+
+const inoutBoxConfig = (v2InoutReturns: boolean | undefined): string => {
+    const future = v2InoutReturns === undefined ? "" : `, future: { v2InoutReturns: ${String(v2InoutReturns)} }`;
+
+    return config(`, libraries: ["InoutBox-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
 };
 
 const byteSeqConfig = (v2ByteArrays: boolean | undefined): string => {
@@ -771,6 +813,45 @@ describe("gtkx codegen (promisified finish results)", () => {
             const emittedBindings = generatedModule(project, "gi", "asyncpair", "asyncpair.js");
             expect(declarations.filter((text) => !emitted.includes(text))).toEqual([]);
             expect(bindings.filter((text) => !emittedBindings.includes(text))).toEqual([]);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx codegen (inout records a binding mutates in place)", () => {
+    it.each(INOUT_RETURN_CASES)("$title", ({ v2InoutReturns, declarations, bindings }) => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-inout-returns-",
+            config: inoutBoxConfig(v2InoutReturns),
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            const emitted = generatedModule(project, "gi", "inoutbox", "inoutbox.d.ts");
+            const emittedBindings = generatedModule(project, "gi", "inoutbox", "inoutbox.js");
+            expect(declarations.filter((text) => !emitted.includes(text))).toEqual([]);
+            expect(bindings.filter((text) => !emittedBindings.includes(text))).toEqual([]);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("regenerates a fresh store when the inout return setting changes", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-inout-returns-flip-",
+            config: inoutBoxConfig(true),
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            markStore(project);
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            expect(isStoreMarked(project)).toBe(true);
+            writeFileSync(join(project.root, "gtkx.config.ts"), inoutBoxConfig(undefined));
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            expect(isStoreMarked(project)).toBe(false);
+            expect(generatedModule(project, "gi", "inoutbox", "inoutbox.d.ts")).toContain("recenter(spot: Spot): Spot");
         } finally {
             removeCliProject(project);
         }
