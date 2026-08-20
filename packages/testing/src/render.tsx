@@ -10,7 +10,7 @@ import {
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import type { RenderResult } from "./bound-queries.js";
 import type { QueryMap, RenderOptions, ScreenshotOptions } from "./types.js";
-import { runInAct } from "./act.js";
+import { runInAct, runWithActEnvironment } from "./act.js";
 import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
 import { getConfig } from "./config.js";
 import { scheduleWhenWindowReady } from "./frame-sync.js";
@@ -55,9 +55,13 @@ const settleWindow = async (
 ): Promise<void> => {
     const timeout = getConfig().windowActivationTimeout;
 
-    await new Promise<void>((resolve) => {
-        scheduleWhenWindowReady(window, (target) => findFailure(target) === null, timeout, resolve);
-    });
+    await runWithActEnvironment(
+        false,
+        () =>
+            new Promise<void>((resolve) => {
+                scheduleWhenWindowReady(window, (target) => findFailure(target) === null, timeout, resolve);
+            }),
+    );
 
     settleAccessible();
     const failure = window === null ? null : findFailure(window);

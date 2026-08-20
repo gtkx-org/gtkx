@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { runInAct } from "../act.js";
+import { runInAct, runWithActEnvironment } from "../act.js";
 import { getConfig } from "../config.js";
 import { formatRole } from "../role-helpers.js";
 import { delay, now } from "../timers.js";
@@ -88,7 +88,7 @@ const waitForActionable = async (widget: Gtk.Widget): Promise<void> => {
 };
 
 const wrapEvent = async (widget: Gtk.Widget, body: () => void | PromiseLike<void>): Promise<void> => {
-    await waitForActionable(widget);
+    await runWithActEnvironment(false, () => waitForActionable(widget));
 
     await runInAct(async () => {
         await body();

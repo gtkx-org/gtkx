@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { rootElement } from "@gtkx/react";
-import { fireEvent, render, screen, userEvent } from "@gtkx/testing";
+import { act, fireEvent, render, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 import { useStore } from "../src/store/index.js";
@@ -71,7 +71,10 @@ describe("Tasks", () => {
 
     it("keeps one color selected when the same swatch is clicked repeatedly", async () => {
         await render(<App />, { container: rootElement });
-        useStore.getState().showDialog("new-list");
+
+        await act(() => {
+            useStore.getState().showDialog("new-list");
+        });
 
         const orange = await screen.findByLabelText("Color #e66100");
         await userEvent.click(orange);

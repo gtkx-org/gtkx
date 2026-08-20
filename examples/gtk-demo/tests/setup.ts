@@ -1,6 +1,3 @@
-import { beforeAll } from "vitest";
+import { configure } from "@gtkx/testing";
 
-beforeAll(async () => {
-    const { configure } = await import("@gtkx/testing");
-    configure({ asyncUtilTimeout: 5000 });
-});
+configure({ asyncUtilTimeout: 5000 });

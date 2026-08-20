@@ -6,6 +6,7 @@ import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkEntry, GtkL
 import { rootElement } from "@gtkx/react";
 import { createApplication } from "@gtkx/runtime";
 import {
+    act,
     cleanup,
     configure,
     type Container,
@@ -322,7 +323,11 @@ describe("Gio.Application.getDefault", () => {
         await renderApplicationProbe();
         const current = Gio.Application.getDefault();
         expect(current?.listActions()).toContain("bump");
-        current?.activateAction("bump", null);
+
+        await act(() => {
+            current?.activateAction("bump", null);
+        });
+
         expect(await screen.findByText("Count: 1")).toBeRooted();
     });
 

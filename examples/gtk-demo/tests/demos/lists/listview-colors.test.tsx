@@ -123,8 +123,12 @@ describe("listviewColorsDemo grid view", () => {
         const grid = await findGrid();
         expect(grid).toHaveObjectProperty("enableRubberband", true);
         const model = gridModel(grid);
-        model.selectItem(0, true);
-        model.selectItem(2, false);
+
+        await act(() => {
+            model.selectItem(0, true);
+            model.selectItem(2, false);
+        });
+
         expect(Number(model.getSelection().getSize())).toBe(2);
         await userEvent.click(await screen.findByName("selection-toggle", { as: Gtk.ToggleButton }));
         const sizeLabel = await screen.findByName("selection-size", { as: Gtk.Label });

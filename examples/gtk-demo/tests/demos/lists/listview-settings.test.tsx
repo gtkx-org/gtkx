@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { listviewSettingsDemo } from "../../../src/demos/lists/listview-settings.js";
 import { collectWidgets, findInactiveSearchToggle, openSearchEntry, renderDemo } from "../../test-utils.js";
@@ -207,7 +207,10 @@ describe("listviewSettingsDemo column header menus", () => {
     it("shows a column when its visibility menu action is activated", async () => {
         const columnView = await renderColumnView();
         expect(readColumns(columnView).get("Summary")).toHaveObjectProperty("visible", false);
-        columnView.activateAction("columnview.show-summary", null);
+
+        await act(() => {
+            columnView.activateAction("columnview.show-summary", null);
+        });
 
         await waitFor(() => {
             expect(readColumns(columnView).get("Summary")).toHaveObjectProperty("visible", true);
@@ -262,7 +265,10 @@ describe("listviewSettingsDemo value editing", () => {
             const target = await selectSchemaWithBooleanKey();
             const flipped = target.getText() === "true" ? "false" : "true";
             setValueSpy.mockClear();
-            target.setText(flipped);
+
+            await act(() => {
+                target.setText(flipped);
+            });
 
             await waitFor(() => {
                 expect(target).toHaveObjectProperty("text", flipped);

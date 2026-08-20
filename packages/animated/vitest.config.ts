@@ -8,7 +8,6 @@ export default mergeConfig(
         plugins: [gtkx()],
         test: {
             name: "animated",
-            setupFiles: ["./tests/setup.ts"],
         },
     }),
 );

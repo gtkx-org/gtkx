@@ -76,4 +76,4 @@ const runInAct = async (callback: () => unknown): Promise<void> => {
     await act(() => callback());
 };
 
-export { act, runWithActEnvironment, runInAct };
+export { act, getIsReactActEnvironment, runWithActEnvironment, runInAct, setIsReactActEnvironment };
