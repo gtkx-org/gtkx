@@ -84,6 +84,12 @@ describe("@gtkx/cairo against the vendored cairo-1.0.gir", () => {
         expect(new cairo.Glyph().index).toBe(0n);
     });
 
+    it("treats a null prop the same as one left out", () => {
+        const rect = new cairo.Rectangle({ x: null, width: 5 });
+        expect([rect.x, rect.width]).toEqual([0, 5]);
+        expect(new cairo.Glyph({ index: null }).index).toBe(0n);
+    });
+
     it("writes back through the setters", () => {
         const rect = new cairo.Rectangle({ x: 1.5 });
         rect.width = 2.5;

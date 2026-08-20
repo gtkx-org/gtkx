@@ -82,7 +82,7 @@ const writeInitial = (
     offset: number,
     value: unknown,
 ): void => {
-    if (value !== undefined) {
+    if (value != null) {
         write(handle, descriptor, offset, toNative(descriptor, value));
     }
 };
