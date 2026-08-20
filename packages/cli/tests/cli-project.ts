@@ -61,6 +61,17 @@ const installPeers = (nodeModules: string, omitPackages: string[]): void => {
     }
 };
 
+const manifestDependencies = (omitPackages: string[]): Record<string, string> =>
+    Object.fromEntries(
+        WORKSPACE_PACKAGES.filter((name) => !omitPackages.includes(name)).map((name) => [`${SCOPE}/${name}`, "*"]),
+    );
+
+const projectManifest = (options: CliProjectOptions): Record<string, unknown> => ({
+    ...MANIFEST,
+    type: options.packageType ?? "module",
+    dependencies: manifestDependencies(options.omitPackages ?? []),
+});
+
 const installStore = (nodeModules: string): void => {
     cpSync(join(WORKSPACE_MODULES, STORE_DIR), join(nodeModules, STORE_DIR), {
         recursive: true,
@@ -82,8 +93,7 @@ const createCliProject = (options: CliProjectOptions): CliProject => {
         installStore(nodeModules);
     }
 
-    const manifest = { ...MANIFEST, type: options.packageType ?? "module" };
-    writeFileSync(join(root, "package.json"), `${JSON.stringify(manifest, null, 4)}\n`);
+    writeFileSync(join(root, "package.json"), `${JSON.stringify(projectManifest(options), null, 4)}\n`);
     writeProjectFiles(root, options.files ?? {});
 
     if (options.config !== undefined) {

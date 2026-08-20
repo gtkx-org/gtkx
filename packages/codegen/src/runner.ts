@@ -88,7 +88,7 @@ const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerR
         isRegenerated: store.isRegenerated,
         namespaces: store.namespaces,
         intrinsicElements: store.intrinsicElements,
-        notices: externalPackageNotices(options.gi.storeDir),
+        notices: externalPackageNotices(options.gi),
         duration: Date.now() - start,
     };
 };

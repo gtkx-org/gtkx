@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +15,7 @@ type ByteSequenceCase = {
 };
 
 type OmittedFieldCase = { title: string; jsName: string };
+type CodegenRunState = { project: CliProject; status: number | null; output: string };
 
 type ValueReturnCase = {
     title: string;
@@ -165,6 +166,19 @@ const byteSeqConfig = (v2ByteArrays: boolean | undefined): string => {
     );
 };
 
+const initialRunState = (): CodegenRunState => ({
+    project: { root: "", nodeModules: "" },
+    status: null,
+    output: "",
+});
+
+const runInitialCodegen = (state: CodegenRunState, options: Parameters<typeof createCliProject>[0]): void => {
+    state.project = createCliProject(options);
+    const run = runCli(state.project, ["codegen"]);
+    state.status = run.status;
+    state.output = run.output;
+};
+
 const generatedModule = (project: CliProject, ...segments: string[]): string =>
     readFileSync(join(project.nodeModules, ".gtkx", ...segments), "utf8");
 
@@ -204,14 +218,10 @@ const classBody = (source: string, className: string): string => {
 };
 
 describe("gtkx codegen", () => {
-    const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
-        status: null,
-    };
+    const state = initialRunState();
 
     beforeAll(() => {
-        state.project = createCliProject({ prefix: "gtkx-cli-codegen-", config: config("") });
-        state.status = runCli(state.project, ["codegen"]).status;
+        runInitialCodegen(state, { prefix: "gtkx-cli-codegen-", config: config("") });
     });
 
     afterAll(() => {
@@ -242,6 +252,7 @@ describe("gtkx codegen", () => {
         const installed = realpathSync(join(state.project.nodeModules, "@gtkx", "cairo", "package.json"));
         expect(realpathSync(resolveCairoFrom(state.project))).toBe(installed);
         expect(existsSync(storeLocalCairoLink(state.project, "gi"))).toBe(false);
+        expect(state.output).not.toContain("add @gtkx/cairo to your dependencies");
     });
 
     it("leaves a fresh store alone, and restores a link an install pruned", () => {
@@ -264,19 +275,14 @@ describe("gtkx codegen", () => {
 });
 
 describe("gtkx codegen (a project that does not install @gtkx/cairo)", () => {
-    const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
-        status: null,
-    };
+    const state = initialRunState();
 
     beforeAll(() => {
-        state.project = createCliProject({
+        runInitialCodegen(state, {
             prefix: "gtkx-cli-codegen-nocairo-",
             config: config(""),
             omitPackages: ["cairo"],
         });
-
-        state.status = runCli(state.project, ["codegen"]).status;
     });
 
     afterAll(() => {
@@ -288,15 +294,30 @@ describe("gtkx codegen (a project that does not install @gtkx/cairo)", () => {
         expect(realpathSync(storeLocalCairoLink(state.project, "gi"))).toBe(realpathSync(WORKSPACE_CAIRO));
         expect(realpathSync(storeLocalCairoLink(state.project, "jsx"))).toBe(realpathSync(WORKSPACE_CAIRO));
         expect(realpathSync(resolveCairoFrom(state.project))).toBe(realpathSync(join(WORKSPACE_CAIRO, "package.json")));
+        expect(state.output).toContain("add @gtkx/cairo to your dependencies");
+    });
+
+    it("fails when the fallback copy cannot be linked into the store", () => {
+        const storeModules = storePath(state.project, "gi", "node_modules");
+        rmSync(join(storeModules, "@gtkx"), { recursive: true, force: true });
+        chmodSync(storeModules, 0o555);
+
+        try {
+            expect(runCli(state.project, ["codegen"]).status).not.toBe(0);
+        } finally {
+            chmodSync(storeModules, 0o755);
+        }
     });
 
     it("keeps the link across runs and drops it once the project installs the package", () => {
         expect(runCli(state.project, ["codegen"]).status).toBe(0);
         expect(realpathSync(storeLocalCairoLink(state.project, "gi"))).toBe(realpathSync(WORKSPACE_CAIRO));
         symlinkSync(WORKSPACE_CAIRO, join(state.project.nodeModules, "@gtkx", "cairo"), "dir");
-        expect(runCli(state.project, ["codegen"]).status).toBe(0);
+        const run = runCli(state.project, ["codegen"]);
+        expect(run.status).toBe(0);
         expect(existsSync(storeLocalCairoLink(state.project, "gi"))).toBe(false);
         expect(existsSync(storeLocalCairoLink(state.project, "jsx"))).toBe(false);
+        expect(run.output).toContain("is not declared in this project's package.json");
     });
 });
 

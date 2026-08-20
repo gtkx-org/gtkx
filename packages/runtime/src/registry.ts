@@ -165,8 +165,9 @@ function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistr
 /**
  * Lets a class registered with `registerWrapperClass` pick a subclass for each handle it wraps, for
  * types whose one GType covers several C-level subtypes, the way a cairo surface reports image or
- * recording through `cairo_surface_get_type`. The resolver runs whenever a handle is wrapped as that
- * class, explicitly or through its GType; a subclass passed to `wrapHandle` directly is used as given.
+ * recording through `cairo_surface_get_type`. The resolver runs when a handle is wrapped as that class
+ * explicitly, the way a boxed value a binding hands back is; a wrapper resolved from a handle's runtime
+ * GType never consults it, and a subclass passed to `wrapHandle` directly is used as given.
  * @param cls Registered wrapper class whose handles the resolver classifies.
  * @param resolver Returns the class to instantiate for one handle, `cls` itself included.
  * @throws If `cls` is not a registered wrapper class.

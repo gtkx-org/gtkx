@@ -28,7 +28,7 @@ const readCurveTo: SegmentReader = (data, base) => {
 
 const readClosePath: SegmentReader = () => ({ type: "closePath" });
 
-const segmentReaderFor = (headerType: PathDataType): SegmentReader => {
+const segmentReaderFor = (headerType: PathDataType): SegmentReader | null => {
     switch (headerType) {
         case PathDataType.MOVE_TO: {
             return readMoveTo;
@@ -41,6 +41,9 @@ const segmentReaderFor = (headerType: PathDataType): SegmentReader => {
         }
         case PathDataType.CLOSE_PATH: {
             return readClosePath;
+        }
+        default: {
+            return null;
         }
     }
 };
@@ -58,7 +61,12 @@ const parsePath = (pathHandle: PathBuffer): PathData[] => {
 
     while (index < numData) {
         const base = index * ELEMENT_SIZE;
-        segments.push(segmentReaderFor(read(data, t.int32, base) as PathDataType)(data, base));
+        const reader = segmentReaderFor(read(data, t.int32, base) as PathDataType);
+
+        if (reader !== null) {
+            segments.push(reader(data, base));
+        }
+
         index += read(data, t.int32, base + 4) as number;
     }
 
