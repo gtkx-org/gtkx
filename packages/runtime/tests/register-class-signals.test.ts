@@ -173,6 +173,25 @@ describe("registerClass — signal edge cases", () => {
         expect(isRan).toBe(true);
     });
 
+    it("invokes declared-signal handlers with the same receiver as inherited signals", () => {
+        const Registered = registerSignals("GtkxSignalReceiver", { ping: {} });
+        const instance = new Registered();
+        const label = new Gtk.Label();
+        const receivers: unknown[] = [];
+
+        instance.connect("ping", function (this: unknown) {
+            receivers.push(this);
+        });
+
+        label.connect("notify::label", function (this: unknown) {
+            receivers.push(this);
+        });
+
+        instance.emit("ping");
+        label.label = "changed";
+        expect(receivers).toEqual([null, null]);
+    });
+
     it("canonicalizes underscores so both spellings name the same signal", () => {
         const Registered = registerSignals("GtkxSignalRenamer", { ["data_changed"]: { paramTypes: [TYPE_INT] } });
         const instance = new Registered();

@@ -243,7 +243,7 @@ function overrideSignalClassClosure(type: bigint, signal: string, handler: Signa
 }
 
 function connectClosureSignal(instance: object, signal: string, handler: SignalHandler, isAfter: boolean): number {
-    const closure = toClosure((...args: unknown[]) => handler(...args.slice(1)));
+    const closure = toClosure((...args: unknown[]) => handler.call(null, ...args.slice(1)));
     const handlerId = gSignalConnectClosure(getHandle(instance), signal, closure, isAfter) as number;
     trackConnection(instance, getSignalBaseName(signal), handlerId);
 
