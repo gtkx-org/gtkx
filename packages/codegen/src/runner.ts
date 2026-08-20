@@ -166,7 +166,7 @@ const emitStoresWithConfig = async (config: {
     const future = { isByteArrayTyped, isValueUnwrapped };
     let library: Library | undefined;
     const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath, future));
-    const giInputs = { girFiles: [] as string[], libraries, girPath, ...future };
+    const giInputs = { girFiles: [] as string[], libraries, girPath, storeVersion: gi.version, ...future };
     const isGiRegenerated = options.isForced === true || !isGiStoreFresh(gi.storeDir, giInputs);
 
     const namespaces = isGiRegenerated

@@ -39,6 +39,7 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
 
     const fingerprintInput: JsxFingerprintInput = {
         reactVersion: options.jsx.version,
+        reactSubexports: options.reactSubexports,
         components,
         lazyElements,
         props,

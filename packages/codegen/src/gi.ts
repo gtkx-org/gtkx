@@ -26,6 +26,7 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
         girFiles: library.girFiles,
         libraries: [...libraries],
         girPath: [...girPath],
+        storeVersion: gi.version,
         isByteArrayTyped,
         isValueUnwrapped,
     });
