@@ -177,7 +177,7 @@ export default defineConfig({
             { text: "Reference", link: "/reference/" },
             { text: "Blog", link: "/blog/" },
             { text: "Examples", link: "https://github.com/gtkx-org/gtkx/tree/main/examples" },
-            { text: "1.1", link: "/blog/gtkx-1-1" },
+            { text: "1.3", link: "/blog/gtkx-1-3" },
         ],
         sidebar: {
             "/guide/": guideSidebar,
@@ -187,6 +187,7 @@ export default defineConfig({
                 {
                     text: "Blog",
                     items: [
+                        { text: "GTKX 1.3", link: "/blog/gtkx-1-3" },
                         { text: "GTKX 1.1", link: "/blog/gtkx-1-1" },
                         { text: "GTKX 1.0", link: "/blog/gtkx-1-0" },
                     ],

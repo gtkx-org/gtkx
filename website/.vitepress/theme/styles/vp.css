@@ -25,6 +25,16 @@ html.dark {
     color: var(--text-2);
 }
 
+.vp-doc video {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 24px 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+}
+
 .vp-doc h1,
 .vp-doc h2,
 .vp-doc h3,
