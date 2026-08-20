@@ -1,6 +1,14 @@
-import { camelCase } from "@gtkx/utils";
+import { camelCase, kebabCase } from "@gtkx/utils";
+import { HIDDEN_SYMBOLS } from "../gir/hidden-symbols.js";
 
 const CONSTANT_MAP: Record<string, string> = { TRUE: "true", FALSE: "false", NULL: "null" };
+
+const HIDDEN_LINK_PREFIXES: Map<string, string> = new Map([
+    ["GLib", "g"],
+    ["GObject", "g"],
+    ["Gio", "g"],
+]);
+
 const CALLABLE_LINK_KINDS: Set<string> = new Set(["method", "func", "ctor", "vfunc", "id"]);
 const SENTINEL = String.fromCodePoint(0xE0_00);
 const CODE_BLOCK_OPEN = "|[";
@@ -27,8 +35,37 @@ const DOCBOOK_LIST_PATTERN = /<\/?itemizedlist>\s*/g;
 const DOCBOOK_PARA_PATTERN = /<\/?para>\s*/g;
 const BLANK_LINE_RUN_PATTERN = /\n{3,}/g;
 
+const cSymbolSegment = (segment: string): string => kebabCase(segment).replaceAll("-", "_");
+
+const hiddenLinkCandidate = (segments: string[]): string | undefined => {
+    const [namespace, ...rest] = segments;
+    const prefix = namespace === undefined ? undefined : HIDDEN_LINK_PREFIXES.get(namespace);
+
+    if (prefix === undefined || rest.length === 0) {
+        return undefined;
+    }
+
+    return [prefix, ...rest.map((segment) => cSymbolSegment(segment))].join("_");
+};
+
+const hiddenCIdentifier = (kind: string, target: string, segments: string[]): string | undefined => {
+    if (!CALLABLE_LINK_KINDS.has(kind)) {
+        return undefined;
+    }
+
+    const candidate = kind === "id" ? target : hiddenLinkCandidate(segments);
+
+    return candidate !== undefined && HIDDEN_SYMBOLS.has(candidate) ? candidate : undefined;
+};
+
 const renderLink = (kind: string, target: string): string => {
     const segments = target.split(/::|[.:]/);
+    const hidden = hiddenCIdentifier(kind, target, segments);
+
+    if (hidden !== undefined) {
+        return `\`${hidden}()\``;
+    }
+
     const lastIndex = segments.length - 1;
 
     if (kind === "property" || CALLABLE_LINK_KINDS.has(kind)) {
