@@ -219,8 +219,9 @@ const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec
  * Throws when the class does not extend a registered wrapper class, when it has no derivable type
  * name, when an entry in `RegisterClassOptions.implements` is not a registered interface, when a
  * listed interface has a prerequisite that neither the parent type nor another listed interface meets,
- * when the list names `Gio.AsyncInitable` and no method on the chain fills `vfuncInitAsync`, since
- * the default `init_async` would run `vfuncInit` on a worker thread, and when an entry in
+ * when the list names `Gio.AsyncInitable` as an interface the parent type does not already
+ * implement and no method on the chain fills `vfuncInitAsync`, since the default `init_async`
+ * would run `vfuncInit` on a worker thread, and when an entry in
  * `RegisterClassOptions.properties` names its `GObject.ParamSpec` something other than the canonical
  * spelling of the key it sits under.
  *
@@ -266,7 +267,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     const adoptedTypes = declaredTypes.filter((gtype) => !typeIsA(parentType, gtype));
     const properties = options.properties ?? {};
     const { methods, inheritedNames } = collectInstanceMembers(klass);
-    checkAsyncInitable(klass, declaredTypes, methods);
+    checkAsyncInitable(klass, adoptedTypes, methods);
     const dispatch = buildPropertyDispatch({ klass, properties, adoptedTypes });
 
     const classVfuncs = [
@@ -303,8 +304,8 @@ function resolveInterfaceTypes(klass: AnyClass, entries: AnyClass[]): bigint[] {
     return [...new Set(entries.map((entry) => resolveInterfaceType(klass, entry)))];
 }
 
-function checkAsyncInitable(klass: AnyClass, declaredTypes: bigint[], methods: MethodTable): void {
-    const isAsyncInitable = declaredTypes.some((gtype) => typeName(gtype) === ASYNC_INITABLE_TYPE_NAME);
+function checkAsyncInitable(klass: AnyClass, adoptedTypes: bigint[], methods: MethodTable): void {
+    const isAsyncInitable = adoptedTypes.some((gtype) => typeName(gtype) === ASYNC_INITABLE_TYPE_NAME);
 
     if (isAsyncInitable && !methods.has(INIT_ASYNC_METHOD_NAME)) {
         throw new TypeError(

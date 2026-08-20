@@ -20,6 +20,22 @@ class AsyncReady extends GObject implements Gio.AsyncInitableImpl {
     }
 }
 
+class AsyncBase extends GObject {
+    vfuncInitAsync(
+        _ioPriority: number,
+        cancellable: Gio.Cancellable | null,
+        callback: Gio.AsyncReadyCallback | null,
+    ): void {
+        Gio.Task.new(this, cancellable, callback).returnBoolean(true);
+    }
+}
+
+class AsyncLeaf extends AsyncBase implements Gio.AsyncInitableImpl {
+    vfuncInitFinish(res: Gio.AsyncResult): boolean {
+        return (res as Gio.Task).propagateBoolean();
+    }
+}
+
 registerClass(AsyncReady, { typeName: uniqueName("GtkxAsyncReady"), implements: [Gio.AsyncInitable] });
 
 describe("registerClass Gio.AsyncInitable guard", () => {
@@ -30,28 +46,23 @@ describe("registerClass Gio.AsyncInitable guard", () => {
     });
 
     it("accepts an override an intermediate base class declares", () => {
-        class AsyncBase extends GObject {
-            vfuncInitAsync(
-                _ioPriority: number,
-                cancellable: Gio.Cancellable | null,
-                callback: Gio.AsyncReadyCallback | null,
-            ): void {
-                Gio.Task.new(this, cancellable, callback).returnBoolean(true);
-            }
-        }
-
-        class AsyncLeaf extends AsyncBase implements Gio.AsyncInitableImpl {
-            vfuncInitFinish(res: Gio.AsyncResult): boolean {
-                return (res as Gio.Task).propagateBoolean();
-            }
-        }
-
         const registered = registerClass(AsyncLeaf, {
             typeName: uniqueName("GtkxAsyncLeaf"),
             implements: [Gio.AsyncInitable],
         });
 
         expect(new registered()).toBeInstanceOf(AsyncLeaf);
+    });
+
+    it("accepts a subclass of a registered class re-listing Gio.AsyncInitable", () => {
+        class AsyncGrandchild extends AsyncReady {}
+
+        const registered = registerClass(AsyncGrandchild, {
+            typeName: uniqueName("GtkxAsyncGrandchild"),
+            implements: [Gio.AsyncInitable],
+        });
+
+        expect(new registered()).toBeInstanceOf(AsyncGrandchild);
     });
 
     it("leaves the synchronous Gio.Initable unaffected", () => {
