@@ -1,6 +1,6 @@
-import type { Context } from "@gtkx/gi/cairo";
+import type { Context } from "@gtkx/cairo";
 import type * as Gtk from "@gtkx/gi/gtk";
-import { Pattern } from "@gtkx/gi/cairo";
+import { Pattern } from "@gtkx/cairo";
 import * as Pango from "@gtkx/gi/pango";
 import * as PangoCairo from "@gtkx/gi/pangocairo";
 import { GtkDrawingArea } from "@gtkx/jsx/gtk";

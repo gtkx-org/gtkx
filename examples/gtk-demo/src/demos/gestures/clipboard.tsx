@@ -1,4 +1,4 @@
-import type { Context } from "@gtkx/gi/cairo";
+import type { Context } from "@gtkx/cairo";
 import type { JsValue } from "@gtkx/runtime";
 import { DropDown } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";

@@ -129,4 +129,4 @@ The `render` helper in `@gtkx/testing` disables animations unless it is given `a
 
 ## Next
 
-Continue with [OpenGL](/guide/opengl) to draw with the GPU inside a widget.
+Continue with [Cairo](/guide/cairo) to draw 2D graphics inside a widget.

@@ -13,6 +13,7 @@ import { dirname, join, relative } from "node:path";
 import { keepFailedProject, type SourceModule } from "../compile.js";
 import { createStagingDir } from "../staging.js";
 import { compileStore } from "./compile-store.js";
+import { ensureExternalPackageLinks, resetExternalPackageLinks } from "./external-package-links.js";
 
 /** Where one generated store is written and how it is reached. */
 type StoreOptions = {
@@ -88,6 +89,7 @@ const writeStore = (params: WriteStoreParams): void => {
     try {
         buildTempStore(tmp, params);
         swapStore(tmp, params.storeDir);
+        resetExternalPackageLinks(params.storeDir);
         ensureStoreLink(params);
     } catch (error) {
         throw keepFailedProject({ projectDir: tmp, keepAt, error });
@@ -148,11 +150,15 @@ const isStoreLinked = (link: StoreLink): boolean => {
 };
 
 const ensureStoreLink = (link: StoreLink): void => {
-    if (!existsSync(join(link.storeDir, "package.json")) || isStoreLinked(link)) {
+    if (!existsSync(join(link.storeDir, "package.json"))) {
         return;
     }
 
-    symlinkRelative(link.linkDir, link.storeDir);
+    if (!isStoreLinked(link)) {
+        symlinkRelative(link.linkDir, link.storeDir);
+    }
+
+    ensureExternalPackageLinks(link);
 };
 
 const storeWriteMessage = (storeDir: string, error: unknown): string =>
@@ -176,7 +182,9 @@ export {
     buildManifest,
     ensureStoreLink,
     namespaceBarrel,
+    symlinkRelative,
     writeStore,
+    type StoreLink,
     type StoreOptions,
     type RawFile,
 };

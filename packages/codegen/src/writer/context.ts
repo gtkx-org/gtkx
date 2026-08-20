@@ -1,5 +1,6 @@
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
+import { externalPackageFor } from "../gir/external-namespaces.js";
 import { type Declaration, ModuleBuilder } from "./module.js";
 
 class ModuleContext {
@@ -39,6 +40,15 @@ class ModuleContext {
 
     addCrossNamespaceImport(namespaceName: string): string {
         if (namespaceName === this.namespace.name) {
+            return namespaceName;
+        }
+
+        const packageName = externalPackageFor(namespaceName);
+
+        if (packageName !== undefined) {
+            this.module.imports.addSideEffect(packageName);
+            this.module.imports.addNamespace(packageName, namespaceName);
+
             return namespaceName;
         }
 

@@ -1,5 +1,5 @@
+import { Context, Format, ImageSurface } from "@gtkx/cairo";
 import { DropDown } from "@gtkx/components";
-import { Context, Format, ImageSurface } from "@gtkx/gi/cairo";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";

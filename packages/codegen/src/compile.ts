@@ -76,7 +76,7 @@ const DECLARATION_EMIT = {
 };
 
 const MODULE_EMIT = {
-    removeComments: false,
+    removeComments: true,
 };
 
 const DECLARATION_OPTIONS = ts.convertCompilerOptionsFromJson(
