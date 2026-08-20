@@ -33,7 +33,7 @@ const GI_MODULES = [
     "package.json",
 ];
 
-const JSX_MODULES = ["metadata.js", join("gtk", "gtk.js"), "package.json"];
+const JSX_MODULES = ["index.js", "metadata.js", join("gtk", "gtk.js"), "package.json"];
 const HEAD = `export default { applicationId: "${APPLICATION_ID}"`;
 
 const BROKEN_CASES: BrokenCase[] = [
@@ -222,6 +222,12 @@ describe("gtkx codegen", () => {
         expect(runCli(state.project, ["codegen"]).status).toBe(0);
         expect(existsSync(linkPath(state.project, "gi", "gtk", "index.js"))).toBe(true);
         expect(isStoreMarked(state.project)).toBe(true);
+    });
+
+    it("regenerates a store that lacks the jsx index module", () => {
+        rmSync(storePath(state.project, "jsx", "index.js"), { force: true });
+        expect(runCli(state.project, ["codegen"]).status).toBe(0);
+        expectModules(storePath(state.project, "jsx"), JSX_MODULES);
     });
 
     it("rebuilds the store from scratch when it is forced", () => {

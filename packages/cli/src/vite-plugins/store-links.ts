@@ -1,7 +1,7 @@
 import type { Plugin, UserConfig } from "vite";
 import { ensureStoreLinks } from "@gtkx/codegen/internal";
 
-const GENERATED_MODULE_PREFIX = /^@gtkx\/(?:gi|jsx)\//;
+const GENERATED_MODULE_PREFIX = /^@gtkx\/(?:gi\/|jsx(?:\/|$))/;
 
 function gtkxStoreLinks(): Plugin {
     const state = { root: "" };

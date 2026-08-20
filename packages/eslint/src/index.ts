@@ -224,7 +224,7 @@ const restrictAdwImports = (message: string, extra: string[]): Linter.RulesRecor
     "@typescript-eslint/no-restricted-imports": [
         "error",
         {
-            paths: ["@gtkx/gi/adw", "@gtkx/jsx/adw", ...extra].map((name) => ({ name, message })),
+            paths: ["@gtkx/gi/adw", "@gtkx/jsx", "@gtkx/jsx/adw", ...extra].map((name) => ({ name, message })),
         },
     ],
 });
