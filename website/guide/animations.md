@@ -28,7 +28,21 @@ export const FadeIn = () => {
 };
 ```
 
-This works for every element in `@gtkx/jsx`, whichever library it comes from, and for components of your own. The wrapper of a given component is created once and reused, so wrapping is cheap, but keep it out of render: a component created during render loses its state on every render, and the React Hooks lint rule flags it.
+This works for every element in `@gtkx/jsx`, whichever library it comes from, and for components of your own. The wrapper of a given component is created once and reused, so wrapping the same component again returns the same wrapper. Wrap at module scope all the same: the React Hooks lint rule flags a component created during render, and a component *defined* during render gets a fresh wrapper each time, which remounts it on every render.
+
+Every widget also hangs off `animated` directly: `animated.GtkLabel` is `animated(GtkLabel)` without the import, and the two are the same component, so they can be mixed freely:
+
+```tsx
+import { animated, useSpring } from "@gtkx/animated";
+
+export const FadeIn = () => {
+    const styles = useSpring({ from: { opacity: 0 }, to: { opacity: 1 } });
+
+    return <animated.GtkLabel opacity={styles.opacity} label="Hello" />;
+};
+```
+
+The properties cover the elements whose `ref` exposes a `Gtk.Widget` subclass. An element that is not a widget, such as `GtkAdjustment`, or a component of your own, is wrapped through the call form.
 
 Each frame, the current values are written straight onto the widget through its `ref`, so the component does not re-render while the spring runs. Every GObject property a widget exposes as a prop can be animated this way: `opacity`, the margins, `widthRequest` and `heightRequest`, `spacing`, a `Gtk.Adjustment`'s `value`, a progress bar's `fraction`, and so on. A `label` or a text child can be an interpolation too:
 

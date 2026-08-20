@@ -264,7 +264,11 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
     ...NX_CONFIGS,
     documentPublicApi(root, surface),
     classifyEntrypoints(surface),
-    { files: CORE_SOURCES, ignores: ADW_SOURCES, rules: restrictAdwImports(ADW_CORE_MESSAGE, []) },
+    {
+        files: CORE_SOURCES,
+        ignores: [...ADW_SOURCES, "packages/animated/src/**"],
+        rules: restrictAdwImports(ADW_CORE_MESSAGE, []),
+    },
     {
         files: ["packages/react/src/**/*.{ts,tsx}", "packages/components/src/**/*.{ts,tsx}"],
         ignores: ADW_SOURCES,

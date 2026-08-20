@@ -1,5 +1,7 @@
+import type * as Gtk from "@gtkx/gi/gtk";
+import type * as elements from "@gtkx/jsx";
 import type { FluidValue } from "@react-spring/shared";
-import type { ComponentPropsWithRef, ElementType, FunctionComponent } from "react";
+import type { ComponentPropsWithRef, ElementType, FunctionComponent, Ref } from "react";
 
 /** An array-valued prop whose items may each be a spring or an interpolation, such as mixed text children. */
 type AnimatedItems<T> = [Exclude<Extract<T, Iterable<unknown>>, string>] extends [never]
@@ -25,4 +27,36 @@ type AnimatedComponent<T extends Exclude<ElementType, string>> = FunctionCompone
     AnimatedProps<ComponentPropsWithRef<T>>
 >;
 
-export type { AnimatedComponent, AnimatedItems, AnimatedProp, AnimatedProps };
+/** The instance a component exposes through its `ref` prop, or `never` when it exposes none. */
+type ElementInstance<T extends Exclude<ElementType, string>> = ComponentPropsWithRef<T> extends {
+    ref?: Ref<infer Instance> | undefined;
+}
+    ? NonNullable<Instance>
+    : never;
+
+/** Whether a generated element is a component whose `ref` exposes a {@link Gtk.Widget} subclass. */
+type IsWidgetComponent<T> = T extends Exclude<ElementType, string>
+    ? [ElementInstance<T>] extends [never]
+            ? false
+            : ElementInstance<T> extends Gtk.Widget
+                ? true
+                : false
+    : false;
+
+/**
+ * The widget components of the generated `@gtkx/jsx` store, keyed by element name, each wrapped as
+ * an {@link AnimatedComponent}. Only components whose `ref` exposes a `Gtk.Widget` subclass are
+ * included, so `animated.GtkLabel` is available while non-widget elements such as `GtkAdjustment`
+ * are wrapped explicitly through the `animated(...)` call instead.
+ */
+type AnimatedElements = {
+    readonly [K in keyof typeof elements as IsWidgetComponent<(typeof elements)[K]> extends true
+        ? K
+        : never]: (typeof elements)[K] extends Exclude<ElementType, string>
+        ? AnimatedComponent<(typeof elements)[K]>
+        : never;
+};
+
+/** @internal */
+export type { ElementInstance, IsWidgetComponent };
+export type { AnimatedComponent, AnimatedElements, AnimatedItems, AnimatedProp, AnimatedProps };
