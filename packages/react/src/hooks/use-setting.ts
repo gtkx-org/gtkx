@@ -17,7 +17,7 @@ const useSettings = <K extends SettingsSchemaKeys>({ id, path }: UseSettingsProp
  * Reads and writes a single key of a GSettings schema, re-rendering when the stored value changes.
  *
  * @returns The current value, and a setter that writes a new one back to GSettings.
- * @throws When the schema is not installed, needs a path it was not given, or does not declare the key.
+ * @throws When the key is not declared in the schema.
  */
 function useSetting<K extends SettingsSchemaKeys, P extends keyof K>(
     schema: SettingsSchema<K>,

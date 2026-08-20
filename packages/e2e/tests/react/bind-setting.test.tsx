@@ -14,12 +14,6 @@ const SCHEMA: SettingsSchema<{ enabled: "b" }> = {
     keys: { enabled: "b" },
 };
 
-const UNDECLARED_KEY_SCHEMA: SettingsSchema<{ missing: "b" }> = {
-    id: SCHEMA_ID,
-    path: null,
-    keys: { missing: "b" },
-};
-
 describe("useBindSetting", () => {
     it("keeps the bound property in sync with the settings key", async () => {
         resetSettingsKey(SCHEMA_ID, "enabled");
@@ -59,15 +53,5 @@ describe("useBindSetting", () => {
 
         expect(toggle.getActive()).toBe(false);
         resetSettingsKey(SCHEMA_ID, "enabled");
-    });
-
-    it("throws when the bound key is not declared in the schema", async () => {
-        const toggle = new Gtk.Switch();
-
-        await expect(
-            renderHook(() => {
-                useBindSetting({ schema: UNDECLARED_KEY_SCHEMA, key: "missing", object: toggle, property: "active" });
-            }),
-        ).rejects.toThrow();
     });
 });

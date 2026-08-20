@@ -10,7 +10,6 @@ import {
     parameterIdentifier,
     renamesWithInstance,
 } from "../../analysis/param-structure.js";
-import { RUNTIME_THROWS_NOTES } from "../../gir/throws-overrides.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { annotationSpec, THROWS_TEXT } from "./doc-spec.js";
 import { isCallbackParameter, returnedOutParameters } from "./method.js";
@@ -84,16 +83,6 @@ const docIdentifiers = (callable: GirFunction, renames: Map<string, string> | un
 const canCallableThrow = (callable: GirFunction, finishFn: GirFunction | undefined): boolean =>
     callable.throws || finishFn?.throws === true;
 
-const throwsText = (callable: GirFunction, finishFn: GirFunction | undefined): string | undefined => {
-    const note = callable.cIdentifier === undefined ? undefined : RUNTIME_THROWS_NOTES.get(callable.cIdentifier);
-
-    if (note !== undefined) {
-        return note;
-    }
-
-    return canCallableThrow(callable, finishFn) ? THROWS_TEXT : undefined;
-};
-
 const callableSpec = (context: ModuleContext, callable: GirFunction, options: CallableDocOptions): JsDocSpec => ({
     ...annotationSpec(callable.annotations),
     identifiers: docIdentifiers(callable, options.renames),
@@ -104,7 +93,7 @@ const callableSpec = (context: ModuleContext, callable: GirFunction, options: Ca
         options.renames,
     ),
     returns: returnsText(context, options.finishFn ?? callable),
-    throws: throwsText(callable, options.finishFn),
+    throws: canCallableThrow(callable, options.finishFn) ? THROWS_TEXT : undefined,
 });
 
 const callableDoc = (context: ModuleContext, callable: GirFunction, options: CallableDocOptions = {}): string =>
