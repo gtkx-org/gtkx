@@ -28,6 +28,8 @@ export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from 
 /** @public */
 export { promisify } from "./promisify.js";
 /** @public */
+export { newParamSpecOverride } from "./properties.js";
+/** @public */
 export { type Interface, registerClass, type SignalGType, type SignalSpec } from "./register-class.js";
 /** @public */
 export {

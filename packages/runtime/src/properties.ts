@@ -2,7 +2,7 @@ import type { ExternalObject, Handle, RegisterClassProperty } from "@gtkx/native
 import type { AnyClass } from "@gtkx/utils";
 import { camelCase, kebabCase } from "@gtkx/utils";
 import { bind } from "./bind.js";
-import { biguint64T, stringT, structT, voidT } from "./descriptors.js";
+import { biguint64T, fundamentalT, stringT, structT, voidT } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_T } from "./library.js";
 import {
     getParamFlags,
@@ -15,8 +15,14 @@ import {
     valueGuardFor,
     wasParamValueModified,
 } from "./param-spec.js";
-import { getHandle, getInterfaceProperties, instanceClassName, type InterfaceProperty } from "./registry.js";
-import { typeName } from "./type.js";
+import {
+    getClassType,
+    getHandle,
+    getInterfaceProperties,
+    instanceClassName,
+    type InterfaceProperty,
+} from "./registry.js";
+import { TYPE_INTERFACE, TYPE_OBJECT, typeIsA, typeName } from "./type.js";
 import {
     fromValue,
     newValueForType,
@@ -73,12 +79,22 @@ const SET_PROPERTY_VFUNC = "vfuncSetProperty";
 const READ_ONLY_REASON = "the property is read-only";
 const CONSTRUCT_ONLY_REASON = "the property can only be set when the object is constructed";
 const CLASS_T = structT("borrowed");
+
+const OVERRIDE_PARAM_T = fundamentalT(LIB, "g_param_spec_ref_sink", "g_param_spec_unref", {
+    ownership: "borrowed",
+    typeName: "GParam",
+});
+
 const interfaceStorages: Map<string, symbol> = new Map();
 const paramSpecDefaultValue = bind(LIB, "g_param_spec_get_default_value", [PARAM_T], VALUE_T);
 const paramSpecName = bind(LIB, "g_param_spec_get_name", [PARAM_T], stringT("borrowed"));
 const typeClassRef = bind(LIB, "g_type_class_ref", [biguint64T], CLASS_T);
 const typeClassUnref = bind(LIB, "g_type_class_unref", [CLASS_T], voidT);
 const classFindProperty = bind(LIB, "g_object_class_find_property", [CLASS_T, stringT("borrowed")], PARAM_T);
+const defaultInterfaceRef = bind(LIB, "g_type_default_interface_ref", [biguint64T], CLASS_T);
+const defaultInterfaceUnref = bind(LIB, "g_type_default_interface_unref", [CLASS_T], voidT);
+const interfaceFindProperty = bind(LIB, "g_object_interface_find_property", [CLASS_T, stringT("borrowed")], PARAM_T);
+const paramSpecOverrideNew = bind(LIB, "g_param_spec_override", [stringT("borrowed"), PARAM_T], OVERRIDE_PARAM_T);
 
 const getPropertyName = (pspec: PropertySpec): string => paramSpecName(getHandle(pspec)) as string;
 const underscoreCase = (name: string): string => name.replaceAll("-", "_");
@@ -113,6 +129,62 @@ function findPropertySpec(klass: ExternalObject<Handle>, name: string): External
 
     return found ?? (classFindProperty(klass, canonicalCase(name)) as ExternalObject<Handle> | null);
 }
+
+const sourceLabel = (source: bigint | AnyClass, gtype: bigint): string =>
+    typeName(gtype) ?? (typeof source === "function" ? source.name : String(source));
+
+const findInterfaceSpec = (gtype: bigint, name: string): ExternalObject<Handle> | null => {
+    const vtable = defaultInterfaceRef(gtype) as ExternalObject<Handle>;
+
+    try {
+        return interfaceFindProperty(vtable, name) as ExternalObject<Handle> | null;
+    } finally {
+        defaultInterfaceUnref(vtable);
+    }
+};
+
+const findClassSpec = (gtype: bigint, name: string): ExternalObject<Handle> | null => {
+    const klass = typeClassRef(gtype) as ExternalObject<Handle>;
+
+    try {
+        return classFindProperty(klass, name) as ExternalObject<Handle> | null;
+    } finally {
+        typeClassUnref(klass);
+    }
+};
+
+const findSourceSpec = (source: bigint | AnyClass, name: string): ExternalObject<Handle> => {
+    const gtype = typeof source === "bigint" ? source : getClassType(source);
+    const isInterface = typeIsA(gtype, TYPE_INTERFACE);
+
+    if (!isInterface && !typeIsA(gtype, TYPE_OBJECT)) {
+        throw new TypeError(
+            `paramSpecOverride: '${sourceLabel(source, gtype)}' is neither a registered object class nor an interface`,
+        );
+    }
+
+    const pspec = isInterface ? findInterfaceSpec(gtype, name) : findClassSpec(gtype, name);
+
+    if (pspec === null) {
+        throw new TypeError(`paramSpecOverride: type '${sourceLabel(source, gtype)}' has no property named '${name}'`);
+    }
+
+    return pspec;
+};
+
+/**
+ * Creates the handle of a `GParamSpec` that redirects to the property `source` declares under
+ * `name` — the equivalent of `g_param_spec_override`, which introspection does not expose.
+ *
+ * Throws when `source` is neither a GType nor a registered class or interface, and when it
+ * declares no property under `name`.
+ *
+ * @param name Canonical name of the property to override.
+ * @param source The GType, wrapper class or interface declaring the property.
+ * @returns Handle of the override spec.
+ */
+const newParamSpecOverride = (name: string, source: bigint | AnyClass): ExternalObject<Handle> =>
+    paramSpecOverrideNew(name, findSourceSpec(source, name)) as ExternalObject<Handle>;
 
 function describeValue(value: unknown): string {
     if (typeof value === "string") {
@@ -544,6 +616,7 @@ export {
     GET_PROPERTY_VFUNC,
     makeGetProperty,
     makeSetProperty,
+    newParamSpecOverride,
     SET_PROPERTY_VFUNC,
     toNativeProperties,
     type ConstructProperty,
