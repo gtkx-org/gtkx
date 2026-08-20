@@ -1,6 +1,6 @@
 import "./bootstrap.js";
 
-export { animated, animated as a } from "./animated.js";
+export { animated } from "./animated.js";
 export { useReducedMotion } from "./reduced-motion.js";
 export type { AnimatedComponent, AnimatedItems, AnimatedProp, AnimatedProps } from "./types.js";
 export {

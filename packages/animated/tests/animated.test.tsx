@@ -1,5 +1,5 @@
 import type { ReactNode, Ref, RefObject } from "react";
-import { a, animated, config, useSpring } from "@gtkx/animated";
+import { animated, config, useSpring } from "@gtkx/animated";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -24,7 +24,6 @@ type OpaqueProps = { opacity?: number; renders: number[] };
 const ANIMATED = { areAnimationsEnabled: true };
 const AnimatedAdjustment = animated(GtkAdjustment);
 const AnimatedBox = animated(GtkBox);
-const AliasedBox = a(GtkBox);
 const AnimatedButton = animated(GtkButton);
 const AnimatedFixedLayoutChild = animated(GtkFixedLayoutChild);
 const AnimatedLabel = animated(GtkLabel);
@@ -155,7 +154,7 @@ const Margins = ({ boxRef }: { boxRef: RefObject<Gtk.Box | null> }): ReactNode =
         config: SLOW,
     });
 
-    return <AliasedBox ref={boxRef} marginStart={styles.marginStart} marginTop={styles.marginTop} />;
+    return <AnimatedBox ref={boxRef} marginStart={styles.marginStart} marginTop={styles.marginTop} />;
 };
 
 const Slide = ({ fixedRef }: { fixedRef: RefObject<Gtk.Fixed | null> }): ReactNode => {
@@ -276,7 +275,7 @@ describe("animated - interpolations and shorthands", () => {
         expect(await screen.findByText("3 of 3 done")).toBeVisible();
     });
 
-    it("animates several properties at once through the `a` alias", async () => {
+    it("animates several properties at once", async () => {
         const boxRef = createRef<Gtk.Box>();
         await render(<Margins boxRef={boxRef} />, ANIMATED);
 
