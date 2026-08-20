@@ -265,6 +265,11 @@ const expectModules = (directory: string, modules: string[]): void => {
     expect(modules.filter((name) => !existsSync(join(directory, name)))).toEqual([]);
 };
 
+const expectStoreAndLink = (project: CliProject, store: string, modules: string[]): void => {
+    expectModules(storePath(project, store), modules);
+    expectModules(linkPath(project, store), modules);
+};
+
 const omittedMentions = (source: string, jsName: string): string[] =>
     [`${jsName}:`, `get ${jsName}(`, `set ${jsName}(`].filter((text) => source.includes(text));
 
@@ -319,10 +324,8 @@ describe("gtkx codegen", () => {
 
     it("writes both stores where the project imports them", () => {
         expect(state.status).toBe(0);
-        expectModules(storePath(state.project, "gi"), GI_MODULES);
-        expectModules(storePath(state.project, "jsx"), JSX_MODULES);
-        expectModules(linkPath(state.project, "gi"), GI_MODULES);
-        expectModules(linkPath(state.project, "jsx"), JSX_MODULES);
+        expectStoreAndLink(state.project, "gi", GI_MODULES);
+        expectStoreAndLink(state.project, "jsx", JSX_MODULES);
     });
 
     it("binds cairo through @gtkx/cairo and keeps the deprecated @gtkx/gi/cairo alias", () => {

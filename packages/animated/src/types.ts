@@ -27,22 +27,6 @@ type AnimatedComponent<T extends Exclude<ElementType, string>> = FunctionCompone
     AnimatedProps<ComponentPropsWithRef<T>>
 >;
 
-/** The instance a component exposes through its `ref` prop, or `never` when it exposes none. */
-type ElementInstance<T extends Exclude<ElementType, string>> = ComponentPropsWithRef<T> extends {
-    ref?: Ref<infer Instance> | undefined;
-}
-    ? NonNullable<Instance>
-    : never;
-
-/** Whether a generated element is a component whose `ref` exposes a {@link Gtk.Widget} subclass. */
-type IsWidgetComponent<T> = T extends Exclude<ElementType, string>
-    ? [ElementInstance<T>] extends [never]
-            ? false
-            : ElementInstance<T> extends Gtk.Widget
-                ? true
-                : false
-    : false;
-
 /**
  * The widget components of the generated `@gtkx/jsx` store, keyed by element name, each wrapped as
  * an {@link AnimatedComponent}. Only components whose `ref` exposes a `Gtk.Widget` subclass are
@@ -50,13 +34,17 @@ type IsWidgetComponent<T> = T extends Exclude<ElementType, string>
  * are wrapped explicitly through the `animated(...)` call instead.
  */
 type AnimatedElements = {
-    readonly [K in keyof typeof elements as IsWidgetComponent<(typeof elements)[K]> extends true
-        ? K
+    readonly [K in keyof typeof elements as (typeof elements)[K] extends Exclude<ElementType, string>
+        ? ComponentPropsWithRef<(typeof elements)[K]> extends { ref?: Ref<infer Instance> | undefined }
+            ? [NonNullable<Instance>] extends [never]
+                    ? never
+                    : NonNullable<Instance> extends Gtk.Widget
+                        ? K
+                        : never
+            : never
         : never]: (typeof elements)[K] extends Exclude<ElementType, string>
         ? AnimatedComponent<(typeof elements)[K]>
         : never;
 };
 
-/** @internal */
-export type { ElementInstance, IsWidgetComponent };
 export type { AnimatedComponent, AnimatedElements, AnimatedItems, AnimatedProp, AnimatedProps };

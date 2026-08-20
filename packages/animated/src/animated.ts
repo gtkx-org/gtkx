@@ -3,13 +3,12 @@ import * as elements from "@gtkx/jsx";
 import type { AnimatedComponent, AnimatedElements } from "./types.js";
 import { withAnimated } from "./with-animated.js";
 
-/** A component that {@link animated} can wrap: any element type except a plain tag name. */
 type Wrappable = Exclude<ElementType, string>;
 /**
  * The `animated` entrypoint: callable to wrap any component, and exposing every generated widget
  * component as a property, so `animated.GtkLabel` is the animated form of `GtkLabel`.
  */
-type Animated = (<T extends Wrappable>(component: T) => AnimatedComponent<T>) & AnimatedElements;
+type Animated = (<T extends Exclude<ElementType, string>>(component: T) => AnimatedComponent<T>) & AnimatedElements;
 
 /**
  * Wraps a component so that its props accept springs and interpolations: `animated(GtkLabel)` is
