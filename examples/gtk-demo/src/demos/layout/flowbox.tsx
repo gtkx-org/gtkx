@@ -1,4 +1,4 @@
-import type { Context } from "@gtkx/gi/cairo";
+import type { Context } from "@gtkx/cairo";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkDrawingArea, GtkFlowBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";

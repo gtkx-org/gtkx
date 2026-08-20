@@ -1,0 +1,5 @@
+cairo-1.0.gir is the introspection stub shipped by gobject-introspection
+(https://gitlab.gnome.org/GNOME/gobject-introspection), distributed under the
+GNU Lesser General Public License version 2.1 or later. It is vendored here
+only so the test suite can check the hand-written enums and structs of
+@gtkx/cairo against it; it is not part of the published package.

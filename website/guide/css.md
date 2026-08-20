@@ -122,4 +122,4 @@ The [Preferences and Theming](/tutorial/preferences-and-theming) tutorial chapte
 
 ## Next
 
-Continue with [OpenGL](/guide/opengl) to draw with the GPU inside a widget.
+Continue with [Cairo](/guide/cairo) to draw 2D graphics inside a widget.

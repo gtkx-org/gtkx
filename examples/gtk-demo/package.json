@@ -15,6 +15,7 @@
         "start": "node dist/bundle.mjs"
     },
     "dependencies": {
+        "@gtkx/cairo": "workspace:*",
         "@gtkx/components": "workspace:*",
         "@gtkx/css": "workspace:*",
         "@gtkx/runtime": "workspace:*",
