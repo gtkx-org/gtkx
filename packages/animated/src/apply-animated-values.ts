@@ -1,6 +1,6 @@
 import type { Lookup } from "@react-spring/types";
 import * as Gtk from "@gtkx/gi/gtk";
-import { applyWrite } from "@gtkx/react/internal";
+import { applyStyle, applyWrite } from "@gtkx/react/internal";
 import { coerceObjectProperty } from "@gtkx/runtime";
 
 const setterCache: WeakMap<object, Map<string, boolean>> = new WeakMap();
@@ -71,9 +71,23 @@ const didApplyText = (instance: object, value: unknown): boolean => {
     return true;
 };
 
+const didApplyStyle = (instance: object, value: unknown): boolean => {
+    if (!(instance instanceof Gtk.Widget)) {
+        return false;
+    }
+
+    applyStyle(instance, value);
+
+    return true;
+};
+
 const didApplyValue = (instance: object, name: string, value: unknown): boolean => {
     if (name === "children") {
         return didApplyText(instance, value);
+    }
+
+    if (name === "style") {
+        return didApplyStyle(instance, value);
     }
 
     if (!hasSetter(instance, name)) {

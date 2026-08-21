@@ -31,6 +31,7 @@ import {
 } from "./node.js";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { disconnectAllHandlers } from "./signals.js";
+import { releaseStyle } from "./style.js";
 import {
     didUpdateTextSurgically,
     enclosingHost,
@@ -133,7 +134,7 @@ const hostConfig = {
     unhideTextInstance: (): void => undefined,
     detachDeletedInstance: (instance: Instance): void => {
         if (instance.kind === ELEMENT_KIND) {
-            disconnectAllHandlers(instance);
+            detachElement(instance);
         } else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
             disconnectAllHandlers(lazyTarget(instance, instance.adopted));
         }
@@ -186,6 +187,14 @@ function createPriorityTracker(): PriorityTracker {
         },
     };
 }
+
+const detachElement = (instance: ElementNode): void => {
+    disconnectAllHandlers(instance);
+
+    if (instance.object instanceof Gtk.Widget) {
+        releaseStyle(instance.object);
+    }
+};
 
 const updateInstance = (instance: Instance, prev: Props, next: Props): void => {
     if (instance.kind === ELEMENT_KIND) {

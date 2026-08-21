@@ -26,7 +26,15 @@ import {
     value,
     wrappingIndexedSlot,
 } from "./reconciler/behaviors.js";
-import { type ElementConfig, forTypes, registerElements } from "./reconciler/registry.js";
+import {
+    type ElementBehavior,
+    type ElementConfig,
+    forTypes,
+    type Props,
+    registerElements,
+} from "./reconciler/registry.js";
+import { applyWrite } from "./reconciler/signals.js";
+import { applyStyle, styleClass } from "./reconciler/style.js";
 
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     ...forTypes(SINGLE_CHILD_TYPES, {
@@ -95,6 +103,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                     widget.insertActionGroup((info.props.prefix as string | null) ?? "", null);
                 },
             }),
+            styleBehavior(),
         ],
     },
     GtkBox: {
@@ -398,6 +407,57 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
 
 function layoutChild(parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | null {
     return parent.getLayoutManager()?.getLayoutChild(child) ?? null;
+}
+
+const isNullish = (value: unknown): boolean => value === undefined || value === null;
+const isInitialNull = (prevValue: unknown, value: unknown): boolean => value === null && prevValue === undefined;
+
+const withStyleClass = (classes: unknown, className: string): string[] =>
+    Array.isArray(classes) ? [...(classes as string[]), className] : [className];
+
+const hasCssClassesChange = (prev: Props, next: Props): boolean => {
+    const classes = next.cssClasses;
+
+    if (classes === undefined || Object.is(prev.cssClasses, classes)) {
+        return false;
+    }
+
+    return !isInitialNull(prev.cssClasses, classes);
+};
+
+const didWriteCssClasses = (widget: Gtk.Widget, prev: Props, next: Props, className: string | null): boolean => {
+    if (className === null || !hasCssClassesChange(prev, next)) {
+        return false;
+    }
+
+    applyWrite(() => {
+        Reflect.set(widget, "cssClasses", withStyleClass(next.cssClasses, className));
+    });
+
+    return true;
+};
+
+const isRestyled = (prev: Props, next: Props): boolean => {
+    if (isNullish(prev.style) && isNullish(next.style)) {
+        return false;
+    }
+
+    return !Object.is(prev.style, next.style);
+};
+
+function updateStyle(widget: Gtk.Widget, prev: Props, next: Props): Iterable<string> | undefined {
+    const isChanged = isRestyled(prev, next);
+    const className = isChanged ? applyStyle(widget, next.style) : styleClass(widget);
+
+    if (!isChanged && className === null) {
+        return;
+    }
+
+    return didWriteCssClasses(widget, prev, next, className) ? ["style", "cssClasses"] : ["style"];
+}
+
+function styleBehavior(): ElementBehavior<Gtk.Widget> {
+    return { update: updateStyle };
 }
 
 const addMainOption = (application: Gtk.Application, option: MainOption): void => {

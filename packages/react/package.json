@@ -94,6 +94,7 @@
     },
     "dependencies": {
         "@gtkx/config": "workspace:*",
+        "@gtkx/css": "workspace:*",
         "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "react-reconciler": "^0.33.0"

@@ -479,6 +479,9 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config
+      '@gtkx/css':
+        specifier: workspace:*
+        version: link:../css
       '@gtkx/gl':
         specifier: workspace:*
         version: link:../gl
@@ -614,6 +617,9 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config
+      '@gtkx/css':
+        specifier: workspace:*
+        version: link:../css
       '@gtkx/runtime':
         specifier: workspace:*
         version: link:../runtime

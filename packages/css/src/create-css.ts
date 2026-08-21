@@ -1,8 +1,6 @@
 import type { CSSInterpolation, RegisteredCache, SerializedStyles } from "@emotion/serialize";
-import type { Element } from "stylis";
 import { serializeStyles } from "@emotion/serialize";
-import { compile, middleware, rulesheet, stringify, serialize as stylisSerialize } from "stylis";
-import { escapeNamedColors, restoreNamedColors } from "./named-colors.js";
+import { eachRule, terminateDeclarations } from "./serialize-rule.js";
 import { StyleSheet } from "./stylesheet.js";
 
 /** A `cx` argument: a non-empty class name, or a boolean or nullish value that is dropped. */
@@ -28,32 +26,8 @@ type TokenPartition = { rawClasses: string[]; registeredStyles: string[] };
 type CssState = { sheet: StyleSheet; inserted: Set<string>; registered: RegisteredCache };
 
 const KEY = "gtkx";
-const LABEL_DECL_FIRST_CHAR = 108;
-const LABEL_DECL_THIRD_CHAR = 98;
-
-const removeLabel = (element: Element): void => {
-    if (!(element.type === "decl" &&
-        element.value.codePointAt(0) === LABEL_DECL_FIRST_CHAR &&
-        element.value.codePointAt(2) === LABEL_DECL_THIRD_CHAR)) {
-        return;
-    }
-
-    element.return = "";
-    element.value = "";
-};
 
 const getClassName = (serialized: SerializedStyles): string => `${KEY}-${serialized.name}`;
-
-const terminateDeclarations = (styles: string): string => {
-    const trimmed = styles.trimEnd();
-
-    if (trimmed.length === 0 || trimmed.endsWith(";") || trimmed.endsWith("}")) {
-        return trimmed;
-    }
-
-    return `${trimmed};`;
-};
-
 const isNonEmptyString = (token: CxToken): token is string => typeof token === "string" && token.length > 0;
 
 const partitionTokens = (tokens: string[], registered: RegisteredCache): TokenPartition => {
@@ -73,17 +47,10 @@ const partitionTokens = (tokens: string[], registered: RegisteredCache): TokenPa
     return { rawClasses, registeredStyles };
 };
 
-const runStylis = (sheet: StyleSheet, input: string): void => {
-    stylisSerialize(
-        compile(escapeNamedColors(input)),
-        middleware([
-            removeLabel,
-            stringify,
-            rulesheet((rule) => {
-                sheet.insert(restoreNamedColors(rule));
-            }),
-        ]),
-    );
+const insertRules = (state: CssState, input: string): void => {
+    eachRule(input, (rule) => {
+        state.sheet.insert(rule);
+    });
 };
 
 const didMarkNewStyle = (state: CssState, serialized: SerializedStyles): boolean => {
@@ -103,7 +70,7 @@ const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
 
     const className = getClassName(serialized);
     const styles = terminateDeclarations(serialized.styles);
-    runStylis(state.sheet, `.${className}{${styles}}`);
+    insertRules(state, `.${className}{${styles}}`);
     state.registered[className] = styles;
 };
 
@@ -112,7 +79,7 @@ const insertWithoutScoping = (state: CssState, serialized: SerializedStyles): vo
         return;
     }
 
-    runStylis(state.sheet, serialized.styles);
+    insertRules(state, serialized.styles);
 };
 
 const cssClassName = (state: CssState, args: CSSInterpolation[]): string => {

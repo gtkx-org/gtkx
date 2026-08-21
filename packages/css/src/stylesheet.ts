@@ -1,16 +1,12 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { createLogger } from "@gtkx/utils";
 import { attachParsingErrorLogger, registerProviderForDefaultDisplay } from "./provider.js";
+import { hasNul, NUL_REASON, printableRule } from "./rule-text.js";
 import { containmentFailure } from "./self-contained.js";
 
 const log = createLogger("css");
-const NUL = "\u{0}";
-const NUL_REASON = "carries a NUL byte, which GTK4 cannot load";
 
-const unusableReason = (rule: string): string | null =>
-    rule.includes(NUL) ? NUL_REASON : containmentFailure(rule);
-
-const printableRule = (rule: string): string => rule.replaceAll(NUL, String.raw`\0`);
+const unusableReason = (rule: string): string | null => (hasNul(rule) ? NUL_REASON : containmentFailure(rule));
 
 class StyleSheet {
     private css = "";
