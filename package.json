@@ -67,7 +67,12 @@
                     "@gtkx/gl:build"
                 ],
                 "inputs": [
-                    "default",
+                    "sharedGlobals",
+                    "{workspaceRoot}/package.json",
+                    "{workspaceRoot}/pnpm-lock.yaml",
+                    "{workspaceRoot}/vitest.config.ts",
+                    "{workspaceRoot}/gtkx.config.ts",
+                    "{workspaceRoot}/scripts/**/*",
                     "{workspaceRoot}/packages/**/*",
                     "{workspaceRoot}/examples/gtk-demo/**/*",
                     {
