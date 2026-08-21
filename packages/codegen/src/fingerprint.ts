@@ -150,7 +150,14 @@ const dependencyVersions = (): string[] =>
     );
 
 const hashPackageCode = (hash: Hash, label: string, root: string): void => {
-    hashTree(hash, join(label, "src"), join(root, "src"));
+    const source = join(root, "src");
+
+    if (existsSync(source)) {
+        hashTree(hash, join(label, "src"), source);
+
+        return;
+    }
+
     hashTree(hash, join(label, "dist"), join(root, "dist"));
 };
 
