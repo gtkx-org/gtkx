@@ -1,6 +1,6 @@
 ---
 title: "GTKX 1.3: Introducing @gtkx/animated"
-description: "GTKX 1.3 adds @gtkx/animated, React Spring's engine with a GTK target. Springs are written straight onto widget properties on every frame of the GTK frame clock, without a React render, and the values are fitted to the GObject properties they land on."
+description: "GTKX 1.3 adds @gtkx/animated, React Spring's engine with a GTK target, and a per-widget style prop. Springs are written straight onto widget properties on every frame of the GTK frame clock, without a React render, and reach color, background and border radius through a rule scoped to the widget alone."
 image: /animations-demo.png
 ---
 
@@ -8,7 +8,7 @@ image: /animations-demo.png
 
 <p class="post-date">August 21, 2026</p>
 
-GTKX 1.3 is out. The headline is [`@gtkx/animated`](/guide/animations), React Spring's engine with a GTK target, alongside a new [`@gtkx/cairo`](/guide/cairo) package and a much larger [`registerClass`](/guide/subclassing). Read the [`changelog`](https://github.com/gtkx-org/gtkx/releases/tag/v1.3.0) for the full list of changes.
+GTKX 1.3 is out. The headline is [`@gtkx/animated`](/guide/animations), React Spring's engine with a GTK target, alongside a per-widget [`style`](/guide/css) prop that springs can drive, a new [`@gtkx/cairo`](/guide/cairo) package and a much larger [`registerClass`](/guide/subclassing). Read the [`changelog`](https://github.com/gtkx-org/gtkx/releases/tag/v1.3.0) for the full list of changes.
 
 <video src="/animations-demo.webm" poster="/animations-demo.webp" width="1120" height="480" autoplay loop muted playsinline controls preload="metadata" aria-label="Screen recording of the GTKX animations example. Each page in the sidebar drives a different React Spring primitive against real GTK widgets: a card fades and slides between two targets, one spring fills a progress bar while counting up a label, a column of level bars and a staggered trail of labels animate together, list items fade in and out as they mount and unmount, a panel and its items sequence in turn, a level bar is started, paused and resumed by hand, and a label slides and tilts between the corners of a fixed layout."></video>
 
@@ -22,7 +22,7 @@ React already has an answer to that, and it is React Spring. 1.3 does not reimpl
 npm install @gtkx/animated
 ```
 
-## Springs are written onto widgets, not into a style sheet
+## Springs are written onto widgets, not into a shared style sheet
 
 `animated(Component)` returns the same component with props that also accept a `SpringValue` or an `Interpolation`:
 
@@ -82,6 +82,48 @@ export const Corner = ({ x, y, angle }: { x: number; y: number; angle: number })
 ```
 
 That is the `Transforms` page in the video. Elsewhere, animate the margins, the size requests, or a `Gtk.Paned`'s `position`.
+
+## Styling what has no property
+
+Some of what you want to animate is not a GObject property at all. There is no `color` on a `Gtk.Label`, no `background` on a `Gtk.Box`, no `border-radius` anywhere. GTK4 exposes those through CSS and nothing else, which until now put them out of reach of a spring.
+
+1.3 adds a [`style`](/guide/css) prop to every widget:
+
+```tsx
+<GtkBox style={{ background: "var(--card-bg-color)", borderRadius: 12, padding: 18 }} />;
+```
+
+GTK4 has no inline styles, so the object compiles to one rule in a `Gtk.CssProvider` that belongs to that widget alone, at a priority above `cssClasses`. Changing the object rewrites that one rule rather than minting another, which is what makes it safe to drive from a spring at sixty frames a second:
+
+```tsx
+import { animated, useSpring } from "@gtkx/animated";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+
+const AnimatedLabel = animated(GtkLabel);
+
+export const Deadline = ({ isOverdue }: { isOverdue: boolean }) => {
+    const { level } = useSpring({ level: isOverdue ? 1 : 0 });
+
+    return (
+        <AnimatedLabel
+            label="Due today"
+            style={level.to((value) => ({ color: `mix(var(--window-fg-color), var(--error-color), ${value})` }))}
+        />
+    );
+};
+```
+
+The spring carries a number and the interpolation builds the declaration around it. GTK4's `mix()` blends two colors by a fraction and `alpha()` scales one's opacity, so a color animation is a number animation.
+
+A spring can also sit on a single declaration rather than on the whole prop, so the object a spring hook returns goes straight to `style` the way it does on the web:
+
+```tsx
+const styles = useSpring({ from: { color: "red" }, to: { color: "blue" } });
+
+<AnimatedLabel style={styles} label="Due today" />;
+```
+
+`style` is typed as a curated list of the properties GTK4 actually understands, not the whole web set. GTK4 CSS covers paint and typography and has no layout, so `style={{ display: "flex" }}` fails to compile rather than turning into a runtime warning you have to notice — width, alignment and spacing stay in the widget's own props, where GTK puts them.
 
 ## The rest of React Spring is the same React Spring
 
