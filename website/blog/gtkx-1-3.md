@@ -123,7 +123,7 @@ const styles = useSpring({ from: { color: "red" }, to: { color: "blue" } });
 <AnimatedLabel style={styles} label="Due today" />;
 ```
 
-`style` is typed as a curated list of the properties GTK4 actually understands, not the whole web set. GTK4 CSS covers paint and typography and has no layout, so `style={{ display: "flex" }}` fails to compile rather than turning into a runtime warning you have to notice — width, alignment and spacing stay in the widget's own props, where GTK puts them.
+`style` is typed as a curated list of the properties GTK4 actually understands, not the whole web set. GTK4 CSS covers paint and typography and has no layout, so <span v-pre>`style={{ display: "flex" }}`</span> fails to compile rather than turning into a runtime warning you have to notice — width, alignment and spacing stay in the widget's own props, where GTK puts them.
 
 ## The rest of React Spring is the same React Spring
 

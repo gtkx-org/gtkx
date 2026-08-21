@@ -91,7 +91,7 @@ const styles = useSpring({ from: { color: "red" }, to: { color: "blue" } });
 <AnimatedLabel style={{ color: styles.color, paddingTop: 4 }} label="Due today" />;
 ```
 
-Both forms work, nested blocks included, so `style={{ "&:hover": { color: spring } }}` animates on hover. Hand the object a spring hook returns straight to `style`, put springs on the declarations you want to move, or interpolate the whole object out with `spring.to(…)` — whichever reads better for the animation at hand. Only the `style` prop is read this way; a spring nested inside any other object-valued prop, such as a `Pango.AttrList`, is not tracked.
+Both forms work, nested blocks included, so <span v-pre>`style={{ "&:hover": { color: spring } }}`</span> animates on hover. Hand the object a spring hook returns straight to `style`, put springs on the declarations you want to move, or interpolate the whole object out with `spring.to(…)` — whichever reads better for the animation at hand. Only the `style` prop is read this way; a spring nested inside any other object-valued prop, such as a `Pango.AttrList`, is not tracked.
 
 Because the rule is scoped to that one widget, this also animates what a widget has no property for at all: a `border-radius` that opens up, a `box-shadow` that lifts, a `filter` that desaturates a row as it is dismissed.
 
