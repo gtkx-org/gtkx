@@ -46,6 +46,8 @@ type CodegenRunnerOptions = {
     isValueUnwrapped?: boolean;
     /** Drops the leading success boolean from promisified results of a throwing finish; defaults to false. */
     isFinishTrimmed?: boolean;
+    /** Mutates a handle-passing inout parameter in place instead of packing it into the result; defaults to false. */
+    isInoutInPlace?: boolean;
 };
 
 /** What a `runCodegen` run produced. */
@@ -170,7 +172,8 @@ const emitStoresWithConfig = async (config: {
     const isByteArrayTyped = options.isByteArrayTyped === true;
     const isValueUnwrapped = options.isValueUnwrapped === true;
     const isFinishTrimmed = options.isFinishTrimmed === true;
-    const future = { isByteArrayTyped, isValueUnwrapped, isFinishTrimmed };
+    const isInoutInPlace = options.isInoutInPlace === true;
+    const future = { isByteArrayTyped, isValueUnwrapped, isFinishTrimmed, isInoutInPlace };
     let library: Library | undefined;
     const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath, future));
     const giInputs = { girFiles: [] as string[], libraries, girPath, storeVersion: gi.version, ...future };

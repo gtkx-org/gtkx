@@ -3,7 +3,7 @@ import type * as Gdk from "@gtkx/gi/gdk";
 import type * as GLib from "@gtkx/gi/glib";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 /** One entry of a `GMenu`'s `items` prop; `submenu` and `section` nest further menus. */
 type MenuItem = {
@@ -95,12 +95,95 @@ type ChildrenProps = {
     children?: ReactNode;
 };
 
+/** Paint and typography declarations GTK4 CSS accepts, spelled the way React DOM spells them. */
+type StyleProperties = Pick<
+    CSSProperties,
+    | "animation" |
+    "animationDelay" |
+    "animationDirection" |
+    "animationDuration" |
+    "animationFillMode" |
+    "animationIterationCount" |
+    "animationName" |
+    "animationPlayState" |
+    "animationTimingFunction" |
+    "background" |
+    "backgroundClip" |
+    "backgroundColor" |
+    "backgroundImage" |
+    "backgroundOrigin" |
+    "backgroundPosition" |
+    "backgroundRepeat" |
+    "backgroundSize" |
+    "border" |
+    "borderBottom" |
+    "borderColor" |
+    "borderLeft" |
+    "borderRadius" |
+    "borderRight" |
+    "borderStyle" |
+    "borderTop" |
+    "borderWidth" |
+    "boxShadow" |
+    "caretColor" |
+    "color" |
+    "filter" |
+    "font" |
+    "fontFamily" |
+    "fontSize" |
+    "fontStyle" |
+    "fontVariant" |
+    "fontWeight" |
+    "letterSpacing" |
+    "lineHeight" |
+    "margin" |
+    "marginBottom" |
+    "marginLeft" |
+    "marginRight" |
+    "marginTop" |
+    "minHeight" |
+    "minWidth" |
+    "opacity" |
+    "outline" |
+    "outlineColor" |
+    "outlineOffset" |
+    "outlineStyle" |
+    "outlineWidth" |
+    "padding" |
+    "paddingBottom" |
+    "paddingLeft" |
+    "paddingRight" |
+    "paddingTop" |
+    "textDecoration" |
+    "textDecorationColor" |
+    "textDecorationLine" |
+    "textDecorationStyle" |
+    "textShadow" |
+    "textTransform" |
+    "transform" |
+    "transformOrigin" |
+    "transition" |
+    "transitionDelay" |
+    "transitionDuration" |
+    "transitionProperty" |
+    "transitionTimingFunction"
+>;
+
+/**
+ * Style declarations for one widget. A key starting with `&` nests a block under a selector derived from
+ * it, such as `"&:hover"` or `"& label"`. GTK4 CSS covers paint and typography only, so layout properties
+ * such as `display`, `width` and `gap` are deliberately absent; use the widget's own layout props instead.
+ */
+type Style = StyleProperties & Partial<Record<`&${string}`, StyleProperties>>;
+
 /** Objects a widget takes through a method call rather than a property. */
 type GtkWidgetProps = {
     /** `Gtk.EventController` elements added to the widget. */
     controllers?: ReactNode | null | undefined;
     /** `Gio.ActionGroup` elements inserted into the widget, each under its own `prefix`. */
     actionGroups?: ReactNode | null | undefined;
+    /** Style declarations applied to this widget alone, outranking any class in `cssClasses`. */
+    style?: Style | null | undefined;
 } & ChildrenProps;
 
 /** Props of an action group placed in a widget's `actionGroups` slot. */
@@ -230,6 +313,8 @@ export {
     type DragSourceIcon,
     type ChildrenProps,
     type GtkWidgetProps,
+    type Style,
+    type StyleProperties,
     type ActionGroupProps,
     type ActionMapProps,
     type MenuProps,

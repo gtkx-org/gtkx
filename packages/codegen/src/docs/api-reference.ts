@@ -31,6 +31,8 @@ type ApiReferenceOptions = {
     isValueUnwrapped?: boolean;
     /** Describes promisified results of a throwing finish without their leading success boolean; off by default. */
     isFinishTrimmed?: boolean;
+    /** Describes a handle-passing inout parameter as mutated in place rather than returned; off by default. */
+    isInoutInPlace?: boolean;
 };
 
 /** Narrows an `ApiReference.symbols` enumeration. */
@@ -383,6 +385,7 @@ class ApiReference {
             isByteArrayTyped: options.isByteArrayTyped === true,
             isValueUnwrapped: options.isValueUnwrapped === true,
             isFinishTrimmed: options.isFinishTrimmed === true,
+            isInoutInPlace: options.isInoutInPlace === true,
         });
 
         this.elementContext = { library: this.library, linkFor: (): string | undefined => undefined };

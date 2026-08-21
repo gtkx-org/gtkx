@@ -5,6 +5,7 @@ import { interpolationDemo } from "./interpolation.js";
 import { reducedMotionDemo } from "./reduced-motion.js";
 import { springsListDemo } from "./springs-list.js";
 import { springsDemo } from "./springs.js";
+import { styleDemo } from "./style.js";
 import { trailDemo } from "./trail.js";
 import { transformsDemo } from "./transforms.js";
 import { transitionsDemo } from "./transitions.js";
@@ -18,6 +19,7 @@ const demos: Demo[] = [
     chainDemo,
     imperativeDemo,
     transformsDemo,
+    styleDemo,
     reducedMotionDemo,
 ];
 

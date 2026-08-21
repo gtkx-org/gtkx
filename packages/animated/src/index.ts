@@ -2,7 +2,14 @@ import "./bootstrap.js";
 
 export { animated, type Animated } from "./animated.js";
 export { useReducedMotion } from "./reduced-motion.js";
-export type { AnimatedComponent, AnimatedElements, AnimatedItems, AnimatedProp, AnimatedProps } from "./types.js";
+export type {
+    AnimatedComponent,
+    AnimatedElements,
+    AnimatedItems,
+    AnimatedProp,
+    AnimatedProps,
+    AnimatedStyle,
+} from "./types.js";
 export {
     BailSignal,
     config,

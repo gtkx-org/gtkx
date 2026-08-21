@@ -398,7 +398,7 @@ const SwatchElement = createElementComponent<SwatchProps>("ExampleSwatch");
 <SwatchElement red={200} widthRequest={48} />;
 ```
 
-The element name is the `typeName` the class was registered under, and the element inherits the props, signal handlers, defaults and behaviors of every ancestor type, so a `Gtk.Widget` subclass takes `cssClasses`, `halign` and `onNotifyVisible` already. Name the props as the type argument, since a component left at the default accepts no attributes at all.
+The element name is the `typeName` the class was registered under, and the element inherits the props, signal handlers, defaults and behaviors of every ancestor type, so a `Gtk.Widget` subclass takes `cssClasses`, `style`, `halign` and `onNotifyVisible` already. Name the props as the type argument, since a component left at the default accepts no attributes at all.
 
 Properties the class installs itself are applied after construction, so one that has to be set at construction wants a `create` behavior registered with `defineElements` under the same type name.
 

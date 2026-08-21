@@ -32,6 +32,11 @@
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
+        },
+        "./internal": {
+            "source": "./src/internal.ts",
+            "types": "./dist/internal.d.ts",
+            "default": "./dist/internal.js"
         }
     },
     "sideEffects": false,

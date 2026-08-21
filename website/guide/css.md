@@ -1,11 +1,56 @@
 ---
 title: "CSS"
-description: "Style native widgets with the @gtkx/css tagged template and GTK4's own CSS engine: generated class names, cx, global styles, and dark style."
+description: "Style native widgets with GTK4's own CSS engine: the style prop, the @gtkx/css tagged template, generated class names, cx, global styles, and dark style."
 ---
 
 # CSS
 
-`@gtkx/css` is Emotion-style CSS-in-JS: you write styles next to your components, and it hands back class names that GTK4 resolves.
+GTK4 resolves its own CSS, and GTKX gives you two ways to write it. Every widget element takes a `style` prop for the declarations that belong to that one widget, and `@gtkx/css` is Emotion-style CSS-in-JS for the ones worth naming: you write styles next to your components, and it hands back class names that GTK4 resolves.
+
+## The `style` prop
+
+Every element that renders a `Gtk.Widget` takes a `style` prop: an object of declarations, spelled the way React DOM spells them, that applies to that widget and nothing else.
+
+```tsx
+import { GtkLabel } from "@gtkx/jsx/gtk";
+
+<GtkLabel label="Overdue" style={{ color: "var(--error-color)", fontWeight: 700 }} />;
+```
+
+Numbers get `px` appended, except on the properties that are unitless on the web, which are `opacity`, `fontWeight`, `lineHeight` and `animationIterationCount`, so `minHeight: 48` is `min-height: 48px`. Any other unit goes in as a string.
+
+A key that starts with `&` nests a block under a selector built from it, the same way it works inside a `css` template:
+
+```tsx
+import { GtkButton } from "@gtkx/jsx/gtk";
+
+<GtkButton
+    label="Delete"
+    style={{
+        color: "var(--error-color)",
+        "&:hover": { background: "alpha(var(--error-color), 0.1)" },
+        "& label": { fontWeight: 700 },
+    }}
+/>;
+```
+
+The `&` is not optional, and the type enforces it: a bare `":hover"` key would compile to a *descendant* `:hover`, which is not what it reads like. Every rule has to start from the widget's own class, and one that does not is dropped with a warning instead of applied, so a declaration cannot break out of its block and repaint the rest of the window. A combinator after the `&` does reach past the widget on purpose, which is what `& label` above relies on.
+
+Setting the prop to `undefined` or `null` removes the declarations again. A spring can drive the whole object or an individual declaration; see [Animations](/guide/animations).
+
+### GTK4 CSS has no layout
+
+GTK4's CSS engine covers paint and typography, and stops there. Colors, backgrounds, borders and border radius, shadows, outlines, filters, fonts, letter spacing, text decoration, `transform`, `transition` and `animation` all resolve, and so do `padding`, `margin`, `min-width` and `min-height`. There is no `width`, `height`, `display`, `position`, `flex-direction`, `gap`, `text-align`, `cursor`, `z-index` or `overflow`: GTK4 has no such properties, and a rule that sets one is reported as a warning during development and then ignored.
+
+Layout belongs to the widget instead, so it stays in props. `widthRequest` and `heightRequest` ask for a size, `halign`, `valign`, `hexpand` and `vexpand` place a widget in the space it is given, a `GtkBox`'s `orientation` and `spacing` lay out a row or a column, a `GtkLabel`'s `xalign` and `justify` align text, and a `GtkScrolledWindow` is what clips and scrolls. `style` is typed as a curated list of properties rather than the whole web set for this reason: `style={{ display: "flex" }}` fails to compile, instead of turning into a runtime warning you have to notice.
+
+### Choosing between `style` and a class
+
+Reach for `style` when the declarations belong to one widget and nowhere else: a color derived from data, a one-off `min-height`, a `transform` a spring is driving. Reach for `css` and `cssClasses` when they are worth naming, when several widgets share the same look, or when you need something `style` deliberately cannot express, such as `@keyframes`, a `@media` query, a custom property, a `-gtk-` property, or a selector that does not start from the widget it is written on. The two mix on one element, and `cssClasses` keeps whatever you put in it.
+
+### One provider per widget
+
+Each styled widget gets a `Gtk.CssProvider` of its own holding exactly one rule, keyed by a class the reconciler adds to the widget, so changing `style` reparses that one rule and no other CSS in the app. GTK still invalidates the display's style on every reload, though, which is work that grows with how many widgets are on screen rather than with how many of them are styled: driving `style` from a spring is cheap in a small tree, and animating many widgets at once in a large one is not. That provider sits one priority step above the stylesheet the generated classes go into, which is what makes a declaration in `style` outrank the same declaration coming from `cssClasses`. The generated class is an ordinary class named `gtkx-s` followed by a number: it shows up in `getCssClasses()` and it counts against `toHaveClass` under `{ exact: true }`. Do not write selectors against it.
 
 ## The `css` tagged template
 
@@ -73,7 +118,7 @@ const swatch = css`
 <GtkButton cssClasses={cx(swatch, isSelected && "suggested-action")} />;
 ```
 
-When two or more generated classes appear in one `cx` call, they merge into a single class and the last argument wins on conflicting properties. Raw class names pass through untouched.
+When two or more generated classes appear in one `cx` call, they merge into a single class and the last argument wins on conflicting properties. Raw class names pass through untouched. A declaration in the `style` prop beats all of them whatever order they were inserted in, because the prop's own provider is registered one priority step above the stylesheet these classes live in.
 
 ## Global styles
 

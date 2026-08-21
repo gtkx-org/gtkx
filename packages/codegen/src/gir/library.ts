@@ -32,6 +32,8 @@ type FutureBehavior = {
     isValueUnwrapped?: boolean;
     /** Whether a promisified result drops the leading success boolean of a throwing finish function. */
     isFinishTrimmed?: boolean;
+    /** Whether a handle-passing inout parameter is mutated in place rather than packed into the result. */
+    isInoutInPlace?: boolean;
 };
 
 /** A namespace whose header has been read and whose shell is registered, before its body is parsed. */
@@ -102,6 +104,7 @@ class Library {
         library.isByteArrayTypedValue = future.isByteArrayTyped === true;
         library.isValueUnwrappedValue = future.isValueUnwrapped === true;
         library.isFinishTrimmedValue = future.isFinishTrimmed === true;
+        library.isInoutInPlaceValue = future.isInoutInPlace === true;
         this.drive(library, libraries, girPath);
 
         return library;
@@ -116,6 +119,7 @@ class Library {
     private isByteArrayTypedValue = false;
     private isValueUnwrappedValue = false;
     private isFinishTrimmedValue = false;
+    private isInoutInPlaceValue = false;
 
     /** Creates a library with no namespaces loaded; {@link Library.load} builds a populated one. */
     constructor() {
@@ -358,6 +362,11 @@ class Library {
     /** Whether a promisified result drops the leading success boolean of a throwing finish function. */
     public get isFinishTrimmed(): boolean {
         return this.isFinishTrimmedValue;
+    }
+
+    /** Whether a handle-passing inout parameter is mutated in place rather than packed into the result. */
+    public get isInoutInPlace(): boolean {
+        return this.isInoutInPlaceValue;
     }
 
     /** Paths of the `.gir` files that were read, in the order they were discovered. */

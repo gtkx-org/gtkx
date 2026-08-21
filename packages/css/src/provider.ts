@@ -8,7 +8,14 @@ import {
     StyleContext,
 } from "@gtkx/gi/gtk";
 
+type ProviderOptions = { priority: number; followsPreferences: boolean };
+
 const REDUCED_MOTION_MINOR = 22;
+
+const DEFAULT_OPTIONS: ProviderOptions = {
+    priority: STYLE_PROVIDER_PRIORITY_APPLICATION,
+    followsPreferences: true,
+};
 
 const hasReducedMotion = (): boolean => checkVersion(4, REDUCED_MOTION_MINOR, 0) === null;
 
@@ -37,16 +44,18 @@ const followSystemPreferences = (provider: CssProvider, display: Display): void 
     }
 };
 
-const registerProviderForDefaultDisplay = (
-    priority: number = STYLE_PROVIDER_PRIORITY_APPLICATION,
-): CssProvider => {
+const registerProviderForDefaultDisplay = (options?: Partial<ProviderOptions>): CssProvider => {
+    const { priority, followsPreferences } = { ...DEFAULT_OPTIONS, ...options };
     const provider = new CssProvider();
     const manager = DisplayManager.get();
 
     const attach = (display: Display): void => {
         // eslint-disable-next-line @typescript-eslint/no-deprecated
         StyleContext.addProviderForDisplay(display, provider, priority);
-        followSystemPreferences(provider, display);
+
+        if (followsPreferences) {
+            followSystemPreferences(provider, display);
+        }
     };
 
     const initialDisplay = manager.getDefaultDisplay();
@@ -70,4 +79,4 @@ const attachParsingErrorLogger = (provider: CssProvider, log: Logger, subject: s
     }
 };
 
-export { registerProviderForDefaultDisplay, attachParsingErrorLogger };
+export { type ProviderOptions, registerProviderForDefaultDisplay, attachParsingErrorLogger };

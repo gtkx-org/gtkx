@@ -170,11 +170,14 @@ const renderInputParameters = (context: ModuleContext, fn: GirFunction, options:
     return parts.join(", ");
 };
 
+const isInPlaceInout = (context: ModuleContext, parameter: GirParameter): boolean =>
+    context.library.isInoutInPlace && isInoutParameter(parameter) && isHandlePassedInPlace(context, parameter);
+
 const isReturnedOutParameter = (context: ModuleContext, parameter: GirParameter): boolean =>
     isOutParameter(parameter) ||
     (isCallerAllocatedOut(parameter) &&
         (isCollectibleCallerOut(context, parameter) || isFixedArrayCallerOut(context, parameter))) ||
-        isInoutParameter(parameter);
+        (isInoutParameter(parameter) && !isInPlaceInout(context, parameter));
 
 const returnedOutParameters = (context: ModuleContext, fn: GirFunction): InputParameter[] => {
     const folded = foldedLengthIndices(context.library, fn);
@@ -629,7 +632,7 @@ const planInoutParam = (
             paramLiteral: paramDescriptorLiteral(descriptor, {
                 direction: "inout",
                 isCallerAllocated: true,
-                isConsumed,
+                isConsumed: isConsumed || context.library.isInoutInPlace,
                 isRequired: isRequiredParameter(parameter),
             }),
             inputExpr: parameterIdentifier(parameter, index),
