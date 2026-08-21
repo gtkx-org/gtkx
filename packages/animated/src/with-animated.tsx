@@ -31,14 +31,43 @@ const getDisplayName = (component: Wrappable): string => {
     return typeof name === "string" && name !== "" ? name : "Anonymous";
 };
 
-const isFluidProp = (value: unknown): boolean => hasFluidValue(value) || isFluidArray(value);
+const isFluidProp = (value: unknown): boolean =>
+    hasFluidValue(value) || isFluidArray(value) || isFluidRecord(value);
+
+const isRecord = (value: unknown): value is Lookup => {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return false;
+    }
+
+    const prototype = Object.getPrototypeOf(value) as object | null;
+
+    return prototype === null || prototype === Object.prototype;
+};
 
 function isFluidArray(value: unknown): value is unknown[] {
     return Array.isArray(value) && value.some((item) => isFluidProp(item));
 }
 
+function isFluidRecord(value: unknown): value is Lookup {
+    return isRecord(value) && Object.values(value).some((item) => isFluidProp(item));
+}
+
+function resolveRecord(record: Lookup): Lookup {
+    const resolved: Lookup = {};
+
+    for (const name in record) {
+        resolved[name] = resolveValue(record[name]);
+    }
+
+    return resolved;
+}
+
 function resolveValue(value: unknown): unknown {
-    return isFluidArray(value) ? value.map((item) => resolveValue(item)) : getFluidValue(value);
+    if (isFluidArray(value)) {
+        return value.map((item) => resolveValue(item));
+    }
+
+    return isFluidRecord(value) ? resolveRecord(value) : getFluidValue(value);
 }
 
 const resolveProps = (props: Lookup, isAnimatedOnly: boolean): Lookup => {
@@ -57,15 +86,21 @@ const resolveProps = (props: Lookup, isAnimatedOnly: boolean): Lookup => {
     return resolved;
 };
 
-const collectDependencies = (value: unknown, dependencies: Set<FluidValue>): void => {
+function collectEach(items: unknown[], dependencies: Set<FluidValue>): void {
+    for (const item of items) {
+        collectDependencies(item, dependencies);
+    }
+}
+
+function collectDependencies(value: unknown, dependencies: Set<FluidValue>): void {
     if (hasFluidValue(value)) {
         dependencies.add(value);
     } else if (isFluidArray(value)) {
-        for (const item of value) {
-            collectDependencies(item, dependencies);
-        }
+        collectEach(value, dependencies);
+    } else if (isFluidRecord(value)) {
+        collectEach(Object.values(value), dependencies);
     }
-};
+}
 
 const getDependencies = (props: Lookup): Set<FluidValue> => {
     const dependencies: Set<FluidValue> = new Set();

@@ -80,9 +80,18 @@ export const Deadline = ({ isOverdue }: { isOverdue: boolean }) => {
 };
 ```
 
-The spring carries a number and the interpolation builds the declaration around it, which is the shape every animated `style` takes. GTK4's `mix()` blends two colors by a fraction and `alpha()` scales one's opacity, so a color animation is a number animation; any other property is built the same way, out of a template string.
+The spring carries a number and the interpolation builds the declaration around it. GTK4's `mix()` blends two colors by a fraction and `alpha()` scales one's opacity, so a color animation is a number animation; any other property is built the same way, out of a template string.
 
-The spring has to be the *whole* `style` value. One nested inside the object, `style={{ color: spring }}`, is not tracked, and does not type-check either, since the prop's properties take plain CSS values. Interpolate the object out instead, with `spring.to(…)` for a single value or `to([a, b], (…) => ({ … }))` for several.
+A spring can also sit on a single declaration rather than on the whole prop, which is how React Spring is written for the DOM:
+
+```tsx
+const styles = useSpring({ from: { color: "red" }, to: { color: "blue" } });
+
+<AnimatedLabel style={styles} label="Due today" />;
+<AnimatedLabel style={{ color: styles.color, paddingTop: 4 }} label="Due today" />;
+```
+
+Both forms work, nested blocks included, so `style={{ "&:hover": { color: spring } }}` animates on hover. Hand the object a spring hook returns straight to `style`, put springs on the declarations you want to move, or interpolate the whole object out with `spring.to(…)` — whichever reads better for the animation at hand. Only the `style` prop is read this way; a spring nested inside any other object-valued prop, such as a `Pango.AttrList`, is not tracked.
 
 Because the rule is scoped to that one widget, this also animates what a widget has no property for at all: a `border-radius` that opens up, a `box-shadow` that lifts, a `filter` that desaturates a row as it is dismissed.
 

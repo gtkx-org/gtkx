@@ -36,7 +36,7 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 
 The `&` is not optional, and the type enforces it: a bare `":hover"` key would compile to a *descendant* `:hover`, which is not what it reads like. Every rule has to start from the widget's own class, and one that does not is dropped with a warning instead of applied, so a declaration cannot break out of its block and repaint the rest of the window. A combinator after the `&` does reach past the widget on purpose, which is what `& label` above relies on.
 
-Setting the prop to `undefined` or `null` removes the declarations again. A spring can drive the whole object per frame; see [Animations](/guide/animations).
+Setting the prop to `undefined` or `null` removes the declarations again. A spring can drive the whole object or an individual declaration; see [Animations](/guide/animations).
 
 ### GTK4 CSS has no layout
 
