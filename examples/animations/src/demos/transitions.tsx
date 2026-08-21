@@ -1,13 +1,12 @@
 import { animated, useTransition } from "@gtkx/animated";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "./types.js";
 
 type Item = { key: number; label: string };
 type ListState = { items: Item[]; nextKey: number };
 
-const AnimatedLabel = animated(GtkLabel);
 const SLOW = { duration: 300 };
 
 const initialItems: Item[] = [
@@ -56,7 +55,7 @@ function TransitionsDemo() {
             </GtkBox>
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
                 {transitions((styles, item) => (
-                    <AnimatedLabel
+                    <animated.GtkLabel
                         opacity={styles.opacity}
                         marginStart={styles.marginStart}
                         label={item.label}

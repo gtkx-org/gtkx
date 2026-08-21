@@ -1,11 +1,8 @@
 import { animated, config, to, useSpring } from "@gtkx/animated";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkProgressBar } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 import type { Demo } from "./types.js";
 
-const AnimatedBox = animated(GtkBox);
-const AnimatedLabel = animated(GtkLabel);
-const AnimatedProgressBar = animated(GtkProgressBar);
 const SOURCE = { duration: 1200 };
 
 const interpolationDemo: Demo = {
@@ -34,23 +31,23 @@ function InterpolationDemo() {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <AnimatedLabel cssClasses={["title-4"]} halign={Gtk.Align.START}>
+            <animated.GtkLabel cssClasses={["title-4"]} halign={Gtk.Align.START}>
                 {value.to(formatCount)}
                 {" items"}
-            </AnimatedLabel>
-            <AnimatedProgressBar
+            </animated.GtkLabel>
+            <animated.GtkProgressBar
                 name="interpolation-progress"
                 hexpand
                 fraction={value.to((current) => current / 100)}
             />
-            <AnimatedBox
+            <animated.GtkBox
                 name="interpolation-bar"
                 cssClasses={["osd"]}
                 halign={Gtk.Align.START}
                 heightRequest={24}
                 widthRequest={value.to((current) => 40 + current * 2)}
             />
-            <AnimatedLabel halign={Gtk.Align.START} label={to([value, bonus], formatCombined)} />
+            <animated.GtkLabel halign={Gtk.Align.START} label={to([value, bonus], formatCombined)} />
             <GtkButton label="Replay" halign={Gtk.Align.START} onClicked={replay} />
         </GtkBox>
     );

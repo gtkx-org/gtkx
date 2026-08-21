@@ -25,7 +25,6 @@ const NARROW = 100;
 const WIDE = 200;
 const OFFSET = 8;
 const STATIC_WIDTH = 140;
-const AnimatedLabel = animated(GtkLabel);
 const AnimatedForwarding = animated(Forwarding);
 const AnimatedOpaque = animated(Opaque);
 const AnimatedRefOnly = animated(RefOnly);
@@ -39,7 +38,7 @@ const rerenderRefOnly: Rerender = { run: null };
 const Widening = ({ labelRef }: { labelRef: RefObject<Gtk.Label | null> }): ReactNode => {
     const { width } = useSpring({ from: { width: NARROW }, to: { width: WIDE }, config: LONG });
 
-    return <AnimatedLabel ref={labelRef} style={width.to((current) => ({ minWidth: current }))} label="widening" />;
+    return <animated.GtkLabel ref={labelRef} style={width.to((current) => ({ minWidth: current }))} label="widening" />;
 };
 
 const Combined = ({ labelRef }: { labelRef: RefObject<Gtk.Label | null> }): ReactNode => {
@@ -50,7 +49,7 @@ const Combined = ({ labelRef }: { labelRef: RefObject<Gtk.Label | null> }): Reac
     });
 
     return (
-        <AnimatedLabel
+        <animated.GtkLabel
             ref={labelRef}
             opacity={styles.fade}
             marginTop={styles.offset}
@@ -64,7 +63,7 @@ const Vanishing = ({ labelRef }: { labelRef: RefObject<Gtk.Label | null> }): Rea
     const { width } = useSpring({ from: { width: WIDE }, to: { width: 0 }, config: SLOW });
 
     return (
-        <AnimatedLabel
+        <animated.GtkLabel
             ref={labelRef}
             style={width.to((current) => (current === 0 ? null : { minWidth: current }))}
             label="vanishing"
@@ -114,19 +113,21 @@ const WideningRefOnly = (): ReactNode => {
 const WholeObject = ({ labelRef }: { labelRef: RefObject<Gtk.Label | null> }): ReactNode => {
     const styles = useSpring({ from: { color: RED }, to: { color: BLUE }, config: SLOW });
 
-    return <AnimatedLabel ref={labelRef} style={styles} label="whole object" />;
+    return <animated.GtkLabel ref={labelRef} style={styles} label="whole object" />;
 };
 
 const OneDeclaration = ({ labelRef }: { labelRef: RefObject<Gtk.Label | null> }): ReactNode => {
     const { tint } = useSpring({ from: { tint: RED }, to: { tint: BLUE }, config: SLOW });
 
-    return <AnimatedLabel ref={labelRef} style={{ color: tint, paddingTop: 2 }} label="one declaration" />;
+    return <animated.GtkLabel ref={labelRef} style={{ color: tint, paddingTop: 2 }} label="one declaration" />;
 };
 
 const NestedBlock = ({ labelRef }: { labelRef: RefObject<Gtk.Label | null> }): ReactNode => {
     const { tint } = useSpring({ from: { tint: RED }, to: { tint: BLUE }, config: SLOW });
 
-    return <AnimatedLabel ref={labelRef} style={{ color: GREEN, "&:hover": { color: tint } }} label="nested block" />;
+    return (
+        <animated.GtkLabel ref={labelRef} style={{ color: GREEN, "&:hover": { color: tint } }} label="nested block" />
+    );
 };
 
 const Slide = ({ renders }: SlideProps): ReactNode => {
@@ -195,7 +196,7 @@ describe("animated - style", () => {
 describe("animated - style edge cases", () => {
     it("applies a style that is not a spring", async () => {
         const labelRef = createRef<Gtk.Label>();
-        await render(<AnimatedLabel ref={labelRef} style={{ minWidth: STATIC_WIDTH }} label="static" />, ANIMATED);
+        await render(<animated.GtkLabel ref={labelRef} style={{ minWidth: STATIC_WIDTH }} label="static" />, ANIMATED);
         expect(getMinWidth(labelRef.current)).toBe(STATIC_WIDTH);
     });
 
