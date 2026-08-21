@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <package name="gtk4"/>
+  <namespace name="Gtk"
+             version="4.0"
+             shared-library="libgtk-4.so.1"
+             c:identifier-prefixes="Gtk"
+             c:symbol-prefixes="gtk">
+    <class name="Widget"
+           c:symbol-prefix="widget"
+           c:type="GtkWidget"
+           parent="GObject.InitiallyUnowned"
+           abstract="1"
+           glib:type-name="GtkWidget"
+           glib:get-type="gtk_widget_get_type">
+      <property name="visible" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+    </class>
+  </namespace>
+</repository>
