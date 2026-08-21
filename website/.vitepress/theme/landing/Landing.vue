@@ -12,6 +12,11 @@ import Showcase from "./Showcase.vue";
 <template>
   <div class="landing">
     <a class="skip-link" href="#main">Skip to content</a>
+    <a class="ann" href="/blog/gtkx-1-3">
+      <span class="ann__tag">NEW</span>
+      <span class="ann__txt">GTKX 1.3: Introducing @gtkx/animated</span>
+      <span class="ann__arrow" aria-hidden="true">→</span>
+    </a>
     <Nav />
     <main id="main">
       <Hero />
@@ -43,5 +48,41 @@ import Showcase from "./Showcase.vue";
 }
 .skip-link:focus-visible {
   top: 1rem;
+}
+.ann {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  text-decoration: none;
+  transition: var(--transition-colors);
+}
+.ann:hover {
+  color: var(--text-1);
+}
+.ann__tag {
+  font-weight: 700;
+  color: var(--brand-contrast);
+  background: var(--brand-strong);
+  border-radius: var(--radius-pill);
+  padding: 0.1rem 0.45rem;
+  letter-spacing: 0.04em;
+}
+.ann__arrow {
+  color: var(--brand);
+}
+@media (max-width: 560px) {
+  .ann__txt {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60vw;
+  }
 }
 </style>
