@@ -1,10 +1,7 @@
 import { animated, useSpringValue } from "@gtkx/animated";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel, GtkLevelBar } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 import type { Demo } from "./types.js";
-
-const AnimatedLevelBar = animated(GtkLevelBar);
-const AnimatedLabel = animated(GtkLabel);
 
 const imperativeDemo: Demo = {
     id: "imperative",
@@ -50,8 +47,8 @@ function ImperativeDemo() {
                     }}
                 />
             </GtkBox>
-            <AnimatedLevelBar name="imperative-level" minValue={0} maxValue={100} value={progress} hexpand />
-            <AnimatedLabel
+            <animated.GtkLevelBar name="imperative-level" minValue={0} maxValue={100} value={progress} hexpand />
+            <animated.GtkLabel
                 name="imperative-percent"
                 cssClasses={["title-3"]}
                 halign={Gtk.Align.START}

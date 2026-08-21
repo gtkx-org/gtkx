@@ -2,7 +2,6 @@ import type { ReactNode, RefObject } from "react";
 import { animated, useSpring } from "@gtkx/animated";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -16,7 +15,6 @@ type FadeProps = {
 };
 
 const ANIMATED = { areAnimationsEnabled: true };
-const AnimatedLabel = animated(GtkLabel);
 const STALL_GAP_MS = 200;
 const TIMER_FRAME_MS = 16;
 const CLOCK_SPEEDUP = 2;
@@ -33,7 +31,7 @@ const Fade = ({ labelRef, counters, duration, to = 1, stamps }: FadeProps): Reac
         },
     });
 
-    return <AnimatedLabel ref={labelRef} opacity={styles.opacity} label="fade" />;
+    return <animated.GtkLabel ref={labelRef} opacity={styles.opacity} label="fade" />;
 };
 
 const presentExtraWindow = async (): Promise<Gtk.Window> => {
