@@ -4,7 +4,14 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBRARIES } from "./cli-project.js";
+import {
+    type CliProject,
+    createCliProject,
+    removeCliProject,
+    runCli,
+    STORE_FUTURE,
+    STORE_LIBRARIES,
+} from "./cli-project.js";
 
 type BrokenCase = { title: string; config: string | undefined };
 
@@ -492,6 +499,30 @@ describe("gtkx codegen (a project that does not install @gtkx/cairo)", () => {
         expect(existsSync(storeLocalCairoLink(state.project, "gi"))).toBe(false);
         expect(existsSync(storeLocalCairoLink(state.project, "jsx"))).toBe(false);
         expect(run.output).toContain("is not declared in this project's package.json");
+    });
+});
+
+describe("gtkx codegen (a project that installed the workspace store)", () => {
+    const state: { project: CliProject } = { project: { root: "", nodeModules: "" } };
+
+    beforeAll(() => {
+        state.project = createCliProject({
+            prefix: "gtkx-cli-codegen-installed-",
+            config: config(
+                `, libraries: ${JSON.stringify(STORE_LIBRARIES)}, future: ${JSON.stringify(STORE_FUTURE)}`,
+            ),
+            hasStore: true,
+        });
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it("leaves the store it was installed with alone", () => {
+        markStore(state.project);
+        expect(runCli(state.project, ["codegen"]).status).toBe(0);
+        expect(isStoreMarked(state.project)).toBe(true);
     });
 });
 

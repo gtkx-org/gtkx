@@ -1,5 +1,13 @@
 {
     "extends": "../../tsconfig.test.json",
+    "compilerOptions": {
+        "rootDir": "../.."
+    },
+    "include": [
+        "tests/**/*.ts",
+        "tests/**/*.tsx",
+        "../../gtkx.config.base.ts"
+    ],
     "references": [
         {
             "path": "./tsconfig.lib.json"

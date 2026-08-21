@@ -4,6 +4,7 @@ import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, write
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import workspaceConfig from "../../../gtkx.config.base.js";
 
 type CliProject = { root: string; nodeModules: string };
 type CliRun = { status: number | null; output: string };
@@ -28,8 +29,8 @@ const SCOPE = "@gtkx";
 const STORE_NAMES = ["gi", "jsx"];
 const WORKSPACE_PACKAGES = ["cairo", "components", "config", "css", "native", "react", "runtime", "testing", "utils"];
 const REGISTRY_PACKAGES = ["@types", "csstype", "react", "tsx"];
-const STORE_LIBRARIES = ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"];
-const STORE_FUTURE = { v2ByteArrays: true };
+const STORE_LIBRARIES = workspaceConfig.libraries;
+const STORE_FUTURE = workspaceConfig.future;
 const MANIFEST = { name: "gtkx-cli-project", version: "1.0.0", type: "module" };
 const GIT_IDENTITY = ["-c", "user.email=probe@gtkx.dev", "-c", "user.name=Probe", "-c", "commit.gpgsign=false"];
 
