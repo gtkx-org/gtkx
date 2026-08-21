@@ -55,27 +55,28 @@ import Showcase from "./Showcase.vue";
   justify-content: center;
   gap: 0.6rem;
   padding: 0.5rem 1rem;
-  background: var(--bg-alt);
-  border-bottom: 1px solid var(--border);
+  background: var(--brand-strong);
+  border-bottom: 1px solid var(--brand-strong);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--text-2);
+  color: var(--brand-contrast);
   text-decoration: none;
   transition: var(--transition-colors);
 }
 .ann:hover {
-  color: var(--text-1);
+  background: var(--brand-strong-hover);
+  border-bottom-color: var(--brand-strong-hover);
 }
 .ann__tag {
   font-weight: 700;
-  color: var(--brand-contrast);
-  background: var(--brand-strong);
+  color: var(--brand-strong);
+  background: var(--brand-contrast);
   border-radius: var(--radius-pill);
   padding: 0.1rem 0.45rem;
   letter-spacing: 0.04em;
 }
 .ann__arrow {
-  color: var(--brand);
+  color: var(--brand-contrast);
 }
 @media (max-width: 560px) {
   .ann__txt {
