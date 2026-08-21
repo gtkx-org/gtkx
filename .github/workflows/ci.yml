@@ -225,8 +225,34 @@ jobs:
       - name: Run tests
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm test
+          command: pnpm exec nx run-many -t test --exclude @gtkx/cli
           image-ref: ${{ needs.image-manifest.outputs.ref }}
+
+      - name: Report failures to Nx Cloud
+        if: *fix-ci
+        continue-on-error: true
+        uses: ./.github/actions/run-in-container
+        with:
+          command: pnpm exec nx fix-ci
+          install: "false"
+
+  test-cli:
+    needs: [changes, image-manifest]
+    if: *code-changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GTKX_MAX_WORKERS: "2"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run the CLI tests
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm exec nx run @gtkx/cli:test
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
+          extra-env: GTKX_MAX_WORKERS
 
       - name: Report failures to Nx Cloud
         if: *fix-ci
