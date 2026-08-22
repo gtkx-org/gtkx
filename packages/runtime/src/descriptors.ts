@@ -205,6 +205,10 @@ const voidT: VoidDescriptor = { kind: "void" };
 const unicharT: UnicharDescriptor = { kind: "unichar" };
 /** Descriptor for an opaque `gpointer`, taken from a typed array's memory or a numeric address. */
 const bufferT: BufferDescriptor = { kind: "buffer" };
+const stringBorrowedT: StringDescriptor = { kind: "string", ownership: "borrowed" };
+const stringFullT: StringDescriptor = { kind: "string", ownership: "full" };
+const objectBorrowedT: ObjectDescriptor = { kind: "object", ownership: "borrowed" };
+const objectFullT: ObjectDescriptor = { kind: "object", ownership: "full" };
 const fundamentalLifecycles: Map<string, FundamentalLifecycle> = new Map();
 
 const isGtypeDescriptor = (descriptor: Descriptor): descriptor is TypeDescriptor =>
@@ -539,7 +543,11 @@ export {
     unicharT,
     bufferT,
     stringT,
+    stringBorrowedT,
+    stringFullT,
     objectT,
+    objectBorrowedT,
+    objectFullT,
     refT,
     hashTableT,
     enumT,

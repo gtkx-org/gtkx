@@ -2,7 +2,7 @@ import type { GirFunction } from "../../gir/function.js";
 import type { GirParameter } from "../../gir/parameter.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { tObject } from "../../analysis/descriptor.js";
+import { objectDescriptor } from "../../analysis/descriptor-render.js";
 import { inputParameters, parameterIdentifier } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { resolveInterfaces } from "../../gir/ancestry.js";
@@ -101,7 +101,7 @@ const itemComparatorArgDescriptors = (
 
     for (const { parameter: item, index } of items) {
         if (isItemPointer(context, item.type)) {
-            overrides.set(index, tObject("borrowed"));
+            overrides.set(index, objectDescriptor(context, "borrowed"));
         }
     }
 

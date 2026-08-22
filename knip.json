@@ -28,6 +28,12 @@
         ],
         "packages/cli/src/refresh-runtime.ts": [
             "exports"
+        ],
+        "packages/runtime/src/descriptors.ts": [
+            "exports"
+        ],
+        "packages/runtime/src/internal.ts": [
+            "exports"
         ]
     },
     "workspaces": {

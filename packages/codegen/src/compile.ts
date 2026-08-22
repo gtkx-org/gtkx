@@ -3,6 +3,8 @@ import { existsSync, mkdirSync, renameSync, rmSync, symlinkSync, writeFileSync }
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
+import { countEnumDeclarations, flattenEnums } from "./enums.js";
+import { annotatePureCalls, countPureCalls } from "./pure.js";
 import { createStagingDir, sweepStrandedDirs } from "./staging.js";
 
 type ProjectFile = {
@@ -266,6 +268,36 @@ const transpileOptions = (compilerOptions: ts.CompilerOptions, fileName: string)
     reportDiagnostics: true,
 });
 
+const flattenedModule = (module: SourceModule, outputText: string): string => {
+    const intended = countEnumDeclarations(module.source);
+    const { text, flattened } = flattenEnums(outputText);
+
+    if (flattened !== intended) {
+        throw new Error(
+            `The generated module ${module.fileName} declares ${String(intended)} enum(s), but the emitted ` +
+            `JavaScript gave up ${String(flattened)} downleveled enum(s). The flattening pass matches the ` +
+            "shape the TypeScript printer emits, and has to be taught the shape a new printer emits instead.",
+        );
+    }
+
+    return text;
+};
+
+const annotatedModule = (module: SourceModule, outputText: string): string => {
+    const intended = countPureCalls(module.source);
+    const { text, annotated } = annotatePureCalls(outputText);
+
+    if (annotated !== intended) {
+        throw new Error(
+            `The generated module ${module.fileName} builds ${String(intended)} value(s) with a pure call, but ` +
+            `the emitted JavaScript took ${String(annotated)} annotation(s). The annotation pass matches the ` +
+            "shape the TypeScript printer emits, and has to be taught the shape a new printer emits instead.",
+        );
+    }
+
+    return text;
+};
+
 const emitModule = (module: SourceModule, projectDir: string): ts.Diagnostic[] => {
     const fileName = join(projectDir, module.fileName);
     const declaration = ts.transpileDeclaration(module.source, transpileOptions(DECLARATION_OPTIONS, fileName));
@@ -277,7 +309,11 @@ const emitModule = (module: SourceModule, projectDir: string): ts.Diagnostic[] =
     }
 
     writeFileSync(replaceExtension(fileName, DECLARATION_EXTENSION), declaration.outputText);
-    writeFileSync(replaceExtension(fileName, JAVASCRIPT_EXTENSION), javascript.outputText);
+
+    writeFileSync(
+        replaceExtension(fileName, JAVASCRIPT_EXTENSION),
+        annotatedModule(module, flattenedModule(module, javascript.outputText)),
+    );
 
     return [];
 };

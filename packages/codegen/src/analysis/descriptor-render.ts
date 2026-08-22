@@ -1,4 +1,4 @@
-import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
+import { sanitizeTypeIdentifier, sourceStringLiteral, upperFirst } from "@gtkx/utils";
 import type { GirCallback } from "../gir/callback.js";
 import type { Library } from "../gir/library.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
@@ -29,7 +29,6 @@ import {
     type Ownership,
     type ScalarDescriptorName,
     tArray,
-    tBiguint64,
     tBoxed,
     tByteArray,
     tCallback,
@@ -38,20 +37,12 @@ import {
     tFixedArray,
     tFlags,
     tFundamental,
-    tGtype,
     tHashTable,
-    tInt32,
     tList,
     tNumericByteArray,
-    tObject,
     tRef,
-    tScalar,
     tSizedArray,
-    tString,
     tStruct,
-    tUint32,
-    tUint64,
-    tVoid,
 } from "./descriptor.js";
 import { carrayFor, isByteSequence, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
 
@@ -164,6 +155,24 @@ const isSkippedPrimaryReturn = (library: Library, returnValue: GirReturnValue): 
 const isVoidPrimaryReturn = (library: Library, returnValue: GirReturnValue): boolean =>
     primaryReturnKind(library, returnValue) === "void";
 
+const importedDescriptor = (context: ModuleContext, identifier: string): string => {
+    context.addRuntimeInternalImport(identifier);
+
+    return identifier;
+};
+
+const scalarDescriptor = (context: ModuleContext, name: ScalarDescriptorName): string =>
+    importedDescriptor(context, `${name}T`);
+
+const voidDescriptor = (context: ModuleContext): string => importedDescriptor(context, "voidT");
+const gtypeDescriptor = (context: ModuleContext): string => importedDescriptor(context, "gtypeT");
+
+const stringDescriptor = (context: ModuleContext, ownership: Ownership): string =>
+    importedDescriptor(context, `string${upperFirst(ownership)}T`);
+
+const objectDescriptor = (context: ModuleContext, ownership: Ownership): string =>
+    importedDescriptor(context, `object${upperFirst(ownership)}T`);
+
 const argIndexOptions = (options: RenderDescriptorOptions): ArgIndexOptions => ({
     argIndexOffset: options.argIndexOffset ?? 0,
     argIndexMap: options.argIndexMap,
@@ -178,7 +187,7 @@ const renderDescriptor = (
     options: RenderDescriptorOptions = {},
 ): string => {
     if (ref === undefined) {
-        return tVoid;
+        return voidDescriptor(context);
     }
 
     const indexOptions = argIndexOptions(options);
@@ -186,18 +195,18 @@ const renderDescriptor = (
     const type = context.library.typeFor(ref);
 
     if (type === undefined) {
-        return tObject(ownership);
+        return objectDescriptor(context, ownership);
     }
 
     switch (type.kind) {
         case "primitive": {
-            return primitiveExpression(type.category, ownership);
+            return primitiveExpression(context, type.category, ownership);
         }
         case "varargs": {
-            return tVoid;
+            return voidDescriptor(context);
         }
         case "callback": {
-            return tBiguint64;
+            return scalarDescriptor(context, "biguint64");
         }
         case "class":
         case "interface":
@@ -234,7 +243,9 @@ const listExpression = (
     const ownership = transferOwnership(transfer);
 
     if (type.flavor === "gbytearray") {
-        return context.library.isByteArrayTyped ? tByteArray(ownership) : tNumericByteArray(ownership);
+        return context.library.isByteArrayTyped
+            ? tByteArray(ownership)
+            : tNumericByteArray(scalarDescriptor(context, "uint8"), ownership);
     }
 
     const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), indexOptions);
@@ -399,24 +410,28 @@ const renderCallbackType = (
     });
 };
 
-const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership): string => {
+const primitiveExpression = (
+    context: ModuleContext,
+    category: PrimitiveCategory,
+    ownership: Ownership,
+): string => {
     if (category === "void") {
-        return tVoid;
+        return voidDescriptor(context);
     }
 
     if (category === "string") {
-        return tString(ownership);
+        return stringDescriptor(context, ownership);
     }
 
     if (category === "pointer") {
-        return tBiguint64;
+        return scalarDescriptor(context, "biguint64");
     }
 
     if (category === "gtype") {
-        return tGtype;
+        return gtypeDescriptor(context);
     }
 
-    return tScalar(category satisfies ScalarDescriptorName);
+    return scalarDescriptor(context, category satisfies ScalarDescriptorName);
 };
 
 const renderFundamental = (descriptor: FundamentalDescriptor): string => {
@@ -452,7 +467,7 @@ const classOrInterfaceExpression = (
     const ancestor = fundamentalAncestor(context, resolved);
 
     if (ancestor === undefined) {
-        return tObject(ownership);
+        return objectDescriptor(context, ownership);
     }
 
     return renderFundamental({ ...ancestor, ownership: sunkOwnership(ancestor, ownership, isNewlyCreated) });
@@ -522,20 +537,22 @@ const classSelfDescriptor = (
 ): string => {
     const ancestor = fundamentalAncestor(context, type);
 
-    return ancestor === undefined ? tObject(ownership) : renderFundamental({ ...ancestor, ownership });
+    return ancestor === undefined
+        ? objectDescriptor(context, ownership)
+        : renderFundamental({ ...ancestor, ownership });
 };
 
 const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): string => {
     const ref = instance.type;
 
     if (ref === undefined) {
-        return tObject("borrowed");
+        return objectDescriptor(context, "borrowed");
     }
 
     const type = context.library.typeFor(ref);
 
     if (type === undefined) {
-        return tObject("borrowed");
+        return objectDescriptor(context, "borrowed");
     }
 
     if (isClassOrInterface(type)) {
@@ -546,7 +563,7 @@ const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): s
         return recordExpression(context, type, transferOwnership(instance.transferOwnership));
     }
 
-    return tObject("borrowed");
+    return objectDescriptor(context, "borrowed");
 };
 
 const recordLayout = (placement: RecordPlacement): RecordLayout => ({
@@ -681,19 +698,20 @@ const recordExpression = (
     return plainRecordExpression(context, resolved, ownership, placement);
 };
 
-const rawEnumDescriptor = (isSigned: boolean): string => (isSigned ? tInt32 : tUint32);
+const rawEnumDescriptor = (context: ModuleContext, isSigned: boolean): string =>
+    scalarDescriptor(context, isSigned ? "int32" : "uint32");
 
 const flagsMask = (resolved: Extract<EntityType, { kind: "enum" }>): number =>
     resolved.value.members.reduce((mask, member) => (mask | Number(member.value)) >>> 0, 0);
 
-const enumExpression = (resolved: Extract<EntityType, { kind: "enum" }>): string => {
+const enumExpression = (context: ModuleContext, resolved: Extract<EntityType, { kind: "enum" }>): string => {
     const getter = resolved.value.glibGetType;
     const isSigned = resolved.value.members.some((member) => member.value.startsWith("-"));
     const lib = resolved.namespace.sharedLibrary;
     const isBitfield = resolved.value.kind === "bitfield";
 
     if (getter === undefined || getter === "" || lib === undefined) {
-        return isBitfield ? tFlags("", "", isSigned, flagsMask(resolved)) : rawEnumDescriptor(isSigned);
+        return isBitfield ? tFlags("", "", isSigned, flagsMask(resolved)) : rawEnumDescriptor(context, isSigned);
     }
 
     return isBitfield ? tFlags(lib, getter, isSigned) : tEnum(lib, getter, isSigned);
@@ -719,7 +737,7 @@ const expressionForResolved = (
             });
         }
         case "enum": {
-            return enumExpression(resolved);
+            return enumExpression(context, resolved);
         }
         case "alias": {
             return aliasExpression(context, resolved.value.target, transfer, options);
@@ -779,7 +797,7 @@ const arrayExpression = (
     }
 
     if (hasUnknownArrayLength(ref)) {
-        return tUint64;
+        return scalarDescriptor(context, "uint64");
     }
 
     const ownership = transferOwnership(transfer);
@@ -823,7 +841,7 @@ const aliasExpression = (
     options: RenderDescriptorOptions,
 ): string => {
     if (target === undefined) {
-        return tObject(transferOwnership(transfer));
+        return objectDescriptor(context, transferOwnership(transfer));
     }
 
     return renderDescriptor(context, target, transfer, options);
@@ -831,6 +849,8 @@ const aliasExpression = (
 
 export {
     isPlainStruct,
+    objectDescriptor,
+    voidDescriptor,
     transferOwnership,
     isInlineCallbackRef,
     isSkippedPrimaryReturn,

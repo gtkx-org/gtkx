@@ -87,7 +87,7 @@ const BYTE_SEQUENCE_CASES: ByteSequenceCase[] = [
             "writeSized(data: Uint8Array | number[]): void",
             "readNumbers(): number[]",
         ],
-        bindings: ['t.array(t.uint8, "gbytearray"'],
+        bindings: ['t.array(uint8T, "gbytearray"'],
     },
     {
         title: "represents byte sequences as typed arrays once the project opts in",
@@ -121,7 +121,7 @@ const VALUE_RETURN_CASES: ValueReturnCase[] = [
         title: "hands back the value itself unless the project opts in",
         v2ValueReturns: undefined,
         declarations: ["peek(): GObject.Value", "fill(): [boolean, GObject.Value]"],
-        bindings: ['{ type: t.boxed("GValue"'],
+        bindings: ['{ type: /* @__PURE__ */ t.boxed("GValue"'],
     },
     {
         title: "hands back what the value holds once the project opts in",
@@ -175,7 +175,7 @@ const INOUT_RETURN_CASES: InoutReturnCase[] = [
         ],
         bindings: [
             'direction: "inout", isCallerAllocated: true, isConsumed: true, isRequired: true }',
-            't.int32, direction: "inout", isRequired: true }',
+            'int32T, direction: "inout", isRequired: true }',
         ],
     },
 ];
@@ -202,6 +202,39 @@ const INLINE_ELEMENT_DESCRIPTORS = [
     't.struct("borrowed", { size: 8, wrapperClass: Span, isInline: true })',
 ];
 
+const ENUM_DECLARATIONS = [
+    "export declare enum Mode {",
+    "MAX = 2,",
+    "BROKEN = -1",
+    "export declare enum Trait {",
+];
+
+const MODE_OBJECT = [
+    "export var Mode = {",
+    '    "OFF": 0,',
+    '    "0": "OFF",',
+    '    "LOW": 1,',
+    '    "1": "LOW",',
+    '    "HIGH": 2,',
+    '    "2": "MAX",',
+    '    "MAX": 2,',
+    '    "BROKEN": -1,',
+    '    "-1": "BROKEN",',
+    "};",
+].join("\n");
+
+const TRAIT_OBJECT = [
+    "export var Trait = {",
+    '    "NONE": 0,',
+    '    "0": "NONE",',
+    '    "FAST": 1,',
+    '    "1": "FAST",',
+    '    "SMALL": 2,',
+    '    "2": "SMALL",',
+    "};",
+].join("\n");
+
+const ENUM_OBJECTS = [MODE_OBJECT, TRAIT_OBJECT];
 const INLINE_ARRAY_FIELDS = ["axes", "corners", "spans"];
 const POINTER_ARRAY_FIELDS = ["names", "buffer"];
 const OMITTED_ARRAY_FIELDS = ["handles", "slots"];
@@ -213,7 +246,10 @@ const AXES_WRITE = /write\(getHandle\(this\), (\w+), 0 \+ __index \* 8, toNative
 const CORNER_READ = /__result\[__index\] = fromNative\(\w+, read\(getHandle\(this\), \w+, 32 \+ __index \* 16\)\)/u;
 const CORNER_WRITE = /write\(getHandle\(this\), (\w+), 32 \+ __index \* 16, toNative\(\1, __element\)\);/u;
 const POINTER_ARRAY_GETTER = /get buffer\(\) \{\s+return fromNative\(/u;
-const LENGTH_BOUNDED_READ = /read\(getHandle\(this\), t\.struct\("borrowed", \{ size: this\.nLinks \* 8 \}\), 8\)/u;
+
+const LENGTH_BOUNDED_READ =
+    /read\(getHandle\(this\), \/\* @__PURE__ \*\/ t\.struct\("borrowed", \{ size: this\.nLinks \* 8 \}\), 8\)/u;
+
 const AXES_EMISSION = [AXES_GETTER, AXES_READ, AXES_SETTER, AXES_BOUND, AXES_WRITE];
 
 const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
@@ -586,6 +622,41 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
     });
 });
 
+describe("gtkx codegen (enums a bundler can drop)", () => {
+    const state: { project: CliProject; status: number | null } = {
+        project: { root: "", nodeModules: "" },
+        status: null,
+    };
+
+    const declarations = (): string => generatedModule(state.project, "gi", "enumshape", "enumshape.d.ts");
+    const bindings = (): string => generatedModule(state.project, "gi", "enumshape", "enumshape.js");
+
+    beforeAll(() => {
+        state.project = createCliProject({
+            prefix: "gtkx-cli-codegen-enums-",
+            config: fixtureConfig("EnumShape-1.0"),
+        });
+
+        state.status = runCli(state.project, ["codegen"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it("declares an enumeration and a bitfield as enums the types can compose", () => {
+        expect(state.status).toBe(0);
+        const declared = declarations();
+        expect(ENUM_DECLARATIONS.filter((text) => !declared.includes(text))).toEqual([]);
+    });
+
+    it("binds each enum as an object holding the forward and the reverse mapping", () => {
+        expect(state.status).toBe(0);
+        const bound = bindings();
+        expect(ENUM_OBJECTS.filter((text) => !bound.includes(text))).toEqual([]);
+    });
+});
+
 describe("gtkx codegen (where the documentation goes)", () => {
     const state: { project: CliProject; status: number | null } = {
         project: { root: "", nodeModules: "" },
@@ -917,7 +988,7 @@ describe("gtkx codegen (callback arguments of vtable slots)", () => {
         expect(state.status).toBe(0);
 
         expect(bindings()).toContain(
-            't.callback([t.int32, t.biguint64], t.boolean, { hasUserData: true, userDataIndex: 1, scope: "async" })',
+            't.callback([int32T, biguint64T], booleanT, { hasUserData: true, userDataIndex: 1, scope: "async" })',
         );
 
         expect(declarations()).toContain("vfuncBind(hook: HookFunc | null): void;");
@@ -928,7 +999,7 @@ describe("gtkx codegen (callback arguments of vtable slots)", () => {
         const watchSlot = bindings().split('vfuncName: "watch"', 2)[1] ?? "";
 
         expect(watchSlot).toContain(
-            'argDescriptors: [t.object("borrowed"), t.biguint64, t.biguint64, t.biguint64]',
+            "argDescriptors: [objectBorrowedT, biguint64T, biguint64T, biguint64T]",
         );
 
         expect(declarations()).toContain(
@@ -941,7 +1012,7 @@ describe("gtkx codegen (callback arguments of vtable slots)", () => {
         const deferSlot = bindings().split('vfuncName: "defer"', 2)[1] ?? "";
 
         expect(deferSlot).toContain(
-            'argDescriptors: [t.object("borrowed"), t.biguint64, t.int32, t.biguint64]',
+            "argDescriptors: [objectBorrowedT, biguint64T, int32T, biguint64T]",
         );
 
         expect(declarations()).toContain(

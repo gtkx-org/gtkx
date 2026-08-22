@@ -3,6 +3,9 @@ import type { GirNamespace } from "../gir/namespace.js";
 import { externalPackageFor } from "../gir/external-namespaces.js";
 import { type Declaration, ModuleBuilder } from "./module.js";
 
+const RUNTIME_PACKAGE = "@gtkx/runtime";
+const RUNTIME_INTERNAL_PACKAGE = "@gtkx/runtime/internal";
+
 class ModuleContext {
     public module: ModuleBuilder = new ModuleBuilder();
     public namespace: GirNamespace;
@@ -14,11 +17,15 @@ class ModuleContext {
     }
 
     addRuntimeImport(name: string): void {
-        this.module.imports.addNamed("@gtkx/runtime", name);
+        this.module.imports.addNamed(RUNTIME_PACKAGE, name);
     }
 
     addRuntimeTypeImport(name: string): void {
-        this.module.imports.addNamed("@gtkx/runtime", name, true);
+        this.module.imports.addNamed(RUNTIME_PACKAGE, name, true);
+    }
+
+    addRuntimeInternalImport(name: string): void {
+        this.module.imports.addNamed(RUNTIME_INTERNAL_PACKAGE, name);
     }
 
     hoistDescriptor(expression: string): string {

@@ -162,11 +162,7 @@ const T: DescriptorNames = {
 const tVoid: string = T.void;
 const tBoolean: string = T.boolean;
 const tUint8: string = T.uint8;
-const tUint32: string = T.uint32;
-const tInt32: string = T.int32;
 const tUint64: string = T.uint64;
-const tBiguint64: string = T.biguint64;
-const tGtype: string = T.gtype;
 const tBuffer: string = T.buffer;
 
 const call = (name: DescriptorName, args: (string | undefined)[]): string => `${T[name]}(${joinArgs(args)})`;
@@ -181,8 +177,6 @@ const tScalar = (name: ScalarDescriptorName): string => T[name];
 
 const tString = (ownership: Ownership, length?: string): string =>
     call("string", [sourceStringLiteral(ownership), length]);
-
-const tObject = (ownership: Ownership): string => call("object", [sourceStringLiteral(ownership)]);
 
 const tBoxed = (glibName: string, options: BoxedOptions): string =>
     call("boxed", [
@@ -245,9 +239,9 @@ const tFlags = (lib: string, typeFnName: string, isSigned: boolean, mask?: numbe
 
 const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceStringLiteral(ownership)]);
 
-const tNumericByteArray = (ownership: Ownership): string =>
+const tNumericByteArray = (element: string, ownership: Ownership): string =>
     call("array", [
-        tUint8,
+        element,
         sourceStringLiteral("gbytearray"),
         sourceStringLiteral(ownership),
     ]);
@@ -336,15 +330,10 @@ export {
     tVoid,
     tBoolean,
     tUint8,
-    tUint32,
-    tInt32,
     tUint64,
-    tBiguint64,
-    tGtype,
     tBuffer,
     tScalar,
     tString,
-    tObject,
     tBoxed,
     tStruct,
     tInlineStruct,

@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <package name="enumshape-1.0"/>
+  <namespace name="EnumShape"
+             version="1.0"
+             shared-library="libenumshape.so.0"
+             c:identifier-prefixes="EnumShape"
+             c:symbol-prefixes="enum_shape">
+    <enumeration name="Mode"
+                 glib:type-name="EnumShapeMode"
+                 glib:get-type="enum_shape_mode_get_type"
+                 c:type="EnumShapeMode">
+      <member name="off" value="0" c:identifier="ENUM_SHAPE_MODE_OFF">
+        <doc xml:space="preserve">The shape does nothing.</doc>
+      </member>
+      <member name="low" value="1" c:identifier="ENUM_SHAPE_MODE_LOW"/>
+      <member name="high" value="2" c:identifier="ENUM_SHAPE_MODE_HIGH"/>
+      <member name="max" value="2" c:identifier="ENUM_SHAPE_MODE_MAX"/>
+      <member name="broken" value="-1" c:identifier="ENUM_SHAPE_MODE_BROKEN"/>
+    </enumeration>
+    <bitfield name="Trait"
+              glib:type-name="EnumShapeTrait"
+              glib:get-type="enum_shape_trait_get_type"
+              c:type="EnumShapeTrait">
+      <member name="none" value="0" c:identifier="ENUM_SHAPE_TRAIT_NONE"/>
+      <member name="fast" value="1" c:identifier="ENUM_SHAPE_TRAIT_FAST"/>
+      <member name="small" value="2" c:identifier="ENUM_SHAPE_TRAIT_SMALL"/>
+    </bitfield>
+    <class name="Shape"
+           c:symbol-prefix="shape"
+           c:type="EnumShapeShape"
+           parent="GObject.Object"
+           glib:type-name="EnumShapeShape"
+           glib:get-type="enum_shape_shape_get_type">
+      <method name="get_mode" c:identifier="enum_shape_shape_get_mode">
+        <return-value transfer-ownership="none">
+          <type name="Mode" c:type="EnumShapeMode"/>
+        </return-value>
+      </method>
+      <method name="set_traits" c:identifier="enum_shape_shape_set_traits">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Shape" c:type="EnumShapeShape*"/>
+          </instance-parameter>
+          <parameter name="traits" transfer-ownership="none">
+            <type name="Trait" c:type="EnumShapeTrait"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+  </namespace>
+</repository>

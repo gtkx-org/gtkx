@@ -12,6 +12,7 @@ type ExportedDeclaration = {
 };
 
 const EXPORTED_DECLARATION = /^export (?:abstract )?(class|const|enum|function|interface|type) ([A-Za-z_$][\w$]*)/mu;
+const BARE_IDENTIFIER = /^[A-Za-z_$][\w$]*$/u;
 
 const SPACES_BY_KEYWORD: Map<string, string[]> = new Map([
     ["class", ["value", "type"]],
@@ -119,6 +120,10 @@ class ModuleBuilder {
     }
 
     hoistDescriptor(expression: string): string {
+        if (BARE_IDENTIFIER.test(expression)) {
+            return expression;
+        }
+
         const existing = this.hoistedDescriptors.get(expression);
 
         if (existing !== undefined) {
