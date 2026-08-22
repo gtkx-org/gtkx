@@ -88,7 +88,8 @@ const syncNavigationStack = (
     view.setAnimateTransitions(isAnimated(options, desired.at(-1)));
 };
 
-const routeKeys = (state: { routes: readonly { key: string }[] }): string[] => state.routes.map((route) => route.key);
+const routeKeys = (state: { routes: readonly { key: string }[] }, offset: number): string[] =>
+    state.routes.slice(offset).map((route) => route.key);
 
 const popToActualStack = (
     navigation: StackNavigationHelpers,
@@ -103,9 +104,10 @@ const reconcilePoppedStack = (
     view: Adw.NavigationView,
     navigation: StackNavigationHelpers,
     options: OptionsByKey,
+    offset: number,
 ): void => {
     const actual = readNavigationStack(view);
-    const desired = routeKeys(navigation.getState());
+    const desired = routeKeys(navigation.getState(), offset);
 
     if (isSameStack(actual, desired)) {
         return;
@@ -115,7 +117,7 @@ const reconcilePoppedStack = (
         popToActualStack(navigation, actual, desired);
     }
 
-    syncNavigationStack(view, routeKeys(navigation.getState()), options, false);
+    syncNavigationStack(view, routeKeys(navigation.getState(), offset), options, false);
 };
 
 export { type OptionsByKey, reconcilePoppedStack, syncNavigationStack };

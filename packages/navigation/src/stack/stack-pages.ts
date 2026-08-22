@@ -17,15 +17,16 @@ type StackPages = {
     release: (key: string) => void;
 };
 
-const getFocusedKey = (state: StackState): string | undefined => state.routes[state.index]?.key;
+const getFocusedKey = (state: StackState, offset: number): string | undefined =>
+    state.index < offset ? undefined : state.routes[state.index]?.key;
 
-const mountedKeys = (state: StackState): string[] => [
-    ...state.routes.map((route) => route.key),
+const mountedKeys = (state: StackState, offset: number): string[] => [
+    ...state.routes.slice(offset).map((route) => route.key),
     ...state.preloadedRoutes.map((route) => route.key),
 ];
 
-const neededKeys = (state: StackState, closing: StackDescriptorMap): string[] => [
-    ...mountedKeys(state),
+const neededKeys = (state: StackState, closing: StackDescriptorMap, offset: number): string[] => [
+    ...mountedKeys(state, offset),
     ...Object.keys(closing),
 ];
 
@@ -40,8 +41,8 @@ const appendOrder = (previous: readonly string[], needed: readonly string[]): st
 const withoutKeys = (map: StackDescriptorMap, keys: readonly string[]): StackDescriptorMap =>
     Object.fromEntries(Object.entries(map).filter(([key]) => !keys.includes(key)));
 
-const nextClosing = (tracking: PageTracking, state: StackState): StackDescriptorMap => {
-    const mounted = mountedKeys(state);
+const nextClosing = (tracking: PageTracking, state: StackState, offset: number): StackDescriptorMap => {
+    const mounted = mountedKeys(state, offset);
     const kept = withoutKeys(tracking.closing, mounted);
     const { focusedKey } = tracking;
 
@@ -54,20 +55,25 @@ const nextClosing = (tracking: PageTracking, state: StackState): StackDescriptor
     return descriptor === undefined ? kept : { ...kept, [focusedKey]: descriptor };
 };
 
-const advance = (tracking: PageTracking, state: StackState, descriptors: StackDescriptorMap): PageTracking => {
-    const closing = nextClosing(tracking, state);
+const advance = (
+    tracking: PageTracking,
+    state: StackState,
+    descriptors: StackDescriptorMap,
+    offset: number,
+): PageTracking => {
+    const closing = nextClosing(tracking, state, offset);
 
     return {
-        order: appendOrder(tracking.order, neededKeys(state, closing)),
-        focusedKey: getFocusedKey(state),
+        order: appendOrder(tracking.order, neededKeys(state, closing, offset)),
+        focusedKey: getFocusedKey(state, offset),
         descriptors: { ...tracking.descriptors, ...descriptors },
         closing,
     };
 };
 
-const initialTracking = (state: StackState, descriptors: StackDescriptorMap): PageTracking => ({
-    order: neededKeys(state, {}),
-    focusedKey: getFocusedKey(state),
+const initialTracking = (state: StackState, descriptors: StackDescriptorMap, offset: number): PageTracking => ({
+    order: neededKeys(state, {}, offset),
+    focusedKey: getFocusedKey(state, offset),
     descriptors,
     closing: {},
 });
@@ -86,12 +92,17 @@ const resolvePage = (
     return sources.descriptors[key] ?? sources.closing[key];
 };
 
-const useStackPages = (state: StackState, descriptors: StackDescriptorMap, describe: Describe): StackPages => {
-    const [tracking, setTracking] = useState<PageTracking>(() => initialTracking(state, descriptors));
+const useStackPages = (
+    state: StackState,
+    descriptors: StackDescriptorMap,
+    describe: Describe,
+    offset: number,
+): StackPages => {
+    const [tracking, setTracking] = useState<PageTracking>(() => initialTracking(state, descriptors, offset));
 
-    if (!hasSameMembers(tracking.order, neededKeys(state, tracking.closing)) ||
-        tracking.focusedKey !== getFocusedKey(state)) {
-        setTracking(advance(tracking, state, descriptors));
+    if (!hasSameMembers(tracking.order, neededKeys(state, tracking.closing, offset)) ||
+        tracking.focusedKey !== getFocusedKey(state, offset)) {
+        setTracking(advance(tracking, state, descriptors, offset));
     }
 
     const release = useCallback((key: string) => {

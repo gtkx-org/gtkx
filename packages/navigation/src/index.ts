@@ -25,6 +25,23 @@ export {
 } from "./navigation-container.js";
 export type { HeaderOptions } from "./shared/types.js";
 export {
+    createSplitViewNavigator,
+    createSplitViewScreen,
+    SplitViewNavigator,
+    type SplitViewTypeBag,
+} from "./split-view/create-split-view-navigator.js";
+export type {
+    SplitViewDescriptor,
+    SplitViewDescriptorMap,
+    SplitViewNavigationConfig,
+    SplitViewNavigationEventMap,
+    SplitViewNavigationHelpers,
+    SplitViewNavigationOptions,
+    SplitViewNavigationProp,
+    SplitViewNavigatorProps,
+    SplitViewScreenProps,
+} from "./split-view/types.js";
+export {
     createStackNavigator,
     createStackScreen,
     StackNavigator,

@@ -1,11 +1,11 @@
 ---
 title: "Navigation"
-description: "Stack, tab, and drawer navigation with @gtkx/navigation: React Navigation's core rendered with libadwaita's navigation view, view stack, and split view."
+description: "Stack, tab, drawer, and split view navigation with @gtkx/navigation: React Navigation's core rendered with libadwaita's navigation view, view stack, and split views."
 ---
 
 # Navigation
 
-`@gtkx/navigation` brings [React Navigation](https://reactnavigation.org) to GTKX. It is React Navigation 7's core, `@react-navigation/core` and `@react-navigation/routers`, with navigators drawn by libadwaita: a stack is an `AdwNavigationView`, tabs are an `AdwViewStack` behind an `AdwViewSwitcher`, and a drawer is an `AdwOverlaySplitView`. There is no React Native in it. The hooks, actions, and types are the ones the React Navigation docs describe, and the package re-exports all of `@react-navigation/core`, so one import covers everything. It installs separately:
+`@gtkx/navigation` brings [React Navigation](https://reactnavigation.org) to GTKX. It is React Navigation 7's core, `@react-navigation/core` and `@react-navigation/routers`, with navigators drawn by libadwaita: a stack is an `AdwNavigationView`, tabs are an `AdwViewStack` behind an `AdwViewSwitcher`, a drawer is an `AdwOverlaySplitView`, and a split view is an `AdwNavigationSplitView`. There is no React Native in it. The hooks, actions, and types are the ones the React Navigation docs describe, and the package re-exports all of `@react-navigation/core`, so one import covers everything. It installs separately:
 
 ```bash
 npm install @gtkx/navigation
@@ -299,6 +299,128 @@ const Sidebar = (props: DrawerContentProps) => (
 
 Activating a row emits `drawerItemPress`, which `preventDefault` cancels, before navigating.
 
+## Split view navigator
+
+`createSplitViewNavigator` renders an `AdwNavigationSplitView`: a sidebar of data beside a stack of content pages, the master and detail layout of Adwaita's own list applications, folded into a single pane on a window too narrow for two. The first screen declared is the sidebar and stays in its pane; every other screen is a page of the content stack, drawn by the same `AdwNavigationView` the stack navigator uses:
+
+```tsx
+import * as Gtk from "@gtkx/gi/gtk";
+import { AdwStatusPage } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { createSplitViewNavigator, type SplitViewScreenProps } from "@gtkx/navigation";
+
+type MailParams = { Folders: undefined; Messages: { folder: string }; Message: { id: string } };
+
+const Split = createSplitViewNavigator<MailParams>();
+
+const Folders = ({ navigation }: SplitViewScreenProps<MailParams, "Folders">) => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+        <GtkButton
+            label="Inbox"
+            onClicked={() => {
+                navigation.navigate("Messages", { folder: "inbox" });
+            }}
+        />
+        <GtkButton
+            label="Archive"
+            onClicked={() => {
+                navigation.navigate("Messages", { folder: "archive" });
+            }}
+        />
+    </GtkBox>
+);
+
+const Messages = ({ route, navigation }: SplitViewScreenProps<MailParams, "Messages">) => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+        <GtkLabel>{`Messages in ${route.params.folder}`}</GtkLabel>
+        <GtkButton
+            label="Open the first one"
+            onClicked={() => {
+                navigation.navigate("Message", { id: "1" });
+            }}
+        />
+        <GtkButton
+            label="Clear selection"
+            onClicked={() => {
+                navigation.goBack();
+            }}
+        />
+    </GtkBox>
+);
+
+const Message = ({ route }: SplitViewScreenProps<MailParams, "Message">) => (
+    <GtkLabel>{`Message ${route.params.id}`}</GtkLabel>
+);
+
+export const Mail = ({ isNarrow }: { isNarrow: boolean }) => (
+    <Split.Navigator
+        collapsed={isNarrow}
+        minSidebarWidth={220}
+        maxSidebarWidth={300}
+        sidebarWidthFraction={0.25}
+        contentPlaceholder={(
+            <AdwStatusPage
+                iconName="mail-unread-symbolic"
+                title="No Folder Selected"
+                description="Pick a folder to read what is in it."
+            />
+        )}
+    >
+        <Split.Screen name="Folders" component={Folders} options={{ title: "Mail" }} />
+        <Split.Screen name="Messages" component={Messages} options={({ route }) => ({ title: route.params.folder })} />
+        <Split.Screen name="Message" component={Message} options={{ headerEnd: <GtkButton label="Reply" /> }} />
+    </Split.Navigator>
+);
+```
+
+Selecting something in the sidebar is a `navigate` to a content route carrying the selection as params. In this navigator `navigate` selects: it returns to the named route with the new params and drops whatever sat above it, so picking a second folder swaps what the content pane shows instead of piling a page on top of it, and it opens a route that is not on the stack yet by pushing it. Use `push` where a second copy of a page is the point. The sidebar route is pinned at the bottom of the stack, so `pop`, `popToTop`, `replace`, and `reset` reach only the content pages and the sidebar never leaves; `goBack` from the first content page empties the content stack and brings the placeholder back.
+
+`contentPlaceholder` is what fills the content pane while no content route is open, which is where the navigator starts. `AdwStatusPage` is the Adwaita convention for that state, an icon over a title and a line of explanation, centered in the pane.
+
+The screen options are the stack's, and they mean the same thing here. `title` names the page and its header bar, `headerTitle`, `headerStart`, and `headerEnd` shape that bar, `header` replaces it, `headerShown: false` removes it, `headerBackVisible: false` hides its back button, `canPop: false` keeps a content page in place, and `animation: "none"` drops its transition. The sidebar gets a header bar of its own from its options, without a back button. Content pages emit `transitionStart` and `transitionEnd` the way stack pages do, with `data.closing` set on the way out, for the pushes and pops within the content stack. The first selection is not one of those: it fills an empty pane rather than moving between pages, so it reports no transition.
+
+`collapsed` folds the two panes into one, and Adwaita decides when from an `AdwBreakpoint` on the window:
+
+```tsx
+import * as Adw from "@gtkx/gi/adw";
+import { AdwApplicationWindow, AdwBreakpoint } from "@gtkx/jsx/adw";
+import { NavigationContainer } from "@gtkx/navigation";
+import { useState } from "react";
+
+export const App = () => {
+    const [isNarrow, setIsNarrow] = useState(false);
+
+    return (
+        <AdwApplicationWindow
+            title="Mail"
+            breakpoints={(
+                <AdwBreakpoint
+                    condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
+                    onApply={() => {
+                        setIsNarrow(true);
+                    }}
+                    onUnapply={() => {
+                        setIsNarrow(false);
+                    }}
+                />
+            )}
+        >
+            <NavigationContainer>
+                <Mail isNarrow={isNarrow} />
+            </NavigationContainer>
+        </AdwApplicationWindow>
+    );
+};
+```
+
+Once collapsed, libadwaita holds both panes in one navigation view, so the back button and Escape at the first content page return to the sidebar in a single press rather than stepping through an empty pane. The navigator hears the split view giving up its content and pops the stack to match, which is all the narrow case needs.
+
+`minSidebarWidth`, `maxSidebarWidth`, and `sidebarWidthFraction` size the sidebar pane, `sidebarPosition` puts it at the `"start"` or the `"end"`, and `popOnEscape={false}` turns the Escape key off for the content pages as it does for a stack. `initialRouteName` naming a content screen opens that screen at startup, with the sidebar underneath it, in place of the placeholder.
+
+Focus follows the stack rather than the panes. Side by side, the focused route is the open content page, so `useIsFocused` in the sidebar reads `false` while its widgets sit in plain view, and a `useFocusEffect` there stops as soon as something is selected. A sidebar that reloads itself watches its data, or `useNavigationState`, instead of its own focus.
+
+The drawer navigator answers a different question. Its sidebar is a list of the navigator's own screens and overlays the content once the window is narrow, so it moves between an app's top level sections; the split view's sidebar is a screen with its own widgets and its own state, in a pane that collapses into the content rather than covering it, so it pairs a list with whatever that list selects.
+
 ## Nesting navigators
 
 A navigator is a single widget, so it is a valid screen of another navigator. The usual shape is a drawer or tabs at the root and a stack inside each section. Each navigator draws its own header bar, so set `headerShown: false` on the screen that hosts the nested one, and only the inner bar shows:
@@ -402,7 +524,7 @@ const Navigation = createStaticNavigation(RootStack);
 export const App = () => <Navigation onReady={() => console.log("ready")} />;
 ```
 
-`Navigation` takes the container's props. `createStackScreen`, `createTabScreen`, and `createDrawerScreen` declare one screen's config with the matching navigator's options typed, for a tree assembled across modules.
+`Navigation` takes the container's props. `createStackScreen`, `createTabScreen`, `createDrawerScreen`, and `createSplitViewScreen` declare one screen's config with the matching navigator's options typed, for a tree assembled across modules.
 
 ## Typing the root param list
 

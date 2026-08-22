@@ -25,6 +25,7 @@ type StackViewProps = StackNavigationConfig & {
     navigation: StackNavigationHelpers;
     descriptors: StackDescriptorMap;
     describe: Describe;
+    offset?: number;
 };
 
 type StackPageProps = {
@@ -40,9 +41,10 @@ const previousDescriptor = (
     state: StackNavigationState<ParamListBase>,
     descriptors: StackDescriptorMap,
     key: string,
+    offset: number,
 ): StackDescriptor | undefined => {
     const index = state.routes.findIndex((route) => route.key === key);
-    const previousKey = index > 0 ? state.routes[index - 1]?.key : undefined;
+    const previousKey = index > offset ? state.routes[index - 1]?.key : undefined;
 
     return previousKey === undefined ? undefined : descriptors[previousKey];
 };
@@ -73,6 +75,7 @@ const useStackSync = (
     viewRef: ViewRef,
     state: StackNavigationState<ParamListBase>,
     options: RefObject<OptionsByKey>,
+    offset: number,
 ): void => {
     const isInitialRef = useRef(true);
 
@@ -83,15 +86,17 @@ const useStackSync = (
             return;
         }
 
-        syncNavigationStack(view, state.routes.map((route) => route.key), options.current, isInitialRef.current);
+        const desired = state.routes.slice(offset).map((route) => route.key);
+        syncNavigationStack(view, desired, options.current, isInitialRef.current);
         isInitialRef.current = false;
-    }, [viewRef, state, options]);
+    }, [viewRef, state, options, offset]);
 };
 
 const usePoppedHandler = (
     viewRef: ViewRef,
     navigation: StackNavigationHelpers,
     options: RefObject<OptionsByKey>,
+    offset: number,
 ): (() => void) => {
     const navigationRef = useLatest(navigation);
     const isScheduledRef = useRef(false);
@@ -108,10 +113,10 @@ const usePoppedHandler = (
             const view = viewRef.current;
 
             if (view !== null) {
-                reconcilePoppedStack(view, navigationRef.current, options.current);
+                reconcilePoppedStack(view, navigationRef.current, options.current, offset);
             }
         });
-    }, [viewRef, navigationRef, options]);
+    }, [viewRef, navigationRef, options, offset]);
 };
 
 const StackPageContent = ({ descriptor, previous }: Omit<StackPageProps, "navigation" | "onHidden">): ReactNode => {
@@ -161,12 +166,13 @@ const StackPage = ({ descriptor, previous, navigation, onHidden }: StackPageProp
     );
 };
 
-const StackView = ({ state, navigation, descriptors, describe, popOnEscape }: StackViewProps): ReactNode => {
+const StackView = (props: StackViewProps): ReactNode => {
+    const { state, navigation, descriptors, describe, popOnEscape, offset = 0 } = props;
     const viewRef = useRef<Adw.NavigationView | null>(null);
     const options = useTrackedOptions(descriptors);
-    const { pages, release } = useStackPages(state, descriptors, describe);
-    const onPopped = usePoppedHandler(viewRef, navigation, options);
-    useStackSync(viewRef, state, options);
+    const { pages, release } = useStackPages(state, descriptors, describe, offset);
+    const onPopped = usePoppedHandler(viewRef, navigation, options, offset);
+    useStackSync(viewRef, state, options, offset);
 
     return (
         <AdwNavigationView ref={viewRef} popOnEscape={popOnEscape ?? true} onPopped={onPopped}>
@@ -174,7 +180,7 @@ const StackView = ({ state, navigation, descriptors, describe, popOnEscape }: St
                 <StackPage
                     key={descriptor.route.key}
                     descriptor={descriptor}
-                    previous={previousDescriptor(state, descriptors, descriptor.route.key)}
+                    previous={previousDescriptor(state, descriptors, descriptor.route.key, offset)}
                     navigation={navigation}
                     onHidden={release}
                 />
