@@ -45,6 +45,7 @@ const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
 export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lists">) => {
     const tasks = useStore((state) => state.tasks);
     const lists = useStore((state) => state.lists);
+    const resetSearch = useStore((state) => state.resetSearch);
     const selection = useSelection();
 
     const entries = buildEntries(lists, sidebarCounts(tasks, lists));
@@ -69,6 +70,7 @@ export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lis
                     if (!row) return;
                     const entry = entries[row.getIndex()];
                     if (entry && selectionKey(entry.selection) !== activeKey) {
+                        resetSearch();
                         navigation.navigate("Tasks", entry.selection);
                     }
                 }}

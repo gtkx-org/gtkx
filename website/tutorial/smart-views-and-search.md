@@ -464,34 +464,48 @@ More fields in `src/store/ui.ts`:
 
 `searchMode` is whether the bar is revealed, and `searchQuery` is what is in it. `resetSearch` clears both together, since switching views with a stale search still applied would show an empty pane for no visible reason.
 
-Nothing calls it yet. Switching views is a `navigate` that hands the `Tasks` route new params, and the route is the only thing that changes, so the screen watches its own params and reacts to them.
+Nothing calls it yet. Switching views is one action with two halves, and the sidebar row that starts it is where both belong:
 
-`src/components/tasks-screen.tsx`:
+```tsx
+// src/components/sidebar.tsx
+
+    const resetSearch = useStore((state) => state.resetSearch); // [!code ++]
+
+// ...
+
+                onRowSelected={(row) => {
+                    if (!row) return;
+                    const entry = entries[row.getIndex()];
+                    if (entry && selectionKey(entry.selection) !== activeKey) {
+                        resetSearch(); // [!code ++]
+                        navigation.navigate("Tasks", entry.selection);
+                    }
+                }}
+```
+
+Clearing the search belongs to the act of choosing a view, not to the screen that shows one. An effect in `TasksScreen` watching its own params would look equivalent and is not: effects also run on mount, so the app would clear the search once at every startup. Writing to a persisted store on startup means writing to disk on startup, which fails on any machine where that directory is not yet writable, and it takes the whole app down with it.
+
+The key does the other half, in `src/components/tasks-screen.tsx`:
 
 ```tsx
 import type { SplitViewScreenProps } from "@gtkx/navigation";
-import { useEffect } from "react";
 import type { RootParamList } from "../navigation.js";
-import { useStore } from "../store/index.js";
-import { selectionKey } from "../store/selectors.js";
+import { selectionKey } from "../store/selectors.js"; // [!code ++]
 import { TaskList } from "./task-list.js";
 
-export const TasksScreen = ({ route }: SplitViewScreenProps<RootParamList, "Tasks">) => {
-    const resetSearch = useStore((state) => state.resetSearch);
-    const selection = route.params;
-    const key = selectionKey(selection);
-
-    useEffect(() => {
-        resetSearch();
-    }, [key, resetSearch]);
-
-    return <TaskList key={key} selection={selection} />;
-};
+export const TasksScreen = ({ route }: SplitViewScreenProps<RootParamList, "Tasks">) => ( // [!code --]
+    <TaskList selection={route.params} /> // [!code --]
+); // [!code --]
+export const TasksScreen = ({ route }: SplitViewScreenProps<RootParamList, "Tasks">) => { // [!code ++]
+    const selection = route.params; // [!code ++]
+ // [!code ++]
+    return <TaskList key={selectionKey(selection)} selection={selection} />; // [!code ++]
+}; // [!code ++]
 ```
 
-The key does the other half. `navigate("Tasks", entry.selection)` keeps the same route on the stack and swaps its params, so React sees the same `TaskList` in the same position and updates it in place, scroll position and half-typed add row and all. A changed key throws that tree away and mounts a fresh one, so every view opens at the top.
+`navigate("Tasks", entry.selection)` keeps the same route on the stack and swaps its params, so React sees the same `TaskList` in the same position and updates it in place, scroll position and half-typed add row and all. A changed key throws that tree away and mounts a fresh one, so every view opens at the top.
 
-`selectionKey` earns its second job here. One string stands for a whole selection, which makes it usable as a dependency and as a React key, neither of which would notice a new params object holding the same values.
+`selectionKey` earns its second job here. One string stands for a whole selection, which makes it usable as a React key, where a fresh params object holding the same values would look like a change and throw the list away for nothing.
 
 The bar itself goes above the scroller in `src/components/task-list.tsx`, so it pushes the list down rather than floating over it:
 
