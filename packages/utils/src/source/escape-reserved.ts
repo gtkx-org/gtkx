@@ -13,4 +13,14 @@ const getUnsuffixedName = (name: string): string => {
 const escapeReserved = (name: string, reserved: Set<string>): string =>
     reserved.has(getUnsuffixedName(name)) ? `${name}${UNDERSCORE}` : name;
 
-export { escapeReserved };
+const unescapeReserved = (name: string, reserved: Set<string>): string => {
+    if (!name.endsWith(UNDERSCORE)) {
+        return name;
+    }
+
+    const escaped = name.slice(0, -1);
+
+    return reserved.has(getUnsuffixedName(escaped)) ? escaped : name;
+};
+
+export { escapeReserved, unescapeReserved };

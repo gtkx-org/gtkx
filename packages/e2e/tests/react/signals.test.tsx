@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import { ParamFlags, paramSpecInt } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -16,6 +17,8 @@ import {
     GtkListView,
     GtkNoSelection,
     GtkOverlay,
+    GtkShortcut,
+    GtkShortcutController,
     GtkSpinButton,
     GtkSwitch,
     GtkText,
@@ -612,6 +615,39 @@ describe("user event signals (3)", () => {
 
         await waitFor(() => {
             expect(handleText).toHaveBeenCalled();
+        });
+    });
+});
+
+describe("handler props - a property name codegen escaped", () => {
+    it("connects the notify handler of an escaped property name", async () => {
+        const handleNotify = vi.fn();
+        const shortcutRef = createRef<Gtk.Shortcut>();
+
+        await render(
+            <GtkLabel
+                controllers={(
+                    <GtkShortcutController
+                        shortcuts={(
+                            <GtkShortcut
+                                ref={shortcutRef}
+                                arguments_={GLib.Variant.newString("one")}
+                                onNotifyArguments_={handleNotify}
+                            />
+                        )}
+                    />
+                )}
+            >
+                shortcut host
+            </GtkLabel>,
+        );
+
+        await act(() => {
+            shortcutRef.current?.setArguments(GLib.Variant.newString("two"));
+        });
+
+        await waitFor(() => {
+            expect(handleNotify).toHaveBeenCalled();
         });
     });
 });
