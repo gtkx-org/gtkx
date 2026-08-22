@@ -12,6 +12,7 @@ import { DemoProvider, useDemo } from "../src/context/demo-context.js";
 
 type RenderDemoOptions = {
     onClose?: () => void;
+    areAnimationsEnabled?: boolean;
 };
 
 type WrapperArgs = {
@@ -199,6 +200,7 @@ const renderDemo = async (demo: Demo, options: RenderDemoOptions = {}): Promise<
     const ResolvedComponent = demo.component as ComponentType<DemoProps>;
 
     return await render(<ResolvedComponent window={windowRef} onClose={onClose} />, {
+        areAnimationsEnabled: options.areAnimationsEnabled === true,
         container: rootElement,
         wrapper: buildWrapper({
             windowRef,

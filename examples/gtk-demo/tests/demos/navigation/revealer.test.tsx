@@ -114,3 +114,29 @@ describe("revealerDemo reveal sequence", () => {
         });
     });
 });
+
+describe("revealerDemo pulse", () => {
+    it("hides an animated revealer again once its transition finishes", async () => {
+        await renderDemo(revealerDemo, { areAnimationsEnabled: true });
+        const first = await screen.findByName("revealer-0", { as: Gtk.Revealer });
+
+        await waitFor(() => {
+            expect(first.getRevealChild()).toBe(true);
+        });
+
+        await waitFor(() => {
+            expect(first.getRevealChild()).toBe(false);
+        });
+    });
+
+    it("leaves a revealer shown when its transition is instant", async () => {
+        await renderDemo(revealerDemo);
+        const instant = await screen.findByName("revealer-3", { as: Gtk.Revealer });
+
+        await waitFor(() => {
+            expect(instant.getRevealChild()).toBe(true);
+        });
+
+        expect(instant.getChildRevealed()).toBe(true);
+    });
+});

@@ -31,7 +31,7 @@ export default defineConfig({
 - **`girPath`**: directories searched for `.gir` files ahead of the standard locations.
 - **`reactCompiler`**: the React Compiler, on by default. `false` disables it; an object forwards `compilationMode` and `panicThreshold`.
 - **`codegen: false`**: skips generation, so the project imports whatever binding store is already installed.
-- **`userEventSignals`**: signals, keyed by GLib type name, that GTKX suppresses while writing to a widget itself. Entries merge into the defaults.
+- **`userEventSignals`**: signals, keyed by GLib type name, that GTKX suppresses while writing to a widget itself. A write silences all of them, and silences `notify` only for the property it writes, so a property the widget changes in reaction still reaches its `onNotifyX`. Entries merge into the defaults.
 - **`elements`**: the [element customizations](#advanced-customizing-elements): `behaviors` is the module default-exporting your `defineElements` map, `config` sets per-type codegen output (`component`, `props`, `omittedProps`, `isLazy`).
 - **`future`**: opts into behavior that becomes the default in the next major. See [Future flags](#future-flags).
 
@@ -148,7 +148,7 @@ In the next major each flag's behavior becomes unconditional and its key is remo
 Every GIR class descending from `GObject` becomes an intrinsic element whose props follow these rules:
 
 - **Properties become camelCase props.** Writable, construct, and construct-only properties become optional props: `show-title-buttons` is `showTitleButtons`.
-- **Almost every property gets a notify handler.** `onNotifyX` receives `(value, self)`, read-only properties included, so you can observe what GTK4 changes on its own. The element-accepting object properties below are the exception: they carry their value as a child element instead.
+- **Almost every property gets a notify handler.** `onNotifyX` receives `(value, self)`, read-only properties included, so you can observe what GTK4 changes on its own, including what it changes in reaction to a write of another prop. The element-accepting object properties below are the exception: they carry their value as a child element instead.
 - **Object-typed props also accept elements.** A writable, non-construct-only property typed as a GObject class takes a `ReactElement` as well as an instance, and the reconciler manages the child.
 - **Signals become `on` handlers.** `clicked` is `onClicked`, `row-activated` is `onRowActivated`, and the handler receives the signal's parameters followed by `self`.
 - **`ref` yields the `@gtkx/gi` instance.** Every element accepts `ref?: Ref<Self | null>` (`Gtk.Button`, `Adw.ToastOverlay`), the escape hatch to the imperative API.

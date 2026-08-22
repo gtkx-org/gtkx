@@ -44,6 +44,11 @@ const revealerDemo: Demo = {
     defaultHeight: 300,
 };
 
+const isAnimated = (revealer: Gtk.Revealer): boolean =>
+    revealer.getTransitionType() !== Gtk.RevealerTransitionType.NONE &&
+    revealer.getTransitionDuration() > 0 &&
+    Gtk.Settings.getDefault()?.gtkEnableAnimations === true;
+
 const isFlagSet = (flags: boolean[], index: number): boolean => flags[index] === true;
 
 const withFlag = (flags: boolean[], index: number, isSet: boolean): boolean[] => {
@@ -78,7 +83,7 @@ const RevealerCell = ({ config, index, isRevealed, onChildRevealed }: RevealerCe
             transitionType={config.transition}
             revealChild={isRevealed}
             onNotifyChildRevealed={(_childRevealed, self) => {
-                if (!self.getMapped()) {
+                if (!self.getMapped() || !isAnimated(self)) {
                     return;
                 }
 

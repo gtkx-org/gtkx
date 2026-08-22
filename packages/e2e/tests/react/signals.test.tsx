@@ -1,11 +1,17 @@
 import type { ComponentProps } from "react";
+import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
+import { ParamFlags, paramSpecInt } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
+import { AdwToggle, AdwToggleGroup } from "@gtkx/jsx/adw";
 import {
+    GtkAdjustment,
+    GtkBox,
     GtkCheckButton,
     GtkEntry,
+    GtkEntryBuffer,
     GtkLabel,
     GtkListView,
     GtkNoSelection,
@@ -13,9 +19,13 @@ import {
     GtkSpinButton,
     GtkSwitch,
     GtkText,
+    GtkTextBuffer,
+    GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { GtkSourceView } from "@gtkx/jsx/gtksource";
 import { createPortal } from "@gtkx/react";
+import { createElementComponent } from "@gtkx/react/config";
+import { registerClass } from "@gtkx/runtime";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, useLayoutEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -25,6 +35,39 @@ type SnippetView = {
     buffer: GtkSource.Buffer;
     snippet: GtkSource.Snippet;
     location: Gtk.TextIter;
+};
+
+type DewPointProps = {
+    "dew-point"?: number;
+    onNotify?: (pspec: GObject.ParamSpec, self: GObject.Object) => void;
+    onNotifyDewPoint?: (value: number | null, self: GObject.Object) => void;
+};
+
+type EntryProbeProps = {
+    text: string;
+    onNotifyText?: ComponentProps<typeof GtkEntry>["onNotifyText"];
+    onNotifyBufferText?: ComponentProps<typeof GtkEntryBuffer>["onNotifyText"];
+    onNotifyLength?: ComponentProps<typeof GtkEntryBuffer>["onNotifyLength"];
+};
+
+type SpinProbeProps = {
+    value: number;
+    hasAdjustment?: boolean;
+    onNotifyValue?: ComponentProps<typeof GtkSpinButton>["onNotifyValue"];
+    onNotifyText?: ComponentProps<typeof GtkSpinButton>["onNotifyText"];
+};
+
+type ToggleProbeProps = {
+    activeName: string;
+    onNotifyActive?: ComponentProps<typeof AdwToggleGroup>["onNotifyActive"];
+    onNotifyActiveName?: ComponentProps<typeof AdwToggleGroup>["onNotifyActiveName"];
+};
+
+type BufferProbeProps = {
+    text: string;
+    onNotify?: ComponentProps<typeof GtkTextBuffer>["onNotify"];
+    onNotifyText?: ComponentProps<typeof GtkTextBuffer>["onNotifyText"];
+    onNotifyCursorPosition?: ComponentProps<typeof GtkTextBuffer>["onNotifyCursorPosition"];
 };
 
 type ProbeProps = {
@@ -38,6 +81,7 @@ const INPUT_ERROR = -1;
 const ROOT_NAMES = ["first", "second"];
 const portalTarget = new Gtk.Box();
 const handlePortalToggled = vi.fn();
+const DewPointProbe = createElementComponent<DewPointProps>("GtkxDewPointLabel");
 
 const makeAdjustment = () => Gtk.Adjustment.new(0, 0, 1000, 1, 10, 0);
 
@@ -150,8 +194,42 @@ const Probe = ({ tree, log, isArmed }: ProbeProps) => {
     return <GtkListView model={selection} />;
 };
 
+const BufferProbe = (props: BufferProbeProps) => <GtkTextView buffer={<GtkTextBuffer {...props} />} />;
+
+const EntryProbe = ({ text, onNotifyText, onNotifyBufferText, onNotifyLength }: EntryProbeProps) => (
+    <GtkEntry
+        text={text}
+        onNotifyText={onNotifyText}
+        buffer={<GtkEntryBuffer onNotifyText={onNotifyBufferText} onNotifyLength={onNotifyLength} />}
+    />
+);
+
+const SpinProbe = ({ value, hasAdjustment = true, onNotifyValue, onNotifyText }: SpinProbeProps) => (
+    <GtkSpinButton
+        onNotifyValue={onNotifyValue}
+        onNotifyText={onNotifyText}
+        adjustment={hasAdjustment ? <GtkAdjustment value={value} lower={0} upper={100} /> : undefined}
+    />
+);
+
+const ToggleProbe = ({ activeName, onNotifyActive, onNotifyActiveName }: ToggleProbeProps) => (
+    <AdwToggleGroup activeName={activeName} onNotifyActive={onNotifyActive} onNotifyActiveName={onNotifyActiveName}>
+        <AdwToggle name="one" label="one" />
+        <AdwToggle name="two" label="two" />
+    </AdwToggleGroup>
+);
+
 const PortalHost = ({ isActive }: { isActive: boolean }) =>
     createPortal(<GtkCheckButton active={isActive} onToggled={handlePortalToggled} />, portalTarget);
+
+class DewPointLabel extends Gtk.Label {
+    declare dewPoint: number;
+}
+
+registerClass(DewPointLabel, {
+    typeName: "GtkxDewPointLabel",
+    properties: { "dew-point": paramSpecInt("dew-point", null, null, 0, 100, 0, ParamFlags.READWRITE) },
+});
 
 describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
     it("writes the handler's tuple out-value back through the new_value pointer", async () => {
@@ -377,7 +455,7 @@ describe("reentrant signal commits", () => {
     });
 });
 
-describe("user event signals", () => {
+describe("user event signals (1)", () => {
     it("suppresses onChanged while a commit writes text, then delivers user edits", async () => {
         const handleChanged = vi.fn();
         const { rerender } = await render(<GtkEntry text="first" onChanged={handleChanged} />);
@@ -391,7 +469,7 @@ describe("user event signals", () => {
         });
     });
 
-    it("suppresses onNotify handlers while a commit writes the property, then delivers user changes", async () => {
+    it("suppresses the notify of the property a commit writes, then delivers user changes", async () => {
         const handleNotifyActive = vi.fn();
         const { rerender } = await render(<GtkSwitch active={false} onNotifyActive={handleNotifyActive} />);
         await rerender(<GtkSwitch active onNotifyActive={handleNotifyActive} />);
@@ -419,6 +497,121 @@ describe("user event signals", () => {
         await waitFor(() => {
             expect(handleMap).toHaveBeenCalled();
             expect(handleRealize).toHaveBeenCalled();
+        });
+    });
+});
+
+describe("user event signals (2)", () => {
+    it("delivers the notify of a property the widget changes in reaction to a commit write", async () => {
+        const handlers = { onNotifyText: vi.fn(), onNotifyCursorPosition: vi.fn() };
+        const { rerender } = await render(<BufferProbe text="first" {...handlers} />);
+        handlers.onNotifyText.mockClear();
+        handlers.onNotifyCursorPosition.mockClear();
+        await rerender(<BufferProbe text="a longer second line" {...handlers} />);
+
+        await waitFor(() => {
+            expect(handlers.onNotifyCursorPosition).toHaveBeenCalledWith(20, expect.any(Gtk.TextBuffer));
+        });
+
+        expect(handlers.onNotifyText).not.toHaveBeenCalled();
+    });
+
+    it("delivers the notify of a property a deferred prop write changes", async () => {
+        const handlers = { onNotifyActive: vi.fn(), onNotifyActiveName: vi.fn() };
+        const { rerender } = await render(<ToggleProbe activeName="one" {...handlers} />);
+        handlers.onNotifyActive.mockClear();
+        handlers.onNotifyActiveName.mockClear();
+        await rerender(<ToggleProbe activeName="two" {...handlers} />);
+
+        await waitFor(() => {
+            expect(handlers.onNotifyActive).toHaveBeenCalledWith(1, expect.any(Adw.ToggleGroup));
+        });
+
+        expect(handlers.onNotifyActiveName).not.toHaveBeenCalled();
+    });
+
+    it("delivers a delegate's notify of a property the commit did not write", async () => {
+        const handlers = { onNotifyText: vi.fn(), onNotifyBufferText: vi.fn(), onNotifyLength: vi.fn() };
+        const { rerender } = await render(<EntryProbe text="first" {...handlers} />);
+        handlers.onNotifyText.mockClear();
+        handlers.onNotifyBufferText.mockClear();
+        handlers.onNotifyLength.mockClear();
+        await rerender(<EntryProbe text="a much longer second" {...handlers} />);
+
+        await waitFor(() => {
+            expect(handlers.onNotifyLength).toHaveBeenCalledWith(20, expect.any(Gtk.EntryBuffer));
+        });
+
+        expect(handlers.onNotifyText).not.toHaveBeenCalled();
+        expect(handlers.onNotifyBufferText).not.toHaveBeenCalled();
+    });
+
+    it("tells a bare onNotify about the reacting property and not about the written one", async () => {
+        const handleNotify = vi.fn<(pspec: GObject.ParamSpec, self: Gtk.TextBuffer) => void>();
+        const { rerender } = await render(<BufferProbe text="first" onNotify={handleNotify} />);
+        handleNotify.mockClear();
+        await rerender(<BufferProbe text="second" onNotify={handleNotify} />);
+        const notified = handleNotify.mock.calls.map(([pspec]) => pspec.getName());
+        expect(notified).toContain("cursor-position");
+        expect(notified).not.toContain("text");
+    });
+});
+
+describe("user event signals (3)", () => {
+    it("suppresses a delegate's notify of the property a commit writes", async () => {
+        const handlers = { onNotifyValue: vi.fn(), onNotifyText: vi.fn() };
+        const { rerender } = await render(<SpinProbe value={10} {...handlers} />);
+        handlers.onNotifyValue.mockClear();
+        handlers.onNotifyText.mockClear();
+        await rerender(<SpinProbe value={42} {...handlers} />);
+
+        await waitFor(() => {
+            expect(handlers.onNotifyText).toHaveBeenCalled();
+        });
+
+        expect(handlers.onNotifyValue).not.toHaveBeenCalled();
+    });
+
+    it("suppresses every notify while a commit attaches a child", async () => {
+        const handleValue = vi.fn();
+        await render(<SpinProbe value={30} onNotifyValue={handleValue} />);
+        expect(handleValue).not.toHaveBeenCalled();
+    });
+
+    it("suppresses every notify while a commit detaches a child", async () => {
+        const handleValue = vi.fn();
+        const { rerender } = await render(<SpinProbe value={30} onNotifyValue={handleValue} />);
+        handleValue.mockClear();
+        await rerender(<SpinProbe value={30} hasAdjustment={false} onNotifyValue={handleValue} />);
+        expect(handleValue).not.toHaveBeenCalled();
+    });
+
+    it("suppresses the notify of a written property whose prop name is not already camelCase", async () => {
+        const handlers = { onNotify: vi.fn(), onNotifyDewPoint: vi.fn() };
+        const { rerender } = await render(<DewPointProbe dew-point={1} {...handlers} />);
+        handlers.onNotify.mockClear();
+        handlers.onNotifyDewPoint.mockClear();
+        await rerender(<DewPointProbe dew-point={2} {...handlers} />);
+        expect(handlers.onNotify).not.toHaveBeenCalled();
+        expect(handlers.onNotifyDewPoint).not.toHaveBeenCalled();
+    });
+
+    it("keeps delivering notify after a commit throws while attaching a child", async () => {
+        await expect(
+            render(
+                <GtkBox>
+                    <GtkAdjustment value={0} lower={0} upper={100} />
+                </GtkBox>,
+            ),
+        ).rejects.toThrow();
+
+        const handleText = vi.fn();
+        const { rerender } = await render(<SpinProbe value={10} onNotifyText={handleText} />);
+        handleText.mockClear();
+        await rerender(<SpinProbe value={42} onNotifyText={handleText} />);
+
+        await waitFor(() => {
+            expect(handleText).toHaveBeenCalled();
         });
     });
 });

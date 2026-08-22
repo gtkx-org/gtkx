@@ -44,7 +44,10 @@ type ResolvedConfig = {
     applicationId: string;
     /** React Compiler options for the build, or `null` when the compiler is disabled. */
     reactCompiler: ResolvedReactCompilerOptions | null;
-    /** Signal names, keyed by GLib type name, that stay suppressed while a React commit runs. */
+    /**
+     * Signal names, keyed by GLib type name, that stay suppressed while a React commit writes to a widget.
+     * `notify` stays suppressed only for the property being written.
+     */
     userEventSignals: Record<string, string[]>;
     /** Path of the module exporting per-element configs, or `null` when none is configured. */
     elements: string | null;

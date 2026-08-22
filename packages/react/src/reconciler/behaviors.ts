@@ -186,7 +186,7 @@ const flushDeferred = <P extends GObject.Object, V>(
         return;
     }
 
-    applyWrite(() => {
+    applyWrite(prop, () => {
         Reflect.set(object, prop, state.desired);
     });
 
@@ -214,7 +214,7 @@ const deferred = <P extends GObject.Object, V>(
 const controlledText = (prop: string): ElementBehavior =>
     value(prop, (object, next) => {
         if (!hasSameText(object, prop, next)) {
-            applyWrite(() => {
+            applyWrite(prop, () => {
                 Reflect.set(object, prop, next);
             });
         }

@@ -7,6 +7,7 @@ import { applyWrite } from "./signals.js";
 type StyleSlot = { provider: Gtk.CssProvider; className: string; css: string };
 
 const CLASS_PREFIX = "gtkx-s";
+const CSS_CLASSES_PROP = "cssClasses";
 const STYLE_PRIORITY = STYLE_PROVIDER_PRIORITY_APPLICATION + 1;
 const log: Logger = createLogger("react");
 const styles: WeakMap<Gtk.Widget, StyleSlot> = new WeakMap();
@@ -37,7 +38,7 @@ const releaseStyle = (widget: Gtk.Widget): void => {
     styles.delete(widget);
     reclaimed.unregister(widget);
 
-    applyWrite(() => {
+    applyWrite(CSS_CLASSES_PROP, () => {
         widget.removeCssClass(slot.className);
     });
 
@@ -55,7 +56,7 @@ const ensureSlot = (widget: Gtk.Widget): StyleSlot => {
     styles.set(widget, slot);
     reclaimed.register(widget, slot, widget);
 
-    applyWrite(() => {
+    applyWrite(CSS_CLASSES_PROP, () => {
         widget.addCssClass(slot.className);
     });
 
@@ -80,4 +81,4 @@ const applyStyle = (widget: Gtk.Widget, style: unknown): string | null => {
     return slot.className;
 };
 
-export { applyStyle, releaseStyle, styleClass };
+export { applyStyle, CSS_CLASSES_PROP, releaseStyle, styleClass };

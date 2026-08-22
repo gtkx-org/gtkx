@@ -1,25 +1,65 @@
+import * as GObject from "@gtkx/gi/gobject";
 import { getSignalBaseName, type SignalHandler } from "@gtkx/runtime";
-import { camelCase } from "@gtkx/utils";
+import { camelCase, getOrInsert } from "@gtkx/utils";
 import type { HandlerRecord, SignalTarget } from "./node.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 
+type NotifyBinding = { property: string | null };
+
+const NOTIFY_SIGNAL = "notify";
 const NOTIFY_DETAIL_PREFIX = "notify::";
-const writeState: { depth: number } = { depth: 0 };
+const pendingWrites: (string | null)[] = [];
+const canonicalNames: Map<string, string> = new Map();
 
-const isApplyingWrite = (): boolean => writeState.depth > 0;
+const isApplyingWrite = (): boolean => pendingWrites.length > 0;
+const canonicalName = (property: string): string => getOrInsert(canonicalNames, property, camelCase);
 
-const applyWrite = <T>(write: () => T): T => {
-    writeState.depth += 1;
+const runWrite = <T>(property: string | null, write: () => T): T => {
+    pendingWrites.push(property === null ? null : canonicalName(property));
 
     try {
         return write();
     } finally {
-        writeState.depth = Math.max(0, writeState.depth - 1);
+        pendingWrites.pop();
     }
 };
 
-const getNotifyProperty = (signal: string): string | null =>
-    signal.startsWith(NOTIFY_DETAIL_PREFIX) ? camelCase(signal.slice(NOTIFY_DETAIL_PREFIX.length)) : null;
+const applyWrite = <T>(property: string, write: () => T): T => runWrite(property, write);
+const applyMutation = <T>(write: () => T): T => runWrite(null, write);
+
+const notifyBindingFor = (signal: string): NotifyBinding | null => {
+    if (signal === NOTIFY_SIGNAL) {
+        return { property: null };
+    }
+
+    return signal.startsWith(NOTIFY_DETAIL_PREFIX)
+        ? { property: canonicalName(signal.slice(NOTIFY_DETAIL_PREFIX.length)) }
+        : null;
+};
+
+const notifiedProperty = (notify: NotifyBinding, args: unknown[]): string | null => {
+    if (notify.property !== null) {
+        return notify.property;
+    }
+
+    const [pspec] = args;
+
+    return pspec instanceof GObject.ParamSpec ? canonicalName(pspec.getName()) : null;
+};
+
+const isSuppressedNotify = (notify: NotifyBinding, args: unknown[]): boolean => {
+    const notified = notifiedProperty(notify, args);
+
+    return notified === null || pendingWrites.includes(null) || pendingWrites.includes(notified);
+};
+
+const isSuppressed = (record: HandlerRecord, notify: NotifyBinding | null, args: unknown[]): boolean => {
+    if (!record.isBlockable || !isApplyingWrite()) {
+        return false;
+    }
+
+    return notify === null || isSuppressedNotify(notify, args);
+};
 
 const isBlockableSignal = (info: TypeInfo, signal: string): boolean =>
     info.userEventSignals.has(getSignalBaseName(signal));
@@ -27,20 +67,23 @@ const isBlockableSignal = (info: TypeInfo, signal: string): boolean =>
 const invokeHandler = (
     target: SignalTarget,
     record: HandlerRecord,
-    notifyProperty: string | null,
+    notify: NotifyBinding | null,
     args: unknown[],
-): unknown =>
-    notifyProperty === null
-        ? record.handler(...args, target.object)
-        : record.handler(Reflect.get(target.object, notifyProperty), target.object);
+): unknown => {
+    const property = notify?.property ?? null;
 
-const wrapHandler = (target: SignalTarget, record: HandlerRecord, notifyProperty: string | null): SignalHandler =>
+    return property === null
+        ? record.handler(...args, target.object)
+        : record.handler(Reflect.get(target.object, property), target.object);
+};
+
+const wrapHandler = (target: SignalTarget, record: HandlerRecord, notify: NotifyBinding | null): SignalHandler =>
     (...args: unknown[]): unknown => {
-        if (record.isBlockable && isApplyingWrite()) {
+        if (isSuppressed(record, notify, args)) {
             return undefined;
         }
 
-        return target.dispatch(() => invokeHandler(target, record, notifyProperty, args));
+        return target.dispatch(() => invokeHandler(target, record, notify, args));
     };
 
 const connectHandler = (target: SignalTarget, prop: string, signal: string, handler: SignalHandler): void => {
@@ -57,9 +100,8 @@ const connectHandler = (target: SignalTarget, prop: string, signal: string, hand
     }
 
     const isBlockable = isBlockableSignal(typeInfoFor(target.typeName), signal);
-    const notifyProperty = getNotifyProperty(signal);
     const record: HandlerRecord = { signal, handler, wrapped: (): undefined => undefined, isBlockable };
-    record.wrapped = wrapHandler(target, record, notifyProperty);
+    record.wrapped = wrapHandler(target, record, notifyBindingFor(signal));
     target.object.on(signal, record.wrapped);
     target.handlers.set(prop, record);
 };
@@ -84,6 +126,7 @@ const disconnectAllHandlers = (target: SignalTarget): void => {
 };
 
 export {
+    applyMutation,
     applyWrite,
     connectHandler,
     disconnectHandler,

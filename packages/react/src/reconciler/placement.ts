@@ -15,7 +15,7 @@ import {
     type PlaceableNode,
     type PlacedChild,
 } from "./node.js";
-import { applyWrite } from "./signals.js";
+import { applyMutation, applyWrite } from "./signals.js";
 import { markTextDirty } from "./text.js";
 
 type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; sibling: GObject.Object | null };
@@ -78,7 +78,7 @@ const wireBufferView = (node: PlaceableNode, parent: ElementNode): void => {
 };
 
 const writeSlot = (parent: ElementNode, entry: PlacedChild, value: GObject.Object | null): void => {
-    applyWrite(() => {
+    applyWrite(entry.slot, () => {
         Reflect.set(parent.object, entry.slot, value);
     });
 };
@@ -135,7 +135,7 @@ const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibli
 };
 
 const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
-    applyWrite(() => {
+    applyMutation(() => {
         runAttach(parent, entry, index, sibling);
     });
 };
@@ -160,7 +160,7 @@ const runDetach = (parent: ElementNode, entry: PlacedChild): void => {
 };
 
 const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
-    applyWrite(() => {
+    applyMutation(() => {
         runDetach(parent, entry);
     });
 };

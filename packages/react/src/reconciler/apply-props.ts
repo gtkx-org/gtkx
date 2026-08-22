@@ -48,7 +48,7 @@ const writeValue = (object: GObject.Object, name: string, value: unknown): void 
         return;
     }
 
-    applyWrite(() => {
+    applyWrite(name, () => {
         Reflect.set(object, name, coerceObjectProperty(object, name, value));
     });
 };
@@ -72,7 +72,7 @@ const applyBufferText = (buffer: Gtk.TextBuffer, text: string): void => {
         return;
     }
 
-    applyWrite(() => {
+    applyWrite(TEXT_PROP, () => {
         buffer.beginIrreversibleAction();
         buffer.setText(text, -1);
         buffer.endIrreversibleAction();
@@ -191,7 +191,7 @@ const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, prev: P
     const desired = "sensitive" in next ? next.sensitive : info.defaults.sensitive;
 
     if (typeof desired === "boolean") {
-        applyWrite(() => {
+        applyWrite("sensitive", () => {
             Reflect.set(node.object, "sensitive", desired);
         });
     }

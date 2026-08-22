@@ -34,7 +34,7 @@ import {
     registerElements,
 } from "./reconciler/registry.js";
 import { applyWrite } from "./reconciler/signals.js";
-import { applyStyle, styleClass } from "./reconciler/style.js";
+import { applyStyle, CSS_CLASSES_PROP, styleClass } from "./reconciler/style.js";
 
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     ...forTypes(SINGLE_CHILD_TYPES, {
@@ -430,8 +430,8 @@ const didWriteCssClasses = (widget: Gtk.Widget, prev: Props, next: Props, classN
         return false;
     }
 
-    applyWrite(() => {
-        Reflect.set(widget, "cssClasses", withStyleClass(next.cssClasses, className));
+    applyWrite(CSS_CLASSES_PROP, () => {
+        Reflect.set(widget, CSS_CLASSES_PROP, withStyleClass(next.cssClasses, className));
     });
 
     return true;

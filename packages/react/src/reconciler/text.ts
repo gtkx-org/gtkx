@@ -5,7 +5,7 @@ import { drain, indexBeforeOrEnd } from "@gtkx/utils";
 import type { ContentChild, ContentKind, ElementNode, ParentNode, TextNode } from "./node.js";
 import type { Props } from "./registry.js";
 import { ELEMENT_KIND, TEXT_KIND } from "./node.js";
-import { applyWrite } from "./signals.js";
+import { applyMutation } from "./signals.js";
 
 type OffsetResult = { wasFound: boolean; offset: number };
 
@@ -320,7 +320,7 @@ const rebuildBuffer = (node: ElementNode): void => {
         return;
     }
 
-    applyWrite(() => {
+    applyMutation(() => {
         buffer.setText("", -1);
         const build: BufferBuild = { buffer, view: node.bufferView, marks: [] };
         insertContent(build, node.content);
@@ -385,7 +385,7 @@ const didUpdateTextSurgically = (host: ElementNode, node: TextNode, oldText: str
 
     const start = located.offset;
 
-    applyWrite(() => {
+    applyMutation(() => {
         buffer.delete(buffer.getIterAtOffset(start), buffer.getIterAtOffset(start + charLength(oldText)));
         buffer.insert(buffer.getIterAtOffset(start), newText, -1);
     });

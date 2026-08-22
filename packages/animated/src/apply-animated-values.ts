@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { applyStyle, applyWrite } from "@gtkx/react/internal";
 import { coerceObjectProperty } from "@gtkx/runtime";
 
+const LABEL_PROP = "label";
 const setterCache: WeakMap<object, Map<string, boolean>> = new WeakMap();
 
 const hasSetterInChain = (prototype: object | null, name: string): boolean => {
@@ -64,7 +65,7 @@ const didApplyText = (instance: object, value: unknown): boolean => {
         return false;
     }
 
-    applyWrite(() => {
+    applyWrite(LABEL_PROP, () => {
         instance.setLabel(text);
     });
 
@@ -94,7 +95,7 @@ const didApplyValue = (instance: object, name: string, value: unknown): boolean 
         return false;
     }
 
-    applyWrite(() => {
+    applyWrite(name, () => {
         Reflect.set(instance, name, coerceObjectProperty(instance, name, value));
     });
 

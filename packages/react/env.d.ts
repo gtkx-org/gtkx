@@ -9,7 +9,10 @@ declare module "virtual:gtkx-config" {
     export const defaultProps: Record<string, Record<string, unknown>>;
     /** The application id from `gtkx.config.ts`, used as the default for `<GtkApplication>`. */
     export const applicationId: import("@gtkx/config").ResolvedConfig["applicationId"];
-    /** Signals a user can trigger, which stay blocked while props are written, keyed by GLib type name. */
+    /**
+     * Signals a user can trigger, which stay blocked while props are written, keyed by GLib type name.
+     * `notify` is blocked only for the property being written.
+     */
     export const userEventSignals: import("@gtkx/config").ResolvedConfig["userEventSignals"];
     /** The element configuration the project's `gtkx.config.ts` contributes, keyed by GLib type name. */
     export const elements: Record<string, import("@gtkx/react/config").ElementConfig>;
