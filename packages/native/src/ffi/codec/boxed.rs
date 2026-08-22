@@ -90,7 +90,10 @@ impl BoxedCodec {
             );
         };
         if !is_boxed_type(type_) {
-            bail!("Cannot take ownership of '{}': {POINTER_TYPE}", self.type_name);
+            bail!(
+                "Cannot take ownership of '{}': {POINTER_TYPE}",
+                self.type_name
+            );
         }
         Ok(Boxed::from_glib_full(type_, ptr).into())
     }

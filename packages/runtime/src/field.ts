@@ -60,7 +60,7 @@ const fieldAt = (descriptor: Descriptor): StridedField => {
  */
 const field = (descriptor: Descriptor, offset: number): Field => {
     if (!Number.isSafeInteger(offset) || offset < 0) {
-        throw new RangeError(`A field offset must be a whole byte count in 0..=2^53, got ${String(offset)}`);
+        throw new RangeError(`A field offset must be a safe whole byte count, got ${String(offset)}`);
     }
 
     const bound = fieldAt(descriptor);
