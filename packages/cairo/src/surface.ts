@@ -3,7 +3,6 @@ import {
     type ExternalObject,
     getHandle,
     type Handle,
-    read,
     registerWrapperClass,
     registerWrapperClassResolver,
     setHandle,
@@ -31,6 +30,8 @@ import { checkSurface } from "./status.js";
 
 const SURFACE_TYPE = cairoGType("cairo_gobject_surface_get_type");
 const RECTANGLE_SIZE = 32;
+const DOUBLE = t.fieldAt(t.float64);
+const UINT8 = t.fieldAt(t.uint8);
 const DEVICE_PAIR_ARGS = [SURFACE_T, t.float64, t.float64];
 const DEVICE_PAIR_OUT_ARGS = [SURFACE_T, t.ref(t.float64), t.ref(t.float64)];
 const SIMILAR_ARGS = [SURFACE_T, t.int32, t.int32, t.int32];
@@ -137,10 +138,10 @@ const allocRectangle = (rect: RectangleData): ExternalObject<Handle> => {
 };
 
 const readRectangle = (buffer: ExternalObject<Handle>): RectangleData => ({
-    x: read(buffer, t.float64, 0) as number,
-    y: read(buffer, t.float64, 8) as number,
-    width: read(buffer, t.float64, 16) as number,
-    height: read(buffer, t.float64, 24) as number,
+    x: DOUBLE.read(buffer, 0) as number,
+    y: DOUBLE.read(buffer, 8) as number,
+    width: DOUBLE.read(buffer, 16) as number,
+    height: DOUBLE.read(buffer, 24) as number,
 });
 
 const createRecordingSurface = (content: Content, extents?: RectangleData): ExternalObject<Handle> =>
@@ -383,7 +384,7 @@ class ImageSurface extends Surface {
             return new Uint8Array(0);
         }
 
-        return Uint8Array.from({ length: totalBytes }, (_, index) => read(data, t.uint8, index) as number);
+        return Uint8Array.from({ length: totalBytes }, (_, index) => UINT8.read(data, index) as number);
     }
 }
 

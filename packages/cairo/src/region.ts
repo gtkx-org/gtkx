@@ -7,7 +7,6 @@ import {
     setHandle,
     t,
     wrapHandle,
-    write,
 } from "@gtkx/runtime";
 import type { RegionOverlap, Status } from "./enums.js";
 import type { RectangleData } from "./types.js";
@@ -53,16 +52,17 @@ const cairoRegionIntersectRectangle = bindCairo("cairo_region_intersect_rectangl
 const cairoRegionSubtractRectangle = bindCairo("cairo_region_subtract_rectangle", RECTANGLE_OP_ARGS, t.int32);
 const cairoRegionUnionRectangle = bindCairo("cairo_region_union_rectangle", RECTANGLE_OP_ARGS, t.int32);
 const cairoRegionXorRectangle = bindCairo("cairo_region_xor_rectangle", RECTANGLE_OP_ARGS, t.int32);
+const INT = t.fieldAt(t.int32);
 
 const allocRectangleBuffer = (rects: RectangleData[]): ExternalObject<Handle> => {
     const buffer = alloc(rects.length * RECTANGLE_INT_SIZE);
     let offset = 0;
 
     for (const rect of rects) {
-        write(buffer, t.int32, offset, rect.x);
-        write(buffer, t.int32, offset + 4, rect.y);
-        write(buffer, t.int32, offset + 8, rect.width);
-        write(buffer, t.int32, offset + 12, rect.height);
+        INT.write(buffer, offset, rect.x);
+        INT.write(buffer, offset + 4, rect.y);
+        INT.write(buffer, offset + 8, rect.width);
+        INT.write(buffer, offset + 12, rect.height);
         offset += RECTANGLE_INT_SIZE;
     }
 

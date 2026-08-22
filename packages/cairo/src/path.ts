@@ -9,10 +9,13 @@ type SegmentReader = (data: PathBuffer, base: number) => PathData;
 const ELEMENT_SIZE = 16;
 const DATA_OFFSET = 8;
 const NUM_DATA_OFFSET = 16;
+const DOUBLE = t.fieldAt(t.float64);
+const INT = t.fieldAt(t.int32);
+const NUM_DATA = t.field(t.int32, NUM_DATA_OFFSET);
 
 const readPoint = (data: PathBuffer, base: number): Point => ({
-    x: read(data, t.float64, base) as number,
-    y: read(data, t.float64, base + 8) as number,
+    x: DOUBLE.read(data, base) as number,
+    y: DOUBLE.read(data, base + 8) as number,
 });
 
 const readMoveTo: SegmentReader = (data, base) => ({ type: "moveTo", ...readPoint(data, base + ELEMENT_SIZE) });
@@ -49,7 +52,7 @@ const segmentReaderFor = (headerType: PathDataType): SegmentReader | null => {
 };
 
 const parsePath = (pathHandle: PathBuffer): PathData[] => {
-    const numData = read(pathHandle, t.int32, NUM_DATA_OFFSET) as number;
+    const numData = NUM_DATA.read(pathHandle) as number;
 
     if (numData === 0) {
         return [];
@@ -61,13 +64,13 @@ const parsePath = (pathHandle: PathBuffer): PathData[] => {
 
     while (index < numData) {
         const base = index * ELEMENT_SIZE;
-        const reader = segmentReaderFor(read(data, t.int32, base) as PathDataType);
+        const reader = segmentReaderFor(INT.read(data, base) as PathDataType);
 
         if (reader !== null) {
             segments.push(reader(data, base));
         }
 
-        index += read(data, t.int32, base + 4) as number;
+        index += INT.read(data, base + 4) as number;
     }
 
     return segments;

@@ -2,7 +2,6 @@ import {
     type ExternalObject,
     getHandle,
     type Handle,
-    read,
     registerWrapperClass,
     setHandle,
     t,
@@ -32,6 +31,9 @@ import { allocFontExtents, allocGlyphBuffer, allocTextExtents, readFontExtents, 
 const SCALED_FONT_TYPE = cairoGType("cairo_gobject_scaled_font_get_type");
 const GLYPH_SIZE = 24;
 const CLUSTER_SIZE = 8;
+const DOUBLE = t.fieldAt(t.float64);
+const UINT64 = t.fieldAt(t.uint64);
+const INT = t.fieldAt(t.int32);
 const cairoScaledFontStatus = bindCairo("cairo_scaled_font_status", [SCALED_FONT_T], t.int32);
 const cairoScaledFontExtents = bindCairo("cairo_scaled_font_extents", [SCALED_FONT_T, FONT_EXTENTS_T], t.void);
 const cairoScaledFontGetFontFace = bindCairo("cairo_scaled_font_get_font_face", [SCALED_FONT_T], FONT_FACE_T);
@@ -110,9 +112,9 @@ const readGlyphs = (buffer: ExternalObject<Handle> | null, count: number): Cairo
         const offset = index * GLYPH_SIZE;
 
         return {
-            index: read(buffer, t.uint64, offset) as number,
-            x: read(buffer, t.float64, offset + 8) as number,
-            y: read(buffer, t.float64, offset + 16) as number,
+            index: UINT64.read(buffer, offset) as number,
+            x: DOUBLE.read(buffer, offset + 8) as number,
+            y: DOUBLE.read(buffer, offset + 16) as number,
         };
     });
 };
@@ -126,8 +128,8 @@ const readClusters = (buffer: ExternalObject<Handle> | null, count: number): Cai
         const offset = index * CLUSTER_SIZE;
 
         return {
-            numBytes: read(buffer, t.int32, offset) as number,
-            numGlyphs: read(buffer, t.int32, offset + 4) as number,
+            numBytes: INT.read(buffer, offset) as number,
+            numGlyphs: INT.read(buffer, offset + 4) as number,
         };
     });
 };

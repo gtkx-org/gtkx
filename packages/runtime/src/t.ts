@@ -1,5 +1,6 @@
 import { bind } from "./bind.js";
 import * as helpers from "./descriptors.js";
+import { field, fieldAt } from "./field.js";
 import { fn } from "./fn.js";
 
 /** The descriptor factories and function binders exposed as {@link t}. */
@@ -86,6 +87,16 @@ type T = {
      * arguments into the result.
      */
     fn: typeof fn;
+    /**
+     * Binds a struct field at a fixed offset, compiling its descriptor once into an accessor that
+     * reads and writes it.
+     */
+    field: typeof field;
+    /**
+     * Binds a struct field whose offset is supplied per access, for walking records stored at a
+     * stride in a buffer.
+     */
+    fieldAt: typeof fieldAt;
 };
 
 /**
@@ -132,6 +143,8 @@ const t: T = {
     cursorArray: helpers.cursorArrayT,
     callback: helpers.callbackT,
     fn,
+    field,
+    fieldAt,
 };
 
 export { t };

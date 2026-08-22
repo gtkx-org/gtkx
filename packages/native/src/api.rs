@@ -4,6 +4,7 @@ use crate::handle::{Handle, INVALIDATED_HANDLE, NULL_HANDLE};
 
 pub mod alloc;
 pub mod bind;
+pub mod bind_field;
 pub mod call;
 pub mod copy;
 pub mod get_fundamental_wrapper;

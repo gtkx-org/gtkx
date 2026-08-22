@@ -1,19 +1,22 @@
-import { alloc, type ExternalObject, type Handle, read, t, write } from "@gtkx/runtime";
+import { alloc, type ExternalObject, type Handle, t } from "@gtkx/runtime";
 import type { CairoGlyph, CairoTextCluster, FontExtents, TextExtents } from "./types.js";
 
 const GLYPH_SIZE = 24;
 const CLUSTER_SIZE = 8;
 const TEXT_EXTENTS_SIZE = 48;
 const FONT_EXTENTS_SIZE = 40;
+const DOUBLE = t.fieldAt(t.float64);
+const UINT64 = t.fieldAt(t.uint64);
+const INT = t.fieldAt(t.int32);
 
 const allocGlyphBuffer = (glyphs: CairoGlyph[]): ExternalObject<Handle> => {
     const buffer = alloc(glyphs.length * GLYPH_SIZE);
     let offset = 0;
 
     for (const glyph of glyphs) {
-        write(buffer, t.uint64, offset, glyph.index);
-        write(buffer, t.float64, offset + 8, glyph.x);
-        write(buffer, t.float64, offset + 16, glyph.y);
+        UINT64.write(buffer, offset, glyph.index);
+        DOUBLE.write(buffer, offset + 8, glyph.x);
+        DOUBLE.write(buffer, offset + 16, glyph.y);
         offset += GLYPH_SIZE;
     }
 
@@ -25,8 +28,8 @@ const allocClusterBuffer = (clusters: CairoTextCluster[]): ExternalObject<Handle
     let offset = 0;
 
     for (const cluster of clusters) {
-        write(buffer, t.int32, offset, cluster.numBytes);
-        write(buffer, t.int32, offset + 4, cluster.numGlyphs);
+        INT.write(buffer, offset, cluster.numBytes);
+        INT.write(buffer, offset + 4, cluster.numGlyphs);
         offset += CLUSTER_SIZE;
     }
 
@@ -37,20 +40,20 @@ const allocTextExtents = (): ExternalObject<Handle> => alloc(TEXT_EXTENTS_SIZE);
 const allocFontExtents = (): ExternalObject<Handle> => alloc(FONT_EXTENTS_SIZE);
 
 const readTextExtents = (handle: ExternalObject<Handle>): TextExtents => ({
-    xBearing: read(handle, t.float64, 0) as number,
-    yBearing: read(handle, t.float64, 8) as number,
-    width: read(handle, t.float64, 16) as number,
-    height: read(handle, t.float64, 24) as number,
-    xAdvance: read(handle, t.float64, 32) as number,
-    yAdvance: read(handle, t.float64, 40) as number,
+    xBearing: DOUBLE.read(handle, 0) as number,
+    yBearing: DOUBLE.read(handle, 8) as number,
+    width: DOUBLE.read(handle, 16) as number,
+    height: DOUBLE.read(handle, 24) as number,
+    xAdvance: DOUBLE.read(handle, 32) as number,
+    yAdvance: DOUBLE.read(handle, 40) as number,
 });
 
 const readFontExtents = (handle: ExternalObject<Handle>): FontExtents => ({
-    ascent: read(handle, t.float64, 0) as number,
-    descent: read(handle, t.float64, 8) as number,
-    height: read(handle, t.float64, 16) as number,
-    maxXAdvance: read(handle, t.float64, 24) as number,
-    maxYAdvance: read(handle, t.float64, 32) as number,
+    ascent: DOUBLE.read(handle, 0) as number,
+    descent: DOUBLE.read(handle, 8) as number,
+    height: DOUBLE.read(handle, 16) as number,
+    maxXAdvance: DOUBLE.read(handle, 24) as number,
+    maxYAdvance: DOUBLE.read(handle, 32) as number,
 });
 
 export { allocClusterBuffer, allocFontExtents, allocGlyphBuffer, allocTextExtents, readFontExtents, readTextExtents };

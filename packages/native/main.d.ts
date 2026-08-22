@@ -13,6 +13,12 @@ declare module "./index.js" {
      */
     export type CallDescriptor = { _opaque: "CallDescriptor" };
     /**
+     * An opaque, precompiled binding of a struct field, produced by `bindField` and passed to
+     * `readField` and `writeField`. It captures the marshalling of the field's bytes and the byte
+     * offset it sits at within its owner's memory.
+     */
+    export type FieldDescriptor = { _opaque: "FieldDescriptor" };
+    /**
      * A mutable box for an out or inout ('ref' descriptor) parameter. Pass an object with a `value`
      * property; after `call` returns, its `value` holds the decoded native result.
      */

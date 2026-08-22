@@ -8,7 +8,6 @@ import {
     setHandle,
     t,
     wrapHandle,
-    write,
 } from "@gtkx/runtime";
 import type {
     Antialias,
@@ -75,6 +74,8 @@ import {
 const CONTEXT_TYPE = cairoGType("cairo_gobject_context_get_type");
 const RECTANGLE_SIZE = 32;
 const RECTANGLE_LIST_COUNT_OFFSET = 16;
+const DOUBLE = t.fieldAt(t.float64);
+const RECTANGLE_LIST_COUNT = t.field(t.int32, RECTANGLE_LIST_COUNT_OFFSET);
 const RECTANGLE_LIST_DATA_OFFSET = 8;
 const POINT_ARGS = [CONTEXT_T, t.float64, t.float64];
 const EXTENTS_ARGS = [CONTEXT_T, t.ref(t.float64), t.ref(t.float64), t.ref(t.float64), t.ref(t.float64)];
@@ -236,24 +237,24 @@ const allocDashBuffer = (dashes: number[]): ExternalObject<Handle> => {
     const buffer = alloc(dashes.length * 8);
 
     for (const [index, dash] of dashes.entries()) {
-        write(buffer, t.float64, index * 8, dash);
+        DOUBLE.write(buffer, index * 8, dash);
     }
 
     return buffer;
 };
 
 const readDashes = (buffer: ExternalObject<Handle>, count: number): number[] =>
-    Array.from({ length: count }, (_, index) => read(buffer, t.float64, index * 8) as number);
+    Array.from({ length: count }, (_, index) => DOUBLE.read(buffer, index * 8) as number);
 
 const readRectangle = (rects: ExternalObject<Handle>, base: number): RectangleData => ({
-    x: read(rects, t.float64, base) as number,
-    y: read(rects, t.float64, base + 8) as number,
-    width: read(rects, t.float64, base + 16) as number,
-    height: read(rects, t.float64, base + 24) as number,
+    x: DOUBLE.read(rects, base) as number,
+    y: DOUBLE.read(rects, base + 8) as number,
+    width: DOUBLE.read(rects, base + 16) as number,
+    height: DOUBLE.read(rects, base + 24) as number,
 });
 
 const readRectangleList = (listHandle: ExternalObject<Handle>): RectangleData[] => {
-    const count = read(listHandle, t.int32, RECTANGLE_LIST_COUNT_OFFSET) as number;
+    const count = RECTANGLE_LIST_COUNT.read(listHandle) as number;
 
     if (count === 0) {
         return [];

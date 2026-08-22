@@ -10,7 +10,7 @@ use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
 use crate::value;
 
-fn read_field<'e>(
+fn decode_field<'e>(
     env: &'e Env,
     field_ptr: *const c_void,
     field_codec: &Codec,
@@ -18,10 +18,30 @@ fn read_field<'e>(
     unsafe { field_codec.read(env, ReadCtx::slot(field_ptr, "field read")) }
 }
 
+pub(crate) fn read_field_at<'e>(
+    env: &'e Env,
+    handle: &Handle,
+    field_codec: &Codec,
+    offset: usize,
+) -> Result<Unknown<'e>> {
+    let base_ptr = handle_memory_ptr(handle, "field read")?;
+
+    if field_codec.is_inline() {
+        return value::handle_to_unknown(env, Handle::field(handle, offset));
+    }
+
+    let field_ptr = base_ptr.wrapping_byte_add(offset).cast_const();
+
+    native_result("field read", decode_field(env, field_ptr, field_codec))
+}
+
 /// Reads and decodes a value at `offset` bytes into the handle's memory, using `fieldDescriptor`
 /// to interpret the raw bytes, and rejects a handle that points at nothing rather than reading at
 /// the bare offset. A value the descriptor marks as stored inline decodes to a handle aliasing the
 /// owner's memory, so writing one of its own fields reaches the owner.
+///
+/// The descriptor is compiled on every call. A field read repeatedly from the same descriptor and
+/// offset is cheaper through `bindField`, which compiles both once.
 #[napi(catch_unwind)]
 pub fn read<'env>(
     env: &'env Env,
@@ -30,16 +50,9 @@ pub fn read<'env>(
     offset: f64,
 ) -> Result<Unknown<'env>> {
     let offset = byte_count_from_f64(offset, "field read: offset")?;
-    let base_ptr = handle_memory_ptr(handle, "field read")?;
     let field_codec = field_descriptor.into_codec()?;
 
-    if field_codec.is_inline() {
-        return value::handle_to_unknown(env, Handle::field(handle, offset));
-    }
-
-    let field_ptr = base_ptr.wrapping_byte_add(offset).cast_const();
-
-    native_result("field read", read_field(env, field_ptr, &field_codec))
+    read_field_at(env, handle, &field_codec, offset)
 }
 
 #[cfg(test)]
@@ -54,7 +67,7 @@ mod tests {
         test_support::run(|| {
             let env = napi_mock::fake_env();
             let slot: i32 = 42;
-            let value = read_field(
+            let value = decode_field(
                 &env,
                 (&raw const slot).cast(),
                 &Codec::Integer(IntegerCodec::I32),
@@ -69,7 +82,7 @@ mod tests {
         test_support::run(|| {
             let env = napi_mock::fake_env();
             let slot: f64 = 2.5;
-            let value = read_field(
+            let value = decode_field(
                 &env,
                 (&raw const slot).cast(),
                 &Codec::Float(FloatCodec::F64),
