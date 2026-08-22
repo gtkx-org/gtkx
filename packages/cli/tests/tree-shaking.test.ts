@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type AppProbe, probeAppProject, removeAppProject } from "./app-project.js";
 
@@ -17,7 +17,7 @@ type ProbeReport = {
 type ProbeState = { probe: AppProbe; names: string[]; report: ProbeReport; source: string };
 
 const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-const METADATA = join(WORKSPACE_ROOT, "node_modules", ".gtkx", "jsx", "metadata.js");
+const ELEMENTS_FILE = join(WORKSPACE_ROOT, "node_modules", ".gtkx", "jsx", "elements.json");
 const BUILD_TIMEOUT = 300_000;
 const OUT_DIR = "dist";
 const BUNDLE_NAME = "bundle.mjs";
@@ -179,10 +179,10 @@ try {
 }
 `;
 
-const elementNames = async (): Promise<string[]> => {
-    const metadata = (await import(pathToFileURL(METADATA).href)) as { signals: Record<string, unknown> };
+const elementNames = (): string[] => {
+    const elements = JSON.parse(readFileSync(ELEMENTS_FILE, "utf8")) as { glibName: string }[];
 
-    return Object.keys(metadata.signals);
+    return elements.map(({ glibName }) => glibName);
 };
 
 const probeTables = (names: string[]): string => `import * as Gtk from "@gtkx/gi/gtk";
@@ -226,7 +226,7 @@ describe("gtkx build (wrapper class registry)", () => {
     };
 
     beforeAll(async () => {
-        state.names = await elementNames();
+        state.names = elementNames();
 
         state.probe = await probeAppProject({
             applicationId: "com.gtkx.cliregistryprobe",

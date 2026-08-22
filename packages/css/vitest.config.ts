@@ -8,6 +8,7 @@ export default mergeConfig(
         plugins: [gtkx()],
         test: {
             name: "css",
+            setupFiles: ["./tests/setup.ts"],
         },
     }),
 );

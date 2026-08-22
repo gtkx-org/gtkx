@@ -107,7 +107,6 @@ const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): voi
     const declaration = renderNamespaceFunctionDeclaration({ context, fn, finish, exportName, bindingName });
     const doc = callableDoc(context, fn, { finishFn: finish?.fn });
     context.declare({ name: exportName, code: `${doc}${declaration}` });
-    appendBootstrapRegistration(context, fn, exportName);
 };
 
 const namespaceBindingName = (cIdentifier: string, exportName: string): string => {
@@ -174,23 +173,6 @@ const stripLongestPrefix = (input: string, prefixes: string[]): string => {
     }
 
     return best.length === 0 ? input : input.slice(best.length);
-};
-
-const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, exportName: string): void => {
-    if (fn.parameters.length > 0) {
-        return;
-    }
-
-    if (fn.name === "init") {
-        context.module.appendRegistration(`${exportName}();`, [exportName]);
-
-        return;
-    }
-
-    if (fn.name === "finalize") {
-        context.addRuntimeImport("onExit");
-        context.module.appendRegistration(`onExit(${exportName});`, [exportName]);
-    }
 };
 
 export { renderFnExpression, generateNamespaceFunction, namespaceFunctionExportName };

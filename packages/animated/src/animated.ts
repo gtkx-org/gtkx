@@ -1,12 +1,12 @@
 import type { ElementType } from "react";
-import * as elements from "@gtkx/jsx";
+import { ELEMENT_COMPONENTS } from "@gtkx/react/internal";
 import type { AnimatedComponent, AnimatedElements } from "./types.js";
 import { withAnimated } from "./with-animated.js";
 
 type Wrappable = Exclude<ElementType, string>;
 /**
- * The `animated` entrypoint: callable to wrap any component, and exposing every generated widget
- * component as a property, so `animated.GtkLabel` is the animated form of `GtkLabel`.
+ * The `animated` entrypoint: callable to wrap any component, and exposing the generated widget
+ * components the build kept as properties, so `animated.GtkLabel` is the animated form of `GtkLabel`.
  */
 type Animated = (<T extends Exclude<ElementType, string>>(component: T) => AnimatedComponent<T>) & AnimatedElements;
 
@@ -16,9 +16,12 @@ type Animated = (<T extends Exclude<ElementType, string>>(component: T) => Anima
  * written to the widget on each frame without a React render. The wrapper of a given component is
  * created once and reused, so repeated lookups render the same component.
  *
- * Every widget component of the generated `@gtkx/jsx` store is also available as a property:
- * `animated.GtkLabel` is `animated(GtkLabel)` without the import. Elements whose `ref` does not
- * expose a `Gtk.Widget` subclass, such as `GtkAdjustment`, are wrapped through the call form.
+ * Every widget component of a `@gtkx/jsx` namespace the application imports from is also available as
+ * a property: `animated.GtkLabel` is `animated(GtkLabel)` without the import, because importing any
+ * element of `@gtkx/jsx/gtk` brings in every element that namespace exports. A namespace nothing
+ * imports is left out of the build, so neither its elements nor its keys are there to be found.
+ * Elements whose `ref` does not expose a `Gtk.Widget` subclass, such as `GtkAdjustment`, are wrapped
+ * through the call form.
  */
 const animated: Animated = new Proxy(wrapComponent, {
     get(target, property, receiver): unknown {
@@ -39,14 +42,14 @@ const animated: Animated = new Proxy(wrapComponent, {
         return componentFor(property) !== null || Reflect.has(target, property);
     },
     ownKeys(target): (string | symbol)[] {
-        const names = Object.keys(elements).filter((name) => componentFor(name) !== null);
+        const names = ELEMENT_COMPONENTS.keys().filter((name) => componentFor(name) !== null);
 
         return [...new Set([...Reflect.ownKeys(target), ...names])];
     },
 }) as Animated;
 
 function componentFor(property: string | symbol): Wrappable | null {
-    const value: unknown = Reflect.get(elements, property);
+    const value = typeof property === "string" ? ELEMENT_COMPONENTS.get(property) : undefined;
 
     return isComponent(value) ? value : null;
 }

@@ -98,12 +98,12 @@ describe("marshalling across the napi boundary (2)", () => {
     });
 
     it("throws when a byte array descriptor is declared over a wider element", () => {
-        expect(() =>
-            t.fn("libglib-2.0.so.0", "g_utf8_validate", {
-                args: [{ type: t.sizedArray(t.int16, 1, "borrowed", { isBytes: true }) }, { type: t.int64 }],
-                returns: t.boolean,
-            }),
-        ).toThrow();
+        const validate = t.fn("libglib-2.0.so.0", "g_utf8_validate", {
+            args: [{ type: t.sizedArray(t.int16, 1, "borrowed", { isBytes: true }) }, { type: t.int64 }],
+            returns: t.boolean,
+        });
+
+        expect(() => validate(new Uint8Array([104, 105]), 2)).toThrow();
     });
 
     it("throws when a byte array argument is given a view of the wrong element type", () => {

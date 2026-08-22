@@ -1,3 +1,4 @@
+import "./bootstrap.js";
 import "./element-behaviors.js";
 
 /** @internal */

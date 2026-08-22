@@ -25,7 +25,7 @@ const pendingMap: Set<ElementNode> = new Set();
 
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 
-const signalForProp = (info: TypeInfo, name: string): string => {
+const signalForProp = (name: string): string => {
     if (name === NOTIFY_PREFIX) {
         return "notify";
     }
@@ -34,7 +34,7 @@ const signalForProp = (info: TypeInfo, name: string): string => {
         return `notify::${kebabCase(name.slice(NOTIFY_PREFIX.length))}`;
     }
 
-    return info.signals[name] ?? kebabCase(name.slice(HANDLER_PREFIX.length));
+    return kebabCase(name.slice(HANDLER_PREFIX.length));
 };
 
 const isReservedName = (name: string, info: TypeInfo): boolean =>
@@ -197,7 +197,7 @@ const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, prev: P
     }
 };
 
-const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: Props): void => {
+const applyHandlers = (target: SignalTarget, prev: Props, next: Props): void => {
     eachChangedName(prev, next, (name) => {
         if (!isHandlerName(name)) {
             return;
@@ -206,7 +206,7 @@ const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: 
         const value = next[name];
 
         if (typeof value === "function") {
-            connectHandler(target, name, signalForProp(info, name), value as SignalHandler);
+            connectHandler(target, name, signalForProp(name), value as SignalHandler);
         } else {
             disconnectHandler(target, name);
         }
@@ -290,7 +290,7 @@ const applyElementProps = (node: ElementNode, prev: Props, next: Props): void =>
     const consumed = runBehaviorUpdates(node, info, prev, next);
     applyValueEntries(node, info, { prev, next }, consumed);
     restoreActionableSensitivity(node, info, prev, next);
-    applyHandlers(node, info, prev, next);
+    applyHandlers(node, prev, next);
     markAccessible(node, prev);
     markFlush(node);
     node.props = next;
@@ -311,7 +311,7 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
     });
 
     applyAccessible(object, prev, next);
-    applyHandlers(target, info, prev, next);
+    applyHandlers(target, prev, next);
 };
 
 export {

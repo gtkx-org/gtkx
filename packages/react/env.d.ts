@@ -1,6 +1,4 @@
 declare module "virtual:gtkx-config" {
-    /** The GObject signal each `on…` handler prop connects to, keyed by GLib type name. */
-    export const signals: Record<string, Record<string, string>>;
     /** Props GTK accepts only while an object is being built, keyed by GLib type name. */
     export const constructOnlyProps: Record<string, Set<string>>;
     /** Props that can be passed to the constructor, keyed by GLib type name. */

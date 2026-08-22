@@ -4,6 +4,7 @@ import type { Props } from "../reconciler/registry.js";
 
 const Prop = "gtkx:prop";
 const NO_PROP_CHILDREN: ReactNode[] = [];
+const ELEMENT_COMPONENTS: Map<string, ElementType> = new Map();
 
 const hasElement = (value: unknown): boolean =>
     isValidElement(value) || (Array.isArray(value) && value.some((item: unknown) => hasElement(item)));
@@ -79,4 +80,12 @@ function createElementComponent<P = unknown>(typeName: string): (props: P) => Re
     return (props: P): ReactNode => buildElement(typeName, isRecord(props) ? props : {});
 }
 
-export { Prop, createElementComponent };
+function registerElementComponent<T extends ElementType>(typeName: string, component: T): T {
+    ELEMENT_COMPONENTS.set(typeName, component);
+
+    return component;
+}
+
+export { ELEMENT_COMPONENTS, Prop, createElementComponent };
+/** @internal */
+export { registerElementComponent };

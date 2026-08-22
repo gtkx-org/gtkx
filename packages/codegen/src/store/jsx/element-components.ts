@@ -84,6 +84,7 @@ const collectCandidateExports = (collector: ExportCollector, options: CandidateE
 const collectLazyElementExports = (collector: ExportCollector, lazyElements: LazyElementSpec[]): void => {
     for (const spec of lazyElements) {
         collector.imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
+        collector.imports.addNamed("@gtkx/react/internal", "registerElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
         collector.exportLines.push(renderLazyElementExport(spec));
         collector.exportedNames.add(spec.element);
@@ -92,7 +93,7 @@ const collectLazyElementExports = (collector: ExportCollector, lazyElements: Laz
 
 const renderLazyElementExport = (spec: LazyElementSpec): string => {
     const doc = getDoc(spec);
-    const factory = `createElementComponent(${sourceStringLiteral(spec.element)})`;
+    const factory = registration(spec.element, `createElementComponent(${sourceStringLiteral(spec.element)})`);
     const component = `${doc}export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
 
     return `${doc}${spec.typeSource}\n\n${component}`;
@@ -108,6 +109,7 @@ const renderCandidateExport = (
     const ancestry = ancestorGlibNames(klass, namespace, library);
     const component = resolveElementComponent(ancestry, components);
     imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
+    imports.addNamed("@gtkx/react/internal", "registerElementComponent", false);
     imports.addNamed("react", "ReactNode", true);
 
     if (component !== undefined) {
@@ -134,16 +136,16 @@ const resolveElementComponent = (
     return undefined;
 };
 
+const registration = (glibName: string, factory: string): string =>
+    `registerElementComponent(${sourceStringLiteral(glibName)}, ${factory})`;
+
 const renderElementComponentExport = (glibName: string, component: ElementComponent | undefined): string => {
     const propsType = `${glibName}Props`;
     const annotation = `(props: ${propsType}) => ReactNode`;
     const factoryCall = `createElementComponent(${sourceStringLiteral(glibName)})`;
+    const wrapped = component === undefined ? factoryCall : `${component.export}(${factoryCall})`;
 
-    if (component === undefined) {
-        return `export const ${glibName}: ${annotation} = ${factoryCall};`;
-    }
-
-    return `export const ${glibName}: ${annotation} = ${component.export}(${factoryCall});`;
+    return `export const ${glibName}: ${annotation} = ${registration(glibName, wrapped)};`;
 };
 
 export { generateElementComponentsSection, type ElementComponentOverrides };

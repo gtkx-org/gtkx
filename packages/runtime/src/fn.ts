@@ -252,19 +252,32 @@ function fromNativeCallable(
     };
 }
 
-/**
- * Binds a symbol in a shared library to a callable that marshals its inputs and packs output
- * arguments into the result. When the spec sets `canThrow`, the reported `GError` is thrown.
- *
- * @param sharedLibrary Shared library the symbol is looked up in.
- * @param symbol Name of the C symbol to bind.
- * @param spec Argument and return descriptors the call is marshalled through.
- */
-function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
+const bindCallable = (sharedLibrary: string, symbol: string, spec: FnSpec): ((...inputs: unknown[]) => unknown) => {
     const nativeArgTypes = buildNativeArgTypes(spec.args, spec.canThrow ?? false);
     const descriptor = nativeBind(sharedLibrary, symbol, nativeArgTypes, spec.returns, spec.fixedArgCount);
 
     return fromNativeCallable(descriptor, spec);
+};
+
+/**
+ * Binds a symbol in a shared library to a callable that marshals its inputs and packs output
+ * arguments into the result. When the spec sets `canThrow`, the reported `GError` is thrown.
+ * Building the spec and looking the symbol up both happen on the first call and only once, so a
+ * spec given as a function costs nothing until the binding is actually used.
+ *
+ * @param sharedLibrary Shared library the symbol is looked up in.
+ * @param symbol Name of the C symbol to bind.
+ * @param spec Argument and return descriptors the call is marshalled through, or a function
+ * returning them.
+ */
+function fn(sharedLibrary: string, symbol: string, spec: FnSpec | (() => FnSpec)): (...inputs: unknown[]) => unknown {
+    let bound: ((...inputs: unknown[]) => unknown) | undefined;
+
+    return (...inputs) => {
+        bound ??= bindCallable(sharedLibrary, symbol, typeof spec === "function" ? spec() : spec);
+
+        return bound(...inputs);
+    };
 }
 
 export { buildNativeArgTypes, fn, fromNativeCallable };

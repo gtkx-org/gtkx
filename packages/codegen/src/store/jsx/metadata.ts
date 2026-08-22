@@ -7,16 +7,10 @@ import type { TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
 import { inputParameters } from "../../analysis/param-structure.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
-import {
-    implementedInterfaces,
-    isIntrinsicElementClass,
-    iterateClassesWithGlibName,
-    signalHandlerName,
-} from "./intrinsic-elements.js";
+import { implementedInterfaces, isIntrinsicElementClass, iterateClassesWithGlibName } from "./intrinsic-elements.js";
 
 type IntrinsicElementEntry = {
     glibName: string;
-    signals: [string, string][];
     constructOnly: string[];
     constructable: string[];
     defaults: [string, string][];
@@ -40,10 +34,6 @@ const FLOAT_PATTERN = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
 const generateMetadata = (library: Library): string => {
     const intrinsicElements = collectIntrinsicElements(library);
 
-    const signalsEntries = intrinsicElements.map(
-        ({ glibName, signals }) => `    "${glibName}": ${renderSignalsObject(signals)},`,
-    );
-
     const constructOnlyEntries = intrinsicElements
         .filter(({ constructOnly }) => constructOnly.length > 0)
         .map(({ glibName, constructOnly }) => `    "${glibName}": ${renderStringSet(constructOnly)},`);
@@ -57,7 +47,6 @@ const generateMetadata = (library: Library): string => {
         .map(({ glibName, defaults }) => `    "${glibName}": ${renderDefaultsObject(defaults)},`);
 
     return `${[
-        `export const signals: Record<string, Record<string, string>> = {\n${signalsEntries.join("\n")}\n};`,
         `export const constructOnlyProps: Record<string, Set<string>> = {\n${constructOnlyEntries.join("\n")}\n};`,
         `export const constructProps: Record<string, Set<string>> = {\n${constructableEntries.join("\n")}\n};`,
         `export const defaultProps: Record<string, Record<string, unknown>> = {\n${defaultsEntries.join("\n")}\n};`,
@@ -82,7 +71,6 @@ const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => 
 
         entries.push({
             glibName,
-            signals: collectSignals(sources),
             constructOnly: collectConstructOnly(sources),
             constructable: collectConstructable(sources),
             defaults: collectDefaultProps(library, sources),
@@ -90,30 +78,6 @@ const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => 
     }
 
     return sortStringsBy(entries, (entry) => entry.glibName);
-};
-
-const collectSignalsFromSource = (source: GirClass, seen: Set<string>, signals: [string, string][]): void => {
-    for (const signal of source.signals) {
-        const handlerName = signalHandlerName(signal.name);
-
-        if (seen.has(handlerName)) {
-            continue;
-        }
-
-        seen.add(handlerName);
-        signals.push([handlerName, signal.name] as const);
-    }
-};
-
-const collectSignals = (sources: GirClass[]): [string, string][] => {
-    const seen: Set<string> = new Set();
-    const signals: [string, string][] = [];
-
-    for (const source of sources) {
-        collectSignalsFromSource(source, seen, signals);
-    }
-
-    return signals;
 };
 
 const collectPropNamesFromSource = (source: GirClass, collector: PropNameCollector): void => {
@@ -163,8 +127,6 @@ const renderObjectLiteral = (entries: [string, string][], renderValue: (value: s
 
 const renderStringSet = (names: string[]): string =>
     `new Set([${names.map((name) => sourceStringLiteral(name)).join(",")}])`;
-
-const renderSignalsObject = (entries: [string, string][]): string => renderObjectLiteral(entries, sourceStringLiteral);
 
 const collectDefaultsFromClass = (klass: GirClass, collector: DefaultPropsCollector): void => {
     for (const property of klass.properties) {

@@ -36,6 +36,7 @@ const FOREIGN_ACTIVATION_TIMEOUT = 20_000;
 
 const FOREIGN_CLIENT_SOURCE = [
     'import * as Gtk from "@gtkx/gi/gtk";',
+    "Gtk.init();",
     'new Gtk.Window({ title: "Foreign client", defaultWidth: 160, defaultHeight: 120 }).present();',
     "process.stdin.resume();",
 ].join("\n");

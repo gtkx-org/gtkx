@@ -121,31 +121,31 @@ describe("caller-allocated fixed-size array edge cases", () => {
 });
 
 describe("caller-allocated fixed-size array error paths", () => {
-    it("throws when binding a caller-allocated array without a fixed size", () => {
-        expect(() =>
-            t.fn("libgraphene-1.0.so.0", "graphene_matrix_to_float", {
-                args: [
-                    { type: t.biguint64 },
-                    { type: t.sizedArray(t.float32, 0, "borrowed", { isCallerAllocated: true }), direction: "out" },
-                ],
-                returns: t.void,
-            }),
-        ).toThrow();
+    it("throws when calling a caller-allocated array binding without a fixed size", () => {
+        const toFloat = t.fn("libgraphene-1.0.so.0", "graphene_matrix_to_float", {
+            args: [
+                { type: t.biguint64 },
+                { type: t.sizedArray(t.float32, 0, "borrowed", { isCallerAllocated: true }), direction: "out" },
+            ],
+            returns: t.void,
+        });
+
+        expect(() => toFloat(0n)).toThrow();
     });
 
-    it("throws when binding a caller-allocated fixed array of an unsupported element", () => {
-        expect(() =>
-            t.fn("libgraphene-1.0.so.0", "graphene_matrix_to_float", {
-                args: [
-                    { type: t.biguint64 },
-                    {
-                        type: t.fixedArray(t.callback([], t.void), 16, "borrowed", { isCallerAllocated: true }),
-                        direction: "out",
-                    },
-                ],
-                returns: t.void,
-            }),
-        ).toThrow();
+    it("throws when calling a caller-allocated fixed array binding of an unsupported element", () => {
+        const toFloat = t.fn("libgraphene-1.0.so.0", "graphene_matrix_to_float", {
+            args: [
+                { type: t.biguint64 },
+                {
+                    type: t.fixedArray(t.callback([], t.void), 16, "borrowed", { isCallerAllocated: true }),
+                    direction: "out",
+                },
+            ],
+            returns: t.void,
+        });
+
+        expect(() => toFloat(0n)).toThrow();
     });
 
     it("throws when reading the buffer through a detached receiver", () => {

@@ -7,6 +7,8 @@ const collectGarbage = (): void => {
 };
 
 beforeAll(async () => {
+    const { init } = await import("@gtkx/gi/gtk");
+    init();
     await import("@gtkx/runtime");
 });
 

@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, Ref } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -16,6 +16,8 @@ import {
 } from "@gtkx/jsx/gtk";
 import { GtkSourceView } from "@gtkx/jsx/gtksource";
 import { createPortal } from "@gtkx/react";
+import { createElementComponent } from "@gtkx/react/config";
+import { registerClass, TYPE_BOOLEAN, TYPE_INT, TYPE_STRING } from "@gtkx/runtime";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, useLayoutEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -33,11 +35,29 @@ type ProbeProps = {
     isArmed: boolean;
 };
 
+type GDBusShapedProps = {
+    ref?: Ref<Gtk.Box>;
+    onGSignal?: (name: string, self: Gtk.Box) => void;
+    onGPropertiesChanged?: (count: number, self: Gtk.Box) => void;
+    onGAuthorizeMethod?: (name: string, self: Gtk.Box) => boolean;
+};
+
 const FALSE = 0;
 const INPUT_ERROR = -1;
 const ROOT_NAMES = ["first", "second"];
 const portalTarget = new Gtk.Box();
 const handlePortalToggled = vi.fn();
+
+const GDBusShaped = registerClass(class extends Gtk.Box {}, {
+    typeName: "GtkxGDBusShaped",
+    signals: {
+        "g-signal": { paramTypes: [TYPE_STRING] },
+        "g-properties-changed": { paramTypes: [TYPE_INT] },
+        "g-authorize-method": { paramTypes: [TYPE_STRING], returnType: TYPE_BOOLEAN },
+    },
+});
+
+const GDBusShapedElement = createElementComponent<GDBusShapedProps>("GtkxGDBusShaped");
 
 const makeAdjustment = () => Gtk.Adjustment.new(0, 0, 1000, 1, 10, 0);
 
@@ -420,5 +440,36 @@ describe("user event signals", () => {
             expect(handleMap).toHaveBeenCalled();
             expect(handleRealize).toHaveBeenCalled();
         });
+    });
+});
+
+describe("signal names whose first word is a single capital", () => {
+    it("connects onGSignal, onGPropertiesChanged and onGAuthorizeMethod to their dashed signals", async () => {
+        const handleGSignal = vi.fn();
+        const handleGPropertiesChanged = vi.fn();
+        const handleGAuthorizeMethod = vi.fn(() => true);
+        const ref = createRef<Gtk.Box>();
+
+        await render(
+            <GDBusShapedElement
+                ref={ref}
+                onGSignal={handleGSignal}
+                onGPropertiesChanged={handleGPropertiesChanged}
+                onGAuthorizeMethod={handleGAuthorizeMethod}
+            />,
+        );
+
+        const shaped = ref.current as InstanceType<typeof GDBusShaped>;
+        expect(shaped).toBeInstanceOf(GDBusShaped);
+
+        await act(() => {
+            shaped.emit("g-signal", "Ping");
+            shaped.emit("g-properties-changed", 2);
+            shaped.emit("g-authorize-method", "Call");
+        });
+
+        expect(handleGSignal).toHaveBeenCalledWith("Ping", shaped);
+        expect(handleGPropertiesChanged).toHaveBeenCalledWith(2, shaped);
+        expect(handleGAuthorizeMethod).toHaveBeenCalledWith("Call", shaped);
     });
 });

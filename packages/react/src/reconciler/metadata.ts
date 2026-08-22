@@ -1,11 +1,10 @@
 import { TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
 import { getOrInsert } from "@gtkx/utils";
-import { constructOnlyProps, constructProps, defaultProps, signals, userEventSignals } from "virtual:gtkx-config";
+import { constructOnlyProps, constructProps, defaultProps, userEventSignals } from "virtual:gtkx-config";
 import { deferredProps, type ElementBehavior, ELEMENTS } from "./registry.js";
 
 type TypeInfo = {
     typeName: string;
-    signals: Record<string, string>;
     userEventSignals: Set<string>;
     behaviors: ElementBehavior[];
     deferred: Set<string>;
@@ -58,7 +57,6 @@ const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
 };
 
 const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
-    Object.assign(info.signals, signals[ancestor] ?? {});
     addAll(info.userEventSignals, userEventSignals[ancestor]);
     addAll(info.constructOnly, constructOnlyProps[ancestor]);
     addAll(info.construct, constructProps[ancestor]);
@@ -85,7 +83,6 @@ const buildTypeInfo = (name: string): TypeInfo => {
 
     const info: TypeInfo = {
         typeName: name,
-        signals: {},
         userEventSignals: new Set(),
         behaviors: [],
         deferred: new Set(),

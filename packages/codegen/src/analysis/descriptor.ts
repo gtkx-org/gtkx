@@ -322,7 +322,7 @@ const tFn = (lib: string, cIdentifier: string, spec: FnSpecParts): string => {
     return call("fn", [
         sourceStringLiteral(lib),
         sourceStringLiteral(cIdentifier),
-        `{ args: ${spec.args}, returns: ${spec.returns}${skipEntry}${unpackEntry}${throwsEntry} }`,
+        `() => ({ args: ${spec.args}, returns: ${spec.returns}${skipEntry}${unpackEntry}${throwsEntry} })`,
     ]);
 };
 

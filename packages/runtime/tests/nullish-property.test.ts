@@ -23,8 +23,6 @@ type HoldingCase = NamedCase & { hold: () => unknown; constructed: unknown };
 type RefusingCase = NamedCase & { written: unknown };
 
 const uniqueName = createTypeNameFactory("_");
-const strvType = typeFromName("GStrv");
-const labelType = typeFromName("GtkLabel");
 
 const REFUSING: RefusingCase[] = [
     { name: "red", written: 120, fallback: 0 },
@@ -53,8 +51,8 @@ const probeProperties = (): Record<string, ParamSpec> => ({
     ratio: paramSpecDouble("ratio", null, null, 0, 1, 0, ParamFlags.READWRITE),
     enabled: paramSpecBoolean("enabled", null, null, false, ParamFlags.READWRITE),
     label: paramSpecString("label", null, null, "", ParamFlags.READWRITE),
-    tags: paramSpecBoxed("tags", null, null, strvType, ParamFlags.READWRITE),
-    child: paramSpecObject("child", null, null, labelType, ParamFlags.READWRITE),
+    tags: paramSpecBoxed("tags", null, null, typeFromName("GStrv"), ParamFlags.READWRITE),
+    child: paramSpecObject("child", null, null, typeFromName("GtkLabel"), ParamFlags.READWRITE),
     target: paramSpecPointer("target", null, null, ParamFlags.READWRITE),
 });
 

@@ -54,6 +54,11 @@
             "source": "./src/config.ts",
             "types": "./dist/config.d.ts",
             "default": "./dist/config.js"
+        },
+        "./gtksource": {
+            "source": "./src/gtksource/index.ts",
+            "types": "./dist/gtksource/index.d.ts",
+            "default": "./dist/gtksource/index.js"
         }
     },
     "sideEffects": [
@@ -68,7 +73,11 @@
         "./src/adw/index.ts",
         "./dist/adw/index.js",
         "./src/adw/element-behaviors.ts",
-        "./dist/adw/element-behaviors.js"
+        "./dist/adw/element-behaviors.js",
+        "./src/adw/bootstrap.ts",
+        "./dist/adw/bootstrap.js",
+        "./src/gtksource/index.ts",
+        "./dist/gtksource/index.js"
     ],
     "files": [
         "dist",
