@@ -1,8 +1,0 @@
-{
-    "extends": "./tsconfig.app.json",
-    "compilerOptions": {
-        "exactOptionalPropertyTypes": true,
-        "outDir": "/tmp/claude-1001/-home-eugenio-gtkx/92146c05-cad8-4cb0-8bb6-7f2d3ec12ea0/scratchpad/zz-out/app",
-        "tsBuildInfoFile": "/tmp/claude-1001/-home-eugenio-gtkx/92146c05-cad8-4cb0-8bb6-7f2d3ec12ea0/scratchpad/zz-out/app.tsbuildinfo"
-    }
-}
