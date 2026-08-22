@@ -1,0 +1,24 @@
+{
+    "extends": "../../tsconfig.app.json",
+    "compilerOptions": {
+        "exactOptionalPropertyTypes": false
+    },
+    "files": ["${configDir}/node_modules/.gtkx/env.d.ts"],
+    "references": [
+        {
+            "path": "../../packages/react/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/navigation/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/testing/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/cli/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/config/tsconfig.lib.json"
+        }
+    ]
+}

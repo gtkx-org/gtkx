@@ -64,7 +64,8 @@
                     "@gtkx/cli:build",
                     "@gtkx/components:build",
                     "@gtkx/css:build",
-                    "@gtkx/gl:build"
+                    "@gtkx/gl:build",
+                    "@gtkx/navigation:build"
                 ],
                 "inputs": [
                     "sharedGlobals",

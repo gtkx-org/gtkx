@@ -266,7 +266,7 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
     classifyEntrypoints(surface),
     {
         files: CORE_SOURCES,
-        ignores: [...ADW_SOURCES, "packages/animated/src/**"],
+        ignores: [...ADW_SOURCES, "packages/animated/src/**", "packages/navigation/src/**"],
         rules: restrictAdwImports(ADW_CORE_MESSAGE, []),
     },
     {

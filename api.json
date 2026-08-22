@@ -11,6 +11,7 @@
         "@gtkx/config/vite-plugin",
         "@gtkx/css",
         "@gtkx/gl",
+        "@gtkx/navigation",
         "@gtkx/react",
         "@gtkx/react/config",
         "@gtkx/runtime",

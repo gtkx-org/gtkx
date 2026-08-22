@@ -64,7 +64,8 @@
             },
             "exclude": [
                 "examples/gtk-demo/*",
-                "examples/animations/*"
+                "examples/animations/*",
+                "examples/navigation/*"
             ]
         }
     ],
@@ -129,7 +130,8 @@
                 "@gtkx/cli:build",
                 "@gtkx/components:build",
                 "@gtkx/css:build",
-                "@gtkx/gl:build"
+                "@gtkx/gl:build",
+                "@gtkx/navigation:build"
             ]
         },
         "release": {
@@ -147,7 +149,8 @@
                 "@gtkx/cli:build",
                 "@gtkx/components:build",
                 "@gtkx/css:build",
-                "@gtkx/gl:build"
+                "@gtkx/gl:build",
+                "@gtkx/navigation:build"
             ]
         }
     }

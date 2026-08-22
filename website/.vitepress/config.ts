@@ -39,6 +39,7 @@ const guideSidebar = [
     { text: "Subclassing GObject", link: "/guide/subclassing" },
     { text: "Components", link: "/guide/components" },
     { text: "Modals and Portals", link: "/guide/modals-and-portals" },
+    { text: "Navigation", link: "/guide/navigation" },
     { text: "CSS", link: "/guide/css" },
     { text: "Animations", link: "/guide/animations" },
     { text: "Cairo", link: "/guide/cairo" },

@@ -106,4 +106,4 @@ The tutorial builds these surfaces in [Mounting dialogs](/tutorial/actions-menus
 
 ## Next
 
-Continue with [CSS](/guide/css) to style these surfaces with the `css` tagged template and GTK4's own CSS engine.
+Continue with [Navigation](/guide/navigation) to move between screens with stack, tab, and drawer navigators drawn by libadwaita.

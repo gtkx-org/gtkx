@@ -66,6 +66,12 @@
         "packages/cairo": {
             "includeEntryExports": false
         },
+        "packages/navigation": {
+            "includeEntryExports": false,
+            "entry": [
+                "gtkx.config.ts!"
+            ]
+        },
         "packages/codegen": {
             "ignoreDependencies": [
                 "@gtkx/cairo"

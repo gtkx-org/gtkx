@@ -1,0 +1,116 @@
+{
+    "name": "navigation",
+    "version": "0.0.0",
+    "private": true,
+    "license": "MPL-2.0",
+    "description": "Showcase of @gtkx/navigation: React Navigation stack, tab and drawer navigators rendered with libadwaita",
+    "type": "module",
+    "scripts": {
+        "build": "gtkx build",
+        "dev": "gtkx dev",
+        "start": "node dist/bundle.mjs",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "@gtkx/navigation": "workspace:*",
+        "@gtkx/react": "workspace:*",
+        "react": "catalog:"
+    },
+    "devDependencies": {
+        "@gtkx/cli": "workspace:*",
+        "@gtkx/config": "workspace:*",
+        "@gtkx/testing": "workspace:*",
+        "vite": "catalog:",
+        "vitest": "catalog:"
+    },
+    "nx": {
+        "targets": {
+            "codegen": {
+                "command": "gtkx codegen",
+                "options": {
+                    "cwd": "{projectRoot}"
+                },
+                "cache": false,
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/cli:build"
+                ],
+                "outputs": [
+                    "{projectRoot}/node_modules/.gtkx/**/*.{js,d.ts,json}"
+                ]
+            },
+            "build": {
+                "cache": true,
+                "dependsOn": [
+                    "^build",
+                    "codegen"
+                ],
+                "inputs": [
+                    "default",
+                    "^production",
+                    {
+                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                        "transitive": true
+                    }
+                ],
+                "outputs": [
+                    "{projectRoot}/dist/**"
+                ]
+            },
+            "typecheck": {
+                "dependsOn": [
+                    "^build",
+                    "codegen"
+                ]
+            },
+            "dev": {
+                "cache": false,
+                "continuous": true,
+                "dependsOn": [
+                    "^build",
+                    "codegen"
+                ]
+            },
+            "start": {
+                "cache": false,
+                "continuous": true,
+                "dependsOn": [
+                    "build"
+                ]
+            },
+            "test": {
+                "command": "vitest run",
+                "options": {
+                    "cwd": "{projectRoot}"
+                },
+                "cache": true,
+                "inputs": [
+                    "default",
+                    "^production",
+                    {
+                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                        "transitive": true
+                    }
+                ],
+                "outputs": [],
+                "dependsOn": [
+                    "...",
+                    "codegen",
+                    "@gtkx/testing:build"
+                ]
+            },
+            "lint": {
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/gl:codegen",
+                    "codegen"
+                ],
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint examples/navigation"
+                }
+            }
+        }
+    },
+    "author": "GTKX <hello@gtkx.dev>"
+}

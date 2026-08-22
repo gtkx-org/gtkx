@@ -1,0 +1,23 @@
+{
+    "extends": "../../tsconfig.test.json",
+    "compilerOptions": {
+        "exactOptionalPropertyTypes": false
+    },
+    "references": [
+        {
+            "path": "./tsconfig.lib.json"
+        },
+        {
+            "path": "../config/tsconfig.lib.json"
+        },
+        {
+            "path": "../react/tsconfig.lib.json"
+        },
+        {
+            "path": "../testing/tsconfig.lib.json"
+        },
+        {
+            "path": "../vitest/tsconfig.lib.json"
+        }
+    ]
+}
