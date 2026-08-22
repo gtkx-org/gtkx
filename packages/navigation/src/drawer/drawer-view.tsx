@@ -1,4 +1,3 @@
-import type * as Adw from "@gtkx/gi/adw";
 import type { DrawerNavigationState, ParamListBase } from "@react-navigation/core";
 import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -131,7 +130,6 @@ const DrawerPage = ({ descriptor, isLoaded }: DrawerPageProps): ReactNode => {
 
 const DrawerView = ({ state, navigation, descriptors, drawerContent, ...config }: DrawerViewProps): ReactNode => {
     const { collapsed = false, sidebarPosition = "start", pinSidebar, minSidebarWidth, maxSidebarWidth } = config;
-    const viewRef = useRef<Adw.OverlaySplitView | null>(null);
     const focused = getFocusedRoute(state);
     const descriptor = requireDescriptor(descriptors, focused.key);
     const loaded = useLoadedRoutes(focused.key, state.preloadedRouteKeys);
@@ -141,18 +139,9 @@ const DrawerView = ({ state, navigation, descriptors, drawerContent, ...config }
     usePopToTopOnBlur(state, descriptors, navigation);
     useCloseOnNavigate(state, navigation, collapsed);
 
-    useEffect(() => {
-        const view = viewRef.current;
-
-        if (view !== null) {
-            onShowSidebarChanged(view.getShowSidebar());
-        }
-    }, [collapsed, onShowSidebarChanged]);
-
     return (
         <DrawerCollapsedContext value={collapsed}>
             <AdwOverlaySplitView
-                ref={viewRef}
                 collapsed={collapsed}
                 showSidebar={getDrawerStatus(state) === "open"}
                 sidebarPosition={PACK_TYPES[sidebarPosition]}

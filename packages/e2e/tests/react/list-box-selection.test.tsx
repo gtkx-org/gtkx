@@ -22,7 +22,7 @@ const BoxProbe = ({ boxRef, count, selectedIndex, onRowSelected }: BoxProbeProps
     </GtkListBox>
 );
 
-const selectedIndexOf = (box: Gtk.ListBox | null): number => box?.getSelectedRow()?.getIndex() ?? -1;
+const getSelectedIndex = (box: Gtk.ListBox | null): number => box?.getSelectedRow()?.getIndex() ?? -1;
 
 const renderProbe = async (props: Omit<BoxProbeProps, "boxRef">) => {
     const boxRef = createRef<Gtk.ListBox>();
@@ -34,19 +34,19 @@ const renderProbe = async (props: Omit<BoxProbeProps, "boxRef">) => {
 describe("list box selection (1)", () => {
     it("selects the row at the given index", async () => {
         const { boxRef } = await renderProbe({ count: 3, selectedIndex: 1 });
-        expect(selectedIndexOf(boxRef.current)).toBe(1);
+        expect(getSelectedIndex(boxRef.current)).toBe(1);
     });
 
     it("follows the prop when it changes", async () => {
         const { boxRef, rerender } = await renderProbe({ count: 3, selectedIndex: 1 });
         await rerender(<BoxProbe boxRef={boxRef} count={3} selectedIndex={2} />);
-        expect(selectedIndexOf(boxRef.current)).toBe(2);
+        expect(getSelectedIndex(boxRef.current)).toBe(2);
     });
 
     it("clears the selection for -1", async () => {
         const { boxRef, rerender } = await renderProbe({ count: 3, selectedIndex: 1 });
         await rerender(<BoxProbe boxRef={boxRef} count={3} selectedIndex={-1} />);
-        expect(selectedIndexOf(boxRef.current)).toBe(-1);
+        expect(getSelectedIndex(boxRef.current)).toBe(-1);
     });
 });
 
@@ -54,9 +54,9 @@ describe("list box selection (2)", () => {
     it("waits for a row that no commit has added yet, holding the selection it has", async () => {
         const { boxRef, rerender } = await renderProbe({ count: 3, selectedIndex: 1 });
         await rerender(<BoxProbe boxRef={boxRef} count={3} selectedIndex={4} />);
-        expect(selectedIndexOf(boxRef.current)).toBe(1);
+        expect(getSelectedIndex(boxRef.current)).toBe(1);
         await rerender(<BoxProbe boxRef={boxRef} count={5} selectedIndex={4} />);
-        expect(selectedIndexOf(boxRef.current)).toBe(4);
+        expect(getSelectedIndex(boxRef.current)).toBe(4);
     });
 
     it("puts the selection back when the box drifts from the prop", async () => {
@@ -67,9 +67,9 @@ describe("list box selection (2)", () => {
             box.selectRow(box.getRowAtIndex(2));
         });
 
-        expect(selectedIndexOf(box)).toBe(2);
+        expect(getSelectedIndex(box)).toBe(2);
         await rerender(<BoxProbe boxRef={boxRef} count={4} selectedIndex={1} />);
-        expect(selectedIndexOf(box)).toBe(1);
+        expect(getSelectedIndex(box)).toBe(1);
     });
 
     it("leaves the selection alone while the prop is absent", async () => {
@@ -82,19 +82,25 @@ describe("list box selection (2)", () => {
         });
 
         await rerender(<BoxProbe boxRef={boxRef} count={4} />);
-        expect(selectedIndexOf(box)).toBe(2);
+        expect(getSelectedIndex(box)).toBe(2);
     });
 
     it("does not report its own write as a row the user selected", async () => {
         const handleRowSelected = vi.fn();
-        const { boxRef, rerender } = await renderProbe({ count: 3, selectedIndex: 0, onRowSelected: handleRowSelected });
+
+        const { boxRef, rerender } = await renderProbe({
+            count: 3,
+            selectedIndex: 0,
+            onRowSelected: handleRowSelected,
+        });
+
         handleRowSelected.mockClear();
 
         await rerender(
             <BoxProbe boxRef={boxRef} count={3} selectedIndex={2} onRowSelected={handleRowSelected} />,
         );
 
-        expect(selectedIndexOf(boxRef.current)).toBe(2);
+        expect(getSelectedIndex(boxRef.current)).toBe(2);
         expect(handleRowSelected).not.toHaveBeenCalled();
     });
 });
