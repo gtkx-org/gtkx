@@ -1,4 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
+import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import { getBufferText } from "../helpers/buffer-text.js";
@@ -22,6 +24,12 @@ const insertingBuffer = (onInsert: (location: Gtk.TextIter) => void): Gtk.TextBu
 
 const insertAtStart = (buffer: Gtk.TextBuffer, text: string): void => {
     buffer.insert(buffer.getStartIter(), text, text.length);
+};
+
+const deserializeBadNode = (onError: (start: Gsk.ParseLocation) => void): void => {
+    Gsk.RenderNode.deserialize(GLib.Bytes.new(new TextEncoder().encode("not a render node")), (start) => {
+        onError(start);
+    });
 };
 
 const getToplevel = (window: Gtk.Window): Gdk.Toplevel => {
@@ -75,6 +83,30 @@ describe("a boxed value a C caller lends to a callback", () => {
 
         insertAtStart(buffer, "X");
         expect(() => escaped[0]?.forwardChars(1)).toThrow();
+    });
+});
+
+describe("a plain struct a C caller lends to a callback", () => {
+    it("reads back the location the caller passed in", () => {
+        const offsets: number[] = [];
+
+        deserializeBadNode((start) => {
+            offsets.push(start.bytes);
+        });
+
+        expect(offsets.length).toBeGreaterThan(0);
+        expect(offsets.every((offset) => Number.isSafeInteger(offset))).toBe(true);
+    });
+
+    it("rejects a read once the callback has returned", () => {
+        const escaped: Gsk.ParseLocation[] = [];
+
+        deserializeBadNode((start) => {
+            escaped.push(start);
+        });
+
+        expect(escaped.length).toBeGreaterThan(0);
+        expect(() => escaped[0]?.bytes).toThrow();
     });
 });
 

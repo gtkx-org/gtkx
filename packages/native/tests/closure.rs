@@ -246,7 +246,7 @@ fn a_borrowed_struct_argument_stops_reaching_its_memory_when_the_callback_return
 }
 
 #[test]
-fn a_copied_struct_argument_keeps_reaching_its_own_memory_after_the_callback_returns() {
+fn a_struct_argument_of_known_size_is_lent_rather_than_copied() {
     helpers::run(|| {
         let env = helpers::fake_env();
         let seen = Rc::new(RefCell::new(Vec::new()));
@@ -259,11 +259,10 @@ fn a_copied_struct_argument_keeps_reaching_its_own_memory_after_the_callback_ret
         let handle = argument_handle(&env, single_argument_of(&seen));
 
         assert!(
-            !handle.is_invalidated(),
-            "an argument copied out of the caller's memory owns what it points at"
+            handle.is_invalidated(),
+            "knowing the size of a struct does not make the caller's memory outlive the call"
         );
-        assert!(!handle.as_ptr().is_null());
-        assert_ne!(handle.as_ptr(), block);
+        assert!(handle.as_ptr().is_null());
 
         unsafe { glib::ffi::g_free(block) };
     });

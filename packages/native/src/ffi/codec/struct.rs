@@ -116,6 +116,23 @@ impl Decoder for StructCodec {
 
         Ok(value::handle_to_unknown(env, handle)?)
     });
+
+    unsafe fn read_lent_value<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        _context: &str,
+        transfer: Ownership,
+    ) -> anyhow::Result<Unknown<'e>> {
+        Self::ensure_lent_transfer(transfer)?;
+
+        self.decode_non_null(env, ptr, |ptr| {
+            Ok(value::handle_to_unknown(
+                env,
+                Handle::from_glib_borrow(ptr),
+            )?)
+        })
+    }
 }
 
 impl PtrWriter for StructCodec {
