@@ -1,12 +1,12 @@
 # tutorial
 
-**Tasks**, the complete GNOME task manager built in the [GTKX tutorial](https://gtkx.dev/tutorial/). An adaptive split view puts smart views (All Tasks, Today, Important, Trash) and user-created lists in a sidebar, next to a content pane that shows the task list, or the editor for the task you open.
+**Tasks**, the complete GNOME task manager built in the [GTKX tutorial](https://gtkx.dev/tutorial/). An adaptive split view navigator puts smart views (All Tasks, Today, Important, Trash) and user-created lists in a sidebar, next to a content pane that shows the task list, or the editor for the task you open.
 
 ![The Tasks app: an Adwaita window with a sidebar of smart views and colored lists on the left, and a boxed task list on the right.](assets/screenshot.png)
 
 ## What it demonstrates
 
-- Adaptive layout with `AdwNavigationSplitView`: the sidebar picks a view, and the content pane renders the task list or the editor for the open task. An `AdwBreakpoint` collapses the panes into one column on a narrow window.
+- Adaptive layout with `@gtkx/navigation`: a `createSplitViewNavigator` with three screens, `Lists` in the sidebar pane, `Tasks` and `Task` as pages of the content stack. The selected list or smart view is the `Tasks` route's params, and the open task is the `Task` route's. An `AdwBreakpoint` drives the navigator's `collapsed` prop, folding the panes into one column on a narrow window.
 - Settings backed by a GSettings schema (`data/com.gtkx.tutorial.gschema.xml`), read and written with `useSetting` and `useBindSetting`, driving the Adwaita color scheme through `Adw.StyleManager`.
 - Actions, menus, and shortcuts: `GSimpleAction` elements wired to a menu button, `actionAccels`, and a `GtkShortcutController`.
 - Dialogs and feedback: preferences, an about dialog, a shortcuts window, delete confirmation, and toasts via `AdwToastOverlay`.

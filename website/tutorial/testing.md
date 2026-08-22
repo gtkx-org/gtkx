@@ -44,10 +44,7 @@ beforeEach(() => {
     useStore.setState({
         tasks: seedTasks,
         lists: seedLists,
-        selection: { kind: "smart", view: "all" },
-        selectedTaskId: null,
         collapsed: false,
-        showContent: false,
         filter: "all",
         searchMode: false,
         searchQuery: "",
@@ -63,6 +60,8 @@ afterAll(() => {
 
 The dynamic `await import` is deliberate. ESM hoists static imports above every statement in a module, so a plain `import { useStore } from "../src/store/index.js"` would evaluate `storage.ts` (and read `process.env.XDG_DATA_HOME`) before the assignment above it ran. Importing after the assignment is what makes the redirect take effect.
 
+There is no navigation state in that list, and none is missing. Each `render` builds a new `NavigationContainer`, so every test starts on the `Tasks` route with the `initialParams` from [Smart Views, Filters, and Search](/tutorial/smart-views-and-search): All Tasks in the content pane, the sidebar beside it, and nothing above them. What the store holds is reset by hand, `collapsed` included, since the breakpoint writes that one and a test should not inherit a narrow layout from the test before it.
+
 ## Testing the store on its own
 
 Start with the tests that need no widgets. The store is a plain module: call an action, read `getState()`, and assert. They run fast and cover the logic most likely to be wrong.
@@ -72,7 +71,7 @@ Create `tests/tasks.test.tsx`:
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { rootElement } from "@gtkx/react";
-import { fireEvent, render, screen, userEvent } from "@gtkx/testing";
+import { act, fireEvent, render, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 import { useStore } from "../src/store/index.js";
@@ -128,7 +127,7 @@ describe("Tasks", () => {
 
 The keyboard helper takes its target widget first, unlike its browser counterpart, because there is no document-wide focus to fall back on.
 
-## Ticking, opening, dragging
+## Ticking and opening
 
 Add these inside the same `describe`.
 
@@ -149,6 +148,22 @@ In `tests/tasks.test.tsx`:
 
 `toBeChecked` is one of the widget matchers `@gtkx/testing` adds to `expect`. It reads the accessible checked state off the `GtkCheckButton` and throws when the widget does not expose that state, so aiming it at the wrong widget fails instead of passing silently.
 
+Three tests start by opening the same task, so that step goes in a helper above both `describe` blocks.
+
+In `tests/tasks.test.tsx`:
+
+```tsx
+const openWaterThePlants = async (): Promise<void> => {
+    const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
+    await fireEvent(row, "activated");
+    await screen.findByText("Notes");
+};
+```
+
+The helper ends on a query rather than on the click. `activated` runs `navigation.navigate("Task", { id })`, and waiting for the editor's Notes label is what makes the following assertions run against the page that push produced.
+
+The first test to use it is the one about the push itself.
+
 In `tests/tasks.test.tsx`:
 
 ```tsx
@@ -157,14 +172,99 @@ In `tests/tasks.test.tsx`:
     it("opens the editor when a row is activated", async () => {
         await render(<App />, { container: rootElement });
 
-        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
-        await fireEvent(row, "activated");
+        await openWaterThePlants();
 
         expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
     });
 ```
 
-This test emits a signal instead of synthesizing input. `userEvent` is still the better default because it drives the same event plumbing as production, and `userEvent.click` on this row would activate it too. Here the handler behind `activated` is what the test is about, so it drives that signal directly: `fireEvent(object, signalName)` emits any GObject signal without actionability checks. The name matcher is a regular expression because that row's accessible name includes its due-date subtitle along with the title.
+This test emits a signal instead of synthesizing input. `userEvent` is still the better default because it drives the same event plumbing as production, and `userEvent.click` on this row would activate it too. Here the handler behind `activated` is what the test is about, so it drives that signal directly: `fireEvent(object, signalName)` emits any GObject signal without actionability checks.
+
+The name matchers are regular expressions rather than strings. A string has to match a whole accessible name, which a row assembles out of everything it shows, so a regular expression is the form that keeps matching when a row grows a subtitle or a badge.
+
+## Moving between pages
+
+Everything so far asserted on one page. These four move between them, which is the part of the app you did not write: the navigator draws the back button, answers Escape, and swaps the content pane.
+
+In `tests/tasks.test.tsx`:
+
+```tsx
+// ...
+
+    it("goes back to the list from the editor", async () => {
+        await render(<App />, { container: rootElement });
+
+        await openWaterThePlants();
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
+
+        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeDefined();
+        expect(screen.queryByText("Notes")).toBeNull();
+    });
+```
+
+The back button is Adwaita's, and it reaches the tree like any other widget: role `BUTTON`, name `Back`. Nothing in this test waits for an animation, because `render` turns them off unless it is given `areAnimationsEnabled: true`, so a push or a pop has finished by the time the click resolves.
+
+The two assertions are a pair, and they work because only the page on screen is mapped. The task list is queryable again, and the editor is gone from the tree rather than sitting behind it. `queryByText` returns `null` where `findByText` and `getByText` throw, which is how you assert that something left. `userEvent.keyboard(widget, "{Escape}")` pops the same page through the key, if you would rather test the way most people leave the editor.
+
+Selecting a list is the other kind of move: a `navigate` that keeps the same route and swaps its params.
+
+In `tests/tasks.test.tsx`:
+
+```tsx
+// ...
+
+    it("shows another list when its sidebar row is selected", async () => {
+        await render(<App />, { container: rootElement });
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Work/ }));
+
+        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Review pull requests/ })).toBeDefined();
+        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeNull();
+    });
+```
+
+Both panes are on screen, because the setup file leaves `collapsed` at `false`, so `LIST_ITEM` reaches the sidebar's rows and the task list's rows at once. `/^Work/` is anchored so it cannot be answered by a task title that happens to contain the word. The click goes through the list box's own selection, which is where [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) put the `navigate` call, so this test covers the guard that keeps GTK4's selection and the route in agreement.
+
+The New Task button carries no handler at all, only `actionName="win.new"`.
+
+In `tests/tasks.test.tsx`:
+
+```tsx
+// ...
+
+    it("opens the editor for a task added with the New Task button", async () => {
+        await render(<App />, { container: rootElement });
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Task (Ctrl+N)" }));
+
+        expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
+        expect(useStore.getState().tasks.some((task) => task.title === "New Task")).toBe(true);
+    });
+```
+
+Clicking it activates the GAction, which reads the current selection through the container ref from [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts), adds the task, and navigates twice to put the editor over the right list. The two assertions cover both halves: the interface arrived at the editor, and the store holds the task it is editing. `Ctrl+N` ends in the same action, so the only thing the key adds on top of this is the accelerator entry itself.
+
+The last one closes a page without touching the back button.
+
+In `tests/tasks.test.tsx`:
+
+```tsx
+// ...
+
+    it("returns to the list when the open task is moved to trash", async () => {
+        await render(<App />, { container: rootElement });
+
+        await openWaterThePlants();
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete (Delete)" }));
+
+        expect(screen.queryByText("Notes")).toBeNull();
+        expect(useStore.getState().tasks.find((task) => task.id === "t2")?.deleted).toBe(true);
+    });
+```
+
+The trash button in the editor's header runs the hook from [Deleting Without Fear](/tutorial/trash-and-toasts), which pops the page before it moves the task, so the editor is gone by the time the store write lands. Assert both, since a version that trashed the task and left the editor standing over it would still pass the second line on its own.
+
+## Dragging and toggling
 
 In `tests/tasks.test.tsx`:
 
@@ -198,7 +298,10 @@ In `tests/tasks.test.tsx`:
 
     it("keeps one color selected when the same swatch is clicked repeatedly", async () => {
         await render(<App />, { container: rootElement });
-        useStore.getState().showDialog("new-list");
+
+        await act(() => {
+            useStore.getState().showDialog("new-list");
+        });
 
         const orange = await screen.findByLabelText("Color #e66100");
         await userEvent.click(orange);
@@ -209,7 +312,7 @@ In `tests/tasks.test.tsx`:
     });
 ```
 
-Opening the dialog is a store write rather than a click, because the button that raises it lives in the sidebar header and this test is about the swatches. `findByLabelText` reaches each toggle through the `accessibleLabel` the dot carries, and `toHaveObjectProperty` reads a plain GObject property off the widget, which is where a toggle keeps its state.
+Opening the dialog is a store write rather than a click, because the button that raises it lives in the sidebar header and this test is about the swatches. That write comes from outside any event the harness drives, so it goes inside `act`, which flushes the render it causes before the query runs. `findByLabelText` reaches each toggle through the `accessibleLabel` the dot carries, and `toHaveObjectProperty` reads a plain GObject property off the widget, which is where a toggle keeps its state.
 
 ## Reading a failure
 
@@ -244,6 +347,22 @@ button:
 
 The dump continues through every other role in the window. Read it as an accessibility report, not a stack trace: `Name "Delete task"` appears once per seeded task because [Completing, Starring, and Deleting](/tutorial/completing-and-deleting) gave that icon-only button an `accessibleLabel`, and Minimize, Maximize, and Close are the window controls the header bar draws. Every button here has a name. Further down, under `generic`, the entries reading `Name ""` are the layout boxes, which neither a query nor a screen reader has any reason to reach.
 
+Run the same query after opening Water the plants and that one section reads differently:
+
+```
+button:
+  Name "New List": <Button role="button">New List</Button>
+  Name "Clear due date": <Button role="button">Clear due date</Button>
+  Name "Today at 12:00 AM": <MenuButton role="button">Today at 12:00 AM</MenuButton>
+  Name "Back": <Button role="button">Back</Button>
+  Name "Delete (Delete)": <Button role="button">Delete (Delete)</Button>
+  Name "Minimize": <Button role="button">Minimize</Button>
+  Name "Maximize": <Button role="button">Maximize</Button>
+  Name "Close": <Button role="button">Close</Button>
+```
+
+The sidebar is still there, since it is the other pane rather than the other page. Everything belonging to the task list is gone: its rows, its header bar, and the buttons on it, replaced by the editor's own and the back button the navigator added. That is what "only the visible page is mapped" means in practice, and it is why a test asserting that a page closed can look for something that was on it and expect nothing back.
+
 You do not have to fail a query to see this. `screen.debug()` prints the annotated tree at any point in a test, and `screen.logRoles()` prints the same grouping on demand. That is the quickest way to check what role a widget reports before you write the query.
 
 The rest of the harness, including `within`, `renderHook`, `waitFor`, screenshots, and the full matcher set, is in the [testing guide](/guide/testing).
@@ -264,9 +383,9 @@ Every test passes against real GTK4 widgets with no display attached:
 [gtkx] Compiled GSettings schema: com.gtkx.tutorial.gschema.xml
 
  Test Files  1 passed (1)
-      Tests  6 passed (6)
+      Tests  10 passed (10)
    Start at  18:12:36
-   Duration  8.71s (transform 6.38s, setup 358ms, import 7.60s, tests 518ms, environment 0ms)
+   Duration  9.35s (transform 6.41s, setup 361ms, import 7.63s, tests 1.14s, environment 0ms)
 ```
 
 Now break something on purpose. Change the drag payload in the reorder test from `"t2"` to `"t9"` and run again. The test fails, because the drop target looks that identifier up in the store and finds no task, exactly what a mismatched content provider would do in the running app. Put it back and the suite passes again.

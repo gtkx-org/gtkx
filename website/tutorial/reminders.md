@@ -123,6 +123,7 @@ Add the slot in `src/app.tsx`:
 ```tsx
 import * as GLib from "@gtkx/gi/glib";
 import { GSimpleAction } from "@gtkx/jsx/gio";
+import { ALL_TASKS, openTask } from "./navigation.js";
 import { useStore } from "./store/index.js";
 // ...
 
@@ -146,9 +147,7 @@ export function App() {
                         parameterType={GLib.VariantType.new("s")}
                         onActivate={(parameter) => {
                             if (!parameter) return;
-                            const { select, openTask } = useStore.getState();
-                            select({ kind: "smart", view: "all" });
-                            openTask(parameter.getString()[0]);
+                            openTask(ALL_TASKS, parameter.getString()[0]);
                         }}
                     />
                 </>
@@ -160,11 +159,11 @@ export function App() {
 }
 ```
 
-`open-task` selects All Tasks first, because the task the shell names may not be in whichever view was showing when you quit. Without that, the detail pane could open on a task you cannot navigate back out of.
+`open-task` reuses the `openTask` helper from [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts), which navigates to the task list you name and then pushes the task's page onto it. It names `ALL_TASKS` because the task the shell hands you may not be in whichever view the app was left on, and because the editor needs a list under it: going back from a notification lands on All Tasks rather than on an empty content pane.
 
-## Reaching the store from outside React
+## Reaching the store and the navigator from outside React
 
-Those handlers take no props, sit in no component, and can run with no window present. `useStore.getState()` reads and writes the same store the interface renders from, and every component watching the fields they touch re-renders when they change.
+Those handlers take no props, sit in no component, and can run with no window present. `useStore.getState()` reads and writes the same store the interface renders from, and every component watching the fields they touch re-renders when they change. `openTask` answers the same way for navigation, through the container ref rather than a hook, which is what lets a handler this far outside the tree still move the app to a page.
 
 Cold start shows why that matters. Click Mark Complete with the app closed, and the desktop starts your app over D-Bus just to deliver the action. The store module loads, the `persist` middleware you added in [Saving Tasks Between Runs](/tutorial/saving-to-disk) reads `tasks.json`, the handler flips one task to done, and the middleware writes the file back, all before any window is drawn.
 

@@ -125,21 +125,33 @@ export const isReorderable = (selection: Selection, query: string, sortOrder: So
     sortOrder === "manual" && query === "" && !(selection.kind === "smart" && selection.view === "trash");
 ```
 
+The answer is the same for every row in the list, and the three things it needs are already sitting together in `src/components/task-list.tsx`: the selection the screen handed down, the query, and the sort order. Compute it once there:
+
+```tsx
+// ...
+import { addListId, emptyState, isReorderable, visibleTasks } from "../store/selectors.js";
+
+    const canReorder = isReorderable(selection, searchQuery, sortOrder);
+```
+
+and hand it to each row:
+
+```diff
+     {visible.map((task) => (
+-        <TaskRow key={task.id} task={task} />
++        <TaskRow key={task.id} task={task} canReorder={canReorder} />
+     ))}
+```
+
+The row has no way to work this out for itself. Since [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) the selection has been the `Tasks` route's params, which the screen owns and the list receives as a prop, and a row is neither. One computation per render of the list beats one lookup per row anyway.
+
 Now gate the whole slot, in `src/components/task-row.tsx`:
 
 ```tsx
-import { useSortOrder } from "../hooks/use-sort-order.js";
-import { isReorderable } from "../store/selectors.js";
-// ...
-
-    const selection = useStore((state) => state.selection);
-    const searchQuery = useStore((state) => state.searchQuery);
-    const [sortOrder] = useSortOrder();
-    const reorderable = isReorderable(selection, searchQuery, sortOrder);
-
+export const TaskRow = ({ task, canReorder }: { task: Task; canReorder: boolean }) => {
     // ...
             controllers={
-                reorderable ? (
+                canReorder ? (
                     <>
                         {/* ... */}
                     </>
@@ -147,7 +159,7 @@ import { isReorderable } from "../store/selectors.js";
             }
 ```
 
-A non-reorderable row has no drag source and no drop target attached, rather than controllers that accept a drag and then decline it. Switching the sort order in Preferences changes `sortOrder`, so the rows re-render and the controllers come off every row.
+A non-reorderable row has no drag source and no drop target attached, rather than controllers that accept a drag and then decline it. Switching the sort order in Preferences changes `sortOrder`, so the list recomputes `canReorder`, the rows re-render, and the controllers come off every one of them.
 
 The finished row, `src/components/task-row.tsx`:
 
@@ -157,23 +169,18 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkButton, GtkCheckButton, GtkDragSource, GtkDropTarget, GtkToggleButton } from "@gtkx/jsx/gtk";
+import { useNavigation } from "@gtkx/navigation";
 import { escapeMarkup, formatDue } from "../format.js";
-import { useSortOrder } from "../hooks/use-sort-order.js";
 import { useStore } from "../store/index.js";
-import { isReorderable } from "../store/selectors.js";
 import type { Task } from "../types.js";
 import { useRequestDeleteTask } from "./dialogs.js";
 
-export const TaskRow = ({ task }: { task: Task }) => {
+export const TaskRow = ({ task, canReorder }: { task: Task; canReorder: boolean }) => {
     const requestDeleteTask = useRequestDeleteTask();
+    const navigation = useNavigation();
     const setDone = useStore((state) => state.setDone);
     const setImportant = useStore((state) => state.setImportant);
-    const openTask = useStore((state) => state.openTask);
     const reorder = useStore((state) => state.reorder);
-    const selection = useStore((state) => state.selection);
-    const searchQuery = useStore((state) => state.searchQuery);
-    const [sortOrder] = useSortOrder();
-    const reorderable = isReorderable(selection, searchQuery, sortOrder);
     const title = task.done ? `<s>${escapeMarkup(task.title)}</s>` : escapeMarkup(task.title);
 
     return (
@@ -182,7 +189,7 @@ export const TaskRow = ({ task }: { task: Task }) => {
             useMarkup
             subtitle={formatDue(task.due) ?? undefined}
             activatable
-            onActivated={() => openTask(task.id)}
+            onActivated={() => navigation.navigate("Task", { id: task.id })}
             prefix={
                 <GtkCheckButton
                     valign={Gtk.Align.CENTER}
@@ -211,7 +218,7 @@ export const TaskRow = ({ task }: { task: Task }) => {
                 </>
             }
             controllers={
-                reorderable ? (
+                canReorder ? (
                     <>
                         <GtkDragSource
                             actions={Gdk.DragAction.MOVE}

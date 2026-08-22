@@ -2,6 +2,7 @@ import * as GLib from "@gtkx/gi/glib";
 import { AdwApplication } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { Window } from "./components/window.js";
+import { ALL_TASKS, openTask } from "./navigation.js";
 import { useStore } from "./store/index.js";
 
 export function App() {
@@ -26,9 +27,7 @@ export function App() {
                         parameterType={GLib.VariantType.new("s")}
                         onActivate={(parameter) => {
                             if (!parameter) return;
-                            const { select, openTask } = useStore.getState();
-                            select({ kind: "smart", view: "all" });
-                            openTask(parameter.getString()[0]);
+                            openTask(ALL_TASKS, parameter.getString()[0]);
                         }}
                     />
                 </>

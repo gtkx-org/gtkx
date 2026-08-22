@@ -1,7 +1,9 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import type { SplitViewScreenProps } from "@gtkx/navigation";
 import { useEffect, useRef } from "react";
+import { type RootParamList, useSelection } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import { type SidebarCounts, selectionKey, sidebarCounts } from "../store/selectors.js";
 import { listDot } from "../styles.js";
@@ -40,21 +42,22 @@ const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
     { selection: { kind: "smart", view: "trash" }, title: "Trash", icon: "user-trash-symbolic", count: counts.trash },
 ];
 
-export const Sidebar = () => {
+export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lists">) => {
     const tasks = useStore((state) => state.tasks);
     const lists = useStore((state) => state.lists);
-    const selection = useStore((state) => state.selection);
-    const select = useStore((state) => state.select);
+    const selection = useSelection();
 
     const entries = buildEntries(lists, sidebarCounts(tasks, lists));
-    const activeIndex = entries.findIndex((entry) => selectionKey(entry.selection) === selectionKey(selection));
+    const activeKey = selection === null ? null : selectionKey(selection);
+    const activeIndex = entries.findIndex((entry) => selectionKey(entry.selection) === activeKey);
     const listRef = useRef<Gtk.ListBox | null>(null);
 
     useEffect(() => {
         const box = listRef.current;
-        if (!box || activeIndex < 0) return;
-        const row = box.getRowAtIndex(activeIndex);
+        if (!box) return;
+        const row = activeIndex < 0 ? null : box.getRowAtIndex(activeIndex);
         if (row) box.selectRow(row);
+        else box.unselectAll();
     }, [activeIndex]);
 
     return (
@@ -65,7 +68,9 @@ export const Sidebar = () => {
                 onRowSelected={(row) => {
                     if (!row) return;
                     const entry = entries[row.getIndex()];
-                    if (entry && selectionKey(entry.selection) !== selectionKey(selection)) select(entry.selection);
+                    if (entry && selectionKey(entry.selection) !== activeKey) {
+                        navigation.navigate("Tasks", entry.selection);
+                    }
                 }}
             >
                 {entries.map((entry) => (

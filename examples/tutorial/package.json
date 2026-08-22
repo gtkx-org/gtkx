@@ -21,6 +21,7 @@
         "@gtkx/cairo": "^1.3.0",
         "@gtkx/components": "^1.3.0",
         "@gtkx/css": "^1.3.0",
+        "@gtkx/navigation": "^1.3.0",
         "@gtkx/react": "^1.3.0",
         "react": "^19.2.8",
         "zustand": "^5.0.15"

@@ -1,12 +1,12 @@
 ---
-description: "Add task lists, split the store into slices, and navigate between lists from a sidebar."
+description: "Add task lists, split the store into slices, and reach each list through a split view navigator."
 ---
 
 # Lists and a Sidebar
 
 Your tasks now survive a restart, saved as JSON under the XDG data directory by the [`persist` middleware](/tutorial/saving-to-disk). Everything is still one flat list, which stops working past a few dozen tasks.
 
-Adding lists and a selection is enough new state to reorganize the store first.
+Adding lists is enough new state to reorganize the store first. The selection that goes with them turns out not to be store state at all.
 
 ## A second type
 
@@ -66,7 +66,7 @@ The colors are the Adwaita palette's blue 3, green 4, and orange 3. Any hex stri
 
 ## Splitting the store
 
-`src/store/index.ts` holds the state, every action, and the `persist` configuration in one file. Lists and a selection are about to join them, so split it while it is still small.
+`src/store/index.ts` holds the state, every action, and the `persist` configuration in one file. Lists are about to join them, and every chapter after this one adds more, so split it while it is still small.
 
 Zustand calls the pieces **slices**. A slice is a function that returns part of the state, and the store is the slices spread into one object. Start with the tasks.
 
@@ -164,31 +164,16 @@ Nothing calls `addList` yet. The dialog that does arrives in [Deleting Without F
 
 ## Where new state goes
 
-The selection is not data you typed, it is what the interface is currently doing. When you reopen the app, it should not matter which list was highlighted when you quit. So it goes in a slice that `partialize` never writes to disk.
+That is two slices, and the selection joins neither. It is not data you typed, so it has no business on disk. It is not a field either, because it is a place: it says which screen the right-hand pane is showing. The split view further down this page keeps that already, and writing it into the store as well would give one fact two homes, so the back button, the collapsed layout, and every later command that opens something would each have to keep both in step.
 
-`src/store/ui.ts`:
-
-```ts
-import type { StateCreator } from "zustand";
-import type { Selection } from "../types.js";
-import type { Mutators, Store } from "./index.js";
-
-export type UiSlice = {
-    selection: Selection;
-    select: (selection: Selection) => void;
-};
-
-export const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (set) => ({
-    selection: { kind: "list", listId: "personal" },
-    select: (selection) => set({ selection }),
-});
-```
-
-That decides where every new field lands for the rest of the tutorial:
+That decides where every new piece of state lands for the rest of the tutorial:
 
 - Data the user typed goes in a persisted slice: `tasks`, `lists`.
-- What the interface is currently doing goes in the UI slice: the selection now, and later the filter, the search query, and which dialog is open.
+- Where you are goes in the route's params. The selected list is what the tasks screen is showing, and the navigator owns it.
+- What the interface is doing that is not a place goes in a UI slice, which `partialize` never writes to disk. [A Layout That Collapses](/tutorial/an-adaptive-layout) starts that slice with the collapse state, and it later holds the filter, the search query, and which dialog is open.
 - Settings the user chose on purpose go in GSettings, which arrives in [Preferences and the System Theme](/tutorial/preferences-and-theming).
+
+Neither of the middle two survives a restart. A window that opened narrow last time should not force a narrow layout onto a wide window today, and navigation state is never written to disk either, so a launch always starts where the navigator says it starts.
 
 ## Composing them
 
@@ -204,9 +189,8 @@ import { createListsSlice, type ListsSlice } from "./lists.js";
 import { seedLists, seedTasks } from "./seed.js";
 import { fileStorage } from "./storage.js";
 import { createTasksSlice, type TasksSlice } from "./tasks.js";
-import { createUiSlice, type UiSlice } from "./ui.js";
 
-export type Store = TasksSlice & ListsSlice & UiSlice;
+export type Store = TasksSlice & ListsSlice;
 
 export type PersistedState = { lists: TaskList[]; tasks: Task[] };
 
@@ -223,7 +207,6 @@ export const useStore = create<Store>()(
         (...a) => ({
             ...createTasksSlice(...a),
             ...createListsSlice(...a),
-            ...createUiSlice(...a),
         }),
         {
             name: "tasks",
@@ -236,84 +219,133 @@ export const useStore = create<Store>()(
 );
 ```
 
-`Store` is the intersection of the slice types, so `useStore((state) => state.tasks)` and `useStore((state) => state.select)` both typecheck against the same object. Call sites are unchanged: components read one bound store and never know a slice exists.
+`Store` is the intersection of the slice types, so `useStore((state) => state.tasks)` and `useStore((state) => state.addList)` both typecheck against the same object. Call sites are unchanged: components read one bound store and never know a slice exists.
 
 The `(...a)` spread matters here. Zustand hands a state creator `set`, `get`, and the store api. Forwarding those collected arguments to each slice gives every slice the same `set`, `get`, and store api, so they all write into one shared state object rather than separate ones.
 
-`PersistedState` and `partialize` both gain `lists`, which puts your lists in the JSON file alongside your tasks. `selection` is absent from both, so it starts at Personal on every launch.
+`PersistedState` and `partialize` both gain `lists`, which puts your lists in the JSON file alongside your tasks.
 
-## The panes
+## Screens instead of panes
 
-`AdwNavigationSplitView` shows a sidebar and a content area side by side, and folds into a single pane on a narrow window, which the next chapter turns on.
+`AdwNavigationSplitView` is Adwaita's master and detail layout: a sidebar pane beside a content pane, folding into a single pane on a window too narrow for both, which the next chapter turns on. Each pane holds an `AdwNavigationPage`, the unit Adwaita treats as one screen. A page has a title, it carries no header bar of its own, and it is what the navigation moves between.
 
-Its `sidebar` and `content` are container slots, the same idea as `topBar` on `AdwToolbarView`. Each takes an `AdwNavigationPage`, the unit Adwaita treats as one pane: a page has a title, and it is what the navigation moves between.
+Driving that widget by hand means owning the bookkeeping around it: which pane is showing, which page the content pane is on, what the back button and the back gesture do to each, and how all of it stays in step with the selected list. That is navigation, and it has a package.
 
-A page carries no header bar of its own, so each supplies its own `AdwToolbarView` with its own `AdwHeaderBar`. The headers hold different controls, and once collapsed only one is on screen at a time.
+`@gtkx/navigation` is [React Navigation](https://reactnavigation.org) 7 with libadwaita drawing the navigators, and its split view navigator *is* an `AdwNavigationSplitView`. You declare screens, and it builds the pages, their header bars, and the stack behind them. From `tasks/`:
+
+::: code-group
+
+```bash [npm]
+npm install @gtkx/navigation
+```
+
+```bash [pnpm]
+pnpm add @gtkx/navigation
+```
+
+:::
+
+Like zustand, it belongs in `dependencies`: the navigator runs in the shipped application.
+
+Two rules shape the rest of this page. **The first screen you declare is the sidebar**, and it stays in its pane, while every other screen is a page of the content pane's stack. And **a screen renders one root widget**, which the navigator wraps in the `AdwNavigationPage` and tops with an `AdwHeaderBar` built from that screen's options. So the `AdwToolbarView` and `AdwHeaderBar` you have written by hand since [Your First Window](/tutorial/your-first-window) leave the app here, and do not come back.
+
+## The routes
+
+The navigator needs to know its routes and what each one carries. That is one type, written once, and every `navigate` call and every `route.params` read is checked against it.
+
+Create `src/navigation.ts`:
+
+```ts
+import { createSplitViewNavigator, useNavigationState } from "@gtkx/navigation";
+import type { Selection } from "./types.js";
+
+export type RootParamList = {
+    Lists: undefined;
+    Tasks: Selection;
+};
+
+export const Split = createSplitViewNavigator<RootParamList>();
+
+const isSelection = (params: unknown): params is Selection =>
+    typeof params === "object" && params !== null && "kind" in params;
+
+export const useSelection = (): Selection | null =>
+    useNavigationState<RootParamList, Selection | null>((state) => {
+        const params = state.routes.find((route) => route.name === "Tasks")?.params;
+        return isSelection(params) ? params : null;
+    });
+```
+
+`Tasks: Selection` is the idea this chapter turns on. The selection is not something the tasks screen is told about, it is what the tasks screen *is*: the route and its params together say which list you are looking at. `Lists: undefined` says the sidebar route carries nothing, because the sidebar is one screen no matter what is selected.
+
+`createSplitViewNavigator` returns the pair of components the tree is built from, `Split.Navigator` and `Split.Screen`, both typed against `RootParamList`.
+
+A screen reads its own params from the `route` prop it is handed. The sidebar is a different route, so it has none to read, and `useSelection` is how it asks. `useNavigationState` runs a selector over the navigator's state and re-renders when the value changes, the same shape as a zustand selector. `state.routes` describes every route the navigator holds, so `find` can come back empty, and the params it returns are typed as whatever any screen takes. One guard answers both. It is a real type guard, so no cast appears in the file, and the `Selection | null` it produces is what every caller checks against.
+
+## The window
 
 This has outgrown `app.tsx`, so the window moves into `src/components/window.tsx`:
 
 ```tsx
-import {
-    AdwApplicationWindow,
-    AdwHeaderBar,
-    AdwNavigationPage,
-    AdwNavigationSplitView,
-    AdwToolbarView,
-} from "@gtkx/jsx/adw";
+import { AdwApplicationWindow } from "@gtkx/jsx/adw";
+import { NavigationContainer } from "@gtkx/navigation";
 import { quit } from "@gtkx/react";
+import { Split } from "../navigation.js";
 import { useStore } from "../store/index.js";
-import { ContentPane } from "./content-pane.js";
 import { Sidebar } from "./sidebar.js";
+import { TasksScreen } from "./tasks-screen.js";
 
 export const Window = () => {
     const lists = useStore((state) => state.lists);
-    const selection = useStore((state) => state.selection);
-    const title = lists.find((list) => list.id === selection.listId)?.name ?? "Tasks";
 
     return (
-        <AdwApplicationWindow
-            title="Tasks"
-            widthRequest={360}
-            heightRequest={294}
-            onCloseRequest={() => quit()}
-        >
-            <AdwNavigationSplitView
-                sidebarWidthFraction={0.25}
-                minSidebarWidth={220}
-                maxSidebarWidth={300}
-                sidebar={
-                    <AdwNavigationPage title="Tasks">
-                        <AdwToolbarView topBar={<AdwHeaderBar />}>
-                            <Sidebar />
-                        </AdwToolbarView>
-                    </AdwNavigationPage>
-                }
-            >
-                <AdwNavigationPage title={title}>
-                    <ContentPane />
-                </AdwNavigationPage>
-            </AdwNavigationSplitView>
+        <AdwApplicationWindow title="Tasks" widthRequest={360} heightRequest={294} onCloseRequest={() => quit()}>
+            <NavigationContainer>
+                <Split.Navigator
+                    initialRouteName="Tasks"
+                    sidebarWidthFraction={0.25}
+                    minSidebarWidth={220}
+                    maxSidebarWidth={300}
+                >
+                    <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
+                    <Split.Screen
+                        name="Tasks"
+                        component={TasksScreen}
+                        initialParams={{ kind: "list", listId: "personal" }}
+                        options={({ route }) => ({
+                            title: lists.find((list) => list.id === route.params.listId)?.name ?? "Tasks",
+                        })}
+                    />
+                </Split.Navigator>
+            </NavigationContainer>
         </AdwApplicationWindow>
     );
 };
 ```
 
+`NavigationContainer` hosts the navigation tree. It draws no widgets of its own, only the context every screen and every hook below it reads, so it goes once, inside the window, around the root navigator.
+
+Each `Split.Screen` names a route from `RootParamList` and says what renders it. `Lists` is declared first, so it is the sidebar. `Tasks` is a page of the content stack, and `initialRouteName="Tasks"` puts it on that stack at startup, so the app opens showing tasks rather than an empty content pane.
+
+`initialParams` fills in the params a `navigate` call leaves out, which on the first render is all of them. It is the selection the app launches on, and because navigation state is never written to disk, every launch starts there.
+
+`options` names the page and shapes its header bar. As an object it is fixed, which is all the sidebar needs. As a callback it receives the route, so the tasks page's title is derived from that page's own params and changes with the selection, and the screen underneath it never has to know its own title.
+
 The width props keep the sidebar at a quarter of the window, bounded at 220 and 300 points, so it stays legible without eating the task list on a wide monitor.
 
-The content pane pairs a header bar with what goes under it. It stays thin for now. [Opening a Task](/tutorial/the-task-editor) makes it choose between the list and an editor, and that choice happens here.
-
-`src/components/content-pane.tsx`:
+The tasks screen has one job for now, turning the route's params into the prop the list wants. `src/components/tasks-screen.tsx`:
 
 ```tsx
-import { AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
+import type { SplitViewScreenProps } from "@gtkx/navigation";
+import type { RootParamList } from "../navigation.js";
 import { TaskList } from "./task-list.js";
 
-export const ContentPane = () => (
-    <AdwToolbarView topBar={<AdwHeaderBar />}>
-        <TaskList />
-    </AdwToolbarView>
+export const TasksScreen = ({ route }: SplitViewScreenProps<RootParamList, "Tasks">) => (
+    <TaskList selection={route.params} />
 );
 ```
+
+`SplitViewScreenProps` types the two props every screen receives, `route` and `navigation`, against the param list and one route name. Naming the route in the type is what makes `route.params` a `Selection` here rather than a union of every screen's params. [Opening a Task](/tutorial/the-task-editor) adds a second content screen, and this one keeps its params to itself.
 
 `app.tsx` is left holding the application root, `src/app.tsx`:
 
@@ -359,16 +391,17 @@ Reach for this sparingly. Adwaita's own style classes, like `boxed-list` and `fl
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkBox, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import type { SplitViewScreenProps } from "@gtkx/navigation";
 import { useEffect, useRef } from "react";
+import { type RootParamList, useSelection } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import { listDot } from "../styles.js";
 
-export const Sidebar = () => {
+export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lists">) => {
     const lists = useStore((state) => state.lists);
-    const selection = useStore((state) => state.selection);
-    const select = useStore((state) => state.select);
+    const selection = useSelection();
 
-    const activeIndex = lists.findIndex((list) => list.id === selection.listId);
+    const activeIndex = lists.findIndex((list) => list.id === selection?.listId);
     const listRef = useRef<Gtk.ListBox | null>(null);
 
     useEffect(() => {
@@ -386,7 +419,9 @@ export const Sidebar = () => {
                 onRowSelected={(row) => {
                     if (!row) return;
                     const list = lists[row.getIndex()];
-                    if (list && list.id !== selection.listId) select({ kind: "list", listId: list.id });
+                    if (list && list.id !== selection?.listId) {
+                        navigation.navigate("Tasks", { kind: "list", listId: list.id });
+                    }
                 }}
             >
                 {lists.map((list) => (
@@ -408,47 +443,62 @@ export const Sidebar = () => {
 };
 ```
 
+Selecting a list is a `navigate` to the `Tasks` route carrying the selection as params. In this navigator **`navigate` selects**: it returns to the named route with the new params and drops whatever sat above it, so picking a second list swaps what the content pane shows instead of piling a page on top of it. It also opens a route that is not on the stack yet by pushing it, which is what lets one call cover both cases.
+
 The `navigation-sidebar` style class makes this look like a GNOME sidebar rather than a plain list: flat rows, no card, the selected row highlighted the way the platform highlights it. It is a plain string, like `boxed-list` on the task list.
 
 Unlike the task list, this list box keeps its default selection mode. Selecting a row here *is* the interaction, so the widget's own selection is meaningful and should be visible.
 
 The dot gets `accessibleRole={Gtk.AccessibleRole.PRESENTATION}`. The row's title already says which list it is, so the dot leaves the accessibility tree instead of being announced as an anonymous box.
 
-## Keeping GTK4 and the store in agreement
+## Keeping GTK4 and the route in agreement
 
 This pattern recurs with every widget that owns state you also keep.
 
-A `GtkListBox` holds its own selection. React does not tell it which row is selected; the box decides and reports. So there are two copies of the same fact, the widget's and the store's, kept in sync from both directions:
+A `GtkListBox` holds its own selection. React does not tell it which row is selected; the box decides and reports. So there are two copies of the same fact, the widget's and the navigator's, kept in sync from both directions:
 
-- **Widget to store.** The user clicks a row, the box emits `row-selected`, and `onRowSelected` writes the new selection into the store.
-- **Store to widget.** Something other than a click changes the selection, so the effect calls `selectRow` to move the widget's highlight to match.
+- **Widget to navigation.** The user clicks a row, the box emits `row-selected`, and `onRowSelected` navigates.
+- **Navigation to widget.** Something other than a click changes the selection, so the effect calls `selectRow` to move the widget's highlight to match.
 
-Run those naively and they feed each other. The effect calls `selectRow`, the box emits `row-selected` because its selection did change, and the handler writes the value back into the store. The value is identical, so nothing visibly breaks, but every programmatic selection costs a redundant store write. Once `select` does more than set one field (it starts doing that in the [next chapter](/tutorial/an-adaptive-layout)) the echo becomes a real bug.
+Run those naively and they feed each other. The effect calls `selectRow`, the box emits `row-selected` because its selection did change, and the handler navigates straight back to where you already are. Nothing visibly breaks yet, and the cost is one redundant navigation. But `navigate` here drops whatever sat above the `Tasks` route, so once [Opening a Task](/tutorial/the-task-editor) puts an editor up there, an echo tears it down while you are reading it.
 
 The fix is the comparison already in the handler:
 
 ```tsx
-if (list && list.id !== selection.listId) select({ kind: "list", listId: list.id });
+if (list && list.id !== selection?.listId) {
+    navigation.navigate("Tasks", { kind: "list", listId: list.id });
+}
 ```
 
-The handler returns early when nothing differs, so the echo stops at the first bounce. The rule applies to every widget that holds state React also holds: **when you push state into a widget that reports its own changes, the report handler compares before it writes.**
+The handler returns early when nothing differs, so the echo stops at the first bounce. The rule applies to every widget that holds state your app also holds: **when you push state into a widget that reports its own changes, the report handler compares before it writes.**
 
 ## Filtering by list
 
-The task list still shows everything. Point it at the selection.
+The task list still shows everything. There is no field in the store to point it at, and its screen already holds the selection, so the list takes it as a prop.
 
 In `src/components/task-list.tsx`:
 
 ```tsx
-export const TaskList = () => {
+import type { Selection } from "../types.js"; // [!code ++]
+// ...
+
+export const TaskList = () => { // [!code --]
+export const TaskList = ({ selection }: { selection: Selection }) => { // [!code ++]
     const tasks = useStore((state) => state.tasks);
-    const selection = useStore((state) => state.selection); // [!code ++]
     const addTask = useStore((state) => state.addTask);
 
-    const visible = tasks.filter((task) => !task.deleted); // [!code --]
     const visible = tasks.filter((task) => !task.deleted && task.listId === selection.listId); // [!code ++]
 
     // ...
+```
+
+The filter moves out of the JSX and into a named value, because everything the rest of the tutorial adds to it, a query, a state filter, a sort order, goes in the same place:
+
+```diff
+-{tasks.filter((task) => !task.deleted).map((task) => (
++{visible.map((task) => (
+     <TaskRow key={task.id} task={task} />
+ ))}
 ```
 
 And the add row creates the new task in the list you are looking at:
@@ -463,19 +513,19 @@ And the add row creates the new task in the list you are looking at:
 />
 ```
 
-Both follow the reading rule from [Adding Tasks with a Store](/tutorial/the-task-store): select the smallest stable thing, `tasks` and `selection`, and derive the rest during render. The filtering happens in the component body, not inside the selector. [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) explains why and moves this expression into a named function.
+The store read that is left follows the rule from [Adding Tasks with a Store](/tutorial/the-task-store): select the smallest stable thing, `tasks`, and derive the rest during render. The filtering happens in the component body, not inside the selector. [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) explains why and moves this expression into a named function.
 
 ## Run it
 
-Save, and the window rebuilds around the split view.
+Save, and the window rebuilds around the navigator.
 
-The window is now two panes. On the left, a sidebar with Personal, Work, and Shopping, each with a colored dot, Personal highlighted. On the right, the tasks in Personal and nothing else.
+It is now two panes. On the left, a sidebar with Personal, Work, and Shopping, each with a colored dot, Personal highlighted, under a header reading Tasks. That title is the `title` in the sidebar screen's options, and the header bar carrying it is the navigator's rather than yours. On the right, the tasks in Personal and nothing else, under a header naming the list.
 
-Click **Work**. The content pane switches to the work tasks and the window title changes to Work. Click **Shopping** and it follows again.
+Click **Work**. The content pane switches to the work tasks and its header reads Work. Click **Shopping** and it follows again.
 
 Type a task into the add row while Shopping is selected, press Enter, then click Personal and back to Shopping. The new task is in Shopping and only in Shopping.
 
-The UI slice never reaches disk, so only a new process shows the difference: close the window and start `npm run dev` again. Your lists and tasks return intact, and the selection is back on Personal.
+Navigation state never reaches disk, so only a new process shows the rest: close the window and start `npm run dev` again. Your lists and tasks return intact, and the selection is back on Personal, because the `Tasks` screen starts at its `initialParams` every time.
 
 ## Next
 

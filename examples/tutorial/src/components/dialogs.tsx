@@ -1,4 +1,5 @@
 import { useToast } from "@gtkx/components/adw";
+import { closeTaskIfOpen } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import type { Task } from "../types.js";
 import { About } from "./about.js";
@@ -11,13 +12,13 @@ export const useRequestDeleteTask = (): ((task: Task) => void) => {
     const { show } = useToast();
 
     return (task) => {
-        const { moveToTrash, restore, askDeleteTask, selectedTaskId, closeTask } = useStore.getState();
+        const { moveToTrash, restore, askDeleteTask } = useStore.getState();
         if (task.deleted) {
             askDeleteTask(task.id);
             return;
         }
+        closeTaskIfOpen(task.id);
         moveToTrash(task.id);
-        if (selectedTaskId === task.id) closeTask();
         show({
             title: `“${task.title}” moved to Trash`,
             buttonLabel: "Undo",

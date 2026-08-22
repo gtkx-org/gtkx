@@ -10,7 +10,7 @@ export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
         </AdwShortcutsSection>
         <AdwShortcutsSection title="Tasks">
             <AdwShortcutsItem title="Delete task" accelerator="Delete" />
-            <AdwShortcutsItem title="Close task" accelerator="Escape" />
+            <AdwShortcutsItem title="Go back" accelerator="Escape" />
         </AdwShortcutsSection>
     </AdwShortcutsDialog>
 );

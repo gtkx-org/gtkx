@@ -4,60 +4,54 @@ description: "Navigate into a task and edit its title, importance, due date, and
 
 # Opening a Task
 
-In [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) you sliced the store by view, filter, and query. A task on screen is still just a title, with no way to see or set `notes`, `due`, `createdAt`, and `completedAt`. This page turns the content pane into an editor for one task, writing every field through a single store action.
+In [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) you sliced the store by view, filter, and query. A task on screen is still just a title, with no way to see or set `notes`, `due`, `createdAt`, and `completedAt`. This page gives one task a screen of its own and writes every field through a single store action.
 
-## Opening and closing
+## A task is a route
 
-Which task is open is view state, so it belongs in the UI slice next to `selection`. Opening also shows the content pane, because on a collapsed layout the editor is a separate page rather than a neighboring column.
+Which task is open is not a field anywhere. It is a page on the content stack, carrying that task's id in its params and sitting above the task list you opened it from. That is the whole of it: pushing the page opens the editor, popping it closes the editor, and the back button, <kbd>Escape</kbd>, <kbd>Alt</kbd>+<kbd>Left</kbd>, and the touchpad back gesture all pop. The code you would otherwise write to close the editor, and the state that code would read, is the navigator's job.
 
-In `src/store/ui.ts`, add the field and the actions:
-
-```diff
- export type UiSlice = {
-     selection: Selection;
-+    selectedTaskId: string | null;
-     collapsed: boolean;
-     showContent: boolean;
-     filter: Filter;
-     searchMode: boolean;
-     searchQuery: string;
-     select: (selection: Selection) => void;
-+    openTask: (id: string) => void;
-+    closeTask: () => void;
-     setCollapsed: (collapsed: boolean) => void;
-```
+In `src/navigation.ts`, add the route to the param list:
 
 ```diff
- export const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (set) => ({
-     selection: { kind: "smart", view: "all" },
-+    selectedTaskId: null,
-     collapsed: false,
+ export type RootParamList = {
+     Lists: undefined;
+     Tasks: Selection;
++    Task: { id: string };
+ };
 ```
 
-```diff
-     select: (selection) =>
-         set((state) => ({
-             selection,
-+            selectedTaskId: null,
-             searchMode: false,
-             searchQuery: "",
-             showContent: state.collapsed,
-         })),
-+    openTask: (selectedTaskId) => set({ selectedTaskId, showContent: true }),
-+    closeTask: () => set({ selectedTaskId: null }),
+`Sidebar` and `TasksScreen` are typed with `SplitViewScreenProps`, so each one already has a `navigation` object checked against `RootParamList`. The row that opens a task is not a screen. It sits inside one and reaches navigation with `useNavigation()`, which has no screen props to infer a param list from, so on its own it accepts no route name at all. Declaring the root navigator once settles it for every component in the app.
+
+In `src/navigation.ts`, under `Split`:
+
+```ts
+// ...
+export const Split = createSplitViewNavigator<RootParamList>();
+
+type RootNavigatorType = typeof Split;
+
+declare module "@react-navigation/core" {
+    interface RootNavigator extends RootNavigatorType {}
+}
 ```
 
-`select` clears `selectedTaskId` along with the search, so switching lists closes whatever task was open instead of leaving an editor for a task the sidebar no longer points at.
+The augmentation names `@react-navigation/core` because that is the module declaring the `RootNavigator` interface, and `@gtkx/navigation` re-exports the core API around its own navigators. It is a type declaration and compiles to nothing.
 
 An `AdwActionRow` responds to clicks only once you mark it `activatable`, which makes the whole row a target. `onActivated` then fires when the row is clicked or takes Return from the keyboard.
 
-In `src/components/task-row.tsx`, pull `openTask` out of the store and mark the row:
+In `src/components/task-row.tsx`, reach navigation and mark the row:
+
+```diff
+ import { GtkButton, GtkCheckButton, GtkToggleButton } from "@gtkx/jsx/gtk";
++import { useNavigation } from "@gtkx/navigation";
+ import { escapeMarkup } from "../format.js";
+```
 
 ```diff
  export const TaskRow = ({ task }: { task: Task }) => {
++    const navigation = useNavigation();
      const setDone = useStore((state) => state.setDone);
      const setImportant = useStore((state) => state.setImportant);
-+    const openTask = useStore((state) => state.openTask);
      const moveToTrash = useStore((state) => state.moveToTrash);
 ```
 
@@ -66,43 +60,50 @@ In `src/components/task-row.tsx`, pull `openTask` out of the store and mark the 
              title={title}
              useMarkup
 +            activatable
-+            onActivated={() => openTask(task.id)}
++            onActivated={() => navigation.navigate("Task", { id: task.id })}
              prefix={
 ```
 
-The pane looks `selectedTaskId` up in `tasks`, and when it finds a match it renders an editor instead of the list.
+`navigate` behaves here the way it did for the sidebar in [Lists and a Sidebar](/tutorial/lists-and-the-sidebar). It pushes `Task` when no editor is open, and when one is it returns to the page already on the stack with the new params. Opening one task after another swaps what the single editor page shows instead of piling up editors you then have to back out of one at a time.
 
-In `src/components/content-pane.tsx`, read the new state and add the branch above the existing return:
+## The editor as a screen
+
+The screen receives the id in `route.params` and looks the task up.
+
+Create `src/components/task-screen.tsx`:
 
 ```tsx
-// ...
+import type { SplitViewScreenProps } from "@gtkx/navigation";
+import type { RootParamList } from "../navigation.js";
+import { useStore } from "../store/index.js";
 import { TaskDetail } from "./task-detail.js";
-import { TaskList } from "./task-list.js";
 
-export const ContentPane = () => {
-    const tasks = useStore((state) => state.tasks);
-    const selectedTaskId = useStore((state) => state.selectedTaskId);
-    const closeTask = useStore((state) => state.closeTask);
-    // ...
-    const task = tasks.find((candidate) => candidate.id === selectedTaskId);
+export const TaskScreen = ({ route }: SplitViewScreenProps<RootParamList, "Task">) => {
+    const task = useStore((state) => state.tasks.find((candidate) => candidate.id === route.params.id));
 
-    if (task) {
-        return (
-            <AdwToolbarView topBar={<AdwHeaderBar titleWidget={<AdwWindowTitle title={task.title} />} />}>
-                <TaskDetail task={task} />
-            </AdwToolbarView>
-        );
-    }
-
-    return (
-        // ...
-    );
+    return task ? <TaskDetail task={task} /> : null;
 };
 ```
 
-Looking the task up instead of storing it keeps the editor live: every store write produces a new task object, the pane finds it, and the fields you are about to add redraw without a subscription of their own. Going back needs no teardown either. `closeTask` clears `selectedTaskId`, the lookup fails on the next render, and the list renders.
+Params are values written into navigation state, where they sit until something navigates again, so an id is the right size for them. Looking the task up from that id keeps the editor live: every store write produces a new task object, the screen finds it, and the fields you are about to add redraw without a subscription of their own. Going back needs no teardown either, because the navigator pops the page and unmounts the screen along with it.
 
-`AdwWindowTitle` is the widget a header bar wants in `titleWidget` for plain text, and it handles the title typography Adwaita expects.
+The lookup can miss, which is why the screen renders `null` rather than assuming a task. Deleting a task for good while its page is open is that case, and [Deleting Without Fear](/tutorial/trash-and-toasts) pops the page as part of the delete.
+
+Register it as a third screen. In `src/components/window.tsx`:
+
+```tsx
+// ...
+import { TaskScreen } from "./task-screen.js";
+
+<Split.Navigator
+    // ...
+>
+    {/* ... */}
+    <Split.Screen name="Task" component={TaskScreen} />
+</Split.Navigator>
+```
+
+With no `options` on it yet, the page takes its header bar title from the route name and gets Adwaita's back button, because there is a page underneath it. The header gains the task's own title and its commands at the end of this page.
 
 ## One action, many fields
 
@@ -359,73 +360,99 @@ In `src/components/task-detail.tsx`, add the final group:
 
 ## Switching tasks cleanly
 
-The editor holds state React knows nothing about: where the cursor sits in the title entry, the buffer's undo stack, which month the calendar shows. Go back, open a different task, and React sees the same `TaskDetail` in the same position and just updates its props. The widgets survive, and so does all that state.
+The editor holds state React knows nothing about: where the cursor sits in the title entry, the buffer's undo stack, which month the calendar shows. Open one task, go back, open another, and React sees the same `TaskDetail` in the same position and just updates its props. The widgets survive, and so does all that state. Activating a row while an editor is already open is the same problem without the trip through the list, since `navigate` swaps the params of the page on the stack rather than pushing a second one.
 
-In `src/components/content-pane.tsx`, give the editor a key:
+In `src/components/task-screen.tsx`, give the editor a key:
 
 ```diff
--                <TaskDetail task={task} />
-+                <TaskDetail key={task.id} task={task} />
+-    return task ? <TaskDetail task={task} /> : null;
++    return task ? <TaskDetail key={task.id} task={task} /> : null;
 ```
 
-A changed key tells React to throw the old tree away and build a new one, so a new task gets fresh widgets: a cursor at the start, an empty undo history, and a calendar opened on its own month. This is the same tool the task list uses to reset its scroll position when the sidebar selection changes.
+A changed key tells React to throw the old tree away and build a new one, so a new task gets fresh widgets: a cursor at the start, an empty undo history, and a calendar opened on its own month. This is the same tool `TasksScreen` uses to reset the list's scroll position when the route's params change.
 
-## The detail header bar
+## The task's header bar
 
-The editor needs a way out, and the commands you would otherwise scroll to reach belong at the top. In the header bar's `start` and `end` slots, add a back button, the star, and delete.
+There is no back button to build, and nothing to call when it is pressed. The navigator gives every content page a header bar, and Adwaita draws the back button on any page with a page beneath it. <kbd>Escape</kbd> and <kbd>Alt</kbd>+<kbd>Left</kbd> pop that same page. What the bar still needs is the task's title and the two commands that belong with an open task.
 
-In `src/components/content-pane.tsx`, grow the branch:
+A screen's `options` is a plain object or a plain callback over `{ route, navigation, theme }`. No hooks run in it, and it is `Window` that evaluates it, so this is the case from [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) again: a header widget that shows live state is its own component, subscribing where the widget is. The title tracks `task.title` as you type it into the entry, and the star tracks `task.important` as the switch row flips it, and neither may drag the whole window into re-rendering on every keystroke.
+
+Create `src/components/task-title.tsx`:
 
 ```tsx
-    if (task) {
-        return (
-            <AdwToolbarView
-                topBar={
-                    <AdwHeaderBar
-                        titleWidget={<AdwWindowTitle title={task.title} />}
-                        start={
-                            <GtkButton
-                                iconName="go-previous-symbolic"
-                                tooltipText="Back"
-                                onClicked={closeTask}
-                            />
-                        }
-                        end={
-                            <>
-                                <GtkToggleButton
-                                    iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
-                                    active={task.important}
-                                    tooltipText="Important"
-                                    onToggled={(self) => setImportant(task.id, self.active)}
-                                />
-                                <GtkButton
-                                    iconName="user-trash-symbolic"
-                                    tooltipText="Delete"
-                                    onClicked={() => moveToTrash(task.id)}
-                                />
-                            </>
-                        }
-                    />
-                }
-            >
-                <TaskDetail key={task.id} task={task} />
-            </AdwToolbarView>
-        );
-    }
+import { AdwWindowTitle } from "@gtkx/jsx/adw";
+import { useStore } from "../store/index.js";
+
+export const TaskTitle = ({ id }: { id: string }) => {
+    const title = useStore((state) => state.tasks.find((task) => task.id === id)?.title);
+
+    return <AdwWindowTitle title={title ?? "Task"} />;
+};
 ```
 
-Read `setImportant` and `moveToTrash` from the store at the top of the component, the same way the pane already reads `closeTask`. Deleting from here leaves the editor open over a task that is now in the trash. Leave that gap for now: [Deleting Without Fear](/tutorial/trash-and-toasts) gives every delete an undo toast and a confirmation, and closes the editor along the way.
+`headerTitle` takes a string or an element. A string is wrapped in an `AdwWindowTitle` for you, and an element is used as the title widget as it stands, which is why this component supplies the `AdwWindowTitle` itself. That is the widget a header bar wants for plain text, and it handles the title typography Adwaita expects.
 
-The header title comes from the task, so applying a new title updates the header too.
+Create `src/components/task-buttons.tsx`:
+
+```tsx
+import { GtkButton, GtkToggleButton } from "@gtkx/jsx/gtk";
+import { useStore } from "../store/index.js";
+
+export const TaskButtons = ({ id }: { id: string }) => {
+    const setImportant = useStore((state) => state.setImportant);
+    const moveToTrash = useStore((state) => state.moveToTrash);
+    const task = useStore((state) => state.tasks.find((candidate) => candidate.id === id));
+
+    if (!task) return null;
+
+    return (
+        <>
+            <GtkToggleButton
+                iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
+                active={task.important}
+                tooltipText="Important"
+                onToggled={(self) => setImportant(task.id, self.active)}
+            />
+            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete" onClicked={() => moveToTrash(task.id)} />
+        </>
+    );
+};
+```
+
+Both take the id and look the task up, the same way the screen does, and both render nothing when the lookup fails. A header widget outlives its task by a moment when that task is deleted, so neither one may assume it is there.
+
+In `src/components/window.tsx`, give the screen its options:
+
+```diff
++import { TaskButtons } from "./task-buttons.js";
++import { TaskTitle } from "./task-title.js";
+```
+
+```diff
+-<Split.Screen name="Task" component={TaskScreen} />
++<Split.Screen
++    name="Task"
++    component={TaskScreen}
++    options={({ route }) => ({
++        headerTitle: <TaskTitle id={route.params.id} />,
++        headerEnd: <TaskButtons id={route.params.id} />,
++    })}
++/>
+```
+
+`headerEnd` packs widgets at the end of the bar and `headerStart` at the start, after the back button. Nothing goes in `headerStart` here, because getting out of the editor is the one thing you do not have to wire.
+
+Deleting from here leaves the editor open over a task that is now in the trash. Leave that gap for now: [Deleting Without Fear](/tutorial/trash-and-toasts) gives every delete an undo toast and a confirmation, and pops the page along the way.
 
 ## Run it
 
 Save the files. The window on your desktop already has the editor in it.
 
-1. Click any task row. The content pane becomes a form with Title, Important, and Due at the top, a Notes box, and a Created timestamp at the bottom. The header bar shows the task's title with a back arrow on the left.
-2. Change the title and press Enter. The header title updates immediately. Click the back arrow and the list is showing again, with the new title on the row.
+1. Click any task row. The content pane becomes a form with Title, Important, and Due at the top, a Notes box, and a Created timestamp at the bottom. The header bar shows the task's title, with the navigator's back arrow on the left.
+2. Change the title and press Enter. The header title updates immediately. Click the back arrow and the list is showing again, with the new title on the row. Press <kbd>Escape</kbd> or <kbd>Alt</kbd>+<kbd>Left</kbd> from an open task and it closes the same way, with none of your code involved.
 3. Open a task and click Set date. A calendar drops down; pick today. The button reads `Today at 6:00 PM`, a clear button appears beside it, and going back puts the same text under the row's title. Open the task again and click the clear button: the subtitle disappears from the row entirely rather than leaving a blank gap.
 4. Type into Notes and press Ctrl+Z: the last thing you typed is undone. Go back, open a different task, and the notes box holds that task's notes with none of the previous undo history. Press Ctrl+Z there and nothing happens.
+5. Open a task, then click a different row without going back first. The editor shows the second task, and one press of the back arrow still reaches the list, because the second row swapped the page's params rather than stacking a page on it.
 
 The store still persists on every write, so what the editor sets is on disk before you go anywhere. After setting a due date, read it back:
 

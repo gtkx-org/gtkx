@@ -3,13 +3,13 @@ import { AdwClamp, AdwEntryRow, AdwStatusPage } from "@gtkx/jsx/adw";
 import { GtkBox, GtkListBox, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
 import { useSortOrder } from "../hooks/use-sort-order.js";
 import { useStore } from "../store/index.js";
-import { addListId, emptyState, visibleTasks } from "../store/selectors.js";
+import { addListId, emptyState, isReorderable, visibleTasks } from "../store/selectors.js";
+import type { Selection } from "../types.js";
 import { TaskRow } from "./task-row.js";
 
-export const TaskList = () => {
+export const TaskList = ({ selection }: { selection: Selection }) => {
     const tasks = useStore((state) => state.tasks);
     const lists = useStore((state) => state.lists);
-    const selection = useStore((state) => state.selection);
     const filter = useStore((state) => state.filter);
     const searchMode = useStore((state) => state.searchMode);
     const searchQuery = useStore((state) => state.searchQuery);
@@ -21,6 +21,7 @@ export const TaskList = () => {
     const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
     const empty = emptyState(selection, searchQuery);
     const listId = addListId(selection, lists);
+    const canReorder = isReorderable(selection, searchQuery, sortOrder);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
@@ -46,7 +47,7 @@ export const TaskList = () => {
                                 }}
                             />
                             {visible.map((task) => (
-                                <TaskRow key={task.id} task={task} />
+                                <TaskRow key={task.id} task={task} canReorder={canReorder} />
                             ))}
                         </GtkListBox>
                         {visible.length === 0 ? (

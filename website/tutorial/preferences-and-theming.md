@@ -225,7 +225,7 @@ The caller supplies the order. In `src/components/task-list.tsx`:
 ```diff
 +import { useSortOrder } from "../hooks/use-sort-order.js";
 +
- export const TaskList = () => {
+ export const TaskList = ({ selection }: { selection: Selection }) => {
      // ...
 +    const [sortOrder] = useSortOrder();
 

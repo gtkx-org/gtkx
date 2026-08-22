@@ -1,5 +1,5 @@
 ---
-description: "Collapse the split view to a single pane on a narrow window, with a back button that works."
+description: "Collapse the split view to a single pane on a narrow window, and fill the content pane when nothing is selected."
 ---
 
 # A Layout That Collapses
@@ -8,58 +8,66 @@ Your app shows a sidebar of lists beside the tasks for the selected one, built i
 
 Drag the window edge inward and a problem shows. The `widthRequest={360}` you set in [Your First Window](/tutorial/your-first-window) lets the app shrink to a phone-sized width, but at 360 points a 220 point sidebar and a task list cannot sit side by side. The sidebar takes most of the window and the task column is too narrow to read.
 
-Adwaita's answer is to stop showing both panes at once. Below a width you choose, the split view collapses to a single pane showing either the sidebar or the content, with a back button in the header to move between them. The widget can already do this. You need to tell it when to collapse and which pane to show.
+Adwaita's answer is to stop showing both panes at once. Below a width you choose, the split view collapses to a single pane, and moving between the sidebar and the tasks becomes navigation, with a back button and the system back gesture behind it. The navigator already knows what that navigation is, since it is the same stack it has been managing all along. What is missing is the one thing only the window can answer: when the window is too narrow for two panes.
 
-## Fields for the collapse state
+## A slice for the collapse state
 
-They describe what the interface is doing right now, so they belong in the UI slice, which `partialize` excludes so it starts fresh at every launch. A window that opened narrow last time should not force a narrow layout onto a wide window today.
+Whether the layout is collapsed is not data you typed, and it is not a place. It is what the interface is doing right now, which is the third case from [Lists and a Sidebar](/tutorial/lists-and-the-sidebar), so it opens the UI slice. `partialize` excludes that slice, so it starts fresh at every launch: a window that opened narrow last time should not force a narrow layout onto a wide window today.
 
-In `src/store/ui.ts`, add the fields and their setters:
+Create `src/store/ui.ts`:
 
 ```ts
+import type { StateCreator } from "zustand";
+import type { Mutators, Store } from "./index.js";
+
 export type UiSlice = {
-    selection: Selection;
-    collapsed: boolean; // [!code ++]
-    showContent: boolean; // [!code ++]
-    select: (selection: Selection) => void;
-    setCollapsed: (collapsed: boolean) => void; // [!code ++]
-    setShowContent: (showContent: boolean) => void; // [!code ++]
+    collapsed: boolean;
+    setCollapsed: (collapsed: boolean) => void;
 };
 
 export const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (set) => ({
-    selection: { kind: "list", listId: "personal" },
-    collapsed: false, // [!code ++]
-    showContent: false, // [!code ++]
-    select: (selection) => set({ selection }), // [!code --]
-    select: (selection) => set((state) => ({ selection, showContent: state.collapsed })), // [!code ++]
-    setCollapsed: (collapsed) => set({ collapsed }), // [!code ++]
-    setShowContent: (showContent) => set({ showContent }), // [!code ++]
+    collapsed: false,
+    setCollapsed: (collapsed) => set({ collapsed }),
 });
 ```
 
-`collapsed` is whether the layout is in one-pane mode. `showContent` is which pane that shows: `false` for the sidebar, `true` for the tasks.
+One field and its setter is a thin slice, and it stays that way for now. [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) adds the header filter and the search state to it, and [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts) adds which dialog is showing.
 
-The change to `select` matters here. With both panes visible, clicking a list should leave you looking at both, so `showContent` stays as it is. When the layout is collapsed, clicking a list is a navigation: you want that list's tasks, which live in the pane you cannot see. Setting `showContent` to the current value of `collapsed` does exactly that, so the component never needs to know which mode it is in.
+Compose it in `src/store/index.ts`:
 
-Reading `state` inside `set` is how a zustand action derives its next state from the current one. The updater form of `set` receives the whole store, so a UI slice action can read `collapsed` and a tasks action can read `tasks`.
+```ts
+import { createTasksSlice, type TasksSlice } from "./tasks.js";
+import { createUiSlice, type UiSlice } from "./ui.js"; // [!code ++]
+
+export type Store = TasksSlice & ListsSlice; // [!code --]
+export type Store = TasksSlice & ListsSlice & UiSlice; // [!code ++]
+
+// ...
+
+        (...a) => ({
+            ...createTasksSlice(...a),
+            ...createListsSlice(...a),
+            ...createUiSlice(...a), // [!code ++]
+        }),
+```
+
+`PersistedState` and `partialize` do not change, which is the point: the new field is state the app has, not state the app keeps.
 
 ## The breakpoint
 
 Adwaita expresses when to collapse as an `AdwBreakpoint`: a condition on the window's size, plus what to do when the condition starts and stops holding. It goes in the window's `breakpoints` slot, so it attaches to the window itself rather than joining its children.
 
-In `src/components/window.tsx`, read the new fields and their setters, and add the slot:
+In `src/components/window.tsx`, read the new field and its setter, and add the slot:
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
-import { AdwApplicationWindow, AdwBreakpoint, AdwNavigationSplitView } from "@gtkx/jsx/adw";
+import { AdwApplicationWindow, AdwBreakpoint } from "@gtkx/jsx/adw";
 // ...
 
 export const Window = () => {
+    const lists = useStore((state) => state.lists);
     const collapsed = useStore((state) => state.collapsed);
-    const showContent = useStore((state) => state.showContent);
     const setCollapsed = useStore((state) => state.setCollapsed);
-    const setShowContent = useStore((state) => state.setShowContent);
-    // ...
 
     return (
         <AdwApplicationWindow
@@ -87,37 +95,96 @@ The unit matters. `sp` is scale-independent pixels: it tracks the text scale fac
 
 `onApply` fires when the window becomes narrow enough for the condition to hold, `onUnapply` when it stops. Each writes into the store, and every component reading `collapsed` follows.
 
-## Wiring the split view
+## Handing the navigator the collapse state
 
-The split view has both properties too. Pass them down, still in `src/components/window.tsx`:
+The navigator takes it as a prop, still in `src/components/window.tsx`:
 
 ```tsx
-<AdwNavigationSplitView
-    collapsed={collapsed}
-    showContent={showContent}
-    onNotifyShowContent={(value) => setShowContent(value ?? false)}
+<Split.Navigator
+    initialRouteName="Tasks"
+    collapsed={collapsed} // [!code ++]
     sidebarWidthFraction={0.25}
     minSidebarWidth={220}
     maxSidebarWidth={300}
-    sidebar={/* ... */}
 >
     {/* ... */}
-</AdwNavigationSplitView>
+</Split.Navigator>
 ```
 
-`collapsed` flows one way: the breakpoint decides, the store records, the widget follows. `showContent` does not, which is why the handler is there. Once collapsed, the split view shows a back button in the content header and responds to the system back gesture, and both change `show-content` inside GTK4 on their own. If that change never reaches the store, the next render passes the old `showContent` back down and the pane you navigated away from snaps into view.
+That is the whole wiring, and it runs in one direction: the breakpoint decides, the store records, the navigator follows. Nothing else ever writes `collapsed`, so nothing has to report it back.
 
-This is the controlled-widget pairing you used for the completion checkbox in [Completing, Starring, and Deleting](/tutorial/completing-and-deleting): the value prop is one half, the matching notify signal is the other. Any GTK4 property you drive from the store needs its change reported back.
+Which pane is showing is a separate question, and it is not a second copy of anything. The content pane is showing exactly when the content stack has a page on it, so the navigator derives that from its own state and hands it to the split view. The back button, <kbd>Alt</kbd> + <kbd>Left</kbd>, and the swipe gesture all pop that stack, and when the split view gives its content up on its own the navigator hears it and pops to match.
 
-`onNotify*` handlers receive the new value first, typed as nullable because a GObject property read can come back unset, hence the `?? false`.
+This is the reverse of the controlled-widget pairing you wrote for the completion checkbox in [Completing, Starring, and Deleting](/tutorial/completing-and-deleting). There the widget owned a fact you also kept, so the value prop needed the matching notify signal beside it. Here a single owner holds both halves, so there is no second copy to keep in agreement and nothing for you to catch.
+
+## When nothing is selected
+
+Side by side, the content pane always has the task list on it. The stack inside that pane is an `AdwNavigationView`, and a navigation view refuses to pop its only page, so nothing the user presses can empty it.
+
+Collapsed, that changes. libadwaita holds both panes in one navigation view, so going back from the task list lands on the sidebar, and that move pops the content stack empty. Widen the window from there and the content pane has nothing to show.
+
+`contentPlaceholder` is what fills it, and `AdwStatusPage` is the empty state that filled the whole window in [Your First Window](/tutorial/your-first-window): an icon, a title, and a line of explanation, centered in whatever space it is given.
+
+Above `Window`, in `src/components/window.tsx`:
+
+```tsx
+import { AdwApplicationWindow, AdwBreakpoint } from "@gtkx/jsx/adw"; // [!code --]
+import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage } from "@gtkx/jsx/adw"; // [!code ++]
+// ...
+
+const NothingSelected = () => ( // [!code ++]
+    <AdwStatusPage // [!code ++]
+        iconName="view-list-symbolic" // [!code ++]
+        title="Nothing Selected" // [!code ++]
+        description="Pick a list or a smart view in the sidebar" // [!code ++]
+    /> // [!code ++]
+); // [!code ++]
+```
+
+The wording looks one chapter ahead: [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) puts All Tasks, Today, Important, and Trash in the sidebar beside your lists, and any of them can be what fills the pane.
+
+Then hand it to the navigator:
+
+```tsx
+<Split.Navigator
+    initialRouteName="Tasks"
+    collapsed={collapsed}
+    sidebarWidthFraction={0.25}
+    minSidebarWidth={220}
+    maxSidebarWidth={300}
+    contentPlaceholder={<NothingSelected />} // [!code ++]
+>
+    {/* ... */}
+</Split.Navigator>
+```
+
+An empty content stack means there is no `Tasks` route to read params from, so `useSelection` returns `null`, which is why it was typed that way. Nothing is selected, so no sidebar row should be highlighted, and the effect that pushes the highlight into the list box has to be able to clear it too.
+
+In `src/components/sidebar.tsx`:
+
+```tsx
+useEffect(() => {
+    const box = listRef.current;
+    if (!box || activeIndex < 0) return; // [!code --]
+    if (!box) return; // [!code ++]
+    const row = box.getRowAtIndex(activeIndex); // [!code --]
+    const row = activeIndex < 0 ? null : box.getRowAtIndex(activeIndex); // [!code ++]
+    if (row) box.selectRow(row);
+    else box.unselectAll(); // [!code ++]
+}, [activeIndex]);
+```
+
+The early return used to cover two cases at once, no list box yet and nothing selected, which was fine while the second could not happen. Now it can, so they separate: a missing box is still nothing to do, and a missing row is an `unselectAll`. That call makes the box report a `row-selected` of nothing, and the handler's first line returns on it, so clearing the highlight cannot bounce back as a navigation.
 
 ## Run it
 
-Save both files, then grab the window's right edge and drag inward. Somewhere below 500 points wide the two panes become one: the sidebar fills the window and the task list is gone.
+Save, then grab the window's right edge and drag inward. Somewhere below 500 points wide the two panes become one, showing the task list with a back arrow in its header. `initialRouteName="Tasks"` puts a page on the content stack at startup, so a narrow window opens on the tasks rather than on the sidebar.
 
-Click a list. The window navigates to that list's tasks, and the content header gets a back arrow on the left. Click it to return to the sidebar with the list still selected. Press <kbd>Alt</kbd> + <kbd>Left</kbd>, or swipe back on a touchpad, and the same happens: those go through GTK4 rather than your handler, which is the case `onNotifyShowContent` exists to catch.
+Click the back arrow and you are on the sidebar, in one press, with no empty pane in between. Press <kbd>Escape</kbd>, or <kbd>Alt</kbd> + <kbd>Left</kbd>, or swipe back on a touchpad, and the same thing happens. None of those go through code of yours.
 
-Drag the window wide again. Both panes reappear side by side, and clicking a list changes the right pane while the sidebar stays visible.
+Click a list. The window navigates to that list's tasks, and the back arrow is there again.
+
+Go back to the sidebar once more and drag the window wide. Both panes reappear, the sidebar has no row highlighted, and the content pane reads **Nothing Selected**: you left the content stack empty, and widening the window does not put anything back on it. Click any list and the placeholder gives way to that list's tasks.
 
 ## Next
 

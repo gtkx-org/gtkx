@@ -5,6 +5,12 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 import { useStore } from "../src/store/index.js";
 
+const openWaterThePlants = async (): Promise<void> => {
+    const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
+    await fireEvent(row, "activated");
+    await screen.findByText("Notes");
+};
+
 describe("the store", () => {
     it("adds a task and completes it", () => {
         const id = useStore.getState().addTask("personal", "  Call the plumber  ");
@@ -48,10 +54,47 @@ describe("Tasks", () => {
     it("opens the editor when a row is activated", async () => {
         await render(<App />, { container: rootElement });
 
-        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
-        await fireEvent(row, "activated");
+        await openWaterThePlants();
 
         expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
+    });
+
+    it("goes back to the list from the editor", async () => {
+        await render(<App />, { container: rootElement });
+
+        await openWaterThePlants();
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
+
+        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeDefined();
+        expect(screen.queryByText("Notes")).toBeNull();
+    });
+
+    it("shows another list when its sidebar row is selected", async () => {
+        await render(<App />, { container: rootElement });
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Work/ }));
+
+        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Review pull requests/ })).toBeDefined();
+        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeNull();
+    });
+
+    it("opens the editor for a task added with the New Task button", async () => {
+        await render(<App />, { container: rootElement });
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Task (Ctrl+N)" }));
+
+        expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
+        expect(useStore.getState().tasks.some((task) => task.title === "New Task")).toBe(true);
+    });
+
+    it("returns to the list when the open task is moved to trash", async () => {
+        await render(<App />, { container: rootElement });
+
+        await openWaterThePlants();
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete (Delete)" }));
+
+        expect(screen.queryByText("Notes")).toBeNull();
+        expect(useStore.getState().tasks.find((task) => task.id === "t2")?.deleted).toBe(true);
     });
 
     it("reorders tasks by dragging", async () => {

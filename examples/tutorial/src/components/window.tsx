@@ -1,39 +1,44 @@
 import { ToastProvider } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
-import {
-    AdwApplicationWindow,
-    AdwBreakpoint,
-    AdwHeaderBar,
-    AdwNavigationPage,
-    AdwNavigationSplitView,
-    AdwToastOverlay,
-    AdwToolbarView,
-} from "@gtkx/jsx/adw";
+import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage, AdwToastOverlay } from "@gtkx/jsx/adw";
 import { GtkButton } from "@gtkx/jsx/gtk";
+import { NavigationContainer } from "@gtkx/navigation";
 import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
 import { useCallback, useEffect, useRef } from "react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 import { useReminders } from "../hooks/use-reminders.js";
+import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
 import { buildReminder } from "../notifications.js";
 import { useStore } from "../store/index.js";
 import { selectionTitle } from "../store/selectors.js";
 import { applyColorScheme } from "../theme.js";
 import type { Task } from "../types.js";
 import { AppShortcuts } from "./app-shortcuts.js";
-import { ContentPane } from "./content-pane.js";
 import { Dialogs } from "./dialogs.js";
+import { MainMenu } from "./main-menu.js";
+import { SearchButton } from "./search-button.js";
 import { Sidebar } from "./sidebar.js";
+import { TaskButtons } from "./task-buttons.js";
+import { TaskFilter } from "./task-filter.js";
+import { TaskScreen } from "./task-screen.js";
+import { TasksScreen } from "./tasks-screen.js";
+import { TaskTitle } from "./task-title.js";
 import { WindowActions } from "./window-actions.js";
+
+const NothingSelected = () => (
+    <AdwStatusPage
+        iconName="view-list-symbolic"
+        title="Nothing Selected"
+        description="Pick a list or a smart view in the sidebar"
+    />
+);
 
 export const Window = () => {
     const application = useApplication();
     const lists = useStore((state) => state.lists);
     const tasks = useStore((state) => state.tasks);
-    const selection = useStore((state) => state.selection);
     const collapsed = useStore((state) => state.collapsed);
-    const showContent = useStore((state) => state.showContent);
     const setCollapsed = useStore((state) => state.setCollapsed);
-    const setShowContent = useStore((state) => state.setShowContent);
     const showDialog = useStore((state) => state.showDialog);
 
     const [colorScheme] = useSetting(schema, "color-scheme");
@@ -73,37 +78,59 @@ export const Window = () => {
                 controllers={<AppShortcuts />}
             >
                 <AdwToastOverlay ref={toastOverlayRef}>
-                    <AdwNavigationSplitView
-                        collapsed={collapsed}
-                        showContent={showContent}
-                        onNotifyShowContent={(value) => setShowContent(value ?? false)}
-                        sidebarWidthFraction={0.25}
-                        minSidebarWidth={220}
-                        maxSidebarWidth={300}
-                        sidebar={
-                            <AdwNavigationPage title="Tasks">
-                                <AdwToolbarView
-                                    topBar={
-                                        <AdwHeaderBar
-                                            start={
-                                                <GtkButton
-                                                    iconName="list-add-symbolic"
-                                                    tooltipText="New List"
-                                                    onClicked={() => showDialog("new-list")}
-                                                />
-                                            }
+                    <NavigationContainer ref={navigationRef}>
+                        <Split.Navigator
+                            initialRouteName="Tasks"
+                            collapsed={collapsed}
+                            sidebarWidthFraction={0.25}
+                            minSidebarWidth={220}
+                            maxSidebarWidth={300}
+                            contentPlaceholder={<NothingSelected />}
+                        >
+                            <Split.Screen
+                                name="Lists"
+                                component={Sidebar}
+                                options={{
+                                    title: "Tasks",
+                                    headerStart: (
+                                        <GtkButton
+                                            iconName="list-add-symbolic"
+                                            tooltipText="New List"
+                                            onClicked={() => showDialog("new-list")}
                                         />
-                                    }
-                                >
-                                    <Sidebar />
-                                </AdwToolbarView>
-                            </AdwNavigationPage>
-                        }
-                    >
-                        <AdwNavigationPage title={selectionTitle(selection, lists)}>
-                            <ContentPane />
-                        </AdwNavigationPage>
-                    </AdwNavigationSplitView>
+                                    ),
+                                }}
+                            />
+                            <Split.Screen
+                                name="Tasks"
+                                component={TasksScreen}
+                                initialParams={ALL_TASKS}
+                                options={({ route }) => ({
+                                    title: selectionTitle(route.params, lists),
+                                    headerTitle: <TaskFilter />,
+                                    headerStart: (
+                                        <>
+                                            <GtkButton
+                                                iconName="list-add-symbolic"
+                                                tooltipText="New Task (Ctrl+N)"
+                                                actionName="win.new"
+                                            />
+                                            <SearchButton />
+                                        </>
+                                    ),
+                                    headerEnd: <MainMenu />,
+                                })}
+                            />
+                            <Split.Screen
+                                name="Task"
+                                component={TaskScreen}
+                                options={({ route }) => ({
+                                    headerTitle: <TaskTitle id={route.params.id} />,
+                                    headerEnd: <TaskButtons id={route.params.id} />,
+                                })}
+                            />
+                        </Split.Navigator>
+                    </NavigationContainer>
                 </AdwToastOverlay>
                 <Dialogs />
             </AdwApplicationWindow>

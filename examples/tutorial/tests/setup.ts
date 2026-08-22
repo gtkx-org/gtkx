@@ -15,10 +15,7 @@ beforeEach(() => {
     useStore.setState({
         tasks: seedTasks,
         lists: seedLists,
-        selection: { kind: "smart", view: "all" },
-        selectedTaskId: null,
         collapsed: false,
-        showContent: false,
         filter: "all",
         searchMode: false,
         searchQuery: "",

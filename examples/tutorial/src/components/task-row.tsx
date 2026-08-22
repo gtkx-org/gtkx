@@ -3,23 +3,18 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkButton, GtkCheckButton, GtkDragSource, GtkDropTarget, GtkToggleButton } from "@gtkx/jsx/gtk";
+import { useNavigation } from "@gtkx/navigation";
 import { escapeMarkup, formatDue } from "../format.js";
-import { useSortOrder } from "../hooks/use-sort-order.js";
 import { useStore } from "../store/index.js";
-import { isReorderable } from "../store/selectors.js";
 import type { Task } from "../types.js";
 import { useRequestDeleteTask } from "./dialogs.js";
 
-export const TaskRow = ({ task }: { task: Task }) => {
+export const TaskRow = ({ task, canReorder }: { task: Task; canReorder: boolean }) => {
     const requestDeleteTask = useRequestDeleteTask();
+    const navigation = useNavigation();
     const setDone = useStore((state) => state.setDone);
     const setImportant = useStore((state) => state.setImportant);
-    const openTask = useStore((state) => state.openTask);
     const reorder = useStore((state) => state.reorder);
-    const selection = useStore((state) => state.selection);
-    const searchQuery = useStore((state) => state.searchQuery);
-    const [sortOrder] = useSortOrder();
-    const reorderable = isReorderable(selection, searchQuery, sortOrder);
     const title = task.done ? `<s>${escapeMarkup(task.title)}</s>` : escapeMarkup(task.title);
 
     return (
@@ -28,7 +23,7 @@ export const TaskRow = ({ task }: { task: Task }) => {
             useMarkup
             subtitle={formatDue(task.due) ?? undefined}
             activatable
-            onActivated={() => openTask(task.id)}
+            onActivated={() => navigation.navigate("Task", { id: task.id })}
             prefix={
                 <GtkCheckButton
                     valign={Gtk.Align.CENTER}
@@ -57,7 +52,7 @@ export const TaskRow = ({ task }: { task: Task }) => {
                 </>
             }
             controllers={
-                reorderable ? (
+                canReorder ? (
                     <>
                         <GtkDragSource
                             actions={Gdk.DragAction.MOVE}

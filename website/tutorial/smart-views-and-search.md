@@ -4,7 +4,7 @@ description: "Derive All Tasks, Today, Important, and Trash, count them, and fil
 
 # Smart Views, Filters, and Search
 
-In [A Layout That Collapses](/tutorial/an-adaptive-layout) you made the window collapse to a single pane on a narrow screen and reopen as two when there is room.
+In [A Layout That Collapses](/tutorial/an-adaptive-layout) the two panes learned to fold into one on a narrow window, and the content pane learned what to show when nothing is selected.
 
 The sidebar reaches a list, but not everything due today, everything you starred, or everything you deleted. None of that needs new state. A task already carries `due`, `important`, and `deleted`, so each view is a filter over the array you have.
 
@@ -25,7 +25,9 @@ Add them to `src/types.ts`:
 
 `Filter` goes in the same edit because the header gets a filter later on this page.
 
-That breaks every expression that read `selection.listId`: the active sidebar row, the content page title, and the list a new task joins. Each has to handle both variants now. These are questions about your data, not a component's job.
+`Selection` is the `Tasks` route's param type, so widening the union widens what the route can carry. The `navigate` call the sidebar already makes takes a smart view without a second code path, and a screen reading `route.params` gets the wider type from the same declaration.
+
+That breaks every expression that read `selection.listId`: the active sidebar row, the title the `Tasks` screen puts on its page, and the list a new task joins. Each has to handle both variants now. These are questions about your data, not a component's job.
 
 ## Derived data belongs in a function
 
@@ -109,8 +111,7 @@ The independent checks compose into one visible list. Trash is the only view tha
 ```ts
 // ...
 
-const startOfDay = (date: Date): number =>
-    new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+const startOfDay = (date: Date): number => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
 export const isToday = (iso: string | null): boolean => {
     if (!iso) return false;
@@ -122,7 +123,7 @@ Tasks store dates as ISO strings, so both sides are normalized to local midnight
 
 ## How to read derived data from the store
 
-Components select the stable arrays and call these functions during render:
+Components select the stable arrays and call these functions during render, with `selection` arriving as the prop the screen hands down from its params:
 
 ```tsx
 const tasks = useStore((state) => state.tasks);
@@ -166,7 +167,7 @@ Every badge counts open work, so completing a task lowers it. Trash counts every
 
 ## Putting the views in the sidebar
 
-The sidebar no longer maps `lists` directly. It builds entries, with the smart views wrapped around the user's lists, each carrying the prefix it needs.
+The sidebar no longer maps `lists` directly. It builds entries, with the smart views wrapped around the user's lists, each carrying the prefix it needs and the selection it navigates to.
 
 Add the entry shape and its builder to the top of `src/components/sidebar.tsx`:
 
@@ -209,33 +210,36 @@ const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
 
 Trash sits last because that is where GNOME puts it. The icon names are standard symbolic ones your icon theme already ships, so they need no assets from you.
 
+An entry carries the `Selection` it stands for, so the row that draws it and the `navigate` behind it read the same value.
+
 The component reads the arrays, derives the entries, and finds the active row by key:
 
 ```tsx
 // ...
 
-export const Sidebar = () => {
+export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lists">) => {
     const tasks = useStore((state) => state.tasks);
     const lists = useStore((state) => state.lists);
-    const selection = useStore((state) => state.selection);
-    const select = useStore((state) => state.select);
+    const selection = useSelection();
 
     const entries = buildEntries(lists, sidebarCounts(tasks, lists));
-    const activeIndex = entries.findIndex((entry) => selectionKey(entry.selection) === selectionKey(selection));
+    const activeKey = selection === null ? null : selectionKey(selection);
+    const activeIndex = entries.findIndex((entry) => selectionKey(entry.selection) === activeKey);
     const listRef = useRef<Gtk.ListBox | null>(null);
 
     useEffect(() => {
         const box = listRef.current;
-        if (!box || activeIndex < 0) return;
-        const row = box.getRowAtIndex(activeIndex);
+        if (!box) return;
+        const row = activeIndex < 0 ? null : box.getRowAtIndex(activeIndex);
         if (row) box.selectRow(row);
+        else box.unselectAll();
     }, [activeIndex]);
 
     // ...
 };
 ```
 
-That effect and its early-return guard are the same sync between GTK4's own selection and the store that you wrote in [Lists and a Sidebar](/tutorial/lists-and-the-sidebar). Only the comparison changed: keys instead of list ids.
+`useSelection` returns `null` while the content stack is empty, so `activeKey` is nullable and no entry can match it. `findIndex` then comes back `-1`, which is the branch the effect already has. That effect is the sync between GTK4's own selection and the navigation state you wrote in [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) and finished in [A Layout That Collapses](/tutorial/an-adaptive-layout), and nothing in it changes here. Only what feeds it does: keys instead of list ids.
 
 The row's `onRowSelected` compares by key for the same reason:
 
@@ -248,7 +252,9 @@ The row's `onRowSelected` compares by key for the same reason:
     onRowSelected={(row) => {
         if (!row) return;
         const entry = entries[row.getIndex()];
-        if (entry && selectionKey(entry.selection) !== selectionKey(selection)) select(entry.selection);
+        if (entry && selectionKey(entry.selection) !== activeKey) {
+            navigation.navigate("Tasks", entry.selection);
+        }
     }}
 >
 ```
@@ -293,21 +299,52 @@ The imports the file needs now:
  import { AdwActionRow } from "@gtkx/jsx/adw";
 -import { GtkBox, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 +import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+ import type { SplitViewScreenProps } from "@gtkx/navigation";
  import { useEffect, useRef } from "react";
+ import { type RootParamList, useSelection } from "../navigation.js";
  import { useStore } from "../store/index.js";
 +import { type SidebarCounts, selectionKey, sidebarCounts } from "../store/selectors.js";
  import { listDot } from "../styles.js";
--import type { TaskList } from "../types.js";
 +import type { Selection, TaskList } from "../types.js";
 ```
 
-The content page title in `src/components/window.tsx` takes the same treatment:
+`Entry` names both `Selection` and `TaskList`, so this file imports your own types for the first time.
+
+The title the `Tasks` screen asks for takes the same treatment. In `src/components/window.tsx`:
 
 ```diff
 +import { selectionTitle } from "../store/selectors.js";
--<AdwNavigationPage title={lists.find((list) => list.id === selection.listId)?.name ?? "Tasks"}>
-+<AdwNavigationPage title={selectionTitle(selection, lists)}>
+@@
+ options={({ route }) => ({
+-    title: lists.find((list) => list.id === route.params.listId)?.name ?? "Tasks",
++    title: selectionTitle(route.params, lists),
+ })}
 ```
+
+The view the app launches on needs rethinking too. A default selection is a default for the route, so it is `initialParams` rather than a field, and the value earns a name of its own in `src/navigation.ts`, since the commands in [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts) reach for it again:
+
+```diff
+ export type RootParamList = {
+     Lists: undefined;
+     Tasks: Selection;
+ };
++
++export const ALL_TASKS: Selection = { kind: "smart", view: "all" };
+```
+
+Then in `src/components/window.tsx`:
+
+```diff
+-import { Split } from "../navigation.js";
++import { ALL_TASKS, Split } from "../navigation.js";
+```
+
+```diff
+-initialParams={{ kind: "list", listId: "personal" }}
++initialParams={ALL_TASKS}
+```
+
+All Tasks is now the launch view. Personal was the only sensible default while lists were the only thing to select. Now that a smart view can span every list, opening on everything you have is a better landing.
 
 ## Filtering the visible list
 
@@ -317,37 +354,52 @@ Add it to the UI slice in `src/store/ui.ts`:
 
 ```diff
  export type UiSlice = {
-     selection: Selection;
      collapsed: boolean;
-     showContent: boolean;
 +    filter: Filter;
-     select: (selection: Selection) => void;
+     setCollapsed: (collapsed: boolean) => void;
 +    setFilter: (filter: Filter) => void;
  };
 ```
 
 ```diff
--    selection: { kind: "list", listId: "personal" },
-+    selection: { kind: "smart", view: "all" },
      collapsed: false,
-     showContent: false,
 +    filter: "all",
+     setCollapsed: (collapsed) => set({ collapsed }),
 +    setFilter: (filter) => set({ filter }),
 ```
 
-`Filter` joins the type import from `../types.js`.
-
-All Tasks is now the launch view. Personal was the only sensible default while lists were the only thing to select. Now that a smart view can span every list, opening on everything you have is a better landing.
+`Filter` is the first type this slice borrows from your own model, so `import type { Filter } from "../types.js";` joins the imports at the top of the file.
 
 The filter is what the interface is currently doing, so it lives in the UI slice, which `partialize` excludes, and it starts at All on every launch. The sort order in [Preferences and the System Theme](/tutorial/preferences-and-theming) is a choice you made about the application, so it goes to GSettings and persists. Decide which kind a piece of state is before choosing where it lives.
 
-The control is an `AdwToggleGroup`, the Adwaita segmented control, set as the header bar's title widget in `src/components/content-pane.tsx`:
+Pass it through in `src/components/task-list.tsx`:
+
+```diff
++const filter = useStore((state) => state.filter);
++
+-const visible = tasks.filter((task) => !task.deleted && task.listId === selection.listId);
++const visible = visibleTasks(tasks, selection, { query: searchQuery, filter });
+```
+
+`searchQuery` is the other half of `VisibleOptions`, and it arrives two sections down. One call takes all three because a view, a filter, and a query narrow the same array, and the order they are applied in never matters.
+
+## Widgets that live in a header bar
+
+The filter control belongs in the `Tasks` screen's header bar, and a screen's header bar is described by its `options`. Those options are a plain object, or a plain callback returning one. No hooks run inside them, and it is `Window` that writes them, so the closure sees only what `Window` itself has read. Put a control that tracks live state in there and `Window` has to subscribe to that state: flip the filter and the whole window renders again, navigator and screens included, to redraw one segmented control.
+
+**A header widget that shows live state is its own component.** The subscription then sits where the widget is, and the option holds an element that never changes.
+
+Create `src/components/task-filter.tsx`:
 
 ```tsx
-// ...
+import { AdwToggle, AdwToggleGroup } from "@gtkx/jsx/adw";
+import { useStore } from "../store/index.js";
 
-<AdwHeaderBar
-    titleWidget={
+export const TaskFilter = () => {
+    const filter = useStore((state) => state.filter);
+    const setFilter = useStore((state) => state.setFilter);
+
+    return (
         <AdwToggleGroup
             activeName={filter}
             cssClasses={["round"]}
@@ -359,22 +411,26 @@ The control is an `AdwToggleGroup`, the Adwaita segmented control, set as the he
             <AdwToggle name="open" label="Open" />
             <AdwToggle name="done" label="Done" />
         </AdwToggleGroup>
-    }
-/>
+    );
+};
 ```
 
-Each `AdwToggle` carries a `name`, and the group reports the active one through its `active-name` property. Reading `activeName` from the store and writing it back from `onNotifyActiveName` is the controlled-widget pairing you used for the checkbox and the split view: the value prop says what should be shown, the signal reports what the widget did.
+`AdwToggleGroup` is the Adwaita segmented control. Each `AdwToggle` carries a `name`, and the group reports the active one through its `active-name` property. Reading `activeName` from the store and writing it back from `onNotifyActiveName` is the controlled-widget pairing you used for the completion checkbox in [Completing, Starring, and Deleting](/tutorial/completing-and-deleting): the value prop says what should be shown, the signal reports what the widget did.
 
 The guard exists because `onNotify` handlers hand you the raw property value, `string | null` here. `Filter` is narrower than `string`, so the check is what makes the assignment safe. It is a genuine type guard, so no cast appears in this file.
 
-Pass the filter through in `src/components/task-list.tsx`:
+`headerTitle` puts a widget where the page title would be drawn. In `src/components/window.tsx`:
 
 ```diff
-+const filter = useStore((state) => state.filter);
-+
--const visible = tasks.filter((task) => !task.deleted && task.listId === selection.listId);
-+const visible = visibleTasks(tasks, selection, { query: searchQuery, filter });
++import { TaskFilter } from "./task-filter.js";
+@@
+ options={({ route }) => ({
+     title: selectionTitle(route.params, lists),
++    headerTitle: <TaskFilter />,
+ })}
 ```
+
+`title` stays even though the bar no longer draws it, because it names the page, and the back button reads that name once the layout is collapsed. It is also the one option here that does read live state through `Window`, in `lists`. That is fine: `lists` changes when you add or rename a list, not while you use the app.
 
 ## Searching titles and notes
 
@@ -383,30 +439,59 @@ Pass the filter through in `src/components/task-list.tsx`:
 More fields in `src/store/ui.ts`:
 
 ```diff
+     collapsed: boolean;
+     filter: Filter;
 +    searchMode: boolean;
 +    searchQuery: string;
+     setCollapsed: (collapsed: boolean) => void;
+     setFilter: (filter: Filter) => void;
 +    setSearchMode: (searchMode: boolean) => void;
 +    setSearchQuery: (searchQuery: string) => void;
++    resetSearch: () => void;
 ```
 
 ```diff
+     collapsed: false,
+     filter: "all",
 +    searchMode: false,
 +    searchQuery: "",
+     setCollapsed: (collapsed) => set({ collapsed }),
+     setFilter: (filter) => set({ filter }),
 +    setSearchMode: (searchMode) => set({ searchMode }),
 +    setSearchQuery: (searchQuery) => set({ searchQuery }),
++    resetSearch: () => set({ searchMode: false, searchQuery: "" }),
 ```
 
-`searchMode` is whether the bar is revealed, and `searchQuery` is what is in it. `select` clears both, since switching views with a stale search still applied would show an empty pane for no visible reason.
+`searchMode` is whether the bar is revealed, and `searchQuery` is what is in it. `resetSearch` clears both together, since switching views with a stale search still applied would show an empty pane for no visible reason.
 
-```diff
-     select: (selection) =>
-         set((state) => ({
-             selection,
-+            searchMode: false,
-+            searchQuery: "",
-             showContent: state.collapsed,
-         })),
+Nothing calls it yet. Switching views is a `navigate` that hands the `Tasks` route new params, and the route is the only thing that changes, so the screen watches its own params and reacts to them.
+
+`src/components/tasks-screen.tsx`:
+
+```tsx
+import type { SplitViewScreenProps } from "@gtkx/navigation";
+import { useEffect } from "react";
+import type { RootParamList } from "../navigation.js";
+import { useStore } from "../store/index.js";
+import { selectionKey } from "../store/selectors.js";
+import { TaskList } from "./task-list.js";
+
+export const TasksScreen = ({ route }: SplitViewScreenProps<RootParamList, "Tasks">) => {
+    const resetSearch = useStore((state) => state.resetSearch);
+    const selection = route.params;
+    const key = selectionKey(selection);
+
+    useEffect(() => {
+        resetSearch();
+    }, [key, resetSearch]);
+
+    return <TaskList key={key} selection={selection} />;
+};
 ```
+
+The key does the other half. `navigate("Tasks", entry.selection)` keeps the same route on the stack and swaps its params, so React sees the same `TaskList` in the same position and updates it in place, scroll position and half-typed add row and all. A changed key throws that tree away and mounts a fresh one, so every view opens at the top.
+
+`selectionKey` earns its second job here. One string stands for a whole selection, which makes it usable as a dependency and as a React key, neither of which would notice a new params object holding the same values.
 
 The bar itself goes above the scroller in `src/components/task-list.tsx`, so it pushes the list down rather than floating over it:
 
@@ -430,32 +515,47 @@ The bar itself goes above the scroller in `src/components/task-list.tsx`, so it 
 </GtkBox>
 ```
 
+`GtkBox`, `GtkSearchBar`, and `GtkSearchEntry` join the import from `@gtkx/jsx/gtk`, and `searchMode`, `searchQuery`, and their two setters come off the store the way `filter` did.
+
 `GtkSearchBar` is a revealer with GNOME's search behavior built in, including dismissal on Escape. That dismissal is why `searchModeEnabled` is paired with `onNotifySearchModeEnabled`: the bar closes itself, and if that never reached the store the next render would reopen it. `?? false` handles the nullable notify value.
+
+Escape is also the key that leaves a page, which the navigator answers. The two do not collide: a key event reaches the focused widget first, so while you are typing in the search entry Escape closes the bar and travels no further. With the bar gone it is the page's key again, the one that took you back to the sidebar in [A Layout That Collapses](/tutorial/an-adaptive-layout).
 
 `GtkSearchEntry` emits `search-changed` on a short delay rather than on every keystroke, so a long query does not refilter the array once per character.
 
-The button that reveals it goes in the header bar next to the filter, in `src/components/content-pane.tsx`:
+The button that reveals it reads `searchMode` to know what to write back, which is live state, so it is a component of its own for the reason the filter is. Create `src/components/search-button.tsx`:
 
 ```tsx
-// ...
+import { GtkButton } from "@gtkx/jsx/gtk";
+import { useStore } from "../store/index.js";
 
-start={
-    <GtkButton
-        iconName="system-search-symbolic"
-        tooltipText="Search (Ctrl+F)"
-        onClicked={() => setSearchMode(!searchMode)}
-    />
-}
+export const SearchButton = () => {
+    const searchMode = useStore((state) => state.searchMode);
+    const setSearchMode = useStore((state) => state.setSearchMode);
+
+    return (
+        <GtkButton
+            iconName="system-search-symbolic"
+            tooltipText="Search (Ctrl+F)"
+            onClicked={() => setSearchMode(!searchMode)}
+        />
+    );
+};
+```
+
+`headerStart` packs it at the leading end of the same bar. In `src/components/window.tsx`:
+
+```diff
++import { SearchButton } from "./search-button.js";
+@@
+ options={({ route }) => ({
+     title: selectionTitle(route.params, lists),
+     headerTitle: <TaskFilter />,
++    headerStart: <SearchButton />,
+ })}
 ```
 
 The tooltip mentions a keyboard shortcut you build in [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts).
-
-One more line in the same file. Give the task list a key derived from the selection, so switching views mounts a fresh list rather than reusing the old one with its scroll position halfway down.
-
-```diff
--<TaskList />
-+<TaskList key={selectionKey(selection)} />
-```
 
 ## When there is nothing to show
 
@@ -508,9 +608,9 @@ Render it below the list box in `src/components/task-list.tsx`, inside a vertica
 </GtkBox>
 ```
 
-`AdwStatusPage` is the component that filled the window in [Your First Window](/tutorial/your-first-window). The `compact` style class shrinks its icon and type scale so it reads as a note under a card rather than the whole screen. The card stays mounted above it, because the add row lives in it and typing a task is what you most want to do from an empty view.
+`AdwStatusPage` is the component that filled the window in [Your First Window](/tutorial/your-first-window) and fills the content pane when nothing is selected. The `compact` style class shrinks its icon and type scale so it reads as a note under a card rather than the whole screen. The card stays mounted above it, because the add row lives in it and typing a task is what you most want to do from an empty view.
 
-The task list derives its values at the top of the component:
+The task list derives its values at the top of the component, with `lists` joining the arrays it selects, since `addListId` needs it:
 
 ```tsx
 // ...
@@ -520,7 +620,7 @@ const empty = emptyState(selection, searchQuery);
 const listId = addListId(selection, lists);
 ```
 
-Pure functions over selected arrays. No new state, and nothing written to disk.
+Pure functions over selected arrays and one prop. No new state, and nothing written to disk.
 
 `listId` is the last of the expressions the union broke. The add row still reads `selection.listId`, which no longer type-checks and would file the task under the wrong list from a smart view, so point it at the derived value:
 
@@ -542,9 +642,10 @@ Save, and the sidebar in the open window redraws: All Tasks, Today, Important, y
 - Tick **Water the plants**. The badges on All Tasks, Today, Important, and Personal all drop by one at once.
 - Click **Today**. Only tasks due today are listed. Click **Trash**, and the task you deleted earlier is there, with a badge counting it.
 - Set the header filter to **Done**, and the list narrows to completed tasks. Set it to **Open** and they disappear. Switch to another view and the filter stays where you put it.
-- Click the search button and type `report`. The list narrows as you type. Type `zzz`: the card empties and the note reads **No Results**, with your query quoted back. Clear the search and click **Trash** with nothing in it, and the note reads **Trash Is Empty** instead.
+- Click the search button and type `report`. The list narrows as you type. Type `zzz`: the card empties and the note reads **No Results**, with your query quoted back.
+- With the search still open, click another view in the sidebar. The bar closes and the query is gone, because the screen saw its params change. Click **Trash** with nothing in it and the note reads **Trash Is Empty** instead.
 
-`filter` joined the UI slice on this page, so confirm the new field inherited the exclusion you established in [Lists and the Sidebar](/tutorial/lists-and-the-sidebar). Leave it on **Done**, quit the app, and start it again: it comes back on **All**, the same way the selection does.
+`filter` joined the UI slice on this page, so confirm the new field inherited the exclusion you established in [Lists and a Sidebar](/tutorial/lists-and-the-sidebar). Leave it on **Done**, quit the app, and start it again: it comes back on **All**. The view comes back on All Tasks for a reason of its own, since navigation state is never written to disk either, so every launch starts at the `initialParams` you just changed.
 
 ## Checkpoint
 
@@ -653,4 +754,4 @@ export const emptyState = (selection: Selection, query: string): EmptyState => {
 
 ## Next
 
-[Opening a Task](/tutorial/the-task-editor) turns the content pane into an editor, where a task gains notes, a due date picked from a calendar, and an Important switch.
+[Opening a Task](/tutorial/the-task-editor) gives a task a page of its own on the content stack, where it gains notes, a due date picked from a calendar, and an Important switch.
