@@ -22,7 +22,7 @@ import {
     usePreventRemove,
     useRoute,
 } from "@gtkx/navigation";
-import { render, screen, userEvent } from "@gtkx/testing";
+import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createContext, useContext, useEffect, useState } from "react";
 import { expect, vi } from "vitest";
 
@@ -331,6 +331,13 @@ const getStackPage = (view: Adw.NavigationView, index: number): Adw.NavigationPa
     return page;
 };
 
+const popToPage = async (view: Adw.NavigationView, index: number): Promise<void> => {
+    await act(async () => {
+        view.popToPage(getStackPage(view, index));
+        await Promise.resolve();
+    });
+};
+
 const getHeaderBar = (): Gtk.Widget => screen.getByRole(Gtk.AccessibleRole.GROUP, { as: Adw.HeaderBar });
 const queryHeaderBar = (): Gtk.Widget | null => screen.queryByRole(Gtk.AccessibleRole.GROUP, { as: Adw.HeaderBar });
 const queryBackButton = (): Gtk.Widget | null => screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" });
@@ -367,10 +374,10 @@ export {
     getHeaderBar,
     getNavigationView,
     getPreloadedKeys,
-    getStackPage,
     getRouteKeys,
     getRouteNames,
     Orphan,
+    popToPage,
     pressKeys,
     queryBackButton,
     queryHeaderBar,

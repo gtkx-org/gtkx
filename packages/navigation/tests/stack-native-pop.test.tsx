@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from "@gtkx/testing";
+import { screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import {
     clickButton,
@@ -9,7 +9,7 @@ import {
     expectRouteNames,
     expectVisible,
     getNavigationView,
-    getStackPage,
+    popToPage,
     renderStack,
 } from "./helpers/stack-fixtures.js";
 
@@ -87,10 +87,7 @@ describe("stack - native pop (2)", () => {
         await clickButton("Push compose");
         await screen.findByText("Compose Content");
         const view = getNavigationView("Compose Content");
-
-        await act(() => {
-            view.popToPage(getStackPage(view, 0));
-        });
+        await popToPage(view, 0);
 
         await waitFor(() => {
             expectVisible("Compose Content");
@@ -106,10 +103,7 @@ describe("stack - native pop (2)", () => {
         await clickButton("Push details");
         await screen.findByText("Details 2");
         const view = getNavigationView("Details 2");
-
-        await act(() => {
-            view.popToPage(getStackPage(view, 0));
-        });
+        await popToPage(view, 0);
 
         await waitFor(() => {
             expectVisible("Home Content");
