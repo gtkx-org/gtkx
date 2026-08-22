@@ -470,6 +470,29 @@ function selectedRowIndex(box: Gtk.ListBox): number {
     return box.getSelectedRow()?.getIndex() ?? NO_SELECTION;
 }
 
+function selectedIndexError(value: number): Error {
+    return new Error(
+        "The 'selectedIndex' of a <GtkListBox> must be a whole number, or -1 to select no row; " +
+        `received ${String(value)}.`,
+    );
+}
+
+function desiredIndex(value: unknown): number | undefined {
+    if (value === null) {
+        return NO_SELECTION;
+    }
+
+    if (typeof value !== "number") {
+        return undefined;
+    }
+
+    if (!Number.isSafeInteger(value)) {
+        throw selectedIndexError(value);
+    }
+
+    return value;
+}
+
 function selectRowAt(box: Gtk.ListBox, row: Gtk.ListBoxRow): void {
     applyWrite(SELECTED_INDEX_PROP, () => {
         box.selectRow(row);
@@ -507,8 +530,7 @@ function selectedIndexBehavior(): ElementBehavior<Gtk.ListBox> {
         deferred: [SELECTED_INDEX_PROP],
         initialize: (): SelectedIndexState => ({ desired: undefined }),
         update: (_box, _prev, next, context) => {
-            const value = next[SELECTED_INDEX_PROP];
-            (context as SelectedIndexState).desired = typeof value === "number" ? value : undefined;
+            (context as SelectedIndexState).desired = desiredIndex(next[SELECTED_INDEX_PROP]);
 
             return [SELECTED_INDEX_PROP];
         },

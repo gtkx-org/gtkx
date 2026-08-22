@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 type BoxProbeProps = {
     boxRef: RefObject<Gtk.ListBox | null>;
     count: number;
-    selectedIndex?: number;
+    selectedIndex?: number | null;
     onRowSelected?: () => void;
 };
 
@@ -47,6 +47,17 @@ describe("list box selection (1)", () => {
         const { boxRef, rerender } = await renderProbe({ count: 3, selectedIndex: 1 });
         await rerender(<BoxProbe boxRef={boxRef} count={3} selectedIndex={-1} />);
         expect(getSelectedIndex(boxRef.current)).toBe(-1);
+    });
+
+    it("clears the selection for null", async () => {
+        const { boxRef, rerender } = await renderProbe({ count: 3, selectedIndex: 1 });
+        await rerender(<BoxProbe boxRef={boxRef} count={3} selectedIndex={null} />);
+        expect(getSelectedIndex(boxRef.current)).toBe(-1);
+    });
+
+    it("throws for an index that is not a whole number", async () => {
+        const boxRef = createRef<Gtk.ListBox>();
+        await expect(render(<BoxProbe boxRef={boxRef} count={3} selectedIndex={1.5} />)).rejects.toThrow();
     });
 });
 

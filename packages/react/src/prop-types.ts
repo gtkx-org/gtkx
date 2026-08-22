@@ -249,8 +249,8 @@ type GtkScaleProps = {
 /** Props of a `Gtk.ListBox` element. */
 type GtkListBoxProps = {
     /**
-     * Index of the row to select, `-1` to select none. Applied once the row exists, and re-applied
-     * whenever the box's own selection drifts from it. Left alone while the prop is absent.
+     * Index of the row to select; `-1` or `null` selects none. Applied once the row exists, and
+     * re-applied whenever the box's own selection drifts from it. Left alone while the prop is absent.
      */
     selectedIndex?: number | null | undefined;
 } & ChildrenProps;
