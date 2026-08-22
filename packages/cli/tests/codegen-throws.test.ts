@@ -6,6 +6,7 @@ import { type CliProject, createCliProject, removeCliProject, runCli } from "./c
 
 const APPLICATION_ID = "com.gtkx.clicodegenthrows";
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
+const NEXT_STATEMENT = /\n(?=\S)/u;
 
 const throwingHookConfig = (): string =>
     `export default { applicationId: "${APPLICATION_ID}", ` +
@@ -15,15 +16,16 @@ const generatedModule = (project: CliProject, ...segments: string[]): string =>
     readFileSync(join(project.nodeModules, ".gtkx", ...segments), "utf8");
 
 const bindingFor = (bindings: string, name: string): string => {
-    const start = bindings.indexOf(`const ${name} = t.fn(`);
+    const start = bindings.search(new RegExp(`^const ${name} = `, "mu"));
 
     if (start === -1) {
-        return "";
+        throw new Error(`the generated module declares no binding named ${name}`);
     }
 
-    const end = bindings.indexOf("});", start);
+    const declaration = bindings.slice(start);
+    const end = declaration.search(NEXT_STATEMENT);
 
-    return bindings.slice(start, end === -1 ? bindings.length : end);
+    return end === -1 ? declaration : declaration.slice(0, end + 1);
 };
 
 describe("gtkx codegen (callbacks whose C signature ends with a GError**)", () => {

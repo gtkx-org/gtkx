@@ -223,6 +223,7 @@ const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
 
 const NOTE_DOC = "Holds a short piece of text the user jotted down.";
 const READ_DOC = "Reads the note back in the given tone.";
+const PURE_ANNOTATION = /\/\* ?[#@]__PURE__ ?\*\//gu;
 const COMMENT = /\/\*|\/\//u;
 
 const DOCUMENTED_MODULE_CASES: DocumentedModuleCase[] = [
@@ -609,7 +610,8 @@ describe("gtkx codegen (where the documentation goes)", () => {
         expect(state.status).toBe(0);
         const declared = generatedModule(state.project, store, `${stem}.d.ts`);
         expect(docs.filter((text) => !declared.includes(text))).toEqual([]);
-        expect(generatedModule(state.project, store, `${stem}.js`)).not.toMatch(COMMENT);
+        const emitted = generatedModule(state.project, store, `${stem}.js`);
+        expect(emitted.replaceAll(PURE_ANNOTATION, "")).not.toMatch(COMMENT);
     });
 
     it.each(HOVER_CASES)("surfaces the documentation of $title on hover", ({ text, doc }) => {

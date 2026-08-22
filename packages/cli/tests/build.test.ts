@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -20,6 +20,8 @@ const READY_MARKER = "app-ready";
 const RUN_TIMEOUT = 60_000;
 const OUT_DIR = "dist";
 const BUNDLE = "bundle.mjs";
+/** Largest the built bundle may be, in bytes: raise it only when the growth is understood and intended. */
+const BUNDLE_CEILING = 8_100_000;
 const SCHEMA_FILE = `${APPLICATION_ID}.gschema.xml`;
 const ICON_PATH = join("icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
 const EMITTED = ["bundle.mjs", "gtkx.node", "gtkx.gresource", "gschemas.compiled", ICON_PATH];
@@ -139,6 +141,10 @@ describe("gtkx build", () => {
         const emitted = emittedNames(state.project);
         expect(state.status).toBe(0);
         expect(EMITTED.filter((name) => !emitted.includes(name))).toEqual([]);
+    });
+
+    it("emits a bundle no larger than the recorded ceiling", () => {
+        expect(statSync(join(state.project.root, OUT_DIR, BUNDLE)).size).toBeLessThanOrEqual(BUNDLE_CEILING);
     });
 
     it("declares the schemas the project's sources can read", () => {
