@@ -7,6 +7,13 @@ use crate::ffi::library_cache::FfiCache;
 use crate::handle::{Boxed, BoxedFreeFn, Handle};
 use crate::host::error_reporter::ReportErr as _;
 
+const POINTER_TYPE: &str = "it is registered as a plain pointer type rather than a boxed one, so \
+                            nothing names the functions that would copy or free it";
+
+fn is_boxed_type(type_: glib::Type) -> bool {
+    type_.is_a(glib::Type::BOXED)
+}
+
 #[derive(Debug, Clone)]
 pub struct BoxedCodec {
     pub ownership: Ownership,
@@ -82,6 +89,9 @@ impl BoxedCodec {
                 self.type_name
             );
         };
+        if !is_boxed_type(type_) {
+            bail!("Cannot take ownership of '{}': {POINTER_TYPE}", self.type_name);
+        }
         Ok(Boxed::from_glib_full(type_, ptr).into())
     }
 
@@ -93,6 +103,9 @@ impl BoxedCodec {
                 self.type_name
             );
         };
+        if !is_boxed_type(type_) {
+            return Ok(Handle::from_glib_borrow(ptr));
+        }
         Ok(unsafe { Boxed::from_glib_none(type_, ptr) }.into())
     }
 
@@ -164,6 +177,12 @@ impl Encoder for BoxedCodec {
                     self.type_name
                 );
             };
+            if !is_boxed_type(type_) {
+                anyhow::bail!(
+                    "Cannot transfer ownership of '{}': {POINTER_TYPE}",
+                    self.type_name
+                );
+            }
             Ok(unsafe { Boxed::boxed_copy(type_, ptr) })
         })
     }
@@ -185,7 +204,7 @@ impl Decoder for BoxedCodec {
 
             let handle = match self.ownership {
                 Ownership::Full => match self.type_()? {
-                    Some(type_) => Boxed::from_glib_full(type_, ptr).into(),
+                    Some(_) => self.adopted(ptr)?,
                     None => Handle::owned_struct(ptr),
                 },
                 Ownership::Borrowed => self.copied(ptr)?,
@@ -213,6 +232,25 @@ impl Decoder for BoxedCodec {
         }
         Ok(value::handle_to_unknown(env, self.copied(ptr)?)?)
     });
+
+    unsafe fn read_lent_value<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        context: &str,
+        transfer: Ownership,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if transfer.is_full() {
+            return unsafe { self.read_value(env, ptr, context, transfer) };
+        }
+
+        self.decode_non_null(env, ptr, |ptr| {
+            Ok(value::handle_to_unknown(
+                env,
+                Handle::from_glib_borrow(ptr),
+            )?)
+        })
+    }
 }
 
 impl PtrWriter for BoxedCodec {
@@ -228,7 +266,7 @@ impl PtrWriter for BoxedCodec {
         if self.inline {
             return self.write_inline(slot, value);
         }
-        let Some(type_) = self.type_()? else {
+        let Some(type_) = self.type_()?.filter(|type_| is_boxed_type(*type_)) else {
             return write_object_ptr(slot, value, "Boxed field write");
         };
         if self.ownership.is_borrowed() {

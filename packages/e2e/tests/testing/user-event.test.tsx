@@ -48,7 +48,10 @@ type KeyProbe = {
     handleFieldPressed: Mock<() => boolean>;
 };
 
-type DropHandler = Mock<(value: GObject.Value, x: number, y: number) => boolean>;
+type DropCapture<T> = {
+    onDrop: (value: GObject.Value, x: number, y: number) => boolean;
+    calls: [T, number, number][];
+};
 
 const stoppingKeyController = <GtkEventControllerKey onKeyPressed={() => Gdk.EVENT_STOP} />;
 
@@ -277,8 +280,18 @@ const renderDropZone = async (
     return findByName(name);
 };
 
-const dropHandler = (): DropHandler =>
-    vi.fn<(value: GObject.Value, x: number, y: number) => boolean>().mockReturnValue(true);
+const dropHandler = <T,>(read: (value: GObject.Value) => T): DropCapture<T> => {
+    const calls: [T, number, number][] = [];
+
+    return {
+        calls,
+        onDrop: (value, x, y) => {
+            calls.push([read(value), x, y]);
+
+            return true;
+        },
+    };
+};
 
 const renderDragUpdateCapture = async () => {
     const updates: [number, number][] = [];
@@ -780,39 +793,35 @@ describe("controller fan-out (3)", () => {
 
 describe("userEvent.drop", () => {
     it("emits drop with a marshalled payload at the given coordinates", async () => {
-        const handleString = dropHandler();
-        const target = await renderDropZone("drop-zone", GObject.TYPE_STRING, handleString);
+        const handleString = dropHandler((value) => value.getString());
+        const target = await renderDropZone("drop-zone", GObject.TYPE_STRING, handleString.onDrop);
         await userEvent.drop(target, "payload", { x: 10, y: 20 });
-        expect(handleString).toHaveBeenCalledTimes(1);
-        const [value, x, y] = handleString.mock.calls[0] ?? [];
-        expect(value?.getString()).toBe("payload");
-        expect(x).toBe(10);
-        expect(y).toBe(20);
-        const handleNumber = dropHandler();
-        await userEvent.drop(await renderDropZone("number-zone", GObject.TYPE_DOUBLE, handleNumber), 42);
-        expect(handleNumber.mock.calls[0]?.[0]?.getDouble()).toBe(42);
-        const handleBoolean = dropHandler();
-        await userEvent.drop(await renderDropZone("bool-zone", GObject.TYPE_BOOLEAN, handleBoolean), true);
-        expect(handleBoolean.mock.calls[0]?.[0]?.getBoolean()).toBe(true);
+        expect(handleString.calls).toEqual([["payload", 10, 20]]);
+        const handleNumber = dropHandler((value) => value.getDouble());
+        await userEvent.drop(await renderDropZone("number-zone", GObject.TYPE_DOUBLE, handleNumber.onDrop), 42);
+        expect(handleNumber.calls[0]?.[0]).toBe(42);
+        const handleBoolean = dropHandler((value) => value.getBoolean());
+        await userEvent.drop(await renderDropZone("bool-zone", GObject.TYPE_BOOLEAN, handleBoolean.onDrop), true);
+        expect(handleBoolean.calls[0]?.[0]).toBe(true);
     });
 
     it("forwards a pre-built GObject.Value unchanged", async () => {
-        const handleDrop = dropHandler();
-        const target = await renderDropZone("value-zone", GObject.TYPE_STRING, handleDrop);
+        const handleDrop = dropHandler((value) => value.getString());
+        const target = await renderDropZone("value-zone", GObject.TYPE_STRING, handleDrop.onDrop);
         const value = new GObject.Value();
         value.init(GObject.TYPE_STRING);
         value.setString("preserved");
         await userEvent.drop(target, value);
-        expect(handleDrop.mock.calls[0]?.[0]?.getString()).toBe("preserved");
+        expect(handleDrop.calls[0]?.[0]).toBe("preserved");
     });
 });
 
 describe("userEvent.dragAndDrop", () => {
     it("fires drop on the target after verifying the source's DragSource", async () => {
-        const handleDrop = dropHandler();
-        const { source, target } = await renderDragAndDropPair({ onDrop: handleDrop });
+        const handleDrop = dropHandler((value) => value.getString());
+        const { source, target } = await renderDragAndDropPair({ onDrop: handleDrop.onDrop });
         await userEvent.dragAndDrop(source, target, "payload");
-        expect(handleDrop.mock.calls[0]?.[0]?.getString()).toBe("payload");
+        expect(handleDrop.calls[0]?.[0]).toBe("payload");
     });
 
     it("throws when the source has no DragSource controller", async () => {

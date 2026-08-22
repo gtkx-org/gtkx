@@ -120,6 +120,7 @@ pub enum ReadSource<'a> {
 pub struct ReadCtx<'a> {
     pub source: ReadSource<'a>,
     pub transfer: Ownership,
+    pub lent: bool,
 }
 
 impl<'a> ReadCtx<'a> {
@@ -128,6 +129,7 @@ impl<'a> ReadCtx<'a> {
         Self {
             source: ReadSource::Call(stash),
             transfer: Ownership::Borrowed,
+            lent: false,
         }
     }
 
@@ -136,6 +138,7 @@ impl<'a> ReadCtx<'a> {
         Self {
             source: ReadSource::Slot(ptr, context),
             transfer: Ownership::Borrowed,
+            lent: false,
         }
     }
 
@@ -144,12 +147,21 @@ impl<'a> ReadCtx<'a> {
         Self {
             source: ReadSource::Value(ptr, context),
             transfer: Ownership::Borrowed,
+            lent: false,
         }
     }
 
     #[must_use]
     pub fn with_transfer(self, transfer: Ownership) -> Self {
         Self { transfer, ..self }
+    }
+
+    /// Marks the memory as lent by the caller for the length of a single call, the way a C caller
+    /// passes an argument to a callback. A codec that can hand JavaScript the caller's own instance
+    /// rather than a copy does so for a lent read, so that writes reach what the caller reads back.
+    #[must_use]
+    pub fn lent(self) -> Self {
+        Self { lent: true, ..self }
     }
 }
 
@@ -233,11 +245,14 @@ pub trait Decoder {
     unsafe fn read<'e>(&self, env: &'e Env, ctx: ReadCtx<'_>) -> anyhow::Result<Unknown<'e>> {
         match ctx.source {
             ReadSource::Call(stash) => self.decode_call(env, stash),
+            ReadSource::Value(ptr, context) if ctx.lent => unsafe {
+                self.read_lent_value(env, ptr, context, ctx.transfer)
+            },
             ReadSource::Value(ptr, context) => unsafe {
                 self.read_value(env, ptr, context, ctx.transfer)
             },
             ReadSource::Slot(ptr, context) => unsafe {
-                self.read_pointer_slot(env, ptr, context, ctx.transfer)
+                self.read_pointer_slot(env, ptr, context, ctx.transfer, ctx.lent)
             },
         }
     }
@@ -270,6 +285,25 @@ pub trait Decoder {
         bail!("This type cannot be read from pointer")
     }
 
+    /// Reads an instance the caller lends for the length of a single call. The default copies it
+    /// the way any other read would; a codec that can lend the caller's own instance to JavaScript
+    /// overrides this, so that a callback writing through the value reaches what the caller reads
+    /// back once the callback returns.
+    ///
+    /// # Safety
+    ///
+    /// Same as [`Decoder::read_value`], and `ptr` must additionally stay valid for no longer than
+    /// the call that lends it, which is what the surrounding [`crate::handle::BorrowScope`] ends.
+    unsafe fn read_lent_value<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        context: &str,
+        transfer: Ownership,
+    ) -> anyhow::Result<Unknown<'e>> {
+        unsafe { self.read_value(env, ptr, context, transfer) }
+    }
+
     fn decode<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
         unsafe { self.read(env, ReadCtx::call(stash)) }
     }
@@ -296,6 +330,7 @@ pub trait Decoder {
         ptr: *const c_void,
         context: &str,
         transfer: Ownership,
+        lent: bool,
     ) -> anyhow::Result<Unknown<'e>> {
         if self.is_inline() {
             bail!(
@@ -304,12 +339,9 @@ pub trait Decoder {
         }
 
         let inner_ptr = unsafe { ptr.cast::<*mut c_void>().read_unaligned() };
-        unsafe {
-            self.read(
-                env,
-                ReadCtx::value(inner_ptr, context).with_transfer(transfer),
-            )
-        }
+        let ctx = ReadCtx::value(inner_ptr, context).with_transfer(transfer);
+
+        unsafe { self.read(env, if lent { ctx.lent() } else { ctx }) }
     }
 
     fn decode_non_null<'e, F>(

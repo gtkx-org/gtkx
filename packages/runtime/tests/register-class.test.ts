@@ -172,20 +172,18 @@ describe("registerClass — vfunc self argument convention", () => {
 describe("registerClass — vfunc argument and return marshalling", () => {
     it("lifts a boxed vfunc argument to its typed wrapper, not a raw handle", () => {
         const name = uniqueName("GtkxVfuncBoxedArg");
-        const observed: unknown[] = [];
+        const observed: { isTextIter: boolean; offset: number }[] = [];
 
         class CustomBuffer extends Gtk.TextBuffer {
             override vfuncInsertText(iter: Gtk.TextIter): void {
-                observed.push(iter);
+                observed.push({ isTextIter: iter instanceof Gtk.TextIter, offset: iter.getOffset() });
             }
         }
 
         registerClass(CustomBuffer, { typeName: name });
         const buffer = new CustomBuffer();
         buffer.insertAtCursor("hi", 2);
-        expect(observed).toHaveLength(1);
-        expect(observed[0]).toBeInstanceOf(Gtk.TextIter);
-        expect((observed[0] as Gtk.TextIter).getOffset()).toBe(0);
+        expect(observed).toEqual([{ isTextIter: true, offset: 0 }]);
     });
 
     it("unwraps a handle-typed vfunc return so the caller receives the object, not null", () => {

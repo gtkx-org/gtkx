@@ -365,7 +365,9 @@ impl ClosureData {
             return unsafe {
                 codec.read(
                     env,
-                    ReadCtx::slot(arg_ptr, "callback arg").with_transfer(codec.transfer()),
+                    ReadCtx::slot(arg_ptr, "callback arg")
+                        .with_transfer(codec.transfer())
+                        .lent(),
                 )
             };
         }
