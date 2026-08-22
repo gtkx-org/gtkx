@@ -246,6 +246,15 @@ type GtkScaleProps = {
     marks?: ScaleMark[] | null | undefined;
 };
 
+/** Props of a `Gtk.ListBox` element. */
+type GtkListBoxProps = {
+    /**
+     * Index of the row to select, `-1` to select none. Applied once the row exists, and re-applied
+     * whenever the box's own selection drifts from it. Left alone while the prop is absent.
+     */
+    selectedIndex?: number | null | undefined;
+} & ChildrenProps;
+
 /** Props of a `Gtk.Calendar` element. */
 type GtkCalendarProps = {
     /** Days of the shown month drawn as marked, cleared and re-marked whenever the list changes. */
@@ -324,6 +333,7 @@ export {
     type GtkConstraintLayoutProps,
     type GtkHeaderBarProps,
     type GtkScaleProps,
+    type GtkListBoxProps,
     type GtkCalendarProps,
     type GtkLevelBarProps,
     type GtkSizeGroupProps,

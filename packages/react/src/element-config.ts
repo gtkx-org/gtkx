@@ -82,7 +82,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: internal("ChildrenProps"),
     },
     GtkListBox: {
-        props: internal("ChildrenProps"),
+        props: internal("GtkListBoxProps"),
     },
     GtkFlowBox: {
         props: internal("ChildrenProps"),

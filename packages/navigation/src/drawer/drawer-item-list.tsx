@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import { CommonActions, DrawerActions } from "@react-navigation/core";
-import { useCallback, useContext, useLayoutEffect, useRef } from "react";
+import { useCallback, useContext } from "react";
 import type { DrawerContentProps, DrawerDescriptor, DrawerNavigationHelpers } from "./types.js";
 import { requireDescriptor } from "../shared/routes.js";
 import { DrawerCollapsedContext } from "./drawer-collapsed-context.js";
@@ -56,22 +56,13 @@ const DrawerItem = ({ descriptor }: { descriptor: DrawerDescriptor }): ReactNode
 
 /** Lists the drawer routes as rows of a `GtkListBox`; activating a row navigates to its route. */
 const DrawerItemList = ({ state, navigation, descriptors }: DrawerContentProps): ReactNode => {
-    const listRef = useRef<Gtk.ListBox | null>(null);
     const isCollapsed = useContext(DrawerCollapsedContext);
     const onRowActivated = useDrawerItemPress(navigation, isCollapsed);
 
-    useLayoutEffect(() => {
-        const list = listRef.current;
-
-        if (list !== null) {
-            list.selectRow(list.getRowAtIndex(state.index));
-        }
-    }, [state.index]);
-
     return (
         <GtkListBox
-            ref={listRef}
             cssClasses={["navigation-sidebar"]}
+            selectedIndex={state.index}
             selectionMode={Gtk.SelectionMode.SINGLE}
             onRowActivated={onRowActivated}
         >

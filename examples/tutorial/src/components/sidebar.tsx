@@ -2,7 +2,6 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { SplitViewScreenProps } from "@gtkx/navigation";
-import { useEffect, useRef } from "react";
 import { type RootParamList, useSelection } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import { type SidebarCounts, selectionKey, sidebarCounts } from "../store/selectors.js";
@@ -51,25 +50,16 @@ export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lis
     const entries = buildEntries(lists, sidebarCounts(tasks, lists));
     const activeKey = selection === null ? null : selectionKey(selection);
     const activeIndex = entries.findIndex((entry) => selectionKey(entry.selection) === activeKey);
-    const listRef = useRef<Gtk.ListBox | null>(null);
-
-    useEffect(() => {
-        const box = listRef.current;
-        if (!box) return;
-        const row = activeIndex < 0 ? null : box.getRowAtIndex(activeIndex);
-        if (row) box.selectRow(row);
-        else box.unselectAll();
-    }, [activeIndex]);
 
     return (
         <GtkScrolledWindow vexpand>
             <GtkListBox
-                ref={listRef}
                 cssClasses={["navigation-sidebar"]}
+                selectedIndex={activeIndex}
                 onRowSelected={(row) => {
                     if (!row) return;
                     const entry = entries[row.getIndex()];
-                    if (entry && selectionKey(entry.selection) !== activeKey) {
+                    if (entry) {
                         resetSearch();
                         navigation.navigate("Tasks", entry.selection);
                     }
