@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, Ref } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
@@ -46,6 +46,14 @@ type DewPointProps = {
     onNotifyDewPoint?: (value: number | null, self: GObject.Object) => void;
 };
 
+type BeaconProps = {
+    ref?: Ref<InstanceType<typeof BeaconLabel>>;
+    label?: string;
+    onFlipped?: () => void;
+    onDataChanged?: (payload: string) => void;
+    onActivateLink?: (uri: string) => boolean;
+};
+
 type EntryProbeProps = {
     text: string;
     onNotifyText?: ComponentProps<typeof GtkEntry>["onNotifyText"];
@@ -85,6 +93,13 @@ const ROOT_NAMES = ["first", "second"];
 const portalTarget = new Gtk.Box();
 const handlePortalToggled = vi.fn();
 const DewPointProbe = createElementComponent<DewPointProps>("GtkxDewPointLabel");
+
+const BeaconLabel = registerClass(class Beacon extends Gtk.Label {}, {
+    typeName: "GtkxBeaconLabel",
+    signals: { flipped: {}, "data-changed": { paramTypes: [GObject.TYPE_STRING] } },
+});
+
+const BeaconProbe = createElementComponent<BeaconProps>("GtkxBeaconLabel");
 
 const makeAdjustment = () => Gtk.Adjustment.new(0, 0, 1000, 1, 10, 0);
 
@@ -649,5 +664,65 @@ describe("handler props - a property name codegen escaped", () => {
         await waitFor(() => {
             expect(handleNotify).toHaveBeenCalled();
         });
+    });
+});
+
+describe("handler props - a signal only the registered type carries", () => {
+    it("connects a handler prop to a signal the class declared", async () => {
+        const handleFlipped = vi.fn();
+        const beaconRef = createRef<InstanceType<typeof BeaconLabel>>();
+        await render(<BeaconProbe ref={beaconRef} label="beacon" onFlipped={handleFlipped} />);
+        expect(beaconRef.current).toBeInstanceOf(BeaconLabel);
+
+        await act(() => {
+            beaconRef.current?.emit("flipped");
+        });
+
+        expect(handleFlipped).toHaveBeenCalled();
+    });
+
+    it("reads a multi-word handler prop as the dashed signal the class declared", async () => {
+        const handleDataChanged = vi.fn();
+        const beaconRef = createRef<InstanceType<typeof BeaconLabel>>();
+        await render(<BeaconProbe ref={beaconRef} label="beacon" onDataChanged={handleDataChanged} />);
+
+        await act(() => {
+            beaconRef.current?.emit("data-changed", "payload");
+        });
+
+        expect(handleDataChanged).toHaveBeenCalledWith("payload", beaconRef.current);
+    });
+
+    it("connects a declared signal whose handler prop only arrives on a later render", async () => {
+        const handleFlipped = vi.fn();
+        const beaconRef = createRef<InstanceType<typeof BeaconLabel>>();
+        const { rerender } = await render(<BeaconProbe ref={beaconRef} label="beacon" />);
+        await rerender(<BeaconProbe ref={beaconRef} label="beacon" onFlipped={handleFlipped} />);
+
+        await act(() => {
+            beaconRef.current?.emit("flipped");
+        });
+
+        expect(handleFlipped).toHaveBeenCalled();
+    });
+
+    it("still connects a signal the registered class inherits", async () => {
+        const handleActivateLink = vi.fn(() => true);
+        const beaconRef = createRef<InstanceType<typeof BeaconLabel>>();
+        await render(<BeaconProbe ref={beaconRef} label="beacon" onActivateLink={handleActivateLink} />);
+
+        await act(() => {
+            beaconRef.current?.emit("activate-link", "https://gtkx.dev");
+        });
+
+        expect(handleActivateLink).toHaveBeenCalled();
+    });
+
+    it("throws for a handler prop naming no signal of the element", async () => {
+        await expect(render(<BeaconProbe {...{ onDataChangd: vi.fn() }} label="beacon" />)).rejects.toThrow();
+    });
+
+    it("throws for a handler prop whose signal name is not a valid one", async () => {
+        await expect(render(<BeaconProbe {...{ "onFlipped.twice": vi.fn() }} label="beacon" />)).rejects.toThrow();
     });
 });

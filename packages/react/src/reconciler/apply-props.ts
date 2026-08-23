@@ -1,7 +1,7 @@
-import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { coerceObjectProperty } from "@gtkx/runtime";
+import { coerceObjectProperty, getInstanceType, TYPE_INVALID } from "@gtkx/runtime";
 import { drain, isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
@@ -26,7 +26,30 @@ const pendingMap: Set<ElementNode> = new Set();
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 const notifiedAccessor = (name: string): string => lowerFirst(name.slice(NOTIFY_PREFIX.length));
 
-const signalForProp = (info: TypeInfo, name: string): string => {
+const hasSignal = (object: GObject.Object, signal: string): boolean => {
+    const type = getInstanceType(object);
+
+    return type !== TYPE_INVALID && GObject.signalIsValidName(signal) && GObject.signalLookup(signal, type) !== 0;
+};
+
+const unknownSignalError = (typeName: string, name: string, signal: string): Error =>
+    new Error(
+        `The handler prop '${name}' of <${typeName}> names the signal '${signal}', which ${typeName} ` +
+        `does not carry. Name a signal the element carries, or declare '${signal}' on ${typeName} ` +
+        "when its class is registered.",
+    );
+
+const lookedUpSignal = (target: SignalTarget, name: string): string => {
+    const signal = kebabCase(name.slice(HANDLER_PREFIX.length));
+
+    if (!hasSignal(target.object, signal)) {
+        throw unknownSignalError(target.typeName, name, signal);
+    }
+
+    return signal;
+};
+
+const signalForProp = (target: SignalTarget, info: TypeInfo, name: string): string => {
     if (name === NOTIFY_PREFIX) {
         return "notify";
     }
@@ -37,7 +60,7 @@ const signalForProp = (info: TypeInfo, name: string): string => {
         return `notify::${propertyNameFor(info, accessor) ?? unsanitizeIdentifier(kebabCase(accessor))}`;
     }
 
-    return info.signals[name] ?? kebabCase(name.slice(HANDLER_PREFIX.length));
+    return info.signals[name] ?? lookedUpSignal(target, name);
 };
 
 const isReservedName = (name: string, info: TypeInfo): boolean =>
@@ -207,7 +230,7 @@ const applyHandler = (target: SignalTarget, info: TypeInfo, name: string, next: 
     const value = next[name];
 
     if (typeof value === "function") {
-        connectHandler(target, name, signalForProp(info, name), value as SignalHandler);
+        connectHandler(target, name, signalForProp(target, info, name), value as SignalHandler);
     } else {
         disconnectHandler(target, name);
     }
