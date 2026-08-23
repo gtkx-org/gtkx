@@ -1,12 +1,10 @@
 declare module "virtual:gtkx-config" {
     /** The GObject signal each `on…` handler prop connects to, keyed by GLib type name. */
     export const signals: Record<string, Record<string, string>>;
-    /** Props GTK accepts only while an object is being built, keyed by GLib type name. */
-    export const constructOnlyProps: Record<string, Set<string>>;
-    /** Props that can be passed to the constructor, keyed by GLib type name. */
-    export const constructProps: Record<string, Set<string>>;
-    /** The value each property is reset to when its prop is removed, keyed by GLib type name. */
-    export const defaultProps: Record<string, Record<string, unknown>>;
+    /** The GObject name of a property, what a write may do to it, and the value it resets to. */
+    export type PropertyEntry = [name: string, flags: number, defaultValue?: unknown];
+    /** Every property a GLib type declares itself, keyed by GLib type name and then by accessor. */
+    export const properties: Record<string, Record<string, PropertyEntry>>;
     /** The application id from `gtkx.config.ts`, used as the default for `<GtkApplication>`. */
     export const applicationId: import("@gtkx/config").ResolvedConfig["applicationId"];
     /**

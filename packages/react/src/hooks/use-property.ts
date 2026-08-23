@@ -1,6 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { kebabCase } from "@gtkx/utils";
-import type { RefProp } from "../utils/ref-prop.js";
+import { getPropertyName } from "../reconciler/metadata.js";
+import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 import { useObjectValue } from "./use-object-value.js";
 
 /** The property map `T` declares, from camelCase property name to value type. */
@@ -18,7 +19,10 @@ function useProperty<T extends GObject.Object, P extends PropertyName<T>>(
     object: RefProp<T>,
     propertyName: P & string,
 ): T[P] | undefined {
-    return useObjectValue(object, `notify::${kebabCase(propertyName)}`, (obj) => obj?.[propertyName]);
+    const resolved = resolveRefProp(object);
+    const name = (resolved === null ? undefined : getPropertyName(resolved, propertyName)) ?? kebabCase(propertyName);
+
+    return useObjectValue(object, `notify::${name}`, (obj) => obj?.[propertyName]);
 }
 
 export { useProperty };

@@ -12,6 +12,7 @@ import {
 } from "@gtkx/runtime";
 import { getOrInsert, isDeepEqual, kebabCase, structuredClone, unsanitizeIdentifier } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
+import { getPropertyName } from "./metadata.js";
 import { applyWrite } from "./signals.js";
 import { hasSameText } from "./text.js";
 
@@ -220,7 +221,7 @@ const watchDrift = <P extends GObject.Object, V>(
         return;
     }
 
-    const signal = `notify::${unsanitizeIdentifier(kebabCase(prop))}`;
+    const signal = `notify::${getPropertyName(object, prop) ?? unsanitizeIdentifier(kebabCase(prop))}`;
 
     const handler = (): undefined => {
         scheduleSettle(object, state, prop, canApply);

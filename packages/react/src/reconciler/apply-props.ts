@@ -2,10 +2,10 @@ import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
 import * as Gtk from "@gtkx/gi/gtk";
 import { coerceObjectProperty } from "@gtkx/runtime";
-import { drain, isDeepEqual, kebabCase, unsanitizeIdentifier } from "@gtkx/utils";
+import { drain, isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import { type TypeInfo, typeInfoFor } from "./metadata.js";
+import { hasProperty, propertyNameFor, type TypeInfo, typeInfoFor } from "./metadata.js";
 import { type ElementNode, getOrCreateContext, type SignalTarget } from "./node.js";
 import { applyWrite, connectHandler, disconnectHandler } from "./signals.js";
 import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PROP } from "./text.js";
@@ -24,6 +24,7 @@ const mapWatched: WeakSet<ElementNode> = new WeakSet();
 const pendingMap: Set<ElementNode> = new Set();
 
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
+const notifiedAccessor = (name: string): string => lowerFirst(name.slice(NOTIFY_PREFIX.length));
 
 const signalForProp = (info: TypeInfo, name: string): string => {
     if (name === NOTIFY_PREFIX) {
@@ -31,14 +32,19 @@ const signalForProp = (info: TypeInfo, name: string): string => {
     }
 
     if (name.startsWith(NOTIFY_PREFIX) && name.length > NOTIFY_PREFIX.length) {
-        return `notify::${unsanitizeIdentifier(kebabCase(name.slice(NOTIFY_PREFIX.length)))}`;
+        const accessor = notifiedAccessor(name);
+
+        return `notify::${propertyNameFor(info, accessor) ?? unsanitizeIdentifier(kebabCase(accessor))}`;
     }
 
     return info.signals[name] ?? kebabCase(name.slice(HANDLER_PREFIX.length));
 };
 
 const isReservedName = (name: string, info: TypeInfo): boolean =>
-    REACT_RESERVED_PROPS.has(name) || isHandlerName(name) || isAccessibleProp(name) || info.constructOnly.has(name);
+    REACT_RESERVED_PROPS.has(name) ||
+    (isHandlerName(name) && !hasProperty(info, name)) ||
+    (isAccessibleProp(name) && !hasProperty(info, name)) ||
+    info.constructOnly.has(name);
 
 const isSkippedValueName = (name: string, info: TypeInfo, consumed: Set<string>): boolean =>
     isReservedName(name, info) || consumed.has(name);
@@ -197,18 +203,20 @@ const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, prev: P
     }
 };
 
+const applyHandler = (target: SignalTarget, info: TypeInfo, name: string, next: Props): void => {
+    const value = next[name];
+
+    if (typeof value === "function") {
+        connectHandler(target, name, signalForProp(info, name), value as SignalHandler);
+    } else {
+        disconnectHandler(target, name);
+    }
+};
+
 const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: Props): void => {
     eachChangedName(prev, next, (name) => {
-        if (!isHandlerName(name)) {
-            return;
-        }
-
-        const value = next[name];
-
-        if (typeof value === "function") {
-            connectHandler(target, name, signalForProp(info, name), value as SignalHandler);
-        } else {
-            disconnectHandler(target, name);
+        if (isHandlerName(name) && !hasProperty(info, name)) {
+            applyHandler(target, info, name, next);
         }
     });
 };

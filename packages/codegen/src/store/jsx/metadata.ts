@@ -17,22 +17,17 @@ import {
 type IntrinsicElementEntry = {
     glibName: string;
     signals: [string, string][];
-    constructOnly: string[];
-    constructable: string[];
-    defaults: [string, string][];
+    properties: [string, string][];
 };
 
-type PropNameCollector = {
-    shouldKeep: (property: GirProperty) => boolean;
-    seen: Set<string>;
-    names: string[];
-};
+const READABLE = 1;
+const WRITABLE = 2;
+const CONSTRUCT = 4;
+const CONSTRUCT_ONLY = 8;
 
-type DefaultPropsCollector = {
-    library: Library;
-    seen: Set<string>;
-    defaults: [string, string][];
-};
+const PROPERTY_ENTRY_TYPE =
+    "/** The GObject name of a property, what a write may do to it, and the value it resets to. */\n" +
+    "export type PropertyEntry = [name: string, flags: number, defaultValue?: unknown];";
 
 const INTEGER_PATTERN = /^-?\d+$/;
 const FLOAT_PATTERN = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
@@ -44,23 +39,15 @@ const generateMetadata = (library: Library): string => {
         ({ glibName, signals }) => `    "${glibName}": ${renderSignalsObject(signals)},`,
     );
 
-    const constructOnlyEntries = intrinsicElements
-        .filter(({ constructOnly }) => constructOnly.length > 0)
-        .map(({ glibName, constructOnly }) => `    "${glibName}": ${renderStringSet(constructOnly)},`);
-
-    const constructableEntries = intrinsicElements
-        .filter(({ constructable }) => constructable.length > 0)
-        .map(({ glibName, constructable }) => `    "${glibName}": ${renderStringSet(constructable)},`);
-
-    const defaultsEntries = intrinsicElements
-        .filter(({ defaults }) => defaults.length > 0)
-        .map(({ glibName, defaults }) => `    "${glibName}": ${renderDefaultsObject(defaults)},`);
+    const propertyEntries = intrinsicElements
+        .filter(({ properties }) => properties.length > 0)
+        .map(({ glibName, properties }) => `    "${glibName}": ${renderPropertiesObject(properties)},`);
 
     return `${[
+        PROPERTY_ENTRY_TYPE,
         `export const signals: Record<string, Record<string, string>> = {\n${signalsEntries.join("\n")}\n};`,
-        `export const constructOnlyProps: Record<string, Set<string>> = {\n${constructOnlyEntries.join("\n")}\n};`,
-        `export const constructProps: Record<string, Set<string>> = {\n${constructableEntries.join("\n")}\n};`,
-        `export const defaultProps: Record<string, Record<string, unknown>> = {\n${defaultsEntries.join("\n")}\n};`,
+        "export const properties: Record<string, Record<string, PropertyEntry>> = " +
+        `{\n${propertyEntries.join("\n")}\n};`,
     ].join("\n\n")}\n`;
 };
 
@@ -83,9 +70,7 @@ const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => 
         entries.push({
             glibName,
             signals: collectSignals(sources),
-            constructOnly: collectConstructOnly(sources),
-            constructable: collectConstructable(sources),
-            defaults: collectDefaultProps(library, sources),
+            properties: collectProperties(library, sources),
         });
     }
 
@@ -116,40 +101,51 @@ const collectSignals = (sources: GirClass[]): [string, string][] => {
     return signals;
 };
 
-const collectPropNamesFromSource = (source: GirClass, collector: PropNameCollector): void => {
-    const { shouldKeep, seen, names } = collector;
+const propertyFlags = (property: GirProperty): number => {
+    const construct = isConstructableProperty(property) && !property.constructOnly ? CONSTRUCT : 0;
+    const constructOnly = property.constructOnly ? CONSTRUCT_ONLY : 0;
 
+    return (property.readable ? READABLE : 0) |
+        (property.writable ? WRITABLE : 0) |
+        construct |
+        constructOnly;
+};
+
+const propertyEntryLiteral = (library: Library, klass: GirClass, property: GirProperty): string => {
+    const head = `${sourceStringLiteral(property.name)},${String(propertyFlags(property))}`;
+    const literal = isDefaultCandidate(property) ? renderDefaultLiteral(library, klass, property) : undefined;
+
+    return literal === undefined ? `[${head}]` : `[${head},${literal}]`;
+};
+
+const collectPropertiesFromSource = (
+    library: Library,
+    source: GirClass,
+    seen: Set<string>,
+    entries: [string, string][],
+): void => {
     for (const property of source.properties) {
-        if (!shouldKeep(property)) {
-            continue;
-        }
-
         const jsName = toCamelIdentifier(property.name);
 
-        if (seen.has(jsName)) {
+        if (!property.introspectable || seen.has(jsName)) {
             continue;
         }
 
         seen.add(jsName);
-        names.push(jsName);
+        entries.push([jsName, propertyEntryLiteral(library, source, property)]);
     }
 };
 
-const collectPropNames = (sources: GirClass[], shouldKeep: (property: GirProperty) => boolean): string[] => {
-    const collector: PropNameCollector = { shouldKeep, seen: new Set<string>(), names: [] };
+const collectProperties = (library: Library, sources: GirClass[]): [string, string][] => {
+    const seen: Set<string> = new Set();
+    const entries: [string, string][] = [];
 
     for (const source of sources) {
-        collectPropNamesFromSource(source, collector);
+        collectPropertiesFromSource(library, source, seen, entries);
     }
 
-    return collector.names;
+    return entries;
 };
-
-const collectConstructOnly = (sources: GirClass[]): string[] =>
-    collectPropNames(sources, (property) => property.constructOnly && property.introspectable);
-
-const collectConstructable = (sources: GirClass[]): string[] =>
-    collectPropNames(sources, (property) => isConstructableProperty(property) && property.introspectable);
 
 const renderObjectLiteral = (entries: [string, string][], renderValue: (value: string) => string): string => {
     if (entries.length === 0) {
@@ -161,59 +157,13 @@ const renderObjectLiteral = (entries: [string, string][], renderValue: (value: s
     return `{\n${lines.join(",\n")}\n    }`;
 };
 
-const renderStringSet = (names: string[]): string =>
-    `new Set([${names.map((name) => sourceStringLiteral(name)).join(",")}])`;
+const renderPropertiesObject = (entries: [string, string][]): string =>
+    renderObjectLiteral(entries, (value) => value);
 
 const renderSignalsObject = (entries: [string, string][]): string => renderObjectLiteral(entries, sourceStringLiteral);
 
-const collectDefaultsFromClass = (klass: GirClass, collector: DefaultPropsCollector): void => {
-    for (const property of klass.properties) {
-        const entry = defaultPropEntry(collector.library, klass, property, collector.seen);
-
-        if (entry !== undefined) {
-            collector.defaults.push(entry);
-        }
-    }
-};
-
-const collectDefaultProps = (library: Library, sources: GirClass[]): [string, string][] => {
-    const collector: DefaultPropsCollector = { library, seen: new Set<string>(), defaults: [] };
-
-    for (const klass of sources) {
-        collectDefaultsFromClass(klass, collector);
-    }
-
-    return collector.defaults;
-};
-
 const isDefaultCandidate = (property: GirProperty): boolean =>
     (property.writable || property.construct) && !property.constructOnly && property.introspectable;
-
-const defaultPropEntry = (
-    library: Library,
-    klass: GirClass,
-    property: GirProperty,
-    seen: Set<string>,
-): [string, string] | undefined => {
-    if (!isDefaultCandidate(property)) {
-        return undefined;
-    }
-
-    const jsName = toCamelIdentifier(property.name);
-
-    if (seen.has(jsName)) {
-        return undefined;
-    }
-
-    seen.add(jsName);
-    const literal = renderDefaultLiteral(library, klass, property);
-
-    if (literal === undefined) {
-        return undefined;
-    }
-
-    return [jsName, literal];
-};
 
 const willSetterRejectNull = (library: Library, klass: GirClass, property: GirProperty): boolean => {
     if (property.setter === undefined) {
@@ -381,8 +331,5 @@ const enumDefaultLiteral = (enumType: GirEnum, raw: string): string | undefined 
 
     return member?.value;
 };
-
-const renderDefaultsObject = (entries: [string, string][]): string =>
-    renderObjectLiteral(entries, (literal) => literal);
 
 export { generateMetadata };

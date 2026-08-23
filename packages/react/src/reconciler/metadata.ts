@@ -1,10 +1,20 @@
-import { TYPE_INVALID, typeFromName, typeInterfaces, typeName, typeParent } from "@gtkx/runtime";
+import type * as GObject from "@gtkx/gi/gobject";
+import {
+    type AnyClass,
+    getClassType,
+    TYPE_INVALID,
+    typeFromName,
+    typeInterfaces,
+    typeName,
+    typeParent,
+} from "@gtkx/runtime";
 import { getOrInsert } from "@gtkx/utils";
-import { constructOnlyProps, constructProps, defaultProps, signals, userEventSignals } from "virtual:gtkx-config";
+import { properties, type PropertyEntry, signals, userEventSignals } from "virtual:gtkx-config";
 import { deferredProps, type ElementBehavior, ELEMENTS } from "./registry.js";
 
 type TypeInfo = {
     typeName: string;
+    properties: Record<string, PropertyEntry>;
     signals: Record<string, string>;
     userEventSignals: Set<string>;
     behaviors: ElementBehavior[];
@@ -17,6 +27,12 @@ type TypeInfo = {
     defaults: Record<string, unknown>;
 };
 
+const WRITABLE = 2;
+const CONSTRUCT = 4;
+const CONSTRUCT_ONLY = 8;
+const NAME = 0;
+const FLAGS = 1;
+const DEFAULT_VALUE = 2;
 const ancestryCache: Map<string, string[]> = new Map();
 const typeInfoCache: Map<string, TypeInfo> = new Map();
 
@@ -60,9 +76,27 @@ const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
 const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
     Object.assign(info.signals, signals[ancestor] ?? {});
     addAll(info.userEventSignals, userEventSignals[ancestor]);
-    addAll(info.constructOnly, constructOnlyProps[ancestor]);
-    addAll(info.construct, constructProps[ancestor]);
     info.behaviors.push(...(ELEMENTS[ancestor]?.behaviors ?? []));
+};
+
+const resolveProperty = (info: TypeInfo, name: string, entry: PropertyEntry): void => {
+    if ((entry[FLAGS] & CONSTRUCT_ONLY) !== 0) {
+        info.constructOnly.add(name);
+    }
+
+    if ((entry[FLAGS] & (WRITABLE | CONSTRUCT | CONSTRUCT_ONLY)) !== 0) {
+        info.construct.add(name);
+    }
+
+    if (entry.length > DEFAULT_VALUE) {
+        info.defaults[name] = entry[DEFAULT_VALUE];
+    }
+};
+
+const resolveProperties = (info: TypeInfo): void => {
+    for (const [name, entry] of Object.entries(info.properties)) {
+        resolveProperty(info, name, entry);
+    }
 };
 
 const applyBehaviorFlags = (info: TypeInfo, behavior: ElementBehavior): void => {
@@ -85,6 +119,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
 
     const info: TypeInfo = {
         typeName: name,
+        properties: {},
         signals: {},
         userEventSignals: new Set(),
         behaviors: [],
@@ -105,12 +140,31 @@ const buildTypeInfo = (name: string): TypeInfo => {
     info.isLazy = chain.some((ancestor) => ELEMENTS[ancestor]?.isLazy === true);
 
     for (const ancestor of chain.toReversed()) {
-        Object.assign(info.defaults, defaultProps[ancestor] ?? {});
+        Object.assign(info.properties, properties[ancestor] ?? {});
     }
+
+    resolveProperties(info);
 
     return info;
 };
 
 const typeInfoFor = (name: string): TypeInfo => getOrInsert(typeInfoCache, name, buildTypeInfo);
 
-export { typeInfoFor, type TypeInfo };
+const getTypeInfo = (object: GObject.Object): TypeInfo | undefined => {
+    const name = typeName(getClassType(object.constructor as AnyClass));
+
+    return name === null ? undefined : typeInfoFor(name);
+};
+
+const hasProperty = (info: TypeInfo, accessor: string): boolean => Object.hasOwn(info.properties, accessor);
+
+const propertyNameFor = (info: TypeInfo, accessor: string): string | undefined =>
+    info.properties[accessor]?.[NAME];
+
+const getPropertyName = (object: GObject.Object, accessor: string): string | undefined => {
+    const info = getTypeInfo(object);
+
+    return info === undefined ? undefined : propertyNameFor(info, accessor);
+};
+
+export { getPropertyName, hasProperty, propertyNameFor, typeInfoFor, type TypeInfo };

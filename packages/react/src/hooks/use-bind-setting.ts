@@ -3,6 +3,7 @@ import * as Gio from "@gtkx/gi/gio";
 import { kebabCase } from "@gtkx/utils";
 import { useLayoutEffect } from "react";
 import type { SettingsSchema, SettingsSchemaKeys } from "../utils/settings.js";
+import { getPropertyName } from "../reconciler/metadata.js";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 import { useSettings } from "./use-setting.js";
 
@@ -32,7 +33,6 @@ function useBindSetting<K extends SettingsSchemaKeys>({
     flags = Gio.SettingsBindFlags.DEFAULT,
 }: UseBindSettingOptions<K>): void {
     const settings = useSettings(schema);
-    const propertyName = kebabCase(property);
 
     useLayoutEffect(() => {
         const resolved = resolveRefProp(object);
@@ -41,12 +41,13 @@ function useBindSetting<K extends SettingsSchemaKeys>({
             return;
         }
 
+        const propertyName = getPropertyName(resolved, property) ?? kebabCase(property);
         settings.bind(key, resolved, propertyName, flags);
 
         return () => {
             Gio.Settings.unbind(resolved, propertyName);
         };
-    }, [settings, key, object, propertyName, flags]);
+    }, [settings, key, object, property, flags]);
 }
 
 export { useBindSetting };
