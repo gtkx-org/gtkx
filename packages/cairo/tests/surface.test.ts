@@ -9,6 +9,8 @@ import {
     Surface,
     SurfaceType,
 } from "@gtkx/cairo";
+import { getHandle, wrapHandle } from "@gtkx/runtime";
+import { endPointerBorrow } from "@gtkx/runtime/internal";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -19,6 +21,18 @@ type Constructor<T> = abstract new (...args: never[]) => T;
 const outputDir = mkdtempSync(join(tmpdir(), "gtkx-cairo-surface-"));
 
 const createImage = (width = 4, height = 4): ImageSurface => new ImageSurface(Format.ARGB32, width, height);
+
+const gcUntil = async (isSatisfied: () => boolean, maxRounds = 100): Promise<void> => {
+    if (globalThis.gc === undefined) {
+        throw new Error("global.gc is unavailable");
+    }
+
+    for (let round = 0; round < maxRounds && !isSatisfied(); round += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+        globalThis.gc();
+        await new Promise((resolve) => setImmediate(resolve));
+    }
+};
 
 const asInstance = <T>(value: unknown, cls: Constructor<T>): T => {
     if (value instanceof cls) {
@@ -32,6 +46,93 @@ const dimensions = (surface: Surface): number[] => {
     const image = asInstance(surface, ImageSurface);
 
     return [image.getWidth(), image.getHeight()];
+};
+
+const createMappedContext = (surface: Surface, contexts: Set<Context>): WeakRef<Surface> => {
+    const mapped = surface.mapToImage(new RectangleInt({ x: 0, y: 0, width: 4, height: 4 }));
+    const context = Context.create(mapped);
+    context.setSourceRgb(1, 0, 0);
+    context.paint();
+    contexts.add(context);
+
+    return new WeakRef(mapped);
+};
+
+const createSharedMappedAlias = (surface: Surface): [ImageSurface, WeakRef<Surface>] => {
+    const mapped = surface.mapToImage(new RectangleInt({ x: 0, y: 0, width: 4, height: 4 }));
+
+    return [wrapHandle(getHandle(mapped), ImageSurface), new WeakRef(mapped)];
+};
+
+const firstValue = <T>(values: Set<T>): T => {
+    for (const value of values) {
+        return value;
+    }
+
+    throw new Error("Expected one retained value");
+};
+
+const mapAndUnmapSurface = (): void => {
+    const image = createImage(8, 8);
+    const sourceAlias = Context.create(image).getTarget();
+    const mapped = image.mapToImage(new RectangleInt({ x: 2, y: 2, width: 3, height: 4 }));
+    const alias = wrapHandle(getHandle(mapped), ImageSurface);
+    const context = Context.create(mapped);
+    context.setSourceRgb(1, 0, 0);
+    context.paint();
+    const distinct = context.getTarget();
+    expect(mapped).toBeInstanceOf(ImageSurface);
+    expect(dimensions(mapped)).toEqual([3, 4]);
+    sourceAlias.unmapImage(mapped);
+    expect(image.status()).toBe(Status.SUCCESS);
+    expect(() => Context.create(distinct)).toThrow();
+
+    expect(() => {
+        mapped.status();
+    }).toThrow();
+
+    expect(() => {
+        alias.status();
+    }).toThrow();
+};
+
+const collectMappedImage = async (): Promise<void> => {
+    const surface = new RecordingSurface(Content.COLOR_ALPHA, { x: 0, y: 0, width: 4, height: 4 });
+    const before = surface.getReferenceCount();
+    const contexts: Set<Context> = new Set();
+    const weak = createMappedContext(surface, contexts);
+    expect(surface.getReferenceCount()).toBe(before + 1);
+    await gcUntil(() => weak.deref() === undefined && surface.getReferenceCount() === before);
+    expect(surface.getReferenceCount()).toBe(before);
+    expect(weak.deref()).toBeUndefined();
+    expect(surface.inkExtents()).toEqual({ x0: 0, y0: 0, width: 4, height: 4 });
+    const context = firstValue(contexts);
+    context.paint();
+    expect(context.status()).toBe(Status.SURFACE_FINISHED);
+};
+
+const collectMappedWrapperWithLiveAlias = async (): Promise<void> => {
+    const surface = new RecordingSurface(Content.COLOR_ALPHA, { x: 0, y: 0, width: 4, height: 4 });
+    const before = surface.getReferenceCount();
+    const [alias, weak] = createSharedMappedAlias(surface);
+    expect(surface.getReferenceCount()).toBe(before + 1);
+    await gcUntil(() => weak.deref() === undefined);
+    expect(weak.deref()).toBeUndefined();
+    expect(surface.getReferenceCount()).toBe(before + 1);
+    expect(alias.status()).toBe(Status.SUCCESS);
+    surface.unmapImage(alias);
+    expect(surface.getReferenceCount()).toBe(before);
+};
+
+const unmapInvalidatedBorrowAmongActiveMappings = (): void => {
+    const firstSource = createImage();
+    const secondSource = createImage();
+    const extents = new RectangleInt({ x: 0, y: 0, width: 1, height: 1 });
+    const firstMapped = firstSource.mapToImage(extents);
+    const secondMapped = secondSource.mapToImage(extents);
+    endPointerBorrow(getHandle(secondMapped));
+    secondSource.unmapImage(secondMapped);
+    firstSource.unmapImage(firstMapped);
 };
 
 afterAll(() => {
@@ -92,23 +193,73 @@ describe("Surface (statics)", () => {
         expect(sub.getContent()).toBe(Content.COLOR_ALPHA);
     });
 
-    it("maps a rectangle of a surface to an image surface and back", () => {
-        const image = createImage(8, 8);
-        const mapped = image.mapToImage(new RectangleInt({ x: 2, y: 2, width: 3, height: 4 }));
-        expect(mapped).toBeInstanceOf(ImageSurface);
-        expect(dimensions(mapped)).toEqual([3, 4]);
-        image.unmapImage(mapped);
-        expect(image.status()).toBe(Status.SUCCESS);
-    });
-
     it("rejects a missing surface operand", () => {
         expect(() => Surface.createSimilar(undefined as never, Content.COLOR_ALPHA, 1, 1)).toThrow();
         expect(() => Surface.createSimilarImage(undefined as never, Format.ARGB32, 1, 1)).toThrow();
         expect(() => Surface.createForRectangle(undefined as never, 0, 0, 1, 1)).toThrow();
+    });
+});
+
+describe("Surface mapping", () => {
+    it("maps a rectangle of a surface to an image surface and back", () => {
+        expect(mapAndUnmapSurface).not.toThrow();
+    });
+
+    it("unmaps an abandoned image while native aliases remain", async () => {
+        await expect(collectMappedImage()).resolves.toBeUndefined();
+    });
+
+    it("keeps a mapping alive while a shared-handle alias remains", async () => {
+        await expect(collectMappedWrapperWithLiveAlias()).resolves.toBeUndefined();
+    });
+
+    it("unmaps an externally invalidated borrow among active mappings", () => {
+        expect(unmapInvalidatedBorrowAmongActiveMappings).not.toThrow();
+    });
+});
+
+describe("Surface mapping errors", () => {
+    it("rejects invalid mapping lifecycles", () => {
         expect(() => createImage().mapToImage(undefined as never)).toThrow();
+        const finished = createImage();
+        finished.finish();
+        expect(() => finished.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
 
         expect(() => {
             createImage().unmapImage(undefined as never);
+        }).toThrow();
+
+        const image = createImage();
+        const sourceAlias = Context.create(image).getTarget();
+        const mapped = image.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }));
+        expect(() => image.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
+        expect(() => sourceAlias.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
+        expect(() => mapped.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
+
+        expect(() => {
+            mapped.finish();
+        }).toThrow();
+
+        expect(() => {
+            mapped.setDeviceOffset(1, 1);
+        }).toThrow();
+
+        expect(() => {
+            image.setDeviceScale(2, 2);
+        }).toThrow();
+
+        expect(() => {
+            createImage().unmapImage(mapped);
+        }).toThrow();
+
+        expect(() => {
+            image.unmapImage(createImage());
+        }).toThrow();
+
+        image.unmapImage(mapped);
+
+        expect(() => {
+            image.unmapImage(mapped);
         }).toThrow();
     });
 });

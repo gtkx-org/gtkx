@@ -74,16 +74,6 @@ describe("ScaledFont", () => {
         expect(ctx.getScaledFont()).toBeInstanceOf(ScaledFont);
     });
 
-    it("shapes text into glyphs and clusters", () => {
-        const [glyphs, clusters] = createScaledFont().textToGlyphs(0, 0, "ab");
-        expect(glyphs).toHaveLength(2);
-        expect(clusters).toHaveLength(2);
-
-        for (const glyph of glyphs) {
-            expect(glyph.index).toBeGreaterThan(0);
-        }
-    });
-
     it("measures text, glyphs and the font itself", () => {
         const font = createScaledFont();
         const [glyphs] = font.textToGlyphs(0, 0, "ab");
@@ -107,6 +97,29 @@ describe("ScaledFont", () => {
         const identity = Matrix.initIdentity();
         expect(() => ScaledFont.create(undefined as never, identity, identity, FontOptions.create())).toThrow();
         expect(() => new ScaledFont(undefined as never, identity, identity, FontOptions.create())).toThrow();
+    });
+});
+
+describe("ScaledFont text shaping", () => {
+    it("shapes text into glyphs and clusters", () => {
+        const [glyphs, clusters] = createScaledFont().textToGlyphs(0, 0, "ab");
+        expect(glyphs).toHaveLength(2);
+        expect(clusters).toHaveLength(2);
+
+        for (const glyph of glyphs) {
+            expect(glyph.index).toBeGreaterThan(0);
+        }
+    });
+
+    it("shapes empty text without allocating output", () => {
+        const [glyphs, clusters] = createScaledFont().textToGlyphs(0, 0, "");
+        expect(glyphs).toEqual([]);
+        expect(clusters).toEqual([]);
+    });
+
+    it("rejects shaping with an invalid scaled font", () => {
+        const font = createScaledFont(Matrix.initScale(NaN, 12));
+        expect(() => font.textToGlyphs(0, 0, "ab")).toThrow();
     });
 });
 

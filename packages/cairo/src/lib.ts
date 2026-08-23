@@ -124,9 +124,21 @@ const RECTANGLE_LIST_T: BoxedDescriptor = t.boxed("cairo_rectangle_list_t", {
 
 const GLYPH_T: BoxedDescriptor = t.boxed("cairo_glyph_t", { ownership: "borrowed", sharedLibrary: CAIRO_LIBRARY });
 
+const GLYPH_ARRAY_FULL_T: BoxedDescriptor = t.boxed("cairo_glyph_t[]", {
+    ownership: "full",
+    sharedLibrary: CAIRO_LIBRARY,
+    freeFnName: "cairo_glyph_free",
+});
+
 const TEXT_CLUSTER_T: BoxedDescriptor = t.boxed("cairo_text_cluster_t", {
     ownership: "borrowed",
     sharedLibrary: CAIRO_LIBRARY,
+});
+
+const TEXT_CLUSTER_ARRAY_FULL_T: BoxedDescriptor = t.boxed("cairo_text_cluster_t[]", {
+    ownership: "full",
+    sharedLibrary: CAIRO_LIBRARY,
+    freeFnName: "cairo_text_cluster_free",
 });
 
 const TEXT_EXTENTS_T: BoxedDescriptor = t.boxed("cairo_text_extents_t", {
@@ -167,6 +179,7 @@ export {
     FONT_OPTIONS_FULL_T,
     FONT_OPTIONS_T,
     FT_FACE_T,
+    GLYPH_ARRAY_FULL_T,
     GLYPH_T,
     MATRIX_T,
     PATH_T,
@@ -182,6 +195,7 @@ export {
     SCALED_FONT_T,
     SURFACE_FULL_T,
     SURFACE_T,
+    TEXT_CLUSTER_ARRAY_FULL_T,
     TEXT_CLUSTER_T,
     TEXT_EXTENTS_T,
 };

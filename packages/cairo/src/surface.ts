@@ -26,6 +26,13 @@ import {
     SURFACE_FULL_T,
     SURFACE_T,
 } from "./lib.js";
+import {
+    assertSurfaceCanEndOrTransform,
+    assertSurfaceCanMap,
+    discardMappedImage,
+    registerMappedImage,
+    unmapMappedImage,
+} from "./mapped-image.js";
 import { checkSurface } from "./status.js";
 
 const SURFACE_TYPE = cairoGType("cairo_gobject_surface_get_type");
@@ -83,8 +90,12 @@ const cairoSurfaceSupportsMimeType = bindCairo(
     t.boolean,
 );
 
-const cairoSurfaceMapToImage = bindCairo("cairo_surface_map_to_image", [SURFACE_T, RECTANGLE_INT_T], SURFACE_T);
-const cairoSurfaceUnmapImage = bindCairo("cairo_surface_unmap_image", [SURFACE_T, SURFACE_T], t.void);
+const cairoSurfaceMapToImage = bindCairo(
+    "cairo_surface_map_to_image",
+    [SURFACE_T, RECTANGLE_INT_T],
+    t.struct("borrowed"),
+);
+
 const cairoImageSurfaceCreate = bindCairo("cairo_image_surface_create", [t.int32, t.int32, t.int32], SURFACE_FULL_T);
 
 const cairoImageSurfaceCreateFromPng = bindCairo(
@@ -212,6 +223,7 @@ abstract class Surface {
 
     /** Finishes the surface and drops its backend resources; further drawing reports an error. */
     finish(): void {
+        assertSurfaceCanEndOrTransform(this);
         cairoSurfaceFinish(getHandle(this));
     }
 
@@ -250,6 +262,7 @@ abstract class Surface {
 
     /** Sets the offset added to device coordinates when drawing onto the surface. */
     setDeviceOffset(xOffset: number, yOffset: number): void {
+        assertSurfaceCanEndOrTransform(this);
         cairoSurfaceSetDeviceOffset(getHandle(this), xOffset, yOffset);
     }
 
@@ -265,6 +278,7 @@ abstract class Surface {
 
     /** Sets the scale applied between user and device units. */
     setDeviceScale(xScale: number, yScale: number): void {
+        assertSurfaceCanEndOrTransform(this);
         cairoSurfaceSetDeviceScale(getHandle(this), xScale, yScale);
     }
 
@@ -311,14 +325,26 @@ abstract class Surface {
         return cairoSurfaceSupportsMimeType(getHandle(this), mimeType) as boolean;
     }
 
-    /** Returns an image surface giving direct access to the pixels of `extents`; release it with `unmapImage`. */
+    /** Returns an image surface for the pixels of `extents`; release it with `unmapImage`, or on collection. */
     mapToImage(extents: RectangleInt): Surface {
-        return wrapSurface(cairoSurfaceMapToImage(getHandle(this), getHandle(extents)));
+        const surfaceHandle = getHandle(this);
+        assertSurfaceCanMap(surfaceHandle);
+        const imageHandle = cairoSurfaceMapToImage(surfaceHandle, getHandle(extents)) as ExternalObject<Handle>;
+
+        try {
+            const image = wrapSurface(checkSurface(imageHandle));
+            registerMappedImage(imageHandle, surfaceHandle);
+
+            return image;
+        } catch (error) {
+            discardMappedImage(surfaceHandle, imageHandle);
+            throw error;
+        }
     }
 
-    /** Uploads the pixels of `image`, obtained from `mapToImage`, back to the surface and releases it. */
+    /** Uploads and releases an `image` from `mapToImage`; the mapped image becomes unusable. */
     unmapImage(image: Surface): void {
-        cairoSurfaceUnmapImage(getHandle(this), getHandle(image));
+        unmapMappedImage(getHandle(this), getHandle(image));
     }
 }
 

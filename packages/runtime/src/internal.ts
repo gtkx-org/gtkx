@@ -12,3 +12,4 @@ export {
     outValueForBoxedDescriptor,
     toValue,
 } from "./value.js";
+export { clonePointerBorrow, endPointerBorrow, handlesPointToSameMemory } from "@gtkx/native";

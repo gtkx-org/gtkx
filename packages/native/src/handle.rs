@@ -110,6 +110,7 @@ enum HandleKind {
     Fundamental(Fundamental),
     Struct(*mut c_void),
     Borrowed(*mut c_void),
+    ProcessStatic(*mut c_void),
     Field {
         owner: Handle,
         offset: usize,
@@ -138,6 +139,7 @@ impl std::fmt::Debug for Handle {
             HandleKind::Fundamental(_) => "Fundamental",
             HandleKind::Struct(_) => "Struct",
             HandleKind::Borrowed(_) => "Borrowed",
+            HandleKind::ProcessStatic(_) => "ProcessStatic",
             HandleKind::Field { .. } => "Field",
         };
         f.debug_struct("Handle")
@@ -193,7 +195,7 @@ impl Handle {
     /// ends the borrow.
     #[must_use]
     pub fn process_static(ptr: *mut c_void) -> Self {
-        HandleKind::Borrowed(ptr).into()
+        HandleKind::ProcessStatic(ptr).into()
     }
 
     /// A handle over the `offset` bytes into `owner`, aliasing the owner's memory instead of
@@ -259,6 +261,29 @@ impl Handle {
         if let HandleKind::Object { ptr, .. } = &self.inner.kind {
             ptr.set(std::ptr::null_mut());
         }
+    }
+
+    /// Ends a raw pointer borrow without releasing its memory, returning whether this handle is a
+    /// borrow of that kind. Ending an already-ended pointer borrow succeeds without further work.
+    #[must_use]
+    pub fn end_pointer_borrow(&self) -> bool {
+        if !matches!(&self.inner.kind, HandleKind::Borrowed(_)) {
+            return false;
+        }
+
+        self.invalidate();
+        true
+    }
+
+    /// Clones a raw pointer borrow while sharing its invalidation state, or returns `None` for a
+    /// handle with any other ownership or lifetime.
+    #[must_use]
+    pub fn clone_pointer_borrow(&self) -> Option<Self> {
+        if self.is_invalidated() || !matches!(&self.inner.kind, HandleKind::Borrowed(_)) {
+            return None;
+        }
+
+        Some(self.clone())
     }
 
     #[must_use]
@@ -351,7 +376,9 @@ impl Handle {
 
         match &self.inner.kind {
             HandleKind::Object { ptr, .. } => ptr.get(),
-            HandleKind::Struct(ptr) | HandleKind::Borrowed(ptr) => *ptr,
+            HandleKind::Struct(ptr)
+            | HandleKind::Borrowed(ptr)
+            | HandleKind::ProcessStatic(ptr) => *ptr,
             HandleKind::Boxed(boxed) => boxed.as_ptr(),
             HandleKind::Fundamental(fundamental) => fundamental.as_ptr(),
             HandleKind::Field { owner, offset } => {
@@ -378,7 +405,7 @@ impl Handle {
             HandleKind::Boxed(_) => Boxed::SIZE_HINT,
             HandleKind::Fundamental(_) => Fundamental::SIZE_HINT,
             HandleKind::Struct(_) => STRUCT_SIZE_HINT,
-            HandleKind::Borrowed(_) | HandleKind::Field { .. } => 0,
+            HandleKind::Borrowed(_) | HandleKind::ProcessStatic(_) | HandleKind::Field { .. } => 0,
         }
     }
 }
