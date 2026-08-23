@@ -76,7 +76,7 @@ Anything you leave out is derived, so the same fact never lives in two places:
 | `icons` | `<dataDir>/icons`, the same tree `gtkx build` reads |
 | `releases` | one entry, from the version and today's date |
 | deb `section`, rpm `group` | the first entry in `categories` |
-| deb `Depends`, rpm `Requires` | the `libraries` you declared, plus the glibc floor read out of the built binaries |
+| deb `Depends`, rpm `Requires` | the `libraries` your bindings were generated from, each floored at the release codegen read them from, plus the glibc floor read out of the built binaries |
 | `screenshotBaseUrl` | the `origin` git remote, including the project's path inside the repository |
 
 The application icon is the one thing that has to exist: `data/icons/hicolor/scalable/apps/<applicationId>.svg`. The desktop entry names `<applicationId>` as its icon, so the file name has to match, and `gtkx deploy` says so if it does not.
@@ -179,7 +179,8 @@ The generated files are complete, but nothing is a dead end:
 - `deploy.flatpak.finishArgs` adds sandbox permissions to the defaults `--share=ipc`, `--socket=wayland`, `--socket=fallback-x11`, and `--device=dri`, which grant a window and hardware rendering and nothing else. Yours follow the defaults, and duplicates collapse. To drop a default, ask for its negation: `--nosocket=wayland`, `--unshare=ipc`, `--nodevice=dri`. `gtkx deploy` warns when the result grants no display socket, and when an app declaring `WebKit-6.0` has no `--share=network`.
 - `deploy.flatpak.cleanup` adds cleanup patterns to the defaults `/include`, `/share/pkgconfig`, `*.la`, and `*.a`. There is no negation for a pattern; an empty array turns cleanup off altogether, for a project that has to keep its headers or static libraries in the prefix.
 - `deploy.flatpak.modules` and `deploy.flatpak.buildCommands` add modules and build steps.
-- `deploy.depends` and `deploy.relations` add package relationships per format.
+- `deploy.depends` and `deploy.relations` add package relationships per format. They only ever add, so they can tighten a generated relation but never loosen one.
+- `deploy.libraryFloors` sets the minimum release each library is required at. GTK, libadwaita, GtkSourceView, and WebKitGTK are resolved symbol by symbol when the app runs, so a package whose dependency carries no minimum installs on a host too old to run it and then dies at the first call the older library does not export. `gtkx deploy` therefore floors each one at the release codegen generated its bindings from, which means the packages you build require the versions your build machine has. Write `{ "Gtk-4.0": "4.14" }` to require a different release, `{ "Gtk-4.0": false }` to require none for that library, or `false` to go back to bare package names. Build on the oldest distribution you intend to support and the detected floors are already the ones you want.
 - `deploy.extraFiles` maps prefix-relative destinations to source paths, each resolved against the project root. An entry keeps its source file's executable bit and is installed `644` otherwise. Write `{ source: "tools/helper", mode: "755" }` in place of a plain path to set the mode yourself.
 - `deploy.scripts` supplies maintainer scripts. Without them the packages rely on the distribution's own triggers to refresh the desktop, icon, and schema caches, which is what a well-behaved package should do.
 - `deploy.signing` signs the `.deb`, the `.rpm`, the Flatpak repository, or the AppImage.

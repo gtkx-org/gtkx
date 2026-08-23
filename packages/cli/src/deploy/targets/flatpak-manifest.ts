@@ -110,6 +110,12 @@ const runtimeKeys = (settings: DeploySettings): FlatpakManifest => {
     };
 };
 
+const runtimeLabelFor = (settings: DeploySettings): string => {
+    const flatpak = settings.deploy.flatpak ?? {};
+
+    return `${flatpak.runtime ?? DEFAULT_RUNTIME}//${flatpak.runtimeVersion ?? DEFAULT_RUNTIME_VERSION}`;
+};
+
 const renderFlatpakManifest = (payload: DeployPayload): FlatpakManifest => {
     const settings = payload.settings;
 
@@ -123,4 +129,4 @@ const renderFlatpakManifest = (payload: DeployPayload): FlatpakManifest => {
     };
 };
 
-export { branchFor, finishArgsFor, hasDisplaySocket, renderFlatpakManifest };
+export { branchFor, finishArgsFor, hasDisplaySocket, renderFlatpakManifest, runtimeLabelFor };

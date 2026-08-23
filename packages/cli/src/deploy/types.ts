@@ -145,6 +145,7 @@ type DeploySettings = {
     arch: DeployArch;
     paths: DeployPaths;
     libraries: string[];
+    libraryFloors: Record<string, string>;
     deploy: DeployConfig;
 };
 

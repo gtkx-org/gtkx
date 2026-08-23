@@ -12,6 +12,7 @@ import type {
 } from "./types.js";
 import { build as buildApp } from "../builder.js";
 import { ensureGenerated } from "../codegen/run-codegen.js";
+import { PACKAGED_LIBRARIES } from "./depends.js";
 import { renderDesktopEntry } from "./freedesktop/desktop-entry.js";
 import { renderMetainfo } from "./freedesktop/metainfo.js";
 import { renderMimePackage } from "./freedesktop/mime-package.js";
@@ -23,7 +24,7 @@ import { DEFAULT_TARGETS, parseTargetList, targetsFor } from "./registry.js";
 import { resolveDeploySettings } from "./settings/index.js";
 import { readPackageManifest } from "./settings/package-manifest.js";
 import { missingDeployError } from "./settings/starter.js";
-import { finishArgsFor, hasDisplaySocket } from "./targets/flatpak-manifest.js";
+import { finishArgsFor, hasDisplaySocket, runtimeLabelFor } from "./targets/flatpak-manifest.js";
 import { detectPackageManager } from "./targets/flatpak-sources.js";
 import {
     APPSTREAMCLI,
@@ -50,6 +51,8 @@ const BUILD_MODE = "production";
 const BYTES_PER_MIB = 1024 * 1024;
 const WEBKIT_LIBRARY = "WebKit-6.0";
 const NETWORK_ARG = "--share=network";
+const APPIMAGE_TARGET = "appimage";
+const FLATPAK_TARGET = "flatpak";
 
 const displayPath = (settings: DeploySettings, path: string): string => relative(settings.paths.root, path);
 const megabytes = (size: number): string => (size / BYTES_PER_MIB).toFixed(1);
@@ -113,6 +116,63 @@ const warnFlatpakPermissions = (targets: DeployTarget[], settings: DeploySetting
     warnMissingNetwork(settings, finishArgs);
 };
 
+const floorSummary = (settings: DeploySettings): string =>
+    settings.libraries
+        .filter((library) => settings.libraryFloors[library] !== undefined)
+        .map((library) => `${library} >= ${String(settings.libraryFloors[library])}`)
+        .join(", ");
+
+const warnAppImageFloors = (settings: DeploySettings, summary: string): void => {
+    warn(
+        `An AppImage cannot declare a dependency, so nothing stops ${settings.name} from starting on a host ` +
+        `whose libraries are older than the ones its bindings were generated against (${summary}). ` +
+        "Publish that requirement alongside the AppImage, or build on the oldest host you support.",
+    );
+};
+
+const warnFlatpakFloors = (settings: DeploySettings, summary: string): void => {
+    warn(
+        `The flatpak bundles binaries built against ${summary}, but runs them on ` +
+        `${runtimeLabelFor(settings)}, whose libraries are whatever that runtime ships. ` +
+        'Set `deploy.flatpak.mode: "source"` to build inside the runtime instead.',
+    );
+};
+
+const warnMissingFloors = (settings: DeploySettings): void => {
+    const missing = settings.libraries.filter(
+        (library) => PACKAGED_LIBRARIES.includes(library) && settings.libraryFloors[library] === undefined,
+    );
+
+    if (missing.length === 0) {
+        return;
+    }
+
+    warn(
+        `No release was recorded for ${missing.join(", ")}, so the packages depend on them without a minimum ` +
+        "version and will install on a host too old to run them. Rebuild so codegen records the release, " +
+        "or set `deploy.libraryFloors`.",
+    );
+};
+
+const isPrebuiltFlatpak = (targets: DeployTarget[], settings: DeploySettings): boolean =>
+    targets.some((target) => target.name === FLATPAK_TARGET) && settings.deploy.flatpak?.mode !== "source";
+
+const warnLibraryFloors = (targets: DeployTarget[], settings: DeploySettings): void => {
+    const summary = floorSummary(settings);
+
+    if (summary.length > 0 && targets.some((target) => target.name === APPIMAGE_TARGET)) {
+        warnAppImageFloors(settings, summary);
+    }
+
+    if (summary.length > 0 && isPrebuiltFlatpak(targets, settings)) {
+        warnFlatpakFloors(settings, summary);
+    }
+
+    if (settings.deploy.libraryFloors === undefined) {
+        warnMissingFloors(settings);
+    }
+};
+
 const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
     const isFlatpakSource = settings.deploy.flatpak?.mode === "source";
 
@@ -147,6 +207,7 @@ const preflight = (targets: DeployTarget[], settings: DeploySettings, shouldPrin
     assertTools(report);
     warnMissingOptional(report);
     warnFlatpakPermissions(targets, settings);
+    warnLibraryFloors(targets, settings);
 };
 
 const resolveTargetNames = (options: DeployOptions, settings: DeploySettings): string[] => {

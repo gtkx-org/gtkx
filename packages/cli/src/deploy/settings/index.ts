@@ -22,6 +22,7 @@ import {
     resolveSummary,
     resolveVersionString,
 } from "./identity.js";
+import { resolveLibraries } from "./libraries.js";
 import { readPackageManifest } from "./package-manifest.js";
 import { resolvePaths } from "./paths.js";
 import { resolveScreenshots } from "./screenshots.js";
@@ -113,8 +114,6 @@ const resolveDesktopActions = (deploy: DeployConfig): DeployDesktopAction[] =>
         icon: action.icon ?? null,
     }));
 
-const resolveLibraries = (config: Config): string[] => (Array.isArray(config.libraries) ? config.libraries : []);
-
 const identitySlice = ({ identity, developer, date }: ResolvedCore): IdentitySlice => ({
     applicationId: identity.applicationId,
     binaryName: resolveBinaryName(identity),
@@ -182,7 +181,7 @@ const resolveDeploySettings = (request: SettingsRequest): DeploySettings => {
         versions: core.versions,
         arch: resolveArch(),
         paths: resolvePaths({ root: request.root, deploy, outDirOverride: request.outDirOverride }),
-        libraries: resolveLibraries(request.config),
+        ...resolveLibraries(request.root, request.config),
         deploy,
     };
 };

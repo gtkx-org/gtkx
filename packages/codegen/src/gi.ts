@@ -4,6 +4,7 @@ import { computeGiFingerprint } from "./fingerprint.js";
 import { externalPackageFor } from "./gir/external-namespaces.js";
 import { namespaceDirectory } from "./gir/namespace.js";
 import { type GiExternalNamespaceInput, type GiNamespaceInput, writeGiStore } from "./store/gi-store.js";
+import { collectGeneratedLibraries } from "./store/gi/generated-libraries.js";
 import { generateNamespaceModule } from "./store/gi/pipeline.js";
 
 type GiCodegenOptions = {
@@ -63,7 +64,10 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
         isInoutInPlace,
     });
 
-    writeGiStore(gi, namespaces, externalNamespaces, fingerprint);
+    writeGiStore(gi, namespaces, externalNamespaces, {
+        fingerprint,
+        libraries: collectGeneratedLibraries(library.namespaces, libraries),
+    });
 
     return library.namespaces.size;
 };

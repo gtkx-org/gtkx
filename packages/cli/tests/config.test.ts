@@ -37,6 +37,10 @@ const REJECTED_CONFIGS: RejectedConfig[] = [
     { title: "an elements section that is not an object", config: `${HEAD}, elements: "all" };\n` },
     { title: "a deploy section that is not shaped like one", config: `${HEAD}, deploy: { categories: 5 } };\n` },
     { title: "a future flag that is not a boolean", config: `${HEAD}, future: { v2ByteArrays: 5 } };\n` },
+    {
+        title: "a library floor that is not a version",
+        config: `${HEAD}, deploy: { libraryFloors: { "Gtk-4.0": 4.18 } } };\n`,
+    },
 ];
 
 const buildWith = (config: string): CliProject => {

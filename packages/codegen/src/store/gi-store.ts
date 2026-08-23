@@ -4,6 +4,11 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { SourceModule } from "../compile.js";
 import { FINGERPRINT_FILENAME, type GiFingerprint } from "../fingerprint.js";
+import {
+    type GeneratedLibraries,
+    LIBRARIES_FILENAME,
+    renderGeneratedLibraries,
+} from "./gi/generated-libraries.js";
 import { buildManifest, namespaceBarrel, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
 
 type GiNamespaceInput = {
@@ -16,6 +21,11 @@ type GiExternalNamespaceInput = {
     directory: string;
     packageName: string;
     girFile: string;
+};
+
+type GiStoreRecords = {
+    fingerprint: GiFingerprint;
+    libraries: GeneratedLibraries;
 };
 
 const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "overrides");
@@ -94,7 +104,7 @@ const writeGiStore = (
     options: StoreOptions,
     namespaces: GiNamespaceInput[],
     externalNamespaces: GiExternalNamespaceInput[],
-    fingerprint: GiFingerprint,
+    records: GiStoreRecords,
 ): void => {
     const { collected, exportsMap } = collectStoreSources(namespaces, externalNamespaces);
 
@@ -108,8 +118,11 @@ const writeGiStore = (
             exports: exportsMap,
             peerDependencies: storePeerDependencies(externalNamespaces),
         }),
-        rawFiles: [{ relativePath: FINGERPRINT_FILENAME, content: `${JSON.stringify(fingerprint, null, 2)}\n` }],
+        rawFiles: [
+            { relativePath: FINGERPRINT_FILENAME, content: `${JSON.stringify(records.fingerprint, null, 2)}\n` },
+            { relativePath: LIBRARIES_FILENAME, content: renderGeneratedLibraries(records.libraries) },
+        ],
     });
 };
 
-export { writeGiStore, type GiExternalNamespaceInput, type GiNamespaceInput };
+export { writeGiStore, type GiExternalNamespaceInput, type GiNamespaceInput, type GiStoreRecords };

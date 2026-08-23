@@ -125,7 +125,7 @@ const descriptionFor = (settings: DeploySettings, packager: NfpmPackager): strin
 const renderNfpmConfig = (payload: DeployPayload, packager: NfpmPackager): NfpmConfig => {
     const settings = payload.settings;
     const isRpm = packager === "rpm";
-    const depends = resolveDepends(settings.deploy, settings.libraries, payload.node?.glibcFloor ?? null);
+    const depends = resolveDepends(settings, payload.node?.glibcFloor ?? null);
 
     return {
         name: packageNameFor(settings, packager),
