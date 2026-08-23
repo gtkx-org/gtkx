@@ -181,8 +181,8 @@ const warnUnusedFloors = (settings: DeploySettings): void => {
     }
 
     warn(
-        `\`deploy.libraryFloors\` names ${unused.join(", ")}, which this project does not generate bindings ` +
-        `for, so those minimums change nothing. It generates ${settings.libraries.join(", ")}.`,
+        `\`deploy.libraryFloors\` names ${unused.join(", ")}, which this project generates no bindings for, ` +
+        "so those minimums change nothing.",
     );
 };
 

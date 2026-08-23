@@ -1,5 +1,11 @@
 import type { Config } from "@gtkx/config";
-import { type GeneratedLibraries, readGeneratedLibraries, resolveStore } from "@gtkx/codegen";
+import {
+    resolveLibraries as expandLibraries,
+    type GeneratedLibraries,
+    readGeneratedLibraries,
+    resolveGirPath,
+    resolveStore,
+} from "@gtkx/codegen";
 import type { DeployConfig } from "../types.js";
 
 type ResolvedLibraries = {
@@ -18,9 +24,19 @@ const generatedLibraries = (root: string): GeneratedLibraries | null => {
     }
 };
 
-const configLibraries = (libraries: Config["libraries"]): string[] => {
+const discoveredLibraries = (config: Config): string[] | null => {
+    try {
+        return expandLibraries(config.libraries, resolveGirPath(config.girPath));
+    } catch {
+        return null;
+    }
+};
+
+const configLibraries = (config: Config): string[] => {
+    const libraries = config.libraries;
+
     if (!Array.isArray(libraries)) {
-        return [DEFAULT_LIBRARY];
+        return discoveredLibraries(config) ?? [DEFAULT_LIBRARY];
     }
 
     return libraries.some((library) => library.startsWith(DEFAULT_LIBRARY_PREFIX))
@@ -64,7 +80,7 @@ const libraryFloors = (
 
 const resolveLibraries = (root: string, config: Config): ResolvedLibraries => {
     const generated = generatedLibraries(root);
-    const libraries = generated?.libraries ?? configLibraries(config.libraries);
+    const libraries = generated?.libraries ?? configLibraries(config);
     const deploy = config.deploy ?? {};
 
     return { libraries, libraryFloors: libraryFloors(deploy, libraries, generated?.versions ?? {}) };
