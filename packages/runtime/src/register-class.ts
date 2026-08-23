@@ -6,7 +6,7 @@ import {
     type RegisterClassSignal as NativeRegisterClassSignal,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
 } from "@gtkx/native";
-import { type AnyClass, getParentClass, kebabCase, toCamelIdentifier, upperFirst, walkClassChain } from "@gtkx/utils";
+import { type AnyClass, getParentClass, kebabCase, upperFirst, walkClassChain } from "@gtkx/utils";
 import { wrapCallback } from "./callback.js";
 import { insertMixinLayer } from "./mixin.js";
 import {
@@ -35,9 +35,9 @@ import {
     emitDeclaredSignal,
     getSignalBaseName,
     overrideSignalClassClosure,
+    signalForHandlerName,
     type SignalHandler,
     signalIdFor,
-    signalNamesFor,
 } from "./signal.js";
 import {
     TYPE_INTERFACE,
@@ -791,14 +791,12 @@ function assertLowerCaseSignalName(klass: AnyClass, name: string): void {
     );
 }
 
-const signalHandlerName = (signal: string): string => `on${upperFirst(toCamelIdentifier(signal))}`;
-
 function overriddenSignalId(type: bigint, methodName: string): number {
     if (!SIGNAL_OVERRIDE_PATTERN.test(methodName)) {
         return 0;
     }
 
-    const signal = signalNamesFor(type).find((name) => signalHandlerName(name) === methodName);
+    const signal = signalForHandlerName(type, methodName);
 
     return signal === undefined ? 0 : signalIdFor(type, signal);
 }

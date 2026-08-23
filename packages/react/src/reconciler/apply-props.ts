@@ -1,7 +1,7 @@
 import type { SignalHandler } from "@gtkx/runtime";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { coerceObjectProperty, getInstanceType, TYPE_INVALID } from "@gtkx/runtime";
+import { coerceObjectProperty, getInstanceType, signalForHandlerName, TYPE_INVALID } from "@gtkx/runtime";
 import { drain, isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
@@ -26,12 +26,6 @@ const pendingMap: Set<ElementNode> = new Set();
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 const notifiedAccessor = (name: string): string => lowerFirst(name.slice(NOTIFY_PREFIX.length));
 
-const hasSignal = (object: GObject.Object, signal: string): boolean => {
-    const type = getInstanceType(object);
-
-    return type !== TYPE_INVALID && GObject.signalIsValidName(signal) && GObject.signalLookup(signal, type) !== 0;
-};
-
 const unknownSignalError = (typeName: string, name: string, signal: string): Error =>
     new Error(
         `The handler prop '${name}' of <${typeName}> names the signal '${signal}', which ${typeName} ` +
@@ -40,10 +34,11 @@ const unknownSignalError = (typeName: string, name: string, signal: string): Err
     );
 
 const lookedUpSignal = (target: SignalTarget, name: string): string => {
-    const signal = kebabCase(name.slice(HANDLER_PREFIX.length));
+    const type = getInstanceType(target.object);
+    const signal = type === TYPE_INVALID ? undefined : signalForHandlerName(type, name);
 
-    if (!hasSignal(target.object, signal)) {
-        throw unknownSignalError(target.typeName, name, signal);
+    if (signal === undefined) {
+        throw unknownSignalError(target.typeName, name, kebabCase(name.slice(HANDLER_PREFIX.length)));
     }
 
     return signal;

@@ -57,7 +57,14 @@ export {
     type WrapperClassResolver,
 } from "./registry.js";
 /** @public */
-export { connectSignal, disconnectSignal, emitSignal, getSignalBaseName, type SignalHandler } from "./signal.js";
+export {
+    connectSignal,
+    disconnectSignal,
+    emitSignal,
+    getSignalBaseName,
+    type SignalHandler,
+    signalForHandlerName,
+} from "./signal.js";
 /** @public */
 export { t } from "./t.js";
 /** @public */

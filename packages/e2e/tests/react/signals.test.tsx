@@ -96,7 +96,11 @@ const DewPointProbe = createElementComponent<DewPointProps>("GtkxDewPointLabel")
 
 const BeaconLabel = registerClass(class Beacon extends Gtk.Label {}, {
     typeName: "GtkxBeaconLabel",
-    signals: { flipped: {}, "data-changed": { paramTypes: [GObject.TYPE_STRING] } },
+    signals: {
+        flipped: {},
+        "data-changed": { paramTypes: [GObject.TYPE_STRING] },
+        "level-2-changed": { paramTypes: [GObject.TYPE_STRING] },
+    },
 });
 
 const BeaconProbe = createElementComponent<BeaconProps>("GtkxBeaconLabel");
@@ -724,5 +728,19 @@ describe("handler props - a signal only the registered type carries", () => {
 
     it("throws for a handler prop whose signal name is not a valid one", async () => {
         await expect(render(<BeaconProbe {...{ "onFlipped.twice": vi.fn() }} label="beacon" />)).rejects.toThrow();
+    });
+});
+
+describe("user event signals (digit boundaries)", () => {
+    it("connects a handler prop naming a signal whose word starts with a digit", async () => {
+        const handleLevel = vi.fn();
+        const beaconRef = createRef<InstanceType<typeof BeaconLabel>>();
+        await render(<BeaconProbe {...{ onLevel2Changed: handleLevel }} ref={beaconRef} label="beacon" />);
+
+        await act(() => {
+            beaconRef.current?.emit("level-2-changed", "up");
+        });
+
+        expect(handleLevel).toHaveBeenCalledTimes(1);
     });
 });

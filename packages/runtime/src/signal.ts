@@ -1,4 +1,5 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
+import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind, createBindCache } from "./bind.js";
 import { wrapCallback } from "./callback.js";
@@ -216,6 +217,12 @@ const addSignalNames = (names: Set<string>, type: bigint): void => {
     }
 };
 
+const handlerNameFor = (signal: string): string => `on${upperFirst(toCamelIdentifier(signal))}`;
+
+/** The signal a generated `on…` handler prop names on the given type, or `undefined` when it carries none. */
+const signalForHandlerName = (type: bigint, handlerName: string): string | undefined =>
+    signalNamesFor(type).find((signal) => handlerNameFor(signal) === handlerName);
+
 const signalNamesFor = (type: bigint): string[] => {
     const names: Set<string> = new Set();
 
@@ -366,7 +373,7 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returns?:
 }
 
 export {
-    signalNamesFor,
+    signalForHandlerName,
     getSignalBaseName,
     signalIdFor,
     connectClosureSignal,
