@@ -69,7 +69,7 @@ const renderMetadata = (settings: DeploySettings): StagedMetadata => ({
 });
 
 const isFlathubSubmission = (settings: DeploySettings, targets: DeployTarget[]): boolean =>
-    settings.deploy.flatpak?.mode === "source" && targets.some((target) => target.name === "flatpak");
+    settings.deploy.flatpak?.mode === "source" && targets.some((target) => target.name === FLATPAK_TARGET);
 
 const validateMetadata = (settings: DeploySettings, metadata: StagedMetadata, areWarningsFatal: boolean): void => {
     const dir = settings.paths.metadata;
@@ -107,7 +107,7 @@ const warnMissingNetwork = (settings: DeploySettings, finishArgs: string[]): voi
 };
 
 const warnFlatpakPermissions = (targets: DeployTarget[], settings: DeploySettings): void => {
-    if (targets.every((target) => target.name !== "flatpak")) {
+    if (targets.every((target) => target.name !== FLATPAK_TARGET)) {
         return;
     }
 
@@ -207,7 +207,7 @@ const warnLibraryFloors = (targets: DeployTarget[], settings: DeploySettings): v
 const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
     const isFlatpakSource = settings.deploy.flatpak?.mode === "source";
 
-    if (!isFlatpakSource || targets.every((target) => target.name !== "flatpak")) {
+    if (!isFlatpakSource || targets.every((target) => target.name !== FLATPAK_TARGET)) {
         return [];
     }
 
@@ -215,7 +215,7 @@ const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): Dep
 };
 
 const isNodeRequired = (targets: DeployTarget[], settings: DeploySettings): boolean =>
-    !(settings.deploy.flatpak?.mode === "source" && targets.every((target) => target.name === "flatpak"));
+    !(settings.deploy.flatpak?.mode === "source" && targets.every((target) => target.name === FLATPAK_TARGET));
 
 const runtimeToolsFor = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
     if (!isNodeRequired(targets, settings)) {
