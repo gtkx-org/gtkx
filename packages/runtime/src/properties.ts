@@ -82,6 +82,7 @@ const SET_PROPERTY_VFUNC = "vfuncSetProperty";
 const READ_ONLY_REASON = "the property is read-only";
 const CONSTRUCT_ONLY_REASON = "the property can only be set when the object is constructed";
 const CLASS_T = structT("borrowed");
+const DECLARED_NAMES = Symbol("gtkx:declaredPropertyNames");
 
 const OVERRIDE_PARAM_T = fundamentalT(LIB, "g_param_spec_ref_sink", "g_param_spec_unref", {
     ownership: "borrowed",
@@ -691,11 +692,35 @@ function interfaceDelegatesFor(adoptedTypes: bigint[]): Map<string, InterfacePro
     return delegates;
 }
 
+function recordDeclaredNames(klass: AnyClass, accessors: PropertyAccessor[]): void {
+    const proto = klass.prototype as Record<PropertyKey, unknown>;
+    const inherited = proto[DECLARED_NAMES] as Record<string, string> | undefined;
+    const own: Record<string, string> = {};
+
+    for (const accessor of accessors) {
+        own[accessor.memberName] = accessor.propertyName;
+    }
+
+    Object.defineProperty(proto, DECLARED_NAMES, { value: { ...inherited, ...own }, enumerable: false });
+}
+
 function buildPropertyDispatch(source: PropertyDispatchSource): PropertyDispatch {
-    return {
-        accessors: buildAccessors(source),
-        delegates: interfaceDelegatesFor(source.adoptedTypes),
-    };
+    const accessors = buildAccessors(source);
+    recordDeclaredNames(source.klass, accessors);
+
+    return { accessors, delegates: interfaceDelegatesFor(source.adoptedTypes) };
+}
+
+/**
+ * The GObject name a class registered with `registerClass` installed an accessor under, or
+ * `undefined` when the accessor names no property the class declared itself.
+ */
+function getDeclaredPropertyName(object: object, accessor: string): string | undefined {
+    const declared = (object as Record<PropertyKey, unknown>)[DECLARED_NAMES] as
+        | Record<string, string> |
+        undefined;
+
+    return declared?.[accessor];
 }
 
 function toNativeProperties(properties: Record<string, PropertySpec>): RegisterClassProperty[] {
@@ -708,6 +733,7 @@ function toNativeProperties(properties: Record<string, PropertySpec>): RegisterC
 export {
     buildPropertyDispatch,
     coerceObjectProperty,
+    getDeclaredPropertyName,
     coercePropertyValue,
     constructPropertyFor,
     GET_PROPERTY_VFUNC,
