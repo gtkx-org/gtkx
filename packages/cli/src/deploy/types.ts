@@ -146,6 +146,9 @@ type DeploySettings = {
     paths: DeployPaths;
     libraries: string[];
     libraryFloors: Record<string, string>;
+    librarySonames: Record<string, string[]>;
+    unreadableLibraries: string[];
+    hasDiscoveredLibraries: boolean;
     deploy: DeployConfig;
 };
 

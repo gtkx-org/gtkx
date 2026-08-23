@@ -167,6 +167,44 @@ const warnMissingFloors = (settings: DeploySettings): void => {
     );
 };
 
+const warnSonameRelations = (settings: DeploySettings): void => {
+    const derived = settings.libraries.filter((library) => (settings.librarySonames[library] ?? []).length > 0);
+
+    if (derived.length === 0) {
+        return;
+    }
+
+    warn(
+        `No deb package is known for ${derived.join(", ")}, so the .deb declares no dependency on them and ` +
+        "installs on a host that has none. The .rpm requires the sonames their GIRs name instead. " +
+        "Name the deb packages yourself through `deploy.depends`.",
+    );
+};
+
+const warnUnreadableLibraries = (settings: DeploySettings): void => {
+    if (settings.unreadableLibraries.length === 0) {
+        return;
+    }
+
+    warn(
+        `No GIR could be read for ${settings.unreadableLibraries.join(", ")}, so neither package declares a ` +
+        "dependency on them. Install their introspection data on this machine, or name the packages through " +
+        "`deploy.depends`.",
+    );
+};
+
+const warnDiscoveredLibraries = (settings: DeploySettings): void => {
+    if (!settings.hasDiscoveredLibraries) {
+        return;
+    }
+
+    warn(
+        '`libraries: "*"` bound whatever GIRs this machine had installed, so the relations the packages ' +
+        `declare were derived from the build host: ${settings.libraries.join(", ")}. List the libraries the ` +
+        "app imports if the packages should require only those.",
+    );
+};
+
 const warnUnusedFloors = (settings: DeploySettings): void => {
     const floors = settings.deploy.libraryFloors;
 
@@ -204,6 +242,12 @@ const warnLibraryFloors = (targets: DeployTarget[], settings: DeploySettings): v
     warnUnusedFloors(settings);
 };
 
+const warnLibraryRelations = (settings: DeploySettings): void => {
+    warnSonameRelations(settings);
+    warnUnreadableLibraries(settings);
+    warnDiscoveredLibraries(settings);
+};
+
 const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
     const isFlatpakSource = settings.deploy.flatpak?.mode === "source";
 
@@ -239,6 +283,7 @@ const preflight = (targets: DeployTarget[], settings: DeploySettings, shouldPrin
     warnMissingOptional(report);
     warnFlatpakPermissions(targets, settings);
     warnLibraryFloors(targets, settings);
+    warnLibraryRelations(settings);
 };
 
 const resolveTargetNames = (options: DeployOptions, settings: DeploySettings): string[] => {

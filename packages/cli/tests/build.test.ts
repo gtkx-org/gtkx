@@ -24,6 +24,8 @@ const SCHEMA_FILE = `${APPLICATION_ID}.gschema.xml`;
 const ICON_PATH = join("icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
 const EMITTED = ["bundle.mjs", "gtkx.node", "gtkx.gresource", "gschemas.compiled", ICON_PATH];
 const SCHEMA_TYPES = join("node_modules", ".gtkx", "env.d.ts");
+const FOLDERS_ID = `${APPLICATION_ID}.app-folders`;
+const FOLDER_CHILD = "probe-folder";
 
 const BROKEN_SCHEMA = `<?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
@@ -44,6 +46,26 @@ const SCHEMA = `<?xml version="1.0" encoding="UTF-8"?>
             <default>7</default>
         </key>
     </schema>
+    <schema id="${FOLDERS_ID}" path="/com/gtkx/clibuild/app-folders/">
+        <key name="folder-children" type="as">
+            <default>['${FOLDER_CHILD}']</default>
+        </key>
+    </schema>
+</schemalist>
+`;
+
+const COLLIDING_SCHEMA = `<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+    <schema id="${APPLICATION_ID}.app-folders" path="/com/gtkx/clibuild/dashed/">
+        <key name="counter" type="i">
+            <default>1</default>
+        </key>
+    </schema>
+    <schema id="${APPLICATION_ID}.appFolders" path="/com/gtkx/clibuild/camel/">
+        <key name="counter" type="i">
+            <default>2</default>
+        </key>
+    </schema>
 </schemalist>
 `;
 
@@ -51,18 +73,19 @@ const APP_SOURCE = String.raw`import { css } from "@gtkx/css";
 import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, quit, useSetting } from "@gtkx/react";
 import { useEffect } from "react";
-import schema from "#data/${SCHEMA_FILE}";
+import schema, { com_gtkx_clibuild_appFolders as folders } from "#data/${SCHEMA_FILE}";
 import logo from "#data/logo.png";
 
 const heading = css({ fontWeight: "bold" });
 
 const App = () => {
     const [counter] = useSetting(schema, "counter");
+    const [children] = useSetting(folders, "folder-children");
 
     useEffect(() => {
-        process.stdout.write("${READY_MARKER} " + String(counter) + " " + logo + "\n");
+        process.stdout.write("${READY_MARKER} " + String(counter) + " " + children.join(",") + " " + logo + "\n");
         quit();
-    }, [counter]);
+    }, [counter, children]);
 
     return (
         <GtkApplication>
@@ -148,7 +171,7 @@ describe("gtkx build", () => {
     it("emits a bundle that starts, reads its settings and reaches its resources", () => {
         const run = runApp(state.project);
         expect(run.stderr).toBe("");
-        expect(run.stdout).toContain(`${READY_MARKER} 7 `);
+        expect(run.stdout).toContain(`${READY_MARKER} 7 ${FOLDER_CHILD} `);
         expect(run.status).toBe(0);
     });
 });
@@ -194,6 +217,21 @@ describe("gtkx build (projects it refuses to build)", () => {
 
     it("fails over an entry that imports bindings the project has no library for", () => {
         expect(runCli(state.project, ["build", "src/absent.tsx"]).status).not.toBe(0);
+    });
+
+    it("fails over two schema ids that cannot both keep an export name", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-build-collision-",
+            config: config(STORE_LIBRARIES, ", codegen: false"),
+            files: { ...appFiles("index.tsx"), [join("data", SCHEMA_FILE)]: COLLIDING_SCHEMA },
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, ["build"]).status).not.toBe(0);
+        } finally {
+            removeCliProject(project);
+        }
     });
 
     it("fails over a settings schema it cannot parse", () => {

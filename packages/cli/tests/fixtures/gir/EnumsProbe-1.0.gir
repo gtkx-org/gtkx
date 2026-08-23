@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <package name="enumsprobe-1.0"/>
+  <namespace name="EnumsProbe"
+             version="1.0"
+             shared-library=""
+             c:identifier-prefixes="EnumsProbe"
+             c:symbol-prefixes="enums_probe">
+    <enumeration name="Mood"
+                 glib:type-name="EnumsProbeMood"
+                 glib:get-type="enums_probe_mood_get_type"
+                 c:type="EnumsProbeMood">
+      <member name="calm" value="0" c:identifier="ENUMS_PROBE_MOOD_CALM"/>
+      <member name="loud" value="1" c:identifier="ENUMS_PROBE_MOOD_LOUD"/>
+    </enumeration>
+  </namespace>
+</repository>

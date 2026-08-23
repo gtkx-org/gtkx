@@ -11,7 +11,8 @@ type LibraryPackages = {
     extra: Relations;
 };
 
-const GLES_SONAME = "libGLESv2.so.2()(64bit)";
+const SONAME_SUFFIX = "()(64bit)";
+const GLES_SONAME = `libGLESv2.so.2${SONAME_SUFFIX}`;
 const NO_EXTRA: Relations = { deb: [], rpm: [] };
 
 const BASE_DEPENDS: Relations = {
@@ -28,6 +29,8 @@ const DEPENDS_BY_LIBRARY: Record<string, LibraryPackages> = {
 
 const PACKAGED_LIBRARIES: string[] = Object.keys(DEPENDS_BY_LIBRARY);
 
+const sonameRelation = (soname: string): string => `${soname}${SONAME_SUFFIX}`;
+
 const debRelation = (name: string, floor: string | undefined): string =>
     floor === undefined ? name : `${name} (>= ${floor})`;
 
@@ -42,6 +45,7 @@ const libraryDepends = (settings: DeploySettings): Relations => {
         const packages = DEPENDS_BY_LIBRARY[library];
 
         if (packages === undefined) {
+            rpm.push(...(settings.librarySonames[library] ?? []).map((soname) => sonameRelation(soname)));
             continue;
         }
 
