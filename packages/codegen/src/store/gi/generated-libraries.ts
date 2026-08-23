@@ -8,7 +8,10 @@ import { readJsonFile } from "../../json.js";
 type GeneratedLibraries = {
     /** GIR identifiers the store binds, such as `Gtk-4.0`, expanded from the project's `libraries`. */
     libraries: string[];
-    /** `MAJOR.MINOR` release each library's GIR declared, keyed by GIR identifier. */
+    /**
+     * `MAJOR.MINOR` release, keyed by GIR identifier. A library whose GIR declares no `MAJOR_VERSION`
+     * and `MINOR_VERSION` is absent, so an entry is present only for those that name their release.
+     */
     versions: Record<string, string>;
 };
 
