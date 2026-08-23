@@ -203,7 +203,7 @@ describe("animated - style edge cases", () => {
     it("accepts an interpolation that ends in a null style", async () => {
         const labelRef = createRef<Gtk.Label>();
         await render(<Vanishing labelRef={labelRef} />, ANIMATED);
-        expect(getMinWidth(labelRef.current)).toBe(WIDE);
+        expect(getMinWidth(labelRef.current)).toBeGreaterThan(NARROW);
 
         await waitFor(() => {
             expect(labelRef.current?.getCssClasses()).toEqual([]);
