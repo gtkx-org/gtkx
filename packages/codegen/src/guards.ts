@@ -14,7 +14,8 @@ const arrayGuard = <T>(isEntry: Guard<T>): Guard<T[]> =>
 
 const recordGuard = <T>(isEntry: Guard<T>): Guard<Record<string, T>> =>
     (value: unknown): value is Record<string, T> =>
-        isRecord(value) && Object.values(value).every((entry: unknown) => isEntry(entry));
+        isRecord(value) && !Array.isArray(value) &&
+        Object.values(value).every((entry: unknown) => isEntry(entry));
 
 const optionalGuard = <T>(isPresent: Guard<T>): OptionalGuard<T> =>
     Object.assign((value: unknown): value is T | undefined => value === undefined || isPresent(value), {

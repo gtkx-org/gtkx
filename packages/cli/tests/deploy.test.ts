@@ -159,6 +159,8 @@ const FLOOR_OVERRIDES = `        libraryFloors: { "Gtk-4.0": "4.14", "GtkSource-
 const NO_FLOORS = `        libraryFloors: false,
 `;
 
+const FOREIGN_INVENTORY = `${JSON.stringify({ libraries: ["Adw-1"], versions: [] }, null, 2)}\n`;
+
 const DEPLOY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${EXTRA_FILES}${PERMISSIONS}    },\n`;
 const FLOORS_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${FLOOR_OVERRIDES}    },\n`;
 const NO_FLOORS_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${NO_FLOORS}    },\n`;
@@ -562,6 +564,39 @@ describe("gtkx deploy (a project that declares no library minimums)", () => {
         expect(depends).toContain("libgtk-4-1");
         expect(depends).toContain("libadwaita-1-0");
         expect(depends.filter((entry) => entry.startsWith("libgtk-4-1 ("))).toEqual([]);
+    });
+});
+
+describe("gtkx deploy (a store whose inventory is not shaped like one)", () => {
+    const project: CliProject = { root: "", nodeModules: "" };
+    let status: number | null = null;
+
+    beforeAll(() => {
+        const created = createCliProject({
+            prefix: "gtkx-cli-foreign-",
+            config: bareConfig(DEPLOY_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        project.root = created.root;
+        project.nodeModules = created.nodeModules;
+        runCli(project, ["deploy", "--print-manifests", "--target", "deb"]);
+        writeFileSync(join(project.root, LIBRARIES_INVENTORY), FOREIGN_INVENTORY);
+        status = runCli(project, ["deploy", "--print-manifests", "--skip-build", "--target", "deb"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(project);
+    });
+
+    it("falls back to the library it generates by default", () => {
+        expect(status).toBe(0);
+        expect(packagedDepends(project, NFPM_PATH)).toContain("libgtk-4-1");
+    });
+
+    it("declares nothing the foreign inventory named", () => {
+        expect(packagedDepends(project, NFPM_PATH)).not.toContain("libadwaita-1-0");
     });
 });
 
