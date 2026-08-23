@@ -5,7 +5,7 @@ import type {
 } from "@react-navigation/core";
 import type { ReactNode, Ref } from "react";
 import { BaseNavigationContainer } from "@react-navigation/core";
-import { type Theme, useAdwaitaTheme } from "./theme.js";
+import { useAdwaitaTheme } from "./theme.js";
 
 /** Props of {@link NavigationContainer}. */
 type NavigationContainerProps<ParamList extends object = ReactNavigation.RootParamList> = Omit<
@@ -13,7 +13,7 @@ type NavigationContainerProps<ParamList extends object = ReactNavigation.RootPar
     "navigationInChildEnabled" | "theme"
 > & {
     /** Theme handed to `useTheme` and option callbacks; defaults to the live Adwaita style state. */
-    theme?: Theme;
+    theme?: ReactNavigation.Theme;
     /** Receives the container's imperative navigation API. */
     ref?: Ref<NavigationContainerRef<ParamList>>;
 };

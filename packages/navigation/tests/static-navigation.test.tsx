@@ -160,3 +160,11 @@ describe("static - errors", () => {
         expect(() => createStackNavigator({ screens: {} })).toThrow();
     });
 });
+
+describe("static navigation - dynamic navigators", () => {
+    it("refuses a dynamic navigator where a static config is required", () => {
+        const DynamicStack = createStackNavigator<{ Home: undefined }>();
+        // @ts-expect-error a navigator built without a static config has no screens to assemble
+        expect(() => createStaticNavigation(DynamicStack)).toThrow();
+    });
+});

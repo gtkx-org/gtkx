@@ -103,7 +103,7 @@ function createDrawerNavigator<
     const ParamList extends ParamListBase,
     const NavigatorID extends string | undefined = string | undefined,
     const TypeBag extends NavigatorTypeBagBase = DrawerTypeBag<ParamList, NavigatorID>,
-    const Config extends StaticConfig<TypeBag> = StaticConfig<TypeBag>,
+    const Config extends StaticConfig<TypeBag> | undefined = undefined,
 >(config?: Config): TypedNavigator<TypeBag, Config> {
     return createNavigatorFactory(DrawerNavigator)(config) as TypedNavigator<TypeBag, Config>;
 }
