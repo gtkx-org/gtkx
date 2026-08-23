@@ -235,3 +235,16 @@ describe("stack - edge cases (2)", () => {
         expectHidden("Home Content");
     });
 });
+
+describe("stack - closing page", () => {
+    it("shows the outgoing page's latest params while it animates away", async () => {
+        await renderStack({ isAnimated: true });
+        await clickButton("Go to details");
+        await screen.findByText("Details 1");
+        await clickButton("Set params");
+        await screen.findByText("Details 99");
+        await clickButton("Go back");
+        await screen.findByText("Home Content");
+        expectHidden("Details 1");
+    });
+});
