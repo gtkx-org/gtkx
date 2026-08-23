@@ -6,3 +6,5 @@ type NamedEntity = {
 const isEmittableEntity = (entity: NamedEntity): boolean => entity.name.length > 0 && entity.introspectable !== false;
 
 export { isEmittableEntity };
+
+// sonar heap probe

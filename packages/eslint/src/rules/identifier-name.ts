@@ -4,3 +4,5 @@ const getIdentifierName = (node: TSESTree.Node | null | undefined): string | und
     node?.type === AST_NODE_TYPES.Identifier ? node.name : undefined;
 
 export { getIdentifierName };
+
+// sonar heap probe

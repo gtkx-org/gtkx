@@ -5,3 +5,5 @@ const stripQuery = (source: string): string => {
 };
 
 export { stripQuery };
+
+// sonar heap probe

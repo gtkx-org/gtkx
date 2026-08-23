@@ -6,3 +6,5 @@ const externalPackageFor = (namespaceName: string): string | undefined =>
     EXTERNAL_NAMESPACES.find((entry) => entry.namespace === namespaceName)?.packageName;
 
 export { EXTERNAL_NAMESPACES, externalPackageFor, type ExternalNamespace };
+
+// sonar heap probe

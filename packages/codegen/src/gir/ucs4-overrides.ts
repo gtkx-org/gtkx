@@ -5,3 +5,5 @@ const RETURNS_MISSING_UCS4_ARRAY_TYPE: Set<string> = new Set([
 ]);
 
 export { RETURNS_MISSING_UCS4_ARRAY_TYPE };
+
+// sonar heap probe

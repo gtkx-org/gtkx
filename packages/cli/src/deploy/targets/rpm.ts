@@ -4,3 +4,5 @@ import { nfpmTarget } from "./nfpm-target.js";
 const rpmTarget: DeployTarget = nfpmTarget("rpm");
 
 export { rpmTarget };
+
+// sonar heap probe

@@ -4,3 +4,5 @@ import { nfpmTarget } from "./nfpm-target.js";
 const debTarget: DeployTarget = nfpmTarget("deb");
 
 export { debTarget };
+
+// sonar heap probe

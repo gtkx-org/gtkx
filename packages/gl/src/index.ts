@@ -6,3 +6,5 @@ export * from "./generated/enums.js";
 export type * from "./generated/types.js";
 /** @public */
 export * from "./overrides.js";
+
+// sonar heap probe

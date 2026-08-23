@@ -6,3 +6,5 @@ const optional = (key: string, value: unknown): Entries =>
 const when = (isIncluded: boolean, entries: Entries): Entries => (isIncluded ? entries : {});
 
 export { type Entries, optional, when };
+
+// sonar heap probe

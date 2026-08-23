@@ -4,3 +4,5 @@ export {
     registerProviderForDefaultDisplay,
 } from "./provider.js";
 export { scopedRule } from "./scoped-rule.js";
+
+// sonar heap probe

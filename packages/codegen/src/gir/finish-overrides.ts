@@ -3,3 +3,5 @@ const FUNCTIONS_MISSING_FINISH_FUNC: Map<string, string> = new Map([
 ]);
 
 export { FUNCTIONS_MISSING_FINISH_FUNC };
+
+// sonar heap probe

@@ -3,3 +3,5 @@ const PARAMETERS_MISSING_NULLABLE_ANNOTATION: Map<string, string[]> = new Map([
 ]);
 
 export { PARAMETERS_MISSING_NULLABLE_ANNOTATION };
+
+// sonar heap probe

@@ -3,3 +3,5 @@ type AssetEmitter = {
 };
 
 export { type AssetEmitter };
+
+// sonar heap probe

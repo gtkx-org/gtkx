@@ -3,3 +3,5 @@ import "./element-behaviors.js";
 import { registerElements } from "./reconciler/registry.js";
 
 registerElements(elements, { isPrepended: true });
+
+// sonar heap probe

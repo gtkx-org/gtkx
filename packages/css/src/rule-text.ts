@@ -5,3 +5,5 @@ const hasNul = (rule: string): boolean => rule.includes(NUL);
 const printableRule = (rule: string): string => rule.replaceAll(NUL, String.raw`\0`);
 
 export { hasNul, NUL_REASON, printableRule };
+
+// sonar heap probe
