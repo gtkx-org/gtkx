@@ -46,6 +46,19 @@ describe("drawer - going back", () => {
         expect(onUnhandledAction).toHaveBeenCalledTimes(1);
     });
 
+    it("goes back through the screen history while the sidebar is closed", async () => {
+        const onUnhandledAction = vi.fn();
+        await renderDrawer(false, onUnhandledAction);
+        await clickButton("Go to settings");
+        await screen.findByText("Settings Content");
+        await userEvent.click(toggleButton());
+        expect(querySidebarLabel("Settings")).toBeNull();
+        await clickButton("Go back");
+        await screen.findByText("Inbox Content");
+        expect(querySidebarLabel("Settings")).toBeNull();
+        expect(onUnhandledAction).not.toHaveBeenCalled();
+    });
+
     it("closes an overlaid sidebar when a screen goes back", async () => {
         await renderDrawer(true);
         await userEvent.click(toggleButton());
