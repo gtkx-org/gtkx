@@ -118,3 +118,11 @@ describe("property names — error paths", () => {
         ).toThrow();
     });
 });
+
+describe("property names — every spelling of one property", () => {
+    it("answers for the dashed, underscored and camelCased spellings alike", () => {
+        const type = getClassType(makeGaugeClass());
+        const spellings = ["level-2-depth", "level_2_depth", "level2Depth", "level2_depth"];
+        expect(spellings.map((spelling) => isReadableProperty(type, spelling))).toEqual([true, true, true, true]);
+    });
+});

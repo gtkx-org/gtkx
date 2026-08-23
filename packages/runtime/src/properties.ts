@@ -158,7 +158,7 @@ function accessorSpecs(klass: ExternalObject<Handle>): Map<string, ExternalObjec
 function findPropertySpec(klass: ExternalObject<Handle>, name: string): ExternalObject<Handle> | null {
     const found = classFindProperty(klass, name) as ExternalObject<Handle> | null;
 
-    return found ?? accessorSpecs(klass).get(name) ?? null;
+    return found ?? accessorSpecs(klass).get(toCamelIdentifier(name)) ?? null;
 }
 
 const sourceLabel = (source: bigint | AnyClass, gtype: bigint): string =>
