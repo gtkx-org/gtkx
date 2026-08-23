@@ -125,4 +125,4 @@ const writeGiStore = (
     });
 };
 
-export { writeGiStore, type GiExternalNamespaceInput, type GiNamespaceInput, type GiStoreRecords };
+export { writeGiStore, type GiExternalNamespaceInput, type GiNamespaceInput };

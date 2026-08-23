@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import { configError, isRecord, rawIssue } from "./config-error.ts";
 import { deploySchema } from "./deploy.ts";
+import { isGirLibrary } from "./schema-text.ts";
 import { resolveUserEventSignals } from "./user-event-signals.ts";
 
 /** Accepted `reactCompiler.compilationMode` values, choosing which functions the compiler processes. */
@@ -56,7 +57,6 @@ type ResolvedConfig = {
 };
 
 const LIBRARIES_WILDCARD = "*";
-const GIR_LIBRARY_PATTERN = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const APPLICATION_ID_MAX_LENGTH = 255;
 /** Compilation modes `babel-plugin-react-compiler` accepts. */
@@ -211,7 +211,7 @@ const configSchema = z.object({
 const defineConfig: DefineConfig<Config> = createDefineConfig<Config>();
 
 const libraryEntryIssues = (value: unknown[], index: number, entry: unknown): ReturnType<typeof rawIssue>[] => {
-    if (typeof entry === "string" && GIR_LIBRARY_PATTERN.test(entry)) {
+    if (typeof entry === "string" && isGirLibrary(entry)) {
         return [];
     }
 
