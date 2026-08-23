@@ -8,6 +8,7 @@ import {
     clickButton,
     expectHidden,
     expectVisible,
+    pressKeys,
     renderSplit,
     Split,
     splitView,
@@ -127,5 +128,19 @@ describe("split view - layout (4)", () => {
                 </NavigationContainer>,
             ),
         ).rejects.toThrow();
+    });
+});
+
+describe("split view - layout (5)", () => {
+    it("puts an empty content pane back when the widget reveals it on its own", async () => {
+        await renderSplit({ navigator: { collapsed: true, sidebarPosition: "end" } });
+        await screen.findByText("Lists Content");
+        await pressKeys("Lists Content", "{Escape}");
+
+        await waitFor(() => {
+            expect(splitView()).toHaveObjectProperty("showContent", false);
+        });
+
+        expectVisible("Lists Content");
     });
 });
