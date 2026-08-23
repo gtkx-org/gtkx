@@ -41,6 +41,10 @@ const REJECTED_CONFIGS: RejectedConfig[] = [
         title: "a library floor that is not a version",
         config: `${HEAD}, deploy: { libraryFloors: { "Gtk-4.0": 4.18 } } };\n`,
     },
+    {
+        title: "a library floor keyed by something that is not a library",
+        config: `${HEAD}, deploy: { libraryFloors: { "Gtk-4.o": "4.18" } } };\n`,
+    },
 ];
 
 const buildWith = (config: string): CliProject => {

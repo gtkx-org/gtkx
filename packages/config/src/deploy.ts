@@ -1,5 +1,14 @@
 import { z } from "zod";
-import { fileExtension, flag, relativePathRecord, text, textList, textRecord, url } from "./schema-text.ts";
+import {
+    fileExtension,
+    flag,
+    girLibrary,
+    relativePathRecord,
+    text,
+    textList,
+    textRecord,
+    url,
+} from "./schema-text.ts";
 
 const APPIMAGE_COMPRESSIONS = ["gzip", "xz", "zstd"] as const;
 const DEB_COMPRESSIONS = ["gzip", "none", "xz", "zstd"] as const;
@@ -37,6 +46,7 @@ const KEY_ID_ERROR = "must be a PGP key id";
 const LIBRARY_FLOOR_ERROR = "must be a version such as 4.18, or false for no minimum";
 const LIBRARY_FLOOR_PATTERN = /^\d+(?:\.\d+)*$/;
 const LIBRARY_FLOORS_ERROR = "must be false, or a record of GIR library ids to minimum versions";
+const LIBRARY_ID_ERROR = 'must be a GIR library identifier of the form "Name-Version", such as "Gtk-4.0"';
 const SCRIPT_ERROR = "must be a path to a shell script";
 const SOURCE_PATH_ERROR = "must be a source path";
 const SPDX_ERROR = "must be an SPDX license expression";
@@ -55,7 +65,7 @@ const libraryFloorSchema = z.union(
 const libraryFloorsSchema = z.union(
     [
         z.literal(false, { error: LIBRARY_FLOORS_ERROR }),
-        z.record(z.string(), libraryFloorSchema, { error: LIBRARY_FLOORS_ERROR }),
+        z.record(girLibrary(LIBRARY_ID_ERROR), libraryFloorSchema, { error: LIBRARY_FLOORS_ERROR }),
     ],
     { error: LIBRARY_FLOORS_ERROR },
 );

@@ -154,6 +154,25 @@ const warnMissingFloors = (settings: DeploySettings): void => {
     );
 };
 
+const warnUnusedFloors = (settings: DeploySettings): void => {
+    const floors = settings.deploy.libraryFloors;
+
+    if (floors === undefined || floors === false) {
+        return;
+    }
+
+    const unused = Object.keys(floors).filter((library) => !settings.libraries.includes(library));
+
+    if (unused.length === 0) {
+        return;
+    }
+
+    warn(
+        `\`deploy.libraryFloors\` names ${unused.join(", ")}, which this project does not generate bindings ` +
+        `for, so those minimums change nothing. It generates ${settings.libraries.join(", ")}.`,
+    );
+};
+
 const isPrebuiltFlatpak = (targets: DeployTarget[], settings: DeploySettings): boolean =>
     targets.some((target) => target.name === FLATPAK_TARGET) && settings.deploy.flatpak?.mode !== "source";
 
@@ -171,6 +190,8 @@ const warnLibraryFloors = (targets: DeployTarget[], settings: DeploySettings): v
     if (settings.deploy.libraryFloors === undefined) {
         warnMissingFloors(settings);
     }
+
+    warnUnusedFloors(settings);
 };
 
 const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
