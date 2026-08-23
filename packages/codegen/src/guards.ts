@@ -12,6 +12,10 @@ const isString = (value: unknown): value is string => typeof value === "string";
 const arrayGuard = <T>(isEntry: Guard<T>): Guard<T[]> =>
     (value: unknown): value is T[] => Array.isArray(value) && value.every((entry: unknown) => isEntry(entry));
 
+const recordGuard = <T>(isEntry: Guard<T>): Guard<Record<string, T>> =>
+    (value: unknown): value is Record<string, T> =>
+        isRecord(value) && Object.values(value).every((entry: unknown) => isEntry(entry));
+
 const optionalGuard = <T>(isPresent: Guard<T>): OptionalGuard<T> =>
     Object.assign((value: unknown): value is T | undefined => value === undefined || isPresent(value), {
         __optional__: true as const,
@@ -20,4 +24,4 @@ const optionalGuard = <T>(isPresent: Guard<T>): OptionalGuard<T> =>
 const hasFields = <T extends object>(value: unknown, guards: FieldGuards<T>): value is T =>
     isRecord(value) && Object.entries(guards).every(([name, guard]) => (guard as Guard<unknown>)(value[name]));
 
-export { arrayGuard, hasFields, isBoolean, isNumber, isString, optionalGuard };
+export { arrayGuard, hasFields, isBoolean, isNumber, isString, optionalGuard, recordGuard };

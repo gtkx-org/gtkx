@@ -34,12 +34,31 @@ const HEX_COLOR_ERROR = "must be a #rrggbb color";
 const HEX_COLOR_PATTERN = /^#[\dA-Fa-f]{6}$/;
 const KEY_FILE_ERROR = "must be a path to a PGP key file";
 const KEY_ID_ERROR = "must be a PGP key id";
+const LIBRARY_FLOOR_ERROR = "must be a version such as 4.18, or false for no minimum";
+const LIBRARY_FLOOR_PATTERN = /^\d+(?:\.\d+)*$/;
+const LIBRARY_FLOORS_ERROR = "must be false, or a record of GIR library ids to minimum versions";
 const SCRIPT_ERROR = "must be a path to a shell script";
 const SOURCE_PATH_ERROR = "must be a source path";
 const SPDX_ERROR = "must be an SPDX license expression";
 const URL_ERROR = "must be an absolute URL";
 const VERSION_ERROR = "must be a version string";
 const hexColorSchema = z.string({ error: HEX_COLOR_ERROR }).regex(HEX_COLOR_PATTERN, { error: HEX_COLOR_ERROR });
+
+const libraryFloorSchema = z.union(
+    [
+        z.string({ error: LIBRARY_FLOOR_ERROR }).regex(LIBRARY_FLOOR_PATTERN, { error: LIBRARY_FLOOR_ERROR }),
+        z.literal(false, { error: LIBRARY_FLOOR_ERROR }),
+    ],
+    { error: LIBRARY_FLOOR_ERROR },
+);
+
+const libraryFloorsSchema = z.union(
+    [
+        z.literal(false, { error: LIBRARY_FLOORS_ERROR }),
+        z.record(z.string(), libraryFloorSchema, { error: LIBRARY_FLOORS_ERROR }),
+    ],
+    { error: LIBRARY_FLOORS_ERROR },
+);
 
 const relationsSchema = z.strictObject({
     deb: textList("Debian package relation", "must be an array of Debian package relations").optional(),
@@ -257,6 +276,7 @@ const deploySchema = z.strictObject({
         extraFileEntrySchema,
         "must be a record of prefix-relative destinations to source paths or { source, mode } entries",
     ).optional(),
+    libraryFloors: libraryFloorsSchema.optional(),
     depends: relationsSchema.optional(),
     relations: extraRelationsSchema.optional(),
     scripts: scriptsSchema.optional(),

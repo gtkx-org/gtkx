@@ -20,6 +20,8 @@ export { type BuiltinElements, type ModuleExport, readBuiltinElements } from "./
 /** @public */
 export { type CodegenRunnerOptions, type CodegenRunnerResult, runCodegen } from "./runner.js";
 /** @public */
+export { type GeneratedLibraries, readGeneratedLibraries } from "./store/gi/generated-libraries.js";
+/** @public */
 export type { ElementProps } from "./store/jsx/element-prop-imports.js";
 /** @public */
 export { type GeneratedElement, readGeneratedElements } from "./store/jsx/generated-elements.js";

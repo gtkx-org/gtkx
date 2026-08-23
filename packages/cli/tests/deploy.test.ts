@@ -41,7 +41,7 @@ type FlatpakModule = {
 
 type FlatpakManifest = { modules: FlatpakModule[]; "finish-args": string[]; cleanup: string[] };
 type NfpmContent = { dst: string; file_info?: { mode: number } };
-type NfpmConfig = { contents: NfpmContent[] };
+type NfpmConfig = { contents: NfpmContent[]; depends: string[] };
 type DeployProbe = { project: CliProject; status: number | null };
 
 type DeploySetup = {
@@ -83,6 +83,11 @@ const NPM_INSTALL = "npm ci --offline";
 const GENERATED_SOURCES = join("targets", "flatpak", "generated-sources.json");
 const MANIFEST_PATH = join("targets", "flatpak", `${APPLICATION_ID}.yml`);
 const NFPM_PATH = join("targets", "deb", "nfpm.yaml");
+const RPM_NFPM_PATH = join("targets", "rpm", "nfpm.yaml");
+const GI_STORE_DIR = join("node_modules", ".gtkx", "gi");
+const LIBRARIES_INVENTORY = join(GI_STORE_DIR, "libraries.json");
+const MAJOR_PATTERN = /^export const MAJOR_VERSION = (\d+);$/m;
+const MINOR_PATTERN = /^export const MINOR_VERSION = (\d+);$/m;
 const MODE_MASK = 0o7777;
 const HELPER_SOURCE = join("tools", "helper.sh");
 const NOTES_SOURCE = join("tools", "notes.txt");
@@ -148,7 +153,15 @@ const BAD_MODE = `        extraFiles: {
         },
 `;
 
+const FLOOR_OVERRIDES = `        libraryFloors: { "Gtk-4.0": "4.14", "GtkSource-5": false },
+`;
+
+const NO_FLOORS = `        libraryFloors: false,
+`;
+
 const DEPLOY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${EXTRA_FILES}${PERMISSIONS}    },\n`;
+const FLOORS_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${FLOOR_OVERRIDES}    },\n`;
+const NO_FLOORS_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${NO_FLOORS}    },\n`;
 const NO_DISPLAY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${NO_DISPLAY}    },\n`;
 const BAD_MODE_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${BAD_MODE}    },\n`;
 
@@ -299,6 +312,10 @@ const config = (body: string): string =>
     `    libraries: ${JSON.stringify(STORE_LIBRARIES)},\n` +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
+const bareConfig = (body: string): string =>
+    `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
+    `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
+
 const sourceConfig = (source: string, extra = ""): string =>
     config(
         `    deploy: {\n${DEPLOY_FIELDS}\n${extra}` +
@@ -379,6 +396,28 @@ const packagedMode = (project: CliProject, destination: string): number | undefi
     const nfpm = parse(contents) as NfpmConfig;
 
     return nfpm.contents.find((entry) => entry.dst === destination)?.file_info?.mode;
+};
+
+const packagedDepends = (project: CliProject, path: string): string[] => {
+    const contents = readFileSync(join(project.root, OUT_DIR, path), "utf8");
+
+    return (parse(contents) as NfpmConfig).depends;
+};
+
+const versionPart = (source: string, pattern: RegExp): string => {
+    const value = pattern.exec(source)?.[1];
+
+    if (value === undefined) {
+        throw new Error("The generated store declares no MAJOR_VERSION and MINOR_VERSION");
+    }
+
+    return value;
+};
+
+const storeVersion = (project: CliProject, directory: string): string => {
+    const source = readFileSync(join(project.nodeModules, ".gtkx", "gi", directory, `${directory}.js`), "utf8");
+
+    return `${versionPart(source, MAJOR_PATTERN)}.${versionPart(source, MINOR_PATTERN)}`;
 };
 
 const isSourceEntry = (entry: FlatpakSource | string): entry is FlatpakSource => typeof entry !== "string";
@@ -466,6 +505,96 @@ describe("gtkx deploy (manifests only)", () => {
         const manifest = flatpakManifest(state.project);
         expect(manifest["finish-args"]).toEqual([...DEFAULT_FINISH_ARGS, "--share=network"]);
         expect(manifest.cleanup).toEqual([...DEFAULT_CLEANUP, "/man"]);
+    });
+
+    it("floors every introspected library at the release its bindings were generated against", () => {
+        const toolkit = storeVersion(state.project, "gtk");
+        const adw = storeVersion(state.project, "adw");
+
+        expect(packagedDepends(state.project, NFPM_PATH)).toEqual(
+            expect.arrayContaining([`libgtk-4-1 (>= ${toolkit})`, `libadwaita-1-0 (>= ${adw})`]),
+        );
+
+        expect(packagedDepends(state.project, RPM_NFPM_PATH)).toEqual(
+            expect.arrayContaining([`gtk4 >= ${toolkit}`, `libadwaita >= ${adw}`]),
+        );
+    });
+
+    it("leaves the relations that carry no release of their own alone", () => {
+        expect(packagedDepends(state.project, NFPM_PATH)).toContain("hicolor-icon-theme");
+        expect(packagedDepends(state.project, RPM_NFPM_PATH)).toContain("libGLESv2.so.2()(64bit)");
+    });
+});
+
+describe("gtkx deploy (library floors the project sets itself)", () => {
+    const state = deployProbe({
+        prefix: "gtkx-cli-floors-",
+        config: config(FLOORS_BLOCK),
+        files: projectFiles(),
+        args: ["deploy", "--print-manifests", "--target", "deb,rpm"],
+    });
+
+    it("uses the minimum the project declares in place of the one it detected", () => {
+        expect(state.status).toBe(0);
+        expect(packagedDepends(state.project, NFPM_PATH)).toContain("libgtk-4-1 (>= 4.14)");
+        expect(packagedDepends(state.project, RPM_NFPM_PATH)).toContain("gtk4 >= 4.14");
+    });
+
+    it("drops the minimum of a library the project excuses and keeps the rest", () => {
+        const adw = storeVersion(state.project, "adw");
+        const depends = packagedDepends(state.project, NFPM_PATH);
+        expect(depends).toContain("libgtksourceview-5-0");
+        expect(depends).toContain(`libadwaita-1-0 (>= ${adw})`);
+    });
+});
+
+describe("gtkx deploy (a project that declares no library minimums)", () => {
+    const state = deployProbe({
+        prefix: "gtkx-cli-no-floors-",
+        config: config(NO_FLOORS_BLOCK),
+        files: projectFiles(),
+        args: ["deploy", "--print-manifests", "--target", "deb,rpm"],
+    });
+
+    it("names every library with no minimum at all", () => {
+        const depends = packagedDepends(state.project, NFPM_PATH);
+        expect(state.status).toBe(0);
+        expect(depends).toContain("libgtk-4-1");
+        expect(depends).toContain("libadwaita-1-0");
+        expect(depends.filter((entry) => entry.startsWith("libgtk-4-1 ("))).toEqual([]);
+    });
+});
+
+describe("gtkx deploy (a store that recorded no libraries)", () => {
+    const project: CliProject = { root: "", nodeModules: "" };
+    let status: number | null = null;
+
+    beforeAll(() => {
+        const created = createCliProject({
+            prefix: "gtkx-cli-unrecorded-",
+            config: bareConfig(DEPLOY_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        project.root = created.root;
+        project.nodeModules = created.nodeModules;
+        runCli(project, ["deploy", "--print-manifests", "--target", "deb"]);
+        rmSync(join(project.root, LIBRARIES_INVENTORY), { force: true });
+        status = runCli(project, ["deploy", "--print-manifests", "--skip-build", "--target", "deb"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(project);
+    });
+
+    it("still declares the library it generates by default", () => {
+        expect(status).toBe(0);
+        expect(packagedDepends(project, NFPM_PATH)).toContain("libgtk-4-1");
+    });
+
+    it("declares no minimum it could not determine", () => {
+        expect(packagedDepends(project, NFPM_PATH).filter((entry) => entry.includes("(>="))).toEqual([]);
     });
 });
 
