@@ -6,7 +6,7 @@ import {
     type RegisterClassSignal as NativeRegisterClassSignal,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
 } from "@gtkx/native";
-import { type AnyClass, getParentClass, kebabCase, upperFirst, walkClassChain } from "@gtkx/utils";
+import { type AnyClass, getParentClass, kebabCase, walkClassChain } from "@gtkx/utils";
 import { wrapCallback } from "./callback.js";
 import { insertMixinLayer } from "./mixin.js";
 import {
@@ -786,8 +786,8 @@ function assertLowerCaseSignalName(klass: AnyClass, name: string): void {
 
     throw new TypeError(
         `registerClass: ${klass.name} declares the signal '${name}'; GObject would carry it under that ` +
-        `exact spelling, out of reach of both its dashed spelling and the 'on${upperFirst(name)}' ` +
-        `default handler; declare it as '${kebabCase(name)}'`,
+        "exact spelling, out of reach of both its dashed spelling and its default handler; " +
+        `declare it as '${kebabCase(name)}'`,
     );
 }
 

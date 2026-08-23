@@ -38,11 +38,11 @@ const REJECTED_CONFIGS: RejectedConfig[] = [
     { title: "a deploy section that is not shaped like one", config: `${HEAD}, deploy: { categories: 5 } };\n` },
     { title: "a future flag that is not a boolean", config: `${HEAD}, future: { v2ByteArrays: 5 } };\n` },
     {
-        title: "a library floor that is not a version",
+        title: "a minimum library version that is not a version",
         config: `${HEAD}, deploy: { minimumLibraryVersions: { "Gtk-4.0": 4.18 } } };\n`,
     },
     {
-        title: "a library floor keyed by something that is not a library",
+        title: "a minimum library version keyed by something that is not a library",
         config: `${HEAD}, deploy: { minimumLibraryVersions: { "Gtk-4.o": "4.18" } } };\n`,
     },
 ];

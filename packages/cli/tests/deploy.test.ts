@@ -504,9 +504,9 @@ describe("gtkx deploy (manifests only)", () => {
     });
 });
 
-describe("gtkx deploy (library floors the project sets itself)", () => {
+describe("gtkx deploy (minimum library versions the project sets itself)", () => {
     const state = deployProbe({
-        prefix: "gtkx-cli-floors-",
+        prefix: "gtkx-cli-minimums-",
         config: config(MINIMUMS_BLOCK),
         files: projectFiles(),
         args: ["deploy", "--print-manifests", "--target", "deb,rpm"],
