@@ -2,8 +2,7 @@ import type { ExternalObject, Handle, RegisterClassProperty } from "@gtkx/native
 import type { AnyClass } from "@gtkx/utils";
 import { camelCase, kebabCase, toCamelIdentifier } from "@gtkx/utils";
 import { bind } from "./bind.js";
-import { dashedVariants } from "./canonical-name.js";
-import { biguint64T, fundamentalT, stringT, structT, voidT } from "./descriptors.js";
+import { biguint64T, fundamentalT, refT, sizedArrayT, stringT, structT, uint32T, voidT } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_T } from "./library.js";
 import {
     getParamFlags,
@@ -89,7 +88,7 @@ const SET_PROPERTY_VFUNC = "vfuncSetProperty";
 const READ_ONLY_REASON = "the property is read-only";
 const CONSTRUCT_ONLY_REASON = "the property can only be set when the object is constructed";
 const CLASS_T = structT("borrowed");
-const UPPER_CASE_PATTERN = /[A-Z]/;
+const CANONICAL_NAME_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const DECLARED_NAMES = Symbol("gtkx:declaredPropertyNames");
 
 const OVERRIDE_PARAM_T = fundamentalT(LIB, "g_param_spec_ref_sink", "g_param_spec_unref", {
@@ -104,6 +103,14 @@ const typeClassRef = bind(LIB, "g_type_class_ref", [biguint64T], CLASS_T);
 const typeClassUnref = bind(LIB, "g_type_class_unref", [CLASS_T], voidT);
 const coercionChecks: Map<bigint, Map<string, PropertyCheck | null>> = new Map();
 const classFindProperty = bind(LIB, "g_object_class_find_property", [CLASS_T, stringT("borrowed")], PARAM_T);
+
+const classListProperties = bind(
+    LIB,
+    "g_object_class_list_properties",
+    [CLASS_T, refT(uint32T)],
+    sizedArrayT(PARAM_T, 1, "full"),
+);
+
 const defaultInterfaceRef = bind(LIB, "g_type_default_interface_ref", [biguint64T], CLASS_T);
 const defaultInterfaceUnref = bind(LIB, "g_type_default_interface_unref", [CLASS_T], voidT);
 const interfaceFindProperty = bind(LIB, "g_object_interface_find_property", [CLASS_T, stringT("borrowed")], PARAM_T);
@@ -137,20 +144,21 @@ function checkFor(handle: ExternalObject<Handle>, name: string): PropertyCheck {
     };
 }
 
-function propertyNameCandidates(name: string): string[] {
-    return [...new Set([name, ...dashedVariants(canonicalCase(name))])];
+function accessorSpecs(klass: ExternalObject<Handle>): Map<string, ExternalObject<Handle>> {
+    const specs: Map<string, ExternalObject<Handle>> = new Map();
+    const countRef = { value: 0 };
+
+    for (const pspec of classListProperties(klass, countRef) as ExternalObject<Handle>[]) {
+        specs.set(toCamelIdentifier(paramSpecName(pspec) as string), pspec);
+    }
+
+    return specs;
 }
 
 function findPropertySpec(klass: ExternalObject<Handle>, name: string): ExternalObject<Handle> | null {
-    for (const candidate of propertyNameCandidates(name)) {
-        const found = classFindProperty(klass, candidate) as ExternalObject<Handle> | null;
+    const found = classFindProperty(klass, name) as ExternalObject<Handle> | null;
 
-        if (found !== null) {
-            return found;
-        }
-    }
-
-    return null;
+    return found ?? accessorSpecs(klass).get(name) ?? null;
 }
 
 const sourceLabel = (source: bigint | AnyClass, gtype: bigint): string =>
@@ -666,9 +674,7 @@ function makeSetProperty(dispatch: PropertyDispatch) {
 }
 
 const isCanonicalName = (name: string, propertyName: string): boolean =>
-    !UPPER_CASE_PATTERN.test(propertyName) &&
-    toCamelIdentifier(propertyName) === toCamelIdentifier(name) &&
-    propertyNameCandidates(name).includes(propertyName);
+    CANONICAL_NAME_PATTERN.test(propertyName) && toCamelIdentifier(propertyName) === toCamelIdentifier(name);
 
 function assertCanonicalName(klass: AnyClass, name: string, propertyName: string): void {
     if (isCanonicalName(name, propertyName)) {

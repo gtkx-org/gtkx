@@ -1,5 +1,4 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
-import type { TypedClass } from "./type.js";
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind, createBindCache } from "./bind.js";
 import { wrapCallback } from "./callback.js";
@@ -11,6 +10,8 @@ import {
     boxedT,
     type CallbackDescriptor,
     objectT,
+    refT,
+    sizedArrayT,
     stringT,
     uint32T,
     uint64T,
@@ -19,6 +20,7 @@ import {
 import { LIB, VALUE_SIZE, VALUE_T } from "./library.js";
 import { getHandle } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
+import { TYPE_INVALID, type TypedClass, typeInterfaces, typeParent } from "./type.js";
 import {
     fromValue,
     getBoxedValue,
@@ -70,6 +72,8 @@ const connectCache = createBindCache();
 const connectionTable: WeakMap<object, Map<string, Set<number>>> = new WeakMap();
 const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T);
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
+const gSignalName = bind(LIB, "g_signal_name", [uint32T], stringT("borrowed"));
+const gSignalListIds = bind(LIB, "g_signal_list_ids", [biguint64T, refT(uint32T)], sizedArrayT(uint32T, 1, "full"));
 
 const gSignalEmitv = bind(
     LIB,
@@ -199,6 +203,32 @@ function hasSignalListener(instance: object, signals?: string[]): boolean {
 
 const signalIdFor = (type: bigint, signal: string): number =>
     gSignalLookup(getSignalBaseName(signal), type) as number;
+
+const ownSignalNames = (type: bigint): string[] => {
+    const countRef = { value: 0 };
+
+    return (gSignalListIds(type, countRef) as number[]).map((id) => gSignalName(id) as string);
+};
+
+const addSignalNames = (names: Set<string>, type: bigint): void => {
+    for (const name of ownSignalNames(type)) {
+        names.add(name);
+    }
+};
+
+const signalNamesFor = (type: bigint): string[] => {
+    const names: Set<string> = new Set();
+
+    for (let current = type; current !== TYPE_INVALID; current = typeParent(current)) {
+        addSignalNames(names, current);
+
+        for (const iface of typeInterfaces(current)) {
+            addSignalNames(names, iface);
+        }
+    }
+
+    return [...names];
+};
 
 const getSignalId = (instance: object, signal: string): number =>
     signalIdFor((instance as TypedClass).__type__, signal);
@@ -336,6 +366,7 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returns?:
 }
 
 export {
+    signalNamesFor,
     getSignalBaseName,
     signalIdFor,
     connectClosureSignal,

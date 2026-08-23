@@ -6,9 +6,8 @@ import {
     type RegisterClassSignal as NativeRegisterClassSignal,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
 } from "@gtkx/native";
-import { type AnyClass, getParentClass, kebabCase, upperFirst, walkClassChain } from "@gtkx/utils";
+import { type AnyClass, getParentClass, kebabCase, toCamelIdentifier, upperFirst, walkClassChain } from "@gtkx/utils";
 import { wrapCallback } from "./callback.js";
-import { dashedVariants } from "./canonical-name.js";
 import { insertMixinLayer } from "./mixin.js";
 import {
     buildPropertyDispatch,
@@ -38,6 +37,7 @@ import {
     overrideSignalClassClosure,
     type SignalHandler,
     signalIdFor,
+    signalNamesFor,
 } from "./signal.js";
 import {
     TYPE_INTERFACE,
@@ -384,7 +384,6 @@ const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec
 const TYPE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9\-_+]{2,}$/;
 const UPPER_CASE_PATTERN = /[A-Z]/;
 const SIGNAL_OVERRIDE_PATTERN = /^on[A-Z]/;
-const SIGNAL_PREFIX_LENGTH = 2;
 
 /**
  * Registers a subclass of a wrapper class as a new GType, wiring up any class and interface
@@ -792,22 +791,16 @@ function assertLowerCaseSignalName(klass: AnyClass, name: string): void {
     );
 }
 
+const signalHandlerName = (signal: string): string => `on${upperFirst(toCamelIdentifier(signal))}`;
+
 function overriddenSignalId(type: bigint, methodName: string): number {
     if (!SIGNAL_OVERRIDE_PATTERN.test(methodName)) {
         return 0;
     }
 
-    const candidates = dashedVariants(kebabCase(methodName.slice(SIGNAL_PREFIX_LENGTH)));
+    const signal = signalNamesFor(type).find((name) => signalHandlerName(name) === methodName);
 
-    for (const signal of candidates) {
-        const signalId = signalIdFor(type, signal);
-
-        if (signalId !== 0) {
-            return signalId;
-        }
-    }
-
-    return 0;
+    return signal === undefined ? 0 : signalIdFor(type, signal);
 }
 
 function installSignalOverrides(newType: bigint, methods: MethodTable): void {
