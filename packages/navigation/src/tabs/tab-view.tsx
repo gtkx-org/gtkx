@@ -27,29 +27,22 @@ type TabPageProps = {
     isLoaded: boolean;
 };
 
-const useTabSelection = (
-    stack: Adw.ViewStack | null,
-    navigation: TabNavigationHelpers,
-): ((name: string | null) => void) =>
+const useTabSelection = (navigation: TabNavigationHelpers): ((name: string | null) => void) =>
     useCallback((name: string | null) => {
         const current = navigation.getState();
         const focusedKey = getFocusedRoute(current).key;
         const route = current.routes.find((candidate) => candidate.key === name);
 
-        if (stack === null || route === undefined || route.key === focusedKey) {
+        if (route === undefined || route.key === focusedKey) {
             return;
         }
 
         const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
 
-        if (event.defaultPrevented) {
-            stack.setVisibleChildName(focusedKey);
-
-            return;
+        if (!event.defaultPrevented) {
+            navigation.dispatch({ ...CommonActions.navigate(route.name, route.params), target: current.key });
         }
-
-        navigation.dispatch({ ...CommonActions.navigate(route.name, route.params), target: current.key });
-    }, [stack, navigation]);
+    }, [navigation]);
 
 const defaultTabHeader = ({ descriptor, viewSwitcher }: TabHeaderProps): ReactElement => (
     <HeaderBar
@@ -96,7 +89,7 @@ const TabView = ({ state, navigation, descriptors, tabBarPosition = "top" }: Tab
     const focused = getFocusedRoute(state);
     const descriptor = requireDescriptor(descriptors, focused.key);
     const loaded = useLoadedRoutes(focused.key, state.preloadedRouteKeys);
-    const onVisibleChildChanged = useTabSelection(stack, navigation);
+    const onVisibleChildChanged = useTabSelection(navigation);
 
     const viewSwitcher = stack === null
         ? undefined

@@ -231,6 +231,14 @@ const flushBehaviors = (): void => {
     });
 };
 
+const teardownBehaviors = (node: ElementNode): void => {
+    flushDirty.delete(node);
+
+    for (const [behavior, context] of node.contexts) {
+        behavior.teardown?.(node.object, context);
+    }
+};
+
 const applyAccessible = (object: GObject.Object, prev: Props | null, next: Props): void => {
     if (object instanceof Gtk.Accessible) {
         applyAccessibleProps(object, prev, next);
@@ -319,6 +327,7 @@ export {
     flushAccessible,
     settleAccessible,
     flushBehaviors,
+    teardownBehaviors,
     applyElementProps,
     applyAdoptedProps,
     assertPropsCanChange,

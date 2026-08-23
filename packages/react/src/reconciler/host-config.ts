@@ -14,6 +14,7 @@ import {
     assertPropsCanChange,
     flushAccessible,
     flushBehaviors,
+    teardownBehaviors,
 } from "./apply-props.js";
 import { attachChild, detachChild } from "./child-routing.js";
 import { resolveElementNode } from "./instance.js";
@@ -190,6 +191,7 @@ function createPriorityTracker(): PriorityTracker {
 
 const detachElement = (instance: ElementNode): void => {
     disconnectAllHandlers(instance);
+    teardownBehaviors(instance);
 
     if (instance.object instanceof Gtk.Widget) {
         releaseStyle(instance.object);

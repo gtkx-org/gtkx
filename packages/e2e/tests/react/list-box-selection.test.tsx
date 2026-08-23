@@ -71,15 +71,13 @@ describe("list box selection (2)", () => {
     });
 
     it("puts the selection back when the box drifts from the prop", async () => {
-        const { boxRef, rerender } = await renderProbe({ count: 3, selectedIndex: 1 });
+        const { boxRef } = await renderProbe({ count: 3, selectedIndex: 1 });
         const box = boxRef.current as Gtk.ListBox;
 
         await act(() => {
             box.selectRow(box.getRowAtIndex(2));
         });
 
-        expect(getSelectedIndex(box)).toBe(2);
-        await rerender(<BoxProbe boxRef={boxRef} count={4} selectedIndex={1} />);
         expect(getSelectedIndex(box)).toBe(1);
     });
 
@@ -113,5 +111,21 @@ describe("list box selection (2)", () => {
 
         expect(getSelectedIndex(boxRef.current)).toBe(2);
         expect(handleRowSelected).not.toHaveBeenCalled();
+    });
+});
+
+describe("list box selection (3)", () => {
+    it("does not report the row it puts back as a selection the user made", async () => {
+        const onRowSelected = vi.fn();
+        const { boxRef } = await renderProbe({ count: 3, selectedIndex: 1, onRowSelected });
+        const box = boxRef.current as Gtk.ListBox;
+        onRowSelected.mockClear();
+
+        await act(() => {
+            box.selectRow(box.getRowAtIndex(2));
+        });
+
+        expect(getSelectedIndex(box)).toBe(1);
+        expect(onRowSelected).toHaveBeenCalledTimes(1);
     });
 });

@@ -1,18 +1,20 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { getSignalBaseName, type SignalHandler } from "@gtkx/runtime";
-import { camelCase, getOrInsert } from "@gtkx/utils";
+import { camelCase, getOrInsert, toCamelIdentifier } from "@gtkx/utils";
 import type { HandlerRecord, SignalTarget } from "./node.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 
-type NotifyBinding = { property: string | null };
+type NotifyBinding = { property: string | null; accessor: string | null };
 
 const NOTIFY_SIGNAL = "notify";
 const NOTIFY_DETAIL_PREFIX = "notify::";
 const pendingWrites: (string | null)[] = [];
 const canonicalNames: Map<string, string> = new Map();
+const accessorNames: Map<string, string> = new Map();
 
 const isApplyingWrite = (): boolean => pendingWrites.length > 0;
 const canonicalName = (property: string): string => getOrInsert(canonicalNames, property, camelCase);
+const accessorName = (property: string): string => getOrInsert(accessorNames, property, toCamelIdentifier);
 
 const runWrite = <T>(property: string | null, write: () => T): T => {
     pendingWrites.push(property === null ? null : canonicalName(property));
@@ -29,12 +31,16 @@ const applyMutation = <T>(write: () => T): T => runWrite(null, write);
 
 const notifyBindingFor = (signal: string): NotifyBinding | null => {
     if (signal === NOTIFY_SIGNAL) {
-        return { property: null };
+        return { property: null, accessor: null };
     }
 
-    return signal.startsWith(NOTIFY_DETAIL_PREFIX)
-        ? { property: canonicalName(signal.slice(NOTIFY_DETAIL_PREFIX.length)) }
-        : null;
+    if (!signal.startsWith(NOTIFY_DETAIL_PREFIX)) {
+        return null;
+    }
+
+    const name = signal.slice(NOTIFY_DETAIL_PREFIX.length);
+
+    return { property: canonicalName(name), accessor: accessorName(name) };
 };
 
 const notifiedProperty = (notify: NotifyBinding, args: unknown[]): string | null => {
@@ -70,11 +76,11 @@ const invokeHandler = (
     notify: NotifyBinding | null,
     args: unknown[],
 ): unknown => {
-    const property = notify?.property ?? null;
+    const accessor = notify?.accessor ?? null;
 
-    return property === null
+    return accessor === null
         ? record.handler(...args, target.object)
-        : record.handler(Reflect.get(target.object, property), target.object);
+        : record.handler(Reflect.get(target.object, accessor), target.object);
 };
 
 const wrapHandler = (target: SignalTarget, record: HandlerRecord, notify: NotifyBinding | null): SignalHandler =>

@@ -10,7 +10,7 @@ import {
     typeFromName,
     typeIsA,
 } from "@gtkx/runtime";
-import { getOrInsert, isDeepEqual, structuredClone } from "@gtkx/utils";
+import { getOrInsert, isDeepEqual, kebabCase, structuredClone, unsanitizeIdentifier } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
 import { applyWrite } from "./signals.js";
 import { hasSameText } from "./text.js";
@@ -32,7 +32,7 @@ type ListHooks<P extends GObject.Object, I, H> = {
 
 type ListEntry = { item: unknown; handle: unknown };
 type ListState = { snapshot: unknown[]; entries: ListEntry[] };
-type DeferredState = { desired: unknown; isPresent: boolean; applied: unknown };
+type DeferredState = { desired: unknown; isPresent: boolean; isScheduled: boolean; disconnect: (() => void) | null };
 type CanApply<P extends GObject.Object, V> = (object: P, value: V) => boolean;
 type ChildSetter = GObject.Object & { setChild: (child: Gtk.Widget | null) => void };
 type ContentSetter<C extends Gtk.Widget> = GObject.Object & { setContent: (content: C | null) => void };
@@ -170,15 +170,13 @@ const list = <P extends GObject.Object, I, H = void>(
     return behavior;
 };
 
-const flushDeferred = <P extends GObject.Object, V>(
+const settleDeferred = <P extends GObject.Object, V>(
     object: GObject.Object,
-    context: unknown,
+    state: DeferredState,
     prop: string,
     canApply: CanApply<P, V> | undefined,
 ): void => {
-    const state = context as DeferredState;
-
-    if (!state.isPresent || Object.is(state.applied, state.desired)) {
+    if (!state.isPresent || Object.is(Reflect.get(object, prop), state.desired)) {
         return;
     }
 
@@ -189,8 +187,50 @@ const flushDeferred = <P extends GObject.Object, V>(
     applyWrite(prop, () => {
         Reflect.set(object, prop, state.desired);
     });
+};
 
-    state.applied = state.desired;
+const scheduleSettle = <P extends GObject.Object, V>(
+    object: GObject.Object,
+    state: DeferredState,
+    prop: string,
+    canApply: CanApply<P, V> | undefined,
+): void => {
+    if (state.isScheduled) {
+        return;
+    }
+
+    state.isScheduled = true;
+
+    queueMicrotask(() => {
+        state.isScheduled = false;
+
+        if (state.disconnect !== null) {
+            settleDeferred(object, state, prop, canApply);
+        }
+    });
+};
+
+const watchDrift = <P extends GObject.Object, V>(
+    object: GObject.Object,
+    state: DeferredState,
+    prop: string,
+    canApply: CanApply<P, V> | undefined,
+): void => {
+    if (state.disconnect !== null) {
+        return;
+    }
+
+    const signal = `notify::${unsanitizeIdentifier(kebabCase(prop))}`;
+
+    const handler = (): undefined => {
+        scheduleSettle(object, state, prop, canApply);
+    };
+
+    object.on(signal, handler);
+
+    state.disconnect = (): void => {
+        object.off(signal, handler);
+    };
 };
 
 const deferred = <P extends GObject.Object, V>(
@@ -198,7 +238,7 @@ const deferred = <P extends GObject.Object, V>(
     canApply?: CanApply<P, V>,
 ): ElementBehavior<P> => ({
     deferred: [prop],
-    initialize: (): DeferredState => ({ desired: undefined, isPresent: false, applied: undefined }),
+    initialize: (): DeferredState => ({ desired: undefined, isPresent: false, isScheduled: false, disconnect: null }),
     update: (_object, _prev, next, context) => {
         const state = context as DeferredState;
         state.desired = next[prop];
@@ -207,7 +247,14 @@ const deferred = <P extends GObject.Object, V>(
         return [prop];
     },
     flush: (object, context) => {
-        flushDeferred(object, context, prop, canApply);
+        const state = context as DeferredState;
+        settleDeferred(object, state, prop, canApply);
+        watchDrift(object, state, prop, canApply);
+    },
+    teardown: (_object, context) => {
+        const state = context as DeferredState;
+        state.disconnect?.();
+        state.disconnect = null;
     },
 });
 

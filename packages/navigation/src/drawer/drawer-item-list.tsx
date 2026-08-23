@@ -8,7 +8,7 @@ import type { DrawerContentProps, DrawerDescriptor, DrawerNavigationHelpers } fr
 import { requireDescriptor } from "../shared/routes.js";
 import { DrawerCollapsedContext } from "./drawer-collapsed-context.js";
 
-type RowActivated = (row: Gtk.ListBoxRow, list: Gtk.ListBox) => void;
+type RowActivated = (row: Gtk.ListBoxRow) => void;
 
 const didNavigateToRow = (navigation: DrawerNavigationHelpers, state: NavigationState, rowIndex: number): boolean => {
     const route = state.routes[rowIndex];
@@ -29,12 +29,10 @@ const didNavigateToRow = (navigation: DrawerNavigationHelpers, state: Navigation
 };
 
 const useDrawerItemPress = (navigation: DrawerNavigationHelpers, isCollapsed: boolean): RowActivated =>
-    useCallback((row: Gtk.ListBoxRow, list: Gtk.ListBox) => {
+    useCallback((row: Gtk.ListBoxRow) => {
         const state = navigation.getState();
 
         if (!didNavigateToRow(navigation, state, row.getIndex())) {
-            list.selectRow(list.getRowAtIndex(state.index));
-
             return;
         }
 

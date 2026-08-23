@@ -54,6 +54,8 @@ type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     update?: (object: T, prev: Props, next: Props, context: unknown) => Iterable<string> | undefined;
     /** Runs after the commit that touched the node, once every child has been placed. */
     flush?: (object: T, context: unknown) => void;
+    /** Releases whatever `initialize` or a later hook acquired, once the node is destroyed. */
+    teardown?: (object: T, context: unknown) => void;
     /** Props to withhold from the constructor, leaving them for a later hook to apply. */
     deferred?: string[];
     /**

@@ -36,9 +36,10 @@ import {
 import { applyWrite } from "./reconciler/signals.js";
 import { applyStyle, CSS_CLASSES_PROP, styleClass } from "./reconciler/style.js";
 
-type SelectedIndexState = { desired: number | undefined };
+type SelectedIndexState = { desired: number | undefined; isScheduled: boolean; disconnect: (() => void) | null };
 
 const SELECTED_INDEX_PROP = "selectedIndex";
+const SELECTION_SIGNAL = "selected-rows-changed";
 const NO_SELECTION = -1;
 
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
@@ -525,10 +526,42 @@ function applySelectedIndex(box: Gtk.ListBox, state: SelectedIndexState): void {
     }
 }
 
+function scheduleSelectedIndex(box: Gtk.ListBox, state: SelectedIndexState): void {
+    if (state.isScheduled) {
+        return;
+    }
+
+    state.isScheduled = true;
+
+    queueMicrotask(() => {
+        state.isScheduled = false;
+
+        if (state.disconnect !== null) {
+            applySelectedIndex(box, state);
+        }
+    });
+}
+
+function watchSelectionDrift(box: Gtk.ListBox, state: SelectedIndexState): void {
+    if (state.disconnect !== null) {
+        return;
+    }
+
+    const handler = (): undefined => {
+        scheduleSelectedIndex(box, state);
+    };
+
+    box.on(SELECTION_SIGNAL, handler);
+
+    state.disconnect = (): void => {
+        box.off(SELECTION_SIGNAL, handler);
+    };
+}
+
 function selectedIndexBehavior(): ElementBehavior<Gtk.ListBox> {
     return {
         deferred: [SELECTED_INDEX_PROP],
-        initialize: (): SelectedIndexState => ({ desired: undefined }),
+        initialize: (): SelectedIndexState => ({ desired: undefined, isScheduled: false, disconnect: null }),
         update: (_box, _prev, next, context) => {
             (context as SelectedIndexState).desired = desiredIndex(next[SELECTED_INDEX_PROP]);
 
@@ -536,6 +569,12 @@ function selectedIndexBehavior(): ElementBehavior<Gtk.ListBox> {
         },
         flush: (box, context) => {
             applySelectedIndex(box, context as SelectedIndexState);
+            watchSelectionDrift(box, context as SelectedIndexState);
+        },
+        teardown: (_box, context) => {
+            const state = context as SelectedIndexState;
+            state.disconnect?.();
+            state.disconnect = null;
         },
     };
 }
