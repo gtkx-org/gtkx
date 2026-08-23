@@ -158,23 +158,9 @@ Then hand it to the navigator:
 </Split.Navigator>
 ```
 
-An empty content stack means there is no `Tasks` route to read params from, so `useSelection` returns `null`, which is why it was typed that way. Nothing is selected, so no sidebar row should be highlighted, and the effect that pushes the highlight into the list box has to be able to clear it too.
+An empty content stack means there is no `Tasks` route to read params from, so `useSelection` returns `null`, which is why it was typed that way. Nothing is selected, so no sidebar row should be highlighted.
 
-In `src/components/sidebar.tsx`:
-
-```tsx
-useEffect(() => {
-    const box = listRef.current;
-    if (!box || activeIndex < 0) return; // [!code --]
-    if (!box) return; // [!code ++]
-    const row = box.getRowAtIndex(activeIndex); // [!code --]
-    const row = activeIndex < 0 ? null : box.getRowAtIndex(activeIndex); // [!code ++]
-    if (row) box.selectRow(row);
-    else box.unselectAll(); // [!code ++]
-}, [activeIndex]);
-```
-
-The early return used to cover two cases at once, no list box yet and nothing selected, which was fine while the second could not happen. Now it can, so they separate: a missing box is still nothing to do, and a missing row is an `unselectAll`. That call makes the box report a `row-selected` of nothing, and the handler's first line returns on it, so clearing the highlight cannot bounce back as a navigation.
+`src/components/sidebar.tsx` needs no edit for that. `lists.findIndex` answers `-1` when there is no selection to match, and `-1` is exactly what `selectedIndex` reads as *no row*, so the highlight clears itself when the content pane empties and returns when you pick a list again. That is the payoff of writing the selection as a prop in [Lists and a Sidebar](/tutorial/lists-and-the-sidebar): a case you wrote no code for is one the prop already has a meaning for. The clearing is gtkx's own write, so its `row-selected` is suppressed like every other one and cannot bounce back as a navigation.
 
 ## Run it
 

@@ -1,7 +1,7 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { rootElement } from "@gtkx/react";
-import { render, type RenderResult, screen, userEvent } from "@gtkx/testing";
+import { act, render, type RenderResult, screen, userEvent } from "@gtkx/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 
@@ -100,12 +100,16 @@ describe("Sidebar", () => {
 });
 
 describe("Settings", () => {
-    beforeEach(() => {
-        Adw.StyleManager.getDefault().setColorScheme(Adw.ColorScheme.FORCE_LIGHT);
+    beforeEach(async () => {
+        await act(() => {
+            Adw.StyleManager.getDefault().setColorScheme(Adw.ColorScheme.FORCE_LIGHT);
+        });
     });
 
-    afterEach(() => {
-        Adw.StyleManager.getDefault().setColorScheme(Adw.ColorScheme.DEFAULT);
+    afterEach(async () => {
+        await act(() => {
+            Adw.StyleManager.getDefault().setColorScheme(Adw.ColorScheme.DEFAULT);
+        });
     });
 
     it("switches to settings from the sidebar and opens the Appearance tab", async () => {

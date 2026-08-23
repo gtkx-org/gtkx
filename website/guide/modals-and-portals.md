@@ -106,4 +106,4 @@ The tutorial builds these surfaces in [Mounting dialogs](/tutorial/actions-menus
 
 ## Next
 
-Continue with [Navigation](/guide/navigation) to move between screens with stack, tab, and drawer navigators drawn by libadwaita.
+Continue with [Navigation](/guide/navigation) to move between screens with stack, tab, drawer, and split view navigators drawn by libadwaita.

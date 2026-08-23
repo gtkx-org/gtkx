@@ -11,6 +11,18 @@ description: "Stack, tab, drawer, and split view navigation with @gtkx/navigatio
 npm install @gtkx/navigation
 ```
 
+Every navigator draws itself with libadwaita widgets, so the package needs `@gtkx/jsx/adw`, which exists once `Adw-1` is in your `libraries`. `npm create gtkx` binds `Gtk-4.0` alone, so add it in `gtkx.config.ts`:
+
+```diff
+ export default defineConfig({
+-    libraries: ["Gtk-4.0"],
++    libraries: ["Gtk-4.0", "Adw-1"],
+     applicationId: "com.example.notes",
+ });
+```
+
+Changing that list invalidates the generated bindings, so run codegen again: the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates them for you.
+
 The navigators, their options, and the re-exported core API are in the [@gtkx/navigation reference](/reference/@gtkx/navigation/).
 
 ## NavigationContainer

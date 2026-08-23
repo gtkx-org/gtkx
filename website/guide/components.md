@@ -83,6 +83,39 @@ import { DropDown } from "@gtkx/components";
 
 `ComboRow<T, S>` from `@gtkx/components/adw` takes the same collection props and renders an `Adw.ComboRow`, presenting the choice as a row inside a preferences group, as the tutorial's [preferences chapter](/tutorial/preferences-and-theming) does.
 
+### GtkListBox
+
+Not every list wants a model. `Gtk.ListBox` takes its rows as children, so it needs no component wrapper: `<GtkListBox>` from `@gtkx/jsx/gtk` is a plain JSX element, and a sidebar or a settings list is data mapped to `<AdwActionRow>` children. What it does add is `selectedIndex`, which makes the box's own selection a controlled prop:
+
+```tsx
+import { AdwActionRow } from "@gtkx/jsx/adw";
+import { GtkListBox } from "@gtkx/jsx/gtk";
+
+<GtkListBox
+    cssClasses={["navigation-sidebar"]}
+    selectedIndex={views.findIndex((view) => view.id === activeId)}
+    onRowSelected={(row) => {
+        if (!row) return;
+        const view = views[row.getIndex()];
+        if (view) setActiveId(view.id);
+    }}
+>
+    {views.map((view) => (
+        <AdwActionRow key={view.id} title={view.title} />
+    ))}
+</GtkListBox>
+```
+
+The prop is optional: leave it off and the box keeps whatever the user selects, untouched. Pass it and it holds these guarantees.
+
+- The row at that index is selected. `-1`, which is what `findIndex` answers for a value that is not in the list, and `null` both mean no row.
+- An index whose row is not mounted yet is remembered rather than dropped: the box holds the selection it has, and the write lands as soon as that row is added.
+- gtkx performs the write itself and suppresses the `row-selected` its own write causes, so `onRowSelected` reports a selection the user made and nothing else. Handlers need no guard against their own echo.
+- The prop is drift-correcting, not a one-shot write per render. If the box's selection moves away from the index you passed, which is what happens when the user clicks a row and your handler declines to act on it, gtkx puts it back on the next microtask, without waiting for a re-render.
+- An index that is not a whole number throws.
+
+The tutorial's [sidebar](/tutorial/lists-and-the-sidebar#keeping-gtk4-and-the-route-in-agreement) drives one from the current route.
+
 ## Next
 
 Continue with [Modals and Portals](/guide/modals-and-portals) for the mounting model behind these components: `createPortal`, the `rootElement` container, and extra windows. The worked dialog walkthrough lives in the tutorial's [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts#mounting-dialogs) chapter.

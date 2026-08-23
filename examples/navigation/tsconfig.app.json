@@ -1,8 +1,5 @@
 {
     "extends": ["../../tsconfig.app.json", "../../tsconfig.react-navigation.json"],
-    "compilerOptions": {
-        "exactOptionalPropertyTypes": false
-    },
     "files": ["${configDir}/node_modules/.gtkx/env.d.ts"],
     "references": [
         {

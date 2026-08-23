@@ -392,7 +392,6 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkBox, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { SplitViewScreenProps } from "@gtkx/navigation";
-import { useEffect, useRef } from "react";
 import { type RootParamList, useSelection } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import { listDot } from "../styles.js";
@@ -402,24 +401,16 @@ export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lis
     const selection = useSelection();
 
     const activeIndex = lists.findIndex((list) => list.id === selection?.listId);
-    const listRef = useRef<Gtk.ListBox | null>(null);
-
-    useEffect(() => {
-        const box = listRef.current;
-        if (!box || activeIndex < 0) return;
-        const row = box.getRowAtIndex(activeIndex);
-        if (row) box.selectRow(row);
-    }, [activeIndex]);
 
     return (
         <GtkScrolledWindow vexpand>
             <GtkListBox
-                ref={listRef}
                 cssClasses={["navigation-sidebar"]}
+                selectedIndex={activeIndex}
                 onRowSelected={(row) => {
                     if (!row) return;
                     const list = lists[row.getIndex()];
-                    if (list && list.id !== selection?.listId) {
+                    if (list) {
                         navigation.navigate("Tasks", { kind: "list", listId: list.id });
                     }
                 }}
@@ -455,22 +446,20 @@ The dot gets `accessibleRole={Gtk.AccessibleRole.PRESENTATION}`. The row's title
 
 This pattern recurs with every widget that owns state you also keep.
 
-A `GtkListBox` holds its own selection. React does not tell it which row is selected; the box decides and reports. So there are two copies of the same fact, the widget's and the navigator's, kept in sync from both directions:
+A `GtkListBox` holds its own selection, and the navigator holds the route. That is two copies of the same fact, and they have to agree in both directions:
 
 - **Widget to navigation.** The user clicks a row, the box emits `row-selected`, and `onRowSelected` navigates.
-- **Navigation to widget.** Something other than a click changes the selection, so the effect calls `selectRow` to move the widget's highlight to match.
+- **Navigation to widget.** Something other than a click changes the route, so the highlight has to move to match.
 
-Run those naively and they feed each other. The effect calls `selectRow`, the box emits `row-selected` because its selection did change, and the handler navigates straight back to where you already are. Nothing visibly breaks yet, and the cost is one redundant navigation. But `navigate` here drops whatever sat above the `Tasks` route, so once [Opening a Task](/tutorial/the-task-editor) puts an editor up there, an echo tears it down while you are reading it.
+`selectedIndex` is that second direction, written as a prop rather than as an effect of your own. You hand the box the index the route implies, and gtkx puts the widget's selection there. `-1`, which is what `findIndex` answers when no list matches, means *no row*, so a route the sidebar cannot show clears the highlight instead of leaving a stale one behind.
 
-The fix is the comparison already in the handler:
+Run the two directions naively and they would feed each other: writing the selection makes the box emit `row-selected`, the handler navigates to where you already are, and since `navigate` drops whatever sat above the `Tasks` route, that echo would tear down the editor [Opening a Task](/tutorial/the-task-editor) puts up there while you are reading it.
 
-```tsx
-if (list && list.id !== selection?.listId) {
-    navigation.navigate("Tasks", { kind: "list", listId: list.id });
-}
-```
+Nothing in your handler stops that, because nothing has to. gtkx performs the write itself, and while that write is running it suppresses the signals the write causes, so the `row-selected` behind a `selectedIndex` write never reaches `onRowSelected`. The handler hears from a selection the user made and from nothing else, which is why it can navigate unconditionally.
 
-The handler returns early when nothing differs, so the echo stops at the first bounce. The rule applies to every widget that holds state your app also holds: **when you push state into a widget that reports its own changes, the report handler compares before it writes.**
+The prop is self-correcting, too, not a write that happens once per render. gtkx watches the box's selection for as long as the prop is on the element: if the selection drifts away from the index you passed, because the user clicked a row and your handler chose not to act on it, gtkx puts it back on the next microtask, without waiting for a re-render. An index whose row does not exist yet is not drift; the box keeps the selection it has, and the write lands as soon as that row is added.
+
+The rule generalizes to every widget that holds state your app also holds: **hand the widget the value as a prop and let the framework write it, instead of writing it yourself from an effect.** Your handlers then only ever report the user.
 
 ## Filtering by list
 

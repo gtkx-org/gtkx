@@ -225,34 +225,25 @@ export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lis
     const entries = buildEntries(lists, sidebarCounts(tasks, lists));
     const activeKey = selection === null ? null : selectionKey(selection);
     const activeIndex = entries.findIndex((entry) => selectionKey(entry.selection) === activeKey);
-    const listRef = useRef<Gtk.ListBox | null>(null);
-
-    useEffect(() => {
-        const box = listRef.current;
-        if (!box) return;
-        const row = activeIndex < 0 ? null : box.getRowAtIndex(activeIndex);
-        if (row) box.selectRow(row);
-        else box.unselectAll();
-    }, [activeIndex]);
 
     // ...
 };
 ```
 
-`useSelection` returns `null` while the content stack is empty, so `activeKey` is nullable and no entry can match it. `findIndex` then comes back `-1`, which is the branch the effect already has. That effect is the sync between GTK4's own selection and the navigation state you wrote in [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) and finished in [A Layout That Collapses](/tutorial/an-adaptive-layout), and nothing in it changes here. Only what feeds it does: keys instead of list ids.
+`useSelection` returns `null` while the content stack is empty, so `activeKey` is nullable and no entry can match it. `findIndex` then comes back `-1`, which `selectedIndex` already reads as no row. The sync between GTK4's own selection and the navigation state is the one you wrote in [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) and leaned on in [A Layout That Collapses](/tutorial/an-adaptive-layout), and nothing about it changes here. Only what feeds it does: keys instead of list ids.
 
-The row's `onRowSelected` compares by key for the same reason:
+`onRowSelected` looks up an entry rather than a list, and navigates to whatever selection that entry carries:
 
 ```tsx
 // ...
 
 <GtkListBox
-    ref={listRef}
     cssClasses={["navigation-sidebar"]}
+    selectedIndex={activeIndex}
     onRowSelected={(row) => {
         if (!row) return;
         const entry = entries[row.getIndex()];
-        if (entry && selectionKey(entry.selection) !== activeKey) {
+        if (entry) {
             navigation.navigate("Tasks", entry.selection);
         }
     }}
@@ -300,7 +291,6 @@ The imports the file needs now:
 -import { GtkBox, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 +import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
  import type { SplitViewScreenProps } from "@gtkx/navigation";
- import { useEffect, useRef } from "react";
  import { type RootParamList, useSelection } from "../navigation.js";
  import { useStore } from "../store/index.js";
 +import { type SidebarCounts, selectionKey, sidebarCounts } from "../store/selectors.js";
@@ -476,7 +466,7 @@ Nothing calls it yet. Switching views is one action with two halves, and the sid
                 onRowSelected={(row) => {
                     if (!row) return;
                     const entry = entries[row.getIndex()];
-                    if (entry && selectionKey(entry.selection) !== activeKey) {
+                    if (entry) {
                         resetSearch(); // [!code ++]
                         navigation.navigate("Tasks", entry.selection);
                     }

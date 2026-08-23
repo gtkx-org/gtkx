@@ -223,7 +223,7 @@ In `tests/tasks.test.tsx`:
     });
 ```
 
-Both panes are on screen, because the setup file leaves `collapsed` at `false`, so `LIST_ITEM` reaches the sidebar's rows and the task list's rows at once. `/^Work/` is anchored so it cannot be answered by a task title that happens to contain the word. The click goes through the list box's own selection, which is where [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) put the `navigate` call, so this test covers the guard that keeps GTK4's selection and the route in agreement.
+Both panes are on screen, because the setup file leaves `collapsed` at `false`, so `LIST_ITEM` reaches the sidebar's rows and the task list's rows at once. `/^Work/` is anchored so it cannot be answered by a task title that happens to contain the word. The click goes through the list box's own selection, which is where [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) put the `navigate` call, so this test covers the round trip that keeps GTK4's selection and the route in agreement: the click reaches `onRowSelected`, the navigation swaps the route's params, and the `selectedIndex` those params imply is the row the user just clicked, so the highlight stays where they put it.
 
 The New Task button carries no handler at all, only `actionName="win.new"`.
 
