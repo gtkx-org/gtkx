@@ -197,11 +197,11 @@ function hasSignalListener(instance: object, signals?: string[]): boolean {
     });
 }
 
-const getSignalId = (instance: object, signal: string): number => {
-    const type: bigint = (instance as TypedClass).__type__;
+const signalIdFor = (type: bigint, signal: string): number =>
+    gSignalLookup(getSignalBaseName(signal), type) as number;
 
-    return gSignalLookup(getSignalBaseName(signal), type) as number;
-};
+const getSignalId = (instance: object, signal: string): number =>
+    signalIdFor((instance as TypedClass).__type__, signal);
 
 function connectBind(type: bigint, signal: string, callback: CallbackDescriptor): (...values: unknown[]) => unknown {
     const key = `${String(type)}\0${getSignalBaseName(signal)}`;
@@ -232,13 +232,7 @@ function connectSignal(instance: object, signal: string, spec: SignalConnectSpec
     return handlerId;
 }
 
-function overrideSignalClassClosure(type: bigint, signal: string, handler: SignalHandler): void {
-    const signalId = gSignalLookup(signal, type) as number;
-
-    if (signalId === 0) {
-        return;
-    }
-
+function overrideSignalClassClosure(type: bigint, signalId: number, handler: SignalHandler): void {
     gSignalOverrideClassClosure(signalId, type, toClosure(handler));
 }
 
@@ -343,6 +337,7 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returns?:
 
 export {
     getSignalBaseName,
+    signalIdFor,
     connectClosureSignal,
     connectSignal,
     type DeclaredSignalTypes,

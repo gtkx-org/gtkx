@@ -6,8 +6,9 @@ import {
     type RegisterClassSignal as NativeRegisterClassSignal,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
 } from "@gtkx/native";
-import { type AnyClass, getParentClass, kebabCase, walkClassChain } from "@gtkx/utils";
+import { type AnyClass, getParentClass, kebabCase, upperFirst, walkClassChain } from "@gtkx/utils";
 import { wrapCallback } from "./callback.js";
+import { dashedVariants } from "./canonical-name.js";
 import { insertMixinLayer } from "./mixin.js";
 import {
     buildPropertyDispatch,
@@ -36,6 +37,7 @@ import {
     getSignalBaseName,
     overrideSignalClassClosure,
     type SignalHandler,
+    signalIdFor,
 } from "./signal.js";
 import {
     TYPE_INTERFACE,
@@ -251,10 +253,15 @@ type RegisterClassOptions<
      * Properties to install on the new type, keyed by the name JavaScript addresses each one by and
      * valued with the `GObject.ParamSpec` describing it. A key is read in camelCase however it is
      * written, so `dewPoint`, `dew_point` and `dew-point` all name the same member, and the ParamSpec
-     * has to carry the canonical spelling of that name, `dew-point`, or registration throws: the
-     * ParamSpec's name is the one GObject emits `notify` with, and a name the key does not spell
-     * reaches nothing that listens for it. Every property gains prototype accessors, one for the key
-     * as written, one for it with dashes turned into underscores and one for it in camelCase, each
+     * has to carry a name that reads back as that same member, such as `dew-point`, or registration
+     * throws: the ParamSpec's name is the one GObject emits `notify` with, and a name the key does
+     * not spell reaches nothing that listens for it. A word starting with a digit is a word of its
+     * own on either side of that reading, so `level2Depth` takes a ParamSpec named `level-2-depth`
+     * as readily as one named `level2-depth`, the way `WebKit.Settings` names
+     * `enable-2d-canvas-acceleration` for its `enable2dCanvasAcceleration` member. An uppercase
+     * letter in the ParamSpec's own name is refused, since GObject notifies under that spelling
+     * and nothing else reads it back. Every property gains prototype accessors, one for the key as
+     * written, one for it with dashes turned into underscores and one for it in camelCase, each
      * unless the class already defines that name. They serve the value from storage of their own on
      * the instance, which is also what the type's `get_property` and `set_property` slots read and
      * write, so a value set from JavaScript, from `g_object_set_property` and at construction all
@@ -305,9 +312,11 @@ type RegisterClassOptions<
     properties?: TProperties;
     /**
      * Signals to create on the new type, keyed by signal name and valued with the
-     * {@link SignalSpec} describing each one. A name has to start with a letter, continue in
-     * letters, digits, `-` and `_`, and be new to the type: one an ancestor type or a listed
-     * interface already carries throws. The two word separators spell the same signal, so a
+     * {@link SignalSpec} describing each one. A name has to start with a lowercase letter, continue
+     * in lowercase letters, digits, `-` and `_`, and be new to the type: one an ancestor type or a
+     * listed interface already carries throws, and so does one carrying an uppercase letter, which
+     * GObject would carry under that exact spelling, out of reach of both its dashed spelling and
+     * its `on<SignalName>` default handler. The two word separators spell the same signal, so a
      * signal declared as `data_changed` is connected to and emitted as `data-changed` too.
      *
      * Instances connect and emit by name through the same `connect`, `on`, `once`, `off` and
@@ -373,7 +382,9 @@ const PROPERTY_VFUNC_SPECS: PropertyVfuncSpec[] = [
 
 const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec) => spec.methodName));
 const TYPE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9\-_+]{2,}$/;
+const UPPER_CASE_PATTERN = /[A-Z]/;
 const SIGNAL_OVERRIDE_PATTERN = /^on[A-Z]/;
+const SIGNAL_PREFIX_LENGTH = 2;
 
 /**
  * Registers a subclass of a wrapper class as a new GType, wiring up any class and interface
@@ -387,9 +398,9 @@ const SIGNAL_OVERRIDE_PATTERN = /^on[A-Z]/;
  * when the list names `Gio.AsyncInitable` as an interface the parent type does not already
  * implement and no method on the chain fills `vfuncInitAsync`, since the default `init_async`
  * would run `vfuncInit` on a worker thread, when an entry in
- * `RegisterClassOptions.properties` names its `GObject.ParamSpec` something other than the canonical
- * spelling of the key it sits under, when an entry in
- * `RegisterClassOptions.signals` carries an invalid name, a name the type already knows, a GType
+ * `RegisterClassOptions.properties` names its `GObject.ParamSpec` something the key it sits under
+ * does not spell, when an entry in `RegisterClassOptions.signals` carries an invalid name, a name
+ * spelled with an uppercase letter rather than dashed, a name the type already knows, a GType
  * that cannot hold a value, or an accumulator the spec does not admit, and when
  * `RegisterClassOptions.cssName` is
  * given for a class that does not extend `Gtk.Widget`. An exception thrown by
@@ -769,15 +780,47 @@ function buildPropertyVfunc(
 
 const canonicalSignalName = (name: string): string => name.replaceAll("_", "-");
 
+function assertLowerCaseSignalName(klass: AnyClass, name: string): void {
+    if (!UPPER_CASE_PATTERN.test(name)) {
+        return;
+    }
+
+    throw new TypeError(
+        `registerClass: ${klass.name} declares the signal '${name}'; GObject would carry it under that ` +
+        `exact spelling, out of reach of both its dashed spelling and the 'on${upperFirst(name)}' ` +
+        `default handler; declare it as '${kebabCase(name)}'`,
+    );
+}
+
+function overriddenSignalId(type: bigint, methodName: string): number {
+    if (!SIGNAL_OVERRIDE_PATTERN.test(methodName)) {
+        return 0;
+    }
+
+    const candidates = dashedVariants(kebabCase(methodName.slice(SIGNAL_PREFIX_LENGTH)));
+
+    for (const signal of candidates) {
+        const signalId = signalIdFor(type, signal);
+
+        if (signalId !== 0) {
+            return signalId;
+        }
+    }
+
+    return 0;
+}
+
 function installSignalOverrides(newType: bigint, methods: MethodTable): void {
     for (const [methodName, fn] of methods) {
-        if (!SIGNAL_OVERRIDE_PATTERN.test(methodName)) {
+        const signalId = overriddenSignalId(newType, methodName);
+
+        if (signalId === 0) {
             continue;
         }
 
         const handler = fn as (...args: unknown[]) => unknown;
 
-        overrideSignalClassClosure(newType, kebabCase(methodName.slice(2)), (...args: unknown[]) =>
+        overrideSignalClassClosure(newType, signalId, (...args: unknown[]) =>
             handler.apply(args[0], args.slice(1)),
         );
     }
@@ -844,6 +887,7 @@ function resolveDeclaredSignals(klass: AnyClass, signals: Record<string, SignalS
     const table: Map<string, DeclaredSignalTypes> = new Map();
 
     for (const [name, spec] of Object.entries(signals)) {
+        assertLowerCaseSignalName(klass, name);
         const resolved = resolveDeclaredSignal(klass, name, spec);
         native.push(resolved.native);
         table.set(canonicalSignalName(name), resolved.declared);

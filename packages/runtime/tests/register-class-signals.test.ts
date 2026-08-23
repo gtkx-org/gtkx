@@ -321,6 +321,10 @@ describe("registerClass — signal error paths: names and accumulators", () => {
         ).toThrow();
     });
 
+    it("throws for a signal name spelled in camelCase", () => {
+        expect(() => registerSignals("GtkxSignalCamelName", { dataChanged: {} })).toThrow();
+    });
+
     it("throws for the same signal declared under both spellings", () => {
         expect(() =>
             registerSignals("GtkxSignalDoubled", { ["flip_flop"]: {}, "flip-flop": {} }),

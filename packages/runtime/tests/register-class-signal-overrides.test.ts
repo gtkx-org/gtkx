@@ -184,6 +184,25 @@ describe("registerClass — on<SignalName> edge cases", () => {
         expect(feed.changes).toEqual([[1, 0, 2]]);
     });
 
+    it("installs the default handler for a signal whose word starts with a digit", () => {
+        class Meter extends GObject {
+            readings: number[] = [];
+
+            onLevel2Changed(depth: number): void {
+                this.readings.push(depth);
+            }
+        }
+
+        const Registered = registerClass(Meter, {
+            typeName: uniqueName("GtkxOnSignalMeter"),
+            signals: { "level-2-changed": { paramTypes: [TYPE_INT] } },
+        });
+
+        const meter = new Registered();
+        meter.emit("level-2-changed", 4);
+        expect(meter.readings).toEqual([4]);
+    });
+
     it("leaves an on-prefixed method naming no signal as the ordinary method it is", () => {
         class Quiet extends GObject {
             polls = 0;

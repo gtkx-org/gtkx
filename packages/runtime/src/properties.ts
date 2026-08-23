@@ -1,7 +1,8 @@
 import type { ExternalObject, Handle, RegisterClassProperty } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
-import { camelCase, kebabCase } from "@gtkx/utils";
+import { camelCase, kebabCase, toCamelIdentifier } from "@gtkx/utils";
 import { bind } from "./bind.js";
+import { dashedVariants } from "./canonical-name.js";
 import { biguint64T, fundamentalT, stringT, structT, voidT } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_T } from "./library.js";
 import {
@@ -48,14 +49,19 @@ type PropertyCheck = {
     scratch?: ExternalObject<Handle>;
 };
 
-type PropertyAccessor = PropertyCheck & {
-    memberName: string;
+type AccessorBase = PropertyCheck & {
     storage: symbol;
-    hasGeneratedMember: boolean;
-    isInterfaceProperty?: boolean;
     delegate?: InterfaceProperty;
 };
 
+type DeclaredAccessor = AccessorBase & {
+    isInterfaceProperty?: false;
+    memberName: string;
+    hasGeneratedMember: boolean;
+};
+
+type InterfaceAccessor = AccessorBase & { isInterfaceProperty: true };
+type PropertyAccessor = DeclaredAccessor | InterfaceAccessor;
 /** A `GObject.ParamSpec` wrapper describing one property's name, type, flags and default. */
 type PropertySpec = object;
 
@@ -83,6 +89,7 @@ const SET_PROPERTY_VFUNC = "vfuncSetProperty";
 const READ_ONLY_REASON = "the property is read-only";
 const CONSTRUCT_ONLY_REASON = "the property can only be set when the object is constructed";
 const CLASS_T = structT("borrowed");
+const UPPER_CASE_PATTERN = /[A-Z]/;
 const DECLARED_NAMES = Symbol("gtkx:declaredPropertyNames");
 
 const OVERRIDE_PARAM_T = fundamentalT(LIB, "g_param_spec_ref_sink", "g_param_spec_unref", {
@@ -130,10 +137,20 @@ function checkFor(handle: ExternalObject<Handle>, name: string): PropertyCheck {
     };
 }
 
-function findPropertySpec(klass: ExternalObject<Handle>, name: string): ExternalObject<Handle> | null {
-    const found = classFindProperty(klass, name) as ExternalObject<Handle> | null;
+function propertyNameCandidates(name: string): string[] {
+    return [...new Set([name, ...dashedVariants(canonicalCase(name))])];
+}
 
-    return found ?? (classFindProperty(klass, canonicalCase(name)) as ExternalObject<Handle> | null);
+function findPropertySpec(klass: ExternalObject<Handle>, name: string): ExternalObject<Handle> | null {
+    for (const candidate of propertyNameCandidates(name)) {
+        const found = classFindProperty(klass, candidate) as ExternalObject<Handle> | null;
+
+        if (found !== null) {
+            return found;
+        }
+    }
+
+    return null;
 }
 
 const sourceLabel = (source: bigint | AnyClass, gtype: bigint): string =>
@@ -454,13 +471,13 @@ function storedGetter(accessor: PropertyAccessor): (this: object) => unknown {
     };
 }
 
-function memberGetter(accessor: PropertyAccessor): (this: object) => unknown {
+function memberGetter(accessor: DeclaredAccessor): (this: object) => unknown {
     return function get(this: object) {
         return (this as Record<string, unknown>)[accessor.memberName];
     };
 }
 
-function memberSetter(accessor: PropertyAccessor): (this: object, value: unknown) => void {
+function memberSetter(accessor: DeclaredAccessor): (this: object, value: unknown) => void {
     return function set(this: object, value: unknown) {
         (this as Record<string, unknown>)[accessor.memberName] = value;
     };
@@ -472,7 +489,7 @@ function refusalFor(accessor: PropertyAccessor, reason: string): (this: object, 
     };
 }
 
-function checkedSetter(accessor: PropertyAccessor): (this: object, value: unknown) => void {
+function checkedSetter(accessor: DeclaredAccessor): (this: object, value: unknown) => void {
     if (!isParamWritable(accessor.flags)) {
         return refusalFor(accessor, READ_ONLY_REASON);
     }
@@ -498,7 +515,7 @@ function defineAccessor(prototype: object, descriptor: PropertyDescriptor, alias
     Object.defineProperty(prototype, alias, descriptor);
 }
 
-function installAccessors(klass: AnyClass, accessor: PropertyAccessor): void {
+function installAccessors(klass: AnyClass, accessor: DeclaredAccessor): void {
     const prototype = (klass as { prototype: object }).prototype;
     accessor.hasGeneratedMember = !hasOwnMember(prototype, accessor.memberName);
 
@@ -527,16 +544,14 @@ function storageFor(propertyName: string): symbol {
     return created;
 }
 
-function interfaceAccessorFor(dispatch: PropertyDispatch, pspec: PropertySpec): PropertyAccessor {
+function interfaceAccessorFor(dispatch: PropertyDispatch, pspec: PropertySpec): InterfaceAccessor {
     const handle = getHandle(pspec);
     const propertyName = paramSpecName(handle) as string;
     const delegate = dispatch.delegates.get(propertyName);
 
-    const accessor: PropertyAccessor = {
+    const accessor: InterfaceAccessor = {
         ...checkFor(handle, propertyName),
-        memberName: camelCase(propertyName),
         storage: storageFor(propertyName),
-        hasGeneratedMember: false,
         isInterfaceProperty: true,
     };
 
@@ -574,7 +589,7 @@ function callMember(instance: object, member: string, args: unknown[]): unknown 
     return (fn as (...values: unknown[]) => unknown).apply(instance, args);
 }
 
-function backingMemberFor(instance: object, accessor: PropertyAccessor): string | undefined {
+function backingMemberFor(instance: object, accessor: DeclaredAccessor): string | undefined {
     if (accessor.hasGeneratedMember && !Object.hasOwn(instance, accessor.memberName)) {
         return undefined;
     }
@@ -650,16 +665,19 @@ function makeSetProperty(dispatch: PropertyDispatch) {
     };
 }
 
-function assertCanonicalName(klass: AnyClass, name: string, propertyName: string): void {
-    const canonical = canonicalCase(name);
+const isCanonicalName = (name: string, propertyName: string): boolean =>
+    !UPPER_CASE_PATTERN.test(propertyName) &&
+    toCamelIdentifier(propertyName) === toCamelIdentifier(name) &&
+    propertyNameCandidates(name).includes(propertyName);
 
-    if (propertyName === canonical) {
+function assertCanonicalName(klass: AnyClass, name: string, propertyName: string): void {
+    if (isCanonicalName(name, propertyName)) {
         return;
     }
 
     throw new TypeError(
         `registerClass: ${klass.name} keys the property '${name}' to a GObject.ParamSpec named ` +
-        `'${propertyName}', which is the name GObject notifies under; name the ParamSpec '${canonical}'`,
+        `'${propertyName}', which is the name GObject notifies under; name the ParamSpec '${canonicalCase(name)}'`,
     );
 }
 
@@ -669,8 +687,8 @@ function assertCanonicalNames(klass: AnyClass, properties: Record<string, Proper
     }
 }
 
-function buildAccessor(klass: AnyClass, name: string, pspec: PropertySpec): PropertyAccessor {
-    const accessor: PropertyAccessor = {
+function buildAccessor(klass: AnyClass, name: string, pspec: PropertySpec): DeclaredAccessor {
+    const accessor: DeclaredAccessor = {
         ...checkFor(getHandle(pspec), name),
         memberName: camelCase(name),
         storage: Symbol(`gtkx:property:${name}`),
@@ -682,7 +700,7 @@ function buildAccessor(klass: AnyClass, name: string, pspec: PropertySpec): Prop
     return accessor;
 }
 
-function buildAccessors(source: PropertyDispatchSource): PropertyAccessor[] {
+function buildAccessors(source: PropertyDispatchSource): DeclaredAccessor[] {
     const { klass, properties } = source;
     assertCanonicalNames(klass, properties);
 
@@ -709,7 +727,7 @@ function interfaceDelegatesFor(adoptedTypes: bigint[]): Map<string, InterfacePro
     return delegates;
 }
 
-function recordDeclaredNames(klass: AnyClass, accessors: PropertyAccessor[]): void {
+function recordDeclaredNames(klass: AnyClass, accessors: DeclaredAccessor[]): void {
     const proto = klass.prototype as Record<PropertyKey, unknown>;
     const inherited = proto[DECLARED_NAMES] as Record<string, string> | undefined;
     const own: Record<string, string> = {};
@@ -722,10 +740,10 @@ function recordDeclaredNames(klass: AnyClass, accessors: PropertyAccessor[]): vo
 }
 
 function buildPropertyDispatch(source: PropertyDispatchSource): PropertyDispatch {
-    const accessors = buildAccessors(source);
-    recordDeclaredNames(source.klass, accessors);
+    const declared = buildAccessors(source);
+    recordDeclaredNames(source.klass, declared);
 
-    return { accessors, delegates: interfaceDelegatesFor(source.adoptedTypes) };
+    return { accessors: [...declared], delegates: interfaceDelegatesFor(source.adoptedTypes) };
 }
 
 /**
