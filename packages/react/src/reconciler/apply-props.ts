@@ -19,7 +19,7 @@ const NOTIFY_PREFIX = "onNotify";
 const HANDLER_NAME = /^on[A-Z]/;
 const flushDirty: Set<ElementNode> = new Set();
 const accessibleDirty: Map<ElementNode, Props> = new Map();
-const mapWatched: WeakSet<ElementNode> = new WeakSet();
+const mapWatched: WeakMap<ElementNode, () => void> = new WeakMap();
 const pendingMap: Set<ElementNode> = new Set();
 
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
@@ -259,6 +259,7 @@ const flushBehaviors = (): void => {
 
 const teardownBehaviors = (node: ElementNode): void => {
     flushDirty.delete(node);
+    unwatchMap(node);
 
     for (const [behavior, context] of node.contexts) {
         behavior.teardown?.(node.object, context);
@@ -294,12 +295,23 @@ const watchMap = (node: ElementNode): void => {
         return;
     }
 
-    mapWatched.add(node);
-
-    object.connect("map", () => {
+    const onMapped = (): undefined => {
         pendingMap.add(node);
         setTimeout(settleAccessible, 0);
+    };
+
+    object.on("map", onMapped);
+
+    mapWatched.set(node, () => {
+        object.off("map", onMapped);
     });
+};
+
+const unwatchMap = (node: ElementNode): void => {
+    mapWatched.get(node)?.();
+    mapWatched.delete(node);
+    pendingMap.delete(node);
+    accessibleDirty.delete(node);
 };
 
 const settleAccessible = (): void => {

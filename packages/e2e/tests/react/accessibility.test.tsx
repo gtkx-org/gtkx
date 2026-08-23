@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -29,6 +29,13 @@ import {
 } from "@gtkx/testing/internal";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
+import { gcUntil } from "../helpers/native-utils.js";
+
+type AccessibleProbeProps = { show: boolean; ariaRef: RefObject<Gtk.Label | null> };
+
+const AccessibleProbe = ({ show, ariaRef }: AccessibleProbeProps): ReactNode => (
+    <GtkBox>{show ? <GtkLabel ref={ariaRef} label="watched" accessibleLabel="a11y" /> : null}</GtkBox>
+);
 
 const descendants = (widget: Gtk.Widget): Gtk.Accessible[] => {
     const found: Gtk.Accessible[] = [];
@@ -463,5 +470,17 @@ describe("render - access keys", () => {
         const row = ref.current;
         expect(row).not.toBeNull();
         expect(row === null ? null : getWidgetText(row)).toBe("Database File");
+    });
+});
+
+describe("accessibility - lifetime", () => {
+    it("frees an unmounted widget that carried accessible props", async () => {
+        const ariaRef = createRef<Gtk.Label>();
+        const { rerender } = await render(<AccessibleProbe show ariaRef={ariaRef} />);
+        const weak = new WeakRef(ariaRef.current as object);
+        ariaRef.current = null;
+        await rerender(<AccessibleProbe show={false} ariaRef={ariaRef} />);
+        await gcUntil(() => weak.deref() === undefined, 40);
+        expect(weak.deref()).toBeUndefined();
     });
 });
