@@ -138,9 +138,22 @@ const warnFlatpakFloors = (settings: DeploySettings, summary: string): void => {
     );
 };
 
+const isExcusedFloor = (settings: DeploySettings, library: string): boolean => {
+    const floors = settings.deploy.libraryFloors;
+
+    return floors !== undefined && floors !== false && floors[library] === false;
+};
+
 const warnMissingFloors = (settings: DeploySettings): void => {
+    if (settings.deploy.libraryFloors === false) {
+        return;
+    }
+
     const missing = settings.libraries.filter(
-        (library) => PACKAGED_LIBRARIES.includes(library) && settings.libraryFloors[library] === undefined,
+        (library) =>
+            PACKAGED_LIBRARIES.includes(library) &&
+            settings.libraryFloors[library] === undefined &&
+            !isExcusedFloor(settings, library),
     );
 
     if (missing.length === 0) {
@@ -148,8 +161,8 @@ const warnMissingFloors = (settings: DeploySettings): void => {
     }
 
     warn(
-        `No release was recorded for ${missing.join(", ")}, so the packages depend on them without a minimum ` +
-        "version and will install on a host too old to run them. Rebuild so codegen records the release, " +
+        `No release was recorded for ${missing.join(", ")}, so the packages carry no minimum version for ` +
+        "those and will install on a host too old to run the app. Rebuild so codegen records the release, " +
         "or set `deploy.libraryFloors`.",
     );
 };
@@ -187,10 +200,7 @@ const warnLibraryFloors = (targets: DeployTarget[], settings: DeploySettings): v
         warnFlatpakFloors(settings, summary);
     }
 
-    if (settings.deploy.libraryFloors === undefined) {
-        warnMissingFloors(settings);
-    }
-
+    warnMissingFloors(settings);
     warnUnusedFloors(settings);
 };
 
