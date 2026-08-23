@@ -78,9 +78,9 @@ const resolveNodeRuntime = async (settings: DeploySettings): Promise<NodeRuntime
     const staged = await stageFromSource(settings, version, source);
     const isStripped = node.shouldStrip === false ? false : didStripBinary(staged.path);
     const elf = readElfInfo(staged.path);
-    info(`Bundled Node.js v${version} (${megabytes(staged.path)} MiB, glibc >= ${elf.glibcFloor ?? "unknown"})`);
+    info(`Bundled Node.js v${version} (${megabytes(staged.path)} MiB, glibc >= ${elf.glibcMinimum ?? "unknown"})`);
 
-    return { ...staged, version, glibcFloor: elf.glibcFloor, isStripped };
+    return { ...staged, version, glibcMinimum: elf.glibcMinimum, isStripped };
 };
 
 export { resolveNodeRuntime, sourcePathFor };

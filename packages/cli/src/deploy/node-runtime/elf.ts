@@ -8,7 +8,7 @@ type ElfSection = {
 
 type ElfInfo = {
     needed: string[];
-    glibcFloor: string | null;
+    glibcMinimum: string | null;
 };
 
 type DynamicEntry = {
@@ -117,7 +117,7 @@ const highestVersion = (versions: number[][]): number[] | null => {
 const formatVersion = (version: number[] | null): string | null =>
     version === null ? null : `${String(version[0] ?? 0)}.${String(version[1] ?? 0)}`;
 
-const readGlibcFloor = (strings: Buffer): string | null => {
+const readGlibcMinimum = (strings: Buffer): string | null => {
     const found = strings
         .toString("latin1")
         .matchAll(GLIBC_VERSION)
@@ -138,7 +138,7 @@ const readElfInfo = (path: string): ElfInfo => {
 
     return {
         needed: readNeeded(buffer, sectionFor(sections, ".dynamic"), strings),
-        glibcFloor: readGlibcFloor(strings),
+        glibcMinimum: readGlibcMinimum(strings),
     };
 };
 

@@ -12,7 +12,6 @@ import type {
 } from "./types.js";
 import { build as buildApp } from "../builder.js";
 import { ensureGenerated } from "../codegen/run-codegen.js";
-import { PACKAGED_LIBRARIES } from "./depends.js";
 import { renderDesktopEntry } from "./freedesktop/desktop-entry.js";
 import { renderMetainfo } from "./freedesktop/metainfo.js";
 import { renderMimePackage } from "./freedesktop/mime-package.js";
@@ -116,13 +115,13 @@ const warnFlatpakPermissions = (targets: DeployTarget[], settings: DeploySetting
     warnMissingNetwork(settings, finishArgs);
 };
 
-const floorSummary = (settings: DeploySettings): string =>
+const minimumSummary = (settings: DeploySettings): string =>
     settings.libraries
-        .filter((library) => settings.libraryFloors[library] !== undefined)
-        .map((library) => `${library} >= ${String(settings.libraryFloors[library])}`)
+        .filter((library) => settings.minimumLibraryVersions[library] !== undefined)
+        .map((library) => `${library} >= ${String(settings.minimumLibraryVersions[library])}`)
         .join(", ");
 
-const warnAppImageFloors = (settings: DeploySettings, summary: string): void => {
+const warnAppImageMinimums = (settings: DeploySettings, summary: string): void => {
     warn(
         `An AppImage cannot declare a dependency, so nothing stops ${settings.name} from starting on a host ` +
         `whose libraries are older than the ones its bindings were generated against (${summary}). ` +
@@ -130,7 +129,7 @@ const warnAppImageFloors = (settings: DeploySettings, summary: string): void => 
     );
 };
 
-const warnFlatpakFloors = (settings: DeploySettings, summary: string): void => {
+const warnFlatpakMinimums = (settings: DeploySettings, summary: string): void => {
     warn(
         `The flatpak bundles binaries built against ${summary}, but runs them on ` +
         `${runtimeLabelFor(settings)}, whose libraries are whatever that runtime ships. ` +
@@ -138,88 +137,21 @@ const warnFlatpakFloors = (settings: DeploySettings, summary: string): void => {
     );
 };
 
-const isExcusedFloor = (settings: DeploySettings, library: string): boolean => {
-    const floors = settings.deploy.libraryFloors;
+const warnUnusedMinimums = (settings: DeploySettings): void => {
+    const minimums = settings.deploy.minimumLibraryVersions;
 
-    return floors !== undefined && floors !== false && floors[library] === false;
-};
-
-const warnMissingFloors = (settings: DeploySettings): void => {
-    if (settings.deploy.libraryFloors === false) {
+    if (minimums === undefined) {
         return;
     }
 
-    const missing = settings.libraries.filter(
-        (library) =>
-            PACKAGED_LIBRARIES.includes(library) &&
-            settings.libraryFloors[library] === undefined &&
-            !isExcusedFloor(settings, library),
-    );
-
-    if (missing.length === 0) {
-        return;
-    }
-
-    warn(
-        `No release was recorded for ${missing.join(", ")}, so the packages carry no minimum version for ` +
-        "those and will install on a host too old to run the app. Rebuild so codegen records the release, " +
-        "or set `deploy.libraryFloors`.",
-    );
-};
-
-const warnSonameRelations = (settings: DeploySettings): void => {
-    const derived = settings.libraries.filter((library) => (settings.librarySonames[library] ?? []).length > 0);
-
-    if (derived.length === 0) {
-        return;
-    }
-
-    warn(
-        `No deb package is known for ${derived.join(", ")}, so the .deb declares no dependency on them and ` +
-        "installs on a host that has none. The .rpm requires the sonames their GIRs name instead. " +
-        "Name the deb packages yourself through `deploy.depends`.",
-    );
-};
-
-const warnUnreadableLibraries = (settings: DeploySettings): void => {
-    if (settings.unreadableLibraries.length === 0) {
-        return;
-    }
-
-    warn(
-        `No GIR could be read for ${settings.unreadableLibraries.join(", ")}, so neither package declares a ` +
-        "dependency on them. Install their introspection data on this machine, or name the packages through " +
-        "`deploy.depends`.",
-    );
-};
-
-const warnDiscoveredLibraries = (settings: DeploySettings): void => {
-    if (!settings.hasDiscoveredLibraries) {
-        return;
-    }
-
-    warn(
-        '`libraries: "*"` bound whatever GIRs this machine had installed, so the relations the packages ' +
-        `declare were derived from the build host: ${settings.libraries.join(", ")}. List the libraries the ` +
-        "app imports if the packages should require only those.",
-    );
-};
-
-const warnUnusedFloors = (settings: DeploySettings): void => {
-    const floors = settings.deploy.libraryFloors;
-
-    if (floors === undefined || floors === false) {
-        return;
-    }
-
-    const unused = Object.keys(floors).filter((library) => !settings.libraries.includes(library));
+    const unused = Object.keys(minimums).filter((library) => !settings.libraries.includes(library));
 
     if (unused.length === 0) {
         return;
     }
 
     warn(
-        `\`deploy.libraryFloors\` names ${unused.join(", ")}, which this project generates no bindings for, ` +
+        `\`deploy.minimumLibraryVersions\` names ${unused.join(", ")}, which this project generates no bindings for, ` +
         "so those minimums change nothing.",
     );
 };
@@ -227,25 +159,18 @@ const warnUnusedFloors = (settings: DeploySettings): void => {
 const isPrebuiltFlatpak = (targets: DeployTarget[], settings: DeploySettings): boolean =>
     targets.some((target) => target.name === FLATPAK_TARGET) && settings.deploy.flatpak?.mode !== "source";
 
-const warnLibraryFloors = (targets: DeployTarget[], settings: DeploySettings): void => {
-    const summary = floorSummary(settings);
+const warnLibraryMinimums = (targets: DeployTarget[], settings: DeploySettings): void => {
+    const summary = minimumSummary(settings);
 
     if (summary.length > 0 && targets.some((target) => target.name === APPIMAGE_TARGET)) {
-        warnAppImageFloors(settings, summary);
+        warnAppImageMinimums(settings, summary);
     }
 
     if (summary.length > 0 && isPrebuiltFlatpak(targets, settings)) {
-        warnFlatpakFloors(settings, summary);
+        warnFlatpakMinimums(settings, summary);
     }
 
-    warnMissingFloors(settings);
-    warnUnusedFloors(settings);
-};
-
-const warnLibraryRelations = (settings: DeploySettings): void => {
-    warnSonameRelations(settings);
-    warnUnreadableLibraries(settings);
-    warnDiscoveredLibraries(settings);
+    warnUnusedMinimums(settings);
 };
 
 const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
@@ -282,8 +207,7 @@ const preflight = (targets: DeployTarget[], settings: DeploySettings, shouldPrin
     assertTools(report);
     warnMissingOptional(report);
     warnFlatpakPermissions(targets, settings);
-    warnLibraryFloors(targets, settings);
-    warnLibraryRelations(settings);
+    warnLibraryMinimums(targets, settings);
 };
 
 const resolveTargetNames = (options: DeployOptions, settings: DeploySettings): string[] => {

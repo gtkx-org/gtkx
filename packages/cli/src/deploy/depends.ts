@@ -23,19 +23,13 @@ const BASE_DEPENDS: Relations = {
 const DEPENDS_BY_LIBRARY: Record<string, LibraryPackages> = {
     "Adw-1": { deb: "libadwaita-1-0", rpm: "libadwaita", extra: NO_EXTRA },
     "Gtk-4.0": { deb: "libgtk-4-1", rpm: "gtk4", extra: { deb: [], rpm: [GLES_SONAME] } },
-    "GtkSource-5": { deb: "libgtksourceview-5-0", rpm: "gtksourceview5", extra: NO_EXTRA },
-    "WebKit-6.0": { deb: "libwebkitgtk-6.0-4", rpm: "webkitgtk6.0", extra: NO_EXTRA },
 };
 
-const PACKAGED_LIBRARIES: string[] = Object.keys(DEPENDS_BY_LIBRARY);
+const debRelation = (name: string, minimum: string | undefined): string =>
+    minimum === undefined ? name : `${name} (>= ${minimum})`;
 
-const sonameRelation = (soname: string): string => `${soname}${SONAME_SUFFIX}`;
-
-const debRelation = (name: string, floor: string | undefined): string =>
-    floor === undefined ? name : `${name} (>= ${floor})`;
-
-const rpmRelation = (name: string, floor: string | undefined): string =>
-    floor === undefined ? name : `${name} >= ${floor}`;
+const rpmRelation = (name: string, minimum: string | undefined): string =>
+    minimum === undefined ? name : `${name} >= ${minimum}`;
 
 const libraryDepends = (settings: DeploySettings): Relations => {
     const deb: string[] = [];
@@ -45,28 +39,27 @@ const libraryDepends = (settings: DeploySettings): Relations => {
         const packages = DEPENDS_BY_LIBRARY[library];
 
         if (packages === undefined) {
-            rpm.push(...(settings.librarySonames[library] ?? []).map((soname) => sonameRelation(soname)));
             continue;
         }
 
-        const floor = settings.libraryFloors[library];
-        deb.push(debRelation(packages.deb, floor), ...packages.extra.deb);
-        rpm.push(rpmRelation(packages.rpm, floor), ...packages.extra.rpm);
+        const minimum = settings.minimumLibraryVersions[library];
+        deb.push(debRelation(packages.deb, minimum), ...packages.extra.deb);
+        rpm.push(rpmRelation(packages.rpm, minimum), ...packages.extra.rpm);
     }
 
     return { deb, rpm };
 };
 
-const glibcDepends = (glibcFloor: string | null): Relations =>
-    glibcFloor === null
+const glibcDepends = (glibcMinimum: string | null): Relations =>
+    glibcMinimum === null
         ? { deb: [], rpm: [] }
-        : { deb: [debRelation("libc6", glibcFloor)], rpm: [rpmRelation("glibc", glibcFloor)] };
+        : { deb: [debRelation("libc6", glibcMinimum)], rpm: [rpmRelation("glibc", glibcMinimum)] };
 
 const dedupe = (entries: string[]): string[] => [...new Set(entries)];
 
-const resolveDepends = (settings: DeploySettings, glibcFloor: string | null): Relations => {
+const resolveDepends = (settings: DeploySettings, glibcMinimum: string | null): Relations => {
     const fromLibraries = libraryDepends(settings);
-    const fromGlibc = glibcDepends(glibcFloor);
+    const fromGlibc = glibcDepends(glibcMinimum);
     const extra = settings.deploy.depends ?? {};
 
     return {
@@ -75,4 +68,4 @@ const resolveDepends = (settings: DeploySettings, glibcFloor: string | null): Re
     };
 };
 
-export { PACKAGED_LIBRARIES, resolveDepends };
+export { resolveDepends };

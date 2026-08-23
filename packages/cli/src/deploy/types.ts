@@ -21,7 +21,7 @@ type NodeRuntime = {
     path: string;
     licenseFile: string | null;
     version: string;
-    glibcFloor: string | null;
+    glibcMinimum: string | null;
     isStripped: boolean;
 };
 
@@ -145,10 +145,7 @@ type DeploySettings = {
     arch: DeployArch;
     paths: DeployPaths;
     libraries: string[];
-    libraryFloors: Record<string, string>;
-    librarySonames: Record<string, string[]>;
-    unreadableLibraries: string[];
-    hasDiscoveredLibraries: boolean;
+    minimumLibraryVersions: Record<string, string>;
     deploy: DeployConfig;
 };
 
