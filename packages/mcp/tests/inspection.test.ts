@@ -179,3 +179,11 @@ describe("gtkx_get_widget_props", () => {
         })).toBe(true);
     });
 });
+
+describe("gtkx_get_widget_props - properties without an accessor", () => {
+    it("reads a read-only property whose name a method shadows", async () => {
+        const button = await queryOne("role", "button", { name: BUTTON_LABEL });
+        const props = await readProps(button.id, { properties: ["hasFocus"] });
+        expect(props.properties?.["has-focus"]?.type).toBe("gboolean");
+    });
+});

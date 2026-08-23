@@ -30,7 +30,12 @@ export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from 
 /** @public */
 export { promisify, trimFinish } from "./promisify.js";
 /** @public */
-export { coerceObjectProperty, getDeclaredPropertyName, newParamSpecOverride } from "./properties.js";
+export {
+    coerceObjectProperty,
+    getDeclaredPropertyName,
+    isReadableProperty,
+    newParamSpecOverride,
+} from "./properties.js";
 /** @public */
 export { matchAllRegex, matchRegex } from "./regex.js";
 /** @public */

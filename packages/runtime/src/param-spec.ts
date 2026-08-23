@@ -154,6 +154,7 @@ const getParamSpecOwnerType = (spec: object): bigint => {
 };
 
 const isParamWritable = (flags: number): boolean => (flags & PARAM_WRITABLE) !== 0;
+const isParamReadable = (flags: number): boolean => (flags & PARAM_READABLE) !== 0;
 const isParamConstructOnly = (flags: number): boolean => (flags & PARAM_CONSTRUCT_ONLY) !== 0;
 const isParamLaxlyValidated = (flags: number): boolean => (flags & PARAM_LAX_VALIDATION) !== 0;
 const isParamExplicitlyNotified = (flags: number): boolean => (flags & PARAM_EXPLICIT_NOTIFY) !== 0;
@@ -308,6 +309,7 @@ export {
     INT64_MAXIMUM,
     INT64_MINIMUM,
     isParamConstructOnly,
+    isParamReadable,
     isStringArray,
     isParamExplicitlyNotified,
     isParamLaxlyValidated,

@@ -6,13 +6,14 @@ import {
     getHandle,
     getInstanceType,
     type Handle,
+    isReadableProperty,
     TYPE_ENUM,
     TYPE_FLAGS,
     typeIsA,
     typeName,
 } from "@gtkx/runtime";
 import { fromValue, getValueType } from "@gtkx/runtime/internal";
-import { camelCase, errorMessage, kebabCase } from "@gtkx/utils";
+import { errorMessage, kebabCase } from "@gtkx/utils";
 import type { WidgetRegistry } from "./widget-registry.js";
 
 type PropertyRepresentation = Omit<SerializedProperty, "type">;
@@ -39,18 +40,6 @@ function prototypesFor(widget: Gtk.Widget): object[] {
     return prototypes;
 }
 
-function getAccessor(widget: Gtk.Widget, member: string): PropertyDescriptor | undefined {
-    for (const prototype of prototypesFor(widget)) {
-        const descriptor = Object.getOwnPropertyDescriptor(prototype, member);
-
-        if (descriptor !== undefined) {
-            return descriptor;
-        }
-    }
-
-    return undefined;
-}
-
 function getReadableNames(prototype: object): string[] {
     const descriptors = Object.entries(Object.getOwnPropertyDescriptors(prototype));
 
@@ -64,7 +53,7 @@ function readablePropertyNames(widget: Gtk.Widget): string[] {
 }
 
 const requireReadableProperty = (widget: Gtk.Widget, property: string): void => {
-    if (getAccessor(widget, camelCase(property))?.get !== undefined) {
+    if (isReadableProperty(getInstanceType(widget), property)) {
         return;
     }
 

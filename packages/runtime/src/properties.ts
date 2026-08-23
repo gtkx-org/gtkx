@@ -10,6 +10,7 @@ import {
     isParamConstructOnly,
     isParamExplicitlyNotified,
     isParamLaxlyValidated,
+    isParamReadable,
     isParamWritable,
     type ValueGuard,
     valueGuardFor,
@@ -289,6 +290,22 @@ function constructValueFor(wrapper: object, check: PropertyCheck, value: unknown
     assertWritable(wrapper, check, value);
 
     return { name: check.propertyName, value: checkedValueFor(wrapper, check, value) };
+}
+
+/**
+ * Whether the type declares a readable GObject property under `propertyName`, asking GObject itself
+ * rather than looking for a generated accessor, which codegen omits when a method shares the name.
+ */
+function isReadableProperty(gtype: bigint, propertyName: string): boolean {
+    const klass = typeClassRef(gtype) as ExternalObject<Handle>;
+
+    try {
+        const pspec = findPropertySpec(klass, propertyName);
+
+        return pspec !== null && isParamReadable(getParamFlags(pspec));
+    } finally {
+        typeClassUnref(klass);
+    }
 }
 
 function lookupCoercionCheck(gtype: bigint, name: string): PropertyCheck | null {
@@ -734,6 +751,7 @@ export {
     buildPropertyDispatch,
     coerceObjectProperty,
     getDeclaredPropertyName,
+    isReadableProperty,
     coercePropertyValue,
     constructPropertyFor,
     GET_PROPERTY_VFUNC,
