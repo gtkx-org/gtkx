@@ -1,5 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gio from "@gtkx/gi/gio";
+import { kebabCase } from "@gtkx/utils";
 import { useLayoutEffect } from "react";
 import type { SettingsSchema, SettingsSchemaKeys } from "../utils/settings.js";
 import { getPropertyName } from "../reconciler/metadata.js";
@@ -40,7 +41,7 @@ function useBindSetting<K extends SettingsSchemaKeys>({
             return;
         }
 
-        const propertyName = getPropertyName(resolved, property) ?? property;
+        const propertyName = getPropertyName(resolved, property) ?? kebabCase(property);
         settings.bind(key, resolved, propertyName, flags);
 
         return () => {
