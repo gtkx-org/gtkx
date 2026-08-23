@@ -169,4 +169,4 @@ const getPropertyName = (object: GObject.Object, accessor: string): string | und
         getDeclaredPropertyName(object, accessor);
 };
 
-export { getPropertyName, hasProperty, propertyNameFor, typeInfoFor, type TypeInfo };
+export { getPropertyName, hasProperty, typeInfoFor, type TypeInfo };

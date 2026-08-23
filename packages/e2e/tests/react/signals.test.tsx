@@ -54,6 +54,12 @@ type BeaconProps = {
     onActivateLink?: (uri: string) => boolean;
 };
 
+type Level2Props = {
+    ref?: Ref<Level2Label | null>;
+    level2Depth?: number;
+    onNotifyLevel2Depth?: () => void;
+};
+
 type EntryProbeProps = {
     text: string;
     onNotifyText?: ComponentProps<typeof GtkEntry>["onNotifyText"];
@@ -104,6 +110,7 @@ const BeaconLabel = registerClass(class Beacon extends Gtk.Label {}, {
 });
 
 const BeaconProbe = createElementComponent<BeaconProps>("GtkxBeaconLabel");
+const Level2Probe = createElementComponent<Level2Props>("GtkxLevel2Label");
 
 const makeAdjustment = () => Gtk.Adjustment.new(0, 0, 1000, 1, 10, 0);
 
@@ -248,9 +255,18 @@ class DewPointLabel extends Gtk.Label {
     declare dewPoint: number;
 }
 
+class Level2Label extends Gtk.Label {
+    declare level2Depth: number;
+}
+
 registerClass(DewPointLabel, {
     typeName: "GtkxDewPointLabel",
     properties: { "dew-point": paramSpecInt("dew-point", null, null, 0, 100, 0, ParamFlags.READWRITE) },
+});
+
+registerClass(Level2Label, {
+    typeName: "GtkxLevel2Label",
+    properties: { level2Depth: paramSpecInt("level-2-depth", null, null, 0, 100, 0, ParamFlags.READWRITE) },
 });
 
 describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
@@ -742,5 +758,21 @@ describe("user event signals (digit boundaries)", () => {
         });
 
         expect(handleLevel).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("user event signals (registered digit properties)", () => {
+    it("notifies an onNotify handler for a property the accessor cannot spell", async () => {
+        const handleNotify = vi.fn();
+        const labelRef = createRef<Level2Label>();
+        await render(<Level2Probe ref={labelRef} level2Depth={1} onNotifyLevel2Depth={handleNotify} />);
+
+        await act(() => {
+            if (labelRef.current !== null) {
+                labelRef.current.level2Depth = 7;
+            }
+        });
+
+        expect(handleNotify).toHaveBeenCalled();
     });
 });

@@ -1,5 +1,5 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
-import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
+import { getOrInsert, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind, createBindCache } from "./bind.js";
 import { wrapCallback } from "./callback.js";
@@ -74,6 +74,7 @@ const connectionTable: WeakMap<object, Map<string, Set<number>>> = new WeakMap()
 const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T);
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
 const gSignalName = bind(LIB, "g_signal_name", [uint32T], stringT("borrowed"));
+const signalNameCache: Map<bigint, string[]> = new Map();
 const gSignalListIds = bind(LIB, "g_signal_list_ids", [biguint64T, refT(uint32T)], sizedArrayT(uint32T, 1, "full"));
 
 const gSignalEmitv = bind(
@@ -223,7 +224,7 @@ const handlerNameFor = (signal: string): string => `on${upperFirst(toCamelIdenti
 const signalForHandlerName = (type: bigint, handlerName: string): string | undefined =>
     signalNamesFor(type).find((signal) => handlerNameFor(signal) === handlerName);
 
-const signalNamesFor = (type: bigint): string[] => {
+const buildSignalNames = (type: bigint): string[] => {
     const names: Set<string> = new Set();
 
     for (let current = type; current !== TYPE_INVALID; current = typeParent(current)) {
@@ -236,6 +237,8 @@ const signalNamesFor = (type: bigint): string[] => {
 
     return [...names];
 };
+
+const signalNamesFor = (type: bigint): string[] => getOrInsert(signalNameCache, type, buildSignalNames);
 
 const getSignalId = (instance: object, signal: string): number =>
     signalIdFor((instance as TypedClass).__type__, signal);

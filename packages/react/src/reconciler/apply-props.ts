@@ -5,7 +5,7 @@ import { coerceObjectProperty, getInstanceType, signalForHandlerName, TYPE_INVAL
 import { drain, isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import { hasProperty, propertyNameFor, type TypeInfo, typeInfoFor } from "./metadata.js";
+import { getPropertyName, hasProperty, type TypeInfo, typeInfoFor } from "./metadata.js";
 import { type ElementNode, getOrCreateContext, type SignalTarget } from "./node.js";
 import { applyWrite, connectHandler, disconnectHandler } from "./signals.js";
 import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PROP } from "./text.js";
@@ -50,8 +50,9 @@ const signalForProp = (target: SignalTarget, info: TypeInfo, name: string): stri
 
     if (name.startsWith(NOTIFY_PREFIX) && name.length > NOTIFY_PREFIX.length) {
         const accessor = notifiedAccessor(name);
+        const property = getPropertyName(target.object, accessor) ?? unsanitizeIdentifier(kebabCase(accessor));
 
-        return `notify::${propertyNameFor(info, accessor) ?? unsanitizeIdentifier(kebabCase(accessor))}`;
+        return `notify::${property}`;
     }
 
     return info.signals[name] ?? lookedUpSignal(target, name);
