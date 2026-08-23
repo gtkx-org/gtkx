@@ -160,7 +160,6 @@ const NO_FLOORS = `        libraryFloors: false,
 `;
 
 const FOREIGN_INVENTORY = `${JSON.stringify({ libraries: ["Adw-1"], versions: [] }, null, 2)}\n`;
-
 const DEPLOY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${EXTRA_FILES}${PERMISSIONS}    },\n`;
 const FLOORS_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${FLOOR_OVERRIDES}    },\n`;
 const NO_FLOORS_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${NO_FLOORS}    },\n`;
