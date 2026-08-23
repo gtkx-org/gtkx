@@ -16,7 +16,6 @@ type PropChange = { prev: Props; next: Props };
 
 const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
 const NOTIFY_PREFIX = "onNotify";
-const HANDLER_PREFIX = "on";
 const HANDLER_NAME = /^on[A-Z]/;
 const flushDirty: Set<ElementNode> = new Set();
 const accessibleDirty: Map<ElementNode, Props> = new Map();
@@ -26,11 +25,11 @@ const pendingMap: Set<ElementNode> = new Set();
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 const notifiedAccessor = (name: string): string => lowerFirst(name.slice(NOTIFY_PREFIX.length));
 
-const unknownSignalError = (typeName: string, name: string, signal: string): Error =>
+const unknownSignalError = (typeName: string, name: string): Error =>
     new Error(
-        `The handler prop '${name}' of <${typeName}> names the signal '${signal}', which ${typeName} ` +
-        `does not carry. Name a signal the element carries, or declare '${signal}' on ${typeName} ` +
-        "when its class is registered.",
+        `The handler prop '${name}' of <${typeName}> names no signal ${typeName} carries. Name a ` +
+        `signal the element carries, or declare the one '${name}' stands for on ${typeName} when ` +
+        "its class is registered.",
     );
 
 const lookedUpSignal = (target: SignalTarget, name: string): string => {
@@ -38,7 +37,7 @@ const lookedUpSignal = (target: SignalTarget, name: string): string => {
     const signal = type === TYPE_INVALID ? undefined : signalForHandlerName(type, name);
 
     if (signal === undefined) {
-        throw unknownSignalError(target.typeName, name, kebabCase(name.slice(HANDLER_PREFIX.length)));
+        throw unknownSignalError(target.typeName, name);
     }
 
     return signal;
