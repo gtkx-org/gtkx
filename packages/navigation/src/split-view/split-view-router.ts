@@ -19,8 +19,9 @@ const buildSidebarRoute = (slot: SidebarSlot, config: RouterConfigOptions, name:
 const resolveSidebarRoute = (slot: SidebarSlot, state: StackState, config: RouterConfigOptions): StackRoute => {
     const name = sidebarName(config) ?? "";
     const existing = state.routes.find((route) => route.name === name);
+    const cached = slot.route?.name === name ? slot.route : undefined;
 
-    return existing ?? slot.route ?? buildSidebarRoute(slot, config, name);
+    return existing ?? cached ?? buildSidebarRoute(slot, config, name);
 };
 
 const pinSidebar = (slot: SidebarSlot, state: StackState, config: RouterConfigOptions): StackState => {

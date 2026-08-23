@@ -51,6 +51,7 @@ type StackOptions = {
     navigator?: NavigatorProps;
     home?: StackNavigationOptions;
     details?: StackNavigationOptions;
+    settings?: StackNavigationOptions;
     container?: Partial<NavigationContainerProps<RootParams>>;
     isAnimated?: boolean;
     spies?: Spies;
@@ -144,6 +145,9 @@ const detailsActions = (navigation: StackNavigationProp<RootParams, "Details">, 
     }],
     ["Push compose", () => {
         navigation.navigate("Compose");
+    }],
+    ["Push settings", () => {
+        navigation.navigate("Settings");
     }],
     ["Reset to settings", () => {
         navigation.reset({ index: 0, routes: [{ name: "Settings" }] });
@@ -261,7 +265,7 @@ const buildStack = (options: StackOptions = {}): ReactNode => (
                     component={Details}
                     options={{ title: "Details Page", ...options.details }}
                 />
-                <Stack.Screen name="Settings" component={Settings} />
+                <Stack.Screen name="Settings" component={Settings} options={options.settings} />
                 <Stack.Screen name="Compose" component={Compose} />
                 <Stack.Screen name="Draft" component={Draft} />
             </Stack.Navigator>
@@ -321,6 +325,18 @@ const getAncestor = <T,>(widget: Gtk.Widget, type: WidgetClass<T>): T => {
 const getNavigationView = (text: string): Adw.NavigationView =>
     getAncestor(screen.getByText(text), Adw.NavigationView);
 
+const countPages = (view: Adw.NavigationView): number => {
+    let count = 0;
+
+    for (let child = view.getFirstChild(); child !== null; child = child.getNextSibling()) {
+        if (child instanceof Adw.NavigationPage) {
+            count += 1;
+        }
+    }
+
+    return count;
+};
+
 const getStackPage = (view: Adw.NavigationView, index: number): Adw.NavigationPage => {
     const page = view.getNavigationStack().getItem(index);
 
@@ -363,6 +379,7 @@ const expectHidden = (text: string): void => {
 export {
     buildStack,
     clickButton,
+    countPages,
     createEventSpy,
     createPreventSpy,
     createStateSpy,

@@ -71,7 +71,7 @@ const useContentSync = (
 
 const EscapeGuard = (): ReactNode => (
     <GtkEventControllerKey
-        propagationPhase={Gtk.PropagationPhase.CAPTURE}
+        propagationPhase={Gtk.PropagationPhase.BUBBLE}
         onKeyPressed={(keyval) => keyval === ESCAPE_KEYVAL}
     />
 );
@@ -111,10 +111,12 @@ const SplitView = (props: SplitViewProps): ReactNode => {
             maxSidebarWidth={maxSidebarWidth}
             sidebarWidthFraction={props.sidebarWidthFraction}
             onNotifyShowContent={onShowContentChanged}
-            controllers={props.popOnEscape === false ? <EscapeGuard /> : null}
             sidebar={<SidebarPage descriptor={sidebar} />}
         >
-            <AdwNavigationPage title={contentTitle(state, descriptors)}>
+            <AdwNavigationPage
+                title={contentTitle(state, descriptors)}
+                controllers={collapsed && props.popOnEscape === false ? <EscapeGuard /> : null}
+            >
                 {hasContent(state)
                     ? (
                             <StackView

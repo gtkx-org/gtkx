@@ -66,7 +66,7 @@ const advance = (
     return {
         order: appendOrder(tracking.order, neededKeys(state, closing, offset)),
         focusedKey: getFocusedKey(state, offset),
-        descriptors: { ...tracking.descriptors, ...descriptors },
+        descriptors,
         closing,
     };
 };

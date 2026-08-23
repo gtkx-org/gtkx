@@ -137,13 +137,23 @@ const StackPageContent = ({ descriptor, previous }: Omit<StackPageProps, "naviga
 
 const StackPage = ({ descriptor, previous, navigation, onHidden }: StackPageProps): ReactNode => {
     const { route, options } = descriptor;
+    const pageRef = useRef<Adw.NavigationPage | null>(null);
 
     const emit = (type: TransitionEvent, isClosing: boolean): void => {
         navigation.emit({ type, data: { closing: isClosing }, target: route.key });
     };
 
+    useEffect(() => {
+        const page = pageRef.current;
+
+        if (page !== null && !page.getMapped()) {
+            onHidden(route.key);
+        }
+    });
+
     return (
         <AdwNavigationPage
+            ref={pageRef}
             tag={route.key}
             title={options.title ?? route.name}
             canPop={options.canPop ?? true}

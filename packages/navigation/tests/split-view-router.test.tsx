@@ -1,5 +1,8 @@
-import { createNavigationContainerRef, StackActions } from "@gtkx/navigation";
-import { act, screen } from "@gtkx/testing";
+import type { NavigationState } from "@gtkx/navigation";
+import type { ReactNode } from "react";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+import { createNavigationContainerRef, NavigationContainer, StackActions } from "@gtkx/navigation";
+import { act, render, screen } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import {
     clickButton,
@@ -10,7 +13,22 @@ import {
     type Params,
     pressKeys,
     renderSplit,
+    Split,
 } from "./helpers/split-view-fixtures.js";
+
+type GatedSplitProps = {
+    hasLists: boolean;
+    onStateChange: (state: NavigationState | undefined) => void;
+};
+
+const GatedSplit = ({ hasLists, onStateChange }: GatedSplitProps): ReactNode => (
+    <NavigationContainer onStateChange={onStateChange}>
+        <Split.Navigator>
+            {hasLists ? <Split.Screen name="Lists" component={() => <GtkLabel>Lists Content</GtkLabel>} /> : null}
+            <Split.Screen name="Tasks" component={() => <GtkLabel>Tasks Content</GtkLabel>} />
+        </Split.Navigator>
+    </NavigationContainer>
+);
 
 describe("split view - router (1)", () => {
     it("keeps the sidebar at the root when a replace targets the first content route", async () => {
@@ -107,5 +125,17 @@ describe("split view - router (3)", () => {
         await screen.findByText("Nothing Selected");
         expectVisible("Lists Content");
         expectRouteNames(onStateChange, ["Lists"]);
+    });
+});
+
+describe("split view - router (4)", () => {
+    it("takes a new sidebar route when the first screen is swapped out", async () => {
+        const onStateChange = createStateSpy();
+        const { rerender } = await render(<GatedSplit hasLists onStateChange={onStateChange} />);
+        await screen.findByText("Lists Content");
+        await rerender(<GatedSplit hasLists={false} onStateChange={onStateChange} />);
+        await screen.findByText("Tasks Content");
+        expectHidden("Lists Content");
+        expectRouteNames(onStateChange, ["Tasks"]);
     });
 });

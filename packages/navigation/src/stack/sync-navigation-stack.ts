@@ -75,14 +75,12 @@ const syncNavigationStack = (
 ): void => {
     const current = readNavigationStack(view);
 
-    if (isSameStack(current, desired)) {
-        return;
-    }
-
-    if (isInitial) {
-        view.replaceWithTags([...desired]);
-    } else {
-        applyStackChange(view, current, desired, options);
+    if (!isSameStack(current, desired)) {
+        if (isInitial) {
+            view.replaceWithTags([...desired]);
+        } else {
+            applyStackChange(view, current, desired, options);
+        }
     }
 
     view.setAnimateTransitions(isAnimated(options, desired.at(-1)));
@@ -108,10 +106,6 @@ const reconcilePoppedStack = (
 ): void => {
     const actual = readNavigationStack(view);
     const desired = routeKeys(navigation.getState(), offset);
-
-    if (isSameStack(actual, desired)) {
-        return;
-    }
 
     if (isStrictPrefix(actual, desired)) {
         popToActualStack(navigation, actual, desired);

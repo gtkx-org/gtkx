@@ -140,3 +140,18 @@ describe("stack - events (3)", () => {
         expect(onPrevent).toHaveBeenCalledTimes(1);
     });
 });
+
+describe("stack - events (4)", () => {
+    it("pops without animating when animation is none", async () => {
+        await renderStack({ isAnimated: true, details: { animation: "none" } });
+        await clickButton("Go to details");
+        await screen.findByText("Details 1");
+        await clickButton("Push settings");
+        await screen.findByText("Settings Content");
+        await clickButton("Back");
+        await screen.findByText("Details 1");
+        await clickButton("Back");
+        await screen.findByText("Home Content");
+        expectHidden("Details 1");
+    });
+});
