@@ -66,6 +66,7 @@ type BoxedOptions = {
     ownership: Ownership;
     sharedLibrary: string | undefined;
     getTypeFnName: string;
+    freeFnName: string | undefined;
     isCallerAllocated: boolean;
     isInline?: boolean;
     size: number | undefined;
@@ -193,6 +194,7 @@ const tBoxed = (glibName: string, options: BoxedOptions): string =>
                 ? undefined
                 : `sharedLibrary: ${sourceStringLiteral(options.sharedLibrary)}`,
             `getTypeFnName: ${sourceStringLiteral(options.getTypeFnName)}`,
+            options.freeFnName === undefined ? undefined : `freeFnName: ${sourceStringLiteral(options.freeFnName)}`,
             options.isCallerAllocated ? "isCallerAllocated: true" : undefined,
             options.isInline === true ? "isInline: true" : undefined,
             options.size === undefined ? undefined : `size: ${String(options.size)}`,

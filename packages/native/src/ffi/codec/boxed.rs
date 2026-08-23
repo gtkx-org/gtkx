@@ -81,35 +81,69 @@ impl BoxedCodec {
         }
     }
 
+    fn with_free_fn(
+        &self,
+        ptr: *mut c_void,
+        transfer: Ownership,
+    ) -> anyhow::Result<Option<Handle>> {
+        let Some(free_fn_name) = self.free_fn_name.as_deref() else {
+            return Ok(None);
+        };
+
+        Ok(Some(self.boxed_with_free_fn(
+            ptr,
+            free_fn_name,
+            transfer,
+        )?))
+    }
+
     fn adopted(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
-        let Some(type_) = self.type_()? else {
-            bail!(
+        let type_ = self.type_()?;
+
+        if let Some(type_) = type_.filter(|type_| is_boxed_type(*type_)) {
+            return Ok(Boxed::from_glib_full(type_, ptr).into());
+        }
+        if let Some(handle) = self.with_free_fn(ptr, Ownership::Full)? {
+            return Ok(handle);
+        }
+        match type_ {
+            Some(_) => bail!(
+                "Cannot take ownership of '{}': {POINTER_TYPE}",
+                self.type_name
+            ),
+            None => bail!(
                 "Cannot take ownership of boxed type '{}': no type available, so nothing names the \
                  function that would free it",
                 self.type_name
-            );
-        };
-        if !is_boxed_type(type_) {
-            bail!(
-                "Cannot take ownership of '{}': {POINTER_TYPE}",
-                self.type_name
-            );
+            ),
         }
-        Ok(Boxed::from_glib_full(type_, ptr).into())
+    }
+
+    fn adopted_or_struct(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
+        if self.free_fn_name.is_none() && self.type_()?.is_none() {
+            return Ok(Handle::owned_struct(ptr));
+        }
+
+        self.adopted(ptr)
     }
 
     fn copied(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
-        let Some(type_) = self.type_()? else {
-            bail!(
+        let type_ = self.type_()?;
+
+        if let Some(type_) = type_.filter(|type_| is_boxed_type(*type_)) {
+            return Ok(unsafe { Boxed::from_glib_none(type_, ptr) }.into());
+        }
+        if let Some(handle) = self.with_free_fn(ptr, Ownership::Borrowed)? {
+            return Ok(handle);
+        }
+        match type_ {
+            Some(_) => Ok(Handle::from_glib_borrow(ptr)),
+            None => bail!(
                 "Cannot copy boxed type '{}': no type available. \
                  Pointer {ptr:p} may become dangling if the source is freed",
                 self.type_name
-            );
-        };
-        if !is_boxed_type(type_) {
-            return Ok(Handle::from_glib_borrow(ptr));
+            ),
         }
-        Ok(unsafe { Boxed::from_glib_none(type_, ptr) }.into())
     }
 
     fn write_inline(
@@ -198,18 +232,8 @@ impl Decoder for BoxedCodec {
 
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
         self.decode_call_non_null(env, stash, "Boxed", |ptr| {
-            if let Some(free_fn_name) = self.free_fn_name.as_deref() {
-                return Ok(value::handle_to_unknown(
-                    env,
-                    self.boxed_with_free_fn(ptr, free_fn_name, self.ownership)?,
-                )?);
-            }
-
             let handle = match self.ownership {
-                Ownership::Full => match self.type_()? {
-                    Some(_) => self.adopted(ptr)?,
-                    None => Handle::owned_struct(ptr),
-                },
+                Ownership::Full => self.adopted_or_struct(ptr)?,
                 Ownership::Borrowed => self.copied(ptr)?,
             };
 
@@ -222,12 +246,6 @@ impl Decoder for BoxedCodec {
             return Ok(value::handle_to_unknown(
                 env,
                 Handle::from_glib_borrow(ptr),
-            )?);
-        }
-        if let Some(free_fn_name) = self.free_fn_name.as_deref() {
-            return Ok(value::handle_to_unknown(
-                env,
-                self.boxed_with_free_fn(ptr, free_fn_name, transfer)?,
             )?);
         }
         if transfer.is_full() {

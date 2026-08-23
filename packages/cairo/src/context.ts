@@ -172,7 +172,6 @@ const cairoInStroke = bindCairo("cairo_in_stroke", POINT_ARGS, t.boolean);
 const cairoInFill = bindCairo("cairo_in_fill", POINT_ARGS, t.boolean);
 const cairoInClip = bindCairo("cairo_in_clip", POINT_ARGS, t.boolean);
 const cairoCopyClipRectangleList = bindCairo("cairo_copy_clip_rectangle_list", [CONTEXT_T], RECTANGLE_LIST_T);
-const cairoRectangleListDestroy = bindCairo("cairo_rectangle_list_destroy", [RECTANGLE_LIST_T], t.void);
 const cairoMask = bindCairo("cairo_mask", [CONTEXT_T, PATTERN_T], t.void);
 const cairoMaskSurface = bindCairo("cairo_mask_surface", [CONTEXT_T, SURFACE_T, t.float64, t.float64], t.void);
 const cairoSetMatrix = bindCairo("cairo_set_matrix", [CONTEXT_T, MATRIX_T], t.void);
@@ -696,11 +695,7 @@ class Context {
 
     /** Returns the current clip as a list of rectangles in user space. */
     copyClipRectangleList(): RectangleData[] {
-        const listHandle = cairoCopyClipRectangleList(getHandle(this)) as ExternalObject<Handle>;
-        const rects = readRectangleList(listHandle);
-        cairoRectangleListDestroy(listHandle);
-
-        return rects;
+        return readRectangleList(cairoCopyClipRectangleList(getHandle(this)) as ExternalObject<Handle>);
     }
 
     /** Paints the current source using the alpha channel of `pattern` as a mask. */

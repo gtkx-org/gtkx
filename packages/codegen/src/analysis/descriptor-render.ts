@@ -619,6 +619,7 @@ const boxedRecordExpression = (options: {
         ownership,
         sharedLibrary: resolved.namespace.sharedLibrary,
         getTypeFnName: typeFnName,
+        freeFnName: record.freeFunc,
         isCallerAllocated,
         isInline,
         size: size > 0 ? size : undefined,

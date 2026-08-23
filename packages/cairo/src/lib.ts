@@ -117,8 +117,9 @@ const RECTANGLE_INT_ARRAY_T: BoxedDescriptor = t.boxed("cairo_rectangle_int_t[]"
 });
 
 const RECTANGLE_LIST_T: BoxedDescriptor = t.boxed("cairo_rectangle_list_t", {
-    ownership: "borrowed",
+    ownership: "full",
     sharedLibrary: CAIRO_LIBRARY,
+    freeFnName: "cairo_rectangle_list_destroy",
 });
 
 const GLYPH_T: BoxedDescriptor = t.boxed("cairo_glyph_t", { ownership: "borrowed", sharedLibrary: CAIRO_LIBRARY });

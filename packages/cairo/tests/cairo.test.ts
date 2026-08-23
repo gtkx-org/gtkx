@@ -316,6 +316,36 @@ describe("Context — clipping", () => {
             ctx.resetClip();
         });
     });
+
+    it("reports the clip as a rectangle list", () => {
+        const ctx = createTestContext();
+        ctx.rectangle(10, 20, 80, 40);
+        ctx.clip();
+        expect(ctx.copyClipRectangleList()).toEqual([{ x: 10, y: 20, width: 80, height: 40 }]);
+    });
+
+    it("reports every rectangle of a clip made of several", () => {
+        const ctx = createTestContext();
+        ctx.rectangle(0, 0, 10, 10);
+        ctx.rectangle(50, 50, 20, 20);
+        ctx.clip();
+
+        expect(ctx.copyClipRectangleList()).toEqual([
+            { x: 0, y: 0, width: 10, height: 10 },
+            { x: 50, y: 50, width: 20, height: 20 },
+        ]);
+    });
+
+    it("reports the whole surface when nothing is clipped", () => {
+        expect(createTestContext().copyClipRectangleList()).toEqual([{ x: 0, y: 0, width: 200, height: 200 }]);
+    });
+
+    it("reports no rectangles for a clip that is not rectangular", () => {
+        const ctx = createTestContext();
+        ctx.arc(50, 50, 20, 0, Math.PI * 2);
+        ctx.clip();
+        expect(ctx.copyClipRectangleList()).toEqual([]);
+    });
 });
 
 describe("Context — source color", () => {
