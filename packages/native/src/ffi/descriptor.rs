@@ -7,7 +7,8 @@ use crate::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, BoxedCodec, BufferCodec,
     CallbackCodec, CallbackScope, Codec, DestroyNotifyKind, EnumFlagsCodec, EnumFlagsKind,
     FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, LeaseAction, LeaseCodec,
-    ObjectCodec, Ownership, RefCodec, StringCodec, StructCodec, UnicharCodec, VoidCodec,
+    ObjectCodec, Ownership, RefCodec, ResourceAction, ResourceCodec, StringCodec, StructCodec,
+    UnicharCodec, VoidCodec,
 };
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
@@ -193,6 +194,14 @@ pub enum Descriptor {
         get_user_data_fn_name: Option<String>,
         set_user_data_fn_name: Option<String>,
     },
+    Resource {
+        #[napi(ts_type = "Descriptor")]
+        inner_descriptor: NestedDescriptor,
+        #[napi(ts_type = "'result' | 'end'")]
+        action: String,
+        shared_library: String,
+        release_fn_name: String,
+    },
 }
 
 impl NestedDescriptor {
@@ -312,6 +321,12 @@ impl Descriptor {
                 format!("{context} cannot use lease descriptors"),
             ));
         }
+        if codec.contains_resource() {
+            return Err(Error::new(
+                Status::InvalidArg,
+                format!("{context} cannot use resource descriptors"),
+            ));
+        }
 
         Ok(codec)
     }
@@ -353,11 +368,7 @@ impl Descriptor {
                 key_descriptor,
                 value_descriptor,
                 ownership,
-            } => Codec::HashTable(HashTableCodec {
-                key_codec: key_descriptor.into_codec()?,
-                value_codec: value_descriptor.into_codec()?,
-                ownership,
-            }),
+            } => Self::hash_table_codec(key_descriptor, value_descriptor, ownership)?,
             Self::Callback {
                 arg_descriptors,
                 return_descriptor,
@@ -388,10 +399,7 @@ impl Descriptor {
             Self::Ref {
                 inner_descriptor,
                 inout,
-            } => Codec::Ref(RefCodec::new(
-                *inner_descriptor.into_codec()?,
-                inout.unwrap_or(false),
-            )?),
+            } => Self::ref_codec(inner_descriptor, inout)?,
             Self::Lease {
                 inner_descriptor,
                 action,
@@ -413,6 +421,12 @@ impl Descriptor {
                 )
                 .map_err(|error| Error::from_reason(error.to_string()))?,
             ),
+            Self::Resource {
+                inner_descriptor,
+                action,
+                shared_library,
+                release_fn_name,
+            } => Self::resource_codec(inner_descriptor, &action, shared_library, release_fn_name)?,
             _ => unreachable!("descriptors without nested descriptors are handled by into_codec"),
         })
     }
@@ -435,6 +449,43 @@ impl Descriptor {
             },
             mask,
         })
+    }
+
+    fn resource_codec(
+        inner_descriptor: NestedDescriptor,
+        action: &str,
+        shared_library: String,
+        release_fn_name: String,
+    ) -> Result<Codec> {
+        Ok(Codec::Resource(
+            ResourceCodec::new(
+                *inner_descriptor.into_codec()?,
+                ResourceAction::parse(action)
+                    .map_err(|error| Error::from_reason(error.to_string()))?,
+                shared_library,
+                release_fn_name,
+            )
+            .map_err(|error| Error::from_reason(error.to_string()))?,
+        ))
+    }
+
+    fn hash_table_codec(
+        key_descriptor: NestedDescriptor,
+        value_descriptor: NestedDescriptor,
+        ownership: Ownership,
+    ) -> Result<Codec> {
+        Ok(Codec::HashTable(HashTableCodec {
+            key_codec: key_descriptor.into_codec()?,
+            value_codec: value_descriptor.into_codec()?,
+            ownership,
+        }))
+    }
+
+    fn ref_codec(inner_descriptor: NestedDescriptor, inout: Option<bool>) -> Result<Codec> {
+        Ok(Codec::Ref(RefCodec::new(
+            *inner_descriptor.into_codec()?,
+            inout.unwrap_or(false),
+        )?))
     }
 
     fn callback_scope(

@@ -1,6 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { fromNative, getHandle, t } from "@gtkx/runtime";
+import { fromNative, getHandle, t, toNative } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 const rectangleFfi = t.boxed("GdkRectangle", {
@@ -11,6 +11,7 @@ const rectangleFfi = t.boxed("GdkRectangle", {
 
 const stringTable = t.hashTable(t.string("borrowed"), t.string("borrowed"));
 const widgetListTable = t.hashTable(t.string("borrowed"), t.list(t.object("borrowed")));
+const rectangleResource = t.resource("libglib-2.0.so.0", "g_free");
 
 describe("fromNative — hash-table entries are wrapped recursively", () => {
     it("passes string keys and values straight through", () => {
@@ -68,5 +69,23 @@ describe("fromNative — hash-table entries are wrapped recursively", () => {
 
     it("maps a null hash table to null", () => {
         expect(fromNative(stringTable, null)).toBeNull();
+    });
+});
+
+describe("resource descriptor marshalling", () => {
+    it("wraps a result handle and unwraps it for release", () => {
+        const rectangle = new Gdk.Rectangle({ width: 9 });
+        const wrapped = fromNative(rectangleResource.result(rectangleFfi), getHandle(rectangle));
+        expect(wrapped).toBeInstanceOf(Gdk.Rectangle);
+        expect(toNative(rectangleResource.end(rectangleFfi), wrapped)).toBe(getHandle(wrapped as Gdk.Rectangle));
+    });
+
+    it("passes a null resource through in both directions", () => {
+        expect(fromNative(rectangleResource.result(rectangleFfi), null)).toBeNull();
+        expect(toNative(rectangleResource.end(rectangleFfi), null)).toBeNull();
+    });
+
+    it("rejects releasing a value without a native handle", () => {
+        expect(() => toNative(rectangleResource.end(rectangleFfi), {})).toThrow();
     });
 });

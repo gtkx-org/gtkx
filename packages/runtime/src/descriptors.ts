@@ -66,6 +66,8 @@ type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }>;
 type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
 /** Descriptor variant for a boxed handle whose use participates in a native resource lease. */
 type LeaseDescriptor = Extract<Descriptor, { kind: "lease" }>;
+/** Descriptor variant for a boxed handle released by a named unary native function. */
+type ResourceDescriptor = Extract<Descriptor, { kind: "resource" }>;
 
 /** Native user-data hooks that keep lease alias identity attached to the native value's lifetime. */
 type LeaseIdentityOptions = {
@@ -91,6 +93,14 @@ type LeaseDescriptorFactory = {
 type LeaseIdentityDescriptorFactory = LeaseDescriptorFactory & {
     /** Associates a returned boxed alias with the value at `ownerParamIndex`. */
     alias(innerDescriptor: BoxedDescriptor, ownerParamIndex: number): LeaseDescriptor;
+};
+
+/** Descriptors for a native resource released by a `void (value)` function. */
+type ResourceDescriptorFactory = {
+    /** Adopts an output pointer with rollback and GC fallback; valid only directly inside a non-inout `t.ref`. */
+    result(innerDescriptor: BoxedDescriptor): ResourceDescriptor;
+    /** Releases and invalidates an adopted handle in the matching fixed, unary, void release binding. */
+    end(innerDescriptor: BoxedDescriptor): ResourceDescriptor;
 };
 
 /** Descriptor for a `GType`: a `guint64` marked so it resolves to `G_TYPE_GTYPE` rather than an integer. */
@@ -453,6 +463,25 @@ function leaseT(
     };
 }
 
+/** Builds descriptors for a native resource released by `void release(void *value)`. */
+const resourceT = (sharedLibrary: string, releaseFnName: string): ResourceDescriptorFactory => {
+    const descriptor = (
+        action: ResourceDescriptor["action"],
+        innerDescriptor: ResourceDescriptor["innerDescriptor"],
+    ): ResourceDescriptor => ({
+        kind: "resource",
+        action,
+        innerDescriptor,
+        sharedLibrary,
+        releaseFnName,
+    });
+
+    return {
+        result: (innerDescriptor) => descriptor("result", innerDescriptor),
+        end: (innerDescriptor) => descriptor("end", innerDescriptor),
+    };
+};
+
 const applyArrayBounds = (result: ArrayDescriptor, options: ArrayOptions): void => {
     if (options.baseParamIndex !== undefined) {
         result.baseParamIndex = options.baseParamIndex;
@@ -633,6 +662,7 @@ export {
     fundamentalLifecycleFor,
     fundamentalT,
     leaseT,
+    resourceT,
     arrayT,
     listT,
     slistT,

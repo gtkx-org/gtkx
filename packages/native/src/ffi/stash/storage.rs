@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::ffi::c_void;
 
 use glib::translate::IntoGlib as _;
@@ -9,6 +9,7 @@ pub struct StashStorage {
     ptr: *mut c_void,
     data: StashData,
     retained_handle: Option<crate::handle::Handle>,
+    resource_output: RefCell<Option<crate::handle::Handle>>,
     pending_transfer: Cell<Vec<PendingTransfer>>,
 }
 
@@ -278,6 +279,7 @@ impl StashStorage {
             ptr,
             data,
             retained_handle: None,
+            resource_output: RefCell::new(None),
             pending_transfer: Cell::new(Vec::new()),
         }
     }
@@ -287,6 +289,7 @@ impl StashStorage {
             ptr,
             data: StashData::Unit,
             retained_handle: Some(handle),
+            resource_output: RefCell::new(None),
             pending_transfer: Cell::new(Vec::new()),
         }
     }
@@ -335,6 +338,14 @@ impl StashStorage {
 
     pub(crate) fn retained_handle(&self) -> Option<&crate::handle::Handle> {
         self.retained_handle.as_ref()
+    }
+
+    pub(crate) fn set_resource_output(&self, handle: crate::handle::Handle) {
+        self.resource_output.replace(Some(handle));
+    }
+
+    pub(crate) fn resource_output(&self) -> Option<crate::handle::Handle> {
+        self.resource_output.borrow().clone()
     }
 
     pub fn owns_element_buffer(&self) -> bool {

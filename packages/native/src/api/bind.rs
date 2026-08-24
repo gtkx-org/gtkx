@@ -7,7 +7,7 @@ use napi_derive::napi;
 
 use super::vtable::{VfuncVtable, query_type, resolve_vfunc_slot, validate_vfunc_offset};
 use crate::api::{native_result, type_from_bigint};
-use crate::ffi::codec::{Codec, Encoder as _, LeaseAction};
+use crate::ffi::codec::{Codec, Encoder as _, LeaseAction, ResourceAction};
 use crate::ffi::descriptor::Descriptor;
 use crate::ffi::library_cache::FfiCache;
 
@@ -258,6 +258,80 @@ fn validate_leases(
     Ok(())
 }
 
+fn validate_resources(
+    arg_codecs: &[Codec],
+    return_codec: &Codec,
+    release_target: Option<(&str, &str)>,
+    is_variadic: bool,
+) -> anyhow::Result<()> {
+    let mut has_result = false;
+
+    for (index, codec) in arg_codecs.iter().enumerate() {
+        match codec {
+            Codec::Resource(resource) => {
+                anyhow::ensure!(
+                    resource.action() == ResourceAction::End,
+                    "arg {index} uses a resource result descriptor outside a Ref"
+                );
+                anyhow::ensure!(
+                    arg_codecs.len() == 1 && !is_variadic && matches!(return_codec, Codec::Void(_)),
+                    "a resource release binding must have exactly one argument and return void"
+                );
+                let Some((library, symbol)) = release_target else {
+                    anyhow::bail!("resource end arg {index} can only bind its named release symbol")
+                };
+                anyhow::ensure!(
+                    library == resource.kind().shared_library()
+                        && symbol == resource.kind().release_fn_name(),
+                    "resource end arg {index} belongs to a different release symbol"
+                );
+            }
+            Codec::Ref(reference) => {
+                let Codec::Resource(resource) = reference.inner_codec() else {
+                    anyhow::ensure!(
+                        !reference.inner_codec().contains_resource(),
+                        "arg {index} nests a resource descriptor; a result resource is only valid directly inside a Ref"
+                    );
+                    continue;
+                };
+                anyhow::ensure!(
+                    resource.action() == ResourceAction::Result && !reference.is_inout(),
+                    "arg {index} must be a non-inout Ref of a resource result"
+                );
+                has_result = true;
+            }
+            _ => anyhow::ensure!(
+                !codec.contains_resource(),
+                "arg {index} nests a resource descriptor; resources are only valid as top-level ends or direct Ref results"
+            ),
+        }
+    }
+
+    anyhow::ensure!(
+        !return_codec.contains_resource(),
+        "the return descriptor cannot use a resource descriptor"
+    );
+    anyhow::ensure!(
+        !has_result
+            || !arg_codecs.iter().any(
+                |codec| matches!(codec, Codec::Callback(callback) if callback.is_async_completion()),
+            ),
+        "a resource result cannot be combined with an async completion callback"
+    );
+
+    Ok(())
+}
+
+fn validate_ownership_descriptors(
+    arg_codecs: &[Codec],
+    return_codec: &Codec,
+    release_target: Option<(&str, &str)>,
+    is_variadic: bool,
+) -> anyhow::Result<()> {
+    validate_leases(arg_codecs, return_codec, release_target, is_variadic)?;
+    validate_resources(arg_codecs, return_codec, release_target, is_variadic)
+}
+
 fn vfunc_vtable(
     instance_type: Option<glib::Type>,
     interface_type: Option<glib::Type>,
@@ -318,8 +392,8 @@ pub fn bind(
 ) -> Result<External<CallDescriptor>> {
     let (arg_codecs, return_codec) = into_codecs(arg_descriptors, return_descriptor)?;
     native_result(
-        "binding leases",
-        validate_leases(
+        "binding ownership descriptors",
+        validate_ownership_descriptors(
             &arg_codecs,
             &return_codec,
             Some((&shared_library, &symbol_name)),
@@ -362,8 +436,8 @@ pub fn bind_function_pointer(
 
     let (arg_codecs, return_codec) = into_codecs(arg_descriptors, return_descriptor)?;
     native_result(
-        "binding leases",
-        validate_leases(&arg_codecs, &return_codec, None, false),
+        "binding ownership descriptors",
+        validate_ownership_descriptors(&arg_codecs, &return_codec, None, false),
     )?;
 
     Ok(External::new(prepare(
@@ -412,8 +486,8 @@ pub fn bind_vfunc(options: BindVfuncOptions) -> Result<External<CallDescriptor>>
     let (arg_codecs, return_codec) =
         into_codecs(options.arg_descriptors, options.return_descriptor)?;
     native_result(
-        "binding leases",
-        validate_leases(&arg_codecs, &return_codec, None, false),
+        "binding ownership descriptors",
+        validate_ownership_descriptors(&arg_codecs, &return_codec, None, false),
     )?;
 
     Ok(External::new(prepare(

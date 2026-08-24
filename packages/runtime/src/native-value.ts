@@ -52,10 +52,10 @@ function isMarshalledDescriptor(descriptor: Descriptor): descriptor is Marshalle
     return MARSHALLED_KINDS.has(descriptor.kind);
 }
 
-const unwrapLeaseDescriptor = (descriptor: Descriptor): Descriptor => {
+const unwrapHandleDescriptor = (descriptor: Descriptor): Descriptor => {
     let current = descriptor;
 
-    while (current.kind === "lease") {
+    while (current.kind === "lease" || current.kind === "resource") {
         current = current.innerDescriptor;
     }
 
@@ -203,7 +203,7 @@ function hashTableFromNative(descriptor: HashTableDescriptor, value: unknown): u
  * @param value The raw native value to convert.
  */
 function fromNative(descriptor: Descriptor, value: unknown): unknown {
-    const innerDescriptor = unwrapLeaseDescriptor(descriptor);
+    const innerDescriptor = unwrapHandleDescriptor(descriptor);
 
     if (innerDescriptor.kind === "callback") {
         return callbackFromNative(innerDescriptor, value);
@@ -263,7 +263,7 @@ function hashTableToNative(descriptor: HashTableDescriptor, value: unknown): unk
  * @param value The JavaScript value to convert.
  */
 function toNative(descriptor: Descriptor, value: unknown): unknown {
-    const innerDescriptor = unwrapLeaseDescriptor(descriptor);
+    const innerDescriptor = unwrapHandleDescriptor(descriptor);
 
     if (isGtypeDescriptor(innerDescriptor)) {
         return coerceGType(value);
