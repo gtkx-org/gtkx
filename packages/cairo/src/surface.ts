@@ -135,6 +135,16 @@ const cairoRecordingSurfaceGetExtents = bindCairo(
     t.boolean,
 );
 
+const didUnmapImage = (surfaceHandle: ExternalObject<Handle>, imageHandle: ExternalObject<Handle>): boolean => {
+    try {
+        cairoSurfaceUnmapImage(surfaceHandle, imageHandle);
+
+        return true;
+    } catch {
+        return false;
+    }
+};
+
 const wrapSurface = (handle: unknown): Surface => wrapHandle(handle as ExternalObject<Handle>, Surface);
 
 const readPair = <T>(boundFn: BoundFunction, self: object, build: (first: number, second: number) => T): T => {
@@ -337,7 +347,7 @@ abstract class Surface {
         try {
             return wrapSurface(checkSurface(imageHandle));
         } catch (error) {
-            cairoSurfaceUnmapImage(surfaceHandle, imageHandle);
+            didUnmapImage(surfaceHandle, imageHandle);
             throw error;
         }
     }

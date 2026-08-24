@@ -650,8 +650,4 @@ export {
     type HashTableDescriptor,
     type CallbackDescriptor,
     type RefDescriptor,
-    type LeaseDescriptor,
-    type LeaseDescriptorFactory,
-    type LeaseIdentityDescriptorFactory,
-    type LeaseIdentityOptions,
 };
