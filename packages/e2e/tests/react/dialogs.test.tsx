@@ -236,6 +236,26 @@ describe("render - AboutDialog credit sections", () => {
     });
 });
 
+describe("Dialog - declarative presentation", () => {
+    it("does not notify declarative presentation changes", async () => {
+        let contentWidthNotificationCount = 0;
+
+        await render(
+            <InApp2>
+                <AdwDialog
+                    onNotifyContentWidth={() => {
+                        contentWidthNotificationCount += 1;
+                    }}
+                >
+                    <GtkLabel>Presented content</GtkLabel>
+                </AdwDialog>
+            </InApp2>,
+        );
+
+        expect(contentWidthNotificationCount).toBe(0);
+    });
+});
+
 describe("Dialog - render prop and lifecycle (1)", () => {
     it("attaches the provided ref to the dialog widget and presents it", async () => {
         const dialogRef = createRef<Adw.AlertDialog>();

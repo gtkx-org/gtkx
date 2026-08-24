@@ -5,7 +5,7 @@ import { drain, indexBeforeOrEnd } from "@gtkx/utils";
 import type { ContentChild, ContentKind, ElementNode, ParentNode, TextNode } from "./node.js";
 import type { Props } from "./registry.js";
 import { ELEMENT_KIND, TEXT_KIND } from "./node.js";
-import { applyMutation } from "./signals.js";
+import { applyMutation, applyWrite } from "./signals.js";
 
 type OffsetResult = { wasFound: boolean; offset: number };
 
@@ -150,7 +150,7 @@ const getRootHost = (node: ElementNode): ElementNode | null => {
 const markTextDirty = (host: ElementNode): void => {
     const root = getRootHost(host);
 
-    if (root !== null) {
+    if (root?.isMounted === true) {
         dirtyHosts.add(root);
     }
 };
@@ -342,17 +342,25 @@ const rebuildLabel = (node: ElementNode): void => {
         return;
     }
 
-    label.setLabel(node.content.map((child) => (child.kind === TEXT_KIND ? child.text : "")).join(""));
+    applyWrite("label", () => {
+        label.setLabel(node.content.map((child) => (child.kind === TEXT_KIND ? child.text : "")).join(""));
+    });
+};
+
+const flushTextHost = (host: ElementNode): void => {
+    if (host.contentKind === "label") {
+        rebuildLabel(host);
+    } else if (host.contentKind === "buffer") {
+        rebuildBuffer(host);
+    }
 };
 
 const flushTextHosts = (): void => {
-    drain(dirtyHosts, (host) => {
-        if (host.contentKind === "label") {
-            rebuildLabel(host);
-        } else if (host.contentKind === "buffer") {
-            rebuildBuffer(host);
-        }
-    });
+    drain(dirtyHosts, flushTextHost);
+};
+
+const forgetTextHost = (host: ElementNode): void => {
+    dirtyHosts.delete(host);
 };
 
 const applyEnclosingTags = (
@@ -388,11 +396,10 @@ const didUpdateTextSurgically = (host: ElementNode, node: TextNode, oldText: str
     applyMutation(() => {
         buffer.delete(buffer.getIterAtOffset(start), buffer.getIterAtOffset(start + charLength(oldText)));
         buffer.insert(buffer.getIterAtOffset(start), newText, -1);
+        const startIter = buffer.getIterAtOffset(start);
+        const endIter = buffer.getIterAtOffset(start + charLength(newText));
+        applyEnclosingTags(buffer, node, startIter, endIter);
     });
-
-    const startIter = buffer.getIterAtOffset(start);
-    const endIter = buffer.getIterAtOffset(start + charLength(newText));
-    applyEnclosingTags(buffer, node, startIter, endIter);
 
     return true;
 };
@@ -409,6 +416,8 @@ export {
     addContent,
     removeContent,
     validateContentMix,
+    flushTextHost,
     flushTextHosts,
+    forgetTextHost,
     didUpdateTextSurgically,
 };

@@ -10,7 +10,7 @@ import {
 } from "@gtkx/jsx/adw";
 import { GtkButton, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { DrawerActions } from "@react-navigation/core";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import type {
     DrawerContentProps,
     DrawerDescriptor,
@@ -21,9 +21,7 @@ import type {
 import { HeaderBar } from "../shared/header-bar.js";
 import { getFocusedRoute, requireDescriptor } from "../shared/routes.js";
 import { ScenePage } from "../shared/scene-page.js";
-import { useLoadedRoutes } from "../shared/use-loaded-routes.js";
 import { usePopToTopOnBlur } from "../shared/use-pop-to-top-on-blur.js";
-import { DrawerCollapsedContext } from "./drawer-collapsed-context.js";
 import { DrawerItemList } from "./drawer-item-list.js";
 import { getDrawerStatus } from "./drawer-status.js";
 
@@ -40,7 +38,7 @@ type DrawerHeaderProps = {
 
 type DrawerPageProps = {
     descriptor: DrawerDescriptor;
-    isLoaded: boolean;
+    shouldLoad: boolean;
 };
 
 const PACK_TYPES = { start: Gtk.PackType.START, end: Gtk.PackType.END } as const;
@@ -57,24 +55,6 @@ const useSidebarSync = (navigation: DrawerNavigationHelpers): ((isShown: boolean
         const action = isShown ? DrawerActions.openDrawer() : DrawerActions.closeDrawer();
         navigation.dispatch({ ...action, target: current.key });
     }, [navigation]);
-
-const useCloseOnNavigate = (
-    state: DrawerNavigationState<ParamListBase>,
-    navigation: DrawerNavigationHelpers,
-    isCollapsed: boolean,
-): void => {
-    const focusedKey = getFocusedRoute(state).key;
-    const previousKeyRef = useRef(focusedKey);
-
-    useEffect(() => {
-        const hasChanged = previousKeyRef.current !== focusedKey;
-        previousKeyRef.current = focusedKey;
-
-        if (hasChanged && isCollapsed && getDrawerStatus(navigation.getState()) === "open") {
-            navigation.dispatch({ ...DrawerActions.closeDrawer(), target: navigation.getState().key });
-        }
-    }, [focusedKey, isCollapsed, navigation]);
-};
 
 const DrawerContent = (props: DrawerContentProps): ReactNode => (
     <AdwToolbarView topBar={<AdwHeaderBar />}>
@@ -115,14 +95,14 @@ const DrawerHeader = ({ descriptor, navigation }: DrawerHeaderProps): ReactNode 
     );
 };
 
-const DrawerPage = ({ descriptor, isLoaded }: DrawerPageProps): ReactNode => {
+const DrawerPage = ({ descriptor, shouldLoad }: DrawerPageProps): ReactNode => {
     const { route, options } = descriptor;
 
     return (
         <ScenePage
             name={route.key}
             title={options.title ?? route.name}
-            isLoaded={isLoaded || options.lazy === false}
+            isLoaded={shouldLoad || options.lazy === false}
             render={() => descriptor.render()}
         />
     );
@@ -132,39 +112,35 @@ const DrawerView = ({ state, navigation, descriptors, drawerContent, ...config }
     const { collapsed = false, sidebarPosition = "start", pinSidebar, minSidebarWidth, maxSidebarWidth } = config;
     const focused = getFocusedRoute(state);
     const descriptor = requireDescriptor(descriptors, focused.key);
-    const loaded = useLoadedRoutes(focused.key, state.preloadedRouteKeys);
     const onShowSidebarChanged = useSidebarSync(navigation);
     const contentProps = { state, navigation, descriptors };
     const sidebar = drawerContent === undefined ? <DrawerContent {...contentProps} /> : drawerContent(contentProps);
     usePopToTopOnBlur(state, descriptors, navigation);
-    useCloseOnNavigate(state, navigation, collapsed);
 
     return (
-        <DrawerCollapsedContext value={collapsed}>
-            <AdwOverlaySplitView
-                collapsed={collapsed}
-                showSidebar={getDrawerStatus(state) === "open"}
-                sidebarPosition={PACK_TYPES[sidebarPosition]}
-                pinSidebar={pinSidebar}
-                minSidebarWidth={minSidebarWidth}
-                maxSidebarWidth={maxSidebarWidth}
-                sidebarWidthFraction={config.sidebarWidthFraction}
-                onNotifyShowSidebar={onShowSidebarChanged}
-                sidebar={<>{sidebar}</>}
-            >
-                <AdwToolbarView topBar={<DrawerHeader descriptor={descriptor} navigation={navigation} />}>
-                    <AdwViewStack visibleChildName={focused.key}>
-                        {state.routes.map((route) => (
-                            <DrawerPage
-                                key={route.key}
-                                descriptor={requireDescriptor(descriptors, route.key)}
-                                isLoaded={loaded.has(route.key)}
-                            />
-                        ))}
-                    </AdwViewStack>
-                </AdwToolbarView>
-            </AdwOverlaySplitView>
-        </DrawerCollapsedContext>
+        <AdwOverlaySplitView
+            collapsed={collapsed}
+            showSidebar={getDrawerStatus(state) === "open"}
+            sidebarPosition={PACK_TYPES[sidebarPosition]}
+            pinSidebar={pinSidebar}
+            minSidebarWidth={minSidebarWidth}
+            maxSidebarWidth={maxSidebarWidth}
+            sidebarWidthFraction={config.sidebarWidthFraction}
+            onNotifyShowSidebar={onShowSidebarChanged}
+            sidebar={<>{sidebar}</>}
+        >
+            <AdwToolbarView topBar={<DrawerHeader descriptor={descriptor} navigation={navigation} />}>
+                <AdwViewStack visibleChildName={focused.key}>
+                    {state.routes.map((route) => (
+                        <DrawerPage
+                            key={route.key}
+                            descriptor={requireDescriptor(descriptors, route.key)}
+                            shouldLoad={route.key === focused.key || state.preloadedRouteKeys.includes(route.key)}
+                        />
+                    ))}
+                </AdwViewStack>
+            </AdwToolbarView>
+        </AdwOverlaySplitView>
     );
 };
 

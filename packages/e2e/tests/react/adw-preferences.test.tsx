@@ -428,6 +428,38 @@ describe("render - ToggleGroup (6)", () => {
     });
 });
 
+describe("render - controlled ToggleGroup", () => {
+    it("releases active index control when set to null", async () => {
+        const ref = createRef<Adw.ToggleGroup>();
+
+        function Group({ active }: { active: number | null }) {
+            return (
+                <AdwToggleGroup ref={ref} active={active}>
+                    {LIST_GRID_TOGGLES}
+                </AdwToggleGroup>
+            );
+        }
+
+        const { rerender } = await render(<Group active={0} />);
+        const group = ref.current;
+
+        if (group === null) {
+            throw new TypeError("expected a ToggleGroup instance");
+        }
+
+        expect(group.getActive()).toBe(0);
+        await rerender(<Group active={null} />);
+
+        await act(() => {
+            group.setActive(1);
+        });
+
+        await waitFor(() => {
+            expect(group.getActive()).toBe(1);
+        });
+    });
+});
+
 describe("render - ToggleGroup (5)", () => {
     describe("user interactions (2)", () => {
         it("finds all toggles by role in a toggle group", async () => {

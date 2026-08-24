@@ -96,10 +96,10 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: childrenProps,
     },
     AdwNavigationView: {
-        props: childrenProps,
+        props: adw("AdwNavigationViewProps"),
     },
     AdwViewStack: {
-        props: childrenProps,
+        props: adw("AdwViewStackProps"),
     },
     AdwToolbarView: {
         props: adw("AdwToolbarViewProps"),

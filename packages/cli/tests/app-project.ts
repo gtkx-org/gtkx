@@ -21,6 +21,7 @@ type AppProjectOptions = {
 type AppRun = { status: number | null; stdout: string; stderr: string };
 
 const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+const WORKSPACE_MODULES = join(WORKSPACE_ROOT, "node_modules");
 const RUN_TIMEOUT = 60_000;
 const ENTRY_NAME = "index.mjs";
 const PROJECT_NAME = "gtkx-app-probe";
@@ -47,11 +48,24 @@ const writeFiles = (root: string, files: Record<string, string>): void => {
     }
 };
 
+const installModules = (root: string): void => {
+    const nodeModules = join(root, "node_modules");
+    mkdirSync(nodeModules);
+
+    for (const entry of readdirSync(WORKSPACE_MODULES)) {
+        if (entry === ".gtkx") {
+            continue;
+        }
+
+        symlinkSync(join(WORKSPACE_MODULES, entry), join(nodeModules, entry));
+    }
+};
+
 const createAppProject = (options: AppProjectOptions): AppProject => {
     const root = mkdtempSync(join(tmpdir(), options.prefix));
     const entry = join(root, "src", ENTRY_NAME);
     mkdirSync(join(root, "src"));
-    symlinkSync(join(WORKSPACE_ROOT, "node_modules"), join(root, "node_modules"), "dir");
+    installModules(root);
     writeFileSync(join(root, "package.json"), appManifest(options.packageType));
     writeFileSync(join(root, "gtkx.config.mjs"), appConfig(options.applicationId));
     writeFileSync(entry, options.entry);
@@ -79,7 +93,6 @@ const installBundle = (outDir: string, files: Record<string, string> = {}): stri
 };
 
 const removeAppProject = (project: AppProject): void => {
-    rmSync(join(project.root, "node_modules"), { force: true });
     rmSync(project.root, { recursive: true, force: true });
 };
 

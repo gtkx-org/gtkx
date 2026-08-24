@@ -14,10 +14,15 @@ import {
     assertPropsCanChange,
     flushAccessible,
     flushBehaviors,
+    mountElementProps,
+    prepareElementProps,
     teardownBehaviors,
+    updateElementProps,
 } from "./apply-props.js";
 import { attachChild, detachChild } from "./child-routing.js";
+import { beginCommit, finishCommit } from "./commit-errors.js";
 import { resolveElementNode } from "./instance.js";
+import { publishLazyPublicInstance } from "./lazy-public-instance.js";
 import {
     type AnyNode,
     createElementNode,
@@ -28,21 +33,25 @@ import {
     type Instance,
     LAZY_KIND,
     lazyTarget,
+    TEXT_KIND,
     type TextNode,
 } from "./node.js";
 import { isRootElement, type RootElement } from "./root-element.js";
-import { disconnectAllHandlers } from "./signals.js";
+import { applyWrite, disconnectAllHandlers } from "./signals.js";
 import { releaseStyle } from "./style.js";
 import {
     didUpdateTextSurgically,
     enclosingHost,
+    flushTextHost,
     flushTextHosts,
+    forgetTextHost,
     markTextDirty,
     validateContentMix,
 } from "./text.js";
 
-/** What a tree is rendered into: any GObject, or the {@link RootElement} marker to render at the top level. */
-type Container = RootElement | GObject.Object;
+type ContainerTarget = RootElement | GObject.Object;
+type Container = { target: ContainerTarget; reportError: (error: unknown) => void };
+type Ownership = { owner: Container; managedCount: number; isContainer: boolean };
 
 type PriorityTracker = {
     get: () => number;
@@ -53,6 +62,9 @@ type PriorityTracker = {
 const RENDERER_VERSION = packageManifest.version;
 const HOST_CONTEXT: Record<string, never> = {};
 const containerNodes: WeakMap<object, ElementNode> = new WeakMap();
+const portalContainers: WeakMap<object, Container> = new WeakMap();
+const ownership: WeakMap<object, Ownership> = new WeakMap();
+const commitOwner: { current: Container | null } = { current: null };
 const priority = createPriorityTracker();
 
 const hostConfig = {
@@ -84,29 +96,45 @@ const hostConfig = {
 
         return false;
     },
+    commitMount: (): void => undefined,
     shouldSetTextContent: (): boolean => false,
     getRootHostContext: (): Record<string, never> => HOST_CONTEXT,
     getChildHostContext: (parent: Record<string, never>): Record<string, never> => parent,
-    getPublicInstance: (instance: Instance): object => getPublicInstance(instance),
-    prepareForCommit: (): null => null,
+    getPublicInstance: (instance: Instance): object | null => getPublicInstance(instance),
+    prepareForCommit: (container: Container): null => {
+        commitOwner.current = container;
+        beginCommit(container.reportError);
+
+        return null;
+    },
     resetAfterCommit: (): void => {
-        flushTextHosts();
-        flushBehaviors();
-        flushAccessible();
+        try {
+            finishCommit(flushCommittedEffects);
+        } finally {
+            commitOwner.current = null;
+        }
     },
     preparePortalMount: (): void => undefined,
     clearContainer: (): void => undefined,
     appendChild: (parent: Instance, child: AnyNode): void => {
+        prepareCommittedTree(child);
         attachChild(parent, child, null);
+        mountCommittedTree(child);
     },
     appendChildToContainer: (container: Container, child: AnyNode): void => {
+        prepareCommittedTree(child);
         attachToContainer(container, child, null);
+        mountCommittedTree(child);
     },
     insertBefore: (parent: Instance, child: AnyNode, before: AnyNode): void => {
+        prepareCommittedTree(child);
         attachChild(parent, child, before);
+        mountCommittedTree(child);
     },
     insertInContainerBefore: (container: Container, child: AnyNode, before: AnyNode): void => {
+        prepareCommittedTree(child);
         attachToContainer(container, child, before);
+        mountCommittedTree(child);
     },
     removeChild: (parent: Instance, child: AnyNode): void => {
         detachChild(parent, child);
@@ -138,6 +166,7 @@ const hostConfig = {
             detachElement(instance);
         } else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
             disconnectAllHandlers(lazyTarget(instance, instance.adopted));
+            instance.isMounted = false;
         }
     },
     getInstanceFromNode: (): null => null,
@@ -162,11 +191,19 @@ const hostConfig = {
     suspendInstance: (): void => undefined,
     waitForCommitToBeReady: (): null => null,
     NotPendingTransition: null,
-    HostTransitionContext: createContext(null) as unknown as ReactReconciler.ReactContext<null>,
+    HostTransitionContext: createContext(null),
 };
 
-const reconciler: ReactReconciler.Reconciler<Container, Instance, TextNode, unknown, unknown, object> =
+const reconciler: ReactReconciler.Reconciler<Container, Instance, TextNode, unknown, unknown, object | null> =
     ReactReconciler(hostConfig);
+
+const createHostContainer = (target: ContainerTarget, reportError: (error: unknown) => void): Container => ({
+    target,
+    reportError,
+});
+
+const getPortalContainer = (target: ContainerTarget, reportError: (error: unknown) => void): Container =>
+    getOrInsert(portalContainers, target, () => createHostContainer(target, reportError));
 
 function createPriorityTracker(): PriorityTracker {
     let current: number = NoEventPriority;
@@ -189,58 +226,234 @@ function createPriorityTracker(): PriorityTracker {
     };
 }
 
-const detachElement = (instance: ElementNode): void => {
-    disconnectAllHandlers(instance);
-    teardownBehaviors(instance);
+function mountPlacedChildren(node: ElementNode, visited: Set<AnyNode>): void {
+    for (const entries of node.placements.values()) {
+        for (const entry of entries) {
+            mountCommittedTree(entry.node, visited);
+        }
+    }
+}
 
+function mountContentChildren(node: ElementNode, visited: Set<AnyNode>): void {
+    for (const child of node.content) {
+        mountCommittedTree(child, visited);
+    }
+}
+
+function mountElementTree(node: ElementNode, visited: Set<AnyNode>): void {
+    mountPlacedChildren(node, visited);
+    mountContentChildren(node, visited);
+
+    if (!node.isMounted) {
+        node.reportError = claimManagedObject(node.object).reportError;
+        flushTextHost(node);
+        mountElementProps(node);
+    }
+}
+
+function prepareElementTree(node: ElementNode, visited: Set<AnyNode>): void {
+    prepareElementProps(node);
+    preparePlacedChildren(node, visited);
+    prepareContentChildren(node, visited);
+}
+
+function preparePlacedChildren(node: ElementNode, visited: Set<AnyNode>): void {
+    for (const entries of node.placements.values()) {
+        for (const entry of entries) {
+            prepareCommittedTree(entry.node, visited);
+        }
+    }
+}
+
+function prepareContentChildren(node: ElementNode, visited: Set<AnyNode>): void {
+    for (const child of node.content) {
+        prepareCommittedTree(child, visited);
+    }
+}
+
+function prepareLazyNode(node: Extract<AnyNode, { kind: typeof LAZY_KIND }>, visited: Set<AnyNode>): void {
+    prepareChildren(node.children, visited);
+
+    if (!node.isMounted && node.adopted !== null) {
+        applyAdoptedProps(lazyTarget(node, node.adopted), {}, node.props);
+        node.isMounted = true;
+        publishLazyPublicInstance(node.props, node.adopted);
+    }
+}
+
+function prepareChildren(children: Iterable<AnyNode>, visited: Set<AnyNode>): void {
+    for (const child of children) {
+        prepareCommittedTree(child, visited);
+    }
+}
+
+function prepareCommittedTree(node: AnyNode, visited: Set<AnyNode> = new Set()): void {
+    if (visited.has(node) || node.kind === TEXT_KIND) {
+        return;
+    }
+
+    visited.add(node);
+
+    if (node.kind === ELEMENT_KIND) {
+        prepareElementTree(node, visited);
+
+        return;
+    }
+
+    if (node.kind === LAZY_KIND) {
+        prepareLazyNode(node, visited);
+
+        return;
+    }
+
+    prepareChildren(node.children, visited);
+}
+
+function mountCommittedTree(node: AnyNode, visited: Set<AnyNode> = new Set()): void {
+    if (visited.has(node) || node.kind === TEXT_KIND) {
+        return;
+    }
+
+    visited.add(node);
+
+    if (node.kind === ELEMENT_KIND) {
+        mountElementTree(node, visited);
+
+        return;
+    }
+
+    for (const child of node.children) {
+        mountCommittedTree(child, visited);
+    }
+}
+
+function runOperations(operations: readonly (() => void)[], message: string): void {
+    const errors: unknown[] = [];
+
+    for (const operation of operations) {
+        try {
+            operation();
+        } catch (error) {
+            errors.push(error);
+        }
+    }
+
+    if (errors.length === 1) {
+        throw errors[0];
+    }
+
+    if (errors.length > 1) {
+        throw new AggregateError(errors, message);
+    }
+}
+
+function flushCommittedEffects(): void {
+    runOperations([flushTextHosts, flushBehaviors, flushAccessible], "Multiple committed effects failed");
+}
+
+const releaseElementStyle = (instance: ElementNode): void => {
     if (instance.object instanceof Gtk.Widget) {
         releaseStyle(instance.object);
     }
 };
 
+const detachElement = (instance: ElementNode): void => {
+    try {
+        runOperations(
+            [
+                () => {
+                    forgetTextHost(instance);
+                },
+                () => {
+                    disconnectAllHandlers(instance);
+                },
+                () => {
+                    teardownBehaviors(instance);
+                },
+                () => {
+                    releaseElementStyle(instance);
+                },
+            ],
+            "Multiple element cleanup operations failed",
+        );
+    } finally {
+        releaseManagedObject(instance.object);
+        instance.reportError = null;
+    }
+};
+
 const updateInstance = (instance: Instance, prev: Props, next: Props): void => {
     if (instance.kind === ELEMENT_KIND) {
-        assertPropsCanChange(instance.typeName, prev, next);
-        applyElementProps(instance, prev, next);
+        updateElementProps(instance, prev, next);
 
         return;
     }
 
-    if (instance.kind === LAZY_KIND && instance.adopted !== null) {
+    if (instance.kind === LAZY_KIND) {
         assertPropsCanChange(instance.typeName, prev, next);
-        applyAdoptedProps(lazyTarget(instance, instance.adopted), prev, next);
+
+        if (instance.adopted !== null) {
+            applyAdoptedProps(lazyTarget(instance, instance.adopted), prev, next);
+        }
+
         instance.props = next;
     }
 };
 
 const attachToContainer = (container: Container, child: AnyNode, before: AnyNode | null): void => {
-    if (!isRootElement(container)) {
-        attachChild(getOrCreateContainerNode(container), child, before);
+    if (isRootElement(container.target)) {
+        return;
+    }
+
+    const node = getOrCreateContainerNode(container.target);
+    node.reportError = claimContainerTarget(container.target).reportError;
+    node.isMounted = true;
+
+    try {
+        attachChild(node, child, before);
+    } catch (error) {
+        releaseEmptyContainerTarget(container.target, node);
+        throw error;
     }
 };
 
 const detachFromContainer = (container: Container, child: AnyNode): void => {
-    if (!isRootElement(container)) {
-        detachChild(getOrCreateContainerNode(container), child);
+    if (isRootElement(container.target)) {
+        return;
     }
+
+    const node = getOrCreateContainerNode(container.target);
+
+    if (!isCurrentOwner(container.target)) {
+        return;
+    }
+
+    detachChild(node, child);
+    releaseEmptyContainerTarget(container.target, node);
 };
 
-const getPublicInstance = (instance: Instance): object => {
+const getPublicInstance = (instance: Instance): object | null => {
     if (instance.kind === ELEMENT_KIND) {
         return instance.object;
     }
 
     if (instance.kind === LAZY_KIND) {
-        return instance.adopted ?? instance;
+        return instance.adopted;
     }
 
     return instance;
 };
 
 const setWidgetVisible = (instance: Instance, isVisible: boolean): void => {
-    if (instance.kind === ELEMENT_KIND && instance.object instanceof Gtk.Widget) {
-        instance.object.setVisible(isVisible);
+    if (instance.kind !== ELEMENT_KIND || !(instance.object instanceof Gtk.Widget)) {
+        return;
     }
+
+    const widget = instance.object;
+
+    applyWrite("visible", () => {
+        widget.setVisible(isVisible);
+    });
 };
 
 const adoptContainer = (container: GObject.Object): ElementNode => {
@@ -250,11 +463,106 @@ const adoptContainer = (container: GObject.Object): ElementNode => {
         throw new Error("Cannot adopt a container whose GType has no registered name");
     }
 
-    return createElementNode(name, container, priority.withDiscrete, null);
+    const node = createElementNode(name, container, priority.withDiscrete, null);
+    node.isMounted = true;
+
+    return node;
 };
 
 const getOrCreateContainerNode = (container: GObject.Object): ElementNode =>
     getOrInsert(containerNodes, container, adoptContainer);
+
+const currentCommitOwner = (): Container => {
+    const owner = commitOwner.current;
+
+    if (owner === null) {
+        throw new Error("A native container can only be changed during a React commit");
+    }
+
+    return owner;
+};
+
+const ownershipFor = (object: GObject.Object): Ownership => {
+    const owner = currentCommitOwner();
+    const existing = ownership.get(object);
+
+    if (existing !== undefined) {
+        if (existing.owner !== owner) {
+            throw new Error("A native object cannot be owned by more than one React root");
+        }
+
+        return existing;
+    }
+
+    const created: Ownership = { owner, managedCount: 0, isContainer: false };
+    ownership.set(object, created);
+
+    return created;
+};
+
+const deleteReleasedOwnership = (object: GObject.Object, record: Ownership): void => {
+    if (record.managedCount === 0 && !record.isContainer) {
+        ownership.delete(object);
+    }
+};
+
+const claimManagedObject = (object: GObject.Object): Container => {
+    const record = ownershipFor(object);
+    record.managedCount += 1;
+
+    return record.owner;
+};
+
+const releaseManagedObject = (object: GObject.Object): void => {
+    const record = ownership.get(object);
+
+    if (record === undefined || record.managedCount === 0) {
+        return;
+    }
+
+    record.managedCount -= 1;
+    deleteReleasedOwnership(object, record);
+};
+
+const claimContainerTarget = (target: GObject.Object): Container => {
+    const record = ownershipFor(target);
+    record.isContainer = true;
+
+    return record.owner;
+};
+
+const hasPlacedChildren = (node: ElementNode): boolean => {
+    for (const entries of node.placements.values()) {
+        if (entries.length > 0) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const releaseEmptyContainerTarget = (target: GObject.Object, node: ElementNode): void => {
+    const record = ownership.get(target);
+    const owner = commitOwner.current;
+
+    if (record === undefined || owner === null || record.owner !== owner || hasPlacedChildren(node)) {
+        return;
+    }
+
+    try {
+        teardownBehaviors(node);
+    } finally {
+        node.reportError = null;
+        record.isContainer = false;
+        deleteReleasedOwnership(target, record);
+    }
+};
+
+const isCurrentOwner = (target: GObject.Object): boolean => {
+    const owner = commitOwner.current;
+
+    return owner !== null && ownership.get(target)?.owner === owner;
+};
 
 const createNode = (type: string, props: Props): Instance => {
     if (type === Prop) {
@@ -271,4 +579,4 @@ const createNode = (type: string, props: Props): Instance => {
     return node;
 };
 
-export { reconciler, type Container };
+export { createHostContainer, getPortalContainer, reconciler, type ContainerTarget };

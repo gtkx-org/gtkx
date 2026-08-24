@@ -1,14 +1,45 @@
+import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwApplication } from "@gtkx/jsx/adw";
 import { rootElement } from "@gtkx/react";
 import { act, fireEvent, render, screen, userEvent } from "@gtkx/testing";
+import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
+import { Window } from "../src/components/window.js";
+import { ALL_TASKS, type OpenTaskRequest } from "../src/navigation.js";
 import { useStore } from "../src/store/index.js";
 
 const openWaterThePlants = async (): Promise<void> => {
     const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
     await fireEvent(row, "activated");
     await screen.findByText("Notes");
+};
+
+const activateOpenTask = async (id: string): Promise<void> => {
+    const application = Gio.Application.getDefault();
+    if (application === null) throw new Error("the application did not mount");
+
+    await act(() => {
+        application.activateAction("open-task", GLib.Variant.newString(id));
+    });
+};
+
+const ApplicationWithPendingOpenTask = ({ id }: { id: string }) => {
+    const [request, setRequest] = useState<OpenTaskRequest | null>({ selection: ALL_TASKS, id });
+
+    return (
+        <AdwApplication>
+            <Window
+                openTaskRequest={request}
+                onOpenTaskRequest={setRequest}
+                onOpenTaskRequestHandled={(handled) => {
+                    setRequest((current) => (current === handled ? null : current));
+                }}
+            />
+        </AdwApplication>
+    );
 };
 
 describe("the store", () => {
@@ -97,6 +128,20 @@ describe("Tasks", () => {
         expect(useStore.getState().tasks.find((task) => task.id === "t2")?.deleted).toBe(true);
     });
 
+    it("returns to Trash when the open task is deleted permanently", async () => {
+        await render(<App />, { container: rootElement });
+
+        await openWaterThePlants();
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete (Delete)" }));
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Trash/ }));
+        await openWaterThePlants();
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete (Delete)" }));
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" }));
+
+        expect(screen.queryByText("Notes")).toBeNull();
+        expect(useStore.getState().tasks.some((task) => task.id === "t2")).toBe(false);
+    });
+
     it("reorders tasks by dragging", async () => {
         await render(<App />, { container: rootElement });
 
@@ -125,5 +170,40 @@ describe("Tasks", () => {
 
         expect(orange).toHaveObjectProperty("active", true);
         expect(await screen.findByLabelText("Color #3584e4")).toHaveObjectProperty("active", false);
+    });
+});
+
+describe("external task actions", () => {
+    it("opens a task when navigation is already ready", async () => {
+        await render(<App />, { container: rootElement });
+
+        await activateOpenTask("t2");
+
+        expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
+    });
+
+    it("opens a pending task after cold-start navigation becomes ready", async () => {
+        await render(<ApplicationWithPendingOpenTask id="t2" />, { container: rootElement });
+
+        expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
+    });
+
+    it("ignores actions for missing or deleted tasks", async () => {
+        await render(<App />, { container: rootElement });
+
+        await activateOpenTask("missing-task");
+
+        expect(screen.queryByText("Notes")).toBeNull();
+
+        await act(() => {
+            useStore.getState().moveToTrash("t2");
+        });
+        await activateOpenTask("t2");
+
+        expect(screen.queryByText("Notes")).toBeNull();
+
+        await activateOpenTask("t1");
+
+        expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
     });
 });

@@ -2,6 +2,34 @@ import type * as Adw from "@gtkx/gi/adw";
 import type { ReactNode } from "react";
 import type { ChildrenProps } from "../prop-types.js";
 
+/** One page in an `Adw.NavigationView`'s controlled `navigationStack`. */
+type NavigationStackEntry = {
+    /** Tag of the page in the stack. */
+    tag: string;
+    /** Whether transitions entering or leaving this page animate. */
+    animateTransitions: boolean;
+};
+
+/** Transition policy for a named page in an `Adw.ViewStack`. */
+type ViewStackPageTransition = {
+    /** Name of the page. */
+    name: string;
+    /** Whether switching to this page crossfades. */
+    animateTransitions: boolean;
+};
+
+/** Props of an `Adw.NavigationView` element. */
+type AdwNavigationViewProps = {
+    /** Pages in the native navigation stack, ordered from its root to its visible page. */
+    navigationStack?: readonly NavigationStackEntry[] | null | undefined;
+} & ChildrenProps;
+
+/** Props of an `Adw.ViewStack` element. */
+type AdwViewStackProps = {
+    /** Per-destination transition policies, keyed by page name. */
+    pageTransitions?: readonly ViewStackPageTransition[] | null | undefined;
+} & ChildrenProps;
+
 /** One button in an `Adw.AlertDialog`'s `responses` prop. */
 type AlertDialogResponse = {
     /** Name the dialog reports on `onResponse` when this button is chosen. */
@@ -65,6 +93,10 @@ type AdwMultiLayoutViewProps = {
 };
 
 export {
+    type NavigationStackEntry,
+    type AdwNavigationViewProps,
+    type ViewStackPageTransition,
+    type AdwViewStackProps,
     type AlertDialogResponse,
     type AdwAlertDialogProps,
     type AdwPreferencesRowProps,

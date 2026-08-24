@@ -192,6 +192,17 @@ describe("style prop removal", () => {
     });
 });
 
+describe("style prop structural values", () => {
+    it("accepts a structurally compatible style class", async () => {
+        class LabelPaint {
+            color = RED_CSS;
+        }
+
+        const { styled } = await renderPair(new LabelPaint());
+        expect(getColor(styled)).toEqual(RED);
+    });
+});
+
 describe("style prop edge cases", () => {
     it("treats null the same as removing the prop", async () => {
         const { plain, styled, restyle } = await renderPair({ color: RED_CSS });

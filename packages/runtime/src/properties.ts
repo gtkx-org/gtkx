@@ -80,6 +80,12 @@ type ConstructProperty = {
     value: ExternalObject<Handle>;
 };
 
+type ObjectPropertyInfo = {
+    name: string;
+    flags: number;
+    defaultValue: unknown;
+};
+
 type NotifyingObject = { notify?: (propertyName: string) => void };
 
 const FIRST_PROPERTY_ID = 1;
@@ -334,6 +340,30 @@ function isReadableProperty(gtype: bigint, propertyName: string): boolean {
     }
 }
 
+function getObjectPropertyInfo(gtype: bigint, propertyName: string): ObjectPropertyInfo | undefined {
+    if (!typeIsA(gtype, TYPE_OBJECT)) {
+        return undefined;
+    }
+
+    const klass = typeClassRef(gtype) as ExternalObject<Handle>;
+
+    try {
+        const pspec = findPropertySpec(klass, propertyName);
+
+        if (pspec === null) {
+            return undefined;
+        }
+
+        return {
+            name: paramSpecName(pspec) as string,
+            flags: getParamFlags(pspec),
+            defaultValue: fromValue(defaultValueFor(pspec)),
+        };
+    } finally {
+        typeClassUnref(klass);
+    }
+}
+
 function lookupCoercionCheck(gtype: bigint, name: string): PropertyCheck | null {
     const klass = typeClassRef(gtype) as ExternalObject<Handle>;
 
@@ -423,6 +453,26 @@ function coerceObjectProperty(obj: object, propertyName: string, value: unknown)
     const gtype = getInstanceType(obj);
 
     return gtype === TYPE_INVALID ? value : coercePropertyValue(gtype, propertyName, value);
+}
+
+function prepareObjectPropertyValue(obj: object, propertyName: string, value: unknown): unknown {
+    const gtype = getInstanceType(obj);
+
+    if (gtype === TYPE_INVALID) {
+        return value;
+    }
+
+    const check = coercionCheckFor(gtype, propertyName);
+
+    if (check === null) {
+        return value;
+    }
+
+    const prepared = coercePropertyValue(gtype, propertyName, value);
+    assertWritable(obj, check, prepared);
+    assertValueAccepted(obj, check, prepared);
+
+    return prepared;
 }
 
 function constructPropertyFor(
@@ -689,8 +739,21 @@ function assertCanonicalName(klass: AnyClass, name: string, propertyName: string
 }
 
 function assertCanonicalNames(klass: AnyClass, properties: Record<string, PropertySpec>): void {
+    const accessors: Set<string> = new Set();
+
     for (const [name, pspec] of Object.entries(properties)) {
-        assertCanonicalName(klass, name, getPropertyName(pspec));
+        const accessor = toCamelIdentifier(name);
+        const propertyName = getPropertyName(pspec);
+        const inheritedName = getDeclaredPropertyName(klass.prototype, accessor);
+
+        if (accessors.has(accessor) || (inheritedName !== undefined && inheritedName !== propertyName)) {
+            throw new TypeError(
+                `registerClass: ${klass.name} declares more than one property under the accessor '${accessor}'`,
+            );
+        }
+
+        accessors.add(accessor);
+        assertCanonicalName(klass, name, propertyName);
     }
 }
 
@@ -762,7 +825,7 @@ function getDeclaredPropertyName(object: object, accessor: string): string | und
         | Record<string, string> |
         undefined;
 
-    return declared?.[accessor];
+    return declared?.[camelCase(accessor)];
 }
 
 function toNativeProperties(properties: Record<string, PropertySpec>): RegisterClassProperty[] {
@@ -776,6 +839,7 @@ export {
     buildPropertyDispatch,
     coerceObjectProperty,
     getDeclaredPropertyName,
+    getObjectPropertyInfo,
     isReadableProperty,
     coercePropertyValue,
     constructPropertyFor,
@@ -783,6 +847,7 @@ export {
     makeGetProperty,
     makeSetProperty,
     newParamSpecOverride,
+    prepareObjectPropertyValue,
     SET_PROPERTY_VFUNC,
     toNativeProperties,
     type ConstructProperty,

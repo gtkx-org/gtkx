@@ -25,12 +25,14 @@ type Params = {
 };
 
 type SplitEvent = { type: string; route: string; isClosing?: boolean };
-type EventSpy = Mock<(event: SplitEvent) => void>;
-type PreventSpy = Mock<(data: { action: NavigationAction }) => void>;
+type EventHandler = (event: SplitEvent) => void;
+type PreventHandler = (data: { action: NavigationAction }) => void;
+type EventSpy = Mock<EventHandler>;
+type PreventSpy = Mock<PreventHandler>;
 type StateSpy = Mock<(state: NavigationState | undefined) => void>;
 type WidgetClass<T> = abstract new (...args: never[]) => T;
 type NavigatorProps = Partial<Omit<ComponentProps<typeof Split.Navigator>, "children">>;
-type Spies = { onEvent?: EventSpy; onPrevent?: PreventSpy };
+type Spies = { onEvent?: EventHandler; onPrevent?: PreventHandler };
 
 type SplitOptions = {
     navigator?: NavigatorProps;
@@ -94,6 +96,12 @@ const Lists = ({ navigation, route }: SplitViewScreenProps<Params, "Lists">): Re
                 label="Open draft"
                 onClicked={() => {
                     navigation.navigate("Draft");
+                }}
+            />
+            <GtkButton
+                label="Replace selected with task"
+                onClicked={() => {
+                    navigation.replace("Task", { id: "6" });
                 }}
             />
         </GtkBox>

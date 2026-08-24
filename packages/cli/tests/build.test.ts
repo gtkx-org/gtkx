@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -106,6 +107,47 @@ createRoot();
 process.stdout.write(String(Object.keys(absent).length));
 `;
 
+const LEGACY_CONSUMER_MARKER = "legacy-consumer-ready";
+const CURRENT_CONSUMER_MARKER = "current-consumer-ready";
+
+const LEGACY_CONSUMER_SOURCE = `import {
+    constructOnlyProps,
+    constructProps,
+    defaultProps,
+    signals,
+    userEventSignals,
+} from "virtual:gtkx-config";
+
+export const readLegacyMetadata = () =>
+    constructOnlyProps.GApplicationCommandLine?.has("arguments_") === true &&
+    constructProps.GtkWidget?.has("visible") === true &&
+    defaultProps.GtkWidget?.visible === true &&
+    typeof signals === "object" &&
+    typeof userEventSignals === "object";
+`;
+
+const LEGACY_CONSUMER_APP = `import { readLegacyMetadata } from "legacy-metadata-consumer";
+
+if (readLegacyMetadata()) {
+    process.stdout.write("${LEGACY_CONSUMER_MARKER}");
+}
+`;
+
+const CURRENT_CONSUMER_APP = `import { createRoot } from "@gtkx/react";
+
+if (typeof createRoot === "function") {
+    process.stdout.write("${CURRENT_CONSUMER_MARKER}");
+}
+`;
+
+const LEGACY_METADATA = `export const signals = {};
+export const constructOnlyProps = { GtkApplication: new Set(["flags"]) };
+export const constructProps = { GtkApplication: new Set(["applicationId", "flags"]) };
+export const defaultProps = { GtkApplication: { flags: 0 } };
+`;
+
+const INVALID_METADATA = "export const signals = {};\n";
+
 const BROKEN_ENTRIES: BrokenEntry[] = [
     { title: "an entry the project does not have", args: ["src/missing.tsx"] },
     { title: "a project with no entry at all", args: [] },
@@ -125,6 +167,14 @@ const appFiles = (entry: string): Record<string, string> => ({
 
 const emittedNames = (project: CliProject): string[] => listProjectFiles(project, OUT_DIR);
 
+const metadataProject = (prefix: string, files: Record<string, string>): CliProject =>
+    createCliProject({
+        prefix,
+        config: config(STORE_LIBRARIES, ", codegen: false"),
+        files,
+        hasStore: true,
+    });
+
 const runApp = (project: CliProject): AppRun => {
     const bundle = join(project.root, OUT_DIR, BUNDLE);
 
@@ -135,6 +185,126 @@ const runApp = (project: CliProject): AppRun => {
     });
 
     return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+};
+
+const requireSuccess = (status: number | null): void => {
+    if (status !== 0) {
+        throw new Error("The command failed");
+    }
+};
+
+const runAppSuccessfully = (project: CliProject): AppRun => {
+    const result = runApp(project);
+    requireSuccess(result.status);
+
+    return result;
+};
+
+const buildWithLinkedOutput = (isNested: boolean): void => {
+    const outside = mkdtempSync(join(tmpdir(), "gtkx-cli-build-output-"));
+
+    const project = createCliProject({
+        prefix: "gtkx-cli-build-linked-output-",
+        config: config(STORE_LIBRARIES, ", codegen: false"),
+        files: appFiles("index.tsx"),
+        hasStore: true,
+    });
+
+    try {
+        if (isNested) {
+            mkdirSync(join(project.root, OUT_DIR));
+            symlinkSync(outside, join(project.root, OUT_DIR, "assets"), "dir");
+        } else {
+            symlinkSync(outside, join(project.root, OUT_DIR), "dir");
+        }
+
+        requireSuccess(runCli(project, ["build"]).status);
+    } finally {
+        removeCliProject(project);
+        rmSync(outside, { recursive: true, force: true });
+    }
+};
+
+const buildWithLinkedIcons = (): void => {
+    const outside = mkdtempSync(join(tmpdir(), "gtkx-cli-build-icons-"));
+    const iconPath = join("data", ICON_PATH);
+    const files = Object.fromEntries(Object.entries(appFiles("index.tsx")).filter(([name]) => name !== iconPath));
+
+    const project = createCliProject({
+        prefix: "gtkx-cli-build-linked-icons-",
+        config: config(STORE_LIBRARIES, ", codegen: false"),
+        files,
+        hasStore: true,
+    });
+
+    try {
+        symlinkSync(outside, join(project.root, "data", "icons"), "dir");
+        requireSuccess(runCli(project, ["build"]).status);
+    } finally {
+        removeCliProject(project);
+        rmSync(outside, { recursive: true, force: true });
+    }
+};
+
+const buildWithLinkedSchemaEnv = (): void => {
+    const outside = mkdtempSync(join(tmpdir(), "gtkx-cli-build-schema-env-"));
+    const target = join(outside, "env.d.ts");
+
+    const project = createCliProject({
+        prefix: "gtkx-cli-build-linked-schema-env-",
+        config: config(STORE_LIBRARIES, ", codegen: false"),
+        files: appFiles("index.tsx"),
+        hasStore: true,
+    });
+
+    try {
+        writeFileSync(target, "external\n");
+        const declarations = join(project.root, SCHEMA_TYPES);
+        rmSync(declarations, { force: true });
+        symlinkSync(target, declarations, "file");
+        requireSuccess(runCli(project, ["build"]).status);
+    } finally {
+        removeCliProject(project);
+        rmSync(outside, { recursive: true, force: true });
+    }
+};
+
+const buildWithLinkedNodeModules = (): void => {
+    const outside = mkdtempSync(join(tmpdir(), "gtkx-cli-build-node-modules-"));
+    const externalModules = join(outside, "node_modules");
+
+    const project = createCliProject({
+        prefix: "gtkx-cli-build-linked-node-modules-",
+        config: config(STORE_LIBRARIES, ", codegen: false"),
+        files: appFiles("index.tsx"),
+        hasStore: true,
+    });
+
+    try {
+        renameSync(project.nodeModules, externalModules);
+        symlinkSync(externalModules, project.nodeModules, "dir");
+        requireSuccess(runCli(project, ["build"]).status);
+    } finally {
+        removeCliProject(project);
+        rmSync(outside, { recursive: true, force: true });
+    }
+};
+
+const buildWithEscapedData = (): void => {
+    const manifest = { ...MANIFEST, imports: { "#data/*": "../outside/*" } };
+
+    const project = createCliProject({
+        prefix: "gtkx-cli-build-data-escape-",
+        config: config(STORE_LIBRARIES, ", codegen: false"),
+        files: { ...appFiles("index.tsx"), "package.json": `${JSON.stringify(manifest, null, 4)}\n` },
+        hasStore: true,
+    });
+
+    try {
+        requireSuccess(runCli(project, ["build"]).status);
+    } finally {
+        removeCliProject(project);
+    }
 };
 
 describe("gtkx build", () => {
@@ -195,6 +365,52 @@ describe("gtkx build (an entry the command is given)", () => {
     });
 });
 
+describe("gtkx build (metadata format compatibility)", () => {
+    it("loads a v1.3 consumer from a v1.4-generated store", () => {
+        const project = metadataProject("gtkx-cli-build-legacy-consumer-", {
+            "node_modules/legacy-metadata-consumer/package.json":
+                '{"name":"legacy-metadata-consumer","type":"module","exports":"./index.js"}\n',
+            "node_modules/legacy-metadata-consumer/index.js": LEGACY_CONSUMER_SOURCE,
+            [join("src", "index.ts")]: LEGACY_CONSUMER_APP,
+        });
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            expect(runApp(project).stdout).toBe(LEGACY_CONSUMER_MARKER);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("loads the current renderer from a v1.3-generated store", () => {
+        const project = metadataProject("gtkx-cli-build-legacy-store-", {
+            [join("node_modules", ".gtkx", "jsx", "metadata.js")]: LEGACY_METADATA,
+            [join("src", "index.ts")]: CURRENT_CONSUMER_APP,
+        });
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            expect(runApp(project).stdout).toBe(CURRENT_CONSUMER_MARKER);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("fails when the renderer receives neither metadata format", () => {
+        const project = metadataProject("gtkx-cli-build-invalid-store-", {
+            [join("node_modules", ".gtkx", "jsx", "metadata.js")]: INVALID_METADATA,
+            [join("src", "index.ts")]: CURRENT_CONSUMER_APP,
+        });
+
+        try {
+            requireSuccess(runCli(project, ["build"]).status);
+            expect(() => runAppSuccessfully(project)).toThrow();
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
 describe("gtkx build (projects it refuses to build)", () => {
     const state: { project: CliProject } = { project: { root: "", nodeModules: "" } };
 
@@ -247,5 +463,35 @@ describe("gtkx build (projects it refuses to build)", () => {
         } finally {
             removeCliProject(project);
         }
+    });
+});
+
+describe("gtkx build (unsafe filesystem paths)", () => {
+    it("fails before following a linked build output", () => {
+        expect(() => {
+            buildWithLinkedOutput(false);
+        }).toThrow();
+    });
+
+    it("fails before following a link nested in the build output", () => {
+        expect(() => {
+            buildWithLinkedOutput(true);
+        }).toThrow();
+    });
+
+    it("fails before following a linked icon tree", () => {
+        expect(buildWithLinkedIcons).toThrow();
+    });
+
+    it("fails before following a linked generated declaration", () => {
+        expect(buildWithLinkedSchemaEnv).toThrow();
+    });
+
+    it("fails before following a linked node_modules tree", () => {
+        expect(buildWithLinkedNodeModules).toThrow();
+    });
+
+    it("fails over a data import target outside the project", () => {
+        expect(buildWithEscapedData).toThrow();
     });
 });

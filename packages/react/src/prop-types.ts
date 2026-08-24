@@ -174,7 +174,7 @@ type StyleProperties = Pick<
  * it, such as `"&:hover"` or `"& label"`. GTK4 CSS covers paint and typography only, so layout properties
  * such as `display`, `width` and `gap` are deliberately absent; use the widget's own layout props instead.
  */
-type Style = StyleProperties & Partial<Record<`&${string}`, StyleProperties>>;
+type Style = StyleProperties | (StyleProperties & Partial<Record<`&${string}`, StyleProperties>>);
 
 /** Objects a widget takes through a method call rather than a property. */
 type GtkWidgetProps = {

@@ -5,7 +5,15 @@ import { getOrInsert } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 
 type ContentKind = "label" | "buffer" | "tag" | "anchor";
-type HandlerRecord = { signal: string; handler: SignalHandler; wrapped: SignalHandler; isBlockable: boolean };
+
+type HandlerRecord = {
+    object: GObject.Object;
+    signal: string;
+    handler: SignalHandler;
+    wrapped: SignalHandler;
+    isBlockable: boolean;
+};
+
 type Dispatch = (fn: () => unknown) => unknown;
 
 type SignalTarget = {
@@ -26,6 +34,8 @@ type PlacedChild = {
 
 type ElementNode = SignalTarget & {
     kind: typeof ELEMENT_KIND;
+    isMounted: boolean;
+    reportError: ((error: unknown) => void) | null;
     props: Props;
     placements: Map<string, PlacedChild[]>;
     contexts: Map<ElementBehavior, unknown>;
@@ -44,6 +54,7 @@ type PropNode = {
 
 type LazyNode = {
     kind: typeof LAZY_KIND;
+    isMounted: boolean;
     typeName: string;
     props: Props;
     children: PlaceableNode[];
@@ -80,6 +91,7 @@ const createPropNode = (slot: string): PropNode => ({
 
 const createLazyNode = (typeName: string, props: Props, dispatch: Dispatch): LazyNode => ({
     kind: LAZY_KIND,
+    isMounted: false,
     typeName,
     props,
     children: [],
@@ -96,6 +108,8 @@ const createElementNode = (
     contentKind: ContentKind | null,
 ): ElementNode => ({
     kind: ELEMENT_KIND,
+    isMounted: false,
+    reportError: null,
     typeName,
     object,
     props: {},

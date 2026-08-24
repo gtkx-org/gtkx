@@ -12,7 +12,7 @@ type InitImpl = (cancellable: Cancellable | null) => boolean;
 const GLIB = "libglib-2.0.so.0";
 const uniqueName = createTypeNameFactory("_");
 const pointer = t.biguint64;
-const parseHookT = t.callback([pointer, pointer, pointer], t.boolean, { canThrow: true });
+const parseHookT = t.callback([pointer, pointer, pointer], t.boolean, { canThrow: true, scope: "forever" });
 const newOptionContext = t.fn(GLIB, "g_option_context_new", { args: [{ type: t.string() }], returns: pointer });
 const freeOptionContext = t.fn(GLIB, "g_option_context_free", { args: [{ type: pointer }], returns: t.void });
 

@@ -1,11 +1,14 @@
 import type { SignalHandler } from "@gtkx/runtime";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { coerceObjectProperty, getInstanceType, signalForHandlerName, TYPE_INVALID } from "@gtkx/runtime";
+import { getInstanceType, signalForHandlerName, TYPE_INVALID } from "@gtkx/runtime";
+import { prepareObjectPropertyValue } from "@gtkx/runtime/internal";
 import { drain, isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
-import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import { getPropertyName, hasProperty, type TypeInfo, typeInfoFor } from "./metadata.js";
+import { applyAccessibleProps, isAccessibleProp, validateAccessibleProps } from "../utils/accessible-props.js";
+import { reportReconcilerError, runWithErrorReporter } from "./commit-errors.js";
+import { LAZY_PUBLIC_INSTANCE_PROP } from "./lazy-public-instance.js";
+import { getPropertyName, hasProperty, type TypeInfo, typeInfoFor, typeInfoForProps } from "./metadata.js";
 import { type ElementNode, getOrCreateContext, type SignalTarget } from "./node.js";
 import { applyWrite, connectHandler, disconnectHandler } from "./signals.js";
 import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PROP } from "./text.js";
@@ -14,7 +17,7 @@ type PropDelta = { name: string; value: unknown; prevValue: unknown };
 type BehaviorUpdateContext = { node: ElementNode; prev: Props; next: Props; consumed: Set<string> };
 type PropChange = { prev: Props; next: Props };
 
-const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
+const REACT_RESERVED_PROPS = new Set(["children", "ref", "key", LAZY_PUBLIC_INSTANCE_PROP]);
 const NOTIFY_PREFIX = "onNotify";
 const HANDLER_NAME = /^on[A-Z]/;
 const flushDirty: Set<ElementNode> = new Set();
@@ -73,7 +76,7 @@ const writeValue = (object: GObject.Object, name: string, value: unknown): void 
     }
 
     applyWrite(name, () => {
-        Reflect.set(object, name, coerceObjectProperty(object, name, value));
+        Reflect.set(object, name, prepareObjectPropertyValue(object, name, value));
     });
 };
 
@@ -160,7 +163,7 @@ const isDeclaredConstructOnlyChange = (info: TypeInfo, name: string, change: Pro
     !isDeepEqual(change.prev[name], change.next[name]);
 
 const assertPropsCanChange = (typeName: string, prev: Props, next: Props): void => {
-    const info = typeInfoFor(typeName);
+    const info = typeInfoForProps(typeName, prev, next);
     const change: PropChange = { prev, next };
 
     eachChangedName(prev, next, (name) => {
@@ -183,6 +186,12 @@ const collectConsumed = (ctx: BehaviorUpdateContext, behavior: ElementBehavior):
 
     for (const name of result) {
         ctx.consumed.add(name);
+    }
+};
+
+const runBehaviorValidations = (node: ElementNode, info: TypeInfo, prev: Props, next: Props): void => {
+    for (const behavior of info.behaviors) {
+        behavior.validate?.(node.object, prev, next, getOrCreateContext(node, behavior));
     }
 };
 
@@ -224,11 +233,43 @@ const restoreActionableSensitivity = (node: ElementNode, info: TypeInfo, prev: P
 const applyHandler = (target: SignalTarget, info: TypeInfo, name: string, next: Props): void => {
     const value = next[name];
 
-    if (typeof value === "function") {
-        connectHandler(target, name, signalForProp(target, info, name), value as SignalHandler);
-    } else {
+    if (value === undefined || value === null) {
         disconnectHandler(target, name);
+
+        return;
     }
+
+    if (typeof value !== "function") {
+        throw new TypeError(
+            `The handler prop '${name}' of <${target.typeName}> must be a function, null, or undefined`,
+        );
+    }
+
+    connectHandler(target, name, signalForProp(target, info, name), value as SignalHandler);
+};
+
+const validateHandler = (target: SignalTarget, info: TypeInfo, name: string, next: Props): void => {
+    const value = next[name];
+
+    if (value === undefined || value === null) {
+        return;
+    }
+
+    if (typeof value !== "function") {
+        throw new TypeError(
+            `The handler prop '${name}' of <${target.typeName}> must be a function, null, or undefined`,
+        );
+    }
+
+    signalForProp(target, info, name);
+};
+
+const validateHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: Props): void => {
+    eachChangedName(prev, next, (name) => {
+        if (isHandlerName(name) && !hasProperty(info, name)) {
+            validateHandler(target, info, name, next);
+        }
+    });
 };
 
 const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: Props): void => {
@@ -239,8 +280,28 @@ const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: 
     });
 };
 
+const shouldValidateValue = (info: TypeInfo, name: string, prev: Props, next: Props): boolean => {
+    const value = next[name];
+    const isInitialNull = value === null && prev[name] === undefined;
+
+    return !isReservedName(name, info) &&
+        !info.deferred.has(name) &&
+        hasProperty(info, name) &&
+        !Object.is(prev[name], value) &&
+        value !== undefined &&
+        !isInitialNull;
+};
+
+const validateValueEntries = (object: GObject.Object, info: TypeInfo, prev: Props, next: Props): void => {
+    eachChangedName(prev, next, (name) => {
+        if (shouldValidateValue(info, name, prev, next)) {
+            prepareObjectPropertyValue(object, name, next[name]);
+        }
+    });
+};
+
 const markFlush = (node: ElementNode): void => {
-    if (typeInfoFor(node.typeName).hasFlush) {
+    if (node.isMounted && typeInfoFor(node.typeName).hasFlush) {
         flushDirty.add(node);
     }
 };
@@ -251,36 +312,51 @@ const eachBehavior = (node: ElementNode, visit: (behavior: ElementBehavior, cont
     }
 };
 
+const flushNodeBehaviors = (node: ElementNode): void => {
+    const reportError = node.reportError ?? reportReconcilerError;
+    eachBehavior(node, (behavior, context) => behavior.flush?.(node.object, context, reportError));
+};
+
 const flushBehaviors = (): void => {
-    drain(flushDirty, (node) => {
-        eachBehavior(node, (behavior, context) => behavior.flush?.(node.object, context));
-    });
+    drain(flushDirty, flushNodeBehaviors);
 };
 
 const teardownBehaviors = (node: ElementNode): void => {
+    node.isMounted = false;
     flushDirty.delete(node);
     unwatchMap(node);
+    const contexts = new Set(node.contexts);
 
-    for (const [behavior, context] of node.contexts) {
-        behavior.teardown?.(node.object, context);
+    try {
+        drain(contexts, ([behavior, context]) => {
+            behavior.teardown?.(node.object, context);
+        });
+    } finally {
+        node.contexts.clear();
     }
 };
 
-const applyAccessible = (object: GObject.Object, prev: Props | null, next: Props): void => {
+const applyAccessible = (object: GObject.Object, info: TypeInfo, prev: Props | null, next: Props): void => {
     if (object instanceof Gtk.Accessible) {
-        applyAccessibleProps(object, prev, next);
+        applyAccessibleProps(object, prev, next, (name) => !hasProperty(info, name));
+    }
+};
+
+const validateAccessible = (object: GObject.Object, info: TypeInfo, next: Props): void => {
+    if (object instanceof Gtk.Accessible) {
+        validateAccessibleProps(next, (name) => !hasProperty(info, name));
     }
 };
 
 const markAccessible = (node: ElementNode, prev: Props): void => {
-    if (!accessibleDirty.has(node)) {
+    if (node.isMounted && !accessibleDirty.has(node)) {
         accessibleDirty.set(node, prev);
     }
 };
 
-const hasAccessibleProp = (props: Props): boolean => {
+const hasAccessibleProp = (props: Props, info: TypeInfo): boolean => {
     for (const name in props) {
-        if (isAccessibleProp(name)) {
+        if (isAccessibleProp(name) && !hasProperty(info, name)) {
             return true;
         }
     }
@@ -288,10 +364,10 @@ const hasAccessibleProp = (props: Props): boolean => {
     return false;
 };
 
-const watchMap = (node: ElementNode): void => {
+const watchMap = (node: ElementNode, info: TypeInfo): void => {
     const { object } = node;
 
-    if (mapWatched.has(node) || !(object instanceof Gtk.Widget) || !hasAccessibleProp(node.props)) {
+    if (mapWatched.has(node) || !(object instanceof Gtk.Widget) || !hasAccessibleProp(node.props, info)) {
         return;
     }
 
@@ -316,37 +392,91 @@ const unwatchMap = (node: ElementNode): void => {
 
 const settleAccessible = (): void => {
     drain(pendingMap, (node) => {
-        if (node.object instanceof Gtk.Widget && node.object.getMapped()) {
-            applyAccessible(node.object, null, node.props);
-        }
+        runWithErrorReporter(node.reportError, () => {
+            if (!(node.object instanceof Gtk.Widget) || !node.object.getMapped()) {
+                return;
+            }
+
+            const info = typeInfoForProps(node.typeName, node.props);
+            applyAccessible(node.object, info, null, node.props);
+        });
     });
 };
 
 const flushAccessible = (): void => {
-    for (const [node, prev] of accessibleDirty) {
-        applyAccessible(node.object, prev, node.props);
-        watchMap(node);
-    }
+    const entries = new Set(accessibleDirty);
 
-    accessibleDirty.clear();
+    try {
+        drain(entries, ([node, prev]) => {
+            const info = typeInfoForProps(node.typeName, prev, node.props);
+            applyAccessible(node.object, info, prev, node.props);
+            watchMap(node, info);
+        });
+    } finally {
+        accessibleDirty.clear();
+    }
+};
+
+const mountElementProps = (node: ElementNode): void => {
+    prepareElementProps(node);
+    node.isMounted = true;
+    flushNodeBehaviors(node);
+    const info = typeInfoForProps(node.typeName, {}, node.props);
+    applyAccessible(node.object, info, null, node.props);
+    watchMap(node, info);
+};
+
+const prepareElementProps = (node: ElementNode): void => {
+    const info = typeInfoForProps(node.typeName, {}, node.props);
+    applyHandlers(node, info, {}, node.props);
+};
+
+const commitElementProps = (node: ElementNode, prev: Props, next: Props, isUpdate: boolean): void => {
+    try {
+        const info = typeInfoForProps(node.typeName, prev, next);
+
+        if (isUpdate) {
+            assertPropsCanChange(node.typeName, prev, next);
+        }
+
+        validateAccessible(node.object, info, next);
+        validateHandlers(node, info, prev, next);
+        validateValueEntries(node.object, info, prev, next);
+        runBehaviorValidations(node, info, prev, next);
+        const consumed = runBehaviorUpdates(node, info, prev, next);
+        applyValueEntries(node, info, { prev, next }, consumed);
+        restoreActionableSensitivity(node, info, prev, next);
+
+        if (isUpdate) {
+            applyHandlers(node, info, prev, next);
+        }
+
+        markAccessible(node, prev);
+        markFlush(node);
+        node.props = next;
+    } catch (error) {
+        flushDirty.delete(node);
+        accessibleDirty.delete(node);
+        throw error;
+    }
 };
 
 const applyElementProps = (node: ElementNode, prev: Props, next: Props): void => {
-    const info = typeInfoFor(node.typeName);
-    const consumed = runBehaviorUpdates(node, info, prev, next);
-    applyValueEntries(node, info, { prev, next }, consumed);
-    restoreActionableSensitivity(node, info, prev, next);
-    applyHandlers(node, info, prev, next);
-    markAccessible(node, prev);
-    markFlush(node);
-    node.props = next;
+    commitElementProps(node, prev, next, false);
+};
+
+const updateElementProps = (node: ElementNode, prev: Props, next: Props): void => {
+    commitElementProps(node, prev, next, true);
 };
 
 const isSkippedAdoptedName = (info: TypeInfo, name: string): boolean => isReservedName(name, info);
 
 const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void => {
     const { object, typeName } = target;
-    const info = typeInfoFor(typeName);
+    const info = typeInfoForProps(typeName, prev, next);
+    validateAccessible(object, info, next);
+    validateHandlers(target, info, prev, next);
+    validateValueEntries(object, info, prev, next);
 
     eachChangedName(prev, next, (name) => {
         if (isSkippedAdoptedName(info, name) || Object.is(prev[name], next[name])) {
@@ -356,17 +486,20 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
         setOrReset(object, info, name, next[name]);
     });
 
-    applyAccessible(object, prev, next);
+    applyAccessible(object, info, prev, next);
     applyHandlers(target, info, prev, next);
 };
 
 export {
     markFlush,
+    mountElementProps,
     flushAccessible,
     settleAccessible,
     flushBehaviors,
     teardownBehaviors,
     applyElementProps,
+    updateElementProps,
     applyAdoptedProps,
+    prepareElementProps,
     assertPropsCanChange,
 };

@@ -214,6 +214,29 @@ const activityTree = (mode: "visible" | "hidden", held: Captured2, isVisible = t
 
 const hiddenPanelTree = (mode: "visible" | "hidden", held: Captured2): ReactNode => activityTree(mode, held, false);
 
+const initialActivityTree = (mode: "visible" | "hidden", text: string): ReactNode => (
+    <Activity mode={mode}>
+        <GtkLabel>{text}</GtkLabel>
+    </Activity>
+);
+
+const notifyingActivityTree = (
+    mode: "visible" | "hidden",
+    notifiedVisibility: (boolean | null)[],
+): ReactNode => (
+    <GtkBox>
+        <Activity mode={mode}>
+            <GtkLabel
+                onNotifyVisible={(visible) => {
+                    notifiedVisibility.push(visible);
+                }}
+            >
+                Panel
+            </GtkLabel>
+        </Activity>
+    </GtkBox>
+);
+
 describe("render - Window (1)", () => {
     describe("creation", () => {
         it("creates Gtk.ApplicationWindow with current app", async () => {
@@ -576,5 +599,32 @@ describe("visibility", () => {
         });
 
         expect(capturedWidget(held)).toBeVisible();
+    });
+});
+
+describe("Activity visibility reconciliation", () => {
+    it("initializes a subtree first committed while hidden", async () => {
+        const container = new Gtk.Box({});
+        const { rerender } = await render(initialActivityTree("hidden", "Hidden"), { container });
+        const child = container.getFirstChild();
+
+        if (!(child instanceof Gtk.Label)) {
+            throw new TypeError("Expected Activity to place a GtkLabel");
+        }
+
+        expect(child.getLabel()).toBe("Hidden");
+        await rerender(initialActivityTree("visible", "Hidden"));
+        expect(child.getLabel()).toBe("Hidden");
+        await rerender(initialActivityTree("visible", "Updated"));
+        expect(child.getLabel()).toBe("Updated");
+    });
+
+    it("does not report renderer-owned Activity visibility changes", async () => {
+        const notifiedVisibility: (boolean | null)[] = [];
+        const { rerender } = await render(notifyingActivityTree("visible", notifiedVisibility));
+        notifiedVisibility.length = 0;
+        await rerender(notifyingActivityTree("hidden", notifiedVisibility));
+        await rerender(notifyingActivityTree("visible", notifiedVisibility));
+        expect(notifiedVisibility).toEqual([]);
     });
 });

@@ -1,6 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { getSignalBaseName, type SignalHandler } from "@gtkx/runtime";
-import { getOrInsert, toCamelIdentifier } from "@gtkx/utils";
+import { drain, getOrInsert, toCamelIdentifier } from "@gtkx/utils";
 import type { HandlerRecord, SignalTarget } from "./node.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 
@@ -91,18 +91,26 @@ const wrapHandler = (target: SignalTarget, record: HandlerRecord, notify: Notify
 const connectHandler = (target: SignalTarget, prop: string, signal: string, handler: SignalHandler): void => {
     const existing = target.handlers.get(prop);
 
-    if (existing?.signal === signal) {
+    if (existing?.signal === signal && existing.object === target.object) {
         existing.handler = handler;
 
         return;
     }
 
     if (existing !== undefined) {
-        target.object.off(existing.signal, existing.wrapped);
+        existing.object.off(existing.signal, existing.wrapped);
     }
 
     const isBlockable = isBlockableSignal(typeInfoFor(target.typeName), signal);
-    const record: HandlerRecord = { signal, handler, wrapped: (): undefined => undefined, isBlockable };
+
+    const record: HandlerRecord = {
+        object: target.object,
+        signal,
+        handler,
+        wrapped: (): undefined => undefined,
+        isBlockable,
+    };
+
     record.wrapped = wrapHandler(target, record, notifyBindingFor(signal));
     target.object.on(signal, record.wrapped);
     target.handlers.set(prop, record);
@@ -115,16 +123,20 @@ const disconnectHandler = (target: SignalTarget, prop: string): void => {
         return;
     }
 
-    target.object.off(record.signal, record.wrapped);
+    record.object.off(record.signal, record.wrapped);
     target.handlers.delete(prop);
 };
 
 const disconnectAllHandlers = (target: SignalTarget): void => {
-    for (const record of target.handlers.values()) {
-        target.object.off(record.signal, record.wrapped);
-    }
+    const records = new Set(target.handlers.values());
 
-    target.handlers.clear();
+    try {
+        drain(records, (record) => {
+            record.object.off(record.signal, record.wrapped);
+        });
+    } finally {
+        target.handlers.clear();
+    }
 };
 
 export {

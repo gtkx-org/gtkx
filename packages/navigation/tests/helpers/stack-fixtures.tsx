@@ -36,13 +36,15 @@ type RootParams = {
 
 type WidgetClass<T> = abstract new (...args: never[]) => T;
 type StackEvent = { type: string; route: string; isClosing?: boolean };
-type EventSpy = Mock<(event: StackEvent) => void>;
-type PreventSpy = Mock<(data: { action: NavigationAction }) => void>;
+type EventHandler = (event: StackEvent) => void;
+type PreventHandler = (data: { action: NavigationAction }) => void;
+type EventSpy = Mock<EventHandler>;
+type PreventSpy = Mock<PreventHandler>;
 type StateSpy = Mock<(state: NavigationState | undefined) => void>;
 
 type Spies = {
-    onEvent?: EventSpy;
-    onPrevent?: PreventSpy;
+    onEvent?: EventHandler;
+    onPrevent?: PreventHandler;
 };
 
 type NavigatorProps = Partial<Omit<ComponentProps<typeof Stack.Navigator>, "children">>;

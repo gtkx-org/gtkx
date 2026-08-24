@@ -5,10 +5,20 @@ type ExportsField = string | { [key: string]: ExportsField };
 type PackageManifest = {
     name?: string;
     version?: string;
+    license?: string;
     private?: boolean;
     files?: string[];
+    engines?: { node?: string };
+    cpu?: string[];
+    os?: string[];
+    libc?: string[];
     bin?: string | Record<string, string>;
+    main?: string;
+    module?: string;
+    types?: string;
+    typings?: string;
     exports?: ExportsField;
+    optionalDependencies?: Record<string, string>;
     [field: string]: unknown;
 };
 
@@ -21,7 +31,6 @@ type PublishedPackage = {
 
 type SourceMap = {
     sources?: string[];
-    sourcesContent?: (string | null)[];
     sourceRoot?: string;
 };
 
@@ -93,13 +102,27 @@ const binTargets = (bin: PackageManifest["bin"]): string[] => {
     return Object.values(bin);
 };
 
+const legacyTargets = (manifest: PackageManifest): [string, string][] => [
+    ["main", manifest.main],
+    ["module", manifest.module],
+    ["types", manifest.types],
+    ["typings", manifest.typings],
+].filter((entry): entry is [string, string] => typeof entry[1] === "string");
+
 const normalizePath = (path: string): string => path.replace(/^\.\//, "").replace(/^package\//, "");
+
+const isTypescriptSource = (entry: string): boolean =>
+    /\.(?:cts|mts|tsx?)$/.test(entry) && !/\.d\.(?:cts|mts|ts)$/.test(entry);
 
 const requiredFileViolations = (files: Set<string>): string[] => {
     const violations: string[] = [];
 
     if (!files.has("README.md")) {
         violations.push("missing README.md");
+    }
+
+    if (!files.has("LICENSE")) {
+        violations.push("missing LICENSE");
     }
 
     if (!files.has("package.json")) {
@@ -114,7 +137,7 @@ const shippedEntryViolation = (entry: string): string | undefined => {
         return `ships build artifact ${entry}`;
     }
 
-    if (entry.endsWith(".ts") && !entry.endsWith(".d.ts") && !isDevSource(entry) && !entry.includes("templates/")) {
+    if (isTypescriptSource(entry) && !isDevSource(entry) && !entry.includes("templates/")) {
         return `ships TypeScript source ${entry}`;
     }
 
@@ -129,6 +152,20 @@ const manifestViolations = (manifest: PackageManifest): string[] => {
     return [];
 };
 
+const identityViolations = (name: string, manifest: PackageManifest): string[] => {
+    const violations: string[] = [];
+
+    if (manifest.name !== name) {
+        violations.push(`package.json name does not match ${name}`);
+    }
+
+    if (typeof manifest.version !== "string" || manifest.version.length === 0) {
+        violations.push("package.json has no version");
+    }
+
+    return violations;
+};
+
 const unresolvedTargetViolations = (files: Set<string>, manifest: PackageManifest): string[] => {
     const exportTargets = manifest.exports === undefined ? [] : collectExportTargets(manifest.exports);
 
@@ -140,7 +177,11 @@ const unresolvedTargetViolations = (files: Set<string>, manifest: PackageManifes
         .filter((target) => !files.has(normalizePath(target)))
         .map((target) => `bin target ${target} resolves to a missing file`);
 
-    return [...missingExports, ...missingBins];
+    const missingLegacyTargets = legacyTargets(manifest)
+        .filter(([, target]) => !files.has(normalizePath(target)))
+        .map(([field, target]) => `${field} target ${target} resolves to a missing file`);
+
+    return [...missingExports, ...missingBins, ...missingLegacyTargets];
 };
 
 const parseSourceMap = (content: string): SourceMap | undefined => {
@@ -154,16 +195,10 @@ const parseSourceMap = (content: string): SourceMap | undefined => {
 const sourceViolation = (options: {
     parsed: SourceMap;
     source: string;
-    index: number;
     mapPath: string;
     files: Set<string>;
 }): string | undefined => {
-    const { parsed, source, index, mapPath, files } = options;
-
-    if (typeof parsed.sourcesContent?.[index] === "string") {
-        return undefined;
-    }
-
+    const { parsed, source, mapPath, files } = options;
     const sourceRoot = parsed.sourceRoot ?? "";
     const resolved = posix.normalize(posix.join(posix.dirname(mapPath), sourceRoot, source));
 
@@ -175,15 +210,23 @@ const sourceViolation = (options: {
 };
 
 const mapSourceViolations = (mapPath: string, content: string, files: Set<string>): string[] => {
+    const generatedPath = mapPath.slice(0, -".map".length);
+
+    const generatedViolation = files.has(generatedPath)
+        ? []
+        : [`source map ${mapPath} has no generated file ${generatedPath}`];
+
     const parsed = parseSourceMap(content);
 
     if (parsed === undefined) {
-        return [`source map ${mapPath} is not valid JSON`];
+        return [...generatedViolation, `source map ${mapPath} is not valid JSON`];
     }
 
-    return (parsed.sources ?? [])
-        .map((source, index) => sourceViolation({ parsed, source, index, mapPath, files }))
+    const sourceViolations = (parsed.sources ?? [])
+        .map((source) => sourceViolation({ parsed, source, mapPath, files }))
         .filter((violation): violation is string => violation !== undefined);
+
+    return [...generatedViolation, ...sourceViolations];
 };
 
 const mapViolations = (files: Set<string>, maps: Record<string, string>): string[] =>
@@ -195,6 +238,7 @@ const assertPublishedShape = ({ name, entries, manifest, maps }: PublishedPackag
     const violations = [
         ...requiredFileViolations(files),
         ...[...files].map((file) => shippedEntryViolation(file)).filter((violation) => violation !== undefined),
+        ...identityViolations(name, manifest),
         ...manifestViolations(manifest),
         ...unresolvedTargetViolations(files, manifest),
         ...mapViolations(files, maps ?? {}),

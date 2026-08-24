@@ -1,8 +1,9 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { screen, within } from "@gtkx/testing";
+import { screen, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import {
+    buildStack,
     clickButton,
     CustomHeader,
     expectHidden,
@@ -93,5 +94,31 @@ describe("stack - header (2)", () => {
         expectVisible("Details 1");
         await clickButton("Go back");
         await screen.findByText("Home Content");
+    });
+});
+
+describe("stack - closing header", () => {
+    it("keeps the latest custom header and back target through the exit", async () => {
+        const initial = { screenOptions: { header: CustomHeader } };
+
+        const { rerender } = await renderStack({
+            isAnimated: true,
+            navigator: initial,
+            details: { title: "Initial Detail" },
+        });
+
+        await clickButton("Go to details");
+        await screen.findByText("Header Initial Detail");
+        await rerender(buildStack({ navigator: initial, details: { title: "Updated Detail" } }));
+        await screen.findByText("Header Updated Detail");
+        await clickButton("Back to Home");
+        expectVisible("Header Updated Detail");
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back to Home" })).toBeVisible();
+
+        await waitFor(() => {
+            expectHidden("Header Updated Detail");
+        });
+
+        expectVisible("Home Content");
     });
 });

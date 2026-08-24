@@ -1,3 +1,4 @@
+import type { NavigationState } from "@gtkx/navigation";
 import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
@@ -19,9 +20,33 @@ const clickButton = async (name: string): Promise<void> => {
     await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name }));
 };
 
-const drawerTree = (isCollapsed: boolean): ReactNode => (
-    <NavigationContainer>
-        <Drawer.Navigator collapsed={isCollapsed}>{drawerScreens([INBOX, SETTINGS])}</Drawer.Navigator>
+const recordState = (states: NavigationState[]): ((state: NavigationState | undefined) => void) =>
+    (state) => {
+        if (state !== undefined) {
+            states.push(state);
+        }
+    };
+
+const latestState = (states: readonly NavigationState[]): NavigationState => {
+    const state = states.at(-1);
+
+    if (state === undefined) {
+        throw new Error("No navigation state was reported");
+    }
+
+    return state;
+};
+
+const drawerTree = (
+    isCollapsed: boolean,
+    onStateChange?: (state: NavigationState | undefined) => void,
+    isPinned = false,
+    defaultStatus?: "closed" | "open",
+): ReactNode => (
+    <NavigationContainer onStateChange={onStateChange}>
+        <Drawer.Navigator collapsed={isCollapsed} pinSidebar={isPinned} defaultStatus={defaultStatus}>
+            {drawerScreens([INBOX, SETTINGS])}
+        </Drawer.Navigator>
     </NavigationContainer>
 );
 
@@ -79,6 +104,98 @@ describe("drawer - collapsing", () => {
         expect(querySidebarLabel("Settings")).not.toBeNull();
         await clickButton("Go to settings");
         await screen.findByText("Settings Content");
+        expect(querySidebarLabel("Settings")).toBeNull();
+    });
+
+    it("closes and reopens through one declarative state transition", async () => {
+        const states: NavigationState[] = [];
+        const onStateChange = recordState(states);
+        const { rerender } = await render(drawerTree(false, onStateChange));
+        await screen.findByText("Inbox Content");
+        states.length = 0;
+        await rerender(drawerTree(true, onStateChange));
+        expect(states).toHaveLength(1);
+        expect(getDrawerStatus(latestState(states))).toBe("closed");
+        expect(querySidebarLabel("Settings")).toBeNull();
+        states.length = 0;
+        await rerender(drawerTree(false, onStateChange));
+        expect(states).toHaveLength(1);
+        expect(getDrawerStatus(latestState(states))).toBe("open");
+        expect(querySidebarLabel("Settings")).not.toBeNull();
+    });
+
+    it("preserves the drawer status while the sidebar is pinned", async () => {
+        const states: NavigationState[] = [];
+        const onStateChange = recordState(states);
+        const { rerender } = await render(drawerTree(false, onStateChange, true));
+        await screen.findByText("Inbox Content");
+        states.length = 0;
+        await rerender(drawerTree(true, onStateChange, true));
+        expect(states).toHaveLength(1);
+        expect(getDrawerStatus(latestState(states))).toBe("open");
+        expect(querySidebarLabel("Settings")).not.toBeNull();
+        states.length = 0;
+        await rerender(drawerTree(false, onStateChange, true));
+        expect(states).toHaveLength(1);
+        expect(getDrawerStatus(latestState(states))).toBe("open");
+        expect(querySidebarLabel("Settings")).not.toBeNull();
+    });
+});
+
+describe("drawer - pinning changes", () => {
+    it("applies the current collapse policy when pinning changes", async () => {
+        const states: NavigationState[] = [];
+        const onStateChange = recordState(states);
+        const { rerender } = await render(drawerTree(false, onStateChange, true));
+        await screen.findByText("Inbox Content");
+        await rerender(drawerTree(true, onStateChange, true));
+        expect(querySidebarLabel("Settings")).not.toBeNull();
+        states.length = 0;
+        await rerender(drawerTree(true, onStateChange, false));
+        expect(states).toHaveLength(1);
+        expect(getDrawerStatus(latestState(states))).toBe("closed");
+        expect(querySidebarLabel("Settings")).toBeNull();
+        await rerender(drawerTree(false, onStateChange, false));
+        expect(querySidebarLabel("Settings")).not.toBeNull();
+        await rerender(drawerTree(false, onStateChange, true));
+        await userEvent.click(toggleButton());
+        expect(querySidebarLabel("Settings")).toBeNull();
+        states.length = 0;
+        await rerender(drawerTree(false, onStateChange, false));
+        expect(states).toHaveLength(1);
+        expect(getDrawerStatus(latestState(states))).toBe("open");
+        expect(querySidebarLabel("Settings")).not.toBeNull();
+    });
+
+    it("uses the incoming pin policy when collapse changes in the same render", async () => {
+        const states: NavigationState[] = [];
+        const onStateChange = recordState(states);
+        const { rerender } = await render(drawerTree(false, onStateChange));
+        await screen.findByText("Inbox Content");
+        states.length = 0;
+        await rerender(drawerTree(true, onStateChange, true));
+        expect(states).toHaveLength(1);
+        expect(getDrawerStatus(latestState(states))).toBe("open");
+        expect(querySidebarLabel("Settings")).not.toBeNull();
+    });
+});
+
+describe("drawer - collapsing with a closed default", () => {
+    it("shows on expansion and hides on collapse", async () => {
+        const states: NavigationState[] = [];
+        const onStateChange = recordState(states);
+        const { rerender } = await render(drawerTree(true, onStateChange, false, "closed"));
+        await screen.findByText("Inbox Content");
+        expect(querySidebarLabel("Settings")).toBeNull();
+        states.length = 0;
+        await rerender(drawerTree(false, onStateChange, false, "closed"));
+        expect(states).toHaveLength(1);
+        expect(getDrawerStatus(latestState(states))).toBe("open");
+        expect(querySidebarLabel("Settings")).not.toBeNull();
+        states.length = 0;
+        await rerender(drawerTree(true, onStateChange, false, "closed"));
+        expect(states).toHaveLength(1);
+        expect(getDrawerStatus(latestState(states))).toBe("closed");
         expect(querySidebarLabel("Settings")).toBeNull();
     });
 });

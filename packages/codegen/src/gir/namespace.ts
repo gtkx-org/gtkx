@@ -92,12 +92,32 @@ type NamespaceHeader = {
     namespaceNode: RawNode;
 };
 
-const namespaceDirectory = (namespace: Pick<GirNamespace, "name">): string => namespace.name.toLowerCase();
+const NAMESPACE_NAME_PATTERN = /^[A-Za-z_][\dA-Za-z_]*$/;
+const NAMESPACE_VERSION_PATTERN = /^\d+(?:\.\d+)*$/;
+
+const namespaceName = (name: string, path: string): string => {
+    if (!NAMESPACE_NAME_PATTERN.test(name)) {
+        throw new Error(`GIR file at ${path} declares an invalid namespace name`);
+    }
+
+    return name;
+};
+
+const namespaceVersion = (version: string, path: string): string => {
+    if (!NAMESPACE_VERSION_PATTERN.test(version)) {
+        throw new Error(`GIR file at ${path} declares an invalid namespace version`);
+    }
+
+    return version;
+};
+
+const namespaceDirectory = (namespace: Pick<GirNamespace, "name">): string =>
+    namespaceName(namespace.name, "an in-memory namespace").toLowerCase();
 
 const parseNamespaceHeader = (repositoryNode: RawNode, path: string): NamespaceHeader => {
     const includes = getChildren(repositoryNode, "include").map<NamespaceInclude>((include) => ({
-        name: nameAttr(include),
-        version: attr(include, "version") ?? "",
+        name: namespaceName(nameAttr(include), path),
+        version: namespaceVersion(attr(include, "version") ?? "", path),
     }));
 
     const namespaceNode = getChildren(repositoryNode, "namespace")[0];
@@ -107,7 +127,7 @@ const parseNamespaceHeader = (repositoryNode: RawNode, path: string): NamespaceH
     }
 
     return {
-        name: nameAttr(namespaceNode),
+        name: namespaceName(nameAttr(namespaceNode), path),
         girFile: path,
         sharedLibrary: attr(namespaceNode, "shared-library"),
         cSymbolPrefixes: splitPrefixes(attr(namespaceNode, "c:symbol-prefixes")),

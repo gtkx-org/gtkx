@@ -4,6 +4,15 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: Release version, with or without a leading v
+        required: true
+        type: string
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -13,7 +22,23 @@ env:
   NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
 
 jobs:
+  release-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify release version
+        shell: bash
+        env:
+          REQUESTED_VERSION: ${{ github.event.release.tag_name || inputs.version }}
+        run: |
+          set -euo pipefail
+          node scripts/verify-release-version.mjs "$REQUESTED_VERSION"
+
   build-native:
+    needs: release-preflight
     permissions:
       contents: read
       packages: read
@@ -44,7 +69,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: build-native
+    needs: [release-preflight, build-native]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -69,28 +94,49 @@ jobs:
           name: native-linux-arm64-gnu
           path: packages/native/artifacts
 
+      - name: Prepare release workspace
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm exec nx run-many -t build --projects=tag:npm:public
+          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+
       - name: Stage OIDC token request for the release container
         shell: bash
         run: |
+          set -euo pipefail
           if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
             echo "::error::OIDC token request variables are unavailable; the publish job needs id-token: write"
             exit 1
           fi
           echo "::add-mask::${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
           umask 077
+          oidc_dir="${RUNNER_TEMP}/container-home"
+          mkdir -p "$oidc_dir"
+          find "$oidc_dir" -maxdepth 1 -name 'oidc.env*' -delete
+          token_file=$(mktemp "$oidc_dir/oidc.env.XXXXXX")
+          cleanup_token_file() {
+            rm -f -- "$token_file"
+          }
+          trap cleanup_token_file EXIT
           {
             printf 'export ACTIONS_ID_TOKEN_REQUEST_URL=%q\n' "${ACTIONS_ID_TOKEN_REQUEST_URL}"
             printf 'export ACTIONS_ID_TOKEN_REQUEST_TOKEN=%q\n' "${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
-          } > "${GITHUB_WORKSPACE}/.oidc.env"
+          } > "$token_file"
+          mv -f -- "$token_file" "$oidc_dir/oidc.env"
+          token_file=""
+          trap - EXIT
 
       - name: Release
-        uses: ./.github/actions/run-ci-command
+        uses: ./.github/actions/run-in-container
         with:
           command: >-
-            . /workspace/.oidc.env;
-            rm -f /workspace/.oidc.env;
-            echo "oidc-token-len=${#ACTIONS_ID_TOKEN_REQUEST_TOKEN}";
-            pnpm release
+            set -euo pipefail;
+            . /ci-home/oidc.env;
+            rm -f /ci-home/oidc.env;
+            pnpm exec nx run-many -t release --excludeTaskDependencies
+          install: "false"
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"
           extra-env: >-
             NPM_CONFIG_PROVENANCE
             GITHUB_ACTIONS
@@ -111,4 +157,12 @@ jobs:
             GITHUB_ACTOR_ID
             GITHUB_JOB
             RUNNER_ENVIRONMENT
-          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+
+      - name: Scrub staged OIDC token request
+        if: always()
+        shell: bash
+        run: |
+          oidc_dir="${RUNNER_TEMP}/container-home"
+          if [ -d "$oidc_dir" ]; then
+            find "$oidc_dir" -maxdepth 1 -name 'oidc.env*' -delete
+          fi

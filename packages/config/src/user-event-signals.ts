@@ -2,7 +2,7 @@ const DEFAULT_USER_EVENT_SIGNALS: Record<string, string[]> = {
     AdwAlertDialog: ["response"],
     AdwCarousel: ["page-changed"],
     AdwDialog: ["closed"],
-    AdwNavigationView: ["pushed"],
+    AdwNavigationView: ["popped", "pushed", "replaced"],
     AdwTabView: ["close-page", "page-attached", "page-detached", "page-reordered"],
     GObject: ["notify"],
     GtkAdjustment: ["changed", "value-changed"],

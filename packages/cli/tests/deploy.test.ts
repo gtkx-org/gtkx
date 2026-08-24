@@ -1,7 +1,8 @@
 import {
     chmodSync,
-    existsSync,
+    mkdirSync,
     mkdtempSync,
+    readdirSync,
     readFileSync,
     rmSync,
     statSync,
@@ -44,6 +45,18 @@ type NfpmContent = { dst: string; file_info?: { mode: number } };
 type NfpmConfig = { contents: NfpmContent[]; depends: string[] };
 type DeployProbe = { project: CliProject; status: number | null };
 type DeployRun = { status: number | null; output: string };
+
+type ArtifactDeployState = {
+    project: CliProject;
+    firstStatus: number | null;
+    firstContents: string;
+    secondStatus: number | null;
+    secondContents: string;
+    absentStatus: number | null;
+    zeroByteStatus: number | null;
+    directoryStatus: number | null;
+    escapedStatus: number | null;
+};
 
 type DeploySetup = {
     prefix: string;
@@ -106,6 +119,37 @@ const MERGED_NEGATIONS = ["--share=ipc", "--device=dri", "--nosocket=wayland", "
 const HELPER_SCRIPT = "#!/bin/sh\necho probe\n";
 const NOTES = "Probe notes.\n";
 
+const NFPM_STUB = [
+    "#!/bin/sh",
+    'target=""',
+    'while [ "$#" -gt 0 ]; do',
+    '    if [ "$1" = "--target" ]; then',
+    "        shift",
+    '        target="$1"',
+    "    fi",
+    "    shift",
+    "done",
+    'if [ -z "$target" ]; then',
+    "    exit 2",
+    "fi",
+    'if [ "$GTKX_NFPM_MODE" = "absent" ]; then',
+    "    exit 0",
+    "fi",
+    'if [ "$GTKX_NFPM_MODE" = "zero-byte" ]; then',
+    '    : > "$target"',
+    "    exit 0",
+    "fi",
+    'if [ "$GTKX_NFPM_MODE" = "directory" ]; then',
+    '    mkdir "$target"',
+    "    exit 0",
+    "fi",
+    'if [ -e "$target" ]; then',
+    "    exit 3",
+    "fi",
+    'printf "%s" "$GTKX_NFPM_PAYLOAD" > "$target"',
+    "",
+].join("\n");
+
 const PACKAGE_INTEGRITY = "sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9" +
     "cGvNp6NZWZUBlbGXYxxng==";
 
@@ -158,6 +202,16 @@ const MINIMUM_OVERRIDES = `        minimumLibraryVersions: { "Gtk-4.0": "4.14" }
 const FOREIGN_INVENTORY = `${JSON.stringify({ libraries: ["Adw-1"], versions: [] }, null, 2)}\n`;
 const DEPLOY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${EXTRA_FILES}${PERMISSIONS}    },\n`;
 const MINIMUMS_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${MINIMUM_OVERRIDES}    },\n`;
+
+const PACKAGING_BLOCK =
+    `    deploy: {\n${DEPLOY_FIELDS}\n        node: { source: "host", shouldStrip: false },\n` +
+    "    },\n";
+
+const ESCAPED_PACKAGING_BLOCK =
+    `    deploy: {\n${DEPLOY_FIELDS}\n        node: { source: "host", shouldStrip: false },\n` +
+    '        deb: { packageName: "../../escaped" },\n    },\n';
+
+const LINKED_OUTPUT_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n        outDir: "linked-output",\n    },\n`;
 const NO_DISPLAY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${NO_DISPLAY}    },\n`;
 const BAD_MODE_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${BAD_MODE}    },\n`;
 
@@ -303,6 +357,9 @@ const RUNTIME_NODE = `        node: { source: "path", path: "${RUNTIME_BINARY}" 
 
 const NOTICES_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${RUNTIME_NODE}    },\n`;
 
+const deployOptionsBlock = (options: string): string =>
+    `    deploy: {\n${DEPLOY_FIELDS}\n${options}    },\n`;
+
 const config = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
     `    libraries: ${JSON.stringify(STORE_LIBRARIES)},\n` +
@@ -316,10 +373,10 @@ const bareConfig = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
-const sourceConfig = (source: string, extra = ""): string =>
+const sourceConfig = (source: string, extra = "", flatpak = ""): string =>
     config(
         `    deploy: {\n${DEPLOY_FIELDS}\n${extra}` +
-        `        flatpak: { mode: "source", source: ${source} },\n    },\n`,
+        `        flatpak: { mode: "source", source: ${source}${flatpak} },\n    },\n`,
     );
 
 const projectFiles = (): Record<string, string> => ({
@@ -457,6 +514,204 @@ const expectRefusal = (prefix: string, source: string, pin: string, env?: NodeJS
     }
 };
 
+const requireSuccess = (status: number | null): void => {
+    if (status !== 0) {
+        throw new Error("The command failed");
+    }
+};
+
+const deployWithUnsafeConfiguredLockfile = (): void => {
+    const outside = mkdtempSync(join(tmpdir(), "gtkx-cli-deploy-lockfile-"));
+    const lockfile = join(outside, NPM_LOCKFILE_NAME);
+    writeFileSync(lockfile, NPM_LOCKFILE);
+
+    const project = createCliProject({
+        prefix: "gtkx-cli-deploy-lockfile-escape-",
+        config: sourceConfig(
+            PINNED_SOURCE,
+            "",
+            `, packageManager: "npm", lockfile: ${JSON.stringify(lockfile)}`,
+        ),
+        files: npmSourceFiles(),
+        hasStore: true,
+    });
+
+    try {
+        requireSuccess(runCli(project, SOURCE_ARGS).status);
+    } finally {
+        removeCliProject(project);
+        rmSync(outside, { recursive: true, force: true });
+    }
+};
+
+const deployWithLinkedOutput = (shouldCreateTarget: boolean): void => {
+    const outsideRoot = mkdtempSync(join(tmpdir(), "gtkx-cli-deploy-output-"));
+    const outside = join(outsideRoot, "output");
+
+    if (shouldCreateTarget) {
+        mkdirSync(outside);
+    }
+
+    const project = createCliProject({
+        prefix: "gtkx-cli-deploy-linked-output-",
+        config: config(LINKED_OUTPUT_BLOCK),
+        files: projectFiles(),
+        hasStore: true,
+    });
+
+    try {
+        symlinkSync(outside, join(project.root, "linked-output"), "dir");
+        requireSuccess(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status);
+    } finally {
+        removeCliProject(project);
+        rmSync(outsideRoot, { recursive: true, force: true });
+    }
+};
+
+const deployWithRootLinkedOutput = (): void => {
+    const project = createCliProject({
+        prefix: "gtkx-cli-deploy-root-output-",
+        config: config(LINKED_OUTPUT_BLOCK),
+        files: projectFiles(),
+        hasStore: true,
+    });
+
+    try {
+        symlinkSync(project.root, join(project.root, "linked-output"), "dir");
+        requireSuccess(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status);
+    } finally {
+        removeCliProject(project);
+    }
+};
+
+const deployWithUnsafeConfiguredInput = (subject: "license" | "icon" | "extra"): void => {
+    const outside = mkdtempSync(join(tmpdir(), "gtkx-cli-deploy-inputs-"));
+    const license = join(outside, "LICENSE");
+    const icon = join(outside, `${APPLICATION_ID}.svg`);
+    const extra = join(outside, "extra.txt");
+    writeFileSync(license, "external license\n");
+    writeFileSync(icon, "<svg/>\n");
+    writeFileSync(extra, "external extra\n");
+
+    const cases = {
+        license: {
+            prefix: "gtkx-cli-deploy-license-escape-",
+            block: deployOptionsBlock(`        licenseFile: ${JSON.stringify(license)},\n`),
+            link: null,
+        },
+        icon: {
+            prefix: "gtkx-cli-deploy-icon-link-",
+            block: deployOptionsBlock('        icons: "linked-icon.svg",\n'),
+            link: { source: icon, name: "linked-icon.svg" },
+        },
+        extra: {
+            prefix: "gtkx-cli-deploy-extra-escape-",
+            block: deployOptionsBlock(
+                `        extraFiles: { "share/${BINARY_NAME}/extra.txt": ${JSON.stringify(extra)} },\n`,
+            ),
+            link: null,
+        },
+    };
+
+    const entry = cases[subject];
+
+    const project = createCliProject({
+        prefix: entry.prefix,
+        config: config(entry.block),
+        files: projectFiles(),
+        hasStore: true,
+    });
+
+    try {
+        if (entry.link !== null) {
+            symlinkSync(entry.link.source, join(project.root, entry.link.name), "file");
+        }
+
+        requireSuccess(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status);
+    } finally {
+        removeCliProject(project);
+        rmSync(outside, { recursive: true, force: true });
+    }
+};
+
+const deployWithLinkedOwnedDirectory = (): void => {
+    const outside = mkdtempSync(join(tmpdir(), "gtkx-cli-deploy-metadata-"));
+
+    const project = createCliProject({
+        prefix: "gtkx-cli-deploy-linked-metadata-",
+        config: config(DEPLOY_BLOCK),
+        files: projectFiles(),
+        hasStore: true,
+    });
+
+    try {
+        mkdirSync(join(project.root, OUT_DIR));
+        symlinkSync(outside, join(project.root, OUT_DIR, "metadata"), "dir");
+        requireSuccess(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status);
+    } finally {
+        removeCliProject(project);
+        rmSync(outside, { recursive: true, force: true });
+    }
+};
+
+const artifactPath = (project: CliProject): string => {
+    const output = join(project.root, OUT_DIR, "out");
+    const artifact = readdirSync(output).find((entry) => entry.endsWith(".deb"));
+
+    if (artifact === undefined) {
+        throw new Error("The deploy wrote no deb artifact");
+    }
+
+    return join(output, artifact);
+};
+
+const runArtifactDeploys = (state: ArtifactDeployState): void => {
+    state.project = createCliProject({
+        prefix: "gtkx-cli-deploy-artifact-",
+        config: config(PACKAGING_BLOCK),
+        files: { ...projectFiles(), "tools/nfpm": NFPM_STUB },
+        hasStore: true,
+    });
+
+    const tool = join(state.project.root, "tools", "nfpm");
+    chmodSync(tool, 0o755);
+    const args = ["deploy", "--target", "deb"];
+    const first = runCli(state.project, args, { GTKX_NFPM: tool, GTKX_NFPM_PAYLOAD: "first" });
+    state.firstStatus = first.status;
+    const artifact = artifactPath(state.project);
+    state.firstContents = readFileSync(artifact, "utf8");
+
+    const second = runCli(state.project, [...args, "--skip-build"], {
+        GTKX_NFPM: tool,
+        GTKX_NFPM_PAYLOAD: "second",
+    });
+
+    state.secondStatus = second.status;
+    state.secondContents = readFileSync(artifact, "utf8");
+
+    state.absentStatus = runCli(state.project, [...args, "--skip-build"], {
+        GTKX_NFPM: tool,
+        GTKX_NFPM_MODE: "absent",
+    }).status;
+
+    state.zeroByteStatus = runCli(state.project, [...args, "--skip-build"], {
+        GTKX_NFPM: tool,
+        GTKX_NFPM_MODE: "zero-byte",
+    }).status;
+
+    state.directoryStatus = runCli(state.project, [...args, "--skip-build"], {
+        GTKX_NFPM: tool,
+        GTKX_NFPM_MODE: "directory",
+    }).status;
+
+    writeFileSync(join(state.project.root, "gtkx.config.ts"), config(ESCAPED_PACKAGING_BLOCK));
+
+    state.escapedStatus = runCli(state.project, [...args, "--skip-build"], {
+        GTKX_NFPM: tool,
+        GTKX_NFPM_PAYLOAD: "escaped",
+    }).status;
+};
+
 describe("gtkx deploy (manifests only)", () => {
     const state = deployProbe({
         prefix: "gtkx-cli-deploy-",
@@ -516,6 +771,49 @@ describe("gtkx deploy (minimum library versions the project sets itself)", () =>
         expect(state.status).toBe(0);
         expect(packagedDepends(state.project, NFPM_PATH)).toContain("libgtk-4-1 (>= 4.14)");
         expect(packagedDepends(state.project, RPM_NFPM_PATH)).toContain("gtk4 >= 4.14");
+    });
+});
+
+describe("gtkx deploy (a package output that already exists)", () => {
+    const state: ArtifactDeployState = {
+        project: { root: "", nodeModules: "" },
+        firstStatus: null,
+        firstContents: "",
+        secondStatus: null,
+        secondContents: "",
+        absentStatus: null,
+        zeroByteStatus: null,
+        directoryStatus: null,
+        escapedStatus: null,
+    };
+
+    beforeAll(() => {
+        runArtifactDeploys(state);
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it("accepts the artifact its package tool creates", () => {
+        expect(state.firstStatus).toBe(0);
+        expect(state.firstContents).toBe("first");
+    });
+
+    it("replaces the artifact from an earlier deploy", () => {
+        expect(state.secondStatus).toBe(0);
+        expect(state.secondContents).toBe("second");
+    });
+
+    it.each([
+        ["creates no artifact", "absentStatus"],
+        ["creates an empty artifact", "zeroByteStatus"],
+        ["creates a directory", "directoryStatus"],
+        ["writes outside the owned output", "escapedStatus"],
+    ] as const)("throws when the package tool %s", (_label, status) => {
+        expect(() => {
+            requireSuccess(state[status]);
+        }).toThrow();
     });
 });
 
@@ -713,6 +1011,10 @@ describe("gtkx deploy (flatpak source mode payload)", () => {
 });
 
 describe("gtkx deploy (flatpak source mode escapes)", () => {
+    it("fails when its configured lockfile lives outside the checkout", () => {
+        expect(deployWithUnsafeConfiguredLockfile).toThrow();
+    });
+
     it("fails when an extra file is a symlink pointing outside the checkout", () => {
         const shim = stubGenerator();
         const outside = mkdtempSync(join(tmpdir(), "gtkx-cli-deploy-linked-"));
@@ -918,7 +1220,6 @@ describe("gtkx deploy (projects it refuses to package)", () => {
 
         try {
             expect(runCli(project, ["deploy", "--print-manifests"]).status).not.toBe(0);
-            expect(existsSync(join(project.root, OUT_DIR))).toBe(false);
         } finally {
             removeCliProject(project);
         }
@@ -949,10 +1250,31 @@ describe("gtkx deploy (projects it refuses to package)", () => {
 
         try {
             expect(runCli(project, ["deploy", "--print-manifests", "--target", "snap"]).status).not.toBe(0);
-            expect(existsSync(join(project.root, OUT_DIR))).toBe(false);
         } finally {
             removeCliProject(project);
         }
+    });
+});
+
+describe("gtkx deploy (unsafe filesystem paths)", () => {
+    it.each([true, false])("fails when its output directory is an unsafe symlink", (shouldCreateTarget) => {
+        expect(() => {
+            deployWithLinkedOutput(shouldCreateTarget);
+        }).toThrow();
+    });
+
+    it("fails when its output directory aliases the project root", () => {
+        expect(deployWithRootLinkedOutput).toThrow();
+    });
+
+    it.each(["license", "icon", "extra"] as const)("fails when its configured %s escapes the project", (subject) => {
+        expect(() => {
+            deployWithUnsafeConfiguredInput(subject);
+        }).toThrow();
+    });
+
+    it("fails before following a linked deploy-owned directory", () => {
+        expect(deployWithLinkedOwnedDirectory).toThrow();
     });
 });
 

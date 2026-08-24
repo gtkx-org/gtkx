@@ -26,13 +26,13 @@ const run = (command: string, args: string[], env: NodeJS.ProcessEnv, cwd?: stri
 };
 
 const runAsanE2e = (): void => {
-    run("pnpm", [...BUILD_ARGS, "--target", "x86_64-unknown-linux-gnu"], {
-        ...process.env,
-        RUSTFLAGS: "-Zsanitizer=address",
-        RUSTUP_TOOLCHAIN: RUST_NIGHTLY,
-    });
-
     try {
+        run("pnpm", [...BUILD_ARGS, "--target", "x86_64-unknown-linux-gnu"], {
+            ...process.env,
+            RUSTFLAGS: "-Zsanitizer=address",
+            RUSTUP_TOOLCHAIN: RUST_NIGHTLY,
+        });
+
         run("pnpm", ["exec", "vitest", "run", "--project", "e2e", "--project", "runtime", "--exclude",
             SANDBOXED_SPECS], {
             ...process.env,

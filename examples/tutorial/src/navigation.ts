@@ -7,6 +7,11 @@ export type RootParamList = {
     Task: { id: string };
 };
 
+export type OpenTaskRequest = {
+    selection: Selection;
+    id: string;
+};
+
 export const ALL_TASKS: Selection = { kind: "smart", view: "all" };
 
 export const Split = createSplitViewNavigator<RootParamList>();
@@ -37,14 +42,4 @@ export const currentSelection = (): Selection => {
 export const openTaskId = (): string | null => {
     const route = navigationRef.isReady() ? navigationRef.getCurrentRoute() : undefined;
     return route?.name === "Task" ? route.params.id : null;
-};
-
-export const openTask = (selection: Selection, id: string): void => {
-    if (!navigationRef.isReady()) return;
-    navigationRef.navigate("Tasks", selection);
-    navigationRef.navigate("Task", { id });
-};
-
-export const closeTaskIfOpen = (id: string): void => {
-    if (openTaskId() === id) navigationRef.goBack();
 };

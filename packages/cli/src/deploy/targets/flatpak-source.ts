@@ -1,7 +1,7 @@
-import { existsSync, realpathSync } from "node:fs";
 import { posix, relative, resolve } from "node:path";
 import type { DeployPayload, DeploySettings } from "../types.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
+import { requireProjectFile } from "../../internal/project-path.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
 import { renderDesktopEntry } from "../freedesktop/desktop-entry.js";
@@ -13,7 +13,6 @@ import { executableModeFor } from "../payload/copy-tree.js";
 import { iconPathFor } from "../payload/icons.js";
 import { renderLauncher } from "../payload/launcher.js";
 import { licenseDestination, nodeLicenseDestination, NOTICES_FILENAME, noticesDestination } from "../payload/stage.js";
-import { isInside } from "../settings/paths.js";
 import { pnpmPathFor, type PnpmPin, pnpmSources } from "./flatpak-pnpm.js";
 import { DESTINATION, type FlatpakModule, postInstallCommands, validationCommands } from "./flatpak-prebuilt.js";
 import {
@@ -150,18 +149,12 @@ const iconInstallCommands = (settings: DeploySettings): string[] => {
 };
 
 const assertInsideProject = (settings: DeploySettings, installed: InstalledFile): void => {
-    const { resolved } = installed;
-    const target = existsSync(resolved) ? realpathSync(resolved) : resolved;
-
-    if (isInside(settings.paths.root, target)) {
-        return;
-    }
-
-    throw new Error(
-        `Cannot install "${installed.destination}" from "${installed.source}": a source-mode manifest builds from ` +
-        `your git checkout, so every file it installs has to live inside ${settings.paths.root} and be committed. ` +
-        "Move it into the project, or drop it from the source build.",
-    );
+    requireProjectFile({
+        root: settings.paths.root,
+        candidate: installed.resolved,
+        configured: installed.source,
+        subject: `source for "${installed.destination}"`,
+    });
 };
 
 const licenseInstallCommands = (settings: DeploySettings): string[] => {

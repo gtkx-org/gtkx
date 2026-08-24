@@ -10,7 +10,7 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 ### Prerequisites
 
-- **Node.js** 24 or later
+- **Node.js** 24.12 or later
 - **pnpm**
 - **Rust** stable, plus a nightly toolchain: `pnpm test` runs the native crate's address-sanitizer and Miri suites, which need `cargo +nightly`
 

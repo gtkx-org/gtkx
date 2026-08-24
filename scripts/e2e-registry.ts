@@ -1,12 +1,15 @@
 import type { Server } from "node:http";
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import {
     copyFileSync,
     existsSync,
+    lstatSync,
     mkdirSync,
     mkdtempSync,
     readdirSync,
     readFileSync,
+    renameSync,
     rmSync,
     writeFileSync,
 } from "node:fs";
@@ -16,7 +19,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { runServer } from "verdaccio";
 
-type HostNativeTarget = { triple: string; platformPackage: string };
+type HostNativeTarget = { triple: string; platformPackage: string; binary: string; cpu: string };
 
 type NativeManifest = {
     version: string;
@@ -69,8 +72,18 @@ const REGISTRY = `http://${HOST}/`;
 const REGISTRAR_USER = "release-e2e";
 
 const hostNativeTargets: Record<string, HostNativeTarget> = {
-    x64: { triple: "x86_64-unknown-linux-gnu", platformPackage: "@gtkx/native-linux-x64-gnu" },
-    arm64: { triple: "aarch64-unknown-linux-gnu", platformPackage: "@gtkx/native-linux-arm64-gnu" },
+    x64: {
+        triple: "x86_64-unknown-linux-gnu",
+        platformPackage: "@gtkx/native-linux-x64-gnu",
+        binary: "native.linux-x64-gnu.node",
+        cpu: "x64",
+    },
+    arm64: {
+        triple: "aarch64-unknown-linux-gnu",
+        platformPackage: "@gtkx/native-linux-arm64-gnu",
+        binary: "native.linux-arm64-gnu.node",
+        cpu: "arm64",
+    },
 };
 
 const BUILT_APP_STABLE_MS = 8000;
@@ -195,59 +208,125 @@ function registryEnv(userConfig: string): NodeJS.ProcessEnv {
 }
 
 const trackedFilesRewrittenByPublish = (): string[] => {
-    const paths = [join(ROOT_DIR, "pnpm-lock.yaml"), join(NATIVE_DIR, "package.json")];
-    const npmDir = join(NATIVE_DIR, "npm");
-
-    if (!existsSync(npmDir)) {
-        return paths;
-    }
-
-    for (const entry of readdirSync(npmDir)) {
-        const manifest = join(npmDir, entry, "package.json");
-
-        if (existsSync(manifest)) {
-            paths.push(manifest);
-        }
-    }
-
-    return paths;
+    return [join(ROOT_DIR, "pnpm-lock.yaml"), join(NATIVE_DIR, "package.json")];
 };
 
-const prepareHostOnlyPublish = (): (() => void) => {
+const isolateDirectory = (path: string, backupName: string): (() => void) => {
+    const backupPath = join(NATIVE_DIR, `.${backupName}-${randomUUID()}`);
+    const didExist = lstatSync(path, { throwIfNoEntry: false }) !== undefined;
+
+    if (didExist) {
+        renameSync(path, backupPath);
+    }
+
+    return () => {
+        rmSync(path, { recursive: true, force: true });
+
+        if (didExist) {
+            renameSync(backupPath, path);
+        }
+    };
+};
+
+const rootNativeBinaries = (): string[] =>
+    readdirSync(NATIVE_DIR).filter((entry) => entry.startsWith("native.") && entry.endsWith(".node"));
+
+const moveNativeBinaries = (sourceDir: string, destinationDir: string, binaries: string[]): void => {
+    for (const binary of binaries) {
+        renameSync(join(sourceDir, binary), join(destinationDir, binary));
+    }
+};
+
+const restoreRootNativeBinaries = (backupPath: string, binaries: string[]): void => {
+    for (const binary of rootNativeBinaries()) {
+        rmSync(join(NATIVE_DIR, binary), { force: true });
+    }
+
+    moveNativeBinaries(backupPath, NATIVE_DIR, binaries);
+    rmSync(backupPath, { recursive: true, force: true });
+};
+
+const snapshotRootNativeBinaries = (): (() => void) => {
+    const backupPath = join(NATIVE_DIR, `.release-e2e-native-binaries-${randomUUID()}`);
+    const binaries = rootNativeBinaries();
+    const moved: string[] = [];
+    mkdirSync(backupPath);
+
+    try {
+        for (const binary of binaries) {
+            renameSync(join(NATIVE_DIR, binary), join(backupPath, binary));
+            moved.push(binary);
+        }
+    } catch (error) {
+        moveNativeBinaries(backupPath, NATIVE_DIR, moved);
+        rmSync(backupPath, { recursive: true, force: true });
+        throw error;
+    }
+
+    return () => {
+        restoreRootNativeBinaries(backupPath, binaries);
+    };
+};
+
+const hostNativeTarget = (): HostNativeTarget => {
     const host = hostNativeTargets[process.arch];
 
     if (host === undefined) {
         throw new Error(`release-e2e cannot stage native artifacts for architecture "${process.arch}"`);
     }
 
+    return host;
+};
+
+const prepareHostOnlyPublish = (): (() => void) => {
+    const host = hostNativeTarget();
     const snapshot: Map<string, string> = new Map();
 
     for (const path of trackedFilesRewrittenByPublish()) {
         snapshot.set(path, readFileSync(path, "utf8"));
     }
 
-    const manifestPath = join(NATIVE_DIR, "package.json");
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as NativeManifest;
-    manifest.napi.targets = [host.triple];
-    manifest.optionalDependencies = { [host.platformPackage]: manifest.version };
-    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 4)}\n`);
-
-    return () => {
+    const restore = (): void => {
         for (const [path, content] of snapshot) {
             writeFileSync(path, content);
         }
     };
+
+    const manifestPath = join(NATIVE_DIR, "package.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as NativeManifest;
+    manifest.napi.targets = [host.triple];
+    manifest.optionalDependencies = { [host.platformPackage]: manifest.version };
+
+    try {
+        writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 4)}\n`);
+    } catch (error) {
+        restore();
+        throw error;
+    }
+
+    return restore;
 };
 
-async function stageNativeArtifacts(): Promise<void> {
+async function stageNativeArtifacts(): Promise<() => void> {
     await runAsync("nx", ["run", "@gtkx/native:build"], { env: process.env });
-    const artifactsDir = join(NATIVE_DIR, "artifacts");
-    mkdirSync(artifactsDir, { recursive: true });
+    const host = hostNativeTarget();
+    const binaryPath = join(NATIVE_DIR, host.binary);
 
-    for (const entry of readdirSync(NATIVE_DIR)) {
-        if (entry.startsWith("native.") && entry.endsWith(".node")) {
-            copyFileSync(join(NATIVE_DIR, entry), join(artifactsDir, entry));
-        }
+    if (!existsSync(binaryPath)) {
+        throw new Error(`Native build did not produce ${host.binary}`);
+    }
+
+    const artifactsDir = join(NATIVE_DIR, "artifacts");
+    const restore = isolateDirectory(artifactsDir, "release-e2e-artifacts");
+
+    try {
+        mkdirSync(artifactsDir, { recursive: true });
+        copyFileSync(binaryPath, join(artifactsDir, host.binary));
+
+        return restore;
+    } catch (error) {
+        restore();
+        throw error;
     }
 }
 
@@ -265,50 +344,94 @@ function closeServer(server: Server): Promise<void> {
 
 function listenServer(server: Server): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-        server.once("error", reject);
+        const onError = (error: Error): void => {
+            reject(error);
+        };
+
+        server.once("error", onError);
 
         server.listen(PORT, () => {
+            server.off("error", onError);
             resolve();
         });
     });
 }
 
 async function publishInto(env: NodeJS.ProcessEnv): Promise<void> {
-    await stageNativeArtifacts();
-    const restorePublishedTree = prepareHostOnlyPublish();
+    const restoreNativeBinaries = snapshotRootNativeBinaries();
 
     try {
-        await publishPackages(env);
+        const restoreArtifacts = await stageNativeArtifacts();
+
+        try {
+            const restoreNpmTree = isolateDirectory(join(NATIVE_DIR, "npm"), "release-e2e-npm");
+
+            try {
+                const restorePublishedTree = prepareHostOnlyPublish();
+
+                try {
+                    await publishPackages(env);
+                } finally {
+                    restorePublishedTree();
+                }
+            } finally {
+                restoreNpmTree();
+            }
+        } finally {
+            restoreArtifacts();
+        }
     } finally {
-        restorePublishedTree();
+        restoreNativeBinaries();
     }
 }
 
-async function startRegistry(options: StartRegistryOptions = {}): Promise<RegistryHandle> {
-    const registryDir = options.registryDir ?? mkdtempSync(join(tmpdir(), "gtkx-registry-"));
+const prepareRegistryDirectory = (registryDir: string, shouldResetStorage: boolean): void => {
     mkdirSync(registryDir, { recursive: true });
-    const configPath = join(registryDir, "config.yaml");
-    const npmrcPath = join(registryDir, "npmrc");
-    writeFileSync(configPath, verdaccioConfig(registryDir));
+    writeFileSync(join(registryDir, "config.yaml"), verdaccioConfig(registryDir));
     rmSync(join(registryDir, "htpasswd"), { force: true });
 
-    if (options.resetsStorage ?? true) {
+    if (shouldResetStorage) {
         rmSync(join(registryDir, "storage"), { recursive: true, force: true });
     }
+};
 
-    const server = (await runServer(configPath)) as Server;
+const cleanupFailedRegistry = async (
+    server: Server | undefined,
+    registryDir: string,
+    isRegistryDirOwned: boolean,
+): Promise<void> => {
+    try {
+        if (server !== undefined) {
+            await closeServer(server);
+        }
+    } finally {
+        if (isRegistryDirOwned) {
+            rmSync(registryDir, { recursive: true, force: true });
+        }
+    }
+};
+
+async function startRegistry(options: StartRegistryOptions = {}): Promise<RegistryHandle> {
+    const isRegistryDirOwned = options.registryDir === undefined;
+    const registryDir = options.registryDir ?? mkdtempSync(join(tmpdir(), "gtkx-registry-"));
+    const configPath = join(registryDir, "config.yaml");
+    const npmrcPath = join(registryDir, "npmrc");
+    let server: Server | undefined;
 
     try {
+        prepareRegistryDirectory(registryDir, options.resetsStorage ?? true);
+        server = (await runServer(configPath)) as Server;
         await listenServer(server);
         await waitForRegistry();
         const token = await createUserToken();
         writeFileSync(npmrcPath, `registry=${REGISTRY}\n//${HOST}/:_authToken=${token}\n`);
         const env = registryEnv(npmrcPath);
         await publishInto(env);
+        const activeServer = server;
 
-        return { env, registry: REGISTRY, registryDir, npmrcPath, stop: () => closeServer(server) };
+        return { env, registry: REGISTRY, registryDir, npmrcPath, stop: () => closeServer(activeServer) };
     } catch (error) {
-        await closeServer(server);
+        await cleanupFailedRegistry(server, registryDir, isRegistryDirOwned);
         throw error;
     }
 }
@@ -319,8 +442,11 @@ async function withRegistry(fn: (ctx: RegistryContext) => Promise<void>): Promis
     try {
         await fn(handle);
     } finally {
-        await handle.stop();
-        rmSync(handle.registryDir, { recursive: true, force: true });
+        try {
+            await handle.stop();
+        } finally {
+            rmSync(handle.registryDir, { recursive: true, force: true });
+        }
     }
 }
 
@@ -391,6 +517,7 @@ export {
     ROOT_DIR,
     PACKAGES_DIR,
     REGISTRY,
+    hostNativeTarget,
     runAsync,
     startRegistry,
     withRegistry,

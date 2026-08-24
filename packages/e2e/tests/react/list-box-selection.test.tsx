@@ -55,9 +55,9 @@ describe("list box selection (1)", () => {
         expect(getSelectedIndex(boxRef.current)).toBe(-1);
     });
 
-    it("throws for an index that is not a whole number", async () => {
+    it.each([1.5, -2])("throws for the invalid index %s", async (selectedIndex) => {
         const boxRef = createRef<Gtk.ListBox>();
-        await expect(render(<BoxProbe boxRef={boxRef} count={3} selectedIndex={1.5} />)).rejects.toThrow();
+        await expect(render(<BoxProbe boxRef={boxRef} count={3} selectedIndex={selectedIndex} />)).rejects.toThrow();
     });
 });
 

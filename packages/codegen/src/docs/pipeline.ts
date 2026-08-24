@@ -1,5 +1,6 @@
 import { sortStringsBy } from "@gtkx/utils";
-import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { lstatSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
     computeDocsFingerprint,
@@ -327,8 +328,39 @@ const cachedDocsResult = (
 const writePages = (outDir: string, pages: Page[]): void => {
     for (const page of pages) {
         const target = join(outDir, page.path);
-        mkdirSync(dirname(target), { recursive: true });
-        writeFileSync(target, page.content);
+        replaceDocsFile(target, page.content);
+    }
+};
+
+const replaceDocsFile = (path: string, contents: string): void => {
+    const directory = dirname(path);
+    const temporary = join(directory, `.${randomUUID()}.tmp`);
+    mkdirSync(directory, { recursive: true });
+
+    try {
+        writeFileSync(temporary, contents, { flag: "wx" });
+        renameSync(temporary, path);
+    } finally {
+        rmSync(temporary, { force: true });
+    }
+};
+
+const assertRegularOutputTree = (outDir: string): void => {
+    const stats = lstatSync(outDir, { throwIfNoEntry: false });
+
+    if (stats === undefined) {
+        return;
+    }
+
+    if (!stats.isDirectory()) {
+        throw outDirRefusal(outDir, "it is not a regular directory");
+    }
+
+    const irregular = readdirSync(outDir, { recursive: true, withFileTypes: true })
+        .find((entry) => !entry.isDirectory() && !entry.isFile());
+
+    if (irregular !== undefined) {
+        throw outDirRefusal(outDir, `it contains an irregular entry named ${irregular.name}`);
     }
 };
 
@@ -343,6 +375,7 @@ const writeDocs = (options: DocsOptions): DocsResult => {
     setElementProps(input.props);
     setOmittedProps(input.omittedProps);
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
+    assertRegularOutputTree(options.outDir);
     const previous = readDocsManifest(manifestPath);
     const cached = cachedDocsResult(options, previous, input);
 
@@ -363,10 +396,10 @@ const writeDocs = (options: DocsOptions): DocsResult => {
     clearOutDir(options, previous);
     mkdirSync(options.outDir, { recursive: true });
     const manifest: DocsManifest = { generator: MANIFEST_GENERATOR, namespaces };
-    writeFileSync(manifestPath, JSON.stringify(manifest));
+    replaceDocsFile(manifestPath, JSON.stringify(manifest));
     writePages(options.outDir, pages);
     const fingerprint = computeDocsFingerprint(giInputs(options, library.girFiles), input);
-    writeFileSync(join(options.outDir, FINGERPRINT_FILENAME), JSON.stringify(fingerprint));
+    replaceDocsFile(join(options.outDir, FINGERPRINT_FILENAME), JSON.stringify(fingerprint));
 
     return { isRegenerated: true, namespaces };
 };

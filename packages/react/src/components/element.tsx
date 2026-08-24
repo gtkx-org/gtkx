@@ -1,6 +1,18 @@
+import type * as GObject from "@gtkx/gi/gobject";
 import { isRecord } from "@gtkx/utils";
-import { createElement, type ElementType, isValidElement, type ReactElement, type ReactNode } from "react";
-import type { Props } from "../reconciler/registry.js";
+import {
+    createElement,
+    type ElementType,
+    isValidElement,
+    type ReactElement,
+    type ReactNode,
+    type Ref,
+    useImperativeHandle,
+    useMemo,
+    useState,
+} from "react";
+import { createLazyPublicInstanceChannel, LAZY_PUBLIC_INSTANCE_PROP } from "../reconciler/lazy-public-instance.js";
+import { ELEMENTS, type Props } from "../reconciler/registry.js";
 
 const Prop = "gtkx:prop";
 const NO_PROP_CHILDREN: ReactNode[] = [];
@@ -41,26 +53,56 @@ const hostPropsWithout = (record: Props): Props => {
     return hostProps;
 };
 
-const buildElement = (typeName: string, record: Props): ReactElement => {
+const buildElement = (
+    typeName: string,
+    record: Props,
+    channel: ReturnType<typeof createLazyPublicInstanceChannel> | null,
+): ReactElement => {
     const Host = typeName as ElementType;
     const propChildren = collectPropChildren(record);
+    const hostProps = propChildren === null ? record : hostPropsWithout(record);
 
-    if (propChildren === null) {
-        return (
-            <Host {...record}>
-                {NO_PROP_CHILDREN}
-                {record.children as ReactNode}
-            </Host>
-        );
-    }
+    const props = channel === null
+        ? hostProps
+        : { ...hostProps, ref: undefined, [LAZY_PUBLIC_INSTANCE_PROP]: channel };
 
     return (
-        <Host {...hostPropsWithout(record)}>
-            {propChildren}
+        <Host {...props}>
+            {propChildren ?? NO_PROP_CHILDREN}
             {record.children as ReactNode}
         </Host>
     );
 };
+
+const useLazyPublicInstance = (
+    ref: Ref<GObject.Object> | undefined,
+): ReturnType<typeof createLazyPublicInstanceChannel> => {
+    const [instance, setInstance] = useState<GObject.Object | null>(null);
+    const channel = useMemo(() => createLazyPublicInstanceChannel(setInstance), []);
+    const publicRef = instance === null ? undefined : ref;
+
+    useImperativeHandle(publicRef, () => {
+        if (instance === null) {
+            throw new Error("A lazy public instance must exist while its ref is attached");
+        }
+
+        return instance;
+    }, [instance]);
+
+    return channel;
+};
+
+const createRegularElementComponent = (typeName: string): ((props: unknown) => ReactNode) =>
+    (props: unknown): ReactNode => buildElement(typeName, isRecord(props) ? props : {}, null);
+
+const createLazyElementComponent = (typeName: string): ((props: unknown) => ReactNode) =>
+    (props: unknown): ReactNode => {
+        const record: Props = isRecord(props) ? props : {};
+        const ref = record.ref as Ref<GObject.Object> | undefined;
+        const channel = useLazyPublicInstance(ref);
+
+        return buildElement(typeName, record, channel);
+    };
 
 /**
  * Builds the component that renders the element of a GLib type, which is how the generated `@gtkx/jsx`
@@ -76,7 +118,9 @@ const buildElement = (typeName: string, record: Props): ReactElement => {
  */
 /* eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- callers name the props */
 function createElementComponent<P = unknown>(typeName: string): (props: P) => ReactNode {
-    return (props: P): ReactNode => buildElement(typeName, isRecord(props) ? props : {});
+    return ELEMENTS[typeName]?.isLazy === true
+        ? createLazyElementComponent(typeName)
+        : createRegularElementComponent(typeName);
 }
 
 export { Prop, createElementComponent };

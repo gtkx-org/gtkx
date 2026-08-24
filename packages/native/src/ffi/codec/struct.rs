@@ -27,6 +27,15 @@ impl Encoder for StructCodec {
 }
 
 impl StructCodec {
+    fn borrowed(&self, ptr: *mut c_void) -> Handle {
+        let handle = Handle::from_glib_borrow(ptr);
+        if let Some(size) = self.size {
+            handle.set_memory_extent(size);
+        }
+
+        handle
+    }
+
     fn ensure_lent(&self) -> anyhow::Result<()> {
         Self::ensure_lent_transfer(self.ownership)
     }
@@ -39,8 +48,13 @@ impl StructCodec {
 
     fn borrow_or_copy(&self, ptr: *mut c_void) -> Handle {
         self.size.map_or_else(
-            || Handle::from_glib_borrow(ptr),
-            |size| Handle::owned_struct(unsafe { glib::ffi::g_memdup2(ptr.cast_const(), size) }),
+            || self.borrowed(ptr),
+            |size| {
+                Handle::owned_struct_with_extent(
+                    unsafe { glib::ffi::g_memdup2(ptr.cast_const(), size) },
+                    size,
+                )
+            },
         )
     }
 
@@ -109,7 +123,7 @@ impl Decoder for StructCodec {
         Self::ensure_lent_transfer(transfer)?;
 
         let handle = if self.caller_allocated {
-            Handle::from_glib_borrow(ptr)
+            self.borrowed(ptr)
         } else {
             self.borrow_or_copy(ptr)
         };
@@ -127,10 +141,7 @@ impl Decoder for StructCodec {
         Self::ensure_lent_transfer(transfer)?;
 
         self.decode_non_null(env, ptr, |ptr| {
-            Ok(value::handle_to_unknown(
-                env,
-                Handle::from_glib_borrow(ptr),
-            )?)
+            Ok(value::handle_to_unknown(env, self.borrowed(ptr))?)
         })
     }
 }

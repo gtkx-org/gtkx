@@ -39,7 +39,7 @@ dist/bundle.mjs                                                  4,067.30 kB │
 
 Everything except the bundle is found at runtime relative to the bundle itself: it prepends its own directory to `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, and loads `gtkx.node` from beside itself. Keep them together and the app is self-contained. Move `bundle.mjs` on its own and the settings schema goes missing on the first `useSetting` call.
 
-`node dist/bundle.mjs` runs the app on any machine with GTK4, Adwaita, and Node.js 24 installed. That works, but it is not yet something a user can double-click.
+`node dist/bundle.mjs` runs the app on any machine with GTK4, Adwaita, and Node.js 24.11 or later installed. That works, but it is not yet something a user can double-click.
 
 ## Icons
 
@@ -133,7 +133,7 @@ npm run deploy
 
 The desktop entry and the metainfo are validated in the second step, before the build, so a bad category or a missing summary fails in about two seconds rather than after everything else has run.
 
-Note the third line: Node.js is bundled into the package. GTKX needs Node.js 24, Debian 13 ships 20, and Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` fetches the official build matching yours, verifies its checksum, and caches it, which is where most of each package's size comes from.
+Note the third line: Node.js is bundled into the package. GTKX needs Node.js 24.11 or later, Debian 13 ships 20, and Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` fetches the official build matching yours, verifies its checksum, and caches it, which is where most of each package's size comes from.
 
 ## What is inside
 

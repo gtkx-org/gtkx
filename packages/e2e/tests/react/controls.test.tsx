@@ -178,6 +178,24 @@ describe("render - Scale marks (2)", () => {
             ],
         );
     });
+
+    it("does not notify css classes while declarative marks change", async () => {
+        let notificationCount = 0;
+
+        const build = (marks: ScaleMark[]) => (
+            <GtkScale
+                marks={marks}
+                onNotifyCssClasses={() => {
+                    notificationCount += 1;
+                }}
+            />
+        );
+
+        const { rerender } = await render(build(MIN_MAX_MARKS));
+        notificationCount = 0;
+        await rerender(build(MIN_MID_MAX_MARKS));
+        expect(notificationCount).toBe(0);
+    });
 });
 
 describe("render - Scale marks (3)", () => {

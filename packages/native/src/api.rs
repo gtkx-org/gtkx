@@ -75,6 +75,40 @@ pub(crate) fn handle_memory_ptr(handle: &Handle, label: &str) -> napi::Result<*m
     Ok(ptr)
 }
 
+pub(crate) fn assert_field_bounds(
+    handle: &Handle,
+    offset: usize,
+    width: Option<usize>,
+    label: &str,
+) -> napi::Result<()> {
+    let Some(extent) = handle.memory_extent() else {
+        return Ok(());
+    };
+    let Some(width) = width else {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!(
+                "{label}: the field width is unknown for a handle with a known allocation extent"
+            ),
+        ));
+    };
+    let end = offset.checked_add(width).ok_or_else(|| {
+        napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("{label}: offset {offset} plus field width {width} overflows the platform address range"),
+        )
+    })?;
+
+    if end > extent {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("{label}: bytes {offset}..{end} exceed the handle's {extent}-byte allocation"),
+        ));
+    }
+
+    Ok(())
+}
+
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub(crate) fn byte_count_from_f64(value: f64, label: &str) -> napi::Result<usize> {
     const MAX_EXACT_INTEGER: f64 = 9_007_199_254_740_992.0;

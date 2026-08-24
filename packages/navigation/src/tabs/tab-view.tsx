@@ -8,7 +8,6 @@ import type { TabDescriptor, TabDescriptorMap, TabNavigationConfig, TabNavigatio
 import { HeaderBar } from "../shared/header-bar.js";
 import { getFocusedRoute, requireDescriptor } from "../shared/routes.js";
 import { ScenePage } from "../shared/scene-page.js";
-import { useLoadedRoutes } from "../shared/use-loaded-routes.js";
 import { usePopToTopOnBlur } from "../shared/use-pop-to-top-on-blur.js";
 
 type TabViewProps = TabNavigationConfig & {
@@ -24,24 +23,38 @@ type TabHeaderProps = {
 
 type TabPageProps = {
     descriptor: TabDescriptor;
-    isLoaded: boolean;
+    shouldLoad: boolean;
 };
 
-const useTabSelection = (navigation: TabNavigationHelpers): ((name: string | null) => void) =>
-    useCallback((name: string | null) => {
-        const current = navigation.getState();
-        const focusedKey = getFocusedRoute(current).key;
-        const route = current.routes.find((candidate) => candidate.key === name);
+const selectTab = (
+    navigation: TabNavigationHelpers,
+    name: string | null,
+    stack: Adw.ViewStack,
+): void => {
+    if (!stack.getMapped()) {
+        return;
+    }
 
-        if (route === undefined || route.key === focusedKey) {
-            return;
-        }
+    const current = navigation.getState();
+    const focusedKey = getFocusedRoute(current).key;
+    const route = current.routes.find((candidate) => candidate.key === name);
 
-        const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+    if (route === undefined || route.key === focusedKey) {
+        return;
+    }
 
-        if (!event.defaultPrevented) {
-            navigation.dispatch({ ...CommonActions.navigate(route.name, route.params), target: current.key });
-        }
+    const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+
+    if (!event.defaultPrevented) {
+        navigation.dispatch({ ...CommonActions.navigate(route.name, route.params), target: current.key });
+    }
+};
+
+const useTabSelection = (
+    navigation: TabNavigationHelpers,
+): ((name: string | null, stack: Adw.ViewStack) => void) =>
+    useCallback((name, stack) => {
+        selectTab(navigation, name, stack);
     }, [navigation]);
 
 const defaultTabHeader = ({ descriptor, viewSwitcher }: TabHeaderProps): ReactElement => (
@@ -68,7 +81,7 @@ const TabHeader = (props: TabHeaderProps): ReactNode => {
     );
 };
 
-const TabPage = ({ descriptor, isLoaded }: TabPageProps): ReactNode => {
+const TabPage = ({ descriptor, shouldLoad }: TabPageProps): ReactNode => {
     const { route, options } = descriptor;
 
     return (
@@ -78,17 +91,22 @@ const TabPage = ({ descriptor, isLoaded }: TabPageProps): ReactNode => {
             iconName={options.tabBarIcon}
             badgeNumber={options.tabBarBadge}
             needsAttention={options.needsAttention}
-            isLoaded={isLoaded || options.lazy === false}
+            isLoaded={shouldLoad || options.lazy === false}
             render={() => descriptor.render()}
         />
     );
 };
 
-const TabView = ({ state, navigation, descriptors, tabBarPosition = "top" }: TabViewProps): ReactNode => {
+const TabView = ({
+    state,
+    navigation,
+    descriptors,
+    tabBarPosition = "top",
+    animation = "none",
+}: TabViewProps): ReactNode => {
     const [stack, setStack] = useState<Adw.ViewStack | null>(null);
     const focused = getFocusedRoute(state);
     const descriptor = requireDescriptor(descriptors, focused.key);
-    const loaded = useLoadedRoutes(focused.key, state.preloadedRouteKeys);
     const onVisibleChildChanged = useTabSelection(navigation);
 
     const viewSwitcher = stack === null
@@ -108,14 +126,14 @@ const TabView = ({ state, navigation, descriptors, tabBarPosition = "top" }: Tab
             <AdwViewStack
                 ref={setStack}
                 visibleChildName={focused.key}
-                enableTransitions={descriptor.options.animation === "fade"}
+                enableTransitions={animation === "fade"}
                 onNotifyVisibleChildName={onVisibleChildChanged}
             >
                 {state.routes.map((route) => (
                     <TabPage
                         key={route.key}
                         descriptor={requireDescriptor(descriptors, route.key)}
-                        isLoaded={loaded.has(route.key)}
+                        shouldLoad={route.key === focused.key || state.preloadedRouteKeys.includes(route.key)}
                     />
                 ))}
             </AdwViewStack>

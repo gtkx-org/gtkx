@@ -70,18 +70,30 @@ COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
 RUN fc-cache -f
 
 ARG NODE24_VERSION=24.19.0
+ARG NODE24_X64_SHA256=14b342e71204f811bde6153be8e04b62aef63c236fef92b55f9c83154b409647
+ARG NODE24_ARM64_SHA256=01443c1e1a29e531ccad5a46fefa6df490d2189c49f7955904aecdbb0fe86fdc
 ARG TARGETARCH
 RUN set -eux \
     && case "${TARGETARCH}" in \
-        amd64) node_arch=x64 ;; \
-        arm64) node_arch=arm64 ;; \
+        amd64) node_arch=x64; node_sha256="${NODE24_X64_SHA256}" ;; \
+        arm64) node_arch=arm64; node_sha256="${NODE24_ARM64_SHA256}" ;; \
         *) echo "unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
-    && curl -fsSL "https://nodejs.org/dist/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-${node_arch}.tar.xz" \
-        | tar -xJ --strip-components=1 -C /usr/local \
+    && curl -fsSL \
+        "https://nodejs.org/dist/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-${node_arch}.tar.xz" \
+        -o /tmp/node.tar.xz \
+    && echo "${node_sha256}  /tmp/node.tar.xz" | sha256sum --check --strict \
+    && tar -xJf /tmp/node.tar.xz --strip-components=1 -C /usr/local \
+    && rm /tmp/node.tar.xz \
     && node --version | grep -q "v${NODE24_VERSION}"
 
-RUN npm install -g corepack@latest && corepack enable && corepack prepare pnpm@latest --activate
+ARG COREPACK_VERSION=0.35.0
+ARG PNPM_VERSION=11.22.0+sha512.1ff870c4c6133dfd88fb2afc46dd13d47f09c9794b438c6fdb47ca98caf3bc16381ee0be93a091b8e3824cf01f889f46d7d9e20910fb0be1ab0fb5baa80dd621
+RUN npm install -g "corepack@${COREPACK_VERSION}" \
+    && corepack enable \
+    && corepack prepare "pnpm@${PNPM_VERSION}" --activate \
+    && corepack --version | grep -qx "${COREPACK_VERSION}" \
+    && pnpm --version | grep -qx "${PNPM_VERSION%%+*}"
 
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/usr/local/cargo

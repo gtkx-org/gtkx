@@ -54,6 +54,7 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
 
     it("names the project after its directory and scripts every gtkx command", () => {
         expect(readManifest(state.run).name).toBe(PROJECT_NAME);
+        expect(readManifest(state.run).engines).toEqual({ node: ">=24.11.0" });
 
         expect(getScripts(state.run)).toMatchObject({
             dev: "gtkx dev",

@@ -1,6 +1,5 @@
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
-import { closeTaskIfOpen } from "../navigation.js";
 import { useStore } from "../store/index.js";
 
 export const DeleteConfirmation = () => {
@@ -22,7 +21,6 @@ export const DeleteConfirmation = () => {
             ]}
             onResponse={(id) => {
                 if (id === "delete" && taskToDelete !== null) {
-                    closeTaskIfOpen(taskToDelete);
                     deleteForever(taskToDelete);
                 }
                 askDeleteTask(null);

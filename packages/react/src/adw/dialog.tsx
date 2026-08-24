@@ -18,7 +18,9 @@ const usePresentDialog = (): ((dialog: Adw.Dialog) => void) => {
 
     return useCallback(
         (dialog: Adw.Dialog) => {
-            dialog.present(parent);
+            applyMutation(() => {
+                dialog.present(parent);
+            });
         },
         [parent],
     );

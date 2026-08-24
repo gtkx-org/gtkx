@@ -36,6 +36,7 @@ pub(crate) struct PreparedResourceResult<'a> {
     storage: &'a ffi::StashStorage,
     kind: ResourceKind,
     release: ResourceReleaseFn,
+    extent: Option<usize>,
 }
 
 impl PreparedResourceResult<'_> {
@@ -46,8 +47,11 @@ impl PreparedResourceResult<'_> {
         }
 
         let resource = Resource::new(self.kind, ptr, self.release);
-        self.storage
-            .set_resource_output(Handle::resource(resource.clone()));
+        let handle = Handle::resource(resource.clone());
+        if let Some(extent) = self.extent {
+            handle.set_memory_extent(extent);
+        }
+        self.storage.set_resource_output(handle);
 
         Some(ResourceRollback::new(resource))
     }
@@ -122,10 +126,15 @@ impl ResourceCodec {
             anyhow::bail!("A resource result was not marshalled as a pointer slot")
         };
 
+        let Codec::Boxed(boxed) = self.inner_codec.as_ref() else {
+            anyhow::bail!("A resource result does not wrap a boxed descriptor")
+        };
+
         Ok(Some(PreparedResourceResult {
             storage,
             kind: self.kind.clone(),
             release: self.release_fn()?,
+            extent: boxed.size,
         }))
     }
 

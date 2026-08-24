@@ -1,0 +1,50 @@
+diff --git a/index.d.ts b/index.d.ts
+index c0762387a68005990e4d2297ff2331e73c4e71ba..0696fd7fbf10bd5d6f021c74a5eaa1632ec264fe 100644
+--- a/index.d.ts
++++ b/index.d.ts
+@@ -1,4 +1,4 @@
+-import { Component, ReactNode } from "react";
++import { Component, Context, ReactNode, ReactPortal as PublicReactPortal } from "react";
+-
++
+ /* eslint-disable @definitelytyped/no-unnecessary-generics */
+ declare function ReactReconciler<
+@@ -646,24 +646,7 @@ declare namespace ReactReconciler {
+         };
+     }
+-
++
+-    interface ReactContext<T> {
+-        $$typeof: symbol | number;
+-        Consumer: ReactContext<T>;
+-        Provider: ReactProviderType<T>;
+-        _currentValue: T;
+-        _currentValue2: T;
+-        _threadCount: number;
+-        // DEV only
+-        _currentRenderer?: {
+-            [key: string]: any;
+-        } | null;
+-        _currentRenderer2?: {
+-            [key: string]: any;
+-        } | null;
+-        // This value may be added by application code
+-        // to improve DEV tooling display names
+-        displayName?: string;
+-    }
++    interface ReactContext<T> extends Context<T> {}
+-
++
+     interface ReactPortal {
+         $$typeof: symbol | number;
+@@ -949,7 +932,7 @@ declare namespace ReactReconciler {
+             containerInfo: any, // TODO: figure out the API for cross-renderer implementation.
+             implementation: any,
+             key?: string | null,
+-        ): ReactPortal;
++        ): PublicReactPortal;
+-
++
+         createComponentSelector(component: React$AbstractComponent<never, unknown>): ComponentSelector;
+-
++

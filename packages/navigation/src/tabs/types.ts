@@ -39,14 +39,14 @@ type TabNavigationOptions = HeaderOptions & {
     lazy?: boolean;
     /** Whether a nested stack pops to its first screen when this tab loses focus; defaults to `false`. */
     popToTopOnBlur?: boolean;
-    /** Whether switching to this tab crossfades; defaults to `"none"`. */
-    animation?: "fade" | "none";
 };
 
 /** Props of the tab navigator beyond the options every navigator shares. */
 type TabNavigationConfig = {
     /** Where the view switcher sits: in the header bar or in a bar below the content; defaults to `"top"`. */
     tabBarPosition?: "top" | "bottom";
+    /** Whether switches between tabs crossfade; defaults to `"none"`. */
+    animation?: "fade" | "none";
 };
 
 /** Navigation object of a tab screen. */

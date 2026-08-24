@@ -118,16 +118,43 @@ An action's scope prefix comes from where the element is mounted, not from its n
 
 A GAction declares its argument type instead of inferring one. `GLib.VariantType.new("s")` declares a string parameter, matching the string variant `notifications.ts` builds. In the handler the parameter is nullable, so guard it, and `getString()` returns a value and length pair, so take the first element.
 
-Add the slot in `src/app.tsx`:
+The notification action lives on the application, one level above `Window`. Lift the `openTaskRequest` state from `Window` into `App`, then keep `Window` controlled with three props: the pending request, a callback that can create a request, and a callback that acknowledges the exact request its ready-gated consumer handled.
+
+In `src/components/window.tsx`, remove the local `openTaskRequest` state and its two setter functions, then accept them as props instead. Keep the local `navigationReady` state and the consumer exactly as they are:
+
+```tsx
+type WindowProps = {
+    openTaskRequest: OpenTaskRequest | null;
+    onOpenTaskRequest: (request: OpenTaskRequest) => void;
+    onOpenTaskRequestHandled: (request: OpenTaskRequest) => void;
+};
+
+export const Window = ({ openTaskRequest, onOpenTaskRequest, onOpenTaskRequestHandled }: WindowProps) => {
+    // ...
+    const [navigationReady, setNavigationReady] = useState(false);
+    // ...
+};
+```
+
+Now add the action slot and lifted state in `src/app.tsx`:
 
 ```tsx
 import * as GLib from "@gtkx/gi/glib";
 import { GSimpleAction } from "@gtkx/jsx/gio";
-import { ALL_TASKS, openTask } from "./navigation.js";
+import { useCallback, useState } from "react";
+import { ALL_TASKS, type OpenTaskRequest } from "./navigation.js";
 import { useStore } from "./store/index.js";
 // ...
 
 export function App() {
+    const [openTaskRequest, setOpenTaskRequest] = useState<OpenTaskRequest | null>(null);
+    const requestOpenTask = useCallback((request: OpenTaskRequest): void => {
+        setOpenTaskRequest(request);
+    }, []);
+    const handleOpenTaskRequest = useCallback((handled: OpenTaskRequest): void => {
+        setOpenTaskRequest((current) => (current === handled ? null : current));
+    }, []);
+
     return (
         <AdwApplication
             actionAccels={[
@@ -147,25 +174,29 @@ export function App() {
                         parameterType={GLib.VariantType.new("s")}
                         onActivate={(parameter) => {
                             if (!parameter) return;
-                            openTask(ALL_TASKS, parameter.getString()[0]);
+                            requestOpenTask({ selection: ALL_TASKS, id: parameter.getString()[0] });
                         }}
                     />
                 </>
             }
         >
-            <Window />
+            <Window
+                openTaskRequest={openTaskRequest}
+                onOpenTaskRequest={requestOpenTask}
+                onOpenTaskRequestHandled={handleOpenTaskRequest}
+            />
         </AdwApplication>
     );
 }
 ```
 
-`open-task` reuses the `openTask` helper from [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts), which navigates to the task list you name and then pushes the task's page onto it. It names `ALL_TASKS` because the task the shell hands you may not be in whichever view the app was left on, and because the editor needs a list under it: going back from a notification lands on All Tasks rather than on an empty content pane.
+`open-task` does not call the navigator. It records an `OpenTaskRequest`, the same data shape the New Task window action introduced in [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts). It names `ALL_TASKS` because the task the shell hands you may not be in whichever view the app was left on, and because the editor needs a list under it: going back from a notification lands on All Tasks rather than on an empty content pane.
 
-## Reaching the store and the navigator from outside React
+## State that crosses startup
 
-Those handlers take no props, sit in no component, and can run with no window present. `useStore.getState()` reads and writes the same store the interface renders from, and every component watching the fields they touch re-renders when they change. `openTask` answers the same way for navigation, through the container ref rather than a hook, which is what lets a handler this far outside the tree still move the app to a page.
+The two actions need different kinds of state. `complete-task` can run with no window present, so `useStore.getState()` changes the persisted task directly and every component watching it catches up later. `open-task` needs a navigation tree, so its handler leaves a declarative request in React state. If the window is already ready, the consumer handles it on the next effect. During a cold start, the request remains pending while the window and container mount; `NavigationContainer.onReady` then allows the consumer to open the route exactly once. There is no readiness polling, retry timer, or command queue.
 
-Cold start shows why that matters. Click Mark Complete with the app closed, and the desktop starts your app over D-Bus just to deliver the action. The store module loads, the `persist` middleware you added in [Saving Tasks Between Runs](/tutorial/saving-to-disk) reads `tasks.json`, the handler flips one task to done, and the middleware writes the file back, all before any window is drawn.
+Cold start shows why both paths matter. Click Mark Complete with the app closed, and the desktop starts your app over D-Bus just to deliver the action. The store module loads, the `persist` middleware you added in [Saving Tasks Between Runs](/tutorial/saving-to-disk) reads `tasks.json`, the handler flips one task to done, and the middleware writes the file back, all before any window is drawn. Click the notification body instead and the application retains the task id until navigation is ready. If an old notification names a task that was deleted or no longer exists, the consumer acknowledges it without opening an empty editor.
 
 ## What delivery depends on
 

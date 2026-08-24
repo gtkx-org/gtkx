@@ -1,7 +1,6 @@
-import type { NavigationState } from "@gtkx/navigation";
+import type { NavigationState, StaticParamList } from "@gtkx/navigation";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
-    CommonActions,
     createDrawerNavigator,
     createDrawerScreen,
     createNavigationContainerRef,
@@ -86,13 +85,13 @@ describe("static - navigation", () => {
 
     it("accepts onStateChange and a ref", async () => {
         const onStateChange = vi.fn<(state: NavigationState | undefined) => void>();
-        const ref = createNavigationContainerRef();
+        const ref = createNavigationContainerRef<StaticParamList<typeof RootStack>>();
         await render(<App onStateChange={onStateChange} ref={ref} />);
         await screen.findByText("Home Content");
         expect(ref.isReady()).toBe(true);
 
         await act(() => {
-            ref.dispatch(CommonActions.navigate("Details", { id: "5" }));
+            ref.navigate("Details", { id: "5" });
         });
 
         await screen.findByText("Details 5");

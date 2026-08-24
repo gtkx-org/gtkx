@@ -182,7 +182,7 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
         );
     }
 
-    const girPath = resolveGirPath(config.girPath);
+    const girPath = resolveGirPath(config.girPath, root);
 
     if (girPath.length === 0) {
         throw new Error(

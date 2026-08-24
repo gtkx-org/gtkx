@@ -37,17 +37,29 @@ const startApplication = (
     application: Gtk.Application,
     setActivated: (isActivated: boolean) => void,
     applicationId: string | null,
-): void => {
-    application.on("activate", () => {
+): (() => void) => {
+    const onActivate = (): void => {
         setActivated(true);
-    });
+    };
 
-    const { exitStatus } = runApplication(application, commandLine(applicationId));
-    reportOwnedApplicationId(application);
+    application.on("activate", onActivate);
 
-    if (exitStatus !== 0) {
-        process.exitCode = exitStatus;
+    try {
+        const { exitStatus } = runApplication(application, commandLine(applicationId));
+        reportOwnedApplicationId(application);
+
+        if (exitStatus !== 0) {
+            process.exitCode = exitStatus;
+        }
+    } catch (error) {
+        application.off("activate", onActivate);
+        quitApplication(application);
+        throw error;
     }
+
+    return () => {
+        application.off("activate", onActivate);
+    };
 };
 
 const useApplicationLifecycle = (
@@ -60,9 +72,10 @@ const useApplicationLifecycle = (
             return;
         }
 
-        startApplication(application, setActivated, applicationId);
+        const stopListening = startApplication(application, setActivated, applicationId);
 
         return () => {
+            stopListening();
             quitApplication(application);
             setActivated(false);
         };

@@ -1,16 +1,77 @@
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ROOT_DIR, runAsync, verifyAppStarts, verifyBuiltAppStarts, withRegistry } from "./e2e-registry.js";
+import { fileURLToPath } from "node:url";
+import {
+    REGISTRY,
+    ROOT_DIR,
+    runAsync,
+    verifyAppStarts,
+    verifyBuiltAppStarts,
+    withRegistry,
+} from "./e2e-registry.js";
 
 const TUTORIAL_DIR = join(ROOT_DIR, "examples", "tutorial");
+const TUTORIAL_LOCK = join(TUTORIAL_DIR, "package-lock.json");
+const LOCK_NORMALIZER = fileURLToPath(new URL("normalize-package-lock-registry.ts", import.meta.url));
+const PUBLIC_NPM_REGISTRY = "https://registry.npmjs.org/";
 const BINARY_NAME = "gtkx-tutorial";
 const DEPLOY_TARGETS = "deb,rpm";
 
+const toError = (error: unknown): Error =>
+    error instanceof Error ? error : new Error("A tutorial setup operation failed", { cause: error });
+
+const installTutorialDependencies = async (env: NodeJS.ProcessEnv): Promise<Error | undefined> => {
+    try {
+        await runAsync("npm", ["install"], { cwd: TUTORIAL_DIR, env });
+
+        return undefined;
+    } catch (error) {
+        return toError(error);
+    }
+};
+
+const normalizeTutorialLock = async (): Promise<Error | undefined> => {
+    if (!existsSync(TUTORIAL_LOCK)) {
+        return undefined;
+    }
+
+    try {
+        await runAsync(
+            "tsx",
+            [LOCK_NORMALIZER, TUTORIAL_LOCK, REGISTRY, PUBLIC_NPM_REGISTRY],
+            { cwd: ROOT_DIR, env: process.env },
+        );
+
+        return undefined;
+    } catch (error) {
+        return toError(error);
+    }
+};
+
+const throwSetupErrors = (installError: Error | undefined, normalizationError: Error | undefined): void => {
+    if (installError !== undefined && normalizationError !== undefined) {
+        throw new AggregateError(
+            [installError, normalizationError],
+            "Tutorial installation and lock normalization failed",
+        );
+    }
+
+    if (installError !== undefined) {
+        throw installError;
+    }
+
+    if (normalizationError !== undefined) {
+        throw normalizationError;
+    }
+};
+
 async function installTutorial(env: NodeJS.ProcessEnv): Promise<void> {
     rmSync(join(TUTORIAL_DIR, "node_modules"), { recursive: true, force: true });
-    rmSync(join(TUTORIAL_DIR, "package-lock.json"), { force: true });
-    await runAsync("npm", ["install"], { cwd: TUTORIAL_DIR, env });
+    rmSync(TUTORIAL_LOCK, { force: true });
+    const installError = await installTutorialDependencies(env);
+    const normalizationError = await normalizeTutorialLock();
+    throwSetupErrors(installError, normalizationError);
 }
 
 function findArtifact(extension: string): string {

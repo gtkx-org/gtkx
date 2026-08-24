@@ -926,4 +926,24 @@ describe("createPortal (3)", () => {
 
         expect(innerBox).toContainOneByRole(Gtk.AccessibleRole.BUTTON, { name: "Nested" });
     });
+
+    it("rejects a portal from a second root to the same native target", async () => {
+        const target = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL });
+
+        await render(
+            <>
+                <GtkLabel label="First root" />
+                {createPortal(<GtkLabel label="First portal" />, target)}
+            </>,
+        );
+
+        await expect(
+            render(
+                <>
+                    <GtkLabel label="Second root" />
+                    {createPortal(<GtkLabel label="Second portal" />, target)}
+                </>,
+            ),
+        ).rejects.toThrow();
+    });
 });

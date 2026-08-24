@@ -22,7 +22,19 @@ type TaggedScaleProps = {
     adjustment?: unknown;
 };
 
+type RuntimePropertyLabelProps = {
+    name?: string;
+    onFlipped?: string;
+    accessibleLabel?: string;
+    "level-2-depth"?: string;
+    seed?: string;
+};
+
+type FlushProbeProps = { fail?: boolean; accessibleLabel?: string };
+
 const TaggedScaleElement = createElementComponent<TaggedScaleProps>("GtkxTaggedScale");
+const RuntimePropertyLabelElement = createElementComponent<RuntimePropertyLabelProps>("GtkxRuntimePropertyLabel");
+const FlushProbeElement = createElementComponent<FlushProbeProps>("GtkxFlushProbeLabel");
 const attached: string[] = [];
 
 const frameBehavior = defineBehavior<Gtk.Frame>({
@@ -62,10 +74,49 @@ class TaggedScale extends Gtk.Scale {
     declare tag: string;
 }
 
+class RuntimePropertyLabel extends Gtk.Label {
+    declare onFlipped: string;
+    declare accessibleLabel: string;
+    declare level2Depth: string;
+    declare seed: string;
+}
+
+class FlushProbeLabel extends Gtk.Label {}
+
 registerClass(TaggedScale, {
     typeName: "GtkxTaggedScale",
     properties: { tag: paramSpecString("tag", null, null, "none", ParamFlags.READWRITE) },
 });
+
+registerClass(RuntimePropertyLabel, {
+    typeName: "GtkxRuntimePropertyLabel",
+    properties: {
+        onFlipped: paramSpecString("on-flipped", null, null, "idle", ParamFlags.READWRITE),
+        accessibleLabel: paramSpecString(
+            "accessible-label",
+            null,
+            null,
+            "private-default",
+            ParamFlags.READWRITE,
+        ),
+        "level-2-depth": paramSpecString(
+            "level-2-depth",
+            null,
+            null,
+            "shallow",
+            ParamFlags.READWRITE,
+        ),
+        seed: paramSpecString(
+            "seed",
+            null,
+            null,
+            "unseeded",
+            ParamFlags.READWRITE | ParamFlags.CONSTRUCT_ONLY,
+        ),
+    },
+});
+
+registerClass(FlushProbeLabel, { typeName: "GtkxFlushProbeLabel" });
 
 describe("createElementComponent for a type codegen does not cover", () => {
     it("renders a registered subclass with its own props", async () => {
@@ -82,6 +133,56 @@ describe("createElementComponent for a type codegen does not cover", () => {
 
         const found = await screen.findByName("slotted");
         expect((found as Gtk.Scale).getAdjustment().getValue()).toBe(7);
+    });
+});
+
+describe("custom behavior flush errors", () => {
+    it("rejects an update when a committed flush throws", async () => {
+        const { rerender } = await render(<FlushProbeElement fail={false} />);
+        await expect(rerender(<FlushProbeElement fail />)).rejects.toThrow();
+    });
+});
+
+describe("runtime-registered property metadata", () => {
+    it("constructs handler-shaped and construct-only props and resets the writable prop", async () => {
+        const { rerender } = await render(
+            <RuntimePropertyLabelElement
+                name="runtime-props"
+                onFlipped="armed"
+                level-2-depth="deep"
+                seed="planted"
+            />,
+        );
+
+        const found = await screen.findByName("runtime-props");
+
+        if (!(found instanceof RuntimePropertyLabel)) {
+            throw new TypeError("expected the runtime property label");
+        }
+
+        expect(found.onFlipped).toBe("armed");
+        expect(found.level2Depth).toBe("deep");
+        expect(found.seed).toBe("planted");
+        await rerender(<RuntimePropertyLabelElement name="runtime-props" seed="planted" />);
+        expect(found.onFlipped).toBe("idle");
+        expect(found.level2Depth).toBe("shallow");
+    });
+
+    it("keeps an accessibility-shaped GObject prop out of the accessible interface", async () => {
+        await render(<RuntimePropertyLabelElement name="private-accessible" accessibleLabel="private" />);
+        const found = await screen.findByName("private-accessible");
+
+        if (!(found instanceof RuntimePropertyLabel)) {
+            throw new TypeError("expected the runtime property label");
+        }
+
+        expect(found.accessibleLabel).toBe("private");
+        expect(Gtk.testAccessibleHasProperty(found, Gtk.AccessibleProperty.LABEL)).toBe(false);
+    });
+
+    it("throws when a runtime-registered construct-only prop changes", async () => {
+        const { rerender } = await render(<RuntimePropertyLabelElement seed="first" />);
+        await expect(rerender(<RuntimePropertyLabelElement seed="second" />)).rejects.toThrow();
     });
 });
 

@@ -4,7 +4,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::{byte_count_from_f64, handle_memory_ptr, native_result};
+use crate::api::{assert_field_bounds, byte_count_from_f64, handle_memory_ptr, native_result};
 use crate::ffi::codec::{Codec, Decoder as _, ReadCtx};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
@@ -25,9 +25,14 @@ pub(crate) fn read_field_at<'e>(
     offset: usize,
 ) -> Result<Unknown<'e>> {
     let base_ptr = handle_memory_ptr(handle, "field read")?;
+    assert_field_bounds(handle, offset, field_codec.field_width(), "field read")?;
 
     if field_codec.is_inline() {
-        return value::handle_to_unknown(env, Handle::field(handle, offset));
+        let field = field_codec.inline_extent().map_or_else(
+            || Handle::field(handle, offset),
+            |extent| Handle::field_with_extent(handle, offset, extent),
+        );
+        return value::handle_to_unknown(env, field);
     }
 
     let field_ptr = base_ptr.wrapping_byte_add(offset).cast_const();

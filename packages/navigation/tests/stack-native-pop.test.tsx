@@ -1,4 +1,5 @@
-import { screen, waitFor } from "@gtkx/testing";
+import { createNavigationContainerRef } from "@gtkx/navigation";
+import { act, screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import {
     clickButton,
@@ -12,6 +13,8 @@ import {
     getNavigationView,
     popToPage,
     renderStack,
+    type RootParams,
+    type StackEvent,
 } from "./helpers/stack-fixtures.js";
 
 describe("stack - native pop (1)", () => {
@@ -127,5 +130,109 @@ describe("stack - native pop (leak)", () => {
         }
 
         expect(countPages(view)).toBe(1);
+    });
+});
+
+describe("stack - native pop (race)", () => {
+    it("preserves navigation dispatched from the closing transitionEnd listener", async () => {
+        const ref = createNavigationContainerRef<RootParams>();
+        let didNavigate = false;
+
+        const onEvent = (event: StackEvent): void => {
+            if (didNavigate || event.route !== "Details" ||
+                event.type !== "transitionEnd" || event.isClosing !== true) {
+                return;
+            }
+
+            didNavigate = true;
+            ref.navigate("Settings");
+        };
+
+        await renderStack({ isAnimated: true, container: { ref }, spies: { onEvent } });
+        await clickButton("Go to details");
+        await screen.findByText("Details 1");
+
+        await waitFor(() => {
+            expectHidden("Home Content");
+        });
+
+        await clickButton("Back");
+
+        await waitFor(() => {
+            expectVisible("Settings Content");
+            expectHidden("Details 1");
+            expect(ref.getRootState()?.routes.map((route) => route.name)).toEqual(["Home", "Settings"]);
+        });
+
+        expect(didNavigate).toBe(true);
+    });
+});
+
+describe("stack - native pop (prevent navigation)", () => {
+    it("keeps later transition events after prevention navigates elsewhere", async () => {
+        const ref = createNavigationContainerRef<RootParams>();
+        const events: StackEvent[] = [];
+
+        const onEvent = (event: StackEvent): void => {
+            events.push(event);
+        };
+
+        const onPrevent = (): void => {
+            ref.navigate("Settings");
+        };
+
+        await renderStack({ isAnimated: true, container: { ref }, spies: { onEvent, onPrevent } });
+        await clickButton("Go to compose");
+        await screen.findByText("Compose Content");
+        await clickButton("Back");
+
+        await waitFor(() => {
+            expectVisible("Settings Content");
+            expectHidden("Compose Content");
+        });
+
+        events.length = 0;
+        await clickButton("Back");
+
+        await waitFor(() => {
+            expect(events).toContainEqual({
+                type: "transitionEnd",
+                route: "Settings",
+                isClosing: true,
+            });
+        });
+    });
+});
+
+describe("stack - native pop (interrupted reconciliation)", () => {
+    it("releases a popped page when navigation removes its route before reconciliation", async () => {
+        const ref = createNavigationContainerRef<RootParams>();
+
+        const initialState = {
+            index: 2,
+            routes: [
+                { name: "Home" as const },
+                { name: "Compose" as const },
+                { name: "Settings" as const },
+            ],
+        };
+
+        await renderStack({ container: { initialState, ref } });
+        await screen.findByText("Settings Content");
+        const view = getNavigationView("Settings Content");
+        expect(countPages(view)).toBe(3);
+
+        await act(async () => {
+            view.pop();
+            ref.goBack();
+            await Promise.resolve();
+        });
+
+        await waitFor(() => {
+            expectVisible("Compose Content");
+            expectHidden("Settings Content");
+            expect(ref.getRootState()?.routes.map((route) => route.name)).toEqual(["Home", "Compose"]);
+            expect(countPages(view)).toBe(2);
+        });
     });
 });

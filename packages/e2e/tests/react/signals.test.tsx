@@ -11,6 +11,7 @@ import {
     GtkAdjustment,
     GtkBox,
     GtkCheckButton,
+    GtkDropTarget,
     GtkEntry,
     GtkEntryBuffer,
     GtkLabel,
@@ -592,6 +593,30 @@ describe("user event signals (2)", () => {
         const notified = handleNotify.mock.calls.map(([pspec]) => pspec.getName());
         expect(notified).toContain("cursor-position");
         expect(notified).not.toContain("text");
+    });
+});
+
+describe("user event signals - deferred value", () => {
+    it("suppresses format notifications while a commit updates drop types", async () => {
+        let formatNotificationCount = 0;
+
+        const build = (type: GObject.Type) => (
+            <GtkLabel
+                controllers={(
+                    <GtkDropTarget
+                        types={[type]}
+                        onNotifyFormats={() => {
+                            formatNotificationCount += 1;
+                        }}
+                    />
+                )}
+            />
+        );
+
+        const { rerender } = await render(build(GObject.TYPE_STRING));
+        formatNotificationCount = 0;
+        await rerender(build(GObject.TYPE_INT));
+        expect(formatNotificationCount).toBe(0);
     });
 });
 

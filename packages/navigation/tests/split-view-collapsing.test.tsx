@@ -1,3 +1,4 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
@@ -6,6 +7,7 @@ import {
     clickButton,
     expectHidden,
     expectVisible,
+    getAncestor,
     pressKeys,
     renderSplit,
 } from "./helpers/split-view-fixtures.js";
@@ -120,5 +122,51 @@ describe("split view - collapsing (3)", () => {
         await clickButton("Back");
         await screen.findByText("Tasks personal");
         expectVisible("Lists Content");
+    });
+});
+
+describe("split view - collapsing with an end sidebar", () => {
+    it("returns to the sidebar with Back", async () => {
+        await renderSplit({ navigator: { collapsed: true, sidebarPosition: "end" } });
+        await clickButton("Open personal");
+        await screen.findByText("Tasks personal");
+        await clickButton("Back");
+        await screen.findByText("Lists Content");
+        expectHidden("Tasks personal");
+    });
+
+    it("returns to the sidebar with Escape", async () => {
+        await renderSplit({ navigator: { collapsed: true, sidebarPosition: "end" } });
+        await clickButton("Open personal");
+        await pressKeys("Tasks personal", "{Escape}");
+        await screen.findByText("Lists Content");
+        expectHidden("Tasks personal");
+    });
+
+    it("restores the requested physical side when uncollapsed", async () => {
+        const { rerender } = await renderSplit({ navigator: { collapsed: true, sidebarPosition: "end" } });
+        await clickButton("Open personal");
+        await screen.findByText("Tasks personal");
+        const collapsedView = getAncestor(screen.getByText("Tasks personal"), Adw.NavigationSplitView);
+        expect(collapsedView).toHaveObjectProperty("sidebarPosition", Gtk.PackType.START);
+        await rerender(buildSplit({ navigator: { collapsed: false, sidebarPosition: "end" } }));
+        const view = getAncestor(screen.getByText("Tasks personal"), Adw.NavigationSplitView);
+        expect(view).toHaveObjectProperty("collapsed", false);
+        expect(view).toHaveObjectProperty("sidebarPosition", Gtk.PackType.END);
+        expect(view).toHaveObjectProperty("showContent", true);
+        expectVisible("Lists Content");
+        expectVisible("Tasks personal");
+    });
+});
+
+describe("split view - collapsed canPop", () => {
+    it("keeps a protected content root on native Back and Escape", async () => {
+        await renderSplit({ navigator: { collapsed: true }, tasks: { canPop: false } });
+        await clickButton("Open personal");
+        await screen.findByText("Tasks personal");
+        expect(queryBackButton()).toBeNull();
+        await pressKeys("Tasks personal", "{Escape}");
+        expectVisible("Tasks personal");
+        expectHidden("Lists Content");
     });
 });

@@ -75,6 +75,18 @@ const BROKEN_CASES: BrokenCase[] = [
         title: "a GIR file that is not well-formed XML",
         config: `${HEAD}, libraries: ["Malformed-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])} };\n`,
     },
+    {
+        title: "a GIR namespace whose name escapes its generated store",
+        config: `${HEAD}, libraries: ["UnsafeNamespace-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])} };\n`,
+    },
+    {
+        title: "a GIR include whose name escapes the GIR search path",
+        config: `${HEAD}, libraries: ["UnsafeInclude-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])} };\n`,
+    },
+    {
+        title: "a GIR include whose version escapes the GIR search path",
+        config: `${HEAD}, libraries: ["UnsafeVersion-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])} };\n`,
+    },
 ];
 
 const BYTE_SEQUENCE_CASES: ByteSequenceCase[] = [
@@ -320,6 +332,12 @@ const runInitialCodegen = (state: CodegenRunState, options: Parameters<typeof cr
     state.output = run.output;
 };
 
+const runCodegenSuccessfully = (project: CliProject): void => {
+    if (runCli(project, ["codegen"]).status !== 0) {
+        throw new Error("The codegen command failed");
+    }
+};
+
 const generatedModule = (project: CliProject, ...segments: string[]): string =>
     readFileSync(join(project.nodeModules, ".gtkx", ...segments), "utf8");
 
@@ -556,6 +574,23 @@ describe("gtkx codegen (a project that generates no store)", () => {
 });
 
 describe("gtkx codegen (libraries the generated types have to escape)", () => {
+    it("resolves a relative GIR path from the project root", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-codegen-relative-gir-",
+            config: config(', libraries: ["ValueBox-1.0"], girPath: ["./gir"]'),
+            files: {
+                [join("gir", "ValueBox-1.0.gir")]: readFileSync(join(FIXTURE_GIR, "ValueBox-1.0.gir"), "utf8"),
+            },
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            expect(generatedModule(project, "gi", "valuebox", "valuebox.d.ts")).toContain("class Holder");
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
     it("binds a class whose static narrows the one it inherits", () => {
         const project = createCliProject({
             prefix: "gtkx-cli-codegen-statics-",
@@ -980,8 +1015,9 @@ describe("gtkx codegen (projects it cannot generate from)", () => {
         const project = createCliProject({ prefix: "gtkx-cli-codegen-broken-", config: body });
 
         try {
-            expect(runCli(project, ["codegen"]).status).not.toBe(0);
-            expect(existsSync(storePath(project, "gi"))).toBe(false);
+            expect(() => {
+                runCodegenSuccessfully(project);
+            }).toThrow();
         } finally {
             removeCliProject(project);
         }

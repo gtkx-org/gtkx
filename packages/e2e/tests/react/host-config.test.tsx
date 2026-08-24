@@ -16,9 +16,9 @@ import {
     GtkStackPage,
 } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { getWidgetText, render, screen, waitFor, within } from "@gtkx/testing";
+import { act, getWidgetText, render, screen, waitFor, within } from "@gtkx/testing";
 import { renderChildren } from "@gtkx/testing/internal";
-import { createRef } from "react";
+import { createRef, useLayoutEffect, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createApplicationRenderer } from "../helpers/application-render.js";
 import { buildPlainNotebook } from "../helpers/notebook-render.js";
@@ -27,6 +27,8 @@ type ReorderCase<Container> = {
     build: (ref: RefObject<Container | null>) => (items: string[]) => ReactNode;
     read: (container: Container) => string[];
 };
+
+type PageRefCapture = { current: Gtk.StackPage | null; values: (Gtk.StackPage | null)[] };
 
 const TEXT_SEGMENTS = ["First", "Second", "Third"];
 const TEXT_RESTRICTION = /must be rendered within a <GtkLabel> or <GtkTextBuffer>/;
@@ -92,6 +94,63 @@ function TextBox({ text }: { text: string }) {
 function OptionalTextBox({ shouldShowText }: { shouldShowText: boolean }) {
     return verticalBox(<GtkLabel>{shouldShowText && "Removable Text"}</GtkLabel>);
 }
+
+function StatefulLazyContent({ buttonRef }: { buttonRef: RefObject<Gtk.Button | null> }) {
+    const [phase, setPhase] = useState<"first" | "empty" | "second">("first");
+
+    useLayoutEffect(() => {
+        if (phase === "empty") {
+            queueMicrotask(() => {
+                setPhase("second");
+            });
+        }
+    }, [phase]);
+
+    if (phase === "first") {
+        return (
+            <GtkButton
+                ref={buttonRef}
+                label="Replace page content"
+                onClicked={() => {
+                    setPhase("empty");
+                }}
+            />
+        );
+    }
+
+    return phase === "second" ? <GtkLabel label="Replacement page content" /> : null;
+}
+
+const createPageRef = (capture: PageRefCapture) => (instance: Gtk.StackPage | null): void => {
+    capture.current = instance;
+    capture.values.push(instance);
+};
+
+const clickButton = async (button: Gtk.Button): Promise<void> => {
+    await act(() => {
+        button.emit("clicked");
+    });
+};
+
+const waitForPageRefs = async (capture: PageRefCapture, count: number): Promise<void> => {
+    await waitFor(() => {
+        expect(capture.values).toHaveLength(count);
+    });
+};
+
+const currentRef = <T,>(ref: RefObject<T | null>): T => {
+    if (ref.current === null) {
+        throw new Error("expected the ref to be assigned");
+    }
+
+    return ref.current;
+};
+
+const stackPageNamed = (stack: Gtk.Stack, name: string): Gtk.StackPage | null => {
+    const child = stack.getChildByName(name);
+
+    return child === null ? null : stack.getPage(child);
+};
 
 function carouselLabels(carousel: Adw.Carousel): string[] {
     const labels: string[] = [];
@@ -482,6 +541,107 @@ describe("host-config - child restrictions", () => {
     });
 });
 
+describe("host-config - adopted page lifecycle", () => {
+    it("moves a lazy page handler when its adopted page is replaced", async () => {
+        const pageRef = createRef<Gtk.StackPage>();
+        const titles: string[] = [];
+
+        const App = ({ childKey }: { childKey: string }) => (
+            <GtkStack>
+                <GtkStackPage
+                    ref={pageRef}
+                    name="page"
+                    title="Initial"
+                    onNotifyTitle={(title) => {
+                        titles.push(title ?? "");
+                    }}
+                >
+                    <GtkLabel key={childKey} label={childKey} />
+                </GtkStackPage>
+            </GtkStack>
+        );
+
+        const { rerender } = await render(<App childKey="first" />);
+        const first = pageRef.current;
+        await rerender(<App childKey="second" />);
+        const second = pageRef.current;
+
+        if (first === null || second === null) {
+            throw new Error("expected both adopted pages");
+        }
+
+        titles.length = 0;
+        first.setTitle("Detached");
+        second.setTitle("Current");
+        expect(titles).toEqual(["Current"]);
+    });
+});
+
+describe("host-config - adopted page lifecycle (reorder)", () => {
+    it("refreshes every adopted page ref when a keyed reorder rebuilds native wrappers", async () => {
+        const stackRef = createRef<Gtk.Stack>();
+        const childRefs = { first: createRef<Gtk.Label>(), second: createRef<Gtk.Label>() };
+        const pageRefs = { first: createRef<Gtk.StackPage>(), second: createRef<Gtk.StackPage>() };
+
+        const App = ({ order }: { order: (keyof typeof pageRefs)[] }) => (
+            <GtkStack ref={stackRef}>
+                {order.map((name) => (
+                    <GtkStackPage key={name} ref={pageRefs[name]} name={name} title={name}>
+                        <GtkLabel ref={childRefs[name]} label={name} />
+                    </GtkStackPage>
+                ))}
+            </GtkStack>
+        );
+
+        const { rerender } = await render(<App order={["first", "second"]} />);
+        const previous = { first: pageRefs.first.current, second: pageRefs.second.current };
+        await rerender(<App order={["second", "first"]} />);
+        const stack = stackRef.current;
+
+        if (stack === null || childRefs.first.current === null || childRefs.second.current === null) {
+            throw new Error("expected the stack and both page children");
+        }
+
+        const current = {
+            first: stack.getPage(childRefs.first.current),
+            second: stack.getPage(childRefs.second.current),
+        };
+
+        expect(current.first).not.toBe(previous.first);
+        expect(current.second).not.toBe(previous.second);
+        expect(pageRefs.first.current).toBe(current.first);
+        expect(pageRefs.second.current).toBe(current.second);
+    });
+});
+
+describe("host-config - adopted page lifecycle (composite child)", () => {
+    it("tracks leaf, empty, and replacement targets below a stable composite", async () => {
+        const stackRef = createRef<Gtk.Stack>();
+        const buttonRef = createRef<Gtk.Button>();
+        const capture: PageRefCapture = { current: null, values: [] };
+        const pageRef = createPageRef(capture);
+
+        const tree = (
+            <GtkStack ref={stackRef}>
+                <GtkStackPage ref={pageRef} name="page" title="Page">
+                    <StatefulLazyContent buttonRef={buttonRef} />
+                </GtkStackPage>
+            </GtkStack>
+        );
+
+        const { rerender } = await render(tree);
+        const first = capture.current;
+        await rerender(tree);
+        expect(capture.values).toEqual([first]);
+        await clickButton(currentRef(buttonRef));
+        await waitForPageRefs(capture, 3);
+        const current = stackPageNamed(currentRef(stackRef), "page");
+        expect(capture.values).toEqual([first, null, current]);
+        expect(first).not.toBe(current);
+        expect(capture.current).toBe(current);
+    });
+});
+
 describe("host-config - text restrictions", () => {
     it("throws for text outside a label or text buffer", async () => {
         await expectRenderToThrow(verticalBox("nope"), TEXT_RESTRICTION);
@@ -546,6 +706,29 @@ describe("reorder op - containers with native index reorder (2)", () => {
 
 describe("reorder op - containers with native index reorder (3)", () => {
     describe("AdwTabView (page-based reorder via adopted arg)", () => {
+        it("does not emit page-reordered for a declarative reorder", async () => {
+            let reorderCount = 0;
+
+            const build = (items: string[]) => (
+                <AdwTabView
+                    onPageReordered={() => {
+                        reorderCount += 1;
+                    }}
+                >
+                    {items.map((title) => (
+                        <AdwTabPage key={title} title={title}>
+                            <GtkLabel>{title}</GtkLabel>
+                        </AdwTabPage>
+                    ))}
+                </AdwTabView>
+            );
+
+            const { rerender } = await render(build(["A", "B"]));
+            reorderCount = 0;
+            await rerender(build(["B", "A"]));
+            expect(reorderCount).toBe(0);
+        });
+
         it("moves a page to the front", async () => {
             expect(await reorderAndRead(TAB_VIEW_CASE, ["A", "B", "C"], ["C", "A", "B"])).toEqual(["C", "A", "B"]);
         });

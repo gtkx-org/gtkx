@@ -2,6 +2,7 @@ import { errorMessage } from "@gtkx/utils";
 import {
     chmodSync,
     existsSync,
+    lstatSync,
     mkdirSync,
     realpathSync,
     renameSync,
@@ -9,7 +10,7 @@ import {
     symlinkSync,
     writeFileSync,
 } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { keepFailedProject, type SourceModule } from "../compile.js";
 import { createStagingDir } from "../staging.js";
 import { compileStore } from "./compile-store.js";
@@ -82,7 +83,18 @@ const buildManifest = (input: ManifestInput): Manifest => {
     return manifest;
 };
 
+const assertRegularParent = (path: string): void => {
+    const parent = dirname(path);
+    const stats = lstatSync(parent, { throwIfNoEntry: false });
+
+    if (stats !== undefined && !stats.isDirectory()) {
+        throw new Error(`Cannot write a generated-store entry through ${parent}`);
+    }
+};
+
 const writeStore = (params: WriteStoreParams): void => {
+    assertRegularParent(params.storeDir);
+    assertRegularParent(params.linkDir);
     const tmp = createTempStore(params.storeDir);
     const keepAt = `${params.storeDir}${FAILED_STORE_SUFFIX}`;
 
@@ -109,18 +121,32 @@ const buildTempStore = (tmp: string, params: WriteStoreParams): void => {
     const rawFiles = params.rawFiles ?? [];
 
     for (const raw of rawFiles) {
-        writeFileSync(join(tmp, raw.relativePath), raw.content);
+        writeFileSync(storeFilePath(tmp, raw.relativePath), raw.content);
     }
 };
 
+const storeFilePath = (storeDir: string, fileName: string): string => {
+    const filePath = resolve(storeDir, fileName);
+    const rel = relative(storeDir, filePath);
+    const isEntry = rel.length > 0 && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+
+    if (!isEntry) {
+        throw new Error(`Cannot write generated store entry "${fileName}" outside ${storeDir}`);
+    }
+
+    return filePath;
+};
+
 const writeSourceFile = (storeDir: string, fileName: string, source: string): void => {
-    const filePath = join(storeDir, fileName);
+    const filePath = storeFilePath(storeDir, fileName);
     mkdirSync(dirname(filePath), { recursive: true });
     writeFileSync(filePath, source);
 };
 
 const symlinkRelative = (linkPath: string, realTarget: string): void => {
+    assertRegularParent(linkPath);
     mkdirSync(dirname(linkPath), { recursive: true });
+    assertRegularParent(linkPath);
     rmSync(linkPath, { recursive: true, force: true });
     symlinkSync(relative(dirname(linkPath), realTarget), linkPath, "dir");
 };

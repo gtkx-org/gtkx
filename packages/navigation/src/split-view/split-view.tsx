@@ -1,4 +1,3 @@
-import type * as Adw from "@gtkx/gi/adw";
 import type { ParamListBase, RouteProp, StackNavigationState } from "@react-navigation/core";
 import type { ReactNode } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
@@ -6,7 +5,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwNavigationPage, AdwNavigationSplitView, AdwToolbarView } from "@gtkx/jsx/adw";
 import { GtkEventControllerKey } from "@gtkx/jsx/gtk";
 import { StackActions } from "@react-navigation/core";
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import type {
     SplitViewDescriptor,
     SplitViewDescriptorMap,
@@ -17,14 +16,18 @@ import { HeaderBar } from "../shared/header-bar.js";
 import { requireDescriptor } from "../shared/routes.js";
 import { StackView } from "../stack/stack-view.js";
 
-type ViewRef = { current: Adw.NavigationSplitView | null };
-
 type SplitViewProps = SplitViewNavigationConfig & {
     state: StackNavigationState<ParamListBase>;
     navigation: SplitViewNavigationHelpers;
     descriptors: SplitViewDescriptorMap;
     describe: (route: RouteProp<ParamListBase>, isPlaceholder: boolean) => SplitViewDescriptor;
 };
+
+type ContentPageProps = Pick<SplitViewProps, "state" | "navigation" | "descriptors" | "describe" |
+    "contentPlaceholder" | "popOnEscape"> & {
+        collapsed: boolean;
+        focusedContent?: SplitViewDescriptor;
+    };
 
 const PACK_TYPES = { start: Gtk.PackType.START, end: Gtk.PackType.END } as const;
 const CONTENT_TITLE = "Content";
@@ -47,16 +50,7 @@ const popContent = (navigation: SplitViewNavigationHelpers): void => {
     navigation.dispatch({ ...StackActions.pop(state.routes.length - 1), target: state.key });
 };
 
-const settleShowContent = (viewRef: ViewRef, isShown: boolean, isSettled: boolean): void => {
-    if (isSettled !== isShown && viewRef.current !== null) {
-        viewRef.current.setShowContent(isSettled);
-    }
-};
-
-const useContentSync = (
-    viewRef: ViewRef,
-    navigation: SplitViewNavigationHelpers,
-): ((isShown: boolean | null) => void) =>
+const useContentSync = (navigation: SplitViewNavigationHelpers): ((isShown: boolean | null) => void) =>
     useCallback((isShown: boolean | null) => {
         if (isShown === null || isShown === hasContent(navigation.getState())) {
             return;
@@ -65,9 +59,7 @@ const useContentSync = (
         if (!isShown) {
             popContent(navigation);
         }
-
-        settleShowContent(viewRef, isShown, hasContent(navigation.getState()));
-    }, [viewRef, navigation]);
+    }, [navigation]);
 
 const EscapeGuard = (): ReactNode => (
     <GtkEventControllerKey
@@ -94,42 +86,71 @@ const SidebarPage = ({ descriptor }: { descriptor: SplitViewDescriptor }): React
     );
 };
 
+const SplitContent = ({
+    state,
+    navigation,
+    descriptors,
+    describe,
+    contentPlaceholder,
+    popOnEscape,
+}: Pick<ContentPageProps, "state" | "navigation" | "descriptors" | "describe" |
+"contentPlaceholder" | "popOnEscape">): ReactNode => hasContent(state)
+    ? (
+            <StackView
+                offset={1}
+                popOnEscape={popOnEscape}
+                state={state}
+                navigation={navigation}
+                descriptors={descriptors}
+                describe={describe}
+            />
+        )
+    : <>{contentPlaceholder}</>;
+
+const ContentPage = (props: ContentPageProps): ReactNode => {
+    const { state, descriptors, focusedContent, collapsed, popOnEscape } = props;
+    const canPop = focusedContent?.options.canPop ?? true;
+
+    return (
+        <AdwNavigationPage
+            title={contentTitle(state, descriptors)}
+            canPop={canPop}
+            controllers={collapsed && popOnEscape === false ? <EscapeGuard /> : null}
+        >
+            <SplitContent {...props} />
+        </AdwNavigationPage>
+    );
+};
+
 const SplitView = (props: SplitViewProps): ReactNode => {
     const { state, navigation, descriptors, describe, contentPlaceholder } = props;
     const { collapsed = false, sidebarPosition = "start", minSidebarWidth, maxSidebarWidth } = props;
-    const viewRef = useRef<Adw.NavigationSplitView | null>(null);
-    const onShowContentChanged = useContentSync(viewRef, navigation);
+    const onShowContentChanged = useContentSync(navigation);
     const sidebar = requireDescriptor(descriptors, state.routes[0]?.key ?? "");
+    const contentRoute = state.index > 0 ? state.routes[state.index] : undefined;
+    const focusedContent = contentRoute === undefined ? undefined : requireDescriptor(descriptors, contentRoute.key);
 
     return (
         <AdwNavigationSplitView
-            ref={viewRef}
             collapsed={collapsed}
             showContent={hasContent(state)}
-            sidebarPosition={PACK_TYPES[sidebarPosition]}
+            sidebarPosition={collapsed ? Gtk.PackType.START : PACK_TYPES[sidebarPosition]}
             minSidebarWidth={minSidebarWidth}
             maxSidebarWidth={maxSidebarWidth}
             sidebarWidthFraction={props.sidebarWidthFraction}
             onNotifyShowContent={onShowContentChanged}
             sidebar={<SidebarPage descriptor={sidebar} />}
         >
-            <AdwNavigationPage
-                title={contentTitle(state, descriptors)}
-                controllers={collapsed && props.popOnEscape === false ? <EscapeGuard /> : null}
-            >
-                {hasContent(state)
-                    ? (
-                            <StackView
-                                offset={1}
-                                popOnEscape={props.popOnEscape}
-                                state={state}
-                                navigation={navigation}
-                                descriptors={descriptors}
-                                describe={describe}
-                            />
-                        )
-                    : <>{contentPlaceholder}</>}
-            </AdwNavigationPage>
+            <ContentPage
+                state={state}
+                navigation={navigation}
+                descriptors={descriptors}
+                describe={describe}
+                contentPlaceholder={contentPlaceholder}
+                popOnEscape={props.popOnEscape}
+                collapsed={collapsed}
+                focusedContent={focusedContent}
+            />
         </AdwNavigationSplitView>
     );
 };

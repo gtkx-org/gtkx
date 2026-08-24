@@ -18,8 +18,67 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 type Constructor<T> = abstract new (...args: never[]) => T;
+type ReleaseAccess = { result: "pending" | "protected" | "exposed" };
 
 const outputDir = mkdtempSync(join(tmpdir(), "gtkx-cairo-surface-"));
+const rawPointerDescriptor = t.struct("borrowed");
+
+const cairoSurfaceDescriptor = t.boxed("CairoSurface", {
+    ownership: "borrowed",
+    sharedLibrary: "libcairo-gobject.so.2",
+    getTypeFnName: "cairo_gobject_surface_get_type",
+});
+
+const cairoSurfaceFullDescriptor = t.boxed("CairoSurface", {
+    ownership: "full",
+    sharedLibrary: "libcairo-gobject.so.2",
+    getTypeFnName: "cairo_gobject_surface_get_type",
+});
+
+const cairoSurfaceLease = t.lease("libcairo.so.2", "cairo_surface_unmap_image", {
+    getUserDataFnName: "cairo_surface_get_user_data",
+    setUserDataFnName: "cairo_surface_set_user_data",
+});
+
+const statusDuringSurfaceLease = t.bind(
+    "libcairo.so.2",
+    "cairo_surface_status",
+    [cairoSurfaceLease.access(rawPointerDescriptor)],
+    t.int32,
+);
+
+const setSurfaceUserData = t.bind(
+    "libcairo.so.2",
+    "cairo_surface_set_user_data",
+    [
+        cairoSurfaceDescriptor,
+        rawPointerDescriptor,
+        rawPointerDescriptor,
+        t.callback([rawPointerDescriptor], t.void, { scope: "async" }),
+    ],
+    t.int32,
+);
+
+const setRawSurfaceUserData = t.bind(
+    "libcairo.so.2",
+    "cairo_surface_set_user_data",
+    [cairoSurfaceDescriptor, rawPointerDescriptor, rawPointerDescriptor, rawPointerDescriptor],
+    t.int32,
+);
+
+const referenceSurfacePointer = t.bind(
+    "libcairo.so.2",
+    "cairo_surface_reference",
+    [cairoSurfaceDescriptor],
+    rawPointerDescriptor,
+);
+
+const conflictingSurfaceAlias = t.bind(
+    "libcairo.so.2",
+    "cairo_surface_get_user_data",
+    [cairoSurfaceLease.access(cairoSurfaceDescriptor), rawPointerDescriptor],
+    cairoSurfaceLease.alias(cairoSurfaceFullDescriptor, 0),
+);
 
 const createImage = (width = 4, height = 4): ImageSurface => new ImageSurface(Format.ARGB32, width, height);
 
@@ -63,6 +122,116 @@ const createSharedMappedAlias = (surface: Surface): [ImageSurface, WeakRef<Surfa
     const mapped = surface.mapToImage(new RectangleInt({ x: 0, y: 0, width: 4, height: 4 }));
 
     return [wrapHandle(getHandle(mapped), ImageSurface), new WeakRef(mapped)];
+};
+
+const installReleaseAccessProbe = (
+    surface: Surface,
+    key: Surface,
+    access: ReleaseAccess,
+    data: Surface = surface,
+): void => {
+    const status = setSurfaceUserData(
+        getHandle(surface),
+        getHandle(key),
+        getHandle(data),
+        (data: unknown): void => {
+            try {
+                statusDuringSurfaceLease(data);
+                access.result = "exposed";
+            } catch {
+                access.result = "protected";
+            }
+        },
+    );
+
+    if (status !== Status.SUCCESS) {
+        throw new Error("Cairo rejected the release access probe");
+    }
+};
+
+const rejectConflictingAliasThenMapCandidate = (): void => {
+    const candidate = createImage();
+    const candidateChild = Surface.createForRectangle(candidate, 0, 0, 1, 1);
+    const owner = createImage();
+    const key = createImage();
+    const mapped = owner.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }));
+
+    try {
+        const status = setRawSurfaceUserData(
+            getHandle(mapped),
+            getHandle(key),
+            getHandle(candidate),
+            null,
+        );
+
+        if (status !== Status.SUCCESS) {
+            throw new Error("Cairo rejected the conflicting alias fixture");
+        }
+
+        referenceSurfacePointer(getHandle(candidate));
+        let didReject = false;
+
+        try {
+            conflictingSurfaceAlias(getHandle(mapped), getHandle(key));
+        } catch {
+            didReject = true;
+        }
+
+        if (!didReject) {
+            throw new Error("A conflicting lease alias was accepted");
+        }
+
+        const candidateMapping = candidate.mapToImage(
+            new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }),
+        );
+
+        candidate.unmapImage(candidateMapping);
+    } finally {
+        owner.unmapImage(mapped);
+        candidateChild.status();
+    }
+};
+
+const createAbandonedRelatedAlias = (mapped: Surface, key: Surface, access: ReleaseAccess): WeakRef<Surface> => {
+    const alias = Surface.createForRectangle(mapped, 0, 0, 1, 1);
+    installReleaseAccessProbe(mapped, key, access, alias);
+
+    return new WeakRef(alias);
+};
+
+const createMappingWithOwnerProbe = (key: Surface, access: ReleaseAccess): [WeakRef<Surface>, Surface] => {
+    const owner = createImage();
+    const mapped = owner.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }));
+    installReleaseAccessProbe(owner, key, access, mapped);
+
+    return [new WeakRef(owner), mapped];
+};
+
+const collectRetainedOwner = async (
+    key: Surface,
+    access: ReleaseAccess,
+): Promise<[WeakRef<Surface>, WeakRef<Surface>]> => {
+    const [ownerWeak, mapped] = createMappingWithOwnerProbe(key, access);
+    await gcUntil(() => ownerWeak.deref() === undefined);
+
+    return [ownerWeak, new WeakRef(mapped)];
+};
+
+const collectMappingAndItsRetainedOwner = async (
+    key: Surface,
+    access: ReleaseAccess,
+): Promise<[WeakRef<Surface>, WeakRef<Surface>]> => {
+    const [ownerWeak, mappedWeak] = await collectRetainedOwner(key, access);
+    await gcUntil(() => mappedWeak.deref() === undefined && access.result !== "pending");
+
+    return [ownerWeak, mappedWeak];
+};
+
+const abandonMappedWithReleaseProbe = (owner: Surface, key: Surface, access: ReleaseAccess): WeakRef<Surface> => {
+    const mapped = owner.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }));
+    installReleaseAccessProbe(mapped, key, access);
+
+    return new WeakRef(mapped);
 };
 
 const firstValue = <T>(values: Set<T>): T => {
@@ -395,6 +564,76 @@ describe("Surface mapping", () => {
 
     it("keeps a mapping alive while a shared-handle alias remains", async () => {
         await expect(collectMappedWrapperWithLiveAlias()).resolves.toBeUndefined();
+    });
+
+    it("preserves lease exclusivity while an explicit unmap releases the mapped surface", () => {
+        const owner = createImage();
+        const key = createImage();
+        const mapped = owner.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }));
+        const access: ReleaseAccess = { result: "pending" };
+        installReleaseAccessProbe(mapped, key, access);
+        owner.unmapImage(mapped);
+        expect(access.result).toBe("protected");
+    });
+
+    it("preserves lease exclusivity while Drop releases an abandoned mapped surface", async () => {
+        const owner = createImage();
+        const key = createImage();
+        const access: ReleaseAccess = { result: "pending" };
+        const weak = abandonMappedWithReleaseProbe(owner, key, access);
+        await gcUntil(() => weak.deref() === undefined);
+        expect(weak.deref()).toBeUndefined();
+        expect(access.result).toBe("protected");
+    });
+
+    it("preserves lease exclusivity through a destroyed related alias", async () => {
+        const owner = createImage();
+        const key = createImage();
+        const mapped = owner.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }));
+        const access: ReleaseAccess = { result: "pending" };
+        const weak = createAbandonedRelatedAlias(mapped, key, access);
+        await gcUntil(() => weak.deref() === undefined);
+        expect(weak.deref()).toBeUndefined();
+        owner.unmapImage(mapped);
+        expect(access.result).toBe("protected");
+    });
+
+    it("keeps release protection through destruction of the retained owner", async () => {
+        const key = createImage();
+        const access: ReleaseAccess = { result: "pending" };
+        const [owner, mapped] = await collectMappingAndItsRetainedOwner(key, access);
+        expect(owner.deref()).toBeUndefined();
+        expect(mapped.deref()).toBeUndefined();
+        expect(access.result).toBe("protected");
+    });
+});
+
+describe("Surface alias descriptor errors", () => {
+    it("rejects malformed aliases before calling Cairo", () => {
+        const surfaceDescriptor = t.boxed("CairoSurface", {
+            ownership: "borrowed",
+            sharedLibrary: "libcairo-gobject.so.2",
+            getTypeFnName: "cairo_gobject_surface_get_type",
+        });
+
+        const lease = t.lease("libcairo.so.2", "cairo_surface_unmap_image", {
+            getUserDataFnName: "cairo_surface_get_user_data",
+            setUserDataFnName: "cairo_surface_set_user_data",
+        });
+
+        const reference = t.bind(
+            "libcairo.so.2",
+            "cairo_surface_reference",
+            [lease.access(surfaceDescriptor)],
+            lease.alias(t.boxed("GObject", { ownership: "full" }), 0),
+        );
+
+        const surface = createImage();
+        expect(() => reference(getHandle(surface))).toThrow();
+    });
+
+    it("leaves unrelated aliases available after a rejected link", () => {
+        expect(rejectConflictingAliasThenMapCandidate).not.toThrow();
     });
 });
 

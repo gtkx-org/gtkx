@@ -1,4 +1,5 @@
 use std::ffi::c_void;
+use std::mem::size_of;
 
 use anyhow::bail;
 use enum_dispatch::enum_dispatch;
@@ -443,6 +444,44 @@ pub enum Codec {
 }
 
 impl Codec {
+    #[must_use]
+    pub(crate) fn field_width(&self) -> Option<usize> {
+        match self {
+            Self::Integer(codec) => Some(codec.byte_size()),
+            Self::BigInt(codec) => Some(codec.byte_size()),
+            Self::Float(FloatCodec::F32) => Some(size_of::<f32>()),
+            Self::Float(FloatCodec::F64) => Some(size_of::<f64>()),
+            Self::EnumFlags(codec) => Some(codec.storage.byte_size()),
+            Self::Boolean(_) => Some(size_of::<i32>()),
+            Self::Unichar(_) => Some(size_of::<u32>()),
+            Self::Boxed(codec) if codec.inline => codec.size,
+            Self::Struct(codec) if codec.inline => codec.size,
+            Self::Fundamental(codec) if codec.inline => None,
+            Self::Void(_) => Some(0),
+            Self::String(_)
+            | Self::Object(_)
+            | Self::Boxed(_)
+            | Self::Struct(_)
+            | Self::Fundamental(_)
+            | Self::Array(_)
+            | Self::Buffer(_)
+            | Self::HashTable(_)
+            | Self::Lease(_)
+            | Self::Resource(_)
+            | Self::Callback(_)
+            | Self::Ref(_) => Some(size_of::<*mut c_void>()),
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn inline_extent(&self) -> Option<usize> {
+        match self {
+            Self::Boxed(codec) if codec.inline => codec.size,
+            Self::Struct(codec) if codec.inline => codec.size,
+            _ => None,
+        }
+    }
+
     pub(crate) fn contains_lease(&self) -> bool {
         match self {
             Self::Lease(_) => true,

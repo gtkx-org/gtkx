@@ -126,6 +126,7 @@ type AccessibleRelationDescriptor = {
 };
 
 type AccessibleDescriptor = AccessiblePropertyDescriptor | AccessibleStateDescriptor | AccessibleRelationDescriptor;
+type AccessiblePropFilter = (name: keyof AccessibleProps) => boolean;
 
 const ACCESSIBLE_PROP_MAP: Record<keyof AccessibleProps, AccessibleDescriptor> = {
     accessibleAutocomplete: buildProperty(Gtk.AccessibleProperty.AUTOCOMPLETE, "int"),
@@ -254,6 +255,16 @@ const buildValue = (descriptor: AccessibleDescriptor, jsValue: unknown): GObject
 const isAccessibleProp = (name: string): name is keyof AccessibleProps =>
     Object.hasOwn(ACCESSIBLE_PROP_MAP, name);
 
+const validateAccessibleProps = (props: Props, shouldApply: AccessiblePropFilter): void => {
+    for (const name in props) {
+        if (!isAccessibleProp(name) || !shouldApply(name) || props[name] == null) {
+            continue;
+        }
+
+        buildValue(ACCESSIBLE_PROP_MAP[name], props[name]);
+    }
+};
+
 function applyDescriptor(widget: Gtk.Accessible, descriptor: AccessibleDescriptor, newValue: unknown): void {
     const value = buildValue(descriptor, newValue);
 
@@ -298,9 +309,9 @@ const applyChangedProp = (widget: Gtk.Accessible, name: keyof AccessibleProps, n
     }
 };
 
-const applyChangedProps = (widget: Gtk.Accessible, newProps: Props): void => {
+const applyChangedProps = (widget: Gtk.Accessible, newProps: Props, shouldApply: AccessiblePropFilter): void => {
     for (const name in newProps) {
-        if (!isAccessibleProp(name)) {
+        if (!isAccessibleProp(name) || !shouldApply(name)) {
             continue;
         }
 
@@ -308,12 +319,22 @@ const applyChangedProps = (widget: Gtk.Accessible, newProps: Props): void => {
     }
 };
 
-const isRemovedAccessibleProp = (name: string, oldProps: Props, newProps: Props): name is keyof AccessibleProps =>
-    !Object.hasOwn(newProps, name) && isAccessibleProp(name) && oldProps[name] !== undefined;
+const isRemovedAccessibleProp = (
+    name: string,
+    oldProps: Props,
+    newProps: Props,
+    shouldApply: AccessiblePropFilter,
+): name is keyof AccessibleProps =>
+    !Object.hasOwn(newProps, name) && isAccessibleProp(name) && shouldApply(name) && oldProps[name] !== undefined;
 
-const resetRemovedProps = (widget: Gtk.Accessible, oldProps: Props, newProps: Props): void => {
+const resetRemovedProps = (
+    widget: Gtk.Accessible,
+    oldProps: Props,
+    newProps: Props,
+    shouldApply: AccessiblePropFilter,
+): void => {
     for (const name in oldProps) {
-        if (!isRemovedAccessibleProp(name, oldProps, newProps)) {
+        if (!isRemovedAccessibleProp(name, oldProps, newProps, shouldApply)) {
             continue;
         }
 
@@ -321,12 +342,17 @@ const resetRemovedProps = (widget: Gtk.Accessible, oldProps: Props, newProps: Pr
     }
 };
 
-const applyAccessibleProps = (widget: Gtk.Accessible, oldProps: Props | null, newProps: Props): void => {
-    applyChangedProps(widget, newProps);
+const applyAccessibleProps = (
+    widget: Gtk.Accessible,
+    oldProps: Props | null,
+    newProps: Props,
+    shouldApply: AccessiblePropFilter,
+): void => {
+    applyChangedProps(widget, newProps, shouldApply);
 
     if (oldProps) {
-        resetRemovedProps(widget, oldProps, newProps);
+        resetRemovedProps(widget, oldProps, newProps, shouldApply);
     }
 };
 
-export { isAccessibleProp, applyAccessibleProps, type AccessibleProps };
+export { isAccessibleProp, validateAccessibleProps, applyAccessibleProps, type AccessibleProps };

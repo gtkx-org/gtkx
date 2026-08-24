@@ -28,6 +28,9 @@
             },
             {
                 "env": "NODE_VERSION"
+            },
+            {
+                "env": "CI_IMAGE_ID"
             }
         ]
     },

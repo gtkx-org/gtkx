@@ -1,12 +1,13 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const WORKSPACE_ROOT = fileURLToPath(new URL("..", import.meta.url));
-const TEMP_DIR = join(WORKSPACE_ROOT, "coverage", "subprocess");
-const REPORT_DIR = join(WORKSPACE_ROOT, "coverage", "subprocess-report");
+const COVERAGE_DIR = process.argv[2] ?? join(WORKSPACE_ROOT, "coverage");
+const TEMP_DIR = join(COVERAGE_DIR, "subprocess");
+const REPORT_DIR = join(COVERAGE_DIR, "subprocess-report");
 const INCLUDES = ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"];
 
 const EXCLUDES = [
@@ -44,16 +45,24 @@ const report = (): number => {
 };
 
 const reportSubprocessCoverage = (): void => {
+    rmSync(REPORT_DIR, { recursive: true, force: true });
     const count = profileCount();
 
     if (count === 0) {
+        rmSync(TEMP_DIR, { recursive: true, force: true });
         console.error(`No subprocess coverage profiles in ${TEMP_DIR}, skipping the report.`);
 
         return;
     }
 
     console.error(`Reporting subprocess coverage from ${String(count)} profiles.`);
-    process.exitCode = report();
+    const status = report();
+
+    if (status === 0) {
+        rmSync(TEMP_DIR, { recursive: true, force: true });
+    }
+
+    process.exitCode = status;
 };
 
 reportSubprocessCoverage();

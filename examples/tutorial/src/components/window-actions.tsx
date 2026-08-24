@@ -1,16 +1,20 @@
 import { GSimpleAction } from "@gtkx/jsx/gio";
-import { currentSelection, openTask } from "../navigation.js";
+import { currentSelection, type OpenTaskRequest } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import { addListId } from "../store/selectors.js";
 
-export const WindowActions = () => {
+type WindowActionsProps = {
+    onOpenTaskRequest: (request: OpenTaskRequest) => void;
+};
+
+export const WindowActions = ({ onOpenTaskRequest }: WindowActionsProps) => {
     const showDialog = useStore((state) => state.showDialog);
 
     const newTask = (): void => {
         const { lists, addTask } = useStore.getState();
         const selection = currentSelection();
         const id = addTask(addListId(selection, lists), "New Task");
-        if (id) openTask(selection, id);
+        if (id) onOpenTaskRequest({ selection, id });
     };
 
     return (

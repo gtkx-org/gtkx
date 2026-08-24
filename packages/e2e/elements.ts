@@ -1,6 +1,8 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { defineElements } from "@gtkx/react/config";
 
+type FlushProbeState = { shouldThrow: boolean };
+
 export default defineElements({
     GtkWidget: {
         behaviors: [
@@ -53,6 +55,26 @@ export default defineElements({
                 detach: (frame: Gtk.AspectFrame, _child, info) => {
                     if (info.slot === "children") {
                         frame.setChild(null);
+                    }
+                },
+            },
+        ],
+    },
+    GtkxFlushProbeLabel: {
+        behaviors: [
+            {
+                initialize: (): FlushProbeState => ({ shouldThrow: false }),
+                update: (_label: Gtk.Label, _prev, next, context) => {
+                    const state = context as FlushProbeState;
+                    state.shouldThrow = next.fail === true;
+
+                    return ["fail"];
+                },
+                flush: (_label: Gtk.Label, context) => {
+                    const state = context as FlushProbeState;
+
+                    if (state.shouldThrow) {
+                        throw new Error("flush probe");
                     }
                 },
             },

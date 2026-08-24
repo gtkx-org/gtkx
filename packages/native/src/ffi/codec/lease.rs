@@ -7,7 +7,7 @@ use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
 use crate::handle::{
     Handle, Lease, LeaseGetUserDataFn, LeaseIdentityApi, LeaseKind, LeaseReleaseFn,
-    LeaseSetUserDataFn,
+    LeaseReleaseGuard, LeaseSetUserDataFn,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -245,6 +245,10 @@ impl LeaseCodec {
                 self.identity_api()?;
             }
             LeaseAction::Alias => {
+                let Codec::Boxed(boxed) = self.inner_codec.as_ref() else {
+                    anyhow::bail!("A lease alias does not wrap a boxed descriptor")
+                };
+                boxed.prepare_adoption()?;
                 self.identity_api()?.ok_or_else(|| {
                     anyhow::anyhow!("A lease alias has no native user-data functions")
                 })?;
@@ -312,13 +316,15 @@ impl LeaseCodec {
         Ok(())
     }
 
-    pub(crate) fn commit_end(&self, stash: &ffi::Stash) {
+    pub(crate) fn prepare_release(
+        &self,
+        stash: &ffi::Stash,
+    ) -> anyhow::Result<Option<LeaseReleaseGuard>> {
         if self.action != LeaseAction::End {
-            return;
+            return Ok(None);
         }
-        if let Ok(lease) = Self::end_lease(stash) {
-            lease.end();
-        }
+
+        Ok(Some(Self::end_lease(stash)?.prepare_release()?))
     }
 
     fn result_owner(args: &[ffi::Stash], index: usize) -> anyhow::Result<Handle> {
@@ -358,7 +364,14 @@ impl LeaseCodec {
             release,
             identity.as_ref(),
         ) {
-            Ok(lease) => Ok(value::handle_to_unknown(env, Handle::leased(lease))?),
+            Ok(lease) => {
+                let Codec::Boxed(boxed) = self.inner_codec.as_ref() else {
+                    anyhow::bail!("A lease result does not wrap a boxed descriptor")
+                };
+                let handle = boxed.with_extent(Handle::leased(lease));
+
+                Ok(value::handle_to_unknown(env, handle)?)
+            }
             Err(error) => {
                 let owner_ptr = ffi_args[owner_index].as_ptr("lease owner")?;
                 unsafe { release(owner_ptr, value_ptr) };

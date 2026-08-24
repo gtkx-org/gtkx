@@ -18,6 +18,22 @@ const reclaimed: FinalizationRegistry<StyleSlot> = new FinalizationRegistry((slo
     pool.push(slot);
 });
 
+const isStyleObject = (style: unknown): style is Record<string, unknown> => {
+    return typeof style === "object" && style !== null && !Array.isArray(style);
+};
+
+const validateStyle = (style: unknown): void => {
+    if (style === undefined || style === null) {
+        return;
+    }
+
+    if (!isStyleObject(style)) {
+        throw new TypeError("The 'style' prop must be an object, null, or undefined");
+    }
+
+    scopedRule(`${CLASS_PREFIX}validation`, style);
+};
+
 const createSlot = (): StyleSlot => {
     counter.next += 1;
     const provider = registerProviderForDefaultDisplay({ priority: STYLE_PRIORITY, followsPreferences: false });
@@ -64,10 +80,14 @@ const ensureSlot = (widget: Gtk.Widget): StyleSlot => {
 };
 
 const applyStyle = (widget: Gtk.Widget, style: unknown): string | null => {
-    if (typeof style !== "object" || style === null) {
+    if (style === undefined || style === null) {
         releaseStyle(widget);
 
         return null;
+    }
+
+    if (!isStyleObject(style)) {
+        throw new TypeError("The 'style' prop must be an object, null, or undefined");
     }
 
     const slot = ensureSlot(widget);
@@ -81,4 +101,4 @@ const applyStyle = (widget: Gtk.Widget, style: unknown): string | null => {
     return slot.className;
 };
 
-export { applyStyle, CSS_CLASSES_PROP, releaseStyle, styleClass };
+export { applyStyle, CSS_CLASSES_PROP, releaseStyle, styleClass, validateStyle };

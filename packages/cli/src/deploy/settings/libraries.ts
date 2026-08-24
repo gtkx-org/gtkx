@@ -23,19 +23,19 @@ const generatedLibraries = (root: string): GeneratedLibraries | null => {
     }
 };
 
-const discoveredLibraries = (config: Config): string[] | null => {
+const discoveredLibraries = (root: string, config: Config): string[] | null => {
     try {
-        return expandLibraries(config.libraries, resolveGirPath(config.girPath));
+        return expandLibraries(config.libraries, resolveGirPath(config.girPath, root));
     } catch {
         return null;
     }
 };
 
-const configLibraries = (config: Config): string[] => {
+const configLibraries = (root: string, config: Config): string[] => {
     const libraries = config.libraries;
 
     if (!Array.isArray(libraries)) {
-        return discoveredLibraries(config) ?? [DEFAULT_LIBRARY];
+        return discoveredLibraries(root, config) ?? [DEFAULT_LIBRARY];
     }
 
     return libraries.some((library) => library.startsWith(DEFAULT_LIBRARY_PREFIX))
@@ -45,7 +45,7 @@ const configLibraries = (config: Config): string[] => {
 
 const resolveLibraries = (root: string, config: Config): ResolvedLibraries => {
     const generated = generatedLibraries(root);
-    const libraries = generated?.libraries ?? configLibraries(config);
+    const libraries = generated?.libraries ?? configLibraries(root, config);
     const deploy = config.deploy ?? {};
 
     return {

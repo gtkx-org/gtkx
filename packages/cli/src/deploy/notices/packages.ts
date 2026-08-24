@@ -2,6 +2,7 @@ import { isRecord, sortStringsBy, warn } from "@gtkx/utils";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { DeploySettings } from "../types.js";
+import { requireProjectFile } from "../../internal/project-path.js";
 import { BUNDLED_PACKAGES_FILENAME } from "../../vite-plugins/bundled-packages.js";
 import { type PackageManifest, readPackageManifest } from "../settings/package-manifest.js";
 import { copyrightLines, licenseTextIn } from "./text.js";
@@ -59,9 +60,12 @@ const recordedList = (value: unknown): RecordedPackage[] => {
 const readRecordedPackages = (settings: DeploySettings): RecordedPackage[] => {
     const path = join(settings.paths.dist, BUNDLED_PACKAGES_FILENAME);
 
-    if (!existsSync(path)) {
-        throw new Error(`Cannot deploy: ${path} is missing. Run \`gtkx build\` first.`);
-    }
+    requireProjectFile({
+        root: settings.paths.root,
+        candidate: path,
+        configured: path,
+        subject: "bundled package inventory",
+    });
 
     const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
 

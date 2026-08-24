@@ -5,7 +5,15 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { queryAllByObjectProperty, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
-import { expectSelectedTab, findTab, getAncestor, getStackPage, SpyPage, TabsApp } from "./helpers/tab-fixtures.js";
+import {
+    expectSelectedTab,
+    findTab,
+    getAncestor,
+    getStackPage,
+    getViewStack,
+    SpyPage,
+    TabsApp,
+} from "./helpers/tab-fixtures.js";
 
 const CustomHeader = ({ viewSwitcher }: TabHeaderProps): ReactNode => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -111,20 +119,66 @@ describe("tabs - options (3)", () => {
         expect(onMount).toHaveBeenCalledTimes(1);
         expect(screen.queryByText("Second Content")).toBeNull();
     });
+});
 
-    it("switches with the fade animation", async () => {
-        await render(<TabsApp navigator={{ screenOptions: { animation: "fade" } }} />, {
-            areAnimationsEnabled: true,
-        });
+describe("tabs - options (4)", () => {
+    it("crossfades native and programmatic switches when enabled", async () => {
+        await render(
+            <TabsApp navigator={{ animation: "fade" }} />,
+            { areAnimationsEnabled: true },
+        );
 
         await screen.findByText("First Content");
-        await userEvent.click(await findTab("Second Tab"));
-        await screen.findByText("Second Content");
+        const stack = getViewStack("First Content");
+        expect(stack.getEnableTransitions()).toBe(true);
+        await userEvent.click(await findTab("Third Tab"));
+        await screen.findByText("Third Content");
+        expect(stack.getTransitionRunning()).toBe(true);
 
         await waitFor(() => {
-            expect(screen.queryByText("First Content")).toBeNull();
+            expect(stack.getTransitionRunning()).toBe(false);
+        });
+
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Navigate to Second" }));
+        await screen.findByText("Second Content");
+        expect(stack.getEnableTransitions()).toBe(true);
+        expect(stack.getTransitionRunning()).toBe(true);
+
+        await waitFor(() => {
+            expect(stack.getTransitionRunning()).toBe(false);
         });
 
         expectSelectedTab("Second Tab");
+    });
+});
+
+describe("tabs - options (5)", () => {
+    it("updates the navigator-wide transition policy dynamically", async () => {
+        const { rerender } = await render(
+            <TabsApp navigator={{ animation: "none" }} />,
+            { areAnimationsEnabled: true },
+        );
+
+        await screen.findByText("First Content");
+        const stack = getViewStack("First Content");
+        expect(stack.getEnableTransitions()).toBe(false);
+        await userEvent.click(await findTab("Second Tab"));
+        await screen.findByText("Second Content");
+        expect(stack.getTransitionRunning()).toBe(false);
+        await rerender(<TabsApp navigator={{ animation: "fade" }} />);
+        expect(stack.getEnableTransitions()).toBe(true);
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Jump to Third" }));
+        await screen.findByText("Third Content");
+        expect(stack.getTransitionRunning()).toBe(true);
+
+        await waitFor(() => {
+            expect(stack.getTransitionRunning()).toBe(false);
+        });
+
+        await rerender(<TabsApp navigator={{ animation: "none" }} />);
+        expect(stack.getEnableTransitions()).toBe(false);
+        await userEvent.click(await findTab("First Tab"));
+        await screen.findByText("First Content");
+        expect(stack.getTransitionRunning()).toBe(false);
     });
 });

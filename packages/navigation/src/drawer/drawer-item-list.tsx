@@ -2,11 +2,10 @@ import type { NavigationState } from "@react-navigation/core";
 import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
-import { CommonActions, DrawerActions } from "@react-navigation/core";
-import { useCallback, useContext } from "react";
+import { CommonActions } from "@react-navigation/core";
+import { useCallback } from "react";
 import type { DrawerContentProps, DrawerDescriptor, DrawerNavigationHelpers } from "./types.js";
 import { requireDescriptor } from "../shared/routes.js";
-import { DrawerCollapsedContext } from "./drawer-collapsed-context.js";
 
 type RowActivated = (row: Gtk.ListBoxRow) => void;
 
@@ -28,18 +27,11 @@ const didNavigateToRow = (navigation: DrawerNavigationHelpers, state: Navigation
     return true;
 };
 
-const useDrawerItemPress = (navigation: DrawerNavigationHelpers, isCollapsed: boolean): RowActivated =>
+const useDrawerItemPress = (navigation: DrawerNavigationHelpers): RowActivated =>
     useCallback((row: Gtk.ListBoxRow) => {
         const state = navigation.getState();
-
-        if (!didNavigateToRow(navigation, state, row.getIndex())) {
-            return;
-        }
-
-        if (isCollapsed) {
-            navigation.dispatch({ ...DrawerActions.closeDrawer(), target: state.key });
-        }
-    }, [navigation, isCollapsed]);
+        didNavigateToRow(navigation, state, row.getIndex());
+    }, [navigation]);
 
 const DrawerItem = ({ descriptor }: { descriptor: DrawerDescriptor }): ReactNode => {
     const { route, options } = descriptor;
@@ -54,8 +46,7 @@ const DrawerItem = ({ descriptor }: { descriptor: DrawerDescriptor }): ReactNode
 
 /** Lists the drawer routes as rows of a `GtkListBox`; activating a row navigates to its route. */
 const DrawerItemList = ({ state, navigation, descriptors }: DrawerContentProps): ReactNode => {
-    const isCollapsed = useContext(DrawerCollapsedContext);
-    const onRowActivated = useDrawerItemPress(navigation, isCollapsed);
+    const onRowActivated = useDrawerItemPress(navigation);
 
     return (
         <GtkListBox

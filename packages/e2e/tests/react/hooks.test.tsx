@@ -10,7 +10,7 @@ import { useProperty, useSignal } from "@gtkx/react";
 import { useMergedRef } from "@gtkx/react/internal";
 import { registerClass } from "@gtkx/runtime";
 import { act, render, renderHook, waitFor } from "@gtkx/testing";
-import { createRef, forwardRef, memo } from "react";
+import { createRef, forwardRef, memo, useRef } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { createTypeNameFactory } from "../helpers/unique-name.js";
 
@@ -25,6 +25,8 @@ type IsConstructible<T> = T extends new (...args: never) => unknown ? true : fal
 type LabelTargetProps = { object: RefProp<Gtk.Label> };
 type LabelTargetResult = RenderHookResult<string | undefined, LabelTargetProps>;
 type TickProbeProps = { button: Gtk.Button; tick: number; seen: number[] };
+type RefSignalProbeProps = { revision: string; instances: Gtk.Button[]; seen: string[] };
+type RefPropertyProbeProps = { revision: string; instances: Gtk.Label[]; outputRef: Ref<Gtk.Label | null> };
 
 type Target = {
     id: number;
@@ -130,6 +132,49 @@ function ForwardedTickProbeImpl(
     });
 
     return <GtkLabel ref={ref}>{String(tick)}</GtkLabel>;
+}
+
+function RefSignalProbe({ revision, instances, seen }: RefSignalProbeProps): ReactNode {
+    const target = useRef<Gtk.Button | null>(null);
+
+    useSignal(target, "clicked", () => {
+        seen.push(revision);
+    });
+
+    return (
+        <GtkButton
+            key={revision}
+            ref={(button) => {
+                target.current = button;
+
+                if (button !== null && instances.at(-1) !== button) {
+                    instances.push(button);
+                }
+            }}
+        />
+    );
+}
+
+function RefPropertyProbe({ revision, instances, outputRef }: RefPropertyProbeProps): ReactNode {
+    const target = useRef<Gtk.Label | null>(null);
+    const value = useProperty(target, "label");
+
+    return (
+        <>
+            <GtkLabel
+                key={revision}
+                ref={(label) => {
+                    target.current = label;
+
+                    if (label !== null && instances.at(-1) !== label) {
+                        instances.push(label);
+                    }
+                }}
+                label="same"
+            />
+            <GtkLabel ref={outputRef} label={value ?? "missing"} />
+        </>
+    );
 }
 
 function deref<T>(ref: { current: T | null }): T {
@@ -289,6 +334,40 @@ describe("useProperty (targets)", () => {
         });
 
         expect(result.current).toBe("Second");
+    });
+});
+
+describe("useProperty (ref replacement)", () => {
+    it("follows a ref when its keyed host instance is replaced", async () => {
+        const instances: Gtk.Label[] = [];
+        const outputRef = createRef<Gtk.Label>();
+
+        const { rerender } = await render(
+            <RefPropertyProbe revision="First" instances={instances} outputRef={outputRef} />,
+        );
+
+        expect(deref(outputRef).getLabel()).toBe("same");
+        await rerender(<RefPropertyProbe revision="Second" instances={instances} outputRef={outputRef} />);
+        expect(deref(outputRef).getLabel()).toBe("same");
+        const [first, second] = instances;
+
+        if (first === undefined || second === undefined) {
+            throw new TypeError("expected both label instances");
+        }
+
+        await act(() => {
+            second.setLabel("Current");
+        });
+
+        await waitFor(() => {
+            expect(deref(outputRef).getLabel()).toBe("Current");
+        });
+
+        await act(() => {
+            first.setLabel("stale");
+        });
+
+        expect(deref(outputRef).getLabel()).toBe("Current");
     });
 });
 
@@ -533,6 +612,25 @@ describe("useSignal (targets)", () => {
 
         expect(handler).toHaveBeenCalledTimes(1);
     });
+
+    it("moves a ref subscription to a keyed replacement host", async () => {
+        const instances: Gtk.Button[] = [];
+        const seen: string[] = [];
+        const { rerender } = await render(<RefSignalProbe revision="first" instances={instances} seen={seen} />);
+        await rerender(<RefSignalProbe revision="second" instances={instances} seen={seen} />);
+        const [first, second] = instances;
+
+        if (first === undefined || second === undefined) {
+            throw new TypeError("expected both button instances");
+        }
+
+        await act(() => {
+            first.emit("clicked");
+            second.emit("clicked");
+        });
+
+        expect(seen).toEqual(["second"]);
+    });
 });
 
 describe("useSignal (options and lifecycle) (1)", () => {
@@ -608,6 +706,25 @@ describe("useSignal (options and lifecycle) (2)", () => {
         });
 
         expect(handler).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("useSignal (immediate errors)", () => {
+    it("rejects when the immediate handler throws", async () => {
+        const button = new Gtk.Button();
+
+        await expect(
+            renderHook(() => {
+                useSignal(
+                    button,
+                    "clicked",
+                    () => {
+                        throw new Error("immediate failure");
+                    },
+                    { isImmediate: true },
+                );
+            }),
+        ).rejects.toThrow();
     });
 });
 

@@ -59,8 +59,8 @@ const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
         // ...
     >
         <AdwToastOverlay ref={toastOverlayRef}>
-            <NavigationContainer ref={navigationRef}>
-                {/* ... */}
+            <NavigationContainer ref={navigationRef} onReady={() => setNavigationReady(true)}>
+                {/* request consumer and navigator */}
             </NavigationContainer>
         </AdwToastOverlay>
         <Dialogs />
@@ -131,26 +131,40 @@ Add the new kinds to `src/types.ts`. `delete-task` is the confirmation you build
 +export type DialogKind = "none" | "about" | "shortcuts" | "new-list" | "delete-task";
 ```
 
-Removing a task from the array has a consequence flipping a flag does not. `TaskScreen` looks its task up by id and renders nothing when the lookup misses, which is the gap [Opening a Task](/tutorial/the-task-editor) left open: the page stays on the stack, empty, with the back button as the only way off it. A page is not data, so deleting the task does not take it away. Something has to pop it.
+Removing a task from the array has a consequence flipping a flag does not. `TaskScreen` looks its task up by id and used to render nothing when the lookup missed, leaving an empty page on the stack. Moving a task to Trash has the same problem while the object still exists: the editor should stop showing a task as soon as it is no longer live.
 
-Add the last helper to `src/navigation.ts`:
+The screen already sits inside the navigator and subscribes to that task, so let it synchronize its own route with the data. Update `src/components/task-screen.tsx`:
 
-```ts
-// ...
+```tsx
+import type { SplitViewScreenProps } from "@gtkx/navigation";
+import { useEffect } from "react";
+import { type RootParamList, useSelection } from "../navigation.js";
+import { useStore } from "../store/index.js";
+import { TaskDetail } from "./task-detail.js";
 
-export const closeTaskIfOpen = (id: string): void => {
-    if (openTaskId() === id) navigationRef.goBack();
+export const TaskScreen = ({ navigation, route }: SplitViewScreenProps<RootParamList, "Task">) => {
+    const task = useStore((state) => state.tasks.find((candidate) => candidate.id === route.params.id));
+    const selection = useSelection();
+    const isTrash = selection?.kind === "smart" && selection.view === "trash";
+    const hasVisibleTask = task !== undefined && (!task.deleted || isTrash);
+
+    useEffect(() => {
+        if (!hasVisibleTask) {
+            navigation.goBack();
+        }
+    }, [hasVisibleTask, navigation]);
+
+    return hasVisibleTask ? <TaskDetail key={task.id} task={task} /> : null;
 };
 ```
 
-It asks the question `openTaskId` already answers and pops only when the answer names the task on its way out, so deleting a task you are not looking at leaves the navigation state alone. `goBack` here is the same pop the back button performs, dispatched through the ref instead of pressed.
+The route now follows the state it represents. A deleted task is still visible when the list under it is Trash, which is where permanent deletion begins. Moving the open task there from any other list makes `hasVisibleTask` false, as does removing it permanently, and the mounted screen leaves through its own navigation prop. Deleting a different task changes nothing here. Callers only change task state; they do not need a container ref or a special close command.
 
 Now the dialog. Create `src/components/delete-confirmation.tsx`:
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
-import { closeTaskIfOpen } from "../navigation.js";
 import { useStore } from "../store/index.js";
 
 export const DeleteConfirmation = () => {
@@ -172,7 +186,6 @@ export const DeleteConfirmation = () => {
             ]}
             onResponse={(id) => {
                 if (id === "delete" && taskToDelete !== null) {
-                    closeTaskIfOpen(taskToDelete);
                     deleteForever(taskToDelete);
                 }
                 askDeleteTask(null);
@@ -186,7 +199,7 @@ export const DeleteConfirmation = () => {
 
 `defaultResponse` and `closeResponse` are the keyboard's answers: Return picks the default, while Escape and the window manager's close button pick the close response. On a destructive dialog both should point at the safe response, and both point at `cancel` here, so neither key deletes the task.
 
-Both calls in the delete branch sit behind the same `taskToDelete !== null` check, so a dialog with no task behind it can neither pop a page nor remove one. `onResponse` fires for every answer, including the close response, so clearing `taskToDelete` at the end covers cancel, Escape, and delete alike.
+The delete call sits behind the `taskToDelete !== null` check, so a dialog with no task behind it cannot remove one. `onResponse` fires for every answer, including the close response, so clearing `taskToDelete` at the end covers cancel, Escape, and delete alike. If the deleted task owns the open editor, `TaskScreen` observes the store update and leaves on its own.
 
 Mount it from `src/components/dialogs.tsx`:
 
@@ -209,7 +222,6 @@ Because that branch raises a toast, it reads the overlay from context, which mak
 
 ```tsx
 import { useToast } from "@gtkx/components/adw";
-import { closeTaskIfOpen } from "../navigation.js";
 import type { Task } from "../types.js";
 
 // ...
@@ -223,7 +235,6 @@ export const useRequestDeleteTask = (): ((task: Task) => void) => {
             askDeleteTask(task.id);
             return;
         }
-        closeTaskIfOpen(task.id);
         moveToTrash(task.id);
         show({
             title: `“${task.title}” moved to Trash`,
@@ -236,9 +247,9 @@ export const useRequestDeleteTask = (): ((task: Task) => void) => {
 
 `useRequestDeleteTask` runs `useToast` once and returns the handler the buttons call. The handler reads the store with `useStore.getState()` at the moment it runs, so its values are always current, while the toast overlay comes from the context above it.
 
-Closing the editor goes through the module helper for the same reason the store does. This one handler is called from a row inside a screen, from a button in a screen's header options, and from the Delete shortcut mounted on the window, outside the navigation container altogether. There is no single `useNavigation` that answers in all three places. The ref answers everywhere, so `closeTaskIfOpen` works wherever the handler ends up.
+This one handler is called from a row inside a screen, from a button in a screen's header options, and from the Delete shortcut mounted on the window. None of those sites has to coordinate navigation. They report the state change, and only an editor actually displaying that task reacts.
 
-A task already in Trash raises the dialog. Anything else pops the editor when that task is the one on it, moves the task to Trash, and shows a toast whose Undo calls `restore`. Undo puts the flag back and nothing else: a task returning to its list should not pull you into an editor you had already left.
+A task already in Trash raises the dialog. Anything else moves to Trash and shows a toast whose Undo calls `restore`; when that task owns the editor, the screen leaves in response. Undo puts the flag back and nothing else: a task returning to its list should not pull you into an editor you had already left.
 
 Point the call sites at it. Each calls `useRequestDeleteTask` at the top of the component and hands the result to its button. In `src/components/task-row.tsx`:
 

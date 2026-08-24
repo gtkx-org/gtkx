@@ -3,6 +3,7 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import {
     type AnyClass,
     type ApplicationClass,
+    coerceObjectProperty,
     type CommandLineApplication,
     createApplication,
     getClassType,
@@ -12,8 +13,9 @@ import {
 } from "@gtkx/runtime";
 import { getOrInsert, isDeepEqual, kebabCase, structuredClone, unsanitizeIdentifier } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
+import { runWithErrorReporter } from "./commit-errors.js";
 import { getPropertyName } from "./metadata.js";
-import { applyWrite } from "./signals.js";
+import { applyMutation, applyWrite } from "./signals.js";
 import { hasSameText } from "./text.js";
 
 type SlotHooks<P extends GObject.Object, C extends GObject.Object> = {
@@ -29,11 +31,24 @@ type ListHooks<P extends GObject.Object, I, H> = {
     add?: (parent: P, item: I) => H;
     remove?: (parent: P, item: I, handle: H) => void;
     clear?: (parent: P) => void;
+    rollback?: (parent: P, item: I) => void;
 };
 
 type ListEntry = { item: unknown; handle: unknown };
 type ListState = { snapshot: unknown[]; entries: ListEntry[] };
-type DeferredState = { desired: unknown; isPresent: boolean; isScheduled: boolean; disconnect: (() => void) | null };
+type ListReplacement = { items: unknown[]; snapshot: unknown[] };
+
+type DeferredState = {
+    desired: unknown;
+    isPresent: boolean;
+    isScheduled: boolean;
+    disconnect: (() => void) | null;
+    reportError: ((error: unknown) => void) | null;
+};
+
+type DeferredValueByKind = { boolean: boolean; integer: number; string: string | null };
+type DeferredValueKind = keyof DeferredValueByKind;
+type DeferredValueGuard = (value: unknown) => boolean;
 type CanApply<P extends GObject.Object, V> = (object: P, value: V) => boolean;
 type ChildSetter = GObject.Object & { setChild: (child: Gtk.Widget | null) => void };
 type ContentSetter<C extends Gtk.Widget> = GObject.Object & { setContent: (content: C | null) => void };
@@ -52,6 +67,12 @@ type IndexedChildHost<C extends GObject.Object> = GObject.Object & {
 };
 
 const childTypeCache: Map<string, bigint> = new Map();
+
+const deferredValueGuards: Record<DeferredValueKind, DeferredValueGuard> = {
+    boolean: (value) => typeof value === "boolean",
+    integer: (value) => Number.isSafeInteger(value),
+    string: (value) => value === null || typeof value === "string",
+};
 
 const childTypeFor = (name: string): bigint => getOrInsert(childTypeCache, name, typeFromName);
 
@@ -109,7 +130,9 @@ const value = <P extends GObject.Object, V>(
 ): ElementBehavior<P> => ({
     update: (object, prev, next) => {
         if (!Object.is(prev[prop], next[prop]) && next[prop] !== undefined) {
-            apply(object, next[prop] as V);
+            applyMutation(() => {
+                apply(object, next[prop] as V);
+            });
         }
 
         return [prop];
@@ -132,24 +155,86 @@ const teardownList = <P extends GObject.Object, I, H>(
     }
 };
 
+const addListEntries = <P extends GObject.Object, I, H>(
+    object: P,
+    items: unknown[],
+    hooks: ListHooks<P, I, H>,
+    entries: ListEntry[],
+): void => {
+    for (const item of items) {
+        try {
+            const handle = hooks.add?.(object, item as I);
+            entries.push({ item, handle });
+        } catch (error) {
+            hooks.rollback?.(object, item as I);
+            throw error;
+        }
+    }
+};
+
+const restoreList = <P extends GObject.Object, I, H>(
+    object: P,
+    previous: ListEntry[],
+    hooks: ListHooks<P, I, H>,
+    state: ListState,
+): void => {
+    const restored: ListEntry[] = [];
+    addListEntries(object, previous.map(({ item }) => item), hooks, restored);
+    state.entries = restored;
+};
+
+const replaceList = <P extends GObject.Object, I, H>(
+    object: P,
+    replacement: ListReplacement,
+    hooks: ListHooks<P, I, H>,
+    state: ListState,
+): void => {
+    const previous = state.entries;
+    const entries: ListEntry[] = [];
+    teardownList(object, previous, hooks);
+
+    try {
+        addListEntries(object, replacement.items, hooks, entries);
+    } catch (error) {
+        teardownList(object, entries, hooks);
+        restoreList(object, previous, hooks, state);
+        throw error;
+    }
+
+    state.entries = entries;
+    state.snapshot = replacement.snapshot;
+};
+
+const listItems = (prop: string, value: unknown): unknown[] => {
+    if (value === undefined || value === null) {
+        return [];
+    }
+
+    if (!Array.isArray(value)) {
+        throw new TypeError(`The '${prop}' prop must be an array, null, or undefined`);
+    }
+
+    return value;
+};
+
 const listUpdate = <P extends GObject.Object, I, H>(
     prop: string,
     hooks: ListHooks<P, I, H>,
 ): NonNullable<ElementBehavior<P>["update"]> => {
-    const { add } = hooks;
-
     return (object, _prev, next, context) => {
         const state = context as ListState;
         const raw = next[prop];
-        const items: unknown[] = Array.isArray(raw) ? raw : [];
+        const items = listItems(prop, raw);
 
         if (isDeepEqual(state.snapshot, items)) {
             return [prop];
         }
 
-        teardownList(object, state.entries, hooks);
-        state.entries = items.map((item) => ({ item, handle: add?.(object, item as I) }));
-        state.snapshot = structuredClone(items);
+        const snapshot = structuredClone(items);
+
+        applyMutation(() => {
+            replaceList(object, { items, snapshot }, hooks, state);
+        });
 
         return [prop];
     };
@@ -161,6 +246,9 @@ const list = <P extends GObject.Object, I, H = void>(
 ): ElementBehavior<P> => {
     const behavior: ElementBehavior<P> = {
         initialize: (): ListState => ({ snapshot: [], entries: [] }),
+        validate: (_object, _prev, next) => {
+            listItems(prop, next[prop]);
+        },
         update: listUpdate(prop, hooks),
     };
 
@@ -206,7 +294,9 @@ const scheduleSettle = <P extends GObject.Object, V>(
         state.isScheduled = false;
 
         if (state.disconnect !== null) {
-            settleDeferred(object, state, prop, canApply);
+            runWithErrorReporter(state.reportError, () => {
+                settleDeferred(object, state, prop, canApply);
+            });
         }
     });
 };
@@ -234,39 +324,108 @@ const watchDrift = <P extends GObject.Object, V>(
     };
 };
 
-const deferred = <P extends GObject.Object, V>(
+const normalizeDeferred = <K extends DeferredValueKind>(
+    object: GObject.Object,
     prop: string,
-    canApply?: CanApply<P, V>,
+    value: unknown,
+    kind: K,
+): DeferredValueByKind[K] => {
+    const normalized = coerceObjectProperty(object, prop, value);
+
+    if (!deferredValueGuards[kind](normalized)) {
+        throw new TypeError(`The '${prop}' prop must be a ${kind}`);
+    }
+
+    return normalized as DeferredValueByKind[K];
+};
+
+const initializeDeferred = (): DeferredState => ({
+    desired: undefined,
+    isPresent: false,
+    isScheduled: false,
+    disconnect: null,
+    reportError: null,
+});
+
+const validateDeferred = <P extends GObject.Object>(
+    prop: string,
+    kind: DeferredValueKind,
+): NonNullable<ElementBehavior<P>["validate"]> =>
+    (object, _prev, next) => {
+        const value = next[prop];
+
+        if (value !== undefined && (value !== null || kind === "string")) {
+            normalizeDeferred(object, prop, value, kind);
+        }
+    };
+
+const updateDeferred = <P extends GObject.Object>(
+    prop: string,
+    kind: DeferredValueKind,
+): NonNullable<ElementBehavior<P>["update"]> =>
+    (object, _prev, next, context) => {
+        const state = context as DeferredState;
+        const value = next[prop];
+
+        if (value === undefined || (value === null && kind !== "string")) {
+            state.desired = undefined;
+            state.isPresent = false;
+        } else {
+            state.desired = normalizeDeferred(object, prop, value, kind);
+            state.isPresent = true;
+        }
+
+        return [prop];
+    };
+
+const flushDeferred = <P extends GObject.Object, K extends DeferredValueKind>(
+    prop: string,
+    canApply: CanApply<P, DeferredValueByKind[K]> | undefined,
+): NonNullable<ElementBehavior<P>["flush"]> =>
+    (object, context, reportError) => {
+        const state = context as DeferredState;
+        state.reportError = reportError;
+        settleDeferred(object, state, prop, canApply);
+        watchDrift(object, state, prop, canApply);
+    };
+
+const teardownDeferred = (_object: GObject.Object, context: unknown): void => {
+    const state = context as DeferredState;
+    state.disconnect?.();
+    state.disconnect = null;
+    state.reportError = null;
+};
+
+const deferred = <P extends GObject.Object, K extends DeferredValueKind>(
+    prop: string,
+    kind: K,
+    canApply?: CanApply<P, DeferredValueByKind[K]>,
 ): ElementBehavior<P> => ({
     deferred: [prop],
-    initialize: (): DeferredState => ({ desired: undefined, isPresent: false, isScheduled: false, disconnect: null }),
-    update: (_object, _prev, next, context) => {
-        const state = context as DeferredState;
-        state.desired = next[prop];
-        state.isPresent = next[prop] !== undefined;
+    initialize: initializeDeferred,
+    validate: validateDeferred(prop, kind),
+    update: updateDeferred(prop, kind),
+    flush: flushDeferred(prop, canApply),
+    teardown: teardownDeferred,
+});
+
+const controlledText = (prop: string): ElementBehavior => ({
+    update: (object, prev, next) => {
+        if (Object.is(prev[prop], next[prop]) || next[prop] === undefined) {
+            return [prop];
+        }
+
+        const value = next[prop];
+
+        if (!hasSameText(object, prop, value)) {
+            applyWrite(prop, () => {
+                Reflect.set(object, prop, value);
+            });
+        }
 
         return [prop];
     },
-    flush: (object, context) => {
-        const state = context as DeferredState;
-        settleDeferred(object, state, prop, canApply);
-        watchDrift(object, state, prop, canApply);
-    },
-    teardown: (_object, context) => {
-        const state = context as DeferredState;
-        state.disconnect?.();
-        state.disconnect = null;
-    },
 });
-
-const controlledText = (prop: string): ElementBehavior =>
-    value(prop, (object, next) => {
-        if (!hasSameText(object, prop, next)) {
-            applyWrite(prop, () => {
-                Reflect.set(object, prop, next);
-            });
-        }
-    });
 
 const childSetterSlot = <P extends ChildSetter>(): ElementBehavior<P> =>
     slot<P, Gtk.Widget>("children", "GtkWidget", {

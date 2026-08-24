@@ -50,6 +50,14 @@ unsafe fn write_inline_value(
 }
 
 impl BoxedCodec {
+    pub(crate) fn with_extent(&self, handle: Handle) -> Handle {
+        if let Some(size) = self.size {
+            handle.set_memory_extent(size);
+        }
+
+        handle
+    }
+
     pub fn type_(&self) -> anyhow::Result<Option<glib::Type>> {
         if let Some(type_) = glib::Type::from_name(&self.type_name) {
             return Ok(Some(type_));
@@ -74,11 +82,13 @@ impl BoxedCodec {
         let free_fn = Self::lookup_free_fn(library_name, free_fn_name)
             .map_err(|e| anyhow::anyhow!("Cannot decode boxed '{}': {e}", self.type_name))?;
 
-        if transfer.is_full() {
-            Ok(Boxed::from_glib_full_with_free_fn(ptr, free_fn).into())
+        let handle = if transfer.is_full() {
+            Boxed::from_glib_full_with_free_fn(ptr, free_fn).into()
         } else {
-            Ok(Handle::from_glib_borrow(ptr))
-        }
+            Handle::from_glib_borrow(ptr)
+        };
+
+        Ok(self.with_extent(handle))
     }
 
     fn with_free_fn(
@@ -101,7 +111,7 @@ impl BoxedCodec {
         let type_ = self.type_()?;
 
         if let Some(type_) = type_.filter(|type_| is_boxed_type(*type_)) {
-            return Ok(Boxed::from_glib_full(type_, ptr).into());
+            return Ok(self.with_extent(Boxed::from_glib_full(type_, ptr).into()));
         }
         if let Some(handle) = self.with_free_fn(ptr, Ownership::Full)? {
             return Ok(handle);
@@ -119,9 +129,30 @@ impl BoxedCodec {
         }
     }
 
+    pub(crate) fn prepare_adoption(&self) -> anyhow::Result<()> {
+        let type_ = self.type_()?;
+
+        if type_.is_some_and(is_boxed_type) {
+            return Ok(());
+        }
+        if let Some(free_fn_name) = self.free_fn_name.as_deref() {
+            let library_name = self.shared_library.as_deref().unwrap_or("(no library)");
+            Self::lookup_free_fn(library_name, free_fn_name)?;
+            return Ok(());
+        }
+        if type_.is_some() {
+            bail!(
+                "Cannot take ownership of '{}': {POINTER_TYPE}",
+                self.type_name
+            )
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn adopted_or_struct(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
         if self.free_fn_name.is_none() && self.type_()?.is_none() {
-            return Ok(Handle::owned_struct(ptr));
+            return Ok(self.with_extent(Handle::owned_struct(ptr)));
         }
 
         self.adopted(ptr)
@@ -131,13 +162,13 @@ impl BoxedCodec {
         let type_ = self.type_()?;
 
         if let Some(type_) = type_.filter(|type_| is_boxed_type(*type_)) {
-            return Ok(unsafe { Boxed::from_glib_none(type_, ptr) }.into());
+            return Ok(self.with_extent(unsafe { Boxed::from_glib_none(type_, ptr) }.into()));
         }
         if let Some(handle) = self.with_free_fn(ptr, Ownership::Borrowed)? {
             return Ok(handle);
         }
         match type_ {
-            Some(_) => Ok(Handle::from_glib_borrow(ptr)),
+            Some(_) => Ok(self.with_extent(Handle::from_glib_borrow(ptr))),
             None => bail!(
                 "Cannot copy boxed type '{}': no type available. \
                  Pointer {ptr:p} may become dangling if the source is freed",
@@ -245,7 +276,7 @@ impl Decoder for BoxedCodec {
         if self.caller_allocated {
             return Ok(value::handle_to_unknown(
                 env,
-                Handle::from_glib_borrow(ptr),
+                self.with_extent(Handle::from_glib_borrow(ptr)),
             )?);
         }
         if transfer.is_full() {
@@ -268,7 +299,7 @@ impl Decoder for BoxedCodec {
         self.decode_non_null(env, ptr, |ptr| {
             Ok(value::handle_to_unknown(
                 env,
-                Handle::from_glib_borrow(ptr),
+                self.with_extent(Handle::from_glib_borrow(ptr)),
             )?)
         })
     }

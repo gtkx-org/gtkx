@@ -1,5 +1,4 @@
 import { useToast } from "@gtkx/components/adw";
-import { closeTaskIfOpen } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import type { Task } from "../types.js";
 import { About } from "./about.js";
@@ -17,7 +16,6 @@ export const useRequestDeleteTask = (): ((task: Task) => void) => {
             askDeleteTask(task.id);
             return;
         }
-        closeTaskIfOpen(task.id);
         moveToTrash(task.id);
         show({
             title: `“${task.title}” moved to Trash`,

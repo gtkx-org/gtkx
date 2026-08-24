@@ -7,6 +7,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { AdwPreferencesPage } from "@gtkx/jsx/adw";
+import { GdkMemoryTextureBuilder } from "@gtkx/jsx/gdk";
 import {
     GtkAboutDialog,
     GtkApplicationWindow,
@@ -21,9 +22,11 @@ import {
     GtkImage,
     GtkLabel,
     GtkListBox,
+    GtkListView,
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
-import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { createRoot, rootElement } from "@gtkx/react";
+import { act, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createApplicationRenderer } from "../helpers/application-render.js";
@@ -745,6 +748,32 @@ describe("widget - signals (11)", () => {
                 expect(handleNotify).toHaveBeenCalledWith(expect.any(GObject.ParamSpec), expect.any(Gtk.Switch));
             });
         });
+
+        it("does not report declarative child-text writes", async () => {
+            const notifiedLabels: (string | null)[] = [];
+
+            const { rerender } = await render(
+                <GtkLabel
+                    onNotifyLabel={(label) => {
+                        notifiedLabels.push(label);
+                    }}
+                >
+                    one
+                </GtkLabel>,
+            );
+
+            await rerender(
+                <GtkLabel
+                    onNotifyLabel={(label) => {
+                        notifiedLabels.push(label);
+                    }}
+                >
+                    two
+                </GtkLabel>,
+            );
+
+            expect(notifiedLabels).toEqual([]);
+        });
     });
 });
 
@@ -967,6 +996,45 @@ describe("default-props reset on removal", () => {
         const [before, after] = await readLabelPropAcrossReset({ widthRequest: 200 }, (label) => label.widthRequest);
         expect(before).toBe(200);
         expect(after).toBe(-1);
+    });
+});
+
+describe("default-props from live metadata", () => {
+    it("resets an interface property to the concrete class's default", async () => {
+        const ref = createRef<Gtk.ListView>();
+        const { rerender } = await render(<GtkListView ref={ref} orientation={Gtk.Orientation.HORIZONTAL} />);
+        expect(ref.current).toHaveObjectProperty("orientation", Gtk.Orientation.HORIZONTAL);
+        await rerender(<GtkListView ref={ref} />);
+        expect(ref.current).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
+    });
+
+    it("resets a wide integer property with the value type GObject exposes", async () => {
+        const root = createRoot({ ...rootElement });
+        const ref = createRef<Gdk.MemoryTextureBuilder>();
+
+        try {
+            await act(() => {
+                root.render(<GdkMemoryTextureBuilder ref={ref} stride={16n} />);
+            });
+
+            const builder = ref.current;
+
+            if (builder === null) {
+                throw new Error("expected the texture builder to be mounted");
+            }
+
+            expect(builder.stride).toBe(16n);
+
+            await act(() => {
+                root.render(<GdkMemoryTextureBuilder ref={ref} />);
+            });
+
+            expect(builder.stride).toBe(0n);
+        } finally {
+            await act(() => {
+                root.unmount();
+            });
+        }
     });
 });
 

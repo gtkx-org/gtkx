@@ -1,6 +1,15 @@
+import * as Gio from "@gtkx/gi/gio";
 import { Object as GObject, SignalFlags } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { registerClass, type SignalSpec, TYPE_BOOLEAN, TYPE_INT, TYPE_NONE, TYPE_STRING } from "@gtkx/runtime";
+import {
+    registerClass,
+    signalForHandlerName,
+    type SignalSpec,
+    TYPE_BOOLEAN,
+    TYPE_INT,
+    TYPE_NONE,
+    TYPE_STRING,
+} from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import { createTypeNameFactory } from "./helpers/unique-name.js";
 
@@ -147,6 +156,10 @@ describe("registerClass — declared signals through the listener surface", () =
 });
 
 describe("registerClass — signal edge cases", () => {
+    it("looks up a signal directly on an uninstantiated interface", () => {
+        expect(signalForHandlerName(Gio.ListModel.prototype.__type__, "onItemsChanged")).toBe("items-changed");
+    });
+
     it("declares a signal with no parameters and no return value", () => {
         const Registered = registerSignals("GtkxSignalPinger", { ping: {} });
         const instance = new Registered();
@@ -172,7 +185,9 @@ describe("registerClass — signal edge cases", () => {
         expect(instance.emit("hush")).toBeUndefined();
         expect(isRan).toBe(true);
     });
+});
 
+describe("registerClass — signal aliasing edge cases", () => {
     it("invokes declared-signal handlers with the same receiver as inherited signals", () => {
         const Registered = registerSignals("GtkxSignalReceiver", { ping: {} });
         const instance = new Registered();
@@ -204,6 +219,35 @@ describe("registerClass — signal edge cases", () => {
         instance.emit("data_changed", 7);
         instance.emit("data-changed", 8);
         expect(seen).toEqual([7, 8]);
+    });
+});
+
+describe("registerClass — signal declaration errors", () => {
+    it("refuses signals that collapse to the same JavaScript handler name", () => {
+        expect(() => {
+            registerSignals("GtkxSignalAmbiguous", {
+                "level2-changed": {},
+                "level-2-changed": {},
+            });
+        }).toThrow();
+    });
+
+    it("refuses a handler alias inherited from an uninstantiated parent", () => {
+        class Parent extends GObject {}
+
+        registerClass(Parent, {
+            typeName: uniqueName("GtkxSignalAliasParent"),
+            signals: { "level2-changed": {} },
+        });
+
+        class Child extends Parent {}
+
+        expect(() => {
+            registerClass(Child, {
+                typeName: uniqueName("GtkxSignalAliasChild"),
+                signals: { "level-2-changed": {} },
+            });
+        }).toThrow();
     });
 });
 

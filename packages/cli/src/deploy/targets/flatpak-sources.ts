@@ -1,8 +1,10 @@
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import type { DeploySettings } from "../types.js";
+import { inspectProjectPath, requireProjectFile } from "../../internal/project-path.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
+import { writeFreshArtifact } from "../fresh-artifact.js";
 import { gitRemoteUrl, runGit } from "../git.js";
 import { optional } from "../nfpm/optional.js";
 import { FLATPAK_NODE_GENERATOR, GENERATOR_PNPM_OPTION } from "../tools.js";
@@ -150,15 +152,13 @@ const generatedSourcesPath = (settings: DeploySettings): string =>
     join(settings.paths.targets, "flatpak", GENERATED_SOURCES);
 
 const isolateLockfile = (root: string, lockfile: string): string => {
-    const source = join(root, lockfile);
-
-    if (!existsSync(source)) {
-        throw new Error(`Cannot vendor the offline sources: no ${lockfile} under ${root}`);
-    }
-
-    const manifest = join(dirname(source), "package.json");
+    const source = resolve(root, lockfile);
+    requireProjectFile({ root, candidate: source, configured: lockfile, subject: "Flatpak lockfile" });
+    const adjacentManifest = join(dirname(source), "package.json");
+    const manifest = existsSync(adjacentManifest) ? adjacentManifest : join(root, "package.json");
+    requireProjectFile({ root, candidate: manifest, configured: manifest, subject: "Flatpak package manifest" });
     const dir = mkdtempSync(join(tmpdir(), "gtkx-lockfile-"));
-    copyFileSync(existsSync(manifest) ? manifest : join(root, "package.json"), join(dir, "package.json"));
+    copyFileSync(manifest, join(dir, "package.json"));
     copyFileSync(source, join(dir, basename(lockfile)));
 
     return dir;
@@ -170,15 +170,29 @@ const storeVersionArgs = (pin: PnpmPin | null): string[] =>
 const generateNodeSources = (settings: DeploySettings, manager: PackageManager, pin: PnpmPin | null): void => {
     const lockfile = settings.deploy.flatpak?.lockfile ?? LOCKFILE_BY_MANAGER[manager];
     const output = generatedSourcesPath(settings);
+
+    const outputStats = inspectProjectPath({
+        root: settings.paths.root,
+        candidate: output,
+        configured: output,
+        subject: "generated Flatpak sources",
+    });
+
+    if (outputStats !== undefined && !outputStats.isFile()) {
+        throw new Error(`Cannot write generated Flatpak sources to ${output}`);
+    }
+
     mkdirSync(dirname(output), { recursive: true });
     const isolated = isolateLockfile(settings.paths.root, lockfile);
 
     try {
-        runCliTool({
-            tool: FLATPAK_NODE_GENERATOR.command,
-            args: [manager, join(isolated, basename(lockfile)), ...storeVersionArgs(pin), "-o", output],
-            target: "the offline dependency sources",
-            shouldStream: true,
+        writeFreshArtifact(output, () => {
+            runCliTool({
+                tool: FLATPAK_NODE_GENERATOR.command,
+                args: [manager, join(isolated, basename(lockfile)), ...storeVersionArgs(pin), "-o", output],
+                target: "the offline dependency sources",
+                shouldStream: true,
+            });
         });
     } finally {
         rmSync(isolated, { recursive: true, force: true, maxRetries: 5 });

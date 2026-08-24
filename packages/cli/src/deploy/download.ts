@@ -1,6 +1,6 @@
 import { info, warn } from "@gtkx/utils";
-import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -73,9 +73,14 @@ const readCachedDigest = (dest: string): string | undefined => {
 };
 
 const writeAtomically = (dest: string, contents: string): void => {
-    const staging = `${dest}.partial`;
-    writeFileSync(staging, contents);
-    renameSync(staging, dest);
+    const staging = `${dest}.${randomUUID()}.partial`;
+
+    try {
+        writeFileSync(staging, contents, { flag: "wx" });
+        renameSync(staging, dest);
+    } finally {
+        rmSync(staging, { force: true });
+    }
 };
 
 const publishedDigest = async (request: DigestRequest): Promise<string> => {
@@ -122,14 +127,19 @@ const downloadFile = async (request: DownloadRequest): Promise<string> => {
     const expected = request.freshSha256 === undefined ? sha256 : await request.freshSha256();
     const contents = await fetchBytes(url);
     assertDigest(url, contents, expected);
-    const staging = `${dest}.partial`;
-    writeFileSync(staging, contents);
+    const staging = `${dest}.${randomUUID()}.partial`;
 
-    if (mode !== undefined) {
-        chmodSync(staging, mode);
+    try {
+        writeFileSync(staging, contents, { flag: "wx" });
+
+        if (mode !== undefined) {
+            chmodSync(staging, mode);
+        }
+
+        renameSync(staging, dest);
+    } finally {
+        rmSync(staging, { force: true });
     }
-
-    renameSync(staging, dest);
 
     return dest;
 };

@@ -14,6 +14,7 @@ import {
     refT,
     sizedArrayT,
     stringT,
+    structT,
     uint32T,
     uint64T,
     voidT,
@@ -21,7 +22,14 @@ import {
 import { LIB, VALUE_SIZE, VALUE_T } from "./library.js";
 import { getHandle } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
-import { TYPE_INVALID, type TypedClass, typeInterfaces, typeParent } from "./type.js";
+import {
+    TYPE_INTERFACE,
+    TYPE_INVALID,
+    type TypedClass,
+    typeFundamental,
+    typeInterfaces,
+    typeParent,
+} from "./type.js";
 import {
     fromValue,
     getBoxedValue,
@@ -76,6 +84,11 @@ const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint
 const gSignalName = bind(LIB, "g_signal_name", [uint32T], stringT("borrowed"));
 const signalNameCache: Map<bigint, string[]> = new Map();
 const gSignalListIds = bind(LIB, "g_signal_list_ids", [biguint64T, refT(uint32T)], sizedArrayT(uint32T, 1, "full"));
+const TYPE_STRUCT_T = structT("borrowed");
+const gTypeClassRef = bind(LIB, "g_type_class_ref", [biguint64T], TYPE_STRUCT_T);
+const gTypeClassUnref = bind(LIB, "g_type_class_unref", [TYPE_STRUCT_T], voidT);
+const gTypeDefaultInterfaceRef = bind(LIB, "g_type_default_interface_ref", [biguint64T], TYPE_STRUCT_T);
+const gTypeDefaultInterfaceUnref = bind(LIB, "g_type_default_interface_unref", [TYPE_STRUCT_T], voidT);
 
 const gSignalEmitv = bind(
     LIB,
@@ -206,32 +219,73 @@ function hasSignalListener(instance: object, signals?: string[]): boolean {
 const signalIdFor = (type: bigint, signal: string): number =>
     gSignalLookup(getSignalBaseName(signal), type) as number;
 
-const ownSignalNames = (type: bigint): string[] => {
+const listedSignalNames = (type: bigint): string[] => {
     const countRef = { value: 0 };
 
     return (gSignalListIds(type, countRef) as number[]).map((id) => gSignalName(id) as string);
 };
 
-const addSignalNames = (names: Set<string>, type: bigint): void => {
-    for (const name of ownSignalNames(type)) {
+const classSignalNames = (type: bigint): string[] => {
+    const klass = gTypeClassRef(type) as ExternalObject<Handle>;
+
+    try {
+        return listedSignalNames(type);
+    } finally {
+        gTypeClassUnref(klass);
+    }
+};
+
+const interfaceSignalNames = (type: bigint): string[] => {
+    const vtable = gTypeDefaultInterfaceRef(type) as ExternalObject<Handle>;
+
+    try {
+        return listedSignalNames(type);
+    } finally {
+        gTypeDefaultInterfaceUnref(vtable);
+    }
+};
+
+const addSignalNames = (names: Set<string>, source: Iterable<string>): void => {
+    for (const name of source) {
         names.add(name);
     }
 };
 
+const loadedSignalNames = (type: bigint): string[] =>
+    typeFundamental(type) === TYPE_INTERFACE ? interfaceSignalNames(type) : classSignalNames(type);
+
 const handlerNameFor = (signal: string): string => `on${upperFirst(toCamelIdentifier(signal))}`;
 
-/** The signal a generated `on…` handler prop names on the given type, or `undefined` when it carries none. */
-const signalForHandlerName = (type: bigint, handlerName: string): string | undefined =>
-    signalNamesFor(type).find((signal) => handlerNameFor(signal) === handlerName);
+/**
+ * The signal a generated `on…` handler prop names on the given type, or `undefined` when it carries none.
+ * Throws when distinct native signal names collapse to the same JavaScript handler name.
+ */
+const signalForHandlerName = (type: bigint, handlerName: string): string | undefined => {
+    const matches = signalNamesFor(type).filter((signal) => handlerNameFor(signal) === handlerName);
+
+    if (matches.length > 1) {
+        const labels = matches.map((name) => `'${name}'`).join(", ");
+
+        throw new TypeError(
+            `The handler name '${handlerName}' is ambiguous for signals ${labels}`,
+        );
+    }
+
+    return matches[0];
+};
 
 const buildSignalNames = (type: bigint): string[] => {
     const names: Set<string> = new Set();
 
-    for (let current = type; current !== TYPE_INVALID; current = typeParent(current)) {
-        addSignalNames(names, current);
+    for (
+        let current = type;
+        current !== TYPE_INVALID && current !== TYPE_INTERFACE;
+        current = typeParent(current)
+    ) {
+        addSignalNames(names, loadedSignalNames(current));
 
         for (const iface of typeInterfaces(current)) {
-            addSignalNames(names, iface);
+            addSignalNames(names, interfaceSignalNames(iface));
         }
     }
 
@@ -376,6 +430,7 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returns?:
 }
 
 export {
+    handlerNameFor,
     signalForHandlerName,
     getSignalBaseName,
     signalIdFor,

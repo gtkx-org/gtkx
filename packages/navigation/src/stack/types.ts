@@ -44,7 +44,7 @@ type StackNavigationOptions = HeaderOptions & {
     header?: (props: StackHeaderProps) => ReactNode;
     /** Whether the default header bar shows Adwaita's back button; defaults to `true`. */
     headerBackVisible?: boolean;
-    /** Whether the user can pop this page with the back button, Escape, Alt+Left or a swipe; defaults to `true`. */
+    /** Whether Back, Escape, Alt+Left, the mouse Back button, or a swipe can pop this page; defaults to `true`. */
     canPop?: boolean;
     /** Whether pushing and popping this page animates; defaults to `"default"`. */
     animation?: "default" | "none";

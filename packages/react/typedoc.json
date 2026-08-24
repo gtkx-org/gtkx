@@ -4,7 +4,6 @@
         "./dist/config.d.ts"
     ],
     "intentionallyNotExported": [
-        "Container",
         "SettingValue",
         "SettingsSchema",
         "SettingsSchemaKeys",

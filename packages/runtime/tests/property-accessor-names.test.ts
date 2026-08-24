@@ -126,3 +126,79 @@ describe("property names — every spelling of one property", () => {
         expect(spellings.map((spelling) => isReadableProperty(type, spelling))).toEqual([true, true, true, true]);
     });
 });
+
+describe("property name collision errors", () => {
+    it("throws when distinct native names collapse to the same JavaScript accessor", () => {
+        class Ambiguous extends GObject {
+            declare level2Depth: number;
+        }
+
+        expect(() => {
+            registerClass(Ambiguous, {
+                typeName: uniqueName("GtkxAmbiguousProp"),
+                properties: {
+                    "level2-depth": paramSpecInt(
+                        "level2-depth",
+                        null,
+                        null,
+                        0,
+                        10,
+                        0,
+                        ParamFlags.READWRITE,
+                    ),
+                    "level-2-depth": paramSpecInt(
+                        "level-2-depth",
+                        null,
+                        null,
+                        0,
+                        10,
+                        0,
+                        ParamFlags.READWRITE,
+                    ),
+                },
+            });
+        }).toThrow();
+    });
+});
+
+describe("inherited property name collision errors", () => {
+    it("throws when a property collides with an inherited JavaScript accessor", () => {
+        class Parent extends GObject {
+            declare level2Depth: number;
+        }
+
+        registerClass(Parent, {
+            typeName: uniqueName("GtkxAmbiguousPropParent"),
+            properties: {
+                "level2-depth": paramSpecInt(
+                    "level2-depth",
+                    null,
+                    null,
+                    0,
+                    10,
+                    0,
+                    ParamFlags.READWRITE,
+                ),
+            },
+        });
+
+        class Child extends Parent {}
+
+        expect(() => {
+            registerClass(Child, {
+                typeName: uniqueName("GtkxAmbiguousPropChild"),
+                properties: {
+                    "level-2-depth": paramSpecInt(
+                        "level-2-depth",
+                        null,
+                        null,
+                        0,
+                        10,
+                        0,
+                        ParamFlags.READWRITE,
+                    ),
+                },
+            });
+        }).toThrow();
+    });
+});

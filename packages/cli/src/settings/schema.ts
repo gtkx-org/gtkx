@@ -1,9 +1,18 @@
 import { sortStrings, warn } from "@gtkx/utils";
 import { createHash } from "node:crypto";
-import { copyFileSync, type Dirent, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+    copyFileSync,
+    type Dirent,
+    mkdirSync,
+    mkdtempSync,
+    readdirSync,
+    readFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
+import { inspectProjectPath } from "../internal/project-path.js";
+import { replaceGeneratedFile } from "../internal/replace-file.js";
 import { removeTempDir } from "../internal/staging-dir.js";
 import { compileSchemas } from "./compile.js";
 import { type ParsedSchemaFile, parseSchemaXml, SchemaParseError } from "./parser.js";
@@ -142,7 +151,7 @@ const didWriteChanges = (path: string, content: string): boolean => {
     }
 
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, content);
+    replaceGeneratedFile(path, content);
 
     return true;
 };
@@ -153,6 +162,18 @@ const emitSchemaEnv = (rootDir: string, dataDir: string | null): SchemaEnvResult
     const parsed = dataDirAbs === null ? [] : parseProjectSchemas(schemaFiles, dataDirAbs);
     const content = renderEnvModule(parsed);
     const path = schemaEnvPath(rootDir);
+
+    const stats = inspectProjectPath({
+        root: rootDir,
+        candidate: path,
+        configured: path,
+        subject: "generated schema declarations",
+    });
+
+    if (stats !== undefined && !stats.isFile()) {
+        throw new Error(`Cannot write generated schema declarations to ${path}`);
+    }
+
     const isWritten = didWriteChanges(path, content);
 
     return { path, isWritten };

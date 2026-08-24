@@ -13,8 +13,9 @@ import { resolveOmittedProps } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { existsSync } from "node:fs";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { resolve } from "node:path";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
+import { inspectProjectPath } from "../internal/project-path.js";
 
 const docs = defineCommand({
     meta: {
@@ -55,7 +56,7 @@ const docs = defineCommand({
             );
         }
 
-        const girPath = resolveGirPath(config.girPath);
+        const girPath = resolveGirPath(config.girPath, cwd);
 
         if (girPath.length === 0) {
             throw new Error(
@@ -99,35 +100,21 @@ const docs = defineCommand({
     },
 });
 
-const isBelow = (parent: string, child: string): boolean => {
-    const path = relative(parent, child);
-
-    return path !== "" && path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path);
-};
-
-const outDirReason = (cwd: string, out: string, outDir: string): string => {
-    if (out.trim() === "") {
-        return "it was empty, which names the project root itself";
-    }
-
-    if (outDir === cwd) {
-        return "it names the project root itself";
-    }
-
-    return `${outDir} is outside it`;
-};
-
 const resolveOutDir = (cwd: string, out: string): string => {
     const outDir = out.trim() === "" ? cwd : resolve(cwd, out);
 
-    if (isBelow(cwd, outDir)) {
-        return outDir;
+    const stats = inspectProjectPath({
+        root: cwd,
+        candidate: outDir,
+        configured: out,
+        subject: "docs output directory",
+    });
+
+    if (stats !== undefined && !stats.isDirectory()) {
+        throw new Error(`Cannot use "${out}" as the docs output directory below ${cwd}`);
     }
 
-    throw new Error(
-        `--out must name a directory below the project root ${cwd}, and ${outDirReason(cwd, out, outDir)}. ` +
-        "Pass a path such as --out=docs/reference.",
-    );
+    return outDir;
 };
 
 const resolveDocsElements = async (cwd: string): Promise<{ props: ElementProps; omittedProps: OmittedProps }> => {

@@ -1,10 +1,12 @@
 import type { ErrorInfo, ReactNode, ReactPortal } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
+import * as GObject from "@gtkx/gi/gobject";
 import { createLogger, type Logger } from "@gtkx/utils";
 import { ConcurrentRoot } from "react-reconciler/constants.js";
+import { reportReconcilerError } from "./commit-errors.js";
 import { injectIntoDevTools } from "./devtools.js";
-import { type Container, reconciler } from "./host-config.js";
-import { rootElement } from "./root-element.js";
+import { type ContainerTarget, createHostContainer, getPortalContainer, reconciler } from "./host-config.js";
+import { rootElement, type RootElement } from "./root-element.js";
 
 type OpaqueRoot = { [opaqueRoot]: true };
 
@@ -14,7 +16,7 @@ type RootErrorCallbacks = {
     onRecoverableError?: (error: unknown, info: ErrorInfo) => void;
 };
 
-type ReconcilerRootOptions = RootErrorCallbacks & { containerInfo: Container };
+type ReconcilerRootOptions = RootErrorCallbacks & { containerInfo: ContainerTarget };
 
 /** A render root whose updates and teardown the caller drives, with error handling left to it. */
 type ReconcilerRoot = {
@@ -38,29 +40,9 @@ type Root = {
     unmount: () => void;
 };
 
-type ErrorHandler = (error: unknown) => void;
-type ErrorHandlerSlot = { get: () => ErrorHandler | null; set: (handler: ErrorHandler) => ErrorHandler | null };
-
 declare const opaqueRoot: unique symbol;
 const log: Logger = createLogger("react");
 const activeRoots: Set<OpaqueRoot> = new Set();
-const errorHandlerSlot = createErrorHandlerSlot();
-
-function createErrorHandlerSlot(): ErrorHandlerSlot {
-    let current: ErrorHandler | null = null;
-
-    return {
-        get: () => current,
-        set: (handler) => {
-            const previous = current;
-            current = handler;
-
-            return previous;
-        },
-    };
-}
-
-const setReconcilerErrorHandler = (handler: ErrorHandler): ErrorHandler | null => errorHandlerSlot.set(handler);
 
 const rethrowUncaughtRenderError = (error: unknown): never => {
     throw error;
@@ -70,22 +52,28 @@ const logCaughtRenderError = (error: unknown): void => {
     log.error("caught render error", error);
 };
 
-const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks): OpaqueRoot => {
+const openContainer = (containerInfo: ContainerTarget, callbacks: RootErrorCallbacks): OpaqueRoot => {
     injectIntoDevTools(reconciler);
 
+    const reportUncaught = (error: unknown, info: ErrorInfo): void => {
+        reportReconcilerError(error);
+        callbacks.onUncaughtError?.(error, info);
+    };
+
+    const hostContainer = createHostContainer(containerInfo, (error) => {
+        reportUncaught(error, { componentStack: null });
+    });
+
     return reconciler.createContainer(
-        containerInfo,
+        hostContainer,
         ConcurrentRoot,
         null,
         false,
         null,
         "",
+        reportUncaught,
         (error, info) => {
-            errorHandlerSlot.get()?.(error);
-            callbacks.onUncaughtError?.(error, info);
-        },
-        (error, info) => {
-            errorHandlerSlot.get()?.(error);
+            reportReconcilerError(error);
             callbacks.onCaughtError?.(error, info);
         },
         (error, info) => {
@@ -133,7 +121,7 @@ const createReconcilerRoot = (options: ReconcilerRootOptions): ReconcilerRoot =>
  *
  * @param container The GObject to render into; defaults to the shared {@link rootElement}, which holds no object.
  */
-const createRoot = (container: Container = rootElement): Root => {
+const createRoot = (container: RootElement | GObject.Object = rootElement): Root => {
     const opaque = openContainer(container, {
         onUncaughtError: rethrowUncaughtRenderError,
         onCaughtError: logCaughtRenderError,
@@ -170,11 +158,10 @@ const quit = (): typeof Gdk.EVENT_PROPAGATE | typeof Gdk.EVENT_STOP => {
  *
  * @param container The GObject to render into, or {@link rootElement} to render at the top level.
  */
-const createPortal = (children: ReactNode, container: Container, key?: string): ReactPortal =>
-    reconciler.createPortal(children, container, null, key ?? null) as unknown as ReactPortal;
+const createPortal = (children: ReactNode, container: RootElement | GObject.Object, key?: string): ReactPortal =>
+    reconciler.createPortal(children, getPortalContainer(container, reportReconcilerError), null, key ?? null);
 
 export {
-    setReconcilerErrorHandler,
     createReconcilerRoot,
     createRoot,
     quit,
@@ -182,3 +169,4 @@ export {
     type ReconcilerRoot,
     type Root,
 };
+export { setReconcilerErrorHandler } from "./commit-errors.js";

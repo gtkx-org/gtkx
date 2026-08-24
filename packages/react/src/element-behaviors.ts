@@ -26,6 +26,7 @@ import {
     value,
     wrappingIndexedSlot,
 } from "./reconciler/behaviors.js";
+import { runWithErrorReporter } from "./reconciler/commit-errors.js";
 import {
     type ElementBehavior,
     type ElementConfig,
@@ -34,9 +35,14 @@ import {
     registerElements,
 } from "./reconciler/registry.js";
 import { applyWrite } from "./reconciler/signals.js";
-import { applyStyle, CSS_CLASSES_PROP, styleClass } from "./reconciler/style.js";
+import { applyStyle, CSS_CLASSES_PROP, styleClass, validateStyle } from "./reconciler/style.js";
 
-type SelectedIndexState = { desired: number | undefined; isScheduled: boolean; disconnect: (() => void) | null };
+type SelectedIndexState = {
+    desired: number | undefined;
+    isScheduled: boolean;
+    disconnect: (() => void) | null;
+    reportError: ((error: unknown) => void) | null;
+};
 
 const SELECTED_INDEX_PROP = "selectedIndex";
 const SELECTION_SIGNAL = "selected-rows-changed";
@@ -295,7 +301,11 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                     stack.remove(child);
                 },
             ),
-            deferred<Gtk.Stack, string>("visibleChildName", (stack, name) => stack.getChildByName(name) !== null),
+            deferred<Gtk.Stack, "string">(
+                "visibleChildName",
+                "string",
+                (stack, name) => name === null || stack.getChildByName(name) !== null,
+            ),
         ],
     },
     GtkNotebook: {
@@ -419,8 +429,25 @@ function layoutChild(parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | nu
 const isNullish = (value: unknown): boolean => value === undefined || value === null;
 const isInitialNull = (prevValue: unknown, value: unknown): boolean => value === null && prevValue === undefined;
 
-const withStyleClass = (classes: unknown, className: string): string[] =>
-    Array.isArray(classes) ? [...(classes as string[]), className] : [className];
+const styleClassValue = (value: unknown): string => {
+    if (typeof value !== "string") {
+        throw new TypeError("Every 'cssClasses' item must be a string");
+    }
+
+    return value;
+};
+
+const withStyleClass = (classes: unknown, className: string): string[] => {
+    if (classes === undefined || classes === null) {
+        return [className];
+    }
+
+    if (!Array.isArray(classes)) {
+        throw new TypeError("The 'cssClasses' prop must be an array, null, or undefined");
+    }
+
+    return [...classes.map((value) => styleClassValue(value)), className];
+};
 
 const hasCssClassesChange = (prev: Props, next: Props): boolean => {
     const classes = next.cssClasses;
@@ -463,15 +490,23 @@ function updateStyle(widget: Gtk.Widget, prev: Props, next: Props): Iterable<str
     return didWriteCssClasses(widget, prev, next, className) ? ["style", "cssClasses"] : ["style"];
 }
 
+function validateStyleProps(_widget: Gtk.Widget, _prev: Props, next: Props): void {
+    validateStyle(next.style);
+
+    if (next.style !== undefined && next.style !== null) {
+        withStyleClass(next.cssClasses, `${CSS_CLASSES_PROP}-validation`);
+    }
+}
+
 function styleBehavior(): ElementBehavior<Gtk.Widget> {
-    return { update: updateStyle };
+    return { validate: validateStyleProps, update: updateStyle };
 }
 
 function selectedRowIndex(box: Gtk.ListBox): number {
     return box.getSelectedRow()?.getIndex() ?? NO_SELECTION;
 }
 
-function selectedIndexError(value: number): Error {
+function selectedIndexError(value: unknown): Error {
     return new Error(
         "The 'selectedIndex' of a <GtkListBox> must be a whole number, or -1 to select no row; " +
         `received ${String(value)}.`,
@@ -479,15 +514,15 @@ function selectedIndexError(value: number): Error {
 }
 
 function desiredIndex(value: unknown): number | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+
     if (value === null) {
         return NO_SELECTION;
     }
 
-    if (typeof value !== "number") {
-        return undefined;
-    }
-
-    if (!Number.isSafeInteger(value)) {
+    if (typeof value !== "number" || !Number.isSafeInteger(value) || value < NO_SELECTION) {
         throw selectedIndexError(value);
     }
 
@@ -537,7 +572,9 @@ function scheduleSelectedIndex(box: Gtk.ListBox, state: SelectedIndexState): voi
         state.isScheduled = false;
 
         if (state.disconnect !== null) {
-            applySelectedIndex(box, state);
+            runWithErrorReporter(state.reportError, () => {
+                applySelectedIndex(box, state);
+            });
         }
     });
 }
@@ -561,20 +598,31 @@ function watchSelectionDrift(box: Gtk.ListBox, state: SelectedIndexState): void 
 function selectedIndexBehavior(): ElementBehavior<Gtk.ListBox> {
     return {
         deferred: [SELECTED_INDEX_PROP],
-        initialize: (): SelectedIndexState => ({ desired: undefined, isScheduled: false, disconnect: null }),
+        initialize: (): SelectedIndexState => ({
+            desired: undefined,
+            isScheduled: false,
+            disconnect: null,
+            reportError: null,
+        }),
+        validate: (_box, _prev, next) => {
+            desiredIndex(next[SELECTED_INDEX_PROP]);
+        },
         update: (_box, _prev, next, context) => {
             (context as SelectedIndexState).desired = desiredIndex(next[SELECTED_INDEX_PROP]);
 
             return [SELECTED_INDEX_PROP];
         },
-        flush: (box, context) => {
-            applySelectedIndex(box, context as SelectedIndexState);
-            watchSelectionDrift(box, context as SelectedIndexState);
+        flush: (box, context, reportError) => {
+            const state = context as SelectedIndexState;
+            state.reportError = reportError;
+            applySelectedIndex(box, state);
+            watchSelectionDrift(box, state);
         },
         teardown: (_box, context) => {
             const state = context as SelectedIndexState;
             state.disconnect?.();
             state.disconnect = null;
+            state.reportError = null;
         },
     };
 }

@@ -10,15 +10,21 @@ import type {
 } from "@react-navigation/core";
 import type { ReactNode } from "react";
 import { createNavigatorFactory, createScreenFactory, useNavigationBuilder } from "@react-navigation/core";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import type { DrawerRouterFactory } from "./drawer-router.js";
 import type {
     DrawerNavigationEventMap,
+    DrawerNavigationHelpers,
     DrawerNavigationOptions,
     DrawerNavigationProp,
     DrawerNavigatorProps,
 } from "./types.js";
-import { createDrawerRouter } from "./drawer-router.js";
+import {
+    createDrawerRouter,
+    isDrawerCollapsed,
+    isDrawerPinned,
+    setDrawerCollapsed,
+} from "./drawer-router.js";
 import { DrawerView } from "./drawer-view.js";
 
 /** Type bag describing the drawer navigator to React Navigation's typed APIs. */
@@ -47,15 +53,23 @@ type DrawerTypeBag<
 /** Declares a typed screen of a drawer navigator for the static configuration API. */
 const createDrawerScreen: StaticScreenFactory<DrawerTypeBag> = createScreenFactory<DrawerTypeBag>();
 
-const useDrawerRouter = (isCollapsed: boolean): DrawerRouterFactory => {
-    const [flag] = useState(() => new CollapsedFlag(isCollapsed));
-    const [createRouter] = useState(() => createDrawerRouter(() => flag.isCollapsed));
-
-    useEffect(() => {
-        flag.update(isCollapsed);
-    }, [flag, isCollapsed]);
+const useDrawerRouter = (isCollapsed: boolean, isPinned: boolean): DrawerRouterFactory => {
+    const [createRouter] = useState(() => createDrawerRouter(isCollapsed, isPinned));
 
     return createRouter;
+};
+
+const useCollapsedMode = (
+    state: DrawerNavigationState<ParamListBase>,
+    navigation: DrawerNavigationHelpers,
+    isCollapsed: boolean,
+    isPinned: boolean,
+): void => {
+    useLayoutEffect(() => {
+        if (isDrawerCollapsed(state) !== isCollapsed || isDrawerPinned(state) !== isPinned) {
+            navigation.dispatch(setDrawerCollapsed(isCollapsed, isPinned, state.key));
+        }
+    }, [isCollapsed, isPinned, navigation, state]);
 };
 
 /** Renders the screens of a {@link createDrawerNavigator} beside a sidebar in an `AdwOverlaySplitView`. */
@@ -70,7 +84,7 @@ function DrawerNavigator({
     defaultStatus,
     ...options
 }: DrawerNavigatorProps): ReactNode {
-    const createRouter = useDrawerRouter(collapsed === true);
+    const createRouter = useDrawerRouter(collapsed === true, pinSidebar === true);
 
     const { state, descriptors, navigation, NavigationContent } = useNavigationBuilder<
         DrawerNavigationState<ParamListBase>,
@@ -79,6 +93,8 @@ function DrawerNavigator({
         DrawerNavigationOptions,
         DrawerNavigationEventMap
     >(createRouter, { ...options, defaultStatus: defaultStatus ?? (collapsed === true ? "closed" : "open") });
+
+    useCollapsedMode(state, navigation, collapsed === true, pinSidebar === true);
 
     return (
         <NavigationContent>
@@ -106,18 +122,6 @@ function createDrawerNavigator<
     const Config extends StaticConfig<TypeBag> | undefined = undefined,
 >(config?: Config): TypedNavigator<TypeBag, Config> {
     return createNavigatorFactory(DrawerNavigator)(config) as TypedNavigator<TypeBag, Config>;
-}
-
-class CollapsedFlag {
-    isCollapsed: boolean;
-
-    constructor(isCollapsed: boolean) {
-        this.isCollapsed = isCollapsed;
-    }
-
-    update(isCollapsed: boolean): void {
-        this.isCollapsed = isCollapsed;
-    }
 }
 
 export { createDrawerNavigator, createDrawerScreen, DrawerNavigator, type DrawerTypeBag };

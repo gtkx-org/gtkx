@@ -529,6 +529,29 @@ describe("render - TextView (8)", () => {
                 <GtkTextView buffer={<GtkTextBuffer onChanged={onChanged}>{text}</GtkTextBuffer>} />
             ));
         });
+
+        it("does not call onApplyTag while reconciling tagged text", async () => {
+            const appliedTags: Gtk.TextTag[] = [];
+
+            const buildView = (text: string) => (
+                <GtkTextView
+                    buffer={(
+                        <GtkTextBuffer
+                            onApplyTag={(tag) => {
+                                appliedTags.push(tag);
+                            }}
+                        >
+                            <GtkTextTag name="probe">{text}</GtkTextTag>
+                        </GtkTextBuffer>
+                    )}
+                />
+            );
+
+            const { rerender } = await render(buildView("one"));
+            appliedTags.length = 0;
+            await rerender(buildView("two"));
+            expect(appliedTags).toEqual([]);
+        });
     });
 
     describe("enableUndo", () => {

@@ -34,6 +34,7 @@ import {
     type DeclaredSignalTypes,
     emitDeclaredSignal,
     getSignalBaseName,
+    handlerNameFor,
     overrideSignalClassClosure,
     signalForHandlerName,
     type SignalHandler,
@@ -260,8 +261,11 @@ type RegisterClassOptions<
      * as readily as one named `level2-depth`, the way `WebKit.Settings` names
      * `enable-2d-canvas-acceleration` for its `enable2dCanvasAcceleration` member. An uppercase
      * letter in the ParamSpec's own name is refused, since GObject notifies under that spelling
-     * and nothing else reads it back. Every property gains prototype accessors, one for the key as
-     * written, one for it with dashes turned into underscores and one for it in camelCase, each
+     * and nothing else reads it back. Two keys that collapse to the same camelCase member,
+     * including one inherited from another `registerClass` declaration, are refused, since
+     * neither could address its property independently. Every property gains
+     * prototype accessors, one for the key as written, one for it with dashes turned into
+     * underscores and one for it in camelCase, each
      * unless the class already defines that name. They serve the value from storage of their own on
      * the instance, which is also what the type's `get_property` and `set_property` slots read and
      * write, so a value set from JavaScript, from `g_object_set_property` and at construction all
@@ -317,7 +321,8 @@ type RegisterClassOptions<
      * listed interface already carries throws, and so does one carrying an uppercase letter, which
      * GObject would carry under that exact spelling, out of reach of both its dashed spelling and
      * its `on<SignalName>` default handler. The two word separators spell the same signal, so a
-     * signal declared as `data_changed` is connected to and emitted as `data-changed` too.
+     * signal declared as `data_changed` is connected to and emitted as `data-changed` too. Distinct
+     * names that collapse to the same `on<SignalName>` handler are refused as ambiguous.
      *
      * Instances connect and emit by name through the same `connect`, `on`, `once`, `off` and
      * `emit` surface inherited signals use: `registerClass` wraps `connect` and `emit` on the
@@ -398,9 +403,10 @@ const SIGNAL_OVERRIDE_PATTERN = /^on[A-Z]/;
  * implement and no method on the chain fills `vfuncInitAsync`, since the default `init_async`
  * would run `vfuncInit` on a worker thread, when an entry in
  * `RegisterClassOptions.properties` names its `GObject.ParamSpec` something the key it sits under
- * does not spell, when an entry in `RegisterClassOptions.signals` carries an invalid name, a name
- * spelled with an uppercase letter rather than dashed, a name the type already knows, a GType
- * that cannot hold a value, or an accumulator the spec does not admit, and when
+ * does not spell, when two own or inherited property keys collapse to the same member, when an entry in
+ * `RegisterClassOptions.signals` carries an invalid name, a name spelled with an uppercase letter
+ * rather than dashed, a name the type already knows, a name whose generated handler is ambiguous,
+ * a GType that cannot hold a value, or an accumulator the spec does not admit, and when
  * `RegisterClassOptions.cssName` is
  * given for a class that does not extend `Gtk.Widget`. An exception thrown by
  * `RegisterClassOptions.classInit` also propagates, after the type has already been registered.
@@ -458,7 +464,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     const declaredTypes = resolveInterfaceTypes(klass, options.implements ?? []);
     const adoptedTypes = declaredTypes.filter((gtype) => !typeIsA(parentType, gtype));
     const properties = options.properties ?? {};
-    const signals = resolveDeclaredSignals(klass, options.signals ?? {});
+    const signals = resolveDeclaredSignals(klass, [parentType, ...declaredTypes], options.signals ?? {});
     const members = collectInstanceMembers(klass);
     const { methods, inheritedNames } = members;
     checkAsyncInitable(klass, adoptedTypes, methods);
@@ -873,12 +879,38 @@ function resolveDeclaredSignal(
     return { native, declared };
 }
 
-function resolveDeclaredSignals(klass: AnyClass, signals: Record<string, SignalSpec>): DeclaredSignals {
+function assertUniqueDeclaredHandler(
+    klass: AnyClass,
+    signalSources: bigint[],
+    handlers: Set<string>,
+    name: string,
+): void {
+    const canonical = canonicalSignalName(name);
+    const handler = handlerNameFor(canonical);
+    const isInherited = signalSources.some((source) => signalForHandlerName(source, handler) !== undefined);
+
+    if (isInherited || handlers.has(handler)) {
+        throw new TypeError(
+            `registerClass: ${klass.name} declares the signal '${name}', whose handler ` +
+            `'${handler}' also names another signal`,
+        );
+    }
+
+    handlers.add(handler);
+}
+
+function resolveDeclaredSignals(
+    klass: AnyClass,
+    signalSources: bigint[],
+    signals: Record<string, SignalSpec>,
+): DeclaredSignals {
     const native: NativeRegisterClassSignal[] = [];
     const table: Map<string, DeclaredSignalTypes> = new Map();
+    const handlers: Set<string> = new Set();
 
     for (const [name, spec] of Object.entries(signals)) {
         assertLowerCaseSignalName(klass, name);
+        assertUniqueDeclaredHandler(klass, signalSources, handlers, name);
         const resolved = resolveDeclaredSignal(klass, name, spec);
         native.push(resolved.native);
         table.set(canonicalSignalName(name), resolved.declared);

@@ -106,7 +106,7 @@ share/doc/<binaryName>/copyright                 generated, deb only
 
 ## Why Node.js is bundled
 
-GTKX needs Node.js 24, and Debian 13 ships 20 while Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` downloads the official `nodejs.org` build matching the Node.js you are running and verifies it against the published SHA-256. The release archive is cached under `~/.cache/gtkx/node/` and re-verified on every reuse, so only the first deploy needs network access. That costs about 100 MiB per package.
+GTKX needs Node.js 24.11 or later, and Debian 13 ships 20 while Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` downloads the official `nodejs.org` build matching the Node.js you are running and verifies it against the published SHA-256. The release archive is cached under `~/.cache/gtkx/node/` and re-verified on every reuse, so only the first deploy needs network access. That costs about 100 MiB per package.
 
 `deploy.node.source` changes where it comes from:
 

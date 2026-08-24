@@ -45,7 +45,7 @@ export const App = () => (
 );
 ```
 
-It takes `initialState` to restore a saved state, `onStateChange` to observe every change, `onReady` for the first render, and `onUnhandledAction` for an action no navigator handled. A `ref`, created with `createNavigationContainerRef` or `useNavigationContainerRef`, exposes the same navigation API outside the tree: `ref.current?.navigate("Note", { id: "42" })` from a menu action or a notification handler.
+It takes `initialState` to restore a saved state, `onStateChange` to observe every change, `onReady` for the first render, and `onUnhandledAction` for an action no navigator handled. A `ref`, created with `createNavigationContainerRef` or `useNavigationContainerRef`, exposes the same navigation API outside the tree once the container is ready. It is useful for integration tests and synchronous state queries. For an application action or notification that can arrive during startup, keep the destination as React request state and consume it from below the container after `onReady`; [the Tasks tutorial builds that path](/tutorial/actions-menus-shortcuts#reading-navigation-and-requesting-a-route) without dropping or retrying an early command.
 
 The container hands a `theme` to `useTheme` and to option callbacks. The default one tracks Adwaita's style manager live, so it is `{ dark, highContrast }` for the application as it is right now. Pass `theme` to override it, or `DefaultTheme` and `DarkTheme` for the two fixed ones.
 
@@ -221,7 +221,7 @@ type MailParams = { Inbox: undefined; Archive: undefined };
 const Tabs = createTabNavigator<MailParams>();
 
 export const Mail = ({ unread }: { unread: number }) => (
-    <Tabs.Navigator tabBarPosition="bottom" screenOptions={{ animation: "fade" }}>
+    <Tabs.Navigator tabBarPosition="bottom" animation="fade">
         <Tabs.Screen
             name="Inbox"
             component={Inbox}
@@ -236,7 +236,7 @@ export const Mail = ({ unread }: { unread: number }) => (
 );
 ```
 
-`tabBarLabel` is the switcher's label, defaulting to `title`, then to the route name; `tabBarIcon` is an icon name; `tabBarBadge` is the badge number, hidden at `0`; and `needsAttention` highlights the tab. `lazy`, on by default, mounts a screen the first time its tab is focused, so a heavy tab costs nothing until it is opened; `lazy: false` mounts it at startup. `animation: "fade"` crossfades between pages, and the default `"none"` switches instantly. `popToTopOnBlur` pops a nested stack back to its first screen when the tab loses focus. The router's `backBehavior` decides what `goBack` does across tabs, as in React Navigation.
+`tabBarLabel` is the switcher's label, defaulting to `title`, then to the route name; `tabBarIcon` is an icon name; `tabBarBadge` is the badge number, hidden at `0`; and `needsAttention` highlights the tab. `lazy`, on by default, mounts a screen the first time its tab is focused, so a heavy tab costs nothing until it is opened; `lazy: false` mounts it at startup. The navigator's `animation="fade"` crossfades every switch, and the default `"none"` switches instantly. `popToTopOnBlur` pops a nested stack back to its first screen when the tab loses focus. The router's `backBehavior` decides what `goBack` does across tabs, as in React Navigation.
 
 Tabs share the stack's header options. `headerShown`, `headerStart`, and `headerEnd` apply to the focused tab's header bar, and a custom `header` receives `{ route, navigation, options, viewSwitcher }`, where `viewSwitcher` is the element to place in the bar when the switcher belongs at the top. With `headerShown: false` a top switcher stays as the top bar on its own. `headerTitle` is the bar's title widget, which is where a top switcher goes, so it replaces the switcher; set it only with `tabBarPosition="bottom"`, or place the switcher yourself in a custom `header`.
 

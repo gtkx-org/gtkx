@@ -1,5 +1,5 @@
 ---
-description: "Name the app's commands as GActions, reach them from a menu and the keyboard, and drive the navigator from outside a screen."
+description: "Name the app's commands as GActions, reach them from a menu and the keyboard, and carry route requests safely into the navigator."
 ---
 
 # Menus, Accelerators, and Shortcuts
@@ -16,16 +16,20 @@ Create `src/components/window-actions.tsx`:
 
 ```tsx
 import { GSimpleAction } from "@gtkx/jsx/gio";
-import { currentSelection, openTask } from "../navigation.js";
+import { currentSelection, type OpenTaskRequest } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import { addListId } from "../store/selectors.js";
 
-export const WindowActions = () => {
+type WindowActionsProps = {
+    onOpenTaskRequest: (request: OpenTaskRequest) => void;
+};
+
+export const WindowActions = ({ onOpenTaskRequest }: WindowActionsProps) => {
     const newTask = (): void => {
         const { lists, addTask } = useStore.getState();
         const selection = currentSelection();
         const id = addTask(addListId(selection, lists), "New Task");
-        if (id) openTask(selection, id);
+        if (id) onOpenTaskRequest({ selection, id });
     };
 
     return (
@@ -38,11 +42,11 @@ export const WindowActions = () => {
 };
 ```
 
-Three names are missing, so this file does not compile on its own. `showDialog` joins the store below, where the finished file appears. `currentSelection` and `openTask` are the subject of the next section.
+Two names are missing, so this file does not compile on its own. `showDialog` joins the store below, where the finished file appears. `currentSelection` is the subject of the next section, and the window supplies `onOpenTaskRequest` when it mounts the action group.
 
 `newTask` reaches the store through `useStore.getState()` rather than a hook. The handler reads the state at the moment it runs, so the component does not re-render when the lists change. The store is not React state, as [Adding Tasks with a Store](/tutorial/the-task-store) covered, so any function can read it directly.
 
-The selection is not there to read. Since [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) it has been the `Tasks` route's params, and this handler runs from a menu item, a key, and a button, none of which is inside a screen. There is no `route` prop to take it from and no `useNavigation` to call, so the handler asks the navigator the same way it asks the store: through a module-level function.
+The selection is not there to read. Since [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) it has been the `Tasks` route's params, and this handler runs from a menu item, a key, and a button, none of which is inside a screen. There is no `route` prop to take it from and no `useNavigation` to call, so the handler reads the navigator's current snapshot through a module-level function. Opening the new task takes a different path: the handler describes what should open, and React carries that request into the navigation tree.
 
 Mount the group in the window's `actions` slot. In `src/components/window.tsx`:
 
@@ -57,7 +61,7 @@ import { WindowActions } from "./window-actions.js";
     heightRequest={294}
     onCloseRequest={() => quit()}
     breakpoints={/* ... */}
-    actions={<WindowActions />}
+    actions={<WindowActions onOpenTaskRequest={requestOpenTask} />}
 >
     {/* ... */}
 </AdwApplicationWindow>
@@ -91,9 +95,9 @@ Once a command has a name, a widget can point at it instead of carrying a handle
 
 `actionName` takes the place of `onClicked`, and GTK4 dims the button whenever no window offers that action. It also answers the rule [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) set for header widgets, which sent the filter and the search button into components of their own: this button watches nothing, so putting it straight in the options costs `Window` no renders.
 
-## Reaching the navigator from outside a screen
+## Reading navigation and requesting a route
 
-`useNavigation` answers only below a screen. A GAction handler is not below one, and neither is a window shortcut or a notification handler, so the navigator needs a handle a plain module can hold. `createNavigationContainerRef` makes one, and the container takes it as its `ref`.
+`useNavigation` answers only inside the navigation tree. A GAction handler is not there, so it cannot use the hook to read the current selection. `createNavigationContainerRef` gives the window a synchronous snapshot for that read, and the container takes it as its `ref`.
 
 In `src/navigation.ts`:
 
@@ -108,7 +112,16 @@ In `src/navigation.ts`:
 +export const navigationRef = createNavigationContainerRef<RootParamList>();
 ```
 
-The ref exposes the navigation API a screen gets from its `navigation` prop, typed against the same `RootParamList`. Add the three questions this app asks it, at the end of the file:
+The request itself is plain data. Add its shape beside `RootParamList`:
+
+```ts
+export type OpenTaskRequest = {
+    selection: Selection;
+    id: string;
+};
+```
+
+The ref exposes the navigation snapshot a screen gets from its `navigation` prop, typed against the same `RootParamList`. Add the two questions this app asks it, at the end of the file:
 
 ```ts
 export const currentSelection = (): Selection => {
@@ -121,35 +134,87 @@ export const openTaskId = (): string | null => {
     const route = navigationRef.isReady() ? navigationRef.getCurrentRoute() : undefined;
     return route?.name === "Task" ? route.params.id : null;
 };
-
-export const openTask = (selection: Selection, id: string): void => {
-    if (!navigationRef.isReady()) return;
-    navigationRef.navigate("Tasks", selection);
-    navigationRef.navigate("Task", { id });
-};
 ```
 
-Every one of them starts at `isReady()`. Between this module loading and the container's first render the ref points at nothing, and an action can arrive in that gap: [Reminders That Reach the Desktop](/tutorial/reminders) lets the desktop start the app to deliver one. Calling through the ref before the container is mounted reports an error and does nothing, so each helper checks first and answers with a fallback.
+Both questions start at `isReady()` because a read before the first navigation state exists needs a useful fallback. Neither function tries to change navigation. A command can arrive before the container is mounted, so writing through the ref would either drop the command or require an imperative retry queue. Request state avoids both.
 
 `currentSelection` reads the params `useSelection` reads inside the tree, off the root state rather than off a hook. It falls back to All Tasks because the content stack can be empty, the Nothing Selected state from [A Layout That Collapses](/tutorial/an-adaptive-layout).
 
 `openTaskId` asks which route the user is looking at and answers `null` for every route but `Task`. Which task is open is a fact the navigator already holds, so no field anywhere mirrors it, and this one question is what gates the Delete key below.
 
-`openTask` navigates twice on purpose. The first call selects the task list you name and drops whatever page sat above it, the second pushes the task's page onto that list. The editor then has a list underneath it, so leaving the editor lands somewhere that makes sense rather than wherever the app happened to be.
-
-Hand the container the ref. In `src/components/window.tsx`:
+Hand the container the ref, keep the request in React state, and consume it from inside the navigation tree. In `src/components/window.tsx`:
 
 ```diff
+-import { NavigationContainer } from "@gtkx/navigation";
++import { NavigationContainer, type NavigationProp, useNavigation } from "@gtkx/navigation";
+-import { useEffect, useRef } from "react";
++import { useCallback, useEffect, useRef, useState } from "react";
 -import { ALL_TASKS, Split } from "../navigation.js";
-+import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
++import {
++    ALL_TASKS,
++    navigationRef,
++    type OpenTaskRequest,
++    type RootParamList,
++    Split,
++} from "../navigation.js";
 ```
 
-```diff
--<NavigationContainer>
-+<NavigationContainer ref={navigationRef}>
+```tsx
+type OpenTaskRequestConsumerProps = {
+    request: OpenTaskRequest;
+    onHandled: (request: OpenTaskRequest) => void;
+};
+
+const OpenTaskRequestConsumer = ({ request, onHandled }: OpenTaskRequestConsumerProps): null => {
+    const navigation = useNavigation<NavigationProp<RootParamList>>();
+    const hasTask = useStore((state) =>
+        state.tasks.some((task) => task.id === request.id && !task.deleted),
+    );
+
+    useEffect(() => {
+        if (hasTask) {
+            navigation.navigate("Tasks", request.selection);
+            navigation.navigate("Task", { id: request.id });
+        }
+
+        onHandled(request);
+    }, [hasTask, navigation, onHandled, request]);
+
+    return null;
+};
 ```
 
-There is one container, so there is one ref, and it is the only way in from outside. Screens keep using `useNavigation` and their `route`; the ref exists for the code that has neither.
+Inside `Window`, add the state and wire it to the action group and container:
+
+```tsx
+const [openTaskRequest, setOpenTaskRequest] = useState<OpenTaskRequest | null>(null);
+const [navigationReady, setNavigationReady] = useState(false);
+
+const requestOpenTask = useCallback((request: OpenTaskRequest): void => {
+    setOpenTaskRequest(request);
+}, []);
+const handleOpenTaskRequest = useCallback((handled: OpenTaskRequest): void => {
+    setOpenTaskRequest((current) => (current === handled ? null : current));
+}, []);
+
+// ...
+
+<AdwApplicationWindow
+    // ...
+    actions={<WindowActions onOpenTaskRequest={requestOpenTask} />}
+>
+    <NavigationContainer ref={navigationRef} onReady={() => setNavigationReady(true)}>
+        {navigationReady && openTaskRequest ? (
+            <OpenTaskRequestConsumer request={openTaskRequest} onHandled={handleOpenTaskRequest} />
+        ) : null}
+        <Split.Navigator>{/* ... */}</Split.Navigator>
+    </NavigationContainer>
+</AdwApplicationWindow>
+```
+
+`onReady` changes ordinary React state. Only then does the request consumer mount under the container, where `useNavigation` is valid. Its effect first selects the requested list and then opens the task, leaving that list underneath the editor for Back. It acknowledges the same request object it handled, so a newer request cannot be cleared by an older effect. A task removed before the effect runs is acknowledged without opening an empty editor.
+
+The ref now has a narrow job: answer synchronous questions for code outside a screen. Navigation changes flow in the other direction as props and state, and a request remains present across the container's first render instead of disappearing in the startup gap.
 
 ## Accelerators
 
@@ -251,18 +316,22 @@ export const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (set) =
 
 ```tsx
 import { GSimpleAction } from "@gtkx/jsx/gio";
-import { currentSelection, openTask } from "../navigation.js";
+import { currentSelection, type OpenTaskRequest } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import { addListId } from "../store/selectors.js";
 
-export const WindowActions = () => {
+type WindowActionsProps = {
+    onOpenTaskRequest: (request: OpenTaskRequest) => void;
+};
+
+export const WindowActions = ({ onOpenTaskRequest }: WindowActionsProps) => {
     const showDialog = useStore((state) => state.showDialog);
 
     const newTask = (): void => {
         const { lists, addTask } = useStore.getState();
         const selection = currentSelection();
         const id = addTask(addListId(selection, lists), "New Task");
-        if (id) openTask(selection, id);
+        if (id) onOpenTaskRequest({ selection, id });
     };
 
     return (
@@ -364,7 +433,7 @@ import { Dialogs } from "./dialogs.js";
 
 <AdwApplicationWindow
     // ...
-    actions={<WindowActions />}
+    actions={<WindowActions onOpenTaskRequest={requestOpenTask} />}
 >
     {/* ... */}
     <Dialogs />
@@ -434,7 +503,7 @@ Mount the controller in `src/components/window.tsx`:
 ```
 
 ```diff
-     actions={<WindowActions />}
+     actions={<WindowActions onOpenTaskRequest={requestOpenTask} />}
 +    controllers={<AppShortcuts />}
  >
 ```

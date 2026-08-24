@@ -1,11 +1,20 @@
 import * as GLib from "@gtkx/gi/glib";
 import { AdwApplication } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
+import { useCallback, useState } from "react";
 import { Window } from "./components/window.js";
-import { ALL_TASKS, openTask } from "./navigation.js";
+import { ALL_TASKS, type OpenTaskRequest } from "./navigation.js";
 import { useStore } from "./store/index.js";
 
 export function App() {
+    const [openTaskRequest, setOpenTaskRequest] = useState<OpenTaskRequest | null>(null);
+    const requestOpenTask = useCallback((request: OpenTaskRequest): void => {
+        setOpenTaskRequest(request);
+    }, []);
+    const handleOpenTaskRequest = useCallback((handled: OpenTaskRequest): void => {
+        setOpenTaskRequest((current) => (current === handled ? null : current));
+    }, []);
+
     return (
         <AdwApplication
             actionAccels={[
@@ -27,13 +36,17 @@ export function App() {
                         parameterType={GLib.VariantType.new("s")}
                         onActivate={(parameter) => {
                             if (!parameter) return;
-                            openTask(ALL_TASKS, parameter.getString()[0]);
+                            requestOpenTask({ selection: ALL_TASKS, id: parameter.getString()[0] });
                         }}
                     />
                 </>
             }
         >
-            <Window />
+            <Window
+                openTaskRequest={openTaskRequest}
+                onOpenTaskRequest={requestOpenTask}
+                onOpenTaskRequestHandled={handleOpenTaskRequest}
+            />
         </AdwApplication>
     );
 }

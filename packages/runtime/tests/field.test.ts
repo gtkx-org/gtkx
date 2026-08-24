@@ -83,6 +83,11 @@ describe("t.fieldAt", () => {
         expect(() => bound.read(handle, -4)).toThrow();
     });
 
+    it("refuses a field that extends beyond an allocated handle", () => {
+        const bound = t.fieldAt(t.float64);
+        expect(() => bound.read(alloc(8), 1)).toThrow();
+    });
+
     it("refuses a descriptor that cannot be compiled", () => {
         expect(() => t.fieldAt(t.ref(t.void))).toThrow();
     });
@@ -157,10 +162,32 @@ describe("t.field error paths", () => {
         expect(() => t.field(t.int32, -4)).toThrow();
     });
 
+    it("refuses to read beyond an allocated handle", () => {
+        expect(() => t.field(t.uint32, 1).read(alloc(4))).toThrow();
+    });
+
+    it("refuses to write beyond an allocated handle", () => {
+        expect(() => {
+            t.field(t.float64, 4).write(alloc(8), 1);
+        }).toThrow();
+    });
+
+    it("refuses an unbound read beyond an allocated handle", () => {
+        expect(() => read(alloc(2), t.uint32, 0)).toThrow();
+    });
+
+    it("refuses an unbound write beyond an allocated handle", () => {
+        expect(() => {
+            write(alloc(4), t.float64, 0, 1);
+        }).toThrow();
+    });
+
     it("refuses a descriptor that cannot be compiled", () => {
         expect(() => t.field(t.ref(t.void), 0)).toThrow();
     });
+});
 
+describe("t.field value errors", () => {
     it("refuses a value the field cannot hold", () => {
         const bound = t.field(t.int32, 0);
         const handle = alloc(4);

@@ -17,7 +17,14 @@ import {
 type IntrinsicElementEntry = {
     glibName: string;
     signals: [string, string][];
-    properties: [string, string][];
+    properties: PropertyMetadata[];
+};
+
+type PropertyMetadata = {
+    accessor: string;
+    defaultLiteral: string | undefined;
+    flags: number;
+    name: string;
 };
 
 const READABLE = 1;
@@ -43,11 +50,18 @@ const generateMetadata = (library: Library): string => {
         .filter(({ properties }) => properties.length > 0)
         .map(({ glibName, properties }) => `    "${glibName}": ${renderPropertiesObject(properties)},`);
 
+    const constructOnlyEntries = renderSetEntries(intrinsicElements, CONSTRUCT_ONLY);
+    const constructableEntries = renderSetEntries(intrinsicElements, WRITABLE | CONSTRUCT | CONSTRUCT_ONLY);
+    const defaultsEntries = renderDefaultEntries(intrinsicElements);
+
     return `${[
         PROPERTY_ENTRY_TYPE,
         `export const signals: Record<string, Record<string, string>> = {\n${signalsEntries.join("\n")}\n};`,
         "export const properties: Record<string, Record<string, PropertyEntry>> = " +
         `{\n${propertyEntries.join("\n")}\n};`,
+        `export const constructOnlyProps: Record<string, Set<string>> = {\n${constructOnlyEntries.join("\n")}\n};`,
+        `export const constructProps: Record<string, Set<string>> = {\n${constructableEntries.join("\n")}\n};`,
+        `export const defaultProps: Record<string, Record<string, unknown>> = {\n${defaultsEntries.join("\n")}\n};`,
     ].join("\n\n")}\n`;
 };
 
@@ -111,18 +125,24 @@ const propertyFlags = (property: GirProperty): number => {
         constructOnly;
 };
 
-const propertyEntryLiteral = (library: Library, klass: GirClass, property: GirProperty): string => {
-    const head = `${sourceStringLiteral(property.name)},${String(propertyFlags(property))}`;
-    const literal = isDefaultCandidate(property) ? renderDefaultLiteral(library, klass, property) : undefined;
+const propertyMetadata = (library: Library, klass: GirClass, property: GirProperty): PropertyMetadata => ({
+    accessor: toCamelIdentifier(property.name),
+    defaultLiteral: isDefaultCandidate(property) ? renderDefaultLiteral(library, klass, property) : undefined,
+    flags: propertyFlags(property),
+    name: property.name,
+});
 
-    return literal === undefined ? `[${head}]` : `[${head},${literal}]`;
+const propertyEntryLiteral = (property: PropertyMetadata): string => {
+    const head = `${sourceStringLiteral(property.name)},${String(property.flags)}`;
+
+    return property.defaultLiteral === undefined ? `[${head}]` : `[${head},${property.defaultLiteral}]`;
 };
 
 const collectPropertiesFromSource = (
     library: Library,
     source: GirClass,
     seen: Set<string>,
-    entries: [string, string][],
+    entries: PropertyMetadata[],
 ): void => {
     for (const property of source.properties) {
         const jsName = toCamelIdentifier(property.name);
@@ -132,13 +152,13 @@ const collectPropertiesFromSource = (
         }
 
         seen.add(jsName);
-        entries.push([jsName, propertyEntryLiteral(library, source, property)]);
+        entries.push(propertyMetadata(library, source, property));
     }
 };
 
-const collectProperties = (library: Library, sources: GirClass[]): [string, string][] => {
+const collectProperties = (library: Library, sources: GirClass[]): PropertyMetadata[] => {
     const seen: Set<string> = new Set();
-    const entries: [string, string][] = [];
+    const entries: PropertyMetadata[] = [];
 
     for (const source of sources) {
         collectPropertiesFromSource(library, source, seen, entries);
@@ -157,10 +177,58 @@ const renderObjectLiteral = (entries: [string, string][], renderValue: (value: s
     return `{\n${lines.join(",\n")}\n    }`;
 };
 
-const renderPropertiesObject = (entries: [string, string][]): string =>
-    renderObjectLiteral(entries, (value) => value);
+const renderPropertiesObject = (entries: PropertyMetadata[]): string =>
+    renderObjectLiteral(
+        entries.map((entry) => [entry.accessor, propertyEntryLiteral(entry)]),
+        (value) => value,
+    );
 
 const renderSignalsObject = (entries: [string, string][]): string => renderObjectLiteral(entries, sourceStringLiteral);
+
+const renderStringSet = (names: string[]): string =>
+    `new Set([${names.map((name) => sourceStringLiteral(name)).join(",")}])`;
+
+const renderSetEntries = (entries: IntrinsicElementEntry[], flags: number): string[] => {
+    const rendered: string[] = [];
+
+    for (const { glibName, properties } of entries) {
+        const names = properties
+            .filter((property) => (property.flags & flags) !== 0)
+            .map((property) => property.accessor);
+
+        if (names.length > 0) {
+            rendered.push(`    "${glibName}": ${renderStringSet(names)},`);
+        }
+    }
+
+    return rendered;
+};
+
+const propertyDefaults = (properties: PropertyMetadata[]): [string, string][] => {
+    const defaults: [string, string][] = [];
+
+    for (const property of properties) {
+        if (property.defaultLiteral !== undefined) {
+            defaults.push([property.accessor, property.defaultLiteral]);
+        }
+    }
+
+    return defaults;
+};
+
+const renderDefaultEntries = (entries: IntrinsicElementEntry[]): string[] => {
+    const rendered: string[] = [];
+
+    for (const { glibName, properties } of entries) {
+        const defaults = propertyDefaults(properties);
+
+        if (defaults.length > 0) {
+            rendered.push(`    "${glibName}": ${renderObjectLiteral(defaults, (value) => value)},`);
+        }
+    }
+
+    return rendered;
+};
 
 const isDefaultCandidate = (property: GirProperty): boolean =>
     (property.writable || property.construct) && !property.constructOnly && property.introspectable;

@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { getOrInsert, indexBeforeOrEnd } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
 import { applyAdoptedProps, markFlush } from "./apply-props.js";
+import { publishLazyPublicInstance } from "./lazy-public-instance.js";
 import { typeInfoFor } from "./metadata.js";
 import {
     DEFAULT_SLOT,
@@ -59,13 +60,18 @@ const adoptedFrom = (parent: ElementNode, entry: PlacedChild, behavior: ElementB
     entry.adopted = claim instanceof GObject.Object ? claim : null;
 };
 
-const applyLazyProps = (entry: PlacedChild): void => {
+const applyLazyProps = (parent: ElementNode, entry: PlacedChild): void => {
     if (entry.node.kind !== LAZY_KIND || entry.adopted === null) {
         return;
     }
 
-    applyAdoptedProps(lazyTarget(entry.node, entry.adopted), {}, entry.node.props);
     entry.node.adopted = entry.adopted;
+
+    if (parent.isMounted) {
+        applyAdoptedProps(lazyTarget(entry.node, entry.adopted), {}, entry.node.props);
+        entry.node.isMounted = true;
+        publishLazyPublicInstance(entry.node.props, entry.adopted);
+    }
 };
 
 const wireBufferView = (node: PlaceableNode, parent: ElementNode): void => {
@@ -105,7 +111,7 @@ const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
 
     ctx.entry.behavior = behavior;
     adoptedFrom(ctx.parent, ctx.entry, behavior, claim);
-    applyLazyProps(ctx.entry);
+    applyLazyProps(ctx.parent, ctx.entry);
 
     return true;
 };
@@ -199,10 +205,12 @@ const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild
         return;
     }
 
-    const context = getOrCreateContext(parent, behavior);
-    const claim = reorder(parent.object, entry.object, placeInfo(entry, index, siblingAt(entries, index), context));
-    adoptedFrom(parent, entry, behavior, claim);
-    applyLazyProps(entry);
+    applyMutation(() => {
+        const context = getOrCreateContext(parent, behavior);
+        const claim = reorder(parent.object, entry.object, placeInfo(entry, index, siblingAt(entries, index), context));
+        adoptedFrom(parent, entry, behavior, claim);
+        applyLazyProps(parent, entry);
+    });
 };
 
 const resolveEntry = (

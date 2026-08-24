@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import type {
     DeployArtifact,
@@ -9,6 +9,7 @@ import type {
     StagedFile,
 } from "../types.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
+import { artifactTarget, writeFreshArtifact } from "../fresh-artifact.js";
 import { copyInto, copyTree, EXECUTABLE_MODE, writeInto } from "../payload/copy-tree.js";
 import { getIconSize } from "../payload/icons.js";
 import { FILE_TOOL } from "../tools.js";
@@ -96,7 +97,8 @@ const buildAppDir = (payload: DeployPayload): string => {
 
 const artifactNameFor = (settings: DeploySettings): string =>
     settings.deploy.appimage?.fileName ??
-    `${settings.name.replaceAll(" ", "_")}-${settings.versions.packageVersion}-${settings.arch.appimage}.AppImage`;
+    `${settings.name.replaceAll(/[\\/]/g, "_").replaceAll(" ", "_")}-` +
+    `${settings.versions.packageVersion}-${settings.arch.appimage}.AppImage`;
 
 const toolArgsFor = (settings: DeploySettings, runtime: string, appDir: string, target: string): string[] => {
     const appimage = settings.deploy.appimage ?? {};
@@ -120,21 +122,19 @@ const packAppImage = async (payload: DeployPayload): Promise<DeployArtifact[]> =
     const appDir = buildAppDir(payload);
     const output = settings.paths.output;
     mkdirSync(output, { recursive: true });
-    const target = join(output, artifactNameFor(settings));
+    const target = artifactTarget(output, artifactNameFor(settings));
 
-    runCliTool({
-        tool: tooling.tool,
-        args: toolArgsFor(settings, tooling.runtime, appDir, target),
-        target: "the AppImage",
-        shouldStream: true,
-        options: { env: { ...process.env, ARCH: settings.arch.appimage, [EXTRACT_AND_RUN]: "1" } },
+    const size = writeFreshArtifact(target, () => {
+        runCliTool({
+            tool: tooling.tool,
+            args: toolArgsFor(settings, tooling.runtime, appDir, target),
+            target: "the AppImage",
+            shouldStream: true,
+            options: { env: { ...process.env, ARCH: settings.arch.appimage, [EXTRACT_AND_RUN]: "1" } },
+        });
     });
 
-    if (!existsSync(target)) {
-        throw new Error(`appimagetool reported success but wrote no AppImage at ${target}`);
-    }
-
-    return [{ path: target, size: statSync(target).size }];
+    return [{ path: target, size }];
 };
 
 export { appimageTarget };

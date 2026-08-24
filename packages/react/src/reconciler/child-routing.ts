@@ -1,7 +1,9 @@
 import { indexBeforeOrEnd, remove } from "@gtkx/utils";
 import type { AnyNode, ContentChild, ElementNode, LazyNode, ParentNode, PlaceableNode, PropNode } from "./node.js";
-import { DEFAULT_SLOT, ELEMENT_KIND, LAZY_KIND, nodeObject, PROP_KIND, TEXT_KIND } from "./node.js";
+import { publishLazyPublicInstance } from "./lazy-public-instance.js";
+import { DEFAULT_SLOT, ELEMENT_KIND, LAZY_KIND, lazyTarget, nodeObject, PROP_KIND, TEXT_KIND } from "./node.js";
 import { placeChild, unplaceChild } from "./placement.js";
+import { disconnectAllHandlers } from "./signals.js";
 import { addContent, canAcceptText, removeContent, textRestrictionError } from "./text.js";
 
 const asPlaceable = (node: AnyNode | null): PlaceableNode | null =>
@@ -102,6 +104,23 @@ const placeLazy = (owner: ElementNode, node: LazyNode, hasObject: boolean): void
     }
 };
 
+const retireLazyTarget = (node: LazyNode): void => {
+    const adopted = node.adopted;
+
+    if (adopted === null) {
+        return;
+    }
+
+    const wasMounted = node.isMounted;
+    disconnectAllHandlers(lazyTarget(node, adopted));
+    node.adopted = null;
+    node.isMounted = false;
+
+    if (wasMounted) {
+        publishLazyPublicInstance(node.props, null);
+    }
+};
+
 const syncLazy = (node: LazyNode): void => {
     const owner = node.parent;
 
@@ -115,6 +134,7 @@ const syncLazy = (node: LazyNode): void => {
     if (entry === undefined) {
         placeLazy(owner, node, object !== null);
     } else if (entry.object !== object) {
+        retireLazyTarget(node);
         unplaceChild(owner, DEFAULT_SLOT, node);
         placeLazy(owner, node, object !== null);
     }

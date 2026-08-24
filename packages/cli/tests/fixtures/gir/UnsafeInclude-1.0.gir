@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0">
+  <include name="../Outside" version="1.0"/>
+  <namespace name="UnsafeInclude"
+             version="1.0"
+             shared-library="libunsafe-include.so.0"
+             c:identifier-prefixes="UnsafeInclude"
+             c:symbol-prefixes="unsafe_include"/>
+</repository>

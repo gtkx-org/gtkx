@@ -14,6 +14,7 @@ use native::ffi;
 use native::ffi::codec::{
     BoxedCodec, Decoder, Encoder, Ownership, PtrWriter, ReadCtx, SlotInit, StructCodec,
 };
+use native::ffi::descriptor::Descriptor;
 use native::handle::Handle;
 use native::value::handle_ptr;
 use test_support as helpers;
@@ -294,6 +295,34 @@ fn decode_borrowed_copies_boxed() {
 
         assert!(unsafe { helpers::is_valid_boxed_ptr(original, type_) });
         free_rgba(type_, original);
+    });
+}
+
+#[test]
+fn decoded_sized_boxed_rejects_out_of_bounds_field_access() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let size = size_of::<gdk::ffi::GdkRGBA>();
+        let offset = f64::from(u32::try_from(size - 4).expect("the fixture size fits in u32"));
+
+        for ownership in [Ownership::Borrowed, Ownership::Full] {
+            let (type_, original) = rgba_boxed_alloc();
+            let descriptor = BoxedCodec {
+                size: Some(size),
+                ..boxed(ownership)
+            };
+            let decoded = descriptor
+                .decode(&env, &ffi::Stash::Ptr(original))
+                .expect("sized boxed decode should succeed");
+            let handle: &External<Handle> =
+                native::value::read_napi(decoded).expect("decoded boxed value should be a handle");
+
+            assert!(native::api::read::read(&env, handle, Descriptor::Float64, offset).is_err());
+
+            if ownership.is_borrowed() {
+                free_rgba(type_, original);
+            }
+        }
     });
 }
 

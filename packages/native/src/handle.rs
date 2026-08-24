@@ -12,7 +12,8 @@ pub use boxed::{Boxed, BoxedFreeFn};
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
 use glib::prelude::ObjectType as _;
 pub(crate) use lease::{
-    Lease, LeaseGetUserDataFn, LeaseIdentityApi, LeaseKind, LeaseReleaseFn, LeaseSetUserDataFn,
+    Lease, LeaseGetUserDataFn, LeaseIdentityApi, LeaseKind, LeaseReleaseFn, LeaseReleaseGuard,
+    LeaseSetUserDataFn,
 };
 pub(crate) use resource::{Resource, ResourceKind, ResourceReleaseFn, ResourceRollback};
 
@@ -128,6 +129,7 @@ struct HandleInner {
     kind: HandleKind,
     fields: FieldStore,
     invalidated: Cell<bool>,
+    memory_extent: Cell<Option<usize>>,
 }
 
 /// A shared reference to one native instance. Cloning shares the same instance, so a value that
@@ -165,6 +167,7 @@ impl From<HandleKind> for Handle {
                 kind,
                 fields: FieldStore::default(),
                 invalidated: Cell::new(false),
+                memory_extent: Cell::new(None),
             }),
         }
     }
@@ -196,6 +199,14 @@ impl Handle {
     #[must_use]
     pub fn owned_struct(ptr: *mut c_void) -> Self {
         HandleKind::Struct(ptr).into()
+    }
+
+    #[must_use]
+    pub(crate) fn owned_struct_with_extent(ptr: *mut c_void, extent: usize) -> Self {
+        let handle = Self::owned_struct(ptr);
+        handle.set_memory_extent(extent);
+
+        handle
     }
 
     /// A handle over memory that stays alive for the rest of the process, such as a registered
@@ -245,6 +256,14 @@ impl Handle {
         .into()
     }
 
+    #[must_use]
+    pub(crate) fn field_with_extent(owner: &Self, offset: usize, extent: usize) -> Self {
+        let field = Self::field(owner, offset);
+        field.set_memory_extent(extent);
+
+        field
+    }
+
     /// The store that adopts allocations written into this handle's fields, paired with the byte
     /// offset this handle sits at inside it.
     #[must_use]
@@ -257,6 +276,27 @@ impl Handle {
                 Some((store, base + offset))
             }
             _ => None,
+        }
+    }
+
+    pub(crate) fn set_memory_extent(&self, extent: usize) {
+        self.inner.memory_extent.set(Some(extent));
+    }
+
+    #[must_use]
+    pub(crate) fn memory_extent(&self) -> Option<usize> {
+        match &self.inner.kind {
+            HandleKind::Field { owner, offset } => {
+                let owner_extent = owner
+                    .memory_extent()
+                    .map(|extent| extent.saturating_sub(*offset));
+                match (owner_extent, self.inner.memory_extent.get()) {
+                    (Some(owner), Some(declared)) => Some(owner.min(declared)),
+                    (Some(owner), None) => Some(owner),
+                    (None, declared) => declared,
+                }
+            }
+            _ => self.inner.memory_extent.get(),
         }
     }
 

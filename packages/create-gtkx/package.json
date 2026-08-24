@@ -1,6 +1,6 @@
 {
     "name": "create-gtkx",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "Create a native GTK4 + React desktop app. Real GTK widgets.",
     "keywords": [
         "gtkx",
@@ -48,7 +48,7 @@
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {
-        "node": ">=24"
+        "node": ">=24.11.0"
     },
     "dependencies": {
         "@clack/prompts": "^1.7.0",
@@ -83,11 +83,15 @@
                 ]
             },
             "build": {
+                "cache": false,
                 "dependsOn": [
                     "^build",
-                    "gtkx:codegen",
-                    "copy-templates"
-                ]
+                    "gtkx:codegen"
+                ],
+                "options": {
+                    "cwd": ".",
+                    "command": "tsx scripts/build-typescript-package.ts {projectRoot} src/templates"
+                }
             }
         }
     }

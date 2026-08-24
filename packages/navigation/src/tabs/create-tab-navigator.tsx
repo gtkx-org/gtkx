@@ -40,7 +40,7 @@ type TabTypeBag<
 const createTabScreen: StaticScreenFactory<TabTypeBag> = createScreenFactory<TabTypeBag>();
 
 /** Renders the screens of a {@link createTabNavigator} as pages of an `AdwViewStack` with a view switcher. */
-function TabNavigator({ tabBarPosition, ...options }: TabNavigatorProps): ReactNode {
+function TabNavigator({ tabBarPosition, animation, ...options }: TabNavigatorProps): ReactNode {
     const { state, descriptors, navigation, NavigationContent } = useNavigationBuilder<
         TabNavigationState<ParamListBase>,
         TabRouterOptions,
@@ -51,7 +51,13 @@ function TabNavigator({ tabBarPosition, ...options }: TabNavigatorProps): ReactN
 
     return (
         <NavigationContent>
-            <TabView tabBarPosition={tabBarPosition} state={state} navigation={navigation} descriptors={descriptors} />
+            <TabView
+                tabBarPosition={tabBarPosition}
+                animation={animation}
+                state={state}
+                navigation={navigation}
+                descriptors={descriptors}
+            />
         </NavigationContent>
     );
 }

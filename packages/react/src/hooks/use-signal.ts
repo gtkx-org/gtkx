@@ -1,6 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalHandler } from "@gtkx/runtime";
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 import { useLatestRef } from "./use-latest-ref.js";
 
@@ -29,6 +29,101 @@ type UseSignalOptions = {
     isImmediate?: boolean;
 };
 
+const disconnectSignal = (object: GObject.Object, signal: string, emit: SignalHandler): void => {
+    object.off(signal, emit);
+};
+
+const connectSignal = (
+    object: GObject.Object,
+    signal: string,
+    emit: SignalHandler,
+    options: { isAfter: boolean; isImmediate: boolean },
+): void => {
+    object.on(signal, emit, options.isAfter);
+
+    if (options.isImmediate) {
+        try {
+            emit();
+        } catch (error) {
+            disconnectSignal(object, signal, emit);
+            throw error;
+        }
+    }
+};
+
+const releaseSignal = (
+    subscriptionRef: {
+        current: [GObject.Object, string, SignalHandler, boolean, boolean] | null;
+    },
+): void => {
+    const current = subscriptionRef.current;
+
+    if (current !== null) {
+        disconnectSignal(current[0], current[1], current[2]);
+        subscriptionRef.current = null;
+    }
+};
+
+const isCurrentSignal = (
+    current: readonly [GObject.Object, string, SignalHandler, boolean, boolean] | null,
+    object: GObject.Object,
+    signal: string,
+    options: { isAfter: boolean; isImmediate: boolean },
+): boolean => current !== null &&
+    current[0] === object &&
+    current[1] === signal &&
+    current[3] === options.isAfter &&
+    current[4] === options.isImmediate;
+
+const updateSignal = ({
+    subscriptionRef,
+    object,
+    signal,
+    handlerRef,
+    options,
+}: {
+    subscriptionRef: { current: [GObject.Object, string, SignalHandler, boolean, boolean] | null };
+    object: RefProp<GObject.Object>;
+    signal: string;
+    handlerRef: { readonly current: SignalHandler };
+    options: { isAfter: boolean; isImmediate: boolean };
+}): void => {
+    const resolved = resolveRefProp(object);
+
+    if (resolved !== null && isCurrentSignal(subscriptionRef.current, resolved, signal, options)) {
+        return;
+    }
+
+    releaseSignal(subscriptionRef);
+
+    if (resolved === null) {
+        return;
+    }
+
+    const emit: SignalHandler = (...args) => handlerRef.current(...args);
+    connectSignal(resolved, signal, emit, options);
+    subscriptionRef.current = [resolved, signal, emit, options.isAfter, options.isImmediate];
+};
+
+const useSignalLifecycle = (
+    object: RefProp<GObject.Object>,
+    signal: string,
+    handlerRef: { readonly current: SignalHandler },
+    options: { isAfter: boolean; isImmediate: boolean },
+): void => {
+    const subscriptionRef = useRef<[GObject.Object, string, SignalHandler, boolean, boolean] | null>(null);
+
+    useLayoutEffect(() => {
+        updateSignal({ subscriptionRef, object, signal, handlerRef, options });
+    });
+
+    useLayoutEffect(() => {
+        return () => {
+            releaseSignal(subscriptionRef);
+        };
+    }, []);
+};
+
 /**
  * Connects a handler to a GObject signal for the lifetime of the component, reconnecting when the object changes.
  *
@@ -45,25 +140,7 @@ function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
     { isAfter = false, isImmediate = false }: UseSignalOptions = {},
 ): void {
     const handlerRef = useLatestRef<SignalHandler>(handler as SignalHandler);
-
-    useLayoutEffect(() => {
-        const resolved = resolveRefProp(object);
-
-        if (!resolved) {
-            return;
-        }
-
-        const emit: SignalHandler = (...args) => handlerRef.current(...args);
-        resolved.on(signal, emit, isAfter);
-
-        if (isImmediate) {
-            emit();
-        }
-
-        return () => {
-            resolved.off(signal, emit);
-        };
-    }, [handlerRef, object, signal, isAfter, isImmediate]);
+    useSignalLifecycle(object, signal, handlerRef, { isAfter, isImmediate });
 }
 
 export { useSignal };

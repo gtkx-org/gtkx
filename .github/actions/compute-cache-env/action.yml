@@ -1,5 +1,5 @@
 name: Compute Cache Env
-description: Inspect the CI container for NODE_VERSION and GTK4_VERSION; export them to $GITHUB_ENV so they participate in Nx cache keys.
+description: Inspect the CI container and image; export their identities to $GITHUB_ENV so they participate in Nx cache keys.
 
 runs:
   using: composite
@@ -12,5 +12,7 @@ runs:
             printf "NODE_VERSION=%s\n" "$(node -v)"
             printf "GTK4_VERSION=%s\n" "$(pkg-config --modversion gtk4)"
           '
+          image_id=$(docker image inspect --format '{{.Id}}' gtkx-ci:local)
+          printf "CI_IMAGE_ID=%s\n" "$image_id"
         }
         read_versions >> "$GITHUB_ENV"

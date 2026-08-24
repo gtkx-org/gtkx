@@ -35,20 +35,21 @@ function useObjectValue<T extends GObject.Object, V>(
         [resolved, signal],
     );
 
-    const getSnapshot = (): V => {
+    const getSnapshot = (): ObjectValueCache<T, V> => {
+        const currentObject = resolveRefProp(object);
         const cache = cacheRef.current;
 
-        if (cache !== null && cache.object === resolved && cache.signal === signal) {
-            return cache.value;
+        if (cache !== null && cache.object === currentObject && cache.signal === signal) {
+            return cache;
         }
 
-        const value = read(resolved);
-        cacheRef.current = { object: resolved, signal, value };
+        const value = read(currentObject);
+        cacheRef.current = { object: currentObject, signal, value };
 
-        return value;
+        return cacheRef.current;
     };
 
-    return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+    return useSyncExternalStore(subscribe, getSnapshot, getSnapshot).value;
 }
 
 export { useObjectValue };

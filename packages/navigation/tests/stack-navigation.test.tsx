@@ -10,6 +10,7 @@ import {
     expectRouteNames,
     expectVisible,
     getHeaderBar,
+    getNavigationView,
     getRouteNames,
     pressKeys,
     queryBackButton,
@@ -246,5 +247,15 @@ describe("stack - closing page", () => {
         await clickButton("Go back");
         await screen.findByText("Home Content");
         expectHidden("Details 1");
+    });
+
+    it("updates the native transition policy without changing routes", async () => {
+        const { rerender } = await renderStack({ details: { animation: "default" } });
+        await clickButton("Go to details");
+        await screen.findByText("Details 1");
+        const view = getNavigationView("Details 1");
+        expect(view.getAnimateTransitions()).toBe(true);
+        await rerender(buildStack({ details: { animation: "none" } }));
+        expect(view.getAnimateTransitions()).toBe(false);
     });
 });

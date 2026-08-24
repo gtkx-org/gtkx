@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0">
+  <include name="GObject" version="../../../Outside"/>
+  <namespace name="UnsafeVersion"
+             version="1.0"
+             shared-library="libunsafe-version.so.0"
+             c:identifier-prefixes="UnsafeVersion"
+             c:symbol-prefixes="unsafe_version"/>
+</repository>

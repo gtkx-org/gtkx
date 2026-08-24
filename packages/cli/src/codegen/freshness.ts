@@ -13,7 +13,7 @@ type CodegenInputs = {
 const REACT_GENERATED_MODULES: string[] = ["index.js", "metadata.js", join("gtk", "gtk.js")];
 
 const resolveCodegenInputs = (cwd: string, config: Config): CodegenInputs => {
-    const girPath = resolveGirPath(config.girPath);
+    const girPath = resolveGirPath(config.girPath, cwd);
     const libraries = resolveLibraries(config.libraries, girPath);
     const store = resolveCodegenStore(cwd);
 

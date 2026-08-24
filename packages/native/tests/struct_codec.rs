@@ -202,6 +202,50 @@ fn decode_borrowed_return_copies_a_sized_struct() {
 }
 
 #[test]
+fn a_sized_caller_allocated_struct_rejects_access_at_its_boundary() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let mut source = [0u8; 8];
+        let codec = StructCodec {
+            ownership: Ownership::Borrowed,
+            size: Some(source.len()),
+            caller_allocated: true,
+            inline: false,
+        };
+        let decoded = unsafe {
+            codec.read(
+                &env,
+                ReadCtx::value(source.as_mut_ptr().cast(), "caller-allocated struct"),
+            )
+        }
+        .expect("the caller-allocated struct should decode");
+        let handle: &External<Handle> =
+            native::value::read_napi(decoded).expect("the decoded struct should be a handle");
+
+        assert!(read(&env, handle, Descriptor::Uint8, 8.0).is_err());
+    });
+}
+
+#[test]
+fn a_sized_lent_struct_rejects_access_at_its_boundary() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let mut source = [0u8; 8];
+        let decoded = unsafe {
+            struct_codec(Ownership::Borrowed, Some(source.len())).read(
+                &env,
+                ReadCtx::value(source.as_mut_ptr().cast(), "lent struct").lent(),
+            )
+        }
+        .expect("the lent struct should decode");
+        let handle: &External<Handle> =
+            native::value::read_napi(decoded).expect("the decoded struct should be a handle");
+
+        assert!(read(&env, handle, Descriptor::Uint8, 8.0).is_err());
+    });
+}
+
+#[test]
 fn write_return_full_with_size_writes_null_and_reports() {
     test_support::run(|| {
         let env = test_support::fake_env();
@@ -365,6 +409,16 @@ fn read_inline_field(env: &Env, handle: &External<Handle>) -> *mut c_void {
     native::value::handle_ptr(decoded, "inline field").expect("a handle pointer")
 }
 
+fn decoded_sized_outer(env: &Env) -> Unknown<'_> {
+    let outer = [0u8; 16];
+    Decoder::decode(
+        &struct_codec(Ownership::Borrowed, Some(outer.len())),
+        env,
+        &ffi::Stash::Ptr((&raw const outer).cast_mut().cast()),
+    )
+    .expect("the sized outer struct should decode")
+}
+
 #[test]
 fn an_inline_field_is_read_at_its_own_address() {
     test_support::run(|| {
@@ -387,6 +441,40 @@ fn an_inline_field_is_read_at_its_own_address() {
 
         assert_eq!(owner.inner, InlineRecord { left: 7, right: 9 });
         assert_eq!(owner.head, 5);
+    });
+}
+
+#[test]
+fn a_sized_inline_field_does_not_expose_the_rest_of_its_owner() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let outer = decoded_sized_outer(&env);
+        let outer: &External<Handle> =
+            native::value::read_napi(outer).expect("the outer value should be a handle");
+        let inner = read(&env, outer, inline_struct_descriptor(), 0.0)
+            .expect("the sized inline field should be readable");
+        let inner: &External<Handle> =
+            native::value::read_napi(inner).expect("the inline value should be a handle");
+
+        assert!(read(&env, inner, Descriptor::Uint8, 8.0).is_err());
+    });
+}
+
+#[test]
+fn an_unknown_width_inline_field_is_rejected_for_a_sized_owner() {
+    test_support::run(|| {
+        let env = test_support::fake_env();
+        let outer = decoded_sized_outer(&env);
+        let outer: &External<Handle> =
+            native::value::read_napi(outer).expect("the outer value should be a handle");
+        let unknown_inline = Descriptor::Struct {
+            ownership: Ownership::Borrowed,
+            size: None,
+            is_caller_allocated: None,
+            is_inline: Some(true),
+        };
+
+        assert!(read(&env, outer, unknown_inline, 0.0).is_err());
     });
 }
 

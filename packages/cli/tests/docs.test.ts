@@ -1,4 +1,14 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import {
+    existsSync,
+    mkdtempSync,
+    readdirSync,
+    readFileSync,
+    rmSync,
+    statSync,
+    symlinkSync,
+    writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -29,6 +39,12 @@ const docsDir = (project: CliProject): string => join(project.root, OUT_DIR);
 
 const runDocs = (project: CliProject, args: string[] = []): number | null =>
     runCli(project, ["docs", "--out", OUT_DIR, "--base-path", BASE_PATH, ...args]).status;
+
+const runDocsSuccessfully = (project: CliProject, args: string[] = []): void => {
+    if (runDocs(project, args) !== 0) {
+        throw new Error("The docs command failed");
+    }
+};
 
 const indexStamp = (project: CliProject): number => statSync(join(docsDir(project), INDEX_PAGE)).mtimeMs;
 const readPage = (project: CliProject, name: string): string => readFileSync(join(docsDir(project), name), "utf8");
@@ -83,6 +99,27 @@ describe("gtkx docs (directories it refuses to write to)", () => {
     it.each(REJECTED_OUT_DIRS)("fails over an out directory of %j", (out) => {
         expect(runCli(state.project, ["docs", "--out", out]).status).not.toBe(0);
         expect(existsSync(join(state.project.root, "docs"))).toBe(false);
+    });
+
+    it("fails before following a link inside an owned output", () => {
+        const outside = mkdtempSync(join(tmpdir(), "gtkx-cli-docs-link-"));
+        const project = createCliProject({ prefix: "gtkx-cli-docs-linked-", config: config(), hasStore: true });
+
+        try {
+            runDocsSuccessfully(project);
+            const page = join(docsDir(project), ELEMENT_PAGE);
+            const target = join(outside, "button.md");
+            writeFileSync(target, "external\n");
+            rmSync(page);
+            symlinkSync(target, page, "file");
+
+            expect(() => {
+                runDocsSuccessfully(project, ["--force"]);
+            }).toThrow();
+        } finally {
+            removeCliProject(project);
+            rmSync(outside, { recursive: true, force: true });
+        }
     });
 });
 

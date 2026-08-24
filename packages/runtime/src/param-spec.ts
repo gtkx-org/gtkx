@@ -37,10 +37,11 @@ type ParamLayout = { flags: number; valueType: bigint; ownerType: bigint };
 
 const PARAM_READABLE = 1;
 const PARAM_WRITABLE = 2;
+const PARAM_CONSTRUCT = 4;
 const PARAM_CONSTRUCT_ONLY = 8;
 const PARAM_LAX_VALIDATION = 16;
 const PARAM_EXPLICIT_NOTIFY = 1 << 30;
-const READ_FLAGS = PARAM_READABLE | PARAM_WRITABLE | PARAM_CONSTRUCT_ONLY | PARAM_LAX_VALIDATION;
+const READ_FLAGS = PARAM_READABLE | PARAM_WRITABLE | PARAM_CONSTRUCT | PARAM_CONSTRUCT_ONLY | PARAM_LAX_VALIDATION;
 const FLAGS_BYTE_OFFSET = 16;
 const VALUE_TYPE_BYTE_OFFSET = 24;
 const OWNER_TYPE_BYTE_OFFSET = 32;
@@ -97,7 +98,7 @@ const SCALAR_GUARDS: Map<bigint, ValueGuard> = new Map([
     [TYPE_POINTER, isNullValue],
 ]);
 
-const layout = { wasChecked: false };
+const layout: { isValid: boolean | undefined } = { isValid: undefined };
 const paramValueValidate = bind(LIB, "g_param_value_validate", [PARAM_T, VALUE_T], booleanT);
 const paramSpecUnref = bind(LIB, "g_param_spec_unref", [PARAM_T], voidT);
 const paramSpecRefSink = bind(LIB, "g_param_spec_ref_sink", [PARAM_T], PARAM_T);
@@ -109,13 +110,31 @@ const newParamSpecBoolean = bind(
     PARAM_T,
 );
 
-const getParamFlags = (pspec: ExternalObject<Handle>): number => read(pspec, uint32T, FLAGS_BYTE_OFFSET) as number;
+const readParamFlags = (pspec: ExternalObject<Handle>): number => read(pspec, uint32T, FLAGS_BYTE_OFFSET) as number;
 
-const getParamValueType = (pspec: ExternalObject<Handle>): bigint =>
+const readParamValueType = (pspec: ExternalObject<Handle>): bigint =>
     read(pspec, biguint64T, VALUE_TYPE_BYTE_OFFSET) as bigint;
 
-const getParamOwnerType = (pspec: ExternalObject<Handle>): bigint =>
+const readParamOwnerType = (pspec: ExternalObject<Handle>): bigint =>
     read(pspec, biguint64T, OWNER_TYPE_BYTE_OFFSET) as bigint;
+
+const getParamFlags = (pspec: ExternalObject<Handle>): number => {
+    assertParamLayout();
+
+    return readParamFlags(pspec);
+};
+
+const getParamValueType = (pspec: ExternalObject<Handle>): bigint => {
+    assertParamLayout();
+
+    return readParamValueType(pspec);
+};
+
+const getParamOwnerType = (pspec: ExternalObject<Handle>): bigint => {
+    assertParamLayout();
+
+    return readParamOwnerType(pspec);
+};
 
 /**
  * Reads the `GParamFlags` bitfield of a `GObject.ParamSpec`.
@@ -124,8 +143,6 @@ const getParamOwnerType = (pspec: ExternalObject<Handle>): bigint =>
  * @returns The spec's flags.
  */
 const getParamSpecFlags = (spec: object): number => {
-    assertParamLayout();
-
     return getParamFlags(getHandle(spec));
 };
 
@@ -136,8 +153,6 @@ const getParamSpecFlags = (spec: object): number => {
  * @returns The GType of the spec's values.
  */
 const getParamSpecValueType = (spec: object): bigint => {
-    assertParamLayout();
-
     return getParamValueType(getHandle(spec));
 };
 
@@ -148,8 +163,6 @@ const getParamSpecValueType = (spec: object): bigint => {
  * @returns The owning GType, or `TYPE_INVALID` while the spec is not installed on any type.
  */
 const getParamSpecOwnerType = (spec: object): bigint => {
-    assertParamLayout();
-
     return getParamOwnerType(getHandle(spec));
 };
 
@@ -261,9 +274,9 @@ function readProbeLayout(flags: number): ParamLayout {
 
     try {
         return {
-            flags: getParamFlags(probe),
-            valueType: getParamValueType(probe),
-            ownerType: getParamOwnerType(probe),
+            flags: readParamFlags(probe),
+            valueType: readParamValueType(probe),
+            ownerType: readParamOwnerType(probe),
         };
     } finally {
         paramSpecUnref(probe);
@@ -281,20 +294,24 @@ function isLayoutIntact(flags: number): boolean {
 }
 
 function assertParamLayout(): void {
-    if (layout.wasChecked) {
+    if (layout.isValid === true) {
         return;
     }
 
-    layout.wasChecked = true;
-    const readWrite = PARAM_READABLE | PARAM_WRITABLE;
+    if (layout.isValid === undefined) {
+        const readWrite = PARAM_READABLE | PARAM_WRITABLE;
 
-    if (isLayoutIntact(readWrite) && isLayoutIntact(readWrite | PARAM_CONSTRUCT_ONLY | PARAM_LAX_VALIDATION)) {
-        return;
+        layout.isValid =
+            isLayoutIntact(readWrite) &&
+            isLayoutIntact(readWrite | PARAM_CONSTRUCT) &&
+            isLayoutIntact(readWrite | PARAM_CONSTRUCT_ONLY | PARAM_LAX_VALIDATION);
     }
 
-    throw new Error(
-        "GParamSpec does not match the memory layout this build reads a property's flags and value type at",
-    );
+    if (!layout.isValid) {
+        throw new Error(
+            "GParamSpec does not match the memory layout this build reads a property's flags and value type at",
+        );
+    }
 }
 
 export {

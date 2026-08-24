@@ -39,6 +39,7 @@ runs:
         DOCKER_ARGS=(--rm --user "$(id -u):$(id -g)" -e HOME=/ci-home)
         DOCKER_ARGS+=(-v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro)
         DOCKER_ARGS+=(-v "$CONTAINER_HOME:/ci-home" -v "$WORKSPACE:/workspace" -w /workspace)
+        DOCKER_ARGS+=(-e "GTKX_RUN_COMMAND=$INPUT_COMMAND")
 
         if [ "$INPUT_MOUNT_CARGO_CACHE" = "true" ]; then
           DOCKER_ARGS+=(-v "$HOME/.cargo/registry:/usr/local/cargo/registry")
@@ -49,7 +50,7 @@ runs:
           DOCKER_ARGS+=(-v "$HOME/.local/share/pnpm/store:/ci-home/.local/share/pnpm/store")
         fi
 
-        for var in NODE_VERSION GTK4_VERSION VERSION NX_CLOUD_ACCESS_TOKEN \
+        for var in NODE_VERSION GTK4_VERSION CI_IMAGE_ID VERSION NX_CLOUD_ACCESS_TOKEN \
           CI GITHUB_ACTIONS GITHUB_EVENT_NAME GITHUB_REF GITHUB_REF_NAME \
           GITHUB_HEAD_REF GITHUB_BASE_REF GITHUB_SHA GITHUB_REPOSITORY \
           GITHUB_RUN_ID GITHUB_RUN_NUMBER GITHUB_RUN_ATTEMPT GITHUB_WORKFLOW \
@@ -65,12 +66,10 @@ runs:
           done
         fi
 
-        TRUST_WORKSPACE="git config --global --add safe.directory /workspace"
-
         if [ "$INPUT_INSTALL" = "true" ]; then
-          FULL_COMMAND="$TRUST_WORKSPACE && pnpm install --frozen-lockfile && $INPUT_COMMAND"
+          FULL_COMMAND='git config --global --add safe.directory /workspace && pnpm install --frozen-lockfile && exec bash -euo pipefail -c "$GTKX_RUN_COMMAND"'
         else
-          FULL_COMMAND="$TRUST_WORKSPACE && $INPUT_COMMAND"
+          FULL_COMMAND='git config --global --add safe.directory /workspace && exec bash -euo pipefail -c "$GTKX_RUN_COMMAND"'
         fi
 
         docker run "${DOCKER_ARGS[@]}" gtkx-ci:local bash -c "$FULL_COMMAND"

@@ -1,4 +1,5 @@
 import type { Mock } from "vitest";
+import * as Gtk from "@gtkx/gi/gtk";
 import { screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import {
@@ -91,5 +92,22 @@ describe("split view - events (2)", () => {
 
         expectHidden("Lists Content");
         expect(onPrevent).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not add phantom Back or Escape actions to an expanded content root", async () => {
+        let preventions = 0;
+
+        const onPrevent = (): void => {
+            preventions += 1;
+        };
+
+        await renderSplit({ spies: { onPrevent } });
+        await clickButton("Open draft");
+        await screen.findByText("Draft Content");
+        expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" })).toBeNull();
+        await pressKeys("Draft Content", "{Escape}");
+        expectVisible("Draft Content");
+        expectVisible("Lists Content");
+        expect(preventions).toBe(0);
     });
 });

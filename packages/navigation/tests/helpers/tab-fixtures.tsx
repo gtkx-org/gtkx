@@ -35,6 +35,7 @@ type TabsAppProps = {
     options?: Partial<Record<TabName, TabNavigationOptions>>;
     listeners?: Partial<Record<TabName, TabListeners>>;
     renderers?: Partial<Record<TabName, TabRenderer>>;
+    navigationKeys?: Partial<Record<TabName, string>>;
     names?: TabName[];
     onStateChange?: StateSpy;
 };
@@ -44,6 +45,7 @@ type TabScreenConfig = {
     options: TabNavigationOptions;
     listeners: TabListeners | undefined;
     renderer: TabRenderer | undefined;
+    navigationKey: string | undefined;
 };
 
 type SpyPageProps = {
@@ -110,21 +112,44 @@ const NestedStackScreen = (): ReactNode => (
     </NestedStack.Navigator>
 );
 
-const tabScreen = ({ name, options, listeners, renderer }: TabScreenConfig): ReactElement => {
+const tabScreen = ({ name, options, listeners, renderer, navigationKey }: TabScreenConfig): ReactElement => {
     const resolved = { title: `${name} Tab`, ...options };
 
     if (renderer === undefined) {
-        return <Tabs.Screen key={name} name={name} component={TabPage} options={resolved} listeners={listeners} />;
+        return (
+            <Tabs.Screen
+                key={name}
+                name={name}
+                component={TabPage}
+                options={resolved}
+                listeners={listeners}
+                navigationKey={navigationKey}
+            />
+        );
     }
 
     return (
-        <Tabs.Screen key={name} name={name} options={resolved} listeners={listeners}>
+        <Tabs.Screen
+            key={name}
+            name={name}
+            options={resolved}
+            listeners={listeners}
+            navigationKey={navigationKey}
+        >
             {renderer}
         </Tabs.Screen>
     );
 };
 
-const TabsApp = ({ navigator, options, listeners, renderers, names, onStateChange }: TabsAppProps): ReactNode => (
+const TabsApp = ({
+    navigator,
+    options,
+    listeners,
+    renderers,
+    navigationKeys,
+    names,
+    onStateChange,
+}: TabsAppProps): ReactNode => (
     <NavigationContainer onStateChange={onStateChange}>
         <Tabs.Navigator {...navigator}>
             {(names ?? TAB_NAMES).map((name) =>
@@ -133,6 +158,7 @@ const TabsApp = ({ navigator, options, listeners, renderers, names, onStateChang
                     options: options?.[name] ?? {},
                     listeners: listeners?.[name],
                     renderer: renderers?.[name],
+                    navigationKey: navigationKeys?.[name],
                 }),
             )}
         </Tabs.Navigator>
@@ -209,6 +235,7 @@ export {
     focusedRouteKey,
     focusedRouteName,
     lastState,
+    getViewStack,
     NestedStackScreen,
     RoutePage,
     SpyPage,

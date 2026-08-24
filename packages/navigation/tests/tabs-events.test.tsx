@@ -5,6 +5,7 @@ import {
     expectSelectedTab,
     findTab,
     focusedRouteKey,
+    getViewStack,
     NestedStackScreen,
     type StateSpy,
     type TabPressSpy,
@@ -33,16 +34,37 @@ describe("tabs - events (1)", () => {
             },
         };
 
-        await render(<TabsApp onStateChange={onStateChange} listeners={listeners} />);
+        await render(
+            <TabsApp
+                onStateChange={onStateChange}
+                listeners={listeners}
+                navigator={{ animation: "fade" }}
+            />,
+            { areAnimationsEnabled: true },
+        );
+
         await screen.findByText("First Content");
+        const stack = getViewStack("First Content");
+        const transitionStates: boolean[] = [];
+
+        const onTransitionRunningChanged = (): void => {
+            transitionStates.push(stack.getTransitionRunning());
+        };
+
+        expect(stack.getEnableTransitions()).toBe(true);
+        stack.on("notify::transition-running", onTransitionRunningChanged);
         await userEvent.click(await findTab("Second Tab"));
 
         await waitFor(() => {
             expectSelectedTab("First Tab");
+            expect(stack.getTransitionRunning()).toBe(false);
         });
 
+        stack.off("notify::transition-running", onTransitionRunningChanged);
         await screen.findByText("First Content");
         expect(screen.queryByText("Second Content")).toBeNull();
+        expect(stack.getEnableTransitions()).toBe(true);
+        expect(transitionStates).toContain(true);
         expect(onStateChange).not.toHaveBeenCalled();
     });
 });

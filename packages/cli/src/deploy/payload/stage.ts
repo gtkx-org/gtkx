@@ -1,8 +1,9 @@
 import { sortStringsBy } from "@gtkx/utils";
-import { existsSync, rmSync } from "node:fs";
+import { lstatSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { DeploySettings, DeployTargetName, NodeRuntime, NoticeSection, StagedFile } from "../types.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
+import { requireProjectFile } from "../../internal/project-path.js";
 import { BUNDLED_PACKAGES_FILENAME } from "../../vite-plugins/bundled-packages.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderCopyright } from "../freedesktop/copyright.js";
@@ -55,9 +56,10 @@ const nodeLicenseDestination = (settings: DeploySettings): string =>
 
 const stageRuntimeFiles = (settings: DeploySettings, root: string): StagedFile[] => {
     const dist = settings.paths.dist;
+    const bundle = join(dist, BUNDLE_FILENAME);
 
-    if (!existsSync(join(dist, BUNDLE_FILENAME))) {
-        throw new Error(`Cannot deploy: ${join(dist, BUNDLE_FILENAME)} is missing. Run \`gtkx build\` first.`);
+    if (lstatSync(bundle, { throwIfNoEntry: false })?.isFile() !== true) {
+        throw new Error(`Cannot deploy: ${bundle} is missing. Run \`gtkx build\` first.`);
     }
 
     return listFilesRecursive(dist)
@@ -79,6 +81,13 @@ const stageMetadata = (settings: DeploySettings, root: string, metadata: StagedM
 const stageExtraFiles = (settings: DeploySettings, root: string): StagedFile[] =>
     settings.extraFiles.map((file) => {
         const source = resolve(settings.paths.root, file.source);
+
+        requireProjectFile({
+            root: settings.paths.root,
+            candidate: source,
+            configured: file.source,
+            subject: `source for "${file.destination}"`,
+        });
 
         return copyInto(root, file.destination, source, file.mode ?? executableModeFor(source));
     });

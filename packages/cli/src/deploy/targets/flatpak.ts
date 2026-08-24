@@ -1,9 +1,10 @@
 import { errorMessage, info, tryResolveExecutable } from "@gtkx/utils";
-import { existsSync, mkdirSync, statSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { stringify } from "yaml";
 import type { DeployArtifact, DeployManifest, DeployPayload, DeploySettings, DeployTarget } from "../types.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
+import { artifactTarget, writeFreshArtifact } from "../fresh-artifact.js";
 import { APPSTREAMCLI, DESKTOP_FILE_VALIDATE, FLATPAK, FLATPAK_BUILDER } from "../tools.js";
 import { branchFor, renderFlatpakManifest } from "./flatpak-manifest.js";
 import { detectPackageManager, generateNodeSources, pnpmPinFor } from "./flatpak-sources.js";
@@ -110,14 +111,13 @@ const bundleFlatpak = (settings: DeploySettings): DeployArtifact => {
     const output = settings.paths.output;
     mkdirSync(output, { recursive: true });
     const version = settings.versions.packageVersion;
-    const target = join(output, `${settings.applicationId}-${version}-${settings.arch.flatpak}.flatpak`);
-    runCliTool({ tool: FLATPAK.command, args: bundleArgsFor(settings, target), target: "the flatpak bundle" });
+    const target = artifactTarget(output, `${settings.applicationId}-${version}-${settings.arch.flatpak}.flatpak`);
 
-    if (!existsSync(target)) {
-        throw new Error(`flatpak build-bundle reported success but wrote no bundle at ${target}`);
-    }
+    const size = writeFreshArtifact(target, () => {
+        runCliTool({ tool: FLATPAK.command, args: bundleArgsFor(settings, target), target: "the flatpak bundle" });
+    });
 
-    return { path: target, size: statSync(target).size };
+    return { path: target, size };
 };
 
 const installFlatpak = (settings: DeploySettings): void => {

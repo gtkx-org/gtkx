@@ -1,5 +1,5 @@
 import { errorCode } from "@gtkx/utils";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { lstatSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 const STAGING_SUFFIX = ".tmp-";
@@ -45,6 +45,14 @@ const removeStrandedDir = (path: string): void => {
     }
 };
 
+const assertRegularDirectory = (path: string): void => {
+    const stats = lstatSync(path, { throwIfNoEntry: false });
+
+    if (stats !== undefined && !stats.isDirectory()) {
+        throw new Error(`Cannot use ${path} as a generated-store directory`);
+    }
+};
+
 const sweepStrandedDirs = (parentDir: string, prefix: string): void => {
     for (const entry of readEntries(parentDir)) {
         if (isStranded(entry, prefix)) {
@@ -54,11 +62,16 @@ const sweepStrandedDirs = (parentDir: string, prefix: string): void => {
 };
 
 const sweepStagingDirs = (target: string): void => {
-    sweepStrandedDirs(dirname(target), `${basename(target)}${STAGING_SUFFIX}`);
+    const parent = dirname(target);
+    assertRegularDirectory(parent);
+    sweepStrandedDirs(parent, `${basename(target)}${STAGING_SUFFIX}`);
 };
 
 const createStagingDir = (target: string): string => {
-    mkdirSync(dirname(target), { recursive: true });
+    const parent = dirname(target);
+    assertRegularDirectory(parent);
+    mkdirSync(parent, { recursive: true });
+    assertRegularDirectory(parent);
     sweepStagingDirs(target);
 
     return mkdtempSync(`${target}${STAGING_SUFFIX}${String(process.pid)}-`);

@@ -2,12 +2,18 @@ import { ToastProvider } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
 import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage, AdwToastOverlay } from "@gtkx/jsx/adw";
 import { GtkButton } from "@gtkx/jsx/gtk";
-import { NavigationContainer } from "@gtkx/navigation";
+import { NavigationContainer, type NavigationProp, useNavigation } from "@gtkx/navigation";
 import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import schema from "#data/com.gtkx.tutorial.gschema.xml";
 import { useReminders } from "../hooks/use-reminders.js";
-import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
+import {
+    ALL_TASKS,
+    navigationRef,
+    type OpenTaskRequest,
+    type RootParamList,
+    Split,
+} from "../navigation.js";
 import { buildReminder } from "../notifications.js";
 import { useStore } from "../store/index.js";
 import { selectionTitle } from "../store/selectors.js";
@@ -25,6 +31,17 @@ import { TasksScreen } from "./tasks-screen.js";
 import { TaskTitle } from "./task-title.js";
 import { WindowActions } from "./window-actions.js";
 
+type WindowProps = {
+    openTaskRequest: OpenTaskRequest | null;
+    onOpenTaskRequest: (request: OpenTaskRequest) => void;
+    onOpenTaskRequestHandled: (request: OpenTaskRequest) => void;
+};
+
+type OpenTaskRequestConsumerProps = {
+    request: OpenTaskRequest;
+    onHandled: (request: OpenTaskRequest) => void;
+};
+
 const NothingSelected = () => (
     <AdwStatusPage
         iconName="view-list-symbolic"
@@ -33,13 +50,32 @@ const NothingSelected = () => (
     />
 );
 
-export const Window = () => {
+const OpenTaskRequestConsumer = ({ request, onHandled }: OpenTaskRequestConsumerProps): null => {
+    const navigation = useNavigation<NavigationProp<RootParamList>>();
+    const hasTask = useStore((state) =>
+        state.tasks.some((task) => task.id === request.id && !task.deleted),
+    );
+
+    useEffect(() => {
+        if (hasTask) {
+            navigation.navigate("Tasks", request.selection);
+            navigation.navigate("Task", { id: request.id });
+        }
+
+        onHandled(request);
+    }, [hasTask, navigation, onHandled, request]);
+
+    return null;
+};
+
+export const Window = ({ openTaskRequest, onOpenTaskRequest, onOpenTaskRequestHandled }: WindowProps) => {
     const application = useApplication();
     const lists = useStore((state) => state.lists);
     const tasks = useStore((state) => state.tasks);
     const collapsed = useStore((state) => state.collapsed);
     const setCollapsed = useStore((state) => state.setCollapsed);
     const showDialog = useStore((state) => state.showDialog);
+    const [navigationReady, setNavigationReady] = useState(false);
 
     const [colorScheme] = useSetting(schema, "color-scheme");
     const [reminderMinutes] = useSetting(schema, "reminder-minutes");
@@ -74,11 +110,17 @@ export const Window = () => {
                         onUnapply={() => setCollapsed(false)}
                     />
                 }
-                actions={<WindowActions />}
+                actions={<WindowActions onOpenTaskRequest={onOpenTaskRequest} />}
                 controllers={<AppShortcuts />}
             >
                 <AdwToastOverlay ref={toastOverlayRef}>
-                    <NavigationContainer ref={navigationRef}>
+                    <NavigationContainer ref={navigationRef} onReady={() => setNavigationReady(true)}>
+                        {navigationReady && openTaskRequest ? (
+                            <OpenTaskRequestConsumer
+                                request={openTaskRequest}
+                                onHandled={onOpenTaskRequestHandled}
+                            />
+                        ) : null}
                         <Split.Navigator
                             initialRouteName="Tasks"
                             collapsed={collapsed}

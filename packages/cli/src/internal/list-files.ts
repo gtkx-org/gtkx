@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from "node:fs";
+import { type Dirent, lstatSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 
 type ListedFile = {
@@ -6,12 +6,28 @@ type ListedFile = {
     rel: string;
 };
 
+const isRegularEntry = (entry: Dirent): boolean => entry.isDirectory() || entry.isFile();
+
 const listFilesRecursive = (dir: string, shouldInclude?: (name: string) => boolean): ListedFile[] => {
-    if (!existsSync(dir)) {
+    const stats = lstatSync(dir, { throwIfNoEntry: false });
+
+    if (stats === undefined) {
         return [];
     }
 
-    return readdirSync(dir, { recursive: true, withFileTypes: true })
+    if (!stats.isDirectory()) {
+        throw new Error(`Cannot list ${dir}: it is not a regular directory`);
+    }
+
+    const entries = readdirSync(dir, { recursive: true, withFileTypes: true });
+    const irregular = entries.find((entry) => !isRegularEntry(entry));
+
+    if (irregular !== undefined) {
+        const path = join(irregular.parentPath, irregular.name);
+        throw new Error(`Cannot list ${path}: it is not a regular file or directory`);
+    }
+
+    return entries
         .filter((entry) => entry.isFile() && (shouldInclude === undefined || shouldInclude(entry.name)))
         .map((entry) => {
             const absPath = join(entry.parentPath, entry.name);

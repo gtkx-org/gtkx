@@ -1,7 +1,7 @@
 import { loadConfig } from "@gtkx/config";
 import { info, warn } from "@gtkx/utils";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { mkdirSync } from "node:fs";
+import { join, relative } from "node:path";
 import type {
     DeployArtifact,
     DeployManifest,
@@ -12,6 +12,8 @@ import type {
 } from "./types.js";
 import { build as buildApp } from "../builder.js";
 import { ensureGenerated } from "../codegen/run-codegen.js";
+import { inspectProjectPath } from "../internal/project-path.js";
+import { replaceGeneratedFile } from "../internal/replace-file.js";
 import { renderDesktopEntry } from "./freedesktop/desktop-entry.js";
 import { renderMetainfo } from "./freedesktop/metainfo.js";
 import { renderMimePackage } from "./freedesktop/mime-package.js";
@@ -56,9 +58,22 @@ const FLATPAK_TARGET = "flatpak";
 const displayPath = (settings: DeploySettings, path: string): string => relative(settings.paths.root, path);
 const megabytes = (size: number): string => (size / BYTES_PER_MIB).toFixed(1);
 
-const writeManifest = (manifest: DeployManifest): void => {
-    mkdirSync(dirname(manifest.path), { recursive: true });
-    writeFileSync(manifest.path, manifest.contents);
+const assertWritableFile = (settings: DeploySettings, path: string, subject: string): void => {
+    const stats = inspectProjectPath({
+        root: settings.paths.root,
+        candidate: path,
+        configured: path,
+        subject,
+    });
+
+    if (stats !== undefined && !stats.isFile()) {
+        throw new Error(`Cannot write ${path}: it is not a regular file`);
+    }
+};
+
+const writeManifest = (settings: DeploySettings, manifest: DeployManifest): void => {
+    assertWritableFile(settings, manifest.path, "deploy manifest file");
+    replaceGeneratedFile(manifest.path, manifest.contents);
 };
 
 const renderMetadata = (settings: DeploySettings): StagedMetadata => ({
@@ -75,8 +90,10 @@ const validateMetadata = (settings: DeploySettings, metadata: StagedMetadata, ar
     mkdirSync(dir, { recursive: true });
     const desktopPath = join(dir, `${settings.applicationId}.desktop`);
     const metainfoPath = join(dir, `${settings.applicationId}.metainfo.xml`);
-    writeFileSync(desktopPath, metadata.desktopEntry);
-    writeFileSync(metainfoPath, metadata.metainfo);
+    assertWritableFile(settings, desktopPath, "desktop validation file");
+    assertWritableFile(settings, metainfoPath, "metainfo validation file");
+    replaceGeneratedFile(desktopPath, metadata.desktopEntry);
+    replaceGeneratedFile(metainfoPath, metadata.metainfo);
     validateDesktopEntry(desktopPath);
     validateMetainfo(metainfoPath, areWarningsFatal);
     info("Validated the desktop entry and the metainfo");
@@ -262,7 +279,7 @@ const renderTargetManifests = (
         const manifests = target.render(payload);
 
         for (const manifest of manifests) {
-            writeManifest(manifest);
+            writeManifest(payload.settings, manifest);
             info(`Wrote ${displayPath(payload.settings, manifest.path)}`);
         }
 

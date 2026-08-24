@@ -68,10 +68,16 @@ fn execute_call<'e>(
         ffi_args.len()
     );
 
+    let symbol = descriptor.symbol()?;
+    let lease_release_guards = prepare_lease_releases(arg_codecs, &stashes)
+        .with_context(|| format!("preparing lease releases of {label}"))?;
     let result = return_codec
-        .call_cif(&descriptor.cif, descriptor.symbol()?, &ffi_args)
+        .call_cif(&descriptor.cif, symbol, &ffi_args)
         .with_context(|| format!("calling {label}"))?;
 
+    for lease in lease_release_guards {
+        lease.commit();
+    }
     for resource in prepared_resource_ends {
         resource.commit_end();
     }
@@ -79,8 +85,6 @@ fn execute_call<'e>(
         .into_iter()
         .filter_map(PreparedResourceResult::arm)
         .collect::<Vec<_>>();
-    commit_lease_ends(arg_codecs, &stashes);
-
     for stash in &stashes {
         stash.disarm_pending_transfer();
     }
@@ -149,12 +153,20 @@ fn validate_lease_ends(arg_codecs: &[Codec], stashes: &[ffi::Stash]) -> anyhow::
     Ok(())
 }
 
-fn commit_lease_ends(arg_codecs: &[Codec], stashes: &[ffi::Stash]) {
+fn prepare_lease_releases(
+    arg_codecs: &[Codec],
+    stashes: &[ffi::Stash],
+) -> anyhow::Result<Vec<crate::handle::LeaseReleaseGuard>> {
+    let mut prepared = Vec::new();
     for (codec, stash) in arg_codecs.iter().zip(stashes) {
-        if let Codec::Lease(lease) = codec {
-            lease.commit_end(stash);
+        if let Codec::Lease(lease) = codec
+            && let Some(release) = lease.prepare_release(stash)?
+        {
+            prepared.push(release);
         }
     }
+
+    Ok(prepared)
 }
 
 fn completion_callback_index(arg_codecs: &[Codec]) -> Option<usize> {

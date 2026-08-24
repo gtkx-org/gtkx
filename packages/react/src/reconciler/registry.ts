@@ -50,10 +50,12 @@ type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     detach?: (object: T, child: GObject.Object, info: DetachInfo) => void;
     /** Returns the object the container adopts for a child, overriding whatever `attach` returned. */
     resolve?: (object: T, child: GObject.Object) => GObject.Object | null;
+    /** Checks changed props before any behavior is allowed to update the GObject or its private context. */
+    validate?: (object: T, prev: Props, next: Props, context: unknown) => void;
     /** Applies changed props and returns the names it consumed, which are then not set as GObject properties. */
     update?: (object: T, prev: Props, next: Props, context: unknown) => Iterable<string> | undefined;
     /** Runs after the commit that touched the node, once every child has been placed. */
-    flush?: (object: T, context: unknown) => void;
+    flush?: (object: T, context: unknown, reportError: (error: unknown) => void) => void;
     /** Releases whatever `initialize` or a later hook acquired, once the node is destroyed. */
     teardown?: (object: T, context: unknown) => void;
     /** Props to withhold from the constructor, leaving them for a later hook to apply. */
