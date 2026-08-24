@@ -7,7 +7,7 @@ use napi_derive::napi;
 
 use super::vtable::{VfuncVtable, query_type, resolve_vfunc_slot, validate_vfunc_offset};
 use crate::api::{native_result, type_from_bigint};
-use crate::ffi::codec::{Codec, Encoder as _, LeaseAction, ResourceAction};
+use crate::ffi::codec::{Codec, Encoder as _};
 use crate::ffi::descriptor::Descriptor;
 use crate::ffi::library_cache::FfiCache;
 
@@ -145,193 +145,6 @@ fn into_codecs(
     Ok((arg_codecs, return_descriptor.into_codec()?))
 }
 
-fn is_borrowed_boxed(codec: &Codec) -> bool {
-    matches!(codec, Codec::Boxed(_)) && codec.transfer().is_borrowed()
-}
-
-fn is_full_boxed(codec: &Codec) -> bool {
-    matches!(codec, Codec::Boxed(_)) && codec.transfer().is_full()
-}
-
-fn validate_leases(
-    arg_codecs: &[Codec],
-    return_codec: &Codec,
-    release_target: Option<(&str, &str)>,
-    is_variadic: bool,
-) -> anyhow::Result<()> {
-    for (index, codec) in arg_codecs.iter().enumerate() {
-        anyhow::ensure!(
-            matches!(codec, Codec::Lease(_)) || !codec.contains_lease(),
-            "arg {index} nests a lease descriptor; leases are only valid as top-level call descriptors"
-        );
-        let Codec::Lease(lease) = codec else {
-            continue;
-        };
-        match lease.action() {
-            LeaseAction::Result | LeaseAction::Alias => anyhow::bail!(
-                "arg {index} uses a lease return descriptor, which is only valid as a return"
-            ),
-            LeaseAction::Guard | LeaseAction::Access => {}
-            LeaseAction::End => {
-                let owner_index = lease
-                    .owner_param_index()
-                    .ok_or_else(|| anyhow::anyhow!("lease end arg {index} has no owner"))?;
-                anyhow::ensure!(
-                    owner_index != index,
-                    "lease end arg {index} cannot be its own owner"
-                );
-                anyhow::ensure!(
-                    arg_codecs.len() == 2
-                        && owner_index == 0
-                        && index == 1
-                        && !is_variadic
-                        && matches!(return_codec, Codec::Void(_)),
-                    "a lease release binding must have exactly (owner, leased value) arguments and return void"
-                );
-                let owner = arg_codecs.get(owner_index).ok_or_else(|| {
-                    anyhow::anyhow!("lease end arg {index} owner {owner_index} is out of range")
-                })?;
-                anyhow::ensure!(
-                    is_borrowed_boxed(owner),
-                    "lease end arg {index} owner {owner_index} is not a borrowed boxed descriptor"
-                );
-                let Some((library, symbol)) = release_target else {
-                    anyhow::bail!("lease end arg {index} can only bind its named release symbol")
-                };
-                anyhow::ensure!(
-                    library == lease.kind().shared_library()
-                        && symbol == lease.kind().release_fn_name(),
-                    "lease end arg {index} belongs to a different release symbol"
-                );
-            }
-        }
-    }
-
-    anyhow::ensure!(
-        matches!(return_codec, Codec::Lease(_)) || !return_codec.contains_lease(),
-        "the return descriptor nests a lease; leases are only valid as top-level call descriptors"
-    );
-
-    if let Codec::Lease(lease) = return_codec {
-        match lease.action() {
-            LeaseAction::Result => {
-                let owner_index = lease
-                    .owner_param_index()
-                    .ok_or_else(|| anyhow::anyhow!("a lease result has no owner"))?;
-                let Some(Codec::Lease(owner)) = arg_codecs.get(owner_index) else {
-                    anyhow::bail!(
-                        "lease result owner {owner_index} is not guarded by its lease kind"
-                    )
-                };
-                anyhow::ensure!(
-                    owner.action() == LeaseAction::Guard && owner.kind() == lease.kind(),
-                    "lease result owner {owner_index} is guarded by a different lease kind"
-                );
-            }
-            LeaseAction::Alias => {
-                anyhow::ensure!(!is_variadic, "a lease alias return cannot be variadic");
-                anyhow::ensure!(
-                    is_full_boxed(lease.inner_codec()),
-                    "a lease alias return must wrap a full boxed descriptor"
-                );
-                let owner_index = lease
-                    .owner_param_index()
-                    .ok_or_else(|| anyhow::anyhow!("a lease alias has no owner"))?;
-                let Some(Codec::Lease(owner)) = arg_codecs.get(owner_index) else {
-                    anyhow::bail!(
-                        "lease alias owner {owner_index} is not accessed by its lease kind"
-                    )
-                };
-                anyhow::ensure!(
-                    owner.action() == LeaseAction::Access
-                        && owner.kind() == lease.kind()
-                        && is_borrowed_boxed(owner.inner_codec()),
-                    "lease alias owner {owner_index} is accessed by a different lease kind or type"
-                );
-            }
-            LeaseAction::End | LeaseAction::Guard | LeaseAction::Access => {
-                anyhow::bail!("a lease input descriptor cannot be used as a return")
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn validate_resources(
-    arg_codecs: &[Codec],
-    return_codec: &Codec,
-    release_target: Option<(&str, &str)>,
-    is_variadic: bool,
-) -> anyhow::Result<()> {
-    let mut has_result = false;
-
-    for (index, codec) in arg_codecs.iter().enumerate() {
-        match codec {
-            Codec::Resource(resource) => {
-                anyhow::ensure!(
-                    resource.action() == ResourceAction::End,
-                    "arg {index} uses a resource result descriptor outside a Ref"
-                );
-                anyhow::ensure!(
-                    arg_codecs.len() == 1 && !is_variadic && matches!(return_codec, Codec::Void(_)),
-                    "a resource release binding must have exactly one argument and return void"
-                );
-                let Some((library, symbol)) = release_target else {
-                    anyhow::bail!("resource end arg {index} can only bind its named release symbol")
-                };
-                anyhow::ensure!(
-                    library == resource.kind().shared_library()
-                        && symbol == resource.kind().release_fn_name(),
-                    "resource end arg {index} belongs to a different release symbol"
-                );
-            }
-            Codec::Ref(reference) => {
-                let Codec::Resource(resource) = reference.inner_codec() else {
-                    anyhow::ensure!(
-                        !reference.inner_codec().contains_resource(),
-                        "arg {index} nests a resource descriptor; a result resource is only valid directly inside a Ref"
-                    );
-                    continue;
-                };
-                anyhow::ensure!(
-                    resource.action() == ResourceAction::Result && !reference.is_inout(),
-                    "arg {index} must be a non-inout Ref of a resource result"
-                );
-                has_result = true;
-            }
-            _ => anyhow::ensure!(
-                !codec.contains_resource(),
-                "arg {index} nests a resource descriptor; resources are only valid as top-level ends or direct Ref results"
-            ),
-        }
-    }
-
-    anyhow::ensure!(
-        !return_codec.contains_resource(),
-        "the return descriptor cannot use a resource descriptor"
-    );
-    anyhow::ensure!(
-        !has_result
-            || !arg_codecs.iter().any(
-                |codec| matches!(codec, Codec::Callback(callback) if callback.is_async_completion()),
-            ),
-        "a resource result cannot be combined with an async completion callback"
-    );
-
-    Ok(())
-}
-
-fn validate_ownership_descriptors(
-    arg_codecs: &[Codec],
-    return_codec: &Codec,
-    release_target: Option<(&str, &str)>,
-    is_variadic: bool,
-) -> anyhow::Result<()> {
-    validate_leases(arg_codecs, return_codec, release_target, is_variadic)?;
-    validate_resources(arg_codecs, return_codec, release_target, is_variadic)
-}
-
 fn vfunc_vtable(
     instance_type: Option<glib::Type>,
     interface_type: Option<glib::Type>,
@@ -391,15 +204,6 @@ pub fn bind(
     fixed_arg_count: Option<u32>,
 ) -> Result<External<CallDescriptor>> {
     let (arg_codecs, return_codec) = into_codecs(arg_descriptors, return_descriptor)?;
-    native_result(
-        "binding ownership descriptors",
-        validate_ownership_descriptors(
-            &arg_codecs,
-            &return_codec,
-            Some((&shared_library, &symbol_name)),
-            fixed_arg_count.is_some(),
-        ),
-    )?;
 
     Ok(External::new(prepare(
         CallTarget::Symbol {
@@ -435,10 +239,6 @@ pub fn bind_function_pointer(
     }
 
     let (arg_codecs, return_codec) = into_codecs(arg_descriptors, return_descriptor)?;
-    native_result(
-        "binding ownership descriptors",
-        validate_ownership_descriptors(&arg_codecs, &return_codec, None, false),
-    )?;
 
     Ok(External::new(prepare(
         CallTarget::Pointer { address },
@@ -485,10 +285,6 @@ pub fn bind_vfunc(options: BindVfuncOptions) -> Result<External<CallDescriptor>>
 
     let (arg_codecs, return_codec) =
         into_codecs(options.arg_descriptors, options.return_descriptor)?;
-    native_result(
-        "binding ownership descriptors",
-        validate_ownership_descriptors(&arg_codecs, &return_codec, None, false),
-    )?;
 
     Ok(External::new(prepare(
         CallTarget::Vfunc {

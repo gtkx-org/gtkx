@@ -22,7 +22,7 @@ pub struct FieldDescriptor {
 /// than made beside the access it serves.
 #[napi(catch_unwind)]
 pub fn bind_field(field_descriptor: Descriptor) -> Result<External<FieldDescriptor>> {
-    let codec = field_descriptor.into_non_call_codec("field binding")?;
+    let codec = field_descriptor.into_codec()?;
 
     Ok(External::new(FieldDescriptor { codec }))
 }

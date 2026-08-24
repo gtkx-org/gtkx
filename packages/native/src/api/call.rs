@@ -6,7 +6,7 @@ use napi_derive::napi;
 
 use super::bind::CallDescriptor;
 use super::native_result;
-use crate::ffi::codec::{Codec, Decoder as _, Encoder as _, PreparedResourceResult};
+use crate::ffi::codec::{Codec, Decoder as _, Encoder as _};
 use crate::ffi::{self};
 
 fn execute_call<'e>(
@@ -18,12 +18,6 @@ fn execute_call<'e>(
     let return_codec = &descriptor.return_codec;
     let arg_codecs = &descriptor.arg_codecs;
     let completion_index = completion_callback_index(arg_codecs);
-
-    if let Codec::Lease(lease) = return_codec {
-        lease
-            .prepare_result()
-            .with_context(|| format!("preparing return value of {label}"))?;
-    }
 
     let stashes = arg_codecs
         .iter()
@@ -39,19 +33,6 @@ fn execute_call<'e>(
             encoded.with_context(|| format!("encoding arg {i} of {label}"))
         })
         .collect::<anyhow::Result<Vec<ffi::Stash>>>()?;
-
-    let prepared_resource_results = prepare_resource_results(arg_codecs, &stashes)
-        .with_context(|| format!("preparing resource outputs of {label}"))?;
-    let prepared_resource_ends = prepare_resource_ends(arg_codecs, &stashes)
-        .with_context(|| format!("preparing resource releases of {label}"))?;
-
-    validate_lease_ends(arg_codecs, &stashes)
-        .with_context(|| format!("validating leased arguments of {label}"))?;
-    if let Codec::Lease(lease) = return_codec {
-        lease
-            .validate_result_owner(&stashes)
-            .with_context(|| format!("validating lease owner of {label}"))?;
-    }
 
     let completion = AsyncCompletion::resolve(completion_index, arg_codecs, &stashes)
         .with_context(|| format!("calling {label}"))?;
@@ -72,15 +53,6 @@ fn execute_call<'e>(
         .call_cif(&descriptor.cif, descriptor.symbol()?, &ffi_args)
         .with_context(|| format!("calling {label}"))?;
 
-    for resource in prepared_resource_ends {
-        resource.commit_end();
-    }
-    let mut resource_rollbacks = prepared_resource_results
-        .into_iter()
-        .filter_map(PreparedResourceResult::arm)
-        .collect::<Vec<_>>();
-    commit_lease_ends(arg_codecs, &stashes);
-
     for stash in &stashes {
         stash.disarm_pending_transfer();
     }
@@ -100,61 +72,7 @@ fn execute_call<'e>(
 
     ref_updates?;
     retained?;
-    let return_value = return_value?;
-    for rollback in &mut resource_rollbacks {
-        rollback.commit();
-    }
-
-    Ok(return_value)
-}
-
-fn prepare_resource_results<'a>(
-    arg_codecs: &[Codec],
-    stashes: &'a [ffi::Stash],
-) -> anyhow::Result<Vec<PreparedResourceResult<'a>>> {
-    let mut prepared = Vec::new();
-    for (codec, stash) in arg_codecs.iter().zip(stashes) {
-        let Codec::Ref(reference) = codec else {
-            continue;
-        };
-        let Codec::Resource(resource) = reference.inner_codec() else {
-            continue;
-        };
-        if let Some(resource) = resource.prepare_result(stash)? {
-            prepared.push(resource);
-        }
-    }
-    Ok(prepared)
-}
-
-fn prepare_resource_ends(
-    arg_codecs: &[Codec],
-    stashes: &[ffi::Stash],
-) -> anyhow::Result<Vec<crate::handle::Resource>> {
-    let mut prepared = Vec::new();
-    for (codec, stash) in arg_codecs.iter().zip(stashes) {
-        if let Codec::Resource(resource) = codec {
-            prepared.push(resource.prepare_end(stash)?);
-        }
-    }
-    Ok(prepared)
-}
-
-fn validate_lease_ends(arg_codecs: &[Codec], stashes: &[ffi::Stash]) -> anyhow::Result<()> {
-    for (codec, stash) in arg_codecs.iter().zip(stashes) {
-        if let Codec::Lease(lease) = codec {
-            lease.validate_end(stash, stashes)?;
-        }
-    }
-    Ok(())
-}
-
-fn commit_lease_ends(arg_codecs: &[Codec], stashes: &[ffi::Stash]) {
-    for (codec, stash) in arg_codecs.iter().zip(stashes) {
-        if let Codec::Lease(lease) = codec {
-            lease.commit_end(stash);
-        }
-    }
+    return_value
 }
 
 fn completion_callback_index(arg_codecs: &[Codec]) -> Option<usize> {

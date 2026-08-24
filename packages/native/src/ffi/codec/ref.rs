@@ -39,11 +39,7 @@ impl RefCodec {
     #[must_use]
     pub fn supports_inner(inner: &Codec) -> bool {
         match inner {
-            Codec::Callback(_)
-            | Codec::Void(_)
-            | Codec::Buffer(_)
-            | Codec::Lease(_)
-            | Codec::Ref(_) => false,
+            Codec::Callback(_) | Codec::Void(_) | Codec::Buffer(_) | Codec::Ref(_) => false,
             Codec::Integer(_)
             | Codec::BigInt(_)
             | Codec::Float(_)
@@ -56,7 +52,6 @@ impl RefCodec {
             | Codec::Fundamental(_)
             | Codec::Array(_)
             | Codec::HashTable(_)
-            | Codec::Resource(_)
             | Codec::Unichar(_) => true,
         }
     }
@@ -85,7 +80,7 @@ impl Encoder for RefCodec {
             return if is_nullish {
                 Ok(Self::null_ptr_stash())
             } else {
-                bail!("Expected Null for Ref<Boxed/Struct/Object/Fundamental/Resource>")
+                bail!("Expected Null for Ref<Boxed/Struct/Object/Fundamental>")
             };
         }
 
@@ -169,12 +164,6 @@ impl Encoder for RefCodec {
 
 impl Decoder for RefCodec {
     unsafe fn read<'e>(&self, env: &'e Env, ctx: ReadCtx<'_>) -> anyhow::Result<Unknown<'e>> {
-        if let Codec::Resource(resource) = &*self.inner_codec
-            && let ReadSource::Call(stash) = ctx.source
-        {
-            return resource.decode(env, stash);
-        }
-
         let storage = match ctx.source {
             ReadSource::Call(stash) => {
                 let Some(storage) = stash.as_storage_or_null("Ref")? else {

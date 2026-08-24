@@ -1,7 +1,5 @@
 mod boxed;
 mod fundamental;
-mod lease;
-mod resource;
 pub(crate) mod surface;
 
 use std::cell::{Cell, RefCell};
@@ -11,10 +9,6 @@ use std::rc::Rc;
 pub use boxed::{Boxed, BoxedFreeFn};
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
 use glib::prelude::ObjectType as _;
-pub(crate) use lease::{
-    Lease, LeaseGetUserDataFn, LeaseIdentityApi, LeaseKind, LeaseReleaseFn, LeaseSetUserDataFn,
-};
-pub(crate) use resource::{Resource, ResourceKind, ResourceReleaseFn, ResourceRollback};
 
 use crate::ffi::PendingTransfer;
 
@@ -116,8 +110,6 @@ enum HandleKind {
     Fundamental(Fundamental),
     Struct(*mut c_void),
     Borrowed(*mut c_void),
-    Lease(Lease),
-    Resource(Resource),
     Field {
         owner: Handle,
         offset: usize,
@@ -146,8 +138,6 @@ impl std::fmt::Debug for Handle {
             HandleKind::Fundamental(_) => "Fundamental",
             HandleKind::Struct(_) => "Struct",
             HandleKind::Borrowed(_) => "Borrowed",
-            HandleKind::Lease(_) => "Lease",
-            HandleKind::Resource(_) => "Resource",
             HandleKind::Field { .. } => "Field",
         };
         f.debug_struct("Handle")
@@ -204,34 +194,6 @@ impl Handle {
     #[must_use]
     pub fn process_static(ptr: *mut c_void) -> Self {
         HandleKind::Borrowed(ptr).into()
-    }
-
-    pub(crate) fn leased(lease: Lease) -> Self {
-        HandleKind::Lease(lease).into()
-    }
-
-    pub(crate) fn as_lease(&self) -> Option<&Lease> {
-        let HandleKind::Lease(lease) = &self.inner.kind else {
-            return None;
-        };
-
-        Some(lease)
-    }
-
-    pub(crate) fn resource(resource: Resource) -> Self {
-        HandleKind::Resource(resource).into()
-    }
-
-    pub(crate) fn as_resource(&self) -> Option<&Resource> {
-        let HandleKind::Resource(resource) = &self.inner.kind else {
-            return None;
-        };
-
-        Some(resource)
-    }
-
-    pub(crate) fn is_owned_boxed(&self) -> bool {
-        !self.is_invalidated() && matches!(self.inner.kind, HandleKind::Boxed(_))
     }
 
     /// A handle over the `offset` bytes into `owner`, aliasing the owner's memory instead of
@@ -308,8 +270,6 @@ impl Handle {
         match &self.inner.kind {
             HandleKind::Object { ptr, .. } => ptr.get().is_null(),
             HandleKind::Field { owner, .. } => owner.is_invalidated(),
-            HandleKind::Lease(lease) => !lease.is_active(),
-            HandleKind::Resource(resource) => !resource.is_active(),
             _ => false,
         }
     }
@@ -392,8 +352,6 @@ impl Handle {
         match &self.inner.kind {
             HandleKind::Object { ptr, .. } => ptr.get(),
             HandleKind::Struct(ptr) | HandleKind::Borrowed(ptr) => *ptr,
-            HandleKind::Lease(lease) => lease.value_ptr(),
-            HandleKind::Resource(resource) => resource.as_ptr(),
             HandleKind::Boxed(boxed) => boxed.as_ptr(),
             HandleKind::Fundamental(fundamental) => fundamental.as_ptr(),
             HandleKind::Field { owner, offset } => {
@@ -420,10 +378,7 @@ impl Handle {
             HandleKind::Boxed(_) => Boxed::SIZE_HINT,
             HandleKind::Fundamental(_) => Fundamental::SIZE_HINT,
             HandleKind::Struct(_) => STRUCT_SIZE_HINT,
-            HandleKind::Borrowed(_)
-            | HandleKind::Lease(_)
-            | HandleKind::Resource(_)
-            | HandleKind::Field { .. } => 0,
+            HandleKind::Borrowed(_) | HandleKind::Field { .. } => 0,
         }
     }
 }

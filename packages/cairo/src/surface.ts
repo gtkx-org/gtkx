@@ -23,9 +23,7 @@ import {
     FONT_OPTIONS_T,
     RECTANGLE_INT_T,
     RECTANGLE_T,
-    SURFACE_ACCESS_T,
     SURFACE_FULL_T,
-    SURFACE_MAPPING_LEASE,
     SURFACE_T,
 } from "./lib.js";
 import { checkSurface } from "./status.js";
@@ -35,7 +33,6 @@ const RECTANGLE_SIZE = 32;
 const DOUBLE = t.fieldAt(t.float64);
 const UINT8 = t.fieldAt(t.uint8);
 const DEVICE_PAIR_ARGS = [SURFACE_T, t.float64, t.float64];
-const GUARDED_DEVICE_PAIR_ARGS = [SURFACE_MAPPING_LEASE.guard(SURFACE_T), t.float64, t.float64];
 const DEVICE_PAIR_OUT_ARGS = [SURFACE_T, t.ref(t.float64), t.ref(t.float64)];
 const SIMILAR_ARGS = [SURFACE_T, t.int32, t.int32, t.int32];
 const cairoSurfaceCreateSimilar = bindCairo("cairo_surface_create_similar", SIMILAR_ARGS, SURFACE_FULL_T);
@@ -43,34 +40,29 @@ const cairoSurfaceCreateSimilarImage = bindCairo("cairo_surface_create_similar_i
 
 const cairoSurfaceCreateForRectangle = bindCairo(
     "cairo_surface_create_for_rectangle",
-    [SURFACE_ACCESS_T, t.float64, t.float64, t.float64, t.float64],
-    SURFACE_MAPPING_LEASE.alias(SURFACE_FULL_T, 0),
+    [SURFACE_T, t.float64, t.float64, t.float64, t.float64],
+    SURFACE_FULL_T,
 );
 
-const cairoSurfaceWriteToPng = bindCairo(
-    "cairo_surface_write_to_png",
-    [SURFACE_ACCESS_T, t.string("full")],
-    t.int32,
-);
-
+const cairoSurfaceWriteToPng = bindCairo("cairo_surface_write_to_png", [SURFACE_T, t.string("full")], t.int32);
 const cairoSurfaceStatus = bindCairo("cairo_surface_status", [SURFACE_T], t.int32);
-const cairoSurfaceFinish = bindCairo("cairo_surface_finish", [SURFACE_MAPPING_LEASE.guard(SURFACE_T)], t.void);
-const cairoSurfaceFlush = bindCairo("cairo_surface_flush", [SURFACE_ACCESS_T], t.void);
+const cairoSurfaceFinish = bindCairo("cairo_surface_finish", [SURFACE_T], t.void);
+const cairoSurfaceFlush = bindCairo("cairo_surface_flush", [SURFACE_T], t.void);
 const cairoSurfaceGetDevice = bindCairo("cairo_surface_get_device", [SURFACE_T], DEVICE_T);
 const cairoSurfaceGetFontOptions = bindCairo("cairo_surface_get_font_options", [SURFACE_T, FONT_OPTIONS_T], t.void);
 const cairoSurfaceGetContent = bindCairo("cairo_surface_get_content", [SURFACE_T], t.int32);
-const cairoSurfaceMarkDirty = bindCairo("cairo_surface_mark_dirty", [SURFACE_ACCESS_T], t.void);
+const cairoSurfaceMarkDirty = bindCairo("cairo_surface_mark_dirty", [SURFACE_T], t.void);
 
 const cairoSurfaceMarkDirtyRectangle = bindCairo(
     "cairo_surface_mark_dirty_rectangle",
-    [SURFACE_ACCESS_T, t.int32, t.int32, t.int32, t.int32],
+    [SURFACE_T, t.int32, t.int32, t.int32, t.int32],
     t.void,
 );
 
-const cairoSurfaceSetDeviceOffset = bindCairo("cairo_surface_set_device_offset", GUARDED_DEVICE_PAIR_ARGS, t.void);
+const cairoSurfaceSetDeviceOffset = bindCairo("cairo_surface_set_device_offset", DEVICE_PAIR_ARGS, t.void);
 const cairoSurfaceGetDeviceOffset = bindCairo("cairo_surface_get_device_offset", DEVICE_PAIR_OUT_ARGS, t.void);
 const cairoSurfaceGetDeviceScale = bindCairo("cairo_surface_get_device_scale", DEVICE_PAIR_OUT_ARGS, t.void);
-const cairoSurfaceSetDeviceScale = bindCairo("cairo_surface_set_device_scale", GUARDED_DEVICE_PAIR_ARGS, t.void);
+const cairoSurfaceSetDeviceScale = bindCairo("cairo_surface_set_device_scale", DEVICE_PAIR_ARGS, t.void);
 const cairoSurfaceSetFallbackResolution = bindCairo("cairo_surface_set_fallback_resolution", DEVICE_PAIR_ARGS, t.void);
 
 const cairoSurfaceGetFallbackResolution = bindCairo(
@@ -81,8 +73,8 @@ const cairoSurfaceGetFallbackResolution = bindCairo(
 
 const cairoSurfaceGetType = bindCairo("cairo_surface_get_type", [SURFACE_T], t.int32);
 const cairoSurfaceGetReferenceCount = bindCairo("cairo_surface_get_reference_count", [SURFACE_T], t.int32);
-const cairoSurfaceCopyPage = bindCairo("cairo_surface_copy_page", [SURFACE_ACCESS_T], t.void);
-const cairoSurfaceShowPage = bindCairo("cairo_surface_show_page", [SURFACE_ACCESS_T], t.void);
+const cairoSurfaceCopyPage = bindCairo("cairo_surface_copy_page", [SURFACE_T], t.void);
+const cairoSurfaceShowPage = bindCairo("cairo_surface_show_page", [SURFACE_T], t.void);
 const cairoSurfaceHasShowTextGlyphs = bindCairo("cairo_surface_has_show_text_glyphs", [SURFACE_T], t.boolean);
 
 const cairoSurfaceSupportsMimeType = bindCairo(
@@ -91,18 +83,8 @@ const cairoSurfaceSupportsMimeType = bindCairo(
     t.boolean,
 );
 
-const cairoSurfaceMapToImage = bindCairo(
-    "cairo_surface_map_to_image",
-    [SURFACE_MAPPING_LEASE.guard(SURFACE_T), RECTANGLE_INT_T],
-    SURFACE_MAPPING_LEASE.result(SURFACE_T, 0),
-);
-
-const cairoSurfaceUnmapImage = bindCairo(
-    "cairo_surface_unmap_image",
-    [SURFACE_T, SURFACE_MAPPING_LEASE.end(SURFACE_T, 0)],
-    t.void,
-);
-
+const cairoSurfaceMapToImage = bindCairo("cairo_surface_map_to_image", [SURFACE_T, RECTANGLE_INT_T], SURFACE_T);
+const cairoSurfaceUnmapImage = bindCairo("cairo_surface_unmap_image", [SURFACE_T, SURFACE_T], t.void);
 const cairoImageSurfaceCreate = bindCairo("cairo_image_surface_create", [t.int32, t.int32, t.int32], SURFACE_FULL_T);
 
 const cairoImageSurfaceCreateFromPng = bindCairo(
@@ -134,16 +116,6 @@ const cairoRecordingSurfaceGetExtents = bindCairo(
     [SURFACE_T, RECTANGLE_T],
     t.boolean,
 );
-
-const didUnmapImage = (surfaceHandle: ExternalObject<Handle>, imageHandle: ExternalObject<Handle>): boolean => {
-    try {
-        cairoSurfaceUnmapImage(surfaceHandle, imageHandle);
-
-        return true;
-    } catch {
-        return false;
-    }
-};
 
 const wrapSurface = (handle: unknown): Surface => wrapHandle(handle as ExternalObject<Handle>, Surface);
 
@@ -339,20 +311,12 @@ abstract class Surface {
         return cairoSurfaceSupportsMimeType(getHandle(this), mimeType) as boolean;
     }
 
-    /** Returns an image surface for the pixels of `extents`; release it with `unmapImage`, or on collection. */
+    /** Returns an image surface giving direct access to the pixels of `extents`; release it with `unmapImage`. */
     mapToImage(extents: RectangleInt): Surface {
-        const surfaceHandle = getHandle(this);
-        const imageHandle = cairoSurfaceMapToImage(surfaceHandle, getHandle(extents)) as ExternalObject<Handle>;
-
-        try {
-            return wrapSurface(checkSurface(imageHandle));
-        } catch (error) {
-            didUnmapImage(surfaceHandle, imageHandle);
-            throw error;
-        }
+        return wrapSurface(cairoSurfaceMapToImage(getHandle(this), getHandle(extents)));
     }
 
-    /** Uploads and releases an `image` from `mapToImage`; the mapped image becomes unusable. */
+    /** Uploads the pixels of `image`, obtained from `mapToImage`, back to the surface and releases it. */
     unmapImage(image: Surface): void {
         cairoSurfaceUnmapImage(getHandle(this), getHandle(image));
     }
@@ -410,7 +374,7 @@ class ImageSurface extends Surface {
 
         const getImageData = bindCairo(
             "cairo_image_surface_get_data",
-            [SURFACE_ACCESS_T],
+            [SURFACE_T],
             t.struct("borrowed", { size: totalBytes }),
         );
 

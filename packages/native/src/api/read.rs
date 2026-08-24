@@ -50,7 +50,7 @@ pub fn read<'env>(
     offset: f64,
 ) -> Result<Unknown<'env>> {
     let offset = byte_count_from_f64(offset, "field read: offset")?;
-    let field_codec = field_descriptor.into_non_call_codec("field read")?;
+    let field_codec = field_descriptor.into_codec()?;
 
     read_field_at(env, handle, &field_codec, offset)
 }

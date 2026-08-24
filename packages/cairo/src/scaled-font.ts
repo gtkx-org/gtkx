@@ -18,17 +18,14 @@ import {
     FONT_EXTENTS_T,
     FONT_FACE_T,
     FONT_OPTIONS_T,
-    GLYPH_RESOURCE,
     GLYPH_T,
     MATRIX_T,
     SCALED_FONT_FULL_T,
     SCALED_FONT_T,
-    TEXT_CLUSTER_RESOURCE,
     TEXT_CLUSTER_T,
     TEXT_EXTENTS_T,
 } from "./lib.js";
 import { allocMatrix, Matrix } from "./matrix.js";
-import { checkStatus } from "./status.js";
 import { allocFontExtents, allocGlyphBuffer, allocTextExtents, readFontExtents, readTextExtents } from "./text.js";
 
 const SCALED_FONT_TYPE = cairoGType("cairo_gobject_scaled_font_get_type");
@@ -43,13 +40,8 @@ const cairoScaledFontGetFontFace = bindCairo("cairo_scaled_font_get_font_face", 
 const cairoScaledFontGetFontMatrix = bindCairo("cairo_scaled_font_get_font_matrix", [SCALED_FONT_T, MATRIX_T], t.void);
 const cairoScaledFontGetCtm = bindCairo("cairo_scaled_font_get_ctm", [SCALED_FONT_T, MATRIX_T], t.void);
 const cairoScaledFontGetType = bindCairo("cairo_scaled_font_get_type", [SCALED_FONT_T], t.int32);
-const cairoGlyphFree = bindCairo("cairo_glyph_free", [GLYPH_RESOURCE.end(GLYPH_T)], t.void);
-
-const cairoTextClusterFree = bindCairo(
-    "cairo_text_cluster_free",
-    [TEXT_CLUSTER_RESOURCE.end(TEXT_CLUSTER_T)],
-    t.void,
-);
+const cairoGlyphFree = bindCairo("cairo_glyph_free", [GLYPH_T], t.void);
+const cairoTextClusterFree = bindCairo("cairo_text_cluster_free", [TEXT_CLUSTER_T], t.void);
 
 const cairoScaledFontCreate = bindCairo(
     "cairo_scaled_font_create",
@@ -95,9 +87,9 @@ const cairoScaledFontTextToGlyphs = bindCairo(
         t.float64,
         t.string("full"),
         t.int32,
-        t.ref(GLYPH_RESOURCE.result(GLYPH_T)),
+        t.ref(t.struct("borrowed")),
         t.ref(t.int32),
-        t.ref(TEXT_CLUSTER_RESOURCE.result(TEXT_CLUSTER_T)),
+        t.ref(t.struct("borrowed")),
         t.ref(t.int32),
         t.ref(t.int32),
     ],
@@ -140,44 +132,6 @@ const readClusters = (buffer: ExternalObject<Handle> | null, count: number): Cai
             numGlyphs: INT.read(buffer, offset + 4) as number,
         };
     });
-};
-
-const releaseShapingBuffers = (
-    glyphs: ExternalObject<Handle> | null,
-    clusters: ExternalObject<Handle> | null,
-): void => {
-    let releaseError: { value: unknown } | undefined;
-
-    try {
-        if (glyphs !== null) {
-            cairoGlyphFree(glyphs);
-        }
-    } catch (error) {
-        releaseError = { value: error };
-    }
-
-    try {
-        if (clusters !== null) {
-            cairoTextClusterFree(clusters);
-        }
-    } catch (error) {
-        releaseError ??= { value: error };
-    }
-
-    if (releaseError !== undefined) {
-        throw releaseError.value;
-    }
-};
-
-const tryReleaseShapingBuffers = (
-    glyphs: ExternalObject<Handle> | null,
-    clusters: ExternalObject<Handle> | null,
-): void => {
-    try {
-        releaseShapingBuffers(glyphs, clusters);
-    } catch {
-        return;
-    }
 };
 
 /**
@@ -277,41 +231,39 @@ class ScaledFont {
         return cairoScaledFontGetReferenceCount(getHandle(this)) as number;
     }
 
-    /** Shapes `text` starting at `(x, y)` into glyphs, clusters and their ordering flags, or throws on failure. */
+    /** Shapes `text` starting at `(x, y)` into glyphs, clusters and the flags describing their order. */
     textToGlyphs(x: number, y: number, text: string): [CairoGlyph[], CairoTextCluster[], TextClusterFlags] {
         const glyphsRef: { value: ExternalObject<Handle> | null } = { value: null };
         const numGlyphsRef = { value: 0 };
         const clustersRef: { value: ExternalObject<Handle> | null } = { value: null };
         const numClustersRef = { value: 0 };
         const clusterFlagsRef = { value: 0 };
-        let result: [CairoGlyph[], CairoTextCluster[], TextClusterFlags];
 
-        try {
-            const status = cairoScaledFontTextToGlyphs(
-                getHandle(this),
-                x,
-                y,
-                text,
-                -1,
-                glyphsRef,
-                numGlyphsRef,
-                clustersRef,
-                numClustersRef,
-                clusterFlagsRef,
-            ) as Status;
+        cairoScaledFontTextToGlyphs(
+            getHandle(this),
+            x,
+            y,
+            text,
+            -1,
+            glyphsRef,
+            numGlyphsRef,
+            clustersRef,
+            numClustersRef,
+            clusterFlagsRef,
+        );
 
-            checkStatus(status, "scaled font");
-            const glyphs = readGlyphs(glyphsRef.value, numGlyphsRef.value);
-            const clusters = readClusters(clustersRef.value, numClustersRef.value);
-            result = [glyphs, clusters, clusterFlagsRef.value as TextClusterFlags];
-        } catch (error) {
-            tryReleaseShapingBuffers(glyphsRef.value, clustersRef.value);
-            throw error;
+        const glyphs = readGlyphs(glyphsRef.value, numGlyphsRef.value);
+        const clusters = readClusters(clustersRef.value, numClustersRef.value);
+
+        if (glyphsRef.value !== null) {
+            cairoGlyphFree(glyphsRef.value);
         }
 
-        releaseShapingBuffers(glyphsRef.value, clustersRef.value);
+        if (clustersRef.value !== null) {
+            cairoTextClusterFree(clustersRef.value);
+        }
 
-        return result;
+        return [glyphs, clusters, clusterFlagsRef.value as TextClusterFlags];
     }
 }
 

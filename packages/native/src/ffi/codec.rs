@@ -18,12 +18,10 @@ mod callback;
 mod enum_flags;
 mod fundamental;
 mod hashtable;
-mod lease;
 mod numeric;
 mod object;
 mod prelude;
 mod r#ref;
-mod resource;
 mod string;
 mod r#struct;
 mod unichar;
@@ -38,14 +36,12 @@ pub use callback::{CallbackCodec, CallbackScope, DestroyNotifyKind};
 pub use enum_flags::{EnumFlagsCodec, EnumFlagsKind};
 pub use fundamental::FundamentalCodec;
 pub use hashtable::{HashTableCodec, HashTableEntryCodec};
-pub(crate) use lease::{LeaseAction, LeaseCodec};
 pub use numeric::{FloatCodec, IntegerCodec, lossless_f64};
 pub use object::ObjectCodec;
 pub(crate) use object::{
     acquire_construction_ref, release_construction_ref, tracked_gobject_value,
 };
 pub use r#ref::RefCodec;
-pub(crate) use resource::{PreparedResourceResult, ResourceAction, ResourceCodec};
 pub use string::{StringCodec, str_to_glib_full};
 pub use r#struct::StructCodec;
 pub use unichar::UnicharCodec;
@@ -435,72 +431,12 @@ pub enum Codec {
     Array(ArrayCodec),
     Buffer(BufferCodec),
     HashTable(HashTableCodec),
-    Lease(LeaseCodec),
-    Resource(ResourceCodec),
     Callback(CallbackCodec),
     Ref(RefCodec),
     Unichar(UnicharCodec),
 }
 
 impl Codec {
-    pub(crate) fn contains_lease(&self) -> bool {
-        match self {
-            Self::Lease(_) => true,
-            Self::Array(array) => array.item_codec.contains_lease(),
-            Self::HashTable(table) => {
-                table.key_codec.contains_lease() || table.value_codec.contains_lease()
-            }
-            Self::Callback(callback) => {
-                callback.arg_codecs.iter().any(Self::contains_lease)
-                    || callback.return_codec.contains_lease()
-            }
-            Self::Ref(reference) => reference.inner_codec().contains_lease(),
-            Self::Integer(_)
-            | Self::BigInt(_)
-            | Self::Float(_)
-            | Self::EnumFlags(_)
-            | Self::String(_)
-            | Self::Void(_)
-            | Self::Boolean(_)
-            | Self::Object(_)
-            | Self::Boxed(_)
-            | Self::Struct(_)
-            | Self::Fundamental(_)
-            | Self::Buffer(_)
-            | Self::Resource(_)
-            | Self::Unichar(_) => false,
-        }
-    }
-
-    pub(crate) fn contains_resource(&self) -> bool {
-        match self {
-            Self::Resource(_) => true,
-            Self::Array(array) => array.item_codec.contains_resource(),
-            Self::HashTable(table) => {
-                table.key_codec.contains_resource() || table.value_codec.contains_resource()
-            }
-            Self::Callback(callback) => {
-                callback.arg_codecs.iter().any(Self::contains_resource)
-                    || callback.return_codec.contains_resource()
-            }
-            Self::Ref(reference) => reference.inner_codec().contains_resource(),
-            Self::Integer(_)
-            | Self::BigInt(_)
-            | Self::Float(_)
-            | Self::EnumFlags(_)
-            | Self::String(_)
-            | Self::Void(_)
-            | Self::Boolean(_)
-            | Self::Object(_)
-            | Self::Boxed(_)
-            | Self::Struct(_)
-            | Self::Fundamental(_)
-            | Self::Buffer(_)
-            | Self::Lease(_)
-            | Self::Unichar(_) => false,
-        }
-    }
-
     #[must_use]
     pub fn transfer(&self) -> Ownership {
         match self {
@@ -519,8 +455,6 @@ impl Codec {
             | Self::Void(_)
             | Self::Boolean(_)
             | Self::Buffer(_)
-            | Self::Lease(_)
-            | Self::Resource(_)
             | Self::Callback(_)
             | Self::Unichar(_) => Ownership::Borrowed,
         }
@@ -530,11 +464,7 @@ impl Codec {
     pub fn is_handle_backed(&self) -> bool {
         matches!(
             self,
-            Codec::Object(_)
-                | Codec::Boxed(_)
-                | Codec::Struct(_)
-                | Codec::Fundamental(_)
-                | Codec::Resource(_)
+            Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_)
         )
     }
 
@@ -572,8 +502,6 @@ impl std::fmt::Display for Codec {
             Self::Array(_) => write!(f, "Array"),
             Self::Buffer(_) => write!(f, "Buffer"),
             Self::HashTable(_) => write!(f, "HashTable"),
-            Self::Lease(t) => write!(f, "Lease({})", t.inner_codec()),
-            Self::Resource(t) => write!(f, "Resource({})", t.inner_codec()),
             Self::Callback(_) => write!(f, "Callback"),
             Self::Ref(t) => write!(f, "Ref({})", t.inner_codec()),
             Self::Unichar(_) => write!(f, "Unichar"),

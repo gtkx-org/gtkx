@@ -52,7 +52,6 @@ import {
     PATTERN_T,
     RECTANGLE_LIST_T,
     SCALED_FONT_T,
-    SURFACE_ACCESS_T,
     SURFACE_T,
     TEXT_CLUSTER_T,
     TEXT_EXTENTS_T,
@@ -62,7 +61,6 @@ import { parsePath } from "./path.js";
 import { Pattern } from "./pattern.js";
 import { ScaledFont } from "./scaled-font.js";
 import { checkStatus } from "./status.js";
-import { assertContextCanDraw, assertPatternCanBeSource } from "./surface-access.js";
 import { Surface } from "./surface.js";
 import {
     allocClusterBuffer,
@@ -84,7 +82,7 @@ const EXTENTS_ARGS = [CONTEXT_T, t.ref(t.float64), t.ref(t.float64), t.ref(t.flo
 const COORD_ARGS = [CONTEXT_T, t.ref(t.float64), t.ref(t.float64)];
 const CURVE_ARGS = [CONTEXT_T, t.float64, t.float64, t.float64, t.float64, t.float64, t.float64];
 const ARC_ARGS = [CONTEXT_T, t.float64, t.float64, t.float64, t.float64, t.float64];
-const cairoCreate = bindCairo("cairo_create", [SURFACE_ACCESS_T], CONTEXT_FULL_T);
+const cairoCreate = bindCairo("cairo_create", [SURFACE_T], CONTEXT_FULL_T);
 const cairoMoveTo = bindCairo("cairo_move_to", POINT_ARGS, t.void);
 const cairoLineTo = bindCairo("cairo_line_to", POINT_ARGS, t.void);
 const cairoRelMoveTo = bindCairo("cairo_rel_move_to", POINT_ARGS, t.void);
@@ -159,7 +157,7 @@ const cairoGetTarget = bindCairo("cairo_get_target", [CONTEXT_T], SURFACE_T);
 
 const cairoSetSourceSurface = bindCairo(
     "cairo_set_source_surface",
-    [CONTEXT_T, SURFACE_ACCESS_T, t.float64, t.float64],
+    [CONTEXT_T, SURFACE_T, t.float64, t.float64],
     t.void,
 );
 
@@ -175,13 +173,7 @@ const cairoInFill = bindCairo("cairo_in_fill", POINT_ARGS, t.boolean);
 const cairoInClip = bindCairo("cairo_in_clip", POINT_ARGS, t.boolean);
 const cairoCopyClipRectangleList = bindCairo("cairo_copy_clip_rectangle_list", [CONTEXT_T], RECTANGLE_LIST_T);
 const cairoMask = bindCairo("cairo_mask", [CONTEXT_T, PATTERN_T], t.void);
-
-const cairoMaskSurface = bindCairo(
-    "cairo_mask_surface",
-    [CONTEXT_T, SURFACE_ACCESS_T, t.float64, t.float64],
-    t.void,
-);
-
+const cairoMaskSurface = bindCairo("cairo_mask_surface", [CONTEXT_T, SURFACE_T, t.float64, t.float64], t.void);
 const cairoSetMatrix = bindCairo("cairo_set_matrix", [CONTEXT_T, MATRIX_T], t.void);
 const cairoGetMatrix = bindCairo("cairo_get_matrix", [CONTEXT_T, MATRIX_T], t.void);
 const cairoTransform = bindCairo("cairo_transform", [CONTEXT_T, MATRIX_T], t.void);
@@ -225,13 +217,6 @@ const readExtents = (handle: ExternalObject<Handle>, boundFn: BoundFunction): Ex
     boundFn(handle, x1Ref, y1Ref, x2Ref, y2Ref);
 
     return { x1: x1Ref.value, y1: y1Ref.value, x2: x2Ref.value, y2: y2Ref.value };
-};
-
-const drawingHandle = (context: Context): ExternalObject<Handle> => {
-    const handle = getHandle(context);
-    assertContextCanDraw(handle);
-
-    return handle;
 };
 
 const transformCoords = (
@@ -393,32 +378,32 @@ class Context {
 
     /** Strokes the current path with the current line settings and clears it. */
     stroke(): void {
-        cairoStroke(drawingHandle(this));
+        cairoStroke(getHandle(this));
     }
 
     /** Strokes the current path and keeps it. */
     strokePreserve(): void {
-        cairoStrokePreserve(drawingHandle(this));
+        cairoStrokePreserve(getHandle(this));
     }
 
     /** Fills the current path with the current fill rule and clears it. */
     fill(): void {
-        cairoFill(drawingHandle(this));
+        cairoFill(getHandle(this));
     }
 
     /** Fills the current path and keeps it. */
     fillPreserve(): void {
-        cairoFillPreserve(drawingHandle(this));
+        cairoFillPreserve(getHandle(this));
     }
 
     /** Paints the current source everywhere inside the clip. */
     paint(): void {
-        cairoPaint(drawingHandle(this));
+        cairoPaint(getHandle(this));
     }
 
     /** Paints the current source everywhere inside the clip, faded by `alpha`. */
     paintWithAlpha(alpha: number): void {
-        cairoPaintWithAlpha(drawingHandle(this), alpha);
+        cairoPaintWithAlpha(getHandle(this), alpha);
     }
 
     /** Intersects the clip with the current path and clears the path. */
@@ -448,9 +433,7 @@ class Context {
 
     /** Sets the source pattern drawing operations paint with. */
     setSource(pattern: Pattern): void {
-        const patternHandle = getHandle(pattern);
-        assertPatternCanBeSource(patternHandle);
-        cairoSetSource(getHandle(this), patternHandle);
+        cairoSetSource(getHandle(this), getHandle(pattern));
     }
 
     /** Sets the width of stroked lines in user space. */
@@ -585,7 +568,7 @@ class Context {
 
     /** Draws `text` with the current font at the current point. */
     showText(text: string): void {
-        cairoShowText(drawingHandle(this), text);
+        cairoShowText(getHandle(this), text);
     }
 
     /** Adds the outlines of `text` to the current path. */
@@ -634,12 +617,12 @@ class Context {
 
     /** Emits the current page and clears it, on surfaces that support pages. */
     showPage(): void {
-        cairoShowPage(drawingHandle(this));
+        cairoShowPage(getHandle(this));
     }
 
     /** Emits the current page without clearing it, on surfaces that support pages. */
     copyPage(): void {
-        cairoCopyPage(drawingHandle(this));
+        cairoCopyPage(getHandle(this));
     }
 
     /** Returns the surface the context was created for, wrapped as its concrete class. */
@@ -717,14 +700,12 @@ class Context {
 
     /** Paints the current source using the alpha channel of `pattern` as a mask. */
     mask(pattern: Pattern): void {
-        const patternHandle = getHandle(pattern);
-        assertPatternCanBeSource(patternHandle);
-        cairoMask(drawingHandle(this), patternHandle);
+        cairoMask(getHandle(this), getHandle(pattern));
     }
 
     /** Paints the current source using the alpha channel of `surface`, placed at `(x, y)`, as a mask. */
     maskSurface(surface: Surface, x: number, y: number): void {
-        cairoMaskSurface(drawingHandle(this), getHandle(surface), x, y);
+        cairoMaskSurface(getHandle(this), getHandle(surface), x, y);
     }
 
     /** Replaces the transformation from user space to device space. */
@@ -790,22 +771,22 @@ class Context {
 
     /** Redirects drawing to an intermediate surface until `popGroup` or `popGroupToSource`. */
     pushGroup(): void {
-        cairoPushGroup(drawingHandle(this));
+        cairoPushGroup(getHandle(this));
     }
 
     /** Redirects drawing to an intermediate surface of the given content. */
     pushGroupWithContent(content: Content): void {
-        cairoPushGroupWithContent(drawingHandle(this), content);
+        cairoPushGroupWithContent(getHandle(this), content);
     }
 
     /** Ends the current group and returns what was drawn into it as a pattern. */
     popGroup(): Pattern {
-        return wrapHandle(cairoPopGroup(drawingHandle(this)) as ExternalObject<Handle>, Pattern);
+        return wrapHandle(cairoPopGroup(getHandle(this)) as ExternalObject<Handle>, Pattern);
     }
 
     /** Ends the current group and installs what was drawn into it as the source. */
     popGroupToSource(): void {
-        cairoPopGroupToSource(drawingHandle(this));
+        cairoPopGroupToSource(getHandle(this));
     }
 
     /** Returns the surface drawing currently goes to: the group surface inside a group, else the target. */
@@ -848,7 +829,7 @@ class Context {
 
     /** Draws positioned glyphs with the current font. */
     showGlyphs(glyphs: CairoGlyph[]): void {
-        cairoShowGlyphs(drawingHandle(this), allocGlyphBuffer(glyphs), glyphs.length);
+        cairoShowGlyphs(getHandle(this), allocGlyphBuffer(glyphs), glyphs.length);
     }
 
     /** Adds the outlines of positioned glyphs to the current path. */
@@ -883,12 +864,12 @@ class Context {
 
     /** Opens a tagged structure, such as a link or a destination, on surfaces that record tags. */
     tagBegin(tagName: string, attributes: string): void {
-        cairoTagBegin(drawingHandle(this), tagName, attributes);
+        cairoTagBegin(getHandle(this), tagName, attributes);
     }
 
     /** Closes the tagged structure opened by the matching `tagBegin`. */
     tagEnd(tagName: string): void {
-        cairoTagEnd(drawingHandle(this), tagName);
+        cairoTagEnd(getHandle(this), tagName);
     }
 
     /** Draws glyphs together with the text and clusters they came from, so the backend can keep the text. */
@@ -902,7 +883,7 @@ class Context {
         const clusterBuffer = allocClusterBuffer(clusters);
 
         cairoShowTextGlyphs(
-            drawingHandle(this),
+            getHandle(this),
             text,
             -1,
             glyphBuffer,

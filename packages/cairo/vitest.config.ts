@@ -7,7 +7,6 @@ export default mergeConfig(
     defineConfig({
         plugins: [gtkx()],
         test: {
-            execArgv: ["--expose-gc"],
             name: "cairo",
         },
     }),

@@ -52,16 +52,6 @@ function isMarshalledDescriptor(descriptor: Descriptor): descriptor is Marshalle
     return MARSHALLED_KINDS.has(descriptor.kind);
 }
 
-const unwrapHandleDescriptor = (descriptor: Descriptor): Descriptor => {
-    let current = descriptor;
-
-    while (current.kind === "lease" || current.kind === "resource") {
-        current = current.innerDescriptor;
-    }
-
-    return current;
-};
-
 function mapCollection(
     descriptor: ArrayDescriptor,
     value: unknown,
@@ -203,37 +193,32 @@ function hashTableFromNative(descriptor: HashTableDescriptor, value: unknown): u
  * @param value The raw native value to convert.
  */
 function fromNative(descriptor: Descriptor, value: unknown): unknown {
-    const innerDescriptor = unwrapHandleDescriptor(descriptor);
-
-    if (innerDescriptor.kind === "callback") {
-        return callbackFromNative(innerDescriptor, value);
+    if (descriptor.kind === "callback") {
+        return callbackFromNative(descriptor, value);
     }
 
-    if (!isMarshalledDescriptor(innerDescriptor)) {
+    if (!isMarshalledDescriptor(descriptor)) {
         return value;
     }
 
-    switch (innerDescriptor.kind) {
+    switch (descriptor.kind) {
         case "object": {
-            return innerDescriptor.isCallScoped === true ? wrapCallScopedObject(value) : wrapObject(value);
+            return descriptor.isCallScoped === true ? wrapCallScopedObject(value) : wrapObject(value);
         }
         case "struct": {
-            return wrapHandle(
-                value as ExternalObject<Handle> | null,
-                (innerDescriptor as StructDescriptor).wrapperClass,
-            );
+            return wrapHandle(value as ExternalObject<Handle> | null, (descriptor as StructDescriptor).wrapperClass);
         }
         case "boxed": {
-            return boxedFromNative(innerDescriptor, value);
+            return boxedFromNative(descriptor, value);
         }
         case "fundamental": {
-            return fundamentalFromNative(innerDescriptor, value);
+            return fundamentalFromNative(descriptor, value);
         }
         case "array": {
-            return collectionFromNative(innerDescriptor, value);
+            return collectionFromNative(descriptor, value);
         }
         case "hashtable": {
-            return hashTableFromNative(innerDescriptor, value);
+            return hashTableFromNative(descriptor, value);
         }
     }
 }
@@ -263,17 +248,15 @@ function hashTableToNative(descriptor: HashTableDescriptor, value: unknown): unk
  * @param value The JavaScript value to convert.
  */
 function toNative(descriptor: Descriptor, value: unknown): unknown {
-    const innerDescriptor = unwrapHandleDescriptor(descriptor);
-
-    if (isGtypeDescriptor(innerDescriptor)) {
+    if (isGtypeDescriptor(descriptor)) {
         return coerceGType(value);
     }
 
-    if (!isMarshalledDescriptor(innerDescriptor)) {
+    if (!isMarshalledDescriptor(descriptor)) {
         return value;
     }
 
-    switch (innerDescriptor.kind) {
+    switch (descriptor.kind) {
         case "object":
         case "struct":
         case "boxed":
@@ -283,10 +266,10 @@ function toNative(descriptor: Descriptor, value: unknown): unknown {
             return instance == null ? null : getHandle(instance);
         }
         case "array": {
-            return collectionToNative(innerDescriptor, value);
+            return collectionToNative(descriptor, value);
         }
         case "hashtable": {
-            return hashTableToNative(innerDescriptor, value);
+            return hashTableToNative(descriptor, value);
         }
     }
 }
