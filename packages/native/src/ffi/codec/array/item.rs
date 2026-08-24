@@ -35,6 +35,7 @@ impl ItemCodec {
             | Codec::Array(_)
             | Codec::Buffer(_)
             | Codec::HashTable(_)
+            | Codec::Lease(_)
             | Codec::Callback(_)
             | Codec::Ref(_) => return None,
         })

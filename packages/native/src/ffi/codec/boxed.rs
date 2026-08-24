@@ -119,7 +119,7 @@ impl BoxedCodec {
         }
     }
 
-    fn adopted_or_struct(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
+    pub(crate) fn adopted_or_struct(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
         if self.free_fn_name.is_none() && self.type_()?.is_none() {
             return Ok(Handle::owned_struct(ptr));
         }

@@ -1,5 +1,6 @@
 mod boxed;
 mod fundamental;
+mod lease;
 pub(crate) mod surface;
 
 use std::cell::{Cell, RefCell};
@@ -9,6 +10,9 @@ use std::rc::Rc;
 pub use boxed::{Boxed, BoxedFreeFn};
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
 use glib::prelude::ObjectType as _;
+pub(crate) use lease::{
+    Lease, LeaseGetUserDataFn, LeaseIdentityApi, LeaseKind, LeaseReleaseFn, LeaseSetUserDataFn,
+};
 
 use crate::ffi::PendingTransfer;
 
@@ -110,7 +114,7 @@ enum HandleKind {
     Fundamental(Fundamental),
     Struct(*mut c_void),
     Borrowed(*mut c_void),
-    ProcessStatic(*mut c_void),
+    Lease(Lease),
     Field {
         owner: Handle,
         offset: usize,
@@ -139,7 +143,7 @@ impl std::fmt::Debug for Handle {
             HandleKind::Fundamental(_) => "Fundamental",
             HandleKind::Struct(_) => "Struct",
             HandleKind::Borrowed(_) => "Borrowed",
-            HandleKind::ProcessStatic(_) => "ProcessStatic",
+            HandleKind::Lease(_) => "Lease",
             HandleKind::Field { .. } => "Field",
         };
         f.debug_struct("Handle")
@@ -195,7 +199,23 @@ impl Handle {
     /// ends the borrow.
     #[must_use]
     pub fn process_static(ptr: *mut c_void) -> Self {
-        HandleKind::ProcessStatic(ptr).into()
+        HandleKind::Borrowed(ptr).into()
+    }
+
+    pub(crate) fn leased(lease: Lease) -> Self {
+        HandleKind::Lease(lease).into()
+    }
+
+    pub(crate) fn as_lease(&self) -> Option<&Lease> {
+        let HandleKind::Lease(lease) = &self.inner.kind else {
+            return None;
+        };
+
+        Some(lease)
+    }
+
+    pub(crate) fn is_owned_boxed(&self) -> bool {
+        !self.is_invalidated() && matches!(self.inner.kind, HandleKind::Boxed(_))
     }
 
     /// A handle over the `offset` bytes into `owner`, aliasing the owner's memory instead of
@@ -263,29 +283,6 @@ impl Handle {
         }
     }
 
-    /// Ends a raw pointer borrow without releasing its memory, returning whether this handle is a
-    /// borrow of that kind. Ending an already-ended pointer borrow succeeds without further work.
-    #[must_use]
-    pub fn end_pointer_borrow(&self) -> bool {
-        if !matches!(&self.inner.kind, HandleKind::Borrowed(_)) {
-            return false;
-        }
-
-        self.invalidate();
-        true
-    }
-
-    /// Clones a raw pointer borrow while sharing its invalidation state, or returns `None` for a
-    /// handle with any other ownership or lifetime.
-    #[must_use]
-    pub fn clone_pointer_borrow(&self) -> Option<Self> {
-        if self.is_invalidated() || !matches!(&self.inner.kind, HandleKind::Borrowed(_)) {
-            return None;
-        }
-
-        Some(self.clone())
-    }
-
     #[must_use]
     pub fn is_invalidated(&self) -> bool {
         if self.inner.invalidated.get() {
@@ -295,6 +292,7 @@ impl Handle {
         match &self.inner.kind {
             HandleKind::Object { ptr, .. } => ptr.get().is_null(),
             HandleKind::Field { owner, .. } => owner.is_invalidated(),
+            HandleKind::Lease(lease) => !lease.is_active(),
             _ => false,
         }
     }
@@ -376,9 +374,8 @@ impl Handle {
 
         match &self.inner.kind {
             HandleKind::Object { ptr, .. } => ptr.get(),
-            HandleKind::Struct(ptr)
-            | HandleKind::Borrowed(ptr)
-            | HandleKind::ProcessStatic(ptr) => *ptr,
+            HandleKind::Struct(ptr) | HandleKind::Borrowed(ptr) => *ptr,
+            HandleKind::Lease(lease) => lease.value_ptr(),
             HandleKind::Boxed(boxed) => boxed.as_ptr(),
             HandleKind::Fundamental(fundamental) => fundamental.as_ptr(),
             HandleKind::Field { owner, offset } => {
@@ -405,7 +402,7 @@ impl Handle {
             HandleKind::Boxed(_) => Boxed::SIZE_HINT,
             HandleKind::Fundamental(_) => Fundamental::SIZE_HINT,
             HandleKind::Struct(_) => STRUCT_SIZE_HINT,
-            HandleKind::Borrowed(_) | HandleKind::ProcessStatic(_) | HandleKind::Field { .. } => 0,
+            HandleKind::Borrowed(_) | HandleKind::Lease(_) | HandleKind::Field { .. } => 0,
         }
     }
 }

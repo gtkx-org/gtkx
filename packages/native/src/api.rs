@@ -13,7 +13,6 @@ pub mod get_wrapper;
 pub mod init;
 pub mod keep_alive;
 pub mod new_object;
-pub mod pointer_borrow;
 pub mod quit;
 pub mod read;
 pub mod register_class;

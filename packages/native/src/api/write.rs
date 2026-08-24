@@ -57,7 +57,7 @@ pub fn write<'env>(
     value: Unknown<'_>,
 ) -> Result<Unknown<'env>> {
     let offset = byte_count_from_f64(offset, "field write: offset")?;
-    let field_codec = field_descriptor.into_codec()?;
+    let field_codec = field_descriptor.into_non_call_codec("field write")?;
 
     write_field_at(env, handle, &field_codec, offset, value)
 }

@@ -3,14 +3,15 @@ import {
     Context,
     Format,
     ImageSurface,
+    Pattern,
     RecordingSurface,
     RectangleInt,
     Status,
     Surface,
     SurfaceType,
 } from "@gtkx/cairo";
-import { getHandle, wrapHandle } from "@gtkx/runtime";
-import { endPointerBorrow } from "@gtkx/runtime/internal";
+import { bind as nativeBind } from "@gtkx/native";
+import { getHandle, t, wrapHandle } from "@gtkx/runtime";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -77,15 +78,30 @@ const mapAndUnmapSurface = (): void => {
     const sourceAlias = Context.create(image).getTarget();
     const mapped = image.mapToImage(new RectangleInt({ x: 2, y: 2, width: 3, height: 4 }));
     const alias = wrapHandle(getHandle(mapped), ImageSurface);
+    const mappedChild = Surface.createForRectangle(mapped, 0, 0, 3, 4);
+    const childContext = Context.create(mappedChild);
+    childContext.setSourceRgb(1, 0, 0);
+    childContext.paint();
     const context = Context.create(mapped);
     context.setSourceRgb(1, 0, 0);
     context.paint();
     const distinct = context.getTarget();
     expect(mapped).toBeInstanceOf(ImageSurface);
     expect(dimensions(mapped)).toEqual([3, 4]);
-    sourceAlias.unmapImage(mapped);
+    sourceAlias.unmapImage(distinct);
     expect(image.status()).toBe(Status.SUCCESS);
     expect(() => Context.create(distinct)).toThrow();
+    expect(() => Context.create(mappedChild)).toThrow();
+    const data = image.getData();
+    const stride = image.getStride();
+
+    const pixelAt = (x: number, y: number): number[] =>
+        [...data.slice(y * stride + x * 4, y * stride + x * 4 + 4)];
+
+    expect(pixelAt(0, 0)).toEqual([0, 0, 0, 0]);
+    expect(pixelAt(2, 2)).toEqual([0, 0, 255, 255]);
+    expect(pixelAt(4, 5)).toEqual([0, 0, 255, 255]);
+    expect(pixelAt(5, 5)).toEqual([0, 0, 0, 0]);
 
     expect(() => {
         mapped.status();
@@ -107,8 +123,13 @@ const collectMappedImage = async (): Promise<void> => {
     expect(weak.deref()).toBeUndefined();
     expect(surface.inkExtents()).toEqual({ x0: 0, y0: 0, width: 4, height: 4 });
     const context = firstValue(contexts);
-    context.paint();
-    expect(context.status()).toBe(Status.SURFACE_FINISHED);
+
+    expect(() => {
+        context.paint();
+    }).toThrow();
+
+    const remapped = surface.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }));
+    surface.unmapImage(remapped);
 };
 
 const collectMappedWrapperWithLiveAlias = async (): Promise<void> => {
@@ -124,15 +145,178 @@ const collectMappedWrapperWithLiveAlias = async (): Promise<void> => {
     expect(surface.getReferenceCount()).toBe(before);
 };
 
-const unmapInvalidatedBorrowAmongActiveMappings = (): void => {
-    const firstSource = createImage();
-    const secondSource = createImage();
-    const extents = new RectangleInt({ x: 0, y: 0, width: 1, height: 1 });
-    const firstMapped = firstSource.mapToImage(extents);
-    const secondMapped = secondSource.mapToImage(extents);
-    endPointerBorrow(getHandle(secondMapped));
-    secondSource.unmapImage(secondMapped);
-    firstSource.unmapImage(firstMapped);
+const expectMappedOwnerUsesToThrow = (
+    image: ImageSurface,
+    sourceContext: Context,
+    sourcePattern: Pattern,
+    otherContext: Context,
+): void => {
+    expect(() => Context.create(image)).toThrow();
+    expect(() => Pattern.createForSurface(image)).toThrow();
+
+    expect(() => {
+        sourceContext.paint();
+    }).toThrow();
+
+    expect(() => {
+        otherContext.setSource(sourcePattern);
+    }).toThrow();
+
+    expect(() => {
+        otherContext.setSourceSurface(image, 0, 0);
+    }).toThrow();
+
+    expect(() => {
+        otherContext.mask(sourcePattern);
+    }).toThrow();
+
+    expect(() => {
+        otherContext.maskSurface(image, 0, 0);
+    }).toThrow();
+
+    expect(() => image.writeToPng(join(outputDir, "mapped-owner.png"))).toThrow();
+    expect(() => image.getData()).toThrow();
+};
+
+const expectMappedRelatedUsesToThrow = (
+    related: Surface,
+    relatedContext: Context,
+    relatedPattern: Pattern,
+    otherContext: Context,
+): void => {
+    expect(() => related.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
+
+    expect(() => {
+        relatedContext.paint();
+    }).toThrow();
+
+    expect(() => {
+        otherContext.setSource(relatedPattern);
+    }).toThrow();
+};
+
+const expectInvalidMappingOperandsToThrow = (): void => {
+    expect(() => createImage().mapToImage(undefined as never)).toThrow();
+    const finished = createImage();
+    finished.finish();
+    expect(() => finished.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
+
+    expect(() => {
+        createImage().unmapImage(undefined as never);
+    }).toThrow();
+};
+
+const expectMappedDirectUsesToThrow = (): void => {
+    const image = createImage();
+    const sourceContext = Context.create(image);
+    const sourceAlias = sourceContext.getTarget();
+    const sourcePattern = Pattern.createForSurface(image);
+    const otherContext = Context.create(createImage());
+    const mapped = image.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }));
+    expect(() => image.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
+    expect(() => sourceAlias.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
+    expect(() => mapped.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
+    expectMappedOwnerUsesToThrow(image, sourceContext, sourcePattern, otherContext);
+
+    expect(() => {
+        mapped.finish();
+    }).toThrow();
+
+    expect(() => {
+        image.finish();
+    }).toThrow();
+
+    expect(() => {
+        mapped.setDeviceOffset(1, 1);
+    }).toThrow();
+
+    expect(() => {
+        image.setDeviceScale(2, 2);
+    }).toThrow();
+
+    expect(() => {
+        createImage().unmapImage(mapped);
+    }).toThrow();
+
+    expect(() => {
+        image.unmapImage(createImage());
+    }).toThrow();
+
+    expect(() => {
+        image.unmapImage(image);
+    }).toThrow();
+
+    image.unmapImage(mapped);
+
+    expect(() => {
+        sourceContext.paint();
+    }).not.toThrow();
+
+    expect(() => {
+        image.unmapImage(mapped);
+    }).toThrow();
+};
+
+const expectMappedParentRelationsToThrow = (): void => {
+    const image = createImage();
+    const child = Surface.createForRectangle(image, 0, 0, 2, 2);
+    const nested = Surface.createForRectangle(child, 0, 0, 1, 1);
+    const childContext = Context.create(child);
+    const nestedContext = Context.create(nested);
+    const childPattern = Pattern.createForSurface(child);
+    const otherContext = Context.create(createImage());
+    const mapped = image.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }));
+    expectMappedRelatedUsesToThrow(child, childContext, childPattern, otherContext);
+
+    expect(() => {
+        nestedContext.paint();
+    }).toThrow();
+
+    image.unmapImage(mapped);
+
+    expect(() => {
+        nestedContext.paint();
+    }).not.toThrow();
+};
+
+const expectMappedChildRelationsToThrow = (): void => {
+    const image = createImage();
+    const child = Surface.createForRectangle(image, 0, 0, 2, 2);
+    const sibling = Surface.createForRectangle(image, 2, 2, 1, 1);
+    const sourceContext = Context.create(image);
+    const sourcePattern = Pattern.createForSurface(image);
+    const otherContext = Context.create(createImage());
+    const siblingContext = Context.create(sibling);
+    const mapped = child.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }));
+    expectMappedRelatedUsesToThrow(image, sourceContext, sourcePattern, otherContext);
+
+    expect(() => {
+        siblingContext.paint();
+    }).toThrow();
+
+    child.unmapImage(mapped);
+
+    expect(() => {
+        siblingContext.paint();
+    }).not.toThrow();
+};
+
+const expectMappedGroupRelationsToThrow = (): void => {
+    const context = Context.create(createImage());
+    context.pushGroup();
+    const group = context.getGroupTarget();
+    const mapped = group.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }));
+    expect(() => context.popGroup()).toThrow();
+
+    expect(() => {
+        context.popGroupToSource();
+    }).toThrow();
+
+    group.unmapImage(mapped);
+
+    expect(() => {
+        context.popGroupToSource();
+    }).not.toThrow();
 };
 
 afterAll(() => {
@@ -212,55 +396,66 @@ describe("Surface mapping", () => {
     it("keeps a mapping alive while a shared-handle alias remains", async () => {
         await expect(collectMappedWrapperWithLiveAlias()).resolves.toBeUndefined();
     });
+});
 
-    it("unmaps an externally invalidated borrow among active mappings", () => {
-        expect(unmapInvalidatedBorrowAmongActiveMappings).not.toThrow();
+describe("Surface mapping descriptor errors", () => {
+    it("rejects malformed lease descriptors before calling Cairo", () => {
+        const surfaceDescriptor = t.boxed("CairoSurface", {
+            ownership: "borrowed",
+            sharedLibrary: "libcairo-gobject.so.2",
+            getTypeFnName: "cairo_gobject_surface_get_type",
+        });
+
+        const lease = t.lease("libcairo.so.2", "cairo_surface_unmap_image");
+
+        expect(() =>
+            t.bind(
+                "libcairo.so.2",
+                "cairo_surface_unmap_image",
+                [lease.end(surfaceDescriptor, 1), surfaceDescriptor],
+                t.void,
+            ),
+        ).toThrow();
+
+        expect(() =>
+            t.bind(
+                "libcairo.so.2",
+                "cairo_surface_unmap_image",
+                [surfaceDescriptor, lease.end(surfaceDescriptor, 0)],
+                t.int32,
+            ),
+        ).toThrow();
+
+        expect(() =>
+            t.bind(
+                "libcairo.so.2",
+                "cairo_surface_status",
+                [t.callback([lease.guard(surfaceDescriptor)], t.void)],
+                t.int32,
+            ),
+        ).toThrow();
+
+        expect(() =>
+            nativeBind(
+                "libcairo.so.2",
+                "cairo_surface_unmap_image",
+                [surfaceDescriptor, lease.end(surfaceDescriptor, 0)],
+                t.void,
+                0,
+            ),
+        ).toThrow();
+
+        expect(() => t.fieldAt(lease.guard(surfaceDescriptor))).toThrow();
     });
 });
 
 describe("Surface mapping errors", () => {
     it("rejects invalid mapping lifecycles", () => {
-        expect(() => createImage().mapToImage(undefined as never)).toThrow();
-        const finished = createImage();
-        finished.finish();
-        expect(() => finished.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
-
-        expect(() => {
-            createImage().unmapImage(undefined as never);
-        }).toThrow();
-
-        const image = createImage();
-        const sourceAlias = Context.create(image).getTarget();
-        const mapped = image.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }));
-        expect(() => image.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
-        expect(() => sourceAlias.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
-        expect(() => mapped.mapToImage(new RectangleInt({ x: 0, y: 0, width: 1, height: 1 }))).toThrow();
-
-        expect(() => {
-            mapped.finish();
-        }).toThrow();
-
-        expect(() => {
-            mapped.setDeviceOffset(1, 1);
-        }).toThrow();
-
-        expect(() => {
-            image.setDeviceScale(2, 2);
-        }).toThrow();
-
-        expect(() => {
-            createImage().unmapImage(mapped);
-        }).toThrow();
-
-        expect(() => {
-            image.unmapImage(createImage());
-        }).toThrow();
-
-        image.unmapImage(mapped);
-
-        expect(() => {
-            image.unmapImage(mapped);
-        }).toThrow();
+        expectInvalidMappingOperandsToThrow();
+        expectMappedDirectUsesToThrow();
+        expectMappedParentRelationsToThrow();
+        expectMappedChildRelationsToThrow();
+        expectMappedGroupRelationsToThrow();
     });
 });
 

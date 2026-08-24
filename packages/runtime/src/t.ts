@@ -54,6 +54,8 @@ type T = {
     struct: typeof helpers.structT;
     /** Builds a descriptor for a fundamental type whose lifetime is managed by named ref and unref functions. */
     fundamental: typeof helpers.fundamentalT;
+    /** Builds a boxed-resource lease released by the named native `void (owner, value)` function. */
+    lease: typeof helpers.leaseT;
     /** Wraps a descriptor in a pointer to it, for an output or inout argument. */
     ref: typeof helpers.refT;
     /** Builds a descriptor for a `GHashTable`, marshalled as an array of key/value pairs. */
@@ -128,6 +130,7 @@ const t: T = {
     boxed: helpers.boxedT,
     struct: helpers.structT,
     fundamental: helpers.fundamentalT,
+    lease: helpers.leaseT,
     ref: helpers.refT,
     hashTable: helpers.hashTableT,
     enum: helpers.enumT,

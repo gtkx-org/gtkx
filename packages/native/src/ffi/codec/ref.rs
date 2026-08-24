@@ -39,7 +39,11 @@ impl RefCodec {
     #[must_use]
     pub fn supports_inner(inner: &Codec) -> bool {
         match inner {
-            Codec::Callback(_) | Codec::Void(_) | Codec::Buffer(_) | Codec::Ref(_) => false,
+            Codec::Callback(_)
+            | Codec::Void(_)
+            | Codec::Buffer(_)
+            | Codec::Lease(_)
+            | Codec::Ref(_) => false,
             Codec::Integer(_)
             | Codec::BigInt(_)
             | Codec::Float(_)

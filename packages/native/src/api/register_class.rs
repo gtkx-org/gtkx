@@ -127,9 +127,11 @@ impl TryFrom<RegisterClassVfunc> for ResolvedVfunc {
             arg_codecs: vfunc
                 .arg_descriptors
                 .into_iter()
-                .map(Descriptor::into_codec)
+                .map(|descriptor| descriptor.into_non_call_codec("class vfunc argument"))
                 .collect::<Result<_>>()?,
-            return_codec: vfunc.return_descriptor.into_codec()?,
+            return_codec: vfunc
+                .return_descriptor
+                .into_non_call_codec("class vfunc return")?,
             can_throw: vfunc.can_throw.unwrap_or(false),
         })
     }

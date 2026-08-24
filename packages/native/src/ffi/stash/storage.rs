@@ -8,6 +8,7 @@ use crate::handle::UnrefFn;
 pub struct StashStorage {
     ptr: *mut c_void,
     data: StashData,
+    retained_handle: Option<crate::handle::Handle>,
     pending_transfer: Cell<Vec<PendingTransfer>>,
 }
 
@@ -276,6 +277,16 @@ impl StashStorage {
         Self {
             ptr,
             data,
+            retained_handle: None,
+            pending_transfer: Cell::new(Vec::new()),
+        }
+    }
+
+    pub(crate) fn retaining_handle(ptr: *mut c_void, handle: crate::handle::Handle) -> Self {
+        Self {
+            ptr,
+            data: StashData::Unit,
+            retained_handle: Some(handle),
             pending_transfer: Cell::new(Vec::new()),
         }
     }
@@ -320,6 +331,10 @@ impl StashStorage {
 
     pub fn data(&self) -> &StashData {
         &self.data
+    }
+
+    pub(crate) fn retained_handle(&self) -> Option<&crate::handle::Handle> {
+        self.retained_handle.as_ref()
     }
 
     pub fn owns_element_buffer(&self) -> bool {

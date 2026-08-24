@@ -6,8 +6,8 @@ use napi_derive::napi;
 use crate::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, BoxedCodec, BufferCodec,
     CallbackCodec, CallbackScope, Codec, DestroyNotifyKind, EnumFlagsCodec, EnumFlagsKind,
-    FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, RefCodec,
-    StringCodec, StructCodec, UnicharCodec, VoidCodec,
+    FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, LeaseAction, LeaseCodec,
+    ObjectCodec, Ownership, RefCodec, StringCodec, StructCodec, UnicharCodec, VoidCodec,
 };
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
@@ -182,6 +182,17 @@ pub enum Descriptor {
         inner_descriptor: NestedDescriptor,
         inout: Option<bool>,
     },
+    Lease {
+        #[napi(ts_type = "Descriptor")]
+        inner_descriptor: NestedDescriptor,
+        #[napi(ts_type = "'result' | 'end' | 'guard' | 'access' | 'alias'")]
+        action: String,
+        shared_library: String,
+        release_fn_name: String,
+        owner_param_index: Option<u32>,
+        get_user_data_fn_name: Option<String>,
+        set_user_data_fn_name: Option<String>,
+    },
 }
 
 impl NestedDescriptor {
@@ -293,6 +304,18 @@ impl Descriptor {
         })
     }
 
+    pub(crate) fn into_non_call_codec(self, context: &str) -> Result<Codec> {
+        let codec = self.into_codec()?;
+        if codec.contains_lease() {
+            return Err(Error::new(
+                Status::InvalidArg,
+                format!("{context} cannot use lease descriptors"),
+            ));
+        }
+
+        Ok(codec)
+    }
+
     fn into_nested_codec(self) -> Result<Codec> {
         Ok(match self {
             Self::Array {
@@ -369,6 +392,27 @@ impl Descriptor {
                 *inner_descriptor.into_codec()?,
                 inout.unwrap_or(false),
             )?),
+            Self::Lease {
+                inner_descriptor,
+                action,
+                shared_library,
+                release_fn_name,
+                owner_param_index,
+                get_user_data_fn_name,
+                set_user_data_fn_name,
+            } => Codec::Lease(
+                LeaseCodec::new(
+                    *inner_descriptor.into_codec()?,
+                    LeaseAction::parse(&action)
+                        .map_err(|error| Error::from_reason(error.to_string()))?,
+                    shared_library,
+                    release_fn_name,
+                    owner_param_index.map(|index| index as usize),
+                    get_user_data_fn_name,
+                    set_user_data_fn_name,
+                )
+                .map_err(|error| Error::from_reason(error.to_string()))?,
+            ),
             _ => unreachable!("descriptors without nested descriptors are handled by into_codec"),
         })
     }

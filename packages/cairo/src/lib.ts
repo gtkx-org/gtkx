@@ -31,6 +31,13 @@ const SURFACE_FULL_T: BoxedDescriptor = t.boxed("CairoSurface", {
     getTypeFnName: "cairo_gobject_surface_get_type",
 });
 
+const SURFACE_MAPPING_LEASE: ReturnType<typeof t.lease> = t.lease(CAIRO_LIBRARY, "cairo_surface_unmap_image", {
+    getUserDataFnName: "cairo_surface_get_user_data",
+    setUserDataFnName: "cairo_surface_set_user_data",
+});
+
+const SURFACE_ACCESS_T: Descriptor = SURFACE_MAPPING_LEASE.access(SURFACE_T);
+
 const DEVICE_T: BoxedDescriptor = t.boxed("CairoDevice", {
     ownership: "borrowed",
     sharedLibrary: CAIRO_GOBJECT_LIBRARY,
@@ -193,7 +200,9 @@ export {
     REGION_T,
     SCALED_FONT_FULL_T,
     SCALED_FONT_T,
+    SURFACE_ACCESS_T,
     SURFACE_FULL_T,
+    SURFACE_MAPPING_LEASE,
     SURFACE_T,
     TEXT_CLUSTER_ARRAY_FULL_T,
     TEXT_CLUSTER_T,

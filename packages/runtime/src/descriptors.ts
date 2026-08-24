@@ -64,6 +64,34 @@ type HashTableDescriptor = Extract<Descriptor, { kind: "hashtable" }>;
 type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }>;
 /** Descriptor variant for a pointer to another descriptor's value, for an output or inout argument. */
 type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
+/** Descriptor variant for a boxed handle whose use participates in a native resource lease. */
+type LeaseDescriptor = Extract<Descriptor, { kind: "lease" }>;
+
+/** Native user-data hooks that keep lease alias identity attached to the native value's lifetime. */
+type LeaseIdentityOptions = {
+    /** Names `void *get(void *value, const void *key)`. */
+    getUserDataFnName: string;
+    /** Names `int set(void *value, const void *key, void *data, void (*destroy)(void *))`. */
+    setUserDataFnName: string;
+};
+
+/** Descriptors for a boxed-resource lease released by a native `void (owner, value)` function. */
+type LeaseDescriptorFactory = {
+    /** Requires the value not to participate in an active lease of this kind. */
+    guard(innerDescriptor: BoxedDescriptor): LeaseDescriptor;
+    /** Allows a leased result to be used while rejecting its owner until the lease ends. */
+    access(innerDescriptor: BoxedDescriptor | StructDescriptor): LeaseDescriptor;
+    /** Starts a lease over the returned value, retaining the owner at `ownerParamIndex`. */
+    result(innerDescriptor: BoxedDescriptor, ownerParamIndex: number): LeaseDescriptor;
+    /** Ends the value's lease after a successful call, matching its owner at `ownerParamIndex`. */
+    end(innerDescriptor: BoxedDescriptor, ownerParamIndex: number): LeaseDescriptor;
+};
+
+/** Lease descriptors that can associate native aliases through configured user-data hooks. */
+type LeaseIdentityDescriptorFactory = LeaseDescriptorFactory & {
+    /** Associates a returned boxed alias with the value at `ownerParamIndex`. */
+    alias(innerDescriptor: BoxedDescriptor, ownerParamIndex: number): LeaseDescriptor;
+};
 
 /** Descriptor for a `GType`: a `guint64` marked so it resolves to `G_TYPE_GTYPE` rather than an integer. */
 type TypeDescriptor = BigUint64Descriptor & {
@@ -369,6 +397,62 @@ const fundamentalT = (
     return result;
 };
 
+/** Builds descriptors for a boxed-resource lease released by `void release(void *owner, void *value)`. */
+function leaseT(sharedLibrary: string, releaseFnName: string): LeaseDescriptorFactory;
+
+function leaseT(
+    sharedLibrary: string,
+    releaseFnName: string,
+    identity: LeaseIdentityOptions,
+): LeaseIdentityDescriptorFactory;
+
+function leaseT(
+    sharedLibrary: string,
+    releaseFnName: string,
+    identity?: LeaseIdentityOptions,
+): LeaseDescriptorFactory | LeaseIdentityDescriptorFactory {
+    const descriptor = (
+        action: LeaseDescriptor["action"],
+        innerDescriptor: LeaseDescriptor["innerDescriptor"],
+        ownerParamIndex?: number,
+    ): LeaseDescriptor => {
+        const result: LeaseDescriptor = {
+            kind: "lease",
+            action,
+            innerDescriptor,
+            sharedLibrary,
+            releaseFnName,
+        };
+
+        if (ownerParamIndex !== undefined) {
+            result.ownerParamIndex = ownerParamIndex;
+        }
+
+        if (identity !== undefined) {
+            result.getUserDataFnName = identity.getUserDataFnName;
+            result.setUserDataFnName = identity.setUserDataFnName;
+        }
+
+        return result;
+    };
+
+    const result: LeaseDescriptorFactory = {
+        guard: (innerDescriptor) => descriptor("guard", innerDescriptor),
+        access: (innerDescriptor) => descriptor("access", innerDescriptor),
+        result: (innerDescriptor, ownerParamIndex) => descriptor("result", innerDescriptor, ownerParamIndex),
+        end: (innerDescriptor, ownerParamIndex) => descriptor("end", innerDescriptor, ownerParamIndex),
+    };
+
+    if (identity === undefined) {
+        return result;
+    }
+
+    return {
+        ...result,
+        alias: (innerDescriptor, ownerParamIndex) => descriptor("alias", innerDescriptor, ownerParamIndex),
+    };
+}
+
 const applyArrayBounds = (result: ArrayDescriptor, options: ArrayOptions): void => {
     if (options.baseParamIndex !== undefined) {
         result.baseParamIndex = options.baseParamIndex;
@@ -548,6 +632,7 @@ export {
     structT,
     fundamentalLifecycleFor,
     fundamentalT,
+    leaseT,
     arrayT,
     listT,
     slistT,
@@ -565,4 +650,8 @@ export {
     type HashTableDescriptor,
     type CallbackDescriptor,
     type RefDescriptor,
+    type LeaseDescriptor,
+    type LeaseDescriptorFactory,
+    type LeaseIdentityDescriptorFactory,
+    type LeaseIdentityOptions,
 };

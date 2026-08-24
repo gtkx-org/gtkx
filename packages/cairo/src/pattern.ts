@@ -18,6 +18,7 @@ import {
     PATH_T,
     PATTERN_FULL_T,
     PATTERN_T,
+    SURFACE_ACCESS_T,
     SURFACE_T,
 } from "./lib.js";
 import { allocMatrix, Matrix } from "./matrix.js";
@@ -56,7 +57,12 @@ const cairoPatternCreateRadial = bindCairo(
 );
 
 const cairoPatternCreateMesh = bindCairo("cairo_pattern_create_mesh", [], PATTERN_FULL_T);
-const cairoPatternCreateForSurface = bindCairo("cairo_pattern_create_for_surface", [SURFACE_T], PATTERN_FULL_T);
+
+const cairoPatternCreateForSurface = bindCairo(
+    "cairo_pattern_create_for_surface",
+    [SURFACE_ACCESS_T],
+    PATTERN_FULL_T,
+);
 
 const cairoPatternAddColorStopRgb = bindCairo(
     "cairo_pattern_add_color_stop_rgb",

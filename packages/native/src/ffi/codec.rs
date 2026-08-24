@@ -18,6 +18,7 @@ mod callback;
 mod enum_flags;
 mod fundamental;
 mod hashtable;
+mod lease;
 mod numeric;
 mod object;
 mod prelude;
@@ -36,6 +37,7 @@ pub use callback::{CallbackCodec, CallbackScope, DestroyNotifyKind};
 pub use enum_flags::{EnumFlagsCodec, EnumFlagsKind};
 pub use fundamental::FundamentalCodec;
 pub use hashtable::{HashTableCodec, HashTableEntryCodec};
+pub(crate) use lease::{LeaseAction, LeaseCodec};
 pub use numeric::{FloatCodec, IntegerCodec, lossless_f64};
 pub use object::ObjectCodec;
 pub(crate) use object::{
@@ -431,12 +433,41 @@ pub enum Codec {
     Array(ArrayCodec),
     Buffer(BufferCodec),
     HashTable(HashTableCodec),
+    Lease(LeaseCodec),
     Callback(CallbackCodec),
     Ref(RefCodec),
     Unichar(UnicharCodec),
 }
 
 impl Codec {
+    pub(crate) fn contains_lease(&self) -> bool {
+        match self {
+            Self::Lease(_) => true,
+            Self::Array(array) => array.item_codec.contains_lease(),
+            Self::HashTable(table) => {
+                table.key_codec.contains_lease() || table.value_codec.contains_lease()
+            }
+            Self::Callback(callback) => {
+                callback.arg_codecs.iter().any(Self::contains_lease)
+                    || callback.return_codec.contains_lease()
+            }
+            Self::Ref(reference) => reference.inner_codec().contains_lease(),
+            Self::Integer(_)
+            | Self::BigInt(_)
+            | Self::Float(_)
+            | Self::EnumFlags(_)
+            | Self::String(_)
+            | Self::Void(_)
+            | Self::Boolean(_)
+            | Self::Object(_)
+            | Self::Boxed(_)
+            | Self::Struct(_)
+            | Self::Fundamental(_)
+            | Self::Buffer(_)
+            | Self::Unichar(_) => false,
+        }
+    }
+
     #[must_use]
     pub fn transfer(&self) -> Ownership {
         match self {
@@ -455,6 +486,7 @@ impl Codec {
             | Self::Void(_)
             | Self::Boolean(_)
             | Self::Buffer(_)
+            | Self::Lease(_)
             | Self::Callback(_)
             | Self::Unichar(_) => Ownership::Borrowed,
         }
@@ -502,6 +534,7 @@ impl std::fmt::Display for Codec {
             Self::Array(_) => write!(f, "Array"),
             Self::Buffer(_) => write!(f, "Buffer"),
             Self::HashTable(_) => write!(f, "HashTable"),
+            Self::Lease(t) => write!(f, "Lease({})", t.inner_codec()),
             Self::Callback(_) => write!(f, "Callback"),
             Self::Ref(t) => write!(f, "Ref({})", t.inner_codec()),
             Self::Unichar(_) => write!(f, "Unichar"),
