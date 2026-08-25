@@ -85,8 +85,8 @@ const isRelativeImport = (source: string): boolean => source.startsWith("./") ||
 const schemaFileFor = ({ importer, source }: SourceImport): string | null =>
     isRelativeImport(source) && source.endsWith(SCHEMA_SUFFIX) ? resolve(dirname(importer), source) : null;
 
-const findImportedSchemaFiles = (root: string): string[] => {
-    const files = discoverSourceImports(sourceDirFor(root))
+const findImportedSchemaFiles = (imports: SourceImport[]): string[] => {
+    const files = imports
         .map((entry) => schemaFileFor(entry))
         .filter((path): path is string => path !== null);
 
@@ -133,11 +133,9 @@ const resourceModuleSpecifier = (source: string): string | null => {
 };
 
 const findAssetModuleSpecifiers = (
-    root: string,
+    imports: SourceImport[],
     isV2ResourceImports: boolean,
 ): { blocked: string[]; legacy: string[]; resources: string[] } => {
-    const imports = discoverSourceImports(sourceDirFor(root));
-
     const collect = (getSpecifier: (source: string) => string | null): string[] =>
         sortStrings(new Set(imports.map((entry) => getSpecifier(entry.source)).filter((value) => value !== null)));
 
@@ -209,7 +207,8 @@ const findSchemaFiles = (dataDir: string): string[] => {
 };
 
 const stageAndCompileProjectSchemas = (root: string, dataDir: string | null): string | null => {
-    const imported = findImportedSchemaFiles(root);
+    const imports = discoverSourceImports(sourceDirFor(root));
+    const imported = findImportedSchemaFiles(imports);
     assertUniqueSchemaBasenames(imported);
     const legacy = dataDir === null ? [] : findSchemaFiles(join(root, dataDir));
     const schemaFiles = sortStrings(new Set([...legacy, ...imported]));
@@ -289,15 +288,16 @@ const emitSchemaEnv = (
 ): SchemaEnvResult => {
     const dataDirAbs = dataDir === null ? null : join(rootDir, dataDir);
     const legacyFiles = dataDirAbs === null ? [] : findSchemaFiles(dataDirAbs);
+    const imports = discoverSourceImports(sourceDirFor(rootDir));
 
     const legacy = dataDirAbs === null
         ? []
         : parseProjectSchemas(legacyFiles, (filePath) => getModuleSpecifier(dataDirAbs, filePath));
 
-    const importedFiles = findImportedSchemaFiles(rootDir);
+    const importedFiles = findImportedSchemaFiles(imports);
     assertUniqueSchemaBasenames(importedFiles);
     const imported = parseProjectSchemas(importedFiles, getRelativeModuleSpecifier);
-    const assets = findAssetModuleSpecifiers(rootDir, isV2ResourceImports);
+    const assets = findAssetModuleSpecifiers(imports, isV2ResourceImports);
     const content = renderEnvModule([...legacy, ...imported], assets);
     const path = schemaEnvPath(rootDir);
     const isWritten = didWriteChanges(path, content);

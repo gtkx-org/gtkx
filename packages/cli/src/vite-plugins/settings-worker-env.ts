@@ -12,10 +12,9 @@ function gtkxSettingsWorkerEnv(): Plugin {
         enforce: "pre",
 
         async config(config: UserConfig) {
-            const root = config.root ?? process.cwd();
-            const loaded = await loadConfig.load(root);
-            const dataDir = loaded.config.future?.v2ResourceImports === true ? null : resolveDataDir(root);
-            const dir = stageAndCompileProjectSchemas(root, dataDir);
+            const loaded = await loadConfig.load(config.root ?? process.cwd());
+            const dataDir = loaded.config.future?.v2ResourceImports === true ? null : resolveDataDir(loaded.root);
+            const dir = stageAndCompileProjectSchemas(loaded.root, dataDir);
 
             if (dir === null) {
                 return;

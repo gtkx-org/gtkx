@@ -27,6 +27,7 @@ type PluginState = {
     dataDir: string | null;
     isV2ResourceImports: boolean;
     isBuild: boolean;
+    schemaEnvTimer: ReturnType<typeof setTimeout> | null;
     trackedSchemas: Map<string, string>;
     buildSchemas: Set<string>;
 };
@@ -39,6 +40,7 @@ const VIRTUAL_PREFIX = "\0gtkx-settings:";
 const SCHEMA_STAGING_PREFIX = "schemas";
 const SOURCE_MODULE_RE = /\.[cm]?[jt]sx?$/;
 const JSON_INDENT = 4;
+const SCHEMA_ENV_DEBOUNCE_MS = 50;
 const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const SCHEMA_ENV_BANNER = [
@@ -85,11 +87,28 @@ const syncSchemaEnv = (state: PluginState): void => {
     }
 };
 
+const cancelSchemaEnvSync = (state: PluginState): void => {
+    if (state.schemaEnvTimer === null) {
+        return;
+    }
+
+    clearTimeout(state.schemaEnvTimer);
+    state.schemaEnvTimer = null;
+};
+
+const scheduleSchemaEnvSync = (state: PluginState): void => {
+    cancelSchemaEnvSync(state);
+
+    state.schemaEnvTimer = setTimeout(() => {
+        state.schemaEnvTimer = null;
+        syncSchemaEnv(state);
+    }, SCHEMA_ENV_DEBOUNCE_MS);
+};
+
 const applyUserConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader): Promise<void> => {
-    const root = config.root ?? process.cwd();
-    const loaded = await loadConfig.load(root);
+    const loaded = await loadConfig.load(config.root ?? process.cwd());
     state.isV2ResourceImports = loaded.config.future?.v2ResourceImports === true;
-    state.dataDir = state.isV2ResourceImports ? null : resolveDataDir(root);
+    state.dataDir = state.isV2ResourceImports ? null : resolveDataDir(loaded.root);
 };
 
 const applyResolvedConfig = (state: PluginState, config: ResolvedConfig): void => {
@@ -196,7 +215,7 @@ const emitBuildSchemas = (ctx: PluginContext, state: PluginState): void => {
 
 const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDevServer): ModuleNode[] | undefined => {
     if (file.endsWith(SCHEMA_SUFFIX) || SOURCE_MODULE_RE.test(file)) {
-        syncSchemaEnv(state);
+        scheduleSchemaEnvSync(state);
     }
 
     const virtualId = state.trackedSchemas.get(file);
@@ -222,6 +241,7 @@ const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDev
 
 const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
     const onClose = (): void => {
+        cancelSchemaEnvSync(state);
         state.schemaDir.release();
     };
 
@@ -230,7 +250,7 @@ const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
 
     const refreshSchemaTypes = (file: string): void => {
         if (file.endsWith(SCHEMA_SUFFIX) || SOURCE_MODULE_RE.test(file)) {
-            syncSchemaEnv(state);
+            scheduleSchemaEnvSync(state);
         }
     };
 
@@ -245,6 +265,7 @@ function gtkxSettings(loadConfig: ConfigLoader): Plugin {
         dataDir: null,
         isV2ResourceImports: false,
         isBuild: false,
+        schemaEnvTimer: null,
         trackedSchemas: new Map(),
         buildSchemas: new Set(),
     };
@@ -290,6 +311,7 @@ function gtkxSettings(loadConfig: ConfigLoader): Plugin {
         },
 
         closeBundle() {
+            cancelSchemaEnvSync(state);
             state.schemaDir.release();
         },
 

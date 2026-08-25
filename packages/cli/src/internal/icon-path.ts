@@ -1,12 +1,12 @@
 import { type Stats, statSync } from "node:fs";
-import { basename, isAbsolute, relative, resolve } from "node:path";
+import { basename, extname, isAbsolute, relative, resolve } from "node:path";
 
 type ResolvedIconSource = {
     iconsDir: string | null;
     iconFile: string | null;
 };
 
-const ICON_EXTENSIONS = [".svg", ".png", ".xpm"];
+const ICON_EXTENSIONS: Set<string> = new Set([".svg", ".png", ".xpm"]);
 const SCALABLE_DIR = "hicolor/scalable/apps";
 const SIZE_PATTERN = /^(?<width>[1-9]\d{0,3})x(?<height>[1-9]\d{0,3})$/;
 const SIZE_SEPARATORS = /[-_.]/;
@@ -23,6 +23,16 @@ const getStats = (path: string): Stats | undefined => {
     } catch {
         return undefined;
     }
+};
+
+const iconExtension = (file: string): string => {
+    const extension = extname(file).toLowerCase();
+
+    if (!ICON_EXTENSIONS.has(extension)) {
+        throw new Error(`Cannot use ${file} as an application icon: expected an SVG, PNG, or XPM file`);
+    }
+
+    return extension;
 };
 
 const resolveIconSource = (root: string, configured: string | undefined): ResolvedIconSource => {
@@ -46,6 +56,8 @@ const resolveIconSource = (root: string, configured: string | undefined): Resolv
         throw new Error(`Cannot read the icon path "${configured}": no such file or directory under ${root}`);
     }
 
+    iconExtension(path);
+
     return { iconsDir: null, iconFile: path };
 };
 
@@ -59,8 +71,8 @@ const squareSize = (token: string): number | null => {
     return Number(groups.width);
 };
 
-const iconThemeDir = (file: string): string => {
-    if (file.endsWith(".svg")) {
+const iconThemeDir = (file: string, extension: string): string => {
+    if (extension === ".svg") {
         return SCALABLE_DIR;
     }
 
@@ -73,9 +85,9 @@ const iconThemeDir = (file: string): string => {
 };
 
 const relativeIconPath = (applicationId: string, file: string): string => {
-    const extension = ICON_EXTENSIONS.find((candidate) => file.endsWith(candidate)) ?? ".png";
+    const extension = iconExtension(file);
 
-    return `${iconThemeDir(file)}/${applicationId}${extension}`;
+    return `${iconThemeDir(file, extension)}/${applicationId}${extension}`;
 };
 
 export { relativeIconPath, resolveIconSource, type ResolvedIconSource };

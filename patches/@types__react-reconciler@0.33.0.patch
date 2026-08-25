@@ -1,0 +1,33 @@
+diff --git a/index.d.ts b/index.d.ts
+index c0762387a68005990e4d2297ff2331e73c4e71ba..cc1e695d5647b371a491535c9c3f123d275e40e3 100644
+--- a/index.d.ts
++++ b/index.d.ts
+@@ -1 +1 @@
+-import { Component, ReactNode } from "react";
++import { Component, Context, ReactNode, ReactPortal as PublicReactPortal } from "react";
+@@ -649,18 +649 @@ declare namespace ReactReconciler {
+-    interface ReactContext<T> {
+-        $$typeof: symbol | number;
+-        Consumer: ReactContext<T>;
+-        Provider: ReactProviderType<T>;
+-        _currentValue: T;
+-        _currentValue2: T;
+-        _threadCount: number;
+-        // DEV only
+-        _currentRenderer?: {
+-            [key: string]: any;
+-        } | null;
+-        _currentRenderer2?: {
+-            [key: string]: any;
+-        } | null;
+-        // This value may be added by application code
+-        // to improve DEV tooling display names
+-        displayName?: string;
+-    }
++    interface ReactContext<T> extends Context<T> {}
+@@ -668 +651 @@ declare namespace ReactReconciler {
+-    interface ReactPortal {
++    interface ReactPortal extends PublicReactPortal {
+@@ -952 +935 @@ declare namespace ReactReconciler {
+-        ): ReactPortal;
++        ): PublicReactPortal;

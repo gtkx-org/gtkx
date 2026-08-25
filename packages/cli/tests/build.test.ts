@@ -551,6 +551,14 @@ describe("gtkx build (invalid resources and packaging inputs)", () => {
         });
     });
 
+    it("fails when the configured icon file has an unsupported format", () => {
+        expectBuildFailure({
+            prefix: "gtkx-cli-build-unsupported-icon-",
+            config: config(STORE_LIBRARIES, ", codegen: false", "application.jpg"),
+            files: { ...appFiles("index.tsx"), "application.jpg": "jpeg\n" },
+        });
+    });
+
     it("fails when an imported schema is outside the project", () => {
         expectOutsideSchemaBuildFailure();
     });

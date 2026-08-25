@@ -45,6 +45,9 @@ overrides:
 
 packageExtensionsChecksum: sha256-a2xhjdsFr8d5AIbVRi4nn7WBebox5vq0zcCN2SSQOYo=
 
+patchedDependencies:
+  '@types/react-reconciler@0.33.0': 5f321dd89798ede30e54db677b972e9a7ad535a6245167ce4678941916c328e8
+
 importers:
 
   .:
@@ -694,7 +697,7 @@ importers:
         version: 19.2.18
       '@types/react-reconciler':
         specifier: ^0.33.0
-        version: 0.33.0(@types/react@19.2.18)
+        version: 0.33.0(patch_hash=5f321dd89798ede30e54db677b972e9a7ad535a6245167ce4678941916c328e8)(@types/react@19.2.18)
 
   packages/runtime:
     dependencies:
@@ -8675,7 +8678,7 @@ snapshots:
 
   '@types/parse-json@4.0.2': {}
 
-  '@types/react-reconciler@0.33.0(@types/react@19.2.18)':
+  '@types/react-reconciler@0.33.0(patch_hash=5f321dd89798ede30e54db677b972e9a7ad535a6245167ce4678941916c328e8)(@types/react@19.2.18)':
     dependencies:
       '@types/react': 19.2.18
 
