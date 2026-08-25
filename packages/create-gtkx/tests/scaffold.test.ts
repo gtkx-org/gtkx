@@ -23,7 +23,7 @@ const getScripts = (run: CreateRun): Scripts => readManifest(run).scripts as Scr
 const expectGeneratedConfig = (run: CreateRun): void => {
     const config = readProject(run, "gtkx.config.ts");
     expect(config).toContain(APPLICATION_ID);
-    expect(config).toContain('icons: "data/icons"');
+    expect(config).toContain('applicationIcon: "data/icons"');
     expect(config).toContain("v2ResourceImports: true");
     expect(readManifest(run).imports).toBeUndefined();
 };

@@ -1,10 +1,9 @@
 import { type Stats, statSync } from "node:fs";
-import { basename, extname, isAbsolute, relative, resolve } from "node:path";
+import { basename, extname, isAbsolute, join, relative, resolve } from "node:path";
 
-type ResolvedIconSource = {
-    iconsDir: string | null;
-    iconFile: string | null;
-};
+type ResolvedApplicationIcon = { kind: "file"; path: string } |
+    { kind: "none" } |
+    { kind: "theme"; path: string };
 
 const ICON_EXTENSIONS: Set<string> = new Set([".svg", ".png", ".xpm"]);
 const SCALABLE_DIR = "hicolor/scalable/apps";
@@ -35,30 +34,65 @@ const iconExtension = (file: string): string => {
     return extension;
 };
 
-const resolveIconSource = (root: string, configured: string | undefined): ResolvedIconSource => {
+const defaultIconFiles = (root: string, applicationId: string): string[] =>
+    [...ICON_EXTENSIONS]
+        .map((extension) => join(root, `${applicationId}${extension}`))
+        .filter((path) => getStats(path)?.isFile() === true);
+
+const resolveDefaultApplicationIcon = (root: string, applicationId: string): ResolvedApplicationIcon => {
+    const files = defaultIconFiles(root, applicationId);
+
+    if (files.length === 0) {
+        return { kind: "none" };
+    }
+
+    if (files.length > 1) {
+        throw new Error(
+            `Found multiple default application icons for ${applicationId}; set \`applicationIcon\` to choose one`,
+        );
+    }
+
+    const path = files[0];
+
+    if (path === undefined) {
+        return { kind: "none" };
+    }
+
+    return { kind: "file", path };
+};
+
+const resolveApplicationIcon = (
+    root: string,
+    applicationId: string,
+    configured: string | undefined,
+): ResolvedApplicationIcon => {
     if (configured === undefined) {
-        return { iconsDir: null, iconFile: null };
+        return resolveDefaultApplicationIcon(root, applicationId);
+    }
+
+    if (isAbsolute(configured)) {
+        throw new Error(`Cannot use "${configured}" as the application icon: expected a project-relative path`);
     }
 
     const path = resolve(root, configured);
 
     if (!isInside(root, path)) {
-        throw new Error(`Cannot use "${configured}" as the icon path: it is outside ${root}`);
+        throw new Error(`Cannot use "${configured}" as the application icon: it is outside ${root}`);
     }
 
     const stats = getStats(path);
 
     if (stats?.isDirectory() === true) {
-        return { iconsDir: path, iconFile: null };
+        return { kind: "theme", path };
     }
 
     if (stats?.isFile() !== true) {
-        throw new Error(`Cannot read the icon path "${configured}": no such file or directory under ${root}`);
+        throw new Error(`Cannot read the application icon "${configured}": no such file or directory under ${root}`);
     }
 
     iconExtension(path);
 
-    return { iconsDir: null, iconFile: path };
+    return { kind: "file", path };
 };
 
 const squareSize = (token: string): number | null => {
@@ -90,4 +124,4 @@ const relativeIconPath = (applicationId: string, file: string): string => {
     return `${iconThemeDir(file, extension)}/${applicationId}${extension}`;
 };
 
-export { relativeIconPath, resolveIconSource, type ResolvedIconSource };
+export { relativeIconPath, resolveApplicationIcon, type ResolvedApplicationIcon };

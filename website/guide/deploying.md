@@ -47,7 +47,7 @@ import { defineConfig } from "@gtkx/config";
 export default defineConfig({
     libraries: ["Gtk-4.0"],
     applicationId: "com.example.Tasks",
-    icons: "data/icons",
+    applicationIcon: "data/icons",
     deploy: {
         summary: "Manage your tasks and to-dos",
         categories: ["Office"],
@@ -79,9 +79,12 @@ Anything you leave out is derived, so the same fact never lives in two places:
 | deb `Depends`, rpm `Requires` | GTK and libadwaita when your `libraries` bind them, plus the glibc minimum read out of the built binaries. Every other dependency is yours to declare through `deploy.depends` |
 | `screenshotBaseUrl` | the `origin` git remote, including the project's path inside the repository |
 
-The application icon is the one thing that has to exist. Set the top-level `icons` option to an icon-theme
-directory such as `data/icons`, or to a single image. In a directory, the file name must match the application
-ID because the desktop entry names that ID as its icon.
+The application icon is the one thing that has to exist. Set the top-level `applicationIcon` option to an
+icon-theme directory such as `data/icons`, or to a single image. In a directory, the primary file must be under
+`hicolor/<size>/apps` and its name must match the application ID because the desktop entry names that ID as its
+icon. Sizes can be `scalable`, `symbolic`, a square pixel size, or a scaled pixel size such as `128x128@2`; GTKX
+preserves the whole theme tree and its variants. You can omit the option when exactly one `<applicationId>.svg`,
+`.png`, or `.xpm` file is in the project root; deploying without any icon still fails.
 
 ## What gets installed
 
@@ -92,10 +95,11 @@ bin/<binaryName>                                 a launcher script
 lib/<binaryName>/node                            the bundled Node.js
 lib/<binaryName>/bundle.mjs                      the app
 lib/<binaryName>/gtkx.node                       the native addon
+lib/<binaryName>/gtkx.gresource                  bundled GResource assets, when present
 lib/<binaryName>/gschemas.compiled               compiled settings schemas
 share/applications/<id>.desktop                  generated
 share/metainfo/<id>.metainfo.xml                 generated
-share/icons/hicolor/**/apps/<id>.svg             copied from the configured icons path
+share/icons/hicolor/**/apps/<id>.svg             copied from applicationIcon
 share/glib-2.0/schemas/<id>*.gschema.xml         copied from imported schemas
 share/mime/packages/<id>.xml                     generated, when you declare fileAssociations
 share/licenses/<binaryName>/LICENSE              your license file, on every target but deb
@@ -104,7 +108,9 @@ share/doc/<binaryName>/copyright                 generated, deb only
 <destination>                                    every deploy.extraFiles entry
 ```
 
-`bundle.mjs`, `gtkx.node`, and the compiled schemas are siblings because the built bundle resolves them all relative to itself. The launcher resolves everything from its own location, so the same tree works at `/usr`, at `/app`, and inside an AppImage mount point.
+`bundle.mjs`, `gtkx.node`, the optional `gtkx.gresource`, and the compiled schemas are siblings because the
+built bundle resolves them all relative to itself. The launcher resolves everything from its own location, so
+the same tree works at `/usr`, at `/app`, and inside an AppImage mount point.
 
 ## Why Node.js is bundled
 

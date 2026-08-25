@@ -1,23 +1,27 @@
 import { mkdirSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { relativeIconPath, type ResolvedIconSource, resolveIconSource } from "../internal/icon-path.js";
+import {
+    relativeIconPath,
+    resolveApplicationIcon,
+    type ResolvedApplicationIcon,
+} from "../internal/icon-path.js";
 import { createRetainedStagingDir } from "../internal/staging-dir.js";
 import { prependXdgDataDir } from "../internal/xdg-data-dirs.js";
 
-const stageIconSource = (shareDir: string, applicationId: string, source: ResolvedIconSource): void => {
-    if (source.iconsDir !== null) {
-        symlinkSync(source.iconsDir, join(shareDir, "icons"), "dir");
+const stageIconSource = (shareDir: string, applicationId: string, source: ResolvedApplicationIcon): void => {
+    if (source.kind === "theme") {
+        symlinkSync(source.path, join(shareDir, "icons"), "dir");
 
         return;
     }
 
-    if (source.iconFile === null) {
+    if (source.kind === "none") {
         return;
     }
 
-    const target = join(shareDir, "icons", relativeIconPath(applicationId, source.iconFile));
+    const target = join(shareDir, "icons", relativeIconPath(applicationId, source.path));
     mkdirSync(dirname(target), { recursive: true });
-    symlinkSync(source.iconFile, target, "file");
+    symlinkSync(source.path, target, "file");
 };
 
 const prepareDevIconDir = (
@@ -25,9 +29,9 @@ const prepareDevIconDir = (
     applicationId: string,
     configured: string | undefined,
 ): string | null => {
-    const source = resolveIconSource(root, configured);
+    const source = resolveApplicationIcon(root, applicationId, configured);
 
-    if (source.iconsDir === null && source.iconFile === null) {
+    if (source.kind === "none") {
         return null;
     }
 

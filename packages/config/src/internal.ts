@@ -8,3 +8,4 @@ export {
     resolveOmittedProps,
 } from "./config.ts";
 export { createConfigLoader } from "./loader.ts";
+export { resourceBasePath } from "./resource-base-path.ts";

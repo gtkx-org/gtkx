@@ -4,6 +4,7 @@ const ASSET_EXTENSIONS = [
     "jpeg",
     "gif",
     "svg",
+    "xpm",
     "webp",
     "webm",
     "mp4",

@@ -8,6 +8,12 @@ declare module "*?resource" {
     export default path;
 }
 
+declare module "*?icon" {
+    /** Icon-theme name of the bundled asset. */
+    const iconName: string;
+    export default iconName;
+}
+
 declare module "*.css?url" {
     /**
      * Absolute filesystem path of the source stylesheet under `gtkx dev` or the emitted stylesheet once built,

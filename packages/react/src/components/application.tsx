@@ -3,7 +3,10 @@ import { quitApplication, runApplication } from "@gtkx/runtime";
 import { pickBy, warn } from "@gtkx/utils";
 import process from "node:process";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
-import { applicationId as defaultApplicationId } from "virtual:gtkx-config";
+import {
+    applicationId as defaultApplicationId,
+    resourceBasePath as defaultResourceBasePath,
+} from "virtual:gtkx-config";
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
 import { createPortaledComponent } from "./portaled.js";
@@ -12,6 +15,7 @@ type ApplicationComponentProps = {
     applicationId?: string | null | undefined;
     children?: ReactNode | undefined;
     ref?: Ref<Gtk.Application | null> | undefined;
+    resourceBasePath?: string | null | undefined;
 };
 
 const POST_ACTIVATE_PROPS = new Set(["menubar"]);
@@ -80,7 +84,13 @@ const applicationChildren = (application: Gtk.Application | null, children: Reac
 const createApplicationElement = (
     Component: ElementType,
 ): ((props: ApplicationComponentProps) => ReactNode) => {
-    return ({ applicationId = defaultApplicationId, children, ref, ...rest }: ApplicationComponentProps): ReactNode => {
+    return ({
+        applicationId = defaultApplicationId,
+        children,
+        ref,
+        resourceBasePath = defaultResourceBasePath,
+        ...rest
+    }: ApplicationComponentProps): ReactNode => {
         const [application, setApplication] = useState<Gtk.Application | null>(null);
         const [activated, setActivated] = useState(false);
         useApplicationLifecycle(application, setActivated, applicationId);
@@ -88,7 +98,12 @@ const createApplicationElement = (
         const appliedProps = activated ? rest : pickBy(rest, (_value, key) => !POST_ACTIVATE_PROPS.has(key));
 
         return (
-            <Component ref={mergedRef} applicationId={applicationId} {...appliedProps}>
+            <Component
+                ref={mergedRef}
+                applicationId={applicationId}
+                {...appliedProps}
+                resourceBasePath={resourceBasePath}
+            >
                 {activated ? applicationChildren(application, children) : null}
             </Component>
         );

@@ -2,12 +2,13 @@ import type { Config } from "@gtkx/config";
 import { statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { DeployConfig, DeployPaths } from "../types.js";
-import { resolveIconSource } from "../../internal/icon-path.js";
+import { resolveApplicationIcon } from "../../internal/icon-path.js";
 
 type PathsRequest = {
     root: string;
     deploy: DeployConfig;
-    icons: Config["icons"];
+    applicationIcon: Config["applicationIcon"];
+    applicationId: Config["applicationId"];
     outDirOverride: string | undefined;
 };
 
@@ -57,7 +58,6 @@ const resolveLicenseFile = (root: string, configured: string | undefined): strin
 const resolvePaths = (request: PathsRequest): DeployPaths => {
     const { root, deploy } = request;
     const outDir = resolveOutDir(request);
-    const { iconsDir, iconFile } = resolveIconSource(root, request.icons);
 
     return {
         root,
@@ -69,8 +69,7 @@ const resolvePaths = (request: PathsRequest): DeployPaths => {
         overlay: join(outDir, "overlay"),
         targets: join(outDir, "targets"),
         output: join(outDir, "out"),
-        iconsDir,
-        iconFile,
+        applicationIcon: resolveApplicationIcon(root, request.applicationId, request.applicationIcon),
         licenseFile: resolveLicenseFile(root, deploy.licenseFile),
         schemaFiles: [],
     };

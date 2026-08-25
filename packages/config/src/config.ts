@@ -202,7 +202,7 @@ const configSchema = z.object({
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
     userEventSignals: userEventSignalsSchema.optional(),
     elements: elementsSchema.optional(),
-    icons: text("must be a path to an icon theme directory or a single icon file").optional(),
+    applicationIcon: text("must be a path to an icon theme directory or a single icon file").optional(),
     deploy: deploySchema.optional(),
 });
 

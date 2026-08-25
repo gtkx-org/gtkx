@@ -183,7 +183,8 @@ const resolveDeploySettings = (request: SettingsRequest): DeploySettings => {
         paths: resolvePaths({
             root: request.root,
             deploy,
-            icons: request.config.icons,
+            applicationIcon: request.config.applicationIcon,
+            applicationId: request.config.applicationId,
             outDirOverride: request.outDirOverride,
         }),
         ...resolveLibraries(request.root, request.config),

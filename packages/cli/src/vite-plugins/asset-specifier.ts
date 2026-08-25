@@ -7,9 +7,15 @@ type ResourceSpecifier = {
     resourcePath: string | null;
 };
 
+type IconSpecifier = {
+    assetSource: string;
+    iconName: string | null;
+};
+
 const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 const RELATIVE_PREFIX_RE = /^\.\.?(?:\/|$)/;
 const RESOURCE_QUERY_RE = /^resource(?:=([^&#]+))?$/;
+const ICON_QUERY_RE = /^icon(?:=([^&#]+))?$/;
 const URL_QUERY_RE = /(?:^|&)url(?:&|$)/;
 
 const getQuery = (source: string): string | null => {
@@ -41,6 +47,23 @@ const parseResourceSpecifier = (source: string): ResourceSpecifier | null => {
     return { assetSource, resourcePath: match[1] ?? null };
 };
 
+const parseIconSpecifier = (source: string): IconSpecifier | null => {
+    const query = getQuery(source);
+    const assetSource = stripQuery(source);
+
+    if (query === null || !ASSET_RE.test(assetSource)) {
+        return null;
+    }
+
+    const match = ICON_QUERY_RE.exec(query);
+
+    if (match === null) {
+        return null;
+    }
+
+    return { assetSource, iconName: match[1] ?? null };
+};
+
 const isUrlSpecifier = (source: string): boolean => {
     const query = getQuery(source);
 
@@ -53,5 +76,6 @@ export {
     isBareRelativeAsset,
     isDataAsset,
     isUrlSpecifier,
+    parseIconSpecifier,
     parseResourceSpecifier,
 };

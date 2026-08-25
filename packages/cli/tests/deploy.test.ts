@@ -19,6 +19,7 @@ import {
     listProjectFiles,
     removeCliProject,
     runCli,
+    runCliOrThrow,
     STORE_FUTURE,
     STORE_LIBRARIES,
 } from "./cli-project.js";
@@ -318,20 +319,20 @@ const RUNTIME_NODE = `        node: { source: "path", path: "${RUNTIME_BINARY}" 
 
 const NOTICES_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${RUNTIME_NODE}    },\n`;
 
-const config = (body: string): string =>
+const config = (body: string, applicationIcon: string | null = "data/icons"): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
     `    libraries: ${JSON.stringify(STORE_LIBRARIES)},\n` +
-    "    icons: \"data/icons\",\n" +
+    (applicationIcon === null ? "" : `    applicationIcon: ${JSON.stringify(applicationIcon)},\n`) +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
 const wildcardConfig = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n    libraries: "*",\n` +
-    "    icons: \"data/icons\",\n" +
+    "    applicationIcon: \"data/icons\",\n" +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
 const bareConfig = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
-    "    icons: \"data/icons\",\n" +
+    "    applicationIcon: \"data/icons\",\n" +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
 const sourceConfig = (source: string, extra = ""): string =>
@@ -520,6 +521,89 @@ describe("gtkx deploy (manifests only)", () => {
     it("leaves the relations that carry no release of their own alone", () => {
         expect(packagedDepends(state.project, NFPM_PATH)).toContain("hicolor-icon-theme");
         expect(packagedDepends(state.project, RPM_NFPM_PATH)).toContain("libGLESv2.so.2()(64bit)");
+    });
+});
+
+describe("gtkx deploy (application icon selection)", () => {
+    it("packages an application-id icon in the project root by default", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-default-icon-",
+            config: config(DEPLOY_BLOCK, null),
+            files: { ...projectFiles(), [`${APPLICATION_ID}.svg`]: "<svg/>\n" },
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).toBe(0);
+
+            expect(outputNames(project)).toContain(
+                join(STAGE_PREFIX, "share", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`),
+            );
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("preserves scaled and symbolic files in a configured hicolor theme", () => {
+        const scaled = join("hicolor", "128x128@2", "apps", `${APPLICATION_ID}.png`);
+        const symbolic = join("hicolor", "symbolic", "apps", `${APPLICATION_ID}-symbolic.svg`);
+
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-icon-variants-",
+            config: config(DEPLOY_BLOCK, "data/variant-icons"),
+            files: {
+                ...projectFiles(),
+                [join("data", "variant-icons", scaled)]: "png\n",
+                [join("data", "variant-icons", symbolic)]: "<svg/>\n",
+            },
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).toBe(0);
+
+            expect(outputNames(project)).toEqual(expect.arrayContaining([
+                join(STAGE_PREFIX, "share", "icons", scaled),
+                join(STAGE_PREFIX, "share", "icons", symbolic),
+            ]));
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx deploy (invalid application icon themes)", () => {
+    it("fails when the project provides no application icon", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-missing-icon-",
+            config: config(DEPLOY_BLOCK, null),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        try {
+            expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("fails when the application icon is outside a usable icon-theme layout", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-malformed-icon-theme-",
+            config: config(DEPLOY_BLOCK, "data/malformed-icons"),
+            files: {
+                ...projectFiles(),
+                [join("data", "malformed-icons", "random", `${APPLICATION_ID}.svg`)]: "<svg/>\n",
+            },
+            hasStore: true,
+        });
+
+        try {
+            expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
+        } finally {
+            removeCliProject(project);
+        }
     });
 });
 

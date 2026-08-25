@@ -16,7 +16,12 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
 import { discoverSourceImports, type SourceImport } from "../internal/source-imports.js";
 import { removeTempDir } from "../internal/staging-dir.js";
-import { isBareRelativeAsset, isDataAsset, parseResourceSpecifier } from "../vite-plugins/asset-specifier.js";
+import {
+    isBareRelativeAsset,
+    isDataAsset,
+    parseIconSpecifier,
+    parseResourceSpecifier,
+} from "../vite-plugins/asset-specifier.js";
 import { compileSchemas } from "./compile.js";
 import { type ParsedSchemaFile, parseSchemaXml, SchemaParseError } from "./parser.js";
 import { renderEnvModule } from "./render.js";
@@ -31,6 +36,7 @@ const SCHEMA_MANIFEST_FILENAME = "gtkx-schemas.json";
 const STAGED_NAME_LENGTH = 16;
 const SOURCE_DIR = "src";
 const RESOURCE_QUERY = "?resource=";
+const ICON_QUERY = "?icon=";
 
 const prependSchemaDir = (dir: string, existing: string | undefined): string => {
     if (existing === undefined || existing.length === 0) {
@@ -132,22 +138,42 @@ const resourceModuleSpecifier = (source: string): string | null => {
     return `*${query}`;
 };
 
+const iconModuleSpecifier = (source: string): string | null => {
+    const parsed = parseIconSpecifier(source);
+    const queryIndex = source.indexOf(ICON_QUERY);
+
+    if (queryIndex === -1 || typeof parsed?.iconName !== "string") {
+        return null;
+    }
+
+    const query = source.slice(queryIndex);
+
+    if (query.includes("*")) {
+        throw new Error(
+            `Cannot generate an asset declaration for ${JSON.stringify(source)}: icon names cannot contain *`,
+        );
+    }
+
+    return `*${query}`;
+};
+
 const findAssetModuleSpecifiers = (
     imports: SourceImport[],
     isV2ResourceImports: boolean,
-): { blocked: string[]; legacy: string[]; resources: string[] } => {
+): { blocked: string[]; icons: string[]; legacy: string[]; resources: string[] } => {
     const collect = (getSpecifier: (source: string) => string | null): string[] =>
         sortStrings(new Set(imports.map((entry) => getSpecifier(entry.source)).filter((value) => value !== null)));
 
     if (isV2ResourceImports) {
         return {
             blocked: collect(blockedAssetSpecifier),
+            icons: collect(iconModuleSpecifier),
             legacy: [],
             resources: collect(resourceModuleSpecifier),
         };
     }
 
-    return { blocked: [], legacy: collect(legacyAssetSpecifier), resources: [] };
+    return { blocked: [], icons: [], legacy: collect(legacyAssetSpecifier), resources: [] };
 };
 
 const canonicalPath = (path: string): string => {

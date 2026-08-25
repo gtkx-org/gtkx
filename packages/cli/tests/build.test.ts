@@ -9,6 +9,7 @@ import {
     listProjectFiles,
     removeCliProject,
     runCli,
+    runCliOrThrow,
     STORE_FUTURE,
     STORE_LIBRARIES,
 } from "./cli-project.js";
@@ -41,8 +42,20 @@ const EXPLICIT_RESOURCE_PATH = "/com/gtkx/clibuild/explicit-logo.png";
 const DERIVED_RESOURCE_PATH = "/com/gtkx/clibuild/data/logo.png";
 const PACKAGE_NAME = "@probe/resource-package";
 const PACKAGE_RESOURCE_PATH = `/com/gtkx/clibuild/${PACKAGE_NAME}/icons/star.svg`;
+const SIDE_EFFECT_ICON_PACKAGE = "@probe/side-effect-icon-package";
+const SIDE_EFFECT_ICON_NAME = "gtkx-side-effect-probe";
+const LOCAL_ICON_NAME = "gtkx-local-probe-symbolic";
+const DIRECT_ICON_NAME = "gtkx-direct-probe";
+const PACKAGE_ICON_NAME = "gtkx-package-probe";
+const VARIANT_ICON_NAME = "gtkx-variant-probe";
+const LOCAL_ICON_RESOURCE_PATH = `/com/gtkx/clibuild/icons/scalable/actions/${LOCAL_ICON_NAME}.svg`;
+const DIRECT_ICON_RESOURCE_PATH = `/com/gtkx/clibuild/icons/${DIRECT_ICON_NAME}.svg`;
+const PACKAGE_ICON_RESOURCE_PATH = `/com/gtkx/clibuild/icons/16x16/actions/${PACKAGE_ICON_NAME}.svg`;
+const FIXED_VARIANT_RESOURCE_PATH = `/com/gtkx/clibuild/icons/16x16/actions/${VARIANT_ICON_NAME}.png`;
+const SCALABLE_VARIANT_RESOURCE_PATH = `/com/gtkx/clibuild/icons/scalable/actions/${VARIANT_ICON_NAME}.svg`;
 const LEGACY_RESOURCE_PATH = "/com/gtkx/clibuild/logo.png";
 const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
+const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16"/></svg>\n';
 
 const BROKEN_SCHEMA = `<?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
@@ -91,16 +104,22 @@ const COLLIDING_SCHEMA = `<?xml version="1.0" encoding="UTF-8"?>
 `;
 
 const APP_SOURCE = String.raw`import { css } from "@gtkx/css";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, quit, useSetting } from "@gtkx/react";
-import packageResourcePath from "${PACKAGE_NAME}";
+import packageResourcePath, { packageIconName } from "${PACKAGE_NAME}";
 import { readFileSync } from "node:fs";
 import { useEffect } from "react";
 import schema, { com_gtkx_clibuild_appFolders as folders } from "../data/${SCHEMA_FILE}";
 import logoPath, { path as namedLogoPath } from "../data/logo.png?resource";
 import logoFile from "../data/logo.png?url";
 import explicitLogoPath from "../data/explicit.png?resource=${EXPLICIT_RESOURCE_PATH}";
+import localIconName from "../data/assets/icons/hicolor/scalable/actions/${LOCAL_ICON_NAME}.svg?icon";
+import directIconName from "../data/direct.svg?icon=${DIRECT_ICON_NAME}";
+import fixedVariant from "../data/variants/icons/16x16/actions/fixed.png?icon=${VARIANT_ICON_NAME}";
+import scalableVariant from "../data/variants/icons/scalable/actions/scalable.svg?icon=${VARIANT_ICON_NAME}";
 
 const heading = css({ fontWeight: "bold" });
 
@@ -116,10 +135,32 @@ const App = () => {
         const packageResource = Buffer.from(
             Gio.resourcesLookupData(packageResourcePath, Gio.ResourceLookupFlags.NONE).getData() ?? [],
         ).toString("utf8").trim();
+        const display = Gdk.Display.getDefault();
+        const iconTheme = display === null ? null : Gtk.IconTheme.getForDisplay(display);
+        const packageIcon = iconTheme?.lookupIcon(
+            packageIconName,
+            null,
+            16,
+            1,
+            Gtk.TextDirection.NONE,
+            Gtk.IconLookupFlags.NONE,
+        );
+        const packageIconUri = packageIcon?.getFile()?.getUri() ?? "missing";
+        const iconResourcesLoaded = [
+            "${LOCAL_ICON_RESOURCE_PATH}",
+            "${DIRECT_ICON_RESOURCE_PATH}",
+            "${PACKAGE_ICON_RESOURCE_PATH}",
+            "${FIXED_VARIANT_RESOURCE_PATH}",
+            "${SCALABLE_VARIANT_RESOURCE_PATH}",
+        ].every((path) => (Gio.resourcesLookupData(path, Gio.ResourceLookupFlags.NONE).getData() ?? []).length > 0);
         process.stdout.write(
             "${READY_MARKER} " + String(counter) + " " + children.join(",") + " " + logoPath + " " +
             namedLogoPath + " " + explicitLogoPath + " " + emittedLogo + " " + bundledLogo + " " +
-            packageResourcePath + " " + packageResource + "\n",
+            packageResourcePath + " " + packageResource + " " + localIconName + " " + directIconName + " " +
+            packageIconName + " " + String(iconTheme?.hasIcon(localIconName) === true) + " " +
+            String(iconTheme?.hasIcon(directIconName) === true) + " " +
+            String(iconTheme?.hasIcon(packageIconName) === true) + " " + String(iconResourcesLoaded) + " " +
+            String(fixedVariant === scalableVariant) + " " + packageIconUri + "\n",
         );
         quit();
     }, [counter, children]);
@@ -161,15 +202,74 @@ process.stdout.write([schema.id, logoUri, logoPath, logo].join(" "));
 `;
 
 const EXPLICIT_TYPE_SOURCE = `import logo from "../data/logo.png?resource=/com/gtkx/type-probe.png";
+import iconName from "../data/type.svg?icon=gtkx-type-probe";
 
 const path: string = logo;
-export { path };
+const name: string = iconName;
+export { name, path };
 `;
 
 const RESOURCE_COLLISION_SOURCE = `import first from "../data/logo.png?resource=/com/gtkx/collision.png";
 import second from "../data/explicit.png?resource=/com/gtkx/collision.png";
 
 process.stdout.write(first + second);
+`;
+
+const ICON_COLLISION_SOURCE = `import first from "../data/first.svg?icon=gtkx-collision";
+import second from "../data/second.svg?icon=gtkx-collision";
+
+process.stdout.write(first + second);
+`;
+
+const INVALID_ICON_NAME_SOURCE = `import iconName from "../data/first.svg?icon=invalid.svg";
+
+process.stdout.write(iconName);
+`;
+
+const UNSUPPORTED_ICON_SOURCE = `import iconName from "../data/photo.jpg?icon";
+
+process.stdout.write(iconName);
+`;
+
+const ICON_FORMAT_COLLISION_SOURCE = `import vector from "../data/format.svg?icon=gtkx-format-collision";
+import bitmap from "../data/format.png?icon=gtkx-format-collision";
+
+process.stdout.write(vector + bitmap);
+`;
+
+const LAZY_ICON_NAME = "gtkx-lazy-probe";
+
+const LAZY_ICON_SOURCE = `const { default: iconName } = await import("../data/lazy.svg?icon=${LAZY_ICON_NAME}");
+
+process.stdout.write(iconName);
+`;
+
+const SIDE_EFFECT_ICON_APP_SOURCE = `import * as Gdk from "@gtkx/gi/gdk";
+import * as Gtk from "@gtkx/gi/gtk";
+import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
+import { createRoot, quit } from "@gtkx/react";
+import { useEffect } from "react";
+import { probeValue } from "${SIDE_EFFECT_ICON_PACKAGE}";
+
+const App = () => {
+    useEffect(() => {
+        const display = Gdk.Display.getDefault();
+        const theme = display === null ? null : Gtk.IconTheme.getForDisplay(display);
+        process.stdout.write(
+            String(probeValue) + " ${SIDE_EFFECT_ICON_NAME} " +
+            String(theme?.hasIcon("${SIDE_EFFECT_ICON_NAME}") === true),
+        );
+        quit();
+    }, []);
+
+    return (
+        <GtkApplication>
+            <GtkApplicationWindow title="Probe" />
+        </GtkApplication>
+    );
+};
+
+createRoot().render(<App />);
 `;
 
 const URL_NAMED_EXPORT_SOURCE = `import { path } from "../data/logo.png?url";
@@ -188,9 +288,10 @@ const BROKEN_ENTRIES: BrokenEntry[] = [
     { title: "a project with no entry at all", args: [] },
 ];
 
-const config = (libraries: string[], body = "", icons = "data/icons"): string =>
+const config = (libraries: string[], body = "", applicationIcon: string | null = "data/icons"): string =>
     `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(libraries)}, ` +
-    `icons: ${JSON.stringify(icons)}, future: ${JSON.stringify(STORE_FUTURE)}${body} };\n`;
+    (applicationIcon === null ? "" : `applicationIcon: ${JSON.stringify(applicationIcon)}, `) +
+    `future: ${JSON.stringify(STORE_FUTURE)}${body} };\n`;
 
 const legacyConfig = (): string =>
     `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)}, ` +
@@ -202,6 +303,10 @@ const appFiles = (entry: string): Record<string, string> => ({
     [join("data", ICON_PATH)]: "<svg/>\n",
     [join("data", "logo.png")]: "png-probe\n",
     [join("data", "explicit.png")]: "explicit-png-probe\n",
+    [join("data", "assets", "icons", "hicolor", "scalable", "actions", `${LOCAL_ICON_NAME}.svg`)]: SVG,
+    [join("data", "direct.svg")]: SVG,
+    [join("data", "variants", "icons", "16x16", "actions", "fixed.png")]: "png-probe\n",
+    [join("data", "variants", "icons", "scalable", "actions", "scalable.svg")]: SVG,
     [join("src", entry)]: APP_SOURCE,
 });
 
@@ -226,6 +331,7 @@ const typecheckFiles = (): Record<string, string> => {
 
     return {
         [join("data", "logo.png")]: "type-probe\n",
+        [join("data", "type.svg")]: SVG,
         [join("src", "bare.ts")]: BARE_ASSET_SOURCE,
         [join("src", "explicit.ts")]: EXPLICIT_TYPE_SOURCE,
         "tsconfig.bare.json": tsconfig("src/bare.ts"),
@@ -238,7 +344,8 @@ const emittedNames = (project: CliProject): string[] => listProjectFiles(project
 const installResourcePackage = (project: CliProject): void => {
     const packageDir = join(project.nodeModules, PACKAGE_NAME);
     const iconDir = join(packageDir, "icons");
-    mkdirSync(iconDir, { recursive: true });
+    const themedIconDir = join(iconDir, "16x16", "actions");
+    mkdirSync(themedIconDir, { recursive: true });
 
     writeFileSync(
         join(packageDir, "package.json"),
@@ -247,10 +354,36 @@ const installResourcePackage = (project: CliProject): void => {
 
     writeFileSync(
         join(packageDir, "index.js"),
-        'import path from "./icons/star.svg?resource";\nexport default path;\n',
+        "import path from \"./icons/star.svg?resource\";\n" +
+        `import packageIconName from "./icons/16x16/actions/package.svg?icon=${PACKAGE_ICON_NAME}";\n` +
+        "export { packageIconName };\nexport default path;\n",
     );
 
     writeFileSync(join(iconDir, "star.svg"), "package-svg-probe\n");
+    writeFileSync(join(themedIconDir, "package.svg"), SVG);
+};
+
+const installSideEffectIconPackage = (project: CliProject): void => {
+    const packageDir = join(project.nodeModules, SIDE_EFFECT_ICON_PACKAGE);
+    const iconDir = join(packageDir, "icons");
+    mkdirSync(iconDir, { recursive: true });
+
+    writeFileSync(
+        join(packageDir, "package.json"),
+        `${JSON.stringify({
+            name: SIDE_EFFECT_ICON_PACKAGE,
+            type: "module",
+            exports: "./index.js",
+            sideEffects: false,
+        }, null, 4)}\n`,
+    );
+
+    writeFileSync(
+        join(packageDir, "index.js"),
+        `import "./icons/probe.svg?icon=${SIDE_EFFECT_ICON_NAME}";\nexport const probeValue = 7;\n`,
+    );
+
+    writeFileSync(join(iconDir, "probe.svg"), SVG);
 };
 
 const expectBuildFailure = (broken: BrokenBuild): void => {
@@ -264,7 +397,7 @@ const expectBuildFailure = (broken: BrokenBuild): void => {
     installResourcePackage(project);
 
     try {
-        expect(runCli(project, ["build"]).status).not.toBe(0);
+        expect(() => runCliOrThrow(project, ["build"])).toThrow();
     } finally {
         removeCliProject(project);
     }
@@ -343,6 +476,7 @@ describe("gtkx build", () => {
         const declarations = readFileSync(join(state.project.root, SCHEMA_TYPES), "utf8");
         expect(declarations).toContain(`declare module "*/${SCHEMA_FILE}"`);
         expect(declarations).toContain(`declare module "*?resource=${EXPLICIT_RESOURCE_PATH}"`);
+        expect(declarations).toContain(`declare module "*?icon=${DIRECT_ICON_NAME}"`);
     });
 
     it("emits a bundle that starts, reads its settings and reaches its resources", () => {
@@ -355,6 +489,12 @@ describe("gtkx build", () => {
         );
 
         expect(run.stdout).toContain(`${PACKAGE_RESOURCE_PATH} package-svg-probe`);
+
+        expect(run.stdout).toContain(
+            `${LOCAL_ICON_NAME} ${DIRECT_ICON_NAME} ${PACKAGE_ICON_NAME} true true true true true ` +
+            `resource://${PACKAGE_ICON_RESOURCE_PATH}`,
+        );
+
         expect(run.status).toBe(0);
     });
 });
@@ -429,12 +569,30 @@ describe("gtkx codegen (v2 asset import declarations)", () => {
     });
 });
 
-describe("gtkx build (a single configured icon)", () => {
+describe("gtkx build (application icons)", () => {
     it("places the file in the hicolor application theme", () => {
         const project = createCliProject({
             prefix: "gtkx-cli-build-icon-",
             config: config(STORE_LIBRARIES, ", codegen: false", "application.svg"),
             files: { ...appFiles("index.tsx"), "application.svg": "<svg/>\n" },
+            hasStore: true,
+        });
+
+        installResourcePackage(project);
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            expect(emittedNames(project)).toContain(ICON_PATH);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("uses an application-id icon in the project root by default", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-build-default-icon-",
+            config: config(STORE_LIBRARIES, ", codegen: false", null),
+            files: { ...appFiles("index.tsx"), [`${APPLICATION_ID}.svg`]: "<svg/>\n" },
             hasStore: true,
         });
 
@@ -467,6 +625,93 @@ describe("gtkx build (an entry the command is given)", () => {
         } finally {
             removeCliProject(project);
         }
+    });
+});
+
+describe("gtkx build (a lazy resource-backed icon)", () => {
+    it("loads the icon from an emitted chunk", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-build-lazy-icon-",
+            config: config(STORE_LIBRARIES, ", codegen: false"),
+            files: {
+                ...appFiles("index.tsx"),
+                [join("data", "lazy.svg")]: SVG,
+                [join("src", "index.tsx")]: LAZY_ICON_SOURCE,
+            },
+            hasStore: true,
+        });
+
+        installResourcePackage(project);
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            const emitted = emittedNames(project);
+            expect(emitted).toContain("gtkx.node");
+            expect(emitted).toContain("gtkx.gresource");
+            expect(emitted.some((name) => name.startsWith("assets/") && name.endsWith(".mjs"))).toBe(true);
+            const run = runApp(project);
+            expect(run.stderr).toBe("");
+            expect(run.stdout).toBe(LAZY_ICON_NAME);
+            expect(run.status).toBe(0);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx build (a side-effect-only dependency icon)", () => {
+    it("retains the icon from a side-effect-free package", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-build-side-effect-icon-",
+            config: config(STORE_LIBRARIES, ", codegen: false"),
+            files: {
+                ...appFiles("index.tsx"),
+                [join("src", "index.tsx")]: SIDE_EFFECT_ICON_APP_SOURCE,
+            },
+            hasStore: true,
+        });
+
+        installSideEffectIconPackage(project);
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            const run = runApp(project);
+            expect(run.stderr).toBe("");
+            expect(run.stdout).toBe(`7 ${SIDE_EFFECT_ICON_NAME} true`);
+            expect(run.status).toBe(0);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx build (invalid application icons)", () => {
+    it("fails when the configured icon path does not exist", () => {
+        expectBuildFailure({
+            prefix: "gtkx-cli-build-missing-icon-",
+            config: config(STORE_LIBRARIES, ", codegen: false", "missing-icons"),
+            files: appFiles("index.tsx"),
+        });
+    });
+
+    it("fails when the configured icon file has an unsupported format", () => {
+        expectBuildFailure({
+            prefix: "gtkx-cli-build-unsupported-icon-",
+            config: config(STORE_LIBRARIES, ", codegen: false", "application.jpg"),
+            files: { ...appFiles("index.tsx"), "application.jpg": "jpeg\n" },
+        });
+    });
+
+    it("fails when multiple default application icons exist", () => {
+        expectBuildFailure({
+            prefix: "gtkx-cli-build-ambiguous-icon-",
+            config: config(STORE_LIBRARIES, ", codegen: false", null),
+            files: {
+                ...appFiles("index.tsx"),
+                [`${APPLICATION_ID}.svg`]: "<svg/>\n",
+                [`${APPLICATION_ID}.png`]: "png\n",
+            },
+        });
     });
 });
 
@@ -543,23 +788,55 @@ describe("gtkx build (invalid resources and packaging inputs)", () => {
         });
     });
 
-    it("fails when the configured icon path does not exist", () => {
-        expectBuildFailure({
-            prefix: "gtkx-cli-build-missing-icon-",
-            config: config(STORE_LIBRARIES, ", codegen: false", "missing-icons"),
-            files: appFiles("index.tsx"),
-        });
-    });
-
-    it("fails when the configured icon file has an unsupported format", () => {
-        expectBuildFailure({
-            prefix: "gtkx-cli-build-unsupported-icon-",
-            config: config(STORE_LIBRARIES, ", codegen: false", "application.jpg"),
-            files: { ...appFiles("index.tsx"), "application.jpg": "jpeg\n" },
-        });
-    });
-
     it("fails when an imported schema is outside the project", () => {
         expectOutsideSchemaBuildFailure();
+    });
+});
+
+describe("gtkx build (invalid resource-backed icons)", () => {
+    it("fails when two icons claim the same theme path", () => {
+        expectBuildFailure({
+            prefix: "gtkx-cli-build-icon-collision-",
+            files: {
+                ...appFiles("index.tsx"),
+                [join("data", "first.svg")]: SVG,
+                [join("data", "second.svg")]: SVG,
+                [join("src", "index.tsx")]: ICON_COLLISION_SOURCE,
+            },
+        });
+    });
+
+    it("fails when an icon name includes an image extension", () => {
+        expectBuildFailure({
+            prefix: "gtkx-cli-build-invalid-icon-name-",
+            files: {
+                ...appFiles("index.tsx"),
+                [join("data", "first.svg")]: SVG,
+                [join("src", "index.tsx")]: INVALID_ICON_NAME_SOURCE,
+            },
+        });
+    });
+
+    it("fails when a themed icon has an unsupported format", () => {
+        expectBuildFailure({
+            prefix: "gtkx-cli-build-invalid-icon-format-",
+            files: {
+                ...appFiles("index.tsx"),
+                [join("data", "photo.jpg")]: "jpeg\n",
+                [join("src", "index.tsx")]: UNSUPPORTED_ICON_SOURCE,
+            },
+        });
+    });
+
+    it("fails when two formats claim the same icon identity", () => {
+        expectBuildFailure({
+            prefix: "gtkx-cli-build-icon-format-collision-",
+            files: {
+                ...appFiles("index.tsx"),
+                [join("data", "format.svg")]: SVG,
+                [join("data", "format.png")]: "png\n",
+                [join("src", "index.tsx")]: ICON_FORMAT_COLLISION_SOURCE,
+            },
+        });
     });
 });

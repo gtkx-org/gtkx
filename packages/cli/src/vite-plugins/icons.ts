@@ -6,12 +6,16 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AssetEmitter } from "./asset-emitter.js";
 import { prependBanner } from "../internal/banner.js";
-import { relativeIconPath, type ResolvedIconSource, resolveIconSource } from "../internal/icon-path.js";
+import {
+    relativeIconPath,
+    resolveApplicationIcon,
+    type ResolvedApplicationIcon,
+} from "../internal/icon-path.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 
 type PluginState = {
     applicationId: string;
-    source: ResolvedIconSource;
+    source: ResolvedApplicationIcon;
 };
 
 const ICONS_DIR = "icons";
@@ -24,24 +28,24 @@ const XDG_ENV_BANNER = [
 ].join("\n");
 
 const findIconFiles = (state: PluginState): ListedFile[] => {
-    if (state.source.iconsDir !== null) {
-        return listFilesRecursive(state.source.iconsDir);
+    if (state.source.kind === "theme") {
+        return listFilesRecursive(state.source.path);
     }
 
-    if (state.source.iconFile === null) {
+    if (state.source.kind === "none") {
         return [];
     }
 
     return [{
-        absPath: state.source.iconFile,
-        rel: relativeIconPath(state.applicationId, state.source.iconFile),
+        absPath: state.source.path,
+        rel: relativeIconPath(state.applicationId, state.source.path),
     }];
 };
 
 const applyUserConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader): Promise<void> => {
     const { config: gtkxConfig, root } = await loadConfig.load(config.root ?? process.cwd());
     state.applicationId = gtkxConfig.applicationId;
-    state.source = resolveIconSource(root, gtkxConfig.icons);
+    state.source = resolveApplicationIcon(root, gtkxConfig.applicationId, gtkxConfig.applicationIcon);
 };
 
 const emitIcons = (ctx: AssetEmitter, icons: ListedFile[]): void => {
@@ -57,7 +61,7 @@ const emitIcons = (ctx: AssetEmitter, icons: ListedFile[]): void => {
 function gtkxIcons(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
     const state: PluginState = {
         applicationId: "",
-        source: { iconsDir: null, iconFile: null },
+        source: { kind: "none" },
     };
 
     return {

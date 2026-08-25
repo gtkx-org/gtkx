@@ -1,14 +1,32 @@
-import { BUNDLE_FILENAME, REFRESH_EXPORT } from "./resource-shared.js";
+import { REFRESH_EXPORT, REGISTER_REFRESH_EXPORT } from "./resource-shared.js";
 
-const buildInitModuleSource = (): string =>
+type InitModuleOptions = { isBuild: true; bundleReferenceId: string } |
+    { isBuild: false; devBundlePath: string };
+
+const refreshCallbackSource = (): string[] => [
+    "const refreshCallbacks = new Map();",
+    "",
+    `export function ${REGISTER_REFRESH_EXPORT}(key, callback) {`,
+    "    refreshCallbacks.set(key, callback);",
+    "    callback();",
+    "}",
+    "",
+    "function runRefreshCallbacks() {",
+    "    for (const callback of refreshCallbacks.values()) callback();",
+    "}",
+];
+
+const buildInitModuleSource = (bundleReferenceId: string): string =>
     [
-        "import { dirname, join } from \"node:path\";",
         "import { fileURLToPath } from \"node:url\";",
         "import { Resource, resourcesRegister } from \"@gtkx/gi/gio\";",
         "",
-        "const bundleDir = dirname(fileURLToPath(import.meta.url));",
-        `const resource = Resource.load(join(bundleDir, ${JSON.stringify(BUNDLE_FILENAME)}));`,
+        `const bundleLocation = import.meta.ROLLUP_FILE_URL_${bundleReferenceId};`,
+        "const bundlePath = bundleLocation.startsWith(\"file:\") ? fileURLToPath(bundleLocation) : bundleLocation;",
+        "const resource = Resource.load(bundlePath);",
         "resourcesRegister(resource);",
+        "",
+        ...refreshCallbackSource(),
         "",
         "export function ensureRegistered() {}",
         `export function ${REFRESH_EXPORT}() {}`,
@@ -31,27 +49,38 @@ const devInitModuleSource = (bundlePath: string): string => {
         "    current = next;",
         "}",
         "",
+        "function unregister() {",
+        "    if (!current) return;",
+        "    resourcesUnregister(current);",
+        "    current = null;",
+        "    lastSig = \"\";",
+        "}",
+        "",
+        ...refreshCallbackSource(),
+        "",
         "export function ensureRegistered() {",
-        `    if (!existsSync(${bundlePathLiteral})) return;`,
+        `    if (!existsSync(${bundlePathLiteral})) {`,
+        "        unregister();",
+        "        return;",
+        "    }",
         `    const { size, mtimeMs } = statSync(${bundlePathLiteral});`,
         "    const sig = size + \":\" + mtimeMs;",
-        "    if (sig === lastSig) return;",
-        "    register();",
-        "    lastSig = sig;",
+        "    if (sig !== lastSig) {",
+        "        register();",
+        "        lastSig = sig;",
+        "    }",
         "}",
         "",
         "ensureRegistered();",
         "",
         `export function ${REFRESH_EXPORT}() {`,
-        `    if (!existsSync(${bundlePathLiteral})) return;`,
-        "    register();",
-        `    const { size, mtimeMs } = statSync(${bundlePathLiteral});`,
-        "    lastSig = size + \":\" + mtimeMs;",
+        "    ensureRegistered();",
+        "    runRefreshCallbacks();",
         "}",
     ].join("\n");
 };
 
-const renderInitModule = (options: { isBuild: boolean; devBundlePath: string }): string =>
-    options.isBuild ? buildInitModuleSource() : devInitModuleSource(options.devBundlePath);
+const renderInitModule = (options: InitModuleOptions): string =>
+    options.isBuild ? buildInitModuleSource(options.bundleReferenceId) : devInitModuleSource(options.devBundlePath);
 
 export { renderInitModule };

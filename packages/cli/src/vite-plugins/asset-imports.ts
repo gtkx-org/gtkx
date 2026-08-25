@@ -9,6 +9,7 @@ import {
     isAssetSpecifier,
     isDataAsset,
     isUrlSpecifier,
+    parseIconSpecifier,
     parseResourceSpecifier,
 } from "./asset-specifier.js";
 import { RESOURCE_PATH_EXPORT } from "./resource-shared.js";
@@ -50,6 +51,8 @@ const QUERY_ADVICE =
 
 const RESOURCE_ADVICE =
     `A resource asset exports only its default GResource path and ${RESOURCE_BINDING}, and nothing else.`;
+
+const ICON_ADVICE = "An icon asset exports only its default icon-theme name, and nothing else.";
 
 const RELATIVE_ADVICE =
     `Only assets imported through "${DATA_PREFIX}" are staged into the GResource bundle and export ` +
@@ -101,11 +104,16 @@ const unbackedBinding = (parsed: ParsedModule, isV2: boolean): NamedBinding | un
     bindings(parsed).find((binding) => isCheckedSpecifier(binding.source) && !isBacked(binding, isV2));
 
 const isBundledResource = (source: string, isV2: boolean): boolean =>
-    isV2 ? parseResourceSpecifier(source) !== null : isDataAsset(source);
+    isV2
+        ? parseResourceSpecifier(source) !== null || parseIconSpecifier(source) !== null
+        : isDataAsset(source);
+
+const v2BundleAdvice = (source: string): string =>
+    parseIconSpecifier(source) === null ? RESOURCE_ADVICE : ICON_ADVICE;
 
 const bundleAdvice = (source: string, isV2: boolean): string => {
     if (isBundledResource(source, isV2)) {
-        return isV2 ? RESOURCE_ADVICE : BUNDLE_ADVICE;
+        return isV2 ? v2BundleAdvice(source) : BUNDLE_ADVICE;
     }
 
     if (isUrlSpecifier(source)) {

@@ -8,6 +8,7 @@ type NamedSchema = {
 
 type EnvAssetDeclarations = {
     blocked: string[];
+    icons: string[];
     legacy: string[];
     resources: string[];
 };
@@ -197,6 +198,13 @@ const renderResourceModule = (specifier: string): string => [
     "}",
 ].join("\n");
 
+const renderIconModule = (specifier: string): string => [
+    `declare module ${toJsStringLiteral(specifier)} {`,
+    "    const iconName: string;",
+    "    export default iconName;",
+    "}",
+].join("\n");
+
 const renderLegacyAssetModule = (specifier: string): string => [
     `declare module ${toJsStringLiteral(specifier)} {`,
     "    const resourceUri: string;",
@@ -219,7 +227,7 @@ const renderEnvModule = (
     files: ParsedSchemaFile[],
     assetDeclarations?: EnvAssetDeclarations,
 ): string => {
-    const assets = assetDeclarations ?? { blocked: [], legacy: [], resources: [] };
+    const assets = assetDeclarations ?? { blocked: [], icons: [], legacy: [], resources: [] };
     const usedNames: Set<string> = new Set();
 
     const schemas = files
@@ -227,10 +235,11 @@ const renderEnvModule = (
         .map((file) => renderFileModule(file, usedNames).join("\n"));
 
     const blocked = assets.blocked.map((specifier) => renderBlockedAssetModule(specifier));
+    const icons = assets.icons.map((specifier) => renderIconModule(specifier));
     const legacy = assets.legacy.map((specifier) => renderLegacyAssetModule(specifier));
     const resources = assets.resources.map((specifier) => renderResourceModule(specifier));
 
-    return `${[GTKX_ENV_MODULE_HEADER, ...blocked, ...legacy, ...resources, ...schemas].join("\n\n")}\n`;
+    return `${[GTKX_ENV_MODULE_HEADER, ...blocked, ...icons, ...legacy, ...resources, ...schemas].join("\n\n")}\n`;
 };
 
 export { renderRuntimeModule, renderEnvModule };

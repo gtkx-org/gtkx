@@ -11,7 +11,7 @@ import { gtkxSettings } from "./settings.js";
 import { gtkxStoreLinks } from "./store-links.js";
 import { gtkxUndeclaredLibrary } from "./undeclared-library.js";
 
-const gtkxVitePlugins = (mode?: string): Plugin[] => {
+const gtkxVitePlugins = (mode?: string, entryPath?: string): Plugin[] => {
     const loadConfig = createConfigLoader(mode === undefined ? {} : { mode });
 
     return [
@@ -22,7 +22,7 @@ const gtkxVitePlugins = (mode?: string): Plugin[] => {
         gtkxIcons(loadConfig),
         gtkxAssetImports(loadConfig),
         gtkxBuiltUrl(),
-        gtkxResources(loadConfig),
+        gtkxResources(loadConfig, entryPath),
         gtkxCss(),
         gtkxReactCompiler(loadConfig),
     ];

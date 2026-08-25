@@ -156,6 +156,16 @@ const runCli = (project: CliProject, args: string[], overrides: NodeJS.ProcessEn
     return { status: result.status, output: `${result.stdout}${result.stderr}` };
 };
 
+const runCliOrThrow = (project: CliProject, args: string[], overrides: NodeJS.ProcessEnv = {}): CliRun => {
+    const result = runCli(project, args, overrides);
+
+    if (result.status !== 0) {
+        throw new Error(result.output);
+    }
+
+    return result;
+};
+
 const startCli = (project: CliProject, args: string[]): ChildProcess =>
     spawn(process.execPath, [...CLI_ARGV, ...args, "--cwd", project.root], {
         cwd: WORKSPACE_ROOT,
@@ -170,6 +180,7 @@ export {
     listProjectFiles,
     removeCliProject,
     runCli,
+    runCliOrThrow,
     startCli,
     STORE_FUTURE,
     STORE_LIBRARIES,

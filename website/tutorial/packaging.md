@@ -38,14 +38,18 @@ dist/bundle.mjs                                                  4,067.30 kB │
 [gtkx] Build complete: dist/bundle.mjs
 ```
 
-Everything except the bundle is found at runtime relative to the bundle itself: it prepends its own directory to `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, and loads `gtkx.node` from beside itself. Keep them together and the app is self-contained. Move `bundle.mjs` on its own and the settings schema goes missing on the first `useSetting` call.
+Everything except the bundle is found at runtime relative to the bundle itself: it prepends its own directory to
+`GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, and loads `gtkx.node` from beside itself. An app that imports
+`?resource` or `?icon` assets also gets a sibling `gtkx.gresource`, which generated modules load and register
+automatically. Keep these files together and the app is self-contained. Move `bundle.mjs` on its own and the
+settings schema goes missing on the first `useSetting` call.
 
 `node dist/bundle.mjs` runs the app on any machine with GTK4, Adwaita, and Node.js 24 installed. That works, but it is not yet something a user can double-click.
 
 ## Icons
 
-The top-level `icons: "data/icons"` setting tells the build to copy that directory verbatim, so the layout you
-write is the layout that ships. Use the same shape as the system icon theme:
+The top-level `applicationIcon: "data/icons"` setting tells the build to copy that directory verbatim, so the
+layout you write is the layout that ships. Use the same shape as the system icon theme:
 
 ```
 data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg
@@ -150,7 +154,7 @@ Every package installs the same tree, under `/usr` here and under `/app` in the 
 /usr/share/applications/com.gtkx.tutorial.desktop         generated
 /usr/share/dbus-1/services/com.gtkx.tutorial.service      generated
 /usr/share/metainfo/com.gtkx.tutorial.metainfo.xml        generated
-/usr/share/icons/hicolor/**/apps/com.gtkx.tutorial.svg    from the configured icons path
+/usr/share/icons/hicolor/**/apps/com.gtkx.tutorial.svg    from applicationIcon
 /usr/share/glib-2.0/schemas/com.gtkx.tutorial.gschema.xml from its source import
 /usr/share/licenses/gtkx-tutorial/LICENSE                 your LICENSE, every target but deb
 /usr/share/licenses/gtkx-tutorial/THIRD-PARTY-NOTICES     generated, every target but deb

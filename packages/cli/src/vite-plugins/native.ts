@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { stripQuery } from "./strip-query.js";
 
 const EMITTED_BINDING_SPECIFIER = "./gtkx.node";
+const BINDING_FILENAME = "gtkx.node";
 
 function resolveBinaryPath(projectRequire: ReturnType<typeof createRequire>, currentArch: string): string {
     const nativeRoot = dirname(projectRequire.resolve("@gtkx/native/package.json"));
@@ -30,7 +31,7 @@ function resolvePlatformBinary(projectRequire: ReturnType<typeof createRequire>)
     return readFileSync(resolveBinaryPath(projectRequire, currentArch));
 }
 
-function rewriteLoader(code: string): string {
+function rewriteLoader(code: string, bindingReferenceId: string): string {
     const idents: string[] = [];
 
     for (const match of code.matchAll(/export\s*\{\s*([A-Za-z0-9_$]+)\s*\}/g)) {
@@ -45,15 +46,37 @@ function rewriteLoader(code: string): string {
 
     return [
         "import { createRequire as __gtkxCreateRequire } from \"node:module\";",
-        `const __gtkxNative = __gtkxCreateRequire(import.meta.url)(${JSON.stringify(EMITTED_BINDING_SPECIFIER)});`,
+        "import { fileURLToPath as __gtkxFileURLToPath } from \"node:url\";",
+        `const __gtkxNativeLocation = import.meta.ROLLUP_FILE_URL_${bindingReferenceId};`,
+        "const __gtkxNativePath = __gtkxNativeLocation.startsWith(\"file:\") " +
+        "? __gtkxFileURLToPath(__gtkxNativeLocation) : __gtkxNativeLocation;",
+        "const __gtkxNative = __gtkxCreateRequire(import.meta.url)(__gtkxNativePath);",
         `const { ${bindings} } = __gtkxNative;`,
         `export { ${bindings} };`,
     ].join("\n");
 }
 
+const transformLoader = (
+    code: string,
+    id: string,
+    loaderPath: string,
+    bindingReferenceId: string | null,
+): string | null => {
+    if (stripQuery(id) !== loaderPath) {
+        return null;
+    }
+
+    if (bindingReferenceId === null) {
+        throw new Error("Cannot render the native loader before its binary has been emitted");
+    }
+
+    return rewriteLoader(code, bindingReferenceId);
+};
+
 function gtkxNative(root: string): Plugin {
     const projectRequire = createRequire(join(root, "package.json"));
     let cachedLoaderPath: string | undefined;
+    let bindingReferenceId: string | null = null;
 
     const loaderPath = (): string => {
         cachedLoaderPath ??= join(dirname(projectRequire.resolve("@gtkx/native/package.json")), "index.js");
@@ -67,7 +90,11 @@ function gtkxNative(root: string): Plugin {
         apply: "build",
 
         buildStart() {
-            this.emitFile({ type: "asset", fileName: "gtkx.node", source: resolvePlatformBinary(projectRequire) });
+            bindingReferenceId = this.emitFile({
+                type: "asset",
+                fileName: BINDING_FILENAME,
+                source: resolvePlatformBinary(projectRequire),
+            });
         },
 
         resolveId(id) {
@@ -75,7 +102,7 @@ function gtkxNative(root: string): Plugin {
         },
 
         transform(code, id) {
-            return stripQuery(id) === loaderPath() ? rewriteLoader(code) : null;
+            return transformLoader(code, id, loaderPath(), bindingReferenceId);
         },
     };
 }

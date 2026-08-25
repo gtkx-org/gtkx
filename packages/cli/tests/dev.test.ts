@@ -1,5 +1,5 @@
 import type { ChildProcess } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -13,7 +13,11 @@ import {
 } from "./cli-project.js";
 
 type DevSession = { output: () => string; isRunning: () => boolean; stop: () => Promise<boolean> };
+type DevState = { project: CliProject; session: DevSession };
+type InactiveResourceIcon = { mode: "inactive" };
+type ResourceIconSource = string | null | false | InactiveResourceIcon;
 
+const INACTIVE_RESOURCE_ICON: InactiveResourceIcon = { mode: "inactive" };
 const APPLICATION_ID = "com.gtkx.clidev";
 const READY_MARKER = "dev-ready";
 const POLL_INTERVAL = 200;
@@ -22,10 +26,38 @@ const RELOAD_TIMEOUT = 120_000;
 const STOP_TIMEOUT = 15_000;
 const APP_MODULE = join("src", "app.tsx");
 const ENTRY_MODULE = join("src", "index.tsx");
+const RESOURCE_ICON_MODULE = join("src", "resource-icon.ts");
 const FIRST_ASSET = join("data", "first.data");
 const SECOND_ASSET = join("data", "second.data");
 const ICON_ASSET = join("data", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
+const RESOURCE_ICON_NAME = "gtkx-dev-probe-symbolic";
+const RESOURCE_ICON_PATH = `/com/gtkx/clidev/icons/scalable/actions/${RESOURCE_ICON_NAME}.svg`;
+
+const RESOURCE_ICON_DIR = join(
+    "data",
+    "assets",
+    "icons",
+    "hicolor",
+    "scalable",
+    "actions",
+);
+
+const FIRST_RESOURCE_ICON_ASSET = join(RESOURCE_ICON_DIR, "first.svg");
+const SECOND_RESOURCE_ICON_ASSET = join(RESOURCE_ICON_DIR, "second.svg");
 const FIRST_RESOURCE_PATH = "/com/gtkx/clidev/data/first.data";
+
+const FIRST_RESOURCE_ICON_SOURCE =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">' +
+    '<title>icon-one</title><rect width="16" height="16"/></svg>\n';
+
+const SECOND_RESOURCE_ICON_SOURCE =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">' +
+    '<title>icon-two</title><rect width="16" height="16"/></svg>\n';
+
+const RESOURCE_ICON_MODULE_SOURCE =
+    "export type ResourceIconMarker = string;\n" +
+    "export { default as resourceIconName } from " +
+    `"../data/assets/icons/hicolor/scalable/actions/first.svg?icon=${RESOURCE_ICON_NAME}";\n`;
 
 const ENTRY_SOURCE = `import { createRoot } from "@gtkx/react";
 import { App } from "./app.js";
@@ -35,12 +67,12 @@ createRoot().render(<App />);
 
 const BROKEN_SOURCE = `import { Absent } from "./absent.js";
 
-const App = () => <Absent;
+const App = () => <Absent />;
 
 export { App };
 `;
 
-const APP_HEAD = `import * as Gdk from "@gtkx/gi/gdk";
+const APP_HEAD_START = `import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx";
@@ -50,8 +82,7 @@ import { useEffect } from "react";
 import firstResourcePath from "../data/first.data?resource";
 import firstFile from "../data/first.data?url";
 import secondResourcePath from "../data/second.data?resource";
-
-const REVISION = `;
+`;
 
 const APP_BODY = String.raw`;
 const resourceText = (path: string) => Buffer.from(
@@ -62,10 +93,21 @@ const App = () => {
     useEffect(() => {
         const display = Gdk.Display.getDefault();
         const hasIcon = display !== null && Gtk.IconTheme.getForDisplay(display).hasIcon("${APPLICATION_ID}");
+        let resourceIconRevision = "missing";
+
+        try {
+            resourceIconRevision = resourceText("${RESOURCE_ICON_PATH}").includes("icon-two")
+                ? "icon-two"
+                : "icon-one";
+        } catch {}
+
+        const hasResourceIcon = resourceIconRevision !== "missing" && display !== null &&
+            Gtk.IconTheme.getForDisplay(display).hasIcon(resourceIconName);
         process.stdout.write(
             "${READY_MARKER} " + REVISION + " " + firstResourcePath + " " + resourceText(firstResourcePath) +
             " " + resourceText(secondResourcePath) + " " + readFileSync(firstFile, "utf8").trim() + " " +
-            String(hasIcon) + "\n",
+            String(hasIcon) + " " + resourceIconName + " " + String(hasResourceIcon) + " " +
+            resourceIconRevision + "\n",
         );
     });
 
@@ -81,11 +123,37 @@ const App = () => {
 export { App };
 `;
 
-const appSource = (revision: string): string => `${APP_HEAD}${JSON.stringify(revision)}${APP_BODY}`;
+const iconImportSource = (iconFile: ResourceIconSource): string => {
+    if (iconFile !== null && typeof iconFile === "object") {
+        return `if (false) void import("./resource-icon.js");\nconst resourceIconName = "${RESOURCE_ICON_NAME}";`;
+    }
+
+    if (iconFile === false) {
+        return `const resourceIconName = "${RESOURCE_ICON_NAME}";`;
+    }
+
+    if (iconFile === null) {
+        return 'import { resourceIconName } from "./resource-icon.js";';
+    }
+
+    return 'import type { ResourceIconMarker } from "./resource-icon.js";\n' +
+        "import importedResourceIconName from " +
+        `"../data/assets/icons/hicolor/scalable/actions/${iconFile}?icon=${RESOURCE_ICON_NAME}";\n` +
+        "const resourceIconName: ResourceIconMarker = importedResourceIconName;";
+};
+
+const appHead = (iconFile: ResourceIconSource): string => {
+    const iconImport = iconImportSource(iconFile);
+
+    return `${APP_HEAD_START}${iconImport}\n\nconst REVISION = `;
+};
+
+const appSource = (revision: string, iconFile: ResourceIconSource = null): string =>
+    `${appHead(iconFile)}${JSON.stringify(revision)}${APP_BODY}`;
 
 const config = (): string =>
     `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)}, ` +
-    `icons: "data/icons", future: ${JSON.stringify(STORE_FUTURE)} };\n`;
+    `applicationIcon: "data/icons", future: ${JSON.stringify(STORE_FUTURE)} };\n`;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -152,6 +220,34 @@ const waitForOutput = async (session: DevSession, needle: string, timeout: numbe
     return session.output();
 };
 
+const expectResourceIconReload = async (
+    state: DevState,
+    revision: string,
+    iconFile: ResourceIconSource,
+    iconState: string,
+): Promise<void> => {
+    writeApp(state.project, appSource(revision, iconFile));
+
+    const expected = `${READY_MARKER} ${revision} ${FIRST_RESOURCE_PATH} asset-three asset-two asset-three true ` +
+        `${RESOURCE_ICON_NAME} ${iconState}`;
+
+    expect(await waitForOutput(state.session, expected, RELOAD_TIMEOUT)).toContain(expected);
+};
+
+const expectInactiveIconRecovery = async (state: DevState): Promise<void> => {
+    rmSync(join(state.project.root, FIRST_RESOURCE_ICON_ASSET));
+
+    try {
+        await delay(POLL_INTERVAL * 2);
+        await expectResourceIconReload(state, "icon-missing", INACTIVE_RESOURCE_ICON, "false missing");
+    } finally {
+        writeFileSync(join(state.project.root, FIRST_RESOURCE_ICON_ASSET), FIRST_RESOURCE_ICON_SOURCE);
+        await delay(POLL_INTERVAL * 2);
+    }
+
+    await expectResourceIconReload(state, "icon-restored", null, "true icon-one");
+};
+
 const createDevProject = (): CliProject =>
     createCliProject({
         prefix: "gtkx-cli-dev-",
@@ -159,18 +255,23 @@ const createDevProject = (): CliProject =>
         files: {
             [ENTRY_MODULE]: ENTRY_SOURCE,
             [APP_MODULE]: appSource("one"),
+            [RESOURCE_ICON_MODULE]: RESOURCE_ICON_MODULE_SOURCE,
             [FIRST_ASSET]: "asset-one\n",
             [SECOND_ASSET]: "asset-two\n",
             [ICON_ASSET]: "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"/>\n",
+            [FIRST_RESOURCE_ICON_ASSET]: FIRST_RESOURCE_ICON_SOURCE,
+            [SECOND_RESOURCE_ICON_ASSET]: SECOND_RESOURCE_ICON_SOURCE,
         },
         hasStore: true,
     });
 
+const createDevState = (): DevState => ({
+    project: { root: "", nodeModules: "" },
+    session: { output: () => "", isRunning: () => false, stop: () => Promise.resolve(true) },
+});
+
 describe("gtkx dev", () => {
-    const state: { project: CliProject; session: DevSession } = {
-        project: { root: "", nodeModules: "" },
-        session: { output: () => "", isRunning: () => false, stop: () => Promise.resolve(true) },
-    };
+    const state = createDevState();
 
     beforeAll(() => {
         state.project = createDevProject();
@@ -195,12 +296,17 @@ describe("gtkx dev", () => {
     });
 
     it("loads resource and filesystem assets, then reloads a changed resource", async () => {
-        expect(state.session.output()).toContain(`${FIRST_RESOURCE_PATH} asset-one asset-two asset-one true`);
+        expect(state.session.output()).toContain(
+            `${FIRST_RESOURCE_PATH} asset-one asset-two asset-one true ${RESOURCE_ICON_NAME} true icon-one`,
+        );
+
         writeAsset(state.project, "asset-three\n");
         await delay(POLL_INTERVAL * 2);
-        writeApp(state.project, appSource("asset-refresh"));
-        const refreshed = `${FIRST_RESOURCE_PATH} asset-three asset-two asset-three`;
-        expect(await waitForOutput(state.session, refreshed, RELOAD_TIMEOUT)).toContain(refreshed);
+        await expectResourceIconReload(state, "asset-refresh", "second.svg", "true icon-two");
+        await expectResourceIconReload(state, "direct-restored", "first.svg", "true icon-one");
+        await expectResourceIconReload(state, "child-cached", null, "true icon-one");
+        await expectResourceIconReload(state, "icon-removed", false, "false missing");
+        await expectInactiveIconRecovery(state);
     });
 
     it("stays up when a component stops compiling, and reloads it once it compiles again", async () => {
@@ -209,9 +315,10 @@ describe("gtkx dev", () => {
         expect(state.session.isRunning()).toBe(true);
         writeApp(state.project, appSource("three"));
 
-        expect(await waitForOutput(state.session, `${READY_MARKER} three`, RELOAD_TIMEOUT)).toContain(
-            `${READY_MARKER} three`,
-        );
+        const recovered = `${READY_MARKER} three ${FIRST_RESOURCE_PATH} asset-three asset-two asset-three ` +
+            `true ${RESOURCE_ICON_NAME} true icon-one`;
+
+        expect(await waitForOutput(state.session, recovered, RELOAD_TIMEOUT)).toContain(recovered);
     });
 
     it("stops the application when it is asked to stop", async () => {

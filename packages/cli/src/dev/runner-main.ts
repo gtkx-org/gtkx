@@ -23,7 +23,7 @@ const main = async (): Promise<void> => {
 
     const { config, root } = await loadConfig(cwd, { mode: "development" });
     prepareDevSchemaDir(root, config.future?.v2ResourceImports === true);
-    prepareDevIconDir(root, config.applicationId, config.icons);
+    prepareDevIconDir(root, config.applicationId, config.applicationIcon);
     const entryPath = resolve(cwd, entryArg);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");
     const runner = createDevRunner(defaultDevRunnerDeps());

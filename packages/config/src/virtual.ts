@@ -1,4 +1,5 @@
 import type { ResolvedConfig } from "./config.ts";
+import { resourceBasePath } from "./resource-base-path.ts";
 
 const GTKX_CONFIG_VIRTUAL_ID = "virtual:gtkx-config";
 const RESOLVED_GTKX_CONFIG_VIRTUAL_ID = `\0${GTKX_CONFIG_VIRTUAL_ID}`;
@@ -22,6 +23,7 @@ const renderConfigModule = (config: ResolvedConfig): string => {
         ...behaviorImports,
         `export * from ${JSON.stringify(METADATA_SPECIFIER)};`,
         `export const applicationId = ${JSON.stringify(config.applicationId)};`,
+        `export const resourceBasePath = ${JSON.stringify(resourceBasePath(config.applicationId))};`,
         `export const userEventSignals = ${JSON.stringify(config.userEventSignals)};`,
         config.elements === null
             ? `export const elements = ${lazyJson};`

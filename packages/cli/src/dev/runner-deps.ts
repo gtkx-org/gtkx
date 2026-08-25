@@ -86,7 +86,11 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     isRefreshBoundary,
     staleExportName,
     readFileRevision,
-    plugins: () => [...gtkxVitePlugins(DEV_MODE), ...gtkxFastRefresh(), gtkxReactDomPrebundle()],
+    plugins: (entryPath) => [
+        ...gtkxVitePlugins(DEV_MODE, entryPath),
+        ...gtkxFastRefresh(),
+        gtkxReactDomPrebundle(),
+    ],
     log: info,
     exit: (code: number): never => process.exit(code),
 });

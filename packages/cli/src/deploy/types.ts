@@ -1,4 +1,5 @@
 import type { Config } from "@gtkx/config";
+import type { ResolvedApplicationIcon } from "../internal/icon-path.js";
 
 type DeployConfig = NonNullable<Config["deploy"]>;
 type DeployTargetName = NonNullable<DeployConfig["targets"]>[number];
@@ -106,8 +107,7 @@ type DeployPaths = {
     overlay: string;
     targets: string;
     output: string;
-    iconsDir: string | null;
-    iconFile: string | null;
+    applicationIcon: ResolvedApplicationIcon;
     licenseFile: string | null;
     schemaFiles: string[];
 };

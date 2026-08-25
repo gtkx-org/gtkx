@@ -80,6 +80,18 @@ const staticImportSources = (module: ParsedModule): string[] => [
     ),
 ];
 
+const staticRuntimeImportSources = (module: ParsedModule): string[] => [
+    ...module.staticImports
+        .filter((statement) => statement.entries.length === 0 || statement.entries.some((entry) => !entry.isType))
+        .map((statement) => statement.moduleRequest.value),
+    ...module.staticExports.flatMap((statement) =>
+        statement.entries
+            .filter((entry) => !entry.isType)
+            .map((entry) => entry.moduleRequest?.value)
+            .filter((source): source is string => source !== undefined),
+    ),
+];
+
 const templateImportSource = (node: Record<string, unknown>): string | null => {
     if (!Array.isArray(node.expressions) || node.expressions.length > 0 || !Array.isArray(node.quasis)) {
         return null;
@@ -141,7 +153,10 @@ const collectDynamicImportSources = (node: unknown, found: string[]): void => {
     collectDynamicImportRecord(node, found);
 };
 
-const importsIn = (path: string): SourceImport[] => {
+const parseImportsInWith = (
+    path: string,
+    staticSources: (module: ParsedModule) => string[],
+): SourceImport[] | null => {
     const lang = sourceLanguage(path);
 
     if (lang === undefined) {
@@ -153,19 +168,25 @@ const importsIn = (path: string): SourceImport[] => {
     try {
         parsed = parseSync(path, readFileSync(path, "utf8"), { lang });
     } catch {
-        return [];
+        return null;
     }
 
     if (parsed.errors.length > 0) {
-        return [];
+        return null;
     }
 
-    const sources = staticImportSources(parsed.module);
+    const sources = staticSources(parsed.module);
     collectDynamicImportSources(parsed.program, sources);
 
     return [...new Set(sources)].map((source) => ({ importer: path, source }));
 };
 
+const parseImportsIn = (path: string): SourceImport[] | null => parseImportsInWith(path, staticImportSources);
+
+const parseRuntimeImportsIn = (path: string): SourceImport[] | null =>
+    parseImportsInWith(path, staticRuntimeImportSources);
+
+const importsIn = (path: string): SourceImport[] => parseImportsIn(path) ?? [];
 const importKey = (entry: SourceImport): string => `${entry.importer}\0${entry.source}`;
 
 const discoverSourceImports = (dir: string): SourceImport[] => {
@@ -176,4 +197,4 @@ const discoverSourceImports = (dir: string): SourceImport[] => {
     return sortStringsBy(imports, importKey);
 };
 
-export { discoverSourceImports, type SourceImport };
+export { discoverSourceImports, parseRuntimeImportsIn, type SourceImport };
