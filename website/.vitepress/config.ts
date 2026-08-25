@@ -38,6 +38,7 @@ const guideSidebar = [
     { text: "Error Handling", link: "/guide/error-handling" },
     { text: "Subclassing GObject", link: "/guide/subclassing" },
     { text: "Components", link: "/guide/components" },
+    { text: "Forms", link: "/guide/forms" },
     { text: "Modals and Portals", link: "/guide/modals-and-portals" },
     { text: "Navigation", link: "/guide/navigation" },
     { text: "CSS", link: "/guide/css" },

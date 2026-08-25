@@ -126,26 +126,53 @@ In `src/store/tasks.ts`, add `updateTask` to the slice type and to the creator:
 
 ## The form
 
+`@gtkx/forms` connects Adwaita form rows to React Hook Form: the form owns the values, while the rows still look and behave like native widgets. The scaffolder did not install it. From `tasks/`:
+
+::: code-group
+
+```bash [npm]
+npm install @gtkx/forms
+```
+
+```bash [pnpm]
+pnpm add @gtkx/forms
+```
+
+:::
+
+It belongs in `dependencies`, because the form and its state run in the shipped application.
+
 The editor is a scroller wrapping an `AdwClamp`, which caps content width and centers it so the form stays readable in a wide window. `AdwPreferencesGroup` is the container Adwaita uses for a titled block of rows. It draws the boxed-list frame, so rows placed in it get the rounded card, the separators, and the spacing without any styling of your own.
+
+Only the title and importance use the form. `TaskFields` keeps that boundary visible in the type, and `defaultValues` seeds both fields from the task. `FormProvider` makes the form available to every GTKX form row beneath it, so the rows need a `name` but no individually threaded `control` prop.
 
 Create `src/components/task-detail.tsx`:
 
 ```tsx
+import { EntryRow, FormProvider, SwitchRow, useForm } from "@gtkx/forms";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwClamp, AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import { GtkBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useStore } from "../store/index.js";
 import type { Task } from "../types.js";
 
+type TaskFields = Pick<Task, "important" | "title">;
+
 export const TaskDetail = ({ task }: { task: Task }) => {
     const updateTask = useStore((state) => state.updateTask);
     const setImportant = useStore((state) => state.setImportant);
+    const form = useForm<TaskFields>({
+        defaultValues: { important: task.important, title: task.title },
+    });
+    const { resetField } = form;
 
     return (
         <GtkScrolledWindow vexpand>
             <AdwClamp maximumSize={600} marginTop={24} marginBottom={24} marginStart={12} marginEnd={12}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={18}>
-                    <AdwPreferencesGroup />
+                    <FormProvider {...form}>
+                        <AdwPreferencesGroup />
+                    </FormProvider>
                 </GtkBox>
             </AdwClamp>
         </GtkScrolledWindow>
@@ -155,39 +182,69 @@ export const TaskDetail = ({ task }: { task: Task }) => {
 
 ### The title
 
-`AdwEntryRow` is an editable row: the title is the label and `text` is the value. `showApplyButton` puts a checkmark at the end of the row that lights up once the text differs, and `onApply` fires when it is clicked. `onEntryActivated` fires on Return, so both ways of finishing an edit commit.
+`EntryRow` renders an `Adw.EntryRow`, but React Hook Form supplies its `text` from the field named by `name` and receives every edit. `showApplyButton` puts a checkmark at the end of the row that lights up once the text differs, and `onApply` fires when it is clicked. `onEntryActivated` fires on Return, so both ways of finishing an edit can submit the form.
+
+Above the return, build that submission:
+
+```tsx
+    const saveTitle = form.handleSubmit(({ title }) => {
+        updateTask(task.id, { title });
+        resetField("title", { defaultValue: title });
+    });
+    const submitTitle = (): void => {
+        void saveTitle();
+    };
+```
+
+`handleSubmit` reads the form value rather than reaching into the native entry. After the store accepts it, `resetField` makes that submitted title the field's new default and clears its dirty state. The zero-argument wrapper matters because an Adwaita signal passes its widget to the callback, while React Hook Form's returned submit function optionally accepts a web event; this is a native signal, so it calls the submit function with no event.
 
 In `src/components/task-detail.tsx`, fill the first group:
 
 ```tsx
-                    <AdwPreferencesGroup>
-                        <AdwEntryRow
-                            title="Title"
-                            text={task.title}
-                            showApplyButton
-                            onApply={(self) => updateTask(task.id, { title: self.text })}
-                            onEntryActivated={(self) => updateTask(task.id, { title: self.text })}
-                        />
-                    </AdwPreferencesGroup>
+                    <FormProvider {...form}>
+                        <AdwPreferencesGroup>
+                            <EntryRow<TaskFields>
+                                name="title"
+                                title="Title"
+                                showApplyButton
+                                onApply={submitTitle}
+                                onEntryActivated={submitTitle}
+                            />
+                        </AdwPreferencesGroup>
+                    </FormProvider>
 ```
+
+The generic ties `name` to `TaskFields`, so a misspelled field or a field with the wrong value type fails at compile time. `EntryRow` preserves the native Apply and activation callbacks; by the time either fires, the row's text notifications have already updated React Hook Form. That leaves the form in charge of the draft and the store in charge of the committed title.
 
 ### Importance
 
-`AdwSwitchRow` keeps its value in the plain GObject property `active`. It has no dedicated "the user flipped it" signal, so listen to the property instead: any GObject property `foo` emits `notify::foo` when it changes, and GTKX exposes that as the `onNotifyFoo` prop.
+`SwitchRow` maps its named boolean field to an `Adw.SwitchRow`'s `active` property. It also forwards the native property notification, so the existing store action can keep importance immediate rather than waiting for a form submission.
 
 In `src/components/task-detail.tsx`, add the row under the title:
 
 ```tsx
-                        <AdwSwitchRow
-                            title="Important"
-                            active={task.important}
-                            onNotifyActive={(active) => setImportant(task.id, active ?? false)}
-                        />
+                            <SwitchRow<TaskFields>
+                                name="important"
+                                title="Important"
+                                onNotifyActive={(active) => setImportant(task.id, active ?? false)}
+                            />
 ```
 
-A notify handler receives the new value first, and that value is nullable because the property is read back through the generic GObject machinery, which can return nothing. `?? false` settles it, and every `onNotify*` handler in the app has the same shape.
+A notify handler receives the new value first, and that value is nullable because the property is read back through the generic GObject machinery, which can return nothing. `?? false` settles it, and every `onNotify*` handler in the app has the same shape. The form row has already received the same change by the time this callback persists it.
 
-The switch writes through `setImportant`, the same action the star uses, so flipping it also relights the star in the list.
+The switch writes through `setImportant`, the same action the star uses, so flipping it also relights the star in the list. The reverse direction matters too: the header's star can change the store while the form is open. Import `useEffect` from React and reset just the importance field when its stored value changes:
+
+```tsx
+import { useEffect } from "react";
+
+// ...
+
+    useEffect(() => {
+        resetField("important", { defaultValue: task.important });
+    }, [resetField, task.important]);
+```
+
+A whole-form reset would also replace a title the user is still editing. This targeted reset updates the switch's current value and default together without touching that draft.
 
 ### The due date
 
@@ -196,43 +253,43 @@ The switch writes through `setImportant`, the same action the star uses, so flip
 In `src/components/task-detail.tsx`, add the due row to the group:
 
 ```tsx
-                        <AdwActionRow
-                            title="Due"
-                            suffix={
-                                <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
-                                    {task.due ? (
-                                        <GtkButton
-                                            iconName="edit-clear-symbolic"
-                                            cssClasses={["flat", "circular"]}
-                                            accessibleLabel="Clear due date"
-                                            onClicked={() => updateTask(task.id, { due: null })}
+                            <AdwActionRow
+                                title="Due"
+                                suffix={
+                                    <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
+                                        {task.due ? (
+                                            <GtkButton
+                                                iconName="edit-clear-symbolic"
+                                                cssClasses={["flat", "circular"]}
+                                                accessibleLabel="Clear due date"
+                                                onClicked={() => updateTask(task.id, { due: null })}
+                                            />
+                                        ) : null}
+                                        <GtkMenuButton
+                                            label={formatDue(task.due) ?? "Set date"}
+                                            popover={
+                                                <GtkPopover>
+                                                    <GtkCalendar
+                                                        date={dueDate}
+                                                        onDaySelected={(self) => {
+                                                            const date = self.getDate();
+                                                            const picked = new Date(
+                                                                date.getYear(),
+                                                                date.getMonth() - 1,
+                                                                date.getDayOfMonth(),
+                                                                18,
+                                                                0,
+                                                                0,
+                                                            );
+                                                            updateTask(task.id, { due: picked.toISOString() });
+                                                        }}
+                                                    />
+                                                </GtkPopover>
+                                            }
                                         />
-                                    ) : null}
-                                    <GtkMenuButton
-                                        label={formatDue(task.due) ?? "Set date"}
-                                        popover={
-                                            <GtkPopover>
-                                                <GtkCalendar
-                                                    date={dueDate}
-                                                    onDaySelected={(self) => {
-                                                        const date = self.getDate();
-                                                        const picked = new Date(
-                                                            date.getYear(),
-                                                            date.getMonth() - 1,
-                                                            date.getDayOfMonth(),
-                                                            18,
-                                                            0,
-                                                            0,
-                                                        );
-                                                        updateTask(task.id, { due: picked.toISOString() });
-                                                    }}
-                                                />
-                                            </GtkPopover>
-                                        }
-                                    />
-                                </GtkBox>
-                            }
-                        />
+                                    </GtkBox>
+                                }
+                            />
 ```
 
 The date crosses two type systems, so it converts at both ends. The store keeps an ISO string, which survives a round trip through JSON, while `GtkCalendar` wants a `GLib.DateTime`. Build one at the top of the component, where a task with no due date gets none.
@@ -360,7 +417,7 @@ In `src/components/task-detail.tsx`, add the final group:
 
 ## Switching tasks cleanly
 
-The editor holds state React knows nothing about: where the cursor sits in the title entry, the buffer's undo stack, which month the calendar shows. Open one task, go back, open another, and React sees the same `TaskDetail` in the same position and just updates its props. The widgets survive, and so does all that state. Activating a row while an editor is already open is the same problem without the trip through the list, since `navigate` swaps the params of the page on the stack rather than pushing a second one.
+The editor holds state outside the task object: React Hook Form's field values, where the cursor sits in the title entry, the buffer's undo stack, and which month the calendar shows. Open one task, go back, open another, and React sees the same `TaskDetail` in the same position and just updates its props. The form and widgets survive, and so does all that state. Activating a row while an editor is already open is the same problem without the trip through the list, since `navigate` swaps the params of the page on the stack rather than pushing a second one.
 
 In `src/components/task-screen.tsx`, give the editor a key:
 
@@ -369,13 +426,13 @@ In `src/components/task-screen.tsx`, give the editor a key:
 +    return task ? <TaskDetail key={task.id} task={task} /> : null;
 ```
 
-A changed key tells React to throw the old tree away and build a new one, so a new task gets fresh widgets: a cursor at the start, an empty undo history, and a calendar opened on its own month. This is the same tool `TasksScreen` uses to reset the list's scroll position when the route's params change.
+A changed key tells React to throw the old tree away and build a new one, so `useForm` reads the new task's defaults and the new task gets fresh widgets: a cursor at the start, an empty undo history, and a calendar opened on its own month. This is the same tool `TasksScreen` uses to reset the list's scroll position when the route's params change.
 
 ## The task's header bar
 
 There is no back button to build, and nothing to call when it is pressed. The navigator gives every content page a header bar, and Adwaita draws the back button on any page with a page beneath it. <kbd>Escape</kbd> and <kbd>Alt</kbd>+<kbd>Left</kbd> pop that same page. What the bar still needs is the task's title and the two commands that belong with an open task.
 
-A screen's `options` is a plain object or a plain callback over `{ route, navigation, theme }`. No hooks run in it, and it is `Window` that evaluates it, so this is the case from [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) again: a header widget that shows live state is its own component, subscribing where the widget is. The title tracks `task.title` as you type it into the entry, and the star tracks `task.important` as the switch row flips it, and neither may drag the whole window into re-rendering on every keystroke.
+A screen's `options` is a plain object or a plain callback over `{ route, navigation, theme }`. No hooks run in it, and it is `Window` that evaluates it, so this is the case from [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) again: a header widget that shows live state is its own component, subscribing where the widget is. The title tracks the committed `task.title` after Apply or Return, and the star tracks `task.important` as either control flips it. Neither needs to drag the whole window into re-rendering while a title draft changes.
 
 Create `src/components/task-title.tsx`:
 
@@ -449,7 +506,7 @@ Deleting from here leaves the editor open over a task that is now in the trash. 
 Save the files. The window on your desktop already has the editor in it.
 
 1. Click any task row. The content pane becomes a form with Title, Important, and Due at the top, a Notes box, and a Created timestamp at the bottom. The header bar shows the task's title, with the navigator's back arrow on the left.
-2. Change the title and press Enter. The header title updates immediately. Click the back arrow and the list is showing again, with the new title on the row. Press <kbd>Escape</kbd> or <kbd>Alt</kbd>+<kbd>Left</kbd> from an open task and it closes the same way, with none of your code involved.
+2. Start changing the title without applying it, then click the star in the header. The Important switch follows the star and the unfinished title stays in the entry. Press Enter: the header title updates immediately. Click the back arrow and the list is showing again, with the new title on the row. Press <kbd>Escape</kbd> or <kbd>Alt</kbd>+<kbd>Left</kbd> from an open task and it closes the same way, with none of your code involved.
 3. Open a task and click Set date. A calendar drops down; pick today. The button reads `Today at 6:00 PM`, a clear button appears beside it, and going back puts the same text under the row's title. Open the task again and click the clear button: the subtitle disappears from the row entirely rather than leaving a blank gap.
 4. Type into Notes and press Ctrl+Z: the last thing you typed is undone. Go back, open a different task, and the notes box holds that task's notes with none of the previous undo history. Press Ctrl+Z there and nothing happens.
 5. Open a task, then click a different row without going back first. The editor shows the second task, and one press of the back arrow still reaches the list, because the second row swapped the page's params rather than stacking a page on it.
@@ -467,9 +524,10 @@ The ISO string is the one the calendar produced.
 The finished editor. `src/components/task-detail.tsx`:
 
 ```tsx
+import { EntryRow, FormProvider, SwitchRow, useForm } from "@gtkx/forms";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwActionRow, AdwClamp, AdwEntryRow, AdwPreferencesGroup, AdwSwitchRow } from "@gtkx/jsx/adw";
+import { AdwActionRow, AdwClamp, AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import {
     GtkBox,
     GtkButton,
@@ -481,71 +539,92 @@ import {
     GtkTextBuffer,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
+import { useEffect } from "react";
 import { formatDateTime, formatDue } from "../format.js";
 import { useStore } from "../store/index.js";
 import { detailNotes } from "../styles.js";
 import type { Task } from "../types.js";
 
+type TaskFields = Pick<Task, "important" | "title">;
+
 export const TaskDetail = ({ task }: { task: Task }) => {
     const updateTask = useStore((state) => state.updateTask);
     const setImportant = useStore((state) => state.setImportant);
     const dueDate = task.due ? GLib.DateTime.newFromIso8601(task.due, null) : undefined;
+    const form = useForm<TaskFields>({
+        defaultValues: { important: task.important, title: task.title },
+    });
+    const { resetField } = form;
+
+    useEffect(() => {
+        resetField("important", { defaultValue: task.important });
+    }, [resetField, task.important]);
+
+    const saveTitle = form.handleSubmit(({ title }) => {
+        updateTask(task.id, { title });
+        resetField("title", { defaultValue: title });
+    });
+    const submitTitle = (): void => {
+        void saveTitle();
+    };
 
     return (
         <GtkScrolledWindow vexpand>
             <AdwClamp maximumSize={600} marginTop={24} marginBottom={24} marginStart={12} marginEnd={12}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={18}>
-                    <AdwPreferencesGroup>
-                        <AdwEntryRow
-                            title="Title"
-                            text={task.title}
-                            showApplyButton
-                            onApply={(self) => updateTask(task.id, { title: self.text })}
-                            onEntryActivated={(self) => updateTask(task.id, { title: self.text })}
-                        />
-                        <AdwSwitchRow
-                            title="Important"
-                            active={task.important}
-                            onNotifyActive={(active) => setImportant(task.id, active ?? false)}
-                        />
-                        <AdwActionRow
-                            title="Due"
-                            suffix={
-                                <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
-                                    {task.due ? (
-                                        <GtkButton
-                                            iconName="edit-clear-symbolic"
-                                            cssClasses={["flat", "circular"]}
-                                            accessibleLabel="Clear due date"
-                                            onClicked={() => updateTask(task.id, { due: null })}
+                    <FormProvider {...form}>
+                        <AdwPreferencesGroup>
+                            <EntryRow<TaskFields>
+                                name="title"
+                                title="Title"
+                                showApplyButton
+                                onApply={submitTitle}
+                                onEntryActivated={submitTitle}
+                            />
+                            <SwitchRow<TaskFields>
+                                name="important"
+                                title="Important"
+                                onNotifyActive={(active) => setImportant(task.id, active ?? false)}
+                            />
+                            <AdwActionRow
+                                title="Due"
+                                suffix={
+                                    <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
+                                        {task.due ? (
+                                            <GtkButton
+                                                iconName="edit-clear-symbolic"
+                                                cssClasses={["flat", "circular"]}
+                                                accessibleLabel="Clear due date"
+                                                onClicked={() => updateTask(task.id, { due: null })}
+                                            />
+                                        ) : null}
+                                        <GtkMenuButton
+                                            label={formatDue(task.due) ?? "Set date"}
+                                            popover={
+                                                <GtkPopover>
+                                                    <GtkCalendar
+                                                        date={dueDate}
+                                                        onDaySelected={(self) => {
+                                                            const date = self.getDate();
+                                                            const picked = new Date(
+                                                                date.getYear(),
+                                                                date.getMonth() - 1,
+                                                                date.getDayOfMonth(),
+                                                                18,
+                                                                0,
+                                                                0,
+                                                            );
+                                                            updateTask(task.id, { due: picked.toISOString() });
+                                                        }}
+                                                    />
+                                                </GtkPopover>
+                                            }
                                         />
-                                    ) : null}
-                                    <GtkMenuButton
-                                        label={formatDue(task.due) ?? "Set date"}
-                                        popover={
-                                            <GtkPopover>
-                                                <GtkCalendar
-                                                    date={dueDate}
-                                                    onDaySelected={(self) => {
-                                                        const date = self.getDate();
-                                                        const picked = new Date(
-                                                            date.getYear(),
-                                                            date.getMonth() - 1,
-                                                            date.getDayOfMonth(),
-                                                            18,
-                                                            0,
-                                                            0,
-                                                        );
-                                                        updateTask(task.id, { due: picked.toISOString() });
-                                                    }}
-                                                />
-                                            </GtkPopover>
-                                        }
-                                    />
-                                </GtkBox>
-                            }
-                        />
-                    </AdwPreferencesGroup>
+                                    </GtkBox>
+                                }
+                            />
+                        </AdwPreferencesGroup>
+                    </FormProvider>
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
                         <GtkLabel halign={Gtk.Align.START} cssClasses={["heading"]}>

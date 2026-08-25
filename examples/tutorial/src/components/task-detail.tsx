@@ -1,6 +1,7 @@
+import { EntryRow, FormProvider, SwitchRow, useForm } from "@gtkx/forms";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwActionRow, AdwClamp, AdwEntryRow, AdwPreferencesGroup, AdwSwitchRow } from "@gtkx/jsx/adw";
+import { AdwActionRow, AdwClamp, AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import {
     GtkBox,
     GtkButton,
@@ -12,71 +13,92 @@ import {
     GtkTextBuffer,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
+import { useEffect } from "react";
 import { formatDateTime, formatDue } from "../format.js";
 import { useStore } from "../store/index.js";
 import { detailNotes } from "../styles.js";
 import type { Task } from "../types.js";
 
+type TaskFields = Pick<Task, "important" | "title">;
+
 export const TaskDetail = ({ task }: { task: Task }) => {
     const updateTask = useStore((state) => state.updateTask);
     const setImportant = useStore((state) => state.setImportant);
     const dueDate = task.due ? GLib.DateTime.newFromIso8601(task.due, null) : undefined;
+    const form = useForm<TaskFields>({
+        defaultValues: { important: task.important, title: task.title },
+    });
+    const { resetField } = form;
+
+    useEffect(() => {
+        resetField("important", { defaultValue: task.important });
+    }, [resetField, task.important]);
+
+    const saveTitle = form.handleSubmit(({ title }) => {
+        updateTask(task.id, { title });
+        resetField("title", { defaultValue: title });
+    });
+    const submitTitle = (): void => {
+        void saveTitle();
+    };
 
     return (
         <GtkScrolledWindow vexpand>
             <AdwClamp maximumSize={600} marginTop={24} marginBottom={24} marginStart={12} marginEnd={12}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={18}>
-                    <AdwPreferencesGroup>
-                        <AdwEntryRow
-                            title="Title"
-                            text={task.title}
-                            showApplyButton
-                            onApply={(self) => updateTask(task.id, { title: self.text })}
-                            onEntryActivated={(self) => updateTask(task.id, { title: self.text })}
-                        />
-                        <AdwSwitchRow
-                            title="Important"
-                            active={task.important}
-                            onNotifyActive={(active) => setImportant(task.id, active ?? false)}
-                        />
-                        <AdwActionRow
-                            title="Due"
-                            suffix={
-                                <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
-                                    {task.due ? (
-                                        <GtkButton
-                                            iconName="edit-clear-symbolic"
-                                            cssClasses={["flat", "circular"]}
-                                            accessibleLabel="Clear due date"
-                                            onClicked={() => updateTask(task.id, { due: null })}
+                    <FormProvider {...form}>
+                        <AdwPreferencesGroup>
+                            <EntryRow<TaskFields>
+                                name="title"
+                                title="Title"
+                                showApplyButton
+                                onApply={submitTitle}
+                                onEntryActivated={submitTitle}
+                            />
+                            <SwitchRow<TaskFields>
+                                name="important"
+                                title="Important"
+                                onNotifyActive={(active) => setImportant(task.id, active ?? false)}
+                            />
+                            <AdwActionRow
+                                title="Due"
+                                suffix={
+                                    <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
+                                        {task.due ? (
+                                            <GtkButton
+                                                iconName="edit-clear-symbolic"
+                                                cssClasses={["flat", "circular"]}
+                                                accessibleLabel="Clear due date"
+                                                onClicked={() => updateTask(task.id, { due: null })}
+                                            />
+                                        ) : null}
+                                        <GtkMenuButton
+                                            label={formatDue(task.due) ?? "Set date"}
+                                            popover={
+                                                <GtkPopover>
+                                                    <GtkCalendar
+                                                        date={dueDate}
+                                                        onDaySelected={(self) => {
+                                                            const date = self.getDate();
+                                                            const picked = new Date(
+                                                                date.getYear(),
+                                                                date.getMonth() - 1,
+                                                                date.getDayOfMonth(),
+                                                                18,
+                                                                0,
+                                                                0,
+                                                            );
+                                                            updateTask(task.id, { due: picked.toISOString() });
+                                                        }}
+                                                    />
+                                                </GtkPopover>
+                                            }
                                         />
-                                    ) : null}
-                                    <GtkMenuButton
-                                        label={formatDue(task.due) ?? "Set date"}
-                                        popover={
-                                            <GtkPopover>
-                                                <GtkCalendar
-                                                    date={dueDate}
-                                                    onDaySelected={(self) => {
-                                                        const date = self.getDate();
-                                                        const picked = new Date(
-                                                            date.getYear(),
-                                                            date.getMonth() - 1,
-                                                            date.getDayOfMonth(),
-                                                            18,
-                                                            0,
-                                                            0,
-                                                        );
-                                                        updateTask(task.id, { due: picked.toISOString() });
-                                                    }}
-                                                />
-                                            </GtkPopover>
-                                        }
-                                    />
-                                </GtkBox>
-                            }
-                        />
-                    </AdwPreferencesGroup>
+                                    </GtkBox>
+                                }
+                            />
+                        </AdwPreferencesGroup>
+                    </FormProvider>
 
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
                         <GtkLabel halign={Gtk.Align.START} cssClasses={["heading"]}>

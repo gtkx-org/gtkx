@@ -64,6 +64,7 @@
                     "@gtkx/cli:build",
                     "@gtkx/components:build",
                     "@gtkx/css:build",
+                    "@gtkx/forms:build",
                     "@gtkx/gl:build",
                     "@gtkx/navigation:build"
                 ],

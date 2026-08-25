@@ -10,6 +10,7 @@
         "@gtkx/config",
         "@gtkx/config/vite-plugin",
         "@gtkx/css",
+        "@gtkx/forms",
         "@gtkx/gl",
         "@gtkx/navigation",
         "@gtkx/react",
