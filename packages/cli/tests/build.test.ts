@@ -18,11 +18,19 @@ type AppRun = { status: number | null; stdout: string; stderr: string };
 type BrokenEntry = { title: string; args: string[] };
 type BrokenBuild = { config?: string | undefined; files: Record<string, string>; prefix: string };
 
+type BuildMetadata = {
+    generator: string;
+    formatVersion: number;
+    schemas: string[];
+    packages: { name: string; version: string | null; dir: string }[];
+};
+
 const APPLICATION_ID = "com.gtkx.clibuild";
 const READY_MARKER = "app-ready";
 const RUN_TIMEOUT = 60_000;
 const OUT_DIR = "dist";
 const BUNDLE = "bundle.mjs";
+const BUILD_METADATA = "gtkx-schemas.json";
 const SCHEMA_FILE = `${APPLICATION_ID}.gschema.xml`;
 const ICON_PATH = join("icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
 
@@ -31,7 +39,7 @@ const EMITTED = [
     "gtkx.node",
     "gtkx.gresource",
     "gschemas.compiled",
-    "gtkx-schemas.json",
+    BUILD_METADATA,
     ICON_PATH,
 ];
 
@@ -341,6 +349,25 @@ const typecheckFiles = (): Record<string, string> => {
 
 const emittedNames = (project: CliProject): string[] => listProjectFiles(project, OUT_DIR);
 
+const expectUnifiedBuildMetadata = (project: CliProject): void => {
+    const contents = readFileSync(join(project.root, OUT_DIR, BUILD_METADATA), "utf8");
+    const metadata = JSON.parse(contents) as BuildMetadata;
+    expect(metadata.generator).toBe("gtkx-build");
+    expect(metadata.formatVersion).toBe(1);
+    expect(metadata.schemas).toEqual([join("data", SCHEMA_FILE)]);
+
+    expect(metadata.packages).toEqual(expect.arrayContaining([
+        { name: MANIFEST.name, version: MANIFEST.version, dir: ".." },
+        {
+            name: PACKAGE_NAME,
+            version: null,
+            dir: join("..", "node_modules", "@probe", "resource-package"),
+        },
+    ]));
+
+    expect(emittedNames(project)).not.toContain("gtkx-packages.json");
+};
+
 const installResourcePackage = (project: CliProject): void => {
     const packageDir = join(project.nodeModules, PACKAGE_NAME);
     const iconDir = join(packageDir, "icons");
@@ -477,6 +504,10 @@ describe("gtkx build", () => {
         expect(declarations).toContain(`declare module "*/${SCHEMA_FILE}"`);
         expect(declarations).toContain(`declare module "*?resource=${EXPLICIT_RESOURCE_PATH}"`);
         expect(declarations).toContain(`declare module "*?icon=${DIRECT_ICON_NAME}"`);
+    });
+
+    it("records the schemas and packages reached by the bundle in one build metadata file", () => {
+        expectUnifiedBuildMetadata(state.project);
     });
 
     it("emits a bundle that starts, reads its settings and reaches its resources", () => {

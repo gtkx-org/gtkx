@@ -3,6 +3,7 @@ import type { ModuleNode, Plugin, ResolvedConfig, UserConfig, ViteDevServer } fr
 import { error, errorMessage, info, sortStrings } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { basename, join } from "node:path";
+import type { BuildManifestCollector } from "../internal/build-manifest.js";
 import type { AssetEmitter } from "./asset-emitter.js";
 import { prependBanner } from "../internal/banner.js";
 import { resolveDataDir } from "../internal/data-dir.js";
@@ -15,7 +16,6 @@ import {
     emitSchemaEnv,
     prependSchemaDir,
     projectRelativeSchemaPath,
-    SCHEMA_MANIFEST_FILENAME,
     SCHEMA_SUFFIX,
     stageSchema,
 } from "../settings/schema.js";
@@ -39,7 +39,6 @@ type PluginContext = AssetEmitter & {
 const VIRTUAL_PREFIX = "\0gtkx-settings:";
 const SCHEMA_STAGING_PREFIX = "schemas";
 const SOURCE_MODULE_RE = /\.[cm]?[jt]sx?$/;
-const JSON_INDENT = 4;
 const SCHEMA_ENV_DEBOUNCE_MS = 50;
 const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
@@ -173,16 +172,8 @@ const compileBuildSchemas = (schemaFiles: string[]): Buffer =>
         return readFileSync(join(dir, "gschemas.compiled"));
     });
 
-const emitBuildSchemas = (ctx: PluginContext, state: PluginState): void => {
-    if (!state.isBuild || state.rootDir === null) {
-        return;
-    }
-
-    const rootDir = state.rootDir;
-    const schemaFiles = sortStrings(state.buildSchemas);
-    assertUniqueSchemaBasenames(schemaFiles);
-
-    const schemas = schemaFiles.map((filePath) => {
+const buildSchemaPaths = (rootDir: string, schemaFiles: string[]): string[] =>
+    schemaFiles.map((filePath) => {
         const rel = projectRelativeSchemaPath(rootDir, filePath);
 
         if (rel === null) {
@@ -192,11 +183,23 @@ const emitBuildSchemas = (ctx: PluginContext, state: PluginState): void => {
         return rel;
     });
 
-    ctx.emitFile({
-        type: "asset",
-        fileName: SCHEMA_MANIFEST_FILENAME,
-        source: `${JSON.stringify({ schemas }, null, JSON_INDENT)}\n`,
-    });
+const emitBuildSchemas = (
+    ctx: PluginContext,
+    state: PluginState,
+    buildManifest: BuildManifestCollector | undefined,
+): void => {
+    if (!state.isBuild || state.rootDir === null) {
+        return;
+    }
+
+    const rootDir = state.rootDir;
+    const schemaFiles = sortStrings(state.buildSchemas);
+    assertUniqueSchemaBasenames(schemaFiles);
+    const schemas = buildSchemaPaths(rootDir, schemaFiles);
+
+    if (buildManifest !== undefined) {
+        buildManifest.schemas = schemas;
+    }
 
     if (schemaFiles.length === 0) {
         return;
@@ -258,7 +261,7 @@ const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
     server.watcher.on("unlink", refreshSchemaTypes);
 };
 
-function gtkxSettings(loadConfig: ConfigLoader): Plugin {
+function gtkxSettings(loadConfig: ConfigLoader, buildManifest?: BuildManifestCollector): Plugin {
     const state: PluginState = {
         schemaDir: createRetainedStagingDir(SCHEMA_STAGING_PREFIX),
         rootDir: null,
@@ -307,7 +310,7 @@ function gtkxSettings(loadConfig: ConfigLoader): Plugin {
         },
 
         buildEnd() {
-            emitBuildSchemas(this, state);
+            emitBuildSchemas(this, state, buildManifest);
         },
 
         closeBundle() {

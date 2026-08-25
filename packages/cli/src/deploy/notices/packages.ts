@@ -1,16 +1,10 @@
-import { isRecord, sortStringsBy, warn } from "@gtkx/utils";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { sortStringsBy, warn } from "@gtkx/utils";
+import { existsSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
+import type { RecordedPackage } from "../../internal/build-manifest.js";
 import type { DeploySettings } from "../types.js";
-import { BUNDLED_PACKAGES_FILENAME } from "../../vite-plugins/bundled-packages.js";
 import { type PackageManifest, readPackageManifest } from "../settings/package-manifest.js";
 import { copyrightLines, licenseTextIn } from "./text.js";
-
-type RecordedPackage = {
-    name: string;
-    version: string | null;
-    dir: string;
-};
 
 type BundledPackage = {
     name: string;
@@ -34,38 +28,6 @@ const realPath = (path: string): string => {
     } catch {
         return path;
     }
-};
-
-const optionalString = (value: unknown): string | null => (typeof value === "string" ? value : null);
-
-const recordedPackage = (entry: unknown): RecordedPackage | null => {
-    if (!isRecord(entry) || typeof entry.name !== "string" || typeof entry.dir !== "string") {
-        return null;
-    }
-
-    return { name: entry.name, version: optionalString(entry.version), dir: entry.dir };
-};
-
-const recordedList = (value: unknown): RecordedPackage[] => {
-    if (!Array.isArray(value)) {
-        return [];
-    }
-
-    const entries: unknown[] = value;
-
-    return entries.map((entry) => recordedPackage(entry)).filter((entry) => entry !== null);
-};
-
-const readRecordedPackages = (settings: DeploySettings): RecordedPackage[] => {
-    const path = join(settings.paths.dist, BUNDLED_PACKAGES_FILENAME);
-
-    if (!existsSync(path)) {
-        throw new Error(`Cannot deploy: ${path} is missing. Run \`gtkx build\` first.`);
-    }
-
-    const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
-
-    return recordedList(isRecord(parsed) ? parsed.packages : null);
 };
 
 const authorLine = (manifest: PackageManifest): string[] => {
@@ -151,10 +113,10 @@ const warnMissing = (entries: BundledPackage[]): void => {
     );
 };
 
-const bundledPackages = (settings: DeploySettings): BundledPackage[] => {
+const bundledPackages = (settings: DeploySettings, recorded: RecordedPackage[]): BundledPackage[] => {
     const root = realPath(settings.paths.root);
 
-    const entries = readRecordedPackages(settings)
+    const entries = recorded
         .map((entry) => ({ entry, dir: resolve(settings.paths.dist, entry.dir) }))
         .filter(({ dir }) => realPath(dir) !== root)
         .map(({ entry, dir }) => packageIn(entry, dir));

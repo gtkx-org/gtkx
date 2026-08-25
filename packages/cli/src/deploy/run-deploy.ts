@@ -20,9 +20,9 @@ import { resolveNodeRuntime } from "./node-runtime/index.js";
 import { collectNotices } from "./notices/collect.js";
 import { type StagedMetadata, stageOverlays, stagePayload } from "./payload/stage.js";
 import { DEFAULT_TARGETS, parseTargetList, targetsFor } from "./registry.js";
+import { readBuildManifest } from "./settings/build-manifest.js";
 import { resolveDeploySettings } from "./settings/index.js";
 import { readPackageManifest } from "./settings/package-manifest.js";
-import { readSchemaManifest } from "./settings/schema-manifest.js";
 import { missingDeployError } from "./settings/starter.js";
 import { finishArgsFor, hasDisplaySocket, runtimeLabelFor } from "./targets/flatpak-manifest.js";
 import { detectPackageManager } from "./targets/flatpak-sources.js";
@@ -242,9 +242,11 @@ const buildPayload = async (
         await buildApp({ entry: options.entry, vite: { root: options.cwd } });
     }
 
+    const buildManifest = readBuildManifest(settings);
+
     const builtSettings: DeploySettings = {
         ...settings,
-        paths: { ...settings.paths, schemaFiles: readSchemaManifest(settings) },
+        paths: { ...settings.paths, schemaFiles: buildManifest.schemaFiles },
     };
 
     const node = options.shouldPrintManifests || !isNodeRequired(targets, builtSettings)
@@ -253,7 +255,7 @@ const buildPayload = async (
 
     const stage = stagePayload({ settings: builtSettings, node, metadata });
     info(`Staged ${String(stage.length)} files into ${displayPath(builtSettings, builtSettings.paths.stage)}`);
-    const notices = collectNotices({ settings: builtSettings, node });
+    const notices = collectNotices({ settings: builtSettings, node, packages: buildManifest.packages });
 
     return {
         settings: builtSettings,

@@ -1,6 +1,7 @@
 import { join, posix } from "node:path";
 import { type InlineConfig, mergeConfig, build as viteBuild } from "vite";
-import { gtkxBundledPackages } from "./vite-plugins/bundled-packages.js";
+import { createBuildManifestCollector } from "./internal/build-manifest.js";
+import { gtkxBuildManifest } from "./vite-plugins/build-manifest.js";
 import { BUNDLE_FILENAME, ESM_EXTENSION } from "./vite-plugins/esm-extension.js";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
 import { gtkxNative } from "./vite-plugins/native.js";
@@ -34,13 +35,14 @@ const build = async (options: BuildOptions): Promise<string> => {
     const { entry, vite: viteConfig } = options;
     const root = viteConfig?.root ?? process.cwd();
     const assetsDir = viteConfig?.build?.assetsDir ?? DEFAULT_ASSETS_DIR;
+    const buildManifest = createBuildManifestCollector();
 
     const forced: InlineConfig = {
         plugins: [
-            ...gtkxVitePlugins(BUILD_MODE),
+            ...gtkxVitePlugins(BUILD_MODE, undefined, buildManifest),
             gtkxWorker(),
             gtkxNative(root),
-            gtkxBundledPackages(root),
+            gtkxBuildManifest(root, buildManifest),
             gtkxSelfContained(),
         ],
         build: {

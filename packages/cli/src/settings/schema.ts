@@ -32,7 +32,6 @@ type SchemaEnvResult = {
 };
 
 const SCHEMA_SUFFIX = ".gschema.xml";
-const SCHEMA_MANIFEST_FILENAME = "gtkx-schemas.json";
 const STAGED_NAME_LENGTH = 16;
 const SOURCE_DIR = "src";
 const RESOURCE_QUERY = "?resource=";
@@ -333,7 +332,6 @@ const emitSchemaEnv = (
 
 export {
     SCHEMA_SUFFIX,
-    SCHEMA_MANIFEST_FILENAME,
     prependSchemaDir,
     stageSchema,
     assertUniqueSchemaBasenames,

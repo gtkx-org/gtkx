@@ -28,9 +28,8 @@ rendering chunks...
 computing gzip size...
 dist/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg      0.49 kB │ gzip:   0.28 kB
 dist/gschemas.compiled                                               0.63 kB
-dist/gtkx-schemas.json                                               0.08 kB │ gzip:   0.08 kB
 dist/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg               1.47 kB │ gzip:   0.38 kB
-dist/gtkx-packages.json                                              1.94 kB │ gzip:   0.35 kB
+dist/gtkx-schemas.json                                               2.02 kB │ gzip:   0.39 kB
 dist/gtkx.node                                                   1,624.69 kB
 dist/bundle.mjs                                                  4,067.30 kB │ gzip: 510.94 kB
 
@@ -38,11 +37,15 @@ dist/bundle.mjs                                                  4,067.30 kB │
 [gtkx] Build complete: dist/bundle.mjs
 ```
 
-Everything except the bundle is found at runtime relative to the bundle itself: it prepends its own directory to
-`GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, and loads `gtkx.node` from beside itself. An app that imports
-`?resource` or `?icon` assets also gets a sibling `gtkx.gresource`, which generated modules load and register
-automatically. Keep these files together and the app is self-contained. Move `bundle.mjs` on its own and the
-settings schema goes missing on the first `useSetting` call.
+The runtime finds `gschemas.compiled`, the icons, and `gtkx.node` relative to the bundle: it prepends its own
+directory to `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, and loads the native addon from beside itself. An app
+that imports `?resource` or `?icon` assets also gets a sibling `gtkx.gresource`, which generated modules load and
+register automatically. Keep those files together and the app is self-contained. Move `bundle.mjs` on its own
+and the settings schema goes missing on the first `useSetting` call.
+
+`gtkx-schemas.json` is build metadata for `gtkx deploy`, not a runtime file. It identifies the metadata format and
+records both the schema sources and JavaScript packages reached by the bundle; deploy consumes it without placing
+it in the installed application.
 
 `node dist/bundle.mjs` runs the app on any machine with GTK4, Adwaita, and Node.js 24 installed. That works, but it is not yet something a user can double-click.
 

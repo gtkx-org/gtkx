@@ -46,6 +46,13 @@ type NfpmConfig = { contents: NfpmContent[]; depends: string[] };
 type DeployProbe = { project: CliProject; status: number | null };
 type DeployRun = { status: number | null; output: string };
 
+type BuildMetadata = {
+    generator: string;
+    formatVersion: number;
+    schemas: string[];
+    packages: { name: string; version: string | null; dir: string }[];
+};
+
 type DeploySetup = {
     prefix: string;
     config: string;
@@ -245,6 +252,7 @@ createRoot().render(
 const EXPECTED_STAGED = [
     join(STAGE_PREFIX, "bin", BINARY_NAME),
     join(STAGE_PREFIX, "lib", BINARY_NAME, "bundle.mjs"),
+    join(STAGE_PREFIX, "lib", BINARY_NAME, "gschemas.compiled"),
     join(STAGE_PREFIX, "lib", BINARY_NAME, "gtkx.node"),
     join(STAGE_PREFIX, "share", "applications", `${APPLICATION_ID}.desktop`),
     join(STAGE_PREFIX, "share", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`),
@@ -262,8 +270,8 @@ const EXPECTED_MANIFESTS = [
 const COPYRIGHT_PATH = join("overlay", "deb", "share", "doc", BINARY_NAME, "copyright");
 const NOTICES_FILENAME = "THIRD-PARTY-NOTICES";
 const NOTICE_TARGETS = ["appimage", "flatpak", "rpm"];
-const PACKAGES_MANIFEST = "gtkx-packages.json";
-const SCHEMAS_MANIFEST = "gtkx-schemas.json";
+const BUILD_METADATA = "gtkx-schemas.json";
+const LEGACY_PACKAGES_METADATA = "gtkx-packages.json";
 const NODE_STANZA = `Files: lib/${BINARY_NAME}/node`;
 const NATIVE_STANZA = `Files: lib/${BINARY_NAME}/gtkx.node`;
 const BUNDLE_STANZA = `Files: lib/${BINARY_NAME}/bundle.mjs`;
@@ -918,10 +926,9 @@ describe("gtkx deploy (third-party notices)", () => {
         }
     });
 
-    it("keeps the build metadata it collects them from out of the package", () => {
+    it("keeps the unified build metadata it collects notices from out of the package", () => {
         const staged = outputNames(state.project);
-        expect(staged).not.toContain(join(STAGE_PREFIX, "lib", BINARY_NAME, PACKAGES_MANIFEST));
-        expect(staged).not.toContain(join(STAGE_PREFIX, "lib", BINARY_NAME, SCHEMAS_MANIFEST));
+        expect(staged).not.toContain(join(STAGE_PREFIX, "lib", BINARY_NAME, BUILD_METADATA));
         expect(staged).toContain(join(STAGE_PREFIX, "lib", BINARY_NAME, "bundle.mjs"));
     });
 
@@ -969,6 +976,13 @@ describe("gtkx deploy (a bundle with nothing third-party in it)", () => {
         expect(state.status).toBe(0);
         expect(noticesFor(state.project, "rpm")).not.toContain(DEPENDENCY_SECTION);
     });
+
+    it("accepts build metadata with no schema sources", () => {
+        const path = join(state.project.root, "dist", BUILD_METADATA);
+        const metadata = JSON.parse(readFileSync(path, "utf8")) as BuildMetadata;
+        expect(state.status).toBe(0);
+        expect(metadata.schemas).toEqual([]);
+    });
 });
 
 describe("gtkx deploy (a build whose packages have moved)", () => {
@@ -990,10 +1004,32 @@ describe("gtkx deploy (a build whose packages have moved)", () => {
             removeCliProject(project);
         }
     });
+
+    it("does not stage legacy build metadata left in dist", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-legacy-metadata-",
+            config: config(DEPLOY_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            writeFileSync(join(project.root, "dist", LEGACY_PACKAGES_METADATA), "{}\n");
+            const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
+            expect(runCli(project, args).status).toBe(0);
+
+            expect(outputNames(project)).not.toContain(
+                join(STAGE_PREFIX, "lib", BINARY_NAME, LEGACY_PACKAGES_METADATA),
+            );
+        } finally {
+            removeCliProject(project);
+        }
+    });
 });
 
 describe("gtkx deploy (a build it cannot account for)", () => {
-    it("fails when the build it packages recorded no bundled packages", () => {
+    it("fails when the build metadata is missing", () => {
         const project = createCliProject({
             prefix: "gtkx-cli-deploy-stale-build-",
             config: config(DEPLOY_BLOCK),
@@ -1003,17 +1039,19 @@ describe("gtkx deploy (a build it cannot account for)", () => {
 
         try {
             expect(runCli(project, ["build"]).status).toBe(0);
-            rmSync(join(project.root, "dist", PACKAGES_MANIFEST));
+            rmSync(join(project.root, "dist", BUILD_METADATA));
             const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
-            expect(runCli(project, args).status).not.toBe(0);
+            expect(() => runCliOrThrow(project, args)).toThrow();
         } finally {
             removeCliProject(project);
         }
     });
+});
 
-    it("fails when the build it packages recorded no schema sources", () => {
+describe("gtkx deploy (build metadata it cannot trust)", () => {
+    it("fails when the format or a package record is invalid", () => {
         const project = createCliProject({
-            prefix: "gtkx-cli-deploy-stale-schemas-",
+            prefix: "gtkx-cli-deploy-newer-build-",
             config: config(DEPLOY_BLOCK),
             files: projectFiles(),
             hasStore: true,
@@ -1021,16 +1059,22 @@ describe("gtkx deploy (a build it cannot account for)", () => {
 
         try {
             expect(runCli(project, ["build"]).status).toBe(0);
-            rmSync(join(project.root, "dist", SCHEMAS_MANIFEST));
+            const metadataPath = join(project.root, "dist", BUILD_METADATA);
+            const metadata = JSON.parse(readFileSync(metadataPath, "utf8")) as BuildMetadata;
             const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
-            expect(runCli(project, args).status).not.toBe(0);
+
+            for (const invalid of [
+                { ...metadata, formatVersion: 2 },
+                { ...metadata, packages: [{ name: "invalid", version: 1, dir: ".." }] },
+            ]) {
+                writeFileSync(metadataPath, `${JSON.stringify(invalid, null, 4)}\n`);
+                expect(() => runCliOrThrow(project, args)).toThrow();
+            }
         } finally {
             removeCliProject(project);
         }
     });
-});
 
-describe("gtkx deploy (a schema manifest it cannot trust)", () => {
     it("fails when an in-project schema link escapes the project", () => {
         const project = createCliProject({
             prefix: "gtkx-cli-deploy-schema-escape-",
@@ -1047,10 +1091,12 @@ describe("gtkx deploy (a schema manifest it cannot trust)", () => {
             expect(runCli(project, ["build"]).status).toBe(0);
             writeFileSync(outsideSchema, SCHEMA);
             symlinkSync(outsideSchema, join(project.root, "data", linkedName));
-            const manifest = `${JSON.stringify({ schemas: [linkedPath] }, null, 4)}\n`;
-            writeFileSync(join(project.root, "dist", SCHEMAS_MANIFEST), manifest);
+            const metadataPath = join(project.root, "dist", BUILD_METADATA);
+            const metadata = JSON.parse(readFileSync(metadataPath, "utf8")) as BuildMetadata;
+            const escapedMetadata = `${JSON.stringify({ ...metadata, schemas: [linkedPath] }, null, 4)}\n`;
+            writeFileSync(metadataPath, escapedMetadata);
             const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
-            expect(runCli(project, args).status).not.toBe(0);
+            expect(() => runCliOrThrow(project, args)).toThrow();
         } finally {
             rmSync(outsideSchema, { force: true });
             removeCliProject(project);

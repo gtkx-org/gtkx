@@ -2,9 +2,8 @@ import { sortStringsBy } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { DeploySettings, DeployTargetName, NodeRuntime, NoticeSection, StagedFile } from "../types.js";
+import { BUILD_MANIFEST_FILENAME } from "../../internal/build-manifest.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
-import { SCHEMA_MANIFEST_FILENAME } from "../../settings/schema.js";
-import { BUNDLED_PACKAGES_FILENAME } from "../../vite-plugins/bundled-packages.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderCopyright } from "../freedesktop/copyright.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
@@ -28,6 +27,7 @@ type StagedMetadata = {
 };
 
 const DIST_ICONS_DIR = "icons";
+const LEGACY_PACKAGES_MANIFEST_FILENAME = "gtkx-packages.json";
 const NOTICES_FILENAME = "THIRD-PARTY-NOTICES";
 const NODE_LICENSE_FILENAME = "LICENSE";
 const SHARE_APPLICATIONS = "share/applications";
@@ -51,7 +51,7 @@ const noticesDestination = (settings: DeploySettings): string => `${licenseDirFo
 const isIconAsset = (rel: string): boolean => rel === DIST_ICONS_DIR || rel.startsWith(`${DIST_ICONS_DIR}/`);
 
 const isBuildMetadata = (rel: string): boolean =>
-    rel === BUNDLED_PACKAGES_FILENAME || rel === SCHEMA_MANIFEST_FILENAME;
+    rel === BUILD_MANIFEST_FILENAME || rel === LEGACY_PACKAGES_MANIFEST_FILENAME;
 
 const nodeLicenseDestination = (settings: DeploySettings): string =>
     `${licenseDirFor(settings)}/${NODE_FILENAME}/${NODE_LICENSE_FILENAME}`;
