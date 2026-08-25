@@ -556,7 +556,7 @@ declare module "@react-navigation/core" {
 }
 ```
 
-The augmentation names `@react-navigation/core` because that is the module declaring the interface. It works for a navigator created with the static API too, where the param list is inferred from the `screens`. A screen that belongs to one nested navigator names that navigator's param list instead, `useNavigation<StackNavigationProp<NotesParams>>()`, and a screen component typed with `StackScreenProps`, `TabScreenProps`, or `DrawerScreenProps` already has its `navigation` and `route` typed without either.
+The augmentation names `@react-navigation/core` because that is the module declaring the interface. It works for a navigator created with the static API too, where the param list is inferred from the `screens`. A screen that belongs to one nested navigator names that navigator's param list instead, `useNavigation<StackNavigationProp<NotesParams>>()`, and a screen component typed with `StackScreenProps`, `TabScreenProps`, `DrawerScreenProps`, or `SplitViewScreenProps` already has its `navigation` and `route` typed without either.
 
 ## Testing
 

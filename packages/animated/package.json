@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/animated",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "Spring animations for GTK widgets, driven by the GTK4 frame clock.",
     "keywords": [
         "gtkx",

@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/css",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "CSS-in-JS for GTK that compiles to real GTK4 CSS.",
     "keywords": [
         "gtkx",

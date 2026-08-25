@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/gl",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "OpenGL 4.6 core bindings and helpers for GTK GLArea rendering.",
     "keywords": [
         "gtkx",

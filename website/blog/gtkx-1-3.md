@@ -189,4 +189,4 @@ One change is quieter. `@media (prefers-color-scheme: dark)`, `prefers-contrast`
 
 ## What's next
 
-The [roadmap](https://github.com/orgs/gtkx-org/projects/1) continues with [`@gtkx/navigation`](https://github.com/gtkx-org/gtkx/issues/479) on top of Adwaita and React Navigation, and [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480). That order is not fixed; if something else would help you more, the [issue tracker](https://github.com/gtkx-org/gtkx/issues) is where it gets argued about.
+The [roadmap](https://github.com/orgs/gtkx-org/projects/1) continues with [`@gtkx/navigation`](https://github.com/gtkx-org/gtkx/issues/479) on top of Adwaita and React Navigation (shipped in [1.4](/blog/gtkx-1-4)), and [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480). That order is not fixed; if something else would help you more, the [issue tracker](https://github.com/gtkx-org/gtkx/issues) is where it gets argued about.

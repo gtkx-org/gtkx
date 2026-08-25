@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/react",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "React reconciler for GTK. Renders real GTK4 widget trees.",
     "keywords": [
         "gtkx",
