@@ -2,8 +2,8 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkHeaderBar, GtkImage, GtkLabel, GtkStack, GtkStackPage, GtkStackSidebar } from "@gtkx/jsx/gtk";
 import { useState } from "react";
-import demoIconUri from "#data/icons/org.gtk.Demo4.svg";
 import type { Demo } from "../types.js";
+import demoIconPath from "../../../data/icons/org.gtk.Demo4.svg?resource";
 import sourceCode from "./sidebar.tsx?raw";
 
 const pages = [
@@ -32,7 +32,7 @@ const sidebarDemo: Demo = {
 };
 
 function SidebarDemo() {
-    const demoIcon = Gio.FileIcon.new(Gio.File.newForUri(demoIconUri));
+    const demoIcon = Gio.FileIcon.new(Gio.File.newForUri(`resource://${demoIconPath}`));
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
 
     return (

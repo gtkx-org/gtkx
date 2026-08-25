@@ -24,8 +24,8 @@ import {
     GtkSeparator,
 } from "@gtkx/jsx/gtk";
 import { useEffect, useRef, useState } from "react";
-import { path as trashSvgPath } from "#data/demos/gestures/user-trash-opening.gpa";
 import type { Demo } from "../types.js";
+import trashSvgPath from "../../../data/demos/gestures/user-trash-opening.gpa?resource";
 import { at } from "../../transform.js";
 import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";

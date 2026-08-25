@@ -162,7 +162,7 @@ const hostConfig = {
     suspendInstance: (): void => undefined,
     waitForCommitToBeReady: (): null => null,
     NotPendingTransition: null,
-    HostTransitionContext: createContext(null) as unknown as ReactReconciler.ReactContext<null>,
+    HostTransitionContext: createContext(null),
 };
 
 const reconciler: ReactReconciler.Reconciler<Container, Instance, TextNode, unknown, unknown, object> =

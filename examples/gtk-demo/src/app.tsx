@@ -22,8 +22,8 @@ import {
 import { quit, useParentWindow } from "@gtkx/react";
 import * as path from "node:path/posix";
 import { type ComponentType, type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
 import type { Demo as DemoDefinition, DemoProviderProps } from "./demos/types.js";
+import logoResourcePath from "../data/icons/org.gtk.Demo4.svg?resource";
 import { EmptyState } from "./components/empty-state.js";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";

@@ -5,9 +5,6 @@
     "license": "MPL-2.0",
     "description": "GTK4 widget showcase - React port of official gtk-demo",
     "type": "module",
-    "imports": {
-        "#data/*": "./data/*"
-    },
     "scripts": {
         "build": "gtkx build",
         "coverage": "vitest run --coverage",

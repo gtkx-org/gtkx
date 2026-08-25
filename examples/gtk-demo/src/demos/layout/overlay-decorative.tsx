@@ -12,9 +12,9 @@ import {
     GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { type ReactNode, useState } from "react";
-import { path as decor1Path } from "#data/demos/layout/decor1.png";
-import { path as decor2Path } from "#data/demos/layout/decor2.png";
 import type { Demo } from "../types.js";
+import decor1Path from "../../../data/demos/layout/decor1.png?resource";
+import decor2Path from "../../../data/demos/layout/decor2.png?resource";
 import sourceCode from "./overlay-decorative.tsx?raw";
 
 type DecorPictureOptions = {

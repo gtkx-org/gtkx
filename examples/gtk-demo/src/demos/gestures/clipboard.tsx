@@ -23,10 +23,10 @@ import {
 } from "@gtkx/jsx/gtk";
 import { useParentWindow, useProperty } from "@gtkx/react";
 import { useState } from "react";
-import { path as floppyBuddyPath } from "#data/demos/gestures/floppybuddy.gif";
-import { path as demo4LogoPath } from "#data/demos/gestures/org.gtk.Demo4.svg";
-import { path as portlandRosePath } from "#data/demos/gestures/portland-rose.jpg";
 import type { Demo } from "../types.js";
+import floppyBuddyPath from "../../../data/demos/gestures/floppybuddy.gif?resource";
+import demo4LogoPath from "../../../data/demos/gestures/org.gtk.Demo4.svg?resource";
+import portlandRosePath from "../../../data/demos/gestures/portland-rose.jpg?resource";
 import { buildRgba } from "../../build-rgba.js";
 import sourceCode from "./clipboard.tsx?raw";
 

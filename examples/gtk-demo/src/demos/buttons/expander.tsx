@@ -13,8 +13,8 @@ import {
 } from "@gtkx/jsx/gtk";
 import { useParentWindow } from "@gtkx/react";
 import { useState } from "react";
-import { path as gtkLogoCursorPath } from "#data/demos/buttons/gtk_logo_cursor.png";
 import type { Demo } from "../types.js";
+import gtkLogoCursorPath from "../../../data/demos/buttons/gtk_logo_cursor.png?resource";
 import sourceCode from "./expander.tsx?raw";
 
 const DETAILS_TEXT =

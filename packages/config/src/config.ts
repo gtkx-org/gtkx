@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import { configError, isRecord, rawIssue } from "./config-error.ts";
 import { deploySchema } from "./deploy.ts";
-import { isGirLibrary } from "./schema-text.ts";
+import { isGirLibrary, text } from "./schema-text.ts";
 import { resolveUserEventSignals } from "./user-event-signals.ts";
 
 /** Accepted `reactCompiler.compilationMode` values, choosing which functions the compiler processes. */
@@ -189,6 +189,7 @@ const futureSchema = z.object({
     v2ValueReturns: z.boolean({ error: "must be a boolean" }).optional(),
     v2FinishResults: z.boolean({ error: "must be a boolean" }).optional(),
     v2InoutReturns: z.boolean({ error: "must be a boolean" }).optional(),
+    v2ResourceImports: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
 /** Schema every `gtkx.config.ts` is validated against, and the source of the {@link Config} type. */
@@ -201,6 +202,7 @@ const configSchema = z.object({
     codegen: z.boolean({ error: "must be a boolean" }).optional(),
     userEventSignals: userEventSignalsSchema.optional(),
     elements: elementsSchema.optional(),
+    icons: text("must be a path to an icon theme directory or a single icon file").optional(),
     deploy: deploySchema.optional(),
 });
 

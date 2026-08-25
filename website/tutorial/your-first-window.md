@@ -35,6 +35,8 @@ import { defineConfig } from "@gtkx/config";
 export default defineConfig({
     libraries: ["Gtk-4.0"],
     applicationId: "com.gtkx.tutorial",
+    icons: "data/icons",
+    future: { v2ResourceImports: true },
 });
 ```
 
@@ -45,6 +47,8 @@ Everything on this page comes from Adwaita rather than plain GTK4, and the scaff
 -    libraries: ["Gtk-4.0"],
 +    libraries: ["Gtk-4.0", "Adw-1"],
      applicationId: "com.gtkx.tutorial",
+     icons: "data/icons",
+     future: { v2ResourceImports: true },
  });
 ```
 

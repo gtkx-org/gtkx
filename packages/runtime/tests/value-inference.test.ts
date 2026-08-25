@@ -27,6 +27,12 @@ const held = (value: JsValue): unknown => {
     return fromValue(getHandle(out));
 };
 
+const createConstant = (value: JsValue): Gtk.ConstantExpression => Gtk.ConstantExpression.newForValue(value);
+
+const createConstantForUncheckedValue = (value: unknown): void => {
+    Reflect.apply(createConstant, undefined, [value]);
+};
+
 const makeRgba = (red: number, green: number, blue: number): Gdk.RGBA =>
     new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({ red, green, blue, alpha: 1 });
 
@@ -145,15 +151,21 @@ describe("the GType inferred from a number or an array", () => {
 
 describe("a value no GType can be inferred from", () => {
     it("throws for undefined", () => {
-        expect(() => Gtk.ConstantExpression.newForValue(undefined as unknown as JsValue)).toThrow(ValueMarshalError);
+        expect(() => {
+            createConstantForUncheckedValue(undefined);
+        }).toThrow(ValueMarshalError);
     });
 
     it("throws for a function", () => {
-        expect(() => Gtk.ConstantExpression.newForValue((() => 0) as unknown as JsValue)).toThrow(ValueMarshalError);
+        expect(() => {
+            createConstantForUncheckedValue(() => 0);
+        }).toThrow(ValueMarshalError);
     });
 
     it("throws for an array holding anything but strings", () => {
-        expect(() => Gtk.ConstantExpression.newForValue([1, 2] as unknown as JsValue)).toThrow(ValueMarshalError);
+        expect(() => {
+            createConstantForUncheckedValue([1, 2]);
+        }).toThrow(ValueMarshalError);
     });
 
     it("throws for a bigint below the signed 64-bit range", () => {
@@ -171,7 +183,9 @@ describe("a value no GType can be inferred from", () => {
     });
 
     it("throws for a plain object", () => {
-        expect(() => Gtk.ConstantExpression.newForValue({} as unknown as JsValue)).toThrow(ValueMarshalError);
+        expect(() => {
+            createConstantForUncheckedValue({});
+        }).toThrow(ValueMarshalError);
     });
 });
 

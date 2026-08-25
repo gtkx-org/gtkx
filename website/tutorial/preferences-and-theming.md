@@ -75,23 +75,17 @@ The window keys are not something the user picks. They let the app remember its 
 
 ## Importing the schema
 
-`gtkx dev`, `gtkx build`, and `gtkx codegen` scan `data/` for `.gschema.xml` files, compile them with `glib-compile-schemas`, and generate a module per schema carrying its keys and their types. You reach that module through a subpath import, which the scaffolder already declared in `package.json`:
-
-```json
-{
-    "imports": {
-        "#data/*": "./data/*"
-    }
-}
-```
-
-Now any file can pull the schema in by its path:
+`gtkx dev`, `gtkx build`, and `gtkx codegen` discover imported `.gschema.xml` files, compile them with
+`glib-compile-schemas`, and generate a module per schema carrying its keys and their types. Import the schema
+relative to the source file that uses it:
 
 ```ts
-import schema from "#data/com.gtkx.tutorial.gschema.xml";
+import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 ```
 
-That import gives you the generated module, not the XML text, and it carries the key types: `"sort-order"` resolves to `number` (its enum integer), `"window-width"` to `number`, `"color-scheme"` to `string`. Misspell a key name and the type checker catches it before the app runs.
+That import makes the schema part of the application and gives you the generated module, not the XML text. It
+carries the key types: `"sort-order"` resolves to `number` (its enum integer), `"window-width"` to `number`,
+`"color-scheme"` to `string`. Misspell a key name and the type checker catches it before the app runs.
 
 ## Binding first
 
@@ -104,7 +98,7 @@ import * as Adw from "@gtkx/gi/adw";
 // ...
 import { quit, useBindSetting, useSetting } from "@gtkx/react";
 import { useEffect, useRef } from "react";
-import schema from "#data/com.gtkx.tutorial.gschema.xml";
+import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 // ...
 
 export const Window = () => {
@@ -209,7 +203,7 @@ The setting stores the order as the enum's integer, but the app works in the nic
 
 ```ts
 import { useSetting } from "@gtkx/react";
-import schema from "#data/com.gtkx.tutorial.gschema.xml";
+import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { type SortOrder, SortValue } from "../types.js";
 
 export const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {
@@ -299,7 +293,7 @@ import { ComboRow } from "@gtkx/components/adw";
 import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
-import schema from "#data/com.gtkx.tutorial.gschema.xml";
+import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useSortOrder } from "../hooks/use-sort-order.js";
 
 type Scheme = "default" | "light" | "dark";

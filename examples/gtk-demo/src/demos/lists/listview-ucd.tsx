@@ -5,8 +5,8 @@ import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkInscription, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useState } from "react";
-import { path as ucdDataPath } from "#data/demos/lists/ucdnames.data";
 import type { Demo } from "../types.js";
+import ucdDataPath from "../../../data/demos/lists/ucdnames.data?resource";
 import sourceCode from "./listview-ucd.tsx?raw";
 
 type UcdEntry = {

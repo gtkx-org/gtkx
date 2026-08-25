@@ -106,7 +106,6 @@ type DeployPaths = {
     overlay: string;
     targets: string;
     output: string;
-    dataDir: string | null;
     iconsDir: string | null;
     iconFile: string | null;
     licenseFile: string | null;

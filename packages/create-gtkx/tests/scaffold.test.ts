@@ -20,6 +20,14 @@ const STALE_FILE = "stale.txt";
 const create = (args: string[] = []): CreateRun => runCreate({ args: [...BASE_ARGS, ...args] });
 const getScripts = (run: CreateRun): Scripts => readManifest(run).scripts as Scripts;
 
+const expectGeneratedConfig = (run: CreateRun): void => {
+    const config = readProject(run, "gtkx.config.ts");
+    expect(config).toContain(APPLICATION_ID);
+    expect(config).toContain('icons: "data/icons"');
+    expect(config).toContain("v2ResourceImports: true");
+    expect(readManifest(run).imports).toBeUndefined();
+};
+
 describe("create-gtkx scaffolding a TypeScript project", () => {
     const state = { run: {} as CreateRun };
 
@@ -48,7 +56,7 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
         ]));
 
         expect(hasProjectPath(state.run, ".git")).toBe(true);
-        expect(readProject(state.run, "gtkx.config.ts")).toContain(APPLICATION_ID);
+        expectGeneratedConfig(state.run);
         expect(readProject(state.run, "node_modules/.gtkx/env.d.ts")).toContain("gtkx codegen");
     });
 

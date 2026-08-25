@@ -1,8 +1,16 @@
-import type { ParseResult, ParserOptions, Plugin } from "vite";
+import type { ConfigLoader } from "@gtkx/config";
+import type { ParseResult, ParserOptions, Plugin, UserConfig } from "vite";
+import { createConfigLoader } from "@gtkx/config/internal";
 import { extname } from "node:path";
 import { parseSync } from "vite";
 import { ASSET_MENTION_RE } from "./asset-extensions.js";
-import { DATA_PREFIX, isAssetSpecifier, isDataAsset } from "./asset-specifier.js";
+import {
+    DATA_PREFIX,
+    isAssetSpecifier,
+    isDataAsset,
+    isUrlSpecifier,
+    parseResourceSpecifier,
+} from "./asset-specifier.js";
 import { RESOURCE_PATH_EXPORT } from "./resource-shared.js";
 import { stripQuery } from "./strip-query.js";
 
@@ -13,6 +21,7 @@ type ExportStatement = ParsedModule["staticExports"][number];
 type ExportEntry = ExportStatement["entries"][number];
 type BindingEntry = { importName: { name: string | null }; isType: boolean };
 type NamedBinding = { name: string; source: string };
+type PluginState = { isV2: boolean };
 
 const SOURCE_LANGUAGES: Map<string, SourceLanguage> = new Map([
     [".cjs", "jsx"],
@@ -37,8 +46,10 @@ const BUNDLE_ADVICE =
     "nothing else.";
 
 const QUERY_ADVICE =
-    "A query suffix hands the import to the Vite asset pipeline instead of the GResource bundle; drop the " +
-    `query to keep ${RESOURCE_BINDING}${URL_FALLBACK}`;
+    `A URL asset exports only its default filesystem path; import the default instead of ${RESOURCE_BINDING}.`;
+
+const RESOURCE_ADVICE =
+    `A resource asset exports only its default GResource path and ${RESOURCE_BINDING}, and nothing else.`;
 
 const RELATIVE_ADVICE =
     `Only assets imported through "${DATA_PREFIX}" are staged into the GResource bundle and export ` +
@@ -76,34 +87,49 @@ const bindings = (parsed: ParsedModule): NamedBinding[] => [
     ...parsed.staticExports.flatMap((statement) => exportBindings(statement)),
 ];
 
-const isBacked = ({ name, source }: NamedBinding): boolean =>
-    isDataAsset(source) && name === RESOURCE_PATH_EXPORT;
+const isBacked = ({ name, source }: NamedBinding, isV2: boolean): boolean => {
+    if (name !== RESOURCE_PATH_EXPORT) {
+        return false;
+    }
 
-const unbackedBinding = (parsed: ParsedModule): NamedBinding | undefined =>
-    bindings(parsed).find((binding) => isAssetSpecifier(binding.source) && !isBacked(binding));
+    return isV2 ? parseResourceSpecifier(source) !== null : isDataAsset(source);
+};
 
-const bundleAdvice = (source: string): string => {
-    if (isDataAsset(source)) {
-        return BUNDLE_ADVICE;
+const isCheckedSpecifier = (source: string): boolean => isAssetSpecifier(source) || isUrlSpecifier(source);
+
+const unbackedBinding = (parsed: ParsedModule, isV2: boolean): NamedBinding | undefined =>
+    bindings(parsed).find((binding) => isCheckedSpecifier(binding.source) && !isBacked(binding, isV2));
+
+const isBundledResource = (source: string, isV2: boolean): boolean =>
+    isV2 ? parseResourceSpecifier(source) !== null : isDataAsset(source);
+
+const bundleAdvice = (source: string, isV2: boolean): string => {
+    if (isBundledResource(source, isV2)) {
+        return isV2 ? RESOURCE_ADVICE : BUNDLE_ADVICE;
+    }
+
+    if (isUrlSpecifier(source)) {
+        return QUERY_ADVICE;
     }
 
     return source.startsWith(DATA_PREFIX) ? QUERY_ADVICE : RELATIVE_ADVICE;
 };
 
-const unbackedBindingError = (path: string, binding: NamedBinding): Error =>
+const unbackedBindingError = (path: string, binding: NamedBinding, isV2: boolean): Error =>
     new Error(
         `${path}: ${JSON.stringify(binding.source)} does not export ${JSON.stringify(binding.name)}, which ` +
         "gtkx build rejects and gtkx dev would bind as undefined. " +
-        bundleAdvice(binding.source),
+        bundleAdvice(binding.source, isV2),
     );
 
 const isCheckedSource = (path: string): boolean => !path.startsWith(VIRTUAL_PREFIX) && !NODE_MODULES.test(path);
+const hasCheckedAssetMention = (code: string): boolean => ASSET_MENTION_RE.test(code) || code.includes("?url");
 
-const checkAssetImports = (code: string, id: string): void => {
+const checkAssetImports = (code: string, id: string, isV2: boolean): void => {
     const path = stripQuery(id);
     const lang = SOURCE_LANGUAGES.get(extname(path).toLowerCase());
 
-    if (lang === undefined || !isCheckedSource(path) || !ASSET_MENTION_RE.test(code)) {
+    if (lang === undefined || !isCheckedSource(path) || !hasCheckedAssetMention(code)) {
         return;
     }
 
@@ -113,20 +139,27 @@ const checkAssetImports = (code: string, id: string): void => {
         return;
     }
 
-    const binding = unbackedBinding(parsed.module);
+    const binding = unbackedBinding(parsed.module, isV2);
 
     if (binding !== undefined) {
-        throw unbackedBindingError(path, binding);
+        throw unbackedBindingError(path, binding, isV2);
     }
 };
 
-function gtkxAssetImports(): Plugin {
+function gtkxAssetImports(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
+    const state: PluginState = { isV2: false };
+
     return {
         name: "gtkx:asset-imports",
         enforce: "pre",
 
+        async config(config: UserConfig) {
+            const loaded = await loadConfig.load(config.root ?? process.cwd());
+            state.isV2 = loaded.config.future?.v2ResourceImports === true;
+        },
+
         transform(code, id) {
-            checkAssetImports(code, id);
+            checkAssetImports(code, id, state.isV2);
         },
     };
 }

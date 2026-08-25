@@ -86,8 +86,5 @@
             }
         }
     },
-    "author": "GTKX <hello@gtkx.dev>",
-    "imports": {
-        "#data/*": "./data/*"
-    }
+    "author": "GTKX <hello@gtkx.dev>"
 }

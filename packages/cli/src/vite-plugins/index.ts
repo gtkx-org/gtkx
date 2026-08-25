@@ -2,6 +2,7 @@ import type { Plugin } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
 import createConfigPlugin from "@gtkx/config/vite-plugin";
 import { gtkxAssetImports } from "./asset-imports.js";
+import { gtkxBuiltUrl } from "./built-url.js";
 import { gtkxCss } from "./css.js";
 import { gtkxIcons } from "./icons.js";
 import { gtkxReactCompiler } from "./react-compiler.js";
@@ -17,9 +18,10 @@ const gtkxVitePlugins = (mode?: string): Plugin[] => {
         createConfigPlugin({ name: "gtkx:config", loadConfig }),
         gtkxStoreLinks(),
         gtkxUndeclaredLibrary(loadConfig),
-        gtkxSettings(),
-        gtkxIcons(),
-        gtkxAssetImports(),
+        gtkxSettings(loadConfig),
+        gtkxIcons(loadConfig),
+        gtkxAssetImports(loadConfig),
+        gtkxBuiltUrl(),
         gtkxResources(loadConfig),
         gtkxCss(),
         gtkxReactCompiler(loadConfig),

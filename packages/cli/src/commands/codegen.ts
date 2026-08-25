@@ -1,7 +1,7 @@
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { formatCodegenResult } from "../codegen/report.js";
-import { ensureGenerated, isCodegenDisabled, runCodegen, syncSchemaEnv } from "../codegen/run-codegen.js";
+import { ensureGenerated, isCodegenDisabled, runCodegen } from "../codegen/run-codegen.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 const FORCED_WHILE_DISABLED_MESSAGE =
@@ -29,7 +29,6 @@ const codegen = defineCommand({
 
         if (isDisabled) {
             await runCodegen({ cwd });
-            syncSchemaEnv(cwd);
             info("codegen: disabled for this project; reusing an installed binding store");
 
             return;
@@ -44,7 +43,6 @@ const codegen = defineCommand({
 
         const startedAt = Date.now();
         const result = await runCodegen({ cwd, isForced: true });
-        syncSchemaEnv(cwd);
         const lines = formatCodegenResult(result, Date.now() - startedAt);
 
         for (const line of lines) {

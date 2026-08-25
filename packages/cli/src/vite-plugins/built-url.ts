@@ -1,14 +1,12 @@
-import type { Plugin } from "vite";
-import { posix } from "node:path";
+import type { Plugin, UserConfig } from "vite";
+import { existsSync } from "node:fs";
+import { isAbsolute } from "node:path";
+import { stripQuery } from "./strip-query.js";
 
-const EXECUTABLE_URL_BASE = "`file://${process.execPath}`";
-const LEADING_SLASHES = /^\/+/;
+type PluginState = { isBuild: boolean };
+type WatchContext = { addWatchFile: (file: string) => void };
 
-const executableRelativeUrl = (target: string): string => {
-    const specifier = JSON.stringify(target.replace(LEADING_SLASHES, "./"));
-
-    return `decodeURIComponent(new URL(${specifier}, ${EXECUTABLE_URL_BASE}).pathname)`;
-};
+const URL_QUERY_RE = /\?url(?:&t=\d+)?$/;
 
 const bundleRelativeUrl = (filename: string): string => {
     const specifier = JSON.stringify(`./${filename}`);
@@ -19,36 +17,59 @@ const bundleRelativeUrl = (filename: string): string => {
 const renderAssetUrl = (
     filename: string,
     type: string,
-    assetBase: string | undefined,
 ): { runtime: string } | undefined => {
     if (type !== "asset") {
         return undefined;
     }
 
-    if (assetBase === undefined) {
-        return { runtime: bundleRelativeUrl(filename) };
-    }
-
-    return { runtime: executableRelativeUrl(posix.join(assetBase, filename)) };
+    return { runtime: bundleRelativeUrl(filename) };
 };
 
-function gtkxBuiltUrl(assetBase?: string): Plugin {
+const configureBuiltUrl = (userConfig: UserConfig, command: string): UserConfig | undefined => {
+    if (command !== "build" || userConfig.experimental?.renderBuiltUrl) {
+        return undefined;
+    }
+
+    return {
+        experimental: {
+            renderBuiltUrl(filename, { type }) {
+                return renderAssetUrl(filename, type);
+            },
+        },
+    };
+};
+
+const loadDevFileUrl = (ctx: WatchContext, state: PluginState, id: string): string | undefined => {
+    if (state.isBuild || !URL_QUERY_RE.test(id)) {
+        return undefined;
+    }
+
+    const file = stripQuery(id);
+
+    if (!isAbsolute(file) || !existsSync(file)) {
+        return undefined;
+    }
+
+    ctx.addWatchFile(file);
+
+    return `export default ${JSON.stringify(file)};`;
+};
+
+function gtkxBuiltUrl(): Plugin {
+    const state: PluginState = { isBuild: false };
+
     return {
         name: "gtkx:built-url",
-        apply: "build",
+        enforce: "pre",
 
-        config(userConfig) {
-            if (userConfig.experimental?.renderBuiltUrl) {
-                return;
-            }
+        config: (userConfig, { command }) => configureBuiltUrl(userConfig, command),
 
-            return {
-                experimental: {
-                    renderBuiltUrl(filename, { type }) {
-                        return renderAssetUrl(filename, type, assetBase);
-                    },
-                },
-            };
+        configResolved(config) {
+            state.isBuild = config.command === "build";
+        },
+
+        load(id) {
+            return loadDevFileUrl(this, state, id);
         },
     };
 }

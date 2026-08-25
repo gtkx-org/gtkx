@@ -3,6 +3,7 @@ import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { DeploySettings, DeployTargetName, NodeRuntime, NoticeSection, StagedFile } from "../types.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
+import { SCHEMA_MANIFEST_FILENAME } from "../../settings/schema.js";
 import { BUNDLED_PACKAGES_FILENAME } from "../../vite-plugins/bundled-packages.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderCopyright } from "../freedesktop/copyright.js";
@@ -48,7 +49,9 @@ const licenseDirFor = (settings: DeploySettings): string => `${SHARE_LICENSES}/$
 const licenseDestination = (settings: DeploySettings): string => `${licenseDirFor(settings)}/LICENSE`;
 const noticesDestination = (settings: DeploySettings): string => `${licenseDirFor(settings)}/${NOTICES_FILENAME}`;
 const isIconAsset = (rel: string): boolean => rel === DIST_ICONS_DIR || rel.startsWith(`${DIST_ICONS_DIR}/`);
-const isBuildMetadata = (rel: string): boolean => rel === BUNDLED_PACKAGES_FILENAME;
+
+const isBuildMetadata = (rel: string): boolean =>
+    rel === BUNDLED_PACKAGES_FILENAME || rel === SCHEMA_MANIFEST_FILENAME;
 
 const nodeLicenseDestination = (settings: DeploySettings): string =>
     `${licenseDirFor(settings)}/${NODE_FILENAME}/${NODE_LICENSE_FILENAME}`;

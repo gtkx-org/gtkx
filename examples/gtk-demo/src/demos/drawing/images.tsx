@@ -4,12 +4,12 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkSwitch, GtkToggleButton, GtkVideo } from "@gtkx/jsx/gtk";
 import { useParentWindow } from "@gtkx/react";
 import { useMemo, useState } from "react";
-import { path as animatedSvgPath } from "#data/demos/drawing/animated.gpa";
-import { path as gtkLogoSvgPath } from "#data/demos/drawing/gtk-logo.svg";
-import { path as statefulSvgPath } from "#data/demos/drawing/stateful.gpa";
-import { path as floppybuddyGifPath } from "#data/demos/gestures/floppybuddy.gif";
-import gtkLogoWebmUri from "#data/demos/media/gtk-logo.webm";
 import type { Demo } from "../types.js";
+import animatedSvgPath from "../../../data/demos/drawing/animated.gpa?resource";
+import gtkLogoSvgPath from "../../../data/demos/drawing/gtk-logo.svg?resource";
+import statefulSvgPath from "../../../data/demos/drawing/stateful.gpa?resource";
+import floppybuddyGifPath from "../../../data/demos/gestures/floppybuddy.gif?resource";
+import gtkLogoWebmPath from "../../../data/demos/media/gtk-logo.webm?resource";
 import sourceCode from "./images.tsx?raw";
 
 const imagesDemo: Demo = {
@@ -138,7 +138,7 @@ const ResourcesColumn = ({ gifPaintable }: { gifPaintable: Gtk.MediaFile | null 
 );
 
 const VideoColumn = ({ widgetPaintable }: { widgetPaintable: Gtk.WidgetPaintable | null }) => {
-    const videoFile = Gio.File.newForUri(gtkLogoWebmUri);
+    const videoFile = Gio.File.newForUri(`resource://${gtkLogoWebmPath}`);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>

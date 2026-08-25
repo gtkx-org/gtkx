@@ -57,6 +57,7 @@ const APPLICATION_ID = "com.gtkx.clideploy";
 const OUT_DIR = "build";
 const TARGETS = "appimage,deb,flatpak,rpm";
 const ICON_PATH = join("icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
+const SCHEMA_FILE = `${APPLICATION_ID}.gschema.xml`;
 const STAGE_PREFIX = "stage/";
 const BINARY_NAME = "gtkx-cli-deploy";
 const MODULE_DIR = `/run/build/${BINARY_NAME}`;
@@ -100,6 +101,10 @@ const MIME_FILENAME = `${APPLICATION_ID}.xml`;
 const MIME_INSTALL = `install -Dm644 ${MIME_FILENAME} ${FLATPAK_DEST}/share/mime/packages/${MIME_FILENAME}`;
 const HELPER_INSTALL = `install -Dm755 tools/helper.sh ${FLATPAK_DEST}/lib/${BINARY_NAME}/helper.sh`;
 const LICENSE_INSTALL = `install -Dm644 LICENSE ${FLATPAK_DEST}/share/licenses/${BINARY_NAME}/LICENSE`;
+
+const SCHEMA_INSTALL =
+    `install -Dm644 data/${SCHEMA_FILE} ${FLATPAK_DEST}/share/glib-2.0/schemas/${SCHEMA_FILE}`;
+
 const DEFAULT_FINISH_ARGS = ["--share=ipc", "--socket=wayland", "--socket=fallback-x11", "--device=dri"];
 const DEFAULT_CLEANUP = ["/include", "/share/pkgconfig", "*.la", "*.a"];
 const MERGED_NEGATIONS = ["--share=ipc", "--device=dri", "--nosocket=wayland", "--nosocket=fallback-x11"];
@@ -119,8 +124,15 @@ const MANIFEST = {
     license: "MPL-2.0",
     author: "GTKX <hello@gtkx.dev>",
     type: "module",
-    imports: { "#data/*": "./data/*" },
 };
+
+const SCHEMA = `<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+    <schema id="${APPLICATION_ID}" path="/com/gtkx/clideploy/">
+        <key name="probe" type="s"><default>'ready'</default></key>
+    </schema>
+</schemalist>
+`;
 
 const DEPLOY_FIELDS = `        name: "Deploy Probe",
         summary: "Probes what the deploy command writes",
@@ -218,11 +230,12 @@ const NPM_LOCKFILE = `{
 
 const APP_SOURCE = `import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot } from "@gtkx/react";
+import schema from "../data/${SCHEMA_FILE}";
 
 createRoot().render(
     <GtkApplication>
         <GtkApplicationWindow title="Probe">
-            <GtkLabel label="probe" />
+            <GtkLabel label={String(schema.id)} />
         </GtkApplicationWindow>
     </GtkApplication>,
 );
@@ -234,6 +247,7 @@ const EXPECTED_STAGED = [
     join(STAGE_PREFIX, "lib", BINARY_NAME, "gtkx.node"),
     join(STAGE_PREFIX, "share", "applications", `${APPLICATION_ID}.desktop`),
     join(STAGE_PREFIX, "share", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`),
+    join(STAGE_PREFIX, "share", "glib-2.0", "schemas", SCHEMA_FILE),
 ];
 
 const EXPECTED_MANIFESTS = [
@@ -248,6 +262,7 @@ const COPYRIGHT_PATH = join("overlay", "deb", "share", "doc", BINARY_NAME, "copy
 const NOTICES_FILENAME = "THIRD-PARTY-NOTICES";
 const NOTICE_TARGETS = ["appimage", "flatpak", "rpm"];
 const PACKAGES_MANIFEST = "gtkx-packages.json";
+const SCHEMAS_MANIFEST = "gtkx-schemas.json";
 const NODE_STANZA = `Files: lib/${BINARY_NAME}/node`;
 const NATIVE_STANZA = `Files: lib/${BINARY_NAME}/gtkx.node`;
 const BUNDLE_STANZA = `Files: lib/${BINARY_NAME}/bundle.mjs`;
@@ -306,14 +321,17 @@ const NOTICES_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${RUNTIME_NODE}    },\n`
 const config = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
     `    libraries: ${JSON.stringify(STORE_LIBRARIES)},\n` +
+    "    icons: \"data/icons\",\n" +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
 const wildcardConfig = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n    libraries: "*",\n` +
+    "    icons: \"data/icons\",\n" +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
 const bareConfig = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
+    "    icons: \"data/icons\",\n" +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
 const sourceConfig = (source: string, extra = ""): string =>
@@ -326,6 +344,7 @@ const projectFiles = (): Record<string, string> => ({
     "package.json": `${JSON.stringify(MANIFEST, null, 4)}\n`,
     LICENSE: "Mozilla Public License Version 2.0\n",
     [join("data", ICON_PATH)]: "<svg/>\n",
+    [join("data", SCHEMA_FILE)]: SCHEMA,
     [join("src", "index.tsx")]: APP_SOURCE,
     [HELPER_SOURCE]: HELPER_SCRIPT,
     [NOTES_SOURCE]: NOTES,
@@ -703,6 +722,7 @@ describe("gtkx deploy (flatpak source mode payload)", () => {
             expect(appModule["build-commands"]).toContain(MIME_INSTALL);
             expect(appModule["build-commands"]).toContain(HELPER_INSTALL);
             expect(appModule["build-commands"]).toContain(LICENSE_INSTALL);
+            expect(appModule["build-commands"]).toContain(SCHEMA_INSTALL);
             expect(appModule["build-commands"]).toContain(NOTICES_INSTALL);
             expect(findInlineSource(appModule, NOTICES_FILENAME)?.contents).toContain(NOTICES_HEADING);
         } finally {
@@ -817,6 +837,7 @@ describe("gtkx deploy (third-party notices)", () => {
     it("keeps the build metadata it collects them from out of the package", () => {
         const staged = outputNames(state.project);
         expect(staged).not.toContain(join(STAGE_PREFIX, "lib", BINARY_NAME, PACKAGES_MANIFEST));
+        expect(staged).not.toContain(join(STAGE_PREFIX, "lib", BINARY_NAME, SCHEMAS_MANIFEST));
         expect(staged).toContain(join(STAGE_PREFIX, "lib", BINARY_NAME, "bundle.mjs"));
     });
 
@@ -902,6 +923,52 @@ describe("gtkx deploy (a build it cannot account for)", () => {
             const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
             expect(runCli(project, args).status).not.toBe(0);
         } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("fails when the build it packages recorded no schema sources", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-stale-schemas-",
+            config: config(DEPLOY_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            rmSync(join(project.root, "dist", SCHEMAS_MANIFEST));
+            const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
+            expect(runCli(project, args).status).not.toBe(0);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
+describe("gtkx deploy (a schema manifest it cannot trust)", () => {
+    it("fails when an in-project schema link escapes the project", () => {
+        const project = createCliProject({
+            prefix: "gtkx-cli-deploy-schema-escape-",
+            config: config(DEPLOY_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        const outsideSchema = `${project.root}-outside.gschema.xml`;
+        const linkedName = `${APPLICATION_ID}.escaped.gschema.xml`;
+        const linkedPath = `data/${linkedName}`;
+
+        try {
+            expect(runCli(project, ["build"]).status).toBe(0);
+            writeFileSync(outsideSchema, SCHEMA);
+            symlinkSync(outsideSchema, join(project.root, "data", linkedName));
+            const manifest = `${JSON.stringify({ schemas: [linkedPath] }, null, 4)}\n`;
+            writeFileSync(join(project.root, "dist", SCHEMAS_MANIFEST), manifest);
+            const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
+            expect(runCli(project, args).status).not.toBe(0);
+        } finally {
+            rmSync(outsideSchema, { force: true });
             removeCliProject(project);
         }
     });

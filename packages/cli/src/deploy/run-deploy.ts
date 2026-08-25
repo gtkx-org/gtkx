@@ -22,6 +22,7 @@ import { type StagedMetadata, stageOverlays, stagePayload } from "./payload/stag
 import { DEFAULT_TARGETS, parseTargetList, targetsFor } from "./registry.js";
 import { resolveDeploySettings } from "./settings/index.js";
 import { readPackageManifest } from "./settings/package-manifest.js";
+import { readSchemaManifest } from "./settings/schema-manifest.js";
 import { missingDeployError } from "./settings/starter.js";
 import { finishArgsFor, hasDisplaySocket, runtimeLabelFor } from "./targets/flatpak-manifest.js";
 import { detectPackageManager } from "./targets/flatpak-sources.js";
@@ -241,15 +242,26 @@ const buildPayload = async (
         await buildApp({ entry: options.entry, vite: { root: options.cwd } });
     }
 
-    const node = options.shouldPrintManifests || !isNodeRequired(targets, settings)
+    const builtSettings: DeploySettings = {
+        ...settings,
+        paths: { ...settings.paths, schemaFiles: readSchemaManifest(settings) },
+    };
+
+    const node = options.shouldPrintManifests || !isNodeRequired(targets, builtSettings)
         ? null
-        : await resolveNodeRuntime(settings);
+        : await resolveNodeRuntime(builtSettings);
 
-    const stage = stagePayload({ settings, node, metadata });
-    info(`Staged ${String(stage.length)} files into ${displayPath(settings, settings.paths.stage)}`);
-    const notices = collectNotices({ settings, node });
+    const stage = stagePayload({ settings: builtSettings, node, metadata });
+    info(`Staged ${String(stage.length)} files into ${displayPath(builtSettings, builtSettings.paths.stage)}`);
+    const notices = collectNotices({ settings: builtSettings, node });
 
-    return { settings, node, stage, notices, overlays: stageOverlays(settings, notices) };
+    return {
+        settings: builtSettings,
+        node,
+        stage,
+        notices,
+        overlays: stageOverlays(builtSettings, notices),
+    };
 };
 
 const renderTargetManifests = (

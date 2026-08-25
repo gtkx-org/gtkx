@@ -120,12 +120,11 @@ const metadataInstallCommands = (settings: DeploySettings): string[] => [
 const schemaInstallCommands = (settings: DeploySettings): string[] =>
     settings.paths.schemaFiles.map((file) => {
         const name = posix.basename(file);
+        const source = projectRelative(settings, file);
+        const destination = `${DESTINATION}/share/glib-2.0/schemas/${shellArgument(name)}`;
+        assertInsideProject(settings, { destination, source, resolved: file });
 
-        return installCommand(
-            projectRelative(settings, file),
-            `${DESTINATION}/share/glib-2.0/schemas/${shellArgument(name)}`,
-            "m644",
-        );
+        return installCommand(source, destination, "m644");
     });
 
 const iconInstallCommand = (settings: DeploySettings, source: string, rel: string): string =>

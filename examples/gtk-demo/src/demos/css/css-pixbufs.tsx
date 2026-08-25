@@ -1,15 +1,15 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkPaned, GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
-import appleRedPath from "#data/demos/css/apple-red.png";
-import backgroundPath from "#data/demos/css/background.jpg";
-import gnomeAppletsPath from "#data/demos/css/gnome-applets.png";
-import gnomeCalendarPath from "#data/demos/css/gnome-calendar.png";
-import gnomeFootPath from "#data/demos/css/gnome-foot.png";
-import gnomeGimpPath from "#data/demos/css/gnome-gimp.png";
-import gnomeGmushPath from "#data/demos/css/gnome-gmush.png";
-import gnomeGsamePath from "#data/demos/css/gnome-gsame.png";
-import gnuKeysPath from "#data/demos/css/gnu-keys.png";
 import type { Demo } from "../types.js";
+import appleRedPath from "../../../data/demos/css/apple-red.png?resource";
+import backgroundPath from "../../../data/demos/css/background.jpg?resource";
+import gnomeAppletsPath from "../../../data/demos/css/gnome-applets.png?resource";
+import gnomeCalendarPath from "../../../data/demos/css/gnome-calendar.png?resource";
+import gnomeFootPath from "../../../data/demos/css/gnome-foot.png?resource";
+import gnomeGimpPath from "../../../data/demos/css/gnome-gimp.png?resource";
+import gnomeGmushPath from "../../../data/demos/css/gnome-gmush.png?resource";
+import gnomeGsamePath from "../../../data/demos/css/gnome-gsame.png?resource";
+import gnuKeysPath from "../../../data/demos/css/gnu-keys.png?resource";
 import sourceCode from "./css-pixbufs.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";
 import resetCssPath from "./reset.css?url";
@@ -101,15 +101,15 @@ const DEFAULT_CSS = `/* You can edit the text in this window to change the
 }
 
 window.demo {
-    background-image: url("file://${appleRedPath}"),
-                      url("file://${gnomeAppletsPath}"),
-                      url("file://${gnomeCalendarPath}"),
-                      url("file://${gnomeFootPath}"),
-                      url("file://${gnomeGmushPath}"),
-                      url("file://${gnomeGimpPath}"),
-                      url("file://${gnomeGsamePath}"),
-                      url("file://${gnuKeysPath}"),
-                      url("file://${backgroundPath}");
+    background-image: url("resource://${appleRedPath}"),
+                      url("resource://${gnomeAppletsPath}"),
+                      url("resource://${gnomeCalendarPath}"),
+                      url("resource://${gnomeFootPath}"),
+                      url("resource://${gnomeGmushPath}"),
+                      url("resource://${gnomeGimpPath}"),
+                      url("resource://${gnomeGsamePath}"),
+                      url("resource://${gnuKeysPath}"),
+                      url("resource://${backgroundPath}");
     background-position: 50.00% 75.00%, 67.68% 67.68%, 75.00% 50.00%, 67.68% 32.32%,
         50.00% 25.00%, 32.32% 32.32%, 25.00% 50.00%, 32.32% 67.68%, 0% 0%;
     background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, repeat;

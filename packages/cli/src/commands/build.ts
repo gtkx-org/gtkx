@@ -13,10 +13,6 @@ const build = defineCommand({
     },
     args: {
         ...entryArg,
-        "asset-base": {
-            type: "string",
-            description: "Asset base path relative to executable directory (e.g., ../share/my-app)",
-        },
     },
     async run({ args }) {
         const { cwd, entry } = await prepareProject(args, BUILD_MODE);
@@ -24,7 +20,6 @@ const build = defineCommand({
 
         const bundlePath = await buildApp({
             entry,
-            assetBase: args["asset-base"],
             vite: {
                 root: cwd,
             },

@@ -1,6 +1,6 @@
+import { loadConfig } from "@gtkx/config";
 import { error } from "@gtkx/utils";
 import { resolve } from "node:path";
-import { resolveDataDir } from "../internal/data-dir.js";
 import { DEV_ENTRY_ENV } from "./entry-env.js";
 import { prepareDevIconDir } from "./icon-dir.js";
 import { createDevRunner } from "./runner.js";
@@ -21,9 +21,9 @@ const main = async (): Promise<void> => {
         process.exit(1);
     }
 
-    const dataDir = resolveDataDir(cwd);
-    prepareDevSchemaDir(cwd, dataDir);
-    prepareDevIconDir(cwd, dataDir);
+    const { config, root } = await loadConfig(cwd, { mode: "development" });
+    prepareDevSchemaDir(root, config.future?.v2ResourceImports === true);
+    prepareDevIconDir(root, config.applicationId, config.icons);
     const entryPath = resolve(cwd, entryArg);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");
     const runner = createDevRunner(defaultDevRunnerDeps());

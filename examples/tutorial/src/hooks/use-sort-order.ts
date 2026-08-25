@@ -1,5 +1,5 @@
 import { useSetting } from "@gtkx/react";
-import schema from "#data/com.gtkx.tutorial.gschema.xml";
+import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { type SortOrder, SortValue } from "../types.js";
 
 export const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {

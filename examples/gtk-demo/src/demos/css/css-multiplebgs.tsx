@@ -10,9 +10,9 @@ import {
     GtkTextBuffer,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
-import brick2Uri from "#data/demos/css/brick2.png";
-import brickUri from "#data/demos/css/brick.png";
 import type { Demo } from "../types.js";
+import brick2Path from "../../../data/demos/css/brick2.png?resource";
+import brickPath from "../../../data/demos/css/brick.png?resource";
 import sourceCode from "./css-multiplebgs.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";
 import resetCssPath from "./reset.css?url";
@@ -76,7 +76,7 @@ const DEFAULT_CSS = `/* You can edit the text in this window to change the
 /*
 #bricks-button {
     background-color: #eef;
-    background-image: -gtk-scaled(url('${brickUri}'),url('${brick2Uri}'));
+    background-image: -gtk-scaled(url('resource://${brickPath}'),url('resource://${brick2Path}'));
     background-repeat: no-repeat;
     background-position: center;
 }

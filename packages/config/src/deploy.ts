@@ -252,7 +252,6 @@ const deploySchema = z.strictObject({
             error: "must be a record of AppStream url kinds to URLs",
         })
         .optional(),
-    icons: text("must be a path to an icon theme directory or a single icon file").optional(),
     screenshots: z.array(screenshotSchema, { error: "must be an array of screenshots" }).optional(),
     screenshotBaseUrl: url("must be an absolute base URL").optional(),
     branding: brandingSchema.optional(),

@@ -156,6 +156,7 @@ const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config)
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
     const { config, configFile } = await resolveLoadedConfig(options, cwd);
+    syncSchemaEnv(cwd, config.future?.v2ResourceImports === true);
 
     if (config.codegen === false) {
         removeShadowingStores(cwd);
@@ -208,8 +209,9 @@ const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> =
     }
 };
 
-const syncSchemaEnv = (cwd: string): void => {
-    emitSchemaEnv(cwd, resolveDataDir(cwd));
+const syncSchemaEnv = (cwd: string, isV2ResourceImports = false): void => {
+    const dataDir = isV2ResourceImports ? null : resolveDataDir(cwd);
+    emitSchemaEnv(cwd, dataDir, isV2ResourceImports);
 };
 
 const resolveInputsOrNull = (cwd: string, config: Config): CodegenInputs | null => {
@@ -243,12 +245,14 @@ const isPreflightSkipped = (options: EnsureGeneratedOptions): boolean =>
 
 /* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
 const generate = async (context: CodegenContext, options: EnsureGeneratedOptions): Promise<boolean> => {
-    syncSchemaEnv(context.root);
-
     if (context.config.codegen === false) {
-        removeShadowingStores(context.root);
+        const result = await runCodegen({
+            cwd: context.root,
+            mode: options.mode,
+            resolved: { config: context.config, configFile: context.configFile },
+        });
 
-        return false;
+        return result.isRegenerated;
     }
 
     const inputs = resolveInputsOrNull(context.root, context.config);
@@ -286,7 +290,6 @@ const resolveConfigWatch = async (
 export {
     runCodegen,
     isCodegenDisabled,
-    syncSchemaEnv,
     ensureGenerated,
     ensureGeneratedIn,
     resolveConfigWatch,

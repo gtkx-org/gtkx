@@ -47,6 +47,7 @@ import { defineConfig } from "@gtkx/config";
 export default defineConfig({
     libraries: ["Gtk-4.0"],
     applicationId: "com.example.Tasks",
+    icons: "data/icons",
     deploy: {
         summary: "Manage your tasks and to-dos",
         categories: ["Office"],
@@ -73,13 +74,14 @@ Anything you leave out is derived, so the same fact never lives in two places:
 | `homepage` | `package.json` `homepage` |
 | `metadataLicense` | `CC0-1.0` |
 | `copyright` | `Copyright © <year> <developer.name>` |
-| `icons` | `<dataDir>/icons`, the same tree `gtkx build` reads |
 | `releases` | one entry, from the version and today's date |
 | deb `section`, rpm `group` | the first entry in `categories` |
 | deb `Depends`, rpm `Requires` | GTK and libadwaita when your `libraries` bind them, plus the glibc minimum read out of the built binaries. Every other dependency is yours to declare through `deploy.depends` |
 | `screenshotBaseUrl` | the `origin` git remote, including the project's path inside the repository |
 
-The application icon is the one thing that has to exist: `data/icons/hicolor/scalable/apps/<applicationId>.svg`. The desktop entry names `<applicationId>` as its icon, so the file name has to match, and `gtkx deploy` says so if it does not.
+The application icon is the one thing that has to exist. Set the top-level `icons` option to an icon-theme
+directory such as `data/icons`, or to a single image. In a directory, the file name must match the application
+ID because the desktop entry names that ID as its icon.
 
 ## What gets installed
 
@@ -93,8 +95,8 @@ lib/<binaryName>/gtkx.node                       the native addon
 lib/<binaryName>/gschemas.compiled               compiled settings schemas
 share/applications/<id>.desktop                  generated
 share/metainfo/<id>.metainfo.xml                 generated
-share/icons/hicolor/**/apps/<id>.svg             copied from data/icons
-share/glib-2.0/schemas/<id>*.gschema.xml         copied from data/
+share/icons/hicolor/**/apps/<id>.svg             copied from the configured icons path
+share/glib-2.0/schemas/<id>*.gschema.xml         copied from imported schemas
 share/mime/packages/<id>.xml                     generated, when you declare fileAssociations
 share/licenses/<binaryName>/LICENSE              your license file, on every target but deb
 share/licenses/<binaryName>/THIRD-PARTY-NOTICES  generated, on every target but deb
@@ -130,7 +132,11 @@ Four things are collected, each on its own:
 - **The JavaScript dependencies.** `gtkx build` records which packages the module graph of `dist/bundle.mjs` actually reaches, resolving every module id back through the pnpm symlinks to the package that owns it, and writes each one's name, version, and directory relative to `dist/` to `dist/gtkx-packages.json`. The deploy reads each package's license file, or its SPDX identifier when it ships no file, and reproduces what it finds, holder by holder. A package that declares neither is still listed, and the deploy warns naming it, because terms nobody recorded are the one thing generated notices cannot settle for you. A package whose recorded directory is no longer there — a pruned `node_modules`, or a `dist/` moved to another machine — is still listed by the name and version the build recorded, with a warning of its own, rather than dropped.
 - **The introspected libraries.** GTK, libadwaita, GtkSourceView, and WebKitGTK are reached through GObject introspection and resolved when the app runs, from the host system or from the GNOME runtime. No copy of them is in the package. The native addon does link GLib, GObject, and GIO against the copies already installed on the machine, which makes it a work that uses those libraries, so the section carries what LGPL-2.1 section 6 asks of one: the notice that they are used and covered by that license, the address the license itself is published at, and the address each library's own copyright notice is published at. Linking against an installed shared library is the mechanism section 6(b) allows, so their source does not have to travel with the package.
 
-`dist/gtkx-packages.json` is build metadata and never reaches a package. `--skip-build` reads it out of the `dist/` it packages, so a tree built by an older `gtkx build` has to be built once more. `--print-manifests` downloads nothing, so a preview carries the link to the Node.js license rather than its text.
+`dist/gtkx-packages.json` and `dist/gtkx-schemas.json` are build metadata and never reach a package. The latter
+records the raw schema files reached by the module graph so deploy can install them alongside the compiled blob.
+`--skip-build` reads both out of the `dist/` it packages, so a tree built by an older `gtkx build` has to be built
+once more. `--print-manifests` downloads nothing, so a preview carries the link to the Node.js license rather
+than its text.
 
 `deploy.flatpak.mode: "source"` builds in the sandbox instead of packaging a staged tree, so the notices ride along as an inline source and install exactly where the prebuilt mode installs them. That build takes its runtime from the Node SDK extension rather than from an archive. It installs the license file that extension ships as `share/licenses/<binaryName>/node/LICENSE` when the extension ships one, and installs nothing when it does not, which is what the notices say: they name the license and the address it is published at rather than claiming a file is there.
 

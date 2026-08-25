@@ -2,7 +2,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
-import nodeEditorSvgUri from "#data/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.svg";
+import nodeEditorSvgPath from "../../../data/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.svg?resource";
 import { paintableSvgDemo } from "../../../src/demos/drawing/paintable-svg.js";
 import { findButton, renderDemo } from "../../test-utils.js";
 
@@ -85,7 +85,7 @@ describe("paintableSvgDemo rendering", () => {
 describe("paintableSvgDemo open dialog", () => {
     it("invokes the file picker and replaces the picture's paintable when a new file is chosen", async () => {
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
-        openSpy.mockResolvedValue(Gio.File.newForUri(nodeEditorSvgUri));
+        openSpy.mockResolvedValue(Gio.File.newForUri(`resource://${nodeEditorSvgPath}`));
 
         try {
             const { picture, initial } = await openPictureFileDialog();

@@ -171,7 +171,7 @@ const quit = (): typeof Gdk.EVENT_PROPAGATE | typeof Gdk.EVENT_STOP => {
  * @param container The GObject to render into, or {@link rootElement} to render at the top level.
  */
 const createPortal = (children: ReactNode, container: Container, key?: string): ReactPortal =>
-    reconciler.createPortal(children, container, null, key ?? null) as unknown as ReactPortal;
+    reconciler.createPortal(children, container, null, key ?? null);
 
 export {
     setReconcilerErrorHandler,

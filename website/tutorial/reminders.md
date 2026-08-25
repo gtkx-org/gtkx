@@ -86,7 +86,7 @@ Wire it up in `src/components/window.tsx`:
 ```tsx
 import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
 import { useCallback, useEffect, useRef } from "react";
-import schema from "#data/com.gtkx.tutorial.gschema.xml";
+import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useReminders } from "../hooks/use-reminders.js";
 import { buildReminder } from "../notifications.js";
 import type { Task } from "../types.js";

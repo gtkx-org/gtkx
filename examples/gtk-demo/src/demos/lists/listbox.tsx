@@ -17,8 +17,8 @@ import {
     GtkScrolledWindow,
 } from "@gtkx/jsx/gtk";
 import { useRef, useState } from "react";
-import { path as appleRedPath } from "#data/demos/css/apple-red.png";
 import type { Demo } from "../types.js";
+import appleRedPath from "../../../data/demos/css/apple-red.png?resource";
 import sourceCode from "./listbox.tsx?raw";
 import messagesRaw from "./messages.txt?raw";
 

@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { Buffer } from "node:buffer";
 import { describe, expect, it, vi } from "vitest";
-import { path as logoResourcePath } from "#data/icons/org.gtk.Demo4.svg";
+import logoResourcePath from "../data/icons/org.gtk.Demo4.svg?resource";
 import { createAppRenderer } from "./render-app.js";
 import { findButton } from "./test-utils.js";
 

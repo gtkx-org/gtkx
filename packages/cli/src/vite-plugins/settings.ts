@@ -1,5 +1,6 @@
+import type { ConfigLoader } from "@gtkx/config";
 import type { ModuleNode, Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
-import { error, errorMessage, info } from "@gtkx/utils";
+import { error, errorMessage, info, sortStrings } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { AssetEmitter } from "./asset-emitter.js";
@@ -9,13 +10,22 @@ import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } fro
 import { compileSchemas } from "../settings/compile.js";
 import { parseSchemaXml, SchemaParseError } from "../settings/parser.js";
 import { renderRuntimeModule } from "../settings/render.js";
-import { emitSchemaEnv, prependSchemaDir, SCHEMA_SUFFIX, stageSchema } from "../settings/schema.js";
+import {
+    assertUniqueSchemaBasenames,
+    emitSchemaEnv,
+    prependSchemaDir,
+    projectRelativeSchemaPath,
+    SCHEMA_MANIFEST_FILENAME,
+    SCHEMA_SUFFIX,
+    stageSchema,
+} from "../settings/schema.js";
 import { createVirtualNamespace } from "./virtual-module.js";
 
 type PluginState = {
     schemaDir: RetainedStagingDir;
     rootDir: string | null;
     dataDir: string | null;
+    isV2ResourceImports: boolean;
     isBuild: boolean;
     trackedSchemas: Map<string, string>;
     buildSchemas: Set<string>;
@@ -27,6 +37,8 @@ type PluginContext = AssetEmitter & {
 
 const VIRTUAL_PREFIX = "\0gtkx-settings:";
 const SCHEMA_STAGING_PREFIX = "schemas";
+const SOURCE_MODULE_RE = /\.[cm]?[jt]sx?$/;
+const JSON_INDENT = 4;
 const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const SCHEMA_ENV_BANNER = [
@@ -67,14 +79,17 @@ const syncSchemaEnv = (state: PluginState): void => {
     }
 
     try {
-        emitSchemaEnv(state.rootDir, state.dataDir);
+        emitSchemaEnv(state.rootDir, state.dataDir, state.isV2ResourceImports);
     } catch (error_) {
         error(`Failed to generate GSettings schema types: ${errorMessage(error_)}`);
     }
 };
 
-const applyUserConfig = (state: PluginState, config: UserConfig): void => {
-    state.dataDir = resolveDataDir(config.root ?? process.cwd());
+const applyUserConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader): Promise<void> => {
+    const root = config.root ?? process.cwd();
+    const loaded = await loadConfig.load(root);
+    state.isV2ResourceImports = loaded.config.future?.v2ResourceImports === true;
+    state.dataDir = state.isV2ResourceImports ? null : resolveDataDir(root);
 };
 
 const applyResolvedConfig = (state: PluginState, config: ResolvedConfig): void => {
@@ -128,13 +143,9 @@ const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): s
     return renderRuntimeModule(parsed);
 };
 
-const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
-    if (!state.isBuild || state.buildSchemas.size === 0) {
-        return;
-    }
-
-    const compiled = withStagingDir("schemas-build", (dir) => {
-        for (const filePath of state.buildSchemas) {
+const compileBuildSchemas = (schemaFiles: string[]): Buffer =>
+    withStagingDir("schemas-build", (dir) => {
+        for (const filePath of schemaFiles) {
             stageSchema(dir, filePath);
         }
 
@@ -143,17 +154,48 @@ const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
         return readFileSync(join(dir, "gschemas.compiled"));
     });
 
+const emitBuildSchemas = (ctx: PluginContext, state: PluginState): void => {
+    if (!state.isBuild || state.rootDir === null) {
+        return;
+    }
+
+    const rootDir = state.rootDir;
+    const schemaFiles = sortStrings(state.buildSchemas);
+    assertUniqueSchemaBasenames(schemaFiles);
+
+    const schemas = schemaFiles.map((filePath) => {
+        const rel = projectRelativeSchemaPath(rootDir, filePath);
+
+        if (rel === null) {
+            throw new Error(`Cannot package the GSettings schema ${filePath}: it is outside ${rootDir}`);
+        }
+
+        return rel;
+    });
+
+    ctx.emitFile({
+        type: "asset",
+        fileName: SCHEMA_MANIFEST_FILENAME,
+        source: `${JSON.stringify({ schemas }, null, JSON_INDENT)}\n`,
+    });
+
+    if (schemaFiles.length === 0) {
+        return;
+    }
+
+    const compiled = compileBuildSchemas(schemaFiles);
+
     ctx.emitFile({
         type: "asset",
         fileName: "gschemas.compiled",
         source: compiled,
     });
 
-    info(`Compiled ${String(state.buildSchemas.size)} GSettings schema(s)`);
+    info(`Compiled ${String(schemaFiles.length)} GSettings schema(s)`);
 };
 
 const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDevServer): ModuleNode[] | undefined => {
-    if (file.endsWith(SCHEMA_SUFFIX)) {
+    if (file.endsWith(SCHEMA_SUFFIX) || SOURCE_MODULE_RE.test(file)) {
         syncSchemaEnv(state);
     }
 
@@ -187,7 +229,7 @@ const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
     server.watcher.once("close", onClose);
 
     const refreshSchemaTypes = (file: string): void => {
-        if (file.endsWith(SCHEMA_SUFFIX)) {
+        if (file.endsWith(SCHEMA_SUFFIX) || SOURCE_MODULE_RE.test(file)) {
             syncSchemaEnv(state);
         }
     };
@@ -196,11 +238,12 @@ const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
     server.watcher.on("unlink", refreshSchemaTypes);
 };
 
-function gtkxSettings(): Plugin {
+function gtkxSettings(loadConfig: ConfigLoader): Plugin {
     const state: PluginState = {
         schemaDir: createRetainedStagingDir(SCHEMA_STAGING_PREFIX),
         rootDir: null,
         dataDir: null,
+        isV2ResourceImports: false,
         isBuild: false,
         trackedSchemas: new Map(),
         buildSchemas: new Set(),
@@ -210,8 +253,8 @@ function gtkxSettings(): Plugin {
         name: "gtkx:settings",
         enforce: "pre",
 
-        config(config: UserConfig) {
-            applyUserConfig(state, config);
+        async config(config: UserConfig) {
+            await applyUserConfig(state, config, loadConfig);
         },
 
         configResolved(config) {
@@ -243,7 +286,7 @@ function gtkxSettings(): Plugin {
         },
 
         buildEnd() {
-            emitCompiledSchemas(this, state);
+            emitBuildSchemas(this, state);
         },
 
         closeBundle() {

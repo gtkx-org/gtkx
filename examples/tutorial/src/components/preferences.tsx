@@ -2,7 +2,7 @@ import { ComboRow } from "@gtkx/components/adw";
 import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
-import schema from "#data/com.gtkx.tutorial.gschema.xml";
+import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useSortOrder } from "../hooks/use-sort-order.js";
 
 type Scheme = "default" | "light" | "dark";

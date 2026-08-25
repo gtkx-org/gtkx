@@ -13,10 +13,10 @@ import {
     GtkStackSwitcher,
 } from "@gtkx/jsx/gtk";
 import { type Ref, useState } from "react";
-import blendsPath from "#data/demos/css/blends.png";
-import cmyPath from "#data/demos/css/cmy.jpg";
-import duckyPath from "#data/demos/css/ducky.png";
 import type { Demo } from "../types.js";
+import blendsPath from "../../../data/demos/css/blends.png?resource";
+import cmyPath from "../../../data/demos/css/cmy.jpg?resource";
+import duckyPath from "../../../data/demos/css/ducky.png?resource";
 import sourceCode from "./css-blendmodes.tsx?raw";
 
 type BlendPageProps = {
@@ -51,7 +51,7 @@ const BLEND_MODES = [
 
 const SOURCE_IMAGES_CSS = `
         & image.duck {
-            background-image: url("${duckyPath}");
+            background-image: url("resource://${duckyPath}");
             background-size: cover;
             min-width: 200px;
             min-height: 200px;
@@ -64,31 +64,31 @@ const SOURCE_IMAGES_CSS = `
         }
 
         & image.red {
-            background: url("${blendsPath}") top center;
+            background: url("resource://${blendsPath}") top center;
             min-width: 200px;
             min-height: 200px;
         }
 
         & image.blue {
-            background: url("${blendsPath}") bottom center;
+            background: url("resource://${blendsPath}") bottom center;
             min-width: 200px;
             min-height: 200px;
         }
 
         & image.cyan {
-            background: url("${cmyPath}") top center;
+            background: url("resource://${cmyPath}") top center;
             min-width: 200px;
             min-height: 200px;
         }
 
         & image.magenta {
-            background: url("${cmyPath}") center center;
+            background: url("resource://${cmyPath}") center center;
             min-width: 200px;
             min-height: 200px;
         }
 
         & image.yellow {
-            background: url("${cmyPath}") bottom center;
+            background: url("resource://${cmyPath}") bottom center;
             min-width: 200px;
             min-height: 200px;
         }
@@ -111,7 +111,7 @@ function createBlendCss(blendMode: string) {
         ${SOURCE_IMAGES_CSS}
 
         & image.blend0 {
-            background-image: url("${duckyPath}"),
+            background-image: url("resource://${duckyPath}"),
                               linear-gradient(to right, red 0%, green 50%, blue 100%);
             background-size: cover;
             background-blend-mode: ${blendMode};
@@ -120,17 +120,17 @@ function createBlendCss(blendMode: string) {
         }
 
         & image.blend1 {
-            background: url("${blendsPath}") top center,
-                        url("${blendsPath}") bottom center;
+            background: url("resource://${blendsPath}") top center,
+                        url("resource://${blendsPath}") bottom center;
             background-blend-mode: ${blendMode};
             min-width: 200px;
             min-height: 200px;
         }
 
         & image.blend2 {
-            background: url("${cmyPath}") top center,
-                        url("${cmyPath}") center center,
-                        url("${cmyPath}") bottom center;
+            background: url("resource://${cmyPath}") top center,
+                        url("resource://${cmyPath}") center center,
+                        url("resource://${cmyPath}") bottom center;
             background-blend-mode: ${blendMode};
             min-width: 200px;
             min-height: 200px;

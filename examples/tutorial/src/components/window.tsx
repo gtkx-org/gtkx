@@ -5,7 +5,7 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
 import { useCallback, useEffect, useRef } from "react";
-import schema from "#data/com.gtkx.tutorial.gschema.xml";
+import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useReminders } from "../hooks/use-reminders.js";
 import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
 import { buildReminder } from "../notifications.js";

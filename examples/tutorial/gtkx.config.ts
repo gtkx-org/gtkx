@@ -3,6 +3,8 @@ import { defineConfig } from "@gtkx/config";
 export default defineConfig({
     libraries: ["Gtk-4.0", "Adw-1"],
     applicationId: "com.gtkx.tutorial",
+    icons: "data/icons",
+    future: { v2ResourceImports: true },
     deploy: {
         name: "Tasks",
         genericName: "Task Manager",

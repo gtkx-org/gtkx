@@ -22,6 +22,10 @@ const RELOAD_TIMEOUT = 120_000;
 const STOP_TIMEOUT = 15_000;
 const APP_MODULE = join("src", "app.tsx");
 const ENTRY_MODULE = join("src", "index.tsx");
+const FIRST_ASSET = join("data", "first.data");
+const SECOND_ASSET = join("data", "second.data");
+const ICON_ASSET = join("data", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
+const FIRST_RESOURCE_PATH = "/com/gtkx/clidev/data/first.data";
 
 const ENTRY_SOURCE = `import { createRoot } from "@gtkx/react";
 import { App } from "./app.js";
@@ -36,17 +40,33 @@ const App = () => <Absent;
 export { App };
 `;
 
-const APP_HEAD = `import { GtkLabel } from "@gtkx/jsx";
+const APP_HEAD = `import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
+import { GtkLabel } from "@gtkx/jsx";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
+import { readFileSync } from "node:fs";
 import { useEffect } from "react";
+import firstResourcePath from "../data/first.data?resource";
+import firstFile from "../data/first.data?url";
+import secondResourcePath from "../data/second.data?resource";
 
 const REVISION = `;
 
 const APP_BODY = String.raw`;
+const resourceText = (path: string) => Buffer.from(
+    Gio.resourcesLookupData(path, Gio.ResourceLookupFlags.NONE).getData() ?? [],
+).toString("utf8").trim();
 
 const App = () => {
     useEffect(() => {
-        process.stdout.write("${READY_MARKER} " + REVISION + "\n");
+        const display = Gdk.Display.getDefault();
+        const hasIcon = display !== null && Gtk.IconTheme.getForDisplay(display).hasIcon("${APPLICATION_ID}");
+        process.stdout.write(
+            "${READY_MARKER} " + REVISION + " " + firstResourcePath + " " + resourceText(firstResourcePath) +
+            " " + resourceText(secondResourcePath) + " " + readFileSync(firstFile, "utf8").trim() + " " +
+            String(hasIcon) + "\n",
+        );
     });
 
     return (
@@ -65,12 +85,16 @@ const appSource = (revision: string): string => `${APP_HEAD}${JSON.stringify(rev
 
 const config = (): string =>
     `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)}, ` +
-    `future: ${JSON.stringify(STORE_FUTURE)} };\n`;
+    `icons: "data/icons", future: ${JSON.stringify(STORE_FUTURE)} };\n`;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 const writeApp = (project: CliProject, source: string): void => {
     writeFileSync(join(project.root, APP_MODULE), source);
+};
+
+const writeAsset = (project: CliProject, source: string): void => {
+    writeFileSync(join(project.root, FIRST_ASSET), source);
 };
 
 const collect = (child: ChildProcess, append: (chunk: string) => void): void => {
@@ -128,6 +152,20 @@ const waitForOutput = async (session: DevSession, needle: string, timeout: numbe
     return session.output();
 };
 
+const createDevProject = (): CliProject =>
+    createCliProject({
+        prefix: "gtkx-cli-dev-",
+        config: config(),
+        files: {
+            [ENTRY_MODULE]: ENTRY_SOURCE,
+            [APP_MODULE]: appSource("one"),
+            [FIRST_ASSET]: "asset-one\n",
+            [SECOND_ASSET]: "asset-two\n",
+            [ICON_ASSET]: "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"/>\n",
+        },
+        hasStore: true,
+    });
+
 describe("gtkx dev", () => {
     const state: { project: CliProject; session: DevSession } = {
         project: { root: "", nodeModules: "" },
@@ -135,13 +173,7 @@ describe("gtkx dev", () => {
     };
 
     beforeAll(() => {
-        state.project = createCliProject({
-            prefix: "gtkx-cli-dev-",
-            config: config(),
-            files: { [ENTRY_MODULE]: ENTRY_SOURCE, [APP_MODULE]: appSource("one") },
-            hasStore: true,
-        });
-
+        state.project = createDevProject();
         state.session = startDev(state.project);
     });
 
@@ -160,6 +192,15 @@ describe("gtkx dev", () => {
         expect(await waitForOutput(state.session, `${READY_MARKER} two`, RELOAD_TIMEOUT)).toContain(
             `${READY_MARKER} two`,
         );
+    });
+
+    it("loads resource and filesystem assets, then reloads a changed resource", async () => {
+        expect(state.session.output()).toContain(`${FIRST_RESOURCE_PATH} asset-one asset-two asset-one true`);
+        writeAsset(state.project, "asset-three\n");
+        await delay(POLL_INTERVAL * 2);
+        writeApp(state.project, appSource("asset-refresh"));
+        const refreshed = `${FIRST_RESOURCE_PATH} asset-three asset-two asset-three`;
+        expect(await waitForOutput(state.session, refreshed, RELOAD_TIMEOUT)).toContain(refreshed);
     });
 
     it("stays up when a component stops compiling, and reloads it once it compiles again", async () => {
