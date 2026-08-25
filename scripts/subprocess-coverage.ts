@@ -34,6 +34,7 @@ const report = (): number => {
             REPORT_DIR,
             "--reporter",
             "lcovonly",
+            "--exclude-after-remap",
             ...flags("--include", INCLUDES),
             ...flags("--exclude", EXCLUDES),
         ],
