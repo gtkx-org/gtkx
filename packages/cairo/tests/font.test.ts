@@ -74,21 +74,10 @@ describe("ScaledFont", () => {
         expect(ctx.getScaledFont()).toBeInstanceOf(ScaledFont);
     });
 
-    it("shapes text into glyphs and clusters", () => {
-        const [glyphs, clusters] = createScaledFont().textToGlyphs(0, 0, "ab");
-        expect(glyphs).toHaveLength(2);
-        expect(clusters).toHaveLength(2);
-
-        for (const glyph of glyphs) {
-            expect(glyph.index).toBeGreaterThan(0);
-        }
-    });
-
     it("measures text, glyphs and the font itself", () => {
         const font = createScaledFont();
-        const [glyphs] = font.textToGlyphs(0, 0, "ab");
         expect(font.textExtents("ab").width).toBeGreaterThan(0);
-        expect(font.glyphExtents(glyphs).width).toBeGreaterThan(0);
+        expect(font.glyphExtents([{ index: 0, x: 0, y: 0 }]).width).toBeGreaterThan(0);
         expect(font.extents().ascent).toBeGreaterThan(0);
     });
 

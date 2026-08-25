@@ -147,7 +147,7 @@ class Rectangle {
     }
 }
 
-/** A rectangle with integer edges, as regions and `Surface.mapToImage` use. */
+/** A rectangle with integer edges, as Cairo regions use. */
 class RectangleInt {
     static {
         registerWrapperClass(this, RECTANGLE_INT_TYPE);

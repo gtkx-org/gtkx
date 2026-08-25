@@ -11,7 +11,6 @@ import {
     type WrapperClassResolver,
     write,
 } from "@gtkx/runtime";
-import type { RectangleInt } from "./structs.js";
 import type { DeviceOffset, DeviceScale, FallbackResolution, InkExtents, RectangleData } from "./types.js";
 import { type Content, type Format, type Status, SurfaceType } from "./enums.js";
 import { FontOptions } from "./font-options.js";
@@ -21,7 +20,6 @@ import {
     cairoGType,
     DEVICE_T,
     FONT_OPTIONS_T,
-    RECTANGLE_INT_T,
     RECTANGLE_T,
     SURFACE_FULL_T,
     SURFACE_T,
@@ -83,8 +81,6 @@ const cairoSurfaceSupportsMimeType = bindCairo(
     t.boolean,
 );
 
-const cairoSurfaceMapToImage = bindCairo("cairo_surface_map_to_image", [SURFACE_T, RECTANGLE_INT_T], SURFACE_T);
-const cairoSurfaceUnmapImage = bindCairo("cairo_surface_unmap_image", [SURFACE_T, SURFACE_T], t.void);
 const cairoImageSurfaceCreate = bindCairo("cairo_image_surface_create", [t.int32, t.int32, t.int32], SURFACE_FULL_T);
 
 const cairoImageSurfaceCreateFromPng = bindCairo(
@@ -309,16 +305,6 @@ abstract class Surface {
     /** Returns whether the surface can embed data of the given MIME type. */
     supportsMimeType(mimeType: string): boolean {
         return cairoSurfaceSupportsMimeType(getHandle(this), mimeType) as boolean;
-    }
-
-    /** Returns an image surface giving direct access to the pixels of `extents`; release it with `unmapImage`. */
-    mapToImage(extents: RectangleInt): Surface {
-        return wrapSurface(cairoSurfaceMapToImage(getHandle(this), getHandle(extents)));
-    }
-
-    /** Uploads the pixels of `image`, obtained from `mapToImage`, back to the surface and releases it. */
-    unmapImage(image: Surface): void {
-        cairoSurfaceUnmapImage(getHandle(this), getHandle(image));
     }
 }
 

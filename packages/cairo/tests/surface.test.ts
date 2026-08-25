@@ -4,7 +4,6 @@ import {
     Format,
     ImageSurface,
     RecordingSurface,
-    RectangleInt,
     Status,
     Surface,
     SurfaceType,
@@ -92,24 +91,10 @@ describe("Surface (statics)", () => {
         expect(sub.getContent()).toBe(Content.COLOR_ALPHA);
     });
 
-    it("maps a rectangle of a surface to an image surface and back", () => {
-        const image = createImage(8, 8);
-        const mapped = image.mapToImage(new RectangleInt({ x: 2, y: 2, width: 3, height: 4 }));
-        expect(mapped).toBeInstanceOf(ImageSurface);
-        expect(dimensions(mapped)).toEqual([3, 4]);
-        image.unmapImage(mapped);
-        expect(image.status()).toBe(Status.SUCCESS);
-    });
-
     it("rejects a missing surface operand", () => {
         expect(() => Surface.createSimilar(undefined as never, Content.COLOR_ALPHA, 1, 1)).toThrow();
         expect(() => Surface.createSimilarImage(undefined as never, Format.ARGB32, 1, 1)).toThrow();
         expect(() => Surface.createForRectangle(undefined as never, 0, 0, 1, 1)).toThrow();
-        expect(() => createImage().mapToImage(undefined as never)).toThrow();
-
-        expect(() => {
-            createImage().unmapImage(undefined as never);
-        }).toThrow();
     });
 });
 

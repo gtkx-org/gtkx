@@ -65,7 +65,7 @@ const EXPECTED_STATICS: readonly [AnyClass, string[]][] = [
     [cairo.Pattern, ["createRgb", "createRgba", "createLinear", "createRadial", "createMesh", "createForSurface"]],
     [cairo.Region, ["empty", "copy", "forRectangle", "createRectangles"]],
     [cairo.FontOptions, ["create"]],
-    [cairo.FontFace, ["create", "createForFtFace", "createForPattern"]],
+    [cairo.FontFace, ["create"]],
     [cairo.ScaledFont, ["create"]],
     [cairo.Matrix, ["initIdentity", "initTranslate", "initScale", "initRotate", "multiply"]],
 ];
@@ -198,8 +198,6 @@ const SURFACE_METHODS = [
     "showPage",
     "hasShowTextGlyphs",
     "supportsMimeType",
-    "mapToImage",
-    "unmapImage",
 ];
 
 const REGION_METHODS = [
@@ -267,7 +265,15 @@ const SCALED_FONT_METHODS = [
     "getScaleMatrix",
     "getType",
     GET_REFERENCE_COUNT,
-    "textToGlyphs",
+];
+
+const OMITTED_STATICS: readonly [AnyClass, string[]][] = [
+    [cairo.FontFace, ["createForFtFace", "createForPattern"]],
+];
+
+const OMITTED_METHODS: readonly [AnyClass, string[]][] = [
+    [cairo.Surface, ["mapToImage", "unmapImage"]],
+    [cairo.ScaledFont, ["textToGlyphs"]],
 ];
 
 const EXPECTED_METHODS: readonly [AnyClass, string[]][] = [
@@ -431,17 +437,31 @@ const missingMembers = (expected: readonly [AnyClass, string[]][], namesOf: (cls
         return members.filter((member) => !names.has(member)).map((member) => `${cls.name}.${member}`);
     });
 
+const presentMembers = (omitted: readonly [AnyClass, string[]][], namesOf: (cls: AnyClass) => string[]): string[] =>
+    omitted.flatMap(([cls, members]) => {
+        const names = new Set(namesOf(cls));
+
+        return members.filter((member) => names.has(member)).map((member) => `${cls.name}.${member}`);
+    });
+
 describe("@gtkx/cairo exports", () => {
     it("exports exactly the expected value names", () => {
         expect(Object.keys(cairo).toSorted(byName)).toEqual(EXPECTED_VALUE_EXPORTS.toSorted(byName));
     });
 
-    it("keeps every static of the previous binding", () => {
+    it("exports every supported static", () => {
         expect(missingMembers(EXPECTED_STATICS, (cls) => Object.getOwnPropertyNames(cls))).toEqual([]);
     });
 
-    it("keeps every instance method of the previous binding", () => {
+    it("exports every supported instance method", () => {
         expect(missingMembers(EXPECTED_METHODS, (cls) => Object.getOwnPropertyNames(cls.prototype))).toEqual([]);
+    });
+
+    it("omits native APIs that do not fit ordinary wrapper ownership", () => {
+        expect([
+            ...presentMembers(OMITTED_STATICS, (cls) => Object.getOwnPropertyNames(cls)),
+            ...presentMembers(OMITTED_METHODS, (cls) => Object.getOwnPropertyNames(cls.prototype)),
+        ]).toEqual([]);
     });
 
     it("exports every enum both as a value and as a type", () => {

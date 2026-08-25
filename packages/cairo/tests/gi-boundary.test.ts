@@ -1,9 +1,11 @@
 import {
     Context,
     FontFace,
+    FontOptions,
     FontType,
     Format,
     FtFontFace,
+    HintStyle,
     ImageSurface,
     LinearPattern,
     Pattern,
@@ -74,13 +76,6 @@ describe("cairo values crossing the GI boundary", () => {
         expect(source.getType()).toBe(PatternType.SOLID);
     });
 
-    it("hands a Context to PangoCairo and receives a working layout", () => {
-        const layout = PangoCairo.createLayout(snapshotContext());
-        expect(layout).toBeInstanceOf(Pango.Layout);
-        layout.setText("ab", -1);
-        expect(layout.getCharacterCount()).toBe(2);
-    });
-
     it("wraps a font loaded through PangoCairo as ScaledFont with a concrete font face", () => {
         const scaledFont = loadScaledFont();
         expect(scaledFont).toBeInstanceOf(ScaledFont);
@@ -100,6 +95,40 @@ describe("cairo values crossing the GI boundary", () => {
 
     it("throws when Gdk receives no surface", () => {
         expect(() => Gdk.cairoRegionCreateFromSurface(undefined as never)).toThrow();
+    });
+});
+
+describe("PangoCairo text layout", () => {
+    it("shares FontOptions and renders text through a Cairo context", () => {
+        const surface = new ImageSurface(Format.ARGB32, 96, 32);
+        const cr = Context.create(surface);
+        const layout = PangoCairo.createLayout(cr);
+        const options = FontOptions.create();
+        options.setHintStyle(HintStyle.FULL);
+        PangoCairo.contextSetFontOptions(layout.getContext(), options);
+        layout.setFontDescription(Pango.FontDescription.fromString("Sans 16"));
+        layout.setText("GTKX", -1);
+        cr.setSourceRgb(1, 1, 1);
+        PangoCairo.showLayout(cr, layout);
+        const appliedOptions = PangoCairo.contextGetFontOptions(layout.getContext());
+        expect(layout).toBeInstanceOf(Pango.Layout);
+        expect(appliedOptions).toBeInstanceOf(FontOptions);
+        expect(appliedOptions?.getHintStyle()).toBe(HintStyle.FULL);
+        expect(surface.getData().some((byte) => byte !== 0)).toBe(true);
+    });
+
+    it("leaves the target unchanged for an empty layout", () => {
+        const surface = new ImageSurface(Format.ARGB32, 8, 8);
+        const cr = Context.create(surface);
+        const layout = PangoCairo.createLayout(cr);
+        const before = surface.getData();
+        layout.setText("", -1);
+        PangoCairo.showLayout(cr, layout);
+        expect(surface.getData()).toEqual(before);
+    });
+
+    it("rejects a missing Cairo context", () => {
+        expect(() => PangoCairo.createLayout(undefined as never)).toThrow();
     });
 });
 

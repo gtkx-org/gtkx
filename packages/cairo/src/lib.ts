@@ -97,8 +97,6 @@ const SCALED_FONT_FULL_T: BoxedDescriptor = t.boxed("CairoScaledFont", {
     getTypeFnName: "cairo_gobject_scaled_font_get_type",
 });
 
-const FC_PATTERN_T: BoxedDescriptor = t.boxed("FcPattern", { ownership: "borrowed", sharedLibrary: CAIRO_LIBRARY });
-const FT_FACE_T: BoxedDescriptor = t.boxed("FT_Face", { ownership: "borrowed", sharedLibrary: CAIRO_LIBRARY });
 const MATRIX_T: BoxedDescriptor = t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: CAIRO_LIBRARY });
 
 const RECTANGLE_T: BoxedDescriptor = t.boxed("cairo_rectangle_t", {
@@ -160,13 +158,11 @@ export {
     CONTEXT_T,
     DEVICE_T,
     DOUBLE_BUFFER_T,
-    FC_PATTERN_T,
     FONT_EXTENTS_T,
     FONT_FACE_FULL_T,
     FONT_FACE_T,
     FONT_OPTIONS_FULL_T,
     FONT_OPTIONS_T,
-    FT_FACE_T,
     GLYPH_T,
     MATRIX_T,
     PATH_T,

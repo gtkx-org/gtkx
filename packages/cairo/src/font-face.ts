@@ -9,7 +9,7 @@ import {
     type WrapperClassResolver,
 } from "@gtkx/runtime";
 import { type FontSlant, FontType, type FontWeight, type Status } from "./enums.js";
-import { bindCairo, cairoGType, FC_PATTERN_T, FONT_FACE_FULL_T, FONT_FACE_T, FT_FACE_T } from "./lib.js";
+import { bindCairo, cairoGType, FONT_FACE_FULL_T, FONT_FACE_T } from "./lib.js";
 
 /** One of the `FtSynthesize` styles a FreeType font face synthesizes. */
 type FtSynthesize = (typeof FtSynthesize)[keyof typeof FtSynthesize];
@@ -24,21 +24,9 @@ const cairoFtFontFaceGetSynthesize = bindCairo("cairo_ft_font_face_get_synthesiz
 const cairoFtFontFaceSetSynthesize = bindCairo("cairo_ft_font_face_set_synthesize", [FONT_FACE_T, t.int32], t.void);
 const cairoToyFontFaceGetFamily = bindCairo("cairo_toy_font_face_get_family", [FONT_FACE_T], t.string("borrowed"));
 
-const cairoFtFontFaceCreateForPattern = bindCairo(
-    "cairo_ft_font_face_create_for_pattern",
-    [FC_PATTERN_T],
-    FONT_FACE_FULL_T,
-);
-
 const cairoToyFontFaceCreate = bindCairo(
     "cairo_toy_font_face_create",
     [t.string("full"), t.int32, t.int32],
-    FONT_FACE_FULL_T,
-);
-
-const cairoFtFontFaceCreateForFtFace = bindCairo(
-    "cairo_ft_font_face_create_for_ft_face",
-    [FT_FACE_T, t.int32],
     FONT_FACE_FULL_T,
 );
 
@@ -75,7 +63,7 @@ const fontFaceClassFor: WrapperClassResolver = (handle) => {
 
 /**
  * A cairo font face (`cairo_font_face_t`): a typeface independent of size and transformation. Font faces come
- * from the `create*` statics or from a context, and wrap as the concrete class their type reports
+ * from `create` or a context, and wrap as the concrete class their type reports
  * (`instanceof ToyFontFace` after `selectFontFace`).
  */
 abstract class FontFace {
@@ -87,16 +75,6 @@ abstract class FontFace {
     /** Creates a toy font face from a family name, slant and weight. */
     static create(family: string, slant: FontSlant, weight: FontWeight): ToyFontFace {
         return wrapHandle(cairoToyFontFaceCreate(family, slant, weight) as ExternalObject<Handle>, ToyFontFace);
-    }
-
-    /** Creates a font face for a FreeType `FT_Face` handle, with the given `FT_LOAD_*` flags. */
-    static createForFtFace(face: ExternalObject<Handle>, loadFlags: number): FtFontFace {
-        return wrapHandle(cairoFtFontFaceCreateForFtFace(face, loadFlags) as ExternalObject<Handle>, FtFontFace);
-    }
-
-    /** Creates a font face for a fontconfig `FcPattern` handle. */
-    static createForPattern(pattern: ExternalObject<Handle>): FtFontFace {
-        return wrapHandle(cairoFtFontFaceCreateForPattern(pattern) as ExternalObject<Handle>, FtFontFace);
     }
 
     /** GType of `CairoFontFace`, the boxed type this class is registered under. */
@@ -136,7 +114,7 @@ class ToyFontFace extends FontFace {
     }
 }
 
-/** A FreeType font face, created with `FontFace.createForFtFace` or `FontFace.createForPattern`. */
+/** A FreeType font face returned by Cairo or another native library. */
 class FtFontFace extends FontFace {
     /** Returns the styles currently synthesized for the font face. */
     getSynthesize(): FtSynthesize {
