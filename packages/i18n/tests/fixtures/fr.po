@@ -1,0 +1,32 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: gtkx-i18n-tests\n"
+"PO-Revision-Date: 2026-08-26 00:00+0000\n"
+"Last-Translator: GTKX Test Suite\n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "Hello, {{name}}!"
+msgstr "Bonjour, {{name}} !"
+
+msgid "Hook message"
+msgstr "Message du hook"
+
+msgid "{{count}} file"
+msgid_plural "{{count}} files"
+msgstr[0] "{{count}} fichier"
+msgstr[1] "{{count}} fichiers"
+
+msgctxt "menu"
+msgid "Open"
+msgstr "Ouvrir"
+
+msgctxt "fruit"
+msgid "{{count}} apple"
+msgid_plural "{{count}} apples"
+msgstr[0] "{{count}} pomme"
+msgstr[1] "{{count}} pommes"

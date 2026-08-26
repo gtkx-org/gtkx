@@ -1,0 +1,86 @@
+{
+    "name": "@gtkx/i18n",
+    "version": "1.4.0",
+    "description": "Gettext localization for GTKX applications, with React hooks and native GLib lookups.",
+    "keywords": [
+        "gtkx",
+        "gtk",
+        "gtk4",
+        "react",
+        "i18n",
+        "gettext",
+        "localization",
+        "linux",
+        "desktop"
+    ],
+    "homepage": "https://gtkx.dev",
+    "bugs": {
+        "url": "https://github.com/gtkx-org/gtkx/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/gtkx-org/gtkx.git",
+        "directory": "packages/i18n"
+    },
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "type": "module",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "source": "./src/index.ts",
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./bootstrap": {
+            "source": "./src/bootstrap.ts",
+            "types": "./dist/bootstrap.d.ts",
+            "default": "./dist/bootstrap.js"
+        }
+    },
+    "sideEffects": [
+        "./src/index.ts",
+        "./dist/index.js",
+        "./src/bootstrap.ts",
+        "./dist/bootstrap.js",
+        "./src/locale.ts",
+        "./dist/locale.js",
+        "./src/i18n.ts",
+        "./dist/i18n.js"
+    ],
+    "files": [
+        "dist",
+        "src"
+    ],
+    "scripts": {
+        "release": "tsx ../../scripts/release-package.ts"
+    },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            }
+        }
+    },
+    "engines": {
+        "node": ">=24"
+    },
+    "dependencies": {
+        "@gtkx/runtime": "workspace:*",
+        "i18next": "^26.4.0",
+        "react-i18next": "^17.0.12"
+    },
+    "peerDependencies": {
+        "react": "^19.2"
+    },
+    "devDependencies": {
+        "@gtkx/config": "workspace:*",
+        "@gtkx/testing": "workspace:*",
+        "@gtkx/vitest": "workspace:*",
+        "@types/react": "catalog:",
+        "vitest": "catalog:"
+    }
+}

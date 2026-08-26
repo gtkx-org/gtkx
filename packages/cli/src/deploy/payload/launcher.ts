@@ -18,6 +18,8 @@ const renderLauncher = (settings: DeploySettings): string => {
         "set -e",
         'self=$(readlink -f "$0")',
         'prefix=$(dirname "$(dirname "$self")")',
+        'GTKX_LOCALE_DIR="$prefix/share/locale"',
+        "export GTKX_LOCALE_DIR",
         ...(shouldUseCompileCache ? compileCacheLines(settings.binaryName) : []),
         `exec "${libDir}/${NODE_FILENAME}" "${libDir}/${BUNDLE_FILENAME}" "$@"`,
         "",

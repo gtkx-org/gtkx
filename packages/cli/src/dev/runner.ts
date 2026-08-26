@@ -1,6 +1,7 @@
 import type { ApplicationInstance } from "@gtkx/runtime/internal";
 import type { InlineConfig, Plugin } from "vite";
 import { error, warn } from "@gtkx/utils";
+import { isCatalogSource } from "../i18n/catalogs.js";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
@@ -371,6 +372,13 @@ const restartForServerConfig = async (session: DevSession, changedPath: string):
 
 const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {
     if (session.controller.isShuttingDown()) {
+        return;
+    }
+
+    if (isCatalogSource(session.server.config.root, change.path)) {
+        session.deps.log(`Translation catalog changed: ${change.path}`);
+        await requestRestart(session);
+
         return;
     }
 

@@ -65,6 +65,7 @@
                     "@gtkx/components:build",
                     "@gtkx/css:build",
                     "@gtkx/gl:build",
+                    "@gtkx/i18n:build",
                     "@gtkx/navigation:build"
                 ],
                 "inputs": [

@@ -10,6 +10,7 @@ import { gtkxWorker } from "./vite-plugins/worker.js";
 
 type BuildOptions = {
     entry: string;
+    shouldPreserveI18nMetadata?: boolean | undefined;
     vite?: InlineConfig | undefined;
 };
 
@@ -32,14 +33,14 @@ const buildDefaults: InlineConfig = {
 };
 
 const build = async (options: BuildOptions): Promise<string> => {
-    const { entry, vite: viteConfig } = options;
+    const { entry, shouldPreserveI18nMetadata = true, vite: viteConfig } = options;
     const root = viteConfig?.root ?? process.cwd();
     const assetsDir = viteConfig?.build?.assetsDir ?? DEFAULT_ASSETS_DIR;
     const buildManifest = createBuildManifestCollector();
 
     const forced: InlineConfig = {
         plugins: [
-            ...gtkxVitePlugins(BUILD_MODE, undefined, buildManifest),
+            ...gtkxVitePlugins(BUILD_MODE, entry, buildManifest, shouldPreserveI18nMetadata),
             gtkxWorker(),
             gtkxNative(root),
             gtkxBuildManifest(root, buildManifest),

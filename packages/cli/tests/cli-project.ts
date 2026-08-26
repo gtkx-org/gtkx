@@ -27,7 +27,20 @@ const CLI_TIMEOUT = 300_000 * (process.env.GTKX_COVERAGE_DIR === undefined ? 1 :
 const STORE_DIR = ".gtkx";
 const SCOPE = "@gtkx";
 const STORE_NAMES = ["gi", "jsx"];
-const WORKSPACE_PACKAGES = ["cairo", "components", "config", "css", "native", "react", "runtime", "testing", "utils"];
+
+const WORKSPACE_PACKAGES = [
+    "cairo",
+    "components",
+    "config",
+    "css",
+    "i18n",
+    "native",
+    "react",
+    "runtime",
+    "testing",
+    "utils",
+];
+
 const REGISTRY_PACKAGES = ["@types", "csstype", "react", "tsx"];
 const STORE_LIBRARIES = workspaceConfig.libraries;
 const STORE_FUTURE = workspaceConfig.future;
@@ -166,10 +179,10 @@ const runCliOrThrow = (project: CliProject, args: string[], overrides: NodeJS.Pr
     return result;
 };
 
-const startCli = (project: CliProject, args: string[]): ChildProcess =>
+const startCli = (project: CliProject, args: string[], overrides: NodeJS.ProcessEnv = {}): ChildProcess =>
     spawn(process.execPath, [...CLI_ARGV, ...args, "--cwd", project.root], {
         cwd: WORKSPACE_ROOT,
-        env: cliEnvironment(),
+        env: { ...cliEnvironment(), ...overrides },
         stdio: ["ignore", "pipe", "pipe"],
     });
 

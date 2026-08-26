@@ -1,0 +1,1 @@
+import "./locale.js";

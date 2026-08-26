@@ -3,6 +3,7 @@ import { error } from "@gtkx/utils";
 import { resolve } from "node:path";
 import { DEV_ENTRY_ENV } from "./entry-env.js";
 import { prepareDevIconDir } from "./icon-dir.js";
+import { prepareDevLocaleDir } from "./locale-dir.js";
 import { createDevRunner } from "./runner.js";
 import { prepareDevSchemaDir } from "./schema-dir.js";
 
@@ -22,6 +23,7 @@ const main = async (): Promise<void> => {
     }
 
     const { config, root } = await loadConfig(cwd, { mode: "development" });
+    prepareDevLocaleDir(root, config.applicationId);
     prepareDevSchemaDir(root, config.future?.v2ResourceImports === true);
     prepareDevIconDir(root, config.applicationId, config.applicationIcon);
     const entryPath = resolve(cwd, entryArg);

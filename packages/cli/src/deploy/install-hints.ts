@@ -43,8 +43,11 @@ const PACKAGE_FOR_TOOL: Record<string, FamilyPackages> = {
         fedora: "flatpak-builder",
         suse: "flatpak-builder",
     },
+    msgfmt: { arch: "gettext", debian: "gettext", fedora: "gettext", suse: "gettext-tools" },
+    msggrep: { arch: "gettext", debian: "gettext", fedora: "gettext", suse: "gettext-tools" },
     strip: { arch: "binutils", debian: "binutils", fedora: "binutils", suse: "binutils" },
     tar: { arch: "tar", debian: "tar", fedora: "tar", suse: "tar" },
+    xgettext: { arch: "gettext", debian: "gettext", fedora: "gettext", suse: "gettext-tools" },
 };
 
 const GENERATOR_SOURCE = "git+https://github.com/flatpak/flatpak-builder-tools.git#subdirectory=node";

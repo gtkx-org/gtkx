@@ -18,6 +18,8 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
+        gettext \
+        locales-all \
         pkg-config \
         libgtk-4-dev \
         libadwaita-1-dev \

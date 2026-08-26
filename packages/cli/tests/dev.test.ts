@@ -29,6 +29,8 @@ const ENTRY_MODULE = join("src", "index.tsx");
 const RESOURCE_ICON_MODULE = join("src", "resource-icon.ts");
 const FIRST_ASSET = join("data", "first.data");
 const SECOND_ASSET = join("data", "second.data");
+const LINGUAS = join("po", "LINGUAS");
+const IT_CATALOG = join("po", "it.po");
 const ICON_ASSET = join("data", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
 const RESOURCE_ICON_NAME = "gtkx-dev-probe-symbolic";
 const RESOURCE_ICON_PATH = `/com/gtkx/clidev/icons/scalable/actions/${RESOURCE_ICON_NAME}.svg`;
@@ -75,6 +77,7 @@ export { App };
 const APP_HEAD_START = `import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { gettext } from "@gtkx/i18n";
 import { GtkLabel } from "@gtkx/jsx";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { readFileSync } from "node:fs";
@@ -107,7 +110,7 @@ const App = () => {
             "${READY_MARKER} " + REVISION + " " + firstResourcePath + " " + resourceText(firstResourcePath) +
             " " + resourceText(secondResourcePath) + " " + readFileSync(firstFile, "utf8").trim() + " " +
             String(hasIcon) + " " + resourceIconName + " " + String(hasResourceIcon) + " " +
-            resourceIconRevision + "\n",
+            resourceIconRevision + " " + gettext("translation") + "\n",
         );
     });
 
@@ -155,6 +158,22 @@ const config = (): string =>
     `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)}, ` +
     `applicationIcon: "data/icons", future: ${JSON.stringify(STORE_FUTURE)} };\n`;
 
+const italianCatalog = (translation: string): string => String.raw`msgid ""
+msgstr ""
+"Project-Id-Version: gtkx-cli-dev\n"
+"PO-Revision-Date: 2026-08-26 00:00+0000\n"
+"Last-Translator: GTKX Tests <tests@gtkx.dev>\n"
+"Language: it\n"
+"Language-Team: Italian\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "translation"
+msgstr "${translation}"
+`;
+
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 const writeApp = (project: CliProject, source: string): void => {
@@ -183,7 +202,12 @@ const exited = (child: ChildProcess): Promise<void> =>
     });
 
 const startDev = (project: CliProject): DevSession => {
-    const child = startCli(project, ["dev"]);
+    const child = startCli(project, ["dev"], {
+        LANG: "it_IT.UTF-8",
+        LANGUAGE: "it",
+        LC_ALL: "it_IT.UTF-8",
+    });
+
     let buffer = "";
 
     collect(child, (chunk) => {
@@ -218,6 +242,44 @@ const waitForOutput = async (session: DevSession, needle: string, timeout: numbe
     }
 
     return session.output();
+};
+
+const occurrences = (source: string, needle: string): number => source.split(needle).length - 1;
+
+const waitForOccurrences = async (
+    session: DevSession,
+    needle: string,
+    count: number,
+    timeout: number,
+): Promise<string> => {
+    const deadline = Date.now() + timeout;
+
+    while (Date.now() < deadline) {
+        if (occurrences(session.output(), needle) >= count) {
+            return session.output();
+        }
+
+        await delay(POLL_INTERVAL);
+    }
+
+    return session.output();
+};
+
+const expectCatalogRestarts = async (state: DevState): Promise<void> => {
+    expect(state.session.output()).toContain("translation-one");
+    writeFileSync(join(state.project.root, IT_CATALOG), italianCatalog("translation-two"));
+    expect(await waitForOutput(state.session, "translation-two", RELOAD_TIMEOUT)).toContain("translation-two");
+    const priorTranslations = occurrences(state.session.output(), "translation-two");
+    writeFileSync(join(state.project.root, LINGUAS), "it # refreshed\n");
+
+    const restarted = await waitForOccurrences(
+        state.session,
+        "translation-two",
+        priorTranslations + 1,
+        RELOAD_TIMEOUT,
+    );
+
+    expect(restarted).toContain("Full restart (process restart)");
 };
 
 const expectResourceIconReload = async (
@@ -261,6 +323,8 @@ const createDevProject = (): CliProject =>
             [ICON_ASSET]: "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"/>\n",
             [FIRST_RESOURCE_ICON_ASSET]: FIRST_RESOURCE_ICON_SOURCE,
             [SECOND_RESOURCE_ICON_ASSET]: SECOND_RESOURCE_ICON_SOURCE,
+            [LINGUAS]: "it\n",
+            [IT_CATALOG]: italianCatalog("translation-one"),
         },
         hasStore: true,
     });
@@ -293,6 +357,10 @@ describe("gtkx dev", () => {
         expect(await waitForOutput(state.session, `${READY_MARKER} two`, RELOAD_TIMEOUT)).toContain(
             `${READY_MARKER} two`,
         );
+    });
+
+    it("compiles translations and fully restarts for PO and LINGUAS changes", async () => {
+        await expectCatalogRestarts(state);
     });
 
     it("loads resource and filesystem assets, then reloads a changed resource", async () => {

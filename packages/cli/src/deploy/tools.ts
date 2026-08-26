@@ -56,6 +56,24 @@ const FLATPAK_NODE_GENERATOR_PNPM: DeployTool = {
     isPresent: () => hasGeneratorPnpmSupport(),
 };
 
+const MSGFMT: DeployTool = {
+    command: "msgfmt",
+    purpose: "compiles and merges the gettext catalogs",
+    isOptional: false,
+};
+
+const MSGGREP: DeployTool = {
+    command: "msggrep",
+    purpose: "preserves the generated metadata in the catalog template",
+    isOptional: false,
+};
+
+const XGETTEXT: DeployTool = {
+    command: "xgettext",
+    purpose: "extracts the gettext catalog template",
+    isOptional: false,
+};
+
 const STRIP: DeployTool = {
     command: "strip",
     purpose: "would shrink the bundled Node.js by removing its symbols",
@@ -149,8 +167,11 @@ export {
     FILE_TOOL,
     FLATPAK,
     FLATPAK_BUILDER,
+    MSGFMT,
+    MSGGREP,
     probeTools,
     STRIP,
     TAR,
     warnMissingOptional,
+    XGETTEXT,
 };

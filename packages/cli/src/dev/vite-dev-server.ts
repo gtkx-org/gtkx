@@ -20,6 +20,7 @@ type DevServerConfig = {
     configFileDependencies: string[];
     envDir: string | false;
     mode: string;
+    root: string;
 };
 
 type DevServer = {

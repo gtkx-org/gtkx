@@ -101,6 +101,7 @@ share/applications/<id>.desktop                  generated
 share/metainfo/<id>.metainfo.xml                 generated
 share/icons/hicolor/**/apps/<id>.svg             copied from applicationIcon
 share/glib-2.0/schemas/<id>*.gschema.xml         copied from imported schemas
+share/locale/<locale>/LC_MESSAGES/<id>.mo        compiled from po/<locale>.po, when present
 share/mime/packages/<id>.xml                     generated, when you declare fileAssociations
 share/licenses/<binaryName>/LICENSE              your license file, on every target but deb
 share/licenses/<binaryName>/THIRD-PARTY-NOTICES  generated, on every target but deb
@@ -151,7 +152,7 @@ out of the `dist/` it packages, so a tree built by an older `gtkx build` has to 
 
 ## Tools you need installed
 
-`desktop-file-validate` and `appstreamcli` are always required, because they are what catch a metadata mistake before it reaches a software center. `tar` is required whenever packages are actually built, since the bundled Node.js is extracted from its release archive. Beyond that it depends on the target:
+`desktop-file-validate` and `appstreamcli` are always required, because they are what catch a metadata mistake before it reaches a software center. Projects with a `po/` directory also need GNU gettext: `xgettext` extracts the catalog template and `msgfmt` compiles catalogs and merges translations into generated metadata. `tar` is required whenever packages are actually built, since the bundled Node.js is extracted from its release archive. Beyond that it depends on the target:
 
 | Target | Needs | Fetched automatically |
 | --- | --- | --- |

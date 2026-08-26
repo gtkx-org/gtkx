@@ -1,12 +1,10 @@
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { posix, relative, resolve } from "node:path";
 import type { DeployPayload, DeploySettings } from "../types.js";
+import { LOCALE_DIRNAME } from "../../i18n/catalogs.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
-import { renderDesktopEntry } from "../freedesktop/desktop-entry.js";
-import { renderMetainfo } from "../freedesktop/metainfo.js";
-import { renderMimePackage } from "../freedesktop/mime-package.js";
 import { optional } from "../nfpm/optional.js";
 import { renderNotices } from "../notices/render.js";
 import { executableModeFor } from "../payload/copy-tree.js";
@@ -60,6 +58,7 @@ const installCommand = (source: string, destination: string, mode: string): stri
 
 const runtimeInstallCommands = (settings: DeploySettings, nodeExtensionPath: string): string[] => {
     const lib = `${DESTINATION}/lib/${settings.binaryName}`;
+    const locale = `${DESTINATION}/share/${LOCALE_DIRNAME}`;
 
     return [
         installCommand(`${nodeExtensionPath}/bin/node`, `${lib}/node`, "m755"),
@@ -69,6 +68,7 @@ const runtimeInstallCommands = (settings: DeploySettings, nodeExtensionPath: str
         "test ! -f dist/gschemas.compiled || " +
         installCommand("dist/gschemas.compiled", `${lib}/gschemas.compiled`, "m644"),
         `test ! -d dist/assets || cp -a dist/assets ${lib}/assets`,
+        `test ! -d dist/${LOCALE_DIRNAME} || { mkdir -p ${locale} && cp -a dist/${LOCALE_DIRNAME}/. ${locale}/; }`,
         installCommand(LAUNCHER_FILENAME, `${DESTINATION}/bin/${settings.binaryName}`, "m755"),
     ];
 };
@@ -87,10 +87,35 @@ const activationInstallCommands = (settings: DeploySettings): string[] =>
             )]
         : [];
 
-const mimeSources = (settings: DeploySettings): FlatpakModule[] => {
-    const contents = renderMimePackage(settings);
+const stagedContents = (payload: DeployPayload, destination: string): string => {
+    const file = payload.stage.find((candidate) => candidate.rel === destination);
 
-    return contents === null ? [] : [inlineSource(`${settings.applicationId}.xml`, contents)];
+    if (file === undefined) {
+        throw new Error(`Cannot render the source Flatpak: ${destination} was not staged`);
+    }
+
+    return readFileSync(file.abs, "utf8");
+};
+
+const stagedMetadataSources = (payload: DeployPayload): FlatpakModule[] => {
+    const settings = payload.settings;
+
+    return [
+        inlineSource(
+            `${settings.applicationId}.desktop`,
+            stagedContents(payload, posix.join("share", "applications", `${settings.applicationId}.desktop`)),
+        ),
+        inlineSource(
+            `${settings.applicationId}.metainfo.xml`,
+            stagedContents(payload, posix.join("share", "metainfo", `${settings.applicationId}.metainfo.xml`)),
+        ),
+        ...(settings.fileAssociations.length === 0
+            ? []
+            : [inlineSource(
+                    `${settings.applicationId}.xml`,
+                    stagedContents(payload, posix.join("share", "mime", "packages", `${settings.applicationId}.xml`)),
+                )]),
+    ];
 };
 
 const mimeInstallCommands = (settings: DeploySettings): string[] =>
@@ -239,9 +264,7 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
             resolveGitSource(settings),
             ...(pin === null ? [] : pnpmSources(pin, moduleDirFor(settings))),
             GENERATED_SOURCES,
-            inlineSource(`${settings.applicationId}.desktop`, renderDesktopEntry(settings)),
-            inlineSource(`${settings.applicationId}.metainfo.xml`, renderMetainfo(settings)),
-            ...mimeSources(settings),
+            ...stagedMetadataSources(payload),
             inlineSource(LAUNCHER_FILENAME, renderLauncher(settings)),
             inlineSource(NOTICES_FILENAME, renderNotices(settings, payload.notices)),
             ...activationSource(settings),

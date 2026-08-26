@@ -44,6 +44,7 @@ const guideSidebar = [
     { text: "Animations", link: "/guide/animations" },
     { text: "Cairo", link: "/guide/cairo" },
     { text: "OpenGL", link: "/guide/opengl" },
+    { text: "Internationalization", link: "/guide/internationalization" },
     { text: "Testing", link: "/guide/testing" },
     { text: "MCP", link: "/guide/mcp" },
     { text: "Deploying", link: "/guide/deploying" },
