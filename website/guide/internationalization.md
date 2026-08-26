@@ -1,11 +1,13 @@
 ---
 title: "Internationalization"
-description: "Localize a GTKX application and its desktop metadata with standard GNU gettext catalogs."
+description: "Localize a GTKX application and its desktop metadata with react-i18next and GNU gettext catalogs."
 ---
 
 # Internationalization
 
-`@gtkx/i18n` uses GNU gettext all the way through: translators edit ordinary PO files, the application reads compiled MO catalogs through GLib, and `gtkx deploy` uses the same translations for the desktop entry, AppStream metainfo, and MIME descriptions. There is no locale list or GTKX-specific translation format in `gtkx.config.ts`.
+`@gtkx/i18n` connects the actual `i18next` and `react-i18next` implementations to GNU gettext. Components use the familiar React APIs, translators edit ordinary PO files, and the runtime resolves the compiled MO catalog through GLib. `gtkx deploy` uses that same catalog for the desktop entry, AppStream metainfo, and MIME descriptions.
+
+There is no GTKX translation format or locale list in `gtkx.config.ts`. The application ID is the gettext domain, and `po/` is the catalog source of truth.
 
 Install the package and the gettext command-line tools:
 
@@ -18,88 +20,120 @@ The package is `gettext` on Fedora and Arch, and `gettext-tools` on openSUSE.
 
 ## Create the catalog
 
-Add a `po` directory at the project root. `LINGUAS` is the source of truth for the locales the application ships and may use whitespace, newlines, and `#` comments:
+Add a `po` directory at the project root. Start with an empty `LINGUAS` file when no translations exist yet:
 
 ```text
 po/
-├─ LINGUAS
-└─ fr.po
+└─ LINGUAS
 ```
+
+Write source messages with `t`, then run codegen:
+
+```tsx
+import { t } from "@gtkx/i18n";
+
+const title = t("Tasks");
+const countLabel = t("{{count}} task", "{{count}} tasks", { count });
+```
+
+```bash
+npm run codegen
+msginit --input=po/com.example.Tasks.pot --locale=fr --output-file=po/fr.po
+```
+
+Replace `com.example.Tasks` with the `applicationId` from `gtkx.config.ts`, then add `fr` to `po/LINGUAS`:
 
 ```text
 # po/LINGUAS
 fr
 ```
 
-Start with an empty `LINGUAS` file when there is no PO file yet, use the helpers in application code, and run a build:
-
-```tsx
-import { gettext, ngettext } from "@gtkx/i18n";
-
-const title = gettext("Tasks");
-const countLabel = ngettext("{{count}} task", "{{count}} tasks", count);
-```
-
-```bash
-npm run build
-msginit --input=po/com.example.Tasks.pot --locale=fr --output-file=po/fr.po
-```
-
-Replace `com.example.Tasks` with the `applicationId` from `gtkx.config.ts`, then add `fr` to `LINGUAS`. That application ID is also the gettext domain; it never has to be repeated in another config key.
-
-Every build rewrites `po/POTFILES.in` from the modules that reached the emitted bundle, including reachable dynamic imports, and runs `xgettext` to produce `po/<applicationId>.pot`. Files that are merely present in the source tree are not extracted. After source messages change, merge the refreshed template into each catalog with the standard gettext workflow:
+`gtkx codegen`, `gtkx dev`, and `gtkx build` scan the application source with the upstream i18next extractor. GTKX writes `po/POTFILES.in`, passes normalized point, plural, and context messages to `xgettext`, and produces `po/<applicationId>.pot`. After messages change, merge the refreshed template into an existing catalog with the standard gettext workflow:
 
 ```bash
 msgmerge --update po/fr.po po/com.example.Tasks.pot
 ```
 
-This `po/` convention is independent of resource imports. PO files are translation sources for gettext tooling, not assets, so they do not use `#data`, `?resource`, or a configuration entry.
+This convention is independent of resource imports. PO files do not use `#data`, `?resource`, or a configuration entry.
 
 ## Translate messages
 
-`gettext` performs a point lookup and `_` is its conventional shorthand. Both use i18next-style `{{name}}` interpolation:
+The package exports the configured i18next `t` function directly. Interpolation uses i18next syntax:
 
 ```tsx
-import { _ } from "@gtkx/i18n";
+import { t } from "@gtkx/i18n";
 
-<GtkLabel label={_("Hello, {{name}}!", { name: profile.name })} />;
+<GtkLabel label={t("Hello, {{name}}!", { name: profile.name })} />;
 ```
 
-Use `ngettext` for plural pairs. The PO catalog decides which plural form applies, and `count` is always available to interpolation:
+Pass a singular and plural source string using i18next's positional `defaultValue` overload. GNU gettext chooses the plural form using the catalog's `Plural-Forms` expression:
 
 ```tsx
-import { ngettext } from "@gtkx/i18n";
-
-<GtkLabel label={ngettext("{{count}} file", "{{count}} files", files.length)} />;
+<GtkLabel
+    label={t("{{count}} file", "{{count}} files", { count: files.length })}
+/>;
 ```
 
-Use gettext contexts when identical English text needs different translations:
+The standard i18next one/other defaults are supported when the application uses a stable key:
 
 ```tsx
-import { npgettext, pgettext } from "@gtkx/i18n";
-
-const command = pgettext("menu command", "Open");
-const fruit = npgettext("fruit", "{{count}} apple", "{{count}} apples", count);
+const files = t("files", {
+    count: files.length,
+    defaultValue_one: "{{count}} file",
+    defaultValue_other: "{{count}} files",
+});
 ```
 
-All five exported helper names are understood by the extractor, as are `t()` calls returned by
-`useTranslation`. Missing messages fall back to their source text.
+Codegen requires a recoverable singular/plural source pair. It rejects unpaired count calls, ordinal plurals, and zero-specific defaults because a GNU gettext cardinal entry cannot represent those i18next forms without changing their meaning.
 
-## React hook
-
-`useTranslation` exposes the familiar react-i18next point-lookup surface while keeping PO files as the only catalog store:
+Use i18next's `context` option when identical source text needs different translations:
 
 ```tsx
-import { useTranslation } from "@gtkx/i18n";
+const command = t("Open", { context: "menu command" });
+const fruit = t("{{count}} apple", "{{count}} apples", {
+    context: "fruit",
+    count,
+});
+```
+
+Missing messages retain i18next's normal key or `defaultValue` fallback behavior.
+
+## React APIs
+
+The root package re-exports the complete `react-i18next` surface. `useTranslation`, `withTranslation`, `Translation`, `Trans`, providers, SSR helpers, defaults, context, and the remaining exports are the upstream implementations rather than GTKX equivalents.
+
+```tsx
+import { Trans, useTranslation } from "@gtkx/i18n";
 
 function Greeting({ name }: { name: string }) {
     const { t } = useTranslation();
 
-    return <GtkLabel label={t("Hello, {{name}}!", { name })} />;
+    return (
+        <GtkBox>
+            <GtkLabel label={t("Hello, {{name}}!", { name })} />
+            <GtkLabel>
+                <Trans>Welcome</Trans>
+            </GtkLabel>
+        </GtkBox>
+    );
 }
 ```
 
-Use `ngettext` or `npgettext` for plurals so `xgettext` can see both source forms. The initialized `i18n` instance is exported for integrations, but namespaces and JSON resource stores are not part of this setup.
+The named `t` and `init` exports are the bound functions from the same default i18next singleton registered with `initReactI18next`. GTKX installs a real i18next backend for catalog loading. A companion i18next format adapter performs each GLib lookup so GNU plural rules receive the original `count` and context before upstream interpolation runs.
+
+`IcuTrans` and `IcuTransWithoutContext` are also the upstream components. The gettext adapter occupies i18next's single custom-format slot, so codegen rejects ICU single-brace MessageFormat expressions and count-based ICU messages. Ordinary i18next `{{name}}` interpolation works; use `t` or `Trans` with an explicit one/other source pair for plurals.
+
+Gettext uses one process-wide application domain. Passing a namespace to a react-i18next API does not create a second JSON resource store or gettext domain.
+
+## Generated types
+
+Codegen also writes `node_modules/.gtkx/i18n.d.ts` and references it from the usual generated GTKX environment declarations. The generated registry narrows every literal key and carries the interpolation variables required by its singular and plural source strings.
+
+The strict `t` type flows through the direct export, `useTranslation`, `withTranslation`, and the `Translation` render callback. After codegen, TypeScript rejects unknown keys, missing interpolation values, plural calls without a numeric `count`, and contextual calls without their literal context.
+
+Extraction follows bindings from the upstream imports through aliases, hooks, fixed translation functions, HOCs, render callbacks, ESM, and CommonJS. Keys, namespaces, prefixes, contexts, and source defaults must resolve statically. Codegen fails when a dynamic value could make the catalog disagree with runtime behavior; use ordinary `t("message")` calls instead of the tagged-template shorthand.
+
+Run codegen after adding or changing a source message so the catalog template and TypeScript declarations stay in sync.
 
 ## Development and builds
 
@@ -116,20 +150,20 @@ dist/
          └─ com.example.Tasks.mo
 ```
 
-GTKX initializes libc's locale and binds the application domain before the entry module runs. A direct build finds the sibling `locale` directory automatically. Select the locale through the normal process environment before starting the app, for example:
+GTKX initializes libc's locale, binds the application domain, and initializes the i18next backend before the entry module runs. A direct build finds the sibling `locale` directory automatically. Select the locale through the normal process environment before starting the app, for example:
 
 ```bash
 LANG=fr_FR.UTF-8 LANGUAGE=fr npm run dev
 ```
 
-The locale is process-global and fixed at startup; changing `i18n.language` later does not change libc's active gettext locale.
+The gettext locale is process-global and fixed at startup. Calling an upstream language-changing API cannot change libc's active locale after the process starts.
 
 ## Deploy metadata
 
-The same PO files localize the metadata generated by `gtkx deploy`. A catalog entry whose source text matches the configured name, summary, description, or MIME description is merged with `msgfmt`, producing `Name[fr]` in the desktop entry and `xml:lang="fr"` elements in the XML files.
+The same PO files localize the metadata generated by `gtkx deploy`. A catalog entry whose source text matches the configured name, summary, description, or MIME description is merged with `msgfmt`, producing `Name[fr]` in the desktop entry and `xml:lang="fr"` elements in XML files.
 
-Compiled catalogs are installed under `share/locale`. The generated launcher derives the actual install prefix at runtime and sets `GTKX_LOCALE_DIR`, so the same bundle works below `/usr` in deb, rpm, and AppImage packages, below `/app` in Flatpak, and at an AppImage's arbitrary mount point. The variable is an implementation boundary for launchers and development tooling; applications normally never set it themselves.
+Compiled catalogs are installed under `share/locale`. The generated launcher derives the actual install prefix at runtime and sets `GTKX_LOCALE_DIR`, so the same bundle works below `/usr` in deb, rpm, and AppImage packages, below `/app` in Flatpak, and at an AppImage's arbitrary mount point. Applications normally never set this implementation variable themselves.
 
 ## Next
 
-See [Deploying](/guide/deploying) for package formats and source-mode Flatpak builds, or the [`@gtkx/i18n` API reference](/reference/@gtkx/i18n/) for the complete helper signatures.
+See [Deploying](/guide/deploying) for package formats and source-mode Flatpak builds, or the [`@gtkx/i18n` API reference](/reference/@gtkx/i18n/) for the exported react-i18next surface.

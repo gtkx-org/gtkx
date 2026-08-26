@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/i18n",
     "version": "1.4.0",
-    "description": "Gettext localization for GTKX applications, with React hooks and native GLib lookups.",
+    "description": "A react-i18next backend for GTKX applications using GNU gettext catalogs.",
     "keywords": [
         "gtkx",
         "gtk",

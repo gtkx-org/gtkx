@@ -16,10 +16,21 @@ msgstr "Bonjour, {{name}} !"
 msgid "Hook message"
 msgstr "Message du hook"
 
+msgid "Welcome, {{name}}!"
+msgstr "Bienvenue, {{name}} !"
+
+msgid "Account title"
+msgstr "Titre du compte"
+
 msgid "{{count}} file"
 msgid_plural "{{count}} files"
 msgstr[0] "{{count}} fichier"
 msgstr[1] "{{count}} fichiers"
+
+msgid "{{count}} standard file"
+msgid_plural "{{count}} standard files"
+msgstr[0] "{{count}} fichier standard"
+msgstr[1] "{{count}} fichiers standards"
 
 msgctxt "menu"
 msgid "Open"

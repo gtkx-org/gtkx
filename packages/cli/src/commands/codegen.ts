@@ -12,7 +12,7 @@ const FORCED_WHILE_DISABLED_MESSAGE =
 const codegen = defineCommand({
     meta: {
         name: "codegen",
-        description: "Generate TypeScript bindings for the GIR libraries declared in gtkx.config.ts",
+        description: "Generate project bindings, translation catalogs, and TypeScript declarations",
     },
     args: {
         force: {

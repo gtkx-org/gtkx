@@ -8,9 +8,13 @@ import {
     resolveOmittedProps,
 } from "@gtkx/config/internal";
 import { info, warn } from "@gtkx/utils";
-import { rmSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, rmSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { resolveCatalogProject } from "../i18n/catalogs.js";
+import { extractSourceCatalog } from "../i18n/source-messages.js";
+import { emitI18nTypes } from "../i18n/types.js";
 import { resolveDataDir } from "../internal/data-dir.js";
+import { discoverSourceFiles } from "../internal/source-imports.js";
 import { emitSchemaEnv } from "../settings/schema.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
 import { type CodegenContext, type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
@@ -156,6 +160,7 @@ const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config)
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
     const { config, configFile } = await resolveLoadedConfig(options, cwd);
+    await syncI18n(cwd, config.applicationId);
     syncSchemaEnv(cwd, config.future?.v2ResourceImports === true);
 
     if (config.codegen === false) {
@@ -197,6 +202,21 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
         libraries,
         future: enabledFutureFlags(config),
     };
+};
+
+const syncI18n = async (root: string, applicationId: string): Promise<void> => {
+    const project = resolveCatalogProject(root, applicationId);
+
+    if (project === null) {
+        emitI18nTypes(root, [], false);
+
+        return;
+    }
+
+    const srcDir = join(root, "src");
+    const sourceFiles = discoverSourceFiles(existsSync(srcDir) ? srcDir : root);
+    const catalog = await extractSourceCatalog(project, sourceFiles);
+    emitI18nTypes(root, catalog.messages);
 };
 
 const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> => {

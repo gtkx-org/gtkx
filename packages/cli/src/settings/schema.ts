@@ -13,6 +13,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { I18N_TYPES_FILENAME, i18nTypesPath } from "../i18n/types.js";
 import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
 import { discoverSourceImports, type SourceImport } from "../internal/source-imports.js";
 import { removeTempDir } from "../internal/staging-dir.js";
@@ -323,7 +324,8 @@ const emitSchemaEnv = (
     assertUniqueSchemaBasenames(importedFiles);
     const imported = parseProjectSchemas(importedFiles, getRelativeModuleSpecifier);
     const assets = findAssetModuleSpecifiers(imports, isV2ResourceImports);
-    const content = renderEnvModule([...legacy, ...imported], assets);
+    const references = existsSync(i18nTypesPath(rootDir)) ? [`./${I18N_TYPES_FILENAME}`] : [];
+    const content = renderEnvModule([...legacy, ...imported], assets, { references });
     const path = schemaEnvPath(rootDir);
     const isWritten = didWriteChanges(path, content);
 

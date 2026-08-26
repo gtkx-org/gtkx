@@ -71,6 +71,13 @@ const sourceFilesIn = (dir: string, found: string[]): void => {
     }
 };
 
+const discoverSourceFiles = (dir: string): string[] => {
+    const files: string[] = [];
+    sourceFilesIn(dir, files);
+
+    return sortStringsBy(files, (path) => path);
+};
+
 const staticImportSources = (module: ParsedModule): string[] => [
     ...module.staticImports.map((statement) => statement.moduleRequest.value),
     ...module.staticExports.flatMap((statement) =>
@@ -190,11 +197,10 @@ const importsIn = (path: string): SourceImport[] => parseImportsIn(path) ?? [];
 const importKey = (entry: SourceImport): string => `${entry.importer}\0${entry.source}`;
 
 const discoverSourceImports = (dir: string): SourceImport[] => {
-    const files: string[] = [];
-    sourceFilesIn(dir, files);
+    const files = discoverSourceFiles(dir);
     const imports = files.flatMap((path) => importsIn(path));
 
     return sortStringsBy(imports, importKey);
 };
 
-export { discoverSourceImports, parseRuntimeImportsIn, type SourceImport };
+export { discoverSourceFiles, discoverSourceImports, parseRuntimeImportsIn, type SourceImport };

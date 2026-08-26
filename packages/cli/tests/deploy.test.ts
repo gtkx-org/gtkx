@@ -318,9 +318,9 @@ const GERMAN_MIME_DESCRIPTION = "GTKX-Prüfdokument";
 const STALE_SOURCE_MESSAGE = "A source message removed after deploy";
 const METADATA_SENTINEL = join("po", ".gtkx-metadata", "keep.txt");
 
-const LOCALIZED_APP_SOURCE = `import { gettext } from "@gtkx/i18n";
+const LOCALIZED_APP_SOURCE = `import { t } from "@gtkx/i18n";
 ${APP_SOURCE}
-process.env.STALE_TRANSLATION = gettext("${STALE_SOURCE_MESSAGE}");
+process.env.STALE_TRANSLATION = t("${STALE_SOURCE_MESSAGE}");
 `;
 
 const DEPENDENCY_MANIFEST = {

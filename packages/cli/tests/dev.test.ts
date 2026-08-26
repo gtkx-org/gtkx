@@ -77,7 +77,7 @@ export { App };
 const APP_HEAD_START = `import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { gettext } from "@gtkx/i18n";
+import { t } from "@gtkx/i18n";
 import { GtkLabel } from "@gtkx/jsx";
 import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { readFileSync } from "node:fs";
@@ -110,7 +110,7 @@ const App = () => {
             "${READY_MARKER} " + REVISION + " " + firstResourcePath + " " + resourceText(firstResourcePath) +
             " " + resourceText(secondResourcePath) + " " + readFileSync(firstFile, "utf8").trim() + " " +
             String(hasIcon) + " " + resourceIconName + " " + String(hasResourceIcon) + " " +
-            resourceIconRevision + " " + gettext("translation") + "\n",
+            resourceIconRevision + " " + t("translation") + "\n",
         );
     });
 

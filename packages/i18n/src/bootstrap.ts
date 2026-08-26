@@ -1,1 +1,1 @@
-import "./locale.js";
+import "./i18n.js";

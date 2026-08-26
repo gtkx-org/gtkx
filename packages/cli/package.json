@@ -82,6 +82,7 @@
         "citty": "^0.2.2",
         "create-gtkx": "workspace:*",
         "fast-xml-parser": "^5.11.0",
+        "i18next-cli": "1.71.3",
         "react-refresh": "^0.18.0",
         "vite": "catalog:",
         "yaml": "catalog:"
