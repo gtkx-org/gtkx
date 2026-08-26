@@ -322,6 +322,11 @@ const watchForSocket = ({ options, resolve, reject }: SocketWatch): void => {
 
     const fail = (message: string): void => {
         stop();
+
+        for (const guard of guards) {
+            guard.stop();
+        }
+
         reject(new Error(message));
     };
 

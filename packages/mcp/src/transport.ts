@@ -29,6 +29,9 @@ type AppConnections = {
     onRequest: ConnectionRequestHandler;
 } & EventTarget;
 
+const MAX_MESSAGE_BYTES = 64 * 1024 * 1024;
+const MAX_PENDING_WRITE_BYTES = 8 * 1024 * 1024;
+
 function connectionDisconnectionEvent(connection: ProtocolConnection): ConnectionEvent {
     return new CustomEvent("disconnection", { detail: connection });
 }
@@ -38,7 +41,7 @@ function connectionErrorEvent(error: Error): ConnectionErrorEvent {
 }
 
 class SocketTransport implements Transport {
-    private readonly readBuffer: ReadBuffer = new ReadBuffer({ maxBufferSize: Infinity });
+    private readonly readBuffer: ReadBuffer = new ReadBuffer({ maxBufferSize: MAX_MESSAGE_BYTES });
     private readonly socket: Socket;
 
     onclose?: () => void;
@@ -65,10 +68,30 @@ class SocketTransport implements Transport {
         }
     }
 
+    private drop(reason: string): Promise<void> {
+        const error = new McpError(ErrorCode.ConnectionClosed, reason);
+        this.onerror?.(error);
+        this.socket.destroy();
+
+        return Promise.reject(error);
+    }
+
+    private receive(chunk: Buffer): void {
+        try {
+            this.readBuffer.append(chunk);
+        } catch (error) {
+            this.onerror?.(normalizeError(error));
+            this.socket.destroy();
+
+            return;
+        }
+
+        this.read();
+    }
+
     start(): Promise<void> {
         this.socket.on("data", (chunk: Buffer) => {
-            this.readBuffer.append(chunk);
-            this.read();
+            this.receive(chunk);
         });
 
         this.socket.on("close", () => {
@@ -85,6 +108,10 @@ class SocketTransport implements Transport {
     send(message: JSONRPCMessage): Promise<void> {
         if (!this.socket.writable) {
             return Promise.reject(new McpError(ErrorCode.ConnectionClosed, "Connection stream is not writable"));
+        }
+
+        if (this.socket.writableLength > MAX_PENDING_WRITE_BYTES) {
+            return this.drop("Connection stream is not draining");
         }
 
         this.socket.write(serializeMessage(message));

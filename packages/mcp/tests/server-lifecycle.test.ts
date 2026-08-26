@@ -12,6 +12,10 @@ const SOCKET_POLL_MS = 50;
 const LINK_TIMEOUT_MS = 10_000;
 const FIN_SETTLE_MS = 200;
 const FLOOD_BYTES = 4 * 1024 * 1024;
+const OVERSIZED_MESSAGE_BYTES = 80 * 1024 * 1024;
+const OVERSIZED_CHUNK = Buffer.alloc(1024 * 1024, 0x61);
+const OVERSIZED_TIMEOUT_MS = 60_000;
+const STALLED_WRITE_BYTES = 16 * 1024 * 1024;
 const PROBE_APP_ID = "org.gtkx.linkprobe";
 const PROBE_WIDGET_ID = "probe-widget";
 const state: ServerState = { project: "", servers: [], apps: [] };
@@ -70,10 +74,74 @@ const connectFakeApp = async (socketPath: string): Promise<FakeApp> => {
     return { socket, hasFlooded: () => hasFlooded, hasRegistered: () => hasRegistered };
 };
 
+const typeIntoStalledApp = (server: McpServer): void => {
+    void callTool(server.client, "gtkx_type", {
+        widgetId: PROBE_WIDGET_ID,
+        text: "x".repeat(FLOOD_BYTES),
+    }).catch(() => null);
+};
+
+const linkClosed = (socket: Socket): Promise<void> =>
+    new Promise((resolve) => {
+        socket.once("close", () => {
+            resolve();
+        });
+    });
+
+const linkDrained = (socket: Socket): Promise<void> =>
+    new Promise((resolve) => {
+        const settle = (): void => {
+            socket.off("drain", settle);
+            socket.off("close", settle);
+            resolve();
+        };
+
+        socket.once("drain", settle);
+        socket.once("close", settle);
+    });
+
+const sendOversizedMessage = async (socket: Socket): Promise<void> => {
+    let written = 0;
+
+    while (written < OVERSIZED_MESSAGE_BYTES && socket.writable) {
+        written += OVERSIZED_CHUNK.length;
+
+        if (!socket.write(OVERSIZED_CHUNK)) {
+            await linkDrained(socket);
+        }
+    }
+};
+
+const connectRawApp = async (socketPath: string): Promise<Socket> => {
+    const socket = createConnection(socketPath);
+    state.apps.push(socket);
+    await once(socket, "connect");
+
+    socket.on("error", () => {
+        socket.destroy();
+    });
+
+    return socket;
+};
+
 const waitUntil = async (isReady: () => boolean): Promise<void> => {
     const deadline = Date.now() + SOCKET_TIMEOUT_MS;
 
     while (!isReady() && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, SOCKET_POLL_MS));
+    }
+};
+
+const waitForNoApps = async (server: McpServer): Promise<void> => {
+    const deadline = Date.now() + SOCKET_TIMEOUT_MS;
+
+    while (Date.now() < deadline) {
+        const apps = await callJson<unknown[]>(server.client, "gtkx_list_apps");
+
+        if (apps.length === 0) {
+            return;
+        }
+
         await new Promise((resolve) => setTimeout(resolve, SOCKET_POLL_MS));
     }
 };
@@ -149,5 +217,32 @@ describe("an application whose link stops being writable", () => {
         app.socket.end();
         await new Promise((resolve) => setTimeout(resolve, FIN_SETTLE_MS));
         expect(await isToolFailure(server.client, "gtkx_click", { widgetId: PROBE_WIDGET_ID })).toBe(true);
+    }, LINK_TIMEOUT_MS);
+});
+
+describe("an application that sends a message with no end to it", () => {
+    it("loses its connection while the server keeps serving", async () => {
+        const server = await trackedServer();
+        const socket = await connectRawApp(server.socketPath);
+        void sendOversizedMessage(socket);
+        await linkClosed(socket);
+        expect(await callJson(server.client, "gtkx_list_apps")).toEqual([]);
+    }, OVERSIZED_TIMEOUT_MS);
+});
+
+describe("an application that stops reading what the server sends", () => {
+    it("loses its connection while the server keeps serving", async () => {
+        const server = await trackedServer();
+        const app = await connectFakeApp(server.socketPath);
+        await waitUntil(app.hasRegistered);
+        typeIntoStalledApp(server);
+        await waitUntil(app.hasFlooded);
+
+        for (let queued = 0; queued < STALLED_WRITE_BYTES; queued += FLOOD_BYTES) {
+            typeIntoStalledApp(server);
+        }
+
+        await waitForNoApps(server);
+        expect(await callJson(server.client, "gtkx_list_apps")).toEqual([]);
     }, LINK_TIMEOUT_MS);
 });
