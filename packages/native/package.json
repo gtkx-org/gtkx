@@ -83,8 +83,7 @@
                 "{workspaceRoot}/scripts/cargo-nightly.ts",
                 "{workspaceRoot}/scripts/coverage-target.ts",
                 "{workspaceRoot}/scripts/rust-nightly.ts",
-                "{workspaceRoot}/packages/utils/src/**/*",
-                "{workspaceRoot}/packages/runtime/src/param-spec.ts"
+                "{workspaceRoot}/packages/utils/src/**/*"
             ]
         },
         "targets": {

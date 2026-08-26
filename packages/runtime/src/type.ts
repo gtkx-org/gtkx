@@ -281,6 +281,7 @@ export {
     getByteArrayType,
     getErrorType,
     getStrvType,
+    isResolvableDescriptor,
     isTypedClass,
     typeIsA,
     typeParent,
@@ -291,6 +292,7 @@ export {
     valueIsA,
     resolveType,
     resolveBoxedType,
+    resolveFundamentalType,
     resolveDescriptorType,
     type TypedClass,
 };

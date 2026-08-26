@@ -149,10 +149,8 @@ fn to_stash_storage_u8() {
     let values = [1.0, 2.0, 3.0];
     let storage = IntegerCodec::U8.to_stash_storage(&values);
     match storage.data() {
-        ffi::StashData::Owned(result, _) => {
-            assert_eq!(result.downcast_ref::<Vec<u8>>(), Some(&vec![1u8, 2u8, 3u8]));
-        }
-        _ => panic!("Expected owned storage"),
+        ffi::StashData::U8Vec(result) => assert_eq!(result, &vec![1u8, 2u8, 3u8]),
+        _ => panic!("Expected U8Vec"),
     }
 }
 
@@ -161,12 +159,7 @@ fn to_stash_storage_i32() {
     let values = [-100.0, 0.0, 100.0];
     let storage = IntegerCodec::I32.to_stash_storage(&values);
     match storage.data() {
-        ffi::StashData::Owned(result, _) => {
-            assert_eq!(
-                result.downcast_ref::<Vec<i32>>(),
-                Some(&vec![-100i32, 0i32, 100i32])
-            );
-        }
-        _ => panic!("Expected owned storage"),
+        ffi::StashData::I32Vec(result) => assert_eq!(result, &vec![-100i32, 0i32, 100i32]),
+        _ => panic!("Expected I32Vec"),
     }
 }

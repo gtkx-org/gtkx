@@ -43,15 +43,26 @@ function bindOptionsFor(
 ): BindVfuncOptions {
     const { descriptor, interfaceType } = slot;
 
-    return {
+    const options: BindVfuncOptions = {
         byteOffset: descriptor.byteOffset,
         label,
         argDescriptors: buildNativeArgTypes(args, descriptor.canThrow === true),
         returnDescriptor: descriptor.returnDescriptor,
-        ...(descriptor.vtableSize !== undefined && { vtableSize: descriptor.vtableSize }),
-        ...(instanceType !== undefined && { instanceType }),
-        ...(interfaceType !== undefined && { interfaceType }),
     };
+
+    if (descriptor.vtableSize !== undefined) {
+        options.vtableSize = descriptor.vtableSize;
+    }
+
+    if (instanceType !== undefined) {
+        options.instanceType = instanceType;
+    }
+
+    if (interfaceType !== undefined) {
+        options.interfaceType = interfaceType;
+    }
+
+    return options;
 }
 
 function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, caller: string): Invoker {

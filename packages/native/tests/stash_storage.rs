@@ -162,25 +162,25 @@ fn storage_ptr_ref_borrows_the_pointer() {
 #[test]
 fn from_vec_covers_every_integer_and_float_type() {
     let u8s: StashStorage = vec![1u8].into();
-    assert_eq!(u8s.byte_len(), Some(size_of::<u8>()));
+    assert!(matches!(u8s.data(), StashData::U8Vec(_)));
     let i8s: StashStorage = vec![1i8].into();
-    assert_eq!(i8s.byte_len(), Some(size_of::<i8>()));
+    assert!(matches!(i8s.data(), StashData::I8Vec(_)));
     let u16s: StashStorage = vec![1u16].into();
-    assert_eq!(u16s.byte_len(), Some(size_of::<u16>()));
+    assert!(matches!(u16s.data(), StashData::U16Vec(_)));
     let i16s: StashStorage = vec![1i16].into();
-    assert_eq!(i16s.byte_len(), Some(size_of::<i16>()));
+    assert!(matches!(i16s.data(), StashData::I16Vec(_)));
     let u32s: StashStorage = vec![1u32].into();
-    assert_eq!(u32s.byte_len(), Some(size_of::<u32>()));
+    assert!(matches!(u32s.data(), StashData::U32Vec(_)));
     let i32s: StashStorage = vec![1i32].into();
-    assert_eq!(i32s.byte_len(), Some(size_of::<i32>()));
+    assert!(matches!(i32s.data(), StashData::I32Vec(_)));
     let u64s: StashStorage = vec![1u64].into();
-    assert_eq!(u64s.byte_len(), Some(size_of::<u64>()));
+    assert!(matches!(u64s.data(), StashData::U64Vec(_)));
     let i64s: StashStorage = vec![1i64].into();
-    assert_eq!(i64s.byte_len(), Some(size_of::<i64>()));
+    assert!(matches!(i64s.data(), StashData::I64Vec(_)));
     let f32s: StashStorage = vec![1.0f32].into();
-    assert_eq!(f32s.byte_len(), Some(size_of::<f32>()));
+    assert!(matches!(f32s.data(), StashData::F32Vec(_)));
     let f64s: StashStorage = vec![1.0f64].into();
-    assert_eq!(f64s.byte_len(), Some(size_of::<f64>()));
+    assert!(matches!(f64s.data(), StashData::F64Vec(_)));
 }
 
 #[test]
