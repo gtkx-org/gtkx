@@ -38,8 +38,8 @@ function connectionErrorEvent(error: Error): ConnectionErrorEvent {
 }
 
 class SocketTransport implements Transport {
-    private readBuffer: ReadBuffer = new ReadBuffer({ maxBufferSize: Infinity });
-    private socket: Socket;
+    private readonly readBuffer: ReadBuffer = new ReadBuffer({ maxBufferSize: Infinity });
+    private readonly socket: Socket;
 
     onclose?: () => void;
     onerror?: (error: Error) => void;
