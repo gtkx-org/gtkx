@@ -9,7 +9,7 @@ description: "Build Tasks, a GNOME task manager, one running step at a time, and
   <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
 </picture>
 
-That is **Tasks**, a GNOME task manager. In this tutorial you build it from an empty directory to localized Flatpak, deb, rpm, and AppImage packages, then prepare it for Flathub. Along the way you cover the pieces every GNOME app is made of: adaptive layout, settings, actions and accelerators, dialogs, desktop notifications that keep working after the app closes, and gettext catalogs behind the actual react-i18next API.
+That is **Tasks**, a GNOME task manager. In this tutorial you build it from an empty directory to a set of localized Flatpak, deb, rpm, and AppImage packages, then prepare it for Flathub. Along the way you cover the pieces every GNOME app is made of: adaptive layout, settings, actions and accelerators, dialogs, desktop notifications that keep working after the app closes, and gettext catalogs behind the actual react-i18next API.
 
 You build it one running step at a time: after every chapter you have an app you can launch.
 

@@ -4,7 +4,7 @@ import { applicationId } from "virtual:gtkx-config";
 
 const LIBC = "libc.so.6";
 const LC_ALL = 6;
-const UTF8 = "utf8";
+const GETTEXT_CODESET = ["UTF", "8"].join("-");
 const setLocaleBinding = t.bind(LIBC, "setlocale", [t.int32, t.string()], t.string());
 const bindTextDomainBinding = t.bind(LIBC, "bindtextdomain", [t.string(), t.string()], t.string());
 
@@ -30,7 +30,7 @@ function initializeLocale(): string {
     const localeDir = process.env.GTKX_LOCALE_DIR ?? fileURLToPath(new URL("locale", import.meta.url));
     const initialized = requireStringResult(setLocaleBinding(LC_ALL, ""));
     requireStringResult(bindTextDomainBinding(applicationId, localeDir));
-    requireStringResult(bindTextDomainCodesetBinding(applicationId, UTF8));
+    requireStringResult(bindTextDomainCodesetBinding(applicationId, GETTEXT_CODESET));
     requireStringResult(textDomainBinding(applicationId));
 
     return initialized;
