@@ -5,8 +5,24 @@ const CONTEXT_SEPARATOR = "\u{4}";
 
 const gettextLookup = (msgid: string): string => GLib.dgettext(applicationId, msgid);
 
+const normalizeCount = (count: number | bigint): bigint => {
+    if (typeof count === "number") {
+        if (!Number.isSafeInteger(count) || count < 0) {
+            throw new RangeError("gettext counts must be non-negative safe integers");
+        }
+
+        return BigInt(count);
+    }
+
+    if (count < 0n) {
+        throw new RangeError("gettext counts must be non-negative");
+    }
+
+    return count;
+};
+
 const ngettextLookup = (msgid: string, msgidPlural: string, count: number | bigint): string =>
-    GLib.dngettext(applicationId, msgid, msgidPlural, BigInt(count));
+    GLib.dngettext(applicationId, msgid, msgidPlural, normalizeCount(count));
 
 const pgettextLookup = (context: string, msgid: string): string =>
     GLib.dpgettext2(applicationId, context, msgid);

@@ -82,7 +82,8 @@ const command = pgettext("menu command", "Open");
 const fruit = npgettext("fruit", "{{count}} apple", "{{count}} apples", count);
 ```
 
-All five helper names are understood by the extractor. Missing messages fall back to their source text.
+All five exported helper names are understood by the extractor, as are `t()` calls returned by
+`useTranslation`. Missing messages fall back to their source text.
 
 ## React hook
 

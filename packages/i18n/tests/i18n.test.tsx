@@ -23,6 +23,7 @@ describe("gettext integration", () => {
 
     it("throws when gettext cannot represent the requested count", () => {
         expect(() => ngettext("One", "Many", 1.5)).toThrow();
+        expect(() => ngettext("One", "Many", -1)).toThrow();
         expect(() => npgettext("items", "One", "Many", -1n)).toThrow();
     });
 });
