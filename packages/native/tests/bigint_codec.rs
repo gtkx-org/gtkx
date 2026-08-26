@@ -348,8 +348,10 @@ fn to_stash_storage_i64_collects_values() {
             .to_stash_storage(&array)
             .expect("i64 storage should succeed");
         match storage.data() {
-            StashData::I64Vec(vec) => assert_eq!(vec, &vec![-1i64, 2, 3]),
-            _ => panic!("expected I64Vec"),
+            StashData::Owned(vec, _) => {
+                assert_eq!(vec.downcast_ref::<Vec<i64>>(), Some(&vec![-1i64, 2, 3]));
+            }
+            _ => panic!("expected owned storage"),
         }
     });
 }
@@ -366,8 +368,10 @@ fn to_stash_storage_u64_collects_values() {
             .to_stash_storage(&array)
             .expect("u64 storage should succeed");
         match storage.data() {
-            StashData::U64Vec(vec) => assert_eq!(vec, &vec![1u64, 2]),
-            _ => panic!("expected U64Vec"),
+            StashData::Owned(vec, _) => {
+                assert_eq!(vec.downcast_ref::<Vec<u64>>(), Some(&vec![1u64, 2]));
+            }
+            _ => panic!("expected owned storage"),
         }
     });
 }

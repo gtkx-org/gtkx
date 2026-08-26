@@ -19,18 +19,10 @@ const actImplementation: ActImplementation = reactAct;
  */
 const act: ActImplementation = withGlobalActEnvironment(actImplementation);
 
-const getGlobalThis = (): typeof globalThis => {
-    if (typeof globalThis !== "undefined") {
-        return globalThis;
-    }
-
-    throw new Error("unable to locate global object");
-};
-
-const getIsReactActEnvironment = (): boolean | undefined => getGlobalThis().IS_REACT_ACT_ENVIRONMENT;
+const getIsReactActEnvironment = (): boolean | undefined => globalThis.IS_REACT_ACT_ENVIRONMENT;
 
 const setIsReactActEnvironment = (value: boolean | undefined): void => {
-    getGlobalThis().IS_REACT_ACT_ENVIRONMENT = value;
+    Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", value);
 };
 
 const isThenable = <T>(value: unknown): value is PromiseLike<T> =>

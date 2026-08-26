@@ -854,23 +854,17 @@ function resolveDeclaredSignal(
     );
 
     const returnType = resolveSignalReturnType(klass, name, spec);
-    const native: NativeRegisterClassSignal = { name, paramTypes };
-    const declared: DeclaredSignalTypes = { paramTypes };
 
-    if (spec.flags !== undefined) {
-        native.flags = spec.flags;
-    }
-
-    if (spec.accumulator !== undefined) {
-        native.accumulator = spec.accumulator;
-    }
-
-    if (returnType !== undefined) {
-        native.returnType = returnType;
-        declared.returnType = returnType;
-    }
-
-    return { native, declared };
+    return {
+        native: {
+            name,
+            paramTypes,
+            ...(spec.flags !== undefined && { flags: spec.flags }),
+            ...(spec.accumulator !== undefined && { accumulator: spec.accumulator }),
+            ...(returnType !== undefined && { returnType }),
+        },
+        declared: { paramTypes, ...(returnType !== undefined && { returnType }) },
+    };
 }
 
 function resolveDeclaredSignals(klass: AnyClass, signals: Record<string, SignalSpec>): DeclaredSignals {
@@ -956,18 +950,13 @@ function installDeclaredSignalMethods(
 }
 
 function toNativeInterface(binding: InterfaceVfuncBinding): NativeRegisterClassInterface {
-    const nativeInterface: NativeRegisterClassInterface = {
-        type: binding.gtype,
-        vfuncs: [...binding.vfuncs],
-    };
-
     const vtableSize = binding.vfuncs[0]?.vtableSize;
 
-    if (vtableSize !== undefined) {
-        nativeInterface.vtableSize = vtableSize;
-    }
-
-    return nativeInterface;
+    return {
+        type: binding.gtype,
+        vfuncs: [...binding.vfuncs],
+        ...(vtableSize !== undefined && { vtableSize }),
+    };
 }
 
 function withNativeSignals(
@@ -981,14 +970,18 @@ function withNativeSignals(
     return { ...options, signals };
 }
 
-function applyNativeTypeOptions(options: NativeRegisterClassOptions, source: AnyRegisterClassOptions): void {
-    if (source.abstract ?? false) {
-        options.abstract = true;
-    }
-
-    if (source.cssName !== undefined) {
-        options.cssName = source.cssName;
-    }
+function toNativeMembers(
+    classVfuncs: DiscoveredVfunc[],
+    interfaceBindings: InterfaceVfuncBinding[],
+    properties: Record<string, PropertySpec>,
+): NativeRegisterClassOptions {
+    return {
+        ...(Object.keys(properties).length > 0 && { properties: toNativeProperties(properties) }),
+        ...(classVfuncs.length > 0 && { vfuncs: [...classVfuncs] }),
+        ...(interfaceBindings.length > 0 && {
+            interfaces: interfaceBindings.map((binding) => toNativeInterface(binding)),
+        }),
+    };
 }
 
 function toNativeOptions(
@@ -997,20 +990,11 @@ function toNativeOptions(
     properties: Record<string, PropertySpec>,
     source: AnyRegisterClassOptions,
 ): NativeRegisterClassOptions | undefined {
-    const options: NativeRegisterClassOptions = {};
-    applyNativeTypeOptions(options, source);
-
-    if (Object.keys(properties).length > 0) {
-        options.properties = toNativeProperties(properties);
-    }
-
-    if (classVfuncs.length > 0) {
-        options.vfuncs = [...classVfuncs];
-    }
-
-    if (interfaceBindings.length > 0) {
-        options.interfaces = interfaceBindings.map((binding) => toNativeInterface(binding));
-    }
+    const options: NativeRegisterClassOptions = {
+        ...((source.abstract === true) && { abstract: true }),
+        ...(source.cssName !== undefined && { cssName: source.cssName }),
+        ...toNativeMembers(classVfuncs, interfaceBindings, properties),
+    };
 
     return Object.keys(options).length > 0 ? options : undefined;
 }

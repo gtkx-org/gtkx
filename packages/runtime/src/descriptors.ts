@@ -64,6 +64,7 @@ type HashTableDescriptor = Extract<Descriptor, { kind: "hashtable" }>;
 type CallbackDescriptor = Extract<Descriptor, { kind: "callback" }>;
 /** Descriptor variant for a pointer to another descriptor's value, for an output or inout argument. */
 type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
+type DefinedFields<T> = { [K in keyof T]?: Exclude<T[K], undefined> };
 
 /** Descriptor for a `GType`: a `guint64` marked so it resolves to `G_TYPE_GTYPE` rather than an integer. */
 type TypeDescriptor = BigUint64Descriptor & {
@@ -264,71 +265,34 @@ const flagsT = (sharedLibrary: string, typeFnName: string, isSigned: boolean, ma
     return result;
 };
 
-const applyBoxedNames = (result: BoxedDescriptor, options: BoxedOptions): void => {
-    if (options.sharedLibrary !== undefined) {
-        result.sharedLibrary = options.sharedLibrary;
+const definedFields = <T extends Record<string, unknown>>(options: T): DefinedFields<T> => {
+    const result: DefinedFields<T> = {};
+
+    for (const key of Object.keys(options) as (keyof T)[]) {
+        const value = options[key];
+
+        if (value !== undefined) {
+            result[key] = value as Exclude<T[keyof T], undefined>;
+        }
     }
 
-    if (options.getTypeFnName !== undefined) {
-        result.getTypeFnName = options.getTypeFnName;
-    }
-
-    if (options.freeFnName !== undefined) {
-        result.freeFnName = options.freeFnName;
-    }
-};
-
-const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void => {
-    applyBoxedNames(result, options);
-
-    if (options.isCallerAllocated) {
-        result.isCallerAllocated = true;
-    }
-
-    if (options.isInline) {
-        result.isInline = true;
-    }
-
-    if (options.size !== undefined) {
-        result.size = options.size;
-    }
+    return result;
 };
 
 /** Builds a descriptor for a `GBoxed` value of the named type. */
-const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescriptor => {
-    const result: BoxedDescriptor = {
-        kind: "boxed",
-        ownership: options.ownership ?? "borrowed",
-        typeName,
-    };
-
-    applyBoxedOptions(result, options);
-
-    return result;
-};
+const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescriptor => ({
+    kind: "boxed",
+    ownership: options.ownership ?? "borrowed",
+    typeName,
+    ...definedFields(options),
+});
 
 /** Builds a descriptor for a plain C struct. */
-const structT = (ownership: Ownership = "borrowed", options: StructOptions = {}): StructDescriptor => {
-    const result: StructDescriptor = { kind: "struct", ownership };
-
-    if (options.size !== undefined) {
-        result.size = options.size;
-    }
-
-    if (options.wrapperClass !== undefined) {
-        result.wrapperClass = options.wrapperClass;
-    }
-
-    if (options.isCallerAllocated) {
-        result.isCallerAllocated = true;
-    }
-
-    if (options.isInline) {
-        result.isInline = true;
-    }
-
-    return result;
-};
+const structT = (ownership: Ownership = "borrowed", options: StructOptions = {}): StructDescriptor => ({
+    kind: "struct",
+    ownership,
+    ...definedFields(options),
+});
 
 const recordFundamentalLifecycle = (typeName: string, lifecycle: FundamentalLifecycle): void => {
     if (!fundamentalLifecycles.has(typeName)) {
@@ -346,41 +310,18 @@ const fundamentalT = (
     unrefFnName: string,
     options: FundamentalOptions = {},
 ): FundamentalDescriptor => {
-    const ownership = options.ownership ?? "borrowed";
-    const result: FundamentalDescriptor = { kind: "fundamental", ownership, sharedLibrary, refFnName, unrefFnName };
-
     if (options.typeName !== undefined) {
-        result.typeName = options.typeName;
         recordFundamentalLifecycle(options.typeName, { sharedLibrary, refFnName, unrefFnName });
     }
 
-    if (options.wrapperClass !== undefined) {
-        result.wrapperClass = options.wrapperClass;
-    }
-
-    if (options.isCallerAllocated) {
-        result.isCallerAllocated = true;
-    }
-
-    if (options.isInline) {
-        result.isInline = true;
-    }
-
-    return result;
-};
-
-const applyArrayBounds = (result: ArrayDescriptor, options: ArrayOptions): void => {
-    if (options.baseParamIndex !== undefined) {
-        result.baseParamIndex = options.baseParamIndex;
-    }
-
-    if (options.sizeParamIndex !== undefined) {
-        result.sizeParamIndex = options.sizeParamIndex;
-    }
-
-    if (options.fixedSize !== undefined) {
-        result.fixedSize = options.fixedSize;
-    }
+    return {
+        kind: "fundamental",
+        ownership: options.ownership ?? "borrowed",
+        sharedLibrary,
+        refFnName,
+        unrefFnName,
+        ...definedFields(options),
+    };
 };
 
 /** Builds a descriptor for an array of items in one of the supported container layouts. */
@@ -388,30 +329,8 @@ const arrayT = (
     itemDescriptor: Descriptor,
     arrayKind: ArrayKind = "array",
     ownership: Ownership = "borrowed",
-    options?: ArrayOptions,
-): ArrayDescriptor => {
-    const result: ArrayDescriptor = { kind: "array", itemDescriptor, arrayKind, ownership };
-
-    if (options === undefined) {
-        return result;
-    }
-
-    applyArrayBounds(result, options);
-
-    if (options.elementSize !== undefined) {
-        result.elementSize = options.elementSize;
-    }
-
-    if (options.isBytes === true) {
-        result.isBytes = true;
-    }
-
-    if (options.isCallerAllocated === true) {
-        result.isCallerAllocated = true;
-    }
-
-    return result;
-};
+    options: ArrayOptions = {},
+): ArrayDescriptor => ({ kind: "array", itemDescriptor, arrayKind, ownership, ...definedFields(options) });
 
 /** Builds a descriptor for a `GList` of items. */
 const listT = (
@@ -472,52 +391,12 @@ const fixedArrayT = (
     options: ArrayOptions = {},
 ): ArrayDescriptor => arrayT(itemDescriptor, "fixed", ownership, { ...options, fixedSize });
 
-const applyClosureLifetimeOptions = (result: CallbackDescriptor, options: CallbackOptions): void => {
-    if (options.hasDestroy !== undefined) {
-        result.hasDestroy = options.hasDestroy;
-    }
-
-    if (options.destroyKind !== undefined) {
-        result.destroyKind = options.destroyKind;
-    }
-
-    if (options.scope !== undefined) {
-        result.scope = options.scope;
-    }
-};
-
-const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOptions): void => {
-    applyClosureLifetimeOptions(result, options);
-
-    if (options.hasUserData !== undefined) {
-        result.hasUserData = options.hasUserData;
-    }
-
-    if (options.userDataIndex !== undefined) {
-        result.userDataIndex = options.userDataIndex;
-    }
-
-    if (options.canThrow !== undefined) {
-        result.canThrow = options.canThrow;
-    }
-};
-
 /** Builds a descriptor for a function pointer, marshalling a JavaScript function into a native closure. */
 const callbackT = (
     argDescriptors: Descriptor[],
     returnDescriptor: Descriptor,
-    options?: CallbackOptions,
-): CallbackDescriptor => {
-    const result: CallbackDescriptor = { kind: "callback", argDescriptors, returnDescriptor };
-
-    if (options === undefined) {
-        return result;
-    }
-
-    applyClosureOptions(result, options);
-
-    return result;
-};
+    options: CallbackOptions = {},
+): CallbackDescriptor => ({ kind: "callback", argDescriptors, returnDescriptor, ...definedFields(options) });
 
 export {
     int8T,

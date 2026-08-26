@@ -1,7 +1,6 @@
 import { alloc, type Descriptor, type ExternalObject, getType, type Handle, read, write } from "@gtkx/native";
 import { bind, createBindCache } from "./bind.js";
 import {
-    type ArrayDescriptor,
     arrayT,
     bigint64T,
     biguint64T,
@@ -23,7 +22,6 @@ import {
     voidT,
 } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_SIZE, VALUE_T, VARIANT_T } from "./library.js";
-import { toNative } from "./native-value.js";
 import {
     INT32_MAXIMUM,
     INT32_MINIMUM,
@@ -33,6 +31,7 @@ import {
     resolveGtype,
     UINT64_MAXIMUM,
     type ValueGuard,
+    WHOLE_NUMBER_RANGES,
 } from "./param-spec.js";
 import {
     coerceGType,
@@ -46,11 +45,8 @@ import {
 import {
     getByteArrayType,
     getStrvType,
-    isResolvableDescriptor,
     resolveBoxedType,
     resolveDescriptorType,
-    resolveFundamentalType,
-    resolveType,
     TYPE_BOOLEAN,
     TYPE_BOXED,
     TYPE_CHAR,
@@ -143,37 +139,6 @@ const getBoxedPointer = bind(LIB, "g_value_get_boxed", [VALUE_T], uint64T);
 const getBytesBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], byteArrayT());
 const getByteItemsBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], arrayT(uint8T, "gbytearray"));
 
-const PLAIN_VALUE_TYPES: Partial<Record<Descriptor["kind"], ValueType>> = {
-    boolean: booleanValueType,
-    string: stringValueType,
-    int8: intValueType,
-    int16: intValueType,
-    int32: intValueType,
-    uint8: uintValueType,
-    uint16: uintValueType,
-    uint32: uintValueType,
-    int64: int64ValueType,
-    bigint64: int64ValueType,
-    uint64: uint64ValueType,
-    biguint64: uint64ValueType,
-    float32: floatValueType,
-    float64: doubleValueType,
-    object: objectValueType,
-};
-
-const WHOLE_NUMBER_KINDS: Set<Descriptor["kind"]> = new Set([
-    "int8",
-    "int16",
-    "int32",
-    "uint8",
-    "uint16",
-    "uint32",
-    "int64",
-    "uint64",
-    "enum",
-    "flags",
-]);
-
 const PLAIN_VALUE_GETTERS: Map<bigint, ValueGetter> = new Map([
     [TYPE_BOOLEAN, booleanValueType.get],
     [TYPE_CHAR, scharValueType.get],
@@ -235,32 +200,14 @@ const setStaticBoxedBind = (name: string) =>
 const dupBoxedBind = (name: string) =>
     dupBoxedCache(name, LIB, "g_value_dup_boxed", [VALUE_T], boxedT(name, { ownership: "full", sharedLibrary: LIB }));
 
-const boxedValueType = (type: bigint): ValueType => {
-    const name = getBoxedTypeName(type);
-
-    return { set: setBoxedBind(name), get: dupBoxedBind(name) };
-};
-
 const byteArrayValueGetterFor = (isBytes: boolean): ValueGetter => {
     const get = isBytes ? getBytesBoxed : getByteItemsBoxed;
 
     return (value) => (getBoxedPointer(value) ? get(value) : null);
 };
 
-const byteArrayValueType = (descriptor: ArrayDescriptor): ValueType => ({
-    set: setByteArrayValue,
-    get: byteArrayValueGetterFor(descriptor.isBytes === true),
-});
-
 const isByteArraySource = (jsValue: unknown): jsValue is Uint8Array | number[] =>
     jsValue instanceof Uint8Array || Array.isArray(jsValue);
-
-const enumOrFlagsValueType = (type: bigint): ValueType =>
-    typeFundamental(type) === TYPE_FLAGS ? flagsValueType : enumValueType;
-
-function unsupportedFundamental(type: bigint): never {
-    throw new Error(`Unsupported fundamental type '${typeName(type) ?? String(type)}' for value`);
-}
 
 const setInstanceBind = (fundamental: bigint, descriptor: FundamentalDescriptor) =>
     setInstanceCache(String(fundamental), LIB, "g_value_set_instance", [VALUE_T, descriptor], voidT);
@@ -296,23 +243,6 @@ const customFundamentalValueType = (type: bigint): ValueType | undefined => {
     }
 
     return { set: setInstanceBind(fundamental, descriptor), get: peekPointerBind(fundamental, descriptor) };
-};
-
-const fundamentalValueType = (type: bigint): ValueType => {
-    switch (typeFundamental(type)) {
-        case TYPE_PARAM: {
-            return paramValueType;
-        }
-        case TYPE_VARIANT: {
-            return variantValueType;
-        }
-        case TYPE_BOXED: {
-            return boxedValueType(type);
-        }
-        default: {
-            return customFundamentalValueType(type) ?? unsupportedFundamental(type);
-        }
-    }
 };
 
 function getValueType(value: ExternalObject<Handle>): bigint {
@@ -408,50 +338,6 @@ function setWrappedBoxedValue(value: ExternalObject<Handle>, type: bigint, boxed
     setBoxedBind(getBoxedTypeName(type))(value, boxed === null ? null : getHandle(boxed));
 }
 
-const arrayValueType = (descriptor: ArrayDescriptor): ValueType => {
-    if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") {
-        return strvValueType;
-    }
-
-    if (descriptor.arrayKind === "gbytearray") {
-        return byteArrayValueType(descriptor);
-    }
-
-    throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
-};
-
-const resolveValueType = (descriptor: Descriptor): ValueType => {
-    if (descriptor.kind === "biguint64" && "type" in descriptor) {
-        return typeValueType;
-    }
-
-    const plain = PLAIN_VALUE_TYPES[descriptor.kind];
-
-    if (plain !== undefined) {
-        return plain;
-    }
-
-    if (!isResolvableDescriptor(descriptor)) {
-        throw new Error(`Unsupported type descriptor '${descriptor.kind}'`);
-    }
-
-    switch (descriptor.kind) {
-        case "enum":
-        case "flags": {
-            return enumOrFlagsValueType(resolveType(descriptor.sharedLibrary, descriptor.getTypeFnName));
-        }
-        case "boxed": {
-            return boxedValueType(resolveBoxedType(descriptor));
-        }
-        case "fundamental": {
-            return fundamentalValueType(resolveFundamentalType(descriptor));
-        }
-        case "array": {
-            return arrayValueType(descriptor);
-        }
-    }
-};
-
 const wrappedValueGetter = (fundamental: bigint): ValueGetter | undefined => {
     switch (fundamental) {
         case TYPE_STRING: {
@@ -499,10 +385,6 @@ function setStringValue(value: ExternalObject<Handle>, nativeValue: unknown): vo
 
 function setStrvValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
     setStrvBoxed(value, nativeValue ?? null);
-}
-
-function setByteArrayValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
-    setByteArrayBoxed(value, nativeValue ?? null);
 }
 
 function setPointerValue(value: ExternalObject<Handle>, nativeValue: unknown): void {
@@ -661,41 +543,23 @@ function toValueHandle(jsValue: unknown): ExternalObject<Handle> {
 const tryToValueHandle = (jsValue: unknown): ExternalObject<Handle> | undefined =>
     jsValue == null ? undefined : toValueHandle(jsValue);
 
-const isValueDescriptor = (descriptor: Descriptor): boolean =>
-    descriptor.kind === "boxed" && descriptor.typeName === "GValue";
-
-const resolveNativeValue = (descriptor: Descriptor, value: unknown): unknown => {
-    const isHandleKind = descriptor.kind === "object" || descriptor.kind === "boxed";
-
-    if (!isHandleKind) {
-        return toNative(descriptor, value);
-    }
-
-    if (value == null) {
-        return null;
-    }
-
-    return isValueDescriptor(descriptor) ? toValueHandle(value) : getHandle(value);
-};
-
-const resolveValueGType = (descriptor: Descriptor, nativeValue: unknown): bigint => {
+const resolveValueGType = (descriptor: Descriptor, value: unknown): bigint => {
     if (descriptor.kind !== "object") {
         return resolveDescriptorType(descriptor);
     }
 
-    return nativeValue == null ? TYPE_OBJECT : getType(nativeValue as ExternalObject<Handle>);
+    return value == null ? TYPE_OBJECT : getType(getHandle(value));
 };
 
-const toWholeNumber = (descriptor: Descriptor, value: unknown): unknown =>
-    typeof value === "number" && Number.isFinite(value) && WHOLE_NUMBER_KINDS.has(descriptor.kind)
+const toWholeNumber = (type: bigint, value: unknown): unknown =>
+    typeof value === "number" && Number.isFinite(value) && WHOLE_NUMBER_RANGES.has(typeFundamental(type))
         ? Math.trunc(value)
         : value;
 
 function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle> {
-    const nativeValue = resolveNativeValue(descriptor, toWholeNumber(descriptor, value));
-    const type = resolveValueGType(descriptor, nativeValue);
+    const type = resolveValueGType(descriptor, value);
     const gValue = newValueForType(type);
-    resolveValueType(descriptor).set(gValue, nativeValue);
+    intoValue(gValue, toWholeNumber(type, value));
 
     return gValue;
 }

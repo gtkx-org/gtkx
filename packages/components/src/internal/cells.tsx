@@ -34,16 +34,11 @@ type CellHost = FactoryHost & {
 type CellEntry<H extends FactoryHost> = {
     key: string;
     host: H;
-    item: GObject.Object | null;
-    listeners: Set<() => void>;
-    subscribe: (onChange: () => void) => () => void;
-    getItem: () => GObject.Object | null;
 };
 
 type FactoryHandlers = {
     onSetup: (host: GObject.Object) => void;
     onBind: (host: GObject.Object) => void;
-    onUnbind: (host: GObject.Object) => void;
     onTeardown: (host: GObject.Object) => void;
 };
 
@@ -51,7 +46,6 @@ type CellRegistry<H extends FactoryHost> = {
     handlers: FactoryHandlers;
     setSize: (size: CellSize) => void;
     subscribe: (onChange: () => void) => () => void;
-    getVersion: () => number;
     getEntries: () => CellEntry<H>[];
 };
 
@@ -68,7 +62,6 @@ type CellRegistryState<H extends FactoryHost> = CellRegistryOptions<H> & {
     snapshot: CellEntry<H>[] | null;
     listeners: Set<() => void>;
     serial: number;
-    version: number;
 };
 
 type ResolvedRowProps = {
@@ -180,15 +173,8 @@ function prepareCell(host: CellHost, size: CellSize): void {
     }
 }
 
-function notifyEntry<H extends FactoryHost>(entry: CellEntry<H>): void {
-    for (const listener of entry.listeners) {
-        listener();
-    }
-}
-
 function notifyRegistry<H extends FactoryHost>(state: CellRegistryState<H>): void {
     state.snapshot = null;
-    state.version += 1;
 
     for (const listener of state.listeners) {
         listener();
@@ -198,22 +184,7 @@ function notifyRegistry<H extends FactoryHost>(state: CellRegistryState<H>): voi
 function createEntry<H extends FactoryHost>(state: CellRegistryState<H>, host: H): CellEntry<H> {
     state.serial += 1;
 
-    const entry: CellEntry<H> = {
-        key: `gtkx-cell-${String(state.serial)}`,
-        host,
-        item: null,
-        listeners: new Set(),
-        subscribe: (onChange) => {
-            entry.listeners.add(onChange);
-
-            return () => {
-                entry.listeners.delete(onChange);
-            };
-        },
-        getItem: () => entry.item,
-    };
-
-    return entry;
+    return { key: `gtkx-cell-${String(state.serial)}`, host };
 }
 
 function setupHost<H extends FactoryHost>(state: CellRegistryState<H>, host: H): void {
@@ -228,20 +199,8 @@ function teardownHost<H extends FactoryHost>(state: CellRegistryState<H>, host: 
     }
 }
 
-function writeBinding<H extends FactoryHost>(state: CellRegistryState<H>, host: H, item: GObject.Object | null): void {
-    const entry = state.entries.get(host);
-
-    if (entry === undefined) {
-        return;
-    }
-
-    entry.item = item;
-    notifyEntry(entry);
-}
-
 function bindHost<H extends FactoryHost>(state: CellRegistryState<H>, host: H): void {
     state.prepare?.(host, state.size);
-    writeBinding(state, host, host.getItem());
 }
 
 function subscribeRegistry<H extends FactoryHost>(state: CellRegistryState<H>, onChange: () => void): () => void {
@@ -276,9 +235,6 @@ function createHandlers<H extends FactoryHost>(state: CellRegistryState<H>): Fac
         onBind: guarded(isHost, (host) => {
             bindHost(state, host);
         }),
-        onUnbind: guarded(isHost, (host) => {
-            writeBinding(state, host, null);
-        }),
         onTeardown: guarded(isHost, (host) => {
             teardownHost(state, host);
         }),
@@ -293,7 +249,6 @@ function createCellRegistry<H extends FactoryHost>(options: CellRegistryOptions<
         snapshot: null,
         listeners: new Set(),
         serial: 0,
-        version: 0,
     };
 
     return {
@@ -302,7 +257,6 @@ function createCellRegistry<H extends FactoryHost>(options: CellRegistryOptions<
             state.size = next;
         },
         subscribe: (onChange) => subscribeRegistry(state, onChange),
-        getVersion: () => state.version,
         getEntries: () => getRegistryEntries(state),
     };
 }
@@ -363,7 +317,7 @@ function useItemSlot(
     expandedIds: string[] | null | undefined,
 ): ItemSlot | null {
     const position = useProperty(entry.host, "position");
-    const item = useSyncExternalStore(entry.subscribe, entry.getItem);
+    const item = useProperty(entry.host, "item") ?? null;
     const row = item instanceof Gtk.TreeListRow ? item : null;
 
     return slotFor({ item, position, row, collection, expandedIds });
@@ -485,7 +439,7 @@ function ItemRowImpl({ entry, rowProps, collection, expandedIds }: ItemRowProps)
 }
 
 function HeaderCellImpl({ entry, render, collection }: HeaderCellProps): ReactNode {
-    const item = useSyncExternalStore(entry.subscribe, entry.getItem);
+    const item = useProperty(entry.host, "item") ?? null;
     const ref = slotRefFor(item);
     const renderHeader = render as ListSectionRenderer<unknown>;
     const body = ref === null ? null : renderHeader({ section: collection.sectionFor(ref.store.level.path) });
@@ -494,9 +448,7 @@ function HeaderCellImpl({ entry, render, collection }: HeaderCellProps): ReactNo
 }
 
 function usePortalEntries<H extends FactoryHost>(registry: CellRegistry<H>): CellEntry<H>[] {
-    useSyncExternalStore(registry.subscribe, registry.getVersion);
-
-    return registry.getEntries();
+    return useSyncExternalStore(registry.subscribe, registry.getEntries);
 }
 
 const ItemPortals = ({

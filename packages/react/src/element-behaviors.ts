@@ -14,14 +14,15 @@ import type {
 } from "./prop-types.js";
 import { BUILTIN_ELEMENTS, SINGLE_CHILD_TYPES } from "./element-config.js";
 import {
-    addRemoveSlot,
-    adoptedChildrenSlot,
     applicationCreator,
     boxSlot,
     childSetterSlot,
     controlledText,
     deferred,
+    deferredWith,
     list,
+    methodSlot,
+    setterSlot,
     slot,
     value,
     wrappingIndexedSlot,
@@ -36,8 +37,6 @@ import {
 import { applyWrite } from "./reconciler/signals.js";
 import { applyStyle, CSS_CLASSES_PROP, styleClass } from "./reconciler/style.js";
 
-type SelectedIndexState = { desired: number | undefined; isScheduled: boolean; disconnect: (() => void) | null };
-
 const SELECTED_INDEX_PROP = "selectedIndex";
 const SELECTION_SIGNAL = "selected-rows-changed";
 const NO_SELECTION = -1;
@@ -48,26 +47,8 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     }),
     ...forTypes(["GtkHeaderBar", "GtkActionBar"], {
         behaviors: [
-            addRemoveSlot<Gtk.Widget, Gtk.HeaderBar | Gtk.ActionBar>(
-                "start",
-                "GtkWidget",
-                (bar, child) => {
-                    bar.packStart(child);
-                },
-                (bar, child) => {
-                    bar.remove(child);
-                },
-            ),
-            addRemoveSlot<Gtk.Widget, Gtk.HeaderBar | Gtk.ActionBar>(
-                "end",
-                "GtkWidget",
-                (bar, child) => {
-                    bar.packEnd(child);
-                },
-                (bar, child) => {
-                    bar.remove(child);
-                },
-            ),
+            methodSlot<Gtk.HeaderBar | Gtk.ActionBar, Gtk.Widget>("start", "GtkWidget", "packStart", "remove"),
+            methodSlot<Gtk.HeaderBar | Gtk.ActionBar, Gtk.Widget>("end", "GtkWidget", "packEnd", "remove"),
         ],
     }),
     GtkWindow: {
@@ -83,24 +64,10 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                     popover.unparent();
                 },
             }),
-            addRemoveSlot<Gtk.EventController, Gtk.Widget>(
-                "controllers",
-                "GtkEventController",
-                (widget, controller) => {
-                    widget.addController(controller);
-                },
-                (widget, controller) => {
-                    widget.removeController(controller);
-                },
+            methodSlot<Gtk.Widget, Gtk.EventController>(
+                "controllers", "GtkEventController", "addController", "removeController",
             ),
-            slot<Gtk.Widget, Gtk.LayoutManager>("layoutManager", "GtkLayoutManager", {
-                attach: (widget, manager) => {
-                    widget.setLayoutManager(manager);
-                },
-                detach: (widget) => {
-                    widget.setLayoutManager(null);
-                },
-            }),
+            setterSlot<Gtk.Widget, Gtk.LayoutManager>("layoutManager", "GtkLayoutManager", "setLayoutManager"),
             slot<Gtk.Widget, Gio.ActionGroup>("actionGroups", "GActionGroup", {
                 attach: (widget, group, info) => {
                     widget.insertActionGroup((info.props.prefix as string | null) ?? "", group);
@@ -146,15 +113,8 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkShortcutController: {
         behaviors: [
-            addRemoveSlot<Gtk.Shortcut, Gtk.ShortcutController>(
-                "shortcuts",
-                "GtkShortcut",
-                (controller, shortcut) => {
-                    controller.addShortcut(shortcut);
-                },
-                (controller, shortcut) => {
-                    controller.removeShortcut(shortcut);
-                },
+            methodSlot<Gtk.ShortcutController, Gtk.Shortcut>(
+                "shortcuts", "GtkShortcut", "addShortcut", "removeShortcut",
             ),
         ],
     },
@@ -162,16 +122,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [{ create: () => Gtk.TextChildAnchor.new() }],
     },
     GtkTextView: {
-        behaviors: [
-            slot<Gtk.TextView, Gtk.TextBuffer>("children", "GtkTextBuffer", {
-                attach: (view, buffer) => {
-                    view.setBuffer(buffer);
-                },
-                detach: (view) => {
-                    view.setBuffer(null);
-                },
-            }),
-        ],
+        behaviors: [setterSlot<Gtk.TextView, Gtk.TextBuffer>("children", "GtkTextBuffer", "setBuffer")],
     },
     GActionMap: {
         behaviors: [
@@ -249,25 +200,11 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkConstraintLayout: {
         behaviors: [
-            addRemoveSlot<Gtk.Constraint, Gtk.ConstraintLayout>(
-                "constraints",
-                "GtkConstraint",
-                (layout, constraint) => {
-                    layout.addConstraint(constraint);
-                },
-                (layout, constraint) => {
-                    layout.removeConstraint(constraint);
-                },
+            methodSlot<Gtk.ConstraintLayout, Gtk.Constraint>(
+                "constraints", "GtkConstraint", "addConstraint", "removeConstraint",
             ),
-            addRemoveSlot<Gtk.ConstraintGuide, Gtk.ConstraintLayout>(
-                "guides",
-                "GtkConstraintGuide",
-                (layout, guide) => {
-                    layout.addGuide(guide);
-                },
-                (layout, guide) => {
-                    layout.removeGuide(guide);
-                },
+            methodSlot<Gtk.ConstraintLayout, Gtk.ConstraintGuide>(
+                "guides", "GtkConstraintGuide", "addGuide", "removeGuide",
             ),
             list<Gtk.ConstraintLayout, VflConstraints, Gtk.Constraint[]>("vfl", {
                 add: (layout, item) => [
@@ -288,13 +225,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkStack: {
         behaviors: [
-            adoptedChildrenSlot<Gtk.Stack, Gtk.Widget>(
-                "GtkWidget",
-                (stack, child) => stack.addChild(child),
-                (stack, child) => {
-                    stack.remove(child);
-                },
-            ),
+            methodSlot<Gtk.Stack, Gtk.Widget>("children", "GtkWidget", "addChild", "remove"),
             deferred<Gtk.Stack, string>("visibleChildName", (stack, name) => stack.getChildByName(name) !== null),
         ],
     },
@@ -315,16 +246,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkApplication: {
         behaviors: [
             applicationCreator(Gtk.Application),
-            addRemoveSlot<Gtk.Window, Gtk.Application>(
-                "children",
-                "GtkWindow",
-                (application, window) => {
-                    application.addWindow(window);
-                },
-                (application, window) => {
-                    application.removeWindow(window);
-                },
-            ),
+            methodSlot<Gtk.Application, Gtk.Window>("children", "GtkWindow", "addWindow", "removeWindow"),
             list<Gtk.Application, ActionAccel>("actionAccels", {
                 add: (application, item) => {
                     application.setAccelsForAction(item.detailedActionName, item.accels);
@@ -494,89 +416,27 @@ function desiredIndex(value: unknown): number | undefined {
     return value;
 }
 
-function selectRowAt(box: Gtk.ListBox, row: Gtk.ListBoxRow): void {
-    applyWrite(SELECTED_INDEX_PROP, () => {
-        box.selectRow(row);
-    });
-}
-
-function clearSelection(box: Gtk.ListBox): void {
-    applyWrite(SELECTED_INDEX_PROP, () => {
+function applySelectedIndex(box: Gtk.ListBox, index: number): void {
+    if (index < 0) {
         box.unselectAll();
-    });
-}
-
-function applySelectedIndex(box: Gtk.ListBox, state: SelectedIndexState): void {
-    const { desired } = state;
-
-    if (desired === undefined || selectedRowIndex(box) === desired) {
-        return;
-    }
-
-    if (desired < 0) {
-        clearSelection(box);
 
         return;
     }
 
-    const row = box.getRowAtIndex(desired);
+    const row = box.getRowAtIndex(index);
 
     if (row !== null) {
-        selectRowAt(box, row);
+        box.selectRow(row);
     }
-}
-
-function scheduleSelectedIndex(box: Gtk.ListBox, state: SelectedIndexState): void {
-    if (state.isScheduled) {
-        return;
-    }
-
-    state.isScheduled = true;
-
-    queueMicrotask(() => {
-        state.isScheduled = false;
-
-        if (state.disconnect !== null) {
-            applySelectedIndex(box, state);
-        }
-    });
-}
-
-function watchSelectionDrift(box: Gtk.ListBox, state: SelectedIndexState): void {
-    if (state.disconnect !== null) {
-        return;
-    }
-
-    const handler = (): undefined => {
-        scheduleSelectedIndex(box, state);
-    };
-
-    box.on(SELECTION_SIGNAL, handler);
-
-    state.disconnect = (): void => {
-        box.off(SELECTION_SIGNAL, handler);
-    };
 }
 
 function selectedIndexBehavior(): ElementBehavior<Gtk.ListBox> {
-    return {
-        deferred: [SELECTED_INDEX_PROP],
-        initialize: (): SelectedIndexState => ({ desired: undefined, isScheduled: false, disconnect: null }),
-        update: (_box, _prev, next, context) => {
-            (context as SelectedIndexState).desired = desiredIndex(next[SELECTED_INDEX_PROP]);
-
-            return [SELECTED_INDEX_PROP];
-        },
-        flush: (box, context) => {
-            applySelectedIndex(box, context as SelectedIndexState);
-            watchSelectionDrift(box, context as SelectedIndexState);
-        },
-        teardown: (_box, context) => {
-            const state = context as SelectedIndexState;
-            state.disconnect?.();
-            state.disconnect = null;
-        },
-    };
+    return deferredWith<Gtk.ListBox, number>(SELECTED_INDEX_PROP, {
+        parse: desiredIndex,
+        read: selectedRowIndex,
+        write: applySelectedIndex,
+        signal: SELECTION_SIGNAL,
+    });
 }
 
 const addMainOption = (application: Gtk.Application, option: MainOption): void => {

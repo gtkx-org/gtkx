@@ -558,17 +558,12 @@ function interfaceAccessorFor(dispatch: PropertyDispatch, pspec: PropertySpec): 
     const propertyName = paramSpecName(handle) as string;
     const delegate = dispatch.delegates.get(propertyName);
 
-    const accessor: InterfaceAccessor = {
+    return {
         ...checkFor(handle, propertyName),
         storage: storageFor(propertyName),
         isInterfaceProperty: true,
+        ...(delegate !== undefined && { delegate }),
     };
-
-    if (delegate !== undefined) {
-        accessor.delegate = delegate;
-    }
-
-    return accessor;
 }
 
 function resolveAccessor(

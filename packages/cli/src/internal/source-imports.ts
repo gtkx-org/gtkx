@@ -1,8 +1,8 @@
-import type { ParseResult, ParserOptions } from "vite";
-import { isRecord, sortStringsBy } from "@gtkx/utils";
+import type { ESTree, ParseResult, ParserOptions } from "vite";
+import { sortStringsBy } from "@gtkx/utils";
 import { type Dirent, readdirSync, readFileSync } from "node:fs";
 import { extname, join } from "node:path";
-import { parseSync } from "vite";
+import { parseSync, Visitor } from "vite";
 
 type SourceImport = {
     importer: string;
@@ -92,65 +92,30 @@ const staticRuntimeImportSources = (module: ParsedModule): string[] => [
     ),
 ];
 
-const templateImportSource = (node: Record<string, unknown>): string | null => {
-    if (!Array.isArray(node.expressions) || node.expressions.length > 0 || !Array.isArray(node.quasis)) {
-        return null;
-    }
+const templateImportSource = (node: ESTree.TemplateLiteral): string | null => {
+    const [quasi] = node.quasis;
 
-    const quasis: unknown[] = node.quasis;
-    const first: unknown = quasis[0];
-
-    if (!isRecord(first) || !isRecord(first.value)) {
-        return null;
-    }
-
-    return typeof first.value.cooked === "string" ? first.value.cooked : null;
+    return quasi === undefined || node.expressions.length > 0 ? null : quasi.value.cooked;
 };
 
-const literalImportSource = (node: unknown): string | null => {
-    if (!isRecord(node)) {
-        return null;
+const literalImportSource = (node: ESTree.Expression): string | null => {
+    if (node.type === "TemplateLiteral") {
+        return templateImportSource(node);
     }
 
-    if (node.type === "Literal") {
-        return typeof node.value === "string" ? node.value : null;
-    }
-
-    return node.type === "TemplateLiteral" ? templateImportSource(node) : null;
+    return node.type === "Literal" && typeof node.value === "string" ? node.value : null;
 };
 
-const collectDynamicImportArray = (nodes: unknown[], found: string[]): void => {
-    for (const child of nodes) {
-        collectDynamicImportSources(child, found);
-    }
-};
+const collectDynamicImportSources = (program: ESTree.Program, found: string[]): void => {
+    new Visitor({
+        ImportExpression: (node) => {
+            const source = literalImportSource(node.source);
 
-const collectDynamicImportRecord = (node: Record<string, unknown>, found: string[]): void => {
-    if (node.type === "ImportExpression") {
-        const source = literalImportSource(node.source);
-
-        if (source !== null) {
-            found.push(source);
-        }
-
-        return;
-    }
-
-    collectDynamicImportArray(Object.values(node), found);
-};
-
-const collectDynamicImportSources = (node: unknown, found: string[]): void => {
-    if (Array.isArray(node)) {
-        collectDynamicImportArray(node, found);
-
-        return;
-    }
-
-    if (!isRecord(node)) {
-        return;
-    }
-
-    collectDynamicImportRecord(node, found);
+            if (source !== null) {
+                found.push(source);
+            }
+        },
+    }).visit(program);
 };
 
 const parseImportsInWith = (
@@ -197,4 +162,4 @@ const discoverSourceImports = (dir: string): SourceImport[] => {
     return sortStringsBy(imports, importKey);
 };
 
-export { discoverSourceImports, parseRuntimeImportsIn, type SourceImport };
+export { discoverSourceImports, parseRuntimeImportsIn, type SourceImport, sourceLanguage };

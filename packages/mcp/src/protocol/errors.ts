@@ -1,3 +1,5 @@
+import type { McpError } from "@modelcontextprotocol/sdk/types.js";
+
 type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
 const ErrorCode = {
@@ -64,6 +66,13 @@ function methodNotFoundError(method: string): ProtocolError {
     return new ProtocolError(ErrorCode.METHOD_NOT_FOUND, `Method '${method}' not found`, { method });
 }
 
+function protocolErrorFrom(error: McpError): ProtocolError {
+    const prefix = `MCP error ${String(error.code)}: `;
+    const message = error.message.startsWith(prefix) ? error.message.slice(prefix.length) : error.message;
+
+    return new ProtocolError(isErrorCode(error.code) ? error.code : ErrorCode.INTERNAL_ERROR, message, error.data);
+}
+
 class ProtocolError extends Error {
     code: ErrorCode;
     data?: unknown;
@@ -74,19 +83,9 @@ class ProtocolError extends Error {
         this.data = data;
         this.name = "ProtocolError";
     }
-
-    toErrorObject(): { code: number; message: string; data?: unknown } {
-        return {
-            code: this.code,
-            message: this.message,
-            ...(this.data !== undefined && { data: this.data }),
-        };
-    }
 }
 
 export {
-    ErrorCode,
-    isErrorCode,
     noAppConnectedError,
     appNotFoundError,
     connectionWriteFailedError,
@@ -96,4 +95,5 @@ export {
     invalidRequestError,
     methodNotFoundError,
     ProtocolError,
+    protocolErrorFrom,
 };

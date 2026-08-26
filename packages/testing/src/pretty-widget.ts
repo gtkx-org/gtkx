@@ -74,10 +74,6 @@ const buildAttrs = (widget: Gtk.Widget, getId: WidgetIdResolver | undefined): [s
 };
 
 const isHighlightSupported = (): boolean => {
-    if (typeof process === "undefined") {
-        return false;
-    }
-
     if (process.env.COLORS === "false" || process.env.NO_COLOR) {
         return false;
     }

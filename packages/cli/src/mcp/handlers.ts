@@ -3,6 +3,7 @@ import {
     invalidRequestError,
     methodNotFoundError,
     type ParamsSchema,
+    type Result,
     type ServerInitiatedMethod,
     type ServerRequestParams,
     ServerRequestParamsSchemas,
@@ -18,10 +19,10 @@ type HandlerContext = {
     registry: WidgetRegistry;
 };
 
-type ValidatedHandler = (ctx: HandlerContext, params: unknown) => Promise<unknown>;
+type ValidatedHandler = (ctx: HandlerContext, params: unknown) => Promise<Result>;
 type WidgetTarget = { testing: TestingModule; widget: Gtk.Widget };
 type WidgetParams = { widgetId?: string | undefined };
-type TargetedHandler<Params> = (ctx: HandlerContext, target: WidgetTarget, params: Params) => Promise<unknown>;
+type TargetedHandler<Params> = (ctx: HandlerContext, target: WidgetTarget, params: Params) => Promise<Result>;
 type QueryParams = ServerRequestParams<"widget.query">;
 type QueryBy = QueryParams["by"];
 type QueryRunner = (testing: TestingModule, app: Gtk.Application, params: QueryParams) => Promise<Gtk.Widget[]>;
@@ -110,7 +111,7 @@ const SEARCHED_BY: Record<QueryBy, string> = {
 
 function validated<Params>(
     schema: ParamsSchema<Params>,
-    handler: (ctx: HandlerContext, params: Params) => Promise<unknown>,
+    handler: (ctx: HandlerContext, params: Params) => Promise<Result>,
 ): ValidatedHandler {
     return (ctx, params) => {
         const parsed = schema.safeParse(params ?? {});
@@ -229,7 +230,7 @@ const emptyQueryHint = (params: QueryParams): string =>
     "Call gtkx_get_widget_tree to see what is mounted; by:\"name\" is the widest match, and by:\"role\" accepts " +
     "options.name to match the accessible name of a known role.";
 
-async function handleQuery({ app, registry }: HandlerContext, params: QueryParams): Promise<unknown> {
+async function handleQuery({ app, registry }: HandlerContext, params: QueryParams): Promise<Result> {
     const testing = await loadTestingModule();
     const widgets = await QUERY_RUNNERS[params.by](testing, app, params);
     const resolveId = (widget: Gtk.Widget): string => registry.getOrCreateId(widget);
@@ -254,7 +255,7 @@ const defaultScreenshotTarget = (registry: WidgetRegistry): Gtk.Widget => {
 async function handleScreenshot(
     { registry }: HandlerContext,
     params: ServerRequestParams<"widget.screenshot">,
-): Promise<unknown> {
+): Promise<Result> {
     const testing = await loadTestingModule();
     const target = params.windowId ? requireWidget(registry, params.windowId) : defaultScreenshotTarget(registry);
     const result = await testing.screenshot(target, { path: params.path });
@@ -269,7 +270,7 @@ async function handleScreenshot(
 const isServerInitiatedMethod = (method: string): method is ServerInitiatedMethod =>
     Object.hasOwn(ServerRequestParamsSchemas, method);
 
-const dispatch = async (method: string, params: unknown, ctx: HandlerContext): Promise<unknown> => {
+const dispatch = async (method: string, params: unknown, ctx: HandlerContext): Promise<Result> => {
     if (!isServerInitiatedMethod(method)) {
         throw methodNotFoundError(method);
     }

@@ -1,16 +1,18 @@
 import type { Socket } from "node:net";
-import type { Message } from "./protocol/schemas.js";
+import { methodNotFoundError } from "./protocol/errors.js";
 import {
     type AppConnections,
     connectionDisconnectionEvent,
     connectionErrorEvent,
-    connectionRequestEvent,
+    type ConnectionRequestHandler,
     ProtocolConnection,
 } from "./transport.js";
 
 class ConnectionRegistry extends EventTarget implements AppConnections {
     private connections: Map<string, ProtocolConnection> = new Map();
     private sockets: Map<string, Socket> = new Map();
+
+    onRequest: ConnectionRequestHandler = (_connection, request) => Promise.reject(methodNotFoundError(request.method));
 
     register(socket: Socket): ProtocolConnection {
         const connection = ProtocolConnection.fromSocket(socket, {
@@ -24,30 +26,12 @@ class ConnectionRegistry extends EventTarget implements AppConnections {
 
         this.connections.set(connection.id, connection);
         this.sockets.set(connection.id, socket);
-        connection.on("request", (request) => this.dispatchEvent(connectionRequestEvent(connection, request)));
-
-        connection.on("invalid", ({ id: badId, error }) => {
-            connection.write({ id: badId, error: error.toErrorObject() });
-        });
+        connection.fallbackRequestHandler = (request) => this.onRequest(connection, request);
 
         return connection;
     }
 
-    send(connectionId: string, message: Message): void {
-        const connection = this.connections.get(connectionId);
-
-        if (!connection) {
-            return;
-        }
-
-        connection.write(message);
-    }
-
-    dispose(reason: string): void {
-        for (const connection of this.connections.values()) {
-            connection.rejectPending(new Error(reason));
-        }
-
+    dispose(): void {
         for (const socket of this.sockets.values()) {
             socket.destroy();
         }

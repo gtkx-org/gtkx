@@ -218,16 +218,7 @@ pub struct GPtrArrayData {
 #[derive(Debug)]
 pub enum StashData {
     Unit,
-    U8Vec(Vec<u8>),
-    I8Vec(Vec<i8>),
-    U16Vec(Vec<u16>),
-    I16Vec(Vec<i16>),
-    U32Vec(Vec<u32>),
-    I32Vec(Vec<i32>),
-    U64Vec(Vec<u64>),
-    I64Vec(Vec<i64>),
-    F32Vec(Vec<f32>),
-    F64Vec(Vec<f64>),
+    Owned(Box<dyn std::any::Any>, usize),
     StringArray(Vec<std::ffi::CString>, Vec<*mut c_void>),
     ObjectArray(Vec<crate::handle::Handle>, Vec<*mut c_void>),
     List(ListData),
@@ -328,16 +319,8 @@ impl StashStorage {
 
     pub fn byte_len(&self) -> Option<usize> {
         match &self.data {
-            StashData::U8Vec(v) | StashData::Buffer(v) => Some(size_of_val(v.as_slice())),
-            StashData::I8Vec(v) => Some(size_of_val(v.as_slice())),
-            StashData::U16Vec(v) => Some(size_of_val(v.as_slice())),
-            StashData::I16Vec(v) => Some(size_of_val(v.as_slice())),
-            StashData::U32Vec(v) => Some(size_of_val(v.as_slice())),
-            StashData::I32Vec(v) => Some(size_of_val(v.as_slice())),
-            StashData::U64Vec(v) => Some(size_of_val(v.as_slice())),
-            StashData::I64Vec(v) => Some(size_of_val(v.as_slice())),
-            StashData::F32Vec(v) => Some(size_of_val(v.as_slice())),
-            StashData::F64Vec(v) => Some(size_of_val(v.as_slice())),
+            StashData::Owned(_, byte_len) => Some(*byte_len),
+            StashData::Buffer(v) => Some(size_of_val(v.as_slice())),
             StashData::CallerAllocation(allocation) => Some(allocation.byte_len),
             StashData::Unit
             | StashData::StringArray(_, _)
@@ -396,16 +379,7 @@ impl Drop for StashStorage {
             StashData::GPtrArray(data) => Self::free_gptrarray(data),
             StashData::GByteArray(_)
             | StashData::Unit
-            | StashData::U8Vec(_)
-            | StashData::I8Vec(_)
-            | StashData::U16Vec(_)
-            | StashData::I16Vec(_)
-            | StashData::U32Vec(_)
-            | StashData::I32Vec(_)
-            | StashData::U64Vec(_)
-            | StashData::I64Vec(_)
-            | StashData::F32Vec(_)
-            | StashData::F64Vec(_)
+            | StashData::Owned(_, _)
             | StashData::StringArray(_, _)
             | StashData::ObjectArray(_, _)
             | StashData::CString(_)
@@ -425,28 +399,23 @@ fn allocated_ptr<T>(vec: &mut Vec<T>) -> *mut c_void {
     vec.as_mut_ptr().cast::<c_void>()
 }
 
-macro_rules! impl_stash_storage_from_vec {
-    ($($descriptor:ty => $vec_variant:ident),+ $(,)?) => {
-        $(
-            impl From<Vec<$descriptor>> for StashStorage {
-                fn from(mut vec: Vec<$descriptor>) -> Self {
-                    let ptr = allocated_ptr(&mut vec);
-                    Self::new(ptr, StashData::$vec_variant(vec))
-                }
-            }
-        )+
-    };
-}
+pub trait ScalarElement: Copy + 'static {}
 
-impl_stash_storage_from_vec! {
-    u8 => U8Vec,
-    i8 => I8Vec,
-    u16 => U16Vec,
-    i16 => I16Vec,
-    u32 => U32Vec,
-    i32 => I32Vec,
-    u64 => U64Vec,
-    i64 => I64Vec,
-    f32 => F32Vec,
-    f64 => F64Vec,
+impl ScalarElement for u8 {}
+impl ScalarElement for i8 {}
+impl ScalarElement for u16 {}
+impl ScalarElement for i16 {}
+impl ScalarElement for u32 {}
+impl ScalarElement for i32 {}
+impl ScalarElement for u64 {}
+impl ScalarElement for i64 {}
+impl ScalarElement for f32 {}
+impl ScalarElement for f64 {}
+
+impl<T: ScalarElement> From<Vec<T>> for StashStorage {
+    fn from(mut vec: Vec<T>) -> Self {
+        let byte_len = size_of_val(vec.as_slice());
+        let ptr = allocated_ptr(&mut vec);
+        Self::new(ptr, StashData::Owned(Box::new(vec), byte_len))
+    }
 }

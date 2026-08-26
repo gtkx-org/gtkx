@@ -959,13 +959,16 @@ fn encode_scalar_storage(env: Env, descriptor: &ArrayCodec, values: &[sys::napi_
 }
 
 macro_rules! assert_scalar_storage {
-    ($encoded:expr, $variant:ident, $expected:expr) => {
+    ($encoded:expr, $ty:ty, $expected:expr) => {
         let Stash::Storage(storage) = &$encoded else {
             panic!("expected storage")
         };
-        let StashData::$variant(items) = storage.data() else {
-            panic!("expected {} storage", stringify!($variant))
+        let StashData::Owned(items, _) = storage.data() else {
+            panic!("expected owned storage")
         };
+        let items = items
+            .downcast_ref::<Vec<$ty>>()
+            .expect("expected owned storage of the requested element type");
         assert_eq!(items.as_slice(), $expected);
     };
 }
@@ -1084,7 +1087,7 @@ fn encode_length_bounded_scalar_arrays_append_no_terminator() {
             fixed_array_type(Codec::Integer(IntegerCodec::I32), 1, Ownership::Borrowed),
         ] {
             let encoded = encode_scalar_storage(env, &descriptor, &[number(7.0)]);
-            assert_scalar_storage!(encoded, I32Vec, &[7i32]);
+            assert_scalar_storage!(encoded, i32, &[7i32]);
         }
     });
 }

@@ -2,9 +2,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 
-type Request = z.infer<typeof RequestSchema>;
-type Response = z.infer<typeof ResponseSchema>;
-
 type SerializedWidget = {
     id: string;
     type: string;
@@ -37,39 +34,6 @@ type ServerRequestParams<Method extends keyof typeof ServerRequestParamsSchemas>
 
 type ParamsSchema<Output> = z.ZodType<Output>;
 type ServerInitiatedMethod = keyof typeof ServerRequestParamsSchemas;
-type Message = Request | Response;
-
-const RequestSchema: z.ZodObject<
-    {
-        id: z.ZodString;
-        method: z.ZodString;
-        params: z.ZodOptional<z.ZodUnknown>;
-    }
-> = z.object({
-    id: z.string(),
-    method: z.string(),
-    params: z.unknown().optional(),
-});
-
-const ErrorSchema: z.ZodObject<
-    { code: z.ZodNumber; message: z.ZodString; data: z.ZodOptional<z.ZodUnknown> }
-> = z.object({
-    code: z.number(),
-    message: z.string(),
-    data: z.unknown().optional(),
-});
-
-const ResponseSchema: z.ZodObject<
-    {
-        id: z.ZodString;
-        result: z.ZodOptional<z.ZodUnknown>;
-        error: z.ZodOptional<typeof ErrorSchema>;
-    }
-> = z.object({
-    id: z.string(),
-    result: z.unknown().optional(),
-    error: ErrorSchema.optional(),
-});
 
 const RegisterParamsSchema: z.ZodObject<
     {
@@ -175,8 +139,6 @@ function getRuntimeDir(): string {
 export {
     DEFAULT_SUBTREE_DEPTH,
     MAX_SUBTREE_WIDGETS,
-    RequestSchema,
-    ResponseSchema,
     RegisterParamsSchema,
     widgetIdParams,
     widgetPropsParams,
@@ -187,13 +149,10 @@ export {
     screenshotParams,
     ServerRequestParamsSchemas,
     DEFAULT_SOCKET_PATH,
-    type Request,
-    type Response,
     type SerializedWidget,
     type SerializedProperty,
     type AppInfo,
     type ServerRequestParams,
     type ParamsSchema,
     type ServerInitiatedMethod,
-    type Message,
 };

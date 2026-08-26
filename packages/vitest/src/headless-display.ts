@@ -41,7 +41,6 @@ type WaitForSocketOptions = {
     label: string;
     timeout?: number;
     child?: ChildProcess;
-    signal?: AbortSignal;
 };
 
 type StderrCapture = {
@@ -287,26 +286,8 @@ const pollForPath = (path: string, onFound: () => void): NodeJS.Timeout =>
 const stderrSuffix = (child: ChildProcess | undefined, stderr: StderrCapture): string =>
     child ? `\n${stderr.read()}` : "";
 
-const hasAlreadyAborted = (signal: AbortSignal | undefined, onAbort: () => void, cleanups: (() => void)[]): boolean => {
-    if (signal === undefined) {
-        return false;
-    }
-
-    if (signal.aborted) {
-        return true;
-    }
-
-    signal.addEventListener("abort", onAbort);
-
-    cleanups.push(() => {
-        signal.removeEventListener("abort", onAbort);
-    });
-
-    return false;
-};
-
 const watchForSocket = ({ path, options, resolve, reject }: SocketWatch): void => {
-    const { label, timeout = 15_000, child, signal } = options;
+    const { label, timeout = 15_000, child } = options;
     const stderr = captureStderr(child);
     const cleanups: (() => void)[] = [stderr.stop];
 
@@ -327,10 +308,6 @@ const watchForSocket = ({ path, options, resolve, reject }: SocketWatch): void =
         fail(`${label} failed to spawn: ${cause.message}\n${stderr.read()}`);
     };
 
-    const onAbort = (): void => {
-        fail(`${label} startup aborted before ${path} appeared`);
-    };
-
     const poll = pollForPath(path, () => {
         stop();
         resolve();
@@ -347,10 +324,6 @@ const watchForSocket = ({ path, options, resolve, reject }: SocketWatch): void =
 
     if (child) {
         cleanups.push(trackChild(child, { exit: onExit, error: onError }));
-    }
-
-    if (hasAlreadyAborted(signal, onAbort, cleanups)) {
-        onAbort();
     }
 };
 
@@ -397,20 +370,8 @@ const watchCompositorExit = (child: ChildProcess, capturedStderr: string[]): (()
 
 const waitForDisplaySockets = async (sockets: DisplaySockets): Promise<void> => {
     const { compositor, compositorSocketPath, busChild, busSocketPath } = sockets;
-    const abort = new AbortController();
-
-    try {
-        await Promise.all([
-            waitForSocket(compositorSocketPath, {
-                label: "Compositor",
-                child: compositor.child,
-                signal: abort.signal,
-            }),
-            waitForSocket(busSocketPath, { label: "D-Bus session bus", child: busChild, signal: abort.signal }),
-        ]);
-    } finally {
-        abort.abort();
-    }
+    await waitForSocket(busSocketPath, { label: "D-Bus session bus", child: busChild });
+    await waitForSocket(compositorSocketPath, { label: "Compositor", child: compositor.child });
 };
 
 const killSpawned = (children: ChildProcess[]): void => {
@@ -458,6 +419,7 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
         applyEnv(env, { DBUS_SESSION_BUS_ADDRESS: `unix:path=${busSocketPath}` });
         const compositor = startCompositor(runtimeDir, options, env);
         compositor.child.unref();
+        compositor.child.on("error", (): void => undefined);
         spawned.push(compositor.child);
         applyEnv(env, { WAYLAND_DISPLAY: compositor.socket });
         const compositorSocketPath = join(runtimeDir, compositor.socket);

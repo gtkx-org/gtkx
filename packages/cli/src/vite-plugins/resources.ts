@@ -1,5 +1,5 @@
 import type { ConfigLoader } from "@gtkx/config";
-import type { ModuleNode, ParserOptions, Plugin, ResolvedConfig, Rolldown, UserConfig, ViteDevServer } from "vite";
+import type { ModuleNode, Plugin, ResolvedConfig, Rolldown, UserConfig, ViteDevServer } from "vite";
 import { createConfigLoader, resourceBasePath } from "@gtkx/config/internal";
 import { error, info, isRecord, sortStrings } from "@gtkx/utils";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -8,7 +8,7 @@ import { parseSync } from "vite";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
-import { parseRuntimeImportsIn, type SourceImport } from "../internal/source-imports.js";
+import { parseRuntimeImportsIn, type SourceImport, sourceLanguage } from "../internal/source-imports.js";
 import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_RE } from "./asset-extensions.js";
 import {
@@ -46,7 +46,6 @@ type PluginState = {
     isBuild: boolean;
     isV2: boolean;
     entries: Map<string, ResourceEntry>;
-    entryImporters: Map<string, Set<string>>;
     bundledSpecifiers: Map<string, Set<string>>;
     moduleDependencies: Map<string, Set<string>>;
     prunedDependencies: Map<string, Set<string>>;
@@ -62,7 +61,6 @@ type PluginState = {
     dataDir: string | null;
     bundleReferenceId: string | null;
     iconOwners: Map<string, ResourceEntry>;
-    iconImporters: Map<string, Set<string>>;
 };
 
 type ResolveContext = {
@@ -103,7 +101,6 @@ type RetainedIconModuleId = {
 };
 
 type ResourceModuleId = string | RetainedIconModuleId;
-type SourceLanguage = NonNullable<ParserOptions["lang"]>;
 
 type ImporterReconciliation = {
     currentBundled: Set<string>;
@@ -166,17 +163,6 @@ const STOCK_ICON_CONTEXTS: Set<string> = new Set([
 
 const ICON_SIZE_RE = /^([1-9]\d*)x\1(?:@[1-9]\d*)?$/;
 const RESERVED_ICON_NAMES: Set<string> = new Set(["", ".", ".."]);
-
-const SOURCE_LANGUAGES: Map<string, SourceLanguage> = new Map([
-    [".cjs", "jsx"],
-    [".cts", "ts"],
-    [".js", "jsx"],
-    [".jsx", "jsx"],
-    [".mjs", "jsx"],
-    [".mts", "ts"],
-    [".ts", "ts"],
-    [".tsx", "tsx"],
-]);
 
 const toForwardSlashes = (value: string): string => value.replaceAll(/[/\\]/g, "/");
 
@@ -331,7 +317,7 @@ const derivedIconEntry = (
 };
 
 const hasSideEffectIconImport = (code: string, id: string): boolean => {
-    const lang = SOURCE_LANGUAGES.get(extname(stripQuery(id)).toLowerCase());
+    const lang = sourceLanguage(stripQuery(id));
 
     if (lang === undefined || !code.includes("?icon")) {
         return false;
@@ -466,16 +452,6 @@ const registerDevAsset = (state: PluginState): void => {
 
 const importerKey = (importer: string): string => stripQuery(importer);
 
-const claimEntry = (state: PluginState, resourcePath: string, importer: string | undefined): void => {
-    if (importer === undefined) {
-        return;
-    }
-
-    const importers = state.entryImporters.get(resourcePath) ?? new Set<string>();
-    importers.add(importerKey(importer));
-    state.entryImporters.set(resourcePath, importers);
-};
-
 const trackBundledSpecifier = (state: PluginState, importer: string | undefined, source: string): void => {
     if (importer === undefined) {
         return;
@@ -487,23 +463,13 @@ const trackBundledSpecifier = (state: PluginState, importer: string | undefined,
     state.bundledSpecifiers.set(key, specifiers);
 };
 
-const claimIcon = (state: PluginState, iconIdentity: string, importer: string | undefined): void => {
-    if (importer === undefined) {
-        return;
-    }
-
-    const importers = state.iconImporters.get(iconIdentity) ?? new Set<string>();
-    importers.add(importerKey(importer));
-    state.iconImporters.set(iconIdentity, importers);
-};
-
 const createResourceEntry = (sourcePath: string, resourcePath: string): ResourceEntry => ({
     sourcePath,
     stagedRelPath: resourcePath.replace(/^\/+/, ""),
     resourcePath,
 });
 
-const activateEntry = (state: PluginState, entry: ResourceEntry, importer?: string): ResourceEntry => {
+const activateEntry = (state: PluginState, entry: ResourceEntry): ResourceEntry => {
     const existing = state.entries.get(entry.resourcePath);
 
     if (existing !== undefined) {
@@ -514,14 +480,11 @@ const activateEntry = (state: PluginState, entry: ResourceEntry, importer?: stri
             );
         }
 
-        claimEntry(state, entry.resourcePath, importer);
-
         return existing;
     }
 
     state.entries.set(entry.resourcePath, entry);
     state.sourcePaths.add(entry.sourcePath);
-    claimEntry(state, entry.resourcePath, importer);
 
     return entry;
 };
@@ -611,16 +574,6 @@ const declareResolvedIcon = (
     }
 };
 
-const activateIcon = (
-    state: PluginState,
-    importer: string | undefined,
-    iconIdentity: string,
-    entry: ResourceEntry,
-): void => {
-    state.iconOwners.set(iconIdentity, entry);
-    claimIcon(state, iconIdentity, importer);
-};
-
 const registerEntry = (
     state: PluginState,
     absPath: string,
@@ -638,7 +591,7 @@ const registerEntry = (
         }
     }
 
-    return activateEntry(state, entry, importer);
+    return activateEntry(state, entry);
 };
 
 const registerIconEntry = (
@@ -658,7 +611,7 @@ const registerIconEntry = (
     declareResolvedIcon(state, importer, derived.iconIdentity, entry);
 
     if (shouldActivate) {
-        activateIcon(state, importer, derived.iconIdentity, entry);
+        state.iconOwners.set(derived.iconIdentity, entry);
     }
 
     return entry;
@@ -941,9 +894,7 @@ const bundledSpecifiersIn = (imports: SourceImport[]): Set<string> =>
             .map((entry) => entry.source),
     );
 
-const isSourceModule = (file: string): boolean =>
-    !file.endsWith(".d.ts") && !file.endsWith(".d.cts") && !file.endsWith(".d.mts") &&
-    SOURCE_LANGUAGES.has(extname(file).toLowerCase());
+const isSourceModule = (file: string): boolean => sourceLanguage(file) !== undefined;
 
 const isBundledSource = (source: string): boolean =>
     parseResourceSpecifier(source) !== null || parseIconSpecifier(source) !== null;
@@ -1153,7 +1104,6 @@ const isImporterActive = (state: PluginState, importer: string): boolean =>
 
 const activateDeclaredIcon = (
     state: PluginState,
-    importer: string,
     iconIdentity: string,
     entry: ResourceEntry,
 ): void => {
@@ -1165,9 +1115,7 @@ const activateDeclaredIcon = (
         );
     }
 
-    const activeEntry = activateEntry(state, entry, importer);
-    state.iconOwners.set(iconIdentity, activeEntry);
-    claimIcon(state, iconIdentity, importer);
+    state.iconOwners.set(iconIdentity, activateEntry(state, entry));
 };
 
 const activateDeclaredEntries = (state: PluginState, importer: string): void => {
@@ -1175,7 +1123,7 @@ const activateDeclaredEntries = (state: PluginState, importer: string): void => 
 
     for (const entry of entries) {
         if (isDeclaredSourceAvailable(state, entry.sourcePath)) {
-            activateEntry(state, entry, importer);
+            activateEntry(state, entry);
         }
     }
 };
@@ -1185,7 +1133,7 @@ const activateDeclaredIcons = (state: PluginState, importer: string): void => {
 
     for (const [iconIdentity, entry] of icons) {
         if (isDeclaredSourceAvailable(state, entry.sourcePath)) {
-            activateDeclaredIcon(state, importer, iconIdentity, entry);
+            activateDeclaredIcon(state, iconIdentity, entry);
         }
     }
 };
@@ -1200,15 +1148,11 @@ const activateDeclaredClaims = (state: PluginState, active: Set<string>): void =
 const rebuildActiveClaims = (state: PluginState): void => {
     const previous = {
         entries: state.entries,
-        entryImporters: state.entryImporters,
-        iconImporters: state.iconImporters,
         iconOwners: state.iconOwners,
         sourcePaths: state.sourcePaths,
     };
 
     state.entries = new Map();
-    state.entryImporters = new Map();
-    state.iconImporters = new Map();
     state.iconOwners = new Map();
     state.sourcePaths = new Set();
 
@@ -1216,8 +1160,6 @@ const rebuildActiveClaims = (state: PluginState): void => {
         activateDeclaredClaims(state, activeImporterKeys(state));
     } catch (error_) {
         state.entries = previous.entries;
-        state.entryImporters = previous.entryImporters;
-        state.iconImporters = previous.iconImporters;
         state.iconOwners = previous.iconOwners;
         state.sourcePaths = previous.sourcePaths;
         throw error_;
@@ -1381,7 +1323,6 @@ const prepareReconciliation = async (
 
 const commitReconciliation = (state: PluginState, candidate: PluginState): void => {
     state.entries = candidate.entries;
-    state.entryImporters = candidate.entryImporters;
     state.bundledSpecifiers = candidate.bundledSpecifiers;
     state.moduleDependencies = candidate.moduleDependencies;
     state.prunedDependencies = candidate.prunedDependencies;
@@ -1390,7 +1331,6 @@ const commitReconciliation = (state: PluginState, candidate: PluginState): void 
     state.missingSourcePaths = candidate.missingSourcePaths;
     state.sourcePaths = candidate.sourcePaths;
     state.iconOwners = candidate.iconOwners;
-    state.iconImporters = candidate.iconImporters;
 };
 
 const reconcileV2Importer = async (ctx: ResolveContext, state: PluginState, id: string): Promise<void> => {
@@ -1691,7 +1631,6 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader(), entryPat
         isBuild: false,
         isV2: false,
         entries: new Map(),
-        entryImporters: new Map(),
         bundledSpecifiers: new Map(),
         moduleDependencies: new Map(),
         prunedDependencies: new Map(),
@@ -1707,7 +1646,6 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader(), entryPat
         dataDir: null,
         bundleReferenceId: null,
         iconOwners: new Map(),
-        iconImporters: new Map(),
     };
 
     return createResourcesPlugin(state, loadConfig);
