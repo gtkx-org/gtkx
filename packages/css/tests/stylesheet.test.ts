@@ -90,6 +90,22 @@ const KEPT: KeptCase[] = [
         },
     },
     {
+        kind: "a comment carrying a quote and a newline",
+        className: "gtkx-kept-commented",
+        width: 227,
+        write: () => {
+            injectGlobal(".gtkx-kept-commented{/* it's fine\n */min-width:227px;}");
+        },
+    },
+    {
+        kind: "a preserved comment carrying a quote and a newline",
+        className: "gtkx-kept-bang",
+        width: 228,
+        write: () => {
+            injectGlobal(".gtkx-kept-bang{/*! it's fine\n */min-width:228px;}");
+        },
+    },
+    {
         kind: "a selector list",
         className: "gtkx-kept-listed",
         width: 223,
