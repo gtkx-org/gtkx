@@ -5,8 +5,10 @@ import { normalizeError } from "@gtkx/utils";
 import { Protocol } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { ReadBuffer, serializeMessage } from "@modelcontextprotocol/sdk/shared/stdio.js";
 import {
+    ErrorCode,
     type JSONRPCMessage,
     type JSONRPCRequest,
+    McpError,
     type Notification,
     type Request,
     type Result,
@@ -81,9 +83,11 @@ class SocketTransport implements Transport {
     }
 
     send(message: JSONRPCMessage): Promise<void> {
-        if (this.socket.writable) {
-            this.socket.write(serializeMessage(message));
+        if (!this.socket.writable) {
+            return Promise.reject(new McpError(ErrorCode.ConnectionClosed, "Connection stream is not writable"));
         }
+
+        this.socket.write(serializeMessage(message));
 
         return Promise.resolve();
     }

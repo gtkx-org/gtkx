@@ -1,4 +1,4 @@
-import type { McpError } from "@modelcontextprotocol/sdk/types.js";
+import { McpError, ErrorCode as SdkErrorCode } from "@modelcontextprotocol/sdk/types.js";
 
 type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
@@ -13,6 +13,9 @@ const ErrorCode = {
     METHOD_NOT_FOUND: 1007,
     PROPERTY_NOT_FOUND: 1008,
 } as const;
+
+const CONNECTION_CLOSED_CODE: number = SdkErrorCode.ConnectionClosed;
+const REQUEST_TIMEOUT_CODE: number = SdkErrorCode.RequestTimeout;
 
 function isErrorCode(code: number): code is ErrorCode {
     return (Object.values(ErrorCode) as number[]).includes(code);
@@ -66,6 +69,10 @@ function methodNotFoundError(method: string): ProtocolError {
     return new ProtocolError(ErrorCode.METHOD_NOT_FOUND, `Method '${method}' not found`, { method });
 }
 
+function isConnectionClosedError(value: unknown): boolean {
+    return value instanceof McpError && value.code === CONNECTION_CLOSED_CODE;
+}
+
 function protocolErrorFrom(error: McpError): ProtocolError {
     const prefix = `MCP error ${String(error.code)}: `;
     const message = error.message.startsWith(prefix) ? error.message.slice(prefix.length) : error.message;
@@ -86,6 +93,9 @@ class ProtocolError extends Error {
 }
 
 export {
+    CONNECTION_CLOSED_CODE,
+    isConnectionClosedError,
+    REQUEST_TIMEOUT_CODE,
     noAppConnectedError,
     appNotFoundError,
     connectionWriteFailedError,

@@ -1,6 +1,12 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { DEFAULT_SOCKET_PATH, type JSONRPCRequest, ProtocolConnection, type Result } from "@gtkx/mcp/internal";
+import {
+    DEFAULT_SOCKET_PATH,
+    isConnectionClosedError,
+    type JSONRPCRequest,
+    ProtocolConnection,
+    type Result,
+} from "@gtkx/mcp/internal";
 import { error, errorMessage, info, normalizeError } from "@gtkx/utils";
 import * as net from "node:net";
 import { dispatch } from "./handlers.js";
@@ -77,7 +83,7 @@ class McpClient {
     private handleSocketError(socketError: Error): void {
         const code = (socketError as NodeJS.ErrnoException).code;
 
-        if (code !== undefined && DISCONNECT_ERROR_CODES.has(code)) {
+        if (isConnectionClosedError(socketError) || (code !== undefined && DISCONNECT_ERROR_CODES.has(code))) {
             this.scheduleReconnect();
         } else {
             error("Socket error:", socketError.message);

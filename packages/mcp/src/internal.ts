@@ -1,5 +1,6 @@
 export {
     invalidRequestError,
+    isConnectionClosedError,
     methodNotFoundError,
     propertyNotFoundError,
     widgetNotFoundError,

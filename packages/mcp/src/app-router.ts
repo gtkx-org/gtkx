@@ -1,13 +1,15 @@
-import { ErrorCode, type JSONRPCRequest, McpError, type Result } from "@modelcontextprotocol/sdk/types.js";
+import { type JSONRPCRequest, McpError, type Result } from "@modelcontextprotocol/sdk/types.js";
 import type { AppConnections, ConnectionEvent, ProtocolConnection, RequestParams } from "./transport.js";
 import {
     appNotFoundError,
+    CONNECTION_CLOSED_CODE,
     connectionWriteFailedError,
     invalidRequestError,
     methodNotFoundError,
     noAppConnectedError,
     type ProtocolError,
     protocolErrorFrom,
+    REQUEST_TIMEOUT_CODE,
     requestTimeoutError,
 } from "./protocol/errors.js";
 import { type AppInfo, RegisterParamsSchema } from "./protocol/schemas.js";
@@ -21,8 +23,6 @@ type RegisteredApp = {
 };
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
-const CONNECTION_CLOSED_CODE: number = ErrorCode.ConnectionClosed;
-const REQUEST_TIMEOUT_CODE: number = ErrorCode.RequestTimeout;
 
 function appRegisteredEvent(info: AppInfo): AppRegisteredEvent {
     return new CustomEvent("appRegistered", { detail: info });
