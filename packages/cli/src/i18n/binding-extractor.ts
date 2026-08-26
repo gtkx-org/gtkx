@@ -1966,4 +1966,4 @@ class BindingAnalyzer {
     }
 }
 
-export { type BindingExtraction, type ExtractedMessage, type ScopeInfo, extractBindings, spanKey };
+export { type BindingExtraction, type ScopeInfo, extractBindings };

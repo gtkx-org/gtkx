@@ -152,7 +152,7 @@ out of the `dist/` it packages, so a tree built by an older `gtkx build` has to 
 
 ## Tools you need installed
 
-`desktop-file-validate` and `appstreamcli` are always required, because they are what catch a metadata mistake before it reaches a software center. Projects with a `po/` directory also need GNU gettext: `xgettext` extracts the catalog template and `msgfmt` compiles catalogs and merges translations into generated metadata. `tar` is required whenever packages are actually built, since the bundled Node.js is extracted from its release archive. Beyond that it depends on the target:
+`desktop-file-validate` and `appstreamcli` are always required, because they are what catch a metadata mistake before it reaches a software center. Projects with a `po/` directory also need GNU gettext: deploy uses `xgettext` to extract the catalog template and `msgfmt` to compile catalogs and merge translations into generated metadata. Normal codegen and builds also use `msggrep` when retaining previously generated metadata messages in that template. `tar` is required whenever packages are actually built, since the bundled Node.js is extracted from its release archive. Beyond that it depends on the target:
 
 | Target | Needs | Fetched automatically |
 | --- | --- | --- |

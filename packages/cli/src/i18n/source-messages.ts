@@ -584,4 +584,4 @@ const extractSourceCatalog = async (
     return { messages, sourceFiles };
 };
 
-export { type SourceCatalog, type SourceMessage, extractSourceCatalog };
+export { type SourceMessage, extractSourceCatalog };

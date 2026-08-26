@@ -62,12 +62,6 @@ const MSGFMT: DeployTool = {
     isOptional: false,
 };
 
-const MSGGREP: DeployTool = {
-    command: "msggrep",
-    purpose: "preserves the generated metadata in the catalog template",
-    isOptional: false,
-};
-
 const XGETTEXT: DeployTool = {
     command: "xgettext",
     purpose: "extracts the gettext catalog template",
@@ -168,7 +162,6 @@ export {
     FLATPAK,
     FLATPAK_BUILDER,
     MSGFMT,
-    MSGGREP,
     probeTools,
     STRIP,
     TAR,

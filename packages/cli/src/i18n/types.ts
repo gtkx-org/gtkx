@@ -151,4 +151,4 @@ const emitI18nTypes = (root: string, messages: SourceMessage[], isEnabled = true
     return { isWritten: true, path };
 };
 
-export { I18N_TYPES_FILENAME, emitI18nTypes, i18nTypesPath, renderI18nTypes };
+export { I18N_TYPES_FILENAME, emitI18nTypes, i18nTypesPath };

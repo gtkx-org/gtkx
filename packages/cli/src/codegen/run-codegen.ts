@@ -25,6 +25,7 @@ type RunCodegenOptions = {
     isForced?: boolean;
     inputs?: CodegenInputs;
     resolved?: LoadedConfig;
+    shouldPreserveI18nMetadata?: boolean | undefined;
 };
 
 type LoadedConfig = {
@@ -56,13 +57,19 @@ type CodegenOptionsInput = {
 };
 
 type PreparedCodegen = CodegenInputs & { isForced: boolean };
-type EnsureGeneratedOptions = { shouldAnnounce?: boolean; mode?: string };
+
+type EnsureGeneratedOptions = {
+    shouldAnnounce?: boolean;
+    mode?: string;
+    shouldPreserveI18nMetadata?: boolean | undefined;
+};
 
 type RunOptionsInput = {
     root: string;
     mode: string | undefined;
     inputs: CodegenInputs | null;
     resolved: LoadedConfig;
+    shouldPreserveI18nMetadata: boolean | undefined;
 };
 
 const GIR_PATH_MISSING_MESSAGE =
@@ -160,7 +167,7 @@ const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config)
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
     const { config, configFile } = await resolveLoadedConfig(options, cwd);
-    await syncI18n(cwd, config.applicationId);
+    await syncI18n(cwd, config.applicationId, options.shouldPreserveI18nMetadata);
     syncSchemaEnv(cwd, config.future?.v2ResourceImports === true);
 
     if (config.codegen === false) {
@@ -204,7 +211,11 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     };
 };
 
-const syncI18n = async (root: string, applicationId: string): Promise<void> => {
+const syncI18n = async (
+    root: string,
+    applicationId: string,
+    shouldPreserveMetadataMessages = true,
+): Promise<void> => {
     const project = resolveCatalogProject(root, applicationId);
 
     if (project === null) {
@@ -215,7 +226,7 @@ const syncI18n = async (root: string, applicationId: string): Promise<void> => {
 
     const srcDir = join(root, "src");
     const sourceFiles = discoverSourceFiles(existsSync(srcDir) ? srcDir : root);
-    const catalog = await extractSourceCatalog(project, sourceFiles);
+    const catalog = await extractSourceCatalog(project, sourceFiles, shouldPreserveMetadataMessages);
     emitI18nTypes(root, catalog.messages);
 };
 
@@ -252,12 +263,18 @@ const maybeAnnounceStale = (shouldAnnounce: boolean | undefined, inputs: Codegen
     }
 };
 
-const getRunOptions = ({ root, mode, inputs, resolved }: RunOptionsInput): RunCodegenOptions => {
+const getRunOptions = ({
+    root,
+    mode,
+    inputs,
+    resolved,
+    shouldPreserveI18nMetadata,
+}: RunOptionsInput): RunCodegenOptions => {
     if (inputs === null) {
-        return { cwd: root, mode, resolved };
+        return { cwd: root, mode, resolved, shouldPreserveI18nMetadata };
     }
 
-    return { cwd: root, mode, inputs, resolved };
+    return { cwd: root, mode, inputs, resolved, shouldPreserveI18nMetadata };
 };
 
 const isPreflightSkipped = (options: EnsureGeneratedOptions): boolean =>
@@ -270,6 +287,7 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
             cwd: context.root,
             mode: options.mode,
             resolved: { config: context.config, configFile: context.configFile },
+            shouldPreserveI18nMetadata: options.shouldPreserveI18nMetadata,
         });
 
         return result.isRegenerated;
@@ -278,7 +296,14 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
     const inputs = resolveInputsOrNull(context.root, context.config);
     maybeAnnounceStale(options.shouldAnnounce, inputs);
     const resolved = { config: context.config, configFile: context.configFile };
-    const result = await runCodegen(getRunOptions({ root: context.root, mode: options.mode, inputs, resolved }));
+
+    const result = await runCodegen(getRunOptions({
+        root: context.root,
+        mode: options.mode,
+        inputs,
+        resolved,
+        shouldPreserveI18nMetadata: options.shouldPreserveI18nMetadata,
+    }));
 
     return result.isRegenerated;
 };

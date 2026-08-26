@@ -35,7 +35,6 @@ import {
     FLATPAK_NODE_GENERATOR,
     FLATPAK_NODE_GENERATOR_PNPM,
     MSGFMT,
-    MSGGREP,
     probeTools,
     STRIP,
     TAR,
@@ -218,7 +217,7 @@ const catalogTools = (project: CatalogProject | null, shouldSkipBuild: boolean):
 
     return [
         ...(project.catalogs.length === 0 ? [] : [MSGFMT]),
-        ...(shouldSkipBuild ? [] : [MSGGREP, XGETTEXT]),
+        ...(shouldSkipBuild ? [] : [XGETTEXT]),
     ];
 };
 
@@ -358,7 +357,11 @@ const announce = (settings: DeploySettings, targets: DeployTarget[]): void => {
 
 const runDeploy = async (options: DeployOptions): Promise<void> => {
     if (!options.shouldSkipBuild) {
-        await ensureGenerated(options.cwd, { shouldAnnounce: true, mode: BUILD_MODE });
+        await ensureGenerated(options.cwd, {
+            shouldAnnounce: true,
+            mode: BUILD_MODE,
+            shouldPreserveI18nMetadata: false,
+        });
     }
 
     const settings = await loadSettings(options);

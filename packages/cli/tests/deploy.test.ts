@@ -117,6 +117,7 @@ const DEFAULT_FINISH_ARGS = ["--share=ipc", "--socket=wayland", "--socket=fallba
 const DEFAULT_CLEANUP = ["/include", "/share/pkgconfig", "*.la", "*.a"];
 const MERGED_NEGATIONS = ["--share=ipc", "--device=dri", "--nosocket=wayland", "--nosocket=fallback-x11"];
 const HELPER_SCRIPT = "#!/bin/sh\necho probe\n";
+const FAIL_IF_RUN_SCRIPT = "#!/bin/sh\nexit 1\n";
 const NOTES = "Probe notes.\n";
 
 const PACKAGE_INTEGRITY = "sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9" +
@@ -358,7 +359,12 @@ const NOTICES_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${RUNTIME_NODE}    },\n`
 const poCatalog = (language: string, translations: [string, string][]): string => [
     'msgid ""',
     'msgstr ""',
+    String.raw`"Project-Id-Version: GTKX test catalog\n"`,
+    String.raw`"PO-Revision-Date: 1970-01-01 00:00+0000\n"`,
+    String.raw`"Last-Translator: GTKX Test\n"`,
+    String.raw`"Language-Team: ${language}\n"`,
     String.raw`"Language: ${language}\n"`,
+    String.raw`"MIME-Version: 1.0\n"`,
     String.raw`"Content-Type: text/plain; charset=UTF-8\n"`,
     String.raw`"Content-Transfer-Encoding: 8bit\n"`,
     "",
@@ -487,15 +493,23 @@ const expectPlainBuildPreservesMetadata = (project: CliProject): void => {
 
 const expectRedeployDropsRemovedMetadata = (project: CliProject): void => {
     const configPath = join(project.root, "gtkx.config.ts");
+    const shim = mkdtempSync(join(tmpdir(), "gtkx-cli-deploy-gettext-"));
+    const msggrep = join(shim, "msggrep");
+    writeFileSync(msggrep, FAIL_IF_RUN_SCRIPT);
+    chmodSync(msggrep, 0o755);
     writeFileSync(configPath, config(DEPLOY_BLOCK));
 
     try {
-        expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).toBe(0);
+        expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"], {
+            PATH: `${shim}:${process.env.PATH ?? ""}`,
+        }).status).toBe(0);
+
         const template = readFileSync(join(project.root, "po", `${APPLICATION_ID}.pot`), "utf8");
         expect(template).toContain('msgid "Deploy Probe"');
         expect(template).not.toContain(MIME_DESCRIPTION);
     } finally {
         writeFileSync(configPath, config(LOCALIZED_DEPLOY_BLOCK));
+        rmSync(shim, { recursive: true, force: true });
     }
 };
 

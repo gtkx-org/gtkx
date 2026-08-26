@@ -1065,7 +1065,6 @@ type GeneratedInit = {
 type Init = IsRegistryEmpty extends true ? I18n["init"] : GeneratedInit;
 
 export type {
-    ConfiguredI18n,
     GetI18n,
     IcuTransComponent,
     IcuTransWithoutContextComponent,

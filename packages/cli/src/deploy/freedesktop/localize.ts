@@ -132,7 +132,6 @@ const extractMetadataMessages = (
                 "--force-po",
                 "--from-code=UTF-8",
                 `--output=${potPath}`,
-                ...templates.map((template) => `--generated=${template.relativePath}`),
                 ...templates.map((template) => template.relativePath),
             ],
             target: potPath,
