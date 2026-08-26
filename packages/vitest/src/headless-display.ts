@@ -37,27 +37,26 @@ type SpawnedCompositor = {
     requiresVirtualSeat: boolean;
 };
 
-type WaitForSocketOptions = {
-    label: string;
-    timeout?: number;
-    child?: ChildProcess;
-};
+type ChildFailure = (path: string) => string;
 
-type StderrCapture = {
+type ChildMonitor = {
+    label: string;
     read: () => string;
+    failure: () => ChildFailure | undefined;
+    subscribe: (notify: (failure: ChildFailure) => void) => () => void;
     stop: () => void;
 };
 
-type ChildHandlers = {
-    exit: (code: number | null, signal: NodeJS.Signals | null) => void;
-    error: (cause: Error) => void;
+type WaitForSocketOptions = {
+    monitor: ChildMonitor;
+    timeout?: number;
 };
 
 type DisplaySockets = {
-    compositor: SpawnedCompositor;
     compositorSocketPath: string;
-    busChild: ChildProcess;
+    compositorMonitor: ChildMonitor;
     busSocketPath: string;
+    busMonitor: ChildMonitor;
 };
 
 type SocketWatch = {
@@ -233,19 +232,51 @@ const writeBusConfig = (busConfigPath: string, busSocketPath: string): void => {
     );
 };
 
-const captureStderr = (child: ChildProcess | undefined): StderrCapture => {
-    const stderr = child?.stderr ?? null;
-    let log = "";
-    stderr?.setEncoding("utf8");
+const exitedMessage = (label: string, path: string, code: number | null, signal: NodeJS.Signals | null): string =>
+    `${label} exited (code ${String(code)}, signal ${signal ?? "null"}) before ${path} appeared`;
 
-    stderr?.on("data", (chunk: string) => {
+const monitorChild = (child: ChildProcess, label: string): ChildMonitor => {
+    const stderr = child.stderr;
+    const subscribers: Set<(failure: ChildFailure) => void> = new Set();
+    let log = "";
+    let failure: ChildFailure | undefined;
+
+    const onData = (chunk: string): void => {
         log += chunk;
+    };
+
+    stderr?.setEncoding("utf8");
+    stderr?.on("data", onData);
+
+    const record = (cause: ChildFailure): void => {
+        failure ??= cause;
+
+        for (const notify of subscribers) {
+            notify(cause);
+        }
+    };
+
+    child.on("close", (code: number | null, signal: NodeJS.Signals | null) => {
+        record((path) => `${exitedMessage(label, path, code, signal)}\n${log}`);
+    });
+
+    child.on("error", (cause: Error) => {
+        record((path) => `${label} failed to spawn before ${path} appeared: ${cause.message}\n${log}`);
     });
 
     return {
+        label,
         read: () => log,
+        failure: () => failure,
+        subscribe: (notify) => {
+            subscribers.add(notify);
+
+            return (): void => {
+                subscribers.delete(notify);
+            };
+        },
         stop: () => {
-            stderr?.removeAllListeners("data");
+            stderr?.removeListener("data", onData);
             stderr?.resume();
 
             if (stderr instanceof Socket) {
@@ -254,19 +285,6 @@ const captureStderr = (child: ChildProcess | undefined): StderrCapture => {
         },
     };
 };
-
-const trackChild = (child: ChildProcess, handlers: ChildHandlers): (() => void) => {
-    child.on("close", handlers.exit);
-    child.on("error", handlers.error);
-
-    return () => {
-        child.removeListener("close", handlers.exit);
-        child.removeListener("error", handlers.error);
-    };
-};
-
-const exitedMessage = (label: string, path: string, code: number | null, signal: NodeJS.Signals | null): string =>
-    `${label} exited (code ${String(code)}, signal ${signal ?? "null"}) before ${path} appeared`;
 
 const runCleanups = (cleanups: (() => void)[]): void => {
     for (const cleanup of cleanups) {
@@ -283,13 +301,9 @@ const pollForPath = (path: string, onFound: () => void): NodeJS.Timeout =>
         }
     }, 50);
 
-const stderrSuffix = (child: ChildProcess | undefined, stderr: StderrCapture): string =>
-    child ? `\n${stderr.read()}` : "";
-
 const watchForSocket = ({ path, options, resolve, reject }: SocketWatch): void => {
-    const { label, timeout = 15_000, child } = options;
-    const stderr = captureStderr(child);
-    const cleanups: (() => void)[] = [stderr.stop];
+    const { monitor, timeout = 15_000 } = options;
+    const cleanups: (() => void)[] = [monitor.stop];
 
     const stop = (): void => {
         runCleanups(cleanups);
@@ -300,13 +314,13 @@ const watchForSocket = ({ path, options, resolve, reject }: SocketWatch): void =
         reject(new Error(message));
     };
 
-    const onExit = (code: number | null, terminationSignal: NodeJS.Signals | null): void => {
-        fail(`${exitedMessage(label, path, code, terminationSignal)}\n${stderr.read()}`);
-    };
+    const alreadyFailed = monitor.failure();
 
-    const onError = (cause: Error): void => {
-        fail(`${label} failed to spawn: ${cause.message}\n${stderr.read()}`);
-    };
+    if (alreadyFailed !== undefined) {
+        fail(alreadyFailed(path));
+
+        return;
+    }
 
     const poll = pollForPath(path, () => {
         stop();
@@ -314,17 +328,18 @@ const watchForSocket = ({ path, options, resolve, reject }: SocketWatch): void =
     });
 
     const timer = setTimeout(() => {
-        fail(`${label} did not become available within ${String(timeout)}ms${stderrSuffix(child, stderr)}`);
+        fail(`${monitor.label} did not become available within ${String(timeout)}ms\n${monitor.read()}`);
     }, timeout);
 
-    cleanups.push(() => {
-        clearInterval(poll);
-        clearTimeout(timer);
-    });
-
-    if (child) {
-        cleanups.push(trackChild(child, { exit: onExit, error: onError }));
-    }
+    cleanups.push(
+        () => {
+            clearInterval(poll);
+            clearTimeout(timer);
+        },
+        monitor.subscribe((failure) => {
+            fail(failure(path));
+        }),
+    );
 };
 
 const waitForSocket = (path: string, options: WaitForSocketOptions): Promise<void> =>
@@ -369,9 +384,9 @@ const watchCompositorExit = (child: ChildProcess, capturedStderr: string[]): (()
 };
 
 const waitForDisplaySockets = async (sockets: DisplaySockets): Promise<void> => {
-    const { compositor, compositorSocketPath, busChild, busSocketPath } = sockets;
-    await waitForSocket(busSocketPath, { label: "D-Bus session bus", child: busChild });
-    await waitForSocket(compositorSocketPath, { label: "Compositor", child: compositor.child });
+    const { compositorSocketPath, compositorMonitor, busSocketPath, busMonitor } = sockets;
+    await waitForSocket(busSocketPath, { monitor: busMonitor });
+    await waitForSocket(compositorSocketPath, { monitor: compositorMonitor });
 };
 
 const killSpawned = (children: ChildProcess[]): void => {
@@ -416,14 +431,15 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
 
         busChild.unref();
         spawned.push(busChild);
+        const busMonitor = monitorChild(busChild, "D-Bus session bus");
         applyEnv(env, { DBUS_SESSION_BUS_ADDRESS: `unix:path=${busSocketPath}` });
         const compositor = startCompositor(runtimeDir, options, env);
         compositor.child.unref();
-        compositor.child.on("error", (): void => undefined);
         spawned.push(compositor.child);
+        const compositorMonitor = monitorChild(compositor.child, "Compositor");
         applyEnv(env, { WAYLAND_DISPLAY: compositor.socket });
         const compositorSocketPath = join(runtimeDir, compositor.socket);
-        await waitForDisplaySockets({ compositor, compositorSocketPath, busChild, busSocketPath });
+        await waitForDisplaySockets({ compositorSocketPath, compositorMonitor, busSocketPath, busMonitor });
         const stopVirtualSeat = await attachVirtualSeat(compositor, compositorSocketPath);
         const stopNotifications = await startNotificationService(`unix:path=${busSocketPath}`);
         const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "compositor.stderr.log"));
