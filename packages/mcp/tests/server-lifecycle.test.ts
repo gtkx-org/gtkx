@@ -48,18 +48,19 @@ const connectFakeApp = async (socketPath: string): Promise<FakeApp> => {
     await once(socket, "connect");
     let hasFlooded = false;
     let hasRegistered = false;
+    let received = "";
 
     socket.on("data", (chunk: Buffer) => {
-        const text = chunk.toString();
+        received += chunk.toString();
 
-        if (text.includes("widget.type")) {
+        if (received.includes("widget.type")) {
             socket.pause();
             hasFlooded = true;
 
             return;
         }
 
-        hasRegistered ||= text.includes('"result"');
+        hasRegistered ||= received.includes('"result"');
     });
 
     socket.write(
