@@ -52,18 +52,21 @@ class SocketTransport implements Transport {
         this.socket = socket;
     }
 
-    private next(): JSONRPCMessage | null {
-        try {
-            return this.readBuffer.readMessage();
-        } catch (error) {
-            this.onerror?.(normalizeError(error));
-
-            return null;
-        }
-    }
-
     private read(): void {
-        for (let message = this.next(); message !== null; message = this.next()) {
+        for (;;) {
+            let message: JSONRPCMessage | null;
+
+            try {
+                message = this.readBuffer.readMessage();
+            } catch (error) {
+                this.onerror?.(normalizeError(error));
+                continue;
+            }
+
+            if (message === null) {
+                return;
+            }
+
             this.onmessage?.(message);
         }
     }

@@ -133,13 +133,13 @@ const waitUntil = async (isReady: () => boolean): Promise<void> => {
     }
 };
 
-const waitForNoApps = async (server: McpServer): Promise<void> => {
+const waitForAppCount = async (server: McpServer, count: number): Promise<void> => {
     const deadline = Date.now() + SOCKET_TIMEOUT_MS;
 
     while (Date.now() < deadline) {
         const apps = await callJson<unknown[]>(server.client, "gtkx_list_apps");
 
-        if (apps.length === 0) {
+        if (apps.length === count) {
             return;
         }
 
@@ -243,7 +243,19 @@ describe("an application that stops reading what the server sends", () => {
             typeIntoStalledApp(server);
         }
 
-        await waitForNoApps(server);
+        await waitForAppCount(server, 0);
         expect(await callJson(server.client, "gtkx_list_apps")).toEqual([]);
+    }, LINK_TIMEOUT_MS);
+});
+
+describe("an application that sends a message the server cannot parse", () => {
+    it("keeps its connection and acts on the next message", async () => {
+        const server = await trackedServer();
+        const app = await connectFakeApp(server.socketPath);
+        await waitUntil(app.hasRegistered);
+        app.socket.write("this line is not json\n");
+        app.socket.write(encode({ jsonrpc: "2.0", id: 2, method: "app.unregister" }));
+        await waitForAppCount(server, 0);
+        expect(await callJson<unknown[]>(server.client, "gtkx_list_apps")).toHaveLength(0);
     }, LINK_TIMEOUT_MS);
 });
