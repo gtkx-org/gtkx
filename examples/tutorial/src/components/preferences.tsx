@@ -1,4 +1,5 @@
 import { ComboRow } from "@gtkx/components/adw";
+import { t } from "@gtkx/i18n";
 import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
@@ -18,15 +19,15 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const [reminderMinutes, setReminderMinutes] = useSetting(schema, "reminder-minutes");
 
     return (
-        <AdwPreferencesDialog onClosed={onClose} title="Preferences">
-            <AdwPreferencesPage title="General" iconName="preferences-system-symbolic">
-                <AdwPreferencesGroup title="Appearance">
+        <AdwPreferencesDialog onClosed={onClose} title={t("Preferences")}>
+            <AdwPreferencesPage title={t("General")} iconName="preferences-system-symbolic">
+                <AdwPreferencesGroup title={t("Appearance")}>
                     <ComboRow
-                        title="Theme"
+                        title={t("Theme")}
                         items={[
-                            { id: "default", value: "Follow system" },
-                            { id: "light", value: "Light" },
-                            { id: "dark", value: "Dark" },
+                            { id: "default", value: t("Follow system") },
+                            { id: "light", value: t("Light") },
+                            { id: "dark", value: t("Dark") },
                         ]}
                         selectedId={scheme}
                         onSelectionChanged={(id) => {
@@ -34,14 +35,14 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                         }}
                     />
                 </AdwPreferencesGroup>
-                <AdwPreferencesGroup title="Tasks">
+                <AdwPreferencesGroup title={t("Tasks")}>
                     <ComboRow
-                        title="Sort order"
+                        title={t("Sort order")}
                         items={[
-                            { id: "manual", value: "Manual" },
-                            { id: "due-date", value: "Due date" },
-                            { id: "title", value: "Title" },
-                            { id: "created", value: "Date created" },
+                            { id: "manual", value: t("Manual") },
+                            { id: "due-date", value: t("Due date") },
+                            { id: "title", value: t("Title") },
+                            { id: "created", value: t("Date created") },
                         ]}
                         selectedId={sortOrder}
                         onSelectionChanged={(id) => {
@@ -49,8 +50,8 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                         }}
                     />
                     <AdwSpinRow
-                        title="Reminder lead time"
-                        subtitle="Minutes before a task is due"
+                        title={t("Reminder lead time")}
+                        subtitle={t("Minutes before a task is due")}
                         adjustment={<GtkAdjustment value={reminderMinutes} lower={0} upper={1440} stepIncrement={5} />}
                         onNotifyValue={(value) => setReminderMinutes(value ?? 30)}
                     />

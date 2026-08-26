@@ -5,13 +5,13 @@ import {
     mkdirSync,
     mkdtempSync,
     readFileSync,
-    renameSync,
     rmSync,
     writeFileSync,
 } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { CatalogProject } from "./catalogs.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
+import { replaceCatalogTemplate } from "./catalog-template.js";
 import { gtkxExtractorPlugin } from "./extractor-plugin.js";
 import { metadataTemplateFiles } from "./metadata-templates.js";
 
@@ -47,6 +47,14 @@ type SourceExtraction = {
     project: CatalogProject;
     sourceFiles: string[];
     workDir: string;
+};
+
+type CatalogTemplateExtraction = {
+    messages: SourceMessage[];
+    output?: string | undefined;
+    project: CatalogProject;
+    shouldPreserveMetadataMessages: boolean;
+    sourceFiles: string[];
 };
 
 type PluralVariant = {
@@ -544,31 +552,44 @@ const joinMetadataFragment = (output: string, fragment: string): void => {
     });
 };
 
-const extractCatalogTemplate = (
-    project: CatalogProject,
-    messages: SourceMessage[],
-    sourceFiles: string[],
-    shouldPreserveMetadataMessages: boolean,
-): void => {
-    const output = resolve(project.poDir, `${project.domain}.pot`);
+const extractCatalogTemplate = ({
+    project,
+    messages,
+    sourceFiles,
+    shouldPreserveMetadataMessages,
+    output = resolve(project.poDir, `${project.domain}.pot`),
+}: CatalogTemplateExtraction): void => {
     const workDir = mkdtempSync(join(project.poDir, ".gtkx-i18n-"));
+    const source = join(workDir, "source.pot");
+    const hasPreviousTemplate = existsSync(output);
 
     try {
-        if (!shouldPreserveMetadataMessages || !existsSync(output)) {
-            extractSourceMessages({ project, messages, sourceFiles, output, workDir });
-
-            return;
+        if (shouldPreserveMetadataMessages && hasPreviousTemplate) {
+            const fragment = join(workDir, "metadata.pot");
+            extractMetadataFragment(project, output, fragment);
+            extractSourceMessages({ project, messages, sourceFiles, output: source, workDir });
+            joinMetadataFragment(source, fragment);
+        } else {
+            extractSourceMessages({ project, messages, sourceFiles, output: source, workDir });
         }
 
-        const fragment = join(workDir, "metadata.pot");
-        const source = join(workDir, "source.pot");
-        extractMetadataFragment(project, output, fragment);
-        extractSourceMessages({ project, messages, sourceFiles, output: source, workDir });
-        joinMetadataFragment(source, fragment);
-        renameSync(source, output);
+        replaceCatalogTemplate(source, output);
     } finally {
         rmSync(workDir, { recursive: true, force: true });
     }
+};
+
+const extractSourceCatalogTo = async (
+    project: CatalogProject,
+    paths: string[],
+    output: string,
+): Promise<SourceCatalog> => {
+    const sourceFiles = normalizedSourceFiles(project.root, paths);
+    const messages = await findSourceMessages(sourceFiles);
+    writePotfiles(project, sourceFiles);
+    extractCatalogTemplate({ project, messages, sourceFiles, shouldPreserveMetadataMessages: false, output });
+
+    return { messages, sourceFiles };
 };
 
 const extractSourceCatalog = async (
@@ -579,9 +600,9 @@ const extractSourceCatalog = async (
     const sourceFiles = normalizedSourceFiles(project.root, paths);
     const messages = await findSourceMessages(sourceFiles);
     writePotfiles(project, sourceFiles);
-    extractCatalogTemplate(project, messages, sourceFiles, shouldPreserveMetadataMessages);
+    extractCatalogTemplate({ project, messages, sourceFiles, shouldPreserveMetadataMessages });
 
     return { messages, sourceFiles };
 };
 
-export { type SourceMessage, extractSourceCatalog };
+export { type SourceMessage, extractSourceCatalog, extractSourceCatalogTo };

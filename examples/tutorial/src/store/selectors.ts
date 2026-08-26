@@ -1,11 +1,12 @@
+import { t } from "@gtkx/i18n";
 import { isToday } from "../format.js";
 import type { Filter, Selection, SmartView, SortOrder, Task, TaskList } from "../types.js";
 
 const SMART_TITLES: Record<SmartView, string> = {
-    all: "All Tasks",
-    today: "Today",
-    important: "Important",
-    trash: "Trash",
+    all: t("All Tasks"),
+    today: t("Today"),
+    important: t("Important"),
+    trash: t("Trash"),
 };
 
 export const selectionKey = (selection: Selection): string =>
@@ -13,7 +14,7 @@ export const selectionKey = (selection: Selection): string =>
 
 export const selectionTitle = (selection: Selection, lists: TaskList[]): string =>
     selection.kind === "list"
-        ? (lists.find((list) => list.id === selection.listId)?.name ?? "Tasks")
+        ? (lists.find((list) => list.id === selection.listId)?.name ?? t("Tasks"))
         : SMART_TITLES[selection.view];
 
 export const addListId = (selection: Selection, lists: TaskList[]): string =>
@@ -103,18 +104,36 @@ export const isReorderable = (selection: Selection, query: string, sortOrder: So
 export type EmptyState = { icon: string; title: string; description: string };
 
 const SMART_EMPTY: Record<SmartView, EmptyState> = {
-    all: { icon: "view-list-symbolic", title: "No Tasks Yet", description: "Add a task above to get started" },
+    all: {
+        icon: "view-list-symbolic",
+        title: t("No Tasks Yet"),
+        description: t("Add a task above to get started"),
+    },
     today: {
         icon: "x-office-calendar-symbolic",
-        title: "Nothing Due Today",
-        description: "Tasks due today appear here",
+        title: t("Nothing Due Today"),
+        description: t("Tasks due today appear here"),
     },
-    important: { icon: "starred-symbolic", title: "No Important Tasks", description: "Star a task to find it here" },
-    trash: { icon: "user-trash-symbolic", title: "Trash Is Empty", description: "Deleted tasks appear here" },
+    important: {
+        icon: "starred-symbolic",
+        title: t("No Important Tasks"),
+        description: t("Star a task to find it here"),
+    },
+    trash: {
+        icon: "user-trash-symbolic",
+        title: t("Trash Is Empty"),
+        description: t("Deleted tasks appear here"),
+    },
 };
 
 export const emptyState = (selection: Selection, query: string): EmptyState => {
-    if (query) return { icon: "system-search-symbolic", title: "No Results", description: `No tasks match “${query}”` };
+    if (query) {
+        return {
+            icon: "system-search-symbolic",
+            title: t("No Results"),
+            description: t("No tasks match “{{query}}”", { query }),
+        };
+    }
     if (selection.kind === "smart") return SMART_EMPTY[selection.view];
     return SMART_EMPTY.all;
 };

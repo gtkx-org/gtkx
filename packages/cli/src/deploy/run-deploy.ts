@@ -1,6 +1,6 @@
 import { loadConfig } from "@gtkx/config";
 import { info, warn } from "@gtkx/utils";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import type {
     DeployArtifact,
@@ -12,7 +12,17 @@ import type {
 } from "./types.js";
 import { build as buildApp } from "../builder.js";
 import { ensureGenerated } from "../codegen/run-codegen.js";
-import { type CatalogProject, resolveCatalogProject } from "../i18n/catalogs.js";
+import { replaceCatalogTemplate } from "../i18n/catalog-template.js";
+import {
+    type CatalogProject,
+    compileCatalogs,
+    LOCALE_DIRNAME,
+    requiresCatalogInitialization,
+    resolveCatalogProject,
+    synchronizeCatalogs,
+} from "../i18n/catalogs.js";
+import { extractSourceCatalogTo } from "../i18n/source-messages.js";
+import { discoverSourceFiles } from "../internal/source-imports.js";
 import { renderDesktopEntry } from "./freedesktop/desktop-entry.js";
 import { extractMetadataMessages, localizeMetadata } from "./freedesktop/localize.js";
 import { renderMetainfo } from "./freedesktop/metainfo.js";
@@ -35,6 +45,9 @@ import {
     FLATPAK_NODE_GENERATOR,
     FLATPAK_NODE_GENERATOR_PNPM,
     MSGFMT,
+    MSGGREP,
+    MSGINIT,
+    MSGMERGE,
     probeTools,
     STRIP,
     TAR,
@@ -210,15 +223,30 @@ const runtimeToolsFor = (targets: DeployTarget[], settings: DeploySettings): Dep
     return node.shouldStrip === false ? archiveTools : [...archiveTools, STRIP];
 };
 
+const mutableCatalogTools = (project: CatalogProject): DeployTool[] => {
+    if (project.catalogs.length === 0) {
+        return [MSGGREP, XGETTEXT];
+    }
+
+    return [
+        MSGFMT,
+        MSGGREP,
+        ...(requiresCatalogInitialization(project) ? [MSGINIT] : []),
+        MSGMERGE,
+        XGETTEXT,
+    ];
+};
+
 const catalogTools = (project: CatalogProject | null, shouldSkipBuild: boolean): DeployTool[] => {
     if (project === null) {
         return [];
     }
 
-    return [
-        ...(project.catalogs.length === 0 ? [] : [MSGFMT]),
-        ...(shouldSkipBuild ? [] : [XGETTEXT]),
-    ];
+    if (!shouldSkipBuild) {
+        return mutableCatalogTools(project);
+    }
+
+    return project.catalogs.length === 0 ? [] : [MSGFMT];
 };
 
 const preflight = ({
@@ -264,6 +292,32 @@ const loadSettings = async (options: DeployOptions): Promise<DeploySettings> => 
     return resolveDeploySettings({ root, config, outDirOverride: options.outDir });
 };
 
+const synchronizeMetadataCatalogs = async (
+    settings: DeploySettings,
+    templates: StagedMetadata,
+    project: CatalogProject | null,
+): Promise<void> => {
+    if (project === null) {
+        return;
+    }
+
+    const srcDir = join(project.root, "src");
+    const sourceFiles = discoverSourceFiles(existsSync(srcDir) ? srcDir : project.root);
+    const stagingDir = mkdtempSync(join(project.poDir, ".gtkx-deploy-i18n-"));
+    const stagedTemplate = join(stagingDir, `${project.domain}.pot`);
+    const template = join(project.poDir, `${project.domain}.pot`);
+
+    try {
+        await extractSourceCatalogTo(project, sourceFiles, stagedTemplate);
+        extractMetadataMessages(templates, project, stagedTemplate);
+        replaceCatalogTemplate(stagedTemplate, template);
+        synchronizeCatalogs(project);
+        compileCatalogs(project, join(settings.paths.dist, LOCALE_DIRNAME));
+    } finally {
+        rmSync(stagingDir, { recursive: true, force: true });
+    }
+};
+
 const buildPayload = async (
     options: DeployOptions,
     settings: DeploySettings,
@@ -271,21 +325,22 @@ const buildPayload = async (
     project: CatalogProject | null,
 ): Promise<DeployPayload> => {
     const templates = renderMetadata(settings);
-    const metadata = localizeMetadata(templates, project);
-    validateMetadata(settings, metadata, isFlathubSubmission(settings, targets));
 
     if (!options.shouldSkipBuild) {
         info(`Building ${options.entry}`);
 
         await buildApp({
             entry: options.entry,
-            shouldPreserveI18nMetadata: false,
             vite: { root: options.cwd },
         });
 
-        extractMetadataMessages(templates, project);
+        await synchronizeMetadataCatalogs(settings, templates, project);
+    } else if (project !== null) {
+        compileCatalogs(project, join(settings.paths.dist, LOCALE_DIRNAME));
     }
 
+    const metadata = localizeMetadata(templates, project);
+    validateMetadata(settings, metadata, isFlathubSubmission(settings, targets));
     const buildManifest = readBuildManifest(settings);
 
     const builtSettings: DeploySettings = {
@@ -356,17 +411,9 @@ const announce = (settings: DeploySettings, targets: DeployTarget[]): void => {
 };
 
 const runDeploy = async (options: DeployOptions): Promise<void> => {
-    if (!options.shouldSkipBuild) {
-        await ensureGenerated(options.cwd, {
-            shouldAnnounce: true,
-            mode: BUILD_MODE,
-            shouldPreserveI18nMetadata: false,
-        });
-    }
-
-    const settings = await loadSettings(options);
-    const project = resolveCatalogProject(settings.paths.root, settings.applicationId);
-    const targets = targetsFor(resolveTargetNames(options, settings));
+    let settings = await loadSettings(options);
+    let project = resolveCatalogProject(settings.paths.root, settings.applicationId);
+    let targets = targetsFor(resolveTargetNames(options, settings));
     announce(settings, targets);
 
     preflight({
@@ -376,6 +423,17 @@ const runDeploy = async (options: DeployOptions): Promise<void> => {
         shouldPrintManifests: options.shouldPrintManifests,
         shouldSkipBuild: options.shouldSkipBuild,
     });
+
+    if (!options.shouldSkipBuild) {
+        await ensureGenerated(options.cwd, {
+            shouldAnnounce: true,
+            mode: BUILD_MODE,
+        });
+
+        settings = await loadSettings(options);
+        project = resolveCatalogProject(settings.paths.root, settings.applicationId);
+        targets = targetsFor(resolveTargetNames(options, settings));
+    }
 
     const payload = await buildPayload(options, settings, targets, project);
     const rendered = renderTargetManifests(targets, payload);

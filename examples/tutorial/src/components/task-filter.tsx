@@ -1,3 +1,4 @@
+import { t } from "@gtkx/i18n";
 import { AdwToggle, AdwToggleGroup } from "@gtkx/jsx/adw";
 import { useStore } from "../store/index.js";
 
@@ -13,9 +14,9 @@ export const TaskFilter = () => {
                 if (name === "all" || name === "open" || name === "done") setFilter(name);
             }}
         >
-            <AdwToggle name="all" label="All" />
-            <AdwToggle name="open" label="Open" />
-            <AdwToggle name="done" label="Done" />
+            <AdwToggle name="all" label={t("All")} />
+            <AdwToggle name="open" label={t("Open")} />
+            <AdwToggle name="done" label={t("Done")} />
         </AdwToggleGroup>
     );
 };

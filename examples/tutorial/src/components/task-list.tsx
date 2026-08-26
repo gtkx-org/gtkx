@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { useTranslation } from "@gtkx/i18n";
 import { AdwClamp, AdwEntryRow, AdwStatusPage } from "@gtkx/jsx/adw";
 import { GtkBox, GtkListBox, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
 import { useSortOrder } from "../hooks/use-sort-order.js";
@@ -8,6 +9,7 @@ import type { Selection } from "../types.js";
 import { TaskRow } from "./task-row.js";
 
 export const TaskList = ({ selection }: { selection: Selection }) => {
+    const { t } = useTranslation();
     const tasks = useStore((state) => state.tasks);
     const lists = useStore((state) => state.lists);
     const filter = useStore((state) => state.filter);
@@ -30,7 +32,7 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
                 onNotifySearchModeEnabled={(enabled) => setSearchMode(enabled ?? false)}
             >
                 <GtkSearchEntry
-                    placeholderText="Search tasks…"
+                    placeholderText={t("Search tasks…")}
                     text={searchQuery}
                     onSearchChanged={(self) => setSearchQuery(self.text)}
                 />
@@ -40,7 +42,7 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                         <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
                             <AdwEntryRow
-                                title="Add a task…"
+                                title={t("Add a task…")}
                                 onEntryActivated={(self) => {
                                     addTask(listId, self.text);
                                     self.text = "";

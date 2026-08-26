@@ -98,13 +98,10 @@ const localizeMetadata = (metadata: StagedMetadata, project: CatalogProject | nu
 
 const extractMetadataMessages = (
     metadata: StagedMetadata,
-    project: CatalogProject | null,
+    project: CatalogProject,
+    catalogTemplate?: string,
 ): void => {
-    if (project === null) {
-        return;
-    }
-
-    const potPath = join(project.poDir, `${project.domain}.pot`);
+    const potPath = catalogTemplate ?? join(project.poDir, `${project.domain}.pot`);
 
     if (!existsSync(potPath)) {
         throw new Error(`Cannot add the generated metadata to the missing catalog template: ${potPath}`);

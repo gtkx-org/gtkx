@@ -1,3 +1,4 @@
+import { t } from "@gtkx/i18n";
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { useStore } from "../store/index.js";
 
@@ -8,7 +9,7 @@ export const SearchButton = () => {
     return (
         <GtkButton
             iconName="system-search-symbolic"
-            tooltipText="Search (Ctrl+F)"
+            tooltipText={t("Search (Ctrl+F)")}
             onClicked={() => setSearchMode(!searchMode)}
         />
     );

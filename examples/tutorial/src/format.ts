@@ -1,3 +1,5 @@
+import { t } from "@gtkx/i18n";
+
 export const escapeMarkup = (value: string): string =>
     value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -13,15 +15,15 @@ export const formatDue = (iso: string | null): string | null => {
     const due = new Date(iso);
     const days = Math.round((startOfDay(due) - startOfDay(new Date())) / 86_400_000);
     const time = due.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    if (days === 0) return `Today at ${time}`;
-    if (days === 1) return `Tomorrow at ${time}`;
-    if (days === -1) return `Yesterday at ${time}`;
-    if (days < 0) return `${-days} days ago`;
+    if (days === 0) return t("Today at {{time}}", { time });
+    if (days === 1) return t("Tomorrow at {{time}}", { time });
+    if (days === -1) return t("Yesterday at {{time}}", { time });
+    if (days < 0) return t("{{count}} day ago", "{{count}} days ago", { count: -days });
     if (days < 7) return due.toLocaleDateString([], { weekday: "long" });
     return due.toLocaleDateString([], { month: "short", day: "numeric" });
 };
 
 export const formatDateTime = (iso: string | null): string => {
-    if (!iso) return "Never";
+    if (!iso) return t("Never");
     return new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 };

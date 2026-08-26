@@ -1,6 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { t } from "@gtkx/i18n";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkButton, GtkCheckButton, GtkDragSource, GtkDropTarget, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useNavigation } from "@gtkx/navigation";
@@ -28,7 +29,7 @@ export const TaskRow = ({ task, canReorder }: { task: Task; canReorder: boolean 
                 <GtkCheckButton
                     valign={Gtk.Align.CENTER}
                     active={task.done}
-                    accessibleLabel="Mark complete"
+                    accessibleLabel={t("Mark complete")}
                     onToggled={(self) => setDone(task.id, self.active)}
                 />
             }
@@ -38,14 +39,14 @@ export const TaskRow = ({ task, canReorder }: { task: Task; canReorder: boolean 
                         valign={Gtk.Align.CENTER}
                         iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
                         active={task.important}
-                        accessibleLabel="Toggle important"
+                        accessibleLabel={t("Toggle important")}
                         cssClasses={["flat"]}
                         onToggled={(self) => setImportant(task.id, self.active)}
                     />
                     <GtkButton
                         valign={Gtk.Align.CENTER}
                         iconName="user-trash-symbolic"
-                        accessibleLabel="Delete task"
+                        accessibleLabel={t("Delete task")}
                         cssClasses={["flat"]}
                         onClicked={() => requestDeleteTask(task)}
                     />

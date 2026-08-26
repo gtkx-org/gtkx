@@ -37,6 +37,9 @@ const TRIVIA = join("src", "trivia.js");
 const UNREACHABLE = join("src", "unreachable.tsx");
 const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
 const RUN_TIMEOUT = 60_000;
+const REMOVED_MESSAGE = "A message removed from the source";
+const POT_CREATION_DATE = /^"POT-Creation-Date: .*\\n"$/m;
+const STABLE_POT_CREATION_DATE = String.raw`"POT-Creation-Date: 1970-01-01 00:00+0000\n"`;
 
 const CONFIG = `export default {
     applicationId: "${APPLICATION_ID}",
@@ -529,6 +532,9 @@ msgstr "Messaggio differito"
 msgctxt "menu"
 msgid "Open"
 msgstr "Apri"
+
+msgid "${REMOVED_MESSAGE}"
+msgstr "Un messaggio rimosso"
 `;
 
 const projectFiles = (linguas: string, po: string | null): Record<string, string> => ({
@@ -596,6 +602,28 @@ const withProject = (project: CliProject, run: (project: CliProject) => void): v
     }
 };
 
+const stabilizePotCreationDate = (path: string): void => {
+    const catalog = readFileSync(path, "utf8");
+    expect(catalog).toMatch(POT_CREATION_DATE);
+    writeFileSync(path, catalog.replace(POT_CREATION_DATE, () => STABLE_POT_CREATION_DATE));
+};
+
+const expectCatalogRerunsAreStable = (project: CliProject): void => {
+    const templatePath = join(project.root, POT);
+    const catalogPath = join(project.root, IT_CATALOG);
+    runCliOrThrow(project, ["codegen"]);
+    stabilizePotCreationDate(templatePath);
+    stabilizePotCreationDate(catalogPath);
+    const template = readFileSync(templatePath);
+    const catalog = readFileSync(catalogPath);
+    runCliOrThrow(project, ["codegen"]);
+    expect(readFileSync(templatePath).equals(template)).toBe(true);
+    expect(readFileSync(catalogPath).equals(catalog)).toBe(true);
+    runCliOrThrow(project, ["build"]);
+    expect(readFileSync(templatePath).equals(template)).toBe(true);
+    expect(readFileSync(catalogPath).equals(catalog)).toBe(true);
+};
+
 const expectFallbackArrayMessages = (pot: string): void => {
     expect(pot).toContain('msgid "Fallback for {{name}}"');
     expect(pot).toContain('msgid "One fallback for {{name}}"');
@@ -658,6 +686,9 @@ const expectBuiltCatalog = (project: CliProject): void => {
     );
 
     expectExtractedMessages(readFileSync(join(project.root, POT), "utf8"));
+    const catalog = readFileSync(join(project.root, IT_CATALOG), "utf8");
+    expect(catalog).toContain('msgid "Unreachable message"');
+    expect(catalog).toContain(`#~ msgid "${REMOVED_MESSAGE}"`);
     expect(existsSync(join(project.root, IT_MO))).toBe(true);
     const result = runBuiltApp(project);
     expect(result.stderr).toBe("");
@@ -683,13 +714,24 @@ const expectGeneratedTypes = (project: CliProject): void => {
     expect(generated).toContain('"ICU typed {{name}}"');
     expect(generated).toContain('"ICU context-free {{name}}"');
     expect(generated).toContain('"account.title"');
+    expect(readFileSync(join(project.root, POT), "utf8")).not.toContain(STABLE_POT_CREATION_DATE);
+    expect(readFileSync(join(project.root, IT_CATALOG), "utf8")).toContain('msgid "Hook {{name}}"');
     runTypecheckOrThrow(project, "tsconfig.valid.json");
+};
+
+const expectInitializedCatalog = (project: CliProject): void => {
+    runCliOrThrow(project, ["codegen"]);
+    const catalog = readFileSync(join(project.root, IT_CATALOG), "utf8");
+    expect(catalog).toContain(String.raw`"Language: it\n"`);
+    expect(catalog).toContain(String.raw`"Plural-Forms: nplurals=2; plural=(n != 1);\n"`);
+    expect(catalog).toContain('msgid "Hello"');
+    runCliOrThrow(project, ["build"]);
+    expect(existsSync(join(project.root, IT_MO))).toBe(true);
 };
 
 const expectCatalogFailures = (): void => {
     const failures: CatalogFailure[] = [
         { linguas: "../it\n", po: IT_PO },
-        { linguas: "it\n", po: null },
         { linguas: "it\n", po: 'msgid "unterminated\n' },
     ];
 
@@ -738,11 +780,16 @@ describe("CLI gettext catalogs", () => {
         withProject(createI18nProject(), (project) => {
             runCliOrThrow(project, ["build"]);
             expectBuiltCatalog(project);
+            expectCatalogRerunsAreStable(project);
             expectGeneratedTypes(project);
         });
     });
 
-    it("accepts an empty LINGUAS file", () => {
+    it("initializes a listed catalog and accepts an empty LINGUAS file", () => {
+        withProject(createI18nProject("it\n", null), (project) => {
+            expectInitializedCatalog(project);
+        });
+
         withProject(createI18nProject("", null), (project) => {
             runCliOrThrow(project, ["build"]);
             expect(readFileSync(join(project.root, POTFILES), "utf8")).toContain("src/index.ts\n");

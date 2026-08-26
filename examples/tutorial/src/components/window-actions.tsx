@@ -1,3 +1,4 @@
+import { t } from "@gtkx/i18n";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { currentSelection, openTask } from "../navigation.js";
 import { useStore } from "../store/index.js";
@@ -9,7 +10,7 @@ export const WindowActions = () => {
     const newTask = (): void => {
         const { lists, addTask } = useStore.getState();
         const selection = currentSelection();
-        const id = addTask(addListId(selection, lists), "New Task");
+        const id = addTask(addListId(selection, lists), t("New Task"));
         if (id) openTask(selection, id);
     };
 

@@ -1,5 +1,6 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
+import { t } from "@gtkx/i18n";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkEntry, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useState } from "react";
@@ -17,12 +18,12 @@ export const NewListDialog = () => {
 
     return (
         <AdwAlertDialog
-            heading="New List"
+            heading={t("New List")}
             defaultResponse="add"
             closeResponse="cancel"
             responses={[
-                { id: "cancel", label: "Cancel" },
-                { id: "add", label: "Add", appearance: Adw.ResponseAppearance.SUGGESTED },
+                { id: "cancel", label: t("Cancel") },
+                { id: "add", label: t("Add"), appearance: Adw.ResponseAppearance.SUGGESTED },
             ]}
             onResponse={(id) => {
                 if (id === "add") addList(name, color);
@@ -30,7 +31,11 @@ export const NewListDialog = () => {
             }}
         >
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={16} marginTop={8}>
-                <GtkEntry placeholderText="List name" activatesDefault onChanged={(self) => setName(self.text)} />
+                <GtkEntry
+                    placeholderText={t("List name")}
+                    activatesDefault
+                    onChanged={(self) => setName(self.text)}
+                />
                 <GtkBox spacing={6} halign={Gtk.Align.CENTER}>
                     {PALETTE.map((swatch, index) => (
                         <GtkToggleButton
@@ -39,7 +44,7 @@ export const NewListDialog = () => {
                             group={index === 0 ? undefined : firstSwatch}
                             active={color === swatch}
                             cssClasses={["flat"]}
-                            accessibleLabel={`Color ${swatch}`}
+                            accessibleLabel={t("Color {{color}}", { color: swatch })}
                             onClicked={() => setColor(swatch)}
                         >
                             <GtkBox

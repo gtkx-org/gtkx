@@ -9,6 +9,7 @@ import {
     compileCatalogs,
     LOCALE_DIRNAME,
     resolveCatalogProject,
+    synchronizeCatalogs,
 } from "../i18n/catalogs.js";
 import { extractSourceCatalog } from "../i18n/source-messages.js";
 import { discoverSourceFiles } from "../internal/source-imports.js";
@@ -102,6 +103,7 @@ const extractProjectMessages = async (
     const srcDir = join(project.root, "src");
     const sourceFiles = discoverSourceFiles(existsSync(srcDir) ? srcDir : project.root);
     await extractSourceCatalog(project, sourceFiles, shouldPreserveMetadataMessages);
+    synchronizeCatalogs(project);
 };
 
 const gtkxI18n = (

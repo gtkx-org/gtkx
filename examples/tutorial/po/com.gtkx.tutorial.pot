@@ -1,0 +1,430 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-26 23:41+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: src/components/about.tsx:9 src/components/preferences.tsx:38
+#: src/components/shortcuts.tsx:12 src/components/window.tsx:72
+#: src/components/window.tsx:100 src/store/selectors.ts:17
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:3
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:4
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:25
+msgid "Tasks"
+msgstr ""
+
+#: src/components/about.tsx:17
+msgid "GTKX Contributors"
+msgstr ""
+
+#: src/components/about.tsx:18
+msgid "A task manager built with GTKX to showcase React, GTK4, and Adwaita."
+msgstr ""
+
+#: src/components/delete-confirmation.tsx:16
+msgid "Delete Task?"
+msgstr ""
+
+#: src/components/delete-confirmation.tsx:17
+msgid "“{{title}}” will be permanently deleted. This cannot be undone."
+msgstr ""
+
+#: src/components/delete-confirmation.tsx:21
+#: src/components/new-list-dialog.tsx:25
+msgid "Cancel"
+msgstr ""
+
+#: src/components/delete-confirmation.tsx:22
+msgid "Delete"
+msgstr ""
+
+#: src/components/dialogs.tsx:24
+msgid "“{{title}}” moved to Trash"
+msgstr ""
+
+#: src/components/dialogs.tsx:25
+msgid "Undo"
+msgstr ""
+
+#: src/components/main-menu.tsx:9
+msgid "Main Menu"
+msgstr ""
+
+#: src/components/main-menu.tsx:13 src/components/window-actions.tsx:13
+msgid "New Task"
+msgstr ""
+
+#: src/components/main-menu.tsx:16 src/components/preferences.tsx:22
+#: src/components/shortcuts.tsx:9
+msgid "Preferences"
+msgstr ""
+
+#: src/components/main-menu.tsx:17
+msgid "Keyboard Shortcuts"
+msgstr ""
+
+#: src/components/main-menu.tsx:20
+msgid "About Tasks"
+msgstr ""
+
+#: src/components/new-list-dialog.tsx:21 src/components/window.tsx:104
+msgid "New List"
+msgstr ""
+
+#: src/components/new-list-dialog.tsx:26
+msgid "Add"
+msgstr ""
+
+#: src/components/new-list-dialog.tsx:35
+msgid "List name"
+msgstr ""
+
+#: src/components/new-list-dialog.tsx:47
+msgid "Color {{color}}"
+msgstr ""
+
+#: src/components/preferences.tsx:23 src/components/shortcuts.tsx:6
+msgid "General"
+msgstr ""
+
+#: src/components/preferences.tsx:24
+msgid "Appearance"
+msgstr ""
+
+#: src/components/preferences.tsx:26
+msgid "Theme"
+msgstr ""
+
+#: src/components/preferences.tsx:28
+msgid "Follow system"
+msgstr ""
+
+#: src/components/preferences.tsx:29
+msgid "Light"
+msgstr ""
+
+#: src/components/preferences.tsx:30
+msgid "Dark"
+msgstr ""
+
+#: src/components/preferences.tsx:40
+msgid "Sort order"
+msgstr ""
+
+#: src/components/preferences.tsx:42
+msgid "Manual"
+msgstr ""
+
+#: src/components/preferences.tsx:43
+msgid "Due date"
+msgstr ""
+
+#: src/components/preferences.tsx:44 src/components/task-detail.tsx:32
+msgid "Title"
+msgstr ""
+
+#: src/components/preferences.tsx:45
+msgid "Date created"
+msgstr ""
+
+#: src/components/preferences.tsx:53
+msgid "Reminder lead time"
+msgstr ""
+
+#: src/components/preferences.tsx:54
+msgid "Minutes before a task is due"
+msgstr ""
+
+#: src/components/search-button.tsx:12
+msgid "Search (Ctrl+F)"
+msgstr ""
+
+#: src/components/shortcuts.tsx:7
+msgid "New task"
+msgstr ""
+
+#: src/components/shortcuts.tsx:8
+msgid "Search tasks"
+msgstr ""
+
+#: src/components/shortcuts.tsx:10
+msgid "Keyboard shortcuts"
+msgstr ""
+
+#: src/components/shortcuts.tsx:13 src/components/task-row.tsx:49
+msgid "Delete task"
+msgstr ""
+
+#: src/components/shortcuts.tsx:14
+msgid "Go back"
+msgstr ""
+
+#: src/components/sidebar.tsx:23 src/store/selectors.ts:6
+msgid "All Tasks"
+msgstr ""
+
+#: src/components/sidebar.tsx:29 src/store/selectors.ts:7
+msgid "Today"
+msgstr ""
+
+#: src/components/sidebar.tsx:35 src/components/task-buttons.tsx:18
+#: src/components/task-detail.tsx:39 src/store/selectors.ts:8
+msgid "Important"
+msgstr ""
+
+#: src/components/sidebar.tsx:49 src/store/selectors.ts:9
+msgid "Trash"
+msgstr ""
+
+#: src/components/task-buttons.tsx:23
+msgid "Delete (Delete)"
+msgstr ""
+
+#: src/components/task-detail.tsx:44
+msgid "Due"
+msgstr ""
+
+#: src/components/task-detail.tsx:51
+msgid "Clear due date"
+msgstr ""
+
+#: src/components/task-detail.tsx:56
+msgid "Set date"
+msgstr ""
+
+#: src/components/task-detail.tsx:84
+msgid "Notes"
+msgstr ""
+
+#: src/components/task-detail.tsx:112
+msgid "Created"
+msgstr ""
+
+#: src/components/task-detail.tsx:118
+msgid "Completed"
+msgstr ""
+
+#: src/components/task-filter.tsx:17
+msgid "All"
+msgstr ""
+
+#: src/components/task-filter.tsx:18
+msgid "Open"
+msgstr ""
+
+#: src/components/task-filter.tsx:19
+msgid "Done"
+msgstr ""
+
+#: src/components/task-list.tsx:35
+msgid "Search tasks…"
+msgstr ""
+
+#: src/components/task-list.tsx:45
+msgid "Add a task…"
+msgstr ""
+
+#: src/components/task-row.tsx:32
+msgid "Mark complete"
+msgstr ""
+
+#: src/components/task-row.tsx:42
+msgid "Toggle important"
+msgstr ""
+
+#: src/components/task-title.tsx:8
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:24
+msgid "Task"
+msgstr ""
+
+#: src/components/window.tsx:35
+msgid "Nothing Selected"
+msgstr ""
+
+#: src/components/window.tsx:36
+msgid "Pick a list or a smart view in the sidebar"
+msgstr ""
+
+#: src/components/window.tsx:121
+msgid "New Task (Ctrl+N)"
+msgstr ""
+
+#: src/format.ts:18
+msgid "Today at {{time}}"
+msgstr ""
+
+#: src/format.ts:19
+msgid "Tomorrow at {{time}}"
+msgstr ""
+
+#: src/format.ts:20
+msgid "Yesterday at {{time}}"
+msgstr ""
+
+#: src/format.ts:21
+msgid "{{count}} day ago"
+msgid_plural "{{count}} days ago"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/format.ts:27
+msgid "Never"
+msgstr ""
+
+#: src/notifications.ts:9
+msgid "Due {{date}}"
+msgstr ""
+
+#: src/notifications.ts:11
+msgid "Mark Complete"
+msgstr ""
+
+#: src/store/seed.ts:31
+msgid "Personal"
+msgstr ""
+
+#: src/store/seed.ts:32
+msgid "Work"
+msgstr ""
+
+#: src/store/seed.ts:33
+msgid "Shopping"
+msgstr ""
+
+#: src/store/seed.ts:40
+msgid "Welcome to Tasks"
+msgstr ""
+
+#: src/store/seed.ts:43
+msgid ""
+"This is your first task. Tick the checkbox to complete it, or open it to add "
+"notes and a due date."
+msgstr ""
+
+#: src/store/seed.ts:49
+msgid "Water the plants"
+msgstr ""
+
+#: src/store/seed.ts:54
+msgid "Prepare the weekly report"
+msgstr ""
+
+#: src/store/seed.ts:55
+msgid "Review pull requests"
+msgstr ""
+
+#: src/store/seed.ts:56
+msgid "Buy oat milk"
+msgstr ""
+
+#: src/store/seed.ts:60
+msgid "Order birthday gift"
+msgstr ""
+
+#: src/store/selectors.ts:109
+msgid "No Tasks Yet"
+msgstr ""
+
+#: src/store/selectors.ts:110
+msgid "Add a task above to get started"
+msgstr ""
+
+#: src/store/selectors.ts:114
+msgid "Nothing Due Today"
+msgstr ""
+
+#: src/store/selectors.ts:115
+msgid "Tasks due today appear here"
+msgstr ""
+
+#: src/store/selectors.ts:119
+msgid "No Important Tasks"
+msgstr ""
+
+#: src/store/selectors.ts:120
+msgid "Star a task to find it here"
+msgstr ""
+
+#: src/store/selectors.ts:124
+msgid "Trash Is Empty"
+msgstr ""
+
+#: src/store/selectors.ts:125
+msgid "Deleted tasks appear here"
+msgstr ""
+
+#: src/store/selectors.ts:133
+msgid "No Results"
+msgstr ""
+
+#: src/store/selectors.ts:134
+msgid "No tasks match “{{query}}”"
+msgstr ""
+
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:4
+msgid "Task Manager"
+msgstr ""
+
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:5
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:5
+msgid "Manage your tasks and to-dos"
+msgstr ""
+
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:10
+msgid "Task;Tasks;Todo;To-do;Checklist;"
+msgstr ""
+
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:9
+msgid "GTKX"
+msgstr ""
+
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:12
+msgid ""
+"A task manager built with GTKX, demonstrating how to build React-based GTK4 "
+"and Adwaita desktop applications."
+msgstr ""
+
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:13
+msgid ""
+"It shows an adaptive sidebar layout, boxed lists, a task editor, GSettings-"
+"backed preferences, undo toasts, drag-to-reorder, desktop notifications, and "
+"local JSON persistence."
+msgstr ""
+
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:26
+msgid "Todo"
+msgstr ""
+
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:27
+msgid "To-do"
+msgstr ""
+
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:28
+msgid "Checklist"
+msgstr ""
+
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:36
+msgid "Browsing task lists in the sidebar"
+msgstr ""
+
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:40
+msgid "Editing a task"
+msgstr ""
+
+#: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:46
+msgid "Initial release."
+msgstr ""

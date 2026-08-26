@@ -27,6 +27,7 @@ const tutorialItems = [
     { text: "Reminders", link: "/tutorial/reminders" },
     { text: "Appendix A: Testing", link: "/tutorial/testing" },
     { text: "Appendix B: Packaging", link: "/tutorial/packaging" },
+    { text: "Internationalization", link: "/tutorial/internationalization" },
     { text: "Appendix C: Flathub", link: "/tutorial/flatpak" },
 ];
 

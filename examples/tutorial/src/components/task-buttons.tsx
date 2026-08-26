@@ -1,3 +1,4 @@
+import { t } from "@gtkx/i18n";
 import { GtkButton, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useStore } from "../store/index.js";
 import { useRequestDeleteTask } from "./dialogs.js";
@@ -14,12 +15,12 @@ export const TaskButtons = ({ id }: { id: string }) => {
             <GtkToggleButton
                 iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
                 active={task.important}
-                tooltipText="Important"
+                tooltipText={t("Important")}
                 onToggled={(self) => setImportant(task.id, self.active)}
             />
             <GtkButton
                 iconName="user-trash-symbolic"
-                tooltipText="Delete (Delete)"
+                tooltipText={t("Delete (Delete)")}
                 onClicked={() => requestDeleteTask(task)}
             />
         </>

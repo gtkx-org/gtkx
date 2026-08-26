@@ -52,6 +52,7 @@ type StartRegistryOptions = {
 type AppLaunch = {
     command: string;
     args: string[];
+    env?: NodeJS.ProcessEnv;
 };
 
 type HeadlessDisplay = {
@@ -377,7 +378,7 @@ async function verifyAppStarts(appDir: string, launch: AppLaunch): Promise<void>
     const teardown = await startHeadlessDisplay(resolveHeadlessOptions({}));
 
     try {
-        await runBuiltAppUntilStable(appDir, { ...process.env, ...STATIC_HEADLESS_ENV }, launch);
+        await runBuiltAppUntilStable(appDir, { ...process.env, ...STATIC_HEADLESS_ENV, ...launch.env }, launch);
     } finally {
         teardown();
     }

@@ -1,4 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
+import { t } from "@gtkx/i18n";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { SplitViewScreenProps } from "@gtkx/navigation";
@@ -17,16 +18,21 @@ type Entry = {
 };
 
 const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
-    { selection: { kind: "smart", view: "all" }, title: "All Tasks", icon: "view-list-symbolic", count: counts.all },
+    {
+        selection: { kind: "smart", view: "all" },
+        title: t("All Tasks"),
+        icon: "view-list-symbolic",
+        count: counts.all,
+    },
     {
         selection: { kind: "smart", view: "today" },
-        title: "Today",
+        title: t("Today"),
         icon: "x-office-calendar-symbolic",
         count: counts.today,
     },
     {
         selection: { kind: "smart", view: "important" },
-        title: "Important",
+        title: t("Important"),
         icon: "starred-symbolic",
         count: counts.important,
     },
@@ -38,7 +44,12 @@ const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
             count: counts.lists[list.id] ?? 0,
         }),
     ),
-    { selection: { kind: "smart", view: "trash" }, title: "Trash", icon: "user-trash-symbolic", count: counts.trash },
+    {
+        selection: { kind: "smart", view: "trash" },
+        title: t("Trash"),
+        icon: "user-trash-symbolic",
+        count: counts.trash,
+    },
 ];
 
 export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lists">) => {

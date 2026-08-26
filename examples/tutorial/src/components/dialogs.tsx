@@ -1,4 +1,5 @@
 import { useToast } from "@gtkx/components/adw";
+import { t } from "@gtkx/i18n";
 import { closeTaskIfOpen } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import type { Task } from "../types.js";
@@ -20,8 +21,8 @@ export const useRequestDeleteTask = (): ((task: Task) => void) => {
         closeTaskIfOpen(task.id);
         moveToTrash(task.id);
         show({
-            title: `“${task.title}” moved to Trash`,
-            buttonLabel: "Undo",
+            title: t("“{{title}}” moved to Trash", { title: task.title }),
+            buttonLabel: t("Undo"),
             onButtonClicked: () => restore(task.id),
         });
     };

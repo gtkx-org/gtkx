@@ -1,4 +1,13 @@
-import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import {
+    chmodSync,
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    renameSync,
+    rmSync,
+    statSync,
+} from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { runCliTool } from "../internal/run-cli-tool.js";
 
@@ -17,11 +26,18 @@ type CatalogProject = {
     root: string;
 };
 
+type PreparedCatalog = {
+    isChanged: boolean;
+    output: string;
+    target: string;
+};
+
 const PO_DIRNAME = "po";
 const LOCALE_DIRNAME = "locale";
 const LINGUAS_FILENAME = "LINGUAS";
 const LOCALE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.@+-]*$/;
 const DOMAIN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const MODE_MASK = 0o7777;
 
 const parseLocales = (linguasPath: string): string[] => {
     const source = readFileSync(linguasPath, "utf8");
@@ -50,6 +66,9 @@ const requireFile = (path: string): void => {
     }
 };
 
+const requiresCatalogInitialization = (project: CatalogProject): boolean =>
+    project.catalogs.some((catalog) => !existsSync(catalog.path));
+
 const resolveCatalogProject = (root: string, domain: string): CatalogProject | null => {
     const projectRoot = resolve(root);
     const poDir = join(projectRoot, PO_DIRNAME);
@@ -71,10 +90,6 @@ const resolveCatalogProject = (root: string, domain: string): CatalogProject | n
     const locales = parseLocales(linguasPath);
     const catalogs = locales.map((locale) => ({ locale, path: join(poDir, `${locale}.po`) }));
 
-    for (const catalog of catalogs) {
-        requireFile(catalog.path);
-    }
-
     return {
         catalogs,
         domain,
@@ -89,6 +104,10 @@ const resolveCatalogProject = (root: string, domain: string): CatalogProject | n
 const compileCatalogs = (project: CatalogProject, outputDir: string): string[] => {
     const localeDir = resolve(outputDir);
 
+    for (const catalog of project.catalogs) {
+        requireFile(catalog.path);
+    }
+
     return project.catalogs.map((catalog) => {
         const output = join(localeDir, catalog.locale, "LC_MESSAGES", `${project.domain}.mo`);
         mkdirSync(dirname(output), { recursive: true });
@@ -101,6 +120,77 @@ const compileCatalogs = (project: CatalogProject, outputDir: string): string[] =
 
         return output;
     });
+};
+
+const initializeCatalog = (catalog: Catalog, template: string, output: string): void => {
+    runCliTool({
+        tool: "msginit",
+        args: [
+            "--no-translator",
+            "--no-wrap",
+            `--locale=${catalog.locale}`,
+            `--input=${template}`,
+            `--output-file=${output}`,
+        ],
+        target: catalog.path,
+    });
+};
+
+const mergeCatalog = (catalog: Catalog, template: string, output: string): void => {
+    requireFile(catalog.path);
+
+    runCliTool({
+        tool: "msgmerge",
+        args: ["--quiet", "--no-wrap", `--output-file=${output}`, catalog.path, template],
+        target: catalog.path,
+    });
+
+    chmodSync(output, statSync(catalog.path).mode & MODE_MASK);
+};
+
+const prepareCatalog = (
+    catalog: Catalog,
+    index: number,
+    template: string,
+    stagingDir: string,
+): PreparedCatalog => {
+    const output = join(stagingDir, `${String(index)}.po`);
+    const isExisting = existsSync(catalog.path);
+
+    if (isExisting) {
+        mergeCatalog(catalog, template, output);
+    } else {
+        initializeCatalog(catalog, template, output);
+    }
+
+    return {
+        isChanged: !isExisting || !readFileSync(output).equals(readFileSync(catalog.path)),
+        output,
+        target: catalog.path,
+    };
+};
+
+const synchronizeCatalogs = (project: CatalogProject): void => {
+    if (project.catalogs.length === 0) {
+        return;
+    }
+
+    const template = join(project.poDir, `${project.domain}.pot`);
+    requireFile(template);
+    const stagingDir = mkdtempSync(join(project.poDir, ".gtkx-catalog-"));
+
+    try {
+        const merged = project.catalogs.map((catalog, index) =>
+            prepareCatalog(catalog, index, template, stagingDir));
+
+        for (const catalog of merged) {
+            if (catalog.isChanged) {
+                renameSync(catalog.output, catalog.target);
+            }
+        }
+    } finally {
+        rmSync(stagingDir, { recursive: true, force: true });
+    }
 };
 
 const isCatalogSource = (root: string, path: string): boolean => {
@@ -120,5 +210,7 @@ export {
     LOCALE_DIRNAME,
     compileCatalogs,
     isCatalogSource,
+    requiresCatalogInitialization,
     resolveCatalogProject,
+    synchronizeCatalogs,
 };

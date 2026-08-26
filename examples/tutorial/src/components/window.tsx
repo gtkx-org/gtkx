@@ -1,5 +1,6 @@
 import { ToastProvider } from "@gtkx/components/adw";
 import * as Adw from "@gtkx/gi/adw";
+import { useTranslation } from "@gtkx/i18n";
 import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage, AdwToastOverlay } from "@gtkx/jsx/adw";
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
@@ -25,15 +26,20 @@ import { TasksScreen } from "./tasks-screen.js";
 import { TaskTitle } from "./task-title.js";
 import { WindowActions } from "./window-actions.js";
 
-const NothingSelected = () => (
-    <AdwStatusPage
-        iconName="view-list-symbolic"
-        title="Nothing Selected"
-        description="Pick a list or a smart view in the sidebar"
-    />
-);
+const NothingSelected = () => {
+    const { t } = useTranslation();
+
+    return (
+        <AdwStatusPage
+            iconName="view-list-symbolic"
+            title={t("Nothing Selected")}
+            description={t("Pick a list or a smart view in the sidebar")}
+        />
+    );
+};
 
 export const Window = () => {
+    const { t } = useTranslation();
     const application = useApplication();
     const lists = useStore((state) => state.lists);
     const tasks = useStore((state) => state.tasks);
@@ -63,7 +69,7 @@ export const Window = () => {
         <ToastProvider overlayRef={toastOverlayRef}>
             <AdwApplicationWindow
                 ref={windowRef}
-                title="Tasks"
+                title={t("Tasks")}
                 widthRequest={360}
                 heightRequest={294}
                 onCloseRequest={() => quit()}
@@ -91,11 +97,11 @@ export const Window = () => {
                                 name="Lists"
                                 component={Sidebar}
                                 options={{
-                                    title: "Tasks",
+                                    title: t("Tasks"),
                                     headerStart: (
                                         <GtkButton
                                             iconName="list-add-symbolic"
-                                            tooltipText="New List"
+                                            tooltipText={t("New List")}
                                             onClicked={() => showDialog("new-list")}
                                         />
                                     ),
@@ -112,7 +118,7 @@ export const Window = () => {
                                         <>
                                             <GtkButton
                                                 iconName="list-add-symbolic"
-                                                tooltipText="New Task (Ctrl+N)"
+                                                tooltipText={t("New Task (Ctrl+N)")}
                                                 actionName="win.new"
                                             />
                                             <SearchButton />

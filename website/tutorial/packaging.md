@@ -6,6 +6,23 @@ description: "Give the finished app an icon, a desktop entry, AppStream metadata
 
 [Appendix A](/tutorial/testing) left you with a test suite. Nothing here changes what the app does. This appendix closes the gap between an app that runs from your project directory and one that installs, appears in the overview under its own icon, and carries the metadata a software center expects.
 
+## Name the release
+
+The scaffold started at version `0.0.1` with placeholder package metadata. Give this release the identity used by its About dialog and package names:
+
+```bash
+npm pkg set \
+    name=gtkx-tutorial \
+    version=1.0.0 \
+    license=MPL-2.0 \
+    description="Tasks app from the GTKX tutorial" \
+    author="GTKX <hello@gtkx.dev>" \
+    homepage=https://gtkx.dev
+npm install --package-lock-only
+```
+
+The second command updates the root entry in `package-lock.json`, which the source-mode Flatpak later installs from without network access. Save a copy of the [Mozilla Public License 2.0](https://www.mozilla.org/MPL/2.0/) as `LICENSE` in the project root too. Package metadata identifies the license; that file gives recipients its actual terms.
+
 ## What the build produces
 
 Leave the dev server running. `gtkx build` writes to `dist/`, which the dev server never reads, so they coexist.
@@ -15,7 +32,7 @@ npm run build
 ```
 
 ```
-> tasks@0.0.1 build
+> gtkx-tutorial@1.0.0 build
 > gtkx build
 
 [gtkx] Building ~/tasks/src/index.tsx
@@ -101,6 +118,7 @@ deploy: {
         { file: "assets/screenshot.png", caption: "Browsing task lists in the sidebar", isDefault: true },
         { file: "assets/screenshot-editor.png", caption: "Editing a task" },
     ],
+    screenshotBaseUrl: "https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial",
     releases: [{ version: "1.0.0", date: "2026-07-13", notes: ["Initial release."] }],
     branding: { light: "#3584e4", dark: "#1a5fb4" },
     contentRating: {},
@@ -116,6 +134,8 @@ A few keys earn their place. `X-GNOME-UsesNotifications` gives the app its own r
 
 `categories` also decides where the app appears in a launcher that groups by category, and it is what the deb `Section` and the rpm `Group` are derived from.
 
+`screenshotBaseUrl` turns each relative screenshot `file` into a URL a software center can fetch. The tutorial uses the canonical images from the GTKX repository. For your own application, point it at the directory where the committed screenshots are publicly served, or give each screenshot an absolute `url` instead.
+
 ## One command
 
 ```bash
@@ -124,25 +144,24 @@ npm run deploy
 
 ```
 [gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to appimage, deb, flatpak, rpm
-[gtkx] Validated the desktop entry and the metainfo
 [gtkx] Building ~/tasks/src/index.tsx
-[gtkx] Build complete: dist/bundle.mjs
+[gtkx] Validated the desktop entry and the metainfo
 [gtkx] Bundled Node.js v24.19.0 (100.8 MiB, glibc >= 2.28)
-[gtkx] Staged 12 files into build/stage
+[gtkx] Staged 10 files into build/stage
 [gtkx] Wrote build/targets/appimage/AppRun
 [gtkx] Wrote build/targets/deb/nfpm.yaml
 [gtkx] Wrote build/targets/flatpak/com.gtkx.tutorial.yml
 [gtkx] Wrote build/targets/rpm/nfpm.yaml
-[gtkx] Built build/out/Tasks-1.0.0-x86_64.AppImage (36.6 MiB)
-[gtkx] Built build/out/gtkx-tutorial_1.0.0-1_amd64.deb (40.2 MiB)
-[gtkx] Built build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (31.2 MiB)
-[gtkx] Built build/out/gtkx-tutorial-1.0.0-1.x86_64.rpm (40.1 MiB)
+[gtkx] Built build/out/Tasks-1.0.0-x86_64.AppImage (36.9 MiB)
+[gtkx] Built build/out/gtkx-tutorial_1.0.0-1_amd64.deb (40.6 MiB)
+[gtkx] Built build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (26.4 MiB)
+[gtkx] Built build/out/gtkx-tutorial-1.0.0-1.x86_64.rpm (40.5 MiB)
 [gtkx] Deploy complete: 4 artifacts in build/out
 ```
 
-The desktop entry and the metainfo are validated in the second step, before the build, so a bad category or a missing summary fails in about two seconds rather than after everything else has run.
+The command regenerates the project types, builds the application, validates its desktop entry and metainfo, stages one install tree, and turns that tree into every requested format. The next chapter adds a translation catalog; the same command will then own its extraction, synchronization, compilation, metadata localization, and packaging too.
 
-Note the third line: Node.js is bundled into the package. GTKX needs Node.js 24, Debian 13 ships 20, and Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` fetches the official build matching yours, verifies its checksum, and caches it, which is where most of each package's size comes from.
+Node.js is bundled into the package. GTKX needs Node.js 24, Debian 13 ships 20, and Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` fetches the official build matching yours, verifies its checksum, and caches it, which is where most of each package's size comes from.
 
 ## What is inside
 
@@ -210,7 +229,7 @@ The identifiers agree because they come from one source: `Icon` is the applicati
 
 ## When a tool is missing
 
-`gtkx deploy` needs `desktop-file-validate` and `appstreamcli` for the metadata, and `flatpak-builder` for the Flatpak. It lists everything missing at once, with the install line for your distribution:
+`gtkx deploy` needs `desktop-file-validate` and `appstreamcli` for the metadata, GNU gettext for a project with `po/`, and `flatpak-builder` for the Flatpak. It lists everything missing at once, with the install line for your distribution:
 
 ```
 [gtkx] error Cannot deploy: 1 required tool is missing.
@@ -226,4 +245,4 @@ Narrow the run with --target if you do not need every package format.
 
 ## Next
 
-Appendix C submits the Flatpak to a store that builds it from source: [Shipping It on Flathub](/tutorial/flatpak).
+[Speaking the User's Language](/tutorial/internationalization) gives the interface and every package's desktop metadata one translated catalog before the Flatpak goes to Flathub.

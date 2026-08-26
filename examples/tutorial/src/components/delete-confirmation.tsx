@@ -1,4 +1,5 @@
 import * as Adw from "@gtkx/gi/adw";
+import { t } from "@gtkx/i18n";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { closeTaskIfOpen } from "../navigation.js";
 import { useStore } from "../store/index.js";
@@ -12,13 +13,13 @@ export const DeleteConfirmation = () => {
 
     return (
         <AdwAlertDialog
-            heading="Delete Task?"
-            body={`“${title}” will be permanently deleted. This cannot be undone.`}
+            heading={t("Delete Task?")}
+            body={t("“{{title}}” will be permanently deleted. This cannot be undone.", { title })}
             defaultResponse="cancel"
             closeResponse="cancel"
             responses={[
-                { id: "cancel", label: "Cancel" },
-                { id: "delete", label: "Delete", appearance: Adw.ResponseAppearance.DESTRUCTIVE },
+                { id: "cancel", label: t("Cancel") },
+                { id: "delete", label: t("Delete"), appearance: Adw.ResponseAppearance.DESTRUCTIVE },
             ]}
             onResponse={(id) => {
                 if (id === "delete" && taskToDelete !== null) {

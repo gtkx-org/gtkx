@@ -4,7 +4,7 @@ description: "Install the Flatpak you built, see which sandbox permissions the a
 
 # Appendix C: Shipping It on Flathub
 
-[Appendix B](/tutorial/packaging) built the packages. This page is about one of them.
+[Speaking the User's Language](/tutorial/internationalization) rebuilt all four packages with their French catalog and metadata. This page takes the Flatpak into its sandbox and then prepares the source-mode manifest Flathub needs.
 
 A Flatpak bundles the app with a pinned platform, so it sees the same Adwaita it was built against on any distribution. The finished app runs in a sandbox, and the permissions it asks for are the part worth planning.
 
@@ -16,23 +16,23 @@ npm run deploy -- --target flatpak
 
 ```
 [gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to flatpak
-[gtkx] Validated the desktop entry and the metainfo
 [gtkx] Building ~/tasks/src/index.tsx
+[gtkx] Validated the desktop entry and the metainfo
 [gtkx] Bundled Node.js v24.19.0 (100.8 MiB, glibc >= 2.28)
-[gtkx] Staged 12 files into build/stage
+[gtkx] Staged 11 files into build/stage
 [gtkx] Wrote build/targets/flatpak/com.gtkx.tutorial.yml
 [gtkx] flatpak: running flatpak-builder, this can take several minutes
-[gtkx] Built build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (31.2 MiB)
+[gtkx] Built build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (26.4 MiB)
 ```
 
 `--install-deps-from=flathub` pulls the GNOME runtime the first time, which is slow and then cached. Install and launch:
 
 ```bash
-flatpak install --user build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak
-flatpak run com.gtkx.tutorial
+flatpak install --user --reinstall build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak
+flatpak run --env=LANG=fr_FR.UTF-8 --env=LANGUAGE=fr com.gtkx.tutorial
 ```
 
-Tasks opens as a fresh install with its own data directory, so the seeded lists and tasks appear as they did on your first run. Add a task called `Ship it`, then quit and check where it landed:
+Tasks opens as a fresh install with its own data directory and reads the catalog installed at `/app/share/locale`, so its first-run lists and tasks appear in French. Add a task called `Ship it`, then quit and check where it landed:
 
 ```bash
 cat ~/.var/app/com.gtkx.tutorial/data/com.gtkx.tutorial/tasks.json
@@ -76,11 +76,14 @@ Flathub does not accept that. Its submission rules require that an app is built 
 
 ```ts
 deploy: {
-    flatpak: { mode: "source" },
+    flatpak: {
+        mode: "source",
+        source: { url: "https://github.com/you/tasks.git" },
+    },
 },
 ```
 
-`source` mode changes what the manifest carries. The module's source becomes a `git` source pinned to your release rather than your working tree. It adds the `org.freedesktop.Sdk.Extension.node24` SDK extension, since the GNOME SDK carries no Node.js and the sandbox now has to run the build. It vendors every npm dependency ahead of time with [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node), because the build sandbox has no network and `npm ci --offline` has to resolve from a local cache. And it carries the generated desktop entry, metainfo, and launcher as inline sources, so nothing generated has to be committed to your repository.
+Replace that URL with the public HTTPS repository you will push. `source` mode changes what the manifest carries. The module's source becomes a `git` source pinned to your current commit rather than your working tree. It adds the `org.freedesktop.Sdk.Extension.node24` SDK extension, since the GNOME SDK carries no Node.js and the sandbox now has to run the build. It vendors every npm dependency ahead of time with [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node), because the build sandbox has no network and `npm ci --offline` has to resolve from a local cache. And it carries the localized desktop entry, metainfo, and launcher as inline sources, so those generated files do not have to be committed to your repository. The sandbox build compiles the committed `po/fr.po`, then copies `dist/locale` into `/app/share/locale` with the bundle.
 
 Install the generator once:
 
@@ -88,7 +91,14 @@ Install the generator once:
 pipx install git+https://github.com/flatpak/flatpak-builder-tools.git#subdirectory=node
 ```
 
-Then produce the manifest without building anything:
+The source commit must contain the source-mode setting, lockfile, and catalogs. Commit the release tree first:
+
+```bash
+git add .
+git commit -m "Prepare source release"
+```
+
+Then produce the manifest without building the Flatpak package:
 
 ```bash
 npm run deploy -- --target flatpak --print-manifests
@@ -98,18 +108,18 @@ That writes `build/targets/flatpak/com.gtkx.tutorial.yml` and `generated-sources
 
 ## Submitting
 
-The URL, tag, and commit come from your `origin` remote and the tag you are on, and `deploy.flatpak.source` overrides any of them:
+The manifest takes the URL you configured and pins the current `HEAD` commit automatically. You can also pin an existing release tag explicitly:
 
 ```ts
 flatpak: {
     mode: "source",
-    source: { url: "https://github.com/you/your-app.git", tag: "v1.0.0" },
+    source: { url: "https://github.com/you/tasks.git", tag: "v1.0.0" },
 },
 ```
 
-A tag on its own is enough, as long as it exists in your checkout: Flathub builds a fixed tree rather than following a movable tag, so `gtkx deploy` resolves the tag to its commit and writes both into the manifest.
+A tag must already exist in your checkout. Flathub builds a fixed tree rather than following a movable tag, so `gtkx deploy` resolves it to its commit and writes both into the manifest.
 
-Commit `package.json` and your lockfile so the offline install resolves, tag the release, and push.
+The earlier localization preview already refreshed the source and metadata messages. Confirm that `package.json`, the lockfile, `po/LINGUAS`, `po/fr.po`, `po/com.gtkx.tutorial.pot`, and `po/POTFILES.in` are in the commit, then tag the release and push. If you add `tag` to the config, create the tag before rerunning the final manifest preview. MO files stay out of the repository; `gtkx build` reproduces them inside the sandbox.
 
 The pull request goes to [flathub/flathub](https://github.com/flathub/flathub), against the `new-pr` branch, carrying the manifest named after your application ID and `generated-sources.json` beside it. Before opening it, check the manifest the way Flathub's own CI does:
 

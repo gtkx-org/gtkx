@@ -58,7 +58,25 @@ const FLATPAK_NODE_GENERATOR_PNPM: DeployTool = {
 
 const MSGFMT: DeployTool = {
     command: "msgfmt",
-    purpose: "compiles and merges the gettext catalogs",
+    purpose: "compiles the gettext catalogs and localized metadata",
+    isOptional: false,
+};
+
+const MSGGREP: DeployTool = {
+    command: "msggrep",
+    purpose: "retains generated metadata while refreshing the catalog template",
+    isOptional: false,
+};
+
+const MSGINIT: DeployTool = {
+    command: "msginit",
+    purpose: "initializes newly listed gettext catalogs",
+    isOptional: false,
+};
+
+const MSGMERGE: DeployTool = {
+    command: "msgmerge",
+    purpose: "synchronizes translations with the catalog template",
     isOptional: false,
 };
 
@@ -162,6 +180,9 @@ export {
     FLATPAK,
     FLATPAK_BUILDER,
     MSGFMT,
+    MSGGREP,
+    MSGINIT,
+    MSGMERGE,
     probeTools,
     STRIP,
     TAR,

@@ -1,5 +1,5 @@
 import type { ChildProcess } from "node:child_process";
-import { rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -31,6 +31,7 @@ const FIRST_ASSET = join("data", "first.data");
 const SECOND_ASSET = join("data", "second.data");
 const LINGUAS = join("po", "LINGUAS");
 const IT_CATALOG = join("po", "it.po");
+const FR_CATALOG = join("po", "fr.po");
 const ICON_ASSET = join("data", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
 const RESOURCE_ICON_NAME = "gtkx-dev-probe-symbolic";
 const RESOURCE_ICON_PATH = `/com/gtkx/clidev/icons/scalable/actions/${RESOURCE_ICON_NAME}.svg`;
@@ -270,7 +271,7 @@ const expectCatalogRestarts = async (state: DevState): Promise<void> => {
     writeFileSync(join(state.project.root, IT_CATALOG), italianCatalog("translation-two"));
     expect(await waitForOutput(state.session, "translation-two", RELOAD_TIMEOUT)).toContain("translation-two");
     const priorTranslations = occurrences(state.session.output(), "translation-two");
-    writeFileSync(join(state.project.root, LINGUAS), "it # refreshed\n");
+    writeFileSync(join(state.project.root, LINGUAS), "it fr # refreshed\n");
 
     const restarted = await waitForOccurrences(
         state.session,
@@ -280,6 +281,9 @@ const expectCatalogRestarts = async (state: DevState): Promise<void> => {
     );
 
     expect(restarted).toContain("Full restart (process restart)");
+    const frenchPath = join(state.project.root, FR_CATALOG);
+    expect(existsSync(frenchPath)).toBe(true);
+    expect(readFileSync(frenchPath, "utf8")).toContain(String.raw`"Language: fr\n"`);
 };
 
 const expectResourceIconReload = async (
@@ -359,7 +363,7 @@ describe("gtkx dev", () => {
         );
     });
 
-    it("compiles translations and fully restarts for PO and LINGUAS changes", async () => {
+    it("compiles translations, initializes locales, and restarts for catalog changes", async () => {
         await expectCatalogRestarts(state);
     });
 

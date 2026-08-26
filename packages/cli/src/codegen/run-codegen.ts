@@ -10,7 +10,7 @@ import {
 import { info, warn } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { resolveCatalogProject } from "../i18n/catalogs.js";
+import { resolveCatalogProject, synchronizeCatalogs } from "../i18n/catalogs.js";
 import { extractSourceCatalog } from "../i18n/source-messages.js";
 import { emitI18nTypes } from "../i18n/types.js";
 import { resolveDataDir } from "../internal/data-dir.js";
@@ -227,6 +227,7 @@ const syncI18n = async (
     const srcDir = join(root, "src");
     const sourceFiles = discoverSourceFiles(existsSync(srcDir) ? srcDir : root);
     const catalog = await extractSourceCatalog(project, sourceFiles, shouldPreserveMetadataMessages);
+    synchronizeCatalogs(project);
     emitI18nTypes(root, catalog.messages);
 };
 
