@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { REFERENCE_PATH } from "../codegen/reference.js";
 
@@ -77,10 +77,23 @@ const nextContents = (contents: string): string => {
     return replaceBlock(contents, renderBlock(heading));
 };
 
-const hasWritten = (path: string, contents: string): boolean => {
-    const previous = existsSync(path) ? readFileSync(path, "utf8") : undefined;
+const errorCode = (error: unknown): string | undefined =>
+    error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
 
-    if (previous === contents) {
+const readOrUndefined = (path: string): string | undefined => {
+    try {
+        return readFileSync(path, "utf8");
+    } catch (error) {
+        if (errorCode(error) === "ENOENT") {
+            return undefined;
+        }
+
+        throw error;
+    }
+};
+
+const hasWritten = (path: string, contents: string): boolean => {
+    if (readOrUndefined(path) === contents) {
         return false;
     }
 
@@ -90,14 +103,22 @@ const hasWritten = (path: string, contents: string): boolean => {
 };
 
 const hasWrittenClaudeImport = (root: string): boolean => {
-    const path = join(root, CLAUDE_FILENAME);
+    try {
+        writeFileSync(join(root, CLAUDE_FILENAME), CLAUDE_CONTENTS, { flag: "wx" });
 
-    return existsSync(path) ? false : hasWritten(path, CLAUDE_CONTENTS);
+        return true;
+    } catch (error) {
+        if (errorCode(error) === "EEXIST") {
+            return false;
+        }
+
+        throw error;
+    }
 };
 
 const upsertAgentRules = (root: string): AgentRulesResult => {
     const agentsPath = join(root, AGENTS_FILENAME);
-    const existing = existsSync(agentsPath) ? readFileSync(agentsPath, "utf8") : "";
+    const existing = readOrUndefined(agentsPath) ?? "";
     const files: string[] = [];
 
     if (hasWritten(agentsPath, nextContents(existing))) {

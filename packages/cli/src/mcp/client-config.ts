@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 type ClientName = "claude" | "cursor" | "vscode" | "opencode" | "codex";
@@ -66,12 +66,26 @@ const isClientName = (value: string): value is ClientName => CLIENT_NAMES.has(va
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
 
-const readJson = (path: string): Record<string, unknown> => {
-    if (!existsSync(path)) {
-        return {};
+const readOrUndefined = (path: string): string | undefined => {
+    try {
+        return readFileSync(path, "utf8");
+    } catch (error) {
+        if (error instanceof Error && (error as NodeJS.ErrnoException).code === "ENOENT") {
+            return undefined;
+        }
+
+        throw error;
+    }
+};
+
+const readJson = (path: string): Record<string, unknown> | undefined => {
+    const source = readOrUndefined(path);
+
+    if (source === undefined) {
+        return undefined;
     }
 
-    const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+    const parsed: unknown = JSON.parse(source);
 
     if (!isRecord(parsed)) {
         throw new Error(`Refusing to edit ${path}: its contents are not a JSON object.`);
@@ -104,13 +118,13 @@ const writeClientConfig = (root: string, name: ClientName): ClientResult => {
     }
 
     const path = join(root, client.file);
-    const isCreated = !existsSync(path);
-    const document = readJson(path);
+    const existing = readJson(path);
+    const document = existing ?? {};
     const section = { ...getSection(document, client.key), [SERVER_NAME]: client.entry };
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, `${JSON.stringify({ ...document, [client.key]: section }, null, 4)}\n`);
 
-    return { kind: "written", path, isCreated };
+    return { kind: "written", path, isCreated: existing === undefined };
 };
 
 export { CLIENTS, isClientName, writeClientConfig, type ClientName, type ClientResult };
