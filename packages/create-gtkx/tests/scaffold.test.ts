@@ -52,6 +52,8 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
             "src/index.tsx",
             "src/gtkx-env.d.ts",
             "tests/app.test.tsx",
+            ".mcp.json",
+            ".claude/settings.json",
             ICON_PATH,
         ]));
 
@@ -82,6 +84,41 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
 
     it("records the build allowance pnpm understands", () => {
         expect(readProject(state.run, "pnpm-workspace.yaml")).toContain("allowBuilds:");
+    });
+});
+
+describe("create-gtkx and the agent files it scaffolds", () => {
+    const state = { run: {} as CreateRun };
+
+    beforeAll(() => {
+        state.run = create(["--typescript", "--vitest"]);
+    }, 120_000);
+
+    afterAll(() => {
+        removeRun(state.run);
+    });
+
+    it("registers the MCP server and pre-approves the project's own commands", () => {
+        const mcp = JSON.parse(readProject(state.run, ".mcp.json")) as {
+            mcpServers: Record<string, { command: string; args: string[] }>;
+        };
+
+        expect(mcp.mcpServers.gtkx).toEqual({ command: "npx", args: ["gtkx", "mcp"] });
+
+        const settings = JSON.parse(readProject(state.run, ".claude/settings.json")) as {
+            permissions: { allow: string[] };
+        };
+
+        expect(settings.permissions.allow).toEqual(expect.arrayContaining([
+            "Bash(npx gtkx codegen:*)",
+            "Bash(npx vitest run:*)",
+        ]));
+    });
+
+    it("keeps the generated reference out of git and the agent files in it", () => {
+        const ignored = readProject(state.run, ".gitignore");
+        expect(ignored).toContain(".gtkx/");
+        expect(ignored).not.toContain("AGENTS.md");
     });
 });
 

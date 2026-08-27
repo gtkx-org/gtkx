@@ -30,6 +30,7 @@ type ModuleExport = { module: string; export: string };
 
 type DocsFingerprintInput = {
     basePath: string;
+    linkStyle: string;
     props: Record<string, ModuleExport>;
     omittedProps: Record<string, string[]>;
 };
@@ -270,6 +271,7 @@ const hashDocs = (giValue: string, input: DocsFingerprintInput): string =>
             JSON.stringify([
                 giValue,
                 input.basePath,
+                input.linkStyle,
                 serializeModuleExports(input.props),
                 serializeOmittedProps(input.omittedProps),
             ]),

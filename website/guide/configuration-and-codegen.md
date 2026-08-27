@@ -37,6 +37,8 @@ export default defineConfig({
   file in the project root, if present; multiple matches require an explicit choice.
 - **`userEventSignals`**: signals, keyed by GLib type name, that GTKX suppresses while writing to a widget itself. A write silences all of them, and silences `notify` only for the property it writes, so a property the widget changes in reaction still reaches its `onNotifyX`. Entries merge into the defaults.
 - **`elements`**: the [element customizations](#advanced-customizing-elements): `behaviors` is the module default-exporting your `defineElements` map, `config` sets per-type codegen output (`component`, `props`, `omittedProps`, `isLazy`).
+- **`agents`**: what codegen writes for coding agents, both on by default. `rules: false` stops the `AGENTS.md` block, `reference: false` stops the on-disk element reference. See [What agents are given](#what-agents-are-given).
+- **`mcp`**: which tools the [MCP server](/guide/mcp) registers: `tools` is a list of name patterns, `readOnly` drops the tools that drive the app.
 - **`future`**: opts into behavior that becomes the default in the next major. See [Future flags](#future-flags).
 
 ### The application resource base
@@ -227,7 +229,23 @@ const SaveButton = () => {
 gtkx docs
 ```
 
-Each page carries the widget's documentation, hierarchy, slot rules, props, signal handlers, and `ref` methods with their signatures. `gtkx docs --help` covers the output directory and link root.
+Each page carries the widget's documentation, hierarchy, slot rules, props, signal handlers, and `ref` methods with their signatures. `gtkx docs --help` covers the output directory and link root. Use it for pages you intend to publish; the copy agents read is written automatically, below.
+
+## What agents are given
+
+A model writing GTKX code has read a great deal of GTK, nearly all of it in C, PyGObject, Vala, or GJS, and nearly none of it valid here. Codegen writes two things that correct for that, and both stay in step with the bindings because the same run produces them.
+
+The first is `.gtkx/reference`, the same element pages `gtkx docs` produces, generated from this project's own GIR libraries and linked by paths that resolve from the project root. It is the authority on which props, signals, and methods exist, it costs nothing to read with `grep` or `cat`, and it is regenerated whenever the libraries or element configuration change. Add `.gtkx/` to `.gitignore`, as scaffolded projects do.
+
+The second is a marked block in `AGENTS.md`, alongside a `CLAUDE.md` importing it for Claude Code, which reads it under that name instead. The block lists the idioms models get wrong here and points at the reference:
+
+```markdown
+<!-- BEGIN:gtkx-agent-rules -->
+...
+<!-- END:gtkx-agent-rules -->
+```
+
+Only what is between the markers is rewritten, so anything else in the file is yours to keep. An existing `CLAUDE.md` is never touched. Committing the block keeps the working tree clean, since it is rewritten on every codegen run. Set `agents: { rules: false }` or `agents: { reference: false }` to turn either off.
 
 ## Advanced: Customizing elements
 

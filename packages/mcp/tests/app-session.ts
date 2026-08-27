@@ -27,7 +27,11 @@ const WORKSPACE_MODULES = join(WORKSPACE_ROOT, "node_modules");
 const CLI_ENTRY = join(WORKSPACE_ROOT, "packages", "cli", "src", "cli.ts");
 const SERVER_ENTRY = join(WORKSPACE_ROOT, "packages", "mcp", "src", "server.ts");
 const TSX_ARGV = ["--conditions=source", "--import", "tsx"];
-const SERVER_SCRIPT = `const { main } = await import(${JSON.stringify(SERVER_ENTRY)}); await main();`;
+
+const SERVER_SCRIPT =
+    `const { main, parseServerArgs } = await import(${JSON.stringify(SERVER_ENTRY)});` +
+    "await main(parseServerArgs(process.argv.slice(1)));";
+
 const SERVER_ARGV = [...TSX_ARGV, "--input-type=module", "-e", SERVER_SCRIPT];
 const LINKED_PACKAGES = ["components", "config", "css", "native", "react", "runtime", "testing", "utils"];
 const LINKED_MODULES = ["@types", "csstype", "react", "tsx"];
@@ -114,12 +118,16 @@ const stopApp = async (child: ChildProcess): Promise<void> => {
     await waitForExit(child);
 };
 
-const startServer = async (cwd: string, existingRuntimeDir?: string): Promise<McpServer> => {
+const startServer = async (
+    cwd: string,
+    existingRuntimeDir?: string,
+    serverArgs: string[] = [],
+): Promise<McpServer> => {
     const runtimeDir = existingRuntimeDir ?? mkdtempSync(join(tmpdir(), "gtkx-mcp-runtime-"));
 
     const transport = new StdioClientTransport({
         command: process.execPath,
-        args: SERVER_ARGV,
+        args: serverArgs.length === 0 ? SERVER_ARGV : [...SERVER_ARGV, "--", ...serverArgs],
         cwd,
         env: childEnvironment(runtimeDir),
         stderr: "ignore",

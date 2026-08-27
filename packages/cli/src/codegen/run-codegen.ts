@@ -2,6 +2,7 @@ import { runCodegen as runCodegenCore } from "@gtkx/codegen";
 import { getShadowingStorePaths, sweepProjectStaging } from "@gtkx/codegen/internal";
 import { type Config, loadConfig } from "@gtkx/config";
 import {
+    isAgentRulesEnabled,
     resolveElementComponents,
     resolveElementProps,
     resolveLazyElements,
@@ -13,10 +14,12 @@ import { join, resolve } from "node:path";
 import { resolveCatalogProject, synchronizeCatalogs } from "../i18n/catalogs.js";
 import { extractSourceCatalog } from "../i18n/source-messages.js";
 import { emitI18nTypes } from "../i18n/types.js";
+import { upsertAgentRules } from "../internal/agent-rules.js";
 import { resolveDataDir } from "../internal/data-dir.js";
 import { discoverSourceFiles } from "../internal/source-imports.js";
 import { emitSchemaEnv } from "../settings/schema.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
+import { type ReferenceResult, writeReference } from "./reference.js";
 import { type CodegenContext, type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
 
 type RunCodegenOptions = {
@@ -43,6 +46,7 @@ type RunCodegenResult = {
     configFile?: string | undefined;
     libraries?: string[] | undefined;
     future?: string[] | undefined;
+    reference?: ReferenceResult | undefined;
 };
 
 type CodegenOptionsInput = {
@@ -197,6 +201,8 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     });
 
     warnNotices(result.notices);
+    const reference = await writeReference({ root: cwd, config, girPath, libraries, isForced });
+    syncAgentRules(cwd, config);
 
     return {
         isRegenerated: result.isRegenerated,
@@ -208,7 +214,14 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
         configFile,
         libraries,
         future: enabledFutureFlags(config),
+        reference,
     };
+};
+
+const syncAgentRules = (root: string, config: Config): void => {
+    if (isAgentRulesEnabled(config)) {
+        upsertAgentRules(root);
+    }
 };
 
 const syncI18n = async (

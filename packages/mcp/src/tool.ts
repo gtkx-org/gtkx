@@ -12,6 +12,7 @@ type Tool<Shape extends Record<string, z.ZodType> = Record<string, z.ZodType>> =
     kind: ToolKind;
     description: string;
     inputSchema: Shape;
+    isOpenWorld?: boolean;
     handler: (args: ToolArgs<Shape>) => Promise<CallToolResult>;
 };
 
@@ -63,7 +64,7 @@ const registerTool = (server: McpServer, tool: Tool): void => {
                 title: tool.title,
                 readOnlyHint: tool.kind === "readOnly",
                 destructiveHint: tool.kind === "action",
-                openWorldHint: true,
+                openWorldHint: tool.isOpenWorld === true,
             },
         },
         callback,

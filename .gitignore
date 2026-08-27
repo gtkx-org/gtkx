@@ -3,8 +3,11 @@
 .nx/workspace-data
 *.log
 *.tsbuildinfo
+/.claude/worktrees/
+/.gtkx/
 /.playwright-mcp
 /.pnpm-store/
+/AGENTS.md
 /CLAUDE.md
 build/
 coverage/

@@ -1,6 +1,10 @@
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { loadConfig } from "@gtkx/config";
+import { type McpSettings, resolveMcpSettings } from "@gtkx/config/internal";
 import { createLogger, installGracefulShutdown, type Logger } from "@gtkx/utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { parseArgs } from "node:util";
 import { z } from "zod";
 import type { ConnectionErrorEvent } from "./transport.js";
 import packageManifest from "../package.json" with { type: "json" };
@@ -26,11 +30,19 @@ import {
     registerReferenceResources,
 } from "./reference.js";
 import { SocketServer } from "./socket-server.js";
-import { defineTool, imageContent, registerTool, textContent, type Tool } from "./tool.js";
+import { selectTools } from "./tool-filter.js";
+import { defineTool, imageContent, registerTool, textContent, textError, type Tool } from "./tool.js";
 
 type CreateMcpServerOptions = {
     socketPath?: string;
     version: string;
+    settings?: McpSettings;
+};
+
+type ServerOptions = {
+    cwd?: string;
+    tools?: string[];
+    isReadOnly?: boolean;
 };
 
 type McpServerHandle = {
@@ -51,6 +63,18 @@ type AppWithWindows = AppInfo & { windows?: AppWindow[] };
 
 const { version } = packageManifest;
 const log: Logger = createLogger("mcp");
+const DEFAULT_SETTINGS: McpSettings = { tools: [], isReadOnly: false };
+
+const INSTRUCTIONS =
+    "This server has two halves. The widget tools drive a GTKX app running under `gtkx dev`: they read " +
+    "its live widget tree, query it by accessible role and name, click and type, and capture screenshots. " +
+    "They fail until an app is running, so start `gtkx dev` first. The reference tools answer from the " +
+    "bindings generated for a specific project, so they describe that project's GIR libraries rather than " +
+    "GTK in general; prefer them over recalled GTK knowledge, which is usually C, PyGObject or GJS and " +
+    "does not apply here.\n\n" +
+    "Widget IDs are valid only while the widget is mounted. After a dialog closes, a list re-renders, or " +
+    "fast refresh patches a component, re-read the tree or re-run the query instead of reusing an ID.";
+
 const APPLICATION_ID_DESCRIPTION = "Application ID to query. If not specified, uses the first connected app.";
 
 const WIDGET_ID_DESCRIPTION =
@@ -137,6 +161,14 @@ const screenshotShape = {
             "Absolute path to write the PNG to on the app's machine. If set, the screenshot is saved there " +
             "in addition to being returned.",
     }),
+    returnImage: z
+        .boolean()
+        .optional()
+        .describe(
+            "Whether to return the PNG as image content, true by default. Pass false together with `path` " +
+            "to save the screenshot and get back only where it landed, which keeps the image out of the " +
+            "conversation until something actually needs to look at it.",
+        ),
 };
 
 function describeParams<Shape extends Record<string, z.ZodType>>(
@@ -202,6 +234,28 @@ const listAppsTool = (appRouter: AppRouter): Tool =>
         },
     });
 
+const screenshotResult = (
+    result: { data: string; mimeType: string; savedPath?: string },
+    shouldReturnImage: boolean,
+): CallToolResult => {
+    if (result.savedPath === undefined) {
+        return shouldReturnImage
+            ? imageContent(result.data, result.mimeType)
+            : textError(
+                    "Nothing to return: `returnImage` was false and no `path` was given, so the screenshot was " +
+                    "neither saved nor returned. Pass `path` to save it, or leave `returnImage` unset.",
+                );
+    }
+
+    const saved = { type: "text", text: `Screenshot saved to ${result.savedPath}` } as const;
+
+    if (!shouldReturnImage) {
+        return { content: [saved] };
+    }
+
+    return { content: [saved, { type: "image", data: result.data, mimeType: result.mimeType }] };
+};
+
 const screenshotTool = (appRouter: AppRouter): Tool =>
     defineTool({
         name: "gtkx_take_screenshot",
@@ -212,23 +266,14 @@ const screenshotTool = (appRouter: AppRouter): Tool =>
             "the PNG to `path` on the app's machine. You can't target widgets from a screenshot; use " +
             "`gtkx_get_widget_tree` to find widget IDs for interaction.",
         inputSchema: screenshotShape,
-        handler: async ({ applicationId, ...params }) => {
+        handler: async ({ applicationId, returnImage, ...params }) => {
             const result = await appRouter.sendToApp<{ data: string; mimeType: string; savedPath?: string }>(
                 applicationId,
                 "widget.screenshot",
                 params,
             );
 
-            if (result.savedPath) {
-                return {
-                    content: [
-                        { type: "text", text: `Screenshot saved to ${result.savedPath}` },
-                        { type: "image", data: result.data, mimeType: result.mimeType },
-                    ],
-                };
-            }
-
-            return imageContent(result.data, result.mimeType);
+            return screenshotResult(result, returnImage !== false);
         },
     });
 
@@ -348,8 +393,19 @@ function buildTools(appRouter: AppRouter): Tool[] {
     return [...buildInspectionTools(appRouter), ...buildInteractionTools(appRouter)];
 }
 
-const registerTools = (mcpServer: McpServer, appRouter: AppRouter, provider: ReferenceProvider): void => {
-    for (const tool of [...buildTools(appRouter), ...buildReferenceTools(provider)]) {
+const registerTools = (
+    mcpServer: McpServer,
+    appRouter: AppRouter,
+    provider: ReferenceProvider,
+    settings: McpSettings,
+): void => {
+    const tools = selectTools([...buildTools(appRouter), ...buildReferenceTools(provider)], settings);
+
+    if (tools.length === 0) {
+        log.warn("no tools matched the configured filter; the server is registering none");
+    }
+
+    for (const tool of tools) {
         registerTool(mcpServer, tool);
     }
 };
@@ -402,16 +458,57 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
         log.info(`app unregistered: ${(event as AppUnregisteredEvent).detail}`);
     });
 
-    const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version });
+    const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version }, { instructions: INSTRUCTIONS });
     const referenceProvider = createReferenceProvider({ getAppRoot: () => appRouter.getProjectRoot() });
-    registerTools(mcpServer, appRouter, referenceProvider);
+    registerTools(mcpServer, appRouter, referenceProvider, options.settings ?? DEFAULT_SETTINGS);
     registerReferenceResources(mcpServer, referenceProvider);
 
     return createServerHandle(socketServer, mcpServer, socketPath);
 };
 
-async function main(): Promise<void> {
-    const server = createMcpServer({ version });
+const configuredSettings = async (cwd: string): Promise<McpSettings> => {
+    try {
+        const { config } = await loadConfig(cwd);
+
+        return resolveMcpSettings(config);
+    } catch {
+        return DEFAULT_SETTINGS;
+    }
+};
+
+const resolveSettings = async (options: ServerOptions): Promise<McpSettings> => {
+    const configured = await configuredSettings(options.cwd ?? process.cwd());
+
+    return {
+        tools: options.tools ?? configured.tools,
+        isReadOnly: options.isReadOnly ?? configured.isReadOnly,
+    };
+};
+
+const splitPatterns = (values: string[]): string[] =>
+    values.flatMap((value) => value.split(",")).map((value) => value.trim()).filter((value) => value.length > 0);
+
+const parseServerArgs = (argv: string[]): ServerOptions => {
+    const { values } = parseArgs({
+        args: argv,
+        options: {
+            tools: { type: "string", multiple: true },
+            "read-only": { type: "boolean" },
+        },
+        allowPositionals: false,
+    });
+
+    const tools = values.tools === undefined ? undefined : splitPatterns(values.tools);
+
+    return {
+        ...(tools !== undefined && { tools }),
+        ...(values["read-only"] !== undefined && { isReadOnly: values["read-only"] }),
+    };
+};
+
+async function main(options: ServerOptions = {}): Promise<void> {
+    const settings = await resolveSettings(options);
+    const server = createMcpServer({ version, settings });
 
     installGracefulShutdown({
         onSignal: () => server.stop(),
@@ -420,4 +517,4 @@ async function main(): Promise<void> {
     await server.start();
 }
 
-export { log, main };
+export { log, main, main as runMcpServer, parseServerArgs };

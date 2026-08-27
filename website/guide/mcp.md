@@ -31,28 +31,52 @@ yarn add -D @gtkx/mcp @gtkx/testing
 
 `@gtkx/mcp` has to be a direct dev dependency. Under pnpm, the nested copy `@gtkx/cli` pulls in stays in the virtual store, and the launch below fails with `gtkx-mcp: command not found`.
 
-Register `gtkx-mcp` as a stdio server, launched from the project root. For Claude Code:
+`gtkx mcp init` writes the server into the file an editor reads, so there is no JSON to hand-edit:
 
 ```bash
-claude mcp add gtkx -- npx -y @gtkx/mcp
+npx gtkx mcp init --client claude
 ```
 
-For any other MCP client, the standard `mcpServers` configuration looks like this:
+`--client` takes `claude` (`.mcp.json`), `cursor` (`.cursor/mcp.json`), `vscode` (`.vscode/mcp.json`), `opencode` (`opencode.json`), and `codex`, whose servers live in `~/.codex/config.toml` outside the project, so that one prints the snippet to paste instead of writing it. Existing servers in the file are kept. A project scaffolded by `create-gtkx` already has `.mcp.json`, so this is only needed for the other editors, or after deleting it.
+
+Written out, the configuration is a stdio server launched from the project root:
 
 ```json
 {
     "mcpServers": {
         "gtkx": {
             "command": "npx",
-            "args": ["-y", "@gtkx/mcp"]
+            "args": ["gtkx", "mcp"]
         }
     }
 }
 ```
 
-To try the server against a project without adding the dependency, run `pnpm dlx @gtkx/mcp`, which installs the latest published release rather than the one matching the project.
+`gtkx mcp` runs the server through the CLI the project already depends on, so the server always matches the bindings it documents. The standalone `gtkx-mcp` binary from `@gtkx/mcp` does the same thing and stays supported, but it has to be a direct dev dependency to be on `PATH`: under pnpm the nested copy `@gtkx/cli` pulls in stays in the virtual store, and launching it fails with `gtkx-mcp: command not found`.
 
 The widget tools fail until an app is running under `gtkx dev`.
+
+## Choosing which tools to register
+
+Every tool costs context whether or not the agent calls it, so the server can register a subset. `mcp.tools` in `gtkx.config.ts` takes name patterns where `*` matches any run of characters and a leading `!` excludes; `mcp.readOnly` leaves out the three tools that drive the app, keeping the ones that only read.
+
+```ts
+export default defineConfig({
+    applicationId: "com.example.app",
+    mcp: {
+        tools: ["gtkx_*", "!gtkx_take_screenshot"],
+        readOnly: false,
+    },
+});
+```
+
+A list whose patterns are all exclusions starts from every tool and removes; a list with any plain pattern starts from nothing and adds. The `--tools` and `--read-only` flags on `gtkx mcp` override the config, so one editor can run a narrower surface than the project's default:
+
+```bash
+npx gtkx mcp --read-only --tools "gtkx_*_api,gtkx_get_widget_tree"
+```
+
+Every tool is annotated for clients that gate on annotations: the inspection and reference tools carry `readOnlyHint`, the interaction tools carry `destructiveHint`, and all of them carry `openWorldHint: false`, since the server only ever talks to a local socket and to files on disk.
 
 ## The tools
 
@@ -106,7 +130,7 @@ Each match comes back with its ID and the same summary `gtkx_get_widget_props` r
 
 **`gtkx_get_widget_props`** takes a `widgetId` and returns a fixed summary of that widget (type, accessible role, name, text, sensitivity, visibility, and CSS classes) followed by the same summary for a subtree of descendants bounded by depth and by count: eight levels deep, which `maxDepth` raises or lowers (`0` returns the widget on its own), and thirty widgets in all whatever the depth. Any widget whose own direct children were left out carries `hiddenChildren`, their count, so drilling in is one more call with that widget's ID. Pass `properties` with GObject property names, kebab-case or camelCase, to read named properties as well.
 
-**`gtkx_take_screenshot`** captures a window and returns it as base64 PNG image content. `windowId` selects a window (defaulting to the first), and an optional absolute `path` also writes the PNG to disk on the app's machine.
+**`gtkx_take_screenshot`** captures a window and returns it as base64 PNG image content. `windowId` selects a window (defaulting to the first), and an optional absolute `path` also writes the PNG to disk on the app's machine. Pass `returnImage: false` together with `path` to get back only where the file landed, which keeps the image out of the conversation until something needs to look at it.
 
 Widget IDs stay stable for as long as a widget is mounted and stop resolving once it unmounts, so after a dialog closes, a list re-renders, or Fast Refresh patches a component, re-fetch the tree or re-query rather than reusing stale IDs.
 

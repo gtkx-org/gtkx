@@ -38,6 +38,11 @@ const main = defineCommand({
 
             return withErrorBoundary(docs);
         },
+        mcp: async () => {
+            const { mcp } = await import("./commands/mcp.js");
+
+            return withErrorBoundary(mcp);
+        },
         create: async () => {
             const { scaffoldCommand } = await import("create-gtkx");
 

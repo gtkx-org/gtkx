@@ -27,6 +27,11 @@
     "type": "module",
     "exports": {
         "./package.json": "./package.json",
+        "./server": {
+            "source": "./src/server.ts",
+            "types": "./dist/server.d.ts",
+            "default": "./dist/server.js"
+        },
         "./internal": {
             "source": "./src/internal.ts",
             "types": "./dist/internal.d.ts",

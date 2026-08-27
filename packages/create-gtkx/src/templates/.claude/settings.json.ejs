@@ -1,0 +1,13 @@
+{
+    "permissions": {
+        "allow": [
+            "Bash(npx gtkx codegen:*)",
+            "Bash(npx gtkx dev:*)",
+            "Bash(npx gtkx build:*)",
+            "Bash(npx tsc --noEmit)"<% if (shouldIncludeTesting) { %>,
+            "Bash(npx vitest run:*)"<% } %>
+        ],
+        "deny": [],
+        "ask": []
+    }
+}

@@ -32,12 +32,18 @@ type ResolvedReactCompilerOptions = ReactCompilerOptions & {
 /**
  * User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`: the GIR libraries
  * to bind and where to find them, the GApplication id, per-element configuration, the React
- * Compiler, codegen, and user event signal settings, and the `future` block opting into behavior
- * that becomes the default in the next major version.
+ * Compiler, codegen, and user event signal settings, the `agents` and `mcp` blocks controlling what
+ * coding agents are given, and the `future` block opting into behavior that becomes the default in
+ * the next major version.
  */
 type Config = z.infer<typeof configSchema>;
 type ModuleExport = z.infer<typeof moduleExportSchema>;
 type ElementConfigEntry = z.infer<typeof elementConfigSchema>;
+
+type McpSettings = {
+    tools: string[];
+    isReadOnly: boolean;
+};
 
 /** Configuration reduced to the values the app runtime and the build need, with paths already resolved. */
 type ResolvedConfig = {
@@ -184,6 +190,20 @@ const elementsSchema = z.object({
     config: z.record(z.string(), elementConfigSchema).optional(),
 });
 
+const agentsSchema = z.object({
+    rules: z.boolean({ error: "must be a boolean" }).optional(),
+    reference: z.boolean({ error: "must be a boolean" }).optional(),
+});
+
+const mcpSchema = z.object({
+    tools: z
+        .array(z.string({ error: "must be a tool name pattern" }).min(1, { error: "must be a tool name pattern" }), {
+            error: "must be an array of tool name patterns",
+        })
+        .optional(),
+    readOnly: z.boolean({ error: "must be a boolean" }).optional(),
+});
+
 const futureSchema = z.object({
     v2ByteArrays: z.boolean({ error: "must be a boolean" }).optional(),
     v2ValueReturns: z.boolean({ error: "must be a boolean" }).optional(),
@@ -204,6 +224,8 @@ const configSchema = z.object({
     elements: elementsSchema.optional(),
     applicationIcon: text("must be a path to an icon theme directory or a single icon file").optional(),
     deploy: deploySchema.optional(),
+    agents: agentsSchema.optional(),
+    mcp: mcpSchema.optional(),
 });
 
 /**
@@ -301,6 +323,14 @@ const resolveElementProps = (elements: Config["elements"]): Record<string, Modul
 const resolveOmittedProps = (elements: Config["elements"]): Record<string, string[]> =>
     elementEntryValues(elements, (entry) => entry.omittedProps);
 
+const isAgentRulesEnabled = (config: Config): boolean => config.agents?.rules !== false;
+const isAgentReferenceEnabled = (config: Config): boolean => config.agents?.reference !== false;
+
+const resolveMcpSettings = (config: Config): McpSettings => ({
+    tools: config.mcp?.tools ?? [],
+    isReadOnly: config.mcp?.readOnly === true,
+});
+
 const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
     applicationId: config.applicationId,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
@@ -312,14 +342,18 @@ const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
 export {
     APPLICATION_ID_MAX_LENGTH,
     defineConfig,
+    isAgentReferenceEnabled,
+    isAgentRulesEnabled,
     isValidApplicationId,
     validateConfig,
     mergeConfig,
     resolveLazyElements,
     resolveElementComponents,
     resolveElementProps,
+    resolveMcpSettings,
     resolveOmittedProps,
     resolveConfig,
+    type McpSettings,
     type ResolvedReactCompilerOptions,
     type Config,
     type ResolvedConfig,

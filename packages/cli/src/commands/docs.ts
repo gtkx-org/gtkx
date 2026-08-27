@@ -1,19 +1,11 @@
-import {
-    type ElementProps,
-    mergeOmittedProps,
-    type OmittedProps,
-    readBuiltinElements,
-    resolveGirPath,
-    resolveLibraries,
-    resolveStore,
-} from "@gtkx/codegen";
+import { mergeOmittedProps, resolveGirPath, resolveLibraries } from "@gtkx/codegen";
 import { writeDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
 import { resolveOmittedProps } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
-import { existsSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
+import { resolveDocsElements } from "../internal/docs-elements.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 const docs = defineCommand({
@@ -128,18 +120,6 @@ const resolveOutDir = (cwd: string, out: string): string => {
         `--out must name a directory below the project root ${cwd}, and ${outDirReason(cwd, out, outDir)}. ` +
         "Pass a path such as --out=docs/reference.",
     );
-};
-
-const resolveDocsElements = async (cwd: string): Promise<{ props: ElementProps; omittedProps: OmittedProps }> => {
-    const { gi, reactSubexports } = resolveStore(cwd);
-
-    if (!existsSync(gi.storeDir)) {
-        return { props: {}, omittedProps: {} };
-    }
-
-    const { props, omittedProps } = await readBuiltinElements(reactSubexports, gi.storeDir);
-
-    return { props, omittedProps };
 };
 
 export { docs };
