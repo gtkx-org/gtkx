@@ -2,6 +2,7 @@ import type { Server } from "node:http";
 import { spawn } from "node:child_process";
 import {
     copyFileSync,
+    type Dirent,
     existsSync,
     mkdirSync,
     mkdtempSync,
@@ -22,6 +23,16 @@ type NativeManifest = {
     version: string;
     napi: { binaryName: string; targets: string[] };
     optionalDependencies: Record<string, string>;
+};
+
+type PackageIdentity = {
+    name?: string;
+    private?: boolean;
+};
+
+type PublishablePackage = {
+    directory: string;
+    name: string;
 };
 
 type UserResponse = {
@@ -252,8 +263,51 @@ async function stageNativeArtifacts(): Promise<void> {
     }
 }
 
+function publishablePackage(entry: Dirent): PublishablePackage[] {
+    if (!entry.isDirectory()) {
+        return [];
+    }
+
+    const packageDir = join(PACKAGES_DIR, entry.name);
+    const manifestPath = join(packageDir, "package.json");
+
+    if (!existsSync(manifestPath)) {
+        return [];
+    }
+
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as PackageIdentity;
+
+    if (manifest.private === true) {
+        return [];
+    }
+
+    if (typeof manifest.name !== "string") {
+        throw new TypeError(`Publishable package has no name in ${manifestPath}`);
+    }
+
+    return [{ directory: packageDir, name: manifest.name }];
+}
+
+function publishablePackages(): PublishablePackage[] {
+    const entries = readdirSync(PACKAGES_DIR, { withFileTypes: true });
+
+    return entries.flatMap((entry) => publishablePackage(entry));
+}
+
+function cleanPublishableBuildArtifacts(packages: PublishablePackage[]): void {
+    for (const packageEntry of packages) {
+        rmSync(join(packageEntry.directory, "dist"), { recursive: true, force: true });
+        rmSync(join(packageEntry.directory, "tsconfig.lib.tsbuildinfo"), { force: true });
+    }
+}
+
+async function buildPackages(packages: PublishablePackage[], env: NodeJS.ProcessEnv): Promise<void> {
+    const projects = packages.map((packageEntry) => packageEntry.name).join(",");
+    await runAsync("nx", ["run-many", "-t", "build", `--projects=${projects}`, "--skip-nx-cache"], { env });
+}
+
 async function publishPackages(env: NodeJS.ProcessEnv): Promise<void> {
-    await runAsync("nx", ["run-many", "-t", "release"], { env });
+    await runAsync("nx", ["run-many", "-t", "release", "--skip-nx-cache"], { env });
 }
 
 function closeServer(server: Server): Promise<void> {
@@ -275,6 +329,9 @@ function listenServer(server: Server): Promise<void> {
 }
 
 async function publishInto(env: NodeJS.ProcessEnv): Promise<void> {
+    const packages = publishablePackages();
+    cleanPublishableBuildArtifacts(packages);
+    await buildPackages(packages, env);
     await stageNativeArtifacts();
     const restorePublishedTree = prepareHostOnlyPublish();
 

@@ -148,4 +148,4 @@ A struct or boxed value lent to a callback now aliases the native caller's memor
 
 ## What's next
 
-The next package on the [roadmap](https://github.com/orgs/gtkx-org/projects/1) is [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480), bringing React Hook Form's state model to Adwaita form controls. If something else would help more, the [issue tracker](https://github.com/gtkx-org/gtkx/issues) is where it gets argued about.
+The next packages on the roadmap, [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480) and [`@gtkx/i18n`](https://github.com/gtkx-org/gtkx/issues/524), shipped together in [GTKX 1.5](/blog/gtkx-1-5). The [issue tracker](https://github.com/gtkx-org/gtkx/issues) is where the next work gets argued about.

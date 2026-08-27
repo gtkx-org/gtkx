@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/cairo",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "description": "Cairo drawing bindings for GTK: contexts, surfaces, patterns, fonts.",
     "keywords": [
         "gtkx",

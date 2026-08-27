@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/navigation",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "description": "React Navigation for GTKX: stack, tab, drawer and master/detail navigators rendered with libadwaita's navigation view, view stack and split views",
     "keywords": [
         "gtkx",

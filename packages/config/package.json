@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/config",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "description": "Config schema, loader, and element-prop mapping for the GTK toolchain.",
     "keywords": [
         "gtkx",

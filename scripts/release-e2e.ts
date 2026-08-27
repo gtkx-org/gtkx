@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -193,8 +194,27 @@ async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, vari
 
 async function main(): Promise<void> {
     const consumerRoot = mkdtempSync(join(tmpdir(), "gtkx-consumer-"));
+    const staleMapDir = join(PACKAGES_DIR, "cli", "dist");
+    const staleMapPath = join(staleMapDir, `release-e2e-stale-${randomUUID()}.d.ts.map`);
+    let isStaleMapCreated = false;
 
     try {
+        mkdirSync(staleMapDir, { recursive: true });
+
+        writeFileSync(
+            staleMapPath,
+            `${JSON.stringify({
+                version: 3,
+                file: "release-e2e-stale.d.ts",
+                sources: ["../src/release-e2e-stale.ts"],
+                names: [],
+                mappings: "",
+            })}\n`,
+            { flag: "wx" },
+        );
+
+        isStaleMapCreated = true;
+
         await withRegistry(async ({ env, registryDir }: RegistryContext) => {
             await verifyPublishedShapes(registryDir);
 
@@ -203,6 +223,10 @@ async function main(): Promise<void> {
             }
         });
     } finally {
+        if (isStaleMapCreated) {
+            rmSync(staleMapPath, { force: true });
+        }
+
         rmSync(consumerRoot, { recursive: true, force: true });
     }
 }
