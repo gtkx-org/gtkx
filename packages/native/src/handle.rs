@@ -81,6 +81,14 @@ impl std::fmt::Debug for FieldStore {
 }
 
 impl FieldStore {
+    #[must_use]
+    pub(crate) fn take(&self, offset: usize) -> Option<PendingTransfer> {
+        let mut allocations = self.allocations.borrow_mut();
+        let index = allocations.iter().position(|(at, _)| *at == offset)?;
+
+        Some(allocations.swap_remove(index).1)
+    }
+
     pub fn adopt(&self, offset: usize, transfer: PendingTransfer) {
         let mut allocations = self.allocations.borrow_mut();
         let Some(entry) = allocations.iter_mut().find(|(at, _)| *at == offset) else {

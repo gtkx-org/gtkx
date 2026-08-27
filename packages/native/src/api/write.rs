@@ -9,17 +9,40 @@ use crate::ffi::codec::{Codec, PtrWriter as _, SlotInit};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
 
+struct DisplacedField<'a> {
+    fields: &'a crate::handle::FieldStore,
+    offset: usize,
+    transfer: Option<crate::ffi::PendingTransfer>,
+}
+
+impl DisplacedField<'_> {
+    fn release(mut self) {
+        if let Some(transfer) = self.transfer.take() {
+            transfer.release_now();
+        }
+    }
+}
+
+impl Drop for DisplacedField<'_> {
+    fn drop(&mut self) {
+        if let Some(transfer) = self.transfer.take() {
+            self.fields.adopt(self.offset, transfer);
+        }
+    }
+}
+
 fn encode_field(
     env: &Env,
     field_ptr: *mut c_void,
     field_codec: &Codec,
     value: Unknown<'_>,
+    init: SlotInit,
 ) -> anyhow::Result<Option<crate::ffi::PendingTransfer>> {
     field_codec.write_value_to_ptr(
         env,
         unsafe { crate::ffi::Slot::new(field_ptr) },
         value,
-        SlotInit::Initialized,
+        init,
     )
 }
 
@@ -31,12 +54,30 @@ pub(crate) fn write_field_at<'e>(
     value: Unknown<'_>,
 ) -> Result<Unknown<'e>> {
     let field_ptr = handle_memory_ptr(handle, "field write")?.wrapping_byte_add(offset);
+    let store = handle.field_store();
+    let displaced = store.and_then(|(fields, base)| {
+        let offset = base + offset;
+        fields.take(offset).map(|transfer| DisplacedField {
+            fields,
+            offset,
+            transfer: Some(transfer),
+        })
+    });
+    let init = if displaced.is_some() {
+        SlotInit::Uninitialized
+    } else {
+        SlotInit::Initialized
+    };
     let transfer = native_result(
         "field write",
-        encode_field(env, field_ptr, field_codec, value),
+        encode_field(env, field_ptr, field_codec, value, init),
     )?;
 
-    if let (Some(transfer), Some((fields, base))) = (transfer, handle.field_store()) {
+    if let Some(displaced) = displaced {
+        displaced.release();
+    }
+
+    if let (Some(transfer), Some((fields, base))) = (transfer, store) {
         fields.adopt(base + offset, transfer);
     }
 
@@ -80,6 +121,7 @@ mod tests {
                 (&raw mut slot).cast(),
                 &Codec::Integer(IntegerCodec::I32),
                 value,
+                SlotInit::Initialized,
             )
             .expect("write should succeed");
             assert_eq!(slot, 99);
@@ -98,6 +140,7 @@ mod tests {
                     (&raw mut slot).cast(),
                     &Codec::Integer(IntegerCodec::I32),
                     value,
+                    SlotInit::Initialized,
                 )
                 .is_err()
             );

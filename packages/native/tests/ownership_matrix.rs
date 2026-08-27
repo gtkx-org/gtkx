@@ -2030,3 +2030,160 @@ fn the_inventory_columns_are_consistent() {
         );
     }
 }
+
+fn storing_writes() -> impl Iterator<Item = (&'static Cell, Subject)> {
+    CELLS.iter().filter_map(|cell| match cell.check {
+        Check::Write(Write {
+            subject,
+            source: Source::Value,
+            effect: Effect::Stores(_),
+            ..
+        }) => Some((cell, subject)),
+        _ => None,
+    })
+}
+
+fn struct_handle() -> External<Handle> {
+    External::new(Handle::owned_struct(unsafe {
+        glib::ffi::g_malloc0(BLOCK_SIZE)
+    }))
+}
+
+fn write_field(
+    cell: &Cell,
+    subject: Subject,
+    env: &Env,
+    handle: &External<Handle>,
+    src: *mut c_void,
+) {
+    native::api::write::write(
+        env,
+        handle,
+        (cell.descriptor)(),
+        0.0,
+        written_value(subject, Source::Value, env, src),
+    )
+    .unwrap_or_else(|error| panic!("{}: the field write must succeed: {error}", cell.name));
+}
+
+fn assert_displaced_field_is_released_once(first: &Cell, second: &Cell, subject: Subject) {
+    let env = helpers::fake_env();
+    let handle = struct_handle();
+    let sources = if subject.has_native_source() {
+        [subject.alloc(), subject.alloc()]
+    } else {
+        [std::ptr::null_mut(), std::ptr::null_mut()]
+    };
+
+    write_field(first, subject, &env, &handle, sources[0]);
+
+    let displaced = unsafe { Slot::new(handle.as_ptr()).load() };
+    let mut scene = Scene::open(subject);
+    let expected = scene.claims(displaced) - 1;
+
+    write_field(second, subject, &env, &handle, sources[1]);
+
+    let written = unsafe { Slot::new(handle.as_ptr()).load() };
+    drop(handle);
+    scene.absorb();
+
+    assert_eq!(
+        scene.claims(displaced),
+        expected,
+        "{} displaced by {}: the value the field store owned must be released exactly once",
+        first.name,
+        second.name
+    );
+
+    scene.release_all(&[written, displaced, sources[0], sources[1]]);
+}
+
+fn assert_a_displaced_string_is_not_released_as_an_object(second: &Cell) {
+    let env = helpers::fake_env();
+    let handle = struct_handle();
+    let string_cell = CELLS
+        .iter()
+        .find(|cell| cell.name == "string · transfer-none · field write")
+        .expect("the transfer-none string field write is the cell that adopts a string");
+
+    write_field(
+        string_cell,
+        Subject::Text,
+        &env,
+        &handle,
+        std::ptr::null_mut(),
+    );
+
+    let displaced = unsafe { Slot::new(handle.as_ptr()).load() };
+    let mut strings = Scene::open(Subject::Text);
+    let object = Subject::Object.alloc();
+
+    write_field(second, Subject::Object, &env, &handle, object);
+
+    let written = unsafe { Slot::new(handle.as_ptr()).load() };
+    drop(handle);
+    strings.absorb();
+
+    assert_eq!(
+        strings.claims(displaced),
+        0,
+        "{} over an adopted string: the string must be freed as a string, exactly once",
+        second.name
+    );
+
+    let mut objects = Scene::open(Subject::Object);
+    helpers::pump_default_context_until(|| objects.claims(object) == 1);
+    objects.release_all(&[written, object]);
+}
+
+#[test]
+fn a_field_the_store_owns_is_released_once_however_it_is_overwritten() {
+    for (first, subject) in adopting_writes() {
+        for (second, other) in storing_writes() {
+            if other != subject {
+                continue;
+            }
+            helpers::run(|| assert_displaced_field_is_released_once(first, second, subject));
+        }
+    }
+}
+
+#[test]
+fn a_field_the_store_owns_is_never_released_through_the_next_writes_release_kind() {
+    for (second, subject) in storing_writes() {
+        if subject != Subject::Object {
+            continue;
+        }
+        helpers::run(|| assert_a_displaced_string_is_not_released_as_an_object(second));
+    }
+}
+
+#[test]
+fn a_failed_overwrite_preserves_the_owned_field() {
+    helpers::run(|| {
+        let env = helpers::fake_env();
+        let handle = struct_handle();
+        let string_cell = CELLS
+            .iter()
+            .find(|cell| cell.name == "string · transfer-none · field write")
+            .expect("the transfer-none string field write is the cell that adopts a string");
+
+        write_field(
+            string_cell,
+            Subject::Text,
+            &env,
+            &handle,
+            std::ptr::null_mut(),
+        );
+
+        let rejected = native::api::write::write(
+            &env,
+            &handle,
+            d_int32(),
+            0.0,
+            napi_mock::to_unknown(&env, napi_mock::fake_bool(true)),
+        );
+
+        assert!(rejected.is_err());
+    });
+}
