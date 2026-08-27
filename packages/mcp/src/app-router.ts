@@ -1,19 +1,18 @@
+import { type JSONRPCRequest, McpError, type Result } from "@modelcontextprotocol/sdk/types.js";
+import type { AppConnections, ConnectionEvent, ProtocolConnection, RequestParams } from "./transport.js";
 import {
     appNotFoundError,
+    CONNECTION_CLOSED_CODE,
     connectionWriteFailedError,
     invalidRequestError,
     methodNotFoundError,
     noAppConnectedError,
     type ProtocolError,
+    protocolErrorFrom,
+    REQUEST_TIMEOUT_CODE,
+    requestTimeoutError,
 } from "./protocol/errors.js";
-import { type AppInfo, RegisterParamsSchema, type Request, type Response } from "./protocol/schemas.js";
-import {
-    type AppConnections,
-    ConnectionClosedError,
-    type ConnectionEvent,
-    type ConnectionRequestEvent,
-    type ProtocolConnection,
-} from "./transport.js";
+import { type AppInfo, RegisterParamsSchema } from "./protocol/schemas.js";
 
 type AppRegisteredEvent = CustomEvent<AppInfo>;
 type AppUnregisteredEvent = CustomEvent<string>;
@@ -48,11 +47,7 @@ class AppRouter extends EventTarget {
         super();
         this.connections = connections;
         this.requestTimeout = options.requestTimeout ?? DEFAULT_REQUEST_TIMEOUT_MS;
-
-        this.connections.addEventListener("request", (event) => {
-            const { connection, request } = (event as ConnectionRequestEvent).detail;
-            this.handleRequest(connection, request);
-        });
+        this.connections.onRequest = (connection, request) => this.handleRequest(connection, request);
 
         this.connections.addEventListener("disconnection", (event) => {
             this.removeApp((event as ConnectionEvent).detail);
@@ -73,23 +68,25 @@ class AppRouter extends EventTarget {
         throw noAppConnectedError();
     }
 
-    private handleRequest(connection: ProtocolConnection, request: Request): void {
+    private handleRequest(connection: ProtocolConnection, request: JSONRPCRequest): Promise<Result> {
         if (request.method === "app.register") {
-            this.handleRegister(connection, request);
-        } else if (request.method === "app.unregister") {
-            this.handleUnregister(connection, request);
-        } else {
-            this.sendError(connection, request, methodNotFoundError(request.method));
+            return Promise.resolve(this.handleRegister(connection, request));
         }
+
+        if (request.method === "app.unregister") {
+            this.removeApp(connection);
+
+            return Promise.resolve({ success: true });
+        }
+
+        return Promise.reject(methodNotFoundError(request.method));
     }
 
-    private handleRegister(connection: ProtocolConnection, request: Request): void {
+    private handleRegister(connection: ProtocolConnection, request: JSONRPCRequest): Result {
         const parseResult = RegisterParamsSchema.safeParse(request.params);
 
         if (!parseResult.success) {
-            this.sendError(connection, request, invalidRequestError(parseResult.error.message));
-
-            return;
+            throw invalidRequestError(parseResult.error.message);
         }
 
         const params = parseResult.data;
@@ -102,29 +99,23 @@ class AppRouter extends EventTarget {
 
         this.apps.set(params.applicationId, { info: appInfo, connection });
         this.connectionToApp.set(connection.id, params.applicationId);
-        this.acknowledge(connection, request);
         this.dispatchEvent(appRegisteredEvent(appInfo));
+
+        return { success: true };
     }
 
-    private handleUnregister(connection: ProtocolConnection, request: Request): void {
-        this.removeApp(connection);
-        this.acknowledge(connection, request);
-    }
+    private toAppError(app: RegisteredApp, error: McpError): ProtocolError {
+        if (error.code === CONNECTION_CLOSED_CODE) {
+            this.removeApp(app.connection);
 
-    private acknowledge(connection: ProtocolConnection, request: Request): void {
-        const response: Response = {
-            id: request.id,
-            result: { success: true },
-        };
+            return connectionWriteFailedError(app.info.applicationId);
+        }
 
-        this.connections.send(connection.id, response);
-    }
+        if (error.code === REQUEST_TIMEOUT_CODE) {
+            return requestTimeoutError(this.requestTimeout);
+        }
 
-    private sendError(connection: ProtocolConnection, request: Request, error: ProtocolError): void {
-        this.connections.send(connection.id, {
-            id: request.id,
-            error: error.toErrorObject(),
-        });
+        return protocolErrorFrom(error);
     }
 
     private removeApp(connection: ProtocolConnection): void {
@@ -190,15 +181,14 @@ class AppRouter extends EventTarget {
         });
     }
 
-    async sendToApp<T>(applicationId: string | undefined, method: string, params?: unknown): Promise<T> {
+    async sendToApp<T>(applicationId: string | undefined, method: string, params?: RequestParams): Promise<T> {
         const app = this.resolveTargetApp(applicationId);
 
         try {
             return await app.connection.send<T>(method, params, this.requestTimeout);
         } catch (error) {
-            if (error instanceof ConnectionClosedError) {
-                this.removeApp(app.connection);
-                throw connectionWriteFailedError(app.info.applicationId);
+            if (error instanceof McpError) {
+                throw this.toAppError(app, error);
             }
 
             throw error;

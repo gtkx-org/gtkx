@@ -1,6 +1,7 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { rootElement } from "@gtkx/react";
-import { act, fireEvent, render, screen, userEvent } from "@gtkx/testing";
+import { act, fireEvent, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 import { useStore } from "../src/store/index.js";
@@ -10,6 +11,12 @@ const openWaterThePlants = async (): Promise<void> => {
     await fireEvent(row, "activated");
     await screen.findByText("Notes");
 };
+
+const findTitleEntry = (): Promise<Adw.EntryRow> =>
+    screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Title/, as: Adw.EntryRow });
+
+const importantSwitch = (isChecked: boolean): Gtk.Switch =>
+    screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: isChecked, as: Gtk.Switch });
 
 describe("the store", () => {
     it("adds a task and completes it", () => {
@@ -125,5 +132,54 @@ describe("Tasks", () => {
 
         expect(orange).toHaveObjectProperty("active", true);
         expect(await screen.findByLabelText("Color #3584e4")).toHaveObjectProperty("active", false);
+    });
+});
+
+describe("task form - happy path", () => {
+    it("applies title and Important edits across navigation", async () => {
+        await render(<App />, { container: rootElement });
+        await openWaterThePlants();
+        const title = await findTitleEntry();
+        await userEvent.clear(title);
+        await userEvent.type(title, "Water the balcony");
+        await userEvent.keyboard(title, "{Enter}");
+        await userEvent.click(importantSwitch(true));
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
+        const updated = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the balcony/ });
+        await fireEvent(updated, "activated");
+        const reopenedTitle = await findTitleEntry();
+        expect(reopenedTitle.getText()).toBe("Water the balcony");
+        expect(importantSwitch(false)).not.toBeChecked();
+    });
+});
+
+describe("task form - edge cases", () => {
+    it("syncs Important changes without replacing a dirty title or leaking it to another task", async () => {
+        await render(<App />, { container: rootElement });
+        await openWaterThePlants();
+        const title = await findTitleEntry();
+        await userEvent.clear(title);
+        await userEvent.type(title, "Unapplied draft");
+        await userEvent.click(importantSwitch(true));
+        expect(title.getText()).toBe("Unapplied draft");
+        expect(importantSwitch(false)).not.toBeChecked();
+        expect(useStore.getState().tasks.find((task) => task.id === "t2")?.title).toBe("Water the plants");
+
+        await act(() => {
+            useStore.getState().setImportant("t2", true);
+        });
+
+        await waitFor(() => {
+            expect(importantSwitch(true)).toBeChecked();
+        });
+
+        expect(title.getText()).toBe("Unapplied draft");
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
+        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeDefined();
+        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Unapplied draft/ })).toBeNull();
+        const otherTask = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Review pull requests/ });
+        await fireEvent(otherTask, "activated");
+        const otherTitle = await findTitleEntry();
+        expect(otherTitle.getText()).toBe("Review pull requests");
     });
 });

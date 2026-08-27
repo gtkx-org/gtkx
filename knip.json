@@ -66,6 +66,12 @@
         "packages/cairo": {
             "includeEntryExports": false
         },
+        "packages/forms": {
+            "includeEntryExports": false,
+            "entry": [
+                "gtkx.config.ts!"
+            ]
+        },
         "packages/navigation": {
             "includeEntryExports": false,
             "entry": [

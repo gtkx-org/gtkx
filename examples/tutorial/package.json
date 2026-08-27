@@ -19,6 +19,7 @@
         "@gtkx/cairo": "^1.4.0",
         "@gtkx/components": "^1.4.0",
         "@gtkx/css": "^1.4.0",
+        "@gtkx/forms": "^1.4.0",
         "@gtkx/i18n": "^1.4.0",
         "@gtkx/navigation": "^1.4.0",
         "@gtkx/react": "^1.4.0",

@@ -1,108 +1,46 @@
-type Step = { index: number; reason: string | null };
+type Scan = { index: number; quote: string | null; broken: boolean };
 
-const UNTERMINATED = "leaves a string, comment or url unterminated";
 const NEWLINE_IN_STRING = "carries a newline inside a string";
 const ESCAPE = "\\";
-const NEWLINE = "\n";
-const CLOSE_PAREN = ")";
-const COMMENT_OPEN = "/*";
-const COMMENT_CLOSE = "*/";
-const URL_OPEN = "url(";
+const CRLF = "\r\n";
 const QUOTES = new Set(['"', "'"]);
-const URL_TOKEN = /url\(/iy;
-const QUOTED_URL = /url\([\t\n\f\r ]*["']/iy;
+const NEWLINES = new Set(["\n", "\r", "\f"]);
+const AFTER_ESCAPE = 2;
+const AFTER_ESCAPED_CRLF = 3;
 
-const hasMatchAt = (pattern: RegExp, text: string, index: number): boolean => {
-    pattern.lastIndex = index;
+const skipEscape = (rule: string, index: number): number =>
+    index + (rule.startsWith(CRLF, index + 1) ? AFTER_ESCAPED_CRLF : AFTER_ESCAPE);
 
-    return pattern.test(text);
-};
-
-const isUrlStart = (text: string, index: number): boolean =>
-    hasMatchAt(URL_TOKEN, text, index) && !hasMatchAt(QUOTED_URL, text, index);
-
-const took = (index: number): Step => ({ index, reason: null });
-const broke = (index: number, reason: string): Step => ({ index, reason });
-const stepped = (text: string, index: number): number => index + (text.charAt(index) === ESCAPE ? 2 : 1);
-
-const endOfString = (text: string, index: number, quote: string): Step | null => {
-    const char = text.charAt(index);
-
-    if (char === quote) {
-        return took(index + 1);
-    }
-
-    return char === NEWLINE ? broke(index + 1, NEWLINE_IN_STRING) : null;
-};
-
-const readString = (text: string, start: number, quote: string): Step => {
-    let index = start;
-
-    while (index < text.length) {
-        const end = endOfString(text, index, quote);
-
-        if (end !== null) {
-            return end;
-        }
-
-        index = stepped(text, index);
-    }
-
-    return broke(index, UNTERMINATED);
-};
-
-const readComment = (text: string, start: number): Step => {
-    const end = text.indexOf(COMMENT_CLOSE, start);
-
-    return end === -1 ? broke(text.length, UNTERMINATED) : took(end + COMMENT_CLOSE.length);
-};
-
-const readUrl = (text: string, start: number): Step => {
-    let index = start;
-
-    while (index < text.length) {
-        if (text.charAt(index) === CLOSE_PAREN) {
-            return took(index + 1);
-        }
-
-        index = stepped(text, index);
-    }
-
-    return broke(index, UNTERMINATED);
-};
-
-const readNext = (text: string, index: number): Step => {
-    const char = text.charAt(index);
+const stepped = (rule: string, scan: Scan): Scan => {
+    const char = rule.charAt(scan.index);
 
     if (char === ESCAPE) {
-        return took(index + 2);
+        return { index: skipEscape(rule, scan.index), quote: scan.quote, broken: false };
     }
 
-    if (QUOTES.has(char)) {
-        return readString(text, index + 1, char);
+    if (scan.quote === null) {
+        return { index: scan.index + 1, quote: QUOTES.has(char) ? char : null, broken: false };
     }
 
-    if (text.startsWith(COMMENT_OPEN, index)) {
-        return readComment(text, index + COMMENT_OPEN.length);
-    }
-
-    return isUrlStart(text, index) ? readUrl(text, index + URL_OPEN.length) : took(index + 1);
+    return {
+        index: scan.index + 1,
+        quote: char === scan.quote ? null : scan.quote,
+        broken: NEWLINES.has(char),
+    };
 };
 
-const brokenToken = (text: string): string | null => {
-    let index = 0;
+const hasNewlineInString = (rule: string): boolean => {
+    let scan: Scan = { index: 0, quote: null, broken: false };
 
-    while (index < text.length) {
-        const step = readNext(text, index);
+    while (scan.index < rule.length) {
+        scan = stepped(rule, scan);
 
-        if (step.reason !== null) {
-            return step.reason;
+        if (scan.broken) {
+            return true;
         }
-
-        index = step.index;
     }
 
-    return null;
+    return false;
 };
 
-export { brokenToken };
+export { hasNewlineInString, NEWLINE_IN_STRING };

@@ -35,8 +35,24 @@ type ListEntry = { item: unknown; handle: unknown };
 type ListState = { snapshot: unknown[]; entries: ListEntry[] };
 type DeferredState = { desired: unknown; isPresent: boolean; isScheduled: boolean; disconnect: (() => void) | null };
 type CanApply<P extends GObject.Object, V> = (object: P, value: V) => boolean;
+
+type DeferredOps<P extends GObject.Object, V> = {
+    canApply?: CanApply<P, V> | undefined;
+    parse?: ((value: unknown) => V | undefined) | undefined;
+    read: (object: P) => unknown;
+    write: (object: P, value: V) => void;
+    signal?: string | undefined;
+};
+
+type DeferredHooks<P extends GObject.Object, V> = Omit<DeferredOps<P, V>, "read" | "write"> & {
+    read?: ((object: P) => unknown) | undefined;
+    write?: ((object: P, value: V) => void) | undefined;
+};
+
 type ChildSetter = GObject.Object & { setChild: (child: Gtk.Widget | null) => void };
 type ContentSetter<C extends Gtk.Widget> = GObject.Object & { setContent: (content: C | null) => void };
+type MatchingKey<P, F> = keyof P & string & { [K in keyof P]: P[K] extends F ? K : never }[keyof P];
+type MethodKey<P, A> = MatchingKey<P, (argument: A) => unknown>;
 
 type BoxLike = GObject.Object & {
     remove: (child: Gtk.Widget) => void;
@@ -172,29 +188,31 @@ const list = <P extends GObject.Object, I, H = void>(
 };
 
 const settleDeferred = <P extends GObject.Object, V>(
-    object: GObject.Object,
+    object: P,
     state: DeferredState,
     prop: string,
-    canApply: CanApply<P, V> | undefined,
+    ops: DeferredOps<P, V>,
 ): void => {
-    if (!state.isPresent || Object.is(Reflect.get(object, prop), state.desired)) {
+    if (!state.isPresent || Object.is(ops.read(object), state.desired)) {
         return;
     }
 
-    if (canApply !== undefined && !canApply(object as P, state.desired as V)) {
+    const desired = state.desired as V;
+
+    if (ops.canApply !== undefined && !ops.canApply(object, desired)) {
         return;
     }
 
     applyWrite(prop, () => {
-        Reflect.set(object, prop, state.desired);
+        ops.write(object, desired);
     });
 };
 
 const scheduleSettle = <P extends GObject.Object, V>(
-    object: GObject.Object,
+    object: P,
     state: DeferredState,
     prop: string,
-    canApply: CanApply<P, V> | undefined,
+    ops: DeferredOps<P, V>,
 ): void => {
     if (state.isScheduled) {
         return;
@@ -206,25 +224,25 @@ const scheduleSettle = <P extends GObject.Object, V>(
         state.isScheduled = false;
 
         if (state.disconnect !== null) {
-            settleDeferred(object, state, prop, canApply);
+            settleDeferred(object, state, prop, ops);
         }
     });
 };
 
 const watchDrift = <P extends GObject.Object, V>(
-    object: GObject.Object,
+    object: P,
     state: DeferredState,
     prop: string,
-    canApply: CanApply<P, V> | undefined,
+    ops: DeferredOps<P, V>,
 ): void => {
     if (state.disconnect !== null) {
         return;
     }
 
-    const signal = `notify::${getPropertyName(object, prop) ?? unsanitizeIdentifier(kebabCase(prop))}`;
+    const signal = ops.signal ?? `notify::${getPropertyName(object, prop) ?? unsanitizeIdentifier(kebabCase(prop))}`;
 
     const handler = (): undefined => {
-        scheduleSettle(object, state, prop, canApply);
+        scheduleSettle(object, state, prop, ops);
     };
 
     object.on(signal, handler);
@@ -234,23 +252,20 @@ const watchDrift = <P extends GObject.Object, V>(
     };
 };
 
-const deferred = <P extends GObject.Object, V>(
-    prop: string,
-    canApply?: CanApply<P, V>,
-): ElementBehavior<P> => ({
+const deferredBehavior = <P extends GObject.Object, V>(prop: string, ops: DeferredOps<P, V>): ElementBehavior<P> => ({
     deferred: [prop],
     initialize: (): DeferredState => ({ desired: undefined, isPresent: false, isScheduled: false, disconnect: null }),
     update: (_object, _prev, next, context) => {
         const state = context as DeferredState;
-        state.desired = next[prop];
-        state.isPresent = next[prop] !== undefined;
+        state.desired = ops.parse === undefined ? next[prop] : ops.parse(next[prop]);
+        state.isPresent = state.desired !== undefined;
 
         return [prop];
     },
     flush: (object, context) => {
         const state = context as DeferredState;
-        settleDeferred(object, state, prop, canApply);
-        watchDrift(object, state, prop, canApply);
+        settleDeferred(object, state, prop, ops);
+        watchDrift(object, state, prop, ops);
     },
     teardown: (_object, context) => {
         const state = context as DeferredState;
@@ -258,6 +273,18 @@ const deferred = <P extends GObject.Object, V>(
         state.disconnect = null;
     },
 });
+
+const deferredWith = <P extends GObject.Object, V>(prop: string, hooks: DeferredHooks<P, V>): ElementBehavior<P> =>
+    deferredBehavior<P, V>(prop, {
+        ...hooks,
+        read: hooks.read ?? ((object) => Reflect.get(object, prop)),
+        write: hooks.write ?? ((object, value) => {
+            Reflect.set(object, prop, value);
+        }),
+    });
+
+const deferred = <P extends GObject.Object, V>(prop: string, canApply?: CanApply<P, V>): ElementBehavior<P> =>
+    deferredWith<P, V>(prop, { canApply });
 
 const controlledText = (prop: string): ElementBehavior =>
     value(prop, (object, next) => {
@@ -301,12 +328,39 @@ const boxSlot = <P extends BoxLike>(): ElementBehavior<P> =>
         },
     });
 
-const addRemoveSlot = <C extends GObject.Object, P extends GObject.Object>(
+const callMethod = <P extends GObject.Object, A>(parent: P, method: MethodKey<P, A>, argument: A): unknown =>
+    (parent[method] as (argument: A) => unknown)(argument);
+
+const methodSlot = <P extends GObject.Object, C extends GObject.Object>(
     slotName: string,
     childType: string,
-    add: (parent: P, child: C) => unknown,
-    remove: (parent: P, child: C) => void,
-): ElementBehavior => slot<P, C>(slotName, childType, { attach: add, detach: remove });
+    add: MethodKey<P, C>,
+    remove?: MethodKey<P, C>,
+): ElementBehavior => {
+    const hooks: SlotHooks<P, C> = { attach: (parent, child) => callMethod(parent, add, child) };
+
+    if (remove !== undefined) {
+        hooks.detach = (parent, child) => {
+            callMethod(parent, remove, child);
+        };
+    }
+
+    return slot<P, C>(slotName, childType, hooks);
+};
+
+const setterSlot = <P extends GObject.Object, C extends GObject.Object>(
+    slotName: string,
+    childType: string,
+    setter: MethodKey<P, C | null>,
+): ElementBehavior =>
+    slot<P, C>(slotName, childType, {
+        attach: (parent, child) => {
+            callMethod<P, C | null>(parent, setter, child);
+        },
+        detach: (parent) => {
+            callMethod<P, C | null>(parent, setter, null);
+        },
+    });
 
 const indexedSlot = <P extends IndexedChildHost<C>, C extends GObject.Object>(
     slotName: string,
@@ -324,12 +378,6 @@ const indexedSlot = <P extends IndexedChildHost<C>, C extends GObject.Object>(
             parent.insert(child, info.index);
         },
     });
-
-const adoptedChildrenSlot = <P extends GObject.Object, C extends GObject.Object>(
-    childType: string,
-    add: (parent: P, item: C) => unknown,
-    remove: (parent: P, item: C) => void,
-): ElementBehavior => addRemoveSlot<C, P>("children", childType, add, remove);
 
 const wrappedRow = <W extends Gtk.Widget>(
     Wrapper: new (props: Props) => W,
@@ -394,12 +442,13 @@ export {
     value,
     list,
     deferred,
+    deferredWith,
     controlledText,
     childSetterSlot,
     contentSetterSlot,
     boxSlot,
-    addRemoveSlot,
-    adoptedChildrenSlot,
+    methodSlot,
+    setterSlot,
     indexedSlot,
     wrappingIndexedSlot,
 };

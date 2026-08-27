@@ -1,7 +1,13 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { DEFAULT_SOCKET_PATH, ErrorCode, ProtocolConnection, ProtocolError, type Request } from "@gtkx/mcp/internal";
-import { error, errorMessage, info, normalizeError, warn } from "@gtkx/utils";
+import {
+    DEFAULT_SOCKET_PATH,
+    isConnectionClosedError,
+    type JSONRPCRequest,
+    ProtocolConnection,
+    type Result,
+} from "@gtkx/mcp/internal";
+import { error, errorMessage, info, normalizeError } from "@gtkx/utils";
 import * as net from "node:net";
 import { dispatch } from "./handlers.js";
 import { WidgetRegistry } from "./widget-registry.js";
@@ -24,11 +30,6 @@ type ConnectSettler = {
 const RECONNECT_DELAY_MS = 2000;
 const REGISTER_TIMEOUT_MS = 30_000;
 const DISCONNECT_ERROR_CODES: Set<string> = new Set(["ENOENT", "ECONNREFUSED", "EPIPE", "ECONNRESET"]);
-
-const toResponseError = (error: unknown): { code: number; message: string; data?: unknown } =>
-    error instanceof ProtocolError
-        ? error.toErrorObject()
-        : { code: ErrorCode.INTERNAL_ERROR, message: errorMessage(error) };
 
 const connectSettler = (callbacks: ConnectCallbacks): ConnectSettler => {
     let isSettled = false;
@@ -82,7 +83,7 @@ class McpClient {
     private handleSocketError(socketError: Error): void {
         const code = (socketError as NodeJS.ErrnoException).code;
 
-        if (code !== undefined && DISCONNECT_ERROR_CODES.has(code)) {
+        if (isConnectionClosedError(socketError) || (code !== undefined && DISCONNECT_ERROR_CODES.has(code))) {
             this.scheduleReconnect();
         } else {
             error("Socket error:", socketError.message);
@@ -119,14 +120,7 @@ class McpClient {
             },
         });
 
-        connection.on("request", (request) => {
-            void this.handleRequest(request);
-        });
-
-        connection.on("invalid", ({ error: parseError }) => {
-            warn(`Received invalid JSON from MCP server: ${parseError.message}`);
-        });
-
+        connection.fallbackRequestHandler = (request) => this.handleRequest(request);
         this.socket = socket;
         this.connection = connection;
     }
@@ -158,35 +152,16 @@ class McpClient {
         );
     }
 
-    private async respondToRequest(request: Request): Promise<void> {
-        const { id, method, params } = request;
-        const connection = this.connection;
+    private handleRequest(request: JSONRPCRequest): Promise<Result> {
+        const defaultApp = Gio.Application.getDefault();
 
-        if (!connection) {
-            return;
+        if (!(defaultApp instanceof Gtk.Application)) {
+            throw new TypeError("Application not initialized");
         }
 
-        try {
-            const defaultApp = Gio.Application.getDefault();
+        this.registry.refresh();
 
-            if (!(defaultApp instanceof Gtk.Application)) {
-                throw new TypeError("Application not initialized");
-            }
-
-            this.registry.refresh();
-            const result = await dispatch(method, params, { app: defaultApp, registry: this.registry });
-            connection.write({ id, result });
-        } catch (dispatchError) {
-            connection.write({ id, error: toResponseError(dispatchError) });
-        }
-    }
-
-    private async handleRequest(request: Request): Promise<void> {
-        try {
-            await this.respondToRequest(request);
-        } catch (requestError) {
-            error("Error handling request:", requestError);
-        }
+        return dispatch(request.method, request.params, { app: defaultApp, registry: this.registry });
     }
 
     async connect(): Promise<void> {
@@ -219,10 +194,8 @@ class McpClient {
             this.reconnectTimer = null;
         }
 
-        this.connection?.rejectPending(new Error("Client disconnected"));
-
         if (this.socket) {
-            this.connection?.write({ id: crypto.randomUUID(), method: "app.unregister" });
+            void Promise.allSettled([this.connection?.send("app.unregister")]);
             this.socket.destroy();
             this.socket = null;
         }

@@ -1,6 +1,5 @@
 import { CssProvider } from "@gtkx/gi/gtk";
 import { randomBytes } from "node:crypto";
-import { brokenToken } from "./tokens.js";
 
 type Gate = { provider: CssProvider | null; ruleset: string | null };
 
@@ -43,14 +42,7 @@ const hasProbe = (serialized: string): boolean => {
     return ruleset.length > 0 && `\n${serialized}`.includes(`\n${ruleset}`);
 };
 
-const containmentFailure = (rule: string): string | null => {
-    const broken = brokenToken(rule);
-
-    if (broken !== null) {
-        return broken;
-    }
-
-    return hasProbe(parsed(`${rule}\n${PROBE_RULE}`)) ? null : SWALLOWS_WHAT_FOLLOWS;
-};
+const containmentFailure = (rule: string): string | null =>
+    hasProbe(parsed(`${rule}\n${PROBE_RULE}`)) ? null : SWALLOWS_WHAT_FOLLOWS;
 
 export { containmentFailure };

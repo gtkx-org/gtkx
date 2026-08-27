@@ -1,8 +1,8 @@
 import type { ConfigLoader } from "@gtkx/config";
-import type { ParseResult, ParserOptions, Plugin, UserConfig } from "vite";
+import type { ParseResult, Plugin, UserConfig } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
-import { extname } from "node:path";
 import { parseSync } from "vite";
+import { sourceLanguage } from "../internal/source-imports.js";
 import { ASSET_MENTION_RE } from "./asset-extensions.js";
 import {
     DATA_PREFIX,
@@ -15,7 +15,6 @@ import {
 import { RESOURCE_PATH_EXPORT } from "./resource-shared.js";
 import { stripQuery } from "./strip-query.js";
 
-type SourceLanguage = NonNullable<ParserOptions["lang"]>;
 type ParsedModule = ParseResult["module"];
 type ImportStatement = ParsedModule["staticImports"][number];
 type ExportStatement = ParsedModule["staticExports"][number];
@@ -23,17 +22,6 @@ type ExportEntry = ExportStatement["entries"][number];
 type BindingEntry = { importName: { name: string | null }; isType: boolean };
 type NamedBinding = { name: string; source: string };
 type PluginState = { isV2: boolean };
-
-const SOURCE_LANGUAGES: Map<string, SourceLanguage> = new Map([
-    [".cjs", "jsx"],
-    [".cts", "ts"],
-    [".js", "jsx"],
-    [".jsx", "jsx"],
-    [".mjs", "jsx"],
-    [".mts", "ts"],
-    [".ts", "ts"],
-    [".tsx", "tsx"],
-]);
 
 const NODE_MODULES = /(?:^|\/)node_modules\//;
 const VIRTUAL_PREFIX = "\0";
@@ -135,7 +123,7 @@ const hasCheckedAssetMention = (code: string): boolean => ASSET_MENTION_RE.test(
 
 const checkAssetImports = (code: string, id: string, isV2: boolean): void => {
     const path = stripQuery(id);
-    const lang = SOURCE_LANGUAGES.get(extname(path).toLowerCase());
+    const lang = sourceLanguage(path);
 
     if (lang === undefined || !isCheckedSource(path) || !hasCheckedAssetMention(code)) {
         return;

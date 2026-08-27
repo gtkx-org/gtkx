@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-26 23:41+0200\n"
+"POT-Creation-Date: 2026-08-27 17:13+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -133,7 +133,7 @@ msgstr ""
 msgid "Due date"
 msgstr ""
 
-#: src/components/preferences.tsx:44 src/components/task-detail.tsx:32
+#: src/components/preferences.tsx:44 src/components/task-detail.tsx:54
 msgid "Title"
 msgstr ""
 
@@ -182,7 +182,7 @@ msgid "Today"
 msgstr ""
 
 #: src/components/sidebar.tsx:35 src/components/task-buttons.tsx:18
-#: src/components/task-detail.tsx:39 src/store/selectors.ts:8
+#: src/components/task-detail.tsx:61 src/store/selectors.ts:8
 msgid "Important"
 msgstr ""
 
@@ -194,27 +194,27 @@ msgstr ""
 msgid "Delete (Delete)"
 msgstr ""
 
-#: src/components/task-detail.tsx:44
+#: src/components/task-detail.tsx:65
 msgid "Due"
 msgstr ""
 
-#: src/components/task-detail.tsx:51
+#: src/components/task-detail.tsx:72
 msgid "Clear due date"
 msgstr ""
 
-#: src/components/task-detail.tsx:56
+#: src/components/task-detail.tsx:77
 msgid "Set date"
 msgstr ""
 
-#: src/components/task-detail.tsx:84
+#: src/components/task-detail.tsx:106
 msgid "Notes"
 msgstr ""
 
-#: src/components/task-detail.tsx:112
+#: src/components/task-detail.tsx:134
 msgid "Created"
 msgstr ""
 
-#: src/components/task-detail.tsx:118
+#: src/components/task-detail.tsx:140
 msgid "Completed"
 msgstr ""
 

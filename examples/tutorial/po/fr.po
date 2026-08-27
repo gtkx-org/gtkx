@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gtkx-tutorial 1.0.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-26 23:41+0200\n"
+"POT-Creation-Date: 2026-08-27 17:13+0200\n"
 "PO-Revision-Date: 2026-08-26 23:34+0200\n"
 "Last-Translator: GTKX contributors\n"
 "Language-Team: French\n"
@@ -132,7 +132,7 @@ msgstr "Manuel"
 msgid "Due date"
 msgstr "Échéance"
 
-#: src/components/preferences.tsx:44 src/components/task-detail.tsx:32
+#: src/components/preferences.tsx:44 src/components/task-detail.tsx:54
 msgid "Title"
 msgstr "Titre"
 
@@ -181,7 +181,7 @@ msgid "Today"
 msgstr "Aujourd’hui"
 
 #: src/components/sidebar.tsx:35 src/components/task-buttons.tsx:18
-#: src/components/task-detail.tsx:39 src/store/selectors.ts:8
+#: src/components/task-detail.tsx:61 src/store/selectors.ts:8
 msgid "Important"
 msgstr "Prioritaire"
 
@@ -193,27 +193,27 @@ msgstr "Corbeille"
 msgid "Delete (Delete)"
 msgstr "Supprimer (Suppr)"
 
-#: src/components/task-detail.tsx:44
+#: src/components/task-detail.tsx:65
 msgid "Due"
 msgstr "Échéance"
 
-#: src/components/task-detail.tsx:51
+#: src/components/task-detail.tsx:72
 msgid "Clear due date"
 msgstr "Effacer l’échéance"
 
-#: src/components/task-detail.tsx:56
+#: src/components/task-detail.tsx:77
 msgid "Set date"
 msgstr "Définir une date"
 
-#: src/components/task-detail.tsx:84
+#: src/components/task-detail.tsx:106
 msgid "Notes"
 msgstr "Notes"
 
-#: src/components/task-detail.tsx:112
+#: src/components/task-detail.tsx:134
 msgid "Created"
 msgstr "Création"
 
-#: src/components/task-detail.tsx:118
+#: src/components/task-detail.tsx:140
 msgid "Completed"
 msgstr "Terminée"
 

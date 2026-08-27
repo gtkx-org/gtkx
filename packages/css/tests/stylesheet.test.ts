@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { probeMinWidth } from "./helpers/probe.js";
 
 type MalformedCase = { kind: string; width: number; write: () => void };
+type DroppedCase = { kind: string; width: number; write: () => string };
 type KeptCase = { kind: string; className: string; width: number; write: () => void };
 
 const NUL = "\u{0}";
@@ -32,6 +33,29 @@ const MALFORMED: MalformedCase[] = [
     },
 ];
 
+const DROPPED: DroppedCase[] = [
+    {
+        kind: "a newline inside a single-quoted string",
+        width: 231,
+        write: () => css({ minWidth: "231px", fontFamily: "'Canta\n{" }),
+    },
+    {
+        kind: "a newline inside a double-quoted string",
+        width: 232,
+        write: () => css({ minWidth: "232px", fontFamily: '"Canta\n{' }),
+    },
+    {
+        kind: "a carriage return inside a string",
+        width: 233,
+        write: () => css({ minWidth: "233px", fontFamily: "'Canta\r{" }),
+    },
+    {
+        kind: "a form feed inside a string",
+        width: 234,
+        write: () => css({ minWidth: "234px", fontFamily: "'Canta\f{" }),
+    },
+];
+
 const KEPT: KeptCase[] = [
     {
         kind: "an unquoted url carrying a comment opener",
@@ -47,6 +71,38 @@ const KEPT: KeptCase[] = [
         width: 222,
         write: () => {
             injectGlobal('.gtkx-kept-quoted{font-family:"Cantarell{(";min-width:222px;}');
+        },
+    },
+    {
+        kind: "a newline escaped inside a string",
+        className: "gtkx-kept-continued",
+        width: 225,
+        write: () => {
+            injectGlobal('.gtkx-kept-continued{font-family:"Canta\\\nrell";min-width:225px;}');
+        },
+    },
+    {
+        kind: "a carriage return and newline escaped inside a string",
+        className: "gtkx-kept-crlf",
+        width: 226,
+        write: () => {
+            injectGlobal('.gtkx-kept-crlf{font-family:"Canta\\\r\nrell";min-width:226px;}');
+        },
+    },
+    {
+        kind: "a comment carrying a quote and a newline",
+        className: "gtkx-kept-commented",
+        width: 227,
+        write: () => {
+            injectGlobal(".gtkx-kept-commented{/* it's fine\n */min-width:227px;}");
+        },
+    },
+    {
+        kind: "a preserved comment carrying a quote and a newline",
+        className: "gtkx-kept-bang",
+        width: 228,
+        write: () => {
+            injectGlobal(".gtkx-kept-bang{/*! it's fine\n */min-width:228px;}");
         },
     },
     {
@@ -74,6 +130,12 @@ describe("styles GTK4 would not parse whole", () => {
         const after = css({ minWidth: `${String(width + AFTER_OFFSET)}px` });
         expect(await probeMinWidth([before])).toBeGreaterThanOrEqual(width);
         expect(await probeMinWidth([after])).toBeGreaterThanOrEqual(width + AFTER_OFFSET);
+    });
+});
+
+describe("styles GTK4 parses with an error it recovers from", () => {
+    it.each(DROPPED)("drops the whole rule carrying $kind", async ({ width, write }) => {
+        expect(await probeMinWidth([write()])).toBeLessThan(width);
     });
 });
 

@@ -353,7 +353,7 @@ class SocketServer {
         }
 
         this.server = null;
-        this.registry.dispose("Server stopping");
+        this.registry.dispose();
         await closeServer(server);
         await this.release();
     }

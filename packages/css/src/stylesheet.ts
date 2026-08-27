@@ -3,10 +3,17 @@ import { createLogger } from "@gtkx/utils";
 import { attachParsingErrorLogger, registerProviderForDefaultDisplay } from "./provider.js";
 import { hasNul, NUL_REASON, printableRule } from "./rule-text.js";
 import { containmentFailure } from "./self-contained.js";
+import { hasNewlineInString, NEWLINE_IN_STRING } from "./tokens.js";
 
 const log = createLogger("css");
 
-const unusableReason = (rule: string): string | null => (hasNul(rule) ? NUL_REASON : containmentFailure(rule));
+const unusableReason = (rule: string): string | null => {
+    if (hasNul(rule)) {
+        return NUL_REASON;
+    }
+
+    return hasNewlineInString(rule) ? NEWLINE_IN_STRING : containmentFailure(rule);
+};
 
 class StyleSheet {
     private css = "";

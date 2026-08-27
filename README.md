@@ -98,7 +98,7 @@ GTK4 is mature, and GtkBuilder XML can lay out a static interface, but nothing r
 - a React reconciler that exposes every GObject as a JSX element,
 - a CLI for scaffolding, development, and production builds,
 - a dev server with Fast Refresh that patches your running UI in place,
-- CSS-in-JS styling, React Spring animations, React Navigation stack, tab, drawer, and split view navigators, and high-level list, grid, and dialog components,
+- CSS-in-JS styling, React Hook Form-powered Adwaita controls, React Spring animations, React Navigation stack, tab, drawer, and split view navigators, and high-level list, grid, and dialog components,
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 

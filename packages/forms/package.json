@@ -1,0 +1,71 @@
+{
+    "name": "@gtkx/forms",
+    "version": "1.4.0",
+    "description": "React Hook Form controls for building Adwaita forms.",
+    "keywords": [
+        "gtkx",
+        "gtk",
+        "gtk4",
+        "adwaita",
+        "react",
+        "react-hook-form",
+        "forms",
+        "linux",
+        "desktop"
+    ],
+    "homepage": "https://gtkx.dev",
+    "bugs": {
+        "url": "https://github.com/gtkx-org/gtkx/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/gtkx-org/gtkx.git",
+        "directory": "packages/forms"
+    },
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "type": "module",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "source": "./src/index.ts",
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "sideEffects": false,
+    "files": [
+        "dist",
+        "src"
+    ],
+    "scripts": {
+        "release": "tsx ../../scripts/release-package.ts"
+    },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            }
+        }
+    },
+    "engines": {
+        "node": ">=24"
+    },
+    "dependencies": {
+        "@gtkx/components": "workspace:*",
+        "@gtkx/utils": "workspace:*",
+        "react-hook-form": "^7.86.0"
+    },
+    "peerDependencies": {
+        "react": "^19.2"
+    },
+    "devDependencies": {
+        "@gtkx/config": "workspace:*",
+        "@gtkx/testing": "workspace:*",
+        "@gtkx/vitest": "workspace:*",
+        "vitest": "catalog:"
+    }
+}

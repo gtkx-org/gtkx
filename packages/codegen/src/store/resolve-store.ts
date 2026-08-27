@@ -28,6 +28,7 @@ const STORE_CONSUMERS: string[] = [
     "@gtkx/cli",
     "@gtkx/components",
     "@gtkx/css",
+    "@gtkx/forms",
     "@gtkx/i18n",
     "@gtkx/navigation",
     "@gtkx/react",
