@@ -301,6 +301,10 @@ function cleanPublishableBuildArtifacts(packages: PublishablePackage[]): void {
     }
 }
 
+async function bootstrapProjectGraph(env: NodeJS.ProcessEnv): Promise<void> {
+    await runAsync("tsc", ["-b", "--force", "packages/vitest/tsconfig.lib.json"], { cwd: ROOT_DIR, env });
+}
+
 async function buildPackages(packages: PublishablePackage[], env: NodeJS.ProcessEnv): Promise<void> {
     const projects = packages.map((packageEntry) => packageEntry.name).join(",");
     await runAsync("nx", ["run-many", "-t", "build", `--projects=${projects}`, "--skip-nx-cache"], { env });
@@ -331,6 +335,7 @@ function listenServer(server: Server): Promise<void> {
 async function publishInto(env: NodeJS.ProcessEnv): Promise<void> {
     const packages = publishablePackages();
     cleanPublishableBuildArtifacts(packages);
+    await bootstrapProjectGraph(env);
     await buildPackages(packages, env);
     await stageNativeArtifacts();
     const restorePublishedTree = prepareHostOnlyPublish();
