@@ -470,19 +470,19 @@ const classOrInterfaceExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "class" | "interface" }>,
     ownership: Ownership,
-    isNewlyCreated: boolean,
-    isReceived: boolean,
+    options: { isNewlyCreated: boolean; isReceived: boolean },
 ): string => {
     const ancestor = fundamentalAncestor(context, resolved);
+    const fallbackClass = fallbackClassThunk(context, resolved.namespace.name, resolved.value.name, options.isReceived);
 
     if (ancestor === undefined) {
-        return tObject(ownership, fallbackClassThunk(context, resolved.namespace.name, resolved.value.name, isReceived));
+        return tObject(ownership, fallbackClass);
     }
 
     return renderFundamental({
         ...ancestor,
-        ownership: sunkOwnership(ancestor, ownership, isNewlyCreated),
-        fallbackClass: fallbackClassThunk(context, resolved.namespace.name, resolved.value.name, isReceived),
+        ownership: sunkOwnership(ancestor, ownership, options.isNewlyCreated),
+        fallbackClass,
     });
 };
 
@@ -756,13 +756,10 @@ const expressionForResolved = (
     switch (resolved.kind) {
         case "class":
         case "interface": {
-            return classOrInterfaceExpression(
-                context,
-                resolved,
-                ownership,
-                options.isNewlyCreated ?? false,
-                options.isReceived === true,
-            );
+            return classOrInterfaceExpression(context, resolved, ownership, {
+                isNewlyCreated: options.isNewlyCreated ?? false,
+                isReceived: options.isReceived === true,
+            });
         }
         case "record": {
             return recordExpression(context, resolved, ownership, {
