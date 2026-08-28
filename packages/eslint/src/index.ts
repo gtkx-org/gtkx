@@ -287,7 +287,7 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
         rules: { "max-params": ["error", { max: 6 }] },
     },
     {
-        files: ["packages/cli/src/deploy/**/*.ts", "packages/cli/tests/deploy.test.ts"],
+        files: ["packages/cli/src/deploy/**/*.ts", "packages/cli/tests/deploy*.ts"],
         rules: { "@typescript-eslint/naming-convention": "off" },
     },
     ...scopeTo(TESTS, [vitest.configs.recommended]),
