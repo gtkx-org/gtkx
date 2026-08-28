@@ -1,14 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import type * as Gtk from "@gtkx/gi/gtk";
-import {
-    type ApplicationClass,
-    type CommandLineApplication,
-    createApplication,
-    getInstanceType,
-    TYPE_INVALID,
-    typeFromName,
-    typeIsA,
-} from "@gtkx/runtime";
+import * as Gtk from "@gtkx/gi/gtk";
+import { type ApplicationClass, type CommandLineApplication, createApplication } from "@gtkx/runtime";
 import { isDeepEqual, kebabCase, structuredClone, unsanitizeIdentifier } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
 import { getPropertyName } from "./metadata.js";
@@ -66,36 +58,19 @@ type IndexedChildHost<C extends GObject.Object> = GObject.Object & {
     insert: (child: C, position: number) => unknown;
 };
 
-const childTypeCache: Map<string, bigint> = new Map();
-
-const childTypeFor = (name: string): bigint => {
-    const cached = childTypeCache.get(name);
-
-    if (cached !== undefined) {
-        return cached;
-    }
-
-    const type = typeFromName(name);
-
-    if (type !== TYPE_INVALID) {
-        childTypeCache.set(name, type);
-    }
-
-    return type;
-};
+type ChildClass<C extends GObject.Object> =
+    (abstract new (...args: never[]) => C) |
+    { [Symbol.hasInstance]: (value: unknown) => value is C };
 
 const childMatcher =
-    (name: string): ((child: GObject.Object) => boolean) =>
-        (child) => {
-            const type = childTypeFor(name);
-
-            return type !== TYPE_INVALID && typeIsA(getInstanceType(child), type);
-        };
+    <C extends GObject.Object>(cls: ChildClass<C> | undefined): ((child: GObject.Object) => child is C) =>
+        (child): child is C =>
+            cls !== undefined && child instanceof cls;
 
 const slotAttach =
     <P extends GObject.Object, C extends GObject.Object>(
         slotName: string,
-        isMatch: (child: GObject.Object) => boolean,
+        isMatch: (child: GObject.Object) => child is C,
         attach: SlotHooks<P, C>["attach"],
     ): NonNullable<ElementBehavior["attach"]> =>
         (object, child, info) => {
@@ -103,15 +78,15 @@ const slotAttach =
                 return;
             }
 
-            return attach(object as P, child as C, info) ?? true;
+            return attach(object as P, child, info) ?? true;
         };
 
 const slot = <P extends GObject.Object, C extends GObject.Object>(
     slotName: string,
-    childType: string,
+    childClass: ChildClass<C> | undefined,
     hooks: SlotHooks<P, C>,
 ): ElementBehavior => {
-    const matches = childMatcher(childType);
+    const matches = childMatcher(childClass);
     const { attach, detach, reorder, resolve } = hooks;
     const behavior: ElementBehavior = { attach: slotAttach(slotName, matches, attach) };
 
@@ -309,7 +284,7 @@ const controlledText = (prop: string): ElementBehavior =>
     });
 
 const childSetterSlot = <P extends ChildSetter>(): ElementBehavior<P> =>
-    slot<P, Gtk.Widget>("children", "GtkWidget", {
+    slot<P, Gtk.Widget>("children", Gtk.Widget, {
         attach: (parent, child) => {
             parent.setChild(child);
         },
@@ -319,9 +294,9 @@ const childSetterSlot = <P extends ChildSetter>(): ElementBehavior<P> =>
     });
 
 const contentSetterSlot = <P extends ContentSetter<C>, C extends Gtk.Widget = Gtk.Widget>(
-    childType = "GtkWidget",
+    childClass: ChildClass<C>,
 ): ElementBehavior<P> =>
-    slot<P, C>("children", childType, {
+    slot<P, C>("children", childClass, {
         attach: (parent, child) => {
             parent.setContent(child);
         },
@@ -331,7 +306,7 @@ const contentSetterSlot = <P extends ContentSetter<C>, C extends Gtk.Widget = Gt
     });
 
 const boxSlot = <P extends BoxLike>(): ElementBehavior<P> =>
-    slot<P, Gtk.Widget>("children", "GtkWidget", {
+    slot<P, Gtk.Widget>("children", Gtk.Widget, {
         attach: (box, child, info) => box.insertChildAfter(child, info.sibling as Gtk.Widget | null),
         detach: (box, child) => {
             box.remove(child);
@@ -346,7 +321,7 @@ const callMethod = <P extends GObject.Object, A>(parent: P, method: MethodKey<P,
 
 const methodSlot = <P extends GObject.Object, C extends GObject.Object>(
     slotName: string,
-    childType: string,
+    childClass: ChildClass<C> | undefined,
     add: MethodKey<P, C>,
     remove?: MethodKey<P, C>,
 ): ElementBehavior => {
@@ -358,15 +333,15 @@ const methodSlot = <P extends GObject.Object, C extends GObject.Object>(
         };
     }
 
-    return slot<P, C>(slotName, childType, hooks);
+    return slot<P, C>(slotName, childClass, hooks);
 };
 
 const setterSlot = <P extends GObject.Object, C extends GObject.Object>(
     slotName: string,
-    childType: string,
+    childClass: ChildClass<C> | undefined,
     setter: MethodKey<P, C | null>,
 ): ElementBehavior =>
-    slot<P, C>(slotName, childType, {
+    slot<P, C>(slotName, childClass, {
         attach: (parent, child) => {
             callMethod<P, C | null>(parent, setter, child);
         },
@@ -377,9 +352,9 @@ const setterSlot = <P extends GObject.Object, C extends GObject.Object>(
 
 const indexedSlot = <P extends IndexedChildHost<C>, C extends GObject.Object>(
     slotName: string,
-    childType: string,
+    childClass: ChildClass<C> | undefined,
 ): ElementBehavior<P> =>
-    slot<P, C>(slotName, childType, {
+    slot<P, C>(slotName, childClass, {
         attach: (parent, child, info) => {
             parent.insert(child, info.index);
         },
@@ -432,7 +407,7 @@ const wrappingIndexedSlot = <W extends Gtk.Widget, P extends IndexedChildHost<Gt
     Wrapper: new (props: Props) => W,
     setChild: (wrapper: W, inner: Gtk.Widget) => void,
 ): ElementBehavior<P> => ({
-    ...slot<P, Gtk.Widget>("children", "GtkWidget", {
+    ...slot<P, Gtk.Widget>("children", Gtk.Widget, {
         attach: (parent, child, info) =>
             parent.insert(wrappedRow(Wrapper, setChild, info.context as RowCache, child), info.index),
         detach: (parent, child, info) => {

@@ -47,8 +47,8 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     }),
     ...forTypes(["GtkHeaderBar", "GtkActionBar"], {
         behaviors: [
-            methodSlot<Gtk.HeaderBar | Gtk.ActionBar, Gtk.Widget>("start", "GtkWidget", "packStart", "remove"),
-            methodSlot<Gtk.HeaderBar | Gtk.ActionBar, Gtk.Widget>("end", "GtkWidget", "packEnd", "remove"),
+            methodSlot<Gtk.HeaderBar | Gtk.ActionBar, Gtk.Widget>("start", Gtk.Widget, "packStart", "remove"),
+            methodSlot<Gtk.HeaderBar | Gtk.ActionBar, Gtk.Widget>("end", Gtk.Widget, "packEnd", "remove"),
         ],
     }),
     GtkWindow: {
@@ -56,7 +56,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkWidget: {
         behaviors: [
-            slot<Gtk.Widget, Gtk.Popover>("children", "GtkPopover", {
+            slot<Gtk.Widget, Gtk.Popover>("children", Gtk.Popover, {
                 attach: (parent, popover) => {
                     popover.setParent(parent);
                 },
@@ -65,10 +65,10 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                 },
             }),
             methodSlot<Gtk.Widget, Gtk.EventController>(
-                "controllers", "GtkEventController", "addController", "removeController",
+                "controllers", Gtk.EventController, "addController", "removeController",
             ),
-            setterSlot<Gtk.Widget, Gtk.LayoutManager>("layoutManager", "GtkLayoutManager", "setLayoutManager"),
-            slot<Gtk.Widget, Gio.ActionGroup>("actionGroups", "GActionGroup", {
+            setterSlot<Gtk.Widget, Gtk.LayoutManager>("layoutManager", Gtk.LayoutManager, "setLayoutManager"),
+            slot<Gtk.Widget, Gio.ActionGroup>("actionGroups", Gio.ActionGroup, {
                 attach: (widget, group, info) => {
                     widget.insertActionGroup((info.props.prefix as string | null) ?? "", group);
                 },
@@ -100,7 +100,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkOverlay: {
         behaviors: [
             childSetterSlot<Gtk.Overlay>(),
-            slot<Gtk.Overlay, Gtk.Widget>("overlays", "GtkWidget", {
+            slot<Gtk.Overlay, Gtk.Widget>("overlays", Gtk.Widget, {
                 attach: (overlay, child) => {
                     overlay.addOverlay(child);
                 },
@@ -114,7 +114,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkShortcutController: {
         behaviors: [
             methodSlot<Gtk.ShortcutController, Gtk.Shortcut>(
-                "shortcuts", "GtkShortcut", "addShortcut", "removeShortcut",
+                "shortcuts", Gtk.Shortcut, "addShortcut", "removeShortcut",
             ),
         ],
     },
@@ -122,11 +122,11 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [{ create: () => Gtk.TextChildAnchor.new() }],
     },
     GtkTextView: {
-        behaviors: [setterSlot<Gtk.TextView, Gtk.TextBuffer>("children", "GtkTextBuffer", "setBuffer")],
+        behaviors: [setterSlot<Gtk.TextView, Gtk.TextBuffer>("children", Gtk.TextBuffer, "setBuffer")],
     },
     GActionMap: {
         behaviors: [
-            slot<Gio.ActionMap, Gio.Action>("actions", "GAction", {
+            slot<Gio.ActionMap, Gio.Action>("actions", Gio.Action, {
                 attach: (map, action) => {
                     map.addAction(action);
                 },
@@ -150,7 +150,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkColumnView: {
         behaviors: [
-            slot<Gtk.ColumnView, Gtk.ColumnViewColumn>("children", "GtkColumnViewColumn", {
+            slot<Gtk.ColumnView, Gtk.ColumnViewColumn>("children", Gtk.ColumnViewColumn, {
                 attach: (view, column, info) => {
                     view.insertColumn(info.index, column);
                 },
@@ -162,7 +162,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkGrid: {
         behaviors: [
-            slot<Gtk.Grid, Gtk.Widget>("children", "GtkWidget", {
+            slot<Gtk.Grid, Gtk.Widget>("children", Gtk.Widget, {
                 attach: (grid, child) => {
                     grid.attach(child, 0, 0, 1, 1);
                 },
@@ -175,7 +175,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkFixed: {
         behaviors: [
-            slot<Gtk.Fixed, Gtk.Widget>("children", "GtkWidget", {
+            slot<Gtk.Fixed, Gtk.Widget>("children", Gtk.Widget, {
                 attach: (fixed, child) => {
                     fixed.put(child, 0, 0);
                 },
@@ -201,10 +201,10 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkConstraintLayout: {
         behaviors: [
             methodSlot<Gtk.ConstraintLayout, Gtk.Constraint>(
-                "constraints", "GtkConstraint", "addConstraint", "removeConstraint",
+                "constraints", Gtk.Constraint, "addConstraint", "removeConstraint",
             ),
             methodSlot<Gtk.ConstraintLayout, Gtk.ConstraintGuide>(
-                "guides", "GtkConstraintGuide", "addGuide", "removeGuide",
+                "guides", Gtk.ConstraintGuide, "addGuide", "removeGuide",
             ),
             list<Gtk.ConstraintLayout, VflConstraints, Gtk.Constraint[]>("vfl", {
                 add: (layout, item) => [
@@ -225,13 +225,13 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkStack: {
         behaviors: [
-            methodSlot<Gtk.Stack, Gtk.Widget>("children", "GtkWidget", "addChild", "remove"),
+            methodSlot<Gtk.Stack, Gtk.Widget>("children", Gtk.Widget, "addChild", "remove"),
             deferred<Gtk.Stack, string>("visibleChildName", (stack, name) => stack.getChildByName(name) !== null),
         ],
     },
     GtkNotebook: {
         behaviors: [
-            slot<Gtk.Notebook, Gtk.Widget>("children", "GtkWidget", {
+            slot<Gtk.Notebook, Gtk.Widget>("children", Gtk.Widget, {
                 attach: (notebook, child, info) => notebook.insertPage(child, null, info.index),
                 reorder: (notebook, child, info) => {
                     notebook.reorderChild(child, info.index);
@@ -246,7 +246,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkApplication: {
         behaviors: [
             applicationCreator(Gtk.Application),
-            methodSlot<Gtk.Application, Gtk.Window>("children", "GtkWindow", "addWindow", "removeWindow"),
+            methodSlot<Gtk.Application, Gtk.Window>("children", Gtk.Window, "addWindow", "removeWindow"),
             list<Gtk.Application, ActionAccel>("actionAccels", {
                 add: (application, item) => {
                     application.setAccelsForAction(item.detailedActionName, item.accels);

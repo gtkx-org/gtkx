@@ -1,5 +1,5 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import * as Adw from "@gtkx/gi/adw";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { AlertDialogResponse } from "./prop-types.js";
 import {
     applicationCreator,
@@ -35,22 +35,27 @@ type PrefixSuffixRow = Adw.ActionRow | Adw.EntryRow | Adw.ExpanderRow;
 
 const SLOT_SUFFIX = "Slot";
 const childSetter = childSetterSlot<AdwChildSetter>();
-const contentSetter = contentSetterSlot<AdwContentSetter>();
-const breakpoints = methodSlot<BreakpointHost, Adw.Breakpoint>("breakpoints", "AdwBreakpoint", "addBreakpoint");
+const contentSetter = contentSetterSlot<AdwContentSetter>(Gtk.Widget);
+const breakpoints = methodSlot<BreakpointHost, Adw.Breakpoint>("breakpoints", Adw.Breakpoint, "addBreakpoint");
 
 const prefixSuffix = [
-    methodSlot<PrefixSuffixRow, Gtk.Widget>("prefix", "GtkWidget", "addPrefix", "remove"),
-    methodSlot<PrefixSuffixRow, Gtk.Widget>("suffix", "GtkWidget", "addSuffix", "remove"),
+    methodSlot<PrefixSuffixRow, Gtk.Widget>("prefix", Gtk.Widget, "addPrefix", "remove"),
+    methodSlot<PrefixSuffixRow, Gtk.Widget>("suffix", Gtk.Widget, "addSuffix", "remove"),
 ];
 
 const preferencesDialogChildren = methodSlot<Adw.PreferencesDialog, Adw.PreferencesPage>(
-    "children", "AdwPreferencesPage", "add", "remove",
+    "children", Adw.PreferencesPage, "add", "remove",
 );
 
-const alertDialogExtraChild = setterSlot<Adw.AlertDialog, Gtk.Widget>("children", "GtkWidget", "setExtraChild");
-const sidebarSections = indexedSlot<Adw.Sidebar, Adw.SidebarSection>("children", "AdwSidebarSection");
-const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children", "AdwSidebarItem");
-const isWidget = childMatcher("GtkWidget");
+const alertDialogExtraChild = setterSlot<Adw.AlertDialog, Gtk.Widget>("children", Gtk.Widget, "setExtraChild");
+const sidebarSections = indexedSlot<Adw.Sidebar, Adw.SidebarSection>("children", Adw.SidebarSection);
+const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children", Adw.SidebarItem);
+const isWidget = childMatcher(Gtk.Widget);
+
+const scrollableWidget = {
+    [Symbol.hasInstance]: (value: unknown): value is Gtk.Scrollable & Gtk.Widget =>
+        value instanceof Gtk.Scrollable && value instanceof Gtk.Widget,
+};
 
 const multiLayoutSlots: ElementBehavior<Adw.MultiLayoutView> = {
     attach: (view, child, info) => {
@@ -60,7 +65,7 @@ const multiLayoutSlots: ElementBehavior<Adw.MultiLayoutView> = {
             return;
         }
 
-        view.setChild(id, child as Gtk.Widget);
+        view.setChild(id, child);
 
         return true;
     },
@@ -71,15 +76,13 @@ const multiLayoutSlots: ElementBehavior<Adw.MultiLayoutView> = {
             return;
         }
 
-        const widget = child as Gtk.Widget;
-
-        if (view.getChild(id) === widget) {
-            widget.unparent();
+        if (view.getChild(id) === child) {
+            child.unparent();
         }
     },
 };
 
-const multiLayoutLayouts = slot<Adw.MultiLayoutView, Gtk.Widget>("layouts", "GtkWidget", {
+const multiLayoutLayouts = slot<Adw.MultiLayoutView, Gtk.Widget>("layouts", Gtk.Widget, {
     attach: (view, content) => {
         const layout = new Adw.Layout({ content });
         view.addLayout(layout);
@@ -113,7 +116,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     AdwClampScrollable: {
         behaviors: [
-            setterSlot<Adw.ClampScrollable, Gtk.Scrollable & Gtk.Widget>("children", "GtkScrollable", "setChild"),
+            setterSlot<Adw.ClampScrollable, Gtk.Scrollable & Gtk.Widget>("children", scrollableWidget, "setChild"),
         ],
     },
     ...forTypes(CHILD_SETTER_TYPES, {
@@ -135,7 +138,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [
             childSetter,
             methodSlot<Adw.BreakpointBin, Adw.Breakpoint>(
-                "breakpoints", "AdwBreakpoint", "addBreakpoint", "removeBreakpoint",
+                "breakpoints", Adw.Breakpoint, "addBreakpoint", "removeBreakpoint",
             ),
         ],
     },
@@ -148,18 +151,18 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwExpanderRow: {
         behaviors: [
             ...prefixSuffix,
-            methodSlot<Adw.ExpanderRow, Gtk.Widget>("rows", "GtkWidget", "addRow", "remove"),
+            methodSlot<Adw.ExpanderRow, Gtk.Widget>("rows", Gtk.Widget, "addRow", "remove"),
         ],
     },
     AdwNavigationSplitView: {
-        behaviors: [contentSetterSlot<Adw.NavigationSplitView, Adw.NavigationPage>("AdwNavigationPage")],
+        behaviors: [contentSetterSlot<Adw.NavigationSplitView, Adw.NavigationPage>(Adw.NavigationPage)],
     },
     AdwWrapBox: {
         behaviors: [boxSlot<Adw.WrapBox>()],
     },
     AdwCarousel: {
         behaviors: [
-            slot<Adw.Carousel, Gtk.Widget>("children", "GtkWidget", {
+            slot<Adw.Carousel, Gtk.Widget>("children", Gtk.Widget, {
                 attach: (carousel, child, info) => {
                     carousel.insert(child, info.index);
                 },
@@ -174,7 +177,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     AdwPreferencesPage: {
         behaviors: [
-            slot<Adw.PreferencesPage, Adw.PreferencesGroup>("children", "AdwPreferencesGroup", {
+            slot<Adw.PreferencesPage, Adw.PreferencesGroup>("children", Adw.PreferencesGroup, {
                 attach: (page, group, info) => {
                     page.insert(group, info.index);
                 },
@@ -188,11 +191,11 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [preferencesDialogChildren],
     },
     AdwPreferencesGroup: {
-        behaviors: [methodSlot<Adw.PreferencesGroup, Gtk.Widget>("children", "GtkWidget", "add", "remove")],
+        behaviors: [methodSlot<Adw.PreferencesGroup, Gtk.Widget>("children", Gtk.Widget, "add", "remove")],
     },
     AdwTabView: {
         behaviors: [
-            slot<Adw.TabView, Gtk.Widget>("children", "GtkWidget", {
+            slot<Adw.TabView, Gtk.Widget>("children", Gtk.Widget, {
                 attach: (view, child, info) => view.insert(child, info.index),
                 reorder: (view, _child, info) => {
                     if (info.adopted instanceof Adw.TabPage) {
@@ -210,37 +213,37 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     AdwNavigationView: {
         behaviors: [
-            methodSlot<Adw.NavigationView, Adw.NavigationPage>("children", "AdwNavigationPage", "add", "remove"),
+            methodSlot<Adw.NavigationView, Adw.NavigationPage>("children", Adw.NavigationPage, "add", "remove"),
         ],
     },
     AdwViewStack: {
         behaviors: [
-            methodSlot<Adw.ViewStack, Gtk.Widget>("children", "GtkWidget", "add", "remove"),
+            methodSlot<Adw.ViewStack, Gtk.Widget>("children", Gtk.Widget, "add", "remove"),
             deferred<Adw.ViewStack, string>("visibleChildName", (stack, name) => stack.getChildByName(name) !== null),
         ],
     },
     AdwToolbarView: {
         behaviors: [
-            contentSetterSlot<Adw.ToolbarView>(),
-            methodSlot<Adw.ToolbarView, Gtk.Widget>("topBar", "GtkWidget", "addTopBar", "remove"),
-            methodSlot<Adw.ToolbarView, Gtk.Widget>("bottomBar", "GtkWidget", "addBottomBar", "remove"),
+            contentSetterSlot<Adw.ToolbarView>(Gtk.Widget),
+            methodSlot<Adw.ToolbarView, Gtk.Widget>("topBar", Gtk.Widget, "addTopBar", "remove"),
+            methodSlot<Adw.ToolbarView, Gtk.Widget>("bottomBar", Gtk.Widget, "addBottomBar", "remove"),
         ],
     },
     AdwHeaderBar: {
         behaviors: [
-            methodSlot<Adw.HeaderBar, Gtk.Widget>("start", "GtkWidget", "packStart", "remove"),
-            methodSlot<Adw.HeaderBar, Gtk.Widget>("end", "GtkWidget", "packEnd", "remove"),
+            methodSlot<Adw.HeaderBar, Gtk.Widget>("start", Gtk.Widget, "packStart", "remove"),
+            methodSlot<Adw.HeaderBar, Gtk.Widget>("end", Gtk.Widget, "packEnd", "remove"),
         ],
     },
     AdwShortcutsDialog: {
-        behaviors: [methodSlot<Adw.ShortcutsDialog, Adw.ShortcutsSection>("children", "AdwShortcutsSection", "add")],
+        behaviors: [methodSlot<Adw.ShortcutsDialog, Adw.ShortcutsSection>("children", Adw.ShortcutsSection, "add")],
     },
     AdwShortcutsSection: {
-        behaviors: [methodSlot<Adw.ShortcutsSection, Adw.ShortcutsItem>("children", "AdwShortcutsItem", "add")],
+        behaviors: [methodSlot<Adw.ShortcutsSection, Adw.ShortcutsItem>("children", Adw.ShortcutsItem, "add")],
     },
     AdwToggleGroup: {
         behaviors: [
-            methodSlot<Adw.ToggleGroup, Adw.Toggle>("children", "AdwToggle", "add", "remove"),
+            methodSlot<Adw.ToggleGroup, Adw.Toggle>("children", Adw.Toggle, "add", "remove"),
             deferred<Adw.ToggleGroup, string>("activeName", (group, name) => group.getToggleByName(name) !== null),
             deferred("active"),
         ],
