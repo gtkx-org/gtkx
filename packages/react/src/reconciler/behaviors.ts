@@ -1,16 +1,15 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import {
-    type AnyClass,
     type ApplicationClass,
     type CommandLineApplication,
     createApplication,
-    getClassType,
+    getInstanceType,
     TYPE_INVALID,
     typeFromName,
     typeIsA,
 } from "@gtkx/runtime";
-import { getOrInsert, isDeepEqual, kebabCase, structuredClone, unsanitizeIdentifier } from "@gtkx/utils";
+import { isDeepEqual, kebabCase, structuredClone, unsanitizeIdentifier } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
 import { getPropertyName } from "./metadata.js";
 import { applyWrite } from "./signals.js";
@@ -69,14 +68,28 @@ type IndexedChildHost<C extends GObject.Object> = GObject.Object & {
 
 const childTypeCache: Map<string, bigint> = new Map();
 
-const childTypeFor = (name: string): bigint => getOrInsert(childTypeCache, name, typeFromName);
+const childTypeFor = (name: string): bigint => {
+    const cached = childTypeCache.get(name);
+
+    if (cached !== undefined) {
+        return cached;
+    }
+
+    const type = typeFromName(name);
+
+    if (type !== TYPE_INVALID) {
+        childTypeCache.set(name, type);
+    }
+
+    return type;
+};
 
 const childMatcher =
     (name: string): ((child: GObject.Object) => boolean) =>
         (child) => {
             const type = childTypeFor(name);
 
-            return type === TYPE_INVALID || typeIsA(getClassType(child.constructor as AnyClass), type);
+            return type !== TYPE_INVALID && typeIsA(getInstanceType(child), type);
         };
 
 const slotAttach =
