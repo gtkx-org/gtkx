@@ -9,6 +9,11 @@ import {
     typeName,
     typeParent,
 } from "@gtkx/runtime";
+import {
+    elementMetadataVersion,
+    registeredElementProperties,
+    registeredElementSignals,
+} from "@gtkx/runtime/internal";
 import { getOrInsert } from "@gtkx/utils";
 import { properties, type PropertyEntry, signals, userEventSignals } from "virtual:gtkx-config";
 import { deferredProps, type ElementBehavior, ELEMENTS } from "./registry.js";
@@ -36,19 +41,18 @@ const FLAGS = 1;
 const DEFAULT_VALUE = 2;
 const ancestryCache: Map<string, string[]> = new Map();
 const typeInfoCache: Map<string, TypeInfo> = new Map();
-const registeredSignals: Record<string, Record<string, string>> = {};
-const registeredProperties: Record<string, Record<string, PropertyEntry>> = {};
+const metadataCacheState = { seenVersion: elementMetadataVersion() };
 
-const registerElementMetadata = (
-    name: string,
-    _parent: string | undefined,
-    ownSignals: Record<string, string>,
-    ownProperties: Record<string, PropertyEntry>,
-): string => {
-    registeredSignals[name] = ownSignals;
-    registeredProperties[name] = ownProperties;
+const dropStaleCaches = (): void => {
+    const current = elementMetadataVersion();
 
-    return name;
+    if (metadataCacheState.seenVersion === current) {
+        return;
+    }
+
+    metadataCacheState.seenVersion = current;
+    ancestryCache.clear();
+    typeInfoCache.clear();
 };
 
 const addAncestor = (names: string[], seen: Set<string>, name: string | null): void => {
@@ -89,7 +93,7 @@ const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
 };
 
 const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
-    Object.assign(info.signals, registeredSignals[ancestor] ?? signals[ancestor] ?? {});
+    Object.assign(info.signals, registeredElementSignals[ancestor] ?? signals[ancestor] ?? {});
     addAll(info.userEventSignals, userEventSignals[ancestor]);
     info.behaviors.push(...(ELEMENTS[ancestor]?.behaviors ?? []));
 };
@@ -155,7 +159,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
     info.isLazy = chain.some((ancestor) => ELEMENTS[ancestor]?.isLazy === true);
 
     for (const ancestor of chain.toReversed()) {
-        Object.assign(info.properties, registeredProperties[ancestor] ?? properties[ancestor] ?? {});
+        Object.assign(info.properties, registeredElementProperties[ancestor] ?? properties[ancestor] ?? {});
     }
 
     resolveProperties(info);
@@ -163,7 +167,11 @@ const buildTypeInfo = (name: string): TypeInfo => {
     return info;
 };
 
-const typeInfoFor = (name: string): TypeInfo => getOrInsert(typeInfoCache, name, buildTypeInfo);
+const typeInfoFor = (name: string): TypeInfo => {
+    dropStaleCaches();
+
+    return getOrInsert(typeInfoCache, name, buildTypeInfo);
+};
 
 const getTypeInfo = (object: GObject.Object): TypeInfo | undefined => {
     const name = typeName(getClassType(object.constructor as AnyClass));
@@ -183,4 +191,4 @@ const getPropertyName = (object: GObject.Object, accessor: string): string | und
         getDeclaredPropertyName(object, accessor);
 };
 
-export { getPropertyName, hasProperty, registerElementMetadata, typeInfoFor, type TypeInfo };
+export { getPropertyName, hasProperty, typeInfoFor, type TypeInfo };

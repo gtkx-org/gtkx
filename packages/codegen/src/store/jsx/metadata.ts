@@ -83,7 +83,7 @@ const generateEntryMetadata = (intrinsicElements: IntrinsicElementEntry[]): stri
     const lines = ordered.map((entry) => renderEntryExport(entry, names));
 
     return `${[
-        "import { registerElementMetadata } from \"@gtkx/react/internal\";",
+        "import { registerElementMetadata } from \"@gtkx/runtime/internal\";",
         PROPERTY_ENTRY_TYPE,
         "export const signals: Record<string, Record<string, string>> = {};",
         "export const properties: Record<string, Record<string, PropertyEntry>> = {};",
