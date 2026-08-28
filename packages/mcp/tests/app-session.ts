@@ -24,7 +24,7 @@ type QueryOptions = Record<string, unknown> | undefined;
 
 const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const WORKSPACE_MODULES = join(WORKSPACE_ROOT, "node_modules");
-const CLI_ENTRY = join(WORKSPACE_ROOT, "packages", "cli", "src", "cli.ts");
+const CLI_ENTRY = join(WORKSPACE_ROOT, "packages", "cli", "dist", "cli.js");
 const SERVER_ENTRY = join(WORKSPACE_ROOT, "packages", "mcp", "src", "server.ts");
 const TSX_ARGV = ["--conditions=source", "--import", "tsx"];
 
@@ -152,7 +152,7 @@ const startServer = async (
 };
 
 const startApp = (root: string, runtimeDir: string): ChildProcess =>
-    spawn(process.execPath, [...TSX_ARGV, CLI_ENTRY, "dev"], {
+    spawn(process.execPath, ["--enable-source-maps", CLI_ENTRY, "dev"], {
         cwd: root,
         env: childEnvironment(runtimeDir),
         stdio: ["ignore", "ignore", "ignore"],

@@ -4,7 +4,7 @@ description: "Install the Flatpak you built, see which sandbox permissions the a
 
 # Appendix C: Shipping It on Flathub
 
-[Speaking the User's Language](/tutorial/internationalization) rebuilt all four packages with their French catalog and metadata. This page takes the Flatpak into its sandbox and then prepares the source-mode manifest Flathub needs.
+[Speaking the User's Language](/tutorial/internationalization) rebuilt every package with its French catalog and metadata. This page takes the Flatpak into its sandbox and then prepares the source-mode manifest Flathub needs.
 
 A Flatpak bundles the app with a pinned platform, so it sees the same Adwaita it was built against on any distribution. The finished app runs in a sandbox, and the permissions it asks for are the part worth planning.
 

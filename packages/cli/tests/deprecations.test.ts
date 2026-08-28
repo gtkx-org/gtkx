@@ -15,6 +15,7 @@ const ALL_FLAGS = `future: {
         v2FinishResults: true,
         v2InoutReturns: true,
         v2ResourceImports: true,
+        v2DefaultLibraries: true,
         v2TreeShaking: true,
     },`;
 
@@ -24,6 +25,7 @@ const EVERY_ID = [
     "gtkx-v2-finish-results",
     "gtkx-v2-inout-returns",
     "gtkx-v2-resource-imports",
+    "gtkx-v2-default-libraries",
     "gtkx-v2-tree-shaking",
 ];
 
@@ -49,7 +51,7 @@ const codegenStreams = (body: string, overrides: NodeJS.ProcessEnv = {}): CliStr
 describe("future flag deprecation warnings", () => {
     it("names every unset flag on stderr and leaves stdout clean", () => {
         const { stdout, stderr } = codegenStreams("");
-        expect(stderr).toContain("6 of 6 future flags are unset");
+        expect(stderr).toContain("7 of 7 future flags are unset");
         expect(stderr).toContain(BYTE_ARRAYS);
         expect(stderr).toContain(INOUT_RETURNS);
         expect(stderr).toContain(GUIDE);
@@ -63,7 +65,7 @@ describe("future flag deprecation warnings", () => {
 
     it("reports again when a parent process reported a different set of flags", () => {
         const { stderr } = codegenStreams("", { GTKX_DEPRECATIONS_SHOWN: "gtkx-v2-byte-arrays" });
-        expect(stderr).toContain("6 of 6 future flags are unset");
+        expect(stderr).toContain("7 of 7 future flags are unset");
     });
 
     it("prints the block once even though the command loads the configuration twice", () => {
@@ -78,14 +80,14 @@ describe("future flag deprecation warnings", () => {
 
     it("reports only the flags that are still unset", () => {
         const { stderr } = codegenStreams("future: { v2ByteArrays: true },");
-        expect(stderr).toContain("5 of 6 future flags are unset");
+        expect(stderr).toContain("6 of 7 future flags are unset");
         expect(stderr).not.toContain(BYTE_ARRAYS);
         expect(stderr).toContain(INOUT_RETURNS);
     });
 
     it("drops a silenced id, keeps reporting the rest, and still counts it as unset", () => {
         const { stderr } = codegenStreams('deprecations: { silence: ["gtkx-v2-byte-arrays"] },');
-        expect(stderr).toContain("6 of 6 future flags are unset");
+        expect(stderr).toContain("7 of 7 future flags are unset");
         expect(stderr).toContain("1 of them silenced here");
         expect(stderr).not.toContain(BYTE_ARRAYS);
         expect(stderr).toContain(INOUT_RETURNS);

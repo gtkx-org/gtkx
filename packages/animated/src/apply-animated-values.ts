@@ -1,5 +1,5 @@
 import type { Lookup } from "@react-spring/types";
-import { Label, Widget } from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import { applyStyle, applyWrite } from "@gtkx/react/internal";
 import { coerceObjectProperty } from "@gtkx/runtime";
 
@@ -61,7 +61,7 @@ const getText = (value: unknown): string | null => {
 const didApplyText = (instance: object, value: unknown): boolean => {
     const text = getText(value);
 
-    if (text === null || !(instance instanceof Label)) {
+    if (text === null || !(instance instanceof Gtk.Label)) {
         return false;
     }
 
@@ -73,7 +73,7 @@ const didApplyText = (instance: object, value: unknown): boolean => {
 };
 
 const didApplyStyle = (instance: object, value: unknown): boolean => {
-    if (!(instance instanceof Widget)) {
+    if (!(instance instanceof Gtk.Widget)) {
         return false;
     }
 

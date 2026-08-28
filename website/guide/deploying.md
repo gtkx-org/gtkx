@@ -132,7 +132,7 @@ A package carries software its author did not write: the Node.js runtime, GTKX i
 | `deb` | `share/doc/<binaryName>/copyright`, in the [machine-readable copyright format](https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/), with a `Files:` stanza per file it carries |
 | `rpm`, `appimage`, `flatpak` | `share/licenses/<binaryName>/THIRD-PARTY-NOTICES`, beside your own `LICENSE` |
 
-Four things are collected, each on its own:
+Each source is collected on its own:
 
 - **The bundled Node.js.** Its `LICENSE` is extracted from the release archive the deploy already downloaded and verified. That one file is the aggregate notice covering V8, OpenSSL, ICU, libuv, zlib, brotli, llhttp, and everything else Node.js embeds. With `deploy.node.source: "host"` or `"path"` there is no archive, so the license is looked for beside the binary, at `<dir>/LICENSE` and `<dir>/../LICENSE`, which is where an official release unpacks it. A file found there is taken only when its text names Node.js, so pointing `deploy.node.path` at a binary inside your own project does not publish your project's `LICENSE` as Node's. When no Node.js license is found, the deploy warns and the notices name the runtime with a link to its license in place of the text.
 - **GTKX.** The MPL-2.0 notice, the GTKX modules that went into the bundle, and a pointer to the source of the release they came from, which is what section 3.2(a) of that license asks you to give whoever receives the executable. The native addon also statically links Rust crates GTKX did not write, so the section says so and names the licenses they carry — MIT, Apache-2.0, ISC, and Unicode-3.0 — with a pointer to the manifest that records which crates and which versions went in.

@@ -7,11 +7,15 @@ type FutureDeprecation = {
     id: DeprecationId;
     flag: keyof NonNullable<Config["future"]>;
     change: string;
+    unchecked?: string;
 };
 
 const SHOWN_ENV = "GTKX_DEPRECATIONS_SHOWN";
 const GUIDE_URL = "https://gtkx.dev/guide/upgrading-to-2";
 const ENTRY_COLUMN = 30;
+const BUILD_REPORTS = " The build, not tsc, reports the specifiers still to change.";
+const NOTHING_REPORTS = " Nothing reports this one; check the app yourself.";
+const SILENT_SITES = " `Array.isArray` and `JSON.stringify` change silently; grep for them.";
 
 const DEPRECATION_IDS = [
     "gtkx-v2-byte-arrays",
@@ -19,6 +23,7 @@ const DEPRECATION_IDS = [
     "gtkx-v2-finish-results",
     "gtkx-v2-inout-returns",
     "gtkx-v2-resource-imports",
+    "gtkx-v2-default-libraries",
     "gtkx-v2-tree-shaking",
 ] as const;
 
@@ -27,6 +32,7 @@ const FUTURE_DEPRECATIONS: FutureDeprecation[] = [
         id: "gtkx-v2-byte-arrays",
         flag: "v2ByteArrays",
         change: "Byte sequences come back as number[]. In 2.0 they come back as Uint8Array.",
+        unchecked: SILENT_SITES,
     },
     {
         id: "gtkx-v2-value-returns",
@@ -47,6 +53,13 @@ const FUTURE_DEPRECATIONS: FutureDeprecation[] = [
         id: "gtkx-v2-resource-imports",
         flag: "v2ResourceImports",
         change: "Assets resolve through the #data/ import map. In 2.0 they resolve through ?resource imports.",
+        unchecked: BUILD_REPORTS,
+    },
+    {
+        id: "gtkx-v2-default-libraries",
+        flag: "v2DefaultLibraries",
+        change: "Only Gtk-4.0 is bound by default. In 2.0 Adw-1 is bound alongside it.",
+        unchecked: NOTHING_REPORTS,
     },
     {
         id: "gtkx-v2-tree-shaking",
@@ -75,14 +88,23 @@ const formatSummary = (unset: number, silenced: number): string => {
 
 const formatDeprecation = (deprecation: FutureDeprecation): string =>
     `  [${deprecation.id}]`.padEnd(ENTRY_COLUMN) +
-    `future: { ${deprecation.flag}: true }\n    ${deprecation.change}`;
+    `future: { ${deprecation.flag}: true }\n    ${deprecation.change}` +
+    (deprecation.unchecked ?? "");
+
+const formatAdvice = (pending: FutureDeprecation[]): string => {
+    if (pending.every((deprecation) => deprecation.unchecked === undefined)) {
+        return "  Set one flag at a time and run tsc: every affected call site is a type error.";
+    }
+
+    return "  Set one flag at a time and run tsc: it reports every affected call site except where noted above.";
+};
 
 const formatBlock = (unset: FutureDeprecation[], pending: FutureDeprecation[], first: FutureDeprecation): string =>
     [
         formatSummary(unset.length, unset.length - pending.length),
         "",
         ...pending.flatMap((deprecation) => [formatDeprecation(deprecation), ""]),
-        "  Set one flag at a time and run tsc: every affected call site is a type error.",
+        formatAdvice(pending),
         `  Guide    ${GUIDE_URL}`,
         `  Silence  deprecations: { silence: [${JSON.stringify(first.id)}] }`,
     ].join("\n");

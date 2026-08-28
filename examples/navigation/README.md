@@ -1,6 +1,6 @@
 # navigation
 
-A small mail-style app built on [`@gtkx/navigation`](../../packages/navigation), React Navigation for GTKX. A drawer lists three sections, Inbox is a stack of pages, Settings is a pair of tabs, and every navigator is rendered with a libadwaita widget: `AdwOverlaySplitView`, `AdwNavigationView`, and `AdwViewStack` with an `AdwViewSwitcher`.
+A small mail-style app built on [`@gtkx/navigation`](../../packages/navigation), React Navigation for GTKX. A drawer lists the sections, Inbox is a stack of pages, Settings is a pair of tabs, and every navigator is rendered with a libadwaita widget: `AdwOverlaySplitView`, `AdwNavigationView`, and `AdwViewStack` with an `AdwViewSwitcher`.
 
 ## What it demonstrates
 

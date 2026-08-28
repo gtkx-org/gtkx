@@ -600,6 +600,33 @@ describe("gtkx codegen (v2 asset import declarations)", () => {
     });
 });
 
+describe("gtkx codegen (imports under hidden directories)", () => {
+    it("ignores schema imports a hidden directory holds", () => {
+        const hiddenSchema = "hidden-probe.gschema.xml";
+
+        const project = createCliProject({
+            prefix: "gtkx-cli-build-hidden-",
+            config: config(STORE_LIBRARIES, ", codegen: false", null),
+            files: {
+                [join("src", "index.tsx")]: `import "../data/${SCHEMA_FILE}";\n`,
+                [join("data", SCHEMA_FILE)]: SCHEMA,
+                [join("src", ".stash", "copy.tsx")]: `import "./${SCHEMA_FILE}";\nimport "./${hiddenSchema}";\n`,
+                [join("src", ".stash", SCHEMA_FILE)]: SCHEMA,
+                [join("src", ".stash", hiddenSchema)]: SCHEMA,
+            },
+        });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            const declarations = readFileSync(join(project.root, SCHEMA_TYPES), "utf8");
+            expect(declarations).toContain(`declare module "*/${SCHEMA_FILE}"`);
+            expect(declarations).not.toContain(hiddenSchema);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+});
+
 describe("gtkx build (application icons)", () => {
     it("places the file in the hicolor application theme", () => {
         const project = createCliProject({

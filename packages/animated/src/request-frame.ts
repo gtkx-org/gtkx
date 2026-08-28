@@ -1,10 +1,9 @@
-import type { Widget } from "@gtkx/gi/gtk";
-import { PRIORITY_DEFAULT_IDLE, Source, SOURCE_CONTINUE, SOURCE_REMOVE, timeoutAdd } from "@gtkx/gi/glib";
-import { Window } from "@gtkx/gi/gtk";
+import * as GLib from "@gtkx/gi/glib";
+import * as Gtk from "@gtkx/gi/gtk";
 
 type FrameCallback = () => void;
 type Timer = ReturnType<typeof setTimeout>;
-type Driver = { widget: Widget; tickId: number; stallSource: number };
+type Driver = { widget: Gtk.Widget; tickId: number; stallSource: number };
 
 type Scheduler = {
     callbacks: FrameCallback[];
@@ -12,7 +11,7 @@ type Scheduler = {
     fallbackTimer: Timer | null;
     flushedAt: number;
     isTicking: boolean;
-    stalledUntil: WeakMap<Widget, number>;
+    stalledUntil: WeakMap<Gtk.Widget, number>;
     ticks: number;
 };
 
@@ -31,12 +30,12 @@ const scheduler: Scheduler = {
     ticks: 0,
 };
 
-const isSuspended = (widget: Widget): boolean => widget instanceof Window && widget.isSuspended();
+const isSuspended = (widget: Gtk.Widget): boolean => widget instanceof Gtk.Window && widget.isSuspended();
 
-const hasClock = (widget: Widget): boolean =>
+const hasClock = (widget: Gtk.Widget): boolean =>
     widget.getMapped() && widget.getFrameClock() !== null && !isSuspended(widget);
 
-const isCoolingDown = (widget: Widget): boolean => {
+const isCoolingDown = (widget: Gtk.Widget): boolean => {
     const until = scheduler.stalledUntil.get(widget);
 
     if (until === undefined) {
@@ -52,8 +51,8 @@ const isCoolingDown = (widget: Widget): boolean => {
     return false;
 };
 
-const findDriverWidget = (): Widget | null => {
-    const candidates = Window.listToplevels().filter((widget) => hasClock(widget));
+const findDriverWidget = (): Gtk.Widget | null => {
+    const candidates = Gtk.Window.listToplevels().filter((widget) => hasClock(widget));
 
     return candidates.find((widget) => !scheduler.stalledUntil.has(widget)) ??
         candidates.find((widget) => !isCoolingDown(widget)) ??
@@ -75,14 +74,14 @@ const flush = (): void => {
     }
 };
 
-const armStallSource = (): number => timeoutAdd(PRIORITY_DEFAULT_IDLE, STALL_MS, shouldRepeatStallCheck);
+const armStallSource = (): number => GLib.timeoutAdd(GLib.PRIORITY_DEFAULT_IDLE, STALL_MS, shouldRepeatStallCheck);
 
 const cancelStallSource = (driver: Driver): void => {
     if (driver.stallSource === 0) {
         return;
     }
 
-    Source.remove(driver.stallSource);
+    GLib.Source.remove(driver.stallSource);
     driver.stallSource = 0;
 };
 
@@ -109,29 +108,29 @@ const shouldContinueTicking = (driver: Driver): boolean => {
     if (scheduler.driver !== driver) {
         arm();
 
-        return SOURCE_REMOVE;
+        return GLib.SOURCE_REMOVE;
     }
 
     if (scheduler.callbacks.length === 0) {
         finishDriver(driver);
 
-        return SOURCE_REMOVE;
+        return GLib.SOURCE_REMOVE;
     }
 
     driver.stallSource = armStallSource();
 
-    return SOURCE_CONTINUE;
+    return GLib.SOURCE_CONTINUE;
 };
 
 const shouldKeepTicking = (): boolean => {
     const { driver } = scheduler;
 
     if (driver === null) {
-        return SOURCE_REMOVE;
+        return GLib.SOURCE_REMOVE;
     }
 
     if (performance.now() - scheduler.flushedAt < MIN_FRAME_MS) {
-        return SOURCE_CONTINUE;
+        return GLib.SOURCE_CONTINUE;
     }
 
     cancelStallSource(driver);
@@ -154,7 +153,7 @@ const onFallbackFrame = (): void => {
     flushThenArm();
 };
 
-const armDriver = (widget: Widget): void => {
+const armDriver = (widget: Gtk.Widget): void => {
     const tickId = widget.addTickCallback(shouldKeepTicking);
     scheduler.driver = { widget, tickId, stallSource: armStallSource() };
     widget.on("unmap", onDriverUnmapped);
@@ -170,7 +169,7 @@ function shouldRepeatStallCheck(): boolean {
         flushThenArm();
     }
 
-    return SOURCE_REMOVE;
+    return GLib.SOURCE_REMOVE;
 }
 
 function onDriverUnmapped(): void {

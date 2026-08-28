@@ -155,9 +155,9 @@ downloader.connect("progress-changed", (url: string, percent: number) => console
 downloader.emit("progress-changed", "https://example.com", 40);
 ```
 
-As with properties, bind the call to a name: the declared names reach `connect` and `emit` in the type system only through what `registerClass` returns. Every part of a spec is optional, so `{}` declares a signal with no arguments and no return value that runs its handlers in the default `RUN_FIRST` stage. The two word separators spell the same signal, `progress_changed` and `progress-changed` both reaching the one above, and `on`, `once` and `off` take the declared names the way `connect` does, as does `useSignal` from `@gtkx/react`. A handler receives the emission's arguments without the leading emitter, matching a generated signal. `emit` takes exactly one argument per declared parameter, throwing for any other count, and converts each argument into a `GValue` of the declared GType, throwing for a value that type cannot hold.
+As with properties, bind the call to a name: the declared names reach `connect` and `emit` in the type system only through what `registerClass` returns. Every part of a spec is optional, so `{}` declares a signal with no arguments and no return value that runs its handlers in the default `RUN_FIRST` stage. Either word separator spells the same signal, `progress_changed` and `progress-changed` both reaching the one above, and `on`, `once` and `off` take the declared names the way `connect` does, as does `useSignal` from `@gtkx/react`. A handler receives the emission's arguments without the leading emitter, matching a generated signal. `emit` takes exactly one argument per declared parameter, throwing for any other count, and converts each argument into a `GValue` of the declared GType, throwing for a value that type cannot hold.
 
-A signal that returns a value declares `returnType`, and what a handler returns becomes the emission's result. `accumulator` picks one of the two combiners GObject ships: `"first-wins"` stops the emission at the first handler and keeps its result, and `"true-handled"` runs handlers until one returns `true`, which requires a boolean `returnType`:
+A signal that returns a value declares `returnType`, and what a handler returns becomes the emission's result. `accumulator` picks one of the combiners GObject ships: `"first-wins"` stops the emission at the first handler and keeps its result, and `"true-handled"` runs handlers until one returns `true`, which requires a boolean `returnType`:
 
 ```ts
 import { registerClass, TYPE_BOOLEAN } from "@gtkx/runtime";
@@ -177,7 +177,7 @@ guard.emit("close-request"); // true
 
 `SignalFlags.DETAILED` lets handlers connect to and emissions carry a `::detail` suffix, so `alert::red` reaches the handlers on that detail plus the ones on plain `alert`.
 
-`registerClass` throws for a name that is not a valid signal name, a name the parent type or a listed interface already carries, the same name declared under both spellings, a GType that cannot hold a value, and an accumulator outside the two above.
+`registerClass` throws for a name that is not a valid signal name, a name the parent type or a listed interface already carries, the same name declared under both spellings, a GType that cannot hold a value, and an accumulator that is neither `"first-wins"` nor `"true-handled"`.
 
 ## Default handlers
 
@@ -206,7 +206,7 @@ The promotion applies to every `on<SignalName>` method, including one written be
 
 ## Class-level setup
 
-Some setup belongs to the type rather than to any instance. Two options cover it.
+Some setup belongs to the type rather than to any instance. `cssName` and `classInit` cover it.
 
 `cssName` names what instances of a widget subclass match in CSS, the way `gtk_widget_class_set_css_name` does in C. It is applied from inside the type's `class_init`, so every instance is born with it, whether JavaScript or a native caller such as `GtkBuilder` creates it. It requires the class to extend `Gtk.Widget`; registering a non-widget with a `cssName` throws.
 

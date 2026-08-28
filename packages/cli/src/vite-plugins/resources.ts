@@ -1,6 +1,6 @@
 import type { ConfigLoader } from "@gtkx/config";
 import type { ModuleNode, Plugin, ResolvedConfig, Rolldown, UserConfig, ViteDevServer } from "vite";
-import { createConfigLoader, resourceBasePath } from "@gtkx/config/internal";
+import { createConfigLoader, resolveFuture, resourceBasePath } from "@gtkx/config/internal";
 import { error, info, isRecord, sortStrings } from "@gtkx/utils";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, posix, relative, sep } from "node:path";
@@ -1353,7 +1353,7 @@ const resolveResourceConfig = async (state: PluginState, config: UserConfig, loa
     const loaded = await loadConfig.load(config.root ?? process.cwd());
     state.prefix = resourceBasePath(loaded.config.applicationId);
     state.root = loaded.root;
-    state.isV2 = loaded.config.future?.v2ResourceImports === true;
+    state.isV2 = resolveFuture(loaded.config.future).isResourceImported;
 
     return {
         assetsInclude: [ASSET_RE],

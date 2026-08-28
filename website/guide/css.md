@@ -5,7 +5,7 @@ description: "Style native widgets with GTK4's own CSS engine: the style prop, t
 
 # CSS
 
-GTK4 resolves its own CSS, and GTKX gives you two ways to write it. Every widget element takes a `style` prop for the declarations that belong to that one widget, and `@gtkx/css` is Emotion-style CSS-in-JS for the ones worth naming: you write styles next to your components, and it hands back class names that GTK4 resolves.
+GTK4 resolves its own CSS, and GTKX gives you the `style` prop and `@gtkx/css` to write it. Every widget element takes a `style` prop for the declarations that belong to that one widget, and `@gtkx/css` is Emotion-style CSS-in-JS for the ones worth naming: you write styles next to your components, and it hands back class names that GTK4 resolves.
 
 ## The `style` prop
 

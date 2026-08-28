@@ -38,7 +38,7 @@ export const WindowActions = () => {
 };
 ```
 
-Three names are missing, so this file does not compile on its own. `showDialog` joins the store below, where the finished file appears. `currentSelection` and `openTask` are the subject of the next section.
+Some names are missing, so this file does not compile on its own. `showDialog` joins the store below, where the finished file appears. `currentSelection` and `openTask` are the subject of the next section.
 
 `newTask` reaches the store through `useStore.getState()` rather than a hook. The handler reads the state at the moment it runs, so the component does not re-render when the lists change. The store is not React state, as [Adding Tasks with a Store](/tutorial/the-task-store) covered, so any function can read it directly.
 
@@ -108,7 +108,7 @@ In `src/navigation.ts`:
 +export const navigationRef = createNavigationContainerRef<RootParamList>();
 ```
 
-The ref exposes the navigation API a screen gets from its `navigation` prop, typed against the same `RootParamList`. Add the three questions this app asks it, at the end of the file:
+The ref exposes the navigation API a screen gets from its `navigation` prop, typed against the same `RootParamList`. Add the questions this app asks it, at the end of the file:
 
 ```ts
 export const currentSelection = (): Selection => {

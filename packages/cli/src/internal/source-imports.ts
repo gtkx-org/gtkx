@@ -24,8 +24,6 @@ const SOURCE_LANGUAGES: Map<string, SourceLanguage> = new Map([
 ]);
 
 const EXCLUDED_DIRECTORIES: Set<string> = new Set([
-    ".git",
-    ".gtkx",
     "build",
     "coverage",
     "dist",
@@ -41,11 +39,13 @@ const sourceLanguage = (path: string): SourceLanguage | undefined => {
     return SOURCE_LANGUAGES.get(extname(path).toLowerCase());
 };
 
+const isWalkableDirectory = (name: string): boolean => !name.startsWith(".") && !EXCLUDED_DIRECTORIES.has(name);
+
 const collectSourceEntry = (dir: string, entry: Dirent, found: string[]): void => {
     const path = join(dir, entry.name);
 
     if (entry.isDirectory()) {
-        if (!EXCLUDED_DIRECTORIES.has(entry.name)) {
+        if (isWalkableDirectory(entry.name)) {
             sourceFilesIn(path, found);
         }
 

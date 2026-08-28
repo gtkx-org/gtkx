@@ -173,7 +173,7 @@ That decides where every new piece of state lands for the rest of the tutorial:
 - What the interface is doing that is not a place goes in a UI slice, which `partialize` never writes to disk. [A Layout That Collapses](/tutorial/an-adaptive-layout) starts that slice with the collapse state, and it later holds the filter, the search query, and which dialog is open.
 - Settings the user chose on purpose go in GSettings, which arrives in [Preferences and the System Theme](/tutorial/preferences-and-theming).
 
-Neither of the middle two survives a restart. A window that opened narrow last time should not force a narrow layout onto a wide window today, and navigation state is never written to disk either, so a launch always starts where the navigator says it starts.
+Neither the breakpoint nor the navigation state survives a restart. A window that opened narrow last time should not force a narrow layout onto a wide window today, and navigation state is never written to disk either, so a launch always starts where the navigator says it starts.
 
 ## Composing them
 
@@ -247,7 +247,7 @@ pnpm add @gtkx/navigation
 
 Like zustand, it belongs in `dependencies`: the navigator runs in the shipped application.
 
-Two rules shape the rest of this page. **The first screen you declare is the sidebar**, and it stays in its pane, while every other screen is a page of the content pane's stack. And **a screen renders one root widget**, which the navigator wraps in the `AdwNavigationPage` and tops with an `AdwHeaderBar` built from that screen's options. So the `AdwToolbarView` and `AdwHeaderBar` you have written by hand since [Your First Window](/tutorial/your-first-window) leave the app here, and do not come back.
+**The first screen you declare is the sidebar**, and it stays in its pane, while every other screen is a page of the content pane's stack. And **a screen renders one root widget**, which the navigator wraps in the `AdwNavigationPage` and tops with an `AdwHeaderBar` built from that screen's options. So the `AdwToolbarView` and `AdwHeaderBar` you have written by hand since [Your First Window](/tutorial/your-first-window) leave the app here, and do not come back.
 
 ## The routes
 

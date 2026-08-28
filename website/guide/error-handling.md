@@ -59,7 +59,7 @@ process.on("uncaughtException", (error) => {
 });
 ```
 
-Three kinds of failure reach it:
+These kinds of failure reach it:
 
 - A GLib `CRITICAL`, which is a `g_return_if_fail` contract violated, such as removing a widget from a box that never adopted it. GTK returns from the call as if nothing happened, so the state you get back afterwards is not the state you asked for.
 - A GLib `ERROR`, which GLib itself aborts on. The exception arrives first, so the report carries a JavaScript stack rather than only a C one.

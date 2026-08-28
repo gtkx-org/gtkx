@@ -55,7 +55,7 @@
                 ]
             },
             "coverage": {
-                "command": "rm -rf coverage/subprocess && GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage && NODE_OPTIONS=--max-old-space-size=8192 tsx ./scripts/subprocess-coverage.ts",
+                "command": "rm -rf coverage/subprocess && GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage && NODE_OPTIONS=--max-old-space-size=8192 tsx ./scripts/subprocess-coverage.ts && rm -rf coverage/subprocess",
                 "cache": true,
                 "dependsOn": [
                     "codegen",

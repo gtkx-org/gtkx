@@ -1,4 +1,5 @@
 import { loadConfig } from "@gtkx/config";
+import { resolveFuture } from "@gtkx/config/internal";
 import { error } from "@gtkx/utils";
 import { resolve } from "node:path";
 import { DEV_ENTRY_ENV } from "./entry-env.js";
@@ -24,7 +25,7 @@ const main = async (): Promise<void> => {
 
     const { config, root } = await loadConfig(cwd, { mode: "development" });
     prepareDevLocaleDir(root, config.applicationId);
-    prepareDevSchemaDir(root, config.future?.v2ResourceImports === true);
+    prepareDevSchemaDir(root, resolveFuture(config.future).isResourceImported);
     prepareDevIconDir(root, config.applicationId, config.applicationIcon);
     const entryPath = resolve(cwd, entryArg);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");

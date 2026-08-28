@@ -7,9 +7,9 @@ description: "What GTKX 2.0 removes, how the 1.6 deprecation warnings tell you w
 
 GTKX 2.0 removes what 1.x deprecated and adds nothing. It is the last 1.x release minus the deprecated paths, so there is no new API to learn and no behavior to discover — every change it makes was already available behind a flag or already marked `@deprecated` in your editor. New work resumes at 2.1.
 
-That gives the upgrade a single property worth planning around: **clear every deprecation on 1.6 and moving to 2.0 changes nothing.** There are two lists to clear, and they are found in different ways: the future flags, which the CLI prints on every run, and the deprecated symbols, which your editor strikes through. Clear both on 1.6 and 2.0 is a version bump.
+That gives the upgrade a single property worth planning around: **clear every deprecation on 1.6 and moving to 2.0 changes nothing.** The lists to clear are found in different ways: the future flags, which the CLI prints on every run, and the deprecated symbols, which your editor strikes through. Clear both on 1.6 and 2.0 is a version bump.
 
-## The two kinds of deprecation
+## Deprecated symbols and future flags
 
 **Deprecated symbols** are the ordinary kind. An old name and a new name coexist, the old one carries a `@deprecated` tag, your editor strikes it through on hover, and 2.0 deletes it. You find them by reading the tooltip.
 
@@ -20,15 +20,15 @@ That gives the upgrade a single property worth planning around: **clear every de
 Run any command that loads your configuration — `gtkx build`, `gtkx dev`, `gtkx codegen`. If flags are unset, one block prints on stderr:
 
 ```
-[gtkx] warn 2 of 5 future flags are unset. Their behavior becomes the default in GTKX 2.0.
+[gtkx] warn 2 of 7 future flags are unset. Their behavior becomes the default in GTKX 2.0.
 
   [gtkx-v2-byte-arrays]       future: { v2ByteArrays: true }
-    Byte sequences come back as number[]. In 2.0 they come back as Uint8Array.
+    Byte sequences come back as number[]. In 2.0 they come back as Uint8Array. `Array.isArray` and `JSON.stringify` change silently; grep for them.
 
   [gtkx-v2-inout-returns]     future: { v2InoutReturns: true }
     Inout records repeat in the return value. In 2.0 the repeated entry is dropped.
 
-  Set one flag at a time and run tsc: every affected call site is a type error.
+  Set one flag at a time and run tsc: it reports every affected call site except where noted above.
   Guide    https://gtkx.dev/guide/upgrading-to-2
   Silence  deprecations: { silence: ["gtkx-v2-byte-arrays"] }
 ```
@@ -37,7 +37,7 @@ Each line is one flag you have not adopted. A project that prints nothing has no
 
 ## Adopt one flag at a time
 
-Every flag is caught statically, so you never have to guess what it touches. Set one in `gtkx.config.ts`, run `tsc`, and fix what it reports:
+Most flags are caught statically, so you rarely have to guess what they touch. Set one in `gtkx.config.ts`, run `tsc`, and fix what it reports:
 
 ```ts
 export default defineConfig({
@@ -46,15 +46,17 @@ export default defineConfig({
 });
 ```
 
-Flipping a flag changes every affected call site at once — there is no partial adoption within a single flag. What you control is the order and the pace: five independent flags, one per sitting, is the shape this is built for.
+Flipping a flag changes every affected call site at once — there is no partial adoption within a single flag. What you control is the order and the pace: the flags are independent, and one per sitting is the shape this is built for.
 
-Setting a flag never changes behavior for anyone else and never changes the shape of your build output. It only moves your project onto the 2.0 semantics ahead of time.
+Setting a flag never changes behavior for anyone else; it moves your project onto the 2.0 semantics ahead of time.
+
+[`v2ResourceImports`](#v2resourceimports) and [`v2DefaultLibraries`](#v2defaultlibraries) do not announce themselves through `tsc`, so read their sections before setting either. The first changes import specifiers rather than types, and the build reports what is left to migrate. The second binds another library, which nothing reports at all — run the app and look at it.
 
 ### `v2ByteArrays`
 
 GIR byte sequences become `Uint8Array` instead of `number[]`. Parameters accept both either way, so passing values *in* never breaks; what changes is what comes *back*. `tsc` flags the array methods a `Uint8Array` does not have, such as `.push` and `.concat`.
 
-Two call sites change silently rather than failing to compile, because both accept anything: `Array.isArray(result)` flips from `true` to `false`, and `JSON.stringify(result)` writes `{"0":72,"1":105}` where it used to write `[72,105]`. Grep for those two on byte-sequence results before you flip the flag.
+`Array.isArray` and `JSON.stringify` change silently rather than failing to compile, because both accept anything: `Array.isArray(result)` flips from `true` to `false`, and `JSON.stringify(result)` writes `{"0":72,"1":105}` where it used to write `[72,105]`. Grep for both on byte-sequence results before you flip the flag.
 
 ### `v2ValueReturns`
 
@@ -83,9 +85,23 @@ import schema from "../data/com.example.Tasks.gschema.xml";
 ```
 
 Assets take a query suffix; settings schemas do not, and stay query-free relative imports that carry their
-generated types. This is the only flag whose migration the compiler cannot do for you, because the change is
-in the specifier rather than the type. The build fails on every specifier that still needs attention, one at a
-time.
+generated types. `tsc` cannot drive this migration, because the change is in the specifier rather than the
+type. The build takes over instead: it fails on every specifier that still needs attention, one at a time.
+
+### `v2DefaultLibraries`
+
+`Adw-1` is bound alongside `Gtk-4.0` whether or not `libraries` names it, so the list becomes the libraries
+you want *on top of* GTK and Adwaita. Drop `Gtk-4.0` and `Adw-1` from it; in 2.0 naming either is a
+configuration error.
+
+This is the flag nothing reports. Elsewhere the compiler catches the change, or the build does; here both
+stay silent, so the check is yours to make.
+
+Binding Adwaita does not by itself change how an application behaves — an app that only imports
+`@gtkx/jsx/gtk` never evaluates the Adwaita module. What changes is the build: codegen needs the Adwaita
+introspection data, every deb and rpm gains a libadwaita relation, and every NOTICE file gains its LGPL
+entry. The moment something *does* import the Adwaita module, `adw_init` restyles the application and
+libadwaita becomes a hard runtime requirement. Turn the flag on, run the app, and look at it.
 
 ### `v2TreeShaking`
 
@@ -101,6 +117,24 @@ itself — spreading it, `Object.keys(animated)` — keep every widget in the bu
 about the file; member access and the call form stay fully shakeable.
 
 The [configuration guide](/guide/configuration-and-codegen#future-flags) documents each flag in full, including the `?icon` and `?url` forms.
+
+## Stop binding every installed library
+
+`libraries: "*"` is deprecated and 2.0 removes it. What it resolves to depends on which introspection
+packages the build host happens to have installed, so the generated store — and every type your code compiles
+against — changes with the machine. Replace it with the libraries the project actually needs, remembering
+that under `v2DefaultLibraries` GTK and Adwaita are already bound:
+
+```diff
+ export default defineConfig({
+-    libraries: "*",
++    libraries: ["WebKit-6.0"],
+     applicationId: "com.example.Tasks",
+ });
+```
+
+Codegen names the wildcard on each run while it still works, and `gtkx codegen --force` prints the resolved
+list, which is the set to copy from.
 
 ## Clear the deprecated symbols
 

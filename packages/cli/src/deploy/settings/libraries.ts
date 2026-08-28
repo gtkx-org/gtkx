@@ -6,14 +6,12 @@ import {
     resolveGirPath,
     resolveStore,
 } from "@gtkx/codegen";
+import { resolveFuture } from "@gtkx/config/internal";
 
 type ResolvedLibraries = {
     libraries: string[];
     minimumLibraryVersions: Record<string, string>;
 };
-
-const DEFAULT_LIBRARY = "Gtk-4.0";
-const DEFAULT_LIBRARY_PREFIX = "Gtk-";
 
 const generatedLibraries = (root: string): GeneratedLibraries | null => {
     try {
@@ -23,24 +21,23 @@ const generatedLibraries = (root: string): GeneratedLibraries | null => {
     }
 };
 
-const discoveredLibraries = (config: Config): string[] | null => {
+const discoveredLibraries = (config: Config, isAdwaitaDefault: boolean): string[] | null => {
     try {
-        return expandLibraries(config.libraries, resolveGirPath(config.girPath));
+        return expandLibraries(config.libraries, resolveGirPath(config.girPath), isAdwaitaDefault);
     } catch {
         return null;
     }
 };
 
 const configLibraries = (config: Config): string[] => {
+    const { isAdwaitaDefault } = resolveFuture(config.future);
     const libraries = config.libraries;
 
-    if (!Array.isArray(libraries)) {
-        return discoveredLibraries(config) ?? [DEFAULT_LIBRARY];
+    if (Array.isArray(libraries)) {
+        return expandLibraries(libraries, [], isAdwaitaDefault);
     }
 
-    return libraries.some((library) => library.startsWith(DEFAULT_LIBRARY_PREFIX))
-        ? [...libraries]
-        : [DEFAULT_LIBRARY, ...libraries];
+    return discoveredLibraries(config, isAdwaitaDefault) ?? expandLibraries(undefined, [], isAdwaitaDefault);
 };
 
 const resolveLibraries = (root: string, config: Config): ResolvedLibraries => {

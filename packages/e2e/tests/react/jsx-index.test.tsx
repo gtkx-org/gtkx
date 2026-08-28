@@ -1,3 +1,4 @@
+import type * as Gtk from "@gtkx/gi/gtk";
 import * as jsx from "@gtkx/jsx";
 import * as adw from "@gtkx/jsx/adw";
 import * as gdk from "@gtkx/jsx/gdk";
@@ -13,6 +14,7 @@ import * as pango from "@gtkx/jsx/pango";
 import * as soup from "@gtkx/jsx/soup";
 import * as webkit from "@gtkx/jsx/webkit";
 import { render, screen } from "@gtkx/testing";
+import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 const IndexLabel = jsx.GtkLabel;
@@ -55,4 +57,18 @@ describe("@gtkx/jsx index entrypoint", () => {
             }
         }
     });
+
+    it("merges an augmentation of the index into the namespace that declares the props", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        await render(<gtk.GtkBox ref={boxRef} indexAugmented />);
+        expect(boxRef.current).toHaveClass("index-augmented");
+    });
 });
+
+declare module "@gtkx/jsx" {
+    /* eslint-disable @typescript-eslint/consistent-type-definitions -- declaration merging requires interfaces */
+    interface GtkBoxProps {
+        indexAugmented?: boolean;
+    }
+    /* eslint-enable @typescript-eslint/consistent-type-definitions */
+}
