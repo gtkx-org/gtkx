@@ -15,13 +15,13 @@ const generatedModule = (project: CliProject, ...segments: string[]): string =>
     readFileSync(join(project.nodeModules, ".gtkx", ...segments), "utf8");
 
 const bindingFor = (bindings: string, name: string): string => {
-    const start = bindings.indexOf(`const ${name} = t.fn(`);
+    const start = bindings.indexOf(`const ${name} = `);
 
     if (start === -1) {
         return "";
     }
 
-    const end = bindings.indexOf("});", start);
+    const end = bindings.indexOf("}));", start);
 
     return bindings.slice(start, end === -1 ? bindings.length : end);
 };

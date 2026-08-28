@@ -1,6 +1,6 @@
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirCursorBounds } from "../gir/parameter.js";
-import { joinArgs } from "../writer/emit.js";
+import { joinArgs, pure } from "../writer/emit.js";
 
 type Ownership = "borrowed" | "full";
 
@@ -327,11 +327,13 @@ const tFn = (lib: string, cIdentifier: string, spec: FnSpecParts): string => {
     const unpackEntry = spec.isReturnUnpacked ? `, ${UNPACKED_RETURN_ENTRY}` : "";
     const throwsEntry = spec.canThrow ? ", canThrow: true" : "";
 
-    return call("fn", [
-        sourceStringLiteral(lib),
-        sourceStringLiteral(cIdentifier),
-        `{ args: ${spec.args}, returns: ${spec.returns}${skipEntry}${unpackEntry}${throwsEntry} }`,
-    ]);
+    return pure(
+        call("fn", [
+            sourceStringLiteral(lib),
+            sourceStringLiteral(cIdentifier),
+            `() => ({ args: ${spec.args}, returns: ${spec.returns}${skipEntry}${unpackEntry}${throwsEntry} })`,
+        ]),
+    );
 };
 
 export {

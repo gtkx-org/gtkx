@@ -76,8 +76,11 @@ const DECLARATION_EMIT = {
 };
 
 const MODULE_EMIT = {
-    removeComments: true,
+    removeComments: false,
 };
+
+const PURE_ANNOTATION_TEXT = "@__PURE__";
+const PURE_ANNOTATION_COMMENT = ` ${PURE_ANNOTATION_TEXT} `;
 
 const DECLARATION_OPTIONS = ts.convertCompilerOptionsFromJson(
     { ...BASE_COMPILER_OPTIONS, ...DECLARATION_EMIT },
@@ -266,10 +269,46 @@ const transpileOptions = (compilerOptions: ts.CompilerOptions, fileName: string)
     reportDiagnostics: true,
 });
 
+const isPureAnnotated = (text: string, node: ts.Node): boolean =>
+    ts.isCallExpression(node) &&
+    node.pos >= 0 &&
+    (ts.getLeadingCommentRanges(text, node.pos) ?? []).some((range) =>
+        text.slice(range.pos, range.end).includes(PURE_ANNOTATION_TEXT),
+    );
+
+const dropCommentsExceptPureAnnotations =
+    (): ts.TransformerFactory<ts.SourceFile> => (context) => (sourceFile) => {
+        const { text } = sourceFile;
+
+        const visit = (node: ts.Node): ts.Node => {
+            const isPure = isPureAnnotated(text, node);
+            const visited = ts.visitEachChild(node, visit, context);
+            ts.setEmitFlags(visited, ts.EmitFlags.NoLeadingComments | ts.EmitFlags.NoTrailingComments);
+
+            if (isPure) {
+                ts.addSyntheticLeadingComment(
+                    visited,
+                    ts.SyntaxKind.MultiLineCommentTrivia,
+                    PURE_ANNOTATION_COMMENT,
+                    false,
+                );
+            }
+
+            return visited;
+        };
+
+        return ts.visitEachChild(sourceFile, visit, context);
+    };
+
 const emitModule = (module: SourceModule, projectDir: string): ts.Diagnostic[] => {
     const fileName = join(projectDir, module.fileName);
     const declaration = ts.transpileDeclaration(module.source, transpileOptions(DECLARATION_OPTIONS, fileName));
-    const javascript = ts.transpileModule(module.source, transpileOptions(MODULE_OPTIONS, fileName));
+
+    const javascript = ts.transpileModule(module.source, {
+        ...transpileOptions(MODULE_OPTIONS, fileName),
+        transformers: { after: [dropCommentsExceptPureAnnotations()] },
+    });
+
     const diagnostics = [...declaration.diagnostics ?? [], ...javascript.diagnostics ?? []];
 
     if (diagnostics.length > 0) {

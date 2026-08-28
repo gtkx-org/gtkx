@@ -3,7 +3,7 @@ import type { EnumMember, GirEnum } from "../../gir/enum.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { hasAnnotations } from "../../gir/annotations.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
-import { indent } from "../../writer/emit.js";
+import { indent, pure } from "../../writer/emit.js";
 import { getDoc } from "./doc-spec.js";
 
 type KeyedMember = EnumMember & { key: string };
@@ -58,11 +58,11 @@ const appendErrorDomain = (
         owner: enumeration.name,
     });
 
+    const domain = pure(`createErrorDomain(${quarkExpression}, { ${memberEntries.join(", ")} })`);
+
     context.declare({
         name,
-        code:
-            `${doc}export const ${name}: ErrorDomain<${shape}> = ` +
-            `createErrorDomain(${quarkExpression}, { ${memberEntries.join(", ")} });`,
+        code: `${doc}export const ${name}: ErrorDomain<${shape}> = ${domain};`,
     });
 };
 

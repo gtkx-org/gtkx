@@ -32,4 +32,6 @@ const arrayLiteral = (elements: string[]): string => {
     return `[\n${lines.join("\n")}\n]`;
 };
 
-export { indent, renderBlock, renderBraced, renderBracedOrEmpty, indentMembers, joinArgs, arrayLiteral };
+const pure = (expression: string): string => `/* @__PURE__ */ ${expression}`;
+
+export { indent, renderBlock, renderBraced, renderBracedOrEmpty, indentMembers, joinArgs, arrayLiteral, pure };

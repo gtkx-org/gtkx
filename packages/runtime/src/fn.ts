@@ -252,19 +252,47 @@ function fromNativeCallable(
     };
 }
 
-/**
- * Binds a symbol in a shared library to a callable that marshals its inputs and packs output
- * arguments into the result. When the spec sets `canThrow`, the reported `GError` is thrown.
- *
- * @param sharedLibrary Shared library the symbol is looked up in.
- * @param symbol Name of the C symbol to bind.
- * @param spec Argument and return descriptors the call is marshalled through.
- */
-function fn(sharedLibrary: string, symbol: string, spec: FnSpec): (...inputs: unknown[]) => unknown {
+const bindNativeCallable = (
+    sharedLibrary: string,
+    symbol: string,
+    spec: FnSpec,
+): ((...inputs: unknown[]) => unknown) => {
     const nativeArgTypes = buildNativeArgTypes(spec.args, spec.canThrow ?? false);
     const descriptor = nativeBind(sharedLibrary, symbol, nativeArgTypes, spec.returns, spec.fixedArgCount);
 
     return fromNativeCallable(descriptor, spec);
+};
+
+/**
+ * Binds a symbol in a shared library to a callable that marshals its inputs and packs output
+ * arguments into the result. When the spec sets `canThrow`, the reported `GError` is thrown.
+ *
+ * A plain spec is bound when `fn` is called, so a malformed descriptor throws at binding time.
+ * Passing a function returning the spec instead defers building the descriptors and the binding
+ * to the first call, so describing such a binding costs nothing until something calls it and a
+ * module full of them loads without touching the shared library.
+ *
+ * @param sharedLibrary Shared library the symbol is looked up in.
+ * @param symbol Name of the C symbol to bind.
+ * @param spec Argument and return descriptors the call is marshalled through, or a function
+ * returning them, which defers building the descriptors and the binding to the first call.
+ */
+function fn(
+    sharedLibrary: string,
+    symbol: string,
+    spec: FnSpec | (() => FnSpec),
+): (...inputs: unknown[]) => unknown {
+    if (typeof spec !== "function") {
+        return bindNativeCallable(sharedLibrary, symbol, spec);
+    }
+
+    let bound: ((...inputs: unknown[]) => unknown) | undefined;
+
+    return (...inputs) => {
+        bound ??= bindNativeCallable(sharedLibrary, symbol, spec());
+
+        return bound(...inputs);
+    };
 }
 
 export { buildNativeArgTypes, fn, fromNativeCallable };
