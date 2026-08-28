@@ -299,6 +299,16 @@ const inoutBoxConfig = (v2InoutReturns: boolean | undefined): string => {
     return config(`, libraries: ["InoutBox-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
 };
 
+const fixtureLibrariesConfig = (libraries: string[] | undefined, v2DefaultLibraries: boolean | undefined): string => {
+    const selection = libraries === undefined ? "" : `, libraries: ${JSON.stringify(libraries)}`;
+
+    const future = v2DefaultLibraries === undefined
+        ? ""
+        : `, future: { v2DefaultLibraries: ${String(v2DefaultLibraries)} }`;
+
+    return config(`${selection}, girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
+};
+
 const byteSeqConfig = (v2ByteArrays: boolean | undefined): string => {
     const future = v2ByteArrays === undefined ? "" : `, future: { v2ByteArrays: ${String(v2ByteArrays)} }`;
 
@@ -318,6 +328,16 @@ const runInitialCodegen = (state: CodegenRunState, options: Parameters<typeof cr
     const run = runCli(state.project, ["codegen"]);
     state.status = run.status;
     state.output = run.output;
+};
+
+const withProject = (name: string, source: string, check: (project: CliProject) => void): void => {
+    const project = createCliProject({ prefix: `gtkx-cli-codegen-${name}-`, config: source });
+
+    try {
+        check(project);
+    } finally {
+        removeCliProject(project);
+    }
 };
 
 const generatedModule = (project: CliProject, ...segments: string[]): string =>
@@ -886,6 +906,100 @@ describe("gtkx codegen (inout records a binding mutates in place)", () => {
         } finally {
             removeCliProject(project);
         }
+    });
+});
+
+describe("gtkx codegen (the libraries a project binds without naming them)", () => {
+    it("binds Gtk alone until the project opts into the 2.0 default", () => {
+        withProject("default-libraries-off", fixtureLibrariesConfig(undefined, undefined), (project) => {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            expect(existsSync(storePath(project, "gi", "gtk"))).toBe(true);
+            expect(existsSync(storePath(project, "gi", "adw"))).toBe(false);
+        });
+    });
+
+    it("binds Adwaita alongside Gtk once the project opts in", () => {
+        withProject("default-libraries-on", fixtureLibrariesConfig(undefined, true), (project) => {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            expectModules(storePath(project, "gi"), [join("gtk", "gtk.js"), join("adw", "adw.js")]);
+            expectModules(storePath(project, "jsx"), [join("gtk", "gtk.js"), join("adw", "adw.js")]);
+        });
+    });
+
+    it("deduplicates a library the opted-in default already binds, and says so", () => {
+        const source = fixtureLibrariesConfig(["Adw-1", "Documented-1.0"], true);
+
+        withProject("default-libraries-redundant", source, (project) => {
+            const run = runCli(project, ["codegen", "--force"]);
+            expect(run.status).toBe(0);
+            expect(run.output).toContain("codegen: libraries=Gtk-4.0, Adw-1, Documented-1.0");
+            expect(run.output).toContain("binds Adw-1 on its own");
+            expect(existsSync(storePath(project, "gi", "documented"))).toBe(true);
+        });
+    });
+
+    it("leaves a library the opted-in default does not already bind alone", () => {
+        const source = fixtureLibrariesConfig(["Documented-1.0"], true);
+
+        withProject("default-libraries-extra", source, (project) => {
+            const run = runCli(project, ["codegen", "--force"]);
+            expect(run.status).toBe(0);
+            expect(run.output).toContain("codegen: libraries=Gtk-4.0, Adw-1, Documented-1.0");
+            expect(run.output).not.toContain("on its own");
+        });
+    });
+
+    it("keeps the version of a mandatory namespace that the project pins", () => {
+        const source = fixtureLibrariesConfig(["Adw-2"], true);
+
+        withProject("default-libraries-pinned", source, (project) => {
+            const run = runCli(project, ["codegen", "--force"]);
+            expect(run.status).toBe(0);
+            expect(run.output).toContain("codegen: libraries=Gtk-4.0, Adw-2");
+            expect(run.output).not.toContain("on its own");
+            expect(generatedModule(project, "gi", "adw", "adw.d.ts")).toContain("declare class Slab");
+        });
+    });
+});
+
+describe("gtkx codegen (library settings that invalidate the store)", () => {
+    it("regenerates a fresh store when the default library setting changes", () => {
+        withProject("default-libraries-flip", fixtureLibrariesConfig(undefined, undefined), (project) => {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            markStore(project);
+            writeFileSync(join(project.root, "gtkx.config.ts"), fixtureLibrariesConfig(undefined, true));
+            expect(runCli(project, ["codegen"]).status).toBe(0);
+            expect(isStoreMarked(project)).toBe(false);
+            expect(existsSync(storePath(project, "gi", "adw"))).toBe(true);
+        });
+    });
+
+    it("reports that binding every installed library is going away", () => {
+        withProject("wildcard-libraries", config(', libraries: "*", codegen: false'), (project) => {
+            const run = runCli(project, ["codegen"]);
+            expect(run.status).toBe(0);
+            expect(run.output).toContain("list the libraries the project needs");
+        });
+    });
+
+    it("says nothing about the wildcard when the project lists its libraries", () => {
+        withProject("explicit-libraries", config(', libraries: ["Gtk-4.0"], codegen: false'), (project) => {
+            const run = runCli(project, ["codegen"]);
+            expect(run.status).toBe(0);
+            expect(run.output).not.toContain("list the libraries the project needs");
+        });
+    });
+});
+
+describe("gtkx codegen (a future key the schema does not know)", () => {
+    it("generates anyway, and reports that the key is ignored", () => {
+        const source = config(`, girPath: ${JSON.stringify([FIXTURE_GIR])}, future: { v2ByteArrrays: true }`);
+
+        withProject("unknown-future", source, (project) => {
+            const run = runCli(project, ["codegen"]);
+            expect(run.status).toBe(0);
+            expect(run.output).toContain("v2ByteArrrays");
+        });
     });
 });
 

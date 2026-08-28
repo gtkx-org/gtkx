@@ -1,5 +1,6 @@
 import { type ApiReference, type ApiSymbol, loadApiReference, resolveGirPath, resolveLibraries } from "@gtkx/codegen";
 import { loadConfig } from "@gtkx/config";
+import { resolveFuture } from "@gtkx/config/internal";
 import { type McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type CallToolResult, ErrorCode, McpError, type ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { existsSync, statSync } from "node:fs";
@@ -192,15 +193,16 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
         );
     }
 
-    const libraries = resolveLibraries(config.libraries, girPath);
+    const future = resolveFuture(config.future);
+    const libraries = resolveLibraries(config.libraries, girPath, future.isAdwaitaDefault);
 
     const reference = loadApiReference({
         libraries,
         girPath,
-        isByteArrayTyped: config.future?.v2ByteArrays === true,
-        isValueUnwrapped: config.future?.v2ValueReturns === true,
-        isFinishTrimmed: config.future?.v2FinishResults === true,
-        isInoutInPlace: config.future?.v2InoutReturns === true,
+        isByteArrayTyped: future.isByteArrayTyped,
+        isValueUnwrapped: future.isValueUnwrapped,
+        isFinishTrimmed: future.isFinishTrimmed,
+        isInoutInPlace: future.isInoutInPlace,
     });
 
     const watched = [watchFile(resolve(root, configFile)), ...reference.girFiles.map((file) => watchFile(file))];

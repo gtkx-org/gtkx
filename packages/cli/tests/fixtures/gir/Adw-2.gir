@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <include name="Gtk" version="4.0"/>
+  <package name="libadwaita-2"/>
+  <namespace name="Adw"
+             version="2"
+             shared-library="libadwaita-2.so.0"
+             c:identifier-prefixes="Adw"
+             c:symbol-prefixes="adw">
+    <class name="Slab"
+           c:symbol-prefix="slab"
+           c:type="AdwSlab"
+           parent="Gtk.Widget"
+           glib:type-name="AdwSlab"
+           glib:get-type="adw_slab_get_type">
+      <property name="child" writable="1" transfer-ownership="none">
+        <type name="Gtk.Widget" c:type="GtkWidget*"/>
+      </property>
+    </class>
+  </namespace>
+</repository>

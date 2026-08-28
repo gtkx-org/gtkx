@@ -1,6 +1,6 @@
 import type { ConfigLoader } from "@gtkx/config";
 import type { ParseResult, Plugin, UserConfig } from "vite";
-import { createConfigLoader } from "@gtkx/config/internal";
+import { createConfigLoader, resolveFuture } from "@gtkx/config/internal";
 import { parseSync } from "vite";
 import { sourceLanguage } from "../internal/source-imports.js";
 import { ASSET_MENTION_RE } from "./asset-extensions.js";
@@ -151,7 +151,7 @@ function gtkxAssetImports(loadConfig: ConfigLoader = createConfigLoader()): Plug
 
         async config(config: UserConfig) {
             const loaded = await loadConfig.load(config.root ?? process.cwd());
-            state.isV2 = loaded.config.future?.v2ResourceImports === true;
+            state.isV2 = resolveFuture(loaded.config.future).isResourceImported;
         },
 
         transform(code, id) {

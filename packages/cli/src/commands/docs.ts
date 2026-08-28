@@ -1,7 +1,7 @@
 import { mergeOmittedProps, resolveGirPath, resolveLibraries } from "@gtkx/codegen";
 import { writeDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
-import { resolveOmittedProps } from "@gtkx/config/internal";
+import { resolveFuture, resolveOmittedProps } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { isAbsolute, relative, resolve, sep } from "node:path";
@@ -57,7 +57,8 @@ const docs = defineCommand({
             );
         }
 
-        const libraries = resolveLibraries(config.libraries, girPath);
+        const future = resolveFuture(config.future);
+        const libraries = resolveLibraries(config.libraries, girPath, future.isAdwaitaDefault);
         const startedAt = Date.now();
         const outDir = resolveOutDir(cwd, args.out);
         const builtin = await resolveDocsElements(cwd);
@@ -70,10 +71,10 @@ const docs = defineCommand({
             props: builtin.props,
             omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
             isForced: args.force,
-            isByteArrayTyped: config.future?.v2ByteArrays === true,
-            isValueUnwrapped: config.future?.v2ValueReturns === true,
-            isFinishTrimmed: config.future?.v2FinishResults === true,
-            isInoutInPlace: config.future?.v2InoutReturns === true,
+            isByteArrayTyped: future.isByteArrayTyped,
+            isValueUnwrapped: future.isValueUnwrapped,
+            isFinishTrimmed: future.isFinishTrimmed,
+            isInoutInPlace: future.isInoutInPlace,
         });
 
         if (!isRegenerated) {

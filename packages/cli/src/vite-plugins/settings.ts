@@ -1,5 +1,6 @@
 import type { ConfigLoader } from "@gtkx/config";
 import type { ModuleNode, Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
+import { resolveFuture } from "@gtkx/config/internal";
 import { error, errorMessage, info, sortStrings } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { basename, join } from "node:path";
@@ -106,7 +107,7 @@ const scheduleSchemaEnvSync = (state: PluginState): void => {
 
 const applyUserConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader): Promise<void> => {
     const loaded = await loadConfig.load(config.root ?? process.cwd());
-    state.isV2ResourceImports = loaded.config.future?.v2ResourceImports === true;
+    state.isV2ResourceImports = resolveFuture(loaded.config.future).isResourceImported;
     state.dataDir = state.isV2ResourceImports ? null : resolveDataDir(loaded.root);
 };
 

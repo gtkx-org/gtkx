@@ -27,7 +27,9 @@ export default defineConfig({
 `applicationId` is the only required key; the rest have defaults.
 
 - **`applicationId`**: the GApplication identifier the app registers under, in reverse-DNS form (`com.example.Tasks`).
-- **`libraries`**: the GIR libraries to bind, as `Name-Version`. `Gtk-4.0` is the default, and joins any list that does not already name a Gtk version; the bare string `"*"` (never an array entry) binds everything on the GIR path.
+- **`libraries`**: the GIR libraries to bind, as `Name-Version`. `Gtk-4.0` is the default, and joins any list that does not already name a Gtk version. Under [`v2DefaultLibraries`](#future-flags) `Adw-1` joins on the same terms, so the list becomes the libraries you want *on top of* GTK and Adwaita — `["WebKit-6.0"]` rather than `["Gtk-4.0", "Adw-1", "WebKit-6.0"]`. Each default is mandatory by namespace rather than by version, so a list that pins `Gtk-4.2` or a later Adwaita keeps its pin.
+
+  The bare string `"*"` (never an array entry) binds everything on the GIR path. **Deprecated: the wildcard is removed in GTKX 2.0.** What it resolves to depends on which introspection packages the build host happens to have installed, so the generated store — and every type your code compiles against — changes with the machine. List the libraries the project needs instead. Codegen names the wildcard on each run while it still works.
 - **`girPath`**: directories searched for `.gir` files ahead of the standard locations.
 - **`reactCompiler`**: the React Compiler, on by default. `false` disables it; an object forwards `compilationMode` and `panicThreshold`.
 - **`codegen: false`**: skips generation, so the project imports whatever binding store is already installed.
@@ -66,6 +68,18 @@ The `cairo` namespace is provided by the [`@gtkx/cairo`](/guide/cairo) package r
 Record fields appear as accessors: a getter wherever the read lands on the right memory, and a setter only where a field slot can hold what it stores. `null`-terminated pointer arrays read, so `Gio.DBusNodeInfo.interfaces` hands back its array, but they are read-only and absent from the record's constructor props, since the slot cannot keep an array alive. Fields whose element count lives in a sibling field, and `GList` or `GSList` links, carry no accessor and are absent from the class.
 
 A few bindings take a NUL-terminated C string that GIR describes as a byte array (`GLib.Variant.newBytestring`), so the value silently stops at the first zero byte. Binary payloads go through `GLib.Bytes` and `GLib.Variant.newFromBytes`.
+
+### One import for every element
+
+`@gtkx/jsx` itself exports everything its per-namespace subpaths do, so a file that mixes namespaces can name a single specifier:
+
+```tsx
+import { AdwHeaderBar, GtkBox, GtkButton } from "@gtkx/jsx";
+```
+
+Nothing collides, however many libraries you bind: every jsx export is keyed by its GLib type name, so `GtkBox` and `AdwActionRow` cannot claim the same name. The root is a barrel over the same per-namespace modules rather than a second copy of them, so importing it evaluates every namespace the store carries, and each of those evaluates its `@gtkx/gi` counterpart. Prefer a subpath in a file that touches one namespace while the store also carries libraries that file has no use for.
+
+`@gtkx/gi` has no equivalent root. Its symbols are imported namespaced, as `import * as Gtk from "@gtkx/gi/gtk"`, so `Gtk.Orientation` and `Adw.ResponseAppearance` stay apart.
 
 ## Passing a GType
 
@@ -192,8 +206,31 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
   Production builds place these bundled assets in `gtkx.gresource` beside `bundle.mjs`. Generated resource
   modules load and register that file automatically; no application bootstrap code or data-file installation
   rule is required.
+- **`v2DefaultLibraries`**: binds `Adw-1` alongside `Gtk-4.0` whether or not `libraries` names it. Every
+  project then generates the Adwaita bindings, so `@gtkx/gi/adw` and `@gtkx/jsx/adw` are always present and
+  the packages built on them — [`@gtkx/components/adw`](/guide/components), [`@gtkx/forms`](/guide/forms),
+  [`@gtkx/navigation`](/guide/navigation) — need no opt-in. Each joins by namespace, so a list that pins
+  another version of Gtk or Adwaita keeps its pin. Naming `Gtk-4.0` or `Adw-1` outright then changes nothing,
+  and codegen says so on its next run; in 2.0, once the behavior is unconditional, naming either becomes a
+  configuration error asking you to delete the line.
 
-Changing a flag invalidates the generated store, so the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates it automatically.
+  This is the one flag `tsc` cannot check for you, because nothing about it is a type error. What it changes
+  on its own is the build: codegen fails on a host without the Adwaita introspection data, since a mandatory
+  library has to resolve to a `.gir` file; every deb and rpm gains a `libadwaita-1-0` or `libadwaita`
+  relation, because those come from the libraries the store recorded; and every generated NOTICE file gains
+  libadwaita's LGPL entry.
+
+  The rest waits until something imports the generated Adwaita module — `@gtkx/gi/adw`, `@gtkx/jsx/adw`, one
+  of the packages built on them, or the flat `@gtkx/jsx` root, which pulls every namespace the store carries.
+  Binding `Adw-1` alone changes nothing at runtime: an application that only imports `@gtkx/jsx/gtk` never
+  evaluates the Adwaita module. Once it does, two things follow. `@gtkx/gi/adw` calls libadwaita's `adw_init`
+  while the module evaluates, which installs the Adwaita style manager and stylesheet, so the application
+  restyles even where it renders no Adwaita widget. And libadwaita becomes a hard requirement: the module
+  resolves its types out of `libadwaita-1.so.0` at module scope, so a host without the library fails before
+  any application code runs. Turn the flag on, import what you were going to import, run the app, and look
+  at it.
+
+Changing a flag invalidates the generated store, so the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates it automatically. A key the `future` block does not define is ignored rather than rejected, and codegen names it on each run so a typo does not stay silent.
 
 ### The deprecation warning
 
@@ -346,6 +383,8 @@ declare module "@gtkx/jsx/gtk" {
 ```
 
 The leading `import` is what makes this an augmentation. Without a top-level import or export, `declare module` becomes an ambient module declaration that shadows the generated one, and `@gtkx/jsx/gtk` stops exporting elements.
+
+Either specifier works. `GtkWidgetProps` is declared once, in the namespace module both `@gtkx/jsx/gtk` and the flat `@gtkx/jsx` re-export, so an augmentation written against either one merges into that single declaration and is visible through both.
 
 A behavior on a type covers every element descending from it, and your behaviors run before the built-in ones, so they override existing prop and slot handling. `isLazy: true` in the same map marks a type whose GObject its parent container creates.
 

@@ -1,12 +1,20 @@
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
-import { getShadowingStorePaths, sweepProjectStaging } from "@gtkx/codegen/internal";
+import {
+    getShadowingStorePaths,
+    LIBRARIES_WILDCARD,
+    redundantLibraries,
+    sweepProjectStaging,
+} from "@gtkx/codegen/internal";
 import { type Config, loadConfig } from "@gtkx/config";
 import {
     isAgentRulesEnabled,
+    type ResolvedFuture,
     resolveElementComponents,
     resolveElementProps,
+    resolveFuture,
     resolveLazyElements,
     resolveOmittedProps,
+    unknownFutureKeys,
 } from "@gtkx/config/internal";
 import { info, warn } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
@@ -54,10 +62,7 @@ type CodegenOptionsInput = {
     libraries: string[];
     girPath: string[];
     elements: Config["elements"];
-    isByteArrayTyped: boolean;
-    isValueUnwrapped: boolean;
-    isFinishTrimmed: boolean;
-    isInoutInPlace: boolean;
+    future: ResolvedFuture;
 };
 
 type PreparedCodegen = CodegenInputs & { isForced: boolean };
@@ -92,7 +97,7 @@ const removeShadowingStores = (cwd: string): void => {
     removeStores(getShadowingStorePaths(cwd));
 };
 
-const codegenOptions = ({ store, libraries, girPath, elements, ...future }: CodegenOptionsInput) => ({
+const codegenOptions = ({ store, libraries, girPath, elements, future }: CodegenOptionsInput) => ({
     libraries,
     girPath,
     isByteArrayTyped: future.isByteArrayTyped,
@@ -119,16 +124,19 @@ const codegenOptions = ({ store, libraries, girPath, elements, ...future }: Code
     userOmittedProps: resolveOmittedProps(elements),
 });
 
-const enabledFutureFlags = (config: Config): string[] =>
-    Object.entries(config.future ?? {})
-        .filter(([, value]) => value === true)
-        .map(([name]) => name);
+const enabledFutureFlags = (config: Config): string[] => {
+    const unknown: Set<string> = new Set(unknownFutureKeys(config.future));
 
-const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
+    return Object.entries(config.future ?? {})
+        .filter(([name, value]) => value === true && !unknown.has(name))
+        .map(([name]) => name);
+};
+
+const disabledCodegenResult = (configFile: string, notices: string[]): RunCodegenResult => ({
     isRegenerated: false,
     namespaces: 0,
     intrinsicElements: 0,
-    notices: [],
+    notices,
     duration: 0,
     girPath: [],
     configFile,
@@ -140,6 +148,46 @@ const warnNotices = (notices: string[]): void => {
         warn(notice);
     }
 };
+
+const unknownFutureNotice = (keys: string[]): string[] => {
+    if (keys.length === 0) {
+        return [];
+    }
+
+    return [
+        `gtkx.config.ts: \`future\` has no ${keys.join(", ")} flag, so the key is ignored. Check it against ` +
+        "the flags the configuration guide lists.",
+    ];
+};
+
+const redundantLibraryNotice = (entries: string[]): string[] => {
+    if (entries.length === 0) {
+        return [];
+    }
+
+    return [
+        `gtkx.config.ts: \`future.v2DefaultLibraries\` binds ${entries.join(", ")} on its own, so naming them ` +
+        "in `libraries` changes nothing. Drop them; naming them becomes a configuration error in GTKX 2.0.",
+    ];
+};
+
+const wildcardLibrariesNotice = (libraries: Config["libraries"]): string[] => {
+    if (libraries !== LIBRARIES_WILDCARD) {
+        return [];
+    }
+
+    return [
+        'gtkx.config.ts: `libraries: "*"` binds whatever the build host happens to have installed, so the ' +
+        "store changes with the machine. Instead, list the libraries the project needs; the wildcard is " +
+        "removed in GTKX 2.0.",
+    ];
+};
+
+const configNotices = (config: Config, future: ResolvedFuture): string[] => [
+    ...unknownFutureNotice(unknownFutureKeys(config.future)),
+    ...wildcardLibrariesNotice(config.libraries),
+    ...redundantLibraryNotice(redundantLibraries(config.libraries, future.isAdwaitaDefault)),
+];
 
 const regeneratedStorePaths = (store: CodegenStore): string[] => {
     if (store.react === null) {
@@ -171,13 +219,16 @@ const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config)
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
     const { config, configFile } = await resolveLoadedConfig(options, cwd);
+    const future = resolveFuture(config.future);
+    const configured = configNotices(config, future);
+    warnNotices(configured);
     await syncI18n(cwd, config.applicationId, options.shouldPreserveI18nMetadata);
-    syncSchemaEnv(cwd, config.future?.v2ResourceImports === true);
+    syncSchemaEnv(cwd, future.isResourceImported);
 
     if (config.codegen === false) {
         removeShadowingStores(cwd);
 
-        return disabledCodegenResult(configFile);
+        return disabledCodegenResult(configFile, configured);
     }
 
     const { girPath, libraries, store, isForced } = prepareCodegen(options, cwd, config);
@@ -187,20 +238,12 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     }
 
     const result = await runCodegenCore({
-        ...codegenOptions({
-            store,
-            libraries,
-            girPath,
-            elements: config.elements,
-            isByteArrayTyped: config.future?.v2ByteArrays === true,
-            isValueUnwrapped: config.future?.v2ValueReturns === true,
-            isFinishTrimmed: config.future?.v2FinishResults === true,
-            isInoutInPlace: config.future?.v2InoutReturns === true,
-        }),
+        ...codegenOptions({ store, libraries, girPath, elements: config.elements, future }),
         isForced,
     });
 
     warnNotices(result.notices);
+    const notices = [...configured, ...result.notices];
     const reference = await writeReference({ root: cwd, config, girPath, libraries, isForced });
     syncAgentRules(cwd, config);
 
@@ -208,7 +251,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
         isRegenerated: result.isRegenerated,
         namespaces: result.namespaces,
         intrinsicElements: result.intrinsicElements,
-        notices: result.notices,
+        notices,
         duration: result.duration,
         girPath,
         configFile,

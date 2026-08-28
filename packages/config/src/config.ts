@@ -46,6 +46,15 @@ type McpSettings = {
     isReadOnly: boolean;
 };
 
+type ResolvedFuture = {
+    isByteArrayTyped: boolean;
+    isValueUnwrapped: boolean;
+    isFinishTrimmed: boolean;
+    isInoutInPlace: boolean;
+    isResourceImported: boolean;
+    isAdwaitaDefault: boolean;
+};
+
 /** Configuration reduced to the values the app runtime and the build need, with paths already resolved. */
 type ResolvedConfig = {
     /** The GApplication identifier the app registers under. */
@@ -211,8 +220,10 @@ const futureSchema = z.object({
     v2FinishResults: z.boolean({ error: "must be a boolean" }).optional(),
     v2InoutReturns: z.boolean({ error: "must be a boolean" }).optional(),
     v2ResourceImports: z.boolean({ error: "must be a boolean" }).optional(),
+    v2DefaultLibraries: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
+const FUTURE_KEYS: Set<string> = new Set(Object.keys(futureSchema.shape));
 const DEPRECATION_ID_ERROR = `must be one of ${DEPRECATION_IDS.join(", ")}`;
 
 const deprecationsSchema = z.object({
@@ -343,6 +354,18 @@ const resolveMcpSettings = (config: Config): McpSettings => ({
     isReadOnly: config.mcp?.readOnly === true,
 });
 
+const resolveFuture = (future: Config["future"]): ResolvedFuture => ({
+    isByteArrayTyped: future?.v2ByteArrays === true,
+    isValueUnwrapped: future?.v2ValueReturns === true,
+    isFinishTrimmed: future?.v2FinishResults === true,
+    isInoutInPlace: future?.v2InoutReturns === true,
+    isResourceImported: future?.v2ResourceImports === true,
+    isAdwaitaDefault: future?.v2DefaultLibraries === true,
+});
+
+const unknownFutureKeys = (future: Config["future"]): string[] =>
+    Object.keys(future ?? {}).filter((key) => !FUTURE_KEYS.has(key));
+
 const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
     applicationId: config.applicationId,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
@@ -365,8 +388,11 @@ export {
     resolveMcpSettings,
     resolveOmittedProps,
     resolveConfig,
+    resolveFuture,
+    unknownFutureKeys,
     type McpSettings,
     type ResolvedReactCompilerOptions,
     type Config,
     type ResolvedConfig,
+    type ResolvedFuture,
 };

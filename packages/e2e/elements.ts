@@ -17,6 +17,19 @@ export default defineElements({
             },
         ],
     },
+    GtkBox: {
+        behaviors: [
+            {
+                update: (box: Gtk.Box, prev, next) => {
+                    if (next.indexAugmented === true && !Object.is(prev.indexAugmented, next.indexAugmented)) {
+                        box.addCssClass("index-augmented");
+                    }
+
+                    return ["indexAugmented"];
+                },
+            },
+        ],
+    },
     GtkFrame: {
         behaviors: [
             {
