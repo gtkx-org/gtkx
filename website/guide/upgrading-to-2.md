@@ -87,6 +87,17 @@ generated types. This is the only flag whose migration the compiler cannot do fo
 in the specifier rather than the type. The build fails on every specifier that still needs attention, one at a
 time.
 
+### `v2TreeShaking`
+
+Each generated class registers itself as part of its own definition, so the bundler drops the classes your
+app never reaches — registrations included — and `gtkx build` ships only the widgets you render, the classes
+your code touches, and what their signatures reference. There is nothing for `tsc` to report: flip the flag,
+rebuild, and the bundle shrinks. Two edges to know about: a bare `import "@gtkx/gi/gtk"` no longer retains
+anything by itself (import a value from the namespace instead), and rendering an element whose component was
+never imported throws instead of silently constructing the wrong class. Dynamic uses of the `animated` value
+itself — spreading it, `Object.keys(animated)` — keep every widget in the bundle, and `gtkx build` warns
+about the file; member access and the call form stay fully shakeable.
+
 The [configuration guide](/guide/configuration-and-codegen#future-flags) documents each flag in full, including the `?icon` and `?url` forms.
 
 ## Clear the deprecated symbols

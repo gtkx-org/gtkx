@@ -70,6 +70,7 @@ type BoxedOptions = {
     isCallerAllocated: boolean;
     isInline?: boolean;
     size: number | undefined;
+    fallbackClass?: string | undefined;
 };
 
 type StructOptions = {
@@ -83,6 +84,7 @@ type FundamentalOptions = {
     ownership: Ownership;
     typeName: string | undefined;
     wrapperClass: string | undefined;
+    fallbackClass?: string | undefined;
     isCallerAllocated?: boolean | undefined;
     isInline?: boolean | undefined;
 };
@@ -183,7 +185,8 @@ const tScalar = (name: ScalarDescriptorName): string => T[name];
 const tString = (ownership: Ownership, length?: string): string =>
     call("string", [sourceStringLiteral(ownership), length]);
 
-const tObject = (ownership: Ownership): string => call("object", [sourceStringLiteral(ownership)]);
+const tObject = (ownership: Ownership, fallbackClass?: string): string =>
+    call("object", [sourceStringLiteral(ownership), fallbackClass]);
 
 const tBoxed = (glibName: string, options: BoxedOptions): string =>
     call("boxed", [
@@ -198,6 +201,7 @@ const tBoxed = (glibName: string, options: BoxedOptions): string =>
             options.isCallerAllocated ? "isCallerAllocated: true" : undefined,
             options.isInline === true ? "isInline: true" : undefined,
             options.size === undefined ? undefined : `size: ${String(options.size)}`,
+            options.fallbackClass === undefined ? undefined : `fallbackClass: ${options.fallbackClass}`,
         ]),
     ]);
 
@@ -224,6 +228,7 @@ const tFundamental = (lib: string, refFunc: string, unrefFunc: string, options: 
             `ownership: ${sourceStringLiteral(options.ownership)}`,
             options.typeName === undefined ? undefined : `typeName: ${sourceStringLiteral(options.typeName)}`,
             options.wrapperClass === undefined ? undefined : `wrapperClass: ${options.wrapperClass}`,
+            options.fallbackClass === undefined ? undefined : `fallbackClass: ${options.fallbackClass}`,
             options.isCallerAllocated === true ? "isCallerAllocated: true" : undefined,
             options.isInline === true ? "isInline: true" : undefined,
         ]),

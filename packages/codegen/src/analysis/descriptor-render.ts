@@ -90,6 +90,7 @@ type FundamentalDescriptor = {
     typeName: string | undefined;
     ownership: Ownership;
     wrapperClass?: string | undefined;
+    fallbackClass?: string | undefined;
     isCallerAllocated?: boolean | undefined;
     isInline?: boolean | undefined;
 };
@@ -110,6 +111,7 @@ type FundamentalRecordOptions = {
     unrefFunc: string;
     ownership: Ownership;
     wrapperClass: string | undefined;
+    fallbackClass?: string | undefined;
     isCallerAllocated: boolean;
     isInline: boolean;
 };
@@ -420,16 +422,22 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership):
 };
 
 const renderFundamental = (descriptor: FundamentalDescriptor): string => {
-    const { lib, refFunc, unrefFunc, typeName, ownership, wrapperClass, isCallerAllocated, isInline } = descriptor;
+    const { lib, refFunc, unrefFunc, typeName, ownership, wrapperClass, fallbackClass } = descriptor;
 
     return tFundamental(lib, refFunc, unrefFunc, {
         ownership,
         typeName,
         wrapperClass,
-        isCallerAllocated,
-        isInline,
+        fallbackClass,
+        isCallerAllocated: descriptor.isCallerAllocated,
+        isInline: descriptor.isInline,
     });
 };
+
+const fallbackClassThunk = (context: ModuleContext, namespaceName: string, name: string): string | undefined =>
+    context.library.isTreeShaken
+        ? `() => ${context.qualify(namespaceName, sanitizeTypeIdentifier(name))}`
+        : undefined;
 
 const sunkOwnership = (
     ancestor: AncestorFundamental,
@@ -450,12 +458,17 @@ const classOrInterfaceExpression = (
     isNewlyCreated: boolean,
 ): string => {
     const ancestor = fundamentalAncestor(context, resolved);
+    const fallbackClass = fallbackClassThunk(context, resolved.namespace.name, resolved.value.name);
 
     if (ancestor === undefined) {
-        return tObject(ownership);
+        return tObject(ownership, fallbackClass);
     }
 
-    return renderFundamental({ ...ancestor, ownership: sunkOwnership(ancestor, ownership, isNewlyCreated) });
+    return renderFundamental({
+        ...ancestor,
+        ownership: sunkOwnership(ancestor, ownership, isNewlyCreated),
+        fallbackClass,
+    });
 };
 
 const isClassOrInterface = (type: GirType | undefined): type is Extract<EntityType, { kind: "class" | "interface" }> =>
@@ -588,7 +601,7 @@ const structExpression = (
 };
 
 const fundamentalRecordExpression = (options: FundamentalRecordOptions): string => {
-    const { resolved, lib, refFunc, unrefFunc, ownership, wrapperClass, isCallerAllocated, isInline } = options;
+    const { resolved, lib, refFunc, unrefFunc, ownership, wrapperClass, fallbackClass } = options;
 
     return renderFundamental({
         lib,
@@ -597,8 +610,9 @@ const fundamentalRecordExpression = (options: FundamentalRecordOptions): string 
         typeName: resolved.value.glibTypeName,
         ownership,
         wrapperClass,
-        isCallerAllocated,
-        isInline,
+        fallbackClass,
+        isCallerAllocated: options.isCallerAllocated,
+        isInline: options.isInline,
     });
 };
 
@@ -623,6 +637,7 @@ const boxedRecordExpression = (options: {
         isCallerAllocated,
         isInline,
         size: size > 0 ? size : undefined,
+        fallbackClass: fallbackClassThunk(context, resolved.namespace.name, record.name),
     });
 };
 
@@ -675,6 +690,10 @@ const recordExpression = (
             unrefFunc,
             ownership,
             wrapperClass,
+            fallbackClass:
+                wrapperClass === undefined
+                    ? fallbackClassThunk(context, resolved.namespace.name, record.name)
+                    : undefined,
             ...recordLayout(placement),
         });
     }

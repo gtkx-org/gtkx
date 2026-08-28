@@ -17,6 +17,7 @@ import {
     TYPE_INVALID,
     TYPE_OBJECT,
     type TypedClass,
+    typeFundamental,
     typeInterfaces,
     typeIsA,
     typeName,
@@ -576,7 +577,7 @@ function createComposedClass(base: AnyClass, runtimeType: bigint): AnyClass {
 }
 
 function isWrappableBase(fallbackType: bigint): boolean {
-    return fallbackType === TYPE_INVALID || typeIsA(fallbackType, TYPE_OBJECT);
+    return fallbackType === TYPE_INVALID || typeFundamental(fallbackType) === TYPE_OBJECT;
 }
 
 function chooseWrapBase(walked: AnyClass | null, fallback: AnyClass | undefined, runtimeType: bigint): AnyClass | null {
