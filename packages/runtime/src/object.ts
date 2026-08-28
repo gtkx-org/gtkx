@@ -1,12 +1,10 @@
 import { type Descriptor, type ExternalObject, type Handle, newObject } from "@gtkx/native";
 import { type AnyClass, getParentClass } from "@gtkx/utils";
 import { bind } from "./bind.js";
-import { warnOnce } from "./debug.js";
 import { objectT, stringT, voidT } from "./descriptors.js";
 import { LIB, VALUE_T } from "./library.js";
 import { coercePropertyValue, type ConstructProperty, constructPropertyFor } from "./properties.js";
 import { getHandle, registerWrapper } from "./registry.js";
-import { isIndexedTypeName, typeName } from "./type.js";
 import { fromValueForDescriptor, newValueForDescriptor, toValue } from "./value.js";
 
 /**
@@ -97,21 +95,6 @@ function registerConstructProperties(cls: AnyClass, bindings: ConstructBindings)
     declarations.generation += 1;
 }
 
-function warnParamSpecFallback(gtype: bigint, name: string): void {
-    const ownerName = typeName(gtype);
-
-    if (ownerName === null || !isIndexedTypeName(ownerName)) {
-        return;
-    }
-
-    warnOnce(
-        `construct-prop:${String(gtype)}:${name}`,
-        `construct property '${name}' of '${ownerName}' was marshalled through its ParamSpec because no ` +
-        "declared descriptor was found; its declaration may have been dropped from the bundle, and null or " +
-        "fractional values now throw instead of coercing",
-    );
-}
-
 function constructPropertyForEntry(
     source: { gtype: bigint; bindings: ConstructBindings; wrapper: object },
     name: string,
@@ -124,13 +107,7 @@ function constructPropertyForEntry(
     const binding = source.bindings[name];
 
     if (binding === undefined) {
-        const property = constructPropertyFor(source.gtype, name, value, source.wrapper);
-
-        if (property !== undefined) {
-            warnParamSpecFallback(source.gtype, name);
-        }
-
-        return property;
+        return constructPropertyFor(source.gtype, name, value, source.wrapper);
     }
 
     return { name: binding[0], value: toValue(binding[1], coercePropertyValue(source.gtype, binding[0], value)) };

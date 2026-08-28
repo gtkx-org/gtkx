@@ -9,7 +9,6 @@ import {
     type Handle,
     type Ref,
 } from "@gtkx/native";
-import { warnOnce } from "./debug.js";
 import {
     type ArrayDescriptor,
     type BoxedDescriptor,
@@ -83,12 +82,6 @@ function boxedFromNative(descriptor: Descriptor, value: unknown): unknown {
     const fallback = (descriptor as BoxedDescriptor).fallbackClass?.();
 
     if (fallback !== undefined) {
-        warnOnce(
-            `boxed-fallback:${String(type)}`,
-            `no wrapper class is registered for boxed type '${(descriptor as BoxedDescriptor).typeName}'; ` +
-            `wrapping as the declared '${fallback.name}'`,
-        );
-
         return wrapHandle(handle, fallback);
     }
 
@@ -110,12 +103,6 @@ function fundamentalWrapperClass(descriptor: FundamentalDescriptor, handle: Exte
     const fallback = descriptor.fallbackClass?.();
 
     if (fallback !== undefined) {
-        warnOnce(
-            `fundamental-fallback:${String(declaredType)}`,
-            `no wrapper class is registered for fundamental type '${descriptor.typeName ?? String(declaredType)}' ` +
-            `or any ancestor; wrapping as the declared '${fallback.name}'`,
-        );
-
         return fallback;
     }
 

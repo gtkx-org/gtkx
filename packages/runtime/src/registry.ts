@@ -10,10 +10,8 @@ import {
     setWrapper,
 } from "@gtkx/native";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
-import { warnOnce } from "./debug.js";
 import { copyLayerMembers, installMixins, type Mixin, type MixinReceiver } from "./mixin.js";
 import {
-    isIndexedTypeName,
     TYPE_INVALID,
     TYPE_OBJECT,
     type TypedClass,
@@ -524,20 +522,6 @@ function getInterfaceMixin(type: bigint): Mixin | undefined {
     return interfaceMixinRegistry.get(type);
 }
 
-function warnMissingMixin(type: bigint): void {
-    const interfaceName = typeName(type);
-
-    if (interfaceName === null || !isIndexedTypeName(interfaceName)) {
-        return;
-    }
-
-    warnOnce(
-        `mixin:${String(type)}`,
-        `interface '${interfaceName}' has no registered mixin, so wrapped instances lack its members; ` +
-        "import the interface from its @gtkx/gi namespace to retain it",
-    );
-}
-
 function applyInterfaceMixin(cls: AnyClass, type: bigint, baseType: bigint, applied: Set<bigint>): AnyClass {
     if (applied.has(type) || typeIsA(baseType, type)) {
         return cls;
@@ -546,8 +530,6 @@ function applyInterfaceMixin(cls: AnyClass, type: bigint, baseType: bigint, appl
     const mixin = getInterfaceMixin(type);
 
     if (mixin === undefined) {
-        warnMissingMixin(type);
-
         return cls;
     }
 
@@ -572,14 +554,6 @@ function isWrappableBase(fallbackType: bigint): boolean {
     return fallbackType === TYPE_INVALID || typeFundamental(fallbackType) === TYPE_OBJECT;
 }
 
-function warnFallbackWrap(kind: string, runtimeType: bigint, fallbackName: string): void {
-    warnOnce(
-        `${kind}:${String(runtimeType)}`,
-        `no wrapper class is registered for '${typeName(runtimeType) ?? String(runtimeType)}' at or below its ` +
-        `declared type; wrapping as the declared '${fallbackName}'`,
-    );
-}
-
 function isBetweenWalkAndRuntime(fallbackType: bigint, walkedType: bigint, runtimeType: bigint): boolean {
     return fallbackType !== walkedType && typeIsA(fallbackType, walkedType) && typeIsA(runtimeType, fallbackType);
 }
@@ -589,15 +563,7 @@ function chooseWrapBase(walked: AnyClass | null, fallback: AnyClass | undefined,
         return walked;
     }
 
-    if (walked === null) {
-        warnFallbackWrap("wrap-miss", runtimeType, fallback.name);
-
-        return fallback;
-    }
-
-    if (isBetweenWalkAndRuntime(getClassType(fallback), getClassType(walked), runtimeType)) {
-        warnFallbackWrap("wrap-degrade", runtimeType, fallback.name);
-
+    if (walked === null || isBetweenWalkAndRuntime(getClassType(fallback), getClassType(walked), runtimeType)) {
         return fallback;
     }
 

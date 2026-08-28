@@ -8,7 +8,6 @@ import {
 } from "@gtkx/native";
 import { type AnyClass, getParentClass, kebabCase, walkClassChain } from "@gtkx/utils";
 import { wrapCallback } from "./callback.js";
-import { warnOnce } from "./debug.js";
 import { insertMixinLayer } from "./mixin.js";
 import {
     buildPropertyDispatch,
@@ -46,6 +45,7 @@ import {
     TYPE_NONE,
     type TypedClass,
     typeFundamental,
+    typeInterfacePrerequisites,
     typeInterfaces,
     typeIsA,
     typeName,
@@ -458,6 +458,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
 
     const name = resolveTypeName(klass, options);
     const declaredTypes = resolveInterfaceTypes(klass, options.implements ?? []);
+    assertInterfacePrerequisites(klass, parentType, declaredTypes);
     const adoptedTypes = declaredTypes.filter((gtype) => !typeIsA(parentType, gtype));
     const properties = options.properties ?? {};
     const signals = resolveDeclaredSignals(klass, options.signals ?? {});
@@ -473,7 +474,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
 
     const claimedMethodNames = new Set(classVfuncs.map((vfunc) => vfunc.methodName));
     const interfaceBindings = discoverInterfaceBindings(methods, parentType, declaredTypes, claimedMethodNames);
-    warnUnclaimedVfuncs(klass, methods, claimedMethodNames, interfaceBindings);
+    assertClaimedVfuncs(klass, methods, claimedMethodNames, interfaceBindings);
 
     const nativeOptions = withNativeSignals(
         toNativeOptions(classVfuncs, interfaceBindings, properties, options),
@@ -695,7 +696,28 @@ const claimedVfuncNames = (
     return claimed;
 };
 
-function warnUnclaimedVfuncs(
+const isPrerequisiteMet = (parentType: bigint, declaredTypes: bigint[], prerequisite: bigint): boolean =>
+    typeIsA(parentType, prerequisite) || declaredTypes.includes(prerequisite);
+
+function assertPrerequisitesFor(klass: AnyClass, parentType: bigint, declaredTypes: bigint[], iface: bigint): void {
+    for (const prerequisite of typeInterfacePrerequisites(iface)) {
+        if (!isPrerequisiteMet(parentType, declaredTypes, prerequisite)) {
+            throw new TypeError(
+                `registerClass: ${klass.name} does not meet prerequisite ` +
+                `'${typeName(prerequisite) ?? String(prerequisite)}' of interface ` +
+                `'${typeName(iface) ?? String(iface)}'`,
+            );
+        }
+    }
+}
+
+function assertInterfacePrerequisites(klass: AnyClass, parentType: bigint, declaredTypes: bigint[]): void {
+    for (const iface of declaredTypes) {
+        assertPrerequisitesFor(klass, parentType, declaredTypes, iface);
+    }
+}
+
+function assertClaimedVfuncs(
     klass: AnyClass,
     methods: MethodTable,
     claimedMethodNames: Set<string>,
@@ -705,11 +727,10 @@ function warnUnclaimedVfuncs(
 
     for (const methodName of methods.keys()) {
         if (VFUNC_METHOD_PATTERN.test(methodName) && !claimed.has(methodName)) {
-            warnOnce(
-                `vfunc-unclaimed:${klass.name}:${methodName}`,
-                `registerClass: ${klass.name}.${methodName} matches no vtable slot on any registered ancestor ` +
-                "or interface, so the override will never be called; the slot's table may have been dropped " +
-                "from the bundle, or the name is misspelled",
+            throw new Error(
+                `registerClass: ${klass.name}.${methodName} matches no vtable slot on any ancestor ` +
+                "or implemented interface, so the override would never be called; check the name against " +
+                "the parent class's virtual methods",
             );
         }
     }

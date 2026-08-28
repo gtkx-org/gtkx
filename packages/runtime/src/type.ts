@@ -1,6 +1,5 @@
 import { type Descriptor, resolveType as nativeResolveType } from "@gtkx/native";
 import { bind } from "./bind.js";
-import { warnOnce } from "./debug.js";
 import {
     type ArrayDescriptor,
     biguint64T,
@@ -31,6 +30,14 @@ const gTypeParent = bind(LIB, "g_type_parent", [biguint64T], biguint64T);
 const gTypeFundamental = bind(LIB, "g_type_fundamental", [biguint64T], biguint64T);
 const gTypeName = bind(LIB, "g_type_name", [biguint64T], stringT("borrowed"));
 const gTypeInterfaces = bind(LIB, "g_type_interfaces", [biguint64T, refT(uint32T)], sizedArrayT(biguint64T, 1, "full"));
+
+const gTypeInterfacePrerequisites = bind(
+    LIB,
+    "g_type_interface_prerequisites",
+    [biguint64T, refT(uint32T)],
+    sizedArrayT(biguint64T, 1, "full"),
+);
+
 /** GType tag for an invalid or uninitialized type. */
 const TYPE_INVALID = 0n;
 /** GType tag for the absence of a value (`void`). */
@@ -139,6 +146,12 @@ function typeInterfaces(type: bigint): bigint[] {
     return gTypeInterfaces(type, nInterfacesRef) as bigint[];
 }
 
+function typeInterfacePrerequisites(type: bigint): bigint[] {
+    const nPrerequisitesRef = { value: 0 };
+
+    return gTypeInterfacePrerequisites(type, nPrerequisitesRef) as bigint[];
+}
+
 /**
  * Returns the GType registered under the given name, or `TYPE_INVALID` if none exists. A name a
  * generated store has indexed through `registerNativeTypeNames` is registered on first use by
@@ -158,9 +171,6 @@ function typeFromName(name: string): bigint {
 
 const isIndexedTypeName = (name: string): boolean => nativeTypeIndex.has(name);
 
-const hasRegisteredPrototype = (wrapper: unknown): boolean =>
-    typeof wrapper === "function" && isTypedClass((wrapper as { prototype?: unknown }).prototype);
-
 /**
  * Indexes the GLib type names a generated namespace can produce, mapping each to the shared
  * library and `get_type` symbol that registers it, so `typeFromName` resolves the name even when
@@ -168,27 +178,17 @@ const hasRegisteredPrototype = (wrapper: unknown): boolean =>
  * alive.
  *
  * @param entries GLib type names mapped to their `[sharedLibrary, getTypeFnName]` pair.
- * @param wrappers Wrapper classes the namespace cannot operate without; listing them here keeps
- * them in a tree-shaken bundle, and each is checked to have registered itself.
+ * @param wrappers Wrapper classes the namespace cannot operate without; naming them here keeps
+ * them in a tree-shaken bundle.
  */
-function registerNativeTypeNames(
+const registerNativeTypeNames: (
     entries: Record<string, readonly [string, string]>,
-    wrappers: readonly unknown[] = [],
-): void {
+    wrappers?: readonly unknown[],
+) => void = (entries) => {
     for (const [name, entry] of Object.entries(entries)) {
         nativeTypeIndex.set(name, entry);
     }
-
-    for (const wrapper of wrappers) {
-        if (!hasRegisteredPrototype(wrapper)) {
-            warnOnce(
-                "core-wrapper-unregistered",
-                "registerNativeTypeNames was handed a value that is not a registered wrapper class; " +
-                "a core wrapper reference may have been dropped from the bundle",
-            );
-        }
-    }
-}
+};
 
 function typeFundamental(type: bigint): bigint {
     return gTypeFundamental(type) as bigint;
@@ -335,6 +335,7 @@ export {
     registerNativeTypeNames,
     typeIsA,
     typeParent,
+    typeInterfacePrerequisites,
     typeInterfaces,
     typeFromName,
     typeFundamental,
