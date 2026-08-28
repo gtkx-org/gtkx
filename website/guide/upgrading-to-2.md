@@ -87,7 +87,38 @@ generated types. This is the only flag whose migration the compiler cannot do fo
 in the specifier rather than the type. The build fails on every specifier that still needs attention, one at a
 time.
 
+### `v2DefaultLibraries`
+
+`Adw-1` is bound alongside `Gtk-4.0` whether or not `libraries` names it, so the list becomes the libraries
+you want *on top of* GTK and Adwaita. Drop `Gtk-4.0` and `Adw-1` from it; in 2.0 naming either is a
+configuration error.
+
+This is the one flag `tsc` cannot check, because nothing about it is a type error. Binding Adwaita does not
+by itself change how an application behaves — an app that only imports `@gtkx/jsx/gtk` never evaluates the
+Adwaita module. What changes is the build: codegen needs the Adwaita introspection data, every deb and rpm
+gains a libadwaita relation, and every NOTICE file gains its LGPL entry. The moment something *does* import
+the Adwaita module, `adw_init` restyles the application and libadwaita becomes a hard runtime requirement.
+Turn the flag on, run the app, and look at it.
+
 The [configuration guide](/guide/configuration-and-codegen#future-flags) documents each flag in full, including the `?icon` and `?url` forms.
+
+## Stop binding every installed library
+
+`libraries: "*"` is deprecated and 2.0 removes it. What it resolves to depends on which introspection
+packages the build host happens to have installed, so the generated store — and every type your code compiles
+against — changes with the machine. Replace it with the libraries the project actually needs, remembering
+that under `v2DefaultLibraries` GTK and Adwaita are already bound:
+
+```diff
+ export default defineConfig({
+-    libraries: "*",
++    libraries: ["WebKit-6.0"],
+     applicationId: "com.example.Tasks",
+ });
+```
+
+Codegen names the wildcard on each run while it still works, and `gtkx codegen --force` prints the resolved
+list, which is the set to copy from.
 
 ## Clear the deprecated symbols
 

@@ -19,6 +19,7 @@ const DEPRECATION_IDS = [
     "gtkx-v2-finish-results",
     "gtkx-v2-inout-returns",
     "gtkx-v2-resource-imports",
+    "gtkx-v2-default-libraries",
 ] as const;
 
 const FUTURE_DEPRECATIONS: FutureDeprecation[] = [
@@ -46,6 +47,11 @@ const FUTURE_DEPRECATIONS: FutureDeprecation[] = [
         id: "gtkx-v2-resource-imports",
         flag: "v2ResourceImports",
         change: "Assets resolve through the #data/ import map. In 2.0 they resolve through ?resource imports.",
+    },
+    {
+        id: "gtkx-v2-default-libraries",
+        flag: "v2DefaultLibraries",
+        change: "Only Gtk-4.0 is bound by default. In 2.0 Adw-1 is bound alongside it.",
     },
 ];
 
