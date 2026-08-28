@@ -9,7 +9,7 @@ type FoldedClassOptions = {
     owner: string;
     localDeclarations: string[];
     registrations: string[];
-    hasTypeAlias: boolean;
+    hasInstanceInterface: boolean;
 };
 
 const localClassName = (className: string): string => `_${className}`;
@@ -19,7 +19,7 @@ const renderNameStatement = (className: string): string =>
     `{ value: ${sourceStringLiteral(className)}, configurable: true });`;
 
 const declareFoldedClass = (options: FoldedClassOptions): void => {
-    const { context, className, doc, owner, localDeclarations, registrations, hasTypeAlias } = options;
+    const { context, className, doc, owner, localDeclarations, registrations, hasInstanceInterface } = options;
     const localName = localClassName(className);
 
     for (const code of localDeclarations) {
@@ -30,18 +30,31 @@ const declareFoldedClass = (options: FoldedClassOptions): void => {
         .map((statement) => indent(statement, 1))
         .join("\n");
 
-    context.declare({
-        name: className,
-        code: `${doc}export const ${className}: typeof ${localName} = /* @__PURE__ */ (() => {\n${body}\n})();`,
-        owner,
-    });
-
-    if (hasTypeAlias) {
+    if (!hasInstanceInterface) {
         context.declare({
             name: className,
-            code: `export type ${className} = ${localName};`,
+            code: `${doc}export const ${className}: typeof ${localName} = /* @__PURE__ */ (() => {\n${body}\n})();`,
+            owner,
         });
+
+        return;
     }
+
+    context.declare({
+        name: className,
+        code: `export interface ${className} extends ${localName} {}`,
+    });
+
+    context.addRuntimeTypeImport("WrapperClass");
+    const constType = `WrapperClass<typeof ${localName}, ${className}>`;
+
+    context.declare({
+        name: className,
+        code:
+            `${doc}export const ${className}: ${constType} = ` +
+            `/* @__PURE__ */ (() => {\n${body}\n})() as ${constType};`,
+        owner,
+    });
 };
 
 export { declareFoldedClass, localClassName };

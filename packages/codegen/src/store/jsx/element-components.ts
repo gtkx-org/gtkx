@@ -1,6 +1,7 @@
-import { sourceStringLiteral } from "@gtkx/utils";
+import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
+import { externalPackageFor } from "../../gir/external-namespaces.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import type { LazyElementSpec } from "./element-prop-types.js";
 import { getDoc } from "../gi/doc-spec.js";
@@ -114,9 +115,18 @@ const renderCandidateExport = (
         imports.addNamed(component.module, component.export, false);
     }
 
+    let classRef: string | undefined;
+
+    if (library.isTreeShaken) {
+        const alias = `${namespace.name}$`;
+        const specifier = externalPackageFor(namespace.name) ?? `@gtkx/gi/${namespace.name.toLowerCase()}`;
+        imports.addNamespace(specifier, alias, false);
+        classRef = `${alias}.${sanitizeTypeIdentifier(klass.name)}`;
+    }
+
     const doc = getDoc(klass);
 
-    return `${doc}${renderElementComponentExport(glibName, component)}`;
+    return `${doc}${renderElementComponentExport(glibName, component, classRef)}`;
 };
 
 const resolveElementComponent = (
@@ -134,16 +144,23 @@ const resolveElementComponent = (
     return undefined;
 };
 
-const renderElementComponentExport = (glibName: string, component: ElementComponent | undefined): string => {
+const renderElementComponentExport = (
+    glibName: string,
+    component: ElementComponent | undefined,
+    classRef: string | undefined,
+): string => {
     const propsType = `${glibName}Props`;
     const annotation = `(props: ${propsType}) => ReactNode`;
-    const factoryCall = `createElementComponent(${sourceStringLiteral(glibName)})`;
+    const factoryArgs =
+        classRef === undefined ? sourceStringLiteral(glibName) : `${sourceStringLiteral(glibName)}, ${classRef}`;
+    const pure = classRef === undefined ? "" : "/* @__PURE__ */ ";
+    const factoryCall = `${pure}createElementComponent(${factoryArgs})`;
 
     if (component === undefined) {
         return `export const ${glibName}: ${annotation} = ${factoryCall};`;
     }
 
-    return `export const ${glibName}: ${annotation} = ${component.export}(${factoryCall});`;
+    return `export const ${glibName}: ${annotation} = ${pure}${component.export}(${factoryCall});`;
 };
 
 export { generateElementComponentsSection, type ElementComponentOverrides };

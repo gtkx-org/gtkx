@@ -151,7 +151,7 @@ const generateFoldedInterface = (
         owner: iface.name,
         localDeclarations: [classCode],
         registrations,
-        hasTypeAlias: false,
+        hasInstanceInterface: false,
     });
 };
 

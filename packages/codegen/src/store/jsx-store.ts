@@ -9,6 +9,7 @@ type WriteJsxStoreParams = {
     metadata: string;
     externalPackages: string[];
     rawFiles: RawFile[];
+    isTreeShaken?: boolean;
 };
 
 const jsxPeerDependencies = (externalPackages: string[]): Record<string, string> =>
@@ -43,6 +44,7 @@ const writeJsxStore = (params: WriteJsxStoreParams): void => {
             name: "@gtkx/jsx",
             version: options.version,
             exports: exportsMap,
+            sideEffects: params.isTreeShaken === true ? false : true,
             peerDependencies: jsxPeerDependencies(externalPackages),
         }),
         rawFiles,

@@ -71,6 +71,7 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
         options: options.jsx,
         namespaces,
         metadata,
+        isTreeShaken: options.isTreeShaken,
         externalPackages: storeExternalPackages(library),
         rawFiles: [
             {

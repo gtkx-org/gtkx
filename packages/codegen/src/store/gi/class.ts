@@ -2,7 +2,6 @@ import { sanitizeTypeIdentifier, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
-import type { Declaration } from "../../writer/module.js";
 import {
     ancestorClassMethodNames,
     collectInheritedMethods,
@@ -115,22 +114,15 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
         appendInstallMixins(context, localName, implemented);
         appendClassRegistrations(context, klass, localName);
         const registrations = context.takeRegistrations();
-        const classBody = `class ${localName}${heritage} {\n${body}\n}`;
-        const localDeclarations = [`${modifier}${classBody}`];
-        const mergeCode = renderInterfaceMerge(context, klass, localName, implemented);
-
-        if (mergeCode !== undefined) {
-            localDeclarations.push(mergeCode);
-        }
 
         declareFoldedClass({
             context,
             className,
             doc,
             owner: klass.name,
-            localDeclarations,
+            localDeclarations: [`${modifier}class ${localName}${heritage} {\n${body}\n}`],
             registrations,
-            hasTypeAlias: true,
+            hasInstanceInterface: true,
         });
     } else {
         context.declare({
@@ -157,28 +149,14 @@ const appendMemberDeclarations = (options: MemberDeclarationsOptions): void => {
     const { context, klass, className, accessors, implemented } = options;
 
     for (const declaration of renderPropertyDeclarations(context, klass, className, accessors)) {
-        context.declare(retargetClassMerge(context, className, declaration));
+        context.declare(declaration);
     }
 
     for (const declaration of renderSignalDeclarations(context, klass, className, false)) {
-        context.declare(retargetClassMerge(context, className, declaration));
+        context.declare(declaration);
     }
 
     appendInterfaceMerge(context, klass, className, implemented);
-};
-
-const retargetClassMerge = (context: ModuleContext, className: string, declaration: Declaration): Declaration => {
-    if (!context.isTreeShaken || declaration.name !== className) {
-        return declaration;
-    }
-
-    const localName = localClassName(className);
-
-    return {
-        name: localName,
-        code: declaration.code.replace(`export interface ${className}`, `interface ${localName}`),
-        isLocal: true,
-    };
 };
 
 const renderInterfaceMerge = (
@@ -202,10 +180,6 @@ const appendInterfaceMerge = (
     className: string,
     implemented: ImplementedRef[],
 ): void => {
-    if (context.isTreeShaken) {
-        return;
-    }
-
     const code = renderInterfaceMerge(context, klass, className, implemented);
 
     if (code === undefined) {

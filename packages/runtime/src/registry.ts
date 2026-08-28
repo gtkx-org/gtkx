@@ -33,6 +33,19 @@ import {
 type StaticBase<C, K extends PropertyKey> = Omit<C, K> &
     (C extends abstract new (...args: infer A) => infer R ? abstract new (...args: A) => R : never);
 
+/**
+ * Static side of class `C` with its construct signature retargeted to produce `I`. A generated
+ * wrapper class is declared locally and exported as a registered constant; its instance type is
+ * exported as an interface extending the local class so declaration merging and module
+ * augmentation keep working, and this type makes constructing the constant produce that interface.
+ */
+type WrapperClass<C, I> = Omit<C, "prototype"> & { prototype: I } &
+    (C extends new (...args: infer A) => unknown
+        ? new (...args: A) => I
+        : C extends abstract new (...args: infer A) => unknown
+            ? abstract new (...args: A) => I
+            : never);
+
 /** One overridable vtable slot: where it sits in the vtable struct and how it is marshalled. */
 type VfuncDescriptor = {
     /** GIR name of the type struct holding the slot, without its namespace, such as `WidgetClass`. */
@@ -779,5 +792,6 @@ export {
     type InterfaceProperty,
     type StaticBase,
     type VfuncDescriptor,
+    type WrapperClass,
     type WrapperClassResolver,
 };

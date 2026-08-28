@@ -2,6 +2,7 @@ import type { Plugin } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
 import createConfigPlugin from "@gtkx/config/vite-plugin";
 import type { BuildManifestCollector } from "../internal/build-manifest.js";
+import { gtkxAnimated } from "./animated.js";
 import { gtkxAssetImports } from "./asset-imports.js";
 import { gtkxBuiltUrl } from "./built-url.js";
 import { gtkxCss } from "./css.js";
@@ -32,6 +33,7 @@ const gtkxVitePlugins = (
         gtkxBuiltUrl(),
         gtkxResources(loadConfig, entryPath),
         gtkxCss(),
+        gtkxAnimated(loadConfig),
         gtkxReactCompiler(loadConfig),
     ];
 };

@@ -55,7 +55,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
             owner: record.name,
             localDeclarations: [`${modifier}class ${localName}${heritage} {\n${body}\n}`],
             registrations: context.takeRegistrations(),
-            hasTypeAlias: true,
+            hasInstanceInterface: true,
         });
     } else {
         context.declare({

@@ -55,6 +55,7 @@ export {
     type StaticBase,
     setHandle,
     wrapHandle,
+    type WrapperClass,
     type WrapperClassResolver,
 } from "./registry.js";
 /** @public */

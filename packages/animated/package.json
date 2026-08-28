@@ -31,11 +31,18 @@
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
+        },
+        "./core": {
+            "source": "./src/core.ts",
+            "types": "./dist/core.d.ts",
+            "default": "./dist/core.js"
         }
     },
     "sideEffects": [
         "./src/index.ts",
         "./dist/index.js",
+        "./src/core.ts",
+        "./dist/core.js",
         "./src/bootstrap.ts",
         "./dist/bootstrap.js"
     ],
