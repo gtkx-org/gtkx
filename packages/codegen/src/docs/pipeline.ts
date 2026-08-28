@@ -45,6 +45,7 @@ type DocsOptions = {
     isValueUnwrapped?: boolean;
     isFinishTrimmed?: boolean;
     isInoutInPlace?: boolean;
+    isTreeShaken?: boolean;
 };
 
 type DocsManifest = {
@@ -316,6 +317,7 @@ const giInputs = (options: DocsOptions, girFiles: string[]): GiInputs => ({
     isValueUnwrapped: options.isValueUnwrapped === true,
     isFinishTrimmed: options.isFinishTrimmed === true,
     isInoutInPlace: options.isInoutInPlace === true,
+    isTreeShaken: options.isTreeShaken === true,
 });
 
 const assertOwnedOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): void => {
@@ -408,6 +410,7 @@ const writeDocs = (options: DocsOptions): DocsResult => {
         isValueUnwrapped: options.isValueUnwrapped === true,
         isFinishTrimmed: options.isFinishTrimmed === true,
         isInoutInPlace: options.isInoutInPlace === true,
+        isTreeShaken: options.isTreeShaken === true,
     });
 
     const { pages, namespaces } = generatePages(options, input.basePath, linkStyle, library);

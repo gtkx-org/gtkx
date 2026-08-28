@@ -48,6 +48,8 @@ type CodegenRunnerOptions = {
     isFinishTrimmed?: boolean;
     /** Mutates a handle-passing inout parameter in place instead of packing it into the result; defaults to false. */
     isInoutInPlace?: boolean;
+    /** Folds registrations into each class so bundlers can drop unused ones; defaults to false. */
+    isTreeShaken?: boolean;
 };
 
 /** What a `runCodegen` run produced. */
@@ -152,6 +154,7 @@ const emitJsxStore = async (input: {
         ...jsxUserOptions(options),
         isGiRegenerated,
         isForced: options.isForced === true,
+        isTreeShaken: options.isTreeShaken === true,
     });
 
     return {
@@ -173,7 +176,8 @@ const emitStoresWithConfig = async (config: {
     const isValueUnwrapped = options.isValueUnwrapped === true;
     const isFinishTrimmed = options.isFinishTrimmed === true;
     const isInoutInPlace = options.isInoutInPlace === true;
-    const future = { isByteArrayTyped, isValueUnwrapped, isFinishTrimmed, isInoutInPlace };
+    const isTreeShaken = options.isTreeShaken === true;
+    const future = { isByteArrayTyped, isValueUnwrapped, isFinishTrimmed, isInoutInPlace, isTreeShaken };
     let library: Library | undefined;
     const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath, future));
     const giInputs = { girFiles: [] as string[], libraries, girPath, storeVersion: gi.version, ...future };

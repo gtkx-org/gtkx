@@ -33,6 +33,8 @@ type ApiReferenceOptions = {
     isFinishTrimmed?: boolean;
     /** Describes a handle-passing inout parameter as mutated in place rather than returned; off by default. */
     isInoutInPlace?: boolean;
+    /** Folds registrations into each class so bundlers can drop unused ones; off by default. */
+    isTreeShaken?: boolean;
 };
 
 /** Narrows an `ApiReference.symbols` enumeration. */
@@ -386,6 +388,7 @@ class ApiReference {
             isValueUnwrapped: options.isValueUnwrapped === true,
             isFinishTrimmed: options.isFinishTrimmed === true,
             isInoutInPlace: options.isInoutInPlace === true,
+            isTreeShaken: options.isTreeShaken === true,
         });
 
         this.elementContext = { library: this.library, linkFor: (): string | undefined => undefined };

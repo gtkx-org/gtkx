@@ -17,6 +17,7 @@ type GiInputs = {
     isValueUnwrapped: boolean;
     isFinishTrimmed: boolean;
     isInoutInPlace: boolean;
+    isTreeShaken: boolean;
 };
 
 type GiFingerprint = {
@@ -47,6 +48,7 @@ type JsxFingerprintInput = {
     lazyElements: string[];
     props: Record<string, ModuleExport>;
     omittedProps: Record<string, string[]>;
+    isTreeShaken: boolean;
 };
 
 type JsxFingerprint = {
@@ -207,6 +209,8 @@ const hashGi = (inputs: GiInputs): string => {
     hash.update("\n");
     hash.update(String(inputs.isInoutInPlace));
     hash.update("\n");
+    hash.update(String(inputs.isTreeShaken));
+    hash.update("\n");
     hash.update(String(inputs.storeVersion));
     const girFiles = sortOrdinal(inputs.girFiles);
 
@@ -313,6 +317,7 @@ const hashJsx = (input: JsxFingerprintInput): string =>
                 sortOrdinal(input.lazyElements),
                 serializeModuleExports(input.props),
                 serializeOmittedProps(input.omittedProps),
+                input.isTreeShaken,
             ]),
         )
         .digest("hex");

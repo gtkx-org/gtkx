@@ -58,6 +58,7 @@ type CodegenOptionsInput = {
     isValueUnwrapped: boolean;
     isFinishTrimmed: boolean;
     isInoutInPlace: boolean;
+    isTreeShaken: boolean;
 };
 
 type PreparedCodegen = CodegenInputs & { isForced: boolean };
@@ -99,6 +100,7 @@ const codegenOptions = ({ store, libraries, girPath, elements, ...future }: Code
     isValueUnwrapped: future.isValueUnwrapped,
     isFinishTrimmed: future.isFinishTrimmed,
     isInoutInPlace: future.isInoutInPlace,
+    isTreeShaken: future.isTreeShaken,
     gi: {
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
@@ -196,6 +198,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
             isValueUnwrapped: config.future?.v2ValueReturns === true,
             isFinishTrimmed: config.future?.v2FinishResults === true,
             isInoutInPlace: config.future?.v2InoutReturns === true,
+            isTreeShaken: config.future?.v2TreeShaking === true,
         }),
         isForced,
     });

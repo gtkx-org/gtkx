@@ -34,6 +34,8 @@ type FutureBehavior = {
     isFinishTrimmed?: boolean;
     /** Whether a handle-passing inout parameter is mutated in place rather than packed into the result. */
     isInoutInPlace?: boolean;
+    /** Whether registrations fold into each class so bundlers can drop unused ones. */
+    isTreeShaken?: boolean;
 };
 
 /** A namespace whose header has been read and whose shell is registered, before its body is parsed. */
@@ -105,6 +107,7 @@ class Library {
         library.isValueUnwrappedValue = future.isValueUnwrapped === true;
         library.isFinishTrimmedValue = future.isFinishTrimmed === true;
         library.isInoutInPlaceValue = future.isInoutInPlace === true;
+        library.isTreeShakenValue = future.isTreeShaken === true;
         this.drive(library, libraries, girPath);
 
         return library;
@@ -120,6 +123,7 @@ class Library {
     private isValueUnwrappedValue = false;
     private isFinishTrimmedValue = false;
     private isInoutInPlaceValue = false;
+    private isTreeShakenValue = false;
 
     /** Creates a library with no namespaces loaded; {@link Library.load} builds a populated one. */
     constructor() {
@@ -367,6 +371,11 @@ class Library {
     /** Whether a handle-passing inout parameter is mutated in place rather than packed into the result. */
     public get isInoutInPlace(): boolean {
         return this.isInoutInPlaceValue;
+    }
+
+    /** Whether registrations fold into each class so bundlers can drop unused ones. */
+    public get isTreeShaken(): boolean {
+        return this.isTreeShakenValue;
     }
 
     /** Paths of the `.gir` files that were read, in the order they were discovered. */

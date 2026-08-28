@@ -15,6 +15,7 @@ type GiCodegenOptions = {
     isValueUnwrapped: boolean;
     isFinishTrimmed: boolean;
     isInoutInPlace: boolean;
+    isTreeShaken: boolean;
 };
 
 type SplitNamespaces = {
@@ -62,6 +63,7 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
         isValueUnwrapped,
         isFinishTrimmed,
         isInoutInPlace,
+        isTreeShaken: options.isTreeShaken,
     });
 
     writeGiStore(gi, namespaces, externalNamespaces, {

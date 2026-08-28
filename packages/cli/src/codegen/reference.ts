@@ -46,6 +46,7 @@ const writeReference = async (options: WriteReferenceOptions): Promise<Reference
         isValueUnwrapped: config.future?.v2ValueReturns === true,
         isFinishTrimmed: config.future?.v2FinishResults === true,
         isInoutInPlace: config.future?.v2InoutReturns === true,
+        isTreeShaken: config.future?.v2TreeShaking === true,
     });
 
     return {

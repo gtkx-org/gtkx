@@ -201,6 +201,7 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
         isValueUnwrapped: config.future?.v2ValueReturns === true,
         isFinishTrimmed: config.future?.v2FinishResults === true,
         isInoutInPlace: config.future?.v2InoutReturns === true,
+        isTreeShaken: config.future?.v2TreeShaking === true,
     });
 
     const watched = [watchFile(resolve(root, configFile)), ...reference.girFiles.map((file) => watchFile(file))];
