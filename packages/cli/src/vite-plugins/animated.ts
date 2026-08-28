@@ -51,7 +51,16 @@ const BINDING_PARENT_KEYS: Record<string, string> = {
     FunctionDeclaration: "id",
     ClassDeclaration: "id",
     CatchClause: "param",
-    FormalParameter: "pattern",
+    AssignmentPattern: "left",
+    RestElement: "argument",
+    Property: "value",
+};
+
+const BINDING_PARENT_ARRAY_KEYS: Record<string, string> = {
+    ArrowFunctionExpression: "params",
+    FunctionDeclaration: "params",
+    FunctionExpression: "params",
+    ArrayPattern: "elements",
 };
 
 const isAstNode = (value: unknown): value is AstNode =>
@@ -132,14 +141,24 @@ const animatedLocalName = (program: AstNode): string | undefined => {
     return local;
 };
 
-const isBindingParent = (node: AstNode, parent: AstNode): boolean => {
+const isBindingSlot = (node: AstNode, parent: AstNode): boolean => {
     const key = BINDING_PARENT_KEYS[parent.type];
 
     return key !== undefined && parent[key] === node;
 };
 
+const isBindingListEntry = (node: AstNode, parent: AstNode): boolean => {
+    const arrayKey = BINDING_PARENT_ARRAY_KEYS[parent.type];
+    const entries = arrayKey === undefined ? undefined : parent[arrayKey];
+
+    return Array.isArray(entries) && entries.includes(node);
+};
+
+const isBindingParent = (node: AstNode, parent: AstNode): boolean =>
+    isBindingSlot(node, parent) || isBindingListEntry(node, parent);
+
 const isBindingNamed = (node: AstNode, parent: AstNode, name: string): boolean =>
-    (node.type === "Identifier" || node.type === "BindingIdentifier") &&
+    node.type === "Identifier" &&
     node.name === name &&
     isBindingParent(node, parent);
 
@@ -292,12 +311,15 @@ const parseProgram = (path: string, code: string): AstNode | undefined => {
 const unchangedRewrite = (code: string, rewrite: Rewrite): RewrittenModule | undefined =>
     rewrite.hasDynamicUses ? { code, hasDynamicUses: true, hasMemberEdits: false } : undefined;
 
+const hasHelperCollision = (code: string): boolean =>
+    code.includes(NAMESPACE_HELPER) || code.includes(CALL_HELPER);
+
 const rewriteModule = (
     code: string,
     id: string,
     elements: Map<string, GeneratedElement>,
 ): RewrittenModule | undefined => {
-    if (code.includes(NAMESPACE_HELPER)) {
+    if (hasHelperCollision(code)) {
         return undefined;
     }
 
@@ -320,8 +342,8 @@ const rewriteModule = (
     }
 
     const insertAt = lastImportEnd(program);
-    const edited = applyEdits(code, rewrite.edits);
-    const withHelpers = `${edited.slice(0, insertAt)}\n${helperImports(rewrite)}${edited.slice(insertAt)}`;
+    const helperEdit: Edit = { start: insertAt, end: insertAt, replacement: `\n${helperImports(rewrite)}` };
+    const withHelpers = applyEdits(code, [...rewrite.edits, helperEdit]);
 
     return { code: withHelpers, hasDynamicUses: rewrite.hasDynamicUses, hasMemberEdits: rewrite.hasMemberEdits };
 };
