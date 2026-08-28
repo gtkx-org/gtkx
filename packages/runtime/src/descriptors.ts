@@ -33,6 +33,7 @@ type FlagsDescriptor = Extract<Descriptor, { kind: "flags" }>;
 type BooleanDescriptor = Extract<Descriptor, { kind: "boolean" }>;
 /** Descriptor variant for a C string. */
 type StringDescriptor = Extract<Descriptor, { kind: "string" }>;
+
 /** Descriptor variant for a `GObject`, extended with the statically declared type of its value. */
 type ObjectDescriptor = Extract<Descriptor, { kind: "object" }> & {
     /**
@@ -43,12 +44,14 @@ type ObjectDescriptor = Extract<Descriptor, { kind: "object" }> & {
      */
     fallbackClass?: () => AnyClass;
 };
+
 /** Descriptor variant for a `gunichar`. */
 type UnicharDescriptor = Extract<Descriptor, { kind: "unichar" }>;
 /** Descriptor variant for the absence of a value. */
 type VoidDescriptor = Extract<Descriptor, { kind: "void" }>;
 /** Descriptor variant for an opaque `gpointer`. */
 type BufferDescriptor = Extract<Descriptor, { kind: "buffer" }>;
+
 /** Descriptor variant for a `GBoxed` value, extended with the statically declared type of its value. */
 type BoxedDescriptor = Extract<Descriptor, { kind: "boxed" }> & {
     /**
@@ -373,6 +376,16 @@ const recordFundamentalLifecycle = (typeName: string, lifecycle: FundamentalLife
 const fundamentalLifecycleFor = (typeName: string): FundamentalLifecycle | undefined =>
     fundamentalLifecycles.get(typeName);
 
+const applyFundamentalClasses = (result: FundamentalDescriptor, options: FundamentalOptions): void => {
+    if (options.wrapperClass !== undefined) {
+        result.wrapperClass = options.wrapperClass;
+    }
+
+    if (options.fallbackClass !== undefined) {
+        result.fallbackClass = options.fallbackClass;
+    }
+};
+
 /** Builds a descriptor for a fundamental type whose lifetime is managed by named ref and unref functions. */
 const fundamentalT = (
     sharedLibrary: string,
@@ -388,13 +401,7 @@ const fundamentalT = (
         recordFundamentalLifecycle(options.typeName, { sharedLibrary, refFnName, unrefFnName });
     }
 
-    if (options.wrapperClass !== undefined) {
-        result.wrapperClass = options.wrapperClass;
-    }
-
-    if (options.fallbackClass !== undefined) {
-        result.fallbackClass = options.fallbackClass;
-    }
+    applyFundamentalClasses(result, options);
 
     if (options.isCallerAllocated) {
         result.isCallerAllocated = true;

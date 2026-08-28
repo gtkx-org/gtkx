@@ -70,7 +70,7 @@ class ImportsBuilder {
             return;
         }
 
-        if (existing.isType && !isType) {
+        if (!isType && existing.isType) {
             existing.isType = false;
         }
     }

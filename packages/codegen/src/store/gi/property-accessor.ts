@@ -185,7 +185,7 @@ const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): string | u
     withAccessor(args, (accessor) => `${propertyDoc(args.property)}${renderAccessorPairSignature(accessor)}`);
 
 const renderPropertyDescriptor = (context: ModuleContext, property: GirProperty): string =>
-    renderDescriptor(context, property.type, property.transferOwnership);
+    renderDescriptor(context, property.type, property.transferOwnership, { isReceived: true });
 
 const renderGenericGetBody = (context: ModuleContext, property: GirProperty, tsType: string): string => {
     context.addRuntimeImport("getObjectProperty");

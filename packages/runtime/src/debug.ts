@@ -14,14 +14,6 @@ const isEnabled = (): boolean => {
     return process.env.NODE_ENV !== "production";
 };
 
-/**
- * Reports a recoverable degradation once per key, so a registry miss or a silently skipped
- * override is loud during development without flooding the output. Enabled outside production
- * builds; `GTKX_DIAGNOSTICS=1` forces it on and `GTKX_DIAGNOSTICS=0` forces it off.
- *
- * @param key Deduplication key; later calls with the same key are dropped.
- * @param message What degraded and what to do about it.
- */
 function warnOnce(key: string, message: string): void {
     if (seen.has(key) || !isEnabled()) {
         return;

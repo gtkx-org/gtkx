@@ -62,6 +62,7 @@ type ArgIndexOptions = {
     argIndexMap: Map<number, number> | undefined;
     cursor: GirCursorBounds | undefined;
     hasOutIndirection: boolean;
+    isReceived: boolean;
 };
 
 type CursorArgIndexOptions = ArgIndexOptions & { cursor: GirCursorBounds };
@@ -76,11 +77,13 @@ type RenderDescriptorOptions = Partial<ArgIndexOptions> & {
 type RecordPlacement = {
     isCallerAllocated?: boolean;
     isInline?: boolean;
+    isReceived?: boolean;
 };
 
 type RecordLayout = {
     isCallerAllocated: boolean;
     isInline: boolean;
+    isReceived: boolean;
 };
 
 type FundamentalDescriptor = {
@@ -171,6 +174,7 @@ const argIndexOptions = (options: RenderDescriptorOptions): ArgIndexOptions => (
     argIndexMap: options.argIndexMap,
     cursor: options.cursor,
     hasOutIndirection: options.hasOutIndirection === true,
+    isReceived: options.isReceived === true,
 });
 
 const renderDescriptor = (
@@ -312,7 +316,12 @@ const renderParamDescriptor = (
     ref: TypeId | undefined,
     argIndex: Partial<ArgIndexOptions> = {},
 ): string => {
-    const behindRef: RenderDescriptorOptions = { ...argIndex, cursor: parameter.cursor, hasOutIndirection: true };
+    const behindRef: RenderDescriptorOptions = {
+        ...argIndex,
+        cursor: parameter.cursor,
+        hasOutIndirection: true,
+        isReceived: true,
+    };
 
     if (isCellInout(context.library, parameter)) {
         return tRef(renderDescriptor(context, ref, parameter.transferOwnership, behindRef), true);
@@ -325,6 +334,7 @@ const renderParamDescriptor = (
     return renderDescriptor(context, ref, parameter.transferOwnership, {
         ...argIndex,
         isCallerAllocated: isCallerAllocatedOut(parameter) || isRecordInout(context, parameter),
+        isReceived: true,
     });
 };
 
@@ -396,7 +406,7 @@ const renderCallbackType = (
 
     return tCallback({
         argTypes,
-        returns: renderDescriptor(context, returnValue.type, returnValue.transferOwnership),
+        returns: renderDescriptor(context, returnValue.type, returnValue.transferOwnership, { isReceived: true }),
         options: callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters), callback.throws),
     });
 };
@@ -434,8 +444,13 @@ const renderFundamental = (descriptor: FundamentalDescriptor): string => {
     });
 };
 
-const fallbackClassThunk = (context: ModuleContext, namespaceName: string, name: string): string | undefined =>
-    context.library.isTreeShaken
+const fallbackClassThunk = (
+    context: ModuleContext,
+    namespaceName: string,
+    name: string,
+    isReceived: boolean,
+): string | undefined =>
+    isReceived && context.library.isTreeShaken
         ? `() => ${context.qualify(namespaceName, sanitizeTypeIdentifier(name))}`
         : undefined;
 
@@ -456,18 +471,18 @@ const classOrInterfaceExpression = (
     resolved: Extract<EntityType, { kind: "class" | "interface" }>,
     ownership: Ownership,
     isNewlyCreated: boolean,
+    isReceived: boolean,
 ): string => {
     const ancestor = fundamentalAncestor(context, resolved);
-    const fallbackClass = fallbackClassThunk(context, resolved.namespace.name, resolved.value.name);
 
     if (ancestor === undefined) {
-        return tObject(ownership, fallbackClass);
+        return tObject(ownership, fallbackClassThunk(context, resolved.namespace.name, resolved.value.name, isReceived));
     }
 
     return renderFundamental({
         ...ancestor,
         ownership: sunkOwnership(ancestor, ownership, isNewlyCreated),
-        fallbackClass,
+        fallbackClass: fallbackClassThunk(context, resolved.namespace.name, resolved.value.name, isReceived),
     });
 };
 
@@ -565,6 +580,7 @@ const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): s
 const recordLayout = (placement: RecordPlacement): RecordLayout => ({
     isCallerAllocated: placement.isCallerAllocated ?? false,
     isInline: placement.isInline ?? false,
+    isReceived: placement.isReceived === true,
 });
 
 const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; unrefFunc: string | undefined } => ({
@@ -622,6 +638,7 @@ const boxedRecordExpression = (options: {
     ownership: Ownership;
     isCallerAllocated: boolean;
     isInline: boolean;
+    isReceived: boolean;
     typeFnName: string;
 }): string => {
     const { context, resolved, ownership, isCallerAllocated, isInline, typeFnName } = options;
@@ -637,7 +654,7 @@ const boxedRecordExpression = (options: {
         isCallerAllocated,
         isInline,
         size: size > 0 ? size : undefined,
-        fallbackClass: fallbackClassThunk(context, resolved.namespace.name, record.name),
+        fallbackClass: fallbackClassThunk(context, resolved.namespace.name, record.name, options.isReceived),
     });
 };
 
@@ -668,38 +685,47 @@ const isPlainStruct = (resolved: Extract<EntityType, { kind: "record" }>): boole
     return record.glibGetType === undefined;
 };
 
+const fundamentalRecordPath = (
+    context: ModuleContext,
+    resolved: Extract<EntityType, { kind: "record" }>,
+    ownership: Ownership,
+    placement: RecordPlacement,
+): string | undefined => {
+    const record = resolved.value;
+    const { refFunc, unrefFunc } = recordRefPair(record);
+    const lib = resolved.namespace.sharedLibrary;
+
+    if (refFunc === undefined || unrefFunc === undefined || lib === undefined) {
+        return undefined;
+    }
+
+    const wrapperClass = requiresFallbackClass(record)
+        ? context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(record.name))
+        : undefined;
+
+    return fundamentalRecordExpression({
+        resolved,
+        lib,
+        refFunc,
+        unrefFunc,
+        ownership,
+        wrapperClass,
+        fallbackClass:
+            wrapperClass === undefined
+                ? fallbackClassThunk(context, resolved.namespace.name, record.name, placement.isReceived === true)
+                : undefined,
+        ...recordLayout(placement),
+    });
+};
+
 const recordExpression = (
     context: ModuleContext,
     resolved: Extract<EntityType, { kind: "record" }>,
     ownership: Ownership,
     placement: RecordPlacement = {},
-): string => {
-    const record = resolved.value;
-    const { refFunc, unrefFunc } = recordRefPair(record);
-    const lib = resolved.namespace.sharedLibrary;
-
-    if (refFunc !== undefined && unrefFunc !== undefined && lib !== undefined) {
-        const wrapperClass = requiresFallbackClass(record)
-            ? context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(record.name))
-            : undefined;
-
-        return fundamentalRecordExpression({
-            resolved,
-            lib,
-            refFunc,
-            unrefFunc,
-            ownership,
-            wrapperClass,
-            fallbackClass:
-                wrapperClass === undefined
-                    ? fallbackClassThunk(context, resolved.namespace.name, record.name)
-                    : undefined,
-            ...recordLayout(placement),
-        });
-    }
-
-    return plainRecordExpression(context, resolved, ownership, placement);
-};
+): string =>
+    fundamentalRecordPath(context, resolved, ownership, placement) ??
+    plainRecordExpression(context, resolved, ownership, placement);
 
 const rawEnumDescriptor = (isSigned: boolean): string => (isSigned ? tInt32 : tUint32);
 
@@ -730,12 +756,19 @@ const expressionForResolved = (
     switch (resolved.kind) {
         case "class":
         case "interface": {
-            return classOrInterfaceExpression(context, resolved, ownership, options.isNewlyCreated ?? false);
+            return classOrInterfaceExpression(
+                context,
+                resolved,
+                ownership,
+                options.isNewlyCreated ?? false,
+                options.isReceived === true,
+            );
         }
         case "record": {
             return recordExpression(context, resolved, ownership, {
                 isCallerAllocated: options.isCallerAllocated ?? false,
                 isInline: options.isInline ?? false,
+                isReceived: options.isReceived === true,
             });
         }
         case "enum": {

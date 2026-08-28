@@ -1,6 +1,6 @@
-import { PRIORITY_DEFAULT_IDLE, SOURCE_CONTINUE, SOURCE_REMOVE, Source, timeoutAdd } from "@gtkx/gi/glib";
-import { Window } from "@gtkx/gi/gtk";
 import type { Widget } from "@gtkx/gi/gtk";
+import { PRIORITY_DEFAULT_IDLE, Source, SOURCE_CONTINUE, SOURCE_REMOVE, timeoutAdd } from "@gtkx/gi/glib";
+import { Window } from "@gtkx/gi/gtk";
 
 type FrameCallback = () => void;
 type Timer = ReturnType<typeof setTimeout>;

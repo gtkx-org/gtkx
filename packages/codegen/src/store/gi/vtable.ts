@@ -627,6 +627,7 @@ const renderVtableSlotDescriptor = (context: ModuleContext, vtable: Vtable, slot
         context,
         callback.returnValue.type,
         callback.returnValue.transferOwnership,
+        { isReceived: true },
     );
 
     const lines = [

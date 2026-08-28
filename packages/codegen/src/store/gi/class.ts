@@ -79,6 +79,14 @@ type AppendInstanceMethodsOptions = {
     className: string;
 };
 
+type TreeShakenClassOptions = {
+    klass: GirClass;
+    className: string;
+    heritage: string;
+    body: string;
+    implemented: ImplementedRef[];
+};
+
 const generateClass = (context: ModuleContext, klass: GirClass): void => {
     if (!isEmittableEntity(klass)) {
         return;
@@ -96,8 +104,7 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
     const parentExpression = resolveParent(context, klass);
     const extendsClause = renderExtendsClause(context, parentExpression, klass, callables);
     const implemented = resolveImplementedRefs(context, klass);
-    const typeRefs = implemented.map((ref) => omittedTypeRef(ref.typeRef, ref.conflicts));
-    const implementsClause = typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
+    const implementsClause = renderImplementsClause(implemented);
 
     if (context.isTreeShaken) {
         context.beginRegistrations();
@@ -105,29 +112,14 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
 
     const { members, accessors } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
-    const doc = getDoc(klass);
-    const modifier = klass.isAbstract ? "abstract " : "";
     const heritage = `${extendsClause}${implementsClause}`;
 
     if (context.isTreeShaken) {
-        const localName = localClassName(className);
-        appendInstallMixins(context, localName, implemented);
-        appendClassRegistrations(context, klass, localName);
-        const registrations = context.takeRegistrations();
-
-        declareFoldedClass({
-            context,
-            className,
-            doc,
-            owner: klass.name,
-            localDeclarations: [`${modifier}class ${localName}${heritage} {\n${body}\n}`],
-            registrations,
-            hasInstanceInterface: true,
-        });
+        declareTreeShakenClass(context, { klass, className, heritage, body, implemented });
     } else {
         context.declare({
             name: className,
-            code: `${doc}export ${modifier}class ${className}${heritage} {\n${body}\n}`,
+            code: `${getDoc(klass)}export ${classModifier(klass)}class ${className}${heritage} {\n${body}\n}`,
             owner: klass.name,
         });
     }
@@ -143,6 +135,32 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
         appendInstallMixins(context, className, implemented);
         appendClassRegistrations(context, klass, className);
     }
+};
+
+const classModifier = (klass: GirClass): string => (klass.isAbstract ? "abstract " : "");
+
+const renderImplementsClause = (implemented: ImplementedRef[]): string => {
+    const typeRefs = implemented.map((ref) => omittedTypeRef(ref.typeRef, ref.conflicts));
+
+    return typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
+};
+
+const declareTreeShakenClass = (context: ModuleContext, options: TreeShakenClassOptions): void => {
+    const { klass, className, heritage, body, implemented } = options;
+    const localName = localClassName(className);
+    appendInstallMixins(context, localName, implemented);
+    appendClassRegistrations(context, klass, localName);
+    const registrations = context.takeRegistrations();
+
+    declareFoldedClass({
+        context,
+        className,
+        doc: getDoc(klass),
+        owner: klass.name,
+        localDeclarations: [`${classModifier(klass)}class ${localName}${heritage} {\n${body}\n}`],
+        registrations,
+        hasInstanceInterface: true,
+    });
 };
 
 const appendMemberDeclarations = (options: MemberDeclarationsOptions): void => {

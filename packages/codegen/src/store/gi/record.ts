@@ -13,8 +13,42 @@ import { computeRecordFieldSlots } from "./record-layout.js";
 import { appendWrapperClassRegistration } from "./registration.js";
 import { isConstructibleRecord } from "./value-marshalable.js";
 
+type FoldedRecordOptions = {
+    record: GirRecord;
+    className: string;
+    doc: string;
+    modifier: string;
+    heritage: string;
+    body: string;
+    gtypeExpr: string;
+};
+
 const isGErrorRecord = (context: ModuleContext, record: GirRecord): boolean =>
     context.namespace.name === "GLib" && record.glibGetType === "g_error_get_type";
+
+const recordHeritage = (isErrorSubclass: boolean): string => (isErrorSubclass ? " extends globalThis.Error" : "");
+const recordModifier = (isConstructible: boolean): string => (isConstructible ? "" : "abstract ");
+
+const declareFoldedRecord = (context: ModuleContext, options: FoldedRecordOptions): void => {
+    const { record, className, doc, modifier, heritage, body, gtypeExpr } = options;
+    const localName = localClassName(className);
+    context.beginRegistrations();
+
+    appendWrapperClassRegistration(context, {
+        className: localName,
+        gtypeExpr,
+    });
+
+    declareFoldedClass({
+        context,
+        className,
+        doc,
+        owner: record.name,
+        localDeclarations: [`${modifier}class ${localName}${heritage} {\n${body}\n}`],
+        registrations: context.takeRegistrations(),
+        hasInstanceInterface: true,
+    });
+};
 
 const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     if (!isEmittableEntity(record)) {
@@ -33,30 +67,14 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     generateBindings(context, callables);
     const members = renderRecordMembers(context, record, className, callables);
     const body = indentMembers(members);
-    const heritage = isErrorSubclass ? " extends globalThis.Error" : "";
+    const heritage = recordHeritage(isErrorSubclass);
     const doc = getDoc(record);
     const isConstructible = isConstructibleRecord(context, context.namespace.name, record);
-    const modifier = isConstructible ? "" : "abstract ";
+    const modifier = recordModifier(isConstructible);
     const gtypeExpr = renderSourceGtype(context, record);
 
-    if (context.isTreeShaken && gtypeExpr !== undefined) {
-        const localName = localClassName(className);
-        context.beginRegistrations();
-
-        appendWrapperClassRegistration(context, {
-            className: localName,
-            gtypeExpr,
-        });
-
-        declareFoldedClass({
-            context,
-            className,
-            doc,
-            owner: record.name,
-            localDeclarations: [`${modifier}class ${localName}${heritage} {\n${body}\n}`],
-            registrations: context.takeRegistrations(),
-            hasInstanceInterface: true,
-        });
+    if (gtypeExpr !== undefined && context.isTreeShaken) {
+        declareFoldedRecord(context, { record, className, doc, modifier, heritage, body, gtypeExpr });
     } else {
         context.declare({
             name: className,

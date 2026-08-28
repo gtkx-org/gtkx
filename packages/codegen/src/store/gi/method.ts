@@ -438,6 +438,7 @@ const renderReturnDescriptor = (context: ModuleContext, fn: GirFunction): Return
         argIndexOffset: instanceOffset,
         argIndexMap: emittedArgIndices(fn, instanceOffset),
         isNewlyCreated: fn.instance === undefined,
+        isReceived: true,
     });
 
     return {
@@ -568,6 +569,7 @@ const planOutParam = (
         ...argIndex,
         cursor: parameter.cursor,
         hasOutIndirection: true,
+        isReceived: true,
     });
 
     return {

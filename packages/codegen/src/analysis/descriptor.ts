@@ -180,6 +180,9 @@ const optionsObject = (parts: (string | undefined)[]): string | undefined => {
     return present.length === 0 ? undefined : `{ ${present.join(", ")} }`;
 };
 
+const optionalLiteralEntry = (key: string, value: string | undefined): string | undefined =>
+    value === undefined ? undefined : `${key}: ${sourceStringLiteral(value)}`;
+
 const tScalar = (name: ScalarDescriptorName): string => T[name];
 
 const tString = (ownership: Ownership, length?: string): string =>
@@ -193,11 +196,9 @@ const tBoxed = (glibName: string, options: BoxedOptions): string =>
         sourceStringLiteral(glibName),
         optionsObject([
             `ownership: ${sourceStringLiteral(options.ownership)}`,
-            options.sharedLibrary === undefined
-                ? undefined
-                : `sharedLibrary: ${sourceStringLiteral(options.sharedLibrary)}`,
+            optionalLiteralEntry("sharedLibrary", options.sharedLibrary),
             `getTypeFnName: ${sourceStringLiteral(options.getTypeFnName)}`,
-            options.freeFnName === undefined ? undefined : `freeFnName: ${sourceStringLiteral(options.freeFnName)}`,
+            optionalLiteralEntry("freeFnName", options.freeFnName),
             options.isCallerAllocated ? "isCallerAllocated: true" : undefined,
             options.isInline === true ? "isInline: true" : undefined,
             options.size === undefined ? undefined : `size: ${String(options.size)}`,

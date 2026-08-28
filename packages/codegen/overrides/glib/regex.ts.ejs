@@ -20,6 +20,7 @@ declare module "../glib.js" {
          * @since 2.14
          */
         matchFull(string: string, startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
+        matchFull(string: string[], startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
         /**
          * Using the DFA algorithm, scans for all the possible matches in `string`,
          * including overlapping ones.
@@ -38,6 +39,7 @@ declare module "../glib.js" {
          * @since 2.14
          */
         matchAllFull(string: string, startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
+        matchAllFull(string: string[], startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
     }
 }
 

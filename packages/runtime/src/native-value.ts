@@ -9,6 +9,7 @@ import {
     type Handle,
     type Ref,
 } from "@gtkx/native";
+import { warnOnce } from "./debug.js";
 import {
     type ArrayDescriptor,
     type BoxedDescriptor,
@@ -21,7 +22,6 @@ import {
     refT,
     type StructDescriptor,
 } from "./descriptors.js";
-import { warnOnce } from "./debug.js";
 import { checkError } from "./error.js";
 import { LIB } from "./library.js";
 import {

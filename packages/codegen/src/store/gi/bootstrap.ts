@@ -14,46 +14,50 @@ const CORE_WRAPPERS: Record<string, string[]> = {
 
 const renderNativeTypeIndex = (context: ModuleContext): string => {
     const entries = sortStrings(context.nativeTypeNames.keys()).map((name) => {
-        const [sharedLibrary, getTypeFnName] = context.nativeTypeNames.get(name) ?? ["", ""];
+        const [sharedLibrary, typeFnName] = context.nativeTypeNames.get(name) ?? ["", ""];
 
         return `    ${sourceStringLiteral(name)}: ` +
-            `[${sourceStringLiteral(sharedLibrary)}, ${sourceStringLiteral(getTypeFnName)}],`;
+            `[${sourceStringLiteral(sharedLibrary)}, ${sourceStringLiteral(typeFnName)}],`;
     });
 
     return entries.length === 0 ? "{}" : `{\n${entries.join("\n")}\n}`;
 };
 
-const renderBootstrapModule = (context: ModuleContext): string => {
-    const directory = namespaceDirectory(context.namespace);
-    const lines: string[] = [];
+const renderDependencyImports = (context: ModuleContext): string[] => [
+    ...sortStrings(context.dependencies).map((dependency) => `import "../${dependency}/bootstrap.js";`),
+    ...sortStrings(context.externalDependencies).map((packageName) => `import ${sourceStringLiteral(packageName)};`),
+];
 
-    for (const dependency of sortStrings(context.dependencies)) {
-        lines.push(`import "../${dependency}/bootstrap.js";`);
-    }
+const renderOverrideImports = (directory: string): string[] =>
+    (PATCHING_OVERRIDES[directory] ?? []).map((override) => `import ${sourceStringLiteral(override)};`);
 
-    for (const packageName of sortStrings(context.externalDependencies)) {
-        lines.push(`import ${sourceStringLiteral(packageName)};`);
-    }
-
-    for (const override of PATCHING_OVERRIDES[directory] ?? []) {
-        lines.push(`import ${sourceStringLiteral(override)};`);
-    }
-
+const renderRuntimeImport = (context: ModuleContext): string => {
     const runtimeImports = new Set(context.bootstrapRuntimeImports);
     runtimeImports.add("registerNativeTypeNames");
-    lines.push(`import { ${sortStrings(runtimeImports).join(", ")} } from "@gtkx/runtime";`);
 
-    const coreWrappers = CORE_WRAPPERS[directory] ?? [];
+    return `import { ${sortStrings(runtimeImports).join(", ")} } from "@gtkx/runtime";`;
+};
+
+const renderModuleImports = (context: ModuleContext, directory: string, coreWrappers: string[]): string[] => {
     const moduleImports = sortStrings(new Set([...context.bootstrapModuleExports, ...coreWrappers]));
 
-    if (moduleImports.length > 0) {
-        lines.push(`import { ${moduleImports.join(", ")} } from "./${directory}.js";`);
-    }
+    return moduleImports.length === 0 ? [] : [`import { ${moduleImports.join(", ")} } from "./${directory}.js";`];
+};
 
-    lines.push("");
+const renderBootstrapModule = (context: ModuleContext): string => {
+    const directory = namespaceDirectory(context.namespace);
+    const coreWrappers = CORE_WRAPPERS[directory] ?? [];
     const wrappersArgument = coreWrappers.length === 0 ? "" : `, [${coreWrappers.join(", ")}]`;
-    lines.push(`registerNativeTypeNames(${renderNativeTypeIndex(context)}${wrappersArgument});`);
-    lines.push(...context.bootstrapCalls);
+
+    const lines = [
+        ...renderDependencyImports(context),
+        ...renderOverrideImports(directory),
+        renderRuntimeImport(context),
+        ...renderModuleImports(context, directory, coreWrappers),
+        "",
+        `registerNativeTypeNames(${renderNativeTypeIndex(context)}${wrappersArgument});`,
+        ...context.bootstrapCalls,
+    ];
 
     return `${lines.join("\n")}\n`;
 };

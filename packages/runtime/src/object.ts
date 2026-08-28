@@ -97,6 +97,21 @@ function registerConstructProperties(cls: AnyClass, bindings: ConstructBindings)
     declarations.generation += 1;
 }
 
+function warnParamSpecFallback(gtype: bigint, name: string): void {
+    const ownerName = typeName(gtype);
+
+    if (ownerName === null || !isIndexedTypeName(ownerName)) {
+        return;
+    }
+
+    warnOnce(
+        `construct-prop:${String(gtype)}:${name}`,
+        `construct property '${name}' of '${ownerName}' was marshalled through its ParamSpec because no ` +
+        "declared descriptor was found; its declaration may have been dropped from the bundle, and null or " +
+        "fractional values now throw instead of coercing",
+    );
+}
+
 function constructPropertyForEntry(
     source: { gtype: bigint; bindings: ConstructBindings; wrapper: object },
     name: string,
@@ -110,15 +125,9 @@ function constructPropertyForEntry(
 
     if (binding === undefined) {
         const property = constructPropertyFor(source.gtype, name, value, source.wrapper);
-        const ownerName = property === undefined ? null : typeName(source.gtype);
 
-        if (ownerName !== null && isIndexedTypeName(ownerName)) {
-            warnOnce(
-                `construct-prop:${String(source.gtype)}:${name}`,
-                `construct property '${name}' of '${ownerName}' was marshalled through its ParamSpec because ` +
-                "no declared descriptor was found; its declaration may have been dropped from the bundle, and " +
-                "null or fractional values now throw instead of coercing",
-            );
+        if (property !== undefined) {
+            warnParamSpecFallback(source.gtype, name);
         }
 
         return property;

@@ -30,6 +30,7 @@ type GiStoreRecords = {
 };
 
 const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "overrides");
+const TREE_SHAKEN_SIDE_EFFECTS = ["**/bootstrap.js", "**/overrides/*.js", "**/index.js"];
 
 const overrideFiles = (directory: string): SourceModule[] => {
     const dir = join(OVERRIDES_ROOT, directory);
@@ -108,8 +109,6 @@ const storePeerDependencies = (externalNamespaces: GiExternalNamespaceInput[]): 
             "*",
         ]),
     );
-
-const TREE_SHAKEN_SIDE_EFFECTS = ["**/bootstrap.js", "**/overrides/*.js", "**/index.js"];
 
 const writeGiStore = (
     options: StoreOptions,

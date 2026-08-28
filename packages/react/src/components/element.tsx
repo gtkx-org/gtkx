@@ -78,10 +78,7 @@ const buildElement = (typeName: string, record: Props): ReactElement => {
  * @returns A component taking that type's props.
  */
 /* eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- callers name the props */
-function createElementComponent<P = unknown>(typeName: string, cls?: unknown): (props: P) => ReactNode {
-    void cls;
-
-    return (props: P): ReactNode => buildElement(typeName, isRecord(props) ? props : {});
-}
+const createElementComponent: <P = unknown>(typeName: string, cls?: unknown) => (props: P) => ReactNode =
+    (typeName) => (props): ReactNode => buildElement(typeName, isRecord(props) ? props : {});
 
 export { Prop, createElementComponent };

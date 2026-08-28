@@ -60,7 +60,7 @@ const renderGtypeExpression = (
         return renderInternGtype(context, typeName);
     }
 
-    if (context.isTreeShaken && typeName !== undefined) {
+    if (typeName !== undefined && context.isTreeShaken) {
         context.addNativeTypeName(typeName, typeFnName);
     }
 

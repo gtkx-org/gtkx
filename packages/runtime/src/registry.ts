@@ -40,12 +40,15 @@ type StaticBase<C, K extends PropertyKey> = Omit<C, K> &
  * exported as an interface extending the local class so declaration merging and module
  * augmentation keep working, and this type makes constructing the constant produce that interface.
  */
-type WrapperClass<C, I> = Omit<C, "prototype"> & { prototype: I } &
-    (C extends new (...args: infer A) => unknown
-        ? new (...args: A) => I
-        : C extends abstract new (...args: infer A) => unknown
-            ? abstract new (...args: A) => I
-            : never);
+type WrapperClass<C, I> = Omit<C, "prototype"> & {
+    /** Prototype retyped to the exported instance interface, so `instanceof` narrows to it. */
+    prototype: I;
+} &
+(C extends new (...args: infer A) => unknown
+    ? new (...args: A) => I
+    : C extends abstract new (...args: infer A) => unknown
+        ? abstract new (...args: A) => I
+        : never);
 
 /** One overridable vtable slot: where it sits in the vtable struct and how it is marshalled. */
 type VfuncDescriptor = {
@@ -484,16 +487,6 @@ function getWrapperClass(type: bigint): AnyClass {
     return cls;
 }
 
-/**
- * Returns the wrapper class registered for exactly the given GType, never an ancestor's, and
- * throws when none is. Ancestor fallback is wrong where the class decides what gets constructed,
- * the way the reconciler instantiates elements, because a wrapper constructs its own registered
- * GType rather than the one asked for.
- *
- * @param type GType to look up.
- * @param label Name to report the type as, when the caller resolved it from a string.
- * @throws If the type is invalid or no class is registered for exactly that type.
- */
 function getExactWrapperClass(type: bigint, label?: string): AnyClass {
     if (type === TYPE_INVALID) {
         throw new Error(`No GType is registered under '${label ?? String(type)}'`);
@@ -531,13 +524,21 @@ function getInterfaceMixin(type: bigint): Mixin | undefined {
     return interfaceMixinRegistry.get(type);
 }
 
-function applyInterfaceMixin(
-    cls: AnyClass,
-    type: bigint,
-    baseType: bigint,
-    applied: Set<bigint>,
-    runtimeType: bigint,
-): AnyClass {
+function warnMissingMixin(type: bigint): void {
+    const interfaceName = typeName(type);
+
+    if (interfaceName === null || !isIndexedTypeName(interfaceName)) {
+        return;
+    }
+
+    warnOnce(
+        `mixin:${String(type)}`,
+        `interface '${interfaceName}' has no registered mixin, so wrapped instances lack its members; ` +
+        "import the interface from its @gtkx/gi namespace to retain it",
+    );
+}
+
+function applyInterfaceMixin(cls: AnyClass, type: bigint, baseType: bigint, applied: Set<bigint>): AnyClass {
     if (applied.has(type) || typeIsA(baseType, type)) {
         return cls;
     }
@@ -545,16 +546,7 @@ function applyInterfaceMixin(
     const mixin = getInterfaceMixin(type);
 
     if (mixin === undefined) {
-        const interfaceName = typeName(type);
-
-        if (interfaceName !== null && isIndexedTypeName(interfaceName)) {
-            warnOnce(
-                `mixin:${String(type)}`,
-                `wrapping '${typeName(runtimeType) ?? String(runtimeType)}': interface '${interfaceName}' has ` +
-                "no registered mixin, so the wrapper lacks its members; import the interface from its " +
-                "@gtkx/gi namespace to retain it",
-            );
-        }
+        warnMissingMixin(type);
 
         return cls;
     }
@@ -570,7 +562,7 @@ function createComposedClass(base: AnyClass, runtimeType: bigint): AnyClass {
     let cls: AnyClass = base;
 
     for (const type of typeInterfaces(runtimeType)) {
-        cls = applyInterfaceMixin(cls, type, baseType, applied, runtimeType);
+        cls = applyInterfaceMixin(cls, type, baseType, applied);
     }
 
     return applied.size === 0 ? base : cls;
@@ -580,35 +572,31 @@ function isWrappableBase(fallbackType: bigint): boolean {
     return fallbackType === TYPE_INVALID || typeFundamental(fallbackType) === TYPE_OBJECT;
 }
 
+function warnFallbackWrap(kind: string, runtimeType: bigint, fallbackName: string): void {
+    warnOnce(
+        `${kind}:${String(runtimeType)}`,
+        `no wrapper class is registered for '${typeName(runtimeType) ?? String(runtimeType)}' at or below its ` +
+        `declared type; wrapping as the declared '${fallbackName}'`,
+    );
+}
+
+function isBetweenWalkAndRuntime(fallbackType: bigint, walkedType: bigint, runtimeType: bigint): boolean {
+    return fallbackType !== walkedType && typeIsA(fallbackType, walkedType) && typeIsA(runtimeType, fallbackType);
+}
+
 function chooseWrapBase(walked: AnyClass | null, fallback: AnyClass | undefined, runtimeType: bigint): AnyClass | null {
-    if (fallback === undefined) {
-        return walked;
-    }
-
-    const fallbackType = getClassType(fallback);
-
-    if (!isWrappableBase(fallbackType)) {
+    if (fallback === undefined || !isWrappableBase(getClassType(fallback))) {
         return walked;
     }
 
     if (walked === null) {
-        warnOnce(
-            `wrap-miss:${String(runtimeType)}`,
-            `no wrapper class is registered for '${typeName(runtimeType) ?? String(runtimeType)}' or any ` +
-            `ancestor; wrapping as the declared type '${fallback.name}'`,
-        );
+        warnFallbackWrap("wrap-miss", runtimeType, fallback.name);
 
         return fallback;
     }
 
-    const walkedType = getClassType(walked);
-
-    if (fallbackType !== walkedType && typeIsA(fallbackType, walkedType) && typeIsA(runtimeType, fallbackType)) {
-        warnOnce(
-            `wrap-degrade:${String(runtimeType)}`,
-            `no wrapper class is registered between '${typeName(runtimeType) ?? String(runtimeType)}' and its ` +
-            `declared type; wrapping as the declared '${fallback.name}'`,
-        );
+    if (isBetweenWalkAndRuntime(getClassType(fallback), getClassType(walked), runtimeType)) {
+        warnFallbackWrap("wrap-degrade", runtimeType, fallback.name);
 
         return fallback;
     }

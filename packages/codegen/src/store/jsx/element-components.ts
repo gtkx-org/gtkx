@@ -1,9 +1,9 @@
 import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
-import { externalPackageFor } from "../../gir/external-namespaces.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import type { LazyElementSpec } from "./element-prop-types.js";
+import { externalPackageFor } from "../../gir/external-namespaces.js";
 import { getDoc } from "../gi/doc-spec.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
@@ -151,8 +151,10 @@ const renderElementComponentExport = (
 ): string => {
     const propsType = `${glibName}Props`;
     const annotation = `(props: ${propsType}) => ReactNode`;
+
     const factoryArgs =
         classRef === undefined ? sourceStringLiteral(glibName) : `${sourceStringLiteral(glibName)}, ${classRef}`;
+
     const pure = classRef === undefined ? "" : "/* @__PURE__ */ ";
     const factoryCall = `${pure}createElementComponent(${factoryArgs})`;
 

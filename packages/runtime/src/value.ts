@@ -129,6 +129,7 @@ const stringValueType = bindValueType("string", stringT("borrowed"));
 const enumValueType = bindValueType("enum", int32T);
 const flagsValueType = bindValueType("flags", uint32T);
 const objectValueType = bindValueType("object", objectT("borrowed"));
+const objectValueFundamentals: Set<bigint> = new Set([TYPE_OBJECT, TYPE_INTERFACE]);
 const paramValueType = bindValueType("param", PARAM_T);
 const variantValueType = bindValueType("variant", VARIANT_T);
 const pointerValueType = bindValueType("pointer", uint64T);
@@ -719,8 +720,6 @@ function fromValue(value: ExternalObject<Handle>): unknown {
     return get(value);
 }
 
-const objectValueFundamentals: Set<bigint> = new Set([TYPE_OBJECT, TYPE_INTERFACE]);
-
 const objectValueWithFallback = (
     descriptor: ObjectDescriptor,
     value: ExternalObject<Handle>,
@@ -738,7 +737,7 @@ const fromValueForDescriptor = (descriptor: Descriptor, value: ExternalObject<Ha
     }
 
     if (descriptor.kind === "object") {
-        const withFallback = objectValueWithFallback(descriptor as ObjectDescriptor, value);
+        const withFallback = objectValueWithFallback(descriptor, value);
 
         if (withFallback !== null) {
             return withFallback.wrapped;

@@ -69,7 +69,7 @@ const wrapAlias = (
 
 const wrapValue = (context: ModuleContext, ref: TypeId, valueExpression: string): string => {
     context.addRuntimeImport("fromNative");
-    const descriptor = context.hoistDescriptor(renderDescriptor(context, ref, "none"));
+    const descriptor = context.hoistDescriptor(renderDescriptor(context, ref, "none", { isReceived: true }));
 
     return `(fromNative(${descriptor}, ${valueExpression}) as ${renderTsType(context, ref, false)})`;
 };

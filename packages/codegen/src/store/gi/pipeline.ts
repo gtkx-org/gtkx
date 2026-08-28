@@ -60,9 +60,7 @@ const generateNamespaceTypes = (context: ModuleContext, namespace: GirNamespace)
     }
 
     if (context.isTreeShaken) {
-        for (const iface of namespace.interfaces) {
-            generateInterface(context, iface);
-        }
+        generateInterfaces(context, namespace);
     }
 
     for (const klass of topologicalClassOrder(namespace.classes, namespace.name)) {
@@ -70,9 +68,13 @@ const generateNamespaceTypes = (context: ModuleContext, namespace: GirNamespace)
     }
 
     if (!context.isTreeShaken) {
-        for (const iface of namespace.interfaces) {
-            generateInterface(context, iface);
-        }
+        generateInterfaces(context, namespace);
+    }
+};
+
+const generateInterfaces = (context: ModuleContext, namespace: GirNamespace): void => {
+    for (const iface of namespace.interfaces) {
+        generateInterface(context, iface);
     }
 };
 

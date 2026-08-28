@@ -318,7 +318,7 @@ const renderEmitReturnArg = (context: ModuleContext, returnValue: GirReturnValue
         return "";
     }
 
-    return `, ${renderDescriptor(context, returnValue.type, returnValue.transferOwnership)}`;
+    return `, ${renderDescriptor(context, returnValue.type, returnValue.transferOwnership, { isReceived: true })}`;
 };
 
 const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => {
@@ -332,7 +332,10 @@ const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => 
     let argIndex = 0;
 
     const argLiterals = params.map((parameter) => {
-        const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership);
+        const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
+            isReceived: true,
+        });
+
         const rendered = renderEmitArgLiteral({ context, parameter, descriptor, argIndex });
         argIndex = rendered.nextArgIndex;
 
@@ -366,7 +369,9 @@ const renderCallback = (context: ModuleContext, signal: GirCallable): string => 
 
     return tCallback({
         argTypes: callbackArgs,
-        returns: renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership),
+        returns: renderDescriptor(context, signal.returnValue.type, signal.returnValue.transferOwnership, {
+            isReceived: true,
+        }),
         options: [
             "hasDestroy: true",
             "destroyKind: \"closureNotify\"",

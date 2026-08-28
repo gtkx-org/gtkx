@@ -8,7 +8,32 @@ type BootstrapCallOptions = {
     runtimeImports?: string[];
 };
 
+const addExternalNamespaceImport = (context: ModuleContext, packageName: string, namespaceName: string): void => {
+    if (context.isTreeShaken) {
+        context.externalDependencies.add(packageName);
+    } else {
+        context.module.imports.addSideEffect(packageName);
+    }
+
+    context.module.imports.addNamespace(packageName, namespaceName);
+};
+
+const addInternalNamespaceImport = (context: ModuleContext, namespaceName: string): void => {
+    const directory = namespaceName.toLowerCase();
+    const isFoundational = directory === "gobject" || directory === "glib";
+    const path = isFoundational ? `../${directory}/${directory}.js` : `../${directory}/index.js`;
+
+    if (context.isTreeShaken) {
+        context.dependencies.add(directory);
+    } else if (!isFoundational) {
+        context.module.imports.addSideEffect(path);
+    }
+
+    context.module.imports.addNamespace(path, namespaceName);
+};
+
 class ModuleContext {
+    private registrationSink: string[] | undefined;
     public module: ModuleBuilder = new ModuleBuilder();
     public namespace: GirNamespace;
     public library: Library;
@@ -18,7 +43,6 @@ class ModuleContext {
     public bootstrapModuleExports: Set<string> = new Set();
     public bootstrapRuntimeImports: Set<string> = new Set();
     public nativeTypeNames: Map<string, readonly [string, string]> = new Map();
-    private registrationSink: string[] | undefined;
 
     constructor(namespace: GirNamespace, library: Library) {
         this.namespace = namespace;
@@ -63,25 +87,28 @@ class ModuleContext {
     }
 
     addBootstrapCall(code: string, options: BootstrapCallOptions = {}): void {
-        for (const name of options.moduleExports ?? []) {
+        const moduleExports = options.moduleExports ?? [];
+        const runtimeImports = options.runtimeImports ?? [];
+
+        for (const name of moduleExports) {
             this.bootstrapModuleExports.add(name);
         }
 
-        for (const name of options.runtimeImports ?? []) {
+        for (const name of runtimeImports) {
             this.bootstrapRuntimeImports.add(name);
         }
 
         this.bootstrapCalls.push(code);
     }
 
-    addNativeTypeName(glibTypeName: string, getTypeFnName: string): void {
+    addNativeTypeName(glibTypeName: string, typeFnName: string): void {
         const sharedLibrary = this.namespace.sharedLibrary;
 
         if (sharedLibrary === undefined) {
             return;
         }
 
-        this.nativeTypeNames.set(glibTypeName, [sharedLibrary, getTypeFnName]);
+        this.nativeTypeNames.set(glibTypeName, [sharedLibrary, typeFnName]);
     }
 
     addGObjectBootstrapImports(): void {
@@ -109,29 +136,11 @@ class ModuleContext {
 
         const packageName = externalPackageFor(namespaceName);
 
-        if (packageName !== undefined) {
-            if (this.isTreeShaken) {
-                this.externalDependencies.add(packageName);
-            } else {
-                this.module.imports.addSideEffect(packageName);
-            }
-
-            this.module.imports.addNamespace(packageName, namespaceName);
-
-            return namespaceName;
+        if (packageName === undefined) {
+            addInternalNamespaceImport(this, namespaceName);
+        } else {
+            addExternalNamespaceImport(this, packageName, namespaceName);
         }
-
-        const directory = namespaceName.toLowerCase();
-        const isFoundational = directory === "gobject" || directory === "glib";
-        const path = isFoundational ? `../${directory}/${directory}.js` : `../${directory}/index.js`;
-
-        if (this.isTreeShaken) {
-            this.dependencies.add(directory);
-        } else if (!isFoundational) {
-            this.module.imports.addSideEffect(path);
-        }
-
-        this.module.imports.addNamespace(path, namespaceName);
 
         return namespaceName;
     }

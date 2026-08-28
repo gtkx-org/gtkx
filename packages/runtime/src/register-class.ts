@@ -382,6 +382,7 @@ const PROPERTY_VFUNC_SPECS: PropertyVfuncSpec[] = [
 ];
 
 const PROPERTY_VFUNC_NAMES: Set<string> = new Set(PROPERTY_VFUNC_SPECS.map((spec) => spec.methodName));
+const VFUNC_METHOD_PATTERN = /^vfunc[A-Z0-9]/;
 const TYPE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9\-_+]{2,}$/;
 const UPPER_CASE_PATTERN = /[A-Z]/;
 const SIGNAL_OVERRIDE_PATTERN = /^on[A-Z]/;
@@ -679,14 +680,10 @@ function wrapVfunc(
     );
 }
 
-const VFUNC_METHOD_PATTERN = /^vfunc[A-Z0-9]/;
-
-function warnUnclaimedVfuncs(
-    klass: AnyClass,
-    methods: MethodTable,
+const claimedVfuncNames = (
     claimedMethodNames: Set<string>,
     interfaceBindings: InterfaceVfuncBinding[],
-): void {
+): Set<string> => {
     const claimed = new Set(claimedMethodNames);
 
     for (const binding of interfaceBindings) {
@@ -694,6 +691,17 @@ function warnUnclaimedVfuncs(
             claimed.add(vfunc.methodName);
         }
     }
+
+    return claimed;
+};
+
+function warnUnclaimedVfuncs(
+    klass: AnyClass,
+    methods: MethodTable,
+    claimedMethodNames: Set<string>,
+    interfaceBindings: InterfaceVfuncBinding[],
+): void {
+    const claimed = claimedVfuncNames(claimedMethodNames, interfaceBindings);
 
     for (const methodName of methods.keys()) {
         if (VFUNC_METHOD_PATTERN.test(methodName) && !claimed.has(methodName)) {

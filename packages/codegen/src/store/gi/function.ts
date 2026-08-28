@@ -176,31 +176,39 @@ const stripLongestPrefix = (input: string, prefixes: string[]): string => {
     return best.length === 0 ? input : input.slice(best.length);
 };
 
+const appendInitBootstrap = (context: ModuleContext, exportName: string): void => {
+    if (context.isTreeShaken) {
+        context.addBootstrapCall(`${exportName}();`, { moduleExports: [exportName] });
+    } else {
+        context.module.appendRegistration(`${exportName}();`, [exportName]);
+    }
+};
+
+const appendFinalizeBootstrap = (context: ModuleContext, exportName: string): void => {
+    if (context.isTreeShaken) {
+        context.addBootstrapCall(`onExit(${exportName});`, {
+            moduleExports: [exportName],
+            runtimeImports: ["onExit"],
+        });
+    } else {
+        context.addRuntimeImport("onExit");
+        context.module.appendRegistration(`onExit(${exportName});`, [exportName]);
+    }
+};
+
 const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, exportName: string): void => {
     if (fn.parameters.length > 0) {
         return;
     }
 
     if (fn.name === "init") {
-        if (context.isTreeShaken) {
-            context.addBootstrapCall(`${exportName}();`, { moduleExports: [exportName] });
-        } else {
-            context.module.appendRegistration(`${exportName}();`, [exportName]);
-        }
+        appendInitBootstrap(context, exportName);
 
         return;
     }
 
     if (fn.name === "finalize") {
-        if (context.isTreeShaken) {
-            context.addBootstrapCall(`onExit(${exportName});`, {
-                moduleExports: [exportName],
-                runtimeImports: ["onExit"],
-            });
-        } else {
-            context.addRuntimeImport("onExit");
-            context.module.appendRegistration(`onExit(${exportName});`, [exportName]);
-        }
+        appendFinalizeBootstrap(context, exportName);
     }
 };
 

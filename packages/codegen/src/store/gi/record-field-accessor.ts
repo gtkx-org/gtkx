@@ -285,7 +285,7 @@ const renderRecordFieldAccessor = (
     }
 
     const descriptor = context.hoistDescriptor(
-        renderDescriptor(context, field.type, "none", { isInline: isInlineField(context, field) }),
+        renderDescriptor(context, field.type, "none", { isInline: isInlineField(context, field), isReceived: true }),
     );
 
     const tsType = fieldTsType(context, field.type);
@@ -501,7 +501,7 @@ const visitInlineStructSlot = (
         return;
     }
 
-    const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none"));
+    const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none", { isReceived: true }));
     visitors.leaf({ jsName, descriptor, offset, slot, type: field.type });
 };
 
@@ -778,7 +778,9 @@ const renderInlineArrayAccessor = (context: ModuleContext, target: StructArrayTa
         context,
         jsName,
         tsType: renderTsType(context, field.type, false),
-        descriptor: context.hoistDescriptor(renderDescriptor(context, resolution.element, "none", { isInline: true })),
+        descriptor: context.hoistDescriptor(
+            renderDescriptor(context, resolution.element, "none", { isInline: true, isReceived: true }),
+        ),
         offset: slot.byteOffset,
         resolution,
     };

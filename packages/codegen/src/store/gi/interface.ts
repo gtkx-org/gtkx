@@ -91,17 +91,8 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
     const gtypeExpr = renderSourceGtype(context, iface);
     const implRef = appendInterfaceTypes(context, iface, className, callables) ?? "unknown";
 
-    if (context.isTreeShaken && gtypeExpr !== undefined) {
-        for (const declaration of renderSignalDeclarations(context, iface, className, true)) {
-            context.declare(declaration);
-        }
-
-        context.declare({
-            name: makerName(className),
-            code: renderInterfaceMaker(context, iface, className, callables),
-        });
-
-        generateFoldedInterface(context, { iface, className, callables, gtypeExpr, implRef });
+    if (gtypeExpr !== undefined && context.isTreeShaken) {
+        declareTreeShakenInterface(context, { iface, className, callables, gtypeExpr, implRef });
 
         return;
     }
@@ -124,6 +115,24 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
         gtypeExpr,
         layout: renderInterfaceLayout(context, iface, callables),
     });
+};
+
+const declareTreeShakenInterface = (
+    context: ModuleContext,
+    options: Omit<InterfaceClassOptions, "gtypeExpr"> & { gtypeExpr: string },
+): void => {
+    const { iface, className, callables } = options;
+
+    for (const declaration of renderSignalDeclarations(context, iface, className, true)) {
+        context.declare(declaration);
+    }
+
+    context.declare({
+        name: makerName(className),
+        code: renderInterfaceMaker(context, iface, className, callables),
+    });
+
+    generateFoldedInterface(context, options);
 };
 
 const generateFoldedInterface = (
@@ -432,7 +441,6 @@ const renderInterfaceClass = (
     }
 
     members.push(...renderStaticHead(context, callables, className), renderInterfaceBrand(context, implRef));
-
     const head = localName === undefined ? `export abstract class ${className}` : `abstract class ${localName}`;
 
     return renderBracedOrEmpty(head, members.join("\n\n"));

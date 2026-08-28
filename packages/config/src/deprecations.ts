@@ -51,7 +51,9 @@ const FUTURE_DEPRECATIONS: FutureDeprecation[] = [
     {
         id: "gtkx-v2-tree-shaking",
         flag: "v2TreeShaking",
-        change: "The stores register every class eagerly. In 2.0 each class registers itself and unused ones drop from bundles.",
+        change:
+            "The stores register every class eagerly. " +
+            "In 2.0 each class registers itself and unused ones drop from bundles.",
     },
 ];
 

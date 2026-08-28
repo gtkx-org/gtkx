@@ -8,8 +8,8 @@ const OUT_DIR = "dist";
 const USED_NAME_PREFIX = "used-name=";
 const USED_TYPE_PREFIX = "used-type=";
 const INDEXED_TYPE_PREFIX = "indexed-type=";
-const UNUSED_CLASS_METHOD = "communicateUtf8Async";
-const UNUSED_GET_TYPE = "g_subprocess_get_type";
+const UNUSED_CLASS_METHOD = "getAutoplay";
+const UNUSED_GET_TYPE = "gtk_video_get_type";
 
 const APP_CONFIG = `export default {
     applicationId: "com.gtkx.clitreeshakingprobe",
@@ -26,12 +26,12 @@ const APP_CONFIG = `export default {
 };
 `;
 
-const APP_ENTRY = `import { Task } from "@gtkx/gi/gio";
+const APP_ENTRY = String.raw`import { Task } from "@gtkx/gi/gio";
 import { typeFromName } from "@gtkx/runtime";
 
-process.stdout.write("${USED_NAME_PREFIX}" + Task.name + "\\n");
-process.stdout.write("${USED_TYPE_PREFIX}" + String(typeFromName("GTask") !== 0n) + "\\n");
-process.stdout.write("${INDEXED_TYPE_PREFIX}" + String(typeFromName("GSubprocess") !== 0n) + "\\n");
+process.stdout.write("${USED_NAME_PREFIX}" + Task.name + "\n");
+process.stdout.write("${USED_TYPE_PREFIX}" + String(typeFromName("GTask") !== 0n) + "\n");
+process.stdout.write("${INDEXED_TYPE_PREFIX}" + String(typeFromName("GSubprocess") !== 0n) + "\n");
 `;
 
 describe("gtkx build (tree shaking)", () => {
@@ -61,12 +61,12 @@ describe("gtkx build (tree shaking)", () => {
         expect(probe.run.stdout).toContain(`${USED_TYPE_PREFIX}true\n`);
     });
 
-    it("resolves a dropped class's type name through the generated index", () => {
+    it("resolves an unimported class's type name", () => {
         expect(probe.run.stdout).toContain(`${INDEXED_TYPE_PREFIX}true\n`);
     });
 
-    it("drops the classes the app never reaches", () => {
+    it("drops the namespaces the app never imports", () => {
         expect(bundle).not.toContain(UNUSED_CLASS_METHOD);
-        expect(bundle).toContain(UNUSED_GET_TYPE);
+        expect(bundle).not.toContain(UNUSED_GET_TYPE);
     });
 });
