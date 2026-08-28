@@ -14,10 +14,10 @@
         "path": "../utils/tsconfig.lib.json"
       },
       {
-        "path": "../mcp/tsconfig.lib.json"
+        "path": "../runtime/tsconfig.lib.json"
       },
       {
-        "path": "../runtime/tsconfig.lib.json"
+        "path": "../mcp/tsconfig.lib.json"
       },
       {
         "path": "../config/tsconfig.lib.json"
@@ -27,6 +27,9 @@
       },
       {
         "path": "../testing/tsconfig.lib.json"
+      },
+      {
+        "path": "../animated/tsconfig.lib.json"
       }
     ]
 }

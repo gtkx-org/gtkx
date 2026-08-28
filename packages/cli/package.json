@@ -88,6 +88,7 @@
         "yaml": "catalog:"
     },
     "devDependencies": {
+        "@gtkx/animated": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@types/babel__core": "^7.20.5",
         "@types/react-refresh": "^0.14.7",

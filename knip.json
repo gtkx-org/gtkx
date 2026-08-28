@@ -127,6 +127,9 @@
         "packages/cli": {
             "entry": [
                 "src/global.d.ts!"
+            ],
+            "ignoreDependencies": [
+                "@gtkx/animated"
             ]
         },
         "packages/vitest": {

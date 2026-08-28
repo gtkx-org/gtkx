@@ -368,6 +368,9 @@ importers:
         specifier: 'catalog:'
         version: 2.9.0
     devDependencies:
+      '@gtkx/animated':
+        specifier: workspace:*
+        version: link:../animated
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../testing
