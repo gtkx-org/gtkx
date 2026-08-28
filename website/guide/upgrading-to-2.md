@@ -92,9 +92,11 @@ time.
 Each generated class registers itself as part of its own definition, so the bundler drops the classes your
 app never reaches — registrations included — and `gtkx build` ships only the widgets you render, the classes
 your code touches, and what their signatures reference. There is nothing for `tsc` to report: flip the flag,
-rebuild, and the bundle shrinks. Two edges to know about: a bare `import "@gtkx/gi/gtk"` no longer retains
-anything by itself (import a value from the namespace instead), and rendering an element whose component was
-never imported throws instead of silently constructing the wrong class. Dynamic uses of the `animated` value
+rebuild, and the bundle shrinks. Three edges to know about: a bare `import "@gtkx/gi/gtk"` no longer retains
+anything by itself (import a value from the namespace instead); rendering an element whose component was
+never imported throws instead of silently constructing the wrong class; and in a production bundle
+`GObject.typeFromName` resolves only the types the bundle registered — GLib's own contract — so import a
+class if you need its name to resolve (dev and tests never bundle and keep every type registered). Dynamic uses of the `animated` value
 itself — spreading it, `Object.keys(animated)` — keep every widget in the bundle, and `gtkx build` warns
 about the file; member access and the call form stay fully shakeable.
 

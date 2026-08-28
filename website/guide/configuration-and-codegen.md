@@ -201,10 +201,14 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
 
   Three behaviors move with it. A bare `import "@gtkx/gi/gtk"` registers nothing on its own; import a value
   from the namespace instead (namespace initialization such as `gtk_init` and the prototype overrides still
-  run whenever the namespace is imported at all). A GLib type name that only ever appears as a string keeps
-  resolving: a generated index maps every name to its `get_type` function, so `typeFromName` registers the
-  native type on demand without pulling the class into the bundle — but rendering an element whose component
-  the bundle never imported throws, since constructing through an ancestor would build the wrong type.
+  run whenever the namespace is imported at all). String-driven rendering keeps working: the reconciler
+  resolves JSX tag names through the runtime's name resolver, which falls back to a generated index of
+  `get_type` functions, so behaviors and ancestry stay exact even for classes the bundle dropped — but
+  rendering an element whose component the bundle never imported throws, since constructing through an
+  ancestor would build the wrong type. `GObject.typeFromName` itself keeps GLib's contract: it finds only
+  types already registered in-process, and a production bundle registers a generated type when its class is
+  retained, so import the class if you need its name to resolve — `gtkx dev` and tests never bundle, and
+  there every type stays registered exactly as today.
   Finally, `animated.GtkX` member accesses and `animated(...)` calls are rewritten at build time to imports
   of exactly the widgets they animate; a dynamic use of the `animated` value itself — spreading it,
   `Object.keys`, computed access — keeps the whole widget namespace and `gtkx build` warns about the file.
