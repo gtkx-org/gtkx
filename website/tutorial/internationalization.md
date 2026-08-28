@@ -4,7 +4,7 @@ description: "Translate the app and its desktop metadata with react-i18next, typ
 
 # Speaking the User's Language
 
-[Appendix B: Making It a Real Application](/tutorial/packaging) turned the English app into four installable packages. This chapter gives the interface, notifications, first-run content, dates, and release metadata one translation source, then proves that the same French catalog reaches every format.
+[Appendix B: Making It a Real Application](/tutorial/packaging) turned the English app into installable packages. This chapter gives the interface, notifications, first-run content, dates, and release metadata one translation source, then proves that the same French catalog reaches every format.
 
 GTKX does not imitate react-i18next. `@gtkx/i18n` registers a GNU gettext backend on the real `i18next` singleton and re-exports the real `react-i18next` API. Your components use `useTranslation`, `Trans`, `withTranslation`, and the rest of that package's surface. Translators work in PO files, and GLib reads the compiled MO catalog at runtime.
 
@@ -22,7 +22,7 @@ The extraction and compilation tools come from GNU gettext. On Debian or Ubuntu:
 sudo apt install appstream desktop-file-utils gettext
 ```
 
-The gettext package is also named `gettext` on Fedora and Arch, and `gettext-tools` on openSUSE. `desktop-file-utils` and AppStream provide the two metadata validators deploy uses. GTKX checks the tools before doing release work and prints the right install command for the current distribution when one is missing.
+The gettext package is also named `gettext` on Fedora and Arch, and `gettext-tools` on openSUSE. `desktop-file-utils` and AppStream provide the metadata validators deploy uses. GTKX checks the tools before doing release work and prints the right install command for the current distribution when one is missing.
 
 Create `po/LINGUAS` as an empty file. Its entries will be the locales the project ships:
 
@@ -238,7 +238,7 @@ Now run the same command you use for any release:
 npm run deploy
 ```
 
-The release is still one command, and the localization work is visible in the shared stage before all four packagers consume it:
+The release is still one command, and the localization work is visible in the shared stage before the packagers consume it:
 
 ```
 [gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to appimage, deb, flatpak, rpm

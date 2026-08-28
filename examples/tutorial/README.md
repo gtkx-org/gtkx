@@ -6,7 +6,7 @@
 
 ## What it demonstrates
 
-- Adaptive layout with `@gtkx/navigation`: a `createSplitViewNavigator` with three screens, `Lists` in the sidebar pane, `Tasks` and `Task` as pages of the content stack. The selected list or smart view is the `Tasks` route's params, and the open task is the `Task` route's. An `AdwBreakpoint` drives the navigator's `collapsed` prop, folding the panes into one column on a narrow window.
+- Adaptive layout with `@gtkx/navigation`: a `createSplitViewNavigator` with `Lists` in the sidebar pane, and `Tasks` and `Task` as pages of the content stack. The selected list or smart view is the `Tasks` route's params, and the open task is the `Task` route's. An `AdwBreakpoint` drives the navigator's `collapsed` prop, folding the panes into one column on a narrow window.
 - Native form state with `@gtkx/forms`: React Hook Form-backed `EntryRow` and `SwitchRow` controls keep a task title draft separate from its committed value while importance stays synchronized with the store.
 - Settings backed by a GSettings schema (`data/com.gtkx.tutorial.gschema.xml`), read and written with `useSetting` and `useBindSetting`, driving the Adwaita color scheme through `Adw.StyleManager`.
 - Actions, menus, and shortcuts: `GSimpleAction` elements wired to a menu button, `actionAccels`, and a `GtkShortcutController`.

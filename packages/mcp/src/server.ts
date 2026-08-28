@@ -66,7 +66,7 @@ const log: Logger = createLogger("mcp");
 const DEFAULT_SETTINGS: McpSettings = { tools: [], isReadOnly: false };
 
 const INSTRUCTIONS =
-    "This server has two halves. The widget tools drive a GTKX app running under `gtkx dev`: they read " +
+    "The widget tools drive a GTKX app running under `gtkx dev`: they read " +
     "its live widget tree, query it by accessible role and name, click and type, and capture screenshots. " +
     "They fail until an app is running, so start `gtkx dev` first. The reference tools answer from the " +
     "bindings generated for a specific project, so they describe that project's GIR libraries rather than " +

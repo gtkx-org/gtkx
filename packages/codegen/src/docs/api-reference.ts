@@ -679,7 +679,7 @@ class ApiReference {
 
             lines.push(
                 "",
-                `## ${KIND_SECTION_TITLES[kind]} (${String(names.length)})`,
+                `## ${KIND_SECTION_TITLES[kind]}`,
                 "",
                 sortStrings(names)
                     .map((symbolName) => `\`${symbolName}\``)

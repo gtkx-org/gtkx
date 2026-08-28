@@ -23,12 +23,12 @@ Run any command that loads your configuration — `gtkx build`, `gtkx dev`, `gtk
 [gtkx] warn 2 of 6 future flags are unset. Their behavior becomes the default in GTKX 2.0.
 
   [gtkx-v2-byte-arrays]       future: { v2ByteArrays: true }
-    Byte sequences come back as number[]. In 2.0 they come back as Uint8Array.
+    Byte sequences come back as number[]. In 2.0 they come back as Uint8Array. `Array.isArray` and `JSON.stringify` change silently; grep for them.
 
   [gtkx-v2-inout-returns]     future: { v2InoutReturns: true }
     Inout records repeat in the return value. In 2.0 the repeated entry is dropped.
 
-  Set one flag at a time and run tsc: every affected call site is a type error.
+  Set one flag at a time and run tsc: it reports every affected call site except where noted above.
   Guide    https://gtkx.dev/guide/upgrading-to-2
   Silence  deprecations: { silence: ["gtkx-v2-byte-arrays"] }
 ```

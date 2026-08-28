@@ -26,7 +26,7 @@ const accessorNaming = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
                 "`{{name}}` ends in `Of`. Call it `get{{noun}}` when it reads a value off its argument, " +
                 "or `{{stem}}For` when it looks the value up in a table keyed by its argument.",
             mixedShape:
-                "`{{name}}` carries both the `get` prefix and the `{{suffix}}` suffix, which are the two " +
+                "`{{name}}` carries both the `get` prefix and the `{{suffix}}` suffix, which are the " +
                 "competing shapes. Keep the prefix for a read or the suffix for a keyed lookup, not both.",
             typeSuffix: "Type `{{name}}` ends in `{{suffix}}`. Types take a plain noun, so drop the suffix.",
             tableSuffix:

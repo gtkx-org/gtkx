@@ -15,6 +15,7 @@ const GUIDE_URL = "https://gtkx.dev/guide/upgrading-to-2";
 const ENTRY_COLUMN = 30;
 const BUILD_REPORTS = " The build, not tsc, reports the specifiers still to change.";
 const NOTHING_REPORTS = " Nothing reports this one; check the app yourself.";
+const SILENT_SITES = " `Array.isArray` and `JSON.stringify` change silently; grep for them.";
 
 const DEPRECATION_IDS = [
     "gtkx-v2-byte-arrays",
@@ -30,6 +31,7 @@ const FUTURE_DEPRECATIONS: FutureDeprecation[] = [
         id: "gtkx-v2-byte-arrays",
         flag: "v2ByteArrays",
         change: "Byte sequences come back as number[]. In 2.0 they come back as Uint8Array.",
+        unchecked: SILENT_SITES,
     },
     {
         id: "gtkx-v2-value-returns",

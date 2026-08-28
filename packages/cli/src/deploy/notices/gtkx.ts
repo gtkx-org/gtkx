@@ -44,7 +44,7 @@ const summaryFor = (settings: DeploySettings, packages: BundledPackage[]): strin
         "Section 3.2(a) asks that whoever receives an executable form be told how to obtain the source code,",
         "which is what the source pointer below is for: it leads to the release these files were built from.",
         `The addon also statically links Rust crates GTKX did not write, so ${lib}/${NATIVE_FILENAME} is not`,
-        `${LICENSE_NAME} alone. The second notice below names the licenses those crates carry; it does not`,
+        `${LICENSE_NAME} alone. The crates notice below names the licenses those crates carry; it does not`,
         `reproduce their texts, and ${CRATES_MANIFEST} in the source pointed at records which crates went in`,
         "and at which versions.",
         ...modulesLine(packages),

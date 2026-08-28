@@ -241,7 +241,7 @@ flag with the stable id that identifies it:
 [gtkx] warn 2 of 6 future flags are unset. Their behavior becomes the default in GTKX 2.0.
 
   [gtkx-v2-byte-arrays]       future: { v2ByteArrays: true }
-    Byte sequences come back as number[]. In 2.0 they come back as Uint8Array.
+    Byte sequences come back as number[]. In 2.0 they come back as Uint8Array. `Array.isArray` and `JSON.stringify` change silently; grep for them.
 
   [gtkx-v2-default-libraries] future: { v2DefaultLibraries: true }
     Only Gtk-4.0 is bound by default. In 2.0 Adw-1 is bound alongside it. Nothing reports this one; check the app yourself.

@@ -78,9 +78,7 @@ const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]
         return `| [${entry.glibName}](${link}) | ${description} |`;
     });
 
-    const description =
-        `Reference pages for the ${String(namespace.elements.length)} JSX elements in ` +
-        `the ${namespace.name} namespace.`;
+    const description = `Reference pages for the JSX elements in the ${namespace.name} namespace.`;
 
     return [
         "---",
@@ -104,15 +102,14 @@ const fileIndexPage = (namespaces: DocsNamespace[], libraries: string[]): string
         (ns) => `| ${ns.name} | \`@gtkx/jsx/${ns.directory}\` | ${String(ns.elements.length)} | ${ns.link} |`,
     );
 
-    const total = namespaces.reduce((count, ns) => count + ns.elements.length, 0);
     const librariesList = libraries.map((library) => `\`${library}\``).join(", ");
 
     return [
         "# Element reference",
         "",
-        `${String(total)} JSX elements generated from ${librariesList} by \`gtkx codegen\`, regenerated whenever ` +
-        "the GIR libraries or the project's element configuration change. These pages describe this project's " +
-        "bindings exactly, so they are the authority on props, signals, and method signatures.",
+        `Every JSX element generated from ${librariesList} by \`gtkx codegen\` has a page here, regenerated ` +
+        "whenever the GIR libraries or the project's element configuration change. These pages describe " +
+        "this project's bindings exactly, so they are the authority on props, signals, and method signatures.",
         "",
         "Every path here is from the project root, ready to read as-is.",
         "",

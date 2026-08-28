@@ -213,7 +213,7 @@ const diagnosticError = (params: ProjectContext, diagnostics: ts.Diagnostic[]): 
 
     const lines = [...diagnosed.map((entry) => entry.text), ...originLines(diagnosed, params.files)];
 
-    return new Error(`Compiling ${label} found ${String(diagnosed.length)} error(s):\n${lines.join("\n")}`);
+    return new Error(`Compiling ${label} failed:\n${lines.join("\n")}`);
 };
 
 const keepFailedProject = (input: FailedProjectInput): Error => {

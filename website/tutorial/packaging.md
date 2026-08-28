@@ -183,7 +183,7 @@ Every package installs the same tree, under `/usr` here and under `/app` in the 
 /usr/share/doc/gtkx-tutorial/copyright                    generated, deb only
 ```
 
-The last three are the terms of everything in the package that you did not write: the bundled Node.js, GTKX, and every npm package the bundle reaches. The deb carries them in the [machine-readable copyright format](https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/) that Debian expects, and the other targets carry the same material as a plain text file. See [Deploying](/guide/deploying#third-party-notices).
+The rest are the terms of everything in the package that you did not write: the bundled Node.js, GTKX, and every npm package the bundle reaches. The deb carries them in the [machine-readable copyright format](https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/) that Debian expects, and the other targets carry the same material as a plain text file. See [Deploying](/guide/deploying#third-party-notices).
 
 The launcher resolves the other files from its own location, so nothing is hardcoded to `/usr` and the same tree works in a Flatpak and inside an AppImage.
 

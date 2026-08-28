@@ -11,7 +11,7 @@ description: "Stack, tab, drawer, and split view navigation with @gtkx/navigatio
 npm install @gtkx/navigation
 ```
 
-Every navigator draws itself with libadwaita widgets, so the package needs `@gtkx/jsx/adw`, which exists once `Adw-1` is in your `libraries`. `npm create gtkx` binds `Gtk-4.0` alone, so add it in `gtkx.config.ts`:
+Every navigator draws itself with libadwaita widgets, so the package needs `@gtkx/jsx/adw`, which exists once `Adw-1` is bound. A project scaffolded by `npm create gtkx` already has it, through [`v2DefaultLibraries`](/guide/configuration-and-codegen#future-flags). An older project that binds GTK alone adds it in `gtkx.config.ts`:
 
 ```diff
  export default defineConfig({
@@ -47,7 +47,7 @@ export const App = () => (
 
 It takes `initialState` to restore a saved state, `onStateChange` to observe every change, `onReady` for the first render, and `onUnhandledAction` for an action no navigator handled. A `ref`, created with `createNavigationContainerRef` or `useNavigationContainerRef`, exposes the same navigation API outside the tree: `ref.current?.navigate("Note", { id: "42" })` from a menu action or a notification handler.
 
-The container hands a `theme` to `useTheme` and to option callbacks. The default one tracks Adwaita's style manager live, so it is `{ dark, highContrast }` for the application as it is right now. Pass `theme` to override it, or `DefaultTheme` and `DarkTheme` for the two fixed ones.
+The container hands a `theme` to `useTheme` and to option callbacks. The default one tracks Adwaita's style manager live, so it is `{ dark, highContrast }` for the application as it is right now. Pass `theme` to override it, or `DefaultTheme` and `DarkTheme` for fixed light and dark values.
 
 ## Stack navigator
 

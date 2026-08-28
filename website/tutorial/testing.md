@@ -148,7 +148,7 @@ In `tests/tasks.test.tsx`:
 
 `toBeChecked` is one of the widget matchers `@gtkx/testing` adds to `expect`. It reads the accessible checked state off the `GtkCheckButton` and throws when the widget does not expose that state, so aiming it at the wrong widget fails instead of passing silently.
 
-Three tests start by opening the same task, so that step goes in a helper above both `describe` blocks.
+Several tests start by opening the same task, so that step goes in a helper above both `describe` blocks.
 
 In `tests/tasks.test.tsx`:
 
@@ -184,7 +184,7 @@ The name matchers are regular expressions rather than strings. A string has to m
 
 ## Moving between pages
 
-Everything so far asserted on one page. These four move between them, which is the part of the app you did not write: the navigator draws the back button, answers Escape, and swaps the content pane.
+Everything so far asserted on one page. These move between them, which is the part of the app you did not write: the navigator draws the back button, answers Escape, and swaps the content pane.
 
 In `tests/tasks.test.tsx`:
 

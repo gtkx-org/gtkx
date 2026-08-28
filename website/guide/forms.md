@@ -13,7 +13,7 @@ Install it separately:
 npm install @gtkx/forms
 ```
 
-The controls need the generated `@gtkx/jsx/adw` bindings. `npm create gtkx` binds `Gtk-4.0` alone, so add `Adw-1` in `gtkx.config.ts` if the project does not already use it:
+The controls need the generated `@gtkx/jsx/adw` bindings. A project scaffolded by `npm create gtkx` already has them, through [`v2DefaultLibraries`](/guide/configuration-and-codegen#future-flags). An older project that binds GTK alone adds `Adw-1` in `gtkx.config.ts`:
 
 ```diff
  export default defineConfig({

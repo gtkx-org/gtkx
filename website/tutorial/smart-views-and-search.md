@@ -371,7 +371,7 @@ Pass it through in `src/components/task-list.tsx`:
 +const visible = visibleTasks(tasks, selection, { query: searchQuery, filter });
 ```
 
-`searchQuery` is the other half of `VisibleOptions`, and it arrives two sections down. One call takes all three because a view, a filter, and a query narrow the same array, and the order they are applied in never matters.
+`searchQuery` is the other half of `VisibleOptions`, and it arrives two sections down. One call takes them together because a view, a filter, and a query narrow the same array, and the order they are applied in never matters.
 
 ## Widgets that live in a header bar
 

@@ -125,7 +125,7 @@ export const isReorderable = (selection: Selection, query: string, sortOrder: So
     sortOrder === "manual" && query === "" && !(selection.kind === "smart" && selection.view === "trash");
 ```
 
-The answer is the same for every row in the list, and the three things it needs are already sitting together in `src/components/task-list.tsx`: the selection the screen handed down, the query, and the sort order. Compute it once there:
+The answer is the same for every row in the list, and what it needs is already sitting together in `src/components/task-list.tsx`: the selection the screen handed down, the query, and the sort order. Compute it once there:
 
 ```tsx
 // ...

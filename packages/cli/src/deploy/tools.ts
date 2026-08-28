@@ -145,11 +145,9 @@ const toolLines = (tool: DeployTool, hints: string[]): string[] => [
 const missingToolsMessage = (report: ToolReport): string => {
     const family = detectPackageFamily();
     const required = report.missingRequired.flatMap((tool) => toolLines(tool, installHints(tool.command, family)));
-    const count = report.missingRequired.length;
-    const plural = count === 1 ? "tool is" : "tools are";
 
     return [
-        `Cannot deploy: ${String(count)} required ${plural} missing.`,
+        "Cannot deploy without these tools:",
         "",
         ...required,
         "",

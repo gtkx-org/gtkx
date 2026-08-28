@@ -55,7 +55,7 @@ Wire `onCloseRequest` to clear the state that mounted a secondary window, so Rea
 
 ## Dialogs
 
-Mounting an `AdwDialog`, or any element derived from it, presents the dialog; unmounting it closes the dialog. These elements come from `@gtkx/jsx/adw`, which exists once `Adw-1` is in your `libraries`.
+Mounting an `AdwDialog`, or any element derived from it, presents the dialog; unmounting it closes the dialog. These elements come from `@gtkx/jsx/adw`, which exists once `Adw-1` is bound — a scaffolded project binds it from the start.
 
 ```tsx
 import { AdwDialog } from "@gtkx/jsx/adw";

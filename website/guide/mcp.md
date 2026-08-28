@@ -58,7 +58,7 @@ The widget tools fail until an app is running under `gtkx dev`.
 
 ## Choosing which tools to register
 
-Every tool costs context whether or not the agent calls it, so the server can register a subset. `mcp.tools` in `gtkx.config.ts` takes name patterns where `*` matches any run of characters and a leading `!` excludes; `mcp.readOnly` leaves out the three tools that drive the app, keeping the ones that only read.
+Every tool costs context whether or not the agent calls it, so the server can register a subset. `mcp.tools` in `gtkx.config.ts` takes name patterns where `*` matches any run of characters and a leading `!` excludes; `mcp.readOnly` leaves out the tools that drive the app, keeping the ones that only read.
 
 ```ts
 export default defineConfig({

@@ -307,7 +307,7 @@ const validateConfig = (config: Config): void => {
 };
 
 /**
- * Deep-merges two configurations. `override` wins over `base` on conflicting scalar and object keys, while
+ * Deep-merges a configuration over a base. `override` wins over `base` on conflicting scalar and object keys, while
  * arrays are concatenated with the `override` entries first.
  */
 const mergeConfig = (base: Config, override: Config): Config => defu(override, base);

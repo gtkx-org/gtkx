@@ -195,7 +195,7 @@ type SignalSpec = {
     /** GType of the value an emission returns, defaulting to none. */
     returnType?: SignalGType;
     /**
-     * How the emission combines what its handlers return, limited to the two accumulators GObject
+     * How the emission combines what its handlers return, limited to the accumulators GObject
      * ships: `"first-wins"` stops the emission at the first handler and keeps its result, and
      * `"true-handled"` runs handlers until one returns `true`, which requires a boolean
      * `returnType`. Without one, every handler runs and the last result stands.
@@ -316,7 +316,7 @@ type RegisterClassOptions<
      * in lowercase letters, digits, `-` and `_`, and be new to the type: one an ancestor type or a
      * listed interface already carries throws, and so does one carrying an uppercase letter, which
      * GObject would carry under that exact spelling, out of reach of both its dashed spelling and
-     * its `on<SignalName>` default handler. The two word separators spell the same signal, so a
+     * its `on<SignalName>` default handler. Either word separator spells the same signal, so a
      * signal declared as `data_changed` is connected to and emitted as `data-changed` too.
      *
      * Instances connect and emit by name through the same `connect`, `on`, `once`, `off` and

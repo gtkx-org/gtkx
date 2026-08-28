@@ -13,7 +13,7 @@ GTKX is Linux-only. You need:
 
 - Node.js 24 or later
 - The GTK4 (4.20 or later) and GLib development packages
-- The Adwaita (1.8 or later) development package, once you add `Adw-1` to your `libraries`
+- The Adwaita (1.8 or later) development package, which a scaffolded project binds from the start
 
 Prebuilt binaries cover x64 and arm64 glibc Linux. On any other target, build GTKX from its repository with a Rust toolchain.
 
@@ -89,7 +89,7 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 ```
 
-The application element picks up its `applicationId` from `gtkx.config.ts` automatically. An Adwaita app adds `Adw-1` to its `libraries` and uses `<AdwApplication>`, imported from `@gtkx/jsx/adw`, in place of `<GtkApplication>` (see [Your First Window](/tutorial/your-first-window)).
+The application element picks up its `applicationId` from `gtkx.config.ts` automatically. An Adwaita app uses `<AdwApplication>`, imported from `@gtkx/jsx/adw`, in place of `<GtkApplication>` (see [Your First Window](/tutorial/your-first-window)).
 
 Shutting down is the mirror image. `quit()` from `@gtkx/react` unmounts every root, and unmounting the application element quits the application it started. It returns `true` when it unmounted a root, which is what a close-request handler returns to stop GTK4 from closing the window itself, so the starter hands it to its main window as `onCloseRequest={quit}`.
 
