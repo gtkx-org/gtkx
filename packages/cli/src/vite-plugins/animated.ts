@@ -35,7 +35,7 @@ type PluginState = {
 };
 
 const ANIMATED_PACKAGE = "@gtkx/animated";
-const CORE_SPECIFIER = "@gtkx/animated/core";
+const INTERNAL_SPECIFIER = "@gtkx/animated/internal";
 const VIRTUAL_ID = "virtual:gtkx-animated";
 const RESOLVED_VIRTUAL_ID = `\0${VIRTUAL_ID}`;
 const NAMESPACE_HELPER = "__gtkxAnimated";
@@ -258,7 +258,7 @@ const helperImports = (rewrite: Rewrite): string => {
     }
 
     if (rewrite.hasCallEdits) {
-        lines.push(`import { withAnimated as ${CALL_HELPER} } from ${JSON.stringify(CORE_SPECIFIER)};`);
+        lines.push(`import { withAnimated as ${CALL_HELPER} } from ${JSON.stringify(INTERNAL_SPECIFIER)};`);
     }
 
     return lines.join("\n");
@@ -331,7 +331,7 @@ const renderVirtualModule = (elements: Map<string, GeneratedElement>): string =>
 
     return (
         `import { ${imports.join(", ")} } from "@gtkx/jsx";\n` +
-        `import { withAnimated } from ${JSON.stringify(CORE_SPECIFIER)};\n` +
+        `import { withAnimated } from ${JSON.stringify(INTERNAL_SPECIFIER)};\n` +
         `${consts.join("\n")}\n`
     );
 };

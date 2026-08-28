@@ -32,17 +32,17 @@
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
         },
-        "./core": {
-            "source": "./src/core.ts",
-            "types": "./dist/core.d.ts",
-            "default": "./dist/core.js"
+        "./internal": {
+            "source": "./src/internal.ts",
+            "types": "./dist/internal.d.ts",
+            "default": "./dist/internal.js"
         }
     },
     "sideEffects": [
         "./src/index.ts",
         "./dist/index.js",
-        "./src/core.ts",
-        "./dist/core.js",
+        "./src/internal.ts",
+        "./dist/internal.js",
         "./src/bootstrap.ts",
         "./dist/bootstrap.js"
     ],
