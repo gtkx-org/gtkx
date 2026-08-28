@@ -244,7 +244,7 @@ flag with the stable id that identifies it:
     Byte sequences come back as number[]. In 2.0 they come back as Uint8Array.
 
   [gtkx-v2-default-libraries] future: { v2DefaultLibraries: true }
-    Only Gtk-4.0 is bound by default. In 2.0 Adw-1 is bound alongside it. Changes what the build produces, not what it types.
+    Only Gtk-4.0 is bound by default. In 2.0 Adw-1 is bound alongside it. No type error announces this one.
 
   Set one flag at a time and run tsc: it reports every affected call site except where noted above.
   Guide    https://gtkx.dev/guide/upgrading-to-2

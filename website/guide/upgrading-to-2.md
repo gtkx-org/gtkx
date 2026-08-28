@@ -48,7 +48,7 @@ export default defineConfig({
 
 Flipping a flag changes every affected call site at once — there is no partial adoption within a single flag. What you control is the order and the pace: six independent flags, one per sitting, is the shape this is built for.
 
-Setting a flag never changes behavior for anyone else. Five of the six only move your project onto the 2.0 semantics ahead of time, leaving your build output alone. [`v2DefaultLibraries`](#v2defaultlibraries) is the exception: it binds another library, so it changes what codegen emits and what your packages declare. Read that section before setting it.
+Setting a flag never changes behavior for anyone else; it moves your project onto the 2.0 semantics ahead of time. Five of the six announce themselves through `tsc`, so the compiler shows you exactly what to change. [`v2DefaultLibraries`](#v2defaultlibraries) is the one that does not: it binds another library, which no type error can tell you about, and that library then follows through into what your packages declare. Read that section before setting it.
 
 ### `v2ByteArrays`
 

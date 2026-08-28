@@ -13,7 +13,7 @@ type FutureDeprecation = {
 const SHOWN_ENV = "GTKX_DEPRECATIONS_SHOWN";
 const GUIDE_URL = "https://gtkx.dev/guide/upgrading-to-2";
 const ENTRY_COLUMN = 30;
-const BUILD_ONLY_NOTE = " Changes what the build produces, not what it types.";
+const UNTYPED_NOTE = " No type error announces this one.";
 
 const DEPRECATION_IDS = [
     "gtkx-v2-byte-arrays",
@@ -82,7 +82,7 @@ const formatSummary = (unset: number, silenced: number): string => {
 const formatDeprecation = (deprecation: FutureDeprecation): string =>
     `  [${deprecation.id}]`.padEnd(ENTRY_COLUMN) +
     `future: { ${deprecation.flag}: true }\n    ${deprecation.change}` +
-    (deprecation.isTypeChecked ? "" : BUILD_ONLY_NOTE);
+    (deprecation.isTypeChecked ? "" : UNTYPED_NOTE);
 
 const formatAdvice = (pending: FutureDeprecation[]): string => {
     if (pending.every((deprecation) => deprecation.isTypeChecked)) {
