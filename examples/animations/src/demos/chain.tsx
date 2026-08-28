@@ -9,7 +9,7 @@ import {
     useTrail,
 } from "@gtkx/animated";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkToggleButton } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkLabel, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "./types.js";
 
@@ -35,6 +35,8 @@ type ChainPanelProps = {
     trail: SpringValues<ItemTargets>[];
 };
 
+const AnimatedBox = animated(GtkBox);
+const AnimatedLabel = animated(GtkLabel);
 const ITEMS = ["Espresso", "Cappuccino", "Latte", "Mocha"];
 const ITEM_SHOWN = { opacity: 1, marginStart: 12 };
 const ITEM_HIDDEN = { opacity: 0, marginStart: 36 };
@@ -85,7 +87,7 @@ function ChainControls({ isOpen, onToggle, onReplay }: ChainControlsProps) {
 
 function ChainPanel({ opacity, trail }: ChainPanelProps) {
     return (
-        <animated.GtkBox
+        <AnimatedBox
             name="chain-panel"
             opacity={opacity}
             orientation={Gtk.Orientation.VERTICAL}
@@ -93,7 +95,7 @@ function ChainPanel({ opacity, trail }: ChainPanelProps) {
             cssClasses={["card"]}
         >
             {trail.map((styles, index) => (
-                <animated.GtkLabel
+                <AnimatedLabel
                     key={ITEMS[index] ?? String(index)}
                     opacity={styles.opacity}
                     marginStart={styles.marginStart}
@@ -104,7 +106,7 @@ function ChainPanel({ opacity, trail }: ChainPanelProps) {
                     label={ITEMS[index] ?? ""}
                 />
             ))}
-        </animated.GtkBox>
+        </AnimatedBox>
     );
 }
 

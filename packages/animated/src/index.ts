@@ -4,6 +4,7 @@ export { animated, type Animated } from "./animated.js";
 export { useReducedMotion } from "./reduced-motion.js";
 export type {
     AnimatedComponent,
+    /* eslint-disable-next-line @typescript-eslint/no-deprecated -- exported until 2.0 removes it */
     AnimatedElements,
     AnimatedItems,
     AnimatedProp,

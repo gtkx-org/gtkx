@@ -249,6 +249,9 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
   Finally, `animated.GtkX` member accesses and `animated(...)` calls are rewritten at build time to imports
   of exactly the widgets they animate; a dynamic use of the `animated` value itself — spreading it,
   `Object.keys`, computed access — keeps the whole widget namespace and `gtkx build` warns about the file.
+  Property access on `animated` is deprecated and removed in GTKX 2.0 along with its rewrite — prefer
+  importing the component and calling `animated(GtkX)`, which needs no rewrite at all; `gtkx build` names
+  each file still reading components off `animated`.
 
 Changing a flag invalidates the generated store, so the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates it automatically. A key the `future` block does not define is ignored rather than rejected, and codegen names it on each run so a typo does not stay silent.
 

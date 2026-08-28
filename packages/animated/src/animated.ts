@@ -8,6 +8,7 @@ type Wrappable = Exclude<ElementType, string>;
  * The `animated` entrypoint: callable to wrap any component, and exposing every generated widget
  * component as a property, so `animated.GtkLabel` is the animated form of `GtkLabel`.
  */
+/* eslint-disable-next-line @typescript-eslint/no-deprecated -- the deprecated half stays until 2.0 */
 type Animated = (<T extends Exclude<ElementType, string>>(component: T) => AnimatedComponent<T>) & AnimatedElements;
 
 /**
@@ -17,8 +18,10 @@ type Animated = (<T extends Exclude<ElementType, string>>(component: T) => Anima
  * created once and reused, so repeated lookups render the same component.
  *
  * Every widget component of the generated `@gtkx/jsx` store is also available as a property:
- * `animated.GtkLabel` is `animated(GtkLabel)` without the import. Elements whose `ref` does not
- * expose a `Gtk.Widget` subclass, such as `GtkAdjustment`, are wrapped through the call form.
+ * `animated.GtkLabel` is `animated(GtkLabel)` without the import. **Deprecated: property access is
+ * removed in GTKX 2.0**, where `animated` is only callable; import the component and call
+ * `animated(GtkLabel)` instead, which also lets a production bundle drop the widgets an
+ * application never animates.
  */
 const animated: Animated = new Proxy(wrapComponent, {
     get(target, property, receiver): unknown {

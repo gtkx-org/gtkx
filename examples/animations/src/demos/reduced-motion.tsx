@@ -4,6 +4,7 @@ import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "./types.js";
 
+const AnimatedLabel = animated(GtkLabel);
 const SLIDE_DISTANCE = 200;
 
 const reducedMotionDemo: Demo = {
@@ -43,14 +44,14 @@ function ReducedMotionDemo() {
                     setIsShifted((current) => !current);
                 }}
             />
-            <animated.GtkLabel
+            <AnimatedLabel
                 name="reduced-motion-slider"
                 halign={Gtk.Align.START}
                 marginStart={styles.marginStart}
                 cssClasses={["title-3"]}
             >
                 Gentle by request
-            </animated.GtkLabel>
+            </AnimatedLabel>
         </GtkBox>
     );
 }

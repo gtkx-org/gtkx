@@ -1,10 +1,12 @@
 import { animated, config, useSpring } from "@gtkx/animated";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkFrame, GtkToggleButton } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkFrame, GtkLabel, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "./types.js";
 
 type PresetName = (typeof presets)[number]["name"];
+
+const AnimatedLabel = animated(GtkLabel);
 
 const presets = [
     { name: "default", label: "Default" },
@@ -15,14 +17,12 @@ const presets = [
     { name: "molasses", label: "Molasses" },
 ] as const;
 
-const AnimatedLabel = animated.GtkLabel;
-
 const springsDemo: Demo = {
     id: "springs",
     title: "Springs",
     description:
-        "One useSpring fades and slides the card, an animated.GtkLabel built through the property form of the " +
-        "animated wrapper, between two targets. The preset row switches the spring's config among the exported " +
+        "One useSpring fades and slides the card, an AnimatedLabel built by calling the animated wrapper " +
+        "on GtkLabel, between two targets. The preset row switches the spring's config among the exported " +
         "presets (default, gentle, wobbly, stiff, slow, molasses) — pick a preset, then toggle the card to see " +
         "its character.",
     component: SpringsDemo,

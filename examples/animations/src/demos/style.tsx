@@ -1,6 +1,6 @@
 import { animated, config, useSpring } from "@gtkx/animated";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkToggleButton } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkLabel, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "./types.js";
 
@@ -11,6 +11,8 @@ type CardStyle = {
     padding: string;
 };
 
+const AnimatedBox = animated(GtkBox);
+const AnimatedLabel = animated(GtkLabel);
 const CARD = { duration: 600 };
 const CALM_TEXT = "rgb(46, 52, 54)";
 const ALERT_TEXT = "rgb(255, 255, 255)";
@@ -47,25 +49,25 @@ function StyleDemo() {
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-            <animated.GtkBox
+            <AnimatedBox
                 name="style-card"
                 style={level.to(cardStyle)}
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={6}
             >
-                <animated.GtkLabel
+                <AnimatedLabel
                     name="style-heading"
                     style={{ color: tint, fontWeight: 700 }}
                     halign={Gtk.Align.START}
                     label="Deploy finished"
                 />
-                <animated.GtkLabel
+                <AnimatedLabel
                     name="style-body"
                     style={{ color: tint }}
                     halign={Gtk.Align.START}
                     label="Two of nine checks reported a warning."
                 />
-            </animated.GtkBox>
+            </AnimatedBox>
             <GtkToggleButton
                 name="style-toggle"
                 label="Raise alert"

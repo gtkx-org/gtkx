@@ -1,8 +1,10 @@
 import { animated, useSprings } from "@gtkx/animated";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkLabel, GtkLevelBar } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "./types.js";
+
+const AnimatedLevelBar = animated(GtkLevelBar);
 
 const presets = [
     [0.2, 0.5, 0.8, 0.35],
@@ -44,7 +46,7 @@ function SpringsListDemo() {
                 {`Preset ${String(presetIndex + 1)} of ${String(presets.length)}`}
             </GtkLabel>
             {springs.map((styles, index) => (
-                <animated.GtkLevelBar
+                <AnimatedLevelBar
                     key={String(index)}
                     name={`springs-list-bar-${String(index)}`}
                     value={styles.value}

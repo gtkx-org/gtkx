@@ -1,9 +1,10 @@
 import { animated, useTrail } from "@gtkx/animated";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkToggleButton } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkLabel, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useState } from "react";
 import type { Demo } from "./types.js";
 
+const AnimatedLabel = animated(GtkLabel);
 const items = ["Alpha", "Beta", "Gamma", "Delta"];
 const hiddenMargin = 48;
 
@@ -37,7 +38,7 @@ function TrailDemo() {
                 }}
             />
             {trail.map((styles, index) => (
-                <animated.GtkLabel
+                <AnimatedLabel
                     key={items[index] ?? String(index)}
                     label={items[index] ?? ""}
                     opacity={styles.opacity}

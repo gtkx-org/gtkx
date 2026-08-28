@@ -46,6 +46,9 @@ type AnimatedComponent<T extends Exclude<ElementType, string>> = FunctionCompone
  * an {@link AnimatedComponent}. Only components whose `ref` exposes a `Gtk.Widget` subclass are
  * included, so `animated.GtkLabel` is available while non-widget elements such as `GtkAdjustment`
  * are wrapped explicitly through the `animated(...)` call instead.
+ *
+ * @deprecated Property access on `animated` is removed in GTKX 2.0; import the component and call
+ * `animated(Component)` instead.
  */
 type AnimatedElements = {
     readonly [K in keyof typeof elements as (typeof elements)[K] extends Exclude<ElementType, string>
@@ -61,4 +64,12 @@ type AnimatedElements = {
         : never;
 };
 
-export type { AnimatedComponent, AnimatedElements, AnimatedItems, AnimatedProp, AnimatedProps, AnimatedStyle };
+export type {
+    AnimatedComponent,
+    /* eslint-disable-next-line @typescript-eslint/no-deprecated -- exported until 2.0 removes it */
+    AnimatedElements,
+    AnimatedItems,
+    AnimatedProp,
+    AnimatedProps,
+    AnimatedStyle,
+};

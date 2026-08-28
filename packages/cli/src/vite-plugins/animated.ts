@@ -27,6 +27,8 @@ type Rewrite = {
     hasDynamicUses: boolean;
 };
 
+type RewrittenModule = { code: string; hasDynamicUses: boolean; hasMemberEdits: boolean };
+
 type PluginState = {
     isEnabled: boolean;
     isBuild: boolean;
@@ -287,11 +289,14 @@ const parseProgram = (path: string, code: string): AstNode | undefined => {
     return parsed.errors.length > 0 ? undefined : (parsed.program as unknown as AstNode);
 };
 
+const unchangedRewrite = (code: string, rewrite: Rewrite): RewrittenModule | undefined =>
+    rewrite.hasDynamicUses ? { code, hasDynamicUses: true, hasMemberEdits: false } : undefined;
+
 const rewriteModule = (
     code: string,
     id: string,
     elements: Map<string, GeneratedElement>,
-): { code: string; hasDynamicUses: boolean } | undefined => {
+): RewrittenModule | undefined => {
     if (code.includes(NAMESPACE_HELPER)) {
         return undefined;
     }
@@ -311,14 +316,14 @@ const rewriteModule = (
     const rewrite = collectRewrite(program, local, elements);
 
     if (rewrite.edits.length === 0) {
-        return undefined;
+        return unchangedRewrite(code, rewrite);
     }
 
     const insertAt = lastImportEnd(program);
     const edited = applyEdits(code, rewrite.edits);
     const withHelpers = `${edited.slice(0, insertAt)}\n${helperImports(rewrite)}${edited.slice(insertAt)}`;
 
-    return { code: withHelpers, hasDynamicUses: rewrite.hasDynamicUses };
+    return { code: withHelpers, hasDynamicUses: rewrite.hasDynamicUses, hasMemberEdits: rewrite.hasMemberEdits };
 };
 
 const renderVirtualModule = (elements: Map<string, GeneratedElement>): string => {
@@ -370,18 +375,35 @@ const loadVirtualModule = (state: PluginState, id: string): string | undefined =
     return elements === null ? undefined : renderVirtualModule(elements);
 };
 
-const warningFor = (state: PluginState, id: string, hasDynamicUses: boolean): string | undefined =>
-    hasDynamicUses && state.isBuild
-        ? `${stripQuery(id)} uses the animated binding dynamically, which keeps the whole generated ` +
-        "widget namespace in the bundle; use animated.GtkX member access or animated(Component) " +
-        "calls to let unused widgets be dropped"
-        : undefined;
+const dynamicUseWarning = (id: string, hasDynamicUses: boolean): string[] =>
+    hasDynamicUses
+        ? [
+                `${stripQuery(id)} uses the animated binding dynamically, which keeps the whole generated ` +
+                "widget namespace in the bundle; use animated(Component) calls to let unused widgets be dropped",
+            ]
+        : [];
+
+const memberUseWarning = (id: string, hasMemberEdits: boolean): string[] =>
+    hasMemberEdits
+        ? [
+                `${stripQuery(id)} reads widget components off the animated binding, which GTKX 2.0 removes; ` +
+                "import the component and call animated(Component) instead",
+            ]
+        : [];
+
+const warningsFor = (state: PluginState, id: string, rewritten: RewrittenModule): string[] =>
+    state.isBuild
+        ? [
+                ...dynamicUseWarning(id, rewritten.hasDynamicUses),
+                ...memberUseWarning(id, rewritten.hasMemberEdits),
+            ]
+        : [];
 
 const transformCode = (
     state: PluginState,
     code: string,
     id: string,
-): { code: string; warning: string | undefined } | undefined => {
+): { code: string; warnings: string[] } | undefined => {
     if (!state.isEnabled || id.startsWith("\0") || !code.includes(ANIMATED_PACKAGE)) {
         return undefined;
     }
@@ -398,7 +420,7 @@ const transformCode = (
         return undefined;
     }
 
-    return { code: rewritten.code, warning: warningFor(state, id, rewritten.hasDynamicUses) };
+    return { code: rewritten.code, warnings: warningsFor(state, id, rewritten) };
 };
 
 function gtkxAnimated(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
@@ -428,9 +450,10 @@ function gtkxAnimated(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
 
         transform(code, id) {
             const result = transformCode(state, code, id);
+            const warnings = result?.warnings ?? [];
 
-            if (result?.warning !== undefined) {
-                this.warn(result.warning);
+            for (const warning of warnings) {
+                this.warn(warning);
             }
 
             return result?.code;

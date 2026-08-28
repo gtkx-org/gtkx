@@ -114,7 +114,8 @@ never imported throws instead of silently constructing the wrong class; and in a
 `GObject.typeFromName` resolves only the types the bundle registered — GLib's own contract — so import a
 class if you need its name to resolve (dev and tests never bundle and keep every type registered). Dynamic uses of the `animated` value
 itself — spreading it, `Object.keys(animated)` — keep every widget in the bundle, and `gtkx build` warns
-about the file; member access and the call form stay fully shakeable.
+about the file; member access and the call form stay fully shakeable while the flag rewrites them, and
+member access is itself deprecated (see the table below).
 
 The [configuration guide](/guide/configuration-and-codegen#future-flags) documents each flag in full, including the `?icon` and `?url` forms.
 
@@ -156,6 +157,7 @@ ones whose tag ends in **`Removed in v2`**. Searching the store for that phrase 
 | `GObject.buildValue(gtype, populate)` | 1.3 | Pass the value itself, or `new Value()` and `init` |
 | The `@gtkx/gi/cairo` subpath | 1.3 | Import from `@gtkx/cairo` |
 | The `*ConstructorProps` type aliases in `@gtkx/cairo` | 1.3 | None — the stub constructors they described are gone |
+| Property access on `animated` (`animated.GtkLabel`) | 1.6 | Import the component and call `animated(GtkLabel)` — the wrapper is cached, so the call is free to repeat. In 2.0 `animated` is only callable, and the build-time rewrite that kept property access shakeable is deleted with it; `gtkx build` names each file still using property access |
 
 `Gdk.RGBA.create` is the one worth reading twice: it swallows a color string GDK cannot parse and leaves you
 with transparent black. Its replacement makes you check.
