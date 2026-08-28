@@ -6,7 +6,7 @@ export default defineConfig({
         coverage: {
             provider: "v8",
             allowExternal: true,
-            reporter: ["lcov", "text-summary"],
+            reporter: ["lcovonly", "text-summary"],
             reportsDirectory: "coverage",
             include: ["packages/*/src/**/*.{ts,tsx}"],
             exclude: [
