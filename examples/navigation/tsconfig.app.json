@@ -1,5 +1,5 @@
 {
-    "extends": ["../../tsconfig.app.json", "../../tsconfig.react-navigation.json"],
+    "extends": "../../tsconfig.app.json",
     "files": ["${configDir}/node_modules/.gtkx/env.d.ts"],
     "references": [
         {

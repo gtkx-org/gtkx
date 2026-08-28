@@ -1,5 +1,5 @@
 {
-    "extends": ["../../tsconfig.lib.json", "../../tsconfig.react-navigation.json"],
+    "extends": "../../tsconfig.lib.json",
     "compilerOptions": {
       "exactOptionalPropertyTypes": false
     },

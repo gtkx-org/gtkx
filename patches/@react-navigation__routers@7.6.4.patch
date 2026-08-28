@@ -1,0 +1,12 @@
+diff --git a/package.json b/package.json
+index daea3965e5f38c0442a78b54b907e49c7871f8bf..a4aa7e382f0c5bc841f4514c2ebc86cd621a459f 100644
+--- a/package.json
++++ b/package.json
+@@ -21,7 +21,6 @@
+   "types": "./lib/typescript/src/index.d.ts",
+   "exports": {
+     ".": {
+-      "source": "./src/index.tsx",
+       "types": "./lib/typescript/src/index.d.ts",
+       "default": "./lib/module/index.js"
+     },

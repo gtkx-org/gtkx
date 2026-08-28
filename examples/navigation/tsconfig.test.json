@@ -1,5 +1,5 @@
 {
-    "extends": ["../../tsconfig.test.json", "../../tsconfig.react-navigation.json"],
+    "extends": "../../tsconfig.test.json",
     "include": ["tests/**/*.ts", "tests/**/*.tsx", "src/gtkx-env.d.ts"],
     "references": [
         {

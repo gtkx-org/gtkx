@@ -46,6 +46,8 @@ overrides:
 packageExtensionsChecksum: sha256-a2xhjdsFr8d5AIbVRi4nn7WBebox5vq0zcCN2SSQOYo=
 
 patchedDependencies:
+  '@react-navigation/core@7.21.13': 6462da01ed23beee88f01d290d3714743e43d2fd84235198fcbe09501a61d1d4
+  '@react-navigation/routers@7.6.4': 264e3b1766bd6c68d737cc5a0462f4d031997ddce4982d95ed9fbbc91906b77e
   '@types/react-reconciler@0.33.0': 5f321dd89798ede30e54db677b972e9a7ad535a6245167ce4678941916c328e8
 
 importers:
@@ -712,10 +714,10 @@ importers:
         version: link:../react
       '@react-navigation/core':
         specifier: ^7.21.13
-        version: 7.21.13(react@19.2.8)
+        version: 7.21.13(patch_hash=6462da01ed23beee88f01d290d3714743e43d2fd84235198fcbe09501a61d1d4)(react@19.2.8)
       '@react-navigation/routers':
         specifier: ^7.6.4
-        version: 7.6.4
+        version: 7.6.4(patch_hash=264e3b1766bd6c68d737cc5a0462f4d031997ddce4982d95ed9fbbc91906b77e)
       react:
         specifier: ^19.2
         version: 19.2.8
@@ -8650,9 +8652,9 @@ snapshots:
 
   '@pinojs/redact@0.4.0': {}
 
-  '@react-navigation/core@7.21.13(react@19.2.8)':
+  '@react-navigation/core@7.21.13(patch_hash=6462da01ed23beee88f01d290d3714743e43d2fd84235198fcbe09501a61d1d4)(react@19.2.8)':
     dependencies:
-      '@react-navigation/routers': 7.6.4
+      '@react-navigation/routers': 7.6.4(patch_hash=264e3b1766bd6c68d737cc5a0462f4d031997ddce4982d95ed9fbbc91906b77e)
       escape-string-regexp: 4.0.0
       fast-deep-equal: 3.1.3
       nanoid: 3.3.18
@@ -8662,7 +8664,7 @@ snapshots:
       use-latest-callback: 0.2.6(react@19.2.8)
       use-sync-external-store: 1.6.0(react@19.2.8)
 
-  '@react-navigation/routers@7.6.4':
+  '@react-navigation/routers@7.6.4(patch_hash=264e3b1766bd6c68d737cc5a0462f4d031997ddce4982d95ed9fbbc91906b77e)':
     dependencies:
       nanoid: 3.3.18
 
