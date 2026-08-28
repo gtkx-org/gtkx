@@ -75,10 +75,16 @@ const buildElement = (typeName: string, record: Props): ReactElement => {
  * @param cls Wrapper class the name resolves to. Referencing it keeps the class, and with it the
  * registration the reconciler's name lookup depends on, in a tree-shaken bundle; the component
  * itself renders through the name.
+ * @param metadata Registered metadata entry for the type. Referencing it keeps the type's property
+ * and signal tables, which register themselves when evaluated, in a tree-shaken bundle.
  * @returns A component taking that type's props.
  */
 /* eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- callers name the props */
-const createElementComponent: <P = unknown>(typeName: string, cls?: unknown) => (props: P) => ReactNode =
+const createElementComponent: <P = unknown>(
+    typeName: string,
+    cls?: unknown,
+    metadata?: unknown,
+) => (props: P) => ReactNode =
     (typeName) => (props): ReactNode => buildElement(typeName, isRecord(props) ? props : {});
 
 export { Prop, createElementComponent };

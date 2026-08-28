@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type AppProbe, probeAppProject, removeAppProject } from "./app-project.js";
+import {
+    type AppProbe,
+    type AppProject,
+    buildAppProject,
+    createAppProject,
+    probeAppProject,
+    removeAppProject,
+} from "./app-project.js";
 
 const BUILD_TIMEOUT = 120_000;
 const OUT_DIR = "dist";
@@ -32,6 +39,14 @@ import { typeFromName } from "@gtkx/runtime";
 process.stdout.write("${USED_NAME_PREFIX}" + Task.name + "\n");
 process.stdout.write("${USED_TYPE_PREFIX}" + String(typeFromName("GTask") !== 0n) + "\n");
 process.stdout.write("${INDEXED_TYPE_PREFIX}" + String(typeFromName("GSubprocess") !== 0n) + "\n");
+`;
+
+const USED_SIGNAL_HANDLER = "onClicked";
+const UNUSED_SIGNAL_HANDLER = "onActivateLink";
+
+const REACT_APP_ENTRY = String.raw`import { GtkButton } from "@gtkx/jsx";
+
+process.stdout.write("used-component=" + typeof GtkButton + "\n");
 `;
 
 describe("gtkx build (tree shaking)", () => {
@@ -68,5 +83,35 @@ describe("gtkx build (tree shaking)", () => {
     it("drops the namespaces the app never imports", () => {
         expect(bundle).not.toContain(UNUSED_CLASS_METHOD);
         expect(bundle).not.toContain(UNUSED_GET_TYPE);
+    });
+});
+
+describe("gtkx build (metadata tree shaking)", () => {
+    let project: AppProject;
+    let bundle: string;
+
+    beforeAll(async () => {
+        project = createAppProject({
+            applicationId: "com.gtkx.climetadataprobe",
+            entry: REACT_APP_ENTRY,
+            files: { "gtkx.config.mjs": APP_CONFIG },
+            packageType: "module",
+            prefix: "gtkx-bundle-metadata-",
+        });
+
+        const reported = await buildAppProject({ project, outDir: OUT_DIR });
+        bundle = readFileSync(join(project.root, reported), "utf8");
+    }, BUILD_TIMEOUT);
+
+    afterAll(() => {
+        removeAppProject(project);
+    });
+
+    it("keeps the metadata of the elements the app imports", () => {
+        expect(bundle).toContain(USED_SIGNAL_HANDLER);
+    });
+
+    it("drops the metadata of elements the app never imports", () => {
+        expect(bundle).not.toContain(UNUSED_SIGNAL_HANDLER);
     });
 });

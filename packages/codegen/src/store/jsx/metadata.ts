@@ -8,6 +8,7 @@ import type { GirType } from "../../gir/type.js";
 import { inputParameters } from "../../analysis/param-structure.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import {
+    ancestorGlibNames,
     implementedInterfaces,
     isIntrinsicElementClass,
     iterateClassesWithGlibName,
@@ -18,6 +19,7 @@ type IntrinsicElementEntry = {
     glibName: string;
     signals: [string, string][];
     properties: [string, string][];
+    ancestors: string[];
 };
 
 const READABLE = 1;
@@ -35,6 +37,10 @@ const FLOAT_PATTERN = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
 const generateMetadata = (library: Library): string => {
     const intrinsicElements = collectIntrinsicElements(library);
 
+    if (library.isTreeShaken) {
+        return generateEntryMetadata(intrinsicElements);
+    }
+
     const signalsEntries = intrinsicElements.map(
         ({ glibName, signals }) => `    "${glibName}": ${renderSignalsObject(signals)},`,
     );
@@ -48,6 +54,40 @@ const generateMetadata = (library: Library): string => {
         `export const signals: Record<string, Record<string, string>> = {\n${signalsEntries.join("\n")}\n};`,
         "export const properties: Record<string, Record<string, PropertyEntry>> = " +
         `{\n${propertyEntries.join("\n")}\n};`,
+    ].join("\n\n")}\n`;
+};
+
+const entryAncestorsInSet = (entry: IntrinsicElementEntry, names: Set<string>): string[] =>
+    entry.ancestors.filter((name) => name !== entry.glibName && names.has(name));
+
+const compareEntriesByDepth = (
+    names: Set<string>,
+): ((first: IntrinsicElementEntry, second: IntrinsicElementEntry) => number) =>
+    (first, second) =>
+        entryAncestorsInSet(first, names).length - entryAncestorsInSet(second, names).length ||
+        first.glibName.localeCompare(second.glibName);
+
+const renderEntryExport = (entry: IntrinsicElementEntry, names: Set<string>): string => {
+    const parent = entryAncestorsInSet(entry, names)[0] ?? "undefined";
+    const literal = sourceStringLiteral(entry.glibName);
+    const ownSignals = renderSignalsObject(entry.signals);
+    const ownProperties = renderPropertiesObject(entry.properties);
+    const call = `registerElementMetadata(${literal}, ${parent}, ${ownSignals}, ${ownProperties})`;
+
+    return `export const ${entry.glibName}: string = /* @__PURE__ */ ${call};`;
+};
+
+const generateEntryMetadata = (intrinsicElements: IntrinsicElementEntry[]): string => {
+    const names = new Set(intrinsicElements.map((entry) => entry.glibName));
+    const ordered = intrinsicElements.toSorted(compareEntriesByDepth(names));
+    const lines = ordered.map((entry) => renderEntryExport(entry, names));
+
+    return `${[
+        "import { registerElementMetadata } from \"@gtkx/react/internal\";",
+        PROPERTY_ENTRY_TYPE,
+        "export const signals: Record<string, Record<string, string>> = {};",
+        "export const properties: Record<string, Record<string, PropertyEntry>> = {};",
+        lines.join("\n\n"),
     ].join("\n\n")}\n`;
 };
 
@@ -71,6 +111,7 @@ const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => 
             glibName,
             signals: collectSignals(sources),
             properties: collectProperties(library, sources),
+            ancestors: ancestorGlibNames(klass, namespace, library),
         });
     }
 

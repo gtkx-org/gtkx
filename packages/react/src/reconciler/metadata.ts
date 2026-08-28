@@ -36,6 +36,20 @@ const FLAGS = 1;
 const DEFAULT_VALUE = 2;
 const ancestryCache: Map<string, string[]> = new Map();
 const typeInfoCache: Map<string, TypeInfo> = new Map();
+const registeredSignals: Record<string, Record<string, string>> = {};
+const registeredProperties: Record<string, Record<string, PropertyEntry>> = {};
+
+const registerElementMetadata = (
+    name: string,
+    _parent: string | undefined,
+    ownSignals: Record<string, string>,
+    ownProperties: Record<string, PropertyEntry>,
+): string => {
+    registeredSignals[name] = ownSignals;
+    registeredProperties[name] = ownProperties;
+
+    return name;
+};
 
 const addAncestor = (names: string[], seen: Set<string>, name: string | null): void => {
     if (name === null || seen.has(name)) {
@@ -75,7 +89,7 @@ const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
 };
 
 const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
-    Object.assign(info.signals, signals[ancestor] ?? {});
+    Object.assign(info.signals, registeredSignals[ancestor] ?? signals[ancestor] ?? {});
     addAll(info.userEventSignals, userEventSignals[ancestor]);
     info.behaviors.push(...(ELEMENTS[ancestor]?.behaviors ?? []));
 };
@@ -141,7 +155,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
     info.isLazy = chain.some((ancestor) => ELEMENTS[ancestor]?.isLazy === true);
 
     for (const ancestor of chain.toReversed()) {
-        Object.assign(info.properties, properties[ancestor] ?? {});
+        Object.assign(info.properties, registeredProperties[ancestor] ?? properties[ancestor] ?? {});
     }
 
     resolveProperties(info);
@@ -169,4 +183,4 @@ const getPropertyName = (object: GObject.Object, accessor: string): string | und
         getDeclaredPropertyName(object, accessor);
 };
 
-export { getPropertyName, hasProperty, typeInfoFor, type TypeInfo };
+export { getPropertyName, hasProperty, registerElementMetadata, typeInfoFor, type TypeInfo };

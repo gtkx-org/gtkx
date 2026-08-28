@@ -13,6 +13,7 @@ export { useLatestRef } from "./hooks/use-latest-ref.js";
 export { useMergedRef } from "./hooks/use-merged-refs.js";
 export type * from "./prop-types.js";
 export { settleAccessible } from "./reconciler/apply-props.js";
+export { registerElementMetadata } from "./reconciler/metadata.js";
 export { isRootElement } from "./reconciler/root-element.js";
 export { createReconcilerRoot, type ReconcilerRoot, setReconcilerErrorHandler } from "./reconciler/root.js";
 export { applyWrite } from "./reconciler/signals.js";
