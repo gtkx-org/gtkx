@@ -1,7 +1,6 @@
 import { defineConfig } from "@gtkx/config";
 
 export default defineConfig({
-    libraries: ["Gtk-4.0", "Adw-1"],
     applicationId: "com.gtkx.navigation",
     codegen: false,
     future: {
@@ -10,5 +9,6 @@ export default defineConfig({
         v2FinishResults: true,
         v2InoutReturns: true,
         v2ResourceImports: true,
+        v2DefaultLibraries: true,
     },
 });

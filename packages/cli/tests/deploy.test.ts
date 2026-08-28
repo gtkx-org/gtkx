@@ -397,6 +397,14 @@ const bareConfig = (body: string): string =>
     "    applicationIcon: \"data/icons\",\n" +
     `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
 
+const optedOutFuture = (): Record<string, boolean> =>
+    Object.fromEntries(Object.entries(STORE_FUTURE).filter(([name]) => name !== "v2DefaultLibraries"));
+
+const optedOutConfig = (body: string): string =>
+    `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
+    "    applicationIcon: \"data/icons\",\n" +
+    `    future: ${JSON.stringify(optedOutFuture())},\n${body}};\n`;
+
 const defaultLibrariesConfig = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
     "    applicationIcon: \"data/icons\",\n" +
@@ -974,7 +982,7 @@ describe("gtkx deploy (a store whose inventory is not shaped like one)", () => {
     beforeAll(() => {
         const created = createCliProject({
             prefix: "gtkx-cli-foreign-",
-            config: bareConfig(DEPLOY_BLOCK),
+            config: optedOutConfig(DEPLOY_BLOCK),
             files: projectFiles(),
             hasStore: true,
         });
