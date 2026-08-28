@@ -54,9 +54,6 @@ importers:
 
   .:
     devDependencies:
-      '@gtkx/animated':
-        specifier: workspace:*
-        version: link:packages/animated
       '@gtkx/cairo':
         specifier: workspace:*
         version: link:packages/cairo

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -72,6 +72,29 @@ const ANIMATED_APP_MANIFEST = `${JSON.stringify(
     null,
     4,
 )}\n`;
+
+const linkEntries = (source: string, target: string, skipped: string): void => {
+    for (const entry of readdirSync(source)) {
+        if (entry !== skipped) {
+            symlinkSync(join(source, entry), join(target, entry));
+        }
+    }
+};
+
+const linkAnimatedPackage = (project: AppProject): void => {
+    const modules = join(project.root, "node_modules");
+    const workspaceModules = readlinkSync(modules);
+    rmSync(modules);
+    mkdirSync(join(modules, "@gtkx"), { recursive: true });
+    linkEntries(workspaceModules, modules, "@gtkx");
+    linkEntries(join(workspaceModules, "@gtkx"), join(modules, "@gtkx"), "animated");
+    symlinkSync(join(workspaceModules, "..", "packages", "animated"), join(modules, "@gtkx", "animated"));
+};
+
+const removeAnimatedProject = (project: AppProject): void => {
+    rmSync(join(project.root, "node_modules"), { recursive: true, force: true });
+    removeAppProject(project);
+};
 
 describe("gtkx build (tree shaking)", () => {
     let probe: AppProbe;
@@ -153,12 +176,13 @@ describe("gtkx build (animated tree shaking)", () => {
             prefix: "gtkx-bundle-animated-",
         });
 
+        linkAnimatedPackage(project);
         const reported = await buildAppProject({ project, outDir: OUT_DIR });
         bundle = readFileSync(join(project.root, reported), "utf8");
     }, BUILD_TIMEOUT);
 
     afterAll(() => {
-        removeAppProject(project);
+        removeAnimatedProject(project);
     });
 
     it("rewrites member access and calls into the widgets they animate", () => {
@@ -184,12 +208,13 @@ describe("gtkx build (animated used dynamically)", () => {
             prefix: "gtkx-bundle-animated-dynamic-",
         });
 
+        linkAnimatedPackage(project);
         const reported = await buildAppProject({ project, outDir: OUT_DIR });
         bundle = readFileSync(join(project.root, reported), "utf8");
     }, BUILD_TIMEOUT);
 
     afterAll(() => {
-        removeAppProject(project);
+        removeAnimatedProject(project);
     });
 
     it("keeps the whole widget namespace behind the proxy", () => {
