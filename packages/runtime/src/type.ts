@@ -169,8 +169,6 @@ function typeFromName(name: string): bigint {
     return entry === undefined ? TYPE_INVALID : resolveType(entry[0], entry[1]);
 }
 
-const isIndexedTypeName = (name: string): boolean => nativeTypeIndex.has(name);
-
 /**
  * Indexes the GLib type names a generated namespace can produce, mapping each to the shared
  * library and `get_type` symbol that registers it, so `typeFromName` resolves the name even when
@@ -329,7 +327,6 @@ export {
     getByteArrayType,
     getErrorType,
     getStrvType,
-    isIndexedTypeName,
     isResolvableDescriptor,
     isTypedClass,
     registerNativeTypeNames,

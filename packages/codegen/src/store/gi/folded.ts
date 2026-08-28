@@ -7,7 +7,7 @@ type FoldedClassOptions = {
     className: string;
     doc: string;
     owner: string;
-    localDeclarations: string[];
+    localDeclaration: string;
     registrations: string[];
     hasInstanceInterface: boolean;
 };
@@ -19,12 +19,9 @@ const renderNameStatement = (className: string): string =>
     `{ value: ${sourceStringLiteral(className)}, configurable: true });`;
 
 const declareFoldedClass = (options: FoldedClassOptions): void => {
-    const { context, className, doc, owner, localDeclarations, registrations, hasInstanceInterface } = options;
+    const { context, className, doc, owner, localDeclaration, registrations, hasInstanceInterface } = options;
     const localName = localClassName(className);
-
-    for (const code of localDeclarations) {
-        context.module.appendDeclaration({ name: localName, code, isLocal: true });
-    }
+    context.module.appendDeclaration({ name: localName, code: localDeclaration, isLocal: true });
 
     const body = [renderNameStatement(className), ...registrations, `return ${localName};`]
         .map((statement) => indent(statement, 1))

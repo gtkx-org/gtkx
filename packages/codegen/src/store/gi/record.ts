@@ -44,7 +44,7 @@ const declareFoldedRecord = (context: ModuleContext, options: FoldedRecordOption
         className,
         doc,
         owner: record.name,
-        localDeclarations: [`${modifier}class ${localName}${heritage} {\n${body}\n}`],
+        localDeclaration: `${modifier}class ${localName}${heritage} {\n${body}\n}`,
         registrations: context.takeRegistrations(),
         hasInstanceInterface: true,
     });

@@ -27,25 +27,6 @@ import {
     RECORD_FIELD_ACCESSORS,
 } from "./codegen-helpers.js";
 
-describe("gtkx codegen (how a generated binding reaches its symbol)", () => {
-    it("marks the binding pure and looks the symbol up on the first call", () => {
-        const project = createCliProject({
-            prefix: "gtkx-cli-codegen-lazy-",
-            config: fixtureConfig("DigitName-1.0"),
-        });
-
-        try {
-            expect(runCli(project, ["codegen"]).status).toBe(0);
-
-            expect(generatedModule(project, "gi", "digitname", "digitname.js")).toContain(
-                `= ${PURE} t.fn("libdigitname.so.0", "digit_name_radio_get_mode", () => (`,
-            );
-        } finally {
-            removeCliProject(project);
-        }
-    });
-});
-
 describe("gtkx codegen (libraries the generated types have to escape)", () => {
     it("binds a class whose static narrows the one it inherits", () => {
         const project = createCliProject({
@@ -70,6 +51,10 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
         try {
             expect(runCli(project, ["codegen"]).status).toBe(0);
             expect(generatedModule(project, "gi", "digitname", "digitname.d.ts")).toContain("enum _80211Mode");
+
+            expect(generatedModule(project, "gi", "digitname", "digitname.js")).toContain(
+                `= ${PURE} t.fn("libdigitname.so.0", "digit_name_radio_get_mode", () => (`,
+            );
         } finally {
             removeCliProject(project);
         }

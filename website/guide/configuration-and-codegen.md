@@ -236,7 +236,7 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
   typically most of the store — is removed, which roughly halves a small app's bundle. No call site changes,
   so `tsc` reports nothing for this flag.
 
-  Three behaviors move with it. A bare `import "@gtkx/gi/gtk"` registers nothing on its own; import a value
+  Three behaviors move with it: a bare `import "@gtkx/gi/gtk"` registers nothing on its own; import a value
   from the namespace instead (namespace initialization such as `gtk_init` and the prototype overrides still
   run whenever the namespace is imported at all). String-driven rendering keeps working: the reconciler
   resolves JSX tag names through the runtime's name resolver, which falls back to a generated index of
@@ -246,12 +246,14 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
   types already registered in-process, and a production bundle registers a generated type when its class is
   retained, so import the class if you need its name to resolve — `gtkx dev` and tests never bundle, and
   there every type stays registered exactly as today.
-  Finally, `animated.GtkX` member accesses and `animated(...)` calls are rewritten at build time to imports
-  of exactly the widgets they animate; a dynamic use of the `animated` value itself — spreading it,
-  `Object.keys`, computed access — keeps the whole widget namespace and `gtkx build` warns about the file.
-  Property access on `animated` is deprecated and removed in GTKX 2.0 along with its rewrite — prefer
-  importing the component and calling `animated(GtkX)`, which needs no rewrite at all; `gtkx build` names
-  each file still reading components off `animated`.
+
+  The `animated` binding gets a build-time rewrite of its own: `animated.GtkX` member accesses and
+  `animated(...)` calls become imports of exactly the widgets they animate, while a dynamic use of the
+  `animated` value itself — spreading it, `Object.keys`, computed access — keeps the whole widget namespace
+  and `gtkx build` warns about the file. Property access on `animated` is deprecated and removed in GTKX 2.0
+  along with its rewrite — prefer importing the component and calling `animated(GtkX)`, the only form 2.0
+  keeps, where `animated` is plainly callable and no rewrite exists at all; `gtkx build` names each file
+  still reading components off `animated`.
 
 Changing a flag invalidates the generated store, so the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates it automatically. A key the `future` block does not define is ignored rather than rejected, and codegen names it on each run so a typo does not stay silent.
 

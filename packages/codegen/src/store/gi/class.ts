@@ -157,7 +157,7 @@ const declareTreeShakenClass = (context: ModuleContext, options: TreeShakenClass
         className,
         doc: getDoc(klass),
         owner: klass.name,
-        localDeclarations: [`${classModifier(klass)}class ${localName}${heritage} {\n${body}\n}`],
+        localDeclaration: `${classModifier(klass)}class ${localName}${heritage} {\n${body}\n}`,
         registrations,
         hasInstanceInterface: true,
     });
@@ -177,36 +177,21 @@ const appendMemberDeclarations = (options: MemberDeclarationsOptions): void => {
     appendInterfaceMerge(context, klass, className, implemented);
 };
 
-const renderInterfaceMerge = (
-    context: ModuleContext,
-    klass: GirClass,
-    targetName: string,
-    implemented: ImplementedRef[],
-): string | undefined => {
-    if (implemented.length === 0) {
-        return undefined;
-    }
-
-    const mergeRefs = implemented.map((ref) => interfaceMergeRef(context, klass, ref));
-
-    return `interface ${targetName} extends ${mergeRefs.join(", ")} {}`;
-};
-
 const appendInterfaceMerge = (
     context: ModuleContext,
     klass: GirClass,
     className: string,
     implemented: ImplementedRef[],
 ): void => {
-    const code = renderInterfaceMerge(context, klass, className, implemented);
-
-    if (code === undefined) {
+    if (implemented.length === 0) {
         return;
     }
 
+    const mergeRefs = implemented.map((ref) => interfaceMergeRef(context, klass, ref));
+
     context.declare({
         name: className,
-        code: `export ${code}`,
+        code: `export interface ${className} extends ${mergeRefs.join(", ")} {}`,
     });
 };
 

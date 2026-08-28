@@ -166,4 +166,4 @@ const sameNamespaceParent = (
     return byLocalName.get(parent.typeName);
 };
 
-export { generateNamespaceModule, type NamespaceModule };
+export { generateNamespaceModule };

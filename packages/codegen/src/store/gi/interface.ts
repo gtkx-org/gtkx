@@ -158,7 +158,7 @@ const generateFoldedInterface = (
         className,
         doc: getDoc(iface),
         owner: iface.name,
-        localDeclarations: [classCode],
+        localDeclaration: classCode,
         registrations,
         hasInstanceInterface: false,
     });
