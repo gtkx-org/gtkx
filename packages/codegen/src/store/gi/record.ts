@@ -5,6 +5,7 @@ import { isEmittableEntity } from "../../gir/emittable.js";
 import { indentMembers } from "../../writer/emit.js";
 import { type Callables, dedupeCallables, generateBindings, renderPlainTypeMembers } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
+import { declareFoldedClass, localClassName } from "./folded.js";
 import { renderSourceGtype } from "./gtype-binding.js";
 import { renderRecordConstructor, renderRecordConstructorPropsInterface } from "./record-constructor.js";
 import { renderRecordFieldAccessor } from "./record-field-accessor.js";
@@ -36,12 +37,38 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     const doc = getDoc(record);
     const isConstructible = isConstructibleRecord(context, context.namespace.name, record);
     const modifier = isConstructible ? "" : "abstract ";
+    const gtypeExpr = renderSourceGtype(context, record);
 
-    context.declare({
-        name: className,
-        code: `${doc}export ${modifier}class ${className}${heritage} {\n${body}\n}`,
-        owner: record.name,
-    });
+    if (context.isTreeShaken && gtypeExpr !== undefined) {
+        const localName = localClassName(className);
+        context.beginRegistrations();
+
+        appendWrapperClassRegistration(context, {
+            className: localName,
+            gtypeExpr,
+        });
+
+        declareFoldedClass({
+            context,
+            className,
+            doc,
+            owner: record.name,
+            localDeclarations: [`${modifier}class ${localName}${heritage} {\n${body}\n}`],
+            registrations: context.takeRegistrations(),
+            hasTypeAlias: true,
+        });
+    } else {
+        context.declare({
+            name: className,
+            code: `${doc}export ${modifier}class ${className}${heritage} {\n${body}\n}`,
+            owner: record.name,
+        });
+
+        appendWrapperClassRegistration(context, {
+            className,
+            gtypeExpr,
+        });
+    }
 
     if (isConstructible) {
         context.declare({
@@ -49,13 +76,6 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
             code: renderRecordConstructorPropsInterface(context, record, className),
         });
     }
-
-    const gtypeExpr = renderSourceGtype(context, record);
-
-    appendWrapperClassRegistration(context, {
-        className,
-        gtypeExpr,
-    });
 };
 
 const renderRecordMembers = (

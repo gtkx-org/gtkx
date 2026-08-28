@@ -7,6 +7,7 @@ import { getParentRef } from "../../gir/ancestry.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
 import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../../gir/primitives.js";
 import { ModuleContext } from "../../writer/context.js";
+import { renderBootstrapModule } from "./bootstrap.js";
 import { generateCallback } from "./callback.js";
 import { generateClass } from "./class.js";
 import { generateConstant } from "./constant.js";
@@ -24,7 +25,12 @@ type TopologicalState = {
     result: GirClass[];
 };
 
-const generateNamespaceModule = (namespace: GirNamespace, library: Library): string => {
+type NamespaceModule = {
+    source: string;
+    bootstrapSource: string | undefined;
+};
+
+const generateNamespaceModule = (namespace: GirNamespace, library: Library): NamespaceModule => {
     const context = new ModuleContext(namespace, library);
     context.addGObjectBootstrapImports();
     generateNamespaceTypes(context, namespace);
@@ -38,7 +44,10 @@ const generateNamespaceModule = (namespace: GirNamespace, library: Library): str
         );
     }
 
-    return context.module.toSource();
+    return {
+        source: context.module.toSource(),
+        bootstrapSource: library.isTreeShaken ? renderBootstrapModule(context) : undefined,
+    };
 };
 
 const generateNamespaceTypes = (context: ModuleContext, namespace: GirNamespace): void => {
@@ -50,12 +59,20 @@ const generateNamespaceTypes = (context: ModuleContext, namespace: GirNamespace)
         generateRecord(context, record);
     }
 
+    if (context.isTreeShaken) {
+        for (const iface of namespace.interfaces) {
+            generateInterface(context, iface);
+        }
+    }
+
     for (const klass of topologicalClassOrder(namespace.classes, namespace.name)) {
         generateClass(context, klass);
     }
 
-    for (const iface of namespace.interfaces) {
-        generateInterface(context, iface);
+    if (!context.isTreeShaken) {
+        for (const iface of namespace.interfaces) {
+            generateInterface(context, iface);
+        }
     }
 };
 
@@ -147,4 +164,4 @@ const sameNamespaceParent = (
     return byLocalName.get(parent.typeName);
 };
 
-export { generateNamespaceModule };
+export { generateNamespaceModule, type NamespaceModule };

@@ -62,8 +62,16 @@ class ImportsBuilder {
     }
 
     addNamespace(specifier: string, alias: string, isType = false): void {
-        if (!this.namespaces.has(specifier)) {
+        const existing = this.namespaces.get(specifier);
+
+        if (existing === undefined) {
             this.namespaces.set(specifier, { alias, isType });
+
+            return;
+        }
+
+        if (existing.isType && !isType) {
+            existing.isType = false;
         }
     }
 

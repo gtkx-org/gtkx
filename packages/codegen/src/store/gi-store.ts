@@ -14,6 +14,7 @@ import { buildManifest, namespaceBarrel, type StoreOptions, subpathExport, write
 type GiNamespaceInput = {
     directory: string;
     rawSource: string;
+    rawBootstrapSource?: string | undefined;
     girFile: string;
 };
 
@@ -48,15 +49,19 @@ const overrideModule = (fileName: string, overridePath: string): SourceModule =>
     origin: overridePath,
 });
 
-const barrelFile = (directory: string, girFile: string): SourceModule => {
+const barrelFile = (directory: string, girFile: string, hasBootstrap: boolean): SourceModule => {
     const barrel = namespaceBarrel(directory);
     const overrideIndex = join(OVERRIDES_ROOT, directory, "index.ts.ejs");
 
-    if (!existsSync(overrideIndex)) {
-        return { ...barrel, origin: girFile };
+    const file = existsSync(overrideIndex)
+        ? overrideModule(barrel.fileName, overrideIndex)
+        : { ...barrel, origin: girFile };
+
+    if (!hasBootstrap) {
+        return file;
     }
 
-    return overrideModule(barrel.fileName, overrideIndex);
+    return { ...file, source: `import "./bootstrap.js";\n${file.source}` };
 };
 
 const externalShimModule = ({ directory, packageName, girFile }: GiExternalNamespaceInput): SourceModule => ({
@@ -74,12 +79,16 @@ const collectStoreSources = (
     const exportsMap: Record<string, unknown> = {};
     const collected: SourceModule[] = [];
 
-    for (const { directory, rawSource, girFile } of namespaces) {
+    for (const { directory, rawSource, rawBootstrapSource, girFile } of namespaces) {
         collected.push(
             { fileName: `${directory}/${directory}.ts`, source: rawSource, origin: girFile },
             ...overrideFiles(directory),
-            barrelFile(directory, girFile),
+            barrelFile(directory, girFile, rawBootstrapSource !== undefined),
         );
+
+        if (rawBootstrapSource !== undefined) {
+            collected.push({ fileName: `${directory}/bootstrap.ts`, source: rawBootstrapSource, origin: girFile });
+        }
 
         exportsMap[`./${directory}`] = subpathExport(`${directory}/index`);
     }
@@ -100,6 +109,8 @@ const storePeerDependencies = (externalNamespaces: GiExternalNamespaceInput[]): 
         ]),
     );
 
+const TREE_SHAKEN_SIDE_EFFECTS = ["**/bootstrap.js", "**/overrides/*.js", "**/index.js"];
+
 const writeGiStore = (
     options: StoreOptions,
     namespaces: GiNamespaceInput[],
@@ -107,6 +118,7 @@ const writeGiStore = (
     records: GiStoreRecords,
 ): void => {
     const { collected, exportsMap } = collectStoreSources(namespaces, externalNamespaces);
+    const isTreeShaken = namespaces.some((namespace) => namespace.rawBootstrapSource !== undefined);
 
     writeStore({
         storeDir: options.storeDir,
@@ -116,6 +128,7 @@ const writeGiStore = (
             name: "@gtkx/gi",
             version: options.version,
             exports: exportsMap,
+            sideEffects: isTreeShaken ? TREE_SHAKEN_SIDE_EFFECTS : true,
             peerDependencies: storePeerDependencies(externalNamespaces),
         }),
         rawFiles: [

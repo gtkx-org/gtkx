@@ -21,6 +21,7 @@ import {
     renderStaticHead,
 } from "./callables.js";
 import { annotationSpec, getDoc } from "./doc-spec.js";
+import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
 import {
@@ -89,8 +90,24 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
     generateBindings(context, callables);
     const gtypeExpr = renderSourceGtype(context, iface);
     const implRef = appendInterfaceTypes(context, iface, className, callables) ?? "unknown";
+
+    if (context.isTreeShaken && gtypeExpr !== undefined) {
+        for (const declaration of renderSignalDeclarations(context, iface, className, true)) {
+            context.declare(declaration);
+        }
+
+        context.declare({
+            name: makerName(className),
+            code: renderInterfaceMaker(context, iface, className, callables),
+        });
+
+        generateFoldedInterface(context, { iface, className, callables, gtypeExpr, implRef });
+
+        return;
+    }
+
     const classCode = renderInterfaceClass(context, { iface, className, callables, gtypeExpr, implRef });
-    context.declare({ name: className, code: classCode, owner: iface.name });
+    context.declare({ name: className, code: `${getDoc(iface)}${classCode}`, owner: iface.name });
 
     for (const declaration of renderSignalDeclarations(context, iface, className, true)) {
         context.declare(declaration);
@@ -106,6 +123,35 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
         makerName: makerName(className),
         gtypeExpr,
         layout: renderInterfaceLayout(context, iface, callables),
+    });
+};
+
+const generateFoldedInterface = (
+    context: ModuleContext,
+    options: Omit<InterfaceClassOptions, "gtypeExpr"> & { gtypeExpr: string },
+): void => {
+    const { iface, className, callables, gtypeExpr, implRef } = options;
+    const localName = localClassName(className);
+    context.beginRegistrations();
+
+    appendInterfaceRegistration(context, {
+        className: localName,
+        makerName: makerName(className),
+        gtypeExpr,
+        layout: renderInterfaceLayout(context, iface, callables),
+    });
+
+    const registrations = context.takeRegistrations();
+    const classCode = renderInterfaceClass(context, { iface, className, callables, gtypeExpr, implRef }, localName);
+
+    declareFoldedClass({
+        context,
+        className,
+        doc: getDoc(iface),
+        owner: iface.name,
+        localDeclarations: [classCode],
+        registrations,
+        hasTypeAlias: false,
     });
 };
 
@@ -373,8 +419,12 @@ const renderInterfaceTypeMembers = (context: ModuleContext, iface: GirClass, cal
     ...interfaceVfuncMembers(context, iface, "signature"),
 ];
 
-const renderInterfaceClass = (context: ModuleContext, options: InterfaceClassOptions): string => {
-    const { iface, className, callables, gtypeExpr, implRef } = options;
+const renderInterfaceClass = (
+    context: ModuleContext,
+    options: InterfaceClassOptions,
+    localName?: string,
+): string => {
+    const { className, callables, gtypeExpr, implRef } = options;
     const members: string[] = [];
 
     if (gtypeExpr !== undefined) {
@@ -383,10 +433,9 @@ const renderInterfaceClass = (context: ModuleContext, options: InterfaceClassOpt
 
     members.push(...renderStaticHead(context, callables, className), renderInterfaceBrand(context, implRef));
 
-    return `${getDoc(iface)}${renderBracedOrEmpty(
-        `export abstract class ${className}`,
-        members.join("\n\n"),
-    )}`;
+    const head = localName === undefined ? `export abstract class ${className}` : `abstract class ${localName}`;
+
+    return renderBracedOrEmpty(head, members.join("\n\n"));
 };
 
 const renderInterfaceBrand = (context: ModuleContext, implRef: string): string => {

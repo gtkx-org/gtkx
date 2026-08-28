@@ -26,6 +26,14 @@ const renderInternGtype = (context: ModuleContext, typeName: string | undefined)
 
     if (context.namespace.name !== "GObject") {
         context.addRuntimeImport("typeFromName");
+
+        return `typeFromName(${sourceStringLiteral(typeName)})`;
+    }
+
+    if (context.isTreeShaken) {
+        context.module.imports.addNamed("@gtkx/runtime", "typeFromName", false, "runtimeTypeFromName");
+
+        return `runtimeTypeFromName(${sourceStringLiteral(typeName)})`;
     }
 
     return `typeFromName(${sourceStringLiteral(typeName)})`;
@@ -47,8 +55,17 @@ const renderGtypeExpression = (
     context: ModuleContext,
     typeFnName: string,
     typeName: string | undefined,
-): string | undefined =>
-    typeFnName === "intern" ? renderInternGtype(context, typeName) : renderResolveGtype(context, typeFnName);
+): string | undefined => {
+    if (typeFnName === "intern") {
+        return renderInternGtype(context, typeName);
+    }
+
+    if (context.isTreeShaken && typeName !== undefined) {
+        context.addNativeTypeName(typeName, typeFnName);
+    }
+
+    return renderResolveGtype(context, typeFnName);
+};
 
 const renderSourceGtype = (context: ModuleContext, source: TypeSource): string | undefined =>
     source.glibGetType === undefined

@@ -40,9 +40,12 @@ const splitNamespaces = (library: Library): SplitNamespaces => {
             continue;
         }
 
+        const generated = generateNamespaceModule(namespace, library);
+
         namespaces.push({
             directory: namespaceDirectory(namespace),
-            rawSource: generateNamespaceModule(namespace, library),
+            rawSource: generated.source,
+            rawBootstrapSource: generated.bootstrapSource,
             girFile: namespace.girFile,
         });
     }

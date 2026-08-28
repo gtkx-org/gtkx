@@ -182,14 +182,25 @@ const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, ex
     }
 
     if (fn.name === "init") {
-        context.module.appendRegistration(`${exportName}();`, [exportName]);
+        if (context.isTreeShaken) {
+            context.addBootstrapCall(`${exportName}();`, { moduleExports: [exportName] });
+        } else {
+            context.module.appendRegistration(`${exportName}();`, [exportName]);
+        }
 
         return;
     }
 
     if (fn.name === "finalize") {
-        context.addRuntimeImport("onExit");
-        context.module.appendRegistration(`onExit(${exportName});`, [exportName]);
+        if (context.isTreeShaken) {
+            context.addBootstrapCall(`onExit(${exportName});`, {
+                moduleExports: [exportName],
+                runtimeImports: ["onExit"],
+            });
+        } else {
+            context.addRuntimeImport("onExit");
+            context.module.appendRegistration(`onExit(${exportName});`, [exportName]);
+        }
     }
 };
 

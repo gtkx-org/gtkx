@@ -31,7 +31,7 @@ type Manifest = {
     name: string;
     type: "module";
     version: string;
-    sideEffects: true;
+    sideEffects: boolean | string[];
     exports: Record<string, unknown>;
     peerDependencies?: Record<string, string>;
 };
@@ -40,6 +40,7 @@ type ManifestInput = {
     name: string;
     version: string;
     exports: Record<string, unknown>;
+    sideEffects?: boolean | string[];
     peerDependencies?: Record<string, string>;
 };
 
@@ -71,7 +72,7 @@ const buildManifest = (input: ManifestInput): Manifest => {
         name: input.name,
         type: "module",
         version: input.version,
-        sideEffects: true,
+        sideEffects: input.sideEffects ?? true,
         exports: { "./package.json": "./package.json", ...input.exports },
     };
 
