@@ -1,6 +1,14 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { type ApplicationClass, type CommandLineApplication, createApplication } from "@gtkx/runtime";
+import {
+    type ApplicationClass,
+    type CommandLineApplication,
+    createApplication,
+    getClassType,
+    getInstanceType,
+    TYPE_INVALID,
+    typeIsA,
+} from "@gtkx/runtime";
 import { isDeepEqual, kebabCase, structuredClone, unsanitizeIdentifier } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
 import { getPropertyName } from "./metadata.js";
@@ -62,10 +70,23 @@ type ChildClass<C extends GObject.Object> =
     (abstract new (...args: never[]) => C) |
     { [Symbol.hasInstance]: (value: unknown) => value is C };
 
+const childClassType = (cls: ChildClass<GObject.Object>): bigint =>
+    typeof cls === "function" ? getClassType(cls) : TYPE_INVALID;
+
+const isChildInstance = <C extends GObject.Object>(child: GObject.Object, cls: ChildClass<C>): child is C => {
+    if (child instanceof cls) {
+        return true;
+    }
+
+    const type = childClassType(cls);
+
+    return type !== TYPE_INVALID && typeIsA(getInstanceType(child), type);
+};
+
 const childMatcher =
     <C extends GObject.Object>(cls: ChildClass<C> | undefined): ((child: GObject.Object) => child is C) =>
         (child): child is C =>
-            cls !== undefined && child instanceof cls;
+            cls !== undefined && isChildInstance(child, cls);
 
 const slotAttach =
     <P extends GObject.Object, C extends GObject.Object>(
