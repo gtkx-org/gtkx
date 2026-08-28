@@ -1,6 +1,8 @@
 import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, UserConfig } from "vite";
-import { type GeneratedElement, readGeneratedElements, resolveStore } from "@gtkx/codegen";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { type GeneratedElement, readGeneratedElements } from "@gtkx/codegen";
 import { createConfigLoader } from "@gtkx/config/internal";
 import { parseSync } from "vite";
 import { sourceLanguage } from "../internal/source-imports.js";
@@ -107,7 +109,7 @@ const animatedLocalName = (program: AstNode): string | undefined => {
 };
 
 const countDeclarations = (program: AstNode, name: string): number => {
-    let count = 0;
+    const spans: Set<number> = new Set();
 
     walk(program, null, (node, parent) => {
         if (node.type !== "Identifier" && node.type !== "BindingIdentifier") {
@@ -128,11 +130,11 @@ const countDeclarations = (program: AstNode, name: string): number => {
             (parent.type === "FormalParameter" && parent.pattern === node);
 
         if (isBinding) {
-            count += 1;
+            spans.add(node.start);
         }
     });
 
-    return count;
+    return spans.size;
 };
 
 const isRewritableMember = (node: AstNode, parent: AstNode | null, local: string): boolean => {
@@ -304,13 +306,8 @@ const loadElements = (state: PluginState): Map<string, GeneratedElement> | null 
     }
 
     try {
-        const store = resolveStore(state.root);
-        const jsxStoreDir = store.jsx?.storeDir;
-
-        if (jsxStoreDir === undefined) {
-            return null;
-        }
-
+        const requireFromRoot = createRequire(join(state.root, "package.json"));
+        const jsxStoreDir = dirname(requireFromRoot.resolve("@gtkx/jsx/package.json"));
         state.elements = new Map(readGeneratedElements(jsxStoreDir).map((element) => [element.glibName, element]));
     } catch {
         return null;
