@@ -7,13 +7,14 @@ type FutureDeprecation = {
     id: DeprecationId;
     flag: keyof NonNullable<Config["future"]>;
     change: string;
-    isTypeChecked: boolean;
+    unchecked?: string;
 };
 
 const SHOWN_ENV = "GTKX_DEPRECATIONS_SHOWN";
 const GUIDE_URL = "https://gtkx.dev/guide/upgrading-to-2";
 const ENTRY_COLUMN = 30;
-const UNTYPED_NOTE = " No type error announces this one.";
+const BUILD_REPORTS = " The build, not tsc, reports the specifiers still to change.";
+const NOTHING_REPORTS = " Nothing reports this one; check the app yourself.";
 
 const DEPRECATION_IDS = [
     "gtkx-v2-byte-arrays",
@@ -28,38 +29,34 @@ const FUTURE_DEPRECATIONS: FutureDeprecation[] = [
     {
         id: "gtkx-v2-byte-arrays",
         flag: "v2ByteArrays",
-        isTypeChecked: true,
         change: "Byte sequences come back as number[]. In 2.0 they come back as Uint8Array.",
     },
     {
         id: "gtkx-v2-value-returns",
         flag: "v2ValueReturns",
-        isTypeChecked: true,
         change: "Bindings that return a GValue hand back the box. In 2.0 they hand back its contents, as unknown.",
     },
     {
         id: "gtkx-v2-finish-results",
         flag: "v2FinishResults",
-        isTypeChecked: true,
         change: "Async pairs with out parameters resolve with a leading success boolean. In 2.0 it is dropped.",
     },
     {
         id: "gtkx-v2-inout-returns",
         flag: "v2InoutReturns",
-        isTypeChecked: true,
         change: "Inout records repeat in the return value. In 2.0 the repeated entry is dropped.",
     },
     {
         id: "gtkx-v2-resource-imports",
         flag: "v2ResourceImports",
-        isTypeChecked: true,
         change: "Assets resolve through the #data/ import map. In 2.0 they resolve through ?resource imports.",
+        unchecked: BUILD_REPORTS,
     },
     {
         id: "gtkx-v2-default-libraries",
         flag: "v2DefaultLibraries",
-        isTypeChecked: false,
         change: "Only Gtk-4.0 is bound by default. In 2.0 Adw-1 is bound alongside it.",
+        unchecked: NOTHING_REPORTS,
     },
 ];
 
@@ -82,10 +79,10 @@ const formatSummary = (unset: number, silenced: number): string => {
 const formatDeprecation = (deprecation: FutureDeprecation): string =>
     `  [${deprecation.id}]`.padEnd(ENTRY_COLUMN) +
     `future: { ${deprecation.flag}: true }\n    ${deprecation.change}` +
-    (deprecation.isTypeChecked ? "" : UNTYPED_NOTE);
+    (deprecation.unchecked ?? "");
 
 const formatAdvice = (pending: FutureDeprecation[]): string => {
-    if (pending.every((deprecation) => deprecation.isTypeChecked)) {
+    if (pending.every((deprecation) => deprecation.unchecked === undefined)) {
         return "  Set one flag at a time and run tsc: every affected call site is a type error.";
     }
 

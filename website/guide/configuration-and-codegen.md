@@ -121,7 +121,7 @@ What each JavaScript value infers to:
 
 `null` infers a NULL `gpointer` because that is what GJS infers, so code ported from it behaves the same — but few callees accept a `gpointer`, and it is rarely what you want. A nullable parameter takes `null` as *no value at all*, passing the callee a NULL `GValue *`, and clearing a typed slot takes a value of that type holding nothing, such as `TYPE_OBJECT` with `setObject(null)`.
 
-Inference covers what a JavaScript value can say on its own, which leaves two cases for an explicitly initialized value:
+Inference covers what a JavaScript value can say on its own, which leaves the cases that need an explicitly initialized value:
 
 **A GType no JavaScript value names.** `guchar`, `guint`, `gfloat`, `glong`, enumerations, flags, and a GValue holding a GType are unreachable, since a number infers as `gint` or `gdouble` and a GType is a `bigint`. Name the type yourself:
 
@@ -214,16 +214,16 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
   and codegen says so on its next run; in 2.0, once the behavior is unconditional, naming either becomes a
   configuration error asking you to delete the line.
 
-  This is the one flag `tsc` cannot check for you, because nothing about it is a type error. What it changes
-  on its own is the build: codegen fails on a host without the Adwaita introspection data, since a mandatory
-  library has to resolve to a `.gir` file; every deb and rpm gains a `libadwaita-1-0` or `libadwaita`
-  relation, because those come from the libraries the store recorded; and every generated NOTICE file gains
-  libadwaita's LGPL entry.
+  Nothing reports this flag for you: it is not a type error, and unlike `v2ResourceImports` there is no build
+  failure either. What it changes on its own is the build: codegen fails on a host without the Adwaita
+  introspection data, since a mandatory library has to resolve to a `.gir` file; every deb and rpm gains a
+  `libadwaita-1-0` or `libadwaita` relation, because those come from the libraries the store recorded; and
+  every generated NOTICE file gains libadwaita's LGPL entry.
 
   The rest waits until something imports the generated Adwaita module — `@gtkx/gi/adw`, `@gtkx/jsx/adw`, one
   of the packages built on them, or the flat `@gtkx/jsx` root, which pulls every namespace the store carries.
   Binding `Adw-1` alone changes nothing at runtime: an application that only imports `@gtkx/jsx/gtk` never
-  evaluates the Adwaita module. Once it does, two things follow. `@gtkx/gi/adw` calls libadwaita's `adw_init`
+  evaluates the Adwaita module. Once it does, `@gtkx/gi/adw` calls libadwaita's `adw_init`
   while the module evaluates, which installs the Adwaita style manager and stylesheet, so the application
   restyles even where it renders no Adwaita widget. And libadwaita becomes a hard requirement: the module
   resolves its types out of `libadwaita-1.so.0` at module scope, so a host without the library fails before
@@ -244,7 +244,7 @@ flag with the stable id that identifies it:
     Byte sequences come back as number[]. In 2.0 they come back as Uint8Array.
 
   [gtkx-v2-default-libraries] future: { v2DefaultLibraries: true }
-    Only Gtk-4.0 is bound by default. In 2.0 Adw-1 is bound alongside it. No type error announces this one.
+    Only Gtk-4.0 is bound by default. In 2.0 Adw-1 is bound alongside it. Nothing reports this one; check the app yourself.
 
   Set one flag at a time and run tsc: it reports every affected call site except where noted above.
   Guide    https://gtkx.dev/guide/upgrading-to-2
@@ -317,11 +317,11 @@ Each page carries the widget's documentation, hierarchy, slot rules, props, sign
 
 ## What agents are given
 
-A model writing GTKX code has read a great deal of GTK, nearly all of it in C, PyGObject, Vala, or GJS, and nearly none of it valid here. Codegen writes two things that correct for that, and both stay in step with the bindings because the same run produces them.
+A model writing GTKX code has read a great deal of GTK, nearly all of it in C, PyGObject, Vala, or GJS, and nearly none of it valid here. Codegen writes an element reference and a rules block that correct for that, and both stay in step with the bindings because the same run produces them.
 
-The first is `.gtkx/reference`, the same element pages `gtkx docs` produces, generated from this project's own GIR libraries and linked by paths that resolve from the project root. It is the authority on which props, signals, and methods exist, it costs nothing to read with `grep` or `cat`, and it is regenerated whenever the libraries or element configuration change. Add `.gtkx/` to `.gitignore`, as scaffolded projects do.
+`.gtkx/reference` holds the same element pages `gtkx docs` produces, generated from this project's own GIR libraries and linked by paths that resolve from the project root. It is the authority on which props, signals, and methods exist, it costs nothing to read with `grep` or `cat`, and it is regenerated whenever the libraries or element configuration change. Add `.gtkx/` to `.gitignore`, as scaffolded projects do.
 
-The second is a marked block in `AGENTS.md`, alongside a `CLAUDE.md` importing it for Claude Code, which reads it under that name instead. The block lists the idioms models get wrong here and points at the reference:
+The rules block is marked in `AGENTS.md`, alongside a `CLAUDE.md` importing it for Claude Code, which reads it under that name instead. The block lists the idioms models get wrong here and points at the reference:
 
 ```markdown
 <!-- BEGIN:gtkx-agent-rules -->
