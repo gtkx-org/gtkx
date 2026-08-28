@@ -1,5 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import { getWrapperClass, TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
+import { TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
+import { getExactWrapperClass } from "@gtkx/runtime/internal";
 import { getOrInsert, pickBy } from "@gtkx/utils";
 import type { Props } from "./registry.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
@@ -57,8 +58,8 @@ const constructInput = (info: TypeInfo, props: Props): Props =>
             (info.constructOnly.has(name) || info.construct.has(name)),
     );
 
-const instantiate = (type: bigint, input: Props): GObject.Object => {
-    const cls = getWrapperClass(type) as WidgetConstructor;
+const instantiate = (typeName: string, type: bigint, input: Props): GObject.Object => {
+    const cls = getExactWrapperClass(type, typeName) as WidgetConstructor;
 
     return new cls(input);
 };
@@ -66,7 +67,7 @@ const instantiate = (type: bigint, input: Props): GObject.Object => {
 const createObject = (typeName: string, type: bigint, input: Props): GObject.Object => {
     const create = ELEMENTS[typeName]?.behaviors?.find((behavior) => behavior.create !== undefined)?.create;
 
-    return create === undefined ? instantiate(type, input) : create(input);
+    return create === undefined ? instantiate(typeName, type, input) : create(input);
 };
 
 const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch): ElementNode | LazyNode => {

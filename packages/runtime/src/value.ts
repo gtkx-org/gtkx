@@ -15,6 +15,7 @@ import {
     fundamentalT,
     int8T,
     int32T,
+    type ObjectDescriptor,
     objectT,
     stringT,
     uint8T,
@@ -718,10 +719,34 @@ function fromValue(value: ExternalObject<Handle>): unknown {
     return get(value);
 }
 
-const fromValueForDescriptor = (descriptor: Descriptor, value: ExternalObject<Handle>): unknown =>
-    descriptor.kind === "array" && descriptor.arrayKind === "gbytearray"
-        ? byteArrayValueGetterFor(descriptor.isBytes === true)(value)
-        : fromValue(value);
+const objectValueFundamentals: Set<bigint> = new Set([TYPE_OBJECT, TYPE_INTERFACE]);
+
+const objectValueWithFallback = (
+    descriptor: ObjectDescriptor,
+    value: ExternalObject<Handle>,
+): { wrapped: unknown } | null => {
+    if (descriptor.fallbackClass === undefined || !objectValueFundamentals.has(typeFundamental(getValueType(value)))) {
+        return null;
+    }
+
+    return { wrapped: wrapObject(objectValueType.get(value), descriptor.fallbackClass) };
+};
+
+const fromValueForDescriptor = (descriptor: Descriptor, value: ExternalObject<Handle>): unknown => {
+    if (descriptor.kind === "array" && descriptor.arrayKind === "gbytearray") {
+        return byteArrayValueGetterFor(descriptor.isBytes === true)(value);
+    }
+
+    if (descriptor.kind === "object") {
+        const withFallback = objectValueWithFallback(descriptor as ObjectDescriptor, value);
+
+        if (withFallback !== null) {
+            return withFallback.wrapped;
+        }
+    }
+
+    return fromValue(value);
+};
 
 const inferredValueGuard: ValueGuard = (jsValue) => inferValueGType(jsValue, wrapperGType(jsValue)) !== TYPE_INVALID;
 

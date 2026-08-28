@@ -1,5 +1,6 @@
 import { type Descriptor, resolveType as nativeResolveType } from "@gtkx/native";
 import { bind } from "./bind.js";
+import { warnOnce } from "./debug.js";
 import {
     type ArrayDescriptor,
     biguint64T,
@@ -23,6 +24,7 @@ type ResolvableKind = "enum" | "flags" | "boxed" | "fundamental" | "array";
 type ResolvableDescriptor = Extract<Descriptor, { kind: ResolvableKind }>;
 
 const resolvedTypeCache: Map<string, bigint> = new Map();
+const nativeTypeIndex: Map<string, readonly [string, string]> = new Map();
 const gTypeFromName = bind(LIB, "g_type_from_name", [stringT("borrowed")], biguint64T);
 const gTypeIsA = bind(LIB, "g_type_is_a", [biguint64T, biguint64T], booleanT);
 const gTypeParent = bind(LIB, "g_type_parent", [biguint64T], biguint64T);
@@ -137,9 +139,55 @@ function typeInterfaces(type: bigint): bigint[] {
     return gTypeInterfaces(type, nInterfacesRef) as bigint[];
 }
 
-/** Returns the GType registered under the given name, or `TYPE_INVALID` if none exists. */
+/**
+ * Returns the GType registered under the given name, or `TYPE_INVALID` if none exists. A name a
+ * generated store has indexed through `registerNativeTypeNames` is registered on first use by
+ * calling its `get_type` function, so a type whose wrapper class a bundler dropped still resolves.
+ */
 function typeFromName(name: string): bigint {
-    return gTypeFromName(name) as bigint;
+    const type = gTypeFromName(name) as bigint;
+
+    if (type !== TYPE_INVALID) {
+        return type;
+    }
+
+    const entry = nativeTypeIndex.get(name);
+
+    return entry === undefined ? TYPE_INVALID : resolveType(entry[0], entry[1]);
+}
+
+const isIndexedTypeName = (name: string): boolean => nativeTypeIndex.has(name);
+
+const hasRegisteredPrototype = (wrapper: unknown): boolean =>
+    typeof wrapper === "function" && isTypedClass((wrapper as { prototype?: unknown }).prototype);
+
+/**
+ * Indexes the GLib type names a generated namespace can produce, mapping each to the shared
+ * library and `get_type` symbol that registers it, so `typeFromName` resolves the name even when
+ * its wrapper class was dropped from the bundle. The index holds only strings and keeps no class
+ * alive.
+ *
+ * @param entries GLib type names mapped to their `[sharedLibrary, getTypeFnName]` pair.
+ * @param wrappers Wrapper classes the namespace cannot operate without; listing them here keeps
+ * them in a tree-shaken bundle, and each is checked to have registered itself.
+ */
+function registerNativeTypeNames(
+    entries: Record<string, readonly [string, string]>,
+    wrappers: readonly unknown[] = [],
+): void {
+    for (const [name, entry] of Object.entries(entries)) {
+        nativeTypeIndex.set(name, entry);
+    }
+
+    for (const wrapper of wrappers) {
+        if (!hasRegisteredPrototype(wrapper)) {
+            warnOnce(
+                "core-wrapper-unregistered",
+                "registerNativeTypeNames was handed a value that is not a registered wrapper class; " +
+                "a core wrapper reference may have been dropped from the bundle",
+            );
+        }
+    }
 }
 
 function typeFundamental(type: bigint): bigint {
@@ -281,8 +329,10 @@ export {
     getByteArrayType,
     getErrorType,
     getStrvType,
+    isIndexedTypeName,
     isResolvableDescriptor,
     isTypedClass,
+    registerNativeTypeNames,
     typeIsA,
     typeParent,
     typeInterfaces,

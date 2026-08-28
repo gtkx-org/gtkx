@@ -33,16 +33,30 @@ type FlagsDescriptor = Extract<Descriptor, { kind: "flags" }>;
 type BooleanDescriptor = Extract<Descriptor, { kind: "boolean" }>;
 /** Descriptor variant for a C string. */
 type StringDescriptor = Extract<Descriptor, { kind: "string" }>;
-/** Descriptor variant for a `GObject`. */
-type ObjectDescriptor = Extract<Descriptor, { kind: "object" }>;
+/** Descriptor variant for a `GObject`, extended with the statically declared type of its value. */
+type ObjectDescriptor = Extract<Descriptor, { kind: "object" }> & {
+    /**
+     * Returns the wrapper class of the value's declared type. Referencing the class here keeps it
+     * in a tree-shaken bundle; the registry is still consulted first, so the thunk only decides
+     * the wrapper when no class is registered for the value's runtime type or an ancestor below
+     * the declared one.
+     */
+    fallbackClass?: () => AnyClass;
+};
 /** Descriptor variant for a `gunichar`. */
 type UnicharDescriptor = Extract<Descriptor, { kind: "unichar" }>;
 /** Descriptor variant for the absence of a value. */
 type VoidDescriptor = Extract<Descriptor, { kind: "void" }>;
 /** Descriptor variant for an opaque `gpointer`. */
 type BufferDescriptor = Extract<Descriptor, { kind: "buffer" }>;
-/** Descriptor variant for a `GBoxed` value. */
-type BoxedDescriptor = Extract<Descriptor, { kind: "boxed" }>;
+/** Descriptor variant for a `GBoxed` value, extended with the statically declared type of its value. */
+type BoxedDescriptor = Extract<Descriptor, { kind: "boxed" }> & {
+    /**
+     * Returns the wrapper class of the value's declared type, used when no class is registered
+     * for the boxed GType. Referencing the class here keeps it in a tree-shaken bundle.
+     */
+    fallbackClass?: () => AnyClass;
+};
 
 /** Descriptor variant for a plain C struct, extended with the class its decoded value is wrapped in. */
 type StructDescriptor = Extract<Descriptor, { kind: "struct" }> & {
@@ -54,6 +68,13 @@ type StructDescriptor = Extract<Descriptor, { kind: "struct" }> & {
 type FundamentalDescriptor = Extract<Descriptor, { kind: "fundamental" }> & {
     /** Class a decoded value is wrapped in; without it the wrapper comes from the type named by `typeName`. */
     wrapperClass?: AnyClass;
+    /**
+     * Returns the wrapper class of the value's declared type, used when no class is registered
+     * for the value's runtime type or an ancestor. Referencing the class here keeps it in a
+     * tree-shaken bundle. Unlike `wrapperClass`, the registry is consulted first, so a value of
+     * a more derived registered type keeps its own wrapper.
+     */
+    fallbackClass?: () => AnyClass;
 };
 
 /** Descriptor variant for an array of items in one of the supported container layouts. */
@@ -87,6 +108,8 @@ type BoxedOptions = {
     freeFnName?: string;
     /** Byte size of the value, needed to copy it into an inline field. */
     size?: number;
+    /** Returns the wrapper class of the declared type, used when none is registered for the GType. */
+    fallbackClass?: () => AnyClass;
 };
 
 /**
@@ -147,6 +170,8 @@ type FundamentalOptions = {
     typeName?: string;
     /** Class a decoded value is wrapped in, instead of the one registered for `typeName`. */
     wrapperClass?: AnyClass;
+    /** Returns the wrapper class of the declared type, used when none is registered for the value's type. */
+    fallbackClass?: () => AnyClass;
     /** The caller owns the storage the callee fills, so a decoded value is borrowed instead of acquired. */
     isCallerAllocated?: boolean;
     /** The value is embedded in the containing struct rather than reached through a pointer. */
@@ -217,8 +242,13 @@ const isGtypeDescriptor = (descriptor: Descriptor): descriptor is TypeDescriptor
 const stringT = (ownership: Ownership = "borrowed", length?: number): StringDescriptor =>
     length === undefined ? { kind: "string", ownership } : { kind: "string", ownership, length };
 
-/** Builds a descriptor for a `GObject`, wrapped in the class registered for its runtime GType. */
-const objectT = (ownership: Ownership = "borrowed"): ObjectDescriptor => ({ kind: "object", ownership });
+/**
+ * Builds a descriptor for a `GObject`, wrapped in the class registered for its runtime GType.
+ * `fallbackClass` names the wrapper class of the declared type, retaining it in tree-shaken
+ * bundles and wrapping the value in it when nothing at least as derived is registered.
+ */
+const objectT = (ownership: Ownership = "borrowed", fallbackClass?: () => AnyClass): ObjectDescriptor =>
+    fallbackClass === undefined ? { kind: "object", ownership } : { kind: "object", ownership, fallbackClass };
 
 /** Wraps a descriptor in a pointer to it, for an output or inout argument. */
 const refT = (innerDescriptor: Descriptor, isInout = false): RefDescriptor =>
@@ -280,6 +310,10 @@ const applyBoxedNames = (result: BoxedDescriptor, options: BoxedOptions): void =
 
 const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void => {
     applyBoxedNames(result, options);
+
+    if (options.fallbackClass !== undefined) {
+        result.fallbackClass = options.fallbackClass;
+    }
 
     if (options.isCallerAllocated) {
         result.isCallerAllocated = true;
@@ -356,6 +390,10 @@ const fundamentalT = (
 
     if (options.wrapperClass !== undefined) {
         result.wrapperClass = options.wrapperClass;
+    }
+
+    if (options.fallbackClass !== undefined) {
+        result.fallbackClass = options.fallbackClass;
     }
 
     if (options.isCallerAllocated) {
@@ -559,6 +597,7 @@ export {
     cursorArrayT,
     callbackT,
     type BoxedDescriptor,
+    type ObjectDescriptor,
     type StructDescriptor,
     type FundamentalDescriptor,
     type ArrayDescriptor,

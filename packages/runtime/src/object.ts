@@ -1,10 +1,12 @@
 import { type Descriptor, type ExternalObject, type Handle, newObject } from "@gtkx/native";
 import { type AnyClass, getParentClass } from "@gtkx/utils";
 import { bind } from "./bind.js";
+import { warnOnce } from "./debug.js";
 import { objectT, stringT, voidT } from "./descriptors.js";
 import { LIB, VALUE_T } from "./library.js";
 import { coercePropertyValue, type ConstructProperty, constructPropertyFor } from "./properties.js";
 import { getHandle, registerWrapper } from "./registry.js";
+import { isIndexedTypeName, typeName } from "./type.js";
 import { fromValueForDescriptor, newValueForDescriptor, toValue } from "./value.js";
 
 /**
@@ -107,7 +109,19 @@ function constructPropertyForEntry(
     const binding = source.bindings[name];
 
     if (binding === undefined) {
-        return constructPropertyFor(source.gtype, name, value, source.wrapper);
+        const property = constructPropertyFor(source.gtype, name, value, source.wrapper);
+        const ownerName = property === undefined ? null : typeName(source.gtype);
+
+        if (ownerName !== null && isIndexedTypeName(ownerName)) {
+            warnOnce(
+                `construct-prop:${String(source.gtype)}:${name}`,
+                `construct property '${name}' of '${ownerName}' was marshalled through its ParamSpec because ` +
+                "no declared descriptor was found; its declaration may have been dropped from the bundle, and " +
+                "null or fractional values now throw instead of coercing",
+            );
+        }
+
+        return property;
     }
 
     return { name: binding[0], value: toValue(binding[1], coercePropertyValue(source.gtype, binding[0], value)) };

@@ -11,14 +11,17 @@ import {
 } from "@gtkx/native";
 import {
     type ArrayDescriptor,
+    type BoxedDescriptor,
     boxedT,
     type CallbackDescriptor,
     type FundamentalDescriptor,
     type HashTableDescriptor,
     isGtypeDescriptor,
+    type ObjectDescriptor,
     refT,
     type StructDescriptor,
 } from "./descriptors.js";
+import { warnOnce } from "./debug.js";
 import { checkError } from "./error.js";
 import { LIB } from "./library.js";
 import {
@@ -71,6 +74,23 @@ function boxedFromNative(descriptor: Descriptor, value: unknown): unknown {
 
     const handle = value as ExternalObject<Handle>;
     const type = resolveDescriptorType(descriptor);
+    const registered = resolveWrapperClass(type);
+
+    if (registered !== null) {
+        return wrapHandle(handle, registered);
+    }
+
+    const fallback = (descriptor as BoxedDescriptor).fallbackClass?.();
+
+    if (fallback !== undefined) {
+        warnOnce(
+            `boxed-fallback:${String(type)}`,
+            `no wrapper class is registered for boxed type '${(descriptor as BoxedDescriptor).typeName}'; ` +
+            `wrapping as the declared '${fallback.name}'`,
+        );
+
+        return wrapHandle(handle, fallback);
+    }
 
     return wrapHandle(handle, getWrapperClass(type));
 }
@@ -81,8 +101,25 @@ function fundamentalWrapperClass(descriptor: FundamentalDescriptor, handle: Exte
     }
 
     const declaredType = resolveDescriptorType(descriptor);
+    const registered = resolveWrapperClass(getType(handle, declaredType));
 
-    return resolveWrapperClass(getType(handle, declaredType)) ?? getWrapperClass(declaredType);
+    if (registered !== null) {
+        return registered;
+    }
+
+    const fallback = descriptor.fallbackClass?.();
+
+    if (fallback !== undefined) {
+        warnOnce(
+            `fundamental-fallback:${String(declaredType)}`,
+            `no wrapper class is registered for fundamental type '${descriptor.typeName ?? String(declaredType)}' ` +
+            `or any ancestor; wrapping as the declared '${fallback.name}'`,
+        );
+
+        return fallback;
+    }
+
+    return getWrapperClass(declaredType);
 }
 
 function fundamentalFromNative(descriptor: FundamentalDescriptor, value: unknown): unknown {
@@ -203,7 +240,11 @@ function fromNative(descriptor: Descriptor, value: unknown): unknown {
 
     switch (descriptor.kind) {
         case "object": {
-            return descriptor.isCallScoped === true ? wrapCallScopedObject(value) : wrapObject(value);
+            const fallbackClass = (descriptor as ObjectDescriptor).fallbackClass;
+
+            return descriptor.isCallScoped === true
+                ? wrapCallScopedObject(value, fallbackClass)
+                : wrapObject(value, fallbackClass);
         }
         case "struct": {
             return wrapHandle(value as ExternalObject<Handle> | null, (descriptor as StructDescriptor).wrapperClass);

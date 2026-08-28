@@ -24,7 +24,12 @@
     "license": "MPL-2.0",
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
-    "sideEffects": true,
+    "sideEffects": [
+        "./src/exit-hook.ts",
+        "./dist/exit-hook.js",
+        "./src/index.ts",
+        "./dist/index.js"
+    ],
     "exports": {
         "./package.json": "./package.json",
         ".": {

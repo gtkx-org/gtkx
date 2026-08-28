@@ -8,6 +8,7 @@ import {
 } from "@gtkx/native";
 import { type AnyClass, getParentClass, kebabCase, walkClassChain } from "@gtkx/utils";
 import { wrapCallback } from "./callback.js";
+import { warnOnce } from "./debug.js";
 import { insertMixinLayer } from "./mixin.js";
 import {
     buildPropertyDispatch,
@@ -471,6 +472,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
 
     const claimedMethodNames = new Set(classVfuncs.map((vfunc) => vfunc.methodName));
     const interfaceBindings = discoverInterfaceBindings(methods, parentType, declaredTypes, claimedMethodNames);
+    warnUnclaimedVfuncs(klass, methods, claimedMethodNames, interfaceBindings);
 
     const nativeOptions = withNativeSignals(
         toNativeOptions(classVfuncs, interfaceBindings, properties, options),
@@ -675,6 +677,34 @@ function wrapVfunc(
         { argDescriptors, returnDescriptor: descriptor.returnDescriptor },
         "vfunc",
     );
+}
+
+const VFUNC_METHOD_PATTERN = /^vfunc[A-Z0-9]/;
+
+function warnUnclaimedVfuncs(
+    klass: AnyClass,
+    methods: MethodTable,
+    claimedMethodNames: Set<string>,
+    interfaceBindings: InterfaceVfuncBinding[],
+): void {
+    const claimed = new Set(claimedMethodNames);
+
+    for (const binding of interfaceBindings) {
+        for (const vfunc of binding.vfuncs) {
+            claimed.add(vfunc.methodName);
+        }
+    }
+
+    for (const methodName of methods.keys()) {
+        if (VFUNC_METHOD_PATTERN.test(methodName) && !claimed.has(methodName)) {
+            warnOnce(
+                `vfunc-unclaimed:${klass.name}:${methodName}`,
+                `registerClass: ${klass.name}.${methodName} matches no vtable slot on any registered ancestor ` +
+                "or interface, so the override will never be called; the slot's table may have been dropped " +
+                "from the bundle, or the name is misspelled",
+            );
+        }
+    }
 }
 
 function discoverInterfaceBindings(

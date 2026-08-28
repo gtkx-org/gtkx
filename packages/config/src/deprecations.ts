@@ -19,6 +19,7 @@ const DEPRECATION_IDS = [
     "gtkx-v2-finish-results",
     "gtkx-v2-inout-returns",
     "gtkx-v2-resource-imports",
+    "gtkx-v2-tree-shaking",
 ] as const;
 
 const FUTURE_DEPRECATIONS: FutureDeprecation[] = [
@@ -46,6 +47,11 @@ const FUTURE_DEPRECATIONS: FutureDeprecation[] = [
         id: "gtkx-v2-resource-imports",
         flag: "v2ResourceImports",
         change: "Assets resolve through the #data/ import map. In 2.0 they resolve through ?resource imports.",
+    },
+    {
+        id: "gtkx-v2-tree-shaking",
+        flag: "v2TreeShaking",
+        change: "The stores register every class eagerly. In 2.0 each class registers itself and unused ones drop from bundles.",
     },
 ];
 

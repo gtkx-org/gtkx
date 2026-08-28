@@ -1,6 +1,7 @@
 export { checkError, createErrorDomain } from "./error.js";
 export { type ApplicationInstance, getApplicationInstance } from "./lifecycle.js";
-export { registerClassType, resolveWrapperClass, wrapHandle } from "./registry.js";
+export { getExactWrapperClass, registerClassType, resolveWrapperClass, wrapHandle } from "./registry.js";
+export { isIndexedTypeName } from "./type.js";
 export { hasSignalListener } from "./signal.js";
 export { resolveType } from "./type.js";
 export {

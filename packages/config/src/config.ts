@@ -211,6 +211,7 @@ const futureSchema = z.object({
     v2FinishResults: z.boolean({ error: "must be a boolean" }).optional(),
     v2InoutReturns: z.boolean({ error: "must be a boolean" }).optional(),
     v2ResourceImports: z.boolean({ error: "must be a boolean" }).optional(),
+    v2TreeShaking: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
 const DEPRECATION_ID_ERROR = `must be one of ${DEPRECATION_IDS.join(", ")}`;
