@@ -50,6 +50,7 @@ const guideSidebar = [
     { text: "Testing", link: "/guide/testing" },
     { text: "MCP", link: "/guide/mcp" },
     { text: "Deploying", link: "/guide/deploying" },
+    { text: "Upgrading to 2.0", link: "/guide/upgrading-to-2" },
     { text: "API Reference", link: "/reference/" },
 ];
 

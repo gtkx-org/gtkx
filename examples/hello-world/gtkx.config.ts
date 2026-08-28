@@ -5,7 +5,13 @@ export default defineConfig({
     applicationId: "com.gtkx.hello-world",
     codegen: false,
     applicationIcon: "data/icons",
-    future: { v2ResourceImports: true },
+    future: {
+        v2ByteArrays: true,
+        v2ValueReturns: true,
+        v2FinishResults: true,
+        v2InoutReturns: true,
+        v2ResourceImports: true,
+    },
     deploy: {
         name: "Hello World",
         summary: "Count things with a native GTK4 window",

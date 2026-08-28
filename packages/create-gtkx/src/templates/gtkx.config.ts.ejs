@@ -4,7 +4,13 @@ export default defineConfig({
     libraries: ["Gtk-4.0"],
     applicationId: "<%= applicationId %>",
     applicationIcon: "data/icons",
-    future: { v2ResourceImports: true },
+    future: {
+        v2ByteArrays: true,
+        v2ValueReturns: true,
+        v2FinishResults: true,
+        v2InoutReturns: true,
+        v2ResourceImports: true,
+    },
     deploy: {
         name: "<%= title %>",
         summary: "A GTK4 application built with GTKX",

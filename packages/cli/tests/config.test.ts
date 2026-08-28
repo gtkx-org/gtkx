@@ -42,6 +42,15 @@ const REJECTED_CONFIGS: RejectedConfig[] = [
         title: "a resource-import flag that is not a boolean",
         config: `${HEAD}, future: { v2ResourceImports: "soon" } };\n`,
     },
+    { title: "a deprecations section that is not an object", config: `${HEAD}, deprecations: 5 };\n` },
+    {
+        title: "a silenced deprecation that is not an array",
+        config: `${HEAD}, deprecations: { silence: "gtkx-v2-byte-arrays" } };\n`,
+    },
+    {
+        title: "a silenced deprecation id the CLI never reports",
+        config: `${HEAD}, deprecations: { silence: ["gtkx-v2-byte-array"] } };\n`,
+    },
     { title: "an icon path under deploy", config: `${HEAD}, deploy: { icons: "data/icons" } };\n` },
     {
         title: "a minimum library version that is not a version",

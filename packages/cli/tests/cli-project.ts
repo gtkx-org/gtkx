@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import workspaceConfig from "../../../gtkx.config.base.js";
 
 type CliProject = { root: string; nodeModules: string };
-type CliRun = { status: number | null; output: string };
+type CliRun = { status: number | null; output: string; stdout: string; stderr: string };
 
 type CliProjectOptions = {
     prefix: string;
@@ -142,6 +142,7 @@ const cliEnvironment = (): NodeJS.ProcessEnv => {
     const environment = { ...process.env };
     delete environment.NODE_ENV;
     delete environment.NODE_PATH;
+    delete environment.GTKX_DEPRECATIONS_SHOWN;
     const coverageDir = process.env.GTKX_COVERAGE_DIR;
 
     if (coverageDir !== undefined) {
@@ -166,7 +167,12 @@ const runCli = (project: CliProject, args: string[], overrides: NodeJS.ProcessEn
         );
     }
 
-    return { status: result.status, output: `${result.stdout}${result.stderr}` };
+    return {
+        status: result.status,
+        output: `${result.stdout}${result.stderr}`,
+        stdout: result.stdout,
+        stderr: result.stderr,
+    };
 };
 
 const runCliOrThrow = (project: CliProject, args: string[], overrides: NodeJS.ProcessEnv = {}): CliRun => {

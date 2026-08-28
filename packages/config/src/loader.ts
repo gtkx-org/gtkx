@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { missingConfigFileError } from "./config-error.ts";
 import { type Config, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
+import { warnDeprecations } from "./deprecations.ts";
 
 /** Result of loading a project's `gtkx.config.ts` file. */
 type LoadedConfig = {
@@ -33,7 +34,9 @@ type ConfigLoader = {
 };
 
 /**
- * Loads and validates the `gtkx.config.ts` file for a project.
+ * Loads and validates the `gtkx.config.ts` file for a project. Writes one deprecation notice to stderr the
+ * first time a configuration leaves a `future` flag unset, recording what it reported in the environment so
+ * a child process does not repeat it.
  * @param cwd Directory the configuration file is looked up in; parent directories are not searched.
  * @param options Loading options, such as the environment mode whose overrides are applied.
  * @throws When that directory holds no configuration file, or when the configuration fails validation.
@@ -58,12 +61,14 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
     }
 
     const config = result.config;
+    const root = result.cwd ?? searched;
     validateConfig(config);
+    warnDeprecations(config, root);
 
     return {
         config,
         configFile,
-        root: result.cwd ?? searched,
+        root,
     };
 };
 

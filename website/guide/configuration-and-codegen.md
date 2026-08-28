@@ -132,7 +132,7 @@ Passing a `GObject.Value` you built yourself always works, wherever inference wo
 
 ## Future flags
 
-The `future` block opts into behavior that becomes the default in the next major version, so you can migrate one change at a time instead of all at once during an upgrade. Every flag is off by default, and codegen never warns about one you have not set.
+The `future` block opts into behavior that becomes the default in the next major version, so you can migrate one change at a time instead of all at once during an upgrade. Every flag is off by default, and the CLI warns once per run about the ones you have not set, so nothing 2.0 removes reaches you without notice. Clear every warning on the last 1.x release and upgrading to 2.0 changes nothing.
 
 ```ts
 export default defineConfig({
@@ -195,9 +195,56 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
 
 Changing a flag invalidates the generated store, so the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates it automatically.
 
+### The deprecation warning
+
+Loading a configuration that leaves a flag unset prints one grouped block on stderr, naming every pending
+flag with the stable id that identifies it:
+
+```
+[gtkx] warn 2 of 5 future flags are unset. Their behavior becomes the default in GTKX 2.0.
+
+  [gtkx-v2-byte-arrays]       future: { v2ByteArrays: true }
+    Byte sequences come back as number[]. In 2.0 they come back as Uint8Array.
+
+  [gtkx-v2-inout-returns]     future: { v2InoutReturns: true }
+    Inout records repeat in the return value. In 2.0 the repeated entry is dropped.
+
+  Set one flag at a time and run tsc: every affected call site is a type error.
+  Guide    https://gtkx.dev/guide/upgrading-to-2
+  Silence  deprecations: { silence: ["gtkx-v2-byte-arrays"] }
+```
+
+The block goes to stderr, never stdout, so it cannot corrupt the JSON-RPC stream `gtkx mcp` speaks. It prints
+once and then stays quiet until the set of pending flags changes, so `gtkx dev` shows it once at startup rather
+than once in the supervisor and again in the runner it forks. Editing `gtkx.config.ts` to add or remove a flag
+prints the new block.
+
+Every flag has an id, and each one can be silenced on its own:
+
+| Flag | Deprecation id |
+| --- | --- |
+| `v2ByteArrays` | `gtkx-v2-byte-arrays` |
+| `v2ValueReturns` | `gtkx-v2-value-returns` |
+| `v2FinishResults` | `gtkx-v2-finish-results` |
+| `v2InoutReturns` | `gtkx-v2-inout-returns` |
+| `v2ResourceImports` | `gtkx-v2-resource-imports` |
+
+```ts
+export default defineConfig({
+    applicationId: "com.example.Tasks",
+    future: { v2ByteArrays: true },
+    deprecations: { silence: ["gtkx-v2-inout-returns"] },
+});
+```
+
+Silencing is an acknowledgement, not a fix: the behavior still changes in 2.0. It exists so a project working
+through the flags one at a time is not re-reading the same block every run. A silenced flag still counts in the
+summary line, which reports how many are silenced, so the count never understates what 2.0 will change. An id
+no flag reports is a configuration error, so a typo cannot quietly turn the warning off.
+
 ### When a flag graduates
 
-In the next major each flag's behavior becomes unconditional and its key is removed. Leaving a graduated flag at `true` will be accepted as a no-op with a single warning naming the key, and setting it to `false` will be a configuration error, because at that point it can no longer be honored.
+In the next major each flag's behavior becomes unconditional and its key is removed. Leaving a graduated flag at `true` will be accepted as a no-op with a single warning naming the key, and setting it to `false` will be a configuration error, because at that point it can no longer be honored. [Upgrading to 2.0](/guide/upgrading-to-2) walks through the whole move.
 
 ## The JSX prop model
 

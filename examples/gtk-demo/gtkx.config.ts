@@ -5,5 +5,11 @@ export default defineConfig({
     applicationId: "org.gtkx.gtk-demo",
     codegen: false,
     applicationIcon: "data/icons/org.gtk.Demo4.svg",
-    future: { v2ResourceImports: true },
+    future: {
+        v2ByteArrays: true,
+        v2ValueReturns: true,
+        v2FinishResults: true,
+        v2InoutReturns: true,
+        v2ResourceImports: true,
+    },
 });

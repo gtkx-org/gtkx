@@ -62,7 +62,7 @@ const barrelFile = (directory: string, girFile: string): SourceModule => {
 const externalShimModule = ({ directory, packageName, girFile }: GiExternalNamespaceInput): SourceModule => ({
     fileName: `${directory}/index.ts`,
     source:
-        `/** @deprecated Import from "${packageName}" instead; this alias is removed in GTKX 2.0. */\n` +
+        `/** @deprecated Since 1.3. Import from "${packageName}" instead. Removed in v2. */\n` +
         `export * from "${packageName}";\n`,
     origin: girFile,
 });

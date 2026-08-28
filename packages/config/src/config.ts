@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import { configError, isRecord, rawIssue } from "./config-error.ts";
 import { deploySchema } from "./deploy.ts";
+import { DEPRECATION_IDS } from "./deprecations.ts";
 import { isGirLibrary, text } from "./schema-text.ts";
 import { resolveUserEventSignals } from "./user-event-signals.ts";
 
@@ -33,8 +34,8 @@ type ResolvedReactCompilerOptions = ReactCompilerOptions & {
  * User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`: the GIR libraries
  * to bind and where to find them, the GApplication id, per-element configuration, the React
  * Compiler, codegen, and user event signal settings, the `agents` and `mcp` blocks controlling what
- * coding agents are given, and the `future` block opting into behavior that becomes the default in
- * the next major version.
+ * coding agents are given, the `future` block opting into behavior that becomes the default in the
+ * next major version, and the `deprecations` block silencing the warnings about flags left unset.
  */
 type Config = z.infer<typeof configSchema>;
 type ModuleExport = z.infer<typeof moduleExportSchema>;
@@ -212,6 +213,16 @@ const futureSchema = z.object({
     v2ResourceImports: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
+const DEPRECATION_ID_ERROR = `must be one of ${DEPRECATION_IDS.join(", ")}`;
+
+const deprecationsSchema = z.object({
+    silence: z
+        .array(z.enum(DEPRECATION_IDS, { error: DEPRECATION_ID_ERROR }), {
+            error: "must be an array of deprecation ids",
+        })
+        .optional(),
+});
+
 /** Schema every `gtkx.config.ts` is validated against, and the source of the {@link Config} type. */
 const configSchema = z.object({
     future: futureSchema.optional(),
@@ -226,6 +237,7 @@ const configSchema = z.object({
     deploy: deploySchema.optional(),
     agents: agentsSchema.optional(),
     mcp: mcpSchema.optional(),
+    deprecations: deprecationsSchema.optional(),
 });
 
 /**

@@ -4,7 +4,13 @@ export default defineConfig({
     libraries: ["Gtk-4.0", "Adw-1"],
     applicationId: "com.gtkx.tutorial",
     applicationIcon: "data/icons",
-    future: { v2ResourceImports: true },
+    future: {
+        v2ByteArrays: true,
+        v2ValueReturns: true,
+        v2FinishResults: true,
+        v2InoutReturns: true,
+        v2ResourceImports: true,
+    },
     deploy: {
         name: "Tasks",
         genericName: "Task Manager",
