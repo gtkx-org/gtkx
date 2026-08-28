@@ -217,6 +217,7 @@ const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
 const NOTE_DOC = "Holds a short piece of text the user jotted down.";
 const READ_DOC = "Reads the note back in the given tone.";
 const COMMENT = /\/\*|\/\//u;
+const PURE = "/* @__PURE__ */";
 
 const DOCUMENTED_MODULE_CASES: DocumentedModuleCase[] = [
     {
@@ -448,6 +449,7 @@ export {
     omittedMentions,
     POINTER_ARRAY_FIELDS,
     POINTER_ARRAY_GETTER,
+    PURE,
     RECORD_FIELD_ACCESSORS,
     resolveCairoFrom,
     runInitialCodegen,
