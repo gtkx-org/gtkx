@@ -37,7 +37,7 @@ Each line is one flag you have not adopted. A project that prints nothing has no
 
 ## Adopt one flag at a time
 
-Every flag is caught statically, so you never have to guess what it touches. Set one in `gtkx.config.ts`, run `tsc`, and fix what it reports:
+Every flag but one is caught statically, so you rarely have to guess what it touches. Set one in `gtkx.config.ts`, run `tsc`, and fix what it reports:
 
 ```ts
 export default defineConfig({
@@ -46,9 +46,9 @@ export default defineConfig({
 });
 ```
 
-Flipping a flag changes every affected call site at once — there is no partial adoption within a single flag. What you control is the order and the pace: five independent flags, one per sitting, is the shape this is built for.
+Flipping a flag changes every affected call site at once — there is no partial adoption within a single flag. What you control is the order and the pace: six independent flags, one per sitting, is the shape this is built for.
 
-Setting a flag never changes behavior for anyone else and never changes the shape of your build output. It only moves your project onto the 2.0 semantics ahead of time.
+Setting a flag never changes behavior for anyone else. Five of the six only move your project onto the 2.0 semantics ahead of time, leaving your build output alone. [`v2DefaultLibraries`](#v2defaultlibraries) is the exception: it binds another library, so it changes what codegen emits and what your packages declare. Read that section before setting it.
 
 ### `v2ByteArrays`
 

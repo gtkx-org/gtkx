@@ -238,15 +238,15 @@ Loading a configuration that leaves a flag unset prints one grouped block on std
 flag with the stable id that identifies it:
 
 ```
-[gtkx] warn 2 of 5 future flags are unset. Their behavior becomes the default in GTKX 2.0.
+[gtkx] warn 2 of 6 future flags are unset. Their behavior becomes the default in GTKX 2.0.
 
   [gtkx-v2-byte-arrays]       future: { v2ByteArrays: true }
     Byte sequences come back as number[]. In 2.0 they come back as Uint8Array.
 
-  [gtkx-v2-inout-returns]     future: { v2InoutReturns: true }
-    Inout records repeat in the return value. In 2.0 the repeated entry is dropped.
+  [gtkx-v2-default-libraries] future: { v2DefaultLibraries: true }
+    Only Gtk-4.0 is bound by default. In 2.0 Adw-1 is bound alongside it. Changes what the build produces, not what it types.
 
-  Set one flag at a time and run tsc: every affected call site is a type error.
+  Set one flag at a time and run tsc: it reports every affected call site except where noted above.
   Guide    https://gtkx.dev/guide/upgrading-to-2
   Silence  deprecations: { silence: ["gtkx-v2-byte-arrays"] }
 ```
