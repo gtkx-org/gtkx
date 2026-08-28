@@ -49,6 +49,30 @@ const REACT_APP_ENTRY = String.raw`import { GtkButton } from "@gtkx/jsx";
 process.stdout.write("used-component=" + typeof GtkButton + "\n");
 `;
 
+const ANIMATED_APP_ENTRY = String.raw`import { animated } from "@gtkx/animated";
+import { GtkButton } from "@gtkx/jsx";
+
+const Member = animated.GtkLabel;
+const Called = animated(GtkButton);
+
+process.stdout.write("animated=" + typeof Member + typeof Called + "\n");
+`;
+
+const DYNAMIC_ANIMATED_APP_ENTRY = String.raw`import { animated } from "@gtkx/animated";
+
+process.stdout.write("dynamic=" + String(Object.keys(animated).length > 0) + "\n");
+`;
+
+const ANIMATED_APP_MANIFEST = `${JSON.stringify(
+    {
+        name: "gtkx-animated-probe",
+        type: "module",
+        dependencies: { "@gtkx/animated": "*", "@gtkx/react": "*", react: "*" },
+    },
+    null,
+    4,
+)}\n`;
+
 describe("gtkx build (tree shaking)", () => {
     let probe: AppProbe;
     let bundle: string;
@@ -113,5 +137,62 @@ describe("gtkx build (metadata tree shaking)", () => {
 
     it("drops the metadata of elements the app never imports", () => {
         expect(bundle).not.toContain(UNUSED_SIGNAL_HANDLER);
+    });
+});
+
+describe("gtkx build (animated tree shaking)", () => {
+    let project: AppProject;
+    let bundle: string;
+
+    beforeAll(async () => {
+        project = createAppProject({
+            applicationId: "com.gtkx.clianimatedprobe",
+            entry: ANIMATED_APP_ENTRY,
+            files: { "gtkx.config.mjs": APP_CONFIG, "package.json": ANIMATED_APP_MANIFEST },
+            packageType: "module",
+            prefix: "gtkx-bundle-animated-",
+        });
+
+        const reported = await buildAppProject({ project, outDir: OUT_DIR });
+        bundle = readFileSync(join(project.root, reported), "utf8");
+    }, BUILD_TIMEOUT);
+
+    afterAll(() => {
+        removeAppProject(project);
+    });
+
+    it("rewrites member access and calls into the widgets they animate", () => {
+        expect(bundle).toContain("withAnimated");
+        expect(bundle).toContain("gtk_label_get_type");
+    });
+
+    it("drops the widgets the app never animates", () => {
+        expect(bundle).not.toContain(UNUSED_CLASS_METHOD);
+    });
+});
+
+describe("gtkx build (animated used dynamically)", () => {
+    let project: AppProject;
+    let bundle: string;
+
+    beforeAll(async () => {
+        project = createAppProject({
+            applicationId: "com.gtkx.clianimateddynamic",
+            entry: DYNAMIC_ANIMATED_APP_ENTRY,
+            files: { "gtkx.config.mjs": APP_CONFIG, "package.json": ANIMATED_APP_MANIFEST },
+            packageType: "module",
+            prefix: "gtkx-bundle-animated-dynamic-",
+        });
+
+        const reported = await buildAppProject({ project, outDir: OUT_DIR });
+        bundle = readFileSync(join(project.root, reported), "utf8");
+    }, BUILD_TIMEOUT);
+
+    afterAll(() => {
+        removeAppProject(project);
+    });
+
+    it("keeps the whole widget namespace behind the proxy", () => {
+        expect(bundle).toContain(UNUSED_GET_TYPE);
     });
 });
