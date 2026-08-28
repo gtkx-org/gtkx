@@ -26,8 +26,8 @@ type CreateOptions = {
 type Workspace = { root: string; binDir: string; logPath: string };
 
 const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-const CLI_ENTRY = join(WORKSPACE_ROOT, "packages", "create-gtkx", "src", "cli.ts");
-const CLI_ARGV = ["--conditions=source", "--import", "tsx", CLI_ENTRY];
+const CLI_ENTRY = join(WORKSPACE_ROOT, "packages", "create-gtkx", "dist", "cli.js");
+const CLI_ARGV = ["--enable-source-maps", CLI_ENTRY];
 const PACKAGE_MANAGERS = ["corepack", "pnpm", "npm", "yarn"];
 const PROJECT_NAME = "my-app";
 const APPLICATION_ID = "com.example.myapp";
