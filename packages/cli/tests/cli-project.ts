@@ -14,7 +14,6 @@ type CliProjectOptions = {
     config?: string | undefined;
     files?: Record<string, string> | undefined;
     hasStore?: boolean | undefined;
-    packageType?: string | undefined;
     omitPackages?: string[] | undefined;
 };
 
@@ -81,7 +80,6 @@ const manifestDependencies = (omitPackages: string[]): Record<string, string> =>
 
 const projectManifest = (options: CliProjectOptions): Record<string, unknown> => ({
     ...MANIFEST,
-    type: options.packageType ?? "module",
     dependencies: manifestDependencies(options.omitPackages ?? []),
 });
 

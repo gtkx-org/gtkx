@@ -18,7 +18,12 @@ export const formatDue = (iso: string | null): string | null => {
     if (days === 0) return t("Today at {{time}}", { time });
     if (days === 1) return t("Tomorrow at {{time}}", { time });
     if (days === -1) return t("Yesterday at {{time}}", { time });
-    if (days < 0) return t("{{count}} day ago", "{{count}} days ago", { count: -days });
+    if (days < 0)
+        return t("{{count}} day ago", {
+            count: -days,
+            defaultValue_one: "{{count}} day ago",
+            defaultValue_other: "{{count}} days ago",
+        });
     if (days < 7) return due.toLocaleDateString([], { weekday: "long" });
     return due.toLocaleDateString([], { month: "short", day: "numeric" });
 };

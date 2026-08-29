@@ -64,7 +64,7 @@ and the settings schema goes missing on the first `useSetting` call.
 records both the schema sources and JavaScript packages reached by the bundle; deploy consumes it without placing
 it in the installed application.
 
-`node dist/bundle.mjs` runs the app on any machine with GTK4, Adwaita, and Node.js 24 installed. That works, but it is not yet something a user can double-click.
+`node dist/bundle.mjs` runs the app on any machine with GTK4, Adwaita, and Node.js 26.7 installed. That works, but it is not yet something a user can double-click.
 
 ## Icons
 
@@ -146,7 +146,7 @@ npm run deploy
 [gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to appimage, deb, flatpak, rpm
 [gtkx] Building ~/tasks/src/index.tsx
 [gtkx] Validated the desktop entry and the metainfo
-[gtkx] Bundled Node.js v24.19.0 (100.8 MiB, glibc >= 2.28)
+[gtkx] Bundled Node.js v26.7.0 (109.4 MiB, glibc >= 2.28)
 [gtkx] Staged 10 files into build/stage
 [gtkx] Wrote build/targets/appimage/AppRun
 [gtkx] Wrote build/targets/deb/nfpm.yaml
@@ -161,7 +161,7 @@ npm run deploy
 
 The command regenerates the project types, builds the application, validates its desktop entry and metainfo, stages one install tree, and turns that tree into every requested format. The next chapter adds a translation catalog; the same command will then own its extraction, synchronization, compilation, metadata localization, and packaging too.
 
-Node.js is bundled into the package. GTKX needs Node.js 24, Debian 13 ships 20, and Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` fetches the official build matching yours, verifies its checksum, and caches it, which is where most of each package's size comes from.
+Node.js is bundled into the package because GTKX needs Node.js 26.7. `gtkx deploy` fetches the official build matching yours, verifies its checksum, and caches it, which is where most of each package's size comes from.
 
 ## What is inside
 

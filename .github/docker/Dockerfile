@@ -71,7 +71,7 @@ RUN pipx install \
 COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
 RUN fc-cache -f
 
-ARG NODE24_VERSION=24.19.0
+ARG NODE26_VERSION=26.8.1
 ARG TARGETARCH
 RUN set -eux \
     && case "${TARGETARCH}" in \
@@ -79,9 +79,9 @@ RUN set -eux \
         arm64) node_arch=arm64 ;; \
         *) echo "unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
-    && curl -fsSL "https://nodejs.org/dist/v${NODE24_VERSION}/node-v${NODE24_VERSION}-linux-${node_arch}.tar.xz" \
+    && curl -fsSL "https://nodejs.org/dist/v${NODE26_VERSION}/node-v${NODE26_VERSION}-linux-${node_arch}.tar.xz" \
         | tar -xJ --strip-components=1 -C /usr/local \
-    && node --version | grep -q "v${NODE24_VERSION}"
+    && node --version | grep -q "v${NODE26_VERSION}"
 
 RUN npm install -g corepack@latest && corepack enable && corepack prepare pnpm@latest --activate
 

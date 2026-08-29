@@ -13,7 +13,7 @@
 - Dialogs and feedback: preferences, an about dialog, a shortcuts window, delete confirmation, and toasts via `AdwToastOverlay`.
 - Styling with `@gtkx/css`, on top of the Adwaita style classes the widgets already carry.
 - Desktop notifications built with `Gio.Notification`, including action buttons that route back into the app.
-- Internationalization through the actual react-i18next API and GTKX's gettext backend, with generated strict message types, a French PO catalog, translated freedesktop metadata, and MO files staged into every package format.
+- Internationalization through react-i18next and GTKX's gettext backend, with upstream-generated resource types, a French PO catalog, translated freedesktop metadata, and MO files staged into every package format.
 - Persistence to `$XDG_DATA_HOME` with the Node.js standard library: `node:fs` writes a temp file, then `renameSync` swaps it into place.
 - Packaging: one `deploy` block in `gtkx.config.ts` turns the app into a localized Flatpak, a `.deb`, an `.rpm`, and an AppImage with `npm run deploy`. The command owns extraction, missing-catalog initialization, PO synchronization, MO compilation, metadata localization, staging, and packaging.
 

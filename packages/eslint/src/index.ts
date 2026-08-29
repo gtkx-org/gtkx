@@ -22,14 +22,14 @@ type PublicApi = {
     modules: { path: string }[];
 };
 
-const SOURCES = ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"];
-const JS_SOURCES = ["**/*.{js,jsx,mjs,cjs}"];
-const TS_SOURCES = ["**/*.{ts,tsx,mts,cts}"];
+const SOURCES = ["**/*.{ts,tsx,mts,js,jsx,mjs}"];
+const JS_SOURCES = ["**/*.{js,jsx,mjs}"];
+const TS_SOURCES = ["**/*.{ts,tsx,mts}"];
 const TESTS = ["**/tests/**/*.{ts,tsx}", "**/*.{test,spec,bench}.{ts,tsx}"];
 const CORE_SOURCES = ["packages/*/src/**/*.{ts,tsx}"];
 const ADW_SOURCES = ["packages/react/src/adw/**", "packages/components/src/adw/**"];
 const MANIFESTS = ["packages/*/package.json"];
-const TOOLING = ["**/*.config.{ts,mts,cts,js,mjs,cjs}", "**/*.config.base.ts", "**/scripts/**/*.ts"];
+const TOOLING = ["**/*.config.{ts,mts,js,mjs}", "**/*.config.base.ts", "**/scripts/**/*.ts"];
 const TYPE_ONLY_DEPS = ["@types/ejs", "@types/node", "@types/react"];
 const DEPENDENCY_CHECKS = { checkObsoleteDependencies: false };
 const CLI_OPTIONAL_DEPS = ["@gtkx/native", "@gtkx/react", "@gtkx/testing", "vitest"];

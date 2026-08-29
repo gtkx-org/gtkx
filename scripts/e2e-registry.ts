@@ -194,9 +194,10 @@ async function createUserToken(): Promise<string> {
     return body.token;
 }
 
-function registryEnv(userConfig: string): NodeJS.ProcessEnv {
+function registryEnv(userConfig: string, registryDir: string): NodeJS.ProcessEnv {
     const env: NodeJS.ProcessEnv = {
         ...process.env,
+        NPM_CONFIG_CACHE: join(registryDir, "npm-cache"),
         NPM_CONFIG_REGISTRY: REGISTRY,
         NPM_CONFIG_USERCONFIG: userConfig,
     };
@@ -366,7 +367,7 @@ async function startRegistry(options: StartRegistryOptions = {}): Promise<Regist
         await waitForRegistry();
         const token = await createUserToken();
         writeFileSync(npmrcPath, `registry=${REGISTRY}\n//${HOST}/:_authToken=${token}\n`);
-        const env = registryEnv(npmrcPath);
+        const env = registryEnv(npmrcPath, registryDir);
         await publishInto(env);
 
         return { env, registry: REGISTRY, registryDir, npmrcPath, stop: () => closeServer(server) };

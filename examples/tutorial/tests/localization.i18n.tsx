@@ -41,6 +41,12 @@ describe("Tasks in French", () => {
     });
 
     it("rejects a plural count gettext cannot represent", () => {
-        expect(() => t("{{count}} day ago", "{{count}} days ago", { count: 1.5 })).toThrow();
+        expect(() =>
+            t("{{count}} day ago", {
+                count: 1.5,
+                defaultValue_one: "{{count}} day ago",
+                defaultValue_other: "{{count}} days ago",
+            }),
+        ).toThrow();
     });
 });

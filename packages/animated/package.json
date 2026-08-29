@@ -30,6 +30,8 @@
         ".": {
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": null,
             "default": "./dist/index.js"
         }
     },
@@ -57,7 +59,7 @@
         }
     },
     "engines": {
-        "node": ">=24"
+        "node": ">=26.7.0"
     },
     "dependencies": {
         "@gtkx/react": "workspace:*",

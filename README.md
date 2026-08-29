@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/create-gtkx"><img src="https://img.shields.io/npm/v/create-gtkx?color=cb3837&logo=npm&label=create-gtkx" alt="npm version" /></a>
   <a href="https://www.npmjs.com/package/create-gtkx"><img src="https://img.shields.io/npm/dm/create-gtkx?color=cb3837&logo=npm&label=downloads" alt="npm downloads" /></a>
-  <img src="https://img.shields.io/badge/node-%E2%89%A524-339933?logo=node.js&logoColor=white" alt="Node >= 24" />
+  <img src="https://img.shields.io/badge/node-%E2%89%A526.7-339933?logo=node.js&logoColor=white" alt="Node >= 26.7" />
   <a href="https://github.com/gtkx-org/gtkx/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MPL--2.0-blue.svg" alt="License: MPL-2.0" /></a>
   <a href="https://github.com/gtkx-org/gtkx/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/gtkx-org/gtkx/ci.yml?branch=main&logo=github&label=CI" alt="CI status" /></a>
   <img src="https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white" alt="TypeScript" />
@@ -116,7 +116,7 @@ At runtime, the native Rust core calls straight into the system GTK4, Adwaita, a
 
 ## Quick start
 
-GTKX is Linux-only and needs Node.js 24 or later. See [Requirements](#requirements).
+GTKX is Linux-only and needs Node.js 26.7 or later. See [Requirements](#requirements).
 
 Scaffold a new app with the `create-gtkx` initializer:
 
@@ -146,7 +146,7 @@ The documentation at **[gtkx.dev](https://gtkx.dev)** includes a step-by-step tu
 GTKX is Linux-only. You need:
 
 - Linux with the GTK4 (4.20 or later), Adwaita (1.8 or later), and GLib development libraries
-- Node.js 24 or later
+- Node.js 26.7 or later
 
 The `@gtkx/native` addon ships prebuilt for x64 and arm64 glibc Linux; other targets need to build it from the GTKX repository, which requires a Rust toolchain.
 
@@ -167,7 +167,7 @@ GTKX is stable and ready for production use.
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md), the [Code of Conduct](https://github.com/gtkx-org/gtkx/blob/main/CODE_OF_CONDUCT.md), and the [security policy](https://github.com/gtkx-org/gtkx/blob/main/SECURITY.md). Building the repo needs Node.js 24 or later, pnpm, and a Rust toolchain.
+Contributions are welcome. See [CONTRIBUTING.md](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md), the [Code of Conduct](https://github.com/gtkx-org/gtkx/blob/main/CODE_OF_CONDUCT.md), and the [security policy](https://github.com/gtkx-org/gtkx/blob/main/SECURITY.md). Building the repo needs Node.js 26.7 or later, pnpm, and a Rust toolchain.
 
 ## License
 

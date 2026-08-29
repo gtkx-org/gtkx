@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 
-type ExportsField = string | { [key: string]: ExportsField };
+type ExportsField = string | null | { [key: string]: ExportsField };
 
 type PackageManifest = {
     name?: string;
@@ -40,6 +40,9 @@ const distTagForVersion = (version: string): string => {
 
 const isDevSource = (entry: string): boolean => entry === "src" || entry.startsWith("src/");
 
+const stripExportsEntry = (entry: ExportsField): ExportsField =>
+    entry === null || typeof entry === "string" ? entry : stripExportsSource(entry);
+
 const stripExportsSource = (entry: Record<string, ExportsField>): Record<string, ExportsField> => {
     const result: Record<string, ExportsField> = {};
 
@@ -48,7 +51,7 @@ const stripExportsSource = (entry: Record<string, ExportsField>): Record<string,
             continue;
         }
 
-        result[key] = typeof value === "string" ? value : stripExportsSource(value);
+        result[key] = stripExportsEntry(value);
     }
 
     return result;
@@ -58,7 +61,7 @@ const stripDevArtifacts = (manifest: PackageManifest): PackageManifest => {
     const stripped: PackageManifest = { ...manifest };
     const exportsField = manifest.exports;
 
-    if (exportsField !== undefined && typeof exportsField !== "string") {
+    if (exportsField !== undefined && exportsField !== null && typeof exportsField !== "string") {
         stripped.exports = stripExportsSource(exportsField);
     }
 
@@ -66,7 +69,7 @@ const stripDevArtifacts = (manifest: PackageManifest): PackageManifest => {
 };
 
 const hasSourceCondition = (entry: ExportsField): boolean => {
-    if (typeof entry === "string") {
+    if (entry === null || typeof entry === "string") {
         return false;
     }
 
@@ -74,6 +77,10 @@ const hasSourceCondition = (entry: ExportsField): boolean => {
 };
 
 const collectExportTargets = (entry: ExportsField): string[] => {
+    if (entry === null) {
+        return [];
+    }
+
     if (typeof entry === "string") {
         return entry.startsWith("./") ? [entry] : [];
     }

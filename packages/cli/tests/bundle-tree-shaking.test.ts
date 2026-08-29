@@ -50,7 +50,6 @@ describe("gtkx build (tree shaking)", () => {
             entry: APP_ENTRY,
             files: { "gtkx.config.mjs": APP_CONFIG },
             outDir: OUT_DIR,
-            packageType: "module",
             prefix: "gtkx-bundle-tree-shaking-",
         });
 
@@ -86,7 +85,6 @@ describe("gtkx build (metadata tree shaking)", () => {
             applicationId: "com.gtkx.climetadataprobe",
             entry: REACT_APP_ENTRY,
             files: { "gtkx.config.mjs": APP_CONFIG },
-            packageType: "module",
             prefix: "gtkx-bundle-metadata-",
         });
 

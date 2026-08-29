@@ -1,6 +1,5 @@
 import { createHash, type Hash } from "node:crypto";
 import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import packageManifest from "../package.json" with { type: "json" };
@@ -55,7 +54,6 @@ type InstalledManifest = { name: string; version: string };
 const FINGERPRINT_FILENAME = ".codegen-fingerprint.json";
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OVERRIDES_ROOT = join(PACKAGE_ROOT, "overrides");
-const requireFromCodegen = createRequire(import.meta.url);
 const codegenHashCache: { value: string | undefined } = { value: undefined };
 
 const compareOrdinal = (a: string, b: string): number => {
@@ -95,7 +93,7 @@ const isInstalledManifest = (value: unknown): value is InstalledManifest =>
 
 const tryResolve = (specifier: string): string | undefined => {
     try {
-        return requireFromCodegen.resolve(specifier);
+        return fileURLToPath(import.meta.resolve(specifier));
     } catch {
         return undefined;
     }

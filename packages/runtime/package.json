@@ -35,11 +35,15 @@
         ".": {
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": null,
             "default": "./dist/index.js"
         },
         "./internal": {
             "source": "./src/internal.ts",
             "types": "./dist/internal.d.ts",
+            "import": "./dist/internal.js",
+            "require": null,
             "default": "./dist/internal.js"
         }
     },
@@ -62,7 +66,7 @@
         }
     },
     "engines": {
-        "node": ">=24"
+        "node": ">=26.7.0"
     },
     "dependencies": {
         "@gtkx/native": "workspace:*",

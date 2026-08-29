@@ -165,6 +165,7 @@ async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, vari
 
     const scaffoldArgs = [
         "create",
+        "--yes",
         `gtkx@${createGtkxVersion()}`,
         variant.appName,
         "--",

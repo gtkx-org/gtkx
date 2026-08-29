@@ -7,6 +7,8 @@ description: "Move a GTKX 1.x application to the final GTKX 2 behavior."
 
 GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. Upgrade all `@gtkx/*` packages together, then work through this checklist.
 
+Upgrade to Node.js 26.7 or newer and set `"type": "module"` in `package.json`; GTKX packages are ESM-only and explicitly reject `require()`. Localized projects also need GNU gettext 0.25 or newer.
+
 ## Clean up the configuration
 
 Delete the `future` block and any retired ids under `deprecations.silence`. A graduated flag left at `true` is temporarily accepted with a warning; `false` is rejected because the old behavior no longer exists.
@@ -34,6 +36,22 @@ The `"*"` wildcard is gone. Explicit libraries keep generated bindings stable ac
 - Generated classes register with their own definitions, so production builds retain only reached bindings. Import a class if `GObject.typeFromName` must find it.
 
 Run `tsc --noEmit` after these changes. The typechecker catches the value and tuple changes; `gtkx build` catches stale resource imports.
+
+## Update internationalization
+
+GTKX now delegates extraction and resource typing to `i18next-cli`. Keep catalog declarations in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`; replace imported aliases, `i18n.t` member calls, dynamic keys, and CommonJS declarations with those static forms.
+
+Replace the removed positional plural overload:
+
+```ts
+t("{{count}} file", {
+    count,
+    defaultValue_one: "{{count}} file",
+    defaultValue_other: "{{count}} files",
+});
+```
+
+Run codegen after migrating. The generated declaration now uses i18next's standard `CustomTypeOptions` resources instead of GTKX's strict translation registry, so remove imports of GTKX-specific registry types and use types exported by `i18next` or `react-i18next`.
 
 ## Replace removed APIs
 

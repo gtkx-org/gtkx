@@ -11,7 +11,7 @@ The GTKX CLI scaffolds a new app, installs its dependencies, and gives you a dev
 
 GTKX is Linux-only. You need:
 
-- Node.js 24 or later
+- Node.js 26.7 or later
 - The GTK4 (4.20 or later) and GLib development packages
 - The Adwaita (1.8 or later) development package, which a scaffolded project binds from the start
 
