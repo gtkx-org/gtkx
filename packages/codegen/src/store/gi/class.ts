@@ -509,9 +509,16 @@ const renderExtendsClause = (
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {
     const parent = getParentRef(klass);
 
-    return parent === undefined
-        ? undefined
-        : context.qualify(parent.namespaceName ?? context.namespace.name, sanitizeTypeIdentifier(parent.typeName));
+    if (parent === undefined) {
+        return undefined;
+    }
+
+    const qualified = context.qualify(
+        parent.namespaceName ?? context.namespace.name,
+        sanitizeTypeIdentifier(parent.typeName),
+    );
+
+    return context.isTreeShaken ? context.hoistBaseRef(qualified) : qualified;
 };
 
 export { generateClass };

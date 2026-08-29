@@ -26,7 +26,16 @@ type FoldedRecordOptions = {
 const isGErrorRecord = (context: ModuleContext, record: GirRecord): boolean =>
     context.namespace.name === "GLib" && record.glibGetType === "g_error_get_type";
 
-const recordHeritage = (isErrorSubclass: boolean): string => (isErrorSubclass ? " extends globalThis.Error" : "");
+const recordHeritage = (context: ModuleContext, isErrorSubclass: boolean): string => {
+    if (!isErrorSubclass) {
+        return "";
+    }
+
+    const base = context.isTreeShaken ? context.hoistBaseRef("globalThis.Error") : "globalThis.Error";
+
+    return ` extends ${base}`;
+};
+
 const recordModifier = (isConstructible: boolean): string => (isConstructible ? "" : "abstract ");
 
 const declareFoldedRecord = (context: ModuleContext, options: FoldedRecordOptions): void => {
@@ -67,7 +76,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     generateBindings(context, callables);
     const members = renderRecordMembers(context, record, className, callables);
     const body = indentMembers(members);
-    const heritage = recordHeritage(isErrorSubclass);
+    const heritage = recordHeritage(context, isErrorSubclass);
     const doc = getDoc(record);
     const isConstructible = isConstructibleRecord(context, context.namespace.name, record);
     const modifier = recordModifier(isConstructible);

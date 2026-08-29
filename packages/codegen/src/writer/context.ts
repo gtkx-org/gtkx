@@ -34,6 +34,7 @@ const addInternalNamespaceImport = (context: ModuleContext, namespaceName: strin
 
 class ModuleContext {
     private registrationSink: string[] | undefined;
+    private hoistedBases: Map<string, string> = new Map();
     public module: ModuleBuilder = new ModuleBuilder();
     public namespace: GirNamespace;
     public library: Library;
@@ -151,6 +152,29 @@ class ModuleContext {
         }
 
         return `${this.addCrossNamespaceImport(namespaceName)}.${name}`;
+    }
+
+    hoistBaseRef(expression: string): string {
+        if (!expression.includes(".")) {
+            return expression;
+        }
+
+        const existing = this.hoistedBases.get(expression);
+
+        if (existing !== undefined) {
+            return existing;
+        }
+
+        const local = `_${expression.replaceAll(".", "_")}`;
+        this.hoistedBases.set(expression, local);
+
+        this.module.appendDeclaration({
+            name: local,
+            code: `const ${local}: typeof ${expression} = ${expression};`,
+            isLocal: true,
+        });
+
+        return local;
     }
 }
 
