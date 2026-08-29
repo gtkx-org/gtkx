@@ -16,20 +16,7 @@ function ComboRow<
     const { field, fieldState } = useController<TFieldValues, TName, TTransformedValues>(props);
     const rowProps = widgetProps(props);
 
-    const binding = useFieldWidget<Adw.ComboRow>(
-        {
-            controllerRef: field.ref,
-            forwardedRef: rowProps.ref,
-            controllers: rowProps.controllers,
-            cssClasses: rowProps.cssClasses,
-            sensitive: rowProps.sensitive,
-            tooltipText: rowProps.tooltipText,
-            disabled: field.disabled,
-            isInvalid: fieldState.invalid,
-            errorMessage: fieldState.error?.message,
-        },
-        field.onBlur,
-    );
+    const binding = useFieldWidget<Adw.ComboRow>(field, fieldState, rowProps);
 
     const selectedId = typeof field.value === "string" ? field.value : null;
 

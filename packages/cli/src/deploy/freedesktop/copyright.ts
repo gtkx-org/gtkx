@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
 import type { DeploySettings, Notice, NoticeSection } from "../types.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
+import { readLicenseText } from "../notices/text.js";
 
 type FileStanza = {
     settings: DeploySettings;
@@ -28,18 +28,6 @@ const foldedField = (name: string, lines: string[]): string[] => {
     const [first, ...rest] = lines;
 
     return first === undefined ? [] : [`${name}: ${first}`, ...rest.map((line) => indentLine(line))];
-};
-
-const licenseText = (licenseFile: string | null): string | null => {
-    if (licenseFile === null) {
-        return null;
-    }
-
-    try {
-        return readFileSync(licenseFile, "utf8").trimEnd();
-    } catch {
-        return null;
-    }
 };
 
 const shortName = (license: string): string =>
@@ -159,7 +147,7 @@ const applicationStanza = (settings: DeploySettings, text: string | null): strin
 ];
 
 const renderCopyright = (settings: DeploySettings, sections: NoticeSection[]): string => {
-    const own = licenseText(settings.paths.licenseFile);
+    const own = settings.paths.licenseFile === null ? null : readLicenseText(settings.paths.licenseFile);
     const reproduced: Set<string> = new Set(own === null ? [] : [own]);
 
     const stanzas = filePatterns(sections).flatMap((files) =>

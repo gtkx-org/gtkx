@@ -48,8 +48,18 @@ type DrawerTypeBag<
 const createDrawerScreen: StaticScreenFactory<DrawerTypeBag> = createScreenFactory<DrawerTypeBag>();
 
 const useDrawerRouter = (isCollapsed: boolean): DrawerRouterFactory => {
-    const [flag] = useState(() => new CollapsedFlag(isCollapsed));
-    const [createRouter] = useState(() => createDrawerRouter(() => flag.isCollapsed));
+    const [flag] = useState(() => {
+        let isCurrent = isCollapsed;
+
+        return {
+            read: () => isCurrent,
+            update: (isNext: boolean) => {
+                isCurrent = isNext;
+            },
+        };
+    });
+
+    const [createRouter] = useState(() => createDrawerRouter(flag.read));
 
     useEffect(() => {
         flag.update(isCollapsed);
@@ -106,18 +116,6 @@ function createDrawerNavigator<
     const Config extends StaticConfig<TypeBag> | undefined = undefined,
 >(config?: Config): TypedNavigator<TypeBag, Config> {
     return createNavigatorFactory(DrawerNavigator)(config) as TypedNavigator<TypeBag, Config>;
-}
-
-class CollapsedFlag {
-    isCollapsed: boolean;
-
-    constructor(isCollapsed: boolean) {
-        this.isCollapsed = isCollapsed;
-    }
-
-    update(isCollapsed: boolean): void {
-        this.isCollapsed = isCollapsed;
-    }
 }
 
 export { createDrawerNavigator, createDrawerScreen, DrawerNavigator, type DrawerTypeBag };

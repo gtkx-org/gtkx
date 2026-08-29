@@ -1,4 +1,4 @@
-import { type Stats, statSync } from "node:fs";
+import { statSync } from "node:fs";
 import { basename, extname, isAbsolute, join, relative, resolve } from "node:path";
 
 type ResolvedApplicationIcon = { kind: "file"; path: string } |
@@ -16,14 +16,6 @@ const isInside = (parent: string, candidate: string): boolean => {
     return rel.length > 0 && !rel.startsWith("..") && !isAbsolute(rel);
 };
 
-const getStats = (path: string): Stats | undefined => {
-    try {
-        return statSync(path, { throwIfNoEntry: false });
-    } catch {
-        return undefined;
-    }
-};
-
 const iconExtension = (file: string): string => {
     const extension = extname(file).toLowerCase();
 
@@ -37,7 +29,7 @@ const iconExtension = (file: string): string => {
 const defaultIconFiles = (root: string, applicationId: string): string[] =>
     [...ICON_EXTENSIONS]
         .map((extension) => join(root, `${applicationId}${extension}`))
-        .filter((path) => getStats(path)?.isFile() === true);
+        .filter((path) => statSync(path, { throwIfNoEntry: false })?.isFile() === true);
 
 const resolveDefaultApplicationIcon = (root: string, applicationId: string): ResolvedApplicationIcon => {
     const files = defaultIconFiles(root, applicationId);
@@ -80,7 +72,7 @@ const resolveApplicationIcon = (
         throw new Error(`Cannot use "${configured}" as the application icon: it is outside ${root}`);
     }
 
-    const stats = getStats(path);
+    const stats = statSync(path, { throwIfNoEntry: false });
 
     if (stats?.isDirectory() === true) {
         return { kind: "theme", path };

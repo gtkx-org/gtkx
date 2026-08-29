@@ -14,20 +14,18 @@ type TemplateContext = {
     developerEmail: string | null;
 };
 
-const getTemplatesDir = (): string => {
-    return join(import.meta.dirname, "templates");
-};
+const TEMPLATES_DIR = join(import.meta.dirname, "templates");
 
 const listTemplates = (): string[] =>
     sortStrings(
-        readdirSync(getTemplatesDir(), { recursive: true, withFileTypes: true })
+        readdirSync(TEMPLATES_DIR, { recursive: true, withFileTypes: true })
             .filter((entry) => entry.isFile())
             .map((entry) => join(entry.parentPath, entry.name))
-            .map((absolute) => absolute.slice(getTemplatesDir().length + 1).replaceAll(/[/\\]/g, "/"))
+            .map((absolute) => absolute.slice(TEMPLATES_DIR.length + 1).replaceAll(/[/\\]/g, "/"))
             .map((relative) => relative.replace(/\.ejs$/, "")),
     );
 
 const renderFile = async (templateName: string, context: TemplateContext): Promise<string> =>
-    ejs.renderFile(join(getTemplatesDir(), `${templateName}.ejs`), { ...context, sourceStringLiteral });
+    ejs.renderFile(join(TEMPLATES_DIR, `${templateName}.ejs`), { ...context, sourceStringLiteral });
 
 export { listTemplates, renderFile, type TemplateContext };

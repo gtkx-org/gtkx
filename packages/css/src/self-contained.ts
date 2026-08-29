@@ -36,13 +36,13 @@ const probe = (): string => {
     return gate.ruleset;
 };
 
-const hasProbe = (serialized: string): boolean => {
+const containmentFailure = (rule: string): string | null => {
+    const serialized = parsed(`${rule}\n${PROBE_RULE}`);
     const ruleset = probe();
 
-    return ruleset.length > 0 && `\n${serialized}`.includes(`\n${ruleset}`);
+    return ruleset.length > 0 && `\n${serialized}`.includes(`\n${ruleset}`)
+        ? null
+        : SWALLOWS_WHAT_FOLLOWS;
 };
-
-const containmentFailure = (rule: string): string | null =>
-    hasProbe(parsed(`${rule}\n${PROBE_RULE}`)) ? null : SWALLOWS_WHAT_FOLLOWS;
 
 export { containmentFailure };

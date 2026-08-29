@@ -40,4 +40,4 @@ const relativePathRecord = <Value extends z.ZodType>(
     recordMessage: string,
 ): z.ZodRecord<z.ZodString, Value> => z.record(relativePath(keyMessage), value, { error: recordMessage });
 
-export { fileExtension, flag, girLibrary, isGirLibrary, relativePathRecord, text, textList, textRecord, url };
+export { fileExtension, flag, girLibrary, relativePathRecord, text, textList, textRecord, url };

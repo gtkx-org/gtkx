@@ -67,13 +67,7 @@ const parseBuildManifest = (value: unknown, path: string): BuildManifest => {
     };
 };
 
-const isFile = (path: string): boolean => {
-    try {
-        return statSync(path, { throwIfNoEntry: false })?.isFile() === true;
-    } catch {
-        return false;
-    }
-};
+const isFile = (path: string): boolean => statSync(path, { throwIfNoEntry: false })?.isFile() === true;
 
 const isInsideProject = (root: string, filePath: string): boolean => {
     const rel = relative(root, filePath);

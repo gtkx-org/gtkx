@@ -3,23 +3,11 @@ import { REFERENCE_PATH } from "./reference.js";
 
 const PREFIX = "codegen: ";
 
-const contextDetails = (result: RunCodegenResult): string[] => {
-    const details: string[] = [];
-
-    if (result.configFile) {
-        details.push(`config=${result.configFile}`);
-    }
-
-    if (result.libraries) {
-        details.push(`libraries=${result.libraries.join(", ")}`);
-    }
-
-    if (result.girPath) {
-        details.push(`girPath=${result.girPath.join(":")}`);
-    }
-
-    return details;
-};
+const contextDetails = (result: RunCodegenResult): string[] => [
+    `config=${result.configFile}`,
+    `libraries=${result.libraries.join(", ")}`,
+    `girPath=${result.girPath.join(":")}`,
+];
 
 const referenceDetails = (result: RunCodegenResult): string[] => {
     if (result.reference?.isRegenerated !== true) {

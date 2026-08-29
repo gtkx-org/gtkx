@@ -1,3 +1,4 @@
+import { getOrInsert } from "@gtkx/utils";
 import { decodePartAt, encodePart } from "./keys.js";
 
 type SlotKey = {
@@ -43,15 +44,7 @@ function trackPath(slots: SlotMap, path: string): void {
         return;
     }
 
-    const level = slots.get(key.levelPath);
-
-    if (level === undefined) {
-        slots.set(key.levelPath, new Set([key.slot]));
-
-        return;
-    }
-
-    level.add(key.slot);
+    getOrInsert(slots, key.levelPath, () => new Set()).add(key.slot);
 }
 
 function trackPaths(paths: Iterable<string>): SlotMap {

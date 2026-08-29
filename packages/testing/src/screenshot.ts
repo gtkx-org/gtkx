@@ -47,9 +47,7 @@ const OTHER_FAILURE_HINT =
 
 const NOTHING_ON_SCREEN_MESSAGE = "Nothing is on screen to capture: no toplevel window is mapped";
 
-const bytesToBase64 = (bytes: Uint8Array | number[]): string => {
-    return Buffer.from(bytes).toString("base64");
-};
+const bytesToBase64 = (bytes: Uint8Array | number[]): string => Buffer.from(bytes).toString("base64");
 
 const describeWidgetState = (widget: Gtk.Widget): string =>
     `realized=${String(widget.getRealized())} mapped=${String(widget.getMapped())} ` +

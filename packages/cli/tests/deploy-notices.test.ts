@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCliProject, removeCliProject, runCli } from "./cli-project.js";
@@ -18,7 +18,6 @@ import {
     DEPLOY_BLOCK,
     deployProbe,
     GTKX_SOURCE,
-    LEGACY_PACKAGES_METADATA,
     MIT_SENTENCE,
     NATIVE_STANZA,
     NODE_LICENSE_TEXT,
@@ -34,7 +33,6 @@ import {
     PLATFORM_LIBRARY,
     PLATFORM_SECTION,
     PLATFORM_SOURCE,
-    projectFiles,
     STAGE_PREFIX,
     stanzaFor,
     strangeRuntimeFiles,
@@ -146,28 +144,6 @@ describe("gtkx deploy (a build whose packages have moved)", () => {
             const args = ["deploy", "--print-manifests", "--skip-build", "--target", "rpm"];
             expect(runCli(project, args).status).toBe(0);
             expect(noticesFor(project, "rpm")).toContain(`${DEPENDENCY_NAME} ${DEPENDENCY_VERSION}`);
-        } finally {
-            removeCliProject(project);
-        }
-    });
-
-    it("does not stage legacy build metadata left in dist", () => {
-        const project = createCliProject({
-            prefix: "gtkx-cli-deploy-legacy-metadata-",
-            config: config(DEPLOY_BLOCK),
-            files: projectFiles(),
-            hasStore: true,
-        });
-
-        try {
-            expect(runCli(project, ["build"]).status).toBe(0);
-            writeFileSync(join(project.root, "dist", LEGACY_PACKAGES_METADATA), "{}\n");
-            const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
-            expect(runCli(project, args).status).toBe(0);
-
-            expect(outputNames(project)).not.toContain(
-                join(STAGE_PREFIX, "lib", BINARY_NAME, LEGACY_PACKAGES_METADATA),
-            );
         } finally {
             removeCliProject(project);
         }

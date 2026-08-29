@@ -3,11 +3,7 @@ import type { ReactNode } from "react";
 import { AdwEntryRow } from "@gtkx/jsx/adw";
 import { type FieldValues, useController } from "react-hook-form";
 import type { EntryRowProps, FormFieldPath } from "./types.js";
-import { useFieldWidget, widgetProps } from "./internal/field.js";
-
-const selectText = (row: Adw.EntryRow): void => {
-    row.selectRegion(0, -1);
-};
+import { selectText, useFieldWidget, widgetProps } from "./internal/field.js";
 
 /** Renders an `Adw.EntryRow` controlled by React Hook Form. */
 function EntryRow<
@@ -18,21 +14,7 @@ function EntryRow<
     const { field, fieldState } = useController<TFieldValues, TName, TTransformedValues>(props);
     const rowProps = widgetProps(props);
 
-    const binding = useFieldWidget<Adw.EntryRow>(
-        {
-            controllerRef: field.ref,
-            forwardedRef: rowProps.ref,
-            controllers: rowProps.controllers,
-            cssClasses: rowProps.cssClasses,
-            sensitive: rowProps.sensitive,
-            tooltipText: rowProps.tooltipText,
-            disabled: field.disabled,
-            isInvalid: fieldState.invalid,
-            errorMessage: fieldState.error?.message,
-            select: selectText,
-        },
-        field.onBlur,
-    );
+    const binding = useFieldWidget<Adw.EntryRow>(field, fieldState, rowProps, selectText);
 
     const value = typeof field.value === "string" ? field.value : "";
 

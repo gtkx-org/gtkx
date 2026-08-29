@@ -97,6 +97,7 @@
         "@gtkx/css": "workspace:*",
         "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*",
+        "react-merge-refs": "^3.0.2",
         "react-reconciler": "^0.33.0"
     },
     "devDependencies": {

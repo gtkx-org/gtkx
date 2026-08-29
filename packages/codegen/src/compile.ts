@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, renameSync, rmSync, symlinkSync, writeFileSync }
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
-import { createStagingDir, sweepStrandedDirs } from "./staging.js";
+import { createStagingDir } from "./staging.js";
 
 type ProjectFile = {
     fileName: string;
@@ -97,7 +97,6 @@ const DECLARATION_EXTENSION = ".d.ts";
 const JAVASCRIPT_EXTENSION = ".js";
 const CHECK_DIR = ".gtkx-check";
 const FAILED_CHECK_DIR = `${CHECK_DIR}.failed`;
-const LEGACY_CHECK_PREFIX = `${CHECK_DIR}-`;
 const ESM_SCOPE_MANIFEST = `${JSON.stringify({ type: "module" }, null, 4)}\n`;
 
 const FORMAT_HOST: ts.FormatDiagnosticsHost = {
@@ -348,16 +347,9 @@ const compileProject = (params: CompileProjectParams): void => {
     }
 };
 
-const stageCheckProject = (checkRoot: string): string => {
-    const projectDir = createStagingDir(join(checkRoot, CHECK_DIR));
-    sweepStrandedDirs(checkRoot, LEGACY_CHECK_PREFIX);
-
-    return projectDir;
-};
-
 const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; label: string }): void => {
     const checkRoot = join(params.resolveFrom, "node_modules");
-    const projectDir = stageCheckProject(checkRoot);
+    const projectDir = createStagingDir(join(checkRoot, CHECK_DIR));
     const keepAt = join(checkRoot, FAILED_CHECK_DIR);
 
     try {

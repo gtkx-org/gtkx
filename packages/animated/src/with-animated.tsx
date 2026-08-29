@@ -17,7 +17,6 @@ import { trackReducedMotion } from "./reduced-motion.js";
 
 type AnimatedInput = { ref?: Ref<object> | undefined; [key: string]: unknown };
 type Wrappable = Exclude<ElementType, string>;
-type ObserverRef = { current: PropsObserver | null };
 
 const STYLE_PROP = "style";
 const cache: WeakMap<object, AnimatedComponent<Wrappable>> = new WeakMap();
@@ -142,19 +141,11 @@ const unobserve = (observer: PropsObserver): void => {
 };
 
 const useObserver = (observer: PropsObserver): void => {
-    const observerRef: ObserverRef = useRef<PropsObserver | null>(null);
-
     useLayoutEffect(() => {
-        observerRef.current = observer;
         observe(observer);
 
         return () => {
-            if (observerRef.current === null) {
-                return;
-            }
-
-            unobserve(observerRef.current);
-            observerRef.current = null;
+            unobserve(observer);
         };
     });
 };

@@ -14,20 +14,7 @@ function SwitchRow<
     const { field, fieldState } = useController<TFieldValues, TName, TTransformedValues>(props);
     const rowProps = widgetProps(props);
 
-    const binding = useFieldWidget<Adw.SwitchRow>(
-        {
-            controllerRef: field.ref,
-            forwardedRef: rowProps.ref,
-            controllers: rowProps.controllers,
-            cssClasses: rowProps.cssClasses,
-            sensitive: rowProps.sensitive,
-            tooltipText: rowProps.tooltipText,
-            disabled: field.disabled,
-            isInvalid: fieldState.invalid,
-            errorMessage: fieldState.error?.message,
-        },
-        field.onBlur,
-    );
+    const binding = useFieldWidget<Adw.SwitchRow>(field, fieldState, rowProps);
 
     return (
         <AdwSwitchRow

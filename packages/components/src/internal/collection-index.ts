@@ -25,7 +25,6 @@ type IndexState = {
 
 type ParentItem = ListItem & { children: ListItem[] };
 
-const emptyLevel = (): Level => ({ path: "", items: [], expandableFlags: [] });
 const hasChildren = (item: ListItem): item is ParentItem => item.children !== undefined && item.children.length > 0;
 
 function newLevel(state: IndexState, path: string, items: ListItem[]): Level {
@@ -141,4 +140,4 @@ function createCollectionIndex(
     };
 }
 
-export { createCollectionIndex, emptyLevel, type CollectionIndex, type Level };
+export { createCollectionIndex, type CollectionIndex, type Level };

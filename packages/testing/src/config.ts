@@ -50,9 +50,7 @@ function defaultGetElementError(message: string): Error {
 /**
  * Returns the current global testing configuration.
  */
-const getConfig = (): Config => {
-    return currentConfig;
-};
+const getConfig = (): Config => currentConfig;
 
 /**
  * Merges the given overrides into the global testing configuration.

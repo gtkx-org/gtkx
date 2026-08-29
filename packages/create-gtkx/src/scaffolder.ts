@@ -2,7 +2,7 @@ import * as p from "@clack/prompts";
 import { APPLICATION_ID_MAX_LENGTH, isValidApplicationId } from "@gtkx/config/internal";
 import { errorMessage, tryResolveExecutable, upperFirst } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readdirSync, rmSync, type Stats, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
@@ -106,11 +106,6 @@ const APPLICATION_ID_SUFFIX = ".app";
 const APPLICATION_ID_SEGMENT_LIMIT = APPLICATION_ID_MAX_LENGTH - APPLICATION_ID_PREFIX.length -
     APPLICATION_ID_SUFFIX.length;
 
-const pinGtkxDependency = (name: string, version: string): string =>
-    name.startsWith("@gtkx/") ? `${name}@^${version}` : name;
-
-const getDevCommand = (packageManager: PackageManager): string => DEV_COMMAND[packageManager];
-const getAddCommand = (packageManager: PackageManager): string => ADD_COMMAND[packageManager];
 const titleFromName = (name: string): string => name.split("-").map((part) => upperFirst(part)).join(" ");
 
 const gitConfigValue = (key: string): string | null => {
@@ -147,7 +142,9 @@ const stripTrailingSlashes = (value: string): string => {
     return value.slice(0, end);
 };
 
-const formatTargetDir = (target: string): string => stripTrailingSlashes(target.trim().replaceAll(/[<>:"\\|?*]/g, ""));
+const formatTargetDir = (target: string): string =>
+    stripTrailingSlashes(target.trim().replaceAll(/[<>:"\\|?*]/g, ""));
+
 const deriveProjectName = (target: string): string => basename(resolve(process.cwd(), target));
 
 const isDirEmpty = (dir: string): boolean => {
@@ -220,14 +217,6 @@ const requestedPackageManager = (value: string | undefined): PackageManager | un
     return value;
 };
 
-const targetStats = (root: string): Stats | undefined => {
-    try {
-        return statSync(root, { throwIfNoEntry: false });
-    } catch {
-        return undefined;
-    }
-};
-
 const validateTargetDir = (target: string): string | undefined => {
     if (!target) {
         return "Project directory is required";
@@ -263,40 +252,23 @@ const promptApplicationId = async (name: string): Promise<string> => {
     );
 };
 
-const detectPackageManager = async (cwd: string): Promise<PackageManager | undefined> => {
-    const detected = await nypmDetectPackageManager(cwd, { includeParentDirs: true });
-
-    if (!detected) {
-        return undefined;
-    }
-
-    return isKnownPackageManager(detected.name) ? detected.name : undefined;
-};
-
-const packageManagerHint = (
-    manager: (typeof PACKAGE_MANAGERS)[number],
-    detected: PackageManager | undefined,
-): string | undefined => {
-    if (detected === manager.value) {
-        return "detected";
-    }
-
-    if (manager.isRecommended) {
-        return "recommended";
-    }
-
-    return undefined;
-};
-
 const packageManagerOption = (manager: (typeof PACKAGE_MANAGERS)[number], detected: PackageManager | undefined) => {
-    const hint = packageManagerHint(manager, detected);
+    let hint: string | undefined;
+
+    if (detected === manager.value) {
+        hint = "detected";
+    } else if (manager.isRecommended) {
+        hint = "recommended";
+    }
 
     return { value: manager.value, label: manager.label, ...(hint !== undefined && { hint }) };
 };
 
 const detectedPackageManager = async (): Promise<PackageManager | undefined> => {
     try {
-        return await detectPackageManager(process.cwd());
+        const detected = await nypmDetectPackageManager(process.cwd(), { includeParentDirs: true });
+
+        return detected && isKnownPackageManager(detected.name) ? detected.name : undefined;
     } catch {
         return undefined;
     }
@@ -315,21 +287,15 @@ const promptPackageManager = async (): Promise<PackageManager> => {
     );
 };
 
-const shouldUseTypeScript = async (): Promise<boolean> =>
-    guardCancellation(
-        await p.confirm({
-            message: "Use TypeScript?",
-            initialValue: true,
-        }),
-    );
-
-const shouldSetUpTesting = async (): Promise<boolean> =>
-    guardCancellation(
-        await p.confirm({
-            message: "Include testing setup (Vitest)?",
-            initialValue: true,
-        }),
-    );
+const isOptionEnabled = async (
+    value: boolean | undefined,
+    isInteractive: boolean | undefined,
+    message: string,
+): Promise<boolean> =>
+    value ??
+    (isInteractive
+        ? guardCancellation(await p.confirm({ message, initialValue: true }))
+        : true);
 
 const emptyDir = (root: string): void => {
     for (const entry of readdirSync(root)) {
@@ -338,14 +304,6 @@ const emptyDir = (root: string): void => {
         }
 
         rmSync(join(root, entry), { recursive: true, force: true });
-    }
-};
-
-const prepareTargetDirectory = (root: string, shouldEmptyTarget: boolean): void => {
-    mkdirSync(root, { recursive: true });
-
-    if (shouldEmptyTarget) {
-        emptyDir(root);
     }
 };
 
@@ -363,7 +321,7 @@ const shouldOverwriteDirectory = async (target: string, options: CreateOptions):
 };
 
 const shouldEmptyTargetDirectory = async (root: string, target: string, options: CreateOptions): Promise<boolean> => {
-    const stats = targetStats(root);
+    const stats = statSync(root, { throwIfNoEntry: false });
 
     if (stats === undefined) {
         return false;
@@ -419,22 +377,6 @@ const resolvePackageManager = async (
     return (await detectedPackageManager()) ?? "pnpm";
 };
 
-const isTypescriptSelected = async (options: CreateOptions): Promise<boolean> => {
-    if (options.isTypescript !== undefined) {
-        return options.isTypescript;
-    }
-
-    return options.isInteractive ? shouldUseTypeScript() : true;
-};
-
-const isTestingIncluded = async (options: CreateOptions): Promise<boolean> => {
-    if (options.shouldIncludeTesting !== undefined) {
-        return options.shouldIncludeTesting;
-    }
-
-    return options.isInteractive ? shouldSetUpTesting() : true;
-};
-
 const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
     const requested = requestedPackageManager(options.packageManager);
     const target = await resolveTarget(options);
@@ -444,8 +386,13 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
     const isCurrentDirectory = root === process.cwd();
     const shouldEmptyTarget = await shouldEmptyTargetDirectory(root, target, options);
     const packageManager = await resolvePackageManager(requested, options);
-    const isTypescript = await isTypescriptSelected(options);
-    const shouldIncludeTesting = await isTestingIncluded(options);
+    const isTypescript = await isOptionEnabled(options.isTypescript, options.isInteractive, "Use TypeScript?");
+
+    const shouldIncludeTesting = await isOptionEnabled(
+        options.shouldIncludeTesting,
+        options.isInteractive,
+        "Include testing setup (Vitest)?",
+    );
 
     return {
         target,
@@ -472,19 +419,12 @@ const isTemplateIncluded = (templateRelativePath: string, resolved: ResolvedOpti
     return true;
 };
 
-const toScriptExtension = (templateRelativePath: string, isTypescript: boolean): string =>
-    isTypescript ? templateRelativePath : templateRelativePath.replace(/\.tsx$/, ".jsx").replace(/\.ts$/, ".js");
+const destinationPath = (template: string, resolved: ResolvedOptions): string => {
+    const scriptPath = resolved.isTypescript ? template : template.replace(/\.tsx$/, ".jsx").replace(/\.ts$/, ".js");
 
-const toIconPath = (path: string, applicationId: string): string =>
-    path.endsWith(ICON_TEMPLATE_NAME) ? `${path.slice(0, -ICON_TEMPLATE_NAME.length)}${applicationId}.svg` : path;
-
-const toDestinationPath = (templateRelativePath: string, isTypescript: boolean, applicationId: string): string =>
-    toIconPath(toScriptExtension(templateRelativePath, isTypescript), applicationId);
-
-const addTestScript = (root: string): void => {
-    updateManifest(root, (manifest) => {
-        (manifest.scripts as Record<string, string>).test = "vitest run";
-    });
+    return scriptPath.endsWith(ICON_TEMPLATE_NAME)
+        ? `${scriptPath.slice(0, -ICON_TEMPLATE_NAME.length)}${resolved.applicationId}.svg`
+        : scriptPath;
 };
 
 const templateContext = (resolved: ResolvedOptions): TemplateContext => ({
@@ -499,7 +439,6 @@ const templateContext = (resolved: ResolvedOptions): TemplateContext => ({
 });
 
 const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise<void> => {
-    const { applicationId, isTypescript, shouldIncludeTesting } = resolved;
     const context = templateContext(resolved);
 
     for (const template of listTemplates()) {
@@ -507,13 +446,15 @@ const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise
             continue;
         }
 
-        const destination = join(root, toDestinationPath(template, isTypescript, applicationId));
+        const destination = join(root, destinationPath(template, resolved));
         mkdirSync(dirname(destination), { recursive: true });
         writeFileSync(destination, await renderFile(template, context));
     }
 
-    if (shouldIncludeTesting) {
-        addTestScript(root);
+    if (resolved.shouldIncludeTesting) {
+        updateManifest(root, (manifest) => {
+            (manifest.scripts as Record<string, string>).test = "vitest run";
+        });
     }
 };
 
@@ -543,10 +484,11 @@ const installDependencies = async (options: InstallDependenciesOptions): Promise
     });
 };
 
-const pin = (names: string[]): string[] => names.map((dependency) => pinGtkxDependency(dependency, selfVersion));
+const pin = (names: string[]): string[] =>
+    names.map((dependency) => dependency.startsWith("@gtkx/") ? `${dependency}@^${selfVersion}` : dependency);
 
 const formatRecovery = ({ resolved, devDependencies }: InstallFailureOptions): string => {
-    const add = getAddCommand(resolved.packageManager);
+    const add = ADD_COMMAND[resolved.packageManager];
 
     const steps = [
         ...(resolved.isCurrentDirectory ? [] : [`cd ${resolved.target}`]),
@@ -624,7 +566,7 @@ const initializeGitRepo = async (root: string): Promise<void> => {
 };
 
 const printNextSteps = (resolved: ResolvedOptions): void => {
-    const devCmd = getDevCommand(resolved.packageManager);
+    const devCmd = DEV_COMMAND[resolved.packageManager];
     const cdStep = resolved.isCurrentDirectory ? "" : `cd ${resolved.target}\n`;
     const testingNote = resolved.shouldIncludeTesting ? HEADLESS_COMPOSITOR_NOTE : "";
     p.note(`${cdStep}${devCmd}${testingNote}`, "Next steps");
@@ -636,7 +578,12 @@ const createProjectStructure = async (root: string, resolved: ResolvedOptions): 
         done: "Project structure created",
         failed: "Failed to create the project structure",
         run: async () => {
-            prepareTargetDirectory(root, resolved.shouldEmptyTarget);
+            mkdirSync(root, { recursive: true });
+
+            if (resolved.shouldEmptyTarget) {
+                emptyDir(root);
+            }
+
             await scaffoldProject(root, resolved);
             writeBuildAllowance(root, resolved.packageManager);
         },

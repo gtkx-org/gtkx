@@ -25,13 +25,8 @@ const hasSetter = (instance: object, name: string): boolean => {
         return false;
     }
 
-    let known = setterCache.get(prototype);
-
-    if (known === undefined) {
-        known = new Map();
-        setterCache.set(prototype, known);
-    }
-
+    const known = setterCache.get(prototype) ?? new Map<string, boolean>();
+    setterCache.set(prototype, known);
     let isWritable = known.get(name);
 
     if (isWritable === undefined) {

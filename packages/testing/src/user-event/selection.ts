@@ -19,9 +19,7 @@ const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set([
     Gtk.AccessibleRole.LIST,
 ]);
 
-const isSelectable = (widget: Gtk.Widget): boolean => {
-    return SELECTABLE_ROLES.has(widget.getAccessibleRole());
-};
+const isSelectable = (widget: Gtk.Widget): boolean => SELECTABLE_ROLES.has(widget.getAccessibleRole());
 
 const selectListViewItems = (
     selectionModel: Gtk.SelectionModel,

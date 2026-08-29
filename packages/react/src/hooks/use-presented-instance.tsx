@@ -1,4 +1,4 @@
-import { type ElementType, type ReactNode, type Ref, type RefCallback, useLayoutEffect, useState } from "react";
+import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
 import { useMergedRef } from "./use-merged-refs.js";
 
 type PresentedProps<T> = {
@@ -15,9 +15,9 @@ const usePresentedInstance = <T,>(
     ref: Ref<T | null> | undefined,
     present: (instance: T) => void,
     dismiss: (instance: T) => void,
-): [T | null, RefCallback<T>] => {
+): [T | null, Ref<T>] => {
     const [instance, setInstance] = useState<T | null>(null);
-    const mergedRef = useMergedRef(ref, setInstance);
+    const mergedRef = useMergedRef<T>(ref, setInstance);
 
     useLayoutEffect(() => {
         if (!instance) {

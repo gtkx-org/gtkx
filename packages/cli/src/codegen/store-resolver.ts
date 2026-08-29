@@ -1,6 +1,6 @@
 import { resolveStore } from "@gtkx/codegen";
 import { type Config, loadConfig } from "@gtkx/config";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -19,36 +19,21 @@ type CodegenReactPackage = {
     subexports: string[];
 };
 
-type ResolvedPackage = { dir: string; version: string };
-
 type CodegenContext = {
     root: string;
     config: Config;
     configFile: string;
 };
 
-const readVersion = (packageJsonPath: string): string => {
-    const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: string };
-
-    return parsed.version ?? "0.0.0";
-};
-
-const resolvePackage = (require: NodeJS.Require, dir: string, packageName: string): ResolvedPackage | null => {
+const hasPackage = (require: NodeJS.Require, dir: string, packageName: string): boolean => {
     try {
-        const real = realpathSync(require.resolve(`${packageName}/package.json`));
+        require.resolve(`${packageName}/package.json`);
 
-        return { dir: dirname(real), version: readVersion(real) };
+        return true;
     } catch {
         const unscoped = packageName.replace(/^@[^/]+\//, "");
-        const workspacePkg = join(dir, "packages", unscoped, "package.json");
 
-        if (!existsSync(workspacePkg)) {
-            return null;
-        }
-
-        const real = realpathSync(workspacePkg);
-
-        return { dir: dirname(real), version: readVersion(real) };
+        return existsSync(join(dir, "packages", unscoped, "package.json"));
     }
 };
 
@@ -57,12 +42,12 @@ const siblingStore = (giDir: string): string => join(dirname(giDir), "jsx");
 const resolveCodegenStore = (dir: string): CodegenStore => {
     const require = createRequire(pathToFileURL(join(dir, "__gtkx_resolver__.js")).href);
 
-    if (resolvePackage(require, dir, "@gtkx/native") === null) {
+    if (!hasPackage(require, dir, "@gtkx/native")) {
         throw new Error("Cannot resolve @gtkx/native from the project; is it installed?");
     }
 
     const store = resolveStore(dir);
-    const hasReactRuntime = resolvePackage(require, dir, "react") !== null;
+    const hasReactRuntime = hasPackage(require, dir, "react");
 
     return {
         giStoreDir: store.gi.storeDir,

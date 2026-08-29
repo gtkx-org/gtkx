@@ -1130,35 +1130,16 @@ const forgetImporterDeclarations = (state: PluginState, importer: string): void 
     state.declaredIcons.delete(importer);
 };
 
-const cloneStringSetMap = (source: Map<string, Set<string>>): Map<string, Set<string>> => {
-    const clone: Map<string, Set<string>> = new Map();
-
-    for (const [key, values] of source) {
-        clone.set(key, new Set(values));
-    }
-
-    return clone;
-};
-
-const cloneDeclarationMap = (
-    source: Map<string, Map<string, ResourceEntry>>,
-): Map<string, Map<string, ResourceEntry>> => {
-    const clone: Map<string, Map<string, ResourceEntry>> = new Map();
-
-    for (const [key, declarations] of source) {
-        clone.set(key, new Map(declarations));
-    }
-
-    return clone;
-};
+const cloneMapValues = <Value>(source: Map<string, Value>, clone: (value: Value) => Value): Map<string, Value> =>
+    new Map([...source].map(([key, value]) => [key, clone(value)]));
 
 const reconciliationCandidate = (state: PluginState): PluginState => ({
     ...state,
-    bundledSpecifiers: cloneStringSetMap(state.bundledSpecifiers),
-    moduleDependencies: cloneStringSetMap(state.moduleDependencies),
-    prunedDependencies: cloneStringSetMap(state.prunedDependencies),
-    declaredEntries: cloneDeclarationMap(state.declaredEntries),
-    declaredIcons: cloneDeclarationMap(state.declaredIcons),
+    bundledSpecifiers: cloneMapValues(state.bundledSpecifiers, (values) => new Set(values)),
+    moduleDependencies: cloneMapValues(state.moduleDependencies, (values) => new Set(values)),
+    prunedDependencies: cloneMapValues(state.prunedDependencies, (values) => new Set(values)),
+    declaredEntries: cloneMapValues(state.declaredEntries, (entries) => new Map(entries)),
+    declaredIcons: cloneMapValues(state.declaredIcons, (entries) => new Map(entries)),
     missingSourcePaths: new Set(state.missingSourcePaths),
 });
 

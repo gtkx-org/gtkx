@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { readLicenseText } from "../notices/text.js";
 
 const LICENSE_FILENAME = "LICENSE";
 const NODE_MARKER = "Node.js";
@@ -10,13 +10,7 @@ const licenseCandidates = (binary: string): string[] => {
     return [join(dir, LICENSE_FILENAME), join(dir, "..", LICENSE_FILENAME)];
 };
 
-const isNodeLicense = (path: string): boolean => {
-    try {
-        return readFileSync(path, "utf8").includes(NODE_MARKER);
-    } catch {
-        return false;
-    }
-};
+const isNodeLicense = (path: string): boolean => readLicenseText(path)?.includes(NODE_MARKER) === true;
 
 const licenseBesideNode = (binary: string): string | null =>
     licenseCandidates(binary).find((candidate) => isNodeLicense(candidate)) ?? null;

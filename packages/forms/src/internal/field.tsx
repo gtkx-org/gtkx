@@ -18,17 +18,20 @@ type FieldWidget = Gtk.Widget & {
 };
 
 type FieldWidgetOptions<Widget extends FieldWidget> = {
-    controllerRef: RefCallBack;
-    forwardedRef: Ref<Widget> | undefined;
-    controllers: ReactNode | null | undefined;
-    cssClasses: string[] | null | undefined;
-    sensitive: boolean | null | undefined;
-    tooltipText: string | null | undefined;
-    disabled: boolean | undefined;
-    isInvalid: boolean;
-    errorMessage: string | undefined;
-    select?: ((widget: Widget) => void) | undefined;
+    ref?: Ref<Widget> | undefined;
+    controllers?: ReactNode | null | undefined;
+    cssClasses?: string[] | null | undefined;
+    sensitive?: boolean | null | undefined;
+    tooltipText?: string | null | undefined;
 };
+
+type FieldBinding = {
+    ref: RefCallBack;
+    disabled?: boolean | undefined;
+    onBlur: () => void;
+};
+
+type FieldState = { invalid: boolean; error?: { message?: string | undefined } | undefined };
 
 type FieldWidgetBinding<Widget extends FieldWidget> = {
     ref: RefCallback<Widget>;
@@ -69,10 +72,14 @@ const withErrorClass = (
 };
 
 const useFieldWidgetRef = <Widget extends FieldWidget>({
-    controllerRef,
+    field: { ref: controllerRef },
     forwardedRef,
     select,
-}: Pick<FieldWidgetOptions<Widget>, "controllerRef" | "forwardedRef" | "select">): RefCallback<Widget> =>
+}: {
+    field: FieldBinding;
+    forwardedRef: Ref<Widget> | undefined;
+    select: ((widget: Widget) => void) | undefined;
+}): RefCallback<Widget> =>
     useCallback(
         (widget) => {
             setRef(forwardedRef, widget);
@@ -98,24 +105,30 @@ const useFieldWidgetRef = <Widget extends FieldWidget>({
     );
 
 const useFieldWidget = <Widget extends FieldWidget>(
-    options: FieldWidgetOptions<Widget>,
-    onBlur: () => void,
+    field: FieldBinding,
+    state: FieldState,
+    props: FieldWidgetOptions<Widget>,
+    select?: (widget: Widget) => void,
 ): FieldWidgetBinding<Widget> => ({
-    ref: useFieldWidgetRef(options),
+    ref: useFieldWidgetRef({ field, forwardedRef: props.ref, select }),
     controllers: (
         <>
-            {options.controllers}
-            <GtkEventControllerFocus onLeave={onBlur} />
+            {props.controllers}
+            <GtkEventControllerFocus onLeave={field.onBlur} />
         </>
     ),
-    cssClasses: withErrorClass(options.cssClasses, options.isInvalid),
-    sensitive: options.disabled === true ? false : options.sensitive,
-    tooltipText: options.isInvalid && options.errorMessage !== undefined ? options.errorMessage : options.tooltipText,
-    accessibleInvalid: options.isInvalid ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE,
+    cssClasses: withErrorClass(props.cssClasses, state.invalid),
+    sensitive: field.disabled === true ? false : props.sensitive,
+    tooltipText: state.invalid && state.error?.message !== undefined ? state.error.message : props.tooltipText,
+    accessibleInvalid: state.invalid ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE,
 });
+
+const selectText = (row: { selectRegion: (start: number, end: number) => void }): void => {
+    row.selectRegion(0, -1);
+};
 
 const widgetProps = <Props extends Partial<Record<FormFieldPropName, unknown>>>(
     props: Props,
 ): Omit<Props, FormFieldPropName> => omit(props, FORM_FIELD_PROP_NAMES);
 
-export { useFieldWidget, widgetProps };
+export { selectText, useFieldWidget, widgetProps };

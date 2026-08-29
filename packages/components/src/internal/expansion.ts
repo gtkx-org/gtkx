@@ -30,10 +30,6 @@ type ExpansionContext = {
     onExpandedChange?: ((ids: string[]) => void) | null | undefined;
 };
 
-function newLastExpansion(): LastExpansion {
-    return { key: "" };
-}
-
 function hasSameExpansion(expanded: Set<string>, wanted: Set<string>): boolean {
     return expanded.size === wanted.size && wanted.isSubsetOf(expanded);
 }
@@ -95,10 +91,6 @@ function applyControlledExpansion(context: ExpansionContext, expandedIds: string
     reportExpansion(context);
 }
 
-function isExpansionIdle(collection: Collection): boolean {
-    return collection.isTree && isCollectionIdle(collection);
-}
-
 function didRowDrift(collection: Collection, change: ItemsChange): boolean {
     const path = collection.pathAt(change.position - 1);
     const isExpanded = change.removed === 0 && change.added > 0;
@@ -114,7 +106,7 @@ function didRowDrift(collection: Collection, change: ItemsChange): boolean {
 }
 
 function observeExpansion(context: ExpansionContext, change: ItemsChange, onDrift: () => void): void {
-    if (!isExpansionIdle(context.collection)) {
+    if (!context.collection.isTree || !isCollectionIdle(context.collection)) {
         return;
     }
 
@@ -128,7 +120,7 @@ function observeExpansion(context: ExpansionContext, change: ItemsChange, onDrif
 
 function useExpansion(options: ExpansionOptions): ItemsChangeHandler {
     const { collection, expandedIds, onExpandedChange } = options;
-    const [last] = useState<LastExpansion>(newLastExpansion);
+    const [last] = useState<LastExpansion>(() => ({ key: "" }));
     const context: ExpansionContext = { collection, last, onExpandedChange };
 
     const markDrift = useControlledSync({

@@ -1,6 +1,5 @@
 import type { ExternalObject, Handle, RegisterClassProperty } from "@gtkx/native";
-import type { AnyClass } from "@gtkx/utils";
-import { camelCase, kebabCase, toCamelIdentifier } from "@gtkx/utils";
+import { type AnyClass, camelCase, getOrInsert, kebabCase, toCamelIdentifier } from "@gtkx/utils";
 import { bind } from "./bind.js";
 import { biguint64T, fundamentalT, refT, sizedArrayT, stringT, structT, uint32T, voidT } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_T } from "./library.js";
@@ -347,21 +346,9 @@ function lookupCoercionCheck(gtype: bigint, name: string): PropertyCheck | null 
 }
 
 function coercionCheckFor(gtype: bigint, name: string): PropertyCheck | null {
-    let checks = coercionChecks.get(gtype);
+    const checks = getOrInsert(coercionChecks, gtype, () => new Map<string, PropertyCheck | null>());
 
-    if (checks === undefined) {
-        checks = new Map();
-        coercionChecks.set(gtype, checks);
-    }
-
-    let check = checks.get(name);
-
-    if (check === undefined) {
-        check = lookupCoercionCheck(gtype, name);
-        checks.set(name, check);
-    }
-
-    return check;
+    return getOrInsert(checks, name, () => lookupCoercionCheck(gtype, name));
 }
 
 function truncateToWhole(check: PropertyCheck, value: number): number {

@@ -33,13 +33,8 @@ const resolveOutDir = ({ root, deploy, outDirOverride }: PathsRequest): string =
     return outDir;
 };
 
-const existingFile = (path: string): string | null => {
-    try {
-        return statSync(path, { throwIfNoEntry: false })?.isFile() === true ? path : null;
-    } catch {
-        return null;
-    }
-};
+const existingFile = (path: string): string | null =>
+    statSync(path, { throwIfNoEntry: false })?.isFile() === true ? path : null;
 
 const resolveLicenseFile = (root: string, configured: string | undefined): string | null => {
     if (configured !== undefined) {

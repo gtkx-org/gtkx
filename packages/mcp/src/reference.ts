@@ -204,17 +204,13 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
     return { reference, root, watched };
 };
 
-const markFailed = async (entry: CacheEntry): Promise<void> => {
-    try {
-        await entry.pending;
-    } catch {
-        entry.failedAt = Date.now();
-    }
-};
-
 const startLoad = (cache: ReferenceCache, root: string): CacheEntry => {
     const entry: CacheEntry = { pending: loadReference(root), verifiedAt: Date.now(), failedAt: undefined };
-    void markFailed(entry);
+
+    void entry.pending.catch(() => {
+        entry.failedAt = Date.now();
+    });
+
     cache.set(root, entry);
 
     return entry;
@@ -252,11 +248,9 @@ const currentReference = async (cache: ReferenceCache, root: string): Promise<Lo
     return revalidate(cache, root, entry).pending;
 };
 
-const defaultWorkingDirectory = (): string => process.cwd();
-
 const createReferenceProvider = (options: ReferenceProviderOptions): ReferenceProvider => {
     const cache: ReferenceCache = new Map();
-    const getWorkingDirectory = options.getWorkingDirectory ?? defaultWorkingDirectory;
+    const getWorkingDirectory = options.getWorkingDirectory ?? (() => process.cwd());
 
     const resolve = (projectRoot?: string): ResolvedProject =>
         resolveProject(getWorkingDirectory(), options.getAppRoot, projectRoot);
@@ -301,23 +295,12 @@ const scopedResult = async (
 const formatCandidates = (candidates: ApiSymbol[]): string =>
     candidates.map((candidate) => `- ${candidate.namespace}.${candidate.name} (${candidate.kind})`).join("\n");
 
-const buildSearchOptions = (args: ToolArgs<typeof searchApiShape>): SearchOptions => {
-    const options: SearchOptions = { query: args.query };
-
-    if (args.namespace !== undefined) {
-        options.namespace = args.namespace;
-    }
-
-    if (args.kind !== undefined) {
-        options.kinds = [args.kind];
-    }
-
-    if (args.limit !== undefined) {
-        options.limit = args.limit;
-    }
-
-    return options;
-};
+const buildSearchOptions = (args: ToolArgs<typeof searchApiShape>): SearchOptions => ({
+    query: args.query,
+    ...(args.namespace !== undefined && { namespace: args.namespace }),
+    ...(args.kind !== undefined && { kinds: [args.kind] }),
+    ...(args.limit !== undefined && { limit: args.limit }),
+});
 
 const listApiResult = (reference: ReferenceApi, namespace: string | undefined): CallToolResult => {
     if (namespace === undefined) {
@@ -424,9 +407,6 @@ const withLoadFallback = async <T>(load: () => Promise<T>, fallback: T): Promise
     }
 };
 
-const namesStartingWith = (names: string[], value: string): string[] =>
-    names.filter((name) => name.toLowerCase().startsWith(value.toLowerCase()));
-
 const completeNames = (
     provider: ReferenceProvider,
     value: string,
@@ -435,7 +415,7 @@ const completeNames = (
     withLoadFallback(async () => {
         const { reference } = await provider.get();
 
-        return namesStartingWith(collect(reference), value);
+        return collect(reference).filter((name) => name.toLowerCase().startsWith(value.toLowerCase()));
     }, []);
 
 const namespaceCompleter =

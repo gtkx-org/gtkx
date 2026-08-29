@@ -17,9 +17,10 @@ import {
     SCHEMA,
 } from "./deploy-helpers.js";
 
-describe("gtkx deploy (a store whose inventory is not shaped like one)", () => {
+describe("gtkx deploy (a store inventory it cannot use)", () => {
     const project: CliProject = { root: "", nodeModules: "" };
-    let status: number | null = null;
+    const statuses: (number | null)[] = [];
+    const dependencies: string[][] = [];
 
     beforeAll(() => {
         const created = createCliProject({
@@ -32,51 +33,34 @@ describe("gtkx deploy (a store whose inventory is not shaped like one)", () => {
         project.root = created.root;
         project.nodeModules = created.nodeModules;
         runCli(project, ["deploy", "--print-manifests", "--target", "deb"]);
-        writeFileSync(join(project.root, LIBRARIES_INVENTORY), FOREIGN_INVENTORY);
-        status = runCli(project, ["deploy", "--print-manifests", "--skip-build", "--target", "deb"]).status;
+        const inventory = join(project.root, LIBRARIES_INVENTORY);
+
+        for (const mutate of [
+            () => {
+                writeFileSync(inventory, FOREIGN_INVENTORY);
+            },
+            () => {
+                rmSync(inventory, { force: true });
+            },
+        ]) {
+            mutate();
+            statuses.push(runCli(project, ["deploy", "--print-manifests", "--skip-build", "--target", "deb"]).status);
+            dependencies.push(packagedDepends(project, NFPM_PATH));
+        }
     });
 
     afterAll(() => {
         removeCliProject(project);
     });
 
-    it("falls back to the libraries it generates by default", () => {
-        expect(status).toBe(0);
-        expect(packagedDepends(project, NFPM_PATH)).toContain("libgtk-4-1");
-        expect(packagedDepends(project, NFPM_PATH)).toContain("libadwaita-1-0");
-    });
-});
+    it("falls back to its default libraries without inventing minimum versions", () => {
+        expect(statuses).toEqual([0, 0]);
 
-describe("gtkx deploy (a store that recorded no libraries)", () => {
-    const project: CliProject = { root: "", nodeModules: "" };
-    let status: number | null = null;
-
-    beforeAll(() => {
-        const created = createCliProject({
-            prefix: "gtkx-cli-unrecorded-",
-            config: bareConfig(DEPLOY_BLOCK),
-            files: projectFiles(),
-            hasStore: true,
-        });
-
-        project.root = created.root;
-        project.nodeModules = created.nodeModules;
-        runCli(project, ["deploy", "--print-manifests", "--target", "deb"]);
-        rmSync(join(project.root, LIBRARIES_INVENTORY), { force: true });
-        status = runCli(project, ["deploy", "--print-manifests", "--skip-build", "--target", "deb"]).status;
-    });
-
-    afterAll(() => {
-        removeCliProject(project);
-    });
-
-    it("still declares the library it generates by default", () => {
-        expect(status).toBe(0);
-        expect(packagedDepends(project, NFPM_PATH)).toContain("libgtk-4-1");
-    });
-
-    it("declares no minimum it could not determine", () => {
-        expect(packagedDepends(project, NFPM_PATH).filter((entry) => entry.includes("(>="))).toEqual([]);
+        for (const packaged of dependencies) {
+            expect(packaged).toContain("libgtk-4-1");
+            expect(packaged).toContain("libadwaita-1-0");
+            expect(packaged.filter((entry) => entry.includes("(>="))).toEqual([]);
+        }
     });
 });
 

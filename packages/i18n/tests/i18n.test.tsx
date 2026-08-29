@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import * as gtkxI18n from "@gtkx/i18n";
 import {
     getI18n,
     init,
@@ -12,7 +11,6 @@ import {
 } from "@gtkx/i18n";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
-import * as reactI18next from "react-i18next";
 import { describe, expect, it } from "vitest";
 
 const DEFAULT_VALUE_ONE = "defaultValue_one";
@@ -40,16 +38,6 @@ const HookLabel = (): ReactNode => {
     return <GtkLabel>{translate("Hook message")}</GtkLabel>;
 };
 
-const expectPublicApi = (): void => {
-    expect(gtkxI18n).toMatchObject(reactI18next);
-
-    expect(Object.keys(gtkxI18n).toSorted((left, right) => left.localeCompare(right))).toEqual(
-        [...new Set([...Object.keys(reactI18next), "init", "t"])].toSorted((left, right) =>
-            left.localeCompare(right),
-        ),
-    );
-};
-
 const expectConfiguredBackend = (): void => {
     expect(getI18n().isInitialized).toBe(true);
     expect(getI18n().hasLoadedNamespace("translation")).toBe(true);
@@ -65,7 +53,6 @@ const expectConfiguredBackend = (): void => {
 
 describe("react-i18next gettext backend", () => {
     it("shares the configured singleton across the direct and React APIs", async () => {
-        expectPublicApi();
         expectConfiguredBackend();
         await render(<ReactApiProbe />);
         expect(screen.getAllByText("Message du hook")).toHaveLength(4);

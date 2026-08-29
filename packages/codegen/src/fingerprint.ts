@@ -5,7 +5,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import packageManifest from "../package.json" with { type: "json" };
 import { EXTERNAL_NAMESPACES } from "./gir/external-namespaces.js";
-import { arrayGuard, hasFields, isNumber, isString, optionalGuard } from "./guards.js";
+import { arrayGuard, hasFields, isNumber, isString } from "./guards.js";
 import { readJsonFile } from "./json.js";
 
 type GiInputs = {
@@ -19,7 +19,7 @@ type GiFingerprint = {
     value: string;
     girFiles: string[];
     libraries: string[];
-    girPath?: string[];
+    girPath: string[];
 };
 
 type ModuleExport = { module: string; export: string };
@@ -56,7 +56,7 @@ const FINGERPRINT_FILENAME = ".codegen-fingerprint.json";
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OVERRIDES_ROOT = join(PACKAGE_ROOT, "overrides");
 const requireFromCodegen = createRequire(import.meta.url);
-const codegenHashCache: Map<string, string> = new Map();
+const codegenHashCache: { value: string | undefined } = { value: undefined };
 
 const compareOrdinal = (a: string, b: string): number => {
     if (a < b) {
@@ -172,18 +172,7 @@ const computeCodegenHash = (): string => {
     return hash.digest("hex");
 };
 
-const codegenHash = (): string => {
-    const cached = codegenHashCache.get("codegen");
-
-    if (cached !== undefined) {
-        return cached;
-    }
-
-    const value = computeCodegenHash();
-    codegenHashCache.set("codegen", value);
-
-    return value;
-};
+const codegenHash = (): string => (codegenHashCache.value ??= computeCodegenHash());
 
 const hashGi = (inputs: GiInputs): string => {
     const hash = createHash("sha256");
@@ -222,7 +211,7 @@ const isGiFingerprint = (value: unknown): value is GiFingerprint =>
         value: isString,
         girFiles: arrayGuard(isString),
         libraries: arrayGuard(isString),
-        girPath: optionalGuard(arrayGuard(isString)),
+        girPath: arrayGuard(isString),
     });
 
 const isDocsFingerprint = (value: unknown): value is DocsFingerprint =>
@@ -251,7 +240,7 @@ const isGiStoreFresh = (giStoreDir: string, inputs: GiInputs): boolean => {
 
 const hasMatchingRecordedInputs = (sentinel: GiFingerprint, inputs: GiInputs): boolean =>
     sortAlpha(sentinel.libraries) === sortAlpha(inputs.libraries) &&
-    sortAlpha(sentinel.girPath ?? []) === sortAlpha(inputs.girPath);
+    sortAlpha(sentinel.girPath) === sortAlpha(inputs.girPath);
 
 const hashDocs = (giValue: string, input: DocsFingerprintInput): string =>
     createHash("sha256")

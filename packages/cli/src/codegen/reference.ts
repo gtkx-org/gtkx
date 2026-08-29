@@ -22,8 +22,6 @@ type ReferenceResult = {
 const REFERENCE_PATH = ".gtkx/reference";
 const SKIPPED: ReferenceResult = { isRegenerated: false, elements: 0, namespaces: 0 };
 
-const resolveReferenceDir = (root: string): string => join(root, ".gtkx", "reference");
-
 const writeReference = async (options: WriteReferenceOptions): Promise<ReferenceResult> => {
     const { root, config, girPath, libraries } = options;
 
@@ -36,7 +34,7 @@ const writeReference = async (options: WriteReferenceOptions): Promise<Reference
     const { isRegenerated, namespaces } = writeDocs({
         libraries,
         girPath,
-        outDir: resolveReferenceDir(root),
+        outDir: join(root, REFERENCE_PATH),
         basePath: REFERENCE_PATH,
         linkStyle: "file",
         props: builtin.props,

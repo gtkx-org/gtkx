@@ -1,21 +1,19 @@
 ---
 title: "Testing"
-description: "Testing GTKX components headlessly: the render, query, and userEvent model, with a simple example."
+description: "Test GTKX workflows headlessly through accessible queries and user interactions."
 ---
 
 # Testing
 
-GTKX ships a React Testing Library-inspired testing package: the same API, adapted to GTK4.
+`@gtkx/testing` adapts the Testing Library model to GTK4. Tests render the same widgets users reach, find them through accessibility, drive native input, and assert visible results.
 
-## Setup
+## Set up Vitest
 
-A scaffolded project (answer yes to "Include testing setup (Vitest)?" in `npm create gtkx`) already ships this config. Otherwise:
+Projects scaffolded with testing already contain this setup. Otherwise install the packages:
 
 ```bash
 npm install -D @gtkx/testing vitest
 ```
-
-Point a `test` script at `vitest run` and write `vitest.config.ts`:
 
 ```ts
 import gtkx from "@gtkx/cli/vitest-plugin";
@@ -23,28 +21,60 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
     plugins: [gtkx()],
-    test: {
-        include: ["tests/**/*.test.{ts,tsx}"],
-        bail: 1,
-    },
+    test: { include: ["tests/**/*.test.{ts,tsx}"], bail: 1 },
 });
 ```
 
-Each Vitest worker runs in its own headless environment, started before any test code loads and torn down with the worker. Headless runs need the compositor binary, `dbus-daemon`, and `setpriv` on the host; plugin options are in the [@gtkx/vitest reference](/reference/@gtkx/vitest/).
+Importing `@gtkx/testing` installs cleanup and matchers. Each worker receives its own headless display and GTK event loop; no setup file is needed. Host requirements and plugin options are in the [Vitest API reference](/reference/@gtkx/vitest/).
 
-Importing `@gtkx/testing` is the entire setup: cleanup, GTK4 loop teardown, and the `expect` matchers all come with the import. There is no setup file to write.
+## Test a user workflow
 
-## Rendering and cleanup
-
-`render` is async and must be awaited:
+Render the feature, locate controls by accessible role and name, perform the interaction, and assert the outcome:
 
 ```tsx
-import { render, screen } from "@gtkx/testing";
+import * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { render, screen, userEvent } from "@gtkx/testing";
+import { useState } from "react";
+import { expect, it } from "vitest";
 
-const { unmount, rerender, debug } = await render(<MyPanel />);
+const Counter = () => {
+    const [count, setCount] = useState(0);
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkLabel>{`Count: ${count}`}</GtkLabel>
+            <GtkButton label="Increment" onClicked={() => setCount((value) => value + 1)} />
+        </GtkBox>
+    );
+};
+
+it("increments the counter", async () => {
+    await render(<Counter />);
+
+    await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Increment" }));
+
+    expect(await screen.findByText("Count: 1")).toHaveTextContent("Count: 1");
+});
 ```
 
-With no options, `render` presents the element in a harness window. `<AdwApplication>` is not a widget and cannot live there, so render an app component into `rootElement` from `@gtkx/react`:
+Prefer `ByRole` with a name because it follows the same accessibility contract as a user. Use label, placeholder, display-value, or text queries when they describe the interaction more directly. The [testing API reference](/reference/@gtkx/testing/) lists every query, matcher, and `userEvent` helper.
+
+Use query families by intent:
+
+| Query | When to use it |
+| --- | --- |
+| `getBy*` | The widget must exist now |
+| `queryBy*` | Absence is the expected result |
+| `findBy*` | A render, dialog, or other async update must finish first |
+
+## Work with GTK behavior
+
+Every `userEvent` call is async and flushes React updates. It waits for the target to become actionable, so a click on an insensitive or hidden widget fails instead of bypassing the UI contract.
+
+Use `fireEvent` only when the behavior under test is a raw GObject signal with no user-level action. Use `act` for state changes initiated outside `userEvent` or `fireEvent`, and `waitFor` for an observable result that has no direct query to await.
+
+`render` presents widgets in a harness window and disables animations by default. To render an application rather than a widget, use `rootElement`:
 
 ```tsx
 import { rootElement } from "@gtkx/react";
@@ -52,121 +82,14 @@ import { rootElement } from "@gtkx/react";
 await render(<App />, { container: rootElement });
 ```
 
-Queries search every open toplevel, so dialogs and popovers are findable, and animations are disabled unless `areAnimationsEnabled: true` is passed. `wrapper` mounts a context provider around the element; the remaining options are in the [`render` reference](/reference/@gtkx/testing/).
+Queries cover every open toplevel, including dialogs and popovers. Scope them with `within` when two regions intentionally contain the same control.
 
-`screen` proxies to the most recent render and is the idiomatic way to query; `within(container)` scopes queries to a subtree, and `renderHook(callback)` tests a hook in isolation. Cleanup is automatic: every test starts from an empty display.
+## Debug a failure
 
-## Queries
+Start with `screen.debug()` for the accessible widget tree and `screen.logRoles()` to see the roles GTK reports. Capture the active window with `screen.screenshot({ path: "failure.png" })` when layout matters.
 
-Every query kind is available as `getBy`, `getAllBy`, `queryBy`, `queryAllBy`, `findBy`, and `findAllBy`:
-
-| Kind | Matches |
-|---|---|
-| `ByRole` | A `Gtk.AccessibleRole`, optionally narrowed by name and accessible state |
-| `ByLabelText` | A widget labeled by a `Gtk.Label` mnemonic, an `accessibleLabel`, or `accessibleLabelledBy` |
-| `ByText` | The label text of LABEL-role widgets |
-| `ByName` | The widget's `name` property (the `name` prop) |
-| `ByPlaceholderText` | The placeholder of an editable widget |
-| `ByDisplayValue` | The current text of an editable widget or `GtkTextView` |
-
-`getBy*` throws when nothing, or more than one thing, matches; `queryBy*` returns `null` when nothing matches; and `findBy*` polls until a match appears (1000 ms by default), which makes it the right choice after any interaction that triggers a re-render.
-
-Roles are always `Gtk.AccessibleRole` enum values, never strings: a `GtkCheckButton` reports `CHECKBOX`, an `AdwActionRow` reports `LIST_ITEM`. `ByRole` narrows further by `name` and by accessible state; see [`ByRoleOptions`](/reference/@gtkx/testing/type-aliases/ByRoleOptions). Text matchers take a `string` or number, a `RegExp`, or a predicate function.
-
-```ts
-import * as Gtk from "@gtkx/gi/gtk";
-
-const save = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" });
-const entry = screen.getByPlaceholderText("Search tasks");
-```
-
-## Simulating input with userEvent
-
-Every `userEvent` helper is async and runs inside React's `act`, so state updates flush before it resolves. Each waits up to 500 ms (`actionabilityTimeout`) for the widget to become actionable, and throws an error naming the condition that failed when it never does.
-
-```ts
-await userEvent.click(button);
-await userEvent.type(entry, "hello");
-await userEvent.keyboard(entry, "{Control>}a{/Control}");
-```
-
-`userEvent.click` on a list row changes the selection, on a `Gtk.TreeExpander` toggles expansion, and on a sortable column header sorts the view. Off-screen, `pointer` synthesizes left-button input only and `drag` refuses a `Gtk.Range`, so use `slide(range, value)` to move a slider. The full set of helpers is in the [`userEvent` reference](/reference/@gtkx/testing/).
-
-## fireEvent, act, and waitFor
-
-`fireEvent(object, signalName, ...args)` emits any GObject signal directly, with no actionability checks, and must be awaited. Reach for it when the test is about a signal handler rather than a user interaction:
-
-```ts
-await fireEvent(row, "activated");
-```
-
-`act(callback)` is needed only for state mutated outside a `userEvent` or `fireEvent` call. `waitFor(callback, options?)` retries an assertion until it passes, and `waitForElementToBeRemoved` resolves once a widget leaves the tree; both default to 1000 ms, which `configure` changes globally.
-
-## Matchers
-
-Assertions read at the same level as queries:
-
-```ts
-expect(label).toHaveTextContent(/world/);
-expect(button).toHaveAccessibleName("Save");
-expect(check).toBeChecked();
-```
-
-The boolean state matchers throw when the widget does not expose that state. Accessible state and properties are asserted through `toHaveAccessibleState` and `toHaveAccessibleProperty`, not widget properties:
-
-```ts
-expect(expander).toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, true);
-expect(grid).toHaveAccessibleProperty(Gtk.AccessibleProperty.SORT, Gtk.AccessibleSort.DESCENDING);
-```
-
-`toAppearBefore` and `toAppearAfter` compare two widgets by tree position, and `toContainAnyBy*` and `toContainOneBy*` run a query against a widget's own subtree.
-
-## Debugging
-
-`screen.debug()` prints the widget tree the way the queries see it, with roles, names, and accessibility attributes. `screen.logRoles()` groups every widget by role, the fastest way to answer which role a widget reports. `screenshot(widget)` returns the base64 PNG data, and `{ path }` also writes the image to a file; `screen.screenshot()` takes the same options and captures the active toplevel window instead of one render's subtree. For a live dev session rather than a test, the [MCP server](/guide/mcp) exposes the same dumps, queries, and screenshots.
-
-::: tip
-Tests written this way double as a basic accessibility audit: a widget `getByRole` cannot find by name is usually one that is missing an accessible label.
-:::
-
-A test also fails when the code under test provokes a GLib `CRITICAL` or a panic inside the GTKX addon. Those cannot be thrown out of the call that caused them, so GTKX raises them as an uncaught exception, which the runner reports against the test that was running. The failure names the contract that was broken, or the Rust file and line that panicked. Levels below `CRITICAL` stay as stderr lines and fail nothing. [Error Handling](/guide/error-handling#failures-nothing-can-throw) covers the channel and the one handler that overrides it.
-
-## A simple example
-
-A minimal counter component, tested end to end. The test renders it, finds the button by role, clicks it twice, and asserts on the resulting label text:
-
-```tsx
-import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { render, screen, userEvent } from "@gtkx/testing";
-import { useState } from "react";
-import { describe, expect, it } from "vitest";
-
-function Counter() {
-    const [count, setCount] = useState(0);
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkLabel>{`Count: ${count}`}</GtkLabel>
-            <GtkButton label="Increment" onClicked={() => setCount((c) => c + 1)} />
-        </GtkBox>
-    );
-}
-
-describe("Counter", () => {
-    it("increments when the button is clicked", async () => {
-        await render(<Counter />);
-
-        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Increment" });
-        await userEvent.click(button);
-        await userEvent.click(button);
-
-        expect(await screen.findByText("Count: 2")).toHaveTextContent("Count: 2");
-    });
-});
-```
-
-The same pattern scales from a counter to the full Tasks app in the [tutorial](/tutorial/testing).
+GTK `CRITICAL` messages and native panics fail the active test automatically. Treat them as contract violations even when the final assertion would otherwise pass.
 
 ## Next
 
-[MCP](/guide/mcp) exposes these same queries and events to an AI agent, so it can drive your running app instead of a test doing it.
+The [testing tutorial](/tutorial/testing) applies this workflow to the Tasks app. [MCP](/guide/mcp) exposes the same inspection and interaction model against a running development app.

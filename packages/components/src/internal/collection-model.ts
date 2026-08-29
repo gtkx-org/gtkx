@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { registerClass } from "@gtkx/runtime";
 import type { CollectionIndex, Level } from "./collection-index.js";
 import type { TreeExpansion } from "./tree-expansion.js";
-import { createCollectionIndex, emptyLevel } from "./collection-index.js";
+import { createCollectionIndex } from "./collection-index.js";
 import { encodePart } from "./keys.js";
 import { adoptIndex, createTreeExpansion, pruneSlots } from "./tree-expansion.js";
 
@@ -245,12 +245,6 @@ function syncEntry(context: SyncContext, entry: LevelSync): LevelSync[] {
     return childSyncs(context, store, overlap, flipped);
 }
 
-function pushSyncs(pending: LevelSync[], syncs: LevelSync[]): void {
-    for (const sync of syncs) {
-        pending.push(sync);
-    }
-}
-
 function syncLevel(context: SyncContext, store: LevelStore, level: Level): void {
     const pending: LevelSync[] = [{ store, level }];
 
@@ -258,7 +252,7 @@ function syncLevel(context: SyncContext, store: LevelStore, level: Level): void 
         const entry = pending.pop();
 
         if (entry !== undefined) {
-            pushSyncs(pending, syncEntry(context, entry).toReversed());
+            pending.push(...syncEntry(context, entry).toReversed());
         }
     }
 }
@@ -423,7 +417,7 @@ function createCollectionModel(): CollectionModel {
 
 class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
     declare itemsChanged: Gio.ListModel["itemsChanged"];
-    level: Level = emptyLevel();
+    level: Level = { path: "", items: [], expandableFlags: [] };
     refs: SlotRef[] = [];
     objects: (Gtk.StringObject | null)[] = [];
     childStores: (LevelStore | null)[] = [];

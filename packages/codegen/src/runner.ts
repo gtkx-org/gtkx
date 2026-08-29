@@ -106,15 +106,7 @@ const runGlCodegen = (options: GlCodegenOptions): GlGenerationReport => {
     return report;
 };
 
-const jsxUserOptions = (
-    options: CodegenRunnerOptions,
-): {
-    reactSubexports: string[];
-    userComponents: Record<string, ModuleExport>;
-    userLazyElements: string[];
-    userProps: Record<string, ModuleExport>;
-    userOmittedProps: OmittedProps;
-} => ({
+const jsxUserOptions = (options: CodegenRunnerOptions) => ({
     reactSubexports: options.reactSubexports ?? [],
     userComponents: options.userComponents ?? {},
     userLazyElements: options.userLazyElements ?? [],
@@ -149,30 +141,6 @@ const emitJsxStore = async (input: {
     };
 };
 
-const emitStoresWithConfig = async (config: {
-    options: CodegenRunnerOptions;
-    gi: StoreOptions;
-    jsx: StoreOptions | undefined;
-    libraries: string[];
-    girPath: string[];
-}): Promise<StoreResult> => {
-    const { options, gi, jsx, libraries, girPath } = config;
-    let library: Library | undefined;
-    const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath));
-    const giInputs = { girFiles: [] as string[], libraries, girPath, storeVersion: gi.version };
-    const isGiRegenerated = options.isForced === true || !isGiStoreFresh(gi.storeDir, giInputs);
-
-    const namespaces = isGiRegenerated
-        ? runGiCodegen(loadLibrary(), { gi, libraries, girPath })
-        : 0;
-
-    if (jsx === undefined) {
-        return { isRegenerated: isGiRegenerated, namespaces, intrinsicElements: 0 };
-    }
-
-    return emitJsxStore({ options, jsx, gi, loadLibrary, isGiRegenerated, namespaces });
-};
-
 const prepareStores = (stores: (StoreOptions | undefined)[]): void => {
     for (const store of stores) {
         if (store === undefined) {
@@ -192,8 +160,20 @@ const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> =
     }
 
     prepareStores([gi, jsx]);
+    let library: Library | undefined;
+    const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath));
+    const giInputs = { girFiles: [] as string[], libraries, girPath, storeVersion: gi.version };
+    const isGiRegenerated = options.isForced === true || !isGiStoreFresh(gi.storeDir, giInputs);
 
-    return emitStoresWithConfig({ options, gi, jsx, libraries, girPath });
+    const namespaces = isGiRegenerated
+        ? runGiCodegen(loadLibrary(), { gi, libraries, girPath })
+        : 0;
+
+    if (jsx === undefined) {
+        return { isRegenerated: isGiRegenerated, namespaces, intrinsicElements: 0 };
+    }
+
+    return emitJsxStore({ options, jsx, gi, loadLibrary, isGiRegenerated, namespaces });
 };
 
 export { runCodegen, runGlCodegen, type CodegenRunnerOptions, type CodegenRunnerResult };

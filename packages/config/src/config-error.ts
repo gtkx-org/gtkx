@@ -1,21 +1,10 @@
 import type { z } from "zod";
 
-type IssuePath = (string | number)[];
-
 const CONFIG_PREFIX = "gtkx.config.ts:";
 const UNRECOGNIZED_KEY_REASON = "is not a recognized key";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
-
-const rawIssue = (input: unknown, path: IssuePath, message: string, isStandalone = false) => ({
-    code: "custom" as const,
-    input,
-    path,
-    message,
-    continue: true as const,
-    ...(isStandalone && { params: { standalone: true } }),
-});
 
 const appendSegment = (path: string, segment: PropertyKey): string => {
     if (typeof segment === "number") {
@@ -34,9 +23,6 @@ const dottedPath = (segments: PropertyKey[]): string => {
 
     return path;
 };
-
-const isStandaloneIssue = (issue: z.core.$ZodIssue): boolean =>
-    "params" in issue && isRecord(issue.params) && issue.params.standalone === true;
 
 const unrecognizedKeyPath = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string | undefined => {
     if (issue.code === "unrecognized_keys") {
@@ -61,10 +47,6 @@ const formatIssue = (issue: z.core.$ZodIssue, fullPath: PropertyKey[]): string =
         return `${CONFIG_PREFIX} \`${unrecognized}\` ${keyRejectionReason(issue)}`;
     }
 
-    if (isStandaloneIssue(issue)) {
-        return `${CONFIG_PREFIX} ${issue.message}`;
-    }
-
     const path = dottedPath(fullPath);
 
     return path === "" ? `${CONFIG_PREFIX} ${issue.message}` : `${CONFIG_PREFIX} \`${path}\` ${issue.message}`;
@@ -83,4 +65,4 @@ const configError = (error: z.ZodError): Error => {
     return new Error(formatIssue(issue, issue.path));
 };
 
-export { isRecord, rawIssue, missingConfigFileError, configError };
+export { isRecord, missingConfigFileError, configError };

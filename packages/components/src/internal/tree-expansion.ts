@@ -3,7 +3,7 @@ import type { SlotMap } from "./slots.js";
 import type { VisibleOrder } from "./tree-order.js";
 import { encodePart } from "./keys.js";
 import { getSlotKey, trackPath, trackPaths } from "./slots.js";
-import { buildVisibleOrder } from "./tree-order.js";
+import { walkVisible } from "./tree-order.js";
 
 type TreeExpansion = {
     index: CollectionIndex;
@@ -46,7 +46,7 @@ function createTreeExpansion(index: CollectionIndex): TreeExpansion {
 }
 
 function orderFor(expansion: TreeExpansion): VisibleOrder {
-    expansion.order ??= buildVisibleOrder(expansion.index, expansion.slots);
+    expansion.order ??= walkVisible({ index: expansion.index, slots: expansion.slots });
 
     return expansion.order;
 }

@@ -64,4 +64,4 @@ const createStagingDir = (target: string): string => {
     return mkdtempSync(`${target}${STAGING_SUFFIX}${String(process.pid)}-`);
 };
 
-export { createStagingDir, sweepStagingDirs, sweepStrandedDirs };
+export { createStagingDir, sweepStagingDirs };

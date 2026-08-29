@@ -129,21 +129,8 @@ const isSignalHandlerConnected = (instance: object, handlerId: number): boolean 
     gSignalHandlerIsConnected(getHandle(instance), handlerId) as boolean;
 
 const trackConnection = (instance: object, signal: string, handlerId: number): void => {
-    let bySignal = connectionTable.get(instance);
-
-    if (!bySignal) {
-        bySignal = new Map();
-        connectionTable.set(instance, bySignal);
-    }
-
-    let handlerIds = bySignal.get(signal);
-
-    if (!handlerIds) {
-        handlerIds = new Set();
-        bySignal.set(signal, handlerIds);
-    }
-
-    handlerIds.add(handlerId);
+    const bySignal = getOrInsert(connectionTable, instance, () => new Map<string, Set<number>>());
+    getOrInsert(bySignal, signal, () => new Set<number>()).add(handlerId);
 };
 
 const untrackConnection = (instance: object, handlerId: number): void => {

@@ -27,7 +27,6 @@ type StagedMetadata = {
 };
 
 const DIST_ICONS_DIR = "icons";
-const LEGACY_PACKAGES_MANIFEST_FILENAME = "gtkx-packages.json";
 const NOTICES_FILENAME = "THIRD-PARTY-NOTICES";
 const NODE_LICENSE_FILENAME = "LICENSE";
 const SHARE_APPLICATIONS = "share/applications";
@@ -50,10 +49,6 @@ const licenseDirFor = (settings: DeploySettings): string => `${SHARE_LICENSES}/$
 const licenseDestination = (settings: DeploySettings): string => `${licenseDirFor(settings)}/LICENSE`;
 const noticesDestination = (settings: DeploySettings): string => `${licenseDirFor(settings)}/${NOTICES_FILENAME}`;
 const isIconAsset = (rel: string): boolean => rel === DIST_ICONS_DIR || rel.startsWith(`${DIST_ICONS_DIR}/`);
-
-const isBuildMetadata = (rel: string): boolean =>
-    rel === BUILD_MANIFEST_FILENAME || rel === LEGACY_PACKAGES_MANIFEST_FILENAME;
-
 const isLocaleAsset = (rel: string): boolean => rel === LOCALE_DIRNAME || rel.startsWith(`${LOCALE_DIRNAME}/`);
 
 const nodeLicenseDestination = (settings: DeploySettings): string =>
@@ -67,7 +62,8 @@ const stageRuntimeFiles = (settings: DeploySettings, root: string): StagedFile[]
     }
 
     return listFilesRecursive(dist)
-        .filter((file) => !isIconAsset(file.rel) && !isBuildMetadata(file.rel) && !isLocaleAsset(file.rel))
+        .filter((file) =>
+            !isIconAsset(file.rel) && file.rel !== BUILD_MANIFEST_FILENAME && !isLocaleAsset(file.rel))
         .map((file) => copyInto(root, join(libDirFor(settings), file.rel), file.absPath));
 };
 

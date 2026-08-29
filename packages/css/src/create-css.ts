@@ -47,12 +47,6 @@ const partitionTokens = (tokens: string[], registered: RegisteredCache): TokenPa
     return { rawClasses, registeredStyles };
 };
 
-const insertRules = (state: CssState, input: string): void => {
-    eachRule(input, (rule) => {
-        state.sheet.insert(rule);
-    });
-};
-
 const didMarkNewStyle = (state: CssState, serialized: SerializedStyles): boolean => {
     if (state.inserted.has(serialized.name)) {
         return false;
@@ -70,7 +64,11 @@ const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
 
     const className = getClassName(serialized);
     const styles = terminateDeclarations(serialized.styles);
-    insertRules(state, `.${className}{${styles}}`);
+
+    eachRule(`.${className}{${styles}}`, (rule) => {
+        state.sheet.insert(rule);
+    });
+
     state.registered[className] = styles;
 };
 
@@ -79,7 +77,9 @@ const insertWithoutScoping = (state: CssState, serialized: SerializedStyles): vo
         return;
     }
 
-    insertRules(state, serialized.styles);
+    eachRule(serialized.styles, (rule) => {
+        state.sheet.insert(rule);
+    });
 };
 
 const cssClassName = (state: CssState, args: CSSInterpolation[]): string => {

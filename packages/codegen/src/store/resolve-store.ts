@@ -138,12 +138,6 @@ const checkConsumers = (projectRoot: string, nodeModules: string): void => {
     }
 };
 
-const jsxOptions = (react: ResolvedPackage | null, nodeModules: string): StoreOptions | null =>
-    react === null ? null : storeOptions(nodeModules, "jsx", react.version);
-
-const getReactSubexports = (react: ResolvedPackage | null): string[] =>
-    react === null ? [] : subexportNames(react.dir);
-
 const storePaths = (nodeModules: string): string[] =>
     STORE_NAMES.flatMap((name) => [join(nodeModules, STORE_DIR, name), join(nodeModules, SCOPE, name)]);
 
@@ -212,8 +206,8 @@ const resolveStore = (projectRoot: string): ResolvedStore => {
 
     return {
         gi: storeOptions(nodeModules, "gi", runtime.version),
-        jsx: jsxOptions(react, nodeModules),
-        reactSubexports: getReactSubexports(react),
+        jsx: react === null ? null : storeOptions(nodeModules, "jsx", react.version),
+        reactSubexports: react === null ? [] : subexportNames(react.dir),
     };
 };
 

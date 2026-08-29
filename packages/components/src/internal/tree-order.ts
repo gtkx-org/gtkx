@@ -183,10 +183,6 @@ function expandedPathsFor(index: CollectionIndex, ids: Set<string>): Set<string>
     return paths;
 }
 
-function buildVisibleOrder(index: CollectionIndex, slots: SlotMap): VisibleOrder {
-    return walkVisible({ index, slots });
-}
-
 function findRows(index: CollectionIndex, slots: SlotMap, ids: Set<string>): MatchedRows {
     const positions: number[] = [];
     const found: string[] = [];
@@ -226,7 +222,6 @@ function findIds(index: CollectionIndex, slots: SlotMap, positions: Set<number>)
 }
 
 export {
-    buildVisibleOrder,
     expandedPathsFor,
     findIds,
     findRows,

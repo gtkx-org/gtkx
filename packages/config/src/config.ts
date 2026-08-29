@@ -2,22 +2,17 @@ import { createDefineConfig, type DefineConfig } from "c12";
 import { defu } from "defu";
 import { resolve } from "node:path";
 import { z } from "zod";
-import { configError, isRecord, rawIssue } from "./config-error.ts";
+import { configError, isRecord } from "./config-error.ts";
 import { deploySchema } from "./deploy.ts";
-import { isGirLibrary, text } from "./schema-text.ts";
+import { girLibrary, text } from "./schema-text.ts";
 import { resolveUserEventSignals } from "./user-event-signals.ts";
 
-/** Accepted `reactCompiler.compilationMode` values, choosing which functions the compiler processes. */
-type ReactCompilerCompilationMode = (typeof COMPILATION_MODES)[number];
-/** Accepted `reactCompiler.panicThreshold` values, choosing which compiler diagnostics fail the build. */
-type ReactCompilerPanicThreshold = (typeof PANIC_THRESHOLDS)[number];
-
-/** Object form of the `reactCompiler` config key, forwarded as-is to `babel-plugin-react-compiler`. */
+/** Object form of the `reactCompiler` config key, forwarded to `babel-plugin-react-compiler`. */
 type ReactCompilerOptions = {
-    /** Which functions the compiler processes; left to the compiler's own default when omitted. */
-    compilationMode?: ReactCompilerCompilationMode;
-    /** Which compiler diagnostics fail the build; left to the compiler's own default when omitted. */
-    panicThreshold?: ReactCompilerPanicThreshold;
+    /** Which functions the compiler processes. */
+    compilationMode?: (typeof COMPILATION_MODES)[number];
+    /** Which compiler diagnostics fail the build. */
+    panicThreshold?: (typeof PANIC_THRESHOLDS)[number];
 };
 
 /**
@@ -69,80 +64,27 @@ const COMPILATION_MODES = ["infer", "syntax", "annotation", "all"] as const;
 /** Panic thresholds `babel-plugin-react-compiler` accepts. */
 const PANIC_THRESHOLDS = ["none", "critical_errors", "all_errors"] as const;
 const REACT_COMPILER_TARGET = "19";
-const COMPILATION_MODE_SET: Set<string> = new Set(COMPILATION_MODES);
-const PANIC_THRESHOLD_SET: Set<string> = new Set(PANIC_THRESHOLDS);
 
-const librariesSchema = z.custom<string[]>().check((ctx) => {
-    const value = ctx.value;
+const librarySchema = girLibrary('must be of the form "Name-Version", such as "Gtk-4.0"')
+    .refine((library) => !DEFAULT_LIBRARIES.has(library), { error: "is bound by default; remove it" });
 
-    if (!Array.isArray(value) || value.length === 0) {
-        ctx.issues.push(rawIssue(value, [], "must be a non-empty string array or omitted"));
+const librariesSchema = z
+    .array(librarySchema, { error: "must be a non-empty string array or omitted" })
+    .min(1, { error: "must be a non-empty string array or omitted" });
 
-        return;
-    }
+const applicationIdSchema = z
+    .string({ error: "must satisfy g_application_id_is_valid" })
+    .refine((value) => isValidApplicationId(value), {
+        error: 'must satisfy g_application_id_is_valid, such as "org.example.MyApp"',
+    });
 
-    for (const [index, entry] of value.entries()) {
-        ctx.issues.push(...libraryEntryIssues(value, index, entry));
-    }
-});
-
-const applicationIdSchema = z.custom<string>().check((ctx) => {
-    const value = ctx.value;
-
-    if (typeof value !== "string" || !isValidApplicationId(value)) {
-        ctx.issues.push(
-            rawIssue(
-                value,
-                [],
-                `invalid \`applicationId\` "${value}", must satisfy g_application_id_is_valid ` +
-                '(e.g. "org.example.MyApp")',
-                true,
-            ),
-        );
-    }
-});
-
-const reactCompilerSchema = z.custom<boolean | ReactCompilerOptions>().check((ctx) => {
-    const value = ctx.value;
-
-    if (typeof value === "boolean") {
-        return;
-    }
-
-    if (!isRecord(value)) {
-        ctx.issues.push(rawIssue(value, [], "must be a boolean or an options object"));
-
-        return;
-    }
-
-    const compilationMode = value.compilationMode;
-
-    if (!isValidReactCompilerOption(compilationMode, COMPILATION_MODE_SET)) {
-        ctx.issues.push(
-            rawIssue(
-                value,
-                [],
-                `invalid \`reactCompiler.compilationMode\` "${String(compilationMode)}", ` +
-                `must be one of ${COMPILATION_MODES.join(", ")}`,
-                true,
-            ),
-        );
-    }
-
-    const panicThreshold = value.panicThreshold;
-
-    if (!isValidReactCompilerOption(panicThreshold, PANIC_THRESHOLD_SET)) {
-        ctx.issues.push(
-            rawIssue(
-                value,
-                [],
-                `invalid \`reactCompiler.panicThreshold\` "${String(panicThreshold)}", ` +
-                `must be one of ${PANIC_THRESHOLDS.join(", ")}`,
-                true,
-            ),
-        );
-    }
-});
+const reactCompilerSchema = z.union([
+    z.boolean(),
+    z.object({
+        compilationMode: z.enum(COMPILATION_MODES).optional(),
+        panicThreshold: z.enum(PANIC_THRESHOLDS).optional(),
+    }),
+]);
 
 const userEventSignalsSchema = z.record(
     z.string(),
@@ -240,30 +182,10 @@ const configSchema = z.object({
  * autocompletion and type checking.
  */
 const defineConfig: DefineConfig<Config> = createDefineConfig<Config>();
+const validationSchema = configSchema.extend({ future: graduatedFutureSchema.optional() });
 
-const libraryEntryIssues = (value: unknown[], index: number, entry: unknown): ReturnType<typeof rawIssue>[] => {
-    if (typeof entry === "string" && DEFAULT_LIBRARIES.has(entry)) {
-        return [rawIssue(value, [index], `remove ${entry}; it is bound by default`, true)];
-    }
-
-    if (typeof entry === "string" && isGirLibrary(entry)) {
-        return [];
-    }
-
-    const message =
-        `invalid library identifier "${String(entry)}", must be of the form "Name-Version" ` +
-        '(e.g. "Gtk-4.0")';
-
-    return [rawIssue(value, [index], message, true)];
-};
-
-const isValidApplicationId = (applicationId: string): boolean => {
-    if (applicationId.length === 0 || applicationId.length > APPLICATION_ID_MAX_LENGTH) {
-        return false;
-    }
-
-    return APPLICATION_ID_PATTERN.test(applicationId);
-};
+const isValidApplicationId = (applicationId: string): boolean =>
+    applicationId.length <= APPLICATION_ID_MAX_LENGTH && APPLICATION_ID_PATTERN.test(applicationId);
 
 const resolveReactCompilerOptions = (setting: Config["reactCompiler"]): ResolvedReactCompilerOptions | null => {
     if (setting === false) {
@@ -272,24 +194,15 @@ const resolveReactCompilerOptions = (setting: Config["reactCompiler"]): Resolved
 
     const overrides = setting === undefined || setting === true ? {} : setting;
 
-    return { ...overrides, target: REACT_COMPILER_TARGET };
+    return {
+        ...(overrides.compilationMode !== undefined && { compilationMode: overrides.compilationMode }),
+        ...(overrides.panicThreshold !== undefined && { panicThreshold: overrides.panicThreshold }),
+        target: REACT_COMPILER_TARGET,
+    };
 };
 
-const isValidReactCompilerOption = (value: unknown, allowed: Set<string>): boolean =>
-    value === undefined || (typeof value === "string" && allowed.has(value));
-
 const validateConfig = (config: unknown): void => {
-    const future = isRecord(config) ? config.future : undefined;
-
-    if (future !== undefined) {
-        const result = graduatedFutureSchema.safeParse(future);
-
-        if (!result.success) {
-            throw configError(result.error);
-        }
-    }
-
-    const result = configSchema.safeParse(config);
+    const result = validationSchema.safeParse(config);
 
     if (!result.success) {
         throw configError(result.error);

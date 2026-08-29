@@ -749,6 +749,9 @@ importers:
       react:
         specifier: ^19.2
         version: 19.2.8
+      react-merge-refs:
+        specifier: ^3.0.2
+        version: 3.0.2(react@19.2.8)
       react-reconciler:
         specifier: ^0.33.0
         version: 0.33.0(react@19.2.8)
@@ -5750,6 +5753,14 @@ packages:
 
   react-is@19.2.8:
     resolution: {integrity: sha512-s5un28nYxKJw5gvUHyW5PCC28CvBqLu9r3cWgzHT4Vo/5fqqkFcdRYsGcKf50WMPpjjFZS5d76fn3YCo2njKwQ==}
+
+  react-merge-refs@3.0.2:
+    resolution: {integrity: sha512-MSZAfwFfdbEvwkKWP5EI5chuLYnNUxNS7vyS0i1Jp+wtd8J4Ga2ddzhaE68aMol2Z4vCnRM/oGOo1a3V75UPlw==}
+    peerDependencies:
+      react: '>=16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0'
+    peerDependenciesMeta:
+      react:
+        optional: true
 
   react-reconciler@0.33.0:
     resolution: {integrity: sha512-KetWRytFv1epdpJc3J4G75I4WrplZE5jOL7Yq0p34+OVOKF4Se7WrdIdVC45XsSSmUTlht2FM/fM1FZb1mfQeA==}
@@ -11877,6 +11888,10 @@ snapshots:
       typescript: 6.0.3
 
   react-is@19.2.8: {}
+
+  react-merge-refs@3.0.2(react@19.2.8):
+    optionalDependencies:
+      react: 19.2.8
 
   react-reconciler@0.33.0(react@19.2.8):
     dependencies:

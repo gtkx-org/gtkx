@@ -19,6 +19,7 @@ const STALE_FILE = "stale.txt";
 
 const create = (args: string[] = []): CreateRun => runCreate({ args: [...BASE_ARGS, ...args] });
 const getScripts = (run: CreateRun): Scripts => readManifest(run).scripts as Scripts;
+const typescriptState = { run: {} as CreateRun };
 
 const expectGeneratedConfig = (run: CreateRun): void => {
     const config = readProject(run, "gtkx.config.ts");
@@ -29,20 +30,18 @@ const expectGeneratedConfig = (run: CreateRun): void => {
     expect(readManifest(run).imports).toBeUndefined();
 };
 
+beforeAll(() => {
+    typescriptState.run = create(["--typescript", "--vitest"]);
+}, 120_000);
+
+afterAll(() => {
+    removeRun(typescriptState.run);
+});
+
 describe("create-gtkx scaffolding a TypeScript project", () => {
-    const state = { run: {} as CreateRun };
-
-    beforeAll(() => {
-        state.run = create(["--typescript", "--vitest"]);
-    }, 120_000);
-
-    afterAll(() => {
-        removeRun(state.run);
-    });
-
     it("writes the project the templates describe", () => {
-        expect(state.run.status).toBe(0);
-        const files = listProject(state.run);
+        expect(typescriptState.run.status).toBe(0);
+        const files = listProject(typescriptState.run);
 
         expect(files).toEqual(expect.arrayContaining([
             "package.json",
@@ -58,15 +57,15 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
             ICON_PATH,
         ]));
 
-        expect(hasProjectPath(state.run, ".git")).toBe(true);
-        expectGeneratedConfig(state.run);
-        expect(readProject(state.run, "node_modules/.gtkx/env.d.ts")).toContain("gtkx codegen");
+        expect(hasProjectPath(typescriptState.run, ".git")).toBe(true);
+        expectGeneratedConfig(typescriptState.run);
+        expect(readProject(typescriptState.run, "node_modules/.gtkx/env.d.ts")).toContain("gtkx codegen");
     });
 
     it("names the project after its directory and scripts every gtkx command", () => {
-        expect(readManifest(state.run).name).toBe(PROJECT_NAME);
+        expect(readManifest(typescriptState.run).name).toBe(PROJECT_NAME);
 
-        expect(getScripts(state.run)).toMatchObject({
+        expect(getScripts(typescriptState.run)).toMatchObject({
             dev: "gtkx dev",
             build: "gtkx build",
             codegen: "gtkx codegen",
@@ -75,7 +74,7 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
     });
 
     it("installs the runtime and development dependencies through its package manager", () => {
-        const installs = state.run.installs.join("\n");
+        const installs = typescriptState.run.installs.join("\n");
         expect(installs).toContain("@gtkx/react");
         expect(installs).toContain("@gtkx/cairo");
         expect(installs).toContain("@gtkx/cli");
@@ -84,29 +83,19 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
     });
 
     it("records the build allowance pnpm understands", () => {
-        expect(readProject(state.run, "pnpm-workspace.yaml")).toContain("allowBuilds:");
+        expect(readProject(typescriptState.run, "pnpm-workspace.yaml")).toContain("allowBuilds:");
     });
 });
 
-describe("create-gtkx and the agent files it scaffolds", () => {
-    const state = { run: {} as CreateRun };
-
-    beforeAll(() => {
-        state.run = create(["--typescript", "--vitest"]);
-    }, 120_000);
-
-    afterAll(() => {
-        removeRun(state.run);
-    });
-
+describe("create-gtkx scaffolding for coding agents", () => {
     it("registers the MCP server and pre-approves the project's own commands", () => {
-        const mcp = JSON.parse(readProject(state.run, ".mcp.json")) as {
+        const mcp = JSON.parse(readProject(typescriptState.run, ".mcp.json")) as {
             mcpServers: Record<string, { command: string; args: string[] }>;
         };
 
         expect(mcp.mcpServers.gtkx).toEqual({ command: "npx", args: ["gtkx", "mcp"] });
 
-        const settings = JSON.parse(readProject(state.run, ".claude/settings.json")) as {
+        const settings = JSON.parse(readProject(typescriptState.run, ".claude/settings.json")) as {
             permissions: { allow: string[] };
         };
 
@@ -117,7 +106,7 @@ describe("create-gtkx and the agent files it scaffolds", () => {
     });
 
     it("keeps the generated reference out of git and the agent files in it", () => {
-        const ignored = readProject(state.run, ".gitignore");
+        const ignored = readProject(typescriptState.run, ".gitignore");
         expect(ignored).toContain(".gtkx/");
         expect(ignored).not.toContain("AGENTS.md");
     });
