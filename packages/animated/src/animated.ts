@@ -1,6 +1,6 @@
 import type { ElementType } from "react";
 import * as elements from "@gtkx/jsx";
-import type { AnimatedComponent, AnimatedElements } from "./types.js";
+import type { AnimatedComponent, AnimatedElementMap } from "./types.js";
 import { withAnimated } from "./with-animated.js";
 
 type Wrappable = Exclude<ElementType, string>;
@@ -8,8 +8,7 @@ type Wrappable = Exclude<ElementType, string>;
  * The `animated` entrypoint: callable to wrap any component, and exposing every generated widget
  * component as a property, so `animated.GtkLabel` is the animated form of `GtkLabel`.
  */
-/* eslint-disable-next-line @typescript-eslint/no-deprecated -- the deprecated half stays until 2.0 */
-type Animated = (<T extends Exclude<ElementType, string>>(component: T) => AnimatedComponent<T>) & AnimatedElements;
+type Animated = (<T extends Exclude<ElementType, string>>(component: T) => AnimatedComponent<T>) & AnimatedElementMap;
 
 /**
  * Wraps a component so that its props accept springs and interpolations: `animated(GtkLabel)` is

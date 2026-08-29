@@ -48,7 +48,7 @@ const writeJsxStore = (params: WriteJsxStoreParams): void => {
             name: "@gtkx/jsx",
             version: options.version,
             exports: exportsMap,
-            sideEffects: params.isTreeShaken === true ? false : true,
+            sideEffects: params.isTreeShaken !== true,
             peerDependencies: jsxPeerDependencies(externalPackages, params.isTreeShaken === true),
         }),
         rawFiles,
