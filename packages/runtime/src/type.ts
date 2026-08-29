@@ -23,7 +23,6 @@ type ResolvableKind = "enum" | "flags" | "boxed" | "fundamental" | "array";
 type ResolvableDescriptor = Extract<Descriptor, { kind: ResolvableKind }>;
 
 const resolvedTypeCache: Map<string, bigint> = new Map();
-const nativeTypeIndex: Map<string, readonly [string, string]> = new Map();
 const gTypeFromName = bind(LIB, "g_type_from_name", [stringT("borrowed")], biguint64T);
 const gTypeIsA = bind(LIB, "g_type_is_a", [biguint64T, biguint64T], booleanT);
 const gTypeParent = bind(LIB, "g_type_parent", [biguint64T], biguint64T);
@@ -152,41 +151,19 @@ function typeInterfacePrerequisites(type: bigint): bigint[] {
     return gTypeInterfacePrerequisites(type, nPrerequisitesRef) as bigint[];
 }
 
-/**
- * Returns the GType registered under the given name, or `TYPE_INVALID` if none exists. A name a
- * generated store has indexed through `registerNativeTypeNames` is registered on first use by
- * calling its `get_type` function, so a type whose wrapper class a bundler dropped still resolves.
- */
+/** Returns the GType registered under the given name, or `TYPE_INVALID` if none exists. */
 function typeFromName(name: string): bigint {
-    const type = gTypeFromName(name) as bigint;
-
-    if (type !== TYPE_INVALID) {
-        return type;
-    }
-
-    const entry = nativeTypeIndex.get(name);
-
-    return entry === undefined ? TYPE_INVALID : resolveType(entry[0], entry[1]);
+    return gTypeFromName(name) as bigint;
 }
 
 /**
- * Indexes the GLib type names a generated namespace can produce, mapping each to the shared
- * library and `get_type` symbol that registers it, so `typeFromName` resolves the name even when
- * its wrapper class was dropped from the bundle. The index holds only strings and keeps no class
- * alive.
+ * Keeps the given wrapper classes in a tree-shaken bundle: a generated bootstrap names the classes
+ * its namespace cannot operate without as arguments here, which is a reference a bundler retains.
  *
- * @param entries GLib type names mapped to their `[sharedLibrary, getTypeFnName]` pair.
- * @param wrappers Wrapper classes the namespace cannot operate without; naming them here keeps
- * them in a tree-shaken bundle.
+ * @param wrappers Wrapper classes to keep.
+ * @returns The same classes, untouched.
  */
-const registerNativeTypeNames: (
-    entries: Record<string, readonly [string, string]>,
-    wrappers?: readonly unknown[],
-) => void = (entries) => {
-    for (const [name, entry] of Object.entries(entries)) {
-        nativeTypeIndex.set(name, entry);
-    }
-};
+const retainWrapperClasses = (wrappers: readonly unknown[]): readonly unknown[] => wrappers;
 
 function typeFundamental(type: bigint): bigint {
     return gTypeFundamental(type) as bigint;
@@ -329,7 +306,7 @@ export {
     getStrvType,
     isResolvableDescriptor,
     isTypedClass,
-    registerNativeTypeNames,
+    retainWrapperClasses,
     typeIsA,
     typeParent,
     typeInterfacePrerequisites,

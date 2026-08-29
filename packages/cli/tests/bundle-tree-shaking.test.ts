@@ -14,7 +14,7 @@ const BUILD_TIMEOUT = 120_000;
 const OUT_DIR = "dist";
 const USED_NAME_PREFIX = "used-name=";
 const USED_TYPE_PREFIX = "used-type=";
-const INDEXED_TYPE_PREFIX = "indexed-type=";
+const DROPPED_TYPE_PREFIX = "dropped-type=";
 const UNUSED_CLASS_METHOD = "getAutoplay";
 const UNUSED_GET_TYPE = "gtk_video_get_type";
 
@@ -38,7 +38,7 @@ import { typeFromName } from "@gtkx/runtime";
 
 process.stdout.write("${USED_NAME_PREFIX}" + Task.name + "\n");
 process.stdout.write("${USED_TYPE_PREFIX}" + String(typeFromName("GTask") !== 0n) + "\n");
-process.stdout.write("${INDEXED_TYPE_PREFIX}" + String(typeFromName("GSubprocess") !== 0n) + "\n");
+process.stdout.write("${DROPPED_TYPE_PREFIX}" + String(typeFromName("GtkVideo") !== 0n) + "\n");
 `;
 
 const USED_SIGNAL_HANDLER = "onClicked";
@@ -123,8 +123,8 @@ describe("gtkx build (tree shaking)", () => {
         expect(probe.run.stdout).toContain(`${USED_TYPE_PREFIX}true\n`);
     });
 
-    it("resolves an unimported class's type name", () => {
-        expect(probe.run.stdout).toContain(`${INDEXED_TYPE_PREFIX}true\n`);
+    it("leaves a dropped class's type name unregistered", () => {
+        expect(probe.run.stdout).toContain(`${DROPPED_TYPE_PREFIX}false\n`);
     });
 
     it("drops the namespaces the app never imports", () => {

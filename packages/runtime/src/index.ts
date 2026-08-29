@@ -97,7 +97,7 @@ export {
     TYPE_UNICHAR,
     TYPE_VARIANT,
     type TypedClass,
-    registerNativeTypeNames,
+    retainWrapperClasses,
     typeFromName,
     typeInterfaces,
     typeIsA,

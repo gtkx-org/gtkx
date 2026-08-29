@@ -42,7 +42,6 @@ class ModuleContext {
     public bootstrapCalls: string[] = [];
     public bootstrapModuleExports: Set<string> = new Set();
     public bootstrapRuntimeImports: Set<string> = new Set();
-    public nativeTypeNames: Map<string, readonly [string, string]> = new Map();
 
     constructor(namespace: GirNamespace, library: Library) {
         this.namespace = namespace;
@@ -99,16 +98,6 @@ class ModuleContext {
         }
 
         this.bootstrapCalls.push(code);
-    }
-
-    addNativeTypeName(glibTypeName: string, typeFnName: string): void {
-        const sharedLibrary = this.namespace.sharedLibrary;
-
-        if (sharedLibrary === undefined) {
-            return;
-        }
-
-        this.nativeTypeNames.set(glibTypeName, [sharedLibrary, typeFnName]);
     }
 
     addGObjectBootstrapImports(): void {

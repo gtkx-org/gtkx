@@ -238,14 +238,14 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
 
   Three behaviors move with it: a bare `import "@gtkx/gi/gtk"` registers nothing on its own; import a value
   from the namespace instead (namespace initialization such as `gtk_init` and the prototype overrides still
-  run whenever the namespace is imported at all). String-driven rendering keeps working: the reconciler
-  resolves JSX tag names through the runtime's name resolver, which falls back to a generated index of
-  `get_type` functions, so behaviors and ancestry stay exact even for classes the bundle dropped — but
-  rendering an element whose component the bundle never imported throws, since constructing through an
-  ancestor would build the wrong type. `GObject.typeFromName` itself keeps GLib's contract: it finds only
-  types already registered in-process, and a production bundle registers a generated type when its class is
-  retained, so import the class if you need its name to resolve — `gtkx dev` and tests never bundle, and
-  there every type stays registered exactly as today.
+  run whenever the namespace is imported at all). String-driven rendering keeps working, because every path
+  that resolves a type name only ever meets registered types: a rendered element's component keeps its class,
+  and a value a binding hands back keeps the classes its signature names — but rendering an element whose
+  component the bundle never imported throws, since constructing through an ancestor would build the wrong
+  type. `typeFromName` keeps GLib's contract everywhere: it finds only types already registered in-process,
+  and a production bundle registers a generated type when its class is retained, so import the class if you
+  need its name to resolve — `gtkx dev` and tests never bundle, and there every type stays registered
+  exactly as today.
 
   The `animated` binding gets a build-time rewrite of its own: `animated.GtkX` member accesses and
   `animated(...)` calls become imports of exactly the widgets they animate, while a dynamic use of the

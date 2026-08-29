@@ -12,17 +12,6 @@ const CORE_WRAPPERS: Record<string, string[]> = {
     gobject: ["ParamSpec", "Value"],
 };
 
-const renderNativeTypeIndex = (context: ModuleContext): string => {
-    const entries = sortStrings(context.nativeTypeNames.keys()).map((name) => {
-        const [sharedLibrary, typeFnName] = context.nativeTypeNames.get(name) ?? ["", ""];
-
-        return `    ${sourceStringLiteral(name)}: ` +
-            `[${sourceStringLiteral(sharedLibrary)}, ${sourceStringLiteral(typeFnName)}],`;
-    });
-
-    return entries.length === 0 ? "{}" : `{\n${entries.join("\n")}\n}`;
-};
-
 const renderDependencyImports = (context: ModuleContext): string[] => [
     ...sortStrings(context.dependencies).map((dependency) => `import "../${dependency}/bootstrap.js";`),
     ...sortStrings(context.externalDependencies).map((packageName) => `import ${sourceStringLiteral(packageName)};`),
@@ -31,11 +20,18 @@ const renderDependencyImports = (context: ModuleContext): string[] => [
 const renderOverrideImports = (directory: string): string[] =>
     (PATCHING_OVERRIDES[directory] ?? []).map((override) => `import ${sourceStringLiteral(override)};`);
 
-const renderRuntimeImport = (context: ModuleContext): string => {
+const renderRuntimeImport = (context: ModuleContext, coreWrappers: string[]): string[] => {
     const runtimeImports = new Set(context.bootstrapRuntimeImports);
-    runtimeImports.add("registerNativeTypeNames");
 
-    return `import { ${sortStrings(runtimeImports).join(", ")} } from "@gtkx/runtime";`;
+    if (coreWrappers.length > 0) {
+        runtimeImports.add("retainWrapperClasses");
+    }
+
+    if (runtimeImports.size === 0) {
+        return [];
+    }
+
+    return [`import { ${sortStrings(runtimeImports).join(", ")} } from "@gtkx/runtime";`];
 };
 
 const renderModuleImports = (context: ModuleContext, directory: string, coreWrappers: string[]): string[] => {
@@ -47,15 +43,18 @@ const renderModuleImports = (context: ModuleContext, directory: string, coreWrap
 const renderBootstrapModule = (context: ModuleContext): string => {
     const directory = namespaceDirectory(context.namespace);
     const coreWrappers = CORE_WRAPPERS[directory] ?? [];
-    const wrappersArgument = coreWrappers.length === 0 ? "" : `, [${coreWrappers.join(", ")}]`;
+
+    const retention = coreWrappers.length === 0
+        ? []
+        : [`retainWrapperClasses([${coreWrappers.join(", ")}]);`];
 
     const lines = [
         ...renderDependencyImports(context),
         ...renderOverrideImports(directory),
-        renderRuntimeImport(context),
+        ...renderRuntimeImport(context, coreWrappers),
         ...renderModuleImports(context, directory, coreWrappers),
         "",
-        `registerNativeTypeNames(${renderNativeTypeIndex(context)}${wrappersArgument});`,
+        ...retention,
         ...context.bootstrapCalls,
     ];
 
