@@ -25,16 +25,6 @@ type ApiReferenceOptions = {
     props?: ElementProps;
     /** GObject properties the project omits from generated props; without it pages show props that do not exist. */
     omittedProps?: OmittedProps;
-    /** Describes GIR byte sequences as `Uint8Array` rather than `number[]`; defaults to false. */
-    isByteArrayTyped?: boolean;
-    /** Describes what a `GObject.Value` a binding hands back holds, rather than the value itself; off by default. */
-    isValueUnwrapped?: boolean;
-    /** Describes promisified results of a throwing finish without their leading success boolean; off by default. */
-    isFinishTrimmed?: boolean;
-    /** Describes a handle-passing inout parameter as mutated in place rather than returned; off by default. */
-    isInoutInPlace?: boolean;
-    /** Folds registrations into each class so bundlers can drop unused ones; off by default. */
-    isTreeShaken?: boolean;
 };
 
 /** Narrows an `ApiReference.symbols` enumeration. */
@@ -382,15 +372,7 @@ class ApiReference {
         this.libraries = options.libraries;
         this.props = options.props ?? {};
         this.omittedProps = options.omittedProps ?? {};
-
-        this.library = Library.load(options.libraries, options.girPath, {
-            isByteArrayTyped: options.isByteArrayTyped === true,
-            isValueUnwrapped: options.isValueUnwrapped === true,
-            isFinishTrimmed: options.isFinishTrimmed === true,
-            isInoutInPlace: options.isInoutInPlace === true,
-            isTreeShaken: options.isTreeShaken === true,
-        });
-
+        this.library = Library.load(options.libraries, options.girPath);
         this.elementContext = { library: this.library, linkFor: (): string | undefined => undefined };
         this.buildIndex();
     }

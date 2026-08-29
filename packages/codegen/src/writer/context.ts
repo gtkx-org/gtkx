@@ -9,12 +9,7 @@ type BootstrapCallOptions = {
 };
 
 const addExternalNamespaceImport = (context: ModuleContext, packageName: string, namespaceName: string): void => {
-    if (context.isTreeShaken) {
-        context.externalDependencies.add(packageName);
-    } else {
-        context.module.imports.addSideEffect(packageName);
-    }
-
+    context.externalDependencies.add(packageName);
     context.module.imports.addNamespace(packageName, namespaceName);
 };
 
@@ -22,18 +17,12 @@ const addInternalNamespaceImport = (context: ModuleContext, namespaceName: strin
     const directory = namespaceName.toLowerCase();
     const isFoundational = directory === "gobject" || directory === "glib";
     const path = isFoundational ? `../${directory}/${directory}.js` : `../${directory}/index.js`;
-
-    if (context.isTreeShaken) {
-        context.dependencies.add(directory);
-    } else if (!isFoundational) {
-        context.module.imports.addSideEffect(path);
-    }
-
+    context.dependencies.add(directory);
     context.module.imports.addNamespace(path, namespaceName);
 };
 
 class ModuleContext {
-    private registrationSink: string[] | undefined;
+    private registrationSink: string[] = [];
     private readonly hoistedBases: Map<string, string> = new Map();
     public module: ModuleBuilder = new ModuleBuilder();
     public namespace: GirNamespace;
@@ -49,10 +38,6 @@ class ModuleContext {
         this.library = library;
     }
 
-    get isTreeShaken(): boolean {
-        return this.library.isTreeShaken;
-    }
-
     addRuntimeImport(name: string): void {
         this.module.imports.addNamed("@gtkx/runtime", name);
     }
@@ -65,24 +50,14 @@ class ModuleContext {
         return this.module.hoistDescriptor(expression);
     }
 
-    beginRegistrations(): void {
-        this.registrationSink = [];
-    }
-
     takeRegistrations(): string[] {
-        const collected = this.registrationSink ?? [];
-        this.registrationSink = undefined;
+        const collected = this.registrationSink;
+        this.registrationSink = [];
 
         return collected;
     }
 
-    collectRegistration(code: string, requires: string[] = []): void {
-        if (this.registrationSink === undefined) {
-            this.module.appendRegistration(code, requires);
-
-            return;
-        }
-
+    collectRegistration(code: string): void {
         this.registrationSink.push(code);
     }
 
@@ -99,24 +74,6 @@ class ModuleContext {
         }
 
         this.bootstrapCalls.push(code);
-    }
-
-    addGObjectBootstrapImports(): void {
-        if (this.isTreeShaken) {
-            return;
-        }
-
-        if (this.namespace.name === "GObject") {
-            return;
-        }
-
-        if (this.namespace.name === "GLib") {
-            return;
-        }
-
-        this.module.imports.addSideEffect("../gobject/overrides/object.js");
-        this.module.imports.addSideEffect("../gobject/overrides/param-spec-getters.js");
-        this.module.imports.addSideEffect("../gobject/overrides/value.js");
     }
 
     addCrossNamespaceImport(namespaceName: string): string {

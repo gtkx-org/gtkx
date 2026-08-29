@@ -2,7 +2,6 @@ import type { Plugin } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
 import createConfigPlugin from "@gtkx/config/vite-plugin";
 import type { BuildManifestCollector } from "../internal/build-manifest.js";
-import { gtkxAnimated } from "./animated.js";
 import { gtkxAssetImports } from "./asset-imports.js";
 import { gtkxBuiltUrl } from "./built-url.js";
 import { gtkxCss } from "./css.js";
@@ -27,13 +26,12 @@ const gtkxVitePlugins = (
         ...(entryPath === undefined ? [] : [gtkxI18n(entryPath, loadConfig, shouldPreserveI18nMetadata)]),
         gtkxStoreLinks(),
         gtkxUndeclaredLibrary(loadConfig),
-        gtkxSettings(loadConfig, buildManifest),
+        gtkxSettings(buildManifest),
         gtkxIcons(loadConfig),
-        gtkxAssetImports(loadConfig),
+        gtkxAssetImports(),
         gtkxBuiltUrl(),
         gtkxResources(loadConfig, entryPath),
         gtkxCss(),
-        gtkxAnimated(loadConfig),
         gtkxReactCompiler(loadConfig),
     ];
 };

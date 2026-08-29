@@ -59,7 +59,6 @@
         "node": ">=24"
     },
     "dependencies": {
-        "@gtkx/cairo": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@types/node": "catalog:",

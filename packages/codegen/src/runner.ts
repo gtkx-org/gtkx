@@ -8,7 +8,6 @@ import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
 import { sweepStagingDirs } from "./staging.js";
-import { externalPackageNotices } from "./store/external-package-links.js";
 import { ensureStoreLink, type StoreOptions } from "./store/store-fs.js";
 
 type GlCodegenOptions = {
@@ -20,7 +19,7 @@ type GlCodegenOptions = {
 
 /** What to generate and where to write it. */
 type CodegenRunnerOptions = {
-    /** GIR library identifiers such as `"Gtk-4.0"`; a `"*"` selection must be expanded before it gets here. */
+    /** GIR library identifiers such as `"Gtk-4.0"`. */
     libraries: string[];
     /** Directories to search for `.gir` files. */
     girPath: string[];
@@ -40,16 +39,6 @@ type CodegenRunnerOptions = {
     userOmittedProps?: OmittedProps;
     /** Regenerates both stores even when their fingerprints are fresh. */
     isForced?: boolean;
-    /** Emits GIR byte sequences as `Uint8Array` rather than `number[]`; defaults to false. */
-    isByteArrayTyped?: boolean;
-    /** Surfaces a `GObject.Value` a binding hands back as what it holds rather than as the value; defaults to false. */
-    isValueUnwrapped?: boolean;
-    /** Drops the leading success boolean from promisified results of a throwing finish; defaults to false. */
-    isFinishTrimmed?: boolean;
-    /** Mutates a handle-passing inout parameter in place instead of packing it into the result; defaults to false. */
-    isInoutInPlace?: boolean;
-    /** Folds registrations into each class so bundlers can drop unused ones; defaults to false. */
-    isTreeShaken?: boolean;
 };
 
 /** What a `runCodegen` run produced. */
@@ -60,8 +49,6 @@ type CodegenRunnerResult = {
     namespaces: number;
     /** How many JSX elements the jsx store binds, zero when no jsx store was requested. */
     intrinsicElements: number;
-    /** Deprecation notices about how the store was wired, one line each; empty when nothing needs attention. */
-    notices: string[];
     /** Wall-clock duration of the run, in milliseconds. */
     duration: number;
 };
@@ -94,7 +81,6 @@ const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerR
         isRegenerated: store.isRegenerated,
         namespaces: store.namespaces,
         intrinsicElements: store.intrinsicElements,
-        notices: externalPackageNotices(options.gi),
         duration: Date.now() - start,
     };
 };
@@ -154,7 +140,6 @@ const emitJsxStore = async (input: {
         ...jsxUserOptions(options),
         isGiRegenerated,
         isForced: options.isForced === true,
-        isTreeShaken: options.isTreeShaken === true,
     });
 
     return {
@@ -172,19 +157,13 @@ const emitStoresWithConfig = async (config: {
     girPath: string[];
 }): Promise<StoreResult> => {
     const { options, gi, jsx, libraries, girPath } = config;
-    const isByteArrayTyped = options.isByteArrayTyped === true;
-    const isValueUnwrapped = options.isValueUnwrapped === true;
-    const isFinishTrimmed = options.isFinishTrimmed === true;
-    const isInoutInPlace = options.isInoutInPlace === true;
-    const isTreeShaken = options.isTreeShaken === true;
-    const future = { isByteArrayTyped, isValueUnwrapped, isFinishTrimmed, isInoutInPlace, isTreeShaken };
     let library: Library | undefined;
-    const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath, future));
-    const giInputs = { girFiles: [] as string[], libraries, girPath, storeVersion: gi.version, ...future };
+    const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath));
+    const giInputs = { girFiles: [] as string[], libraries, girPath, storeVersion: gi.version };
     const isGiRegenerated = options.isForced === true || !isGiStoreFresh(gi.storeDir, giInputs);
 
     const namespaces = isGiRegenerated
-        ? runGiCodegen(loadLibrary(), { gi, libraries, girPath, ...future })
+        ? runGiCodegen(loadLibrary(), { gi, libraries, girPath })
         : 0;
 
     if (jsx === undefined) {

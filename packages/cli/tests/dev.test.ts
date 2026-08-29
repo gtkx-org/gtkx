@@ -8,7 +8,6 @@ import {
     removeCliProject,
     runCli,
     startCli,
-    STORE_FUTURE,
     STORE_LIBRARIES,
 } from "./cli-project.js";
 
@@ -157,7 +156,7 @@ const appSource = (revision: string, iconFile: ResourceIconSource = null): strin
 
 const config = (): string =>
     `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)}, ` +
-    `applicationIcon: "data/icons", future: ${JSON.stringify(STORE_FUTURE)} };\n`;
+    'applicationIcon: "data/icons" };\n';
 
 const italianCatalog = (translation: string): string => String.raw`msgid ""
 msgstr ""

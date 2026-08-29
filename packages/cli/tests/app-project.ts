@@ -31,7 +31,6 @@ const appConfig = (applicationId: string): string =>
         "export default {",
         `    applicationId: ${JSON.stringify(applicationId)},`,
         "    codegen: false,",
-        "    libraries: [\"Gtk-4.0\"],",
         "};",
         "",
     ].join("\n");

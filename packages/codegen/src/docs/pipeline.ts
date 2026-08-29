@@ -41,11 +41,6 @@ type DocsOptions = {
     props?: ElementProps;
     omittedProps?: OmittedProps;
     isForced?: boolean;
-    isByteArrayTyped?: boolean;
-    isValueUnwrapped?: boolean;
-    isFinishTrimmed?: boolean;
-    isInoutInPlace?: boolean;
-    isTreeShaken?: boolean;
 };
 
 type DocsManifest = {
@@ -310,11 +305,6 @@ const giInputs = (options: DocsOptions, girFiles: string[]): GiInputs => ({
     libraries: options.libraries,
     girPath: options.girPath,
     storeVersion: undefined,
-    isByteArrayTyped: options.isByteArrayTyped === true,
-    isValueUnwrapped: options.isValueUnwrapped === true,
-    isFinishTrimmed: options.isFinishTrimmed === true,
-    isInoutInPlace: options.isInoutInPlace === true,
-    isTreeShaken: options.isTreeShaken === true,
 });
 
 const assertOwnedOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): void => {
@@ -401,15 +391,7 @@ const writeDocs = (options: DocsOptions): DocsResult => {
     }
 
     assertOwnedOutDir(options, previous);
-
-    const library = Library.load(options.libraries, options.girPath, {
-        isByteArrayTyped: options.isByteArrayTyped === true,
-        isValueUnwrapped: options.isValueUnwrapped === true,
-        isFinishTrimmed: options.isFinishTrimmed === true,
-        isInoutInPlace: options.isInoutInPlace === true,
-        isTreeShaken: options.isTreeShaken === true,
-    });
-
+    const library = Library.load(options.libraries, options.girPath);
     const { pages, namespaces } = generatePages(options, input.basePath, linkStyle, library);
     clearOutDir(options, previous);
     mkdirSync(options.outDir, { recursive: true });

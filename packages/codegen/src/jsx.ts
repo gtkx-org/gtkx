@@ -24,7 +24,6 @@ type RunJsxCodegenOptions = {
     userOmittedProps: OmittedProps;
     isGiRegenerated: boolean;
     isForced: boolean;
-    isTreeShaken: boolean;
 };
 
 type RunJsxCodegenResult = {
@@ -46,7 +45,6 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
         lazyElements,
         props,
         omittedProps,
-        isTreeShaken: options.isTreeShaken,
     };
 
     if (!options.isForced && !options.isGiRegenerated) {
@@ -71,7 +69,6 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
         options: options.jsx,
         namespaces,
         metadata,
-        isTreeShaken: options.isTreeShaken,
         externalPackages: storeExternalPackages(library),
         rawFiles: [
             {

@@ -1,13 +1,9 @@
-import type { ConfigLoader } from "@gtkx/config";
-import type { ParseResult, Plugin, UserConfig } from "vite";
-import { createConfigLoader, resolveFuture } from "@gtkx/config/internal";
+import type { ParseResult, Plugin } from "vite";
 import { parseSync } from "vite";
 import { sourceLanguage } from "../internal/source-imports.js";
 import { ASSET_MENTION_RE } from "./asset-extensions.js";
 import {
-    DATA_PREFIX,
     isAssetSpecifier,
-    isDataAsset,
     isUrlSpecifier,
     parseIconSpecifier,
     parseResourceSpecifier,
@@ -21,18 +17,11 @@ type ExportStatement = ParsedModule["staticExports"][number];
 type ExportEntry = ExportStatement["entries"][number];
 type BindingEntry = { importName: { name: string | null }; isType: boolean };
 type NamedBinding = { name: string; source: string };
-type PluginState = { isV2: boolean };
 
 const NODE_MODULES = /(?:^|\/)node_modules\//;
 const VIRTUAL_PREFIX = "\0";
 const DEFAULT_BINDING = "default";
 const RESOURCE_BINDING = JSON.stringify(RESOURCE_PATH_EXPORT);
-const DATA_IMPORT_EXAMPLE = `"${DATA_PREFIX}<path>"`;
-const URL_FALLBACK = ", or import the default for the asset URL.";
-
-const BUNDLE_ADVICE =
-    `An asset staged into the GResource bundle exports ${RESOURCE_BINDING} and a "resource://" default, and ` +
-    "nothing else.";
 
 const QUERY_ADVICE =
     `A URL asset exports only its default filesystem path; import the default instead of ${RESOURCE_BINDING}.`;
@@ -43,9 +32,7 @@ const RESOURCE_ADVICE =
 const ICON_ADVICE = "An icon asset exports only its default icon-theme name, and nothing else.";
 
 const RELATIVE_ADVICE =
-    `Only assets imported through "${DATA_PREFIX}" are staged into the GResource bundle and export ` +
-    `${RESOURCE_BINDING}; move the file under the data directory and import it as ` +
-    `${DATA_IMPORT_EXAMPLE}${URL_FALLBACK}`;
+    "Add ?resource for a GResource, ?icon for a themed icon, or ?url for an emitted file.";
 
 const boundName = (entry: BindingEntry): string | null => {
     const { name } = entry.importName;
@@ -78,50 +65,46 @@ const bindings = (parsed: ParsedModule): NamedBinding[] => [
     ...parsed.staticExports.flatMap((statement) => exportBindings(statement)),
 ];
 
-const isBacked = ({ name, source }: NamedBinding, isV2: boolean): boolean => {
+const isBacked = ({ name, source }: NamedBinding): boolean => {
     if (name !== RESOURCE_PATH_EXPORT) {
         return false;
     }
 
-    return isV2 ? parseResourceSpecifier(source) !== null : isDataAsset(source);
+    return parseResourceSpecifier(source) !== null;
 };
 
 const isCheckedSpecifier = (source: string): boolean => isAssetSpecifier(source) || isUrlSpecifier(source);
 
-const unbackedBinding = (parsed: ParsedModule, isV2: boolean): NamedBinding | undefined =>
-    bindings(parsed).find((binding) => isCheckedSpecifier(binding.source) && !isBacked(binding, isV2));
+const unbackedBinding = (parsed: ParsedModule): NamedBinding | undefined =>
+    bindings(parsed).find((binding) => isCheckedSpecifier(binding.source) && !isBacked(binding));
 
-const isBundledResource = (source: string, isV2: boolean): boolean =>
-    isV2
-        ? parseResourceSpecifier(source) !== null || parseIconSpecifier(source) !== null
-        : isDataAsset(source);
+const adviceFor = (source: string): string => {
+    if (parseResourceSpecifier(source) !== null) {
+        return RESOURCE_ADVICE;
+    }
 
-const v2BundleAdvice = (source: string): string =>
-    parseIconSpecifier(source) === null ? RESOURCE_ADVICE : ICON_ADVICE;
-
-const bundleAdvice = (source: string, isV2: boolean): string => {
-    if (isBundledResource(source, isV2)) {
-        return isV2 ? v2BundleAdvice(source) : BUNDLE_ADVICE;
+    if (parseIconSpecifier(source) !== null) {
+        return ICON_ADVICE;
     }
 
     if (isUrlSpecifier(source)) {
         return QUERY_ADVICE;
     }
 
-    return source.startsWith(DATA_PREFIX) ? QUERY_ADVICE : RELATIVE_ADVICE;
+    return RELATIVE_ADVICE;
 };
 
-const unbackedBindingError = (path: string, binding: NamedBinding, isV2: boolean): Error =>
+const unbackedBindingError = (path: string, binding: NamedBinding): Error =>
     new Error(
         `${path}: ${JSON.stringify(binding.source)} does not export ${JSON.stringify(binding.name)}, which ` +
         "gtkx build rejects and gtkx dev would bind as undefined. " +
-        bundleAdvice(binding.source, isV2),
+        adviceFor(binding.source),
     );
 
 const isCheckedSource = (path: string): boolean => !path.startsWith(VIRTUAL_PREFIX) && !NODE_MODULES.test(path);
 const hasCheckedAssetMention = (code: string): boolean => ASSET_MENTION_RE.test(code) || code.includes("?url");
 
-const checkAssetImports = (code: string, id: string, isV2: boolean): void => {
+const checkAssetImports = (code: string, id: string): void => {
     const path = stripQuery(id);
     const lang = sourceLanguage(path);
 
@@ -135,27 +118,20 @@ const checkAssetImports = (code: string, id: string, isV2: boolean): void => {
         return;
     }
 
-    const binding = unbackedBinding(parsed.module, isV2);
+    const binding = unbackedBinding(parsed.module);
 
     if (binding !== undefined) {
-        throw unbackedBindingError(path, binding, isV2);
+        throw unbackedBindingError(path, binding);
     }
 };
 
-function gtkxAssetImports(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
-    const state: PluginState = { isV2: false };
-
+function gtkxAssetImports(): Plugin {
     return {
         name: "gtkx:asset-imports",
         enforce: "pre",
 
-        async config(config: UserConfig) {
-            const loaded = await loadConfig.load(config.root ?? process.cwd());
-            state.isV2 = resolveFuture(loaded.config.future).isResourceImported;
-        },
-
         transform(code, id) {
-            checkAssetImports(code, id, state.isV2);
+            checkAssetImports(code, id);
         },
     };
 }

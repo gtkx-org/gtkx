@@ -4,7 +4,6 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import { configError, isRecord, rawIssue } from "./config-error.ts";
 import { deploySchema } from "./deploy.ts";
-import { DEPRECATION_IDS } from "./deprecations.ts";
 import { isGirLibrary, text } from "./schema-text.ts";
 import { resolveUserEventSignals } from "./user-event-signals.ts";
 
@@ -33,9 +32,8 @@ type ResolvedReactCompilerOptions = ReactCompilerOptions & {
 /**
  * User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`: the GIR libraries
  * to bind and where to find them, the GApplication id, per-element configuration, the React
- * Compiler, codegen, and user event signal settings, the `agents` and `mcp` blocks controlling what
- * coding agents are given, the `future` block opting into behavior that becomes the default in the
- * next major version, and the `deprecations` block silencing the warnings about flags left unset.
+ * Compiler, codegen, and user event signal settings, and the `agents` and `mcp` blocks controlling
+ * what coding agents are given.
  */
 type Config = z.infer<typeof configSchema>;
 type ModuleExport = z.infer<typeof moduleExportSchema>;
@@ -44,16 +42,6 @@ type ElementConfigEntry = z.infer<typeof elementConfigSchema>;
 type McpSettings = {
     tools: string[];
     isReadOnly: boolean;
-};
-
-type ResolvedFuture = {
-    isByteArrayTyped: boolean;
-    isValueUnwrapped: boolean;
-    isFinishTrimmed: boolean;
-    isInoutInPlace: boolean;
-    isResourceImported: boolean;
-    isAdwaitaDefault: boolean;
-    isTreeShaken: boolean;
 };
 
 /** Configuration reduced to the values the app runtime and the build need, with paths already resolved. */
@@ -73,9 +61,9 @@ type ResolvedConfig = {
     lazyElements: string[];
 };
 
-const LIBRARIES_WILDCARD = "*";
 const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const APPLICATION_ID_MAX_LENGTH = 255;
+const DEFAULT_LIBRARIES: Set<string> = new Set(["Gtk-4.0", "Adw-1"]);
 /** Compilation modes `babel-plugin-react-compiler` accepts. */
 const COMPILATION_MODES = ["infer", "syntax", "annotation", "all"] as const;
 /** Panic thresholds `babel-plugin-react-compiler` accepts. */
@@ -84,15 +72,11 @@ const REACT_COMPILER_TARGET = "19";
 const COMPILATION_MODE_SET: Set<string> = new Set(COMPILATION_MODES);
 const PANIC_THRESHOLD_SET: Set<string> = new Set(PANIC_THRESHOLDS);
 
-const librariesSchema = z.custom<typeof LIBRARIES_WILDCARD | string[]>().check((ctx) => {
+const librariesSchema = z.custom<string[]>().check((ctx) => {
     const value = ctx.value;
 
-    if (value === LIBRARIES_WILDCARD) {
-        return;
-    }
-
     if (!Array.isArray(value) || value.length === 0) {
-        ctx.issues.push(rawIssue(value, [], `must be "${LIBRARIES_WILDCARD}", a non-empty string array, or omitted`));
+        ctx.issues.push(rawIssue(value, [], "must be a non-empty string array or omitted"));
 
         return;
     }
@@ -215,30 +199,28 @@ const mcpSchema = z.object({
     readOnly: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
-const futureSchema = z.object({
-    v2ByteArrays: z.boolean({ error: "must be a boolean" }).optional(),
-    v2ValueReturns: z.boolean({ error: "must be a boolean" }).optional(),
-    v2FinishResults: z.boolean({ error: "must be a boolean" }).optional(),
-    v2InoutReturns: z.boolean({ error: "must be a boolean" }).optional(),
-    v2ResourceImports: z.boolean({ error: "must be a boolean" }).optional(),
-    v2DefaultLibraries: z.boolean({ error: "must be a boolean" }).optional(),
-    v2TreeShaking: z.boolean({ error: "must be a boolean" }).optional(),
-});
-
-const FUTURE_KEYS: Set<string> = new Set(Object.keys(futureSchema.shape));
-const DEPRECATION_ID_ERROR = `must be one of ${DEPRECATION_IDS.join(", ")}`;
+const graduatedFutureSchema = z
+    .object({
+        v2ByteArrays: z.literal(true, { error: "can only be true; remove the flag" }).optional(),
+        v2ValueReturns: z.literal(true, { error: "can only be true; remove the flag" }).optional(),
+        v2FinishResults: z.literal(true, { error: "can only be true; remove the flag" }).optional(),
+        v2InoutReturns: z.literal(true, { error: "can only be true; remove the flag" }).optional(),
+        v2ResourceImports: z.literal(true, { error: "can only be true; remove the flag" }).optional(),
+        v2DefaultLibraries: z.literal(true, { error: "can only be true; remove the flag" }).optional(),
+        v2TreeShaking: z.literal(true, { error: "can only be true; remove the flag" }).optional(),
+    })
+    .strict();
 
 const deprecationsSchema = z.object({
     silence: z
-        .array(z.enum(DEPRECATION_IDS, { error: DEPRECATION_ID_ERROR }), {
-            error: "must be an array of deprecation ids",
+        .array(z.never({ error: "does not name a current deprecation" }), {
+            error: "must be an array of current deprecation ids",
         })
         .optional(),
 });
 
 /** Schema every `gtkx.config.ts` is validated against, and the source of the {@link Config} type. */
 const configSchema = z.object({
-    future: futureSchema.optional(),
     libraries: librariesSchema.optional(),
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
     applicationId: applicationIdSchema,
@@ -260,16 +242,12 @@ const configSchema = z.object({
 const defineConfig: DefineConfig<Config> = createDefineConfig<Config>();
 
 const libraryEntryIssues = (value: unknown[], index: number, entry: unknown): ReturnType<typeof rawIssue>[] => {
-    if (typeof entry === "string" && isGirLibrary(entry)) {
-        return [];
+    if (typeof entry === "string" && DEFAULT_LIBRARIES.has(entry)) {
+        return [rawIssue(value, [index], `remove ${entry}; it is bound by default`, true)];
     }
 
-    if (entry === LIBRARIES_WILDCARD) {
-        const message =
-            `to generate every library, set \`libraries: "${LIBRARIES_WILDCARD}"\` as a bare string, ` +
-            "not an array entry";
-
-        return [rawIssue(value, [index], message, true)];
+    if (typeof entry === "string" && isGirLibrary(entry)) {
+        return [];
     }
 
     const message =
@@ -300,12 +278,30 @@ const resolveReactCompilerOptions = (setting: Config["reactCompiler"]): Resolved
 const isValidReactCompilerOption = (value: unknown, allowed: Set<string>): boolean =>
     value === undefined || (typeof value === "string" && allowed.has(value));
 
-const validateConfig = (config: Config): void => {
+const validateConfig = (config: unknown): void => {
+    const future = isRecord(config) ? config.future : undefined;
+
+    if (future !== undefined) {
+        const result = graduatedFutureSchema.safeParse(future);
+
+        if (!result.success) {
+            throw configError(result.error);
+        }
+    }
+
     const result = configSchema.safeParse(config);
 
     if (!result.success) {
         throw configError(result.error);
     }
+};
+
+const graduatedFutureKeys = (config: unknown): string[] => {
+    if (!isRecord(config) || !isRecord(config.future)) {
+        return [];
+    }
+
+    return Object.keys(config.future).toSorted((first, second) => first.localeCompare(second));
 };
 
 /**
@@ -356,19 +352,6 @@ const resolveMcpSettings = (config: Config): McpSettings => ({
     isReadOnly: config.mcp?.readOnly === true,
 });
 
-const resolveFuture = (future: Config["future"]): ResolvedFuture => ({
-    isByteArrayTyped: future?.v2ByteArrays === true,
-    isValueUnwrapped: future?.v2ValueReturns === true,
-    isFinishTrimmed: future?.v2FinishResults === true,
-    isInoutInPlace: future?.v2InoutReturns === true,
-    isResourceImported: future?.v2ResourceImports === true,
-    isAdwaitaDefault: future?.v2DefaultLibraries === true,
-    isTreeShaken: future?.v2TreeShaking === true,
-});
-
-const unknownFutureKeys = (future: Config["future"]): string[] =>
-    Object.keys(future ?? {}).filter((key) => !FUTURE_KEYS.has(key));
-
 const resolveConfig = (config: Config, root?: string): ResolvedConfig => ({
     applicationId: config.applicationId,
     reactCompiler: resolveReactCompilerOptions(config.reactCompiler),
@@ -383,6 +366,7 @@ export {
     isAgentReferenceEnabled,
     isAgentRulesEnabled,
     isValidApplicationId,
+    graduatedFutureKeys,
     validateConfig,
     mergeConfig,
     resolveLazyElements,
@@ -391,11 +375,8 @@ export {
     resolveMcpSettings,
     resolveOmittedProps,
     resolveConfig,
-    resolveFuture,
-    unknownFutureKeys,
     type McpSettings,
     type ResolvedReactCompilerOptions,
     type Config,
     type ResolvedConfig,
-    type ResolvedFuture,
 };

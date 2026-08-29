@@ -1,7 +1,7 @@
 import type { ReactNode, RefObject } from "react";
 import { animated, useReducedMotion, useSpring } from "@gtkx/animated";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -9,6 +9,8 @@ import { describe, expect, it } from "vitest";
 type FadeProps = { labelRef: RefObject<Gtk.Label | null>; changes: number[] };
 
 const ANIMATED = { areAnimationsEnabled: true };
+const AnimatedButton = animated(GtkButton);
+const AnimatedLabel = animated(GtkLabel);
 const SLOW = { duration: 400 };
 const HAS_REDUCED_MOTION_SETTING = Gtk.checkVersion(4, 22, 0) === null;
 
@@ -22,7 +24,7 @@ const Fade = ({ labelRef, changes }: FadeProps): ReactNode => {
         },
     });
 
-    return <animated.GtkLabel ref={labelRef} opacity={styles.opacity} label="fade" />;
+    return <AnimatedLabel ref={labelRef} opacity={styles.opacity} label="fade" />;
 };
 
 const Deferred = ({ labelRef, changes }: FadeProps): ReactNode => {
@@ -35,8 +37,8 @@ const Deferred = ({ labelRef, changes }: FadeProps): ReactNode => {
 
     return (
         <GtkBox>
-            <animated.GtkLabel ref={labelRef} opacity={styles.opacity} label="deferred" />
-            <animated.GtkButton label="Start" onClicked={() => api.start({ opacity: 1, config: SLOW })} />
+            <AnimatedLabel ref={labelRef} opacity={styles.opacity} label="deferred" />
+            <AnimatedButton label="Start" onClicked={() => api.start({ opacity: 1, config: SLOW })} />
         </GtkBox>
     );
 };

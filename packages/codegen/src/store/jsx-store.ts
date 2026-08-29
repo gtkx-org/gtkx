@@ -9,14 +9,11 @@ type WriteJsxStoreParams = {
     metadata: string;
     externalPackages: string[];
     rawFiles: RawFile[];
-    isTreeShaken?: boolean;
 };
 
-const jsxPeerDependencies = (externalPackages: string[], isTreeShaken: boolean): Record<string, string> => {
-    const runtime = isTreeShaken ? ["@gtkx/runtime"] : [];
-
+const jsxPeerDependencies = (externalPackages: string[]): Record<string, string> => {
     return Object.fromEntries(
-        sortStrings(["@gtkx/gi", "@gtkx/react", "react", ...runtime, ...externalPackages])
+        sortStrings(["@gtkx/gi", "@gtkx/react", "@gtkx/runtime", "react", ...externalPackages])
             .map((name) => [name, "*"]),
     );
 };
@@ -48,8 +45,8 @@ const writeJsxStore = (params: WriteJsxStoreParams): void => {
             name: "@gtkx/jsx",
             version: options.version,
             exports: exportsMap,
-            sideEffects: params.isTreeShaken !== true,
-            peerDependencies: jsxPeerDependencies(externalPackages, params.isTreeShaken === true),
+            sideEffects: false,
+            peerDependencies: jsxPeerDependencies(externalPackages),
         }),
         rawFiles,
     });

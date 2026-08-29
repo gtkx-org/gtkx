@@ -11,7 +11,7 @@ A compact web browser. An Adwaita window wraps a `WebKitWebView`, with back, for
 - CSS-in-JS with `@gtkx/css`: the `css` tagged template returns a class name passed through `cssClasses`.
 - A controlled `GtkEntry`, driven by `onChanged` and committed on `onActivate`.
 
-`gtkx.config.ts` declares `Gtk-4.0`, `Adw-1`, and `WebKit-6.0`, with the application ID `com.gtkx.browser`. The WebKitGTK 6 development package must be installed; see [CONTRIBUTING.md](../../CONTRIBUTING.md#system-dependencies).
+`gtkx.config.ts` adds `WebKit-6.0` to the default GTK and Adwaita bindings. The WebKitGTK 6 development package must be installed; see [CONTRIBUTING.md](../../CONTRIBUTING.md#system-dependencies).
 
 ## Run it
 

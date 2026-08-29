@@ -34,10 +34,7 @@ type BasicValueMap<Nested> = {
 
 /** Single-character code of one of the GVariant basic types in {@link BasicValueMap}. */
 type BasicCode = keyof BasicValueMap<unknown>;
-/**
- * JavaScript type a byte array (`ay`) unpacks to: the same one the generated bindings use for byte sequences, so a
- * `Uint8Array` under the `v2ByteArrays` future flag and a `number[]` otherwise.
- */
+/** JavaScript type a byte array (`ay`) unpacks to. */
 type ByteArray = ReturnType<GLib.Bytes["unrefToArray"]>;
 /** Values a byte array (`ay`) packs from. */
 type ByteArrayInput = Uint8Array | number[];
@@ -503,8 +500,7 @@ const toVariant = <S extends string>(typeString: S, value: VariantInput<S>): GLi
 /**
  * Unpacks a `GLib.Variant` into the JavaScript value its GVariant type describes, the inverse of
  * {@link toVariant}. A dictionary keyed by strings unpacks to a record and one keyed by anything
- * else to a `Map`, an array to an array, a byte array (`ay`) to the byte array type the generated
- * bindings use (`Uint8Array` under the `v2ByteArrays` future flag, `number[]` otherwise), a tuple
+ * else to a `Map`, an array to an array, a byte array (`ay`) to a `Uint8Array`, a tuple
  * to an array of its members, a maybe to its value or `null`, and a nested variant to the
  * `GLib.Variant` itself unless `recursive` is set, in which case it is unwrapped all the way down.
  *

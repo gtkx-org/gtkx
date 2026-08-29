@@ -1,10 +1,15 @@
-import { getOrInsert } from "@gtkx/utils";
+import { getOrInsert, warn } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { missingConfigFileError } from "./config-error.ts";
-import { type Config, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
-import { warnDeprecations } from "./deprecations.ts";
+import {
+    type Config,
+    graduatedFutureKeys,
+    resolveConfig,
+    type ResolvedConfig,
+    validateConfig,
+} from "./config.ts";
 
 /** Result of loading a project's `gtkx.config.ts` file. */
 type LoadedConfig = {
@@ -33,10 +38,28 @@ type ConfigLoader = {
     resolve: (cwd: string) => Promise<ResolvedConfig>;
 };
 
+const GRADUATED_FUTURE_ENV = "GTKX_GRADUATED_FUTURE_SHOWN";
+const graduatedFutureWarnings: Map<string, string> = new Map();
+
+const warnGraduatedFuture = (config: unknown, root: string): void => {
+    const keys = graduatedFutureKeys(config);
+    const signature = keys.join(",");
+
+    if (
+        keys.length === 0 ||
+        graduatedFutureWarnings.get(root) === signature ||
+        process.env[GRADUATED_FUTURE_ENV] === signature
+    ) {
+        return;
+    }
+
+    graduatedFutureWarnings.set(root, signature);
+    process.env[GRADUATED_FUTURE_ENV] = signature;
+    warn(`GTKX 2 ignores graduated future flags: ${keys.join(", ")}. Remove them from gtkx.config.ts.`);
+};
+
 /**
- * Loads and validates the `gtkx.config.ts` file for a project. Writes one deprecation notice to stderr the
- * first time a configuration leaves a `future` flag unset, recording what it reported in the environment so
- * a child process does not repeat it.
+ * Loads and validates the `gtkx.config.ts` file for a project.
  * @param cwd Directory the configuration file is looked up in; parent directories are not searched.
  * @param options Loading options, such as the environment mode whose overrides are applied.
  * @throws When that directory holds no configuration file, or when the configuration fails validation.
@@ -63,7 +86,7 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
     const config = result.config;
     const root = result.cwd ?? searched;
     validateConfig(config);
-    warnDeprecations(config, root);
+    warnGraduatedFuture(config, root);
 
     return {
         config,

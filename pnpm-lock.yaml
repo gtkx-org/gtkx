@@ -368,9 +368,6 @@ importers:
         specifier: 'catalog:'
         version: 2.9.0
     devDependencies:
-      '@gtkx/animated':
-        specifier: workspace:*
-        version: link:../animated
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../testing
@@ -386,9 +383,6 @@ importers:
 
   packages/codegen:
     dependencies:
-      '@gtkx/cairo':
-        specifier: workspace:*
-        version: link:../cairo
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react

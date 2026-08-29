@@ -171,7 +171,7 @@ const renderInputParameters = (context: ModuleContext, fn: GirFunction, options:
 };
 
 const isInPlaceInout = (context: ModuleContext, parameter: GirParameter): boolean =>
-    context.library.isInoutInPlace && isInoutParameter(parameter) && isHandlePassedInPlace(context, parameter);
+    isInoutParameter(parameter) && isHandlePassedInPlace(context, parameter);
 
 const isReturnedOutParameter = (context: ModuleContext, parameter: GirParameter): boolean =>
     isOutParameter(parameter) ||
@@ -193,7 +193,7 @@ const returnedOutParameters = (context: ModuleContext, fn: GirFunction): InputPa
 };
 
 const isUnwrappedValue = (context: ModuleContext, ref: TypeId | undefined): boolean =>
-    context.library.isValueUnwrapped && ref !== undefined && isValueType(context, ref);
+    ref !== undefined && isValueType(context, ref);
 
 const renderReturnedTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable: boolean): string =>
     isUnwrappedValue(context, ref) ? "unknown" : renderTsType(context, ref, isNullable);
@@ -278,7 +278,6 @@ const renderCancellableExpression = (parameters: GirParameter[], cancellableInde
 };
 
 const shouldTrimFinishBoolean = (context: ModuleContext, finishFn: GirFunction): boolean =>
-    context.library.isFinishTrimmed &&
     finishFn.throws &&
     !shouldOmitPrimaryReturn(context.library, finishFn.returnValue) &&
     primitiveCategoryFor(context.library, finishFn.returnValue.type) === "boolean" &&
@@ -634,7 +633,7 @@ const planInoutParam = (
             paramLiteral: paramDescriptorLiteral(descriptor, {
                 direction: "inout",
                 isCallerAllocated: true,
-                isConsumed: isConsumed || context.library.isInoutInPlace,
+                isConsumed: true,
                 isRequired: isRequiredParameter(parameter),
             }),
             inputExpr: parameterIdentifier(parameter, index),

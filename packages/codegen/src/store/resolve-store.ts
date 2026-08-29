@@ -217,4 +217,4 @@ const resolveStore = (projectRoot: string): ResolvedStore => {
     };
 };
 
-export { getShadowingStorePaths, nodeModulesChain, resolveStore, sweepProjectStaging, type ResolvedStore };
+export { getShadowingStorePaths, resolveStore, sweepProjectStaging, type ResolvedStore };

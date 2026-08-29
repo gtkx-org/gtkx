@@ -52,8 +52,6 @@ const RESERVED_SIGNAL_MEMBERS = new Set([
     "on",
     "once",
     "off",
-    "addEventListener",
-    "removeEventListener",
 ]);
 
 const resolveDirectInterfaces = (

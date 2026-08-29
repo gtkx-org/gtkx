@@ -6,7 +6,7 @@ import { APPLICATION_ID, createProject, type McpServer, startServer } from "./ap
 type Annotations = { readOnlyHint?: boolean; openWorldHint?: boolean };
 type ListedTool = { name: string; annotations?: Annotations };
 
-const LIBRARIES = ["Gtk-4.0", "Adw-1", "GtkSource-5", "WebKit-6.0"];
+const LIBRARIES = ["GtkSource-5", "WebKit-6.0"];
 const ACTION_TOOLS = ["gtkx_click", "gtkx_type", "gtkx_fire_event"];
 const CONFIG_NAME = "gtkx.config.mjs";
 const state: { servers: McpServer[] } = { servers: [] };

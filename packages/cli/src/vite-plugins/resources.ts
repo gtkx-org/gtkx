@@ -1,20 +1,16 @@
 import type { ConfigLoader } from "@gtkx/config";
 import type { ModuleNode, Plugin, ResolvedConfig, Rolldown, UserConfig, ViteDevServer } from "vite";
-import { createConfigLoader, resolveFuture, resourceBasePath } from "@gtkx/config/internal";
+import { createConfigLoader, resourceBasePath } from "@gtkx/config/internal";
 import { error, info, isRecord, sortStrings } from "@gtkx/utils";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, posix, relative, sep } from "node:path";
 import { parseSync } from "vite";
-import { resolveDataDir } from "../internal/data-dir.js";
-import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { parseRuntimeImportsIn, type SourceImport, sourceLanguage } from "../internal/source-imports.js";
 import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_RE } from "./asset-extensions.js";
 import {
-    DATA_PREFIX,
     isBareRelativeAsset,
-    isDataAsset,
     parseIconSpecifier,
     parseResourceSpecifier,
 } from "./asset-specifier.js";
@@ -44,7 +40,6 @@ type PluginState = {
     prefix: string;
     root: string;
     isBuild: boolean;
-    isV2: boolean;
     entries: Map<string, ResourceEntry>;
     bundledSpecifiers: Map<string, Set<string>>;
     moduleDependencies: Map<string, Set<string>>;
@@ -58,7 +53,6 @@ type PluginState = {
     devBundlePath: string;
     server: ViteDevServer | null;
     compiledSignature: string;
-    dataDir: string | null;
     bundleReferenceId: string | null;
     iconOwners: Map<string, ResourceEntry>;
 };
@@ -118,7 +112,7 @@ type DerivedIconEntry = {
     resourcePath: string;
 };
 
-type LegacyResolveRequest = {
+type ResolveRequest = {
     source: string;
     importer: string | undefined;
     options: Record<string, unknown> | undefined;
@@ -128,6 +122,7 @@ const RESOURCE_COMPILER = "glib-compile-resources";
 const MANIFEST_PREFIX = "/";
 const DEV_STAGING_PREFIX = "resources-dev";
 const MANIFEST_FILENAME = "package.json";
+const DATA_PREFIX = "#data/";
 const BUNDLED_QUERY_MENTION_RE = /[?&](?:icon|resource)(?:[=&]|$)/;
 const ICON_EXTENSIONS: Set<string> = new Set([".png", ".svg", ".xpm"]);
 
@@ -335,11 +330,10 @@ const hasSideEffectIconImport = (code: string, id: string): boolean => {
 };
 
 const retainSideEffectIconImport = (
-    state: PluginState,
     code: string,
     id: string,
 ): { code: string; moduleSideEffects: true } | null =>
-    state.isV2 && hasSideEffectIconImport(code, id)
+    hasSideEffectIconImport(code, id)
         ? { code, moduleSideEffects: true }
         : null;
 
@@ -430,20 +424,6 @@ const refreshRegisteredDevBundle = (state: PluginState): void => {
     }
 };
 
-const scanDataAssets = (dataDir: string): ListedFile[] => listFilesRecursive(dataDir, (name) => ASSET_RE.test(name));
-
-const primeLegacyDevBundle = (state: PluginState): void => {
-    if (state.dataDir === null) {
-        return;
-    }
-
-    for (const { absPath, rel } of scanDataAssets(state.dataDir)) {
-        registerEntry(state, absPath, rel);
-    }
-
-    compileDevBundle(state);
-};
-
 const registerDevAsset = (state: PluginState): void => {
     if (entriesSignature(state) !== state.compiledSignature) {
         compileDevBundle(state);
@@ -490,7 +470,7 @@ const activateEntry = (state: PluginState, entry: ResourceEntry): ResourceEntry 
 };
 
 const isDeclarativeImporter = (state: PluginState, importer: string | undefined): importer is string =>
-    !state.isBuild && state.isV2 && importer !== undefined;
+    !state.isBuild && importer !== undefined;
 
 const setSourceAvailability = (state: PluginState, file: string, isAvailable: boolean): void => {
     if (isAvailable) {
@@ -713,26 +693,6 @@ const resolveIconEntry = async (
     };
 };
 
-const resolveLegacyAssetEntry = async (
-    ctx: ResolveContext,
-    state: PluginState,
-    request: LegacyResolveRequest,
-): Promise<ResourceEntry | undefined> => {
-    const resolved = await ctx.resolve(request.source, request.importer, { ...request.options, skipSelf: true });
-
-    if (!resolved || resolved.external) {
-        return undefined;
-    }
-
-    const sourcePath = stripQuery(resolved.id);
-
-    if (!isAbsolute(sourcePath)) {
-        return undefined;
-    }
-
-    return registerEntry(state, sourcePath, request.source.slice(DATA_PREFIX.length));
-};
-
 const loadInitModule = (state: PluginState): string => {
     if (state.isBuild) {
         if (state.bundleReferenceId === null) {
@@ -831,8 +791,7 @@ const loadAssetModule = (state: PluginState, virtualId: string): string => {
     const { absPath, iconName, rel } = virtualAssetMetadata(virtualId);
     const resourcePath = validateResourcePath(rel);
     const { entry, isRegistered } = loadedResourceEntry(state, absPath, resourcePath);
-    const uri = `resource://${entry.resourcePath}`;
-    const defaultValue = iconName ?? (state.isV2 ? entry.resourcePath : uri);
+    const defaultValue = iconName ?? entry.resourcePath;
     compileLoadedDevAsset(state, isRegistered);
 
     return [
@@ -899,12 +858,12 @@ const isSourceModule = (file: string): boolean => sourceLanguage(file) !== undef
 const isBundledSource = (source: string): boolean =>
     parseResourceSpecifier(source) !== null || parseIconSpecifier(source) !== null;
 
-const validateUnbundledV2Source = (source: string): void => {
+const validateUnbundledSource = (source: string): void => {
     if (isLegacyDataSpecifier(source)) {
         throw new Error(`${JSON.stringify(source)} uses the legacy #data asset form`);
     }
 
-    rejectInvalidV2Specifier(source);
+    rejectInvalidSpecifier(source);
 };
 
 const resolvedModuleDependency = async (
@@ -916,7 +875,7 @@ const resolvedModuleDependency = async (
         return null;
     }
 
-    validateUnbundledV2Source(source);
+    validateUnbundledSource(source);
     const resolved = await ctx.resolve(source, importer, { skipSelf: true });
 
     if (resolved === null) {
@@ -952,7 +911,7 @@ const importerReconciliation = async (
     const file = stripQuery(id);
     const key = importerKey(file);
 
-    if (!state.isV2 || state.isBuild || !isSourceModule(file)) {
+    if (state.isBuild || !isSourceModule(file)) {
         return null;
     }
 
@@ -1333,7 +1292,7 @@ const commitReconciliation = (state: PluginState, candidate: PluginState): void 
     state.iconOwners = candidate.iconOwners;
 };
 
-const reconcileV2Importer = async (ctx: ResolveContext, state: PluginState, id: string): Promise<void> => {
+const reconcileImporter = async (ctx: ResolveContext, state: PluginState, id: string): Promise<void> => {
     const reconciliation = await importerReconciliation(ctx, state, id);
 
     if (reconciliation === null) {
@@ -1353,7 +1312,6 @@ const resolveResourceConfig = async (state: PluginState, config: UserConfig, loa
     const loaded = await loadConfig.load(config.root ?? process.cwd());
     state.prefix = resourceBasePath(loaded.config.applicationId);
     state.root = loaded.root;
-    state.isV2 = resolveFuture(loaded.config.future).isResourceImported;
 
     return {
         assetsInclude: [ASSET_RE],
@@ -1423,14 +1381,6 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
 const applyResolvedConfig = (state: PluginState, config: ResolvedConfig): void => {
     state.isBuild = config.command === "build";
     state.root = config.root;
-    state.dataDir = null;
-
-    if (state.isBuild || state.isV2) {
-        return;
-    }
-
-    const relativeDataDir = resolveDataDir(config.root);
-    state.dataDir = relativeDataDir === null ? null : join(config.root, relativeDataDir);
 };
 
 const loadResourceModule = (state: PluginState, id: string): string | undefined => {
@@ -1448,7 +1398,7 @@ const loadResourceModule = (state: PluginState, id: string): string | undefined 
 const isLegacyDataSpecifier = (source: string): boolean =>
     source.startsWith(DATA_PREFIX) && ASSET_RE.test(stripQuery(source));
 
-const rejectInvalidV2Specifier = (source: string): void => {
+const rejectInvalidSpecifier = (source: string): void => {
     if (BUNDLED_QUERY_MENTION_RE.test(source)) {
         throw new Error(
             `${JSON.stringify(source)} is not a valid bundled asset import; use ?resource, ` +
@@ -1467,7 +1417,7 @@ const rejectInvalidV2Specifier = (source: string): void => {
 const resolveExplicitResourceId = async (
     ctx: ResolveContext,
     state: PluginState,
-    request: LegacyResolveRequest,
+    request: ResolveRequest,
 ): Promise<string | undefined> => {
     const specifier = parseResourceSpecifier(request.source);
 
@@ -1488,7 +1438,7 @@ const resolveExplicitResourceId = async (
 const resolveIconResourceId = async (
     ctx: ResolveContext,
     state: PluginState,
-    request: LegacyResolveRequest,
+    request: ResolveRequest,
 ): Promise<RetainedIconModuleId | undefined> => {
     const specifier = parseIconSpecifier(request.source);
 
@@ -1508,10 +1458,10 @@ const resolveIconResourceId = async (
         : { id: virtualIconId(resolved), moduleSideEffects: true };
 };
 
-const resolveV2ResourceId = async (
+const resolveBundledResourceId = async (
     ctx: ResolveContext,
     state: PluginState,
-    request: LegacyResolveRequest,
+    request: ResolveRequest,
 ): Promise<ResourceModuleId | undefined> => {
     if (isLegacyDataSpecifier(request.source)) {
         throw new Error(
@@ -1534,46 +1484,21 @@ const resolveV2ResourceId = async (
         return resolved;
     }
 
-    rejectInvalidV2Specifier(request.source);
+    rejectInvalidSpecifier(request.source);
 
     return undefined;
-};
-
-const resolveLegacyResourceId = async (
-    ctx: ResolveContext,
-    state: PluginState,
-    request: LegacyResolveRequest,
-): Promise<string | undefined> => {
-    if (BUNDLED_QUERY_MENTION_RE.test(request.source)) {
-        throw new Error(`${JSON.stringify(request.source)} requires future.v2ResourceImports`);
-    }
-
-    if (!isDataAsset(request.source)) {
-        return undefined;
-    }
-
-    const entry = await resolveLegacyAssetEntry(ctx, state, request);
-
-    return entry === undefined ? undefined : virtualAssetId(entry);
 };
 
 const resolveResourceId = (
     ctx: ResolveContext,
     state: PluginState,
-    request: LegacyResolveRequest,
+    request: ResolveRequest,
 ): Promise<ResourceModuleId | undefined> => {
     if (request.source === VIRTUAL_INIT) {
         return Promise.resolve(VIRTUAL_INIT);
     }
 
-    return state.isV2
-        ? resolveV2ResourceId(ctx, state, request)
-        : resolveLegacyResourceId(ctx, state, request);
-};
-
-const configureResourceServer = (state: PluginState, server: ViteDevServer): void => {
-    attachResourceWatcher(state, server);
-    primeLegacyDevBundle(state);
+    return resolveBundledResourceId(ctx, state, request);
 };
 
 const createResourcesPlugin = (state: PluginState, loadConfig: ConfigLoader): Plugin => ({
@@ -1588,7 +1513,7 @@ const createResourcesPlugin = (state: PluginState, loadConfig: ConfigLoader): Pl
     },
 
     configureServer: (server) => {
-        configureResourceServer(state, server);
+        attachResourceWatcher(state, server);
     },
 
     buildStart() {
@@ -1610,9 +1535,9 @@ const createResourcesPlugin = (state: PluginState, loadConfig: ConfigLoader): Pl
     },
 
     async transform(code, id) {
-        await reconcileV2Importer(this, state, id);
+        await reconcileImporter(this, state, id);
 
-        return retainSideEffectIconImport(state, code, id);
+        return retainSideEffectIconImport(code, id);
     },
 
     generateBundle(_options, bundle) {
@@ -1629,7 +1554,6 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader(), entryPat
         prefix: "",
         root: "",
         isBuild: false,
-        isV2: false,
         entries: new Map(),
         bundledSpecifiers: new Map(),
         moduleDependencies: new Map(),
@@ -1643,7 +1567,6 @@ function gtkxResources(loadConfig: ConfigLoader = createConfigLoader(), entryPat
         devBundlePath: "",
         server: null,
         compiledSignature: "",
-        dataDir: null,
         bundleReferenceId: null,
         iconOwners: new Map(),
     };

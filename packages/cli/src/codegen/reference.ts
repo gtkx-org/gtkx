@@ -42,11 +42,6 @@ const writeReference = async (options: WriteReferenceOptions): Promise<Reference
         props: builtin.props,
         omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
         isForced: options.isForced === true,
-        isByteArrayTyped: config.future?.v2ByteArrays === true,
-        isValueUnwrapped: config.future?.v2ValueReturns === true,
-        isFinishTrimmed: config.future?.v2FinishResults === true,
-        isInoutInPlace: config.future?.v2InoutReturns === true,
-        isTreeShaken: config.future?.v2TreeShaking === true,
     });
 
     return {

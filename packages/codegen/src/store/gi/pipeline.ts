@@ -27,12 +27,11 @@ type TopologicalState = {
 
 type NamespaceModule = {
     source: string;
-    bootstrapSource: string | undefined;
+    bootstrapSource: string;
 };
 
 const generateNamespaceModule = (namespace: GirNamespace, library: Library): NamespaceModule => {
     const context = new ModuleContext(namespace, library);
-    context.addGObjectBootstrapImports();
     generateNamespaceTypes(context, namespace);
     generateNamespaceMembers(context, namespace);
 
@@ -46,7 +45,7 @@ const generateNamespaceModule = (namespace: GirNamespace, library: Library): Nam
 
     return {
         source: context.module.toSource(),
-        bootstrapSource: library.isTreeShaken ? renderBootstrapModule(context) : undefined,
+        bootstrapSource: renderBootstrapModule(context),
     };
 };
 
@@ -59,16 +58,10 @@ const generateNamespaceTypes = (context: ModuleContext, namespace: GirNamespace)
         generateRecord(context, record);
     }
 
-    if (context.isTreeShaken) {
-        generateInterfaces(context, namespace);
-    }
+    generateInterfaces(context, namespace);
 
     for (const klass of topologicalClassOrder(namespace.classes, namespace.name)) {
         generateClass(context, klass);
-    }
-
-    if (!context.isTreeShaken) {
-        generateInterfaces(context, namespace);
     }
 };
 

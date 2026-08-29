@@ -1,9 +1,7 @@
-import { resolveDataDir } from "../internal/data-dir.js";
 import { prependSchemaDir, stageAndCompileProjectSchemas } from "../settings/schema.js";
 
-const prepareDevSchemaDir = (root: string, isV2ResourceImports: boolean): string | null => {
-    const dataDir = isV2ResourceImports ? null : resolveDataDir(root);
-    const dir = stageAndCompileProjectSchemas(root, dataDir);
+const prepareDevSchemaDir = (root: string): string | null => {
+    const dir = stageAndCompileProjectSchemas(root);
 
     if (dir === null) {
         return null;

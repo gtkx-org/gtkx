@@ -11,10 +11,6 @@ const chainingHandler = vi.fn();
 const onClicked: RegisterClicked = (button, handler) => button.on("clicked", handler);
 const onceClicked: RegisterClicked = (button, handler) => button.once("clicked", handler);
 const offClicked: RegisterClicked = (button, handler) => button.off("clicked", handler);
-// eslint-disable-next-line @typescript-eslint/no-deprecated -- covers the alias until it is removed in v2
-const addClickedListener: RegisterClicked = (button, handler) => button.addEventListener("clicked", handler);
-// eslint-disable-next-line @typescript-eslint/no-deprecated -- covers the alias until it is removed in v2
-const removeClickedListener: RegisterClicked = (button, handler) => button.removeEventListener("clicked", handler);
 const createClickedTarget = (): ClickedTarget => ({ button: new Gtk.Button(), handler: vi.fn() });
 
 const applyClicked = (target: ClickedTarget, operation: RegisterClicked, count: number): void => {
@@ -143,34 +139,6 @@ describe("disconnect", () => {
         expect(handlerId).toBeGreaterThan(0);
         expectEmissionCalls(target, 1);
         target.button.disconnect(handlerId);
-        expectEmissionCalls(target, 0);
-    });
-});
-
-describe("addEventListener/removeEventListener", () => {
-    it("registers a handler that fires on emission", () => {
-        const target = createClickedTarget();
-        addClickedListener(target.button, target.handler);
-        expectEmissionCalls(target, 1);
-        removeClickedListener(target.button, target.handler);
-    });
-
-    it("registers and removes handlers via callback identity", () => {
-        expectRemovableHandlerNeverFires(addClickedListener);
-    });
-
-    it("returns this for chaining", () => {
-        expectRegisterReturnsButton(addClickedListener);
-    });
-
-    it.each([2, 3])("removes every connection when the same handler was registered %i times", (count) => {
-        expectBalancedRegistrationsLeaveNothingConnected(addClickedListener, removeClickedListener, count);
-    });
-
-    it("removeEventListener removes a handler registered with on()", () => {
-        const target = createClickedTarget();
-        onClicked(target.button, target.handler);
-        removeClickedListener(target.button, target.handler);
         expectEmissionCalls(target, 0);
     });
 });

@@ -143,7 +143,6 @@ describe("gtkx codegen (record fields and the GType a type registers)", () => {
     it("tags an interface that registers a GType", () => {
         expect(state.status).toBe(0);
         const declared = classBody(declarations(), "Provider");
-        expect(declared).toContain("class Provider ");
         expect(declared).toContain("__type__");
     });
 
@@ -250,7 +249,7 @@ describe("gtkx codegen (callback arguments of vtable slots)", () => {
         const watchSlot = bindings().split('vfuncName: "watch"', 2)[1] ?? "";
 
         expect(watchSlot).toContain(
-            'argDescriptors: [t.object("borrowed"), t.biguint64, t.biguint64, t.biguint64]',
+            'argDescriptors: [t.object("borrowed", () => Station), t.biguint64, t.biguint64, t.biguint64]',
         );
 
         expect(declarations()).toContain(
@@ -263,7 +262,7 @@ describe("gtkx codegen (callback arguments of vtable slots)", () => {
         const deferSlot = bindings().split('vfuncName: "defer"', 2)[1] ?? "";
 
         expect(deferSlot).toContain(
-            'argDescriptors: [t.object("borrowed"), t.biguint64, t.int32, t.biguint64]',
+            'argDescriptors: [t.object("borrowed", () => Station), t.biguint64, t.int32, t.biguint64]',
         );
 
         expect(declarations()).toContain(

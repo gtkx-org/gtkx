@@ -231,60 +231,27 @@ type InkExtents = {
     height: number;
 };
 
-/** @deprecated Since 1.3. Props of the generated stub constructor that `@gtkx/cairo` replaced; removed in v2. */
-type ContextConstructorProps = Record<string, never>;
-/** @deprecated Since 1.3. Props of the generated stub constructor that `@gtkx/cairo` replaced; removed in v2. */
-type DeviceConstructorProps = Record<string, never>;
-/** @deprecated Since 1.3. Props of the generated stub constructor that `@gtkx/cairo` replaced; removed in v2. */
-type SurfaceConstructorProps = Record<string, never>;
-/** @deprecated Since 1.3. Props of the generated stub constructor that `@gtkx/cairo` replaced; removed in v2. */
-type PatternConstructorProps = Record<string, never>;
-/** @deprecated Since 1.3. Props of the generated stub constructor that `@gtkx/cairo` replaced; removed in v2. */
-type RegionConstructorProps = Record<string, never>;
-/** @deprecated Since 1.3. Props of the generated stub constructor that `@gtkx/cairo` replaced; removed in v2. */
-type FontOptionsConstructorProps = Record<string, never>;
-/** @deprecated Since 1.3. Props of the generated stub constructor that `@gtkx/cairo` replaced; removed in v2. */
-type FontFaceConstructorProps = Record<string, never>;
-/** @deprecated Since 1.3. Props of the generated stub constructor that `@gtkx/cairo` replaced; removed in v2. */
-type ScaledFontConstructorProps = Record<string, never>;
-
 export type {
     CairoGlyph,
     CairoTextCluster,
     ClosePathSegment,
     ColorStop,
-    /** @deprecated Since 1.3. Removed in v2. */
-    ContextConstructorProps,
     CurveToSegment,
     DashPattern,
-    /** @deprecated Since 1.3. Removed in v2. */
-    DeviceConstructorProps,
     DeviceOffset,
     DeviceScale,
     Distance,
     Extents,
     FallbackResolution,
     FontExtents,
-    /** @deprecated Since 1.3. Removed in v2. */
-    FontFaceConstructorProps,
-    /** @deprecated Since 1.3. Removed in v2. */
-    FontOptionsConstructorProps,
     InkExtents,
     LinearPoints,
     LineToSegment,
     MoveToSegment,
     PathData,
-    /** @deprecated Since 1.3. Removed in v2. */
-    PatternConstructorProps,
     Point,
     RadialCircles,
     RectangleData,
-    /** @deprecated Since 1.3. Removed in v2. */
-    RegionConstructorProps,
     RgbaColor,
-    /** @deprecated Since 1.3. Removed in v2. */
-    ScaledFontConstructorProps,
-    /** @deprecated Since 1.3. Removed in v2. */
-    SurfaceConstructorProps,
     TextExtents,
 };

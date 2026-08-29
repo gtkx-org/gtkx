@@ -44,8 +44,7 @@ type AnimatedComponent<T extends Exclude<ElementType, string>> = FunctionCompone
 /**
  * The widget components of the generated `@gtkx/jsx` store, keyed by element name, each wrapped as
  * an {@link AnimatedComponent}. Only components whose `ref` exposes a `Gtk.Widget` subclass are
- * included, so `animated.GtkLabel` is available while non-widget elements such as `GtkAdjustment`
- * are wrapped explicitly through the `animated(...)` call instead.
+ * included.
  */
 type AnimatedElementMap = {
     readonly [K in keyof typeof elements as (typeof elements)[K] extends Exclude<ElementType, string>
@@ -61,19 +60,9 @@ type AnimatedElementMap = {
         : never;
 };
 
-/**
- * The widget components of the generated `@gtkx/jsx` store, exposed as properties of `animated`.
- *
- * @deprecated Since 1.6. Use `AnimatedElementMap` instead. Removed in v2.
- */
-/* eslint-disable-next-line sonarjs/redundant-type-aliases -- deprecated alias kept until 2.0 removes it */
-type AnimatedElements = AnimatedElementMap;
-
 export type {
     AnimatedComponent,
     AnimatedElementMap,
-    /* eslint-disable-next-line @typescript-eslint/no-deprecated -- exported until 2.0 removes it */
-    AnimatedElements,
     AnimatedItems,
     AnimatedProp,
     AnimatedProps,

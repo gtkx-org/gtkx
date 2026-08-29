@@ -1,29 +1,20 @@
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
-import {
-    getShadowingStorePaths,
-    LIBRARIES_WILDCARD,
-    redundantLibraries,
-    sweepProjectStaging,
-} from "@gtkx/codegen/internal";
+import { getShadowingStorePaths, sweepProjectStaging } from "@gtkx/codegen/internal";
 import { type Config, loadConfig } from "@gtkx/config";
 import {
     isAgentRulesEnabled,
-    type ResolvedFuture,
     resolveElementComponents,
     resolveElementProps,
-    resolveFuture,
     resolveLazyElements,
     resolveOmittedProps,
-    unknownFutureKeys,
 } from "@gtkx/config/internal";
-import { info, warn } from "@gtkx/utils";
+import { info } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { resolveCatalogProject, synchronizeCatalogs } from "../i18n/catalogs.js";
 import { extractSourceCatalog } from "../i18n/source-messages.js";
 import { emitI18nTypes } from "../i18n/types.js";
 import { upsertAgentRules } from "../internal/agent-rules.js";
-import { resolveDataDir } from "../internal/data-dir.js";
 import { discoverSourceFiles } from "../internal/source-imports.js";
 import { emitSchemaEnv } from "../settings/schema.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
@@ -48,12 +39,10 @@ type RunCodegenResult = {
     isRegenerated: boolean;
     namespaces: number;
     intrinsicElements: number;
-    notices: string[];
     duration: number;
     girPath?: string[] | undefined;
     configFile?: string | undefined;
     libraries?: string[] | undefined;
-    future?: string[] | undefined;
     reference?: ReferenceResult | undefined;
 };
 
@@ -62,7 +51,6 @@ type CodegenOptionsInput = {
     libraries: string[];
     girPath: string[];
     elements: Config["elements"];
-    future: ResolvedFuture;
 };
 
 type PreparedCodegen = CodegenInputs & { isForced: boolean };
@@ -97,14 +85,9 @@ const removeShadowingStores = (cwd: string): void => {
     removeStores(getShadowingStorePaths(cwd));
 };
 
-const codegenOptions = ({ store, libraries, girPath, elements, future }: CodegenOptionsInput) => ({
+const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsInput) => ({
     libraries,
     girPath,
-    isByteArrayTyped: future.isByteArrayTyped,
-    isValueUnwrapped: future.isValueUnwrapped,
-    isFinishTrimmed: future.isFinishTrimmed,
-    isInoutInPlace: future.isInoutInPlace,
-    isTreeShaken: future.isTreeShaken,
     gi: {
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
@@ -125,70 +108,15 @@ const codegenOptions = ({ store, libraries, girPath, elements, future }: Codegen
     userOmittedProps: resolveOmittedProps(elements),
 });
 
-const enabledFutureFlags = (config: Config): string[] => {
-    const unknown: Set<string> = new Set(unknownFutureKeys(config.future));
-
-    return Object.entries(config.future ?? {})
-        .filter(([name, value]) => value === true && !unknown.has(name))
-        .map(([name]) => name);
-};
-
-const disabledCodegenResult = (configFile: string, notices: string[]): RunCodegenResult => ({
+const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
     isRegenerated: false,
     namespaces: 0,
     intrinsicElements: 0,
-    notices,
     duration: 0,
     girPath: [],
     configFile,
     libraries: [],
 });
-
-const warnNotices = (notices: string[]): void => {
-    for (const notice of notices) {
-        warn(notice);
-    }
-};
-
-const unknownFutureNotice = (keys: string[]): string[] => {
-    if (keys.length === 0) {
-        return [];
-    }
-
-    return [
-        `gtkx.config.ts: \`future\` has no ${keys.join(", ")} flag, so the key is ignored. Check it against ` +
-        "the flags the configuration guide lists.",
-    ];
-};
-
-const redundantLibraryNotice = (entries: string[]): string[] => {
-    if (entries.length === 0) {
-        return [];
-    }
-
-    return [
-        `gtkx.config.ts: \`future.v2DefaultLibraries\` binds ${entries.join(", ")} on its own, so naming them ` +
-        "in `libraries` changes nothing. Drop them; naming them becomes a configuration error in GTKX 2.0.",
-    ];
-};
-
-const wildcardLibrariesNotice = (libraries: Config["libraries"]): string[] => {
-    if (libraries !== LIBRARIES_WILDCARD) {
-        return [];
-    }
-
-    return [
-        'gtkx.config.ts: `libraries: "*"` binds whatever the build host happens to have installed, so the ' +
-        "store changes with the machine. Instead, list the libraries the project needs; the wildcard is " +
-        "removed in GTKX 2.0.",
-    ];
-};
-
-const configNotices = (config: Config, future: ResolvedFuture): string[] => [
-    ...unknownFutureNotice(unknownFutureKeys(config.future)),
-    ...wildcardLibrariesNotice(config.libraries),
-    ...redundantLibraryNotice(redundantLibraries(config.libraries, future.isAdwaitaDefault)),
-];
 
 const regeneratedStorePaths = (store: CodegenStore): string[] => {
     if (store.react === null) {
@@ -220,16 +148,13 @@ const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config)
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
     const { config, configFile } = await resolveLoadedConfig(options, cwd);
-    const future = resolveFuture(config.future);
-    const configured = configNotices(config, future);
-    warnNotices(configured);
     await syncI18n(cwd, config.applicationId, options.shouldPreserveI18nMetadata);
-    syncSchemaEnv(cwd, future.isResourceImported);
+    emitSchemaEnv(cwd);
 
     if (config.codegen === false) {
         removeShadowingStores(cwd);
 
-        return disabledCodegenResult(configFile, configured);
+        return disabledCodegenResult(configFile);
     }
 
     const { girPath, libraries, store, isForced } = prepareCodegen(options, cwd, config);
@@ -239,12 +164,10 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     }
 
     const result = await runCodegenCore({
-        ...codegenOptions({ store, libraries, girPath, elements: config.elements, future }),
+        ...codegenOptions({ store, libraries, girPath, elements: config.elements }),
         isForced,
     });
 
-    warnNotices(result.notices);
-    const notices = [...configured, ...result.notices];
     const reference = await writeReference({ root: cwd, config, girPath, libraries, isForced });
     syncAgentRules(cwd, config);
 
@@ -252,12 +175,10 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
         isRegenerated: result.isRegenerated,
         namespaces: result.namespaces,
         intrinsicElements: result.intrinsicElements,
-        notices,
         duration: result.duration,
         girPath,
         configFile,
         libraries,
-        future: enabledFutureFlags(config),
         reference,
     };
 };
@@ -296,11 +217,6 @@ const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> =
     } catch {
         return false;
     }
-};
-
-const syncSchemaEnv = (cwd: string, isV2ResourceImports = false): void => {
-    const dataDir = isV2ResourceImports ? null : resolveDataDir(cwd);
-    emitSchemaEnv(cwd, dataDir, isV2ResourceImports);
 };
 
 const resolveInputsOrNull = (cwd: string, config: Config): CodegenInputs | null => {

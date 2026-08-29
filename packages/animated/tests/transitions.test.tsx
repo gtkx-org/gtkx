@@ -21,6 +21,7 @@ type ChainedProps = { firstRef: RefObject<Gtk.Label | null>; secondRef: RefObjec
 type DetachableProps = { isShown: boolean; onRest: () => void };
 
 const ANIMATED = { areAnimationsEnabled: true };
+const AnimatedLabel = animated(GtkLabel);
 const SLOW = { duration: 300 };
 const LONG = { duration: 1500 };
 const SETTLE = { timeout: 3000 };
@@ -39,7 +40,7 @@ const Items = ({ items, onDestroyed }: ItemsProps): ReactNode => {
     return (
         <GtkBox>
             {transitions((styles, item) => (
-                <animated.GtkLabel opacity={styles.opacity} label={item} />
+                <AnimatedLabel opacity={styles.opacity} label={item} />
             ))}
         </GtkBox>
     );
@@ -51,7 +52,7 @@ const TrailedLabels = ({ refs }: TrailProps): ReactNode => {
     return (
         <GtkBox>
             {trail.map((styles, index) => (
-                <animated.GtkLabel key={String(index)} ref={refs[index]} opacity={styles.opacity} label="trail" />
+                <AnimatedLabel key={String(index)} ref={refs[index]} opacity={styles.opacity} label="trail" />
             ))}
         </GtkBox>
     );
@@ -66,8 +67,8 @@ const Chained = ({ firstRef, secondRef }: ChainedProps): ReactNode => {
 
     return (
         <GtkBox>
-            <animated.GtkLabel ref={firstRef} opacity={first.opacity} label="first" />
-            <animated.GtkLabel ref={secondRef} marginStart={second.marginStart} label="second" />
+            <AnimatedLabel ref={firstRef} opacity={first.opacity} label="first" />
+            <AnimatedLabel ref={secondRef} marginStart={second.marginStart} label="second" />
         </GtkBox>
     );
 };
@@ -82,7 +83,7 @@ const Sprung = ({ refs }: TrailProps): ReactNode => {
     return (
         <GtkBox>
             {springs.map((styles, index) => (
-                <animated.GtkLabel key={String(index)} ref={refs[index]} opacity={styles.opacity} label="sprung" />
+                <AnimatedLabel key={String(index)} ref={refs[index]} opacity={styles.opacity} label="sprung" />
             ))}
         </GtkBox>
     );
@@ -91,7 +92,7 @@ const Sprung = ({ refs }: TrailProps): ReactNode => {
 const Detachable = ({ isShown, onRest }: DetachableProps): ReactNode => {
     const styles = useSpring({ from: { opacity: 0 }, to: { opacity: 1 }, config: LONG, onRest });
 
-    return isShown ? <animated.GtkLabel opacity={styles.opacity} label="detachable" /> : <GtkLabel label="gone" />;
+    return isShown ? <AnimatedLabel opacity={styles.opacity} label="detachable" /> : <GtkLabel label="gone" />;
 };
 
 const expectOpacity = (label: Gtk.Label | null, opacity: number): Promise<void> =>
@@ -152,7 +153,7 @@ describe("transitions - lifecycle", () => {
 
         await render(
             <Spring from={{ opacity: 0 }} to={{ opacity: 1 }} config={SLOW}>
-                {(styles) => <animated.GtkLabel ref={labelRef} opacity={styles.opacity} label="spring" />}
+                {(styles) => <AnimatedLabel ref={labelRef} opacity={styles.opacity} label="spring" />}
             </Spring>,
             ANIMATED,
         );

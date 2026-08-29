@@ -3,10 +3,8 @@ import {
     resolveLibraries as expandLibraries,
     type GeneratedLibraries,
     readGeneratedLibraries,
-    resolveGirPath,
     resolveStore,
 } from "@gtkx/codegen";
-import { resolveFuture } from "@gtkx/config/internal";
 
 type ResolvedLibraries = {
     libraries: string[];
@@ -21,28 +19,9 @@ const generatedLibraries = (root: string): GeneratedLibraries | null => {
     }
 };
 
-const discoveredLibraries = (config: Config, isAdwaitaDefault: boolean): string[] | null => {
-    try {
-        return expandLibraries(config.libraries, resolveGirPath(config.girPath), isAdwaitaDefault);
-    } catch {
-        return null;
-    }
-};
-
-const configLibraries = (config: Config): string[] => {
-    const { isAdwaitaDefault } = resolveFuture(config.future);
-    const libraries = config.libraries;
-
-    if (Array.isArray(libraries)) {
-        return expandLibraries(libraries, [], isAdwaitaDefault);
-    }
-
-    return discoveredLibraries(config, isAdwaitaDefault) ?? expandLibraries(undefined, [], isAdwaitaDefault);
-};
-
 const resolveLibraries = (root: string, config: Config): ResolvedLibraries => {
     const generated = generatedLibraries(root);
-    const libraries = generated?.libraries ?? configLibraries(config);
+    const libraries = generated?.libraries ?? expandLibraries(config.libraries);
     const deploy = config.deploy ?? {};
 
     return {

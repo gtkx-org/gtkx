@@ -37,24 +37,7 @@ const FLOAT_PATTERN = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
 const generateMetadata = (library: Library): string => {
     const intrinsicElements = collectIntrinsicElements(library);
 
-    if (library.isTreeShaken) {
-        return generateEntryMetadata(intrinsicElements);
-    }
-
-    const signalsEntries = intrinsicElements.map(
-        ({ glibName, signals }) => `    "${glibName}": ${renderSignalsObject(signals)},`,
-    );
-
-    const propertyEntries = intrinsicElements
-        .filter(({ properties }) => properties.length > 0)
-        .map(({ glibName, properties }) => `    "${glibName}": ${renderPropertiesObject(properties)},`);
-
-    return `${[
-        PROPERTY_ENTRY_TYPE,
-        `export const signals: Record<string, Record<string, string>> = {\n${signalsEntries.join("\n")}\n};`,
-        "export const properties: Record<string, Record<string, PropertyEntry>> = " +
-        `{\n${propertyEntries.join("\n")}\n};`,
-    ].join("\n\n")}\n`;
+    return generateEntryMetadata(intrinsicElements);
 };
 
 const entryAncestorsInSet = (entry: IntrinsicElementEntry, names: Set<string>): string[] =>

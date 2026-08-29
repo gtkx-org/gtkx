@@ -42,7 +42,6 @@ import {
     tHashTable,
     tInt32,
     tList,
-    tNumericByteArray,
     tObject,
     tRef,
     tScalar,
@@ -240,7 +239,7 @@ const listExpression = (
     const ownership = transferOwnership(transfer);
 
     if (type.flavor === "gbytearray") {
-        return context.library.isByteArrayTyped ? tByteArray(ownership) : tNumericByteArray(ownership);
+        return tByteArray(ownership);
     }
 
     const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), indexOptions);
@@ -450,9 +449,7 @@ const fallbackClassThunk = (
     name: string,
     isReceived: boolean,
 ): string | undefined =>
-    isReceived && context.library.isTreeShaken
-        ? `() => ${context.qualify(namespaceName, sanitizeTypeIdentifier(name))}`
-        : undefined;
+    isReceived ? `() => ${context.qualify(namespaceName, sanitizeTypeIdentifier(name))}` : undefined;
 
 const sunkOwnership = (
     ancestor: AncestorFundamental,
@@ -808,8 +805,7 @@ const cursorArrayExpression = (
 
 const arrayLayout = (context: ModuleContext, ref: CArrayType, options: ArgIndexOptions): ArrayLayout => ({
     elementSize: inlineElementSize(context, ref, options.hasOutIndirection),
-    isBytes:
-        context.library.isByteArrayTyped && !hasUnknownArrayLength(ref) && isByteSequence(context.library, ref),
+    isBytes: !hasUnknownArrayLength(ref) && isByteSequence(context.library, ref),
 });
 
 const fixedArrayLayout = (layout: ArrayLayout, isCallerAllocated: boolean): ArrayLayout =>

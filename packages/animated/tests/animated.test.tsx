@@ -1,10 +1,8 @@
-import type * as jsxElements from "@gtkx/jsx";
 import type { ReactNode, Ref, RefObject } from "react";
-import { animated, type AnimatedComponent, config, useSpring } from "@gtkx/animated";
+import { animated, config, useSpring } from "@gtkx/animated";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwBin } from "@gtkx/jsx/adw";
 import {
     GtkAdjustment,
     GtkBox,
@@ -16,9 +14,8 @@ import {
 } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-type ExcludedElements = "GSimpleAction" | "GtkAdjustment" | "GtkApplication" | "GtkEventController" | "GtkWidget";
 type OpacityProps = { labelRef: RefObject<Gtk.Label | null>; to: number; duration?: number };
 type SwitchProps = { labelRef: RefObject<Gtk.Label | null>; mode: "first" | "second" | "static" };
 type ForwardingProps = { ref?: Ref<Gtk.Label | null>; opacity?: number; renders: number[] };
@@ -201,36 +198,6 @@ const expectInFlight = (label: Gtk.Label | null): Promise<void> =>
         expect(opacity).toBeGreaterThan(0);
         expect(opacity).toBeLessThan(1);
     });
-
-const PropertyFade = ({ labelRef }: { labelRef: RefObject<Gtk.Label | null> }): ReactNode => {
-    const styles = useSpring({ from: { opacity: 0 }, to: { opacity: 1 }, config: SLOW });
-
-    return <animated.GtkLabel ref={labelRef} opacity={styles.opacity} label="property fade" />;
-};
-
-describe("animated - element properties", () => {
-    it("animates a widget accessed as a property of animated", async () => {
-        const labelRef = createRef<Gtk.Label>();
-        await render(<PropertyFade labelRef={labelRef} />, ANIMATED);
-        await expectOpacity(labelRef.current, 1);
-    });
-
-    it("returns the same wrapper as the call form across namespaces", () => {
-        expect(animated.GtkLabel).toBe(animated(GtkLabel));
-        expect(animated.AdwBin).toBe(animated(AdwBin));
-    });
-
-    it("exposes only components whose ref is a widget", () => {
-        expectTypeOf<Extract<keyof typeof jsxElements, ExcludedElements>>().toEqualTypeOf<ExcludedElements>();
-        expectTypeOf<Extract<keyof typeof animated, ExcludedElements>>().toBeNever();
-        expectTypeOf(animated.GtkLabel).toEqualTypeOf<AnimatedComponent<typeof GtkLabel>>();
-    });
-
-    it("reports its elements to the in operator and key enumeration", () => {
-        expect("GtkLabel" in animated).toBe(true);
-        expect(Object.keys(animated)).toContain("GtkLabel");
-    });
-});
 
 describe("animated - spring values on widgets", () => {
     it("drives a widget property through its frames to the target", async () => {

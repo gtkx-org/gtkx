@@ -1,7 +1,6 @@
 import type { UserConfig } from "vite";
 import type { Plugin } from "vitest/config";
-import { createConfigLoader, resolveFuture } from "@gtkx/config/internal";
-import { resolveDataDir } from "../internal/data-dir.js";
+import { createConfigLoader } from "@gtkx/config/internal";
 import { prependSchemaDir, stageAndCompileProjectSchemas } from "../settings/schema.js";
 
 function gtkxSettingsWorkerEnv(): Plugin {
@@ -13,8 +12,7 @@ function gtkxSettingsWorkerEnv(): Plugin {
 
         async config(config: UserConfig) {
             const loaded = await loadConfig.load(config.root ?? process.cwd());
-            const dataDir = resolveFuture(loaded.config.future).isResourceImported ? null : resolveDataDir(loaded.root);
-            const dir = stageAndCompileProjectSchemas(loaded.root, dataDir);
+            const dir = stageAndCompileProjectSchemas(loaded.root);
 
             if (dir === null) {
                 return;

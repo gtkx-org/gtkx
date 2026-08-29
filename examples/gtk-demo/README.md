@@ -17,7 +17,7 @@ The demos live under `src/demos`, grouped by category:
 
 The shell around them uses `ListView` from `@gtkx/components` for the sidebar, a `GtkWindow` for demos that open their own window, and a `GSimpleAction` set wired to a `GMenu` and a `GtkShortcutController`. `tests/` exercises the app with `@gtkx/testing`.
 
-`gtkx.config.ts` declares `Gtk-4.0`, `Adw-1`, and `GtkSource-5`, with the application ID `org.gtkx.gtk-demo`. The GtkSourceView 5 development package must be installed; see [CONTRIBUTING.md](../../CONTRIBUTING.md#system-dependencies).
+`gtkx.config.ts` adds `GtkSource-5` to the default GTK and Adwaita bindings. The GtkSourceView 5 development package must be installed; see [CONTRIBUTING.md](../../CONTRIBUTING.md#system-dependencies).
 
 ## Run it
 

@@ -177,23 +177,14 @@ const stripLongestPrefix = (input: string, prefixes: string[]): string => {
 };
 
 const appendInitBootstrap = (context: ModuleContext, exportName: string): void => {
-    if (context.isTreeShaken) {
-        context.addBootstrapCall(`${exportName}();`, { moduleExports: [exportName] });
-    } else {
-        context.module.appendRegistration(`${exportName}();`, [exportName]);
-    }
+    context.addBootstrapCall(`${exportName}();`, { moduleExports: [exportName] });
 };
 
 const appendFinalizeBootstrap = (context: ModuleContext, exportName: string): void => {
-    if (context.isTreeShaken) {
-        context.addBootstrapCall(`onExit(${exportName});`, {
-            moduleExports: [exportName],
-            runtimeImports: ["onExit"],
-        });
-    } else {
-        context.addRuntimeImport("onExit");
-        context.module.appendRegistration(`onExit(${exportName});`, [exportName]);
-    }
+    context.addBootstrapCall(`onExit(${exportName});`, {
+        moduleExports: [exportName],
+        runtimeImports: ["onExit"],
+    });
 };
 
 const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, exportName: string): void => {

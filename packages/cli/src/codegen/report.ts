@@ -18,10 +18,6 @@ const contextDetails = (result: RunCodegenResult): string[] => {
         details.push(`girPath=${result.girPath.join(":")}`);
     }
 
-    if (result.future && result.future.length > 0) {
-        details.push(`future=${result.future.join(", ")}`);
-    }
-
     return details;
 };
 

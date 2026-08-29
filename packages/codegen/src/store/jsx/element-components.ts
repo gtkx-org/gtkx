@@ -25,7 +25,6 @@ type CandidateExportOptions = {
 };
 
 type LazyMetadataOptions = {
-    isTreeShaken: boolean;
     intrinsicNames: Set<string>;
 };
 
@@ -54,7 +53,6 @@ const generateElementComponentsSection = (
     });
 
     collectLazyElementExports(collector, lazyElements, {
-        isTreeShaken: library.isTreeShaken,
         intrinsicNames: new Set(options.intrinsicElements.map((entry) => entry.glibName)),
     });
 
@@ -103,11 +101,11 @@ const collectLazyElementExports = (
         collector.imports.addNamed("react", "ReactNode", true);
 
         const refs = {
-            classRef: lazyClassRef(collector, spec, options),
+            classRef: lazyClassRef(collector, spec),
             metadataRef: lazyMetadataRef(collector, spec, options),
         };
 
-        collector.exportLines.push(renderLazyElementExport(spec, refs, options));
+        collector.exportLines.push(renderLazyElementExport(spec, refs));
         collector.exportedNames.add(spec.element);
     }
 };
@@ -117,7 +115,7 @@ const lazyMetadataRef = (
     spec: LazyElementSpec,
     options: LazyMetadataOptions,
 ): string | undefined => {
-    if (!options.isTreeShaken || !options.intrinsicNames.has(spec.element)) {
+    if (!options.intrinsicNames.has(spec.element)) {
         return undefined;
     }
 
@@ -129,12 +127,7 @@ const lazyMetadataRef = (
 const lazyClassRef = (
     collector: ExportCollector,
     spec: LazyElementSpec,
-    options: LazyMetadataOptions,
-): string | undefined => {
-    if (!options.isTreeShaken) {
-        return undefined;
-    }
-
+): string => {
     const alias = `${spec.namespaceName}$`;
     const specifier = externalPackageFor(spec.namespaceName) ?? `@gtkx/gi/${spec.namespaceName.toLowerCase()}`;
     collector.imports.addNamespace(specifier, alias, false);
@@ -144,24 +137,16 @@ const lazyClassRef = (
 
 const renderLazyElementExport = (
     spec: LazyElementSpec,
-    refs: { classRef: string | undefined; metadataRef: string | undefined },
-    options: LazyMetadataOptions,
+    refs: { classRef: string; metadataRef: string | undefined },
 ): string => {
     const doc = getDoc(spec);
-    const args = [sourceStringLiteral(spec.element)];
-
-    if (refs.classRef !== undefined) {
-        args.push(refs.classRef);
-    } else if (refs.metadataRef !== undefined) {
-        args.push("undefined");
-    }
+    const args = [sourceStringLiteral(spec.element), refs.classRef];
 
     if (refs.metadataRef !== undefined) {
         args.push(refs.metadataRef);
     }
 
-    const pure = options.isTreeShaken ? "/* @__PURE__ */ " : "";
-    const factory = `${pure}createElementComponent(${args.join(", ")})`;
+    const factory = `/* @__PURE__ */ createElementComponent(${args.join(", ")})`;
     const component = `${doc}export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
 
     return `${doc}${spec.typeSource}\n\n${component}`;
@@ -183,18 +168,12 @@ const renderCandidateExport = (
         imports.addNamed(component.module, component.export, false);
     }
 
-    let classRef: string | undefined;
-    let metadataRef: string | undefined;
-
-    if (library.isTreeShaken) {
-        const alias = `${namespace.name}$`;
-        const specifier = externalPackageFor(namespace.name) ?? `@gtkx/gi/${namespace.name.toLowerCase()}`;
-        imports.addNamespace(specifier, alias, false);
-        imports.addNamespace("../metadata.js", METADATA_ALIAS, false);
-        classRef = `${alias}.${sanitizeTypeIdentifier(klass.name)}`;
-        metadataRef = `${METADATA_ALIAS}.${glibName}`;
-    }
-
+    const alias = `${namespace.name}$`;
+    const specifier = externalPackageFor(namespace.name) ?? `@gtkx/gi/${namespace.name.toLowerCase()}`;
+    imports.addNamespace(specifier, alias, false);
+    imports.addNamespace("../metadata.js", METADATA_ALIAS, false);
+    const classRef = `${alias}.${sanitizeTypeIdentifier(klass.name)}`;
+    const metadataRef = `${METADATA_ALIAS}.${glibName}`;
     const doc = getDoc(klass);
 
     return `${doc}${renderElementComponentExport(glibName, component, classRef, metadataRef)}`;
@@ -218,29 +197,19 @@ const resolveElementComponent = (
 const renderElementComponentExport = (
     glibName: string,
     component: ElementComponent | undefined,
-    classRef: string | undefined,
-    metadataRef: string | undefined,
+    classRef: string,
+    metadataRef: string,
 ): string => {
     const propsType = `${glibName}Props`;
     const annotation = `(props: ${propsType}) => ReactNode`;
-    const args = [sourceStringLiteral(glibName)];
-
-    if (classRef !== undefined) {
-        args.push(classRef);
-    }
-
-    if (metadataRef !== undefined) {
-        args.push(metadataRef);
-    }
-
-    const pure = classRef === undefined ? "" : "/* @__PURE__ */ ";
-    const factoryCall = `${pure}createElementComponent(${args.join(", ")})`;
+    const args = [sourceStringLiteral(glibName), classRef, metadataRef];
+    const factoryCall = `/* @__PURE__ */ createElementComponent(${args.join(", ")})`;
 
     if (component === undefined) {
         return `export const ${glibName}: ${annotation} = ${factoryCall};`;
     }
 
-    return `export const ${glibName}: ${annotation} = ${pure}${component.export}(${factoryCall});`;
+    return `export const ${glibName}: ${annotation} = /* @__PURE__ */ ${component.export}(${factoryCall});`;
 };
 
 export { generateElementComponentsSection, type ElementComponentOverrides };

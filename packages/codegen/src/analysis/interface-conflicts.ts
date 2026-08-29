@@ -34,7 +34,7 @@ type CallableKeyPair = {
     other: CallableKeys;
 };
 
-const CHAINABLE_SIGNAL_MEMBERS = ["addEventListener", "off", "on", "once", "removeEventListener"];
+const CHAINABLE_SIGNAL_MEMBERS = ["off", "on", "once"];
 
 const callableKeys = (library: Library, fn: GirFunction): CallableKeys => ({
     inputs: inputParameters(library, fn).map((entry) => typeKey(library, entry.parameter.type)),

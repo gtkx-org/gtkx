@@ -9,7 +9,6 @@ type NamedSchema = {
 type EnvAssetDeclarations = {
     blocked: string[];
     icons: string[];
-    legacy: string[];
     resources: string[];
 };
 
@@ -209,15 +208,6 @@ const renderIconModule = (specifier: string): string => [
     "}",
 ].join("\n");
 
-const renderLegacyAssetModule = (specifier: string): string => [
-    `declare module ${toJsStringLiteral(specifier)} {`,
-    "    const resourceUri: string;",
-    "    const path: string;",
-    "    export { path };",
-    "    export default resourceUri;",
-    "}",
-].join("\n");
-
 const renderBlockedAssetModule = (specifier: string): string => [
     `declare module ${toJsStringLiteral(specifier)} {`,
     "    const assetImportRequiresResourceOrUrlQuery: {",
@@ -232,7 +222,7 @@ const renderEnvModule = (
     assetDeclarations?: EnvAssetDeclarations,
     options: EnvModuleOptions = {},
 ): string => {
-    const assets = assetDeclarations ?? { blocked: [], icons: [], legacy: [], resources: [] };
+    const assets = assetDeclarations ?? { blocked: [], icons: [], resources: [] };
     const usedNames: Set<string> = new Set();
 
     const schemas = files
@@ -241,7 +231,6 @@ const renderEnvModule = (
 
     const blocked = assets.blocked.map((specifier) => renderBlockedAssetModule(specifier));
     const icons = assets.icons.map((specifier) => renderIconModule(specifier));
-    const legacy = assets.legacy.map((specifier) => renderLegacyAssetModule(specifier));
     const resources = assets.resources.map((specifier) => renderResourceModule(specifier));
     const references = (options.references ?? []).map((path) => `/// <reference path=${JSON.stringify(path)} />`);
 
@@ -250,7 +239,6 @@ const renderEnvModule = (
         ...references,
         ...blocked,
         ...icons,
-        ...legacy,
         ...resources,
         ...schemas,
     ].join("\n\n")}\n`;

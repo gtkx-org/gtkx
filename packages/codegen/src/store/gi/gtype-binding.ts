@@ -30,13 +30,9 @@ const renderInternGtype = (context: ModuleContext, typeName: string | undefined)
         return `typeFromName(${sourceStringLiteral(typeName)})`;
     }
 
-    if (context.isTreeShaken) {
-        context.module.imports.addNamed("@gtkx/runtime", "typeFromName", false, "runtimeTypeFromName");
+    context.module.imports.addNamed("@gtkx/runtime", "typeFromName", false, "runtimeTypeFromName");
 
-        return `runtimeTypeFromName(${sourceStringLiteral(typeName)})`;
-    }
-
-    return `typeFromName(${sourceStringLiteral(typeName)})`;
+    return `runtimeTypeFromName(${sourceStringLiteral(typeName)})`;
 };
 
 const renderResolveGtype = (context: ModuleContext, typeFnName: string): string | undefined => {

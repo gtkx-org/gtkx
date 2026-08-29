@@ -31,7 +31,7 @@ const recordHeritage = (context: ModuleContext, isErrorSubclass: boolean): strin
         return "";
     }
 
-    const base = context.isTreeShaken ? context.hoistBaseRef("globalThis.Error") : "globalThis.Error";
+    const base = context.hoistBaseRef("globalThis.Error");
 
     return ` extends ${base}`;
 };
@@ -41,7 +41,6 @@ const recordModifier = (isConstructible: boolean): string => (isConstructible ? 
 const declareFoldedRecord = (context: ModuleContext, options: FoldedRecordOptions): void => {
     const { record, className, doc, modifier, heritage, body, gtypeExpr } = options;
     const localName = localClassName(className);
-    context.beginRegistrations();
 
     appendWrapperClassRegistration(context, {
         className: localName,
@@ -82,9 +81,7 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
     const modifier = recordModifier(isConstructible);
     const gtypeExpr = renderSourceGtype(context, record);
 
-    if (gtypeExpr !== undefined && context.isTreeShaken) {
-        declareFoldedRecord(context, { record, className, doc, modifier, heritage, body, gtypeExpr });
-    } else {
+    if (gtypeExpr === undefined) {
         context.declare({
             name: className,
             code: `${doc}export ${modifier}class ${className}${heritage} {\n${body}\n}`,
@@ -95,6 +92,8 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
             className,
             gtypeExpr,
         });
+    } else {
+        declareFoldedRecord(context, { record, className, doc, modifier, heritage, body, gtypeExpr });
     }
 
     if (isConstructible) {

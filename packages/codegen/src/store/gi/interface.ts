@@ -91,8 +91,8 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
     const gtypeExpr = renderSourceGtype(context, iface);
     const implRef = appendInterfaceTypes(context, iface, className, callables) ?? "unknown";
 
-    if (gtypeExpr !== undefined && context.isTreeShaken) {
-        declareTreeShakenInterface(context, { iface, className, callables, gtypeExpr, implRef });
+    if (gtypeExpr !== undefined) {
+        declareInterface(context, { iface, className, callables, gtypeExpr, implRef });
 
         return;
     }
@@ -117,7 +117,7 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
     });
 };
 
-const declareTreeShakenInterface = (
+const declareInterface = (
     context: ModuleContext,
     options: Omit<InterfaceClassOptions, "gtypeExpr"> & { gtypeExpr: string },
 ): void => {
@@ -141,7 +141,6 @@ const generateFoldedInterface = (
 ): void => {
     const { iface, className, callables, gtypeExpr, implRef } = options;
     const localName = localClassName(className);
-    context.beginRegistrations();
 
     appendInterfaceRegistration(context, {
         className: localName,

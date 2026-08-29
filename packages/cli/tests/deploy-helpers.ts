@@ -18,7 +18,6 @@ import {
     removeCliProject,
     runCli,
     runCliOrThrow,
-    STORE_FUTURE,
     STORE_LIBRARIES,
 } from "./cli-project.js";
 
@@ -42,7 +41,6 @@ type FlatpakManifest = { modules: FlatpakModule[]; "finish-args": string[]; clea
 type NfpmContent = { dst: string; file_info?: { mode: number } };
 type NfpmConfig = { contents: NfpmContent[]; depends: string[] };
 type DeployProbe = { project: CliProject; status: number | null; output: string };
-type DeployRun = { status: number | null; output: string };
 
 type BuildMetadata = {
     generator: string;
@@ -383,30 +381,12 @@ const config = (body: string, applicationIcon: string | null = "data/icons"): st
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
     `    libraries: ${JSON.stringify(STORE_LIBRARIES)},\n` +
     (applicationIcon === null ? "" : `    applicationIcon: ${JSON.stringify(applicationIcon)},\n`) +
-    `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
-
-const wildcardConfig = (body: string): string =>
-    `export default {\n    applicationId: "${APPLICATION_ID}",\n    libraries: "*",\n` +
-    "    applicationIcon: \"data/icons\",\n" +
-    `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
+    `${body}};\n`;
 
 const bareConfig = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
     "    applicationIcon: \"data/icons\",\n" +
-    `    future: ${JSON.stringify(STORE_FUTURE)},\n${body}};\n`;
-
-const optedOutFuture = (): Record<string, boolean> =>
-    Object.fromEntries(Object.entries(STORE_FUTURE).filter(([name]) => name !== "v2DefaultLibraries"));
-
-const optedOutConfig = (body: string): string =>
-    `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
-    "    applicationIcon: \"data/icons\",\n" +
-    `    future: ${JSON.stringify(optedOutFuture())},\n${body}};\n`;
-
-const defaultLibrariesConfig = (body: string): string =>
-    `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
-    "    applicationIcon: \"data/icons\",\n" +
-    `    future: { ...${JSON.stringify(STORE_FUTURE)}, v2DefaultLibraries: true },\n${body}};\n`;
+    `${body}};\n`;
 
 const sourceConfig = (source: string, extra = ""): string =>
     config(
@@ -784,13 +764,11 @@ export {
     COPYRIGHT_PATH,
     DEFAULT_CLEANUP,
     DEFAULT_FINISH_ARGS,
-    defaultLibrariesConfig,
     DEPENDENCY_NAME,
     DEPENDENCY_SECTION,
     DEPENDENCY_VERSION,
     DEPLOY_BLOCK,
     deployProbe,
-    type DeployRun,
     EXPECTED_MANIFESTS,
     EXPECTED_STAGED,
     expectLocalizedDeploy,
@@ -846,7 +824,6 @@ export {
     NOTICE_TARGETS,
     NPM_INSTALL,
     npmSourceFiles,
-    optedOutConfig,
     OUT_DIR,
     outputFile,
     outputNames,
@@ -880,5 +857,4 @@ export {
     TAGGED_SOURCE,
     TARGETS,
     UNDECLARED_LICENSE,
-    wildcardConfig,
 };

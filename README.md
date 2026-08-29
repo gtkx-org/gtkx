@@ -145,7 +145,7 @@ The documentation at **[gtkx.dev](https://gtkx.dev)** includes a step-by-step tu
 
 GTKX is Linux-only. You need:
 
-- Linux with the GTK4 (4.20 or later) and GLib development libraries, plus Adwaita (1.8 or later) once your project binds `Adw-1`
+- Linux with the GTK4 (4.20 or later), Adwaita (1.8 or later), and GLib development libraries
 - Node.js 24 or later
 
 The `@gtkx/native` addon ships prebuilt for x64 and arm64 glibc Linux; other targets need to build it from the GTKX repository, which requires a Rust toolchain.

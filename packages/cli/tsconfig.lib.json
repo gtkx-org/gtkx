@@ -27,9 +27,6 @@
       },
       {
         "path": "../testing/tsconfig.lib.json"
-      },
-      {
-        "path": "../animated/tsconfig.lib.json"
       }
     ]
 }

@@ -7,45 +7,15 @@ import { expect } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCli } from "./cli-project.js";
 
 type BrokenCase = { title: string; config: string | undefined };
-
-type ByteSequenceCase = {
-    title: string;
-    v2ByteArrays: boolean | undefined;
-    declarations: string[];
-    bindings: string[];
-};
-
 type OmittedFieldCase = { title: string; jsName: string };
-type CodegenRunState = { project: CliProject; status: number | null; output: string };
+type CodegenRunState = { project: CliProject; status: number | null };
 type DocumentedModuleCase = { title: string; store: string; stem: string; docs: string[] };
 type HoverCase = { title: string; text: string; doc: string };
-
-type ValueReturnCase = {
-    title: string;
-    v2ValueReturns: boolean | undefined;
-    declarations: string[];
-    bindings: string[];
-};
-
-type FinishResultCase = {
-    title: string;
-    v2FinishResults: boolean | undefined;
-    declarations: string[];
-    bindings: string[];
-};
-
-type InoutReturnCase = {
-    title: string;
-    v2InoutReturns: boolean | undefined;
-    declarations: string[];
-    bindings: string[];
-};
 
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
 const CAIRO_PACKAGE = "@gtkx/cairo";
-const WORKSPACE_CAIRO = fileURLToPath(new URL("../../cairo", import.meta.url));
 
 const GI_MODULES = [
     join("gtk", "gtk.js"),
@@ -63,35 +33,9 @@ const BROKEN_CASES: BrokenCase[] = [
     { title: "a configuration whose libraries are empty", config: `${HEAD}, libraries: [] };\n` },
     { title: "a configuration whose gir path is not a list", config: `${HEAD}, girPath: 5 };\n` },
     { title: "a library that has no GIR file installed", config: `${HEAD}, libraries: ["Absent-1.0"] };\n` },
-    { title: "a future flag that is not a boolean", config: `${HEAD}, future: { v2InoutReturns: "soon" } };\n` },
     {
         title: "a GIR file that is not well-formed XML",
         config: `${HEAD}, libraries: ["Malformed-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])} };\n`,
-    },
-];
-
-const BYTE_SEQUENCE_CASES: ByteSequenceCase[] = [
-    {
-        title: "represents byte sequences as numbers unless the project opts in",
-        v2ByteArrays: undefined,
-        declarations: [
-            "readSized(): number[]",
-            "readByteArray(): number[]",
-            "writeSized(data: Uint8Array | number[]): void",
-            "readNumbers(): number[]",
-        ],
-        bindings: ['t.array(t.uint8, "gbytearray"'],
-    },
-    {
-        title: "represents byte sequences as typed arrays once the project opts in",
-        v2ByteArrays: true,
-        declarations: [
-            "readSized(): Uint8Array",
-            "readByteArray(): Uint8Array",
-            "writeSized(data: Uint8Array | number[]): void",
-            "readNumbers(): number[]",
-        ],
-        bindings: ["isBytes: true", "t.byteArray("],
     },
 ];
 
@@ -107,70 +51,6 @@ const VALUE_PARAMETER_BINDINGS = [
     "valueBoxHolderStoreMaybe(getHandle(this), tryToValueHandle(value))",
     "values.map((item) => toValueHandle(item))",
     "valueBoxHolderFillInPlace(getHandle(this), getHandle(value))",
-];
-
-const VALUE_RETURN_CASES: ValueReturnCase[] = [
-    {
-        title: "hands back the value itself unless the project opts in",
-        v2ValueReturns: undefined,
-        declarations: ["peek(): GObject.Value", "fill(): [boolean, GObject.Value]"],
-        bindings: ['{ type: t.boxed("GValue"'],
-    },
-    {
-        title: "hands back what the value holds once the project opts in",
-        v2ValueReturns: true,
-        declarations: ["peek(): unknown", "fill(): [boolean, unknown]"],
-        bindings: ["isReturnUnpacked: true", "isUnpacked: true"],
-    },
-];
-
-const FINISH_RESULT_CASES: FinishResultCase[] = [
-    {
-        title: "resolves promisified results with the leading boolean unless the project opts in",
-        v2FinishResults: undefined,
-        declarations: [
-            "runAsync(): Promise<[boolean, string, number]>",
-            "probeAsync(): Promise<boolean>",
-        ],
-        bindings: ["promisify(asyncPairJobRunAsync, this.runFinish.bind(this)"],
-    },
-    {
-        title: "resolves promisified results without the leading boolean once the project opts in",
-        v2FinishResults: true,
-        declarations: [
-            "runAsync(): Promise<[string, number]>",
-            "probeAsync(): Promise<boolean>",
-        ],
-        bindings: ["promisify(asyncPairJobRunAsync, trimFinish(this.runFinish.bind(this))"],
-    },
-];
-
-const INOUT_RETURN_CASES: InoutReturnCase[] = [
-    {
-        title: "returns an inout record alongside the result unless the project opts in",
-        v2InoutReturns: undefined,
-        declarations: [
-            "step(spot: Spot): [boolean, Spot]",
-            "recenter(spot: Spot): Spot",
-            "advance(offset: number): [boolean, number]",
-            "locate(spot: Spot): [boolean, Spot, string]",
-        ],
-        bindings: ['direction: "inout", isCallerAllocated: true, isRequired: true }'],
-    },
-    {
-        title: "mutates an inout record in place once the project opts in",
-        v2InoutReturns: true,
-        declarations: [
-            "step(spot: Spot): boolean",
-            "recenter(spot: Spot): void",
-            "advance(offset: number): [boolean, number]",
-            "locate(spot: Spot): [boolean, string]",
-        ],
-        bindings: [
-            'direction: "inout", isCallerAllocated: true, isConsumed: true, isRequired: true }',
-            't.int32, direction: "inout", isRequired: true }',
-        ],
-    },
 ];
 
 const RECORD_FIELD_ACCESSORS = [
@@ -191,7 +71,7 @@ const INLINE_ARRAY_ACCESSORS = [
 ];
 
 const INLINE_ELEMENT_DESCRIPTORS = [
-    '"inline_array_corner_get_type", isInline: true, size: 16 }',
+    '"inline_array_corner_get_type", isInline: true, size: 16, fallbackClass: () => Corner }',
     't.struct("borrowed", { size: 8, wrapperClass: Span, isInline: true })',
 ];
 
@@ -275,53 +155,20 @@ const config = (body: string): string => `${HEAD}${body} };\n`;
 const fixtureConfig = (library: string): string =>
     config(`, libraries: ${JSON.stringify([library])}, girPath: ${JSON.stringify([FIXTURE_GIR])}`);
 
-const valueBoxConfig = (v2ValueReturns: boolean | undefined): string => {
-    const future = v2ValueReturns === undefined ? "" : `, future: { v2ValueReturns: ${String(v2ValueReturns)} }`;
-
-    return config(`, libraries: ["ValueBox-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
-};
-
-const asyncPairConfig = (v2FinishResults: boolean | undefined): string => {
-    const future = v2FinishResults === undefined ? "" : `, future: { v2FinishResults: ${String(v2FinishResults)} }`;
-
-    return config(`, libraries: ["AsyncPair-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
-};
-
-const inoutBoxConfig = (v2InoutReturns: boolean | undefined): string => {
-    const future = v2InoutReturns === undefined ? "" : `, future: { v2InoutReturns: ${String(v2InoutReturns)} }`;
-
-    return config(`, libraries: ["InoutBox-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
-};
-
-const fixtureLibrariesConfig = (libraries: string[] | undefined, v2DefaultLibraries: boolean | undefined): string => {
+const fixtureLibrariesConfig = (libraries: string[] | undefined): string => {
     const selection = libraries === undefined ? "" : `, libraries: ${JSON.stringify(libraries)}`;
 
-    const future = v2DefaultLibraries === undefined
-        ? ""
-        : `, future: { v2DefaultLibraries: ${String(v2DefaultLibraries)} }`;
-
-    return config(`${selection}, girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`);
-};
-
-const byteSeqConfig = (v2ByteArrays: boolean | undefined): string => {
-    const future = v2ByteArrays === undefined ? "" : `, future: { v2ByteArrays: ${String(v2ByteArrays)} }`;
-
-    return config(
-        `, libraries: ["ByteSeq-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])}${future}`,
-    );
+    return config(`${selection}, girPath: ${JSON.stringify([FIXTURE_GIR])}`);
 };
 
 const initialRunState = (): CodegenRunState => ({
     project: { root: "", nodeModules: "" },
     status: null,
-    output: "",
 });
 
 const runInitialCodegen = (state: CodegenRunState, options: Parameters<typeof createCliProject>[0]): void => {
     state.project = createCliProject(options);
-    const run = runCli(state.project, ["codegen"]);
-    state.status = run.status;
-    state.output = run.output;
+    state.status = runCli(state.project, ["codegen"]).status;
 };
 
 const withProject = (name: string, source: string, check: (project: CliProject) => void): void => {
@@ -342,9 +189,6 @@ const storePath = (project: CliProject, ...segments: string[]): string =>
 
 const linkPath = (project: CliProject, ...segments: string[]): string =>
     join(project.nodeModules, "@gtkx", ...segments);
-
-const storeLocalCairoLink = (project: CliProject, store: string): string =>
-    storePath(project, store, "node_modules", "@gtkx", "cairo");
 
 const storeManifest = (project: CliProject, store: string): { peerDependencies?: Record<string, string> } =>
     JSON.parse(generatedModule(project, store, "package.json")) as { peerDependencies?: Record<string, string> };
@@ -371,7 +215,9 @@ const omittedMentions = (source: string, jsName: string): string[] =>
     [`${jsName}:`, `get ${jsName}(`, `set ${jsName}(`].filter((text) => source.includes(text));
 
 const classBody = (source: string, className: string): string => {
-    const start = source.indexOf(`class ${className} `);
+    const declared = source.indexOf(`class ${className} `);
+    const bound = source.indexOf(`class _${className} `);
+    const start = declared === -1 ? bound : declared;
     const end = source.indexOf("\n}", start);
 
     return start === -1 || end === -1 ? "" : source.slice(start, end);
@@ -410,11 +256,8 @@ const hoverDoc = (project: CliProject, fileName: string, text: string): string =
 
 export {
     ARRAY_WRITES,
-    asyncPairConfig,
     AXES_EMISSION,
     BROKEN_CASES,
-    BYTE_SEQUENCE_CASES,
-    byteSeqConfig,
     CAIRO_PACKAGE,
     classBody,
     COMMENT,
@@ -424,8 +267,6 @@ export {
     DOCUMENTED_MODULE_CASES,
     expectModules,
     expectStoreAndLink,
-    FINISH_RESULT_CASES,
-    FIXTURE_GIR,
     fixtureConfig,
     fixtureLibrariesConfig,
     generatedModule,
@@ -437,8 +278,6 @@ export {
     INLINE_ARRAY_ACCESSORS,
     INLINE_ARRAY_FIELDS,
     INLINE_ELEMENT_DESCRIPTORS,
-    INOUT_RETURN_CASES,
-    inoutBoxConfig,
     isStoreMarked,
     JSX_MODULES,
     LENGTH_BOUNDED_READ,
@@ -453,13 +292,9 @@ export {
     RECORD_FIELD_ACCESSORS,
     resolveCairoFrom,
     runInitialCodegen,
-    storeLocalCairoLink,
     storeManifest,
     storePath,
-    valueBoxConfig,
     VALUE_PARAMETER_BINDINGS,
     VALUE_PARAMETER_DECLARATIONS,
-    VALUE_RETURN_CASES,
     withProject,
-    WORKSPACE_CAIRO,
 };

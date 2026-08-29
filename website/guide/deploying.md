@@ -45,7 +45,6 @@ With neither, `gtkx deploy` builds a Flatpak.
 import { defineConfig } from "@gtkx/config";
 
 export default defineConfig({
-    libraries: ["Gtk-4.0"],
     applicationId: "com.example.Tasks",
     applicationIcon: "data/icons",
     deploy: {
@@ -76,7 +75,7 @@ Anything you leave out is derived, so the same fact never lives in two places:
 | `copyright` | `Copyright © <year> <developer.name>` |
 | `releases` | one entry, from the version and today's date |
 | deb `section`, rpm `group` | the first entry in `categories` |
-| deb `Depends`, rpm `Requires` | GTK and libadwaita when your `libraries` bind them, plus the glibc minimum read out of the built binaries. Every other dependency is yours to declare through `deploy.depends` |
+| deb `Depends`, rpm `Requires` | GTK, libadwaita, and the glibc minimum read out of the built binaries. Every other dependency is yours to declare through `deploy.depends` |
 | `screenshotBaseUrl` | the `origin` git remote, including the project's path inside the repository |
 
 The application icon is the one thing that has to exist. Set the top-level `applicationIcon` option to an

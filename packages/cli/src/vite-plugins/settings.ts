@@ -1,13 +1,10 @@
-import type { ConfigLoader } from "@gtkx/config";
-import type { ModuleNode, Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite";
-import { resolveFuture } from "@gtkx/config/internal";
+import type { ModuleNode, Plugin, ResolvedConfig, ViteDevServer } from "vite";
 import { error, errorMessage, info, sortStrings } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { BuildManifestCollector } from "../internal/build-manifest.js";
 import type { AssetEmitter } from "./asset-emitter.js";
 import { prependBanner } from "../internal/banner.js";
-import { resolveDataDir } from "../internal/data-dir.js";
 import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
 import { compileSchemas } from "../settings/compile.js";
 import { parseSchemaXml, SchemaParseError } from "../settings/parser.js";
@@ -25,8 +22,6 @@ import { createVirtualNamespace } from "./virtual-module.js";
 type PluginState = {
     schemaDir: RetainedStagingDir;
     rootDir: string | null;
-    dataDir: string | null;
-    isV2ResourceImports: boolean;
     isBuild: boolean;
     schemaEnvTimer: ReturnType<typeof setTimeout> | null;
     trackedSchemas: Map<string, string>;
@@ -81,7 +76,7 @@ const syncSchemaEnv = (state: PluginState): void => {
     }
 
     try {
-        emitSchemaEnv(state.rootDir, state.dataDir, state.isV2ResourceImports);
+        emitSchemaEnv(state.rootDir);
     } catch (error_) {
         error(`Failed to generate GSettings schema types: ${errorMessage(error_)}`);
     }
@@ -103,12 +98,6 @@ const scheduleSchemaEnvSync = (state: PluginState): void => {
         state.schemaEnvTimer = null;
         syncSchemaEnv(state);
     }, SCHEMA_ENV_DEBOUNCE_MS);
-};
-
-const applyUserConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader): Promise<void> => {
-    const loaded = await loadConfig.load(config.root ?? process.cwd());
-    state.isV2ResourceImports = resolveFuture(loaded.config.future).isResourceImported;
-    state.dataDir = state.isV2ResourceImports ? null : resolveDataDir(loaded.root);
 };
 
 const applyResolvedConfig = (state: PluginState, config: ResolvedConfig): void => {
@@ -172,6 +161,12 @@ const compileBuildSchemas = (schemaFiles: string[]): Buffer =>
 
         return readFileSync(join(dir, "gschemas.compiled"));
     });
+
+const rejectLegacySchemaSpecifier = (source: string): void => {
+    if (source.startsWith("#data/")) {
+        throw new Error(`${JSON.stringify(source)} uses the legacy #data schema form`);
+    }
+};
 
 const buildSchemaPaths = (rootDir: string, schemaFiles: string[]): string[] =>
     schemaFiles.map((filePath) => {
@@ -262,12 +257,10 @@ const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
     server.watcher.on("unlink", refreshSchemaTypes);
 };
 
-function gtkxSettings(loadConfig: ConfigLoader, buildManifest?: BuildManifestCollector): Plugin {
+function gtkxSettings(buildManifest?: BuildManifestCollector): Plugin {
     const state: PluginState = {
         schemaDir: createRetainedStagingDir(SCHEMA_STAGING_PREFIX),
         rootDir: null,
-        dataDir: null,
-        isV2ResourceImports: false,
         isBuild: false,
         schemaEnvTimer: null,
         trackedSchemas: new Map(),
@@ -277,10 +270,6 @@ function gtkxSettings(loadConfig: ConfigLoader, buildManifest?: BuildManifestCol
     return {
         name: "gtkx:settings",
         enforce: "pre",
-
-        async config(config: UserConfig) {
-            await applyUserConfig(state, config, loadConfig);
-        },
 
         configResolved(config) {
             applyResolvedConfig(state, config);
@@ -302,6 +291,8 @@ function gtkxSettings(loadConfig: ConfigLoader, buildManifest?: BuildManifestCol
             if (!source.endsWith(SCHEMA_SUFFIX)) {
                 return;
             }
+
+            rejectLegacySchemaSpecifier(source);
 
             return resolveToVirtual(this, { source, importer, options });
         },

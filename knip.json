@@ -78,11 +78,6 @@
                 "gtkx.config.ts!"
             ]
         },
-        "packages/codegen": {
-            "ignoreDependencies": [
-                "@gtkx/cairo"
-            ]
-        },
         "packages/components": {
             "includeEntryExports": false,
             "entry": [
@@ -127,9 +122,6 @@
         "packages/cli": {
             "entry": [
                 "src/global.d.ts!"
-            ],
-            "ignoreDependencies": [
-                "@gtkx/animated"
             ]
         },
         "packages/vitest": {

@@ -1,6 +1,5 @@
 import type { Config } from "@gtkx/config";
 import { resolveGirPath, resolveLibraries } from "@gtkx/codegen";
-import { resolveFuture } from "@gtkx/config/internal";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
@@ -15,7 +14,7 @@ const REACT_GENERATED_MODULES: string[] = ["index.js", "metadata.js", join("gtk"
 
 const resolveCodegenInputs = (cwd: string, config: Config): CodegenInputs => {
     const girPath = resolveGirPath(config.girPath);
-    const libraries = resolveLibraries(config.libraries, girPath, resolveFuture(config.future).isAdwaitaDefault);
+    const libraries = resolveLibraries(config.libraries);
     const store = resolveCodegenStore(cwd);
 
     return { girPath, libraries, store };

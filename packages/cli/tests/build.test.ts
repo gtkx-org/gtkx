@@ -10,7 +10,6 @@ import {
     removeCliProject,
     runCli,
     runCliOrThrow,
-    STORE_FUTURE,
     STORE_LIBRARIES,
 } from "./cli-project.js";
 
@@ -61,7 +60,6 @@ const DIRECT_ICON_RESOURCE_PATH = `/com/gtkx/clibuild/icons/${DIRECT_ICON_NAME}.
 const PACKAGE_ICON_RESOURCE_PATH = `/com/gtkx/clibuild/icons/16x16/actions/${PACKAGE_ICON_NAME}.svg`;
 const FIXED_VARIANT_RESOURCE_PATH = `/com/gtkx/clibuild/icons/16x16/actions/${VARIANT_ICON_NAME}.png`;
 const SCALABLE_VARIANT_RESOURCE_PATH = `/com/gtkx/clibuild/icons/scalable/actions/${VARIANT_ICON_NAME}.svg`;
-const LEGACY_RESOURCE_PATH = "/com/gtkx/clibuild/logo.png";
 const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16"/></svg>\n';
 
@@ -74,11 +72,6 @@ const MANIFEST = {
     name: "gtkx-cli-build",
     version: "1.0.0",
     type: "module",
-};
-
-const LEGACY_MANIFEST = {
-    ...MANIFEST,
-    imports: { "#data/*": "./data/*" },
 };
 
 const SCHEMA = `<?xml version="1.0" encoding="UTF-8"?>
@@ -198,17 +191,6 @@ const path: string = logo;
 export { path };
 `;
 
-const LEGACY_APP_SOURCE = `import * as Gio from "@gtkx/gi/gio";
-import schema from "#data/${SCHEMA_FILE}";
-import logoUri, { path as logoPath } from "#data/logo.png";
-
-const logo = Buffer.from(
-    Gio.resourcesLookupData(logoPath, Gio.ResourceLookupFlags.NONE).getData() ?? [],
-).toString("utf8").trim();
-
-process.stdout.write([schema.id, logoUri, logoPath, logo].join(" "));
-`;
-
 const EXPLICIT_TYPE_SOURCE = `import logo from "../data/logo.png?resource=/com/gtkx/type-probe.png";
 import iconName from "../data/type.svg?icon=gtkx-type-probe";
 
@@ -297,13 +279,9 @@ const BROKEN_ENTRIES: BrokenEntry[] = [
 ];
 
 const config = (libraries: string[], body = "", applicationIcon: string | null = "data/icons"): string =>
-    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(libraries)}, ` +
-    (applicationIcon === null ? "" : `applicationIcon: ${JSON.stringify(applicationIcon)}, `) +
-    `future: ${JSON.stringify(STORE_FUTURE)}${body} };\n`;
-
-const legacyConfig = (): string =>
-    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)}, ` +
-    `future: ${JSON.stringify({ ...STORE_FUTURE, v2ResourceImports: false })} };\n`;
+    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(libraries)}` +
+    (applicationIcon === null ? "" : `, applicationIcon: ${JSON.stringify(applicationIcon)}`) +
+    `${body} };\n`;
 
 const appFiles = (entry: string): Record<string, string> => ({
     "package.json": `${JSON.stringify(MANIFEST, null, 4)}\n`,
@@ -316,13 +294,6 @@ const appFiles = (entry: string): Record<string, string> => ({
     [join("data", "variants", "icons", "16x16", "actions", "fixed.png")]: "png-probe\n",
     [join("data", "variants", "icons", "scalable", "actions", "scalable.svg")]: SVG,
     [join("src", entry)]: APP_SOURCE,
-});
-
-const legacyFiles = (): Record<string, string> => ({
-    "package.json": `${JSON.stringify(LEGACY_MANIFEST, null, 4)}\n`,
-    [join("data", SCHEMA_FILE)]: SCHEMA,
-    [join("data", "logo.png")]: "legacy-png-probe\n",
-    [join("src", "index.ts")]: LEGACY_APP_SOURCE,
 });
 
 const typecheckFiles = (): Record<string, string> => {
@@ -530,47 +501,7 @@ describe("gtkx build", () => {
     });
 });
 
-describe("gtkx build (legacy resource imports)", () => {
-    const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
-        status: null,
-    };
-
-    beforeAll(() => {
-        state.project = createCliProject({
-            prefix: "gtkx-cli-build-legacy-",
-            config: legacyConfig(),
-            files: legacyFiles(),
-            hasStore: true,
-        });
-
-        state.status = runCli(state.project, ["build"]).status;
-    });
-
-    afterAll(() => {
-        removeCliProject(state.project);
-    });
-
-    it("keeps flag-off #data assets and schemas working", () => {
-        const run = runApp(state.project);
-        expect(state.status).toBe(0);
-        expect(run.stderr).toBe("");
-
-        expect(run.stdout).toBe(
-            `${APPLICATION_ID} resource://${LEGACY_RESOURCE_PATH} ${LEGACY_RESOURCE_PATH} legacy-png-probe`,
-        );
-
-        expect(run.status).toBe(0);
-    });
-
-    it("generates exact declarations for the legacy imports", () => {
-        const declarations = readFileSync(join(state.project.root, SCHEMA_TYPES), "utf8");
-        expect(declarations).toContain('declare module "#data/logo.png"');
-        expect(declarations).toContain(`declare module "#data/${SCHEMA_FILE}"`);
-    });
-});
-
-describe("gtkx codegen (v2 asset import declarations)", () => {
+describe("gtkx codegen (asset import declarations)", () => {
     const state: { project: CliProject; status: number | null } = {
         project: { root: "", nodeModules: "" },
         status: null,
@@ -779,7 +710,7 @@ describe("gtkx build (projects it refuses to build)", () => {
     beforeAll(() => {
         state.project = createCliProject({
             prefix: "gtkx-cli-build-broken-",
-            config: config(["Gtk-4.0"], ", codegen: false"),
+            config: config(STORE_LIBRARIES, ", codegen: false"),
             files: { [join("src", "absent.tsx")]: ABSENT_SOURCE },
             hasStore: true,
         });
@@ -813,7 +744,18 @@ describe("gtkx build (projects it refuses to build)", () => {
 });
 
 describe("gtkx build (invalid resources and packaging inputs)", () => {
-    it("fails over a bare relative asset while v2 resource imports are enabled", () => {
+    it("rejects a schema imported through the legacy data alias", () => {
+        expectBuildFailure({
+            prefix: "gtkx-cli-build-data-schema-",
+            files: {
+                ...appFiles("index.ts"),
+                "package.json": `${JSON.stringify({ ...MANIFEST, imports: { "#data/*": "./data/*" } }, null, 4)}\n`,
+                [join("src", "index.ts")]: `import "#data/${SCHEMA_FILE}";\n`,
+            },
+        });
+    });
+
+    it("fails over a bare relative asset", () => {
         expectBuildFailure({
             prefix: "gtkx-cli-build-bare-asset-",
             files: { ...appFiles("index.tsx"), [join("src", "index.tsx")]: BARE_ASSET_SOURCE },

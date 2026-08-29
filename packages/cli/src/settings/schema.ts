@@ -2,11 +2,9 @@ import { sortStrings, warn } from "@gtkx/utils";
 import { createHash } from "node:crypto";
 import {
     copyFileSync,
-    type Dirent,
     existsSync,
     mkdirSync,
     mkdtempSync,
-    readdirSync,
     readFileSync,
     realpathSync,
     writeFileSync,
@@ -14,12 +12,10 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { I18N_TYPES_FILENAME, i18nTypesPath } from "../i18n/types.js";
-import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
 import { discoverSourceImports, type SourceImport } from "../internal/source-imports.js";
 import { removeTempDir } from "../internal/staging-dir.js";
 import {
     isBareRelativeAsset,
-    isDataAsset,
     parseIconSpecifier,
     parseResourceSpecifier,
 } from "../vite-plugins/asset-specifier.js";
@@ -75,9 +71,6 @@ const projectRelativeSchemaPath = (root: string, filePath: string): string | nul
     return toForwardSlashes(rel);
 };
 
-const getModuleSpecifier = (dataDirAbs: string, filePath: string): string =>
-    `${DATA_IMPORT_PREFIX}/${toForwardSlashes(relative(dataDirAbs, filePath))}`;
-
 const getRelativeModuleSpecifier = (filePath: string): string => `*/${basename(filePath)}`;
 
 const sourceDirFor = (root: string): string => {
@@ -98,9 +91,6 @@ const findImportedSchemaFiles = (imports: SourceImport[]): string[] => {
 
     return sortStrings(new Set(files));
 };
-
-const legacyAssetSpecifier = (source: string): string | null =>
-    isDataAsset(source) ? source : null;
 
 const blockedAssetSpecifier = (source: string): string | null => {
     if (!isBareRelativeAsset(source)) {
@@ -159,21 +149,15 @@ const iconModuleSpecifier = (source: string): string | null => {
 
 const findAssetModuleSpecifiers = (
     imports: SourceImport[],
-    isV2ResourceImports: boolean,
-): { blocked: string[]; icons: string[]; legacy: string[]; resources: string[] } => {
+): { blocked: string[]; icons: string[]; resources: string[] } => {
     const collect = (getSpecifier: (source: string) => string | null): string[] =>
         sortStrings(new Set(imports.map((entry) => getSpecifier(entry.source)).filter((value) => value !== null)));
 
-    if (isV2ResourceImports) {
-        return {
-            blocked: collect(blockedAssetSpecifier),
-            icons: collect(iconModuleSpecifier),
-            legacy: [],
-            resources: collect(resourceModuleSpecifier),
-        };
-    }
-
-    return { blocked: [], icons: [], legacy: collect(legacyAssetSpecifier), resources: [] };
+    return {
+        blocked: collect(blockedAssetSpecifier),
+        icons: collect(iconModuleSpecifier),
+        resources: collect(resourceModuleSpecifier),
+    };
 };
 
 const canonicalPath = (path: string): string => {
@@ -203,41 +187,10 @@ const assertUniqueSchemaBasenames = (schemaFiles: string[]): void => {
     }
 };
 
-const readVisibleEntries = (dir: string): Dirent[] => {
-    try {
-        return readdirSync(dir, { withFileTypes: true }).filter((entry) => !entry.name.startsWith("."));
-    } catch {
-        return [];
-    }
-};
-
-const isSchemaFile = (entry: Dirent): boolean => entry.isFile() && entry.name.endsWith(SCHEMA_SUFFIX);
-
-const collectSchemaFiles = (dir: string, found: string[]): void => {
-    for (const entry of readVisibleEntries(dir)) {
-        const full = join(dir, entry.name);
-
-        if (entry.isDirectory()) {
-            collectSchemaFiles(full, found);
-        } else if (isSchemaFile(entry)) {
-            found.push(full);
-        }
-    }
-};
-
-const findSchemaFiles = (dataDir: string): string[] => {
-    const found: string[] = [];
-    collectSchemaFiles(dataDir, found);
-
-    return sortStrings(found);
-};
-
-const stageAndCompileProjectSchemas = (root: string, dataDir: string | null): string | null => {
+const stageAndCompileProjectSchemas = (root: string): string | null => {
     const imports = discoverSourceImports(sourceDirFor(root));
-    const imported = findImportedSchemaFiles(imports);
-    assertUniqueSchemaBasenames(imported);
-    const legacy = dataDir === null ? [] : findSchemaFiles(join(root, dataDir));
-    const schemaFiles = sortStrings(new Set([...legacy, ...imported]));
+    const schemaFiles = findImportedSchemaFiles(imports);
+    assertUniqueSchemaBasenames(schemaFiles);
 
     if (schemaFiles.length === 0) {
         return null;
@@ -307,25 +260,14 @@ const didWriteChanges = (path: string, content: string): boolean => {
     return true;
 };
 
-const emitSchemaEnv = (
-    rootDir: string,
-    dataDir: string | null,
-    isV2ResourceImports = false,
-): SchemaEnvResult => {
-    const dataDirAbs = dataDir === null ? null : join(rootDir, dataDir);
-    const legacyFiles = dataDirAbs === null ? [] : findSchemaFiles(dataDirAbs);
+const emitSchemaEnv = (rootDir: string): SchemaEnvResult => {
     const imports = discoverSourceImports(sourceDirFor(rootDir));
-
-    const legacy = dataDirAbs === null
-        ? []
-        : parseProjectSchemas(legacyFiles, (filePath) => getModuleSpecifier(dataDirAbs, filePath));
-
     const importedFiles = findImportedSchemaFiles(imports);
     assertUniqueSchemaBasenames(importedFiles);
     const imported = parseProjectSchemas(importedFiles, getRelativeModuleSpecifier);
-    const assets = findAssetModuleSpecifiers(imports, isV2ResourceImports);
+    const assets = findAssetModuleSpecifiers(imports);
     const references = existsSync(i18nTypesPath(rootDir)) ? [`./${I18N_TYPES_FILENAME}`] : [];
-    const content = renderEnvModule([...legacy, ...imported], assets, { references });
+    const content = renderEnvModule(imported, assets, { references });
     const path = schemaEnvPath(rootDir);
     const isWritten = didWriteChanges(path, content);
 

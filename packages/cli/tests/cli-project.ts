@@ -43,7 +43,6 @@ const WORKSPACE_PACKAGES = [
 
 const REGISTRY_PACKAGES = ["@types", "csstype", "react", "tsx"];
 const STORE_LIBRARIES = workspaceConfig.libraries;
-const STORE_FUTURE = workspaceConfig.future;
 const MANIFEST = { name: "gtkx-cli-project", version: "1.0.0", type: "module" };
 const GIT_IDENTITY = ["-c", "user.email=probe@gtkx.dev", "-c", "user.name=Probe", "-c", "commit.gpgsign=false"];
 
@@ -201,6 +200,5 @@ export {
     runCli,
     runCliOrThrow,
     startCli,
-    STORE_FUTURE,
     STORE_LIBRARIES,
 };

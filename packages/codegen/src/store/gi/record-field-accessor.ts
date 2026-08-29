@@ -454,7 +454,7 @@ const resolveInlineArray = (context: ModuleContext, target: StructArrayTarget): 
         element: type.element,
         count: type.fixedSize,
         stride,
-        isTypedByteArray: context.library.isByteArrayTyped && isByteSequence(context.library, type),
+        isTypedByteArray: isByteSequence(context.library, type),
     };
 };
 

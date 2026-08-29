@@ -25,7 +25,7 @@ const appendWrapperClassRegistration = (
 
     context.addRuntimeImport("registerWrapperClass");
     const args = vfuncs === undefined ? gtypeExpr : `${gtypeExpr}, ${vfuncs}`;
-    context.collectRegistration(`registerWrapperClass(${className}, ${args});`, [className]);
+    context.collectRegistration(`registerWrapperClass(${className}, ${args});`);
 };
 
 const appendInterfaceRegistration = (context: ModuleContext, registration: InterfaceRegistration): void => {
@@ -38,7 +38,7 @@ const appendInterfaceRegistration = (context: ModuleContext, registration: Inter
     context.addRuntimeImport("registerInterface");
     const base = `${className}, ${gtypeExpr}, ${makerName}`;
     const args = layout === undefined ? base : `${base}, ${layout}`;
-    context.collectRegistration(`registerInterface(${args});`, [className, makerName]);
+    context.collectRegistration(`registerInterface(${args});`);
 };
 
 export { appendWrapperClassRegistration, appendInterfaceRegistration };

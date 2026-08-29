@@ -17,7 +17,7 @@
 - Persistence to `$XDG_DATA_HOME` with the Node.js standard library: `node:fs` writes a temp file, then `renameSync` swaps it into place.
 - Packaging: one `deploy` block in `gtkx.config.ts` turns the app into a localized Flatpak, a `.deb`, an `.rpm`, and an AppImage with `npm run deploy`. The command owns extraction, missing-catalog initialization, PO synchronization, MO compilation, metadata localization, staging, and packaging.
 
-`gtkx.config.ts` declares `Gtk-4.0` and `Adw-1`, with the application ID `com.gtkx.tutorial`.
+`gtkx.config.ts` uses the default GTK and Adwaita bindings.
 
 ## Run it
 

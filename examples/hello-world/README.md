@@ -11,7 +11,7 @@ The smallest complete GTKX app: a window with a heading, a counter, and an Incre
 - Widget properties as props, including `cssClasses` for the Adwaita style classes `title-1`, `title-2`, `suggested-action`, and `pill`.
 - Imperative values from `@gtkx/gi/gtk`, such as `Gtk.Orientation.VERTICAL` and `Gtk.Align.CENTER`.
 
-`gtkx.config.ts` declares only `Gtk-4.0`, with the application ID `com.gtkx.hello-world`.
+`gtkx.config.ts` needs only the application ID; GTK and Adwaita are bound by default.
 
 ## Run it
 

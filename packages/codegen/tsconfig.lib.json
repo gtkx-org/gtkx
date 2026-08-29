@@ -6,9 +6,6 @@
       },
       {
         "path": "../react/tsconfig.lib.json"
-      },
-      {
-        "path": "../cairo/tsconfig.lib.json"
       }
     ]
 }

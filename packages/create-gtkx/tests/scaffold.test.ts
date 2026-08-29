@@ -24,8 +24,7 @@ const expectGeneratedConfig = (run: CreateRun): void => {
     const config = readProject(run, "gtkx.config.ts");
     expect(config).toContain(APPLICATION_ID);
     expect(config).toContain('applicationIcon: "data/icons"');
-    expect(config).toContain("v2ResourceImports: true");
-    expect(config).toContain("v2DefaultLibraries: true");
+    expect(config).not.toContain("future:");
     expect(config).not.toContain("libraries:");
     expect(readManifest(run).imports).toBeUndefined();
 };

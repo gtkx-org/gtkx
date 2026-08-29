@@ -37,20 +37,15 @@ const REJECTED_CONFIGS: RejectedConfig[] = [
     { title: "an elements section that is not an object", config: `${HEAD}, elements: "all" };\n` },
     { title: "a deploy section that is not shaped like one", config: `${HEAD}, deploy: { categories: 5 } };\n` },
     { title: "an icon path that is not text", config: `${HEAD}, applicationIcon: 5 };\n` },
-    { title: "a future flag that is not a boolean", config: `${HEAD}, future: { v2ByteArrays: 5 } };\n` },
+    { title: "a wildcard library selection", config: `${HEAD}, libraries: "*" };\n` },
+    { title: "a disabled graduated future", config: `${HEAD}, future: { v2ByteArrays: false } };\n` },
+    { title: "an unknown future", config: `${HEAD}, future: { v2ByteArrrays: true } };\n` },
     {
-        title: "a resource-import flag that is not a boolean",
-        config: `${HEAD}, future: { v2ResourceImports: "soon" } };\n`,
+        title: "a retired deprecation id",
+        config: `${HEAD}, deprecations: { silence: ["gtkx-v2-byte-arrays"] } };\n`,
     },
-    { title: "a deprecations section that is not an object", config: `${HEAD}, deprecations: 5 };\n` },
-    {
-        title: "a silenced deprecation that is not an array",
-        config: `${HEAD}, deprecations: { silence: "gtkx-v2-byte-arrays" } };\n`,
-    },
-    {
-        title: "a silenced deprecation id the CLI never reports",
-        config: `${HEAD}, deprecations: { silence: ["gtkx-v2-byte-array"] } };\n`,
-    },
+    { title: "the default Gtk version", config: `${HEAD}, libraries: ["Gtk-4.0"] };\n` },
+    { title: "the default Adwaita version", config: `${HEAD}, libraries: ["Adw-1"] };\n` },
     { title: "an icon path under deploy", config: `${HEAD}, deploy: { icons: "data/icons" } };\n` },
     {
         title: "a minimum library version that is not a version",
@@ -81,6 +76,26 @@ describe("gtkx.config.ts", () => {
 
         try {
             expect(readFileSync(join(project.root, BUNDLE), "utf8")).toContain(PRODUCTION_ID);
+        } finally {
+            removeCliProject(project);
+        }
+    });
+
+    it("accepts graduated future flags left enabled", () => {
+        const config = `${HEAD}, codegen: false, future: {
+            v2ByteArrays: true,
+            v2ValueReturns: true,
+            v2FinishResults: true,
+            v2InoutReturns: true,
+            v2ResourceImports: true,
+            v2DefaultLibraries: true,
+            v2TreeShaking: true,
+        } };\n`;
+
+        const project = createCliProject({ prefix: "gtkx-cli-config-graduated-", config, hasStore: true });
+
+        try {
+            expect(runCli(project, ["codegen"]).status).toBe(0);
         } finally {
             removeCliProject(project);
         }

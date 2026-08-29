@@ -6,7 +6,6 @@ import {
     createCliProject,
     removeCliProject,
     runCli,
-    STORE_FUTURE,
     STORE_LIBRARIES,
 } from "./cli-project.js";
 
@@ -21,9 +20,8 @@ const NAMESPACE_INDEX = `${NAMESPACE_PREFIX}index.md`;
 const REJECTED_OUT_DIRS = ["", ".", "..", "../sibling", "docs/../..", "/elsewhere/docs"];
 
 const config = (body = ""): string =>
-    `export default { applicationId: "${APPLICATION_ID}", ` +
-    `libraries: ${JSON.stringify(STORE_LIBRARIES)}, ` +
-    `future: ${JSON.stringify(STORE_FUTURE)}${body} };\n`;
+    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)}` +
+    `${body} };\n`;
 
 const docsDir = (project: CliProject): string => join(project.root, OUT_DIR);
 

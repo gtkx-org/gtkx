@@ -36,7 +36,6 @@ type ModuleTypeOptions = {
 
 const BYTE_ARRAY_TYPE = "Uint8Array";
 const BYTE_ARRAY_INPUT_TYPE = "Uint8Array | number[]";
-const NUMBER_ARRAY_TYPE = "number[]";
 
 const willEmitEntity = (type: EntityType): boolean => isEmittableEntity(type.value);
 
@@ -134,9 +133,6 @@ const renderNamedType = (
     return target.renderNamed(resolved, name);
 };
 
-const getByteArrayType = (library: Library): string =>
-    library.isByteArrayTyped ? BYTE_ARRAY_TYPE : NUMBER_ARRAY_TYPE;
-
 const renderNamedModuleType = (context: ModuleContext, name: ReferenceName, isValueWidened: boolean): string => {
     const qualified = context.qualify(name.namespaceName, name.typeName);
 
@@ -170,7 +166,7 @@ const renderModuleType = (
 
 const renderTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string =>
     renderModuleType(context, ref, isNullable, {
-        byteArrayType: getByteArrayType(context.library),
+        byteArrayType: BYTE_ARRAY_TYPE,
         isValueWidened: false,
         isGtypeWidened: false,
     });
@@ -195,7 +191,7 @@ const recordTypeTarget = (
     const target: TsTypeTarget = {
         containerStyle: "record",
         callbackType: "((...args: unknown[]) => unknown)",
-        byteArrayType: getByteArrayType(library),
+        byteArrayType: BYTE_ARRAY_TYPE,
         renderNamed: (resolved, name) => {
             if (resolved?.kind === "alias") {
                 return resolved.value.target === undefined

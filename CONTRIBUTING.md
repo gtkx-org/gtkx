@@ -35,11 +35,7 @@ GtkSourceView 5 and WebKitGTK 6 are required because the `gtk-demo` and `browser
 
 #### GStreamer and looping media
 
-GTK 4.20 and later compile the GStreamer media backend into `libgtk-4.so`, so any widget that plays media (`GtkVideo`, `GtkMediaFile`) pulls GStreamer into the test process. A looping stream is unsafe there: with looping enabled, `GstPlay` re-sets the same URI on `about-to-finish`, `uridecodebin3` starts a second play item in gapless mode, and `switch_and_activate_input_locked` (`gsturidecodebin3.c`) unlinks and relinks `decodebin3`'s request sink pad on a `gst_task` streaming thread while `urisourcebin`'s `free_output_slot` may be destroying that same pad. The pad can already be finalized when the relink runs, which surfaces as `g_object_ref: assertion 'G_IS_OBJECT (object)' failed` or `gst_pad_link_full: assertion 'GST_IS_PAD (sinkpad)' failed`, followed by a SIGSEGV on a non-main thread that kills the whole vitest worker.
-
-This is an upstream defect in gst-plugins-base and no released version fixes it: the only commits to `gsturidecodebin3.c` after 1.28.3 are `6a0695d9` and `8b83631e`, both of which land on `main` and the 1.29.2 development tag only, are absent from 1.28.4 and 1.28.5, and address unrelated bugs. There is therefore no minimum version to require, and no GTKX-side change can prevent it. Demos and tests avoid the gapless input switch instead, by not enabling looping on a media stream that GStreamer actually plays. `examples/gtk-demo/src/demos/drawing/images.tsx` plays its animated GIF once for that reason; upstream `gtk4-demo` loops the same GIF through a paintable that decodes the frames itself rather than a `GtkMediaFile`, so no GStreamer pipeline is involved there.
-
-Note that `GtkVideo`'s `loop` property only applies to streams loaded *after* it is set, and GObject assigns construct properties in the order the class registered them, which puts `file` before `loop`. A `<GtkVideo loop file={...} />` therefore reports `loop` as `true` while its media stream does not loop, and does not reach the code above. Making that property effective would make the upstream crash reachable again.
+Released GStreamer versions can crash the test worker when a `GtkVideo` or `GtkMediaFile` loops. Until the upstream race is fixed, demos and tests must not enable looping on media GStreamer plays; `examples/gtk-demo/src/demos/drawing/images.tsx` intentionally plays its animated GIF once.
 
 ### Development Setup
 
@@ -128,22 +124,7 @@ Fix memory leak in signal handler cleanup
 
 ## Release Policy
 
-GTKX follows the same contract for every major: **2.0 removes only what 1.x already warned about, and ships nothing new.**
-
-### The ladder
-
-1. **1.6** is the migration target. It ships the deprecation warnings without changing the existing runtime or future-flag defaults, so application behavior remains on 1.5 semantics until a project opts in. A project that upgrades to 1.6, clears every warning the CLI prints, and clears every symbol tagged `Removed in v2` has already done the whole 2.0 migration.
-2. **2.0** is the last 1.x minus the deprecated paths. It deletes the deprecated symbols, the `future` block, and the compatibility branches behind it. Nothing else.
-3. **2.1** is where held-back feature work resumes.
-
-### What this means for a change
-
-- **Nothing is removed at a major that a minor did not warn about.** The warning is the permission slip. If a removal has no warning shipped in a 1.x release, it waits for the next major.
-- **2.0 accepts no new features.** While 2.0 is the open milestone, a feature PR is held for 2.1 rather than merged. This applies to new bindings, new configuration keys, and new package exports, not to bug fixes.
-- **A deprecation needs a warning users actually see.** A `@deprecated` JSDoc tag is enough for a renamed or replaced symbol, because editors surface it on hover. A behavior change to a symbol that keeps its name is not visible that way and needs a CLI deprecation warning with a stable id, added alongside a `future` flag. See `packages/config/src/deprecations.ts`.
-- **Every deprecation carries its version.** Write `Since <version>.` in the tag, so an inventory of what a major removes can be built by reading the source.
-
-[Upgrading to 2.0](https://gtkx.dev/guide/upgrading-to-2) is the user-facing side of this policy and must be updated in the same PR as any new deprecation.
+Breaking removals must ship a visible warning in an earlier minor release. Renamed symbols use `@deprecated` with their introduction version; behavior changes need a CLI warning and an opt-in migration path. A removal-only major does not add unrelated features, and its migration guide must change with every deprecation.
 
 ## Issue Guidelines
 
@@ -168,8 +149,6 @@ For feature requests, describe:
 - Your proposed solution
 - Alternative solutions you've considered
 - Whether you'd be willing to implement it
-
-Features are still welcome while 2.0 is the open milestone, but see [Release Policy](#release-policy): they are scheduled for 2.1 rather than merged into the major.
 
 Search existing issues before creating new ones to avoid duplicates.
 

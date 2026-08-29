@@ -414,20 +414,6 @@ const STRUCT_PROPS_SAMPLES: [
     cairo.TextClusterConstructorProps,
 ] = [{}, {}, {}, {}];
 
-/* eslint-disable @typescript-eslint/no-deprecated -- covers the aliases until they are removed in v2 */
-const DEPRECATED_PROPS_SAMPLES: [
-    cairo.ContextConstructorProps,
-    cairo.DeviceConstructorProps,
-    cairo.SurfaceConstructorProps,
-    cairo.PatternConstructorProps,
-    cairo.RegionConstructorProps,
-    cairo.FontOptionsConstructorProps,
-    cairo.FontFaceConstructorProps,
-    cairo.ScaledFontConstructorProps,
-] = [{}, {}, {}, {}, {}, {}, {}, {}];
-
-/* eslint-enable @typescript-eslint/no-deprecated */
-
 const byName = (a: string, b: string): number => a.localeCompare(b);
 
 const missingMembers = (expected: readonly [AnyClass, string[]][], namesOf: (cls: AnyClass) => string[]): string[] =>
@@ -478,9 +464,5 @@ describe("@gtkx/cairo exports", () => {
 
     it("exports the struct constructor props types", () => {
         expect(STRUCT_PROPS_SAMPLES).toHaveLength(4);
-    });
-
-    it("keeps the deprecated constructor props aliases", () => {
-        expect(DEPRECATED_PROPS_SAMPLES).toHaveLength(8);
     });
 });

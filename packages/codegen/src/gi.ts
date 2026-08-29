@@ -3,7 +3,7 @@ import type { StoreOptions } from "./store/store-fs.js";
 import { computeGiFingerprint } from "./fingerprint.js";
 import { externalPackageFor } from "./gir/external-namespaces.js";
 import { namespaceDirectory } from "./gir/namespace.js";
-import { type GiExternalNamespaceInput, type GiNamespaceInput, writeGiStore } from "./store/gi-store.js";
+import { type GiNamespaceInput, writeGiStore } from "./store/gi-store.js";
 import { collectGeneratedLibraries } from "./store/gi/generated-libraries.js";
 import { generateNamespaceModule } from "./store/gi/pipeline.js";
 
@@ -11,32 +11,22 @@ type GiCodegenOptions = {
     gi: StoreOptions;
     libraries: string[];
     girPath: string[];
-    isByteArrayTyped: boolean;
-    isValueUnwrapped: boolean;
-    isFinishTrimmed: boolean;
-    isInoutInPlace: boolean;
-    isTreeShaken: boolean;
 };
 
 type SplitNamespaces = {
     namespaces: GiNamespaceInput[];
-    externalNamespaces: GiExternalNamespaceInput[];
+    externalPackages: string[];
 };
 
 const splitNamespaces = (library: Library): SplitNamespaces => {
     const namespaces: GiNamespaceInput[] = [];
-    const externalNamespaces: GiExternalNamespaceInput[] = [];
+    const externalPackages: string[] = [];
 
     for (const namespace of library.namespaces.values()) {
         const packageName = externalPackageFor(namespace.name);
 
         if (packageName !== undefined) {
-            externalNamespaces.push({
-                directory: namespaceDirectory(namespace),
-                packageName,
-                girFile: namespace.girFile,
-            });
-
+            externalPackages.push(packageName);
             continue;
         }
 
@@ -50,26 +40,21 @@ const splitNamespaces = (library: Library): SplitNamespaces => {
         });
     }
 
-    return { namespaces, externalNamespaces };
+    return { namespaces, externalPackages };
 };
 
 const runGiCodegen = (library: Library, options: GiCodegenOptions): number => {
-    const { gi, libraries, girPath, isByteArrayTyped, isValueUnwrapped, isFinishTrimmed, isInoutInPlace } = options;
-    const { namespaces, externalNamespaces } = splitNamespaces(library);
+    const { gi, libraries, girPath } = options;
+    const { namespaces, externalPackages } = splitNamespaces(library);
 
     const fingerprint = computeGiFingerprint({
         girFiles: library.girFiles,
         libraries: [...libraries],
         girPath: [...girPath],
         storeVersion: gi.version,
-        isByteArrayTyped,
-        isValueUnwrapped,
-        isFinishTrimmed,
-        isInoutInPlace,
-        isTreeShaken: options.isTreeShaken,
     });
 
-    writeGiStore(gi, namespaces, externalNamespaces, {
+    writeGiStore(gi, namespaces, externalPackages, {
         fingerprint,
         libraries: collectGeneratedLibraries(library.namespaces, libraries),
     });

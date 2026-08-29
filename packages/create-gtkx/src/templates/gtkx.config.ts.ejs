@@ -3,15 +3,6 @@ import { defineConfig } from "@gtkx/config";
 export default defineConfig({
     applicationId: "<%= applicationId %>",
     applicationIcon: "data/icons",
-    future: {
-        v2ByteArrays: true,
-        v2ValueReturns: true,
-        v2FinishResults: true,
-        v2InoutReturns: true,
-        v2ResourceImports: true,
-        v2DefaultLibraries: true,
-        v2TreeShaking: true,
-    },
     deploy: {
         name: "<%= title %>",
         summary: "A GTK4 application built with GTKX",

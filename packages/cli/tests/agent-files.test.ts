@@ -6,7 +6,6 @@ import {
     createCliProject,
     removeCliProject,
     runCli,
-    STORE_FUTURE,
     STORE_LIBRARIES,
 } from "./cli-project.js";
 
@@ -19,9 +18,8 @@ const BEGIN_MARKER = "<!-- BEGIN:gtkx-agent-rules -->";
 const END_MARKER = "<!-- END:gtkx-agent-rules -->";
 
 const config = (body = ""): string =>
-    `export default { applicationId: "${APPLICATION_ID}", ` +
-    `libraries: ${JSON.stringify(STORE_LIBRARIES)}, ` +
-    `future: ${JSON.stringify(STORE_FUTURE)}${body} };\n`;
+    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)}` +
+    `${body} };\n`;
 
 const read = (project: CliProject, name: string): string => readFileSync(join(project.root, name), "utf8");
 const hasFile = (project: CliProject, name: string): boolean => existsSync(join(project.root, name));

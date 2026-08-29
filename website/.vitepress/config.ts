@@ -182,7 +182,7 @@ export default defineConfig({
             { text: "Reference", link: "/reference/" },
             { text: "Blog", link: "/blog/" },
             { text: "Examples", link: "https://github.com/gtkx-org/gtkx/tree/main/examples" },
-            { text: "1.6", link: "/blog/gtkx-1-6" },
+            { text: "2.0", link: "/guide/upgrading-to-2" },
         ],
         sidebar: {
             "/guide/": guideSidebar,

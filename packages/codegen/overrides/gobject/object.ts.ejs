@@ -45,26 +45,6 @@ declare module "../gobject.js" {
          */
         off(sigName: string, callback: (...args: unknown[]) => unknown): Object;
 
-        /**
-         * Alias of `on`, for callers who prefer the DOM spelling.
-         *
-         * @param sigName Signal to connect to.
-         * @param callback Handler invoked on each emission.
-         * @param isAfter Run the handler after the default handler rather than before it.
-         * @returns The same object, so calls chain.
-         * @deprecated Since 1.2. Use `on` instead. Removed in v2.
-         */
-        addEventListener(sigName: string, callback: (...args: unknown[]) => unknown, isAfter?: boolean): Object;
-
-        /**
-         * Alias of `off`, for callers who prefer the DOM spelling.
-         *
-         * @param sigName Signal the handler was connected to.
-         * @param callback The handler that was connected.
-         * @returns The same object, so calls chain.
-         * @deprecated Since 1.2. Use `off` instead. Removed in v2.
-         */
-        removeEventListener(sigName: string, callback: (...args: unknown[]) => unknown): Object;
     }
 }
 
@@ -93,6 +73,3 @@ function offImpl(this: GObjectWithConnect, sigName: string, callback: Listener):
     return this;
 }
 GObject.prototype.off = offImpl;
-
-GObject.prototype.addEventListener = onImpl;
-GObject.prototype.removeEventListener = offImpl;

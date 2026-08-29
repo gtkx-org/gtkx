@@ -13,17 +13,7 @@ Install it separately:
 npm install @gtkx/forms
 ```
 
-The controls need the generated `@gtkx/jsx/adw` bindings. A project scaffolded by `npm create gtkx` already has them, through [`v2DefaultLibraries`](/guide/configuration-and-codegen#future-flags). An older project that binds GTK alone adds `Adw-1` in `gtkx.config.ts`:
-
-```diff
- export default defineConfig({
--    libraries: ["Gtk-4.0"],
-+    libraries: ["Gtk-4.0", "Adw-1"],
-     applicationId: "com.example.account",
- });
-```
-
-The next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates the bindings. The package also re-exports `useForm`, `FormProvider`, `Controller`, `useController`, `useFieldArray`, `useFormContext`, `useFormState`, and `useWatch`, plus the common types used with them. Importing the provider and hooks from `@gtkx/forms` keeps them on the same React Hook Form context as the rows. Full signatures are in the [@gtkx/forms reference](/reference/@gtkx/forms/).
+The controls use the generated `@gtkx/jsx/adw` bindings, available because GTKX binds Adwaita by default. The package also re-exports React Hook Form's provider, hooks, controller, and common types so they share the same context as the rows. Full signatures are in the [@gtkx/forms reference](/reference/@gtkx/forms/).
 
 ## A complete typed form
 

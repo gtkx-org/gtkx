@@ -1,4 +1,3 @@
-import { DATA_IMPORT_PREFIX } from "../internal/data-dir.js";
 import { ASSET_PATH_RE, ASSET_RE } from "./asset-extensions.js";
 import { stripQuery } from "./strip-query.js";
 
@@ -12,7 +11,6 @@ type IconSpecifier = {
     iconName: string | null;
 };
 
-const DATA_PREFIX = `${DATA_IMPORT_PREFIX}/`;
 const RELATIVE_PREFIX_RE = /^\.\.?(?:\/|$)/;
 const RESOURCE_QUERY_RE = /^resource(?:=([^&#]+))?$/;
 const ICON_QUERY_RE = /^icon(?:=([^&#]+))?$/;
@@ -25,7 +23,6 @@ const getQuery = (source: string): string | null => {
 };
 
 const isAssetSpecifier = (source: string): boolean => ASSET_PATH_RE.test(source);
-const isDataAsset = (source: string): boolean => source.startsWith(DATA_PREFIX) && ASSET_RE.test(source);
 
 const isBareRelativeAsset = (source: string): boolean =>
     getQuery(source) === null && RELATIVE_PREFIX_RE.test(source) && ASSET_RE.test(source);
@@ -71,10 +68,8 @@ const isUrlSpecifier = (source: string): boolean => {
 };
 
 export {
-    DATA_PREFIX,
     isAssetSpecifier,
     isBareRelativeAsset,
-    isDataAsset,
     isUrlSpecifier,
     parseIconSpecifier,
     parseResourceSpecifier,
