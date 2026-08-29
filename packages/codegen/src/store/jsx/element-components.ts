@@ -101,7 +101,13 @@ const collectLazyElementExports = (
     for (const spec of lazyElements) {
         collector.imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
-        collector.exportLines.push(renderLazyElementExport(spec, lazyMetadataRef(collector, spec, options), options));
+
+        const refs = {
+            classRef: lazyClassRef(collector, spec, options),
+            metadataRef: lazyMetadataRef(collector, spec, options),
+        };
+
+        collector.exportLines.push(renderLazyElementExport(spec, refs, options));
         collector.exportedNames.add(spec.element);
     }
 };
@@ -120,16 +126,42 @@ const lazyMetadataRef = (
     return `${METADATA_ALIAS}.${spec.element}`;
 };
 
+const lazyClassRef = (
+    collector: ExportCollector,
+    spec: LazyElementSpec,
+    options: LazyMetadataOptions,
+): string | undefined => {
+    if (!options.isTreeShaken) {
+        return undefined;
+    }
+
+    const alias = `${spec.namespaceName}$`;
+    const specifier = externalPackageFor(spec.namespaceName) ?? `@gtkx/gi/${spec.namespaceName.toLowerCase()}`;
+    collector.imports.addNamespace(specifier, alias, false);
+
+    return `${alias}.${sanitizeTypeIdentifier(spec.className)}`;
+};
+
 const renderLazyElementExport = (
     spec: LazyElementSpec,
-    metadataRef: string | undefined,
+    refs: { classRef: string | undefined; metadataRef: string | undefined },
     options: LazyMetadataOptions,
 ): string => {
     const doc = getDoc(spec);
-    const name = sourceStringLiteral(spec.element);
-    const args = metadataRef === undefined ? name : `${name}, undefined, ${metadataRef}`;
+    const args = [sourceStringLiteral(spec.element)];
+
+    if (refs.classRef !== undefined) {
+        args.push(refs.classRef);
+    } else if (refs.metadataRef !== undefined) {
+        args.push("undefined");
+    }
+
+    if (refs.metadataRef !== undefined) {
+        args.push(refs.metadataRef);
+    }
+
     const pure = options.isTreeShaken ? "/* @__PURE__ */ " : "";
-    const factory = `${pure}createElementComponent(${args})`;
+    const factory = `${pure}createElementComponent(${args.join(", ")})`;
     const component = `${doc}export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
 
     return `${doc}${spec.typeSource}\n\n${component}`;

@@ -10,6 +10,8 @@ type LazyElementSpec = {
     typeSource: string;
     doc: string | undefined;
     annotations: GirAnnotations;
+    namespaceName: string;
+    className: string;
 };
 
 const appendConstructOnlyNames = (klass: GirClass, names: string[]): void => {
@@ -43,6 +45,8 @@ const createLazyElementSpec = (context: GirIndex, element: string, entry: GirTyp
         typeSource: `export type ${typeName} = ${base} & { children?: ReactNode };`,
         doc: entry.klass.doc,
         annotations: entry.klass.annotations,
+        namespaceName: entry.namespace.name,
+        className: entry.klass.name,
     };
 };
 
