@@ -14,7 +14,6 @@ type AppProjectOptions = {
     applicationId: string;
     entry: string;
     files?: Record<string, string> | undefined;
-    packageType: string;
     prefix: string;
 };
 
@@ -25,6 +24,7 @@ const RUN_TIMEOUT = 60_000;
 const ENTRY_NAME = "index.mjs";
 const PROJECT_NAME = "gtkx-app-probe";
 const INSTALL_PREFIX = "gtkx-bundle-install-";
+const APP_MANIFEST = `${JSON.stringify({ name: PROJECT_NAME, type: "module" }, null, 4)}\n`;
 
 const appConfig = (applicationId: string): string =>
     [
@@ -34,9 +34,6 @@ const appConfig = (applicationId: string): string =>
         "};",
         "",
     ].join("\n");
-
-const appManifest = (packageType: string): string =>
-    `${JSON.stringify({ name: PROJECT_NAME, type: packageType }, null, 4)}\n`;
 
 const writeFiles = (root: string, files: Record<string, string>): void => {
     for (const [name, source] of Object.entries(files)) {
@@ -51,7 +48,7 @@ const createAppProject = (options: AppProjectOptions): AppProject => {
     const entry = join(root, "src", ENTRY_NAME);
     mkdirSync(join(root, "src"));
     symlinkSync(join(WORKSPACE_ROOT, "node_modules"), join(root, "node_modules"), "dir");
-    writeFileSync(join(root, "package.json"), appManifest(options.packageType));
+    writeFileSync(join(root, "package.json"), APP_MANIFEST);
     writeFileSync(join(root, "gtkx.config.mjs"), appConfig(options.applicationId));
     writeFileSync(entry, options.entry);
     writeFiles(root, options.files ?? {});

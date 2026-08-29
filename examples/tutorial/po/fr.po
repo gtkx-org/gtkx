@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gtkx-tutorial 1.0.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-27 17:13+0200\n"
+"POT-Creation-Date: 2026-08-29 21:28+0200\n"
 "PO-Revision-Date: 2026-08-26 23:34+0200\n"
 "Last-Translator: GTKX contributors\n"
 "Language-Team: French\n"
@@ -274,13 +274,13 @@ msgstr "Demain à {{time}}"
 msgid "Yesterday at {{time}}"
 msgstr "Hier à {{time}}"
 
-#: src/format.ts:21
+#: src/format.ts:22
 msgid "{{count}} day ago"
 msgid_plural "{{count}} days ago"
 msgstr[0] "Il y a {{count}} jour"
 msgstr[1] "Il y a {{count}} jours"
 
-#: src/format.ts:27
+#: src/format.ts:32
 msgid "Never"
 msgstr "Jamais"
 

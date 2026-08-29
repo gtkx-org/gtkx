@@ -19,7 +19,7 @@
         ".": "./src/index.ts"
     },
     "engines": {
-        "node": ">=24"
+        "node": ">=26.7.0"
     },
     "dependencies": {
         "@eslint/js": "^10.0.1",

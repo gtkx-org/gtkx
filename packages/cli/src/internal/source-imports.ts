@@ -13,8 +13,6 @@ type SourceLanguage = NonNullable<ParserOptions["lang"]>;
 type ParsedModule = ParseResult["module"];
 
 const SOURCE_LANGUAGES: Map<string, SourceLanguage> = new Map([
-    [".cjs", "jsx"],
-    [".cts", "ts"],
     [".js", "jsx"],
     [".jsx", "jsx"],
     [".mjs", "jsx"],
@@ -32,7 +30,7 @@ const EXCLUDED_DIRECTORIES: Set<string> = new Set([
 ]);
 
 const sourceLanguage = (path: string): SourceLanguage | undefined => {
-    if (path.endsWith(".d.ts") || path.endsWith(".d.cts") || path.endsWith(".d.mts")) {
+    if (path.endsWith(".d.ts") || path.endsWith(".d.mts")) {
         return undefined;
     }
 

@@ -56,7 +56,6 @@ const NON_CODE = new RegExp(
 const WORKER_DIR = "workers";
 
 const SUGGESTED_EXTENSIONS: Record<string, string[]> = {
-    ".cjs": [".cts"],
     ".js": [".ts", ".tsx"],
     ".jsx": [".tsx"],
     ".mjs": [".mts"],

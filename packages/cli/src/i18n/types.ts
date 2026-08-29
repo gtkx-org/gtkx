@@ -1,154 +1,120 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import type { I18nextToolkitConfig, Logger, Plugin } from "i18next-cli";
+import { runTypesGenerator } from "i18next-cli";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { SourceMessage } from "./source-messages.js";
 
-type I18nTypesResult = {
-    isWritten: boolean;
-    path: string;
-};
-
+const CONTEXT_SEPARATOR = "\u{4}";
+const DEFAULT_NAMESPACE = "translation";
 const I18N_TYPES_FILENAME = "i18n.d.ts";
-const INTERPOLATION_PATTERN = /\{\{[^{}]+\}\}/u;
+const I18N_RESOURCES_FILENAME = "i18n-resources.d.ts";
 
-const stringType = (values: string[]): string =>
-    [...new Set(values)].map((value) => JSON.stringify(value)).join(" | ");
+const generatedDir = (root: string): string => join(root, "node_modules", ".gtkx");
+const i18nResourceDir = (root: string): string => join(generatedDir(root), "i18n");
+const i18nTypesPath = (root: string): string => join(generatedDir(root), I18N_TYPES_FILENAME);
+const i18nResourcesPath = (root: string): string => join(generatedDir(root), I18N_RESOURCES_FILENAME);
 
-const contextField = (context: string | null): string =>
-    context === null ? "" : ` context: ${JSON.stringify(context)};`;
-
-const hasInterpolation = (values: string[]): boolean => values.some((value) => INTERPOLATION_PATTERN.test(value));
-
-const pointVariant = (message: SourceMessage): string => {
-    const isRequired = message.context !== null || hasInterpolation([message.msgid]);
-    const isInterpolated = hasInterpolation([message.msgid]);
-
-    return (
-        `{${contextField(message.context)} interpolated: ${String(isInterpolated)}; kind: "point"; ` +
-        `required: ${String(isRequired)}; value: ${JSON.stringify(message.msgid)} }`
-    );
+const clearI18nResources = (root: string): void => {
+    rmSync(i18nResourceDir(root), { force: true, recursive: true });
 };
 
-const defaultVariant = (message: SourceMessage): string => {
-    const values = [message.singular];
-    const isInterpolated = hasInterpolation(values);
-    const isRequired = message.context !== null || isInterpolated;
+const i18nToolkitConfig = (
+    root: string,
+    sourceFiles: string[],
+    plugins: Plugin[] = [],
+): I18nextToolkitConfig => ({
+    locales: ["en"],
+    plugins,
+    extract: {
+        contextSeparator: CONTEXT_SEPARATOR,
+        defaultNS: DEFAULT_NAMESPACE,
+        disablePlurals: false,
+        extractFromComments: false,
+        functions: ["t"],
+        generateBasePluralForms: false,
+        input: sourceFiles,
+        keySeparator: ".",
+        nsSeparator: false,
+        output: join(i18nResourceDir(root), "{{language}}", "{{namespace}}.json"),
+        pluralSeparator: "_",
+        primaryLanguage: "en",
+        removeUnusedKeys: true,
+        transComponents: ["Trans", "TransWithoutContext"],
+        useTranslationNames: ["useTranslation"],
+        warnOnConflicts: "error",
+    },
+    types: {
+        input: join(i18nResourceDir(root), "en", "*.json"),
+        output: i18nTypesPath(root),
+        resourcesFile: i18nResourcesPath(root),
+    },
+});
 
-    return (
-        `{${contextField(message.context)} defaultValue: ${JSON.stringify(message.singular)}; ` +
-        `interpolated: ${String(isInterpolated)}; kind: "default"; required: ${String(isRequired)}; ` +
-        `value: ${stringType(values)} }`
-    );
-};
+const declarations = (): string => `import type Resources from "./i18n-resources.js";
 
-const requirePlural = (message: SourceMessage): string => {
-    if (message.plural === null) {
-        throw new Error("Plural translation metadata requires a plural source string");
-    }
+declare module "@gtkx/i18n" {
+    interface I18nResources extends Resources {}
+}
+`;
 
-    return message.plural;
-};
+const writeChanged = (path: string, content: string): void => {
+    let current: string | null;
 
-const pluralVariant = (message: SourceMessage): string => {
-    const plural = requirePlural(message);
-    const values = [message.singular, plural];
-    const isInterpolated = hasInterpolation(values);
-
-    return (
-        `{${contextField(message.context)} defaultValue: ${JSON.stringify(plural)}; ` +
-        `interpolated: ${String(isInterpolated)}; kind: "plural"; required: true; ` +
-        `value: ${stringType(values)} }`
-    );
-};
-
-const pluralDefaultsVariant = (message: SourceMessage): string => {
-    const plural = requirePlural(message);
-    const values = [message.singular, plural];
-    const isInterpolated = hasInterpolation(values);
-
-    return (
-        `{${contextField(message.context)} defaultValueOne: ${JSON.stringify(message.singular)}; ` +
-        `defaultValueOther: ${JSON.stringify(plural)}; interpolated: ${String(isInterpolated)}; ` +
-        `kind: "pluralDefaults"; required: true; value: ${stringType(values)} }`
-    );
-};
-
-const variantsFor = (message: SourceMessage): string[] => {
-    if (message.kind === "plural") {
-        return [pluralVariant(message)];
-    }
-
-    if (message.kind === "pluralDefaults") {
-        return [pluralDefaultsVariant(message)];
-    }
-
-    return message.kind === "default" ? [defaultVariant(message)] : [pointVariant(message)];
-};
-
-const renderRegistry = (messages: SourceMessage[]): string[] => {
-    const entries: Map<string, Set<string>> = new Map();
-
-    for (const message of messages) {
-        const variants = entries.get(message.msgid) ?? new Set<string>();
-
-        for (const variant of variantsFor(message)) {
-            variants.add(variant);
-        }
-
-        entries.set(message.msgid, variants);
-    }
-
-    return [...entries]
-        .toSorted(([left], [right]) => left.localeCompare(right))
-        .map(([msgid, variants]) => `        ${JSON.stringify(msgid)}: ${[...variants].join(" | ")};`);
-};
-
-const generatedHeader = (): string[] => [
-    "/**",
-    " * Translation declarations generated by GTKX. Regenerated by",
-    " * `gtkx codegen`, `gtkx dev`, and `gtkx build`; do not edit.",
-    " */",
-];
-
-const renderI18nTypes = (messages: SourceMessage[], isEnabled = true): string => {
-    if (!isEnabled) {
-        return [...generatedHeader(), "export {};", ""].join("\n");
-    }
-
-    return [
-        ...generatedHeader(),
-        'import "@gtkx/i18n";',
-        "",
-        'declare module "@gtkx/i18n" {',
-        "    interface TranslationRegistry {",
-        ...renderRegistry(messages),
-        "    }",
-        "}",
-        "",
-    ].join("\n");
-};
-
-const i18nTypesPath = (root: string): string => join(root, "node_modules", ".gtkx", I18N_TYPES_FILENAME);
-
-const readFileOrNull = (path: string): string | null => {
     try {
-        return readFileSync(path, "utf8");
+        current = readFileSync(path, "utf8");
     } catch {
-        return null;
+        current = null;
     }
-};
 
-const emitI18nTypes = (root: string, messages: SourceMessage[], isEnabled = true): I18nTypesResult => {
-    const path = i18nTypesPath(root);
-    const content = renderI18nTypes(messages, isEnabled);
-
-    if (readFileOrNull(path) === content) {
-        return { isWritten: false, path };
+    if (current === content) {
+        return;
     }
 
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, content);
-
-    return { isWritten: true, path };
 };
 
-export { I18N_TYPES_FILENAME, emitI18nTypes, i18nTypesPath };
+const typegenLogger = (): { errors: string[]; logger: Logger } => {
+    const errors: string[] = [];
+
+    return {
+        errors,
+        logger: {
+            error(value) {
+                errors.push(String(value));
+            },
+            info() {
+                return;
+            },
+            warn() {
+                return;
+            },
+        },
+    };
+};
+
+const emitI18nTypes = async (root: string): Promise<void> => {
+    const typesPath = i18nTypesPath(root);
+    const resourcesPath = i18nResourcesPath(root);
+    writeChanged(typesPath, declarations());
+    const { errors, logger } = typegenLogger();
+    await runTypesGenerator(i18nToolkitConfig(root, []), { logger, quiet: true });
+
+    if (errors.length > 0 || !existsSync(typesPath) || !existsSync(resourcesPath)) {
+        throw new Error(errors.join("\n") || "i18next type generation did not produce its outputs");
+    }
+};
+
+const clearI18nTypes = (root: string): void => {
+    rmSync(i18nTypesPath(root), { force: true });
+    rmSync(i18nResourcesPath(root), { force: true });
+    clearI18nResources(root);
+};
+
+export {
+    I18N_TYPES_FILENAME,
+    clearI18nResources,
+    clearI18nTypes,
+    emitI18nTypes,
+    i18nToolkitConfig,
+    i18nTypesPath,
+};

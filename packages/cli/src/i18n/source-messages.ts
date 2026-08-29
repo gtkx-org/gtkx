@@ -1,5 +1,5 @@
-import type { ExtractedKey, I18nextToolkitConfig, Logger } from "i18next-cli";
-import { findKeys } from "i18next-cli";
+import type { ExtractedKey, ExtractedKeysMap, Logger, Plugin } from "i18next-cli";
+import { runExtractor } from "i18next-cli";
 import {
     existsSync,
     mkdirSync,
@@ -12,8 +12,8 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { CatalogProject } from "./catalogs.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { replaceCatalogTemplate } from "./catalog-template.js";
-import { gtkxExtractorPlugin } from "./extractor-plugin.js";
 import { metadataTemplateFiles } from "./metadata-templates.js";
+import { clearI18nResources, i18nToolkitConfig } from "./types.js";
 
 type SourceLocation = {
     file: string;
@@ -23,17 +23,11 @@ type SourceLocation = {
 
 type SourceMessage = {
     context: string | null;
-    kind: "default" | "plural" | "pluralDefaults" | "point";
     locations: SourceLocation[];
-    msgid: string;
     namespace: string;
     plural: string | null;
     singular: string;
-};
-
-type SourceCatalog = {
-    messages: SourceMessage[];
-    sourceFiles: string[];
+    sourceKey: string;
 };
 
 type SyntheticEntry = {
@@ -45,7 +39,6 @@ type SourceExtraction = {
     messages: SourceMessage[];
     output: string;
     project: CatalogProject;
-    sourceFiles: string[];
     workDir: string;
 };
 
@@ -54,7 +47,6 @@ type CatalogTemplateExtraction = {
     output?: string | undefined;
     project: CatalogProject;
     shouldPreserveMetadataMessages: boolean;
-    sourceFiles: string[];
 };
 
 type PluralVariant = {
@@ -90,31 +82,6 @@ const quietLogger = (): { logger: Logger; reports: string[] } => {
             error(message) {
                 reports.push(String(message));
             },
-        },
-    };
-};
-
-const extractorConfig = (sourceFiles: string[]): I18nextToolkitConfig => {
-    const integration = gtkxExtractorPlugin();
-
-    return {
-        locales: ["en"],
-        plugins: [integration.plugin],
-        extract: {
-            input: sourceFiles,
-            output: "unused/{{language}}/{{namespace}}.json",
-            contextSeparator: CONTEXT_SEPARATOR,
-            defaultNS: DEFAULT_NAMESPACE,
-            disablePlurals: false,
-            extractFromComments: false,
-            functions: [],
-            generateBasePluralForms: false,
-            keySeparator: ".",
-            nsSeparator: false,
-            pluralSeparator: "_",
-            transComponents: integration.transComponents,
-            useTranslationNames: [],
-            warnOnConflicts: "error",
         },
     };
 };
@@ -155,17 +122,22 @@ const normalizedLocations = (locations: SourceLocation[]): SourceLocation[] => {
 };
 
 const pointSource = (entry: ExtractedKey, msgid: string): string => {
-    if (entry.explicitDefault !== true || typeof entry.defaultValue !== "string") {
+    if (typeof entry.defaultValue !== "string") {
         return msgid;
     }
 
-    return entry.defaultValue;
+    if (entry.explicitDefault === true) {
+        return entry.defaultValue;
+    }
+
+    return entry.defaultValue === msgid || msgid.endsWith(`.${entry.defaultValue}`)
+        ? msgid
+        : entry.defaultValue;
 };
 
 const pointMessage = (entry: ExtractedKey): SourceMessage => {
     const { context, msgid } = splitContext(entry.key);
     validateIdentity(context, msgid);
-    const isDefaultExplicit = entry.explicitDefault === true;
     const singular = pointSource(entry, msgid);
 
     if (singular.length === 0) {
@@ -174,12 +146,11 @@ const pointMessage = (entry: ExtractedKey): SourceMessage => {
 
     return {
         context,
-        kind: isDefaultExplicit ? "default" : "point",
         locations: normalizedLocations(entry.locations ?? []),
-        msgid,
         namespace: namespaceFor(entry),
         plural: null,
         singular,
+        sourceKey: msgid,
     };
 };
 
@@ -242,8 +213,7 @@ const pluralMessage = ({ baseKey, namespace, variants }: PluralGroup): SourceMes
     const { one, other } = pairedVariants(variants);
     const { context, msgid } = splitContext(baseKey);
     validateIdentity(context, msgid);
-    const hasStableKey = one.defaultValue !== other.defaultValue;
-    const singular = hasStableKey ? one.defaultValue : msgid;
+    const singular = one.defaultValue;
     const plural = other.defaultValue;
 
     if (singular === plural || singular.length === 0 || plural.length === 0) {
@@ -252,12 +222,11 @@ const pluralMessage = ({ baseKey, namespace, variants }: PluralGroup): SourceMes
 
     return {
         context,
-        kind: hasStableKey ? "pluralDefaults" : "plural",
         locations: normalizedLocations(variants.flatMap((variant) => variant.locations)),
-        msgid,
         namespace,
         plural,
         singular,
+        sourceKey: msgid,
     };
 };
 
@@ -295,9 +264,26 @@ const sourceMessages = (entries: ExtractedKey[]): SourceMessage[] => {
 const compareMessages = (left: SourceMessage, right: SourceMessage): number =>
     left.namespace.localeCompare(right.namespace) ||
     (left.context ?? "").localeCompare(right.context ?? "") ||
-    left.msgid.localeCompare(right.msgid) ||
     left.singular.localeCompare(right.singular) ||
     (left.plural ?? "").localeCompare(right.plural ?? "");
+
+const inferLocations = (message: SourceMessage, sources: Map<string, string>): SourceMessage => {
+    if (message.locations.length > 0) {
+        return message;
+    }
+
+    const locations: SourceLocation[] = [];
+
+    for (const [file, source] of sources) {
+        const index = source.indexOf(message.sourceKey);
+
+        if (index !== -1) {
+            locations.push({ file, line: source.slice(0, index).split("\n").length });
+        }
+    }
+
+    return { ...message, locations };
+};
 
 const normalizedSourceFiles = (root: string, paths: string[]): string[] => {
     const files = paths
@@ -311,20 +297,39 @@ const normalizedSourceFiles = (root: string, paths: string[]): string[] => {
     return new Set(files).values().toArray().toSorted((left, right) => left.localeCompare(right));
 };
 
-const findSourceMessages = async (sourceFiles: string[]): Promise<SourceMessage[]> => {
+const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<SourceMessage[]> => {
     if (sourceFiles.length === 0) {
+        clearI18nResources(root);
+
         return [];
     }
 
-    const fileErrors: string[] = [];
+    let extracted: ExtractedKeysMap | undefined;
     const { logger, reports } = quietLogger();
-    const { allKeys } = await findKeys(extractorConfig(sourceFiles), logger, fileErrors);
 
-    if (fileErrors.length > 0 || reports.length > 0) {
-        throw new Error([...fileErrors, ...reports].join("\n"));
+    const capture: Plugin = {
+        name: "gtkx-gettext",
+        onEnd(keys) {
+            extracted = keys;
+        },
+    };
+
+    const result = await runExtractor(i18nToolkitConfig(root, sourceFiles, [capture]), {
+        logger,
+        quiet: true,
+        syncPrimaryWithDefaults: true,
+        trustDerivedDefaults: true,
+    });
+
+    if (extracted === undefined || reports.length > 0 || result.hasErrors) {
+        throw new Error(reports.join("\n") || "i18next extraction failed");
     }
 
-    return sourceMessages(allKeys.values().toArray()).toSorted(compareMessages);
+    const sources = new Map(sourceFiles.map((file) => [file, readFileSync(file, "utf8")]));
+
+    return sourceMessages(extracted.values().toArray())
+        .map((message) => inferLocations(message, sources))
+        .toSorted(compareMessages);
 };
 
 const projectPath = (root: string, path: string): string | null => {
@@ -371,9 +376,6 @@ const renderCatalogCall = (message: SourceMessage): string => {
         : `pgettext(${JSON.stringify(message.context)}, ${msgid});`;
 };
 
-const readSources = (sourceFiles: string[]): Map<string, string> =>
-    new Map(sourceFiles.map((path) => [path, readFileSync(path, "utf8")]));
-
 const locatedOwners = (
     project: CatalogProject,
     message: SourceMessage,
@@ -393,49 +395,23 @@ const locatedOwners = (
     return unique.values().toArray();
 };
 
-const inferredOwner = (
-    project: CatalogProject,
-    message: SourceMessage,
-    sources: Map<string, string>,
-): { path: string; line: number } | null => {
-    for (const [path, source] of sources) {
-        const index = source.indexOf(message.msgid);
-
-        if (index !== -1) {
-            return {
-                path: projectPath(project.root, path) ?? SYNTHETIC_FILENAME,
-                line: source.slice(0, index).split("\n").length,
-            };
-        }
-    }
-
-    return null;
-};
-
 const sourceOwners = (
     project: CatalogProject,
     message: SourceMessage,
-    sources: Map<string, string>,
 ): { path: string; line: number | undefined }[] => {
     const located = locatedOwners(project, message);
 
-    if (located.length > 0) {
-        return located;
-    }
-
-    return [inferredOwner(project, message, sources) ?? { path: SYNTHETIC_FILENAME, line: undefined }];
+    return located.length > 0 ? located : [{ path: SYNTHETIC_FILENAME, line: undefined }];
 };
 
 const syntheticEntries = (
     project: CatalogProject,
     messages: SourceMessage[],
-    sourceFiles: string[],
 ): Map<string, SyntheticEntry[]> => {
-    const sources = readSources(sourceFiles);
     const entries: Map<string, SyntheticEntry[]> = new Map();
 
     for (const message of messages) {
-        for (const owner of sourceOwners(project, message, sources)) {
+        for (const owner of sourceOwners(project, message)) {
             const owned = entries.get(owner.path) ?? [];
             owned.push({ call: renderCatalogCall(message), line: owner.line });
             entries.set(owner.path, owned);
@@ -492,9 +468,8 @@ const writeSyntheticSources = (
     workDir: string,
     project: CatalogProject,
     messages: SourceMessage[],
-    sourceFiles: string[],
 ): string => {
-    const entries = syntheticEntries(project, messages, sourceFiles);
+    const entries = syntheticEntries(project, messages);
     const paths: string[] = [];
 
     for (const [path, owned] of entries) {
@@ -510,8 +485,8 @@ const writeSyntheticSources = (
     return potfiles;
 };
 
-const extractSourceMessages = ({ project, messages, sourceFiles, output, workDir }: SourceExtraction): void => {
-    const potfilesPath = writeSyntheticSources(workDir, project, messages, sourceFiles);
+const extractSourceMessages = ({ project, messages, output, workDir }: SourceExtraction): void => {
+    const potfilesPath = writeSyntheticSources(workDir, project, messages);
 
     runCliTool({
         tool: "xgettext",
@@ -555,7 +530,6 @@ const joinMetadataFragment = (output: string, fragment: string): void => {
 const extractCatalogTemplate = ({
     project,
     messages,
-    sourceFiles,
     shouldPreserveMetadataMessages,
     output = resolve(project.poDir, `${project.domain}.pot`),
 }: CatalogTemplateExtraction): void => {
@@ -567,10 +541,10 @@ const extractCatalogTemplate = ({
         if (shouldPreserveMetadataMessages && hasPreviousTemplate) {
             const fragment = join(workDir, "metadata.pot");
             extractMetadataFragment(project, output, fragment);
-            extractSourceMessages({ project, messages, sourceFiles, output: source, workDir });
+            extractSourceMessages({ project, messages, output: source, workDir });
             joinMetadataFragment(source, fragment);
         } else {
-            extractSourceMessages({ project, messages, sourceFiles, output: source, workDir });
+            extractSourceMessages({ project, messages, output: source, workDir });
         }
 
         replaceCatalogTemplate(source, output);
@@ -583,26 +557,22 @@ const extractSourceCatalogTo = async (
     project: CatalogProject,
     paths: string[],
     output: string,
-): Promise<SourceCatalog> => {
+): Promise<void> => {
     const sourceFiles = normalizedSourceFiles(project.root, paths);
-    const messages = await findSourceMessages(sourceFiles);
+    const messages = await findSourceMessages(project.root, sourceFiles);
     writePotfiles(project, sourceFiles);
-    extractCatalogTemplate({ project, messages, sourceFiles, shouldPreserveMetadataMessages: false, output });
-
-    return { messages, sourceFiles };
+    extractCatalogTemplate({ project, messages, shouldPreserveMetadataMessages: false, output });
 };
 
 const extractSourceCatalog = async (
     project: CatalogProject,
     paths: string[],
     shouldPreserveMetadataMessages = true,
-): Promise<SourceCatalog> => {
+): Promise<void> => {
     const sourceFiles = normalizedSourceFiles(project.root, paths);
-    const messages = await findSourceMessages(sourceFiles);
+    const messages = await findSourceMessages(project.root, sourceFiles);
     writePotfiles(project, sourceFiles);
-    extractCatalogTemplate({ project, messages, sourceFiles, shouldPreserveMetadataMessages });
-
-    return { messages, sourceFiles };
+    extractCatalogTemplate({ project, messages, shouldPreserveMetadataMessages });
 };
 
-export { type SourceMessage, extractSourceCatalog, extractSourceCatalogTo };
+export { extractSourceCatalog, extractSourceCatalogTo };

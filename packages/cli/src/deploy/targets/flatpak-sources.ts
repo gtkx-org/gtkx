@@ -26,7 +26,7 @@ type GitRevision = {
 const GENERATED_SOURCES = "generated-sources.json";
 const COMMIT_PEEL = "^{commit}";
 const FETCHABLE_URL = /^https?:\/\//;
-const DEFAULT_NODE_EXTENSION = "org.freedesktop.Sdk.Extension.node24";
+const DEFAULT_NODE_EXTENSION = "org.freedesktop.Sdk.Extension.node26";
 const NODE_EXTENSION_PREFIX = "org.freedesktop.Sdk.Extension.";
 const SDK_EXTENSION_ROOT = "/usr/lib/sdk";
 

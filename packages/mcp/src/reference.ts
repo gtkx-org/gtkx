@@ -58,7 +58,7 @@ type ResourceServer = Pick<McpServer, "registerResource">;
 
 const FRESHNESS_INTERVAL_MS = 2000;
 const FAILURE_RETRY_MS = 5000;
-const CONFIG_EXTENSIONS = ["ts", "mts", "cts", "js", "mjs", "cjs", "json"];
+const CONFIG_EXTENSIONS = ["ts", "mts", "js", "mjs", "json"];
 
 const PROJECT_SOURCE_LABELS: Record<ProjectSource, string> = {
     argument: "requested with `projectRoot`",

@@ -30,6 +30,8 @@
         ".": {
             "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": null,
             "default": "./dist/index.js"
         },
         "./env": {
@@ -38,21 +40,29 @@
         "./internal": {
             "source": "./src/internal.ts",
             "types": "./dist/internal.d.ts",
+            "import": "./dist/internal.js",
+            "require": null,
             "default": "./dist/internal.js"
         },
         "./adw": {
             "source": "./src/adw/index.ts",
             "types": "./dist/adw/index.d.ts",
+            "import": "./dist/adw/index.js",
+            "require": null,
             "default": "./dist/adw/index.js"
         },
         "./adw/config": {
             "source": "./src/adw/config.ts",
             "types": "./dist/adw/config.d.ts",
+            "import": "./dist/adw/config.js",
+            "require": null,
             "default": "./dist/adw/config.js"
         },
         "./config": {
             "source": "./src/config.ts",
             "types": "./dist/config.d.ts",
+            "import": "./dist/config.js",
+            "require": null,
             "default": "./dist/config.js"
         }
     },
@@ -90,7 +100,7 @@
         }
     },
     "engines": {
-        "node": ">=24"
+        "node": ">=26.7.0"
     },
     "dependencies": {
         "@gtkx/config": "workspace:*",

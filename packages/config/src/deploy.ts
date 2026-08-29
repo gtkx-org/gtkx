@@ -119,7 +119,7 @@ const extraFileEntrySchema = z.union([text(SOURCE_PATH_ERROR), extraFileSchema],
 
 const nodeRuntimeSchema = z.strictObject({
     source: z.enum(NODE_SOURCES, { error: "must be one of download, host, path" }).optional(),
-    version: text("must be a Node.js version such as 24.19.0").optional(),
+    version: text("must be a Node.js version such as 26.7.0").optional(),
     path: text("must be a path to a node binary").optional(),
     shouldStrip: flag(BOOLEAN_ERROR).optional(),
     shouldUseCompileCache: flag(BOOLEAN_ERROR).optional(),

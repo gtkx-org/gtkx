@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-27 17:13+0200\n"
+"POT-Creation-Date: 2026-08-29 21:28+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -275,13 +275,13 @@ msgstr ""
 msgid "Yesterday at {{time}}"
 msgstr ""
 
-#: src/format.ts:21
+#: src/format.ts:22
 msgid "{{count}} day ago"
 msgid_plural "{{count}} days ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/format.ts:27
+#: src/format.ts:32
 msgid "Never"
 msgstr ""
 

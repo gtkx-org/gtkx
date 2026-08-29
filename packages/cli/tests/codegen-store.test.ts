@@ -162,33 +162,6 @@ describe("gtkx codegen (the libraries a project binds without naming them)", () 
     });
 });
 
-describe("gtkx codegen (a project that does not declare itself a module)", () => {
-    const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
-        status: null,
-    };
-
-    beforeAll(() => {
-        state.project = createCliProject({
-            prefix: "gtkx-cli-codegen-commonjs-",
-            config: config(""),
-            packageType: "commonjs",
-        });
-
-        state.status = runCli(state.project, ["codegen"]).status;
-    });
-
-    afterAll(() => {
-        removeCliProject(state.project);
-    });
-
-    it("writes stores that are still ECMAScript modules", () => {
-        expect(state.status).toBe(0);
-        expect(generatedModule(state.project, "jsx", "metadata.js")).not.toContain("__esModule");
-        expect(generatedModule(state.project, "gi", "gtk", "gtk.js")).not.toContain("__esModule");
-    });
-});
-
 describe("gtkx codegen (projects it cannot generate from)", () => {
     it.each(BROKEN_CASES)("fails over $title", ({ config: body }) => {
         const project = createCliProject({ prefix: "gtkx-cli-codegen-broken-", config: body });

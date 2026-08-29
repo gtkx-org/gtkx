@@ -1,20 +1,3 @@
 {
-    "entryPoints": ["./dist/index.d.ts"],
-    "intentionallyNotExported": [
-        "GeneratedTFunction",
-        "GeneratedTranslationProps",
-        "GeneratedUseTranslationResponse",
-        "GeneratedWithTranslation",
-        "GetI18n",
-        "IcuTransComponent",
-        "IcuTransWithoutContextComponent",
-        "Init",
-        "IsRegistryEmpty",
-        "NormalizedKeyPrefix",
-        "TransComponent",
-        "TranslationComponent",
-        "TransWithoutContextComponent",
-        "UseTranslation",
-        "WithTranslationFactory"
-    ]
+    "entryPoints": ["./dist/index.d.ts"]
 }

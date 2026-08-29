@@ -142,7 +142,6 @@ describe("gtkx build (self-contained bundle)", () => {
         state.project = createAppProject({
             applicationId: "com.gtkx.clibundleprobe",
             entry: APP_ENTRY,
-            packageType: "module",
             prefix: "gtkx-bundle-probe-",
         });
 
@@ -177,7 +176,6 @@ describe("gtkx build (worker chunks)", () => {
             applicationId: "com.gtkx.clibundleworker",
             entry: WORKER_APP_ENTRY,
             files: { [SHARED_SOURCE_PATH]: SHARED_SOURCE, [WORKER_SOURCE_PATH]: WORKER_SOURCE },
-            packageType: "module",
             prefix: "gtkx-bundle-worker-",
         });
 
@@ -201,7 +199,6 @@ describe("gtkx build (bundle that would resolve a module at runtime)", () => {
             const project = createAppProject({
                 applicationId,
                 entry: resolvingEntry(specifier),
-                packageType: "module",
                 prefix,
             });
 

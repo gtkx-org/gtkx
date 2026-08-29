@@ -34,11 +34,15 @@
         "./refresh-runtime": {
             "source": "./src/refresh-runtime.ts",
             "types": "./dist/refresh-runtime.d.ts",
+            "import": "./dist/refresh-runtime.js",
+            "require": null,
             "default": "./dist/refresh-runtime.js"
         },
         "./vitest-plugin": {
             "source": "./src/vitest-plugin.ts",
             "types": "./dist/vitest-plugin.d.ts",
+            "import": "./dist/vitest-plugin.js",
+            "require": null,
             "default": "./dist/vitest-plugin.js"
         }
     },
@@ -66,7 +70,7 @@
         }
     },
     "engines": {
-        "node": ">=24"
+        "node": ">=26.7.0"
     },
     "dependencies": {
         "@babel/core": "^8.0.1",

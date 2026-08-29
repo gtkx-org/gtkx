@@ -81,7 +81,6 @@ describe("gtkx build (identifier names)", () => {
                 [WORKER_SOURCE_PATH]: WORKER_MODULE_SOURCE,
             },
             outDir: OUT_DIR,
-            packageType: "module",
             prefix: "gtkx-bundle-keep-names-",
         });
     }, BUILD_TIMEOUT);

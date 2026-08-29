@@ -18,7 +18,7 @@ npm run deploy -- --target flatpak
 [gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to flatpak
 [gtkx] Building ~/tasks/src/index.tsx
 [gtkx] Validated the desktop entry and the metainfo
-[gtkx] Bundled Node.js v24.19.0 (100.8 MiB, glibc >= 2.28)
+[gtkx] Bundled Node.js v26.7.0 (109.4 MiB, glibc >= 2.28)
 [gtkx] Staged 11 files into build/stage
 [gtkx] Wrote build/targets/flatpak/com.gtkx.tutorial.yml
 [gtkx] flatpak: running flatpak-builder, this can take several minutes
@@ -83,7 +83,7 @@ deploy: {
 },
 ```
 
-Replace that URL with the public HTTPS repository you will push. `source` mode changes what the manifest carries. The module's source becomes a `git` source pinned to your current commit rather than your working tree. It adds the `org.freedesktop.Sdk.Extension.node24` SDK extension, since the GNOME SDK carries no Node.js and the sandbox now has to run the build. It vendors every npm dependency ahead of time with [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node), because the build sandbox has no network and `npm ci --offline` has to resolve from a local cache. And it carries the localized desktop entry, metainfo, and launcher as inline sources, so those generated files do not have to be committed to your repository. The sandbox build compiles the committed `po/fr.po`, then copies `dist/locale` into `/app/share/locale` with the bundle.
+Replace that URL with the public HTTPS repository you will push. `source` mode changes what the manifest carries. The module's source becomes a `git` source pinned to your current commit rather than your working tree. It adds the `org.freedesktop.Sdk.Extension.node26` SDK extension, since the GNOME SDK carries no Node.js and the sandbox now has to run the build. It vendors every npm dependency ahead of time with [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node), because the build sandbox has no network and `npm ci --offline` has to resolve from a local cache. And it carries the localized desktop entry, metainfo, and launcher as inline sources, so those generated files do not have to be committed to your repository. The sandbox build compiles the committed `po/fr.po`, then copies `dist/locale` into `/app/share/locale` with the bundle.
 
 Install the generator once:
 

@@ -44,12 +44,12 @@
                     "{workspaceRoot}/gtkx.config.ts",
                     "{workspaceRoot}/vitest.config.ts",
                     "{workspaceRoot}/scripts/**/*",
-                    "{workspaceRoot}/packages/**/*.{ts,tsx,mts,cts,json}",
-                    "{workspaceRoot}/examples/**/*.{ts,tsx,mts,cts,json}",
-                    "{workspaceRoot}/website/**/*.{ts,tsx,mts,cts,json}",
+                    "{workspaceRoot}/packages/**/*.{ts,tsx,mts,json}",
+                    "{workspaceRoot}/examples/**/*.{ts,tsx,mts,json}",
+                    "{workspaceRoot}/website/**/*.{ts,tsx,mts,json}",
                     "sharedGlobals",
                     {
-                        "dependentTasksOutputFiles": "**/*.{d.ts,d.cts,d.mts}",
+                        "dependentTasksOutputFiles": "**/*.{d.ts,d.mts}",
                         "transitive": true
                     }
                 ]
@@ -180,7 +180,7 @@
         "vitest": "catalog:"
     },
     "engines": {
-        "node": ">=24"
+        "node": ">=26.7.0"
     },
     "packageManager": "pnpm@11.22.0+sha512.1ff870c4c6133dfd88fb2afc46dd13d47f09c9794b438c6fdb47ca98caf3bc16381ee0be93a091b8e3824cf01f889f46d7d9e20910fb0be1ab0fb5baa80dd621"
 }
