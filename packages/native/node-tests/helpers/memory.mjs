@@ -17,6 +17,7 @@ export const gcUntil = async (predicate, rounds = 30) => {
             return true;
         }
 
+        await settle();
         globalThis.gc();
         await settle();
     }

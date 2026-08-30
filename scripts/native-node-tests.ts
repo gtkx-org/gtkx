@@ -60,7 +60,11 @@ const memoryEnv = (): NodeJS.ProcessEnv => {
     const mallocDebug = mallocDebugRuntime();
 
     if (mallocDebug === undefined) {
-        console.warn("libc_malloc_debug is unavailable; running without MALLOC_CHECK_ heap verification");
+        console.warn(
+            "libc_malloc_debug.so.0 was not found, so heap writes past an allocation and delayed " +
+            "double frees go unchecked in this run. Install it with `sudo dnf install glibc-utils` " +
+            "on Fedora; Debian and Ubuntu ship it inside libc6.",
+        );
 
         return { MALLOC_PERTURB_: "85", GLIBC_TUNABLES: "glibc.malloc.tcache_count=0" };
     }
