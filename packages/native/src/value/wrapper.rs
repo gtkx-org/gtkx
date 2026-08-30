@@ -23,10 +23,6 @@ thread_local! {
     static LIVE_TOGGLE_REFS: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
 }
 
-pub fn live_count() -> usize {
-    LIVE_TOGGLE_REFS.with_borrow(HashSet::len)
-}
-
 fn quark() -> glib::Quark {
     glib::Quark::from_static_str(glib::gstr!("gtkx-wrapper-ref"))
 }

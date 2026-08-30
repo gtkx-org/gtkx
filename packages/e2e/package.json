@@ -9,6 +9,7 @@
         "@gtkx/config": "workspace:*",
         "@gtkx/css": "workspace:*",
         "@gtkx/gl": "workspace:*",
+        "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/runtime": "workspace:*",
         "@gtkx/testing": "workspace:*",
@@ -23,7 +24,58 @@
                     "cwd": ".",
                     "command": "eslint {projectRoot}"
                 }
+            },
+            "test-fixtures": {
+                "dependsOn": [
+                    "@gtkx/utils:build"
+                ],
+                "cache": false
+            },
+            "test:native": {
+                "dependsOn": [
+                    "@gtkx/native:build",
+                    "test-fixtures",
+                    "@gtkx/runtime:build",
+                    "@gtkx/utils:build"
+                ],
+                "cache": true,
+                "inputs": [
+                    "nodeTests"
+                ],
+                "outputs": []
+            },
+            "test:asan": {
+                "dependsOn": [
+                    "test-fixtures",
+                    "@gtkx/runtime:build",
+                    "@gtkx/utils:build"
+                ],
+                "cache": true,
+                "inputs": [
+                    "nodeTests"
+                ],
+                "outputs": []
             }
+        },
+        "namedInputs": {
+            "nodeTests": [
+                "default",
+                "sharedGlobals",
+                "{projectRoot}/node-tests/**/*",
+                "{workspaceRoot}/scripts/native-node-tests.ts",
+                "{workspaceRoot}/scripts/native-test-fixtures.ts",
+                "{workspaceRoot}/scripts/asan-native.ts",
+                "{workspaceRoot}/scripts/cargo-nightly.ts",
+                "{workspaceRoot}/scripts/rust-nightly.ts",
+                "{workspaceRoot}/packages/vitest/src/**/*",
+                "{workspaceRoot}/packages/codegen/src/**/*",
+                "{workspaceRoot}/packages/runtime/src/**/*"
+            ]
         }
+    },
+    "scripts": {
+        "test:native": "tsx ../../scripts/native-node-tests.ts",
+        "test:asan": "tsx ../../scripts/asan-native.ts",
+        "test-fixtures": "tsx ../../scripts/native-test-fixtures.ts"
     }
 }

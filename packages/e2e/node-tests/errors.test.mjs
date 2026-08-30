@@ -1,14 +1,14 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import * as WarnLib from "@gtkx/gi/warnlib";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 const capture = (call) => {
     try {
@@ -28,7 +28,7 @@ test("a failing call throws a glib error carrying the c domain, code and message
 
     const error = capture(() => GIMarshallingTests.gerror());
     assert.ok(error instanceof GLib.Error);
-    assert.ok(error instanceof globalThis.Error);
+    assert.ok(error instanceof Error);
     assert.equal(error.domain, marshallingDomain());
     assert.equal(error.code, GIMarshallingTests.CONSTANT_GERROR_CODE);
     assert.equal(error.message, GIMarshallingTests.CONSTANT_GERROR_MESSAGE);
@@ -85,7 +85,7 @@ test("uninitialized gerror out parameters report failure with nulls", () => {
 test("a returned gerror is an owned value with working error methods", () => {
     const error = GIMarshallingTests.gerrorReturn();
     assert.ok(error instanceof GLib.Error);
-    assert.ok(error instanceof globalThis.Error);
+    assert.ok(error instanceof Error);
     assert.equal(error.domain, marshallingDomain());
     assert.equal(error.code, GIMarshallingTests.CONSTANT_GERROR_CODE);
     assert.equal(error.message, GIMarshallingTests.CONSTANT_GERROR_MESSAGE);
@@ -134,7 +134,8 @@ test("glib errors round trip the fields they are constructed with", () => {
 test("a nullable gerror argument accepts null and an owned error", () => {
     assert.equal(GIMarshallingTests.nullableGerror(null), false);
     assert.equal(GIMarshallingTests.nullableGerror(GIMarshallingTests.gerrorReturn()), true);
-    assert.equal(GIMarshallingTests.nullableGerror(GLib.Error.newLiteral(ioDomain(), Gio.IOErrorEnum.FAILED, "boom")), true);
+    const boom = GLib.Error.newLiteral(ioDomain(), Gio.IOErrorEnum.FAILED, "boom");
+    assert.equal(GIMarshallingTests.nullableGerror(boom), true);
 });
 
 test("errors travel through gvalues as boxed payloads", () => {
@@ -142,6 +143,7 @@ test("errors travel through gvalues as boxed payloads", () => {
         const value = new GObject.Value();
         value.init(GLib.Error);
         value.setBoxed(GIMarshallingTests.gerrorReturn());
+
         return value;
     };
 

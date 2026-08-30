@@ -1,10 +1,10 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Regress from "@gtkx/gi/regress";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 const UTF8 = "const ♥ utf8";
 
@@ -19,8 +19,10 @@ test("utf8 strings round trip through every direction and transfer", () => {
 });
 
 test("utf8 strings are encoded as utf8 bytes for byte array parameters", () => {
-    GIMarshallingTests.utf8AsUint8arrayIn(new TextEncoder().encode(UTF8));
-    GIMarshallingTests.utf8AsUint8arrayIn([...new TextEncoder().encode(UTF8)]);
+    const bytes = new TextEncoder().encode(UTF8);
+    GIMarshallingTests.utf8AsUint8arrayIn(bytes);
+    GIMarshallingTests.utf8AsUint8arrayIn([...bytes]);
+    assert.equal(new TextDecoder().decode(bytes), GIMarshallingTests.CONSTANT_UTF8);
 });
 
 test("dangling and uninitialized out strings decode as null", () => {
@@ -52,7 +54,7 @@ test("empty strings round trip", () => {
 
 test("nullable string parameters and returns carry null", () => {
     Regress.testUtf8NullIn(null);
-    Regress.testUtf8NullIn(undefined);
+    Regress.testUtf8NullIn();
     assert.equal(Regress.testUtf8NullOut(), null);
     assert.equal(Regress.testReturnAllowNone(), null);
     assert.equal(Regress.testReturnNullable(), null);

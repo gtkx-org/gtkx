@@ -1,11 +1,11 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 test("boxed struct constructs with defaults and props", () => {
     const empty = new GIMarshallingTests.BoxedStruct({});
@@ -101,10 +101,12 @@ test("test boxed exposes nested and private struct fields", () => {
 });
 
 test("test boxed non-method helpers accept the boxed", () => {
-    const boxed = Regress.TestBoxed.new();
+    const boxed = Regress.TestBoxed.newAlternativeConstructor1(9);
     boxed.notAMethod();
     Regress.testBoxedsNotAMethod(boxed);
     Regress.testBoxedsNotAStatic();
+    assert.equal(boxed.someInt8, 9);
+    assert.equal(boxed.equals(Regress.TestBoxed.newAlternativeConstructor1(9)), true);
 });
 
 test("simple boxed a const return decodes as a copy", () => {

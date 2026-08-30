@@ -1,12 +1,12 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Regress from "@gtkx/gi/regress";
 import * as Utility from "@gtkx/gi/utility";
 import * as WarnLib from "@gtkx/gi/warnlib";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 test("marshalling enum members mirror the C header values", () => {
     assert.equal(GIMarshallingTests.Enum.VALUE1, 0);
@@ -34,7 +34,7 @@ test("marshalling flags members mirror the C header values including masks", () 
     assert.equal(GIMarshallingTests.NoTypeFlags.MASK, 3);
     assert.equal(GIMarshallingTests.NoTypeFlags.MASK2, 3);
     assert.equal(GIMarshallingTests.ExtraFlags.VALUE1, 0);
-    assert.equal(GIMarshallingTests.ExtraFlags.VALUE2, 2147483648);
+    assert.equal(GIMarshallingTests.ExtraFlags.VALUE2, 2_147_483_648);
 });
 
 test("regress enum members carry negative, character and unsigned values", () => {
@@ -44,7 +44,7 @@ test("regress enum members carry negative, character and unsigned values", () =>
     assert.equal(Regress.TestEnum.VALUE4, 48);
     assert.equal(Regress.TestEnum.VALUE5, 49);
     assert.equal(Regress.TestEnumUnsigned.VALUE1, 1);
-    assert.equal(Regress.TestEnumUnsigned.VALUE2, 2147483648);
+    assert.equal(Regress.TestEnumUnsigned.VALUE2, 2_147_483_648);
     assert.equal(Regress.TestEnumNoGEnum.EVALUE1, 0);
     assert.equal(Regress.TestEnumNoGEnum.EVALUE2, 42);
     assert.equal(Regress.TestEnumNoGEnum.EVALUE3, 48);
@@ -61,7 +61,7 @@ test("regress, utility and warnlib flags members are exposed", () => {
     assert.equal(Regress.TestFlags.FLAG2, 2);
     assert.equal(Regress.TestFlags.FLAG3, 4);
     assert.equal(Regress.TestDiscontinuousFlags.DISCONTINUOUS1, 512);
-    assert.equal(Regress.TestDiscontinuousFlags.DISCONTINUOUS2, 536870912);
+    assert.equal(Regress.TestDiscontinuousFlags.DISCONTINUOUS2, 536_870_912);
     assert.equal(Regress.TestPrivateEnum.PUBLIC_ENUM_BEFORE, 1);
     assert.equal(Regress.TestPrivateEnum.PUBLIC_ENUM_AFTER, 4);
     assert.equal(Regress.FooEnumType.ALPHA, 0);
@@ -150,7 +150,12 @@ test("flags combinations are accepted through method arguments", () => {
 test("utility enums and flags cross namespace boundaries", () => {
     const object = new Utility.Object({});
     const struct = new Utility.Struct({});
-    Regress.fooMethodExternalReferences(object, Utility.EnumType.B, Utility.FlagType.A | Utility.FlagType.C, struct);
+    const flags = Utility.FlagType.A | Utility.FlagType.C;
+    Regress.fooMethodExternalReferences(object, Utility.EnumType.B, flags, struct);
+    assert.equal(Utility.EnumType.B, 1);
+    assert.equal(flags, 5);
+    assert.ok(object instanceof Utility.Object);
+    assert.ok(struct instanceof Utility.Struct);
 });
 
 test("foo enum helpers convert between ints and members", () => {
@@ -163,6 +168,10 @@ test("foo enum helpers convert between ints and members", () => {
 test("null is accepted as zero where the C side expects zero flags", () => {
     GIMarshallingTests.flagsInZero(null);
     GIMarshallingTests.noTypeFlagsInZero(null);
+
+    const object = new GIMarshallingTests.PropertiesAccessorsObject({});
+    object.setFlags(null);
+    assert.equal(object.getFlags(), 0);
 });
 
 test("enum arguments reject wrong types and out-of-range values", () => {
@@ -172,7 +181,7 @@ test("enum arguments reject wrong types and out-of-range values", () => {
     assert.throws(() => GIMarshallingTests.enumIn("VALUE3"));
     assert.throws(() => GIMarshallingTests.enumIn(Symbol("nope")));
     assert.throws(() => Regress.testEnumParam(2 ** 31));
-    assert.throws(() => GIMarshallingTests.flagsInZero(undefined));
+    assert.throws(() => GIMarshallingTests.flagsInZero());
 });
 
 test("registered enum arguments reject non-member values", () => {

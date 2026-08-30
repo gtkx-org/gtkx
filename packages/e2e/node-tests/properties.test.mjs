@@ -1,13 +1,21 @@
+import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
+import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
+import * as GObject from "@gtkx/gi/gobject";
+import * as Regress from "@gtkx/gi/regress";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
-import * as Regress from "@gtkx/gi/regress";
-import * as GObject from "@gtkx/gi/gobject";
-import * as GLib from "@gtkx/gi/glib";
-import * as Gio from "@gtkx/gi/gio";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
+
+const intGvalue = (number) => {
+    const value = new GObject.Value();
+    value.init(GObject.typeFromName("gint"));
+    value.setInt(number);
+
+    return value;
+};
 
 test("PropertiesObject starts with its default property values", () => {
     const po = new GIMarshallingTests.PropertiesObject({});
@@ -37,15 +45,13 @@ test("PropertiesObject starts with its default property values", () => {
 
 test("PropertiesObject sets every supported property at construct time", () => {
     const owned = new GObject.Object({});
-    const held = new GObject.Value();
-    held.init(GObject.typeFromName("gint"));
-    held.setInt(11);
+    const held = intGvalue(11);
     const po = new GIMarshallingTests.PropertiesObject({
         someBoolean: true,
         someChar: -66,
         someUchar: 200,
         someInt: -42,
-        someUint: 4000000000,
+        someUint: 4_000_000_000,
         someLong: -5n,
         someUlong: 12n,
         someInt64: -(2n ** 62n),
@@ -67,7 +73,7 @@ test("PropertiesObject sets every supported property at construct time", () => {
     assert.equal(po.someChar, -66);
     assert.equal(po.someUchar, 200);
     assert.equal(po.someInt, -42);
-    assert.equal(po.someUint, 4000000000);
+    assert.equal(po.someUint, 4_000_000_000);
     assert.equal(po.someLong, -5n);
     assert.equal(po.someUlong, 12n);
     assert.equal(po.someInt64, -(2n ** 62n));
@@ -189,9 +195,7 @@ test("nullable properties accept null and clear their value", () => {
     assert.equal(po.someVariant, null);
     po.someObject = null;
     assert.equal(po.someObject, null);
-    const held = new GObject.Value();
-    held.init(GObject.typeFromName("gint"));
-    held.setInt(1);
+    const held = intGvalue(1);
     po.someGvalue = held;
     po.someGvalue = null;
     assert.equal(po.someGvalue, null);
@@ -302,8 +306,8 @@ test("PropertiesAccessorsObject accessor methods round trip scalar properties", 
     assert.equal(ao.getUchar(), 200);
     ao.setInt(-42);
     assert.equal(ao.getInt(), -42);
-    ao.setUint(4000000000);
-    assert.equal(ao.getUint(), 4000000000);
+    ao.setUint(4_000_000_000);
+    assert.equal(ao.getUint(), 4_000_000_000);
     ao.setLong(-5n);
     assert.equal(ao.getLong(), -5n);
     ao.setUlong(12n);
@@ -376,7 +380,7 @@ test("PropertiesAccessorsObject accessor methods reject invalid values", () => {
     assert.throws(() => ao.setUchar(256));
     assert.throws(() => ao.setString(5));
     assert.throws(() => ao.setEnum(999));
-    assert.throws(() => ao.setFlags(0xffff));
+    assert.throws(() => ao.setFlags(0xFF_FF));
     assert.equal(ao.getInt(), 0);
 });
 
@@ -387,7 +391,7 @@ test("TestObj properties are set at construct time", () => {
         int: 42,
         float: 3.5,
         double: 2.5,
-        unichar: 0x10ffff,
+        unichar: 0x10_FF_FF,
         bare,
     });
     assert.equal(obj.string, "hello");
@@ -395,7 +399,7 @@ test("TestObj properties are set at construct time", () => {
     assert.equal(obj.int, 42);
     assert.equal(obj.float, 3.5);
     assert.equal(obj.double, 2.5);
-    assert.equal(obj.unichar, 0x10ffff);
+    assert.equal(obj.unichar, 0x10_FF_FF);
     assert.equal(obj.bare, bare);
 });
 
@@ -422,10 +426,10 @@ test("TestObj gtype and unichar properties round trip", () => {
     obj.gtype = GObject.typeFromName("GObject");
     assert.equal(GObject.typeName(obj.gtype), "GObject");
     assert.equal(obj.unichar, 0);
-    obj.unichar = 0x2665;
-    assert.equal(obj.unichar, 0x2665);
-    obj.unichar = 0x10ffff;
-    assert.equal(obj.unichar, 0x10ffff);
+    obj.unichar = 0x26_65;
+    assert.equal(obj.unichar, 0x26_65);
+    obj.unichar = 0x10_FF_FF;
+    assert.equal(obj.unichar, 0x10_FF_FF);
 });
 
 test("TestObj write-only property resets int and reads as undefined", () => {

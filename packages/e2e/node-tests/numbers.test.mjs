@@ -1,11 +1,11 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Regress from "@gtkx/gi/regress";
 import * as RegressUnix from "@gtkx/gi/regressunix";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 test("8-bit integers round trip at their bounds", () => {
     assert.equal(GIMarshallingTests.int8ReturnMax(), 127);
@@ -16,40 +16,40 @@ test("8-bit integers round trip at their bounds", () => {
     assert.equal(GIMarshallingTests.int8OutMin(), -128);
     assert.equal(GIMarshallingTests.int8InoutMaxMin(127), -128);
     assert.equal(GIMarshallingTests.int8InoutMinMax(-128), 127);
-    assert.equal(GIMarshallingTests.uint8Return(), 0xff);
-    GIMarshallingTests.uint8In(0xff);
-    assert.equal(GIMarshallingTests.uint8Out(), 0xff);
-    assert.equal(GIMarshallingTests.uint8Inout(0xff), 0);
+    assert.equal(GIMarshallingTests.uint8Return(), 0xFF);
+    GIMarshallingTests.uint8In(0xFF);
+    assert.equal(GIMarshallingTests.uint8Out(), 0xFF);
+    assert.equal(GIMarshallingTests.uint8Inout(0xFF), 0);
 });
 
 test("16-bit integers round trip at their bounds", () => {
-    assert.equal(GIMarshallingTests.int16ReturnMax(), 32767);
-    assert.equal(GIMarshallingTests.int16ReturnMin(), -32768);
-    GIMarshallingTests.int16InMax(32767);
-    GIMarshallingTests.int16InMin(-32768);
-    assert.equal(GIMarshallingTests.int16OutMax(), 32767);
-    assert.equal(GIMarshallingTests.int16OutMin(), -32768);
-    assert.equal(GIMarshallingTests.int16InoutMaxMin(32767), -32768);
-    assert.equal(GIMarshallingTests.int16InoutMinMax(-32768), 32767);
-    assert.equal(GIMarshallingTests.uint16Return(), 65535);
-    GIMarshallingTests.uint16In(65535);
-    assert.equal(GIMarshallingTests.uint16Out(), 65535);
-    assert.equal(GIMarshallingTests.uint16Inout(65535), 0);
+    assert.equal(GIMarshallingTests.int16ReturnMax(), 32_767);
+    assert.equal(GIMarshallingTests.int16ReturnMin(), -32_768);
+    GIMarshallingTests.int16InMax(32_767);
+    GIMarshallingTests.int16InMin(-32_768);
+    assert.equal(GIMarshallingTests.int16OutMax(), 32_767);
+    assert.equal(GIMarshallingTests.int16OutMin(), -32_768);
+    assert.equal(GIMarshallingTests.int16InoutMaxMin(32_767), -32_768);
+    assert.equal(GIMarshallingTests.int16InoutMinMax(-32_768), 32_767);
+    assert.equal(GIMarshallingTests.uint16Return(), 65_535);
+    GIMarshallingTests.uint16In(65_535);
+    assert.equal(GIMarshallingTests.uint16Out(), 65_535);
+    assert.equal(GIMarshallingTests.uint16Inout(65_535), 0);
 });
 
 test("32-bit integers round trip at their bounds", () => {
-    assert.equal(GIMarshallingTests.int32ReturnMax(), 2147483647);
-    assert.equal(GIMarshallingTests.int32ReturnMin(), -2147483648);
-    GIMarshallingTests.int32InMax(2147483647);
-    GIMarshallingTests.int32InMin(-2147483648);
-    assert.equal(GIMarshallingTests.int32OutMax(), 2147483647);
-    assert.equal(GIMarshallingTests.int32OutMin(), -2147483648);
-    assert.equal(GIMarshallingTests.int32InoutMaxMin(2147483647), -2147483648);
-    assert.equal(GIMarshallingTests.int32InoutMinMax(-2147483648), 2147483647);
-    assert.equal(GIMarshallingTests.uint32Return(), 4294967295);
-    GIMarshallingTests.uint32In(4294967295);
-    assert.equal(GIMarshallingTests.uint32Out(), 4294967295);
-    assert.equal(GIMarshallingTests.uint32Inout(4294967295), 0);
+    assert.equal(GIMarshallingTests.int32ReturnMax(), 2_147_483_647);
+    assert.equal(GIMarshallingTests.int32ReturnMin(), -2_147_483_648);
+    GIMarshallingTests.int32InMax(2_147_483_647);
+    GIMarshallingTests.int32InMin(-2_147_483_648);
+    assert.equal(GIMarshallingTests.int32OutMax(), 2_147_483_647);
+    assert.equal(GIMarshallingTests.int32OutMin(), -2_147_483_648);
+    assert.equal(GIMarshallingTests.int32InoutMaxMin(2_147_483_647), -2_147_483_648);
+    assert.equal(GIMarshallingTests.int32InoutMinMax(-2_147_483_648), 2_147_483_647);
+    assert.equal(GIMarshallingTests.uint32Return(), 4_294_967_295);
+    GIMarshallingTests.uint32In(4_294_967_295);
+    assert.equal(GIMarshallingTests.uint32Out(), 4_294_967_295);
+    assert.equal(GIMarshallingTests.uint32Inout(4_294_967_295), 0);
 });
 
 test("64-bit integers use BigInt end to end", () => {
@@ -67,33 +67,33 @@ test("64-bit integers use BigInt end to end", () => {
 });
 
 test("short and ushort round trip at their bounds", () => {
-    assert.equal(GIMarshallingTests.shortReturnMax(), 32767);
-    assert.equal(GIMarshallingTests.shortReturnMin(), -32768);
-    GIMarshallingTests.shortInMax(32767);
-    GIMarshallingTests.shortInMin(-32768);
-    assert.equal(GIMarshallingTests.shortOutMax(), 32767);
-    assert.equal(GIMarshallingTests.shortOutMin(), -32768);
-    assert.equal(GIMarshallingTests.shortInoutMaxMin(32767), -32768);
-    assert.equal(GIMarshallingTests.shortInoutMinMax(-32768), 32767);
-    assert.equal(GIMarshallingTests.ushortReturn(), 65535);
-    GIMarshallingTests.ushortIn(65535);
-    assert.equal(GIMarshallingTests.ushortOut(), 65535);
-    assert.equal(GIMarshallingTests.ushortInout(65535), 0);
+    assert.equal(GIMarshallingTests.shortReturnMax(), 32_767);
+    assert.equal(GIMarshallingTests.shortReturnMin(), -32_768);
+    GIMarshallingTests.shortInMax(32_767);
+    GIMarshallingTests.shortInMin(-32_768);
+    assert.equal(GIMarshallingTests.shortOutMax(), 32_767);
+    assert.equal(GIMarshallingTests.shortOutMin(), -32_768);
+    assert.equal(GIMarshallingTests.shortInoutMaxMin(32_767), -32_768);
+    assert.equal(GIMarshallingTests.shortInoutMinMax(-32_768), 32_767);
+    assert.equal(GIMarshallingTests.ushortReturn(), 65_535);
+    GIMarshallingTests.ushortIn(65_535);
+    assert.equal(GIMarshallingTests.ushortOut(), 65_535);
+    assert.equal(GIMarshallingTests.ushortInout(65_535), 0);
 });
 
 test("int and uint round trip at their bounds", () => {
-    assert.equal(GIMarshallingTests.intReturnMax(), 2147483647);
-    assert.equal(GIMarshallingTests.intReturnMin(), -2147483648);
-    GIMarshallingTests.intInMax(2147483647);
-    GIMarshallingTests.intInMin(-2147483648);
-    assert.equal(GIMarshallingTests.intOutMax(), 2147483647);
-    assert.equal(GIMarshallingTests.intOutMin(), -2147483648);
-    assert.equal(GIMarshallingTests.intInoutMaxMin(2147483647), -2147483648);
-    assert.equal(GIMarshallingTests.intInoutMinMax(-2147483648), 2147483647);
-    assert.equal(GIMarshallingTests.uintReturn(), 4294967295);
-    GIMarshallingTests.uintIn(4294967295);
-    assert.equal(GIMarshallingTests.uintOut(), 4294967295);
-    assert.equal(GIMarshallingTests.uintInout(4294967295), 0);
+    assert.equal(GIMarshallingTests.intReturnMax(), 2_147_483_647);
+    assert.equal(GIMarshallingTests.intReturnMin(), -2_147_483_648);
+    GIMarshallingTests.intInMax(2_147_483_647);
+    GIMarshallingTests.intInMin(-2_147_483_648);
+    assert.equal(GIMarshallingTests.intOutMax(), 2_147_483_647);
+    assert.equal(GIMarshallingTests.intOutMin(), -2_147_483_648);
+    assert.equal(GIMarshallingTests.intInoutMaxMin(2_147_483_647), -2_147_483_648);
+    assert.equal(GIMarshallingTests.intInoutMinMax(-2_147_483_648), 2_147_483_647);
+    assert.equal(GIMarshallingTests.uintReturn(), 4_294_967_295);
+    GIMarshallingTests.uintIn(4_294_967_295);
+    assert.equal(GIMarshallingTests.uintOut(), 4_294_967_295);
+    assert.equal(GIMarshallingTests.uintInout(4_294_967_295), 0);
 });
 
 test("long and ulong use BigInt end to end", () => {
@@ -136,28 +136,28 @@ test("size and ssize enforce the 2^53 precision guard", () => {
 });
 
 test("unix scalar typedefs round trip", () => {
-    assert.equal(GIMarshallingTests.timeTReturn(), 1234567890n);
-    GIMarshallingTests.timeTIn(1234567890n);
-    GIMarshallingTests.timeTIn(1234567890);
-    assert.equal(GIMarshallingTests.timeTOut(), 1234567890n);
-    assert.equal(GIMarshallingTests.timeTInout(1234567890n), 0n);
-    assert.equal(GIMarshallingTests.gidTReturn(), 65534);
-    GIMarshallingTests.gidTIn(65534);
-    assert.equal(GIMarshallingTests.gidTOut(), 65534);
-    assert.equal(GIMarshallingTests.gidTInout(65534), 0);
-    assert.equal(GIMarshallingTests.uidTReturn(), 65534);
-    GIMarshallingTests.uidTIn(65534);
-    assert.equal(GIMarshallingTests.uidTOut(), 65534);
-    assert.equal(GIMarshallingTests.uidTInout(65534), 0);
-    assert.equal(GIMarshallingTests.pidTReturn(), 12345);
-    GIMarshallingTests.pidTIn(12345);
-    assert.equal(GIMarshallingTests.pidTOut(), 12345);
-    assert.equal(GIMarshallingTests.pidTInout(12345), 0);
-    assert.equal(Regress.testTimet(1234567890n), 1234567890n);
-    assert.equal(RegressUnix.testGidt(65534), 65534);
-    assert.equal(RegressUnix.testPidt(12345), 12345);
-    assert.equal(RegressUnix.testUidt(65534), 65534);
-    assert.throws(() => GIMarshallingTests.timeTIn(1234567890.5));
+    assert.equal(GIMarshallingTests.timeTReturn(), 1_234_567_890n);
+    GIMarshallingTests.timeTIn(1_234_567_890n);
+    GIMarshallingTests.timeTIn(1_234_567_890);
+    assert.equal(GIMarshallingTests.timeTOut(), 1_234_567_890n);
+    assert.equal(GIMarshallingTests.timeTInout(1_234_567_890n), 0n);
+    assert.equal(GIMarshallingTests.gidTReturn(), 65_534);
+    GIMarshallingTests.gidTIn(65_534);
+    assert.equal(GIMarshallingTests.gidTOut(), 65_534);
+    assert.equal(GIMarshallingTests.gidTInout(65_534), 0);
+    assert.equal(GIMarshallingTests.uidTReturn(), 65_534);
+    GIMarshallingTests.uidTIn(65_534);
+    assert.equal(GIMarshallingTests.uidTOut(), 65_534);
+    assert.equal(GIMarshallingTests.uidTInout(65_534), 0);
+    assert.equal(GIMarshallingTests.pidTReturn(), 12_345);
+    GIMarshallingTests.pidTIn(12_345);
+    assert.equal(GIMarshallingTests.pidTOut(), 12_345);
+    assert.equal(GIMarshallingTests.pidTInout(12_345), 0);
+    assert.equal(Regress.testTimet(1_234_567_890n), 1_234_567_890n);
+    assert.equal(RegressUnix.testGidt(65_534), 65_534);
+    assert.equal(RegressUnix.testPidt(12_345), 12_345);
+    assert.equal(RegressUnix.testUidt(65_534), 65_534);
+    assert.throws(() => GIMarshallingTests.timeTIn(1_234_567_890.5));
     assert.throws(() => RegressUnix.testGidt(-1));
 });
 
@@ -208,11 +208,11 @@ test("unichar values round trip as single-character strings", () => {
     assert.equal(Regress.testUnichar("A"), "A");
     assert.equal(Regress.testUnichar("\u{10FFFF}"), "\u{10FFFF}");
     assert.equal(Regress.testUnichar(66), "B");
-    assert.equal(Regress.testUnichar(""), "\u0000");
-    assert.equal(Regress.testUnichar("\uD800"), "�");
-    assert.equal(Regress.testUnichar("\uDC00"), "�");
+    assert.equal(Regress.testUnichar(""), "\u{0}");
+    assert.equal(Regress.testUnichar("\u{D800}"), "�");
+    assert.equal(Regress.testUnichar("\u{DC00}"), "�");
     assert.throws(() => Regress.testUnichar("ab"));
-    assert.throws(() => Regress.testUnichar(0x110000));
+    assert.throws(() => Regress.testUnichar(0x11_00_00));
     assert.throws(() => Regress.testUnichar(-1));
     assert.throws(() => Regress.testUnichar(65.5));
     assert.throws(() => Regress.testUnichar(true));
@@ -222,18 +222,18 @@ test("regress scalar echoes return their input", () => {
     assert.equal(Regress.testInt8(-128), -128);
     assert.equal(Regress.testInt8(127), 127);
     assert.equal(Regress.testUint8(255), 255);
-    assert.equal(Regress.testInt16(-32768), -32768);
-    assert.equal(Regress.testUint16(65535), 65535);
-    assert.equal(Regress.testInt32(-2147483648), -2147483648);
-    assert.equal(Regress.testInt32(2147483647), 2147483647);
-    assert.equal(Regress.testUint32(4294967295), 4294967295);
+    assert.equal(Regress.testInt16(-32_768), -32_768);
+    assert.equal(Regress.testUint16(65_535), 65_535);
+    assert.equal(Regress.testInt32(-2_147_483_648), -2_147_483_648);
+    assert.equal(Regress.testInt32(2_147_483_647), 2_147_483_647);
+    assert.equal(Regress.testUint32(4_294_967_295), 4_294_967_295);
     assert.equal(Regress.testInt64(-(2n ** 63n)), -(2n ** 63n));
     assert.equal(Regress.testInt64(2n ** 63n - 1n), 2n ** 63n - 1n);
     assert.equal(Regress.testUint64(2n ** 64n - 1n), 2n ** 64n - 1n);
-    assert.equal(Regress.testShort(-32768), -32768);
-    assert.equal(Regress.testUshort(65535), 65535);
-    assert.equal(Regress.testInt(-2147483648), -2147483648);
-    assert.equal(Regress.testUint(4294967295), 4294967295);
+    assert.equal(Regress.testShort(-32_768), -32_768);
+    assert.equal(Regress.testUshort(65_535), 65_535);
+    assert.equal(Regress.testInt(-2_147_483_648), -2_147_483_648);
+    assert.equal(Regress.testUint(4_294_967_295), 4_294_967_295);
     assert.equal(Regress.testLong(-(2n ** 63n)), -(2n ** 63n));
     assert.equal(Regress.testUlong(2n ** 64n - 1n), 2n ** 64n - 1n);
     assert.equal(Regress.testFloat(1.25), 1.25);
@@ -256,11 +256,11 @@ test("floats round trip including non-finite values", () => {
 });
 
 test("64-bit arguments accept exactly representable plain numbers", () => {
-    assert.equal(Regress.testInt64(2 ** 53), 9007199254740992n);
-    assert.equal(Regress.testInt64(-(2 ** 53)), -9007199254740992n);
-    assert.equal(Regress.testInt64(2 ** 53 - 1), 9007199254740991n);
+    assert.equal(Regress.testInt64(2 ** 53), 9_007_199_254_740_992n);
+    assert.equal(Regress.testInt64(-(2 ** 53)), -9_007_199_254_740_992n);
+    assert.equal(Regress.testInt64(2 ** 53 - 1), 9_007_199_254_740_991n);
     assert.equal(Regress.testLong(12), 12n);
-    assert.equal(GIMarshallingTests.timeTInout(1234567890), 0n);
+    assert.equal(GIMarshallingTests.timeTInout(1_234_567_890), 0n);
     assert.throws(() => Regress.testInt64(2 ** 53 + 2));
     assert.throws(() => Regress.testInt64(-(2 ** 53) - 2));
     assert.throws(() => Regress.testInt64(1.5));
@@ -269,21 +269,22 @@ test("64-bit arguments accept exactly representable plain numbers", () => {
 test("plain numbers are accepted where a 64-bit integer is expected", () => {
     GIMarshallingTests.arrayInt64In([-1, 0, 1, 2]);
     GIMarshallingTests.arrayUint64In([-1n, 0n, 1n, 2n].map((value) => BigInt.asUintN(64, value)));
+    assert.equal(Regress.testArrayGint64In([1, 2, 3, 4]), 10n);
 });
 
 test("void returns give undefined", () => {
-    assert.equal(GIMarshallingTests.intInMax(2147483647), undefined);
-    assert.equal(GIMarshallingTests.uint16In(65535), undefined);
+    assert.equal(GIMarshallingTests.intInMax(2_147_483_647), undefined);
+    assert.equal(GIMarshallingTests.uint16In(65_535), undefined);
     assert.equal(GIMarshallingTests.longInMin(-(2n ** 63n)), undefined);
-    assert.equal(GIMarshallingTests.timeTIn(1234567890n), undefined);
+    assert.equal(GIMarshallingTests.timeTIn(1_234_567_890n), undefined);
     assert.equal(GIMarshallingTests.booleanInFalse(false), undefined);
 });
 
 test("null coerces to zero and missing arguments throw", () => {
     assert.equal(Regress.testInt(null), 0);
     assert.equal(Regress.testInt64(null), 0n);
-    assert.equal(Regress.testUnichar(null), "\u0000");
-    assert.throws(() => Regress.testInt(undefined));
+    assert.equal(Regress.testUnichar(null), "\u{0}");
+    assert.throws(() => Regress.testInt());
     assert.throws(() => Regress.testInt());
 });
 
@@ -297,19 +298,19 @@ test("integer arguments reject fractional and out-of-range values", () => {
 });
 
 test("each width rejects values outside its range", () => {
-    assert.throws(() => GIMarshallingTests.int16InMax(32768));
-    assert.throws(() => GIMarshallingTests.int16InMin(-32769));
-    assert.throws(() => GIMarshallingTests.uint16In(65536));
+    assert.throws(() => GIMarshallingTests.int16InMax(32_768));
+    assert.throws(() => GIMarshallingTests.int16InMin(-32_769));
+    assert.throws(() => GIMarshallingTests.uint16In(65_536));
     assert.throws(() => GIMarshallingTests.uint16In(-1));
-    assert.throws(() => GIMarshallingTests.int32InMax(2147483648));
-    assert.throws(() => GIMarshallingTests.uint32In(4294967296));
+    assert.throws(() => GIMarshallingTests.int32InMax(2_147_483_648));
+    assert.throws(() => GIMarshallingTests.uint32In(4_294_967_296));
     assert.throws(() => GIMarshallingTests.uint32In(-1));
-    assert.throws(() => GIMarshallingTests.shortInMax(32768));
+    assert.throws(() => GIMarshallingTests.shortInMax(32_768));
     assert.throws(() => GIMarshallingTests.ushortIn(-1));
-    assert.throws(() => GIMarshallingTests.ushortIn(65536));
-    assert.throws(() => GIMarshallingTests.intInMax(2147483648));
+    assert.throws(() => GIMarshallingTests.ushortIn(65_536));
+    assert.throws(() => GIMarshallingTests.intInMax(2_147_483_648));
     assert.throws(() => GIMarshallingTests.uintIn(-1));
-    assert.throws(() => GIMarshallingTests.uintIn(4294967296));
+    assert.throws(() => GIMarshallingTests.uintIn(4_294_967_296));
     assert.throws(() => GIMarshallingTests.uint16In(1.5));
     assert.throws(() => GIMarshallingTests.uint32In(2.5));
     assert.throws(() => GIMarshallingTests.shortInMax(1.5));

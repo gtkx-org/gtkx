@@ -1,10 +1,10 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Regress from "@gtkx/gi/regress";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 test("SimpleStruct round trips through construction, methods, and returnv", () => {
     const constructed = new GIMarshallingTests.SimpleStruct({ long: 6n, int8: 7 });
@@ -213,7 +213,7 @@ test("struct field writes reject out-of-range and mistyped values", () => {
     assert.throws(() => new GIMarshallingTests.SimpleStruct({ long: "nope" }));
     const structA = new Regress.TestStructA({});
     assert.throws(() => {
-        structA.someEnum = 12345;
+        structA.someEnum = 12_345;
     });
 });
 

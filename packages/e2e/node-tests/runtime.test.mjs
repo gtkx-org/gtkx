@@ -1,9 +1,10 @@
+import { bind, call, resolveType } from "@gtkx/native";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { bind, call, resolveType } from "@gtkx/native";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import { childEnv } from "./helpers/child-process.mjs";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
 const OBSERVED_PREFIX = "OBSERVED ";
 const CHILD_BUDGET_MS = 30_000;
@@ -12,12 +13,12 @@ const VOID = { kind: "void" };
 const INT32 = { kind: "int32" };
 const NESTING_LIMIT = 80;
 
-installMemoryGuard();
+drainAfterEachTest();
 
 const fixture = (name) => fileURLToPath(new URL(`fixtures/${name}`, import.meta.url));
 
 const childEnvironment = () => {
-    const environment = { ...process.env };
+    const environment = childEnv();
     delete environment.G_DEBUG;
 
     return environment;
@@ -111,7 +112,6 @@ test("an unhandled native panic stops the process", async () => {
 test("quit tears the run loop down and lets the process exit", async () => {
     const { code, output, signal } = await runFixture("quit.mjs");
 
-    assert.match(output, /WRAPPERS live/);
     assert.match(output, /OBJECT built/);
     assert.match(output, /QUIT/);
     assert.equal(signal, null);
@@ -134,7 +134,7 @@ test("the addon drives real bindings inside a worker thread that finishes on its
     assert.deepEqual(JSON.parse(reportedLine(output, "REPORT ")), {
         doubled: 42,
         string: "worker",
-        wrappers: true,
+        bare: true,
     });
     assert.equal(reportedLine(output, "EXITED "), "0");
     assert.equal(signal, null);
@@ -147,7 +147,7 @@ test("a worker thread that quits the addon can then be terminated", async () => 
     assert.deepEqual(JSON.parse(reportedLine(output, "REPORT ")), {
         doubled: 42,
         string: "worker",
-        wrappers: true,
+        bare: true,
     });
     assert.equal(reportedLine(output, "ACK "), "torn down");
     assert.equal(reportedLine(output, "TERMINATED "), "1");

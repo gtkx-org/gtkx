@@ -230,6 +230,20 @@ const renderDescriptor = (
     }
 };
 
+/**
+ * Stride of a `GArray` slot when its elements are records stored by value. A `GPtrArray`, a
+ * `GList` and a `GSList` always hold one pointer per slot, so only a `GArray` can be inline.
+ */
+const inlineListElementSize = (context: ModuleContext, type: ListType): number | undefined => {
+    if (type.flavor !== "garray") {
+        return undefined;
+    }
+
+    const element = context.library.typeFor(type.element);
+
+    return element?.kind === "record" ? recordInlineSize(context, element.value) : undefined;
+};
+
 const listExpression = (
     context: ModuleContext,
     type: ListType,
@@ -244,7 +258,10 @@ const listExpression = (
 
     const element = renderDescriptor(context, type.element, deriveElementTransfer(transfer), indexOptions);
 
-    return tList(LIST_HELPERS[type.flavor], element, ownership);
+    return tList(LIST_HELPERS[type.flavor], element, ownership, {
+        elementSize: inlineListElementSize(context, type),
+        isBytes: false,
+    });
 };
 
 const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): GirCallback | undefined => {

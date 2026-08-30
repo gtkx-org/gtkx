@@ -1,7 +1,3 @@
-import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
@@ -9,7 +5,12 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getClassType, registerClass } from "@gtkx/runtime";
-import { drainGC, installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+import { childEnv } from "./helpers/child-process.mjs";
+import { drainAfterEachTest, drainGC } from "./helpers/memory.mjs";
 
 Gtk.init();
 
@@ -19,14 +20,14 @@ registerClass(ObservedWindow, { typeName: "GtkxNodeTestObservedWindow" });
 
 const toplevels = Gtk.Window.getToplevels();
 
-installMemoryGuard();
+drainAfterEachTest();
 
-const FIXTURE = fileURLToPath(new URL("./fixtures/surface-release.mjs", import.meta.url));
+const FIXTURE = fileURLToPath(new URL("fixtures/surface-release.mjs", import.meta.url));
 
 const runSurfaceRelease = (scenario) =>
     new Promise((resolve) => {
         const child = spawn(process.execPath, ["--expose-gc", FIXTURE, scenario], {
-            env: { ...process.env, G_DEBUG: "fatal-warnings" },
+            env: childEnv({ G_DEBUG: "fatal-warnings" }),
             stdio: ["ignore", "pipe", "pipe"],
         });
 

@@ -16,7 +16,7 @@ const output = join(root, "build", "native-tests");
 const sourceDir = join(output, "gi-tests", "source");
 const buildDir = join(output, "gi-tests", "build");
 const storeDir = join(output, "node_modules", ".gtkx", "gi");
-const linkDir = join(root, "packages", "native", "node_modules", "@gtkx", "gi");
+const linkDir = join(root, "packages", "e2e", "node-tests", "node_modules", "@gtkx", "gi");
 const require = createRequire(import.meta.url);
 const runtimeManifest = JSON.parse(
     readFileSync(require.resolve("@gtkx/runtime/package.json"), "utf8"),

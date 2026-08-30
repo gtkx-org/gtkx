@@ -9,10 +9,6 @@ thread_local! {
     static WRAPPERS: RefCell<HashMap<usize, sys::napi_ref>> = RefCell::new(HashMap::new());
 }
 
-pub fn live_count() -> usize {
-    WRAPPERS.with_borrow(HashMap::len)
-}
-
 struct FinalizeData {
     ptr: usize,
     napi_ref: sys::napi_ref,

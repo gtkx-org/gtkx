@@ -1,11 +1,11 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as GLib from "@gtkx/gi/glib";
 import * as Regress from "@gtkx/gi/regress";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 test("GArray of ints and 64-bit ints round trips", () => {
     assert.deepEqual(GIMarshallingTests.garrayIntNoneReturn(), [-1, 0, 1, 2]);
@@ -55,18 +55,27 @@ test("GPtrArray of boxed structs returns element values", () => {
 test("GByteArray carries binary data both ways", () => {
     const bytes = GIMarshallingTests.bytearrayFullReturn();
     assert.ok(bytes instanceof Uint8Array);
-    assert.deepEqual(bytes, new Uint8Array([0, 49, 0xff, 51]));
-    assert.deepEqual(GIMarshallingTests.bytearrayFullOut(), new Uint8Array([0, 49, 0xff, 51]));
+    assert.deepEqual(bytes, new Uint8Array([0, 49, 0xFF, 51]));
+    assert.deepEqual(GIMarshallingTests.bytearrayFullOut(), new Uint8Array([0, 49, 0xFF, 51]));
     GIMarshallingTests.bytearrayNoneIn(bytes);
-    GIMarshallingTests.bytearrayNoneIn([0, 49, 0xff, 51]);
+    GIMarshallingTests.bytearrayNoneIn([0, 49, 0xFF, 51]);
 });
 
 test("GBytes round trips as a boxed value", () => {
     const bytes = GIMarshallingTests.gbytesFullReturn();
     assert.equal(bytes.getSize(), 4);
-    assert.deepEqual(bytes.getData(), new Uint8Array([0, 49, 0xff, 51]));
+    assert.deepEqual(bytes.getData(), new Uint8Array([0, 49, 0xFF, 51]));
     GIMarshallingTests.gbytesNoneIn(bytes);
-    GIMarshallingTests.gbytesNoneIn(GLib.Bytes.new([0, 49, 0xff, 51]));
+    GIMarshallingTests.gbytesNoneIn(GLib.Bytes.new([0, 49, 0xFF, 51]));
+});
+
+test("GList and GSList of integers round trip through their pointer slots", () => {
+    GIMarshallingTests.glistIntNoneIn([-1, 0, 1, 2]);
+    GIMarshallingTests.gslistIntNoneIn([-1, 0, 1, 2]);
+    GIMarshallingTests.glistUint32NoneIn([0, 0xFF_FF_FF_FF]);
+    assert.deepEqual(GIMarshallingTests.glistIntNoneReturn(), [-1, 0, 1, 2]);
+    assert.deepEqual(GIMarshallingTests.gslistIntNoneReturn(), [-1, 0, 1, 2]);
+    assert.deepEqual(GIMarshallingTests.glistUint32NoneReturn(), [0, 0xFF_FF_FF_FF]);
 });
 
 test("GList of strings round trips across transfer modes", () => {
@@ -136,7 +145,9 @@ test("null and empty lists marshal as null pointers", () => {
 });
 
 test("GType lists accept wrapper classes with container transfer", () => {
-    Regress.testGlistGtypeContainerIn([Regress.TestObj, Regress.TestSubObj]);
+    const types = [Regress.TestObj, Regress.TestSubObj];
+    Regress.testGlistGtypeContainerIn(types);
+    assert.equal(Regress.testArrayGtypeIn(types), "[RegressTestObj,RegressTestSubObj,]");
 });
 
 test("boxed element lists round trip across transfer modes", () => {
@@ -174,5 +185,5 @@ test("container elements of the wrong type throw before the call", () => {
     assert.throws(() => GIMarshallingTests.gslistUtf8FullIn(["0", Symbol("x"), "2"]));
     assert.throws(() => GIMarshallingTests.glistIntNoneIn([-1, 0, 1, 2.5]));
     assert.throws(() => GIMarshallingTests.gslistIntNoneIn([-1, 0, 2 ** 53, 2]));
-    assert.throws(() => GIMarshallingTests.glistUint32NoneIn([0.5, 0xffffffff]));
+    assert.throws(() => GIMarshallingTests.glistUint32NoneIn([0.5, 0xFF_FF_FF_FF]));
 });

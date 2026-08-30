@@ -12,7 +12,6 @@ pub mod get_type;
 pub mod get_wrapper;
 pub mod init;
 pub mod keep_alive;
-pub mod memory_probe;
 pub mod new_object;
 pub mod quit;
 pub mod read;

@@ -225,7 +225,7 @@ jobs:
       - name: Run tests
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run-many -t test --exclude @gtkx/cli
+          command: pnpm exec nx run-many -t test test:native --exclude @gtkx/cli
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
       - name: Report failures to Nx Cloud
@@ -274,7 +274,7 @@ jobs:
       - name: Run the native canary under AddressSanitizer
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run @gtkx/native:test:asan
+          command: pnpm exec nx run @gtkx/e2e:test:asan
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
   typecheck:

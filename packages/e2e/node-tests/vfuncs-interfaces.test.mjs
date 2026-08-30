@@ -5,9 +5,9 @@ import * as GObject from "@gtkx/gi/gobject";
 import { callParent, getClassType, getInstanceType, registerClass, typeIsA } from "@gtkx/runtime";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { drainGC, installMemoryGuard } from "./helpers/memory.mjs";
+import { drainAfterEachTest, drainGC } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 const createTypeNameFactory = () => {
     let index = 0;

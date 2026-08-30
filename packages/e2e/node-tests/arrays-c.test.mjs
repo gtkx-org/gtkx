@@ -1,11 +1,11 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 const unalignedPattern = Array.from({ length: 32 }, (_, index) => (index + 1) % 8);
 
@@ -57,8 +57,14 @@ test("integer elements marshal at every width", () => {
 });
 
 test("uint8 data is accepted from buffers typed arrays and plain arrays", () => {
-    GIMarshallingTests.arrayUint8In(Buffer.from("abcd"));
-    GIMarshallingTests.arrayUint8In(new Uint8Array([97, 98, 99, 100]));
+    const buffer = Buffer.from("abcd");
+    GIMarshallingTests.arrayUint8In(buffer);
+    assert.deepEqual([...buffer], [97, 98, 99, 100]);
+
+    const view = new Uint8Array([97, 98, 99, 100]);
+    GIMarshallingTests.arrayUint8In(view);
+    assert.deepEqual([...view], [97, 98, 99, 100]);
+
     GIMarshallingTests.arrayUint8In([97, 98, 99, 100]);
 });
 
@@ -80,20 +86,27 @@ test("unichar arrays round trip as characters", () => {
 });
 
 test("enum and flags arrays pass their members", () => {
-    GIMarshallingTests.arrayEnumIn([
+    const enums = [
         GIMarshallingTests.Enum.VALUE1,
         GIMarshallingTests.Enum.VALUE2,
         GIMarshallingTests.Enum.VALUE3,
-    ]);
-    GIMarshallingTests.arrayFlagsIn([
+    ];
+    GIMarshallingTests.arrayEnumIn(enums);
+    assert.deepEqual(enums, [0, 1, 42]);
+
+    const flags = [
         GIMarshallingTests.Flags.VALUE1,
         GIMarshallingTests.Flags.VALUE2,
         GIMarshallingTests.Flags.VALUE3,
-    ]);
+    ];
+    GIMarshallingTests.arrayFlagsIn(flags);
+    assert.deepEqual(flags, [1, 2, 4]);
 });
 
 test("string arrays with an explicit length pass through", () => {
-    GIMarshallingTests.arrayStringIn(["foo", "bar"]);
+    const strings = ["foo", "bar"];
+    GIMarshallingTests.arrayStringIn(strings);
+    assert.deepEqual(strings, ["foo", "bar"]);
 });
 
 test("zero-terminated string arrays round trip", () => {
@@ -105,7 +118,9 @@ test("zero-terminated string arrays round trip", () => {
 
 test("boxed struct pointer arrays pass for every transfer mode", () => {
     const make = (value) => new GIMarshallingTests.BoxedStruct({ long: BigInt(value) });
-    GIMarshallingTests.arrayStructIn([make(1), make(2), make(3)]);
+    const borrowed = [make(1), make(2), make(3)];
+    GIMarshallingTests.arrayStructIn(borrowed);
+    assert.deepEqual(borrowed.map((entry) => entry.long), [1n, 2n, 3n]);
     GIMarshallingTests.arrayStructFullIn([make(1), make(2), make(3)]);
     GIMarshallingTests.arrayStructTakeIn([make(1), make(2), make(3)]);
 });
@@ -113,17 +128,26 @@ test("boxed struct pointer arrays pass for every transfer mode", () => {
 test("flat struct value arrays marshal by value", () => {
     const boxed = (value) => new GIMarshallingTests.BoxedStruct({ long: BigInt(value) });
     const simple = (value) => new GIMarshallingTests.SimpleStruct({ long: BigInt(value) });
-    GIMarshallingTests.arrayStructValueIn([boxed(1), boxed(2), boxed(3)]);
-    GIMarshallingTests.arraySimpleStructIn([simple(1), simple(2), simple(3)]);
+    const boxedStructs = [boxed(1), boxed(2), boxed(3)];
+    GIMarshallingTests.arrayStructValueIn(boxedStructs);
+    assert.deepEqual(boxedStructs.map((entry) => entry.long), [1n, 2n, 3n]);
+
+    const simpleStructs = [simple(1), simple(2), simple(3)];
+    GIMarshallingTests.arraySimpleStructIn(simpleStructs);
+    assert.deepEqual(simpleStructs.map((entry) => entry.long), [1n, 2n, 3n]);
+
     Regress.testArrayStructInFull([
         new Regress.TestStructA({ someInt: 201 }),
         new Regress.TestStructA({ someInt: 202 }),
     ]);
-    Regress.testArrayStructInNone([
+
+    const borrowed = [
         new Regress.TestStructA({ someInt: 301 }),
         new Regress.TestStructA({ someInt: 302 }),
         new Regress.TestStructA({ someInt: 303 }),
-    ]);
+    ];
+    Regress.testArrayStructInNone(borrowed);
+    assert.deepEqual(borrowed.map((entry) => entry.someInt), [301, 302, 303]);
 });
 
 test("struct arrays come back with populated fields", () => {
@@ -157,12 +181,12 @@ test("gtype arrays accept classes and raw gtypes", () => {
 });
 
 test("unaligned byte buffers come back as full copies", () => {
-    assert.deepEqual(Array.from(GIMarshallingTests.arrayReturnUnaligned()), unalignedPattern);
-    assert.deepEqual(Array.from(GIMarshallingTests.arrayOutUnaligned()), unalignedPattern);
-    assert.deepEqual(Array.from(GIMarshallingTests.arrayFixedReturnUnaligned()), unalignedPattern);
-    assert.deepEqual(Array.from(GIMarshallingTests.arrayFixedOutUnaligned()), unalignedPattern);
-    assert.deepEqual(Array.from(GIMarshallingTests.arrayZeroTerminatedReturnUnaligned()), [1, 2, 3, 4, 5, 6, 7]);
-    assert.deepEqual(Array.from(GIMarshallingTests.arrayZeroTerminatedOutUnaligned()), [1, 2, 3, 4, 5, 6, 7]);
+    assert.deepEqual([...GIMarshallingTests.arrayReturnUnaligned()], unalignedPattern);
+    assert.deepEqual([...GIMarshallingTests.arrayOutUnaligned()], unalignedPattern);
+    assert.deepEqual([...GIMarshallingTests.arrayFixedReturnUnaligned()], unalignedPattern);
+    assert.deepEqual([...GIMarshallingTests.arrayFixedOutUnaligned()], unalignedPattern);
+    assert.deepEqual([...GIMarshallingTests.arrayZeroTerminatedReturnUnaligned()], [1, 2, 3, 4, 5, 6, 7]);
+    assert.deepEqual([...GIMarshallingTests.arrayZeroTerminatedOutUnaligned()], [1, 2, 3, 4, 5, 6, 7]);
     GIMarshallingTests.cleanupUnalignedBuffer();
 });
 

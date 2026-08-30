@@ -16,8 +16,8 @@ if (!existsSync(join(fixturesBuildDir, "libregress.so"))) {
     throw new Error("The GI test fixtures are missing; run `nx run @gtkx/native:test-fixtures` first");
 }
 
-const nativeRoot = join(root, "packages", "native");
-const suppressions = join(nativeRoot, "node-tests", "lsan.supp");
+const testRoot = join(root, "packages", "e2e");
+const suppressions = join(testRoot, "node-tests", "lsan.supp");
 const isAsan = process.env.GTKX_NATIVE_ASAN === "1";
 
 const asanRuntime = (): string => {
@@ -43,8 +43,11 @@ const mallocDebugRuntime = (): string | undefined => {
 
 const memoryEnv = (): NodeJS.ProcessEnv => {
     if (isAsan) {
+        const runtime = asanRuntime();
+
         return {
-            LD_PRELOAD: asanRuntime(),
+            LD_PRELOAD: runtime,
+            GTKX_ASAN_RUNTIME: runtime,
             ASAN_OPTIONS: [
                 "detect_leaks=1",
                 "fast_unwind_on_malloc=0",
@@ -86,7 +89,7 @@ try {
         resolveExecutable("node"),
         ["--expose-gc", "--test", ...extraArgs, ...(hasTargets ? [] : ["node-tests/*.test.mjs"])],
         {
-            cwd: nativeRoot,
+            cwd: testRoot,
             stdio: "inherit",
             env: {
                 ...process.env,

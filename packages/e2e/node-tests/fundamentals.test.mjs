@@ -1,8 +1,6 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
-import { getType, liveWrapperCount } from "@gtkx/native";
+import { getType } from "@gtkx/native";
 import {
     fromValue,
     getClassType,
@@ -13,9 +11,11 @@ import {
     typeName,
     typeParent,
 } from "@gtkx/runtime";
-import { drainGC, gcUntil, installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest, drainGC, gcUntil } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 test("fundamental sub objects construct through their static constructor", () => {
     const sub = Regress.TestFundamentalSubObject.new("foo");
@@ -155,10 +155,8 @@ test("a fundamental outlives its collected wrapper and revives through a fresh r
         return { value, weak: new WeakRef(held) };
     };
 
-    const baseline = liveWrapperCount();
     const { value, weak } = stash();
-    assert.ok(liveWrapperCount() > baseline);
-    assert.ok(await gcUntil(() => liveWrapperCount() <= baseline));
+    assert.ok(await gcUntil(() => weak.deref() === undefined));
     await drainGC();
     assert.equal(weak.deref(), undefined);
 

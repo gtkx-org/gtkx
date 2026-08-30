@@ -55,9 +55,6 @@
         "build": "napi build --platform --release --esm --no-dts-cache --no-const-enum",
         "create-npm-dirs": "napi create-npm-dirs",
         "lint:rust": "tsx ../../scripts/cargo-nightly.ts fmt --check && cargo clippy --all-targets -- -D warnings",
-        "test": "tsx ../../scripts/native-node-tests.ts",
-        "test-fixtures": "tsx ../../scripts/native-test-fixtures.ts",
-        "test:asan": "tsx ../../scripts/asan-native.ts",
         "release": "tsx ../../scripts/prepublish-native.ts && tsx ../../scripts/release-package.ts"
     },
     "nx": {
@@ -72,20 +69,6 @@
                 {
                     "runtime": "uname -m"
                 }
-            ],
-            "nodeTests": [
-                "crate",
-                "sharedGlobals",
-                "{projectRoot}/node-tests/**/*",
-                "{workspaceRoot}/scripts/native-node-tests.ts",
-                "{workspaceRoot}/scripts/native-test-fixtures.ts",
-                "{workspaceRoot}/scripts/asan-native.ts",
-                "{workspaceRoot}/scripts/cargo-nightly.ts",
-                "{workspaceRoot}/scripts/rust-nightly.ts",
-                "{workspaceRoot}/packages/vitest/src/**/*",
-                "{workspaceRoot}/packages/codegen/src/**/*",
-                "{workspaceRoot}/packages/utils/src/**/*",
-                "{workspaceRoot}/packages/runtime/src/**/*"
             ]
         },
         "targets": {
@@ -106,31 +89,6 @@
                     "{projectRoot}/index.js",
                     "{projectRoot}/native.*.node"
                 ]
-            },
-            "test": {
-                "dependsOn": [
-                    "build",
-                    "test-fixtures",
-                    "@gtkx/runtime:build",
-                    "@gtkx/utils:build"
-                ],
-                "cache": true,
-                "inputs": [
-                    "nodeTests"
-                ],
-                "outputs": []
-            },
-            "test:asan": {
-                "dependsOn": [
-                    "test-fixtures",
-                    "@gtkx/runtime:build",
-                    "@gtkx/utils:build"
-                ],
-                "cache": true,
-                "inputs": [
-                    "nodeTests"
-                ],
-                "outputs": []
             },
             "lint:rust": {
                 "cache": true,
@@ -165,12 +123,6 @@
                 "dependsOn": [
                     "artifacts",
                     "create-npm-dirs"
-                ],
-                "cache": false
-            },
-            "test-fixtures": {
-                "dependsOn": [
-                    "@gtkx/utils:build"
                 ],
                 "cache": false
             }

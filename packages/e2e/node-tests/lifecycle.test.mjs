@@ -1,16 +1,17 @@
-import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import { getWrapper, setWrapper } from "@gtkx/native";
 import { getHandle, registerClass } from "@gtkx/runtime";
-import { drainGC, gcUntil, installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+import { childEnv } from "./helpers/child-process.mjs";
+import { drainAfterEachTest, drainGC, gcUntil } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 const COMPILE_DEFAULT = GLib.RegexCompileFlags.DEFAULT;
 const MATCH_DEFAULT = GLib.RegexMatchFlags.DEFAULT;
@@ -68,7 +69,7 @@ const matchWithoutKeepingTheRegex = () => {
 const runKeepAliveFixture = (mode) =>
     new Promise((resolve, reject) => {
         const child = spawn(process.execPath, [KEEP_ALIVE_FIXTURE, mode], {
-            env: process.env,
+            env: childEnv(),
             stdio: "ignore",
         });
 

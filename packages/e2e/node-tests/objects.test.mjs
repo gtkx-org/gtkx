@@ -1,16 +1,16 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import * as Utility from "@gtkx/gi/utility";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
 GIMarshallingTests.Object.noneReturn();
 GIMarshallingTests.Object.noneOut();
 
-installMemoryGuard();
+drainAfterEachTest();
 
 test("marshalling objects construct with their int property", () => {
     const built = GIMarshallingTests.Object.new(42);

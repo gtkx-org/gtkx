@@ -1,10 +1,10 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Regress from "@gtkx/gi/regress";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 const utf8Table = () =>
     new Map([
@@ -58,14 +58,14 @@ test("uninitialized out hash tables decode as empty maps", () => {
 });
 
 test("double valued hash tables marshal values by pointer", () => {
-    GIMarshallingTests.ghashtableDoubleIn(
-        new Map([
-            ["-1", -0.1],
-            ["0", 0],
-            ["1", 0.1],
-            ["2", 0.2],
-        ]),
-    );
+    const doubles = new Map([
+        ["-1", -0.1],
+        ["0", 0],
+        ["1", 0.1],
+        ["2", 0.2],
+    ]);
+    GIMarshallingTests.ghashtableDoubleIn(doubles);
+    assert.deepEqual(doubles.values().toArray(), [-0.1, 0, 0.1, 0.2]);
 });
 
 test("enum hash tables round trip", () => {

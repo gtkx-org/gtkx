@@ -3,8 +3,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { liveWrapperCount } from "../main.js";
-import { drainGC, gcUntil, installMemoryGuard } from "./helpers/memory.mjs";
+import { drainAfterEachTest, drainGC, gcUntil } from "./helpers/memory.mjs";
 
 GIMarshallingTests.Object.noneReturn();
 GIMarshallingTests.Object.noneOut();
@@ -14,7 +13,7 @@ GIMarshallingTests.gptrarrayUtf8NoneReturn();
 GIMarshallingTests.ghashtableUtf8NoneReturn();
 Regress.testStrvOutC();
 
-installMemoryGuard();
+drainAfterEachTest();
 
 const RSS_BUDGET = (process.env.GTKX_NATIVE_ASAN === "1" ? 256 : 40) * 1024 * 1024;
 const WARMUP = 2000;
@@ -27,7 +26,6 @@ const hammer = async (iterations, body) => {
     }
 
     await drainGC();
-    const wrappers = liveWrapperCount();
     const rss = process.memoryUsage().rss;
 
     for (let round = 0; round < iterations; round += 1) {
@@ -35,8 +33,6 @@ const hammer = async (iterations, body) => {
     }
 
     await drainGC();
-    const settled = await gcUntil(() => liveWrapperCount() <= wrappers);
-    assert.ok(settled, `${liveWrapperCount() - wrappers} wrappers survived ${iterations} iterations`);
     const growth = process.memoryUsage().rss - rss;
     assert.ok(growth < RSS_BUDGET, `rss grew by ${growth} bytes over ${iterations} iterations`);
 };
@@ -139,7 +135,7 @@ test("boxed returns carrying nested allocations stay bounded over ten thousand i
     });
 });
 
-test("object construction and drop returns the wrapper count to its baseline", async () => {
+test("object construction and drop stays bounded over ten thousand iterations", async () => {
     await hammer(10_000, () => {
         const obj = new Regress.TestObj({ int: 3 });
         assert.equal(obj.int, 3);

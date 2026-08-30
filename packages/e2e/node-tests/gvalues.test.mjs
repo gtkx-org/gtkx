@@ -1,26 +1,45 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import { resolveType } from "@gtkx/runtime";
-import { installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 const buildValue = (type, fill) => {
     const value = new GObject.Value();
     value.init(type);
     fill(value);
+
     return value;
 };
 
 const named = (name) => GObject.typeFromName(name);
-const intValue = (n) => buildValue(named("gint"), (value) => value.setInt(n));
-const stringValue = (s) => buildValue(named("gchararray"), (value) => value.setString(s));
 const genumType = () => resolveType("libgimarshallingtests.so", "gi_marshalling_tests_genum_get_type");
 const flagsType = () => resolveType("libgimarshallingtests.so", "gi_marshalling_tests_flags_get_type");
+const approximatePi = Number(Math.PI.toFixed(2));
+
+const intValue = (n) => buildValue(named("gint"), (value) => value.setInt(n));
+const uintValue = (n) => buildValue(named("guint"), (value) => value.setUint(n));
+const scharValue = (n) => buildValue(named("gchar"), (value) => value.setSchar(n));
+const ucharValue = (n) => buildValue(named("guchar"), (value) => value.setUchar(n));
+const int64Value = (n) => buildValue(named("gint64"), (value) => value.setInt64(n));
+const uint64Value = (n) => buildValue(named("guint64"), (value) => value.setUint64(n));
+const longValue = (n) => buildValue(named("glong"), (value) => value.setLong(n));
+const ulongValue = (n) => buildValue(named("gulong"), (value) => value.setUlong(n));
+const floatValue = (n) => buildValue(named("gfloat"), (value) => value.setFloat(n));
+const doubleValue = (n) => buildValue(named("gdouble"), (value) => value.setDouble(n));
+const booleanValue = (b) => buildValue(named("gboolean"), (value) => value.setBoolean(b));
+const stringValue = (s) => buildValue(named("gchararray"), (value) => value.setString(s));
+const gtypeValue = (type) => buildValue(named("GType"), (value) => value.setGtype(type));
+const variantValue = (v) => buildValue(named("GVariant"), (value) => value.setVariant(v));
+const objectValue = (o) => buildValue(GIMarshallingTests.Object, (value) => value.setObject(o));
+const enumValue = (v) => buildValue(genumType(), (value) => value.setEnum(v));
+const flagsValue = (v) => buildValue(flagsType(), (value) => value.setFlags(v));
+const boxedValue = (b) => buildValue(Regress.TestBoxed, (value) => value.setBoxed(b));
 
 test("gvalue returns and out params carry their C values", () => {
     assert.equal(GIMarshallingTests.gvalueReturn(), 42);
@@ -45,52 +64,53 @@ test("each borrowed gvalue out param decodes into its own wrapper", () => {
 
 test("gvalue in params accept built values holding the expected payload", () => {
     GIMarshallingTests.gvalueIn(intValue(42));
-    GIMarshallingTests.gvalueInt64In(buildValue(named("gint64"), (value) => value.setInt64(2n ** 63n - 1n)));
-    GIMarshallingTests.gvalueFloat(
-        buildValue(named("gfloat"), (value) => value.setFloat(3.14)),
-        buildValue(named("gdouble"), (value) => value.setDouble(3.14)),
-    );
+    GIMarshallingTests.gvalueInt64In(int64Value(2n ** 63n - 1n));
+    GIMarshallingTests.gvalueFloat(floatValue(approximatePi), doubleValue(approximatePi));
     assert.equal(Regress.testIntValueArg(intValue(42)), 42);
 });
 
 test("plain js values marshal into gvalue params by type inference", () => {
     assert.equal(Regress.testIntValueArg(42), 42);
     GIMarshallingTests.gvalueFlatArray([42, "42", true]);
-    GIMarshallingTests.gvalueFloat(buildValue(named("gfloat"), (value) => value.setFloat(3.14)), 3.14);
+    GIMarshallingTests.gvalueFloat(floatValue(approximatePi), approximatePi);
 });
 
 test("gvalue round trips preserve each fundamental type", () => {
+    const gint = named("gint");
     assert.equal(GIMarshallingTests.gvalueRoundTrip(intValue(42)), 42);
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(named("gboolean"), (value) => value.setBoolean(true))), true);
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(named("gboolean"), (value) => value.setBoolean(false))), false);
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(named("gchar"), (value) => value.setSchar(-128))), -128);
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(named("guchar"), (value) => value.setUchar(255))), 255);
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(named("guint"), (value) => value.setUint(4294967295))), 4294967295);
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(named("gfloat"), (value) => value.setFloat(0.5))), 0.5);
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(named("gdouble"), (value) => value.setDouble(2.5))), 2.5);
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(named("gint64"), (value) => value.setInt64(-(2n ** 63n)))), -(2n ** 63n));
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(named("guint64"), (value) => value.setUint64(2n ** 64n - 1n))), 2n ** 64n - 1n);
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(named("glong"), (value) => value.setLong(-9n))), -9n);
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(named("gulong"), (value) => value.setUlong(9n))), 9n);
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(booleanValue(true)), true);
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(booleanValue(false)), false);
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(scharValue(-128)), -128);
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(ucharValue(255)), 255);
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(uintValue(4_294_967_295)), 4_294_967_295);
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(floatValue(0.5)), 0.5);
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(doubleValue(2.5)), 2.5);
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(int64Value(-(2n ** 63n))), -(2n ** 63n));
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(uint64Value(2n ** 64n - 1n)), 2n ** 64n - 1n);
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(longValue(-9n)), -9n);
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(ulongValue(9n)), 9n);
     assert.equal(GIMarshallingTests.gvalueRoundTrip(stringValue("gtkx")), "gtkx");
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(named("GType"), (value) => value.setGtype(named("gint")))), named("gint"));
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(gtypeValue(gint)), gint);
 });
 
 test("gvalue round trips preserve objects enums flags variants and boxed payloads", () => {
     const object = GIMarshallingTests.Object.new(42);
-    const objectBack = GIMarshallingTests.gvalueRoundTrip(buildValue(GIMarshallingTests.Object, (value) => value.setObject(object)));
+    const objectBack = GIMarshallingTests.gvalueRoundTrip(objectValue(object));
     assert.equal(objectBack, object);
     assert.equal(objectBack.int, 42);
 
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(genumType(), (value) => value.setEnum(GIMarshallingTests.GEnum.VALUE3))), 42);
-    assert.equal(GIMarshallingTests.gvalueRoundTrip(buildValue(flagsType(), (value) => value.setFlags(GIMarshallingTests.Flags.VALUE3))), 4);
+    const enumBack = GIMarshallingTests.gvalueRoundTrip(enumValue(GIMarshallingTests.GEnum.VALUE3));
+    assert.equal(enumBack, 42);
+
+    const flagsBack = GIMarshallingTests.gvalueRoundTrip(flagsValue(GIMarshallingTests.Flags.VALUE3));
+    assert.equal(flagsBack, 4);
 
     const variant = GLib.Variant.newInt32(7);
-    const variantBack = GIMarshallingTests.gvalueRoundTrip(buildValue(named("GVariant"), (value) => value.setVariant(variant)));
+    const variantBack = GIMarshallingTests.gvalueRoundTrip(variantValue(variant));
     assert.equal(variantBack.getInt32(), 7);
 
     const boxed = Regress.TestBoxed.newAlternativeConstructor1(42);
-    const boxedBack = GIMarshallingTests.gvalueRoundTrip(buildValue(Regress.TestBoxed, (value) => value.setBoxed(boxed)));
+    const boxedBack = GIMarshallingTests.gvalueRoundTrip(boxedValue(boxed));
     assert.ok(boxedBack instanceof Regress.TestBoxed);
     assert.equal(boxedBack.someInt8, 42);
     assert.notEqual(boxedBack, boxed);
@@ -99,7 +119,7 @@ test("gvalue round trips preserve objects enums flags variants and boxed payload
 test("gvalue copy hands back an independent value with the same payload", () => {
     assert.equal(GIMarshallingTests.gvalueCopy(intValue(42)), 42);
     assert.equal(GIMarshallingTests.gvalueCopy(stringValue("copy me")), "copy me");
-    assert.equal(GIMarshallingTests.gvalueCopy(buildValue(named("gdouble"), (value) => value.setDouble(-1.5))), -1.5);
+    assert.equal(GIMarshallingTests.gvalueCopy(doubleValue(-1.5)), -1.5);
 
     const source = intValue(42);
     assert.equal(GIMarshallingTests.gvalueCopy(source), 42);
@@ -117,15 +137,23 @@ test("typed gvalues match their declared gtype", () => {
     GIMarshallingTests.gvalueInWithType(stringValue("typed"), named("gchararray"));
 
     const object = GIMarshallingTests.Object.new(1);
-    const objectValue = buildValue(GIMarshallingTests.Object, (value) => value.setObject(object));
-    GIMarshallingTests.gvalueInWithType(objectValue, GIMarshallingTests.Object);
-    GIMarshallingTests.gvalueInWithType(objectValue, GObject.Object);
+    const holdsObject = objectValue(object);
+    GIMarshallingTests.gvalueInWithType(holdsObject, GIMarshallingTests.Object);
+    GIMarshallingTests.gvalueInWithType(holdsObject, GObject.Object);
+    assert.equal(holdsObject.getObject(), object);
 
     const boxed = Regress.TestBoxed.newAlternativeConstructor1(3);
-    GIMarshallingTests.gvalueInWithType(buildValue(Regress.TestBoxed, (value) => value.setBoxed(boxed)), Regress.TestBoxed);
+    const holdsBoxed = boxedValue(boxed);
+    GIMarshallingTests.gvalueInWithType(holdsBoxed, Regress.TestBoxed);
+    assert.equal(holdsBoxed.getBoxed().someInt8, 3);
 
-    GIMarshallingTests.gvalueInEnum(buildValue(genumType(), (value) => value.setEnum(GIMarshallingTests.GEnum.VALUE3)));
-    GIMarshallingTests.gvalueInFlags(buildValue(flagsType(), (value) => value.setFlags(GIMarshallingTests.Flags.VALUE3)));
+    const holdsEnum = enumValue(GIMarshallingTests.GEnum.VALUE3);
+    GIMarshallingTests.gvalueInEnum(holdsEnum);
+    assert.equal(holdsEnum.getEnum(), GIMarshallingTests.GEnum.VALUE3);
+
+    const holdsFlags = flagsValue(GIMarshallingTests.Flags.VALUE3);
+    GIMarshallingTests.gvalueInFlags(holdsFlags);
+    assert.equal(holdsFlags.getFlags(), GIMarshallingTests.Flags.VALUE3);
 });
 
 test("flat gvalue array returns expose each element", () => {
@@ -143,7 +171,12 @@ test("flat gvalue array returns expose each element", () => {
 });
 
 test("flat gvalue array arguments accept built values", () => {
-    GIMarshallingTests.gvalueFlatArray([intValue(42), stringValue("42"), buildValue(named("gboolean"), (value) => value.setBoolean(true))]);
+    const values = [intValue(42), stringValue("42"), booleanValue(true)];
+    GIMarshallingTests.gvalueFlatArray(values);
+    assert.equal(values[0].getInt(), 42);
+    assert.equal(values[1].getString(), "42");
+    assert.equal(values[2].getBoolean(), true);
+
     GIMarshallingTests.gvalueFlatArray([intValue(42), "42", true]);
 });
 
@@ -170,18 +203,18 @@ test("value accessors duplicate and steal their contents", () => {
     assert.equal(string.getString(), null);
 
     const object = GIMarshallingTests.Object.new(5);
-    const objectValue = buildValue(GIMarshallingTests.Object, (value) => value.setObject(object));
-    assert.equal(objectValue.getObject(), object);
-    assert.equal(objectValue.dupObject(), object);
+    const holdsObject = objectValue(object);
+    assert.equal(holdsObject.getObject(), object);
+    assert.equal(holdsObject.dupObject(), object);
 
     const variant = GLib.Variant.newInt32(3);
-    const variantValue = buildValue(named("GVariant"), (value) => value.setVariant(variant));
-    assert.equal(variantValue.getVariant().getInt32(), 3);
-    assert.equal(variantValue.dupVariant().getInt32(), 3);
+    const holdsVariant = variantValue(variant);
+    assert.equal(holdsVariant.getVariant().getInt32(), 3);
+    assert.equal(holdsVariant.dupVariant().getInt32(), 3);
 
     const boxed = Regress.TestBoxed.newAlternativeConstructor1(11);
-    const boxedValue = buildValue(Regress.TestBoxed, (value) => value.setBoxed(boxed));
-    assert.equal(boxedValue.getBoxed().someInt8, 11);
+    const holdsBoxed = boxedValue(boxed);
+    assert.equal(holdsBoxed.getBoxed().someInt8, 11);
 });
 
 test("values unset and re-initialize to another type", () => {
@@ -260,9 +293,9 @@ test("value setters reject payloads of the wrong type or range", () => {
     assert.throws(() => intValue(1.5));
     assert.throws(() => intValue(2 ** 40));
     assert.throws(() => intValue("42"));
-    assert.throws(() => buildValue(named("guchar"), (value) => value.setUchar(256)));
-    assert.throws(() => buildValue(named("gint64"), (value) => value.setInt64(Symbol("nope"))));
+    assert.throws(() => ucharValue(256));
+    assert.throws(() => int64Value(Symbol("nope")));
     assert.throws(() => buildValue(named("GObject"), (value) => value.setObject({})));
-    assert.throws(() => buildValue(genumType(), (value) => value.setEnum(Symbol("nope"))));
-    assert.throws(() => buildValue(Regress.TestBoxed, (value) => value.setBoxed(Symbol("nope"))));
+    assert.throws(() => enumValue(Symbol("nope")));
+    assert.throws(() => boxedValue(Symbol("nope")));
 });

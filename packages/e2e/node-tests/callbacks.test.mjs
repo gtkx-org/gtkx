@@ -1,11 +1,11 @@
-import assert from "node:assert/strict";
-import { test } from "node:test";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Gio from "@gtkx/gi/gio";
 import * as Regress from "@gtkx/gi/regress";
-import { drainGC, installMemoryGuard } from "./helpers/memory.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { drainAfterEachTest, drainGC } from "./helpers/memory.mjs";
 
-installMemoryGuard();
+drainAfterEachTest();
 
 const registerNotified = (value) => {
     const callback = () => value;
@@ -256,14 +256,14 @@ test("a null gerror callback receives null", () => {
 });
 
 test("an owned gerror stays readable after the callback returns", async () => {
-    let escaped = null;
+    const seen = [];
     Regress.testOwnedGerrorCallback((error) => {
-        escaped = error;
+        seen.push(error);
     });
-    assert.equal(escaped.message, "regression test owned error");
-    assert.equal(escaped.code, Gio.IOErrorEnum.PERMISSION_DENIED);
-    assert.equal(escaped.matches(Gio.ioErrorQuark(), Gio.IOErrorEnum.PERMISSION_DENIED), true);
-    escaped = null;
+    assert.equal(seen[0].message, "regression test owned error");
+    assert.equal(seen[0].code, Gio.IOErrorEnum.PERMISSION_DENIED);
+    assert.equal(seen[0].matches(Gio.ioErrorQuark(), Gio.IOErrorEnum.PERMISSION_DENIED), true);
+    seen.length = 0;
     await drainGC();
 });
 
@@ -320,8 +320,12 @@ test("out parameter tuples pad missing entries and ignore extra ones", () => {
 });
 
 test("a boxed lent to a callback is mutable and its changes are visible to C", () => {
-    const base = GIMarshallingTests.callbackOwnedBoxed(() => {});
+    const observed = [];
+    const base = GIMarshallingTests.callbackOwnedBoxed((box) => {
+        observed.push(box.long);
+    });
     assert.equal(typeof base, "bigint");
+    assert.deepEqual(observed, [base]);
 
     const seen = [];
     const bumped = GIMarshallingTests.callbackOwnedBoxed((box) => {
@@ -330,10 +334,12 @@ test("a boxed lent to a callback is mutable and its changes are visible to C", (
     });
     assert.deepEqual(seen, [true, base + 1n]);
     assert.equal(bumped, 100n);
-    assert.equal(
-        GIMarshallingTests.callbackOwnedBoxed(() => {}),
-        101n,
-    );
+
+    const restored = GIMarshallingTests.callbackOwnedBoxed((box) => {
+        observed.push(box.long);
+    });
+    assert.equal(restored, 101n);
+    assert.deepEqual(observed, [base, 101n]);
 });
 
 test("a boxed only lent to a callback is revoked when the callback returns", () => {

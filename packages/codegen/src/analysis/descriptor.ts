@@ -253,9 +253,6 @@ const tFlags = (lib: string, typeFnName: string, isSigned: boolean, mask?: numbe
 
 const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceStringLiteral(ownership)]);
 
-const tList = (name: ListDescriptorName, element: string, ownership: Ownership): string =>
-    call(name, [element, sourceStringLiteral(ownership)]);
-
 const arrayLayoutArg = (ownership: Ownership | undefined, layout: ArrayLayout): string | undefined => {
     if (ownership === undefined) {
         return undefined;
@@ -269,6 +266,13 @@ const arrayLayoutArg = (ownership: Ownership | undefined, layout: ArrayLayout): 
 
     return entries.length === 0 ? undefined : `{ ${entries.join(", ")} }`;
 };
+
+const tList = (
+    name: ListDescriptorName,
+    element: string,
+    ownership: Ownership,
+    layout: ArrayLayout = { isBytes: false },
+): string => call(name, [element, sourceStringLiteral(ownership), arrayLayoutArg(ownership, layout)]);
 
 const tArray = (element: string, ownership: Ownership | undefined, layout: ArrayLayout): string =>
     call("array", [

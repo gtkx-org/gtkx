@@ -5,7 +5,8 @@
         "-internal"
     ],
     "ignore": [
-        "packages/eslint/tests/fixtures/**"
+        "packages/eslint/tests/fixtures/**",
+        "packages/native/index.js"
     ],
     "ignoreDependencies": [
         "^@gtkx/gi(/.*)?$",
@@ -91,7 +92,8 @@
         "packages/e2e": {
             "entry": [
                 "gtkx.config.ts!",
-                "elements.ts"
+                "elements.ts",
+                "node-tests/**/*.mjs"
             ]
         },
         "packages/gl": {
@@ -104,10 +106,7 @@
             ]
         },
         "packages/native": {
-            "includeEntryExports": false,
-            "entry": [
-                "node-tests/fixtures/*.mjs"
-            ]
+            "includeEntryExports": false
         },
         "packages/utils": {
             "entry": [
