@@ -1,5 +1,6 @@
 import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
+import type { GirNamespace } from "../../gir/namespace.js";
 import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../analysis/inheritance.js";
@@ -257,13 +258,13 @@ const appendInterfaceTypes = (
 ): string | undefined => {
     const typeCode = renderInterfaceType(context, iface, className, callables);
     context.declare({ name: className, code: typeCode, owner: iface.name });
-    const implType = renderInterfaceImplType(context, iface, className);
+    const implName = implTypeName(context.namespace, className);
+    const implType = renderInterfaceImplType(context, iface, className, implName);
 
     if (implType === undefined) {
         return undefined;
     }
 
-    const implName = implTypeName(className);
     context.declare({ name: implName, code: implType, owner: iface.name });
 
     return implName;
@@ -313,13 +314,34 @@ const renderInterfaceType = (
     )}`;
 };
 
-const implTypeName = (className: string): string => `${className}Impl`;
+const namespaceTypeNames = (namespace: GirNamespace): Set<string> =>
+    new Set(
+        [
+            ...namespace.classes,
+            ...namespace.interfaces,
+            ...namespace.records,
+            ...namespace.enums,
+            ...namespace.callbacks,
+            ...namespace.aliases,
+        ].map((entry) => sanitizeTypeIdentifier(entry.name)),
+    );
 
-const implTypeNote = (className: string): string =>
+const implTypeName = (namespace: GirNamespace, className: string): string => {
+    const taken = namespaceTypeNames(namespace);
+    let name = `${className}Impl`;
+
+    while (taken.has(name)) {
+        name = `${name}Impl`;
+    }
+
+    return name;
+};
+
+const implTypeNote = (className: string, implName: string): string =>
     [
         `Implementer side of \`${className}\`: the vtable slots a class fills to adopt the interface.`,
         "",
-        `Declare it with \`implements ${implTypeName(className)}\` on a class passed to \`registerClass\``,
+        `Declare it with \`implements ${implName}\` on a class passed to \`registerClass\``,
         `with \`${className}\` in \`implements\`. The interface's methods, properties, and signals come from`,
         "GLib dispatch, so they are not part of this type.",
         "",
@@ -337,7 +359,7 @@ const implPrerequisiteRefs = (context: ModuleContext, iface: GirClass): string[]
             continue;
         }
 
-        const name = implTypeName(sanitizeTypeIdentifier(prerequisite.klass.name));
+        const name = implTypeName(prerequisite.namespace, sanitizeTypeIdentifier(prerequisite.klass.name));
         refs.push(context.qualify(prerequisite.namespaceName, name));
     }
 
@@ -357,6 +379,7 @@ const renderInterfaceImplType = (
     context: ModuleContext,
     iface: GirClass,
     className: string,
+    implName: string,
 ): string | undefined => {
     const members = interfaceVfuncMembers(context, iface, "requirement");
 
@@ -364,8 +387,8 @@ const renderInterfaceImplType = (
         return undefined;
     }
 
-    return `${renderJsDoc(iface.doc, implTypeNote(className), annotationSpec(iface.annotations))}${renderBracedOrEmpty(
-        `export interface ${implTypeName(className)}${implTypeExtends(context, iface)}`,
+    return `${renderJsDoc(iface.doc, implTypeNote(className, implName), annotationSpec(iface.annotations))}${renderBracedOrEmpty(
+        `export interface ${implName}${implTypeExtends(context, iface)}`,
         members.join("\n"),
     )}`;
 };

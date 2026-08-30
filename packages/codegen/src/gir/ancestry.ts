@@ -1,10 +1,12 @@
 import type { GirClass } from "./class.js";
 import type { Library } from "./library.js";
+import type { GirNamespace } from "./namespace.js";
 import type { GirType } from "./type.js";
 import { splitOptionalNamespace } from "./type-ref.js";
 
 type ResolvedAncestor = {
     klass: GirClass;
+    namespace: GirNamespace;
     namespaceName: string;
 };
 
@@ -25,7 +27,7 @@ const getParentRef = (klass: GirClass): ParentRef | undefined => {
 
 const getAncestor = (resolved: GirType | undefined): ResolvedAncestor | undefined =>
     resolved !== undefined && (resolved.kind === "class" || resolved.kind === "interface")
-        ? { klass: resolved.value, namespaceName: resolved.namespace.name }
+        ? { klass: resolved.value, namespace: resolved.namespace, namespaceName: resolved.namespace.name }
         : undefined;
 
 const resolveClassOrInterface = (
@@ -59,8 +61,14 @@ const resolveInterfaces = (library: Library, defaultNamespace: string, names: st
 };
 
 function* ancestorChain(library: Library, klass: GirClass, namespaceName: string): Generator<ResolvedAncestor> {
+    const namespace = library.namespaces.get(namespaceName);
+
+    if (namespace === undefined) {
+        return;
+    }
+
     const visited: Set<string> = new Set();
-    let current: ResolvedAncestor | undefined = { klass, namespaceName };
+    let current: ResolvedAncestor | undefined = { klass, namespace, namespaceName };
 
     while (current !== undefined) {
         const key = `${current.namespaceName}.${current.klass.name}`;

@@ -94,21 +94,27 @@ impl Encoder for CallbackCodec {
 
         let has_user_data = self.has_user_data;
 
-        match self.scope {
-            CallbackScope::Call => {
-                let state_ptr = (&raw const *state).cast::<c_void>().cast_mut();
-                Ok(ffi::Stash::Callback(ffi::CallbackValue::new(
-                    fn_ptr,
-                    state_ptr,
-                    has_user_data,
-                    destroy,
-                    Some(state),
-                )))
-            }
-            _ => Ok(ffi::Stash::Callback(
-                ffi::CallbackValue::new_pending_transfer(fn_ptr, has_user_data, destroy, state),
-            )),
+        if self.scope == CallbackScope::Call {
+            let state_ptr = (&raw const *state).cast::<c_void>().cast_mut();
+
+            return Ok(ffi::Stash::Callback(ffi::CallbackValue::new(
+                fn_ptr,
+                state_ptr,
+                has_user_data,
+                destroy,
+                Some(state),
+            )));
         }
+
+        let is_immortal = self.scope == CallbackScope::Forever
+            || (self.scope == CallbackScope::Notified && !has_user_data);
+        let value = ffi::CallbackValue::new_pending_transfer(fn_ptr, has_user_data, destroy, state);
+
+        if is_immortal {
+            value.retain_forever();
+        }
+
+        Ok(ffi::Stash::Callback(value))
     }
 }
 

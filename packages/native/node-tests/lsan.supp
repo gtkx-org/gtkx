@@ -1,0 +1,8 @@
+leak:libc.so
+leak:node::contextify::ContextifyScript::New
+leak:node::encoding_binding::BindingData::DecodeUTF8
+leak:ossl_load_builtin_compressions
+leak:libgvfsdbus.so
+leak:g_vfs_get_file_for_path
+leak:g_io_module_
+leak:gi_marshalling_tests_properties_accessors_object_set_hash_table

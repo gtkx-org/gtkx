@@ -21,7 +21,6 @@ enum_dispatch = "0.3"
 napi-build = "2"
 
 [workspace]
-members = ["test-support"]
 
 [lints.rust]
 elided_lifetimes_in_paths = "warn"
@@ -37,8 +36,3 @@ too_many_lines = "warn"
 type_complexity = "warn"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
-
-[dev-dependencies]
-gtk4 = "0.11.4"
-napi = { version = "3", features = ["napi8"] }
-test-support = { path = "test-support" }

@@ -12,11 +12,10 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 - **Node.js** 24 or later
 - **pnpm**
-- **Rust** stable, plus a nightly toolchain: `pnpm test` runs the native crate's address-sanitizer and Miri suites, which need `cargo +nightly`
+- **Rust** stable, plus a nightly toolchain: `rustfmt` uses nightly-only options, and the native test suite's AddressSanitizer lane builds the addon with `-Zsanitizer=address`
 
   ```bash
-  rustup toolchain install nightly --profile minimal \
-      --component llvm-tools-preview --component rust-src --component miri
+  rustup toolchain install nightly --profile minimal --component rustfmt
   ```
 
 - **Linux** with the development libraries listed below
@@ -28,8 +27,10 @@ Codegen reads GObject-Introspection data from the development packages installed
 ```bash
 sudo apt install build-essential pkg-config gobject-introspection \
     libgirepository1.0-dev libgtk-4-dev libadwaita-1-dev \
-    libgtksourceview-5-dev libwebkitgtk-6.0-dev
+    libgtksourceview-5-dev libwebkitgtk-6.0-dev meson ninja-build
 ```
+
+The native test suite additionally builds the [gobject-introspection-tests](https://github.com/GNOME/gobject-introspection-tests) libraries with Meson and drives them through the generated bindings, which is why `meson` and `ninja-build` are on the list.
 
 GtkSourceView 5 and WebKitGTK 6 are required because the `gtk-demo` and `browser` examples declare them in their `gtkx.config.ts`. Package names differ by distribution; the [CI Docker image](.github/docker/Dockerfile) is the authoritative list, and also covers the runtime pieces the test suite needs (a Wayland compositor, D-Bus, icon themes, and fonts).
 

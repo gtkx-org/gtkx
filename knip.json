@@ -5,8 +5,7 @@
         "-internal"
     ],
     "ignore": [
-        "packages/eslint/tests/fixtures/**",
-        "packages/native/index.js"
+        "packages/eslint/tests/fixtures/**"
     ],
     "ignoreDependencies": [
         "^@gtkx/gi(/.*)?$",
@@ -105,7 +104,10 @@
             ]
         },
         "packages/native": {
-            "includeEntryExports": false
+            "includeEntryExports": false,
+            "entry": [
+                "node-tests/fixtures/*.mjs"
+            ]
         },
         "packages/utils": {
             "entry": [

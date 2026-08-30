@@ -398,11 +398,10 @@ impl Descriptor {
         has_destroy: bool,
         has_user_data: bool,
     ) -> CallbackScope {
-        if !has_user_data && !has_destroy {
-            return CallbackScope::Forever;
-        }
         match scope {
+            Some(CallbackScope::Notified) if !has_destroy => CallbackScope::Forever,
             Some(scope) => scope,
+            None if !has_user_data && !has_destroy => CallbackScope::Forever,
             None if has_destroy => CallbackScope::Notified,
             None => CallbackScope::Call,
         }

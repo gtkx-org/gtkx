@@ -160,39 +160,3 @@ pub fn raise_fatal(message: &str) {
         sys::napi_close_handle_scope(raw, handle_scope);
     }
 }
-
-#[cfg(test)]
-pub(crate) fn run_installed<R>(f: impl FnOnce() -> R) -> R {
-    test_support::run(|| {
-        install(test_support::fake_env()).expect("installing the local node env should succeed");
-        f()
-    })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_environment_is_only_visible_on_its_install_thread() {
-        run_installed(|| {
-            assert!(is_installed_on_current_thread());
-            assert!(try_env().is_some());
-
-            let observed_off_thread = std::thread::spawn(|| {
-                (
-                    is_installed_on_current_thread(),
-                    try_env().is_none(),
-                    std::panic::catch_unwind(|| {
-                        let _ = env();
-                    })
-                    .is_err(),
-                )
-            })
-            .join()
-            .expect("the probe thread should not crash");
-
-            assert_eq!(observed_off_thread, (false, true, true));
-        });
-    }
-}

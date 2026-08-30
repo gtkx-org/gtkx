@@ -238,8 +238,21 @@ pub enum StashData {
     Buffer(Vec<u8>),
     PtrSlot(Vec<*mut c_void>, Option<Box<StashStorage>>),
     StrV(glib::StrV),
-    HashTable,
+    HashTable(HashTableData),
     CallerAllocation(CallerAllocation),
+}
+
+/// A `GHashTable` built here and handed to a callee.
+///
+/// A callee that takes the table but not its contents — transfer container — steals the entries
+/// out of it without running the destroy notifies, so the keys and values allocated here stay
+/// this side's to free. `retained_entries` holds exactly those allocations, and is empty both
+/// when the table is only borrowed, where unreferencing it frees the entries through its destroy
+/// notifies, and when the callee takes the entries along with the table.
+#[derive(Debug)]
+pub struct HashTableData {
+    pub owns_table: bool,
+    pub retained_entries: Vec<*mut c_void>,
 }
 
 /// A zero-initialized `g_malloc`ed buffer handed to a callee that fills it in place, kept at
@@ -349,7 +362,7 @@ impl StashStorage {
             | StashData::GByteArray(_)
             | StashData::PtrSlot(_, _)
             | StashData::StrV(_)
-            | StashData::HashTable => None,
+            | StashData::HashTable(_) => None,
         }
     }
 }
@@ -374,8 +387,13 @@ impl Drop for StashStorage {
             pending.release_now();
         }
         match &self.data {
-            StashData::HashTable => {
-                if !self.ptr.is_null() {
+            StashData::HashTable(data) => {
+                for entry in &data.retained_entries {
+                    if !entry.is_null() {
+                        unsafe { glib::ffi::g_free(*entry) };
+                    }
+                }
+                if data.owns_table && !self.ptr.is_null() {
                     unsafe {
                         glib::ffi::g_hash_table_unref(self.ptr.cast::<glib::ffi::GHashTable>());
                     }

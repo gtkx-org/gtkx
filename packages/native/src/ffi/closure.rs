@@ -156,10 +156,25 @@ impl Drop for ClosureState {
     }
 }
 
+thread_local! {
+    static IMMORTAL_CLOSURES: RefCell<Vec<*mut ClosureState>> = const { RefCell::new(Vec::new()) };
+}
+
 impl ClosureState {
     #[must_use]
     pub fn data_ref(&self) -> &ClosureData {
         unsafe { &*self.data }
+    }
+
+    /// Records a closure the caller has no way to release, so that it stays reachable for the
+    /// life of the process instead of being orphaned. A callback whose C side keeps the function
+    /// pointer without handing back anything that identifies the closure — a `forever` scope, or
+    /// a `notified` scope whose destroy notify receives no user data — can never be freed.
+    pub(crate) fn retain_forever(state: *mut Self) {
+        if state.is_null() {
+            return;
+        }
+        IMMORTAL_CLOSURES.with_borrow_mut(|closures| closures.push(state));
     }
 
     pub fn new(data: ClosureData) -> Self {

@@ -23,6 +23,10 @@ thread_local! {
     static LIVE_TOGGLE_REFS: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
 }
 
+pub fn live_count() -> usize {
+    LIVE_TOGGLE_REFS.with_borrow(HashSet::len)
+}
+
 fn quark() -> glib::Quark {
     glib::Quark::from_static_str(glib::gstr!("gtkx-wrapper-ref"))
 }
@@ -238,101 +242,4 @@ fn resync_wrapper_level(gobject_ptr: usize) {
     let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;
     let strong = unsafe { borrow_object(gobject) }.ref_count() > 1;
     unsafe { apply_toggle(gobject, strong) };
-}
-
-#[cfg(test)]
-mod tests {
-    use test_support::napi_mock;
-
-    use super::*;
-
-    fn release_wrapper(handle: &Rc<WrapperHandle>, gobject: *mut glib::gobject_ffi::GObject) {
-        unsafe {
-            schedule_cleanup(
-                Some(Rc::clone(handle)),
-                handle.generation.get(),
-                gobject,
-                handle.napi_ref.get(),
-            );
-        }
-        test_support::pump_default_context_until(|| !unsafe { has_wrapper(gobject) });
-    }
-
-    #[test]
-    fn wrapper_ref_and_has_wrapper_are_empty_without_a_handle() {
-        node_env::run_installed(|| {
-            let (obj, obj_ptr, _) = test_support::fresh_gobject();
-            assert!(unsafe { wrapper_ref(obj_ptr).is_null() });
-            assert!(!unsafe { has_wrapper(obj_ptr) });
-            drop(obj);
-        });
-    }
-
-    #[test]
-    fn install_records_the_reference_and_marks_the_object_wrapped() {
-        node_env::run_installed(|| {
-            let (obj, obj_ptr, _) = test_support::fresh_gobject();
-            let napi_ref = napi_mock::fake_reference();
-            let (handle, generation) = unsafe { install(obj_ptr, napi_ref) };
-            assert_eq!(generation, 1);
-            assert_eq!(unsafe { wrapper_ref(obj_ptr) }, napi_ref);
-            assert!(unsafe { has_wrapper(obj_ptr) });
-            release_wrapper(&handle, obj_ptr);
-            drop(obj);
-        });
-    }
-
-    #[test]
-    fn reinstalling_bumps_the_generation_and_updates_the_reference() {
-        node_env::run_installed(|| {
-            let (obj, obj_ptr, _) = test_support::fresh_gobject();
-            let first_ref = napi_mock::fake_reference();
-            let second_ref = napi_mock::fake_reference();
-            let (_first, first_generation) = unsafe { install(obj_ptr, first_ref) };
-            let (second, second_generation) = unsafe { install(obj_ptr, second_ref) };
-            assert_eq!(first_generation, 1);
-            assert_eq!(second_generation, 2);
-            assert_eq!(unsafe { wrapper_ref(obj_ptr) }, second_ref);
-            release_wrapper(&second, obj_ptr);
-            drop(obj);
-        });
-    }
-
-    #[test]
-    fn schedule_cleanup_with_a_stale_generation_keeps_the_handle() {
-        node_env::run_installed(|| {
-            let (obj, obj_ptr, _) = test_support::fresh_gobject();
-            let napi_ref = napi_mock::fake_reference();
-            let (handle, _) = unsafe { install(obj_ptr, napi_ref) };
-            unsafe { schedule_cleanup(Some(Rc::clone(&handle)), 999, obj_ptr, napi_ref) };
-            test_support::pump_default_context_until(|| false);
-            assert!(unsafe { has_wrapper(obj_ptr) });
-            release_wrapper(&handle, obj_ptr);
-            drop(obj);
-        });
-    }
-
-    #[test]
-    fn schedule_cleanup_with_a_matching_generation_removes_the_handle() {
-        node_env::run_installed(|| {
-            let (obj, obj_ptr, _) = test_support::fresh_gobject();
-            let napi_ref = napi_mock::fake_reference();
-            let (handle, generation) = unsafe { install(obj_ptr, napi_ref) };
-            unsafe { schedule_cleanup(Some(handle), generation, obj_ptr, napi_ref) };
-            test_support::pump_default_context_until(|| !unsafe { has_wrapper(obj_ptr) });
-            assert!(!unsafe { has_wrapper(obj_ptr) });
-            assert!(napi_mock::reference_is_deleted(napi_ref));
-            drop(obj);
-        });
-    }
-
-    #[test]
-    fn schedule_cleanup_without_a_handle_deletes_the_reference() {
-        node_env::run_installed(|| {
-            let napi_ref = napi_mock::fake_reference();
-            unsafe { schedule_cleanup(None, 0, std::ptr::null_mut(), napi_ref) };
-            test_support::pump_default_context_until(|| napi_mock::reference_is_deleted(napi_ref));
-            assert!(napi_mock::reference_is_deleted(napi_ref));
-        });
-    }
 }

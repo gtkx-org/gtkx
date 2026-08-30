@@ -35,29 +35,3 @@ pub fn get_type_class(gtype: BigInt) -> Result<External<Handle>> {
 
     Ok(External::new_with_size_hint(handle, size_hint))
 }
-
-#[cfg(test)]
-mod tests {
-    use glib::prelude::StaticType as _;
-
-    use super::*;
-
-    #[test]
-    fn hands_back_the_class_struct_of_a_classed_type() {
-        test_support::run(|| {
-            let handle =
-                class_pointer(glib::Object::static_type()).expect("GObject should be classed");
-            let expected =
-                unsafe { gobject_ffi::g_type_class_ref(glib::Object::static_type().into_glib()) };
-            assert_eq!(handle.as_ptr(), expected.cast());
-            unsafe { gobject_ffi::g_type_class_unref(expected) };
-        });
-    }
-
-    #[test]
-    fn rejects_a_type_that_carries_no_class() {
-        test_support::run(|| {
-            assert!(class_pointer(glib::Type::STRING).is_err());
-        });
-    }
-}

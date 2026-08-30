@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/e2e",
     "version": "0.0.0",
-    "description": "Internal integration tests and benchmarks covering the GTKX reconciler, runtime, and native FFI",
+    "description": "Internal integration tests covering the GTKX reconciler, runtime, and testing library",
     "private": true,
     "type": "module",
     "devDependencies": {
@@ -9,7 +9,6 @@
         "@gtkx/config": "workspace:*",
         "@gtkx/css": "workspace:*",
         "@gtkx/gl": "workspace:*",
-        "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/runtime": "workspace:*",
         "@gtkx/testing": "workspace:*",

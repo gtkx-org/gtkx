@@ -409,7 +409,9 @@ const resolveParentClass = (context: ModuleContext, klass: GirClass): ResolvedAn
 
     const resolved = context.library.resolveType(parent.namespaceName ?? context.namespace.name, parent.typeName);
 
-    return resolved?.kind === "class" ? { klass: resolved.value, namespaceName: resolved.namespace.name } : undefined;
+    return resolved?.kind === "class"
+        ? { klass: resolved.value, namespace: resolved.namespace, namespaceName: resolved.namespace.name }
+        : undefined;
 };
 
 const addAncestorStatics = (context: ModuleContext, klass: GirClass, table: Map<string, GirFunction>): void => {

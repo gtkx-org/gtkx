@@ -12,6 +12,7 @@ pub mod get_type;
 pub mod get_wrapper;
 pub mod init;
 pub mod keep_alive;
+pub mod memory_probe;
 pub mod new_object;
 pub mod quit;
 pub mod read;
@@ -116,56 +117,4 @@ pub(crate) fn type_from_bigint(
         ));
     }
     Ok(type_)
-}
-
-#[cfg(test)]
-mod tests {
-    use glib::prelude::StaticType as _;
-    use glib::translate::IntoGlib as _;
-    use napi::bindgen_prelude::BigInt;
-
-    use super::{Handle, handle_memory_ptr, type_from_bigint};
-
-    #[test]
-    fn handle_memory_ptr_rejects_a_handle_whose_borrow_has_ended() {
-        test_support::run(|| {
-            let (obj, obj_ptr, _) = test_support::fresh_gobject();
-            let handle = Handle::borrowed_gobject(obj_ptr);
-            assert!(handle_memory_ptr(&handle, "field read").is_ok());
-
-            handle.invalidate();
-            let error = handle_memory_ptr(&handle, "field read")
-                .expect_err("a handle whose borrow has ended should be rejected");
-
-            assert!(
-                error
-                    .reason
-                    .contains("only valid until the override returns")
-            );
-
-            drop(obj);
-        });
-    }
-
-    #[test]
-    fn handle_memory_ptr_rejects_a_handle_that_points_at_nothing() {
-        test_support::run(|| {
-            let handle = Handle::owned_struct(std::ptr::null_mut());
-            let error = handle_memory_ptr(&handle, "field read")
-                .expect_err("a handle that points at nothing should be rejected");
-
-            assert!(error.reason.contains("no memory to reach through it"));
-        });
-    }
-
-    #[test]
-    fn type_from_bigint_accepts_a_valid_type() {
-        let value = BigInt::from(glib::Object::static_type().into_glib() as u64);
-        assert!(type_from_bigint(&value, "test:").is_ok());
-    }
-
-    #[test]
-    fn type_from_bigint_rejects_zero() {
-        assert!(type_from_bigint(&BigInt::from(0u64), "test:").is_err());
-    }
 }

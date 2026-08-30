@@ -3,7 +3,22 @@ use anyhow::bail;
 use super::prelude::*;
 use super::string::str_to_glib_full;
 use crate::ffi::codec::Codec;
-use crate::ffi::{StashData, StashStorage};
+use crate::ffi::{HashTableData, StashData, StashStorage};
+
+type CVoidPtr = *mut c_void;
+
+/// Whether a hash table entry codec takes ownership of what it encodes, so that the callee is
+/// the one left to release it.
+fn entry_ownership_is_full(codec: &Codec) -> bool {
+    match codec {
+        Codec::String(string) => string.ownership.is_full(),
+        Codec::Object(object) => object.ownership.is_full(),
+        Codec::Boxed(boxed) => boxed.ownership.is_full(),
+        Codec::Fundamental(fundamental) => fundamental.ownership.is_full(),
+        Codec::Array(array) => array.ownership.is_full(),
+        _ => false,
+    }
+}
 
 #[derive(Clone, Debug)]
 pub enum HashTableEntryCodec {
@@ -200,10 +215,18 @@ impl HashTableCodec {
     ) -> anyhow::Result<ffi::Stash> {
         let key_free = key_encoder.free_func()?;
         let value_free = value_encoder.free_func()?;
+        let retains_keys = self.retains_entries(key_encoder, &self.key_codec);
+        let retains_values = self.retains_entries(value_encoder, &self.value_codec);
         let (hash_func, equal_func) = key_encoder.hash_and_equal();
         let hash_table = unsafe {
-            glib::ffi::g_hash_table_new_full(hash_func, equal_func, key_free, value_free)
+            glib::ffi::g_hash_table_new_full(
+                hash_func,
+                equal_func,
+                if retains_keys { None } else { key_free },
+                if retains_values { None } else { value_free },
+            )
         };
+        let mut retained_entries: Vec<CVoidPtr> = Vec::new();
 
         let build: anyhow::Result<()> = (|| {
             for &tuple in tuples {
@@ -219,6 +242,13 @@ impl HashTableCodec {
                     }
                 };
 
+                if retains_keys {
+                    retained_entries.push(key_ptr);
+                }
+                if retains_values {
+                    retained_entries.push(value_ptr);
+                }
+
                 unsafe {
                     glib::ffi::g_hash_table_insert(hash_table, key_ptr, value_ptr);
                 }
@@ -227,22 +257,43 @@ impl HashTableCodec {
         })();
 
         if let Err(err) = build {
+            for entry in retained_entries {
+                release_transferred(Some(glib::ffi::g_free), entry);
+            }
             unsafe { glib::ffi::g_hash_table_unref(hash_table) };
             return Err(err);
         }
 
-        let stash = if self.ownership.is_borrowed() {
-            ffi::Stash::Storage(StashStorage::new(
-                hash_table.cast::<c_void>(),
-                StashData::HashTable,
-            ))
+        let owns_table = self.ownership.is_borrowed();
+        let storage = StashStorage::new(
+            hash_table.cast::<c_void>(),
+            StashData::HashTable(HashTableData {
+                owns_table,
+                retained_entries,
+            }),
+        );
+
+        Ok(if owns_table {
+            ffi::Stash::Storage(storage)
         } else {
-            full_transfer_stash(
+            ffi::Stash::Storage(storage.with_pending_transfer(
                 hash_table.cast::<c_void>(),
                 ffi::ReleaseKind::HashTableUnref,
+            ))
+        })
+    }
+
+    /// Whether the entries this side allocates stay this side's to free: a callee that takes the
+    /// table without taking its contents steals them out of it, leaving nothing else to release
+    /// them. Only the entry kinds that allocate at all can be retained; a key packed into the
+    /// pointer itself owns no memory.
+    fn retains_entries(&self, encoder: &HashTableEntryCodec, codec: &Codec) -> bool {
+        self.ownership.is_full()
+            && matches!(
+                encoder,
+                HashTableEntryCodec::String | HashTableEntryCodec::Float
             )
-        };
-        Ok(stash)
+            && !entry_ownership_is_full(codec)
     }
 }
 
