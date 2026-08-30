@@ -11,7 +11,6 @@ pub use fundamental::{Fundamental, RefFn, UnrefFn};
 use glib::prelude::ObjectType as _;
 
 use crate::ffi::PendingTransfer;
-use crate::host::node_env;
 
 const GOBJECT_SIZE_HINT: usize = 512;
 const STRUCT_SIZE_HINT: usize = 256;
@@ -397,9 +396,7 @@ impl Drop for HandleKind {
         match self {
             Self::Object { owned, .. } => {
                 if let Some(object) = owned.take() {
-                    node_env::defer_local("object handle cleanup", move || {
-                        surface::release(object);
-                    });
+                    glib::idle_add_local_once(move || surface::release(object));
                 }
             }
             Self::Struct(ptr) => unsafe { glib::ffi::g_free(*ptr) },

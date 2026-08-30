@@ -29,8 +29,6 @@
         "./package.json": "./package.json",
         ".": {
             "types": "./main.d.ts",
-            "import": "./main.js",
-            "require": null,
             "default": "./main.js"
         }
     },
@@ -55,10 +53,12 @@
     "scripts": {
         "artifacts": "napi artifacts",
         "build": "napi build --platform --release --esm --no-dts-cache --no-const-enum",
+        "coverage": "mkdir -p coverage && tsx ../../scripts/coverage-target.ts && tsx ../../scripts/run-headless.ts cargo +nightly llvm-cov --lcov --output-path coverage/native.lcov.info --fail-under-lines 70 -- --test-threads=1",
         "create-npm-dirs": "napi create-npm-dirs",
-        "lint:rust": "cargo +nightly-2026-08-20 fmt --check && cargo clippy --all-targets -- -D warnings",
-        "test:asan": "tsx ../../scripts/asan-native.ts",
-        "test": "tsx ../../scripts/native-test-codegen.ts && LD_LIBRARY_PATH=\"$PWD/../../build/native-tests/lifecycle/meson${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}\" node --expose-gc --test node-tests/*.test.mjs",
+        "lint:rust": "tsx ../../scripts/cargo-nightly.ts fmt --check && cargo clippy --all-targets -- -D warnings",
+        "test:asan": "RUSTFLAGS=\"-Zsanitizer=address\" ASAN_OPTIONS=\"detect_leaks=1:abort_on_error=1:detect_stack_use_after_return=1\" tsx ../../scripts/run-headless.ts cargo +nightly test --target x86_64-unknown-linux-gnu -- --test-threads=1",
+        "test:miri": "tsx ../../scripts/run-headless.ts cargo +nightly miri test --test integer_codec --test descriptor_into_codec",
+        "test": "tsx ../../scripts/run-headless.ts cargo test -- --test-threads=1",
         "release": "tsx ../../scripts/prepublish-native.ts && tsx ../../scripts/release-package.ts"
     },
     "nx": {
@@ -70,21 +70,20 @@
                 "{projectRoot}/Cargo.lock",
                 "{projectRoot}/package.json",
                 "{workspaceRoot}/rust-toolchain.toml",
-                "{workspaceRoot}/rustfmt.toml",
                 {
                     "runtime": "uname -m"
                 }
             ],
-            "nativeTests": [
+            "crateTests": [
                 "crate",
                 "sharedGlobals",
-                "{projectRoot}/node-tests/**/*",
-                "{projectRoot}/fixtures/**/*",
-                "{workspaceRoot}/scripts/asan-native.ts",
-                "{workspaceRoot}/scripts/descriptor-inventory.ts",
-                "{workspaceRoot}/scripts/native-test-codegen.ts",
+                "{projectRoot}/tests/**/*",
+                "{projectRoot}/test-support/**/*",
+                "{workspaceRoot}/scripts/run-headless.ts",
+                "{workspaceRoot}/scripts/cargo-nightly.ts",
+                "{workspaceRoot}/scripts/coverage-target.ts",
                 "{workspaceRoot}/scripts/rust-nightly.ts",
-                "{workspaceRoot}/packages/*/src/**/*"
+                "{workspaceRoot}/packages/utils/src/**/*"
             ]
         },
         "targets": {
@@ -109,12 +108,12 @@
             "test": {
                 "dependsOn": [
                     "build",
-                    "@gtkx/gl:codegen",
-                    "@gtkx/runtime:build"
+                    "test:asan",
+                    "test:miri"
                 ],
-                "cache": false,
+                "cache": true,
                 "inputs": [
-                    "nativeTests"
+                    "crateTests"
                 ],
                 "outputs": []
             },
@@ -124,14 +123,36 @@
                 ],
                 "cache": true,
                 "inputs": [
-                    "nativeTests"
+                    "crateTests"
                 ],
                 "outputs": []
+            },
+            "test:miri": {
+                "dependsOn": [
+                    "build"
+                ],
+                "cache": true,
+                "inputs": [
+                    "crateTests"
+                ],
+                "outputs": []
+            },
+            "coverage": {
+                "dependsOn": [
+                    "build"
+                ],
+                "cache": true,
+                "inputs": [
+                    "crateTests"
+                ],
+                "outputs": [
+                    "{projectRoot}/coverage/**"
+                ]
             },
             "lint:rust": {
                 "cache": true,
                 "inputs": [
-                    "crate"
+                    "crateTests"
                 ],
                 "outputs": []
             },
@@ -164,7 +185,7 @@
         }
     },
     "engines": {
-        "node": ">=26.7.0"
+        "node": ">=24"
     },
     "devDependencies": {
         "@napi-rs/cli": "^3.8.6"

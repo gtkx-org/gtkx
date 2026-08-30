@@ -69,7 +69,6 @@ fn call_js_function<'e>(
 }
 
 pub struct ClosureData {
-    dispatch: node_env::DispatchHandle,
     pub js_fn: ClosureHandle,
     pub arg_codecs: Vec<Codec>,
     pub return_codec: Codec,
@@ -96,7 +95,6 @@ impl ClosureData {
         is_oneshot: bool,
     ) -> Self {
         Self {
-            dispatch: node_env::dispatch_handle(),
             js_fn,
             arg_codecs,
             return_codec,
@@ -242,22 +240,17 @@ impl ClosureState {
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
         guard_ffi_boundary("callback destroy notify", || {
             let state_ptr = user_data.cast::<Self>();
-            if state_ptr.is_null() {
+            if !state_ptr.is_null() && unsafe { (*state_ptr).data_ref() }.defer_destroy() {
                 return;
             }
-            let data = unsafe { (*state_ptr).data_ref() };
-            if data.defer_destroy() {
-                return;
-            }
-            let dispatch = data.dispatch.clone();
 
-            if dispatch.is_current_thread() {
+            if node_env::is_installed_on_current_thread() {
                 unsafe { Self::release(state_ptr) };
                 return;
             }
 
             let state_address = user_data as usize;
-            dispatch.invoke("callback destroy notify", move || {
+            node_env::invoke_on_install_thread("callback destroy notify", move || {
                 unsafe { Self::release(state_address as *mut Self) };
             });
         });
@@ -796,8 +789,10 @@ unsafe extern "C" fn closure_entry(
     })
     .flatten();
     if let Some(ptr) = state_ptr {
-        node_env::defer_local("callback one-shot cleanup", move || {
-            unsafe { ClosureState::release(ptr) };
+        glib::idle_add_local_once(move || {
+            guard_ffi_boundary("callback one-shot cleanup", || {
+                unsafe { ClosureState::release(ptr) };
+            });
         });
     }
 }

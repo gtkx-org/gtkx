@@ -37,3 +37,45 @@ pub fn alloc(size: f64, gtype: Option<BigInt>) -> Result<External<Handle>> {
     let size_hint = handle.size_hint();
     Ok(External::new_with_size_hint(handle, size_hint))
 }
+
+#[cfg(test)]
+mod tests {
+    use glib::prelude::StaticType as _;
+    use glib::translate::IntoGlib as _;
+
+    use super::*;
+
+    #[test]
+    fn allocates_untyped_boxed_handle() {
+        test_support::run(|| {
+            let handle = alloc_handle(32, None);
+            assert!(!handle.as_ptr().is_null());
+        });
+    }
+
+    #[test]
+    fn allocates_typed_boxed_handle() {
+        test_support::run(|| {
+            let type_ = glib::Bytes::static_type();
+            let value = BigInt::from(type_.into_glib() as u64);
+            let resolved =
+                boxed_type_from_bigint(Some(value)).expect("boxed gtype should be accepted");
+            assert_eq!(resolved, Some(type_));
+        });
+    }
+
+    #[test]
+    fn rejects_zero_gtype() {
+        test_support::run(|| {
+            assert!(boxed_type_from_bigint(Some(BigInt::from(0u64))).is_err());
+        });
+    }
+
+    #[test]
+    fn rejects_non_boxed_gtype() {
+        test_support::run(|| {
+            let value = BigInt::from(glib::Type::STRING.into_glib() as u64);
+            assert!(boxed_type_from_bigint(Some(value)).is_err());
+        });
+    }
+}
