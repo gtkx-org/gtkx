@@ -20,7 +20,7 @@ const buildValue = (type, fill) => {
 const named = (name) => GObject.typeFromName(name);
 const genumType = () => resolveType("libgimarshallingtests.so", "gi_marshalling_tests_genum_get_type");
 const flagsType = () => resolveType("libgimarshallingtests.so", "gi_marshalling_tests_flags_get_type");
-const approximatePi = Number(Math.PI.toFixed(2));
+const fixtureFloat = 314 / 100;
 
 const intValue = (n) => buildValue(named("gint"), (value) => value.setInt(n));
 const uintValue = (n) => buildValue(named("guint"), (value) => value.setUint(n));
@@ -65,14 +65,14 @@ test("each borrowed gvalue out param decodes into its own wrapper", () => {
 test("gvalue in params accept built values holding the expected payload", () => {
     GIMarshallingTests.gvalueIn(intValue(42));
     GIMarshallingTests.gvalueInt64In(int64Value(2n ** 63n - 1n));
-    GIMarshallingTests.gvalueFloat(floatValue(approximatePi), doubleValue(approximatePi));
+    GIMarshallingTests.gvalueFloat(floatValue(fixtureFloat), doubleValue(fixtureFloat));
     assert.equal(Regress.testIntValueArg(intValue(42)), 42);
 });
 
 test("plain js values marshal into gvalue params by type inference", () => {
     assert.equal(Regress.testIntValueArg(42), 42);
     GIMarshallingTests.gvalueFlatArray([42, "42", true]);
-    GIMarshallingTests.gvalueFloat(floatValue(approximatePi), approximatePi);
+    GIMarshallingTests.gvalueFloat(floatValue(fixtureFloat), fixtureFloat);
 });
 
 test("gvalue round trips preserve each fundamental type", () => {
