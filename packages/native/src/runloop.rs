@@ -12,9 +12,9 @@ use glib::ffi::{
     g_main_context_query, g_main_context_release,
 };
 use libloading::os::unix::Library;
-use napi::Env;
+use napi::{Env, sys};
 
-use crate::host::{error_reporter, log_writer, panic_handler};
+use crate::host::{error_reporter, log_writer, node_env, panic_handler};
 
 const UV_POLL: c_int = 8;
 const UV_PREPARE: c_int = 9;
@@ -77,6 +77,8 @@ impl UvApi {
 thread_local! {
     static UV_API: Cell<Option<UvApi>> = const { Cell::new(None) };
     static RUNLOOP: RefCell<Option<RunloopState>> = const { RefCell::new(None) };
+    static OPEN_HANDLES: Cell<usize> = const { Cell::new(0) };
+    static PENDING_CLEANUP: Cell<sys::napi_async_cleanup_hook_handle> = const { Cell::new(std::ptr::null_mut()) };
 }
 
 fn uv() -> UvApi {
@@ -103,7 +105,19 @@ fn alloc_uv_handle(htype: c_int) -> *mut c_void {
     let ptr = ptr.cast::<c_void>();
     let data = Box::into_raw(Box::new(HandleData { size }));
     unsafe { (uv().handle_set_data)(ptr, data.cast()) };
+    OPEN_HANDLES.set(OPEN_HANDLES.get() + 1);
     ptr
+}
+
+fn finish_async_cleanup() {
+    if OPEN_HANDLES.get() != 0 {
+        return;
+    }
+
+    let cleanup = PENDING_CLEANUP.replace(std::ptr::null_mut());
+    if !cleanup.is_null() {
+        let _ = unsafe { sys::napi_remove_async_cleanup_hook(cleanup) };
+    }
 }
 
 unsafe fn free_uv_handle(handle: *mut c_void) {
@@ -112,7 +126,15 @@ unsafe fn free_uv_handle(handle: *mut c_void) {
         return;
     }
     let data = unsafe { Box::from_raw(data_ptr) };
+    unsafe { (uv().handle_set_data)(handle, std::ptr::null_mut()) };
     unsafe { dealloc(handle.cast::<u8>(), handle_layout(data.size)) };
+    OPEN_HANDLES.set(
+        OPEN_HANDLES
+            .get()
+            .checked_sub(1)
+            .expect("a closing libuv handle must be tracked"),
+    );
+    finish_async_cleanup();
 }
 
 unsafe extern "C" fn on_close(handle: *mut c_void) {
@@ -179,6 +201,7 @@ struct RunloopState {
     pollers: HashMap<c_int, *mut c_void>,
     fds: Vec<GPollFD>,
     n_fds: usize,
+    cleanup_hook: sys::napi_async_cleanup_hook_handle,
 }
 
 impl RunloopState {
@@ -298,7 +321,7 @@ unsafe extern "C" fn on_prepare(_handle: *mut c_void) {
     let deadline = Instant::now() + DISPATCH_BUDGET;
     loop {
         let mut dispatched = false;
-        crate::host::node_env::run_dispatch_scope(|| {
+        node_env::run_dispatch_scope(|| {
             dispatched = unsafe { g_main_context_iteration(ctx, GFALSE) } != 0;
         });
         if !dispatched || Instant::now() >= deadline || RUNLOOP.with_borrow(Option::is_none) {
@@ -316,6 +339,37 @@ unsafe extern "C" fn on_prepare(_handle: *mut c_void) {
 unsafe extern "C" fn on_timer(_handle: *mut c_void) {}
 
 unsafe extern "C" fn on_poll(_handle: *mut c_void, _status: c_int, _events: c_int) {}
+
+unsafe extern "C" fn on_env_cleanup(
+    cleanup: sys::napi_async_cleanup_hook_handle,
+    _data: *mut c_void,
+) {
+    PENDING_CLEANUP.set(cleanup);
+    node_env::close_sources();
+    if let Some(state) = RUNLOOP.with_borrow_mut(Option::take) {
+        close_state(state);
+    }
+    finish_async_cleanup();
+}
+
+fn register_cleanup_hook(env: &Env) -> napi::Result<sys::napi_async_cleanup_hook_handle> {
+    let mut cleanup = std::ptr::null_mut();
+    let status = unsafe {
+        sys::napi_add_async_cleanup_hook(
+            env.raw(),
+            Some(on_env_cleanup),
+            std::ptr::null_mut(),
+            &raw mut cleanup,
+        )
+    };
+    if status != sys::Status::napi_ok {
+        return Err(napi::Error::new(
+            napi::Status::GenericFailure,
+            format!("Failed to register the runloop cleanup hook (status {status})"),
+        ));
+    }
+    Ok(cleanup)
+}
 
 pub fn install(env: &Env) -> napi::Result<()> {
     if RUNLOOP.with_borrow(Option::is_some) {
@@ -367,6 +421,16 @@ pub fn install(env: &Env) -> napi::Result<()> {
         (uv.unreference)(timer);
     }
 
+    let cleanup_hook = match register_cleanup_hook(env) {
+        Ok(cleanup) => cleanup,
+        Err(error) => {
+            close_uv_handle(prepare);
+            close_uv_handle(timer);
+            unsafe { g_main_context_release(ctx) };
+            return Err(error);
+        }
+    };
+
     RUNLOOP.with(|slot| {
         *slot.borrow_mut() = Some(RunloopState {
             uv_loop,
@@ -383,8 +447,10 @@ pub fn install(env: &Env) -> napi::Result<()> {
                 8
             ],
             n_fds: 0,
+            cleanup_hook,
         });
     });
+    node_env::activate_local_sources();
 
     Ok(())
 }
@@ -421,105 +487,20 @@ pub fn set_keep_alive(enable: bool) {
 }
 
 pub fn teardown() {
-    let ctx = RUNLOOP.with_borrow_mut(|slot| {
-        let state = slot.take()?;
-        for handle in state.pollers.into_values() {
-            close_uv_handle(handle);
-        }
-        close_uv_handle(state.prepare);
-        close_uv_handle(state.timer);
-        Some(state.ctx)
-    });
-
-    let Some(ctx) = ctx else {
+    node_env::deactivate_local_sources();
+    let Some(state) = RUNLOOP.with_borrow_mut(Option::take) else {
         return;
     };
 
-    unsafe { g_main_context_release(ctx) };
+    let _ = unsafe { sys::napi_remove_async_cleanup_hook(state.cleanup_hook) };
+    close_state(state);
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn condition(mask: u32) -> u16 {
-        u16::try_from(mask).expect("a GLib GIOCondition mask fits in a gushort")
+fn close_state(state: RunloopState) {
+    for handle in state.pollers.into_values() {
+        close_uv_handle(handle);
     }
-
-    fn pfd(fd: c_int, events: u32) -> GPollFD {
-        GPollFD {
-            fd,
-            events: condition(events),
-            revents: 0,
-        }
-    }
-
-    #[test]
-    fn glib_events_map_to_uv_readiness() {
-        assert_eq!(glib_events_to_uv(condition(G_IO_IN)), UV_READABLE);
-        assert_eq!(glib_events_to_uv(condition(G_IO_OUT)), UV_WRITABLE);
-        assert_eq!(glib_events_to_uv(condition(G_IO_HUP)), UV_DISCONNECT);
-        assert_eq!(glib_events_to_uv(condition(G_IO_ERR)), UV_DISCONNECT);
-        assert_eq!(glib_events_to_uv(condition(G_IO_PRI)), UV_PRIORITIZED);
-        assert_eq!(
-            glib_events_to_uv(condition(G_IO_IN | G_IO_OUT)),
-            UV_READABLE | UV_WRITABLE
-        );
-        assert_eq!(
-            glib_events_to_uv(condition(G_IO_HUP | G_IO_ERR)),
-            UV_DISCONNECT
-        );
-        assert_eq!(
-            glib_events_to_uv(condition(G_IO_IN | G_IO_HUP | G_IO_PRI)),
-            UV_READABLE | UV_DISCONNECT | UV_PRIORITIZED
-        );
-        assert_eq!(glib_events_to_uv(0), 0);
-    }
-
-    #[test]
-    fn desired_uv_events_merge_per_fd() {
-        let fds = [pfd(3, G_IO_IN), pfd(3, G_IO_OUT), pfd(5, G_IO_IN)];
-        let desired = desired_uv_events(&fds);
-        assert_eq!(desired.len(), 2);
-        assert_eq!(desired.get(&3).copied(), Some(UV_READABLE | UV_WRITABLE));
-        assert_eq!(desired.get(&5).copied(), Some(UV_READABLE));
-    }
-
-    #[test]
-    fn desired_uv_events_watch_zero_event_fds_for_disconnect() {
-        let fds = [pfd(6, 0)];
-        assert_eq!(
-            desired_uv_events(&fds).get(&6).copied(),
-            Some(UV_DISCONNECT)
-        );
-    }
-
-    #[test]
-    fn desired_uv_events_cover_hangup_error_and_priority_interest() {
-        let fds = [pfd(4, G_IO_HUP), pfd(5, G_IO_ERR), pfd(7, G_IO_PRI)];
-        let desired = desired_uv_events(&fds);
-        assert_eq!(desired.len(), 3);
-        assert_eq!(desired.get(&4).copied(), Some(UV_DISCONNECT));
-        assert_eq!(desired.get(&5).copied(), Some(UV_DISCONNECT));
-        assert_eq!(desired.get(&7).copied(), Some(UV_PRIORITIZED));
-    }
-
-    #[test]
-    fn wakeup_follows_glib_timeout_when_nothing_is_ready() {
-        assert_eq!(wakeup_for(-1, false, false), Wakeup::Idle);
-        assert_eq!(wakeup_for(0, false, false), Wakeup::Now);
-        assert_eq!(wakeup_for(25, false, false), Wakeup::In(25));
-    }
-
-    #[test]
-    fn wakeup_is_immediate_when_sources_are_ready() {
-        assert_eq!(wakeup_for(-1, true, false), Wakeup::Now);
-        assert_eq!(wakeup_for(25, true, false), Wakeup::Now);
-    }
-
-    #[test]
-    fn wakeup_is_immediate_when_a_poll_fd_is_unwatchable() {
-        assert_eq!(wakeup_for(-1, false, true), Wakeup::Now);
-        assert_eq!(wakeup_for(25, false, true), Wakeup::Now);
-    }
+    close_uv_handle(state.prepare);
+    close_uv_handle(state.timer);
+    unsafe { g_main_context_release(state.ctx) };
 }

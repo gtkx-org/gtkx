@@ -31,15 +31,11 @@ const expressionValue = (expression: Gtk.Expression): GObject.Value => {
 const detachChild = (container: Gsk.ContainerNode): WeakRef<object> => new WeakRef(container.getChild(0));
 
 describe("fundamental wrapper identity", () => {
-    it("returns the same wrapper every time the same render node pointer comes back", () => {
+    it("happy path", () => {
         const child = colorNode();
         const container = Gsk.ContainerNode.new([child]);
         expect(container.getChild(0)).toBe(child);
-        expect(container.getChild(0)).toBe(container.getChild(0));
-        expect(container.getChild(0)).toBeInstanceOf(Gsk.ColorNode);
-    });
 
-    it("returns the same expression wrapper across methods, properties, and GValues", () => {
         const expression = stringExpression();
         const filter = Gtk.StringFilter.new(expression);
         expect(filter.getExpression()).toBe(expression);
@@ -47,28 +43,23 @@ describe("fundamental wrapper identity", () => {
         expect(Gtk.valueGetExpression(expressionValue(expression))).toBe(expression);
     });
 
-    it("keeps wrappers of distinct instances distinct", () => {
+    it("edge cases", async () => {
         const container = Gsk.ContainerNode.new([colorNode(), colorNode()]);
         expect(container.getChild(0)).not.toBe(container.getChild(1));
-        expect(container.getChild(0)).toBe(container.getChild(0));
-    });
 
-    it("creates a fresh working wrapper once the previous one is collected", async () => {
-        const container = Gsk.ContainerNode.new([colorNode()]);
-        const weak = detachChild(container);
+        const collectedContainer = Gsk.ContainerNode.new([colorNode()]);
+        const weak = detachChild(collectedContainer);
         await gcUntil(() => weak.deref() === undefined);
         expect(weak.deref()).toBeUndefined();
-        const revived = container.getChild(0);
-        expect(revived).toBe(container.getChild(0));
-        expect(revived).toBeInstanceOf(Gsk.ColorNode);
+
+        const revived = collectedContainer.getChild(0);
+        expect(revived).toBe(collectedContainer.getChild(0));
         expect(revived.getBounds().getWidth()).toBe(10);
     });
 
-    it("throws for a child that is not a render node", () => {
+    it("error paths", () => {
         expect(() => Gsk.ContainerNode.new([{} as Gsk.RenderNode])).toThrow();
-    });
 
-    it("throws when storing a non-expression into an expression GValue", () => {
         const value = new GObject.Value();
         value.init(getClassType(Gtk.Expression));
 

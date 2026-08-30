@@ -18,6 +18,8 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
+        meson \
+        ninja-build \
         gettext \
         locales-all \
         pkg-config \
@@ -35,8 +37,6 @@ RUN apt-get update \
         xwayland-run \
         dbus \
         git \
-        gdb \
-        valgrind \
         libasan8 \
         adwaita-icon-theme \
         gsettings-desktop-schemas \
@@ -95,14 +95,11 @@ ENV CARGO_HTTP_MULTIPLEXING=false
 
 ARG RUST_VERSION=1.98.0
 ARG RUST_NIGHTLY=nightly-2026-08-20
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --component llvm-tools-preview --default-toolchain "${RUST_VERSION}" \
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
-RUN rustup toolchain install "${RUST_NIGHTLY}" --profile minimal --component llvm-tools-preview --component rust-src --component miri --component rustfmt \
+RUN rustup toolchain install "${RUST_NIGHTLY}" --profile minimal --component rustfmt \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
-
-RUN cargo install cargo-llvm-cov --locked \
-    && chmod -R a+rwX "$CARGO_HOME"
 
 RUN if [ -d /usr/share/vulkan/icd.d ]; then \
         find /usr/share/vulkan/icd.d -type f -name '*.json' ! -name 'lvp_icd*' -delete; \

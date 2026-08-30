@@ -6,10 +6,10 @@ license = "MPL-2.0"
 edition = "2024"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [dependencies]
-napi = { version = "3", features = ["napi8"] }
+napi = { version = "3", features = ["napi10"] }
 napi-derive = "3"
 glib = { version = "0.22", features = ["v2_68"] }
 libloading = "0.9.0"
@@ -19,9 +19,6 @@ enum_dispatch = "0.3"
 
 [build-dependencies]
 napi-build = "2"
-
-[workspace]
-members = ["test-support"]
 
 [lints.rust]
 elided_lifetimes_in_paths = "warn"
@@ -37,8 +34,3 @@ too_many_lines = "warn"
 type_complexity = "warn"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
-
-[dev-dependencies]
-gtk4 = "0.11.4"
-napi = { version = "3", features = ["napi8"] }
-test-support = { path = "test-support" }

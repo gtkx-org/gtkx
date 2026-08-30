@@ -38,8 +38,25 @@ const completedTask = (instance: GObject, cancellable: Gio.Cancellable | null): 
     return task;
 };
 
-describe("nested callbacks — happy path", () => {
-    it("decodes the vfunc's callback into a callable that completes the async operation", async () => {
+const createDeferredInit = (
+    name: string,
+): { instance: GObject & Gio.AsyncInitable; pending: Promise<boolean>; callback: Gio.AsyncReadyCallback } => {
+    const state: { callback: Gio.AsyncReadyCallback | null } = { callback: null };
+    const instance = createAsyncInitable(name, (_self, _ioPriority, _cancellable, callback) => {
+        state.callback = callback;
+    });
+    const pending = instance.initAsync(0);
+    const callback = state.callback;
+
+    if (callback === null) {
+        throw new TypeError("Async callback was not captured");
+    }
+
+    return { instance, pending, callback };
+};
+
+describe("nested callbacks", () => {
+    it("happy path", async () => {
         const seen: unknown[] = [];
 
         const instance = createAsyncInitable("HappyInit", (self, ioPriority, cancellable, callback) => {
@@ -51,101 +68,45 @@ describe("nested callbacks — happy path", () => {
         expect(seen).toEqual([7, null, "function"]);
     });
 
-    it("round-trips a JavaScript callback through the vtable slot and back", () => {
-        const received: unknown[] = [];
-
-        const instance = createAsyncInitable("RoundTrip", (self, _ioPriority, cancellable, callback) => {
-            callback?.(self, completedTask(self, cancellable), null);
+    it("edge cases", async () => {
+        const nullCallbacks: (Gio.AsyncReadyCallback | null)[] = [];
+        const nullInstance = createAsyncInitable("NullCallback", (_self, _ioPriority, _cancellable, callback) => {
+            nullCallbacks.push(callback);
         });
+        nullInstance.vfuncInitAsync(0, null, null);
+        expect(nullCallbacks).toEqual([null]);
 
-        instance.vfuncInitAsync(0, null, (sourceObject, res) => {
-            received.push(sourceObject, res);
-        });
-
-        expect(received).toHaveLength(2);
-        expect(received[0]).toBe(instance);
-        expect(received[1]).toBeInstanceOf(Gio.Task);
-    });
-});
-
-describe("nested callbacks — edge cases", () => {
-    it("decodes a null callback as null", () => {
-        const seen: unknown[] = [];
-
-        const instance = createAsyncInitable("NullCallback", (_self, _ioPriority, _cancellable, callback) => {
-            seen.push(callback);
-        });
-
-        instance.vfuncInitAsync(0, null, null);
-        expect(seen).toEqual([null]);
+        const deferred = createDeferredInit("DeferredCompletion");
+        deferred.callback(deferred.instance, completedTask(deferred.instance, null), 123n);
+        await expect(deferred.pending).resolves.toBe(true);
     });
 
-    it("ignores a data argument in favor of the bound user data", async () => {
-        const instance = createAsyncInitable("BoundUserData", (self, _ioPriority, cancellable, callback) => {
-            callback?.(self, completedTask(self, cancellable), 123n);
-        });
+    it("error paths", async () => {
+        const doubleCompletion = createDeferredInit("DoubleCompletion");
+        doubleCompletion.callback(
+            doubleCompletion.instance,
+            completedTask(doubleCompletion.instance, null),
+            null,
+        );
+        await doubleCompletion.pending;
+        expect(() => {
+            doubleCompletion.callback(
+                doubleCompletion.instance,
+                completedTask(doubleCompletion.instance, null),
+                null,
+            );
+        }).toThrow();
 
-        await expect(instance.initAsync(0)).resolves.toBe(true);
-    });
+        const badSource = createDeferredInit("BadSource");
+        expect(() =>
+            (badSource.callback as LooseCallback)("garbage", completedTask(badSource.instance, null), null),
+        ).toThrow();
+        badSource.callback(badSource.instance, completedTask(badSource.instance, null), null);
+        await badSource.pending;
 
-    it("keeps an async-scoped callback callable after the vfunc returns", async () => {
-        const state: { source: GObject | null; callback: Gio.AsyncReadyCallback | null } = {
-            source: null,
-            callback: null,
-        };
-
-        const instance = createAsyncInitable("DeferredCompletion", (self, _ioPriority, _cancellable, callback) => {
-            state.source = self;
-            state.callback = callback;
-        });
-
-        const pending = instance.initAsync(0);
-        expect(state.callback).toBeTypeOf("function");
-        state.callback?.(state.source, completedTask(instance, null), null);
-        await expect(pending).resolves.toBe(true);
-    });
-});
-
-describe("nested callbacks — error paths", () => {
-    it("throws when an async-scoped callback is invoked a second time", async () => {
-        const state: { callback: Gio.AsyncReadyCallback | null } = { callback: null };
-
-        const instance = createAsyncInitable("DoubleCompletion", (_self, _ioPriority, _cancellable, callback) => {
-            state.callback = callback;
-        });
-
-        const pending = instance.initAsync(0);
-        const stored = state.callback;
-        stored?.(instance, completedTask(instance, null), null);
-        await expect(pending).resolves.toBe(true);
-        expect(() => stored?.(instance, completedTask(instance, null), null)).toThrow();
-    });
-
-    it("throws when the decoded callable receives a non-object source", async () => {
-        const state: { callback: Gio.AsyncReadyCallback | null } = { callback: null };
-
-        const instance = createAsyncInitable("BadSource", (_self, _ioPriority, _cancellable, callback) => {
-            state.callback = callback;
-        });
-
-        const pending = instance.initAsync(0);
-        const stored = state.callback;
-        expect(() => (stored as LooseCallback)("garbage", completedTask(instance, null), null)).toThrow();
-        stored?.(instance, completedTask(instance, null), null);
-        await expect(pending).resolves.toBe(true);
-    });
-
-    it("throws when the decoded callable receives a non-object result", async () => {
-        const state: { callback: Gio.AsyncReadyCallback | null } = { callback: null };
-
-        const instance = createAsyncInitable("BadResult", (_self, _ioPriority, _cancellable, callback) => {
-            state.callback = callback;
-        });
-
-        const pending = instance.initAsync(0);
-        const stored = state.callback;
-        expect(() => (stored as LooseCallback)(instance, "garbage", null)).toThrow();
-        stored?.(instance, completedTask(instance, null), null);
-        await expect(pending).resolves.toBe(true);
+        const badResult = createDeferredInit("BadResult");
+        expect(() => (badResult.callback as LooseCallback)(badResult.instance, "garbage", null)).toThrow();
+        badResult.callback(badResult.instance, completedTask(badResult.instance, null), null);
+        await badResult.pending;
     });
 });

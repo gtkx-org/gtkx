@@ -38,7 +38,6 @@
             ],
             "ignoreDependencies": [
                 "@gtkx/cairo",
-                "@gtkx/runtime",
                 "@gtkx/native"
             ]
         },

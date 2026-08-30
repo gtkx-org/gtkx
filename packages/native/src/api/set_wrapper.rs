@@ -17,7 +17,7 @@ struct FinalizeData {
 }
 
 unsafe extern "C" fn on_wrapper_finalize(
-    _env: sys::napi_env,
+    env: sys::napi_env,
     finalize_data: *mut c_void,
     _finalize_hint: *mut c_void,
 ) {
@@ -27,8 +27,10 @@ unsafe extern "C" fn on_wrapper_finalize(
             data.wrapper_handle.take(),
             data.generation,
             data.gobject_ptr,
-            data.napi_ref,
         );
+    }
+    if !env.is_null() && !data.napi_ref.is_null() {
+        unsafe { sys::napi_delete_reference(env, data.napi_ref) };
     }
 }
 
@@ -74,7 +76,7 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
     unsafe { sys::napi_reference_ref(env.raw(), raw_ref, &raw mut ref_count) };
     let pinned: glib::Object = unsafe { from_glib_none(gobject_ptr) };
     let owned = handle.take_owned();
-    let (wrapper_handle, generation) = unsafe { wrapper::install(gobject_ptr, raw_ref) };
+    let (wrapper_handle, generation) = unsafe { wrapper::install(env.raw(), gobject_ptr, raw_ref) };
     drop(owned);
     unsafe {
         (*data).wrapper_handle = Some(wrapper_handle);

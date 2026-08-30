@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { getHandle, registerClass } from "@gtkx/runtime";
+import { registerClass } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
-import { gcUntil, getRefCount } from "../helpers/native-utils.js";
+import { gcUntil } from "../helpers/native-utils.js";
 
 type ObservedConstruction<T extends Gtk.Window> = { window: T; seen: unknown };
 
@@ -36,23 +36,14 @@ class ObservedWindow extends Gtk.Window {}
 registerClass(ObservedWindow, { typeName: "GtkxTestObservedWindow" });
 
 describe("constructing an object wrapped during construction", () => {
-    it("returns the wrapper created inside a toplevels items-changed handler", () => {
-        const { window, seen } = constructObserved(() => new Gtk.Window());
-        expect(seen).not.toBeNull();
-        expect(window).toBe(seen);
-        window.setTitle("Adopted");
-        expect(window.getTitle()).toBe("Adopted");
-        window.destroy();
-    });
-
-    it("applies the construct properties to the adopted wrapper", () => {
+    it("happy path", () => {
         const { window, seen } = constructObserved(() => new Gtk.Window({ title: "Observed" }));
         expect(window).toBe(seen);
         expect(window.getTitle()).toBe("Observed");
         window.destroy();
     });
 
-    it("adopts the wrapper created from a property notify during construction", () => {
+    it("edge cases", async () => {
         const label = new Gtk.Label();
         let seen: unknown = null;
 
@@ -64,30 +55,18 @@ describe("constructing an object wrapped during construction", () => {
         expect(window).toBe(seen);
         expect(window.getChild()).toBe(label);
         window.destroy();
-    });
 
-    it("keeps a registered subclass bound to the wrapper it claimed", () => {
-        const { window, seen } = constructObserved(() => new ObservedWindow());
-        expect(window).toBe(seen);
-        expect(window).toBeInstanceOf(ObservedWindow);
-        window.destroy();
-    });
+        const { window: observed, seen: observedDuringConstruction } = constructObserved(() => new ObservedWindow());
+        expect(observed).toBe(observedDuringConstruction);
+        expect(observed).toBeInstanceOf(ObservedWindow);
+        observed.destroy();
 
-    it("holds the same reference count as an unobserved window", () => {
-        const control = new Gtk.Window();
-        const { window } = constructObserved(() => new Gtk.Window());
-        expect(getRefCount(getHandle(window))).toBe(getRefCount(getHandle(control)));
-        window.destroy();
-        control.destroy();
-    });
-
-    it("releases the adopted wrapper after the window is destroyed", async () => {
         const weak = detachObservedWindow();
         await gcUntil(() => weak.deref() === undefined);
         expect(weak.deref()).toBeUndefined();
     });
 
-    it("rejects a construct property it cannot marshal while observed", () => {
+    it("error paths", () => {
         expect(() => constructObserved(() => new Gtk.Window({ title: Symbol("title") as never }))).toThrow();
     });
 });

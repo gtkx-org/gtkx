@@ -19,26 +19,3 @@ pub fn resolve_type(shared_library: String, get_type_fn_name: String) -> Result<
     let type_ = native_result("resolve_type", resolve(&shared_library, &get_type_fn_name))?;
     Ok(BigInt::from(type_))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn resolves_a_registered_gtype() {
-        test_support::run(|| {
-            let type_ = resolve("libgtk-4.so.1", "gtk_orientation_get_type")
-                .expect("resolve_type should succeed");
-            assert_ne!(type_, 0);
-        });
-    }
-
-    #[test]
-    fn yields_zero_for_unknown_symbol() {
-        test_support::run(|| {
-            let type_ = resolve("libgtk-4.so.1", "gtkx_missing_get_type")
-                .expect("resolve_type should succeed");
-            assert_eq!(type_, 0);
-        });
-    }
-}

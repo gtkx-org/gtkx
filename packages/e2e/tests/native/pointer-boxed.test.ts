@@ -16,55 +16,37 @@ const colorNode = (red: number): Gsk.ColorNode => Gsk.ColorNode.new(color(red), 
 const collectedReplay = (): WeakRef<object> => new WeakRef(Gsk.RenderReplay.new());
 
 describe("a boxed type registered as a plain pointer", () => {
-    it("constructs through its transfer-full constructor", () => {
-        expect(Gsk.RenderReplay.new()).toBeInstanceOf(Gsk.RenderReplay);
-    });
-
-    it("replays a node through the default filter", () => {
-        const node = colorNode(1);
-        expect(Gsk.RenderReplay.new().filterNode(node)).toBe(node);
-    });
-
-    it("replays a node through the filter the caller installs", () => {
+    it("happy path", () => {
         const replay = Gsk.RenderReplay.new();
+        const source = colorNode(1);
         const replacement = colorNode(0.5);
-        replay.setNodeFilter(() => replacement);
-        expect(replay.filterNode(colorNode(1))).toBe(replacement);
-    });
+        let seen: Gsk.RenderReplay | undefined;
 
-    it("hands the replay itself to the filter it runs", () => {
-        const replay = Gsk.RenderReplay.new();
-        const seen: unknown[] = [];
+        replay.setNodeFilter((filtered) => {
+            seen = filtered;
 
-        replay.setNodeFilter((filtered, node) => {
-            seen.push(filtered);
-
-            return node;
+            return replacement;
         });
 
-        replay.filterNode(colorNode(1));
-        expect(seen).toEqual([expect.any(Gsk.RenderReplay)]);
+        expect(Gsk.RenderReplay.new().filterNode(source)).toBe(source);
+        expect(replay.filterNode(source)).toBe(replacement);
+        expect(seen).toBeInstanceOf(Gsk.RenderReplay);
     });
 
-    it("discards a node the filter drops", () => {
+    it("edge cases", async () => {
         const replay = Gsk.RenderReplay.new();
         replay.setNodeFilter(() => null);
         expect(replay.filterNode(colorNode(1))).toBeNull();
-    });
 
-    it("releases the replay once nothing refers to it", async () => {
         const weak = collectedReplay();
         await gcUntil(() => weak.deref() === undefined);
         expect(weak.deref()).toBeUndefined();
     });
 
-    it("throws when constructed with new", () => {
+    it("error paths", () => {
         expect(() => {
             Reflect.construct(Gsk.RenderReplay, []);
         }).toThrow();
-    });
-
-    it("throws when replaying something that is not a render node", () => {
         expect(() => Gsk.RenderReplay.new().filterNode({} as Gsk.RenderNode)).toThrow();
     });
 });

@@ -36,37 +36,3 @@ impl<T> ReportErr<T> for anyhow::Result<T> {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn report_str_prints_and_raises_a_fatal_exception() {
-        node_env::run_installed(|| {
-            report_str("a diagnostic");
-            assert!(test_support::napi_mock::count("napi_fatal_exception") >= 1);
-        });
-    }
-
-    #[test]
-    fn report_formats_an_anyhow_error() {
-        node_env::run_installed(|| {
-            let error = anyhow::anyhow!("boom").context("while doing work");
-            report(&error);
-            assert!(test_support::napi_mock::count("napi_fatal_exception") >= 1);
-        });
-    }
-
-    #[test]
-    fn report_err_passes_ok_through_and_reports_err() {
-        node_env::run_installed(|| {
-            let ok: anyhow::Result<u32> = Ok(5);
-            assert_eq!(ok.report_err("context"), Some(5));
-
-            let failed: anyhow::Result<u32> = Err(anyhow::anyhow!("nope"));
-            assert_eq!(failed.report_err("adding context"), None);
-            assert!(test_support::napi_mock::count("napi_fatal_exception") >= 1);
-        });
-    }
-}

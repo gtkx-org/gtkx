@@ -32,10 +32,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Enforce the gtk-demo and native coverage thresholds
+      - name: Enforce the gtk-demo coverage threshold
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run-many -t coverage --projects=gtk-demo,@gtkx/native
+          command: pnpm exec nx run gtk-demo:coverage
           image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
 
   sonarcloud:

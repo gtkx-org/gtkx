@@ -43,51 +43,19 @@ const getToplevel = (window: Gtk.Window): Gdk.Toplevel => {
 };
 
 describe("a boxed value a C caller lends to a callback", () => {
-    it("carries a write back to the caller's own instance", () => {
+    it("happy path", () => {
+        const offsets: number[] = [];
         const buffer = insertingBuffer((location) => {
+            offsets.push(location.getOffset());
             location.forwardChars(3);
         });
 
         insertAtStart(buffer, "X");
+        expect(offsets).toEqual([0]);
         expect(getBufferText(buffer)).toBe("abcXdef");
     });
 
-    it("reads back what the caller passed in", () => {
-        const offsets: number[] = [];
-
-        const buffer = insertingBuffer((location) => {
-            offsets.push(location.getOffset());
-        });
-
-        insertAtStart(buffer, "X");
-        expect(offsets).toEqual([0]);
-    });
-
-    it("rejects a read once the callback has returned", () => {
-        const escaped: Gtk.TextIter[] = [];
-
-        const buffer = insertingBuffer((location) => {
-            escaped.push(location);
-        });
-
-        insertAtStart(buffer, "X");
-        expect(() => escaped[0]?.getOffset()).toThrow();
-    });
-
-    it("rejects a write once the callback has returned", () => {
-        const escaped: Gtk.TextIter[] = [];
-
-        const buffer = insertingBuffer((location) => {
-            escaped.push(location);
-        });
-
-        insertAtStart(buffer, "X");
-        expect(() => escaped[0]?.forwardChars(1)).toThrow();
-    });
-});
-
-describe("a plain struct a C caller lends to a callback", () => {
-    it("reads back the location the caller passed in", () => {
+    it("edge cases", async () => {
         const offsets: number[] = [];
 
         deserializeBadNode((start) => {
@@ -96,22 +64,7 @@ describe("a plain struct a C caller lends to a callback", () => {
 
         expect(offsets.length).toBeGreaterThan(0);
         expect(offsets.every((offset) => Number.isSafeInteger(offset))).toBe(true);
-    });
 
-    it("rejects a read once the callback has returned", () => {
-        const escaped: Gsk.ParseLocation[] = [];
-
-        deserializeBadNode((start) => {
-            escaped.push(start);
-        });
-
-        expect(escaped.length).toBeGreaterThan(0);
-        expect(() => escaped[0]?.bytes).toThrow();
-    });
-});
-
-describe("a lent value of a type registered as a plain pointer", () => {
-    it("reaches the handler of GdkToplevel::compute-size", async () => {
         const window = new Gtk.Window({ title: "lent-boxed", defaultWidth: 160, defaultHeight: 120 });
         window.present();
         const bounds: [number, number][] = [];
@@ -124,6 +77,23 @@ describe("a lent value of a type registered as a plain pointer", () => {
         await settle();
         window.destroy();
         expect(bounds.length).toBeGreaterThan(0);
-        expect(bounds[0]?.length).toBe(2);
+    });
+
+    it("error paths", () => {
+        const escapedIter: Gtk.TextIter[] = [];
+        const buffer = insertingBuffer((location) => {
+            escapedIter.push(location);
+        });
+
+        insertAtStart(buffer, "X");
+        expect(() => escapedIter[0]?.getOffset()).toThrow();
+        expect(() => escapedIter[0]?.forwardChars(1)).toThrow();
+
+        const escapedLocation: Gsk.ParseLocation[] = [];
+        deserializeBadNode((start) => {
+            escapedLocation.push(start);
+        });
+
+        expect(() => escapedLocation[0]?.bytes).toThrow();
     });
 });

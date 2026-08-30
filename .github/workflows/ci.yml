@@ -271,10 +271,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Run the end-to-end suite under AddressSanitizer
+      - name: Run the native canary under AddressSanitizer
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run @gtkx/e2e:test:asan
+          command: pnpm exec nx run @gtkx/native:test:asan
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
   typecheck:

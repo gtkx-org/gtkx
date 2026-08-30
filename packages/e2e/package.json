@@ -4,9 +4,6 @@
     "description": "Internal integration tests and benchmarks covering the GTKX reconciler, runtime, and native FFI",
     "private": true,
     "type": "module",
-    "scripts": {
-        "test:asan": "tsx ../../scripts/asan-e2e.ts"
-    },
     "devDependencies": {
         "@gtkx/cairo": "workspace:*",
         "@gtkx/config": "workspace:*",
@@ -27,26 +24,6 @@
                     "cwd": ".",
                     "command": "eslint {projectRoot}"
                 }
-            },
-            "test:asan": {
-                "cache": true,
-                "inputs": [
-                    "default",
-                    "^default",
-                    "{workspaceRoot}/rust-toolchain.toml",
-                    "{workspaceRoot}/scripts/asan-e2e.ts",
-                    "{workspaceRoot}/scripts/rust-nightly.ts"
-                ],
-                "outputs": [],
-                "dependsOn": [
-                    "gtkx:codegen",
-                    "@gtkx/vitest:build",
-                    "@gtkx/cairo:build",
-                    "@gtkx/cli:build",
-                    "@gtkx/components:build",
-                    "@gtkx/css:build",
-                    "@gtkx/gl:build"
-                ]
             }
         }
     }
