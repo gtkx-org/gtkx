@@ -368,6 +368,32 @@ impl StashStorage {
 }
 
 impl StashStorage {
+    fn free_hashtable(&self, data: &HashTableData) {
+        for entry in &data.retained_entries {
+            if !entry.is_null() {
+                unsafe { glib::ffi::g_free(*entry) };
+            }
+        }
+        if data.owns_table && !self.ptr.is_null() {
+            unsafe {
+                glib::ffi::g_hash_table_unref(self.ptr.cast::<glib::ffi::GHashTable>());
+            }
+        }
+    }
+
+    fn free_list(data: &ListData) {
+        if !data.should_free || data.ptr.is_null() {
+            return;
+        }
+        let free = match &data.payload {
+            ListPayload::Strings {
+                items_duped: true, ..
+            } => data.ops.free_full,
+            ListPayload::Handles(_) | ListPayload::Strings { .. } => data.ops.free,
+        };
+        unsafe { free(data.ptr) };
+    }
+
     fn free_garray(data: &GArrayData) {
         if data.should_free && !data.ptr.is_null() {
             unsafe { glib::ffi::g_array_unref(data.ptr) };
@@ -387,29 +413,8 @@ impl Drop for StashStorage {
             pending.release_now();
         }
         match &self.data {
-            StashData::HashTable(data) => {
-                for entry in &data.retained_entries {
-                    if !entry.is_null() {
-                        unsafe { glib::ffi::g_free(*entry) };
-                    }
-                }
-                if data.owns_table && !self.ptr.is_null() {
-                    unsafe {
-                        glib::ffi::g_hash_table_unref(self.ptr.cast::<glib::ffi::GHashTable>());
-                    }
-                }
-            }
-            StashData::List(data) => {
-                if data.should_free && !data.ptr.is_null() {
-                    let free = match &data.payload {
-                        ListPayload::Strings {
-                            items_duped: true, ..
-                        } => data.ops.free_full,
-                        ListPayload::Handles(_) | ListPayload::Strings { .. } => data.ops.free,
-                    };
-                    unsafe { free(data.ptr) };
-                }
-            }
+            StashData::HashTable(data) => self.free_hashtable(data),
+            StashData::List(data) => Self::free_list(data),
             StashData::GArray(data) => Self::free_garray(data),
             StashData::GPtrArray(data) => Self::free_gptrarray(data),
             StashData::GByteArray(_)

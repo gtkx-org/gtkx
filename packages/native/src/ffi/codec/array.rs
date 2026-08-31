@@ -459,6 +459,22 @@ impl ArrayCodec {
         Ok(numbers)
     }
 
+    fn finish_scalars<T>(
+        &self,
+        encoder: &dyn ArrayKindEncoder,
+        items: Vec<T>,
+        word: impl Fn(&T) -> *mut c_void,
+        storage: impl FnOnce(Vec<T>) -> anyhow::Result<ffi::StashStorage>,
+    ) -> anyhow::Result<ffi::Stash> {
+        if encoder.holds_pointer_slots() {
+            let words = items.iter().map(word).collect();
+
+            return encoder.encode_pointer_words(words, self.ownership);
+        }
+
+        self.finish_scalar_storage(storage(items)?)
+    }
+
     fn finish_scalar_storage(&self, storage: ffi::StashStorage) -> anyhow::Result<ffi::Stash> {
         if self.ownership.is_borrowed() {
             return Ok(ffi::Stash::Storage(storage));
@@ -485,24 +501,22 @@ impl ArrayCodec {
                         .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))?;
                 }
 
-                if encoder.holds_pointer_slots() {
-                    let words = numbers.iter().copied().map(pointer_word).collect();
-
-                    return encoder.encode_pointer_words(words, self.ownership);
-                }
-
-                self.finish_scalar_storage(kind.checked_to_stash_storage(&numbers)?)
+                self.finish_scalars(
+                    encoder,
+                    numbers,
+                    |&value| pointer_word(value),
+                    |numbers| kind.checked_to_stash_storage(&numbers),
+                )
             }
             ItemCodec::EnumFlags(kind) => {
                 let numbers = Self::extract_terminated_numbers(array, zero_terminated)?;
 
-                if encoder.holds_pointer_slots() {
-                    let words = numbers.iter().copied().map(pointer_word).collect();
-
-                    return encoder.encode_pointer_words(words, self.ownership);
-                }
-
-                self.finish_scalar_storage(kind.to_stash_storage(&numbers))
+                self.finish_scalars(
+                    encoder,
+                    numbers,
+                    |&value| pointer_word(value),
+                    |numbers| Ok(kind.to_stash_storage(&numbers)),
+                )
             }
             ItemCodec::BigInt(kind) => {
                 if encoder.holds_pointer_slots() {
@@ -528,16 +542,12 @@ impl ArrayCodec {
                     booleans.push(0);
                 }
 
-                if encoder.holds_pointer_slots() {
-                    let words = booleans
-                        .iter()
-                        .map(|&b| pointer_word(f64::from(b)))
-                        .collect();
-
-                    return encoder.encode_pointer_words(words, self.ownership);
-                }
-
-                self.finish_scalar_storage(booleans.into())
+                self.finish_scalars(
+                    encoder,
+                    booleans,
+                    |&value| pointer_word(f64::from(value)),
+                    |booleans| Ok(booleans.into()),
+                )
             }
             ItemCodec::Unichar => {
                 let mut codepoints = Self::extract_codepoints(array)?;
@@ -545,16 +555,12 @@ impl ArrayCodec {
                     codepoints.push(0);
                 }
 
-                if encoder.holds_pointer_slots() {
-                    let words = codepoints
-                        .iter()
-                        .map(|&c| pointer_word(f64::from(c)))
-                        .collect();
-
-                    return encoder.encode_pointer_words(words, self.ownership);
-                }
-
-                self.finish_scalar_storage(codepoints.into())
+                self.finish_scalars(
+                    encoder,
+                    codepoints,
+                    |&value| pointer_word(f64::from(value)),
+                    |codepoints| Ok(codepoints.into()),
+                )
             }
             ItemCodec::String => {
                 let dup_items =

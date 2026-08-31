@@ -263,6 +263,39 @@ impl HashTableCodec {
         Ok((key, val))
     }
 
+    fn fill_hashtable(
+        hash_table: *mut glib::ffi::GHashTable,
+        tuples: &[Unknown<'_>],
+        encoders: (&HashTableEntryCodec, &HashTableEntryCodec),
+        retains: (bool, bool),
+        key_free: glib::ffi::GDestroyNotify,
+        retained_entries: &mut Vec<CVoidPtr>,
+    ) -> anyhow::Result<()> {
+        let (key_encoder, value_encoder) = encoders;
+        let (retains_keys, retains_values) = retains;
+
+        for &tuple in tuples {
+            let (key, value) = Self::tuple(tuple)?;
+            let key_ptr = key_encoder.encode(key)?;
+            let value_ptr = value_encoder.encode(value).inspect_err(|_| {
+                release_transferred(key_free, key_ptr);
+            })?;
+
+            if retains_keys {
+                retained_entries.push(key_ptr);
+            }
+            if retains_values {
+                retained_entries.push(value_ptr);
+            }
+
+            unsafe {
+                glib::ffi::g_hash_table_insert(hash_table, key_ptr, value_ptr);
+            }
+        }
+
+        Ok(())
+    }
+
     fn encode_hashtable(
         &self,
         tuples: &[Unknown<'_>],
@@ -284,33 +317,14 @@ impl HashTableCodec {
         };
         let mut retained_entries: Vec<CVoidPtr> = Vec::new();
 
-        let build: anyhow::Result<()> = (|| {
-            for &tuple in tuples {
-                let (key, value) = Self::tuple(tuple)?;
-
-                let key_ptr = key_encoder.encode(key)?;
-
-                let value_ptr = match value_encoder.encode(value) {
-                    Ok(encoded) => encoded,
-                    Err(err) => {
-                        release_transferred(key_free, key_ptr);
-                        return Err(err);
-                    }
-                };
-
-                if retains_keys {
-                    retained_entries.push(key_ptr);
-                }
-                if retains_values {
-                    retained_entries.push(value_ptr);
-                }
-
-                unsafe {
-                    glib::ffi::g_hash_table_insert(hash_table, key_ptr, value_ptr);
-                }
-            }
-            Ok(())
-        })();
+        let build = Self::fill_hashtable(
+            hash_table,
+            tuples,
+            (key_encoder, value_encoder),
+            (retains_keys, retains_values),
+            key_free,
+            &mut retained_entries,
+        );
 
         if let Err(err) = build {
             for entry in retained_entries {
