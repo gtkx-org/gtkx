@@ -40,43 +40,6 @@ pub struct ArrayBounds {
     pub fixed_size: Option<u32>,
 }
 
-impl ArrayBounds {
-    /// Bounds for a container that carries its own extent, such as a null-terminated array.
-    pub const NONE: Self = Self {
-        base_param_index: None,
-        size_param_index: None,
-        fixed_size: None,
-    };
-
-    /// Bounds for an array whose element count is carried by the argument at `size_param_index`.
-    #[must_use]
-    pub fn sized(size_param_index: u32) -> Self {
-        Self {
-            size_param_index: Some(size_param_index),
-            ..Self::NONE
-        }
-    }
-
-    /// Bounds for an array of a constant element count.
-    #[must_use]
-    pub fn fixed(fixed_size: u32) -> Self {
-        Self {
-            fixed_size: Some(fixed_size),
-            ..Self::NONE
-        }
-    }
-
-    /// Bounds for a cursor into the buffer of `base_param_index`, sized by `size_param_index`.
-    #[must_use]
-    pub fn cursor(base_param_index: u32, size_param_index: u32) -> Self {
-        Self {
-            base_param_index: Some(base_param_index),
-            size_param_index: Some(size_param_index),
-            fixed_size: None,
-        }
-    }
-}
-
 #[enum_dispatch]
 pub(super) trait ArrayContainer {
     fn encode(

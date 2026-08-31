@@ -267,8 +267,6 @@ const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceSt
 
 const ARRAY_LAYOUT_FLAGS = ["isBytes", "isCallerAllocated", "isZeroTerminated"] as const;
 
-const PLAIN_ARRAY_LAYOUT: ArrayLayout = { isBytes: false };
-
 const arrayLayoutArg = (ownership: Ownership | undefined, layout: ArrayLayout): string | undefined => {
     if (ownership === undefined) {
         return undefined;
@@ -287,7 +285,7 @@ const tList = (
     name: ListDescriptorName,
     element: string,
     ownership: Ownership,
-    layout: ArrayLayout = PLAIN_ARRAY_LAYOUT,
+    layout: ArrayLayout,
 ): string => call(name, [element, sourceStringLiteral(ownership), arrayLayoutArg(ownership, layout)]);
 
 const tArray = (element: string, ownership: Ownership | undefined, layout: ArrayLayout): string =>

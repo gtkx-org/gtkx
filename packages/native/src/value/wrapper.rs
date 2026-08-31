@@ -91,15 +91,6 @@ pub unsafe fn wrapper_value(
     unsafe { Object::from_napi_value(env.raw(), raw_value) }.ok()
 }
 
-/// # Safety
-///
-/// `gobject` must be a non-null pointer to a live `GObject` that the caller holds a strong
-/// reference to for the duration of the call, and the call must happen on the thread `install` ran
-/// on, because the qdata it inspects holds a non-`Send` `Rc`.
-pub unsafe fn has_wrapper(gobject: *mut glib::gobject_ffi::GObject) -> bool {
-    unsafe { handle_qdata(gobject) }.is_some()
-}
-
 fn delete_reference(napi_ref: sys::napi_ref) {
     unsafe { sys::napi_delete_reference(node_env::env().raw(), napi_ref) };
 }

@@ -1,6 +1,5 @@
 target
 artifacts
-coverage
 *.node
 index.js
 index.d.ts

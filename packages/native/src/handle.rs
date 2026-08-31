@@ -419,11 +419,6 @@ impl Handle {
     }
 
     #[must_use]
-    pub fn ptr_as_usize(&self) -> usize {
-        self.as_ptr() as usize
-    }
-
-    #[must_use]
     pub fn size_hint(&self) -> usize {
         match self.inner.kind {
             HandleKind::Object { .. } => GOBJECT_SIZE_HINT,

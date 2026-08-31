@@ -34,7 +34,6 @@ RUN apt-get update \
         libgl1-mesa-dri \
         sway \
         weston \
-        xwayland-run \
         dbus \
         git \
         libasan8 \

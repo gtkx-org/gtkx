@@ -5,5 +5,3 @@ pub mod handle;
 pub mod host;
 pub mod runloop;
 pub mod value;
-
-pub use handle::{Boxed, Handle};

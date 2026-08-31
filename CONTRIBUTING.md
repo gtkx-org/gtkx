@@ -10,7 +10,7 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 ### Prerequisites
 
-- **Node.js** 24 or later
+- **Node.js** 26.7 or later
 - **pnpm**
 - **Rust** stable, plus a nightly toolchain: `rustfmt` uses nightly-only options, and the native test suite's AddressSanitizer lane builds the addon with `-Zsanitizer=address`
 

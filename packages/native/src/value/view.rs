@@ -100,11 +100,6 @@ impl TypedView {
     }
 
     #[must_use]
-    pub fn byte_length(&self) -> usize {
-        self.byte_length
-    }
-
-    #[must_use]
     pub fn length(&self) -> usize {
         self.length
     }

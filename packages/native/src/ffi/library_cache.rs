@@ -129,16 +129,6 @@ impl LibraryCache {
             .insert(get_type_fn_name.to_owned(), type_);
         type_
     }
-
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.libraries.len()
-    }
-
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.libraries.is_empty()
-    }
 }
 
 type FundamentalFns = (Option<RefFn>, Option<UnrefFn>);
@@ -226,7 +216,7 @@ impl Default for FfiCache {
 impl std::fmt::Debug for FfiCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FfiCache")
-            .field("libraries_len", &self.libs.len())
+            .field("libs", &self.libs)
             .finish_non_exhaustive()
     }
 }
@@ -297,9 +287,5 @@ impl FfiCache {
             .fold(0, |mask, value| mask | value.value());
         self.flags_masks.insert(type_, mask);
         Ok(mask)
-    }
-
-    pub fn library(&mut self, library_name: &str) -> anyhow::Result<&Library> {
-        self.libs.get_or_load(library_name)
     }
 }

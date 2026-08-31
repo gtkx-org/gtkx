@@ -87,11 +87,6 @@ const generateRecord = (context: ModuleContext, record: GirRecord): void => {
             code: `${doc}export ${modifier}class ${className}${heritage} {\n${body}\n}`,
             owner: record.name,
         });
-
-        appendWrapperClassRegistration(context, {
-            className,
-            gtypeExpr,
-        });
     } else {
         declareFoldedRecord(context, { record, className, doc, modifier, heritage, body, gtypeExpr });
     }

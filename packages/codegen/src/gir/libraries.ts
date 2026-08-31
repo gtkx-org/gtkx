@@ -22,20 +22,18 @@ const GIR_FILE_SUFFIX = ".gir";
  * Expands a `libraries` config value into the GIR identifiers to generate from, adding the default Gtk
  * and Adwaita namespaces when the selection does not already name another version of either.
  */
-const resolveLibraries = (libraries: LibrarySelection): string[] =>
-    withMandatory(DEFAULT_LIBRARIES, libraries ?? []);
+const resolveLibraries = (libraries: LibrarySelection): string[] => {
+    const selected = libraries ?? [];
+    const named: Set<string> = new Set(selected.map((entry) => getNamespace(entry)));
+    const missing = DEFAULT_LIBRARIES.filter((library) => !named.has(getNamespace(library)));
+
+    return [...new Set([...missing, ...selected])];
+};
 
 const getNamespace = (library: string): string => {
     const separator = library.indexOf("-");
 
     return separator === -1 ? library : library.slice(0, separator);
-};
-
-const withMandatory = (mandatory: string[], selected: string[]): string[] => {
-    const named: Set<string> = new Set(selected.map((entry) => getNamespace(entry)));
-    const missing = mandatory.filter((library) => !named.has(getNamespace(library)));
-
-    return [...new Set([...missing, ...selected])];
 };
 
 const readDirEntries = (dir: string): string[] => {

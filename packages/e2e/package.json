@@ -60,16 +60,19 @@
         "namedInputs": {
             "nodeTests": [
                 "default",
-                "sharedGlobals",
-                "{projectRoot}/node-tests/**/*",
+                "{workspaceRoot}/packages/native/src/**/*",
+                "{workspaceRoot}/packages/native/build.rs",
+                "{workspaceRoot}/packages/native/Cargo.toml",
+                "{workspaceRoot}/packages/native/Cargo.lock",
+                "{workspaceRoot}/rust-toolchain.toml",
                 "{workspaceRoot}/scripts/native-node-tests.ts",
                 "{workspaceRoot}/scripts/native-test-fixtures.ts",
                 "{workspaceRoot}/scripts/asan-native.ts",
-                "{workspaceRoot}/scripts/cargo-nightly.ts",
                 "{workspaceRoot}/scripts/rust-nightly.ts",
                 "{workspaceRoot}/packages/vitest/src/**/*",
                 "{workspaceRoot}/packages/codegen/src/**/*",
-                "{workspaceRoot}/packages/runtime/src/**/*"
+                "{workspaceRoot}/packages/runtime/src/**/*",
+                "{workspaceRoot}/packages/utils/src/**/*"
             ]
         }
     },

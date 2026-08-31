@@ -109,13 +109,6 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
         name: makerName(className),
         code: renderInterfaceMaker(context, iface, className, callables),
     });
-
-    appendInterfaceRegistration(context, {
-        className,
-        makerName: makerName(className),
-        gtypeExpr,
-        layout: renderInterfaceLayout(context, iface, callables),
-    });
 };
 
 const declareInterface = (

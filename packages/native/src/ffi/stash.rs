@@ -94,18 +94,6 @@ impl CallbackValue {
     pub fn closure_data(&self) -> Option<&ClosureData> {
         self.held_state.map(|state| unsafe { (*state).data_ref() })
     }
-
-    pub fn fn_ptr(&self) -> *mut c_void {
-        self.fn_ptr
-    }
-
-    pub fn state_ptr(&self) -> *mut c_void {
-        self.state_ptr
-    }
-
-    pub fn destroy_ptr(&self) -> Option<*mut c_void> {
-        self.destroy_ptr
-    }
 }
 
 impl Drop for CallbackValue {

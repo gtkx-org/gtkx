@@ -623,19 +623,6 @@ impl ClosureData {
         Ok(())
     }
 
-    #[must_use]
-    pub fn retained_string(&self, text: &str) -> *mut c_char {
-        let Ok(key) = CString::new(text.as_bytes()) else {
-            return std::ptr::null_mut();
-        };
-
-        self.retained_strings
-            .borrow()
-            .get(&key)
-            .copied()
-            .unwrap_or(std::ptr::null_mut())
-    }
-
     fn write_retained_container_return(
         &self,
         env: &Env,

@@ -13,7 +13,7 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const fixturesBuildDir = join(root, "build", "native-tests", "gi-tests", "build");
 
 if (!existsSync(join(fixturesBuildDir, "libregress.so"))) {
-    throw new Error("The GI test fixtures are missing; run `nx run @gtkx/native:test-fixtures` first");
+    throw new Error("The GI test fixtures are missing; run `nx run @gtkx/e2e:test-fixtures` first");
 }
 
 const testRoot = join(root, "packages", "e2e");
