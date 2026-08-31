@@ -204,3 +204,11 @@ test("a negative GType throws", () => {
 test("a GType beyond the 64-bit range throws", () => {
     expect(() => getTypeClass(2n ** 64n)).toThrow();
 });
+
+test("a GType in the fundamental range that names no registered type throws", () => {
+    expect(() => getTypeClass(100n)).toThrow();
+});
+
+test("the last GType of the fundamental range throws when nothing registered it", () => {
+    expect(() => getTypeClass(1020n)).toThrow();
+});

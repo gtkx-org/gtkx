@@ -480,3 +480,24 @@ test("copying from a handle that points at nothing throws", () => {
 test("copying into a handle that points at nothing throws", () => {
     expect(() => copy(alloc(0), alloc(8), 4)).toThrow();
 });
+
+test("copying more bytes than the destination holds throws", () => {
+    expect(() => copy(alloc(16), alloc(4096), 4096)).toThrow();
+});
+
+test("copying more bytes than the source holds throws", () => {
+    expect(() => copy(alloc(4096), alloc(16), 4096)).toThrow();
+});
+
+test("copying a size just past the allocation throws", () => {
+    expect(() => copy(alloc(16), alloc(16), 17)).toThrow();
+});
+
+test("copying exactly the allocated size is allowed", () => {
+    const source = alloc(16);
+    const destination = alloc(16);
+    write(source, { kind: "int32" }, 12, 42);
+    copy(destination, source, 16);
+
+    expect(read(destination, { kind: "int32" }, 12)).toBe(42);
+});

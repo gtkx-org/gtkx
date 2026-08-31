@@ -140,6 +140,7 @@ struct HandleInner {
     kind: HandleKind,
     fields: FieldStore,
     invalidated: Cell<bool>,
+    allocated_bytes: Cell<Option<usize>>,
 }
 
 /// A shared reference to one native instance. Cloning shares the same instance, so a value that
@@ -175,6 +176,7 @@ impl From<HandleKind> for Handle {
                 kind,
                 fields: FieldStore::default(),
                 invalidated: Cell::new(false),
+                allocated_bytes: Cell::new(None),
             }),
         }
     }
@@ -206,6 +208,21 @@ impl Handle {
     #[must_use]
     pub fn owned_struct(ptr: *mut c_void) -> Self {
         HandleKind::Struct(ptr).into()
+    }
+
+    /// Records how many bytes the handle's own allocation holds, which only the caller that
+    /// allocated it knows. A handle over memory C returned carries no count, so a bulk operation
+    /// over it cannot be bounds checked.
+    #[must_use]
+    pub fn with_allocated_bytes(self, bytes: usize) -> Self {
+        self.inner.allocated_bytes.set(Some(bytes));
+
+        self
+    }
+
+    #[must_use]
+    pub fn allocated_bytes(&self) -> Option<usize> {
+        self.inner.allocated_bytes.get()
     }
 
     /// A handle over memory that stays alive for the rest of the process, such as a registered

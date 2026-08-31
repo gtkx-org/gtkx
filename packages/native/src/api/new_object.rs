@@ -10,6 +10,7 @@ use crate::api::{handle_newtype, native_result, type_from_bigint};
 use crate::ffi::codec::{
     Ownership, acquire_construction_ref, release_construction_ref, tracked_gobject_value,
 };
+use crate::host::log_writer::CriticalTrap;
 use crate::value::{pending_wrapper, wrapper};
 
 type Associator<'a> = Function<'a, FnArgs<(Unknown<'a>, Unknown<'a>)>, ()>;
@@ -91,6 +92,7 @@ unsafe fn construct(
     let mut name_ptrs: Vec<*const c_char> =
         properties.names.iter().map(|name| name.as_ptr()).collect();
 
+    let trap = CriticalTrap::arm();
     let ptr = unsafe {
         gobject_ffi::g_object_new_with_properties(
             type_.into_glib(),
@@ -99,6 +101,13 @@ unsafe fn construct(
             properties.values.as_ptr(),
         )
     };
+
+    if let Some(critical) = trap.disarm() {
+        return Err(Error::new(
+            Status::GenericFailure,
+            format!("new_object: {critical}"),
+        ));
+    }
 
     if ptr.is_null() {
         return Err(Error::new(

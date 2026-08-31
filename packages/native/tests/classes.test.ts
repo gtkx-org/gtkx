@@ -418,3 +418,17 @@ test("constructing with a property name containing a nul byte throws", () => {
 
     expect(() => newObject(gtype, ["co\0unt"], [intValue(1)], {}, ignore)).toThrow();
 });
+
+test("registering under a parent GType that names no registered type throws", () => {
+    expect(() => registerClass(uniqueName(), 100n)).toThrow();
+});
+
+test("constructing a GType that names no registered type throws", () => {
+    expect(() => newObject(100n, [], [], {}, ignore)).toThrow();
+});
+
+test("constructing with an unknown property name throws", () => {
+    const gtype = registerClass(uniqueName(), objectType);
+
+    expect(() => newObject(gtype, ["no-such-property"], [alloc(24)], {}, ignore)).toThrow();
+});

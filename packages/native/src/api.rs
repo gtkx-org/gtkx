@@ -116,5 +116,21 @@ pub(crate) fn type_from_bigint(
             format!("{label} type must be non-zero"),
         ));
     }
+    if is_unregistered_fundamental(gtype) {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("{label} type {type_value} names no registered type"),
+        ));
+    }
     Ok(type_)
+}
+
+/// Whether the value sits in the fundamental range yet names no registered type. That range is
+/// indexed through a static table, so asking for the name is safe and answers null for a slot
+/// nothing claimed. Above the range a `GType` *is* a pointer to a type node that is dereferenced
+/// without checking, so nothing can be asked of it safely.
+fn is_unregistered_fundamental(gtype: glib::ffi::GType) -> bool {
+    const FUNDAMENTAL_MAX: glib::ffi::GType = 255 << 2;
+
+    gtype <= FUNDAMENTAL_MAX && unsafe { glib::gobject_ffi::g_type_name(gtype) }.is_null()
 }
