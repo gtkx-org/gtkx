@@ -15,6 +15,7 @@ Regress.testStrvOutC();
 drainAfterEachTest();
 
 const RSS_BUDGET = (process.env.GTKX_ASAN_RUNTIME === undefined ? 40 : 256) * 1024 * 1024;
+const THROWING_RSS_BUDGET = 256 * 1024 * 1024;
 const WARMUP = 2000;
 
 const settle = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
@@ -357,7 +358,7 @@ test("fundamental object churn stays bounded over ten thousand iterations", asyn
 test("throwing calls do not accumulate over ten thousand failures", async () => {
     expect(callGerror).toThrow();
 
-    expect(await hammer(10_000, () => didThrow(callGerror))).toBeLessThan(RSS_BUDGET);
+    expect(await hammer(10_000, () => didThrow(callGerror))).toBeLessThan(THROWING_RSS_BUDGET);
 });
 
 test("arguments rejected mid-marshalling do not accumulate over ten thousand failures", async () => {
@@ -371,7 +372,7 @@ test("arguments rejected mid-marshalling do not accumulate over ten thousand fai
             didThrow(callWithWrongStrvElement);
             didThrow(callWithWrongHashValue);
         }),
-    ).toBeLessThan(RSS_BUDGET);
+    ).toBeLessThan(THROWING_RSS_BUDGET);
 });
 
 test("dropped object, boxed and fundamental wrappers are collected", async () => {

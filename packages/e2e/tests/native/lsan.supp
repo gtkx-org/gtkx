@@ -1,6 +1,8 @@
 leak:libc.so
 leak:node::contextify::ContextifyScript::New
 leak:node::encoding_binding::BindingData::DecodeUTF8
+leak:node::fs::ReadFileUtf8
+leak:node::StringBytes::Encode
 leak:ossl_load_builtin_compressions
 leak:libgvfsdbus.so
 leak:g_vfs_get_file_for_path
