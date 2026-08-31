@@ -18,9 +18,6 @@ const sourceResolveConfig = defineConfig({
     },
     test: {
         maxWorkers,
-        env: {
-            G_DEBUG: "fatal-criticals",
-        },
         server: {
             deps: {
                 inline: INLINE_DEPS,

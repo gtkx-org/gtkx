@@ -57,12 +57,6 @@ const reconciler = mergeConfig(
     }),
 );
 
-/**
- * The native tests drive marshalling that deliberately provokes GLib criticals, because a callee's
- * `g_return_if_fail` is supposed to reach JavaScript as a thrown error rather than as a dead
- * process. The shared `G_DEBUG=fatal-criticals` aborts the worker before that conversion can
- * happen, so this project drops it and the tests assert on the thrown error instead.
- */
 const native = mergeConfig(
     sourceResolveConfig,
     defineConfig({
@@ -73,7 +67,6 @@ const native = mergeConfig(
             execArgv: ["--expose-gc"],
             env: {
                 ...heapChecking(),
-                G_DEBUG: "",
                 LD_LIBRARY_PATH: libraryPath,
             },
         },
