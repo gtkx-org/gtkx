@@ -190,7 +190,7 @@ test("nested hashtable full returns stay bounded over five thousand calls", asyn
     await hammer(5000, () => {
         const nested = Regress.testGhashNestedEverythingReturn();
         assert.equal(nested.get("wibble").get("foo"), "bar");
-        assert.equal(Regress.testGhashNullReturn().size, 0);
+        assert.equal(Regress.testGhashNullReturn(), null);
     });
 });
 
@@ -213,6 +213,31 @@ test("gvalue round trips stay bounded over ten thousand iterations", async () =>
         assert.equal(GIMarshallingTests.gvalueReturn(), 42);
         assert.equal(GIMarshallingTests.gvalueOut().getInt(), 42);
     });
+});
+
+test("a gvalue built with new releases the string content it holds", async () => {
+    const stringType = GObject.typeFromName("gchararray");
+    const payload = "x".repeat(8192);
+
+    const batch = async () => {
+        for (let round = 0; round < 2000; round += 1) {
+            const value = new GObject.Value();
+            value.init(stringType);
+            value.setString(payload);
+        }
+
+        await drainGC();
+    };
+
+    await batch();
+    const rss = process.memoryUsage().rss;
+
+    for (let round = 0; round < 20; round += 1) {
+        await batch();
+    }
+
+    const growth = process.memoryUsage().rss - rss;
+    assert.ok(growth < RSS_BUDGET, `rss grew by ${growth} bytes`);
 });
 
 test("gvalues carrying objects and boxed payloads stay bounded over five thousand iterations", async () => {

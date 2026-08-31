@@ -81,6 +81,14 @@ impl BigIntCodec {
         }
     }
 
+    /// Encodes a value the way [`Encoder::encode`] does, for a caller that needs the 64-bit word
+    /// itself rather than a libffi argument.
+    pub(super) fn entry_stash(self, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        let int = self.integer_from_value(value)?;
+
+        self.checked_to_stash(int)
+    }
+
     unsafe fn read_i128(self, ptr: *const u8) -> i128 {
         unsafe {
             match self {

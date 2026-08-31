@@ -5,7 +5,7 @@ import * as Regress from "@gtkx/gi/regress";
 import { resolveType } from "@gtkx/runtime";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { drainAfterEachTest } from "./helpers/memory.mjs";
+import { drainAfterEachTest, drainGC } from "./helpers/memory.mjs";
 
 drainAfterEachTest();
 
@@ -233,6 +233,32 @@ test("values unset and re-initialize to another type", () => {
     value.setBoolean(true);
     assert.equal(value.getBoolean(), true);
     assert.equal(GIMarshallingTests.gvalueRoundTrip(value), true);
+});
+
+test("reset hands the value back without giving it a second owner", async () => {
+    const value = stringValue("again");
+    value.reset();
+    await drainGC();
+    assert.equal(value.getString(), null);
+
+    value.setString("twice");
+    assert.equal(value.getString(), "twice");
+    value.reset();
+    value.setString("thrice");
+    assert.equal(value.getString(), "thrice");
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(value), "thrice");
+});
+
+test("reset leaves a refcounted payload reachable through the same value", async () => {
+    const object = GIMarshallingTests.Object.new(42);
+    const holdsObject = objectValue(object);
+    holdsObject.reset();
+    await drainGC();
+    assert.equal(holdsObject.getObject(), null);
+
+    holdsObject.setObject(object);
+    assert.equal(holdsObject.getObject(), object);
+    assert.equal(GIMarshallingTests.gvalueRoundTrip(holdsObject), object);
 });
 
 test("values copy and transform between compatible types", () => {

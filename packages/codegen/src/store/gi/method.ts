@@ -716,19 +716,21 @@ const hashtableArgument = (
     name: string,
     isValueMarshalled: boolean,
 ): string => {
+    context.addRuntimeImport("toHashTableEntries");
+
     if (isValueMarshalled && isValueType(context, valueRef)) {
         context.addRuntimeImport("toValueHandle");
 
-        return `${name} ? globalThis.Array.from(${name}).map(([k, v]) => [k, toValueHandle(v)]) : null`;
+        return `toHashTableEntries(${name})?.map(([k, v]) => [k, toValueHandle(v)]) ?? null`;
     }
 
     if (isHandlePassing(context, valueRef)) {
         context.addRuntimeImport("getHandle");
 
-        return `${name} ? globalThis.Array.from(${name}).map(([k, v]) => [k, ${nullableHandleExpression("v")}]) : null`;
+        return `toHashTableEntries(${name})?.map(([k, v]) => [k, ${nullableHandleExpression("v")}]) ?? null`;
     }
 
-    return `${name} ? globalThis.Array.from(${name}) : null`;
+    return `toHashTableEntries(${name})`;
 };
 
 const mapItemExpression = (name: string, isNullable: boolean, helper: string): string =>

@@ -4,13 +4,8 @@ use super::super::prelude::*;
 use super::container::ArrayContainer;
 use super::item::ItemCodec;
 use super::{ArrayCodec, dup_strings_to_glib, transfer_items};
-use crate::ffi::codec::{Codec, FloatCodec};
+use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
-
-#[allow(clippy::cast_possible_truncation)]
-fn narrow_to_f32(v: f64) -> f32 {
-    v as f32
-}
 
 fn element_count(len: usize, what: &str) -> anyhow::Result<u32> {
     u32::try_from(len).map_err(|_| anyhow::anyhow!("GArray {what} {len} does not fit in a guint"))
@@ -149,7 +144,12 @@ impl ArrayCodec {
             return Self::append_inline_values_to_garray(g_array, stride, array);
         }
         match self.item_codec("GArray")? {
-            ItemCodec::Integer(kind) | ItemCodec::EnumFlags(kind) => {
+            ItemCodec::Integer(kind) => {
+                let storage = kind.checked_to_stash_storage(&Self::extract_numbers(array)?)?;
+                unsafe { Self::append_vals(g_array, storage.ptr(), array.len()) }?;
+                Ok(Vec::new())
+            }
+            ItemCodec::EnumFlags(kind) => {
                 let storage = kind.to_stash_storage(&Self::extract_numbers(array)?);
                 unsafe { Self::append_vals(g_array, storage.ptr(), array.len()) }?;
                 Ok(Vec::new())
@@ -160,16 +160,7 @@ impl ArrayCodec {
                 Ok(Vec::new())
             }
             ItemCodec::Float(kind) => {
-                let numbers = Self::extract_numbers(array)?;
-                let storage: StashStorage = match kind {
-                    FloatCodec::F32 => numbers
-                        .iter()
-                        .copied()
-                        .map(narrow_to_f32)
-                        .collect::<Vec<f32>>()
-                        .into(),
-                    FloatCodec::F64 => numbers.into(),
-                };
+                let storage = kind.checked_to_stash_storage(&Self::extract_numbers(array)?)?;
                 unsafe { Self::append_vals(g_array, storage.ptr(), array.len()) }?;
                 Ok(Vec::new())
             }

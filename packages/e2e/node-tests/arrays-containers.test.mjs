@@ -1,11 +1,21 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as GLib from "@gtkx/gi/glib";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { drainAfterEachTest } from "./helpers/memory.mjs";
+import { drainAfterEachTest, drainGC } from "./helpers/memory.mjs";
 
 drainAfterEachTest();
+
+const intValue = (number) => {
+    const value = new GObject.Value();
+
+    value.init(GObject.typeFromName("gint"));
+    value.setInt(number);
+
+    return value;
+};
 
 test("GArray of ints and 64-bit ints round trips", () => {
     assert.deepEqual(GIMarshallingTests.garrayIntNoneReturn(), [-1, 0, 1, 2]);
@@ -36,19 +46,63 @@ test("GArray of strings round trips across transfer modes", () => {
     assert.deepEqual(GIMarshallingTests.garrayUtf8FullOut(), ["0", "1", "2"]);
 });
 
-test("GPtrArray of strings returns across transfer modes", () => {
+test("GPtrArray of strings round trips across transfer modes", () => {
     assert.deepEqual(GIMarshallingTests.gptrarrayUtf8NoneReturn(), ["0", "1", "2"]);
     assert.deepEqual(GIMarshallingTests.gptrarrayUtf8ContainerReturn(), ["0", "1", "2"]);
     assert.deepEqual(GIMarshallingTests.gptrarrayUtf8FullReturn(), ["0", "1", "2"]);
+    GIMarshallingTests.gptrarrayUtf8NoneIn(["0", "1", "2"]);
+    GIMarshallingTests.gptrarrayUtf8ContainerIn(["0", "1", "2"]);
+    GIMarshallingTests.gptrarrayUtf8FullIn(["0", "1", "2"]);
     assert.deepEqual(GIMarshallingTests.gptrarrayUtf8NoneOut(), ["0", "1", "2"]);
     assert.deepEqual(GIMarshallingTests.gptrarrayUtf8ContainerOut(), ["0", "1", "2"]);
     assert.deepEqual(GIMarshallingTests.gptrarrayUtf8FullOut(), ["0", "1", "2"]);
+});
+
+test("GPtrArray string arguments survive repetition across transfer modes", () => {
+    const strings = ["0", "1", "2"];
+
+    for (let round = 0; round < 100; round += 1) {
+        GIMarshallingTests.gptrarrayUtf8NoneIn(strings);
+        GIMarshallingTests.gptrarrayUtf8ContainerIn(strings);
+        GIMarshallingTests.gptrarrayUtf8FullIn(strings);
+    }
+
+    assert.deepEqual(strings, ["0", "1", "2"]);
+});
+
+test("GPtrArray slots also take boxed values and 64-bit words", () => {
+    const values = [intValue(42), intValue(43)];
+
+    Regress.annotationPtrArray(values);
+    Regress.annotationPtrArray([]);
+    Regress.introspectableViaAlias([0n, 1n, 2n ** 64n - 1n]);
+    Regress.introspectableViaAlias([]);
+
+    assert.deepEqual(values.map((value) => value.getInt()), [42, 43]);
 });
 
 test("GPtrArray of boxed structs returns element values", () => {
     const structs = GIMarshallingTests.gptrarrayBoxedStructFullReturn();
     assert.equal(structs.length, 3);
     assert.ok(structs[0] instanceof GIMarshallingTests.BoxedStruct);
+    assert.deepEqual(structs.map((value) => value.long), [42n, 43n, 44n]);
+});
+
+test("GArray of boxed structs copies its inline elements out of the container", () => {
+    const structs = GIMarshallingTests.garrayBoxedStructFullReturn();
+    assert.equal(structs.length, 3);
+    assert.ok(structs[0] instanceof GIMarshallingTests.BoxedStruct);
+    assert.deepEqual(structs.map((value) => value.long), [42n, 43n, 44n]);
+
+    structs[0].long = 7n;
+    assert.deepEqual(structs.map((value) => value.long), [7n, 43n, 44n]);
+});
+
+test("GArray boxed struct copies outlive the transfer-full container", async () => {
+    const structs = GIMarshallingTests.garrayBoxedStructFullReturn();
+
+    await drainGC();
+
     assert.deepEqual(structs.map((value) => value.long), [42n, 43n, 44n]);
 });
 
@@ -181,9 +235,20 @@ test("container elements of the wrong type throw before the call", () => {
     );
     assert.throws(() => GIMarshallingTests.garrayUtf8FullIn(["0", "1", 2]));
     assert.throws(() => GIMarshallingTests.gptrarrayUtf8FullIn(["0", false, "2"]));
+    assert.throws(() => GIMarshallingTests.gptrarrayUtf8NoneIn([1, 2, 3]));
+    assert.throws(() => GIMarshallingTests.gptrarrayUtf8ContainerIn([{}, {}, {}]));
     assert.throws(() => GIMarshallingTests.glistUtf8FullIn(["0", {}, "2"]));
     assert.throws(() => GIMarshallingTests.gslistUtf8FullIn(["0", Symbol("x"), "2"]));
     assert.throws(() => GIMarshallingTests.glistIntNoneIn([-1, 0, 1, 2.5]));
     assert.throws(() => GIMarshallingTests.gslistIntNoneIn([-1, 0, 2 ** 53, 2]));
     assert.throws(() => GIMarshallingTests.glistUint32NoneIn([0.5, 0xFF_FF_FF_FF]));
+});
+
+test("GArray integer elements reject fractional and out-of-range values", () => {
+    assert.throws(() => GIMarshallingTests.garrayIntNoneIn([-1, 0, 1, 2.5]));
+    assert.throws(() => GIMarshallingTests.garrayIntNoneIn([-1, 0, 1, 2 ** 53]));
+    assert.throws(() => GIMarshallingTests.garrayIntNoneIn([-1, 0, 1, 2 ** 31]));
+    assert.throws(() => GIMarshallingTests.garrayIntNoneIn([-1, 0, 1, -(2 ** 31) - 1]));
+    assert.throws(() => GIMarshallingTests.garrayIntNoneIn([-1, 0, 1, NaN]));
+    assert.throws(() => GIMarshallingTests.garrayIntNoneIn([-1, 0, 1, Infinity]));
 });

@@ -60,15 +60,19 @@ const resolveInterfaces = (library: Library, defaultNamespace: string, names: st
     return interfaces;
 };
 
-function* ancestorChain(library: Library, klass: GirClass, namespaceName: string): Generator<ResolvedAncestor> {
+const seedAncestor = (
+    library: Library,
+    klass: GirClass,
+    namespaceName: string,
+): ResolvedAncestor | undefined => {
     const namespace = library.namespaces.get(namespaceName);
 
-    if (namespace === undefined) {
-        return;
-    }
+    return namespace === undefined ? undefined : { klass, namespace, namespaceName };
+};
 
+function* ancestorChain(library: Library, klass: GirClass, namespaceName: string): Generator<ResolvedAncestor> {
     const visited: Set<string> = new Set();
-    let current: ResolvedAncestor | undefined = { klass, namespace, namespaceName };
+    let current: ResolvedAncestor | undefined = seedAncestor(library, klass, namespaceName);
 
     while (current !== undefined) {
         const key = `${current.namespaceName}.${current.klass.name}`;

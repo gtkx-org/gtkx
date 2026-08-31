@@ -1,10 +1,11 @@
 use glib::translate::{
-    Borrowed, FromGlibPtrNone as _, IntoGlibPtr, ToGlibPtr, from_glib_borrow, from_glib_full,
+    Borrowed, FromGlibPtrNone as _, IntoGlib as _, IntoGlibPtr, ToGlibPtr, from_glib_borrow,
+    from_glib_full,
 };
 use glib::{self};
 
 use super::prelude::*;
-use crate::handle::Handle;
+use crate::handle::{Handle, HandleClass};
 use crate::value::wrapper;
 
 unsafe fn keeps_own_construction_ref(gobject_ptr: *mut glib::gobject_ffi::GObject) -> bool {
@@ -76,13 +77,40 @@ unsafe fn object_ref_full(ptr: *mut c_void) -> *mut c_void {
     IntoGlibPtr::<*mut glib::gobject_ffi::GObject>::into_glib_ptr(obj).cast::<c_void>()
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ObjectCodec {
     pub ownership: Ownership,
     pub is_call_scoped: bool,
+    /// `GType` name of the declared parameter type, as GIR spells it in `glib:type-name`.
+    pub type_name: Option<String>,
+    resolved_type: std::cell::Cell<Option<glib::Type>>,
 }
 
 impl ObjectCodec {
+    #[must_use]
+    pub fn new(ownership: Ownership, is_call_scoped: bool, type_name: Option<String>) -> Self {
+        Self {
+            ownership,
+            is_call_scoped,
+            type_name,
+            resolved_type: std::cell::Cell::new(None),
+        }
+    }
+
+    /// The `GType` the declared type registers under, once something has registered it. A type
+    /// nothing has registered cannot have an instance either, so an unresolved name leaves the
+    /// check off rather than failing the call.
+    fn expected_type(&self) -> Option<glib::Type> {
+        if let Some(type_) = self.resolved_type.get() {
+            return Some(type_);
+        }
+
+        let type_ = glib::Type::from_name(self.type_name.as_deref()?)?;
+        self.resolved_type.set(Some(type_));
+
+        Some(type_)
+    }
+
     unsafe fn gobject_value<'e>(
         &self,
         env: &'e Env,
@@ -100,6 +128,29 @@ impl ObjectCodec {
 impl Encoder for ObjectCodec {
     fn object_ptr_context(&self) -> &'static str {
         "Object"
+    }
+
+    fn check_instance(&self, handle: &Handle) -> anyhow::Result<()> {
+        let Some(expected) = self.expected_type() else {
+            return Ok(());
+        };
+        let Some(gobject_ptr) = handle.as_gobject_ptr() else {
+            anyhow::ensure!(
+                handle.class() == HandleClass::Opaque,
+                "Expected an instance of {expected}, got a handle over something that is not a GObject"
+            );
+
+            return Ok(());
+        };
+        let instance = gobject_ptr.cast::<glib::gobject_ffi::GTypeInstance>();
+        let is_a = unsafe {
+            glib::gobject_ffi::g_type_check_instance_is_a(instance, expected.into_glib())
+        } != 0;
+        anyhow::ensure!(is_a, "Expected an instance of {expected}, got {}", unsafe {
+            lossy_c_string(glib::gobject_ffi::g_type_name_from_instance(instance))
+        });
+
+        Ok(())
     }
 
     fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
@@ -142,13 +193,16 @@ impl PtrWriter for ObjectCodec {
         init: SlotInit,
     ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
         if self.ownership.is_borrowed() {
-            return write_object_ptr(slot, value, "Object field write");
+            return write_object_ptr(slot, value, "Object field write", |handle| {
+                Encoder::check_instance(self, handle)
+            });
         }
         swap_owned_slot(
             slot,
             value,
             init,
             "Object field write",
+            |handle| Encoder::check_instance(self, handle),
             |new_ptr| unsafe {
                 let borrowed_new: Borrowed<glib::Object> =
                     from_glib_borrow(new_ptr.cast::<glib::gobject_ffi::GObject>());

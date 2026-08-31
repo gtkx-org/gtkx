@@ -147,15 +147,20 @@ test("flags combinations are accepted through method arguments", () => {
     assert.equal(object.getEnum(), GIMarshallingTests.GEnum.VALUE3);
 });
 
-test("utility enums and flags cross namespace boundaries", () => {
+test("utility types cross namespace boundaries", () => {
     const object = new Utility.Object({});
-    const struct = new Utility.Struct({});
-    const flags = Utility.FlagType.A | Utility.FlagType.C;
-    Regress.fooMethodExternalReferences(object, Utility.EnumType.B, flags, struct);
+    const fooObject = Regress.FooObject.new();
+    const holder = new Regress.FooUtilityStruct({ bar: new Utility.Struct({ field: 7 }) });
+
+    Regress.FooObject.aGlobalMethod(object);
+    fooObject.handleGlyph(65);
+
+    assert.equal(fooObject.externalType(), null);
+    assert.equal(holder.bar.field, 7);
+    assert.equal(Utility.EnumType.A, 0);
     assert.equal(Utility.EnumType.B, 1);
-    assert.equal(flags, 5);
-    assert.ok(object instanceof Utility.Object);
-    assert.ok(struct instanceof Utility.Struct);
+    assert.equal(Utility.EnumType.C, 2);
+    assert.equal(Utility.FlagType.A | Utility.FlagType.C, 5);
 });
 
 test("foo enum helpers convert between ints and members", () => {
@@ -182,6 +187,33 @@ test("enum arguments reject wrong types and out-of-range values", () => {
     assert.throws(() => GIMarshallingTests.enumIn(Symbol("nope")));
     assert.throws(() => Regress.testEnumParam(2 ** 31));
     assert.throws(() => GIMarshallingTests.flagsInZero());
+});
+
+test("an enum with no registered GType validates membership from the GIR", () => {
+    GIMarshallingTests.enumIn(GIMarshallingTests.Enum.VALUE3);
+    assert.equal(GIMarshallingTests.enumInout(GIMarshallingTests.Enum.VALUE3), GIMarshallingTests.Enum.VALUE1);
+
+    assert.throws(() => GIMarshallingTests.enumIn(9999));
+    assert.throws(() => GIMarshallingTests.enumIn(2));
+});
+
+test("an unregistered enum argument rejects a value outside its members", () => {
+    const union = GIMarshallingTests.StructuredUnion.new(GIMarshallingTests.StructuredUnionType.SIMPLE_STRUCT);
+    assert.equal(union.type(), GIMarshallingTests.StructuredUnionType.SIMPLE_STRUCT);
+
+    assert.throws(() => GIMarshallingTests.StructuredUnion.new(99));
+});
+
+test("the argument path and the field path reject the same enum value", () => {
+    const struct = new Regress.TestStructA({});
+    struct.someEnum = Regress.TestEnum.VALUE2;
+    assert.equal(struct.someEnum, Regress.TestEnum.VALUE2);
+    assert.equal(Regress.testEnumParam(Regress.TestEnum.VALUE2), "value2");
+
+    assert.throws(() => Regress.testEnumParam(12_345));
+    assert.throws(() => {
+        struct.someEnum = 12_345;
+    });
 });
 
 test("registered enum arguments reject non-member values", () => {

@@ -9,7 +9,7 @@ use napi::bindgen_prelude::{
     BigInt, FromNapiValue as _, Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object,
     Unknown,
 };
-use napi::{Env, ValueType};
+use napi::{Env, Status, ValueType};
 
 use crate::ffi::Stash;
 use crate::ffi::codec::{
@@ -17,7 +17,7 @@ use crate::ffi::codec::{
     str_to_glib_full,
 };
 use crate::handle::{BorrowScope, Handle};
-use crate::host::error_reporter::{self, ReportErr};
+use crate::host::error_reporter::ReportErr;
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
 use crate::value::{self, ClosureHandle};
@@ -300,6 +300,14 @@ struct RefSlot<'e> {
     init: SlotInit,
 }
 
+/// The arguments beside the one being read, as the sizing path consumes them: the stash each libffi
+/// slot holds together with the codec that describes it, so a length-bounded array can find the
+/// element count the C caller passed alongside it.
+struct SiblingArgs<'a> {
+    stashes: &'a [Stash],
+    codecs: &'a [Codec],
+}
+
 struct InFlightGuard<'a>(&'a ClosureData);
 
 impl<'a> InFlightGuard<'a> {
@@ -363,6 +371,14 @@ impl ClosureData {
                     Codec::Integer(kind) => {
                         kind.to_stash(unsafe { kind.read_ptr(arg_ptr.cast::<u8>()) })
                     }
+                    // A C caller hands an out or inout element count as a pointer to the count.
+                    // The address is the sibling a length-bounded array reads its extent from, the
+                    // same shape `Stash::Ptr` carries in the outgoing direction.
+                    Codec::Ref(ref_codec)
+                        if matches!(ref_codec.inner_codec(), Codec::Integer(_)) =>
+                    {
+                        Stash::Ptr(unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() })
+                    }
                     _ => Stash::Void,
                 }
             })
@@ -370,11 +386,10 @@ impl ClosureData {
     }
 
     unsafe fn read_arg<'e>(
-        &'e self,
         env: &'e Env,
         codec: &'e Codec,
         arg_ptr: *const c_void,
-        siblings: &[Stash],
+        siblings: &SiblingArgs<'_>,
     ) -> anyhow::Result<Unknown<'e>> {
         if !matches!(codec, Codec::Array(_)) {
             return unsafe {
@@ -388,18 +403,24 @@ impl ClosureData {
         }
         let value_ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
 
-        codec.decode_with_context(env, &Stash::Ptr(value_ptr), siblings, &self.arg_codecs)
+        codec.decode_with_context(
+            env,
+            &Stash::Ptr(value_ptr),
+            siblings.stashes,
+            siblings.codecs,
+        )
     }
 
     unsafe fn read_ref_arg<'e>(
         env: &'e Env,
         ref_codec: &'e crate::ffi::codec::RefCodec,
         arg_ptr: *const c_void,
+        siblings: &SiblingArgs<'_>,
     ) -> anyhow::Result<RefSlot<'e>> {
         let inner_ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
         let is_seeded = ref_codec.is_inout();
         let seed = if is_seeded {
-            seed_ref(env, inner_ptr, ref_codec.inner_codec())?
+            seed_ref(env, inner_ptr, ref_codec.inner_codec(), siblings)?
         } else {
             value::js_null(env)?
         };
@@ -423,7 +444,11 @@ impl ClosureData {
     ) -> anyhow::Result<ClosureArgs<'e>> {
         let mut js_args = Vec::with_capacity(self.arg_codecs.len());
         let mut ref_slots: Vec<RefSlot<'e>> = Vec::new();
-        let siblings = unsafe { self.sibling_stashes(args) };
+        let stashes = unsafe { self.sibling_stashes(args) };
+        let siblings = SiblingArgs {
+            stashes: &stashes,
+            codecs: &self.arg_codecs,
+        };
         let mut slot_index = 0usize;
 
         for (i, codec) in self.arg_codecs.iter().enumerate() {
@@ -435,33 +460,22 @@ impl ClosureData {
             }
 
             if let Codec::Callback(callback_codec) = codec {
-                let val = match unsafe { read_callback_arg(env, callback_codec, args, arg_slot) } {
-                    Ok(val) => val,
-                    Err(e) => {
-                        error_reporter::report(
-                            &e.context(format!("callback: failed to read arg {i}")),
-                        );
-                        value::js_null(env)?
-                    }
-                };
+                let val = unsafe { read_callback_arg(env, callback_codec, args, arg_slot) }
+                    .map_err(|e| e.context(format!("callback: failed to read arg {i}")))?;
                 js_args.push(val);
                 continue;
             }
 
             let arg_ptr = unsafe { *args.add(arg_slot) };
             if let Codec::Ref(ref_codec) = codec {
-                let slot = unsafe { Self::read_ref_arg(env, ref_codec, arg_ptr) }?;
+                let slot = unsafe { Self::read_ref_arg(env, ref_codec, arg_ptr, &siblings) }
+                    .map_err(|e| e.context(format!("callback: failed to read arg {i}")))?;
                 js_args.push(slot.obj);
                 ref_slots.push(slot);
                 continue;
             }
-            let val = match unsafe { self.read_arg(env, codec, arg_ptr, &siblings) } {
-                Ok(val) => val,
-                Err(e) => {
-                    error_reporter::report(&e.context(format!("callback: failed to read arg {i}")));
-                    value::js_null(env)?
-                }
-            };
+            let val = unsafe { Self::read_arg(env, codec, arg_ptr, &siblings) }
+                .map_err(|e| e.context(format!("callback: failed to read arg {i}")))?;
             js_args.push(val);
         }
 
@@ -499,7 +513,7 @@ impl ClosureData {
         let outcome: Result<(), CallbackError> = (|| {
             let ClosureArgs { js_args, ref_slots } = read.map_err(CallbackError::Infrastructure)?;
             let return_value = call_js_function(&env, &self.js_fn, &js_args)?;
-            self.flush_refs(&env, &ref_slots);
+            self.flush_refs(&env, &ref_slots)?;
             let ret = if capture_result {
                 Ok(return_value)
             } else {
@@ -517,11 +531,12 @@ impl ClosureData {
                 unsafe { self.deliver_thrown(&env, error, args) };
             }
             Err(CallbackError::Infrastructure(e)) => {
-                error_reporter::report(&anyhow::anyhow!(
-                    "callback: JS callback error (return type: {}): {e:#}",
-                    self.return_codec
-                ));
                 self.write_return(&env, result, &Err(()));
+                let error = napi::Error::new(
+                    Status::GenericFailure,
+                    format!("callback: {e:#} (return type: {})", self.return_codec),
+                );
+                unsafe { self.deliver_thrown(&env, error, args) };
             }
         }
 
@@ -580,7 +595,7 @@ impl ClosureData {
         self.retained_transfers.borrow_mut().push(transfer);
     }
 
-    fn flush_refs(&self, env: &Env, ref_slots: &[RefSlot<'_>]) {
+    fn flush_refs(&self, env: &Env, ref_slots: &[RefSlot<'_>]) -> Result<(), CallbackError> {
         for slot in ref_slots {
             if slot.inner_ptr.is_null() {
                 continue;
@@ -588,19 +603,24 @@ impl ClosureData {
             let Some(new_value) = read_ref_value(env, slot.obj) else {
                 continue;
             };
-            let written = slot
-                .inner_codec
-                .write_value_to_ptr(
-                    env,
-                    unsafe { crate::ffi::Slot::new(slot.inner_ptr) },
-                    new_value,
-                    slot.init,
-                )
-                .report_err("callback: failed to write out-parameter");
-            if let Some(Some(transfer)) = written {
-                self.retain_transfer(transfer);
+            let written = slot.inner_codec.write_value_to_ptr(
+                env,
+                unsafe { crate::ffi::Slot::new(slot.inner_ptr) },
+                new_value,
+                slot.init,
+            );
+            match written {
+                Ok(Some(transfer)) => self.retain_transfer(transfer),
+                Ok(None) => {}
+                Err(error) => {
+                    return Err(CallbackError::Infrastructure(
+                        error.context("callback: failed to write out-parameter"),
+                    ));
+                }
             }
         }
+
+        Ok(())
     }
 
     #[must_use]
@@ -764,6 +784,7 @@ fn seed_ref<'e>(
     env: &'e Env,
     inner_ptr: *mut c_void,
     inner_codec: &Codec,
+    siblings: &SiblingArgs<'_>,
 ) -> anyhow::Result<Unknown<'e>> {
     if inner_ptr.is_null() {
         return Ok(value::js_null(env)?);
@@ -771,6 +792,20 @@ fn seed_ref<'e>(
     let seeded = match inner_codec {
         codec if codec.is_scalar() => {
             unsafe { codec.read(env, ReadCtx::slot(inner_ptr.cast_const(), "ref seed")) }
+                .report_err("callback: failed to seed ref")
+        }
+        // A length-bounded inout array takes its extent from the sibling the caller passed beside
+        // it, exactly the way an incoming array argument does. It is read without being freed: the
+        // write-back releases the container it replaces.
+        Codec::Array(array_codec) if array_codec.is_length_bounded() => {
+            let value_ptr = unsafe { inner_ptr.cast::<*mut c_void>().read_unaligned() };
+            array_codec
+                .decode_with_context(
+                    env,
+                    &Stash::Ptr(value_ptr),
+                    siblings.stashes,
+                    siblings.codecs,
+                )
                 .report_err("callback: failed to seed ref")
         }
         Codec::Array(array_codec) if !array_codec.is_length_bounded() => {

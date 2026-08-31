@@ -203,12 +203,42 @@ const isLentInPlace = (context: ModuleContext, parameter: GirParameter): boolean
 const isRefusedParamTransfer = (context: ModuleContext, parameter: GirParameter): boolean =>
     !isLentInPlace(context, parameter) && isRefusedTransfer(context, parameter.type, parameter.transferOwnership);
 
+const bareCTypeSpelling = (spelling: string): string =>
+    spelling.replaceAll(/\bconst\b/gu, "").replaceAll(/\s+/gu, "");
+
+const isByValueRecord = (context: ModuleContext, ref: TypeId | undefined, cType: string | undefined): boolean => {
+    if (ref === undefined || cType === undefined || cType.includes("*")) {
+        return false;
+    }
+
+    const type = underlyingType(context, ref);
+
+    if (type?.kind !== "record") {
+        return false;
+    }
+
+    const declared = type.value.cType;
+
+    if (declared === undefined) {
+        return false;
+    }
+
+    return (
+        bareCTypeSpelling(declared) === bareCTypeSpelling(cType) &&
+        recordInlineSize(context, type.value) !== undefined
+    );
+};
+
 const isUnmarshalableCallParam = (context: ModuleContext, parameter: GirParameter): boolean => {
     if (parameter.isVarargs) {
         return false;
     }
 
     if (isTypeErasedCallback(context, parameter) || isRefusedParamTransfer(context, parameter)) {
+        return true;
+    }
+
+    if (isByValueRecord(context, parameter.type, parameter.cType)) {
         return true;
     }
 
@@ -226,6 +256,7 @@ const isUnmarshalableCallParam = (context: ModuleContext, parameter: GirParamete
 const hasUnmarshalableParam = (context: ModuleContext, callable: UnmarshalableSubject): boolean =>
     (callable.instance !== undefined && isRefusedParamTransfer(context, callable.instance)) ||
     isRefusedTransfer(context, callable.returnValue.type, callable.returnValue.transferOwnership) ||
+    isByValueRecord(context, callable.returnValue.type, callable.returnValue.cType) ||
     hasDetachedCallback(context, callable.parameters) ||
     callable.parameters.some((parameter) => isUnmarshalableCallParam(context, parameter));
 

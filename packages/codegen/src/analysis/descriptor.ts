@@ -95,6 +95,7 @@ type ArrayLayout = {
     elementSize?: number | undefined;
     isBytes: boolean;
     isCallerAllocated?: boolean | undefined;
+    isZeroTerminated?: boolean | undefined;
 };
 
 type BindArgs = {
@@ -165,8 +166,6 @@ const T: DescriptorNames = {
 const tVoid: string = T.void;
 const tBoolean: string = T.boolean;
 const tUint8: string = T.uint8;
-const tUint32: string = T.uint32;
-const tInt32: string = T.int32;
 const tUint64: string = T.uint64;
 const tBiguint64: string = T.biguint64;
 const tGtype: string = T.gtype;
@@ -185,11 +184,19 @@ const optionalLiteralEntry = (key: string, value: string | undefined): string | 
 
 const tScalar = (name: ScalarDescriptorName): string => T[name];
 
-const tString = (ownership: Ownership, length?: string): string =>
-    call("string", [sourceStringLiteral(ownership), length]);
+const tString = (ownership: Ownership, length?: string, hasOwnedStorage = false): string =>
+    call("string", [
+        sourceStringLiteral(ownership),
+        hasOwnedStorage ? (length ?? "undefined") : length,
+        hasOwnedStorage ? "true" : undefined,
+    ]);
 
-const tObject = (ownership: Ownership, fallbackClass?: string): string =>
-    call("object", [sourceStringLiteral(ownership), fallbackClass]);
+const tObject = (ownership: Ownership, fallbackClass?: string, typeName?: string): string =>
+    call("object", [
+        sourceStringLiteral(ownership),
+        typeName === undefined ? fallbackClass : (fallbackClass ?? "undefined"),
+        typeName === undefined ? undefined : sourceStringLiteral(typeName),
+    ]);
 
 const tBoxed = (glibName: string, options: BoxedOptions): string =>
     call("boxed", [
@@ -240,8 +247,13 @@ const tRef = (inner: string, isInout = false): string => call("ref", [inner, isI
 const tHashTable = (key: string, value: string, ownership: Ownership): string =>
     call("hashTable", [key, value, sourceStringLiteral(ownership)]);
 
-const tEnum = (lib: string, typeFnName: string, isSigned: boolean): string =>
-    call("enum", [sourceStringLiteral(lib), sourceStringLiteral(typeFnName), String(isSigned)]);
+const tEnum = (lib: string, typeFnName: string, isSigned: boolean, members?: number[]): string =>
+    call("enum", [
+        sourceStringLiteral(lib),
+        sourceStringLiteral(typeFnName),
+        String(isSigned),
+        members === undefined ? undefined : `[${members.join(", ")}]`,
+    ]);
 
 const tFlags = (lib: string, typeFnName: string, isSigned: boolean, mask?: number): string =>
     call("flags", [
@@ -253,16 +265,20 @@ const tFlags = (lib: string, typeFnName: string, isSigned: boolean, mask?: numbe
 
 const tByteArray = (ownership: Ownership): string => call("byteArray", [sourceStringLiteral(ownership)]);
 
+const ARRAY_LAYOUT_FLAGS = ["isBytes", "isCallerAllocated", "isZeroTerminated"] as const;
+
+const PLAIN_ARRAY_LAYOUT: ArrayLayout = { isBytes: false };
+
 const arrayLayoutArg = (ownership: Ownership | undefined, layout: ArrayLayout): string | undefined => {
     if (ownership === undefined) {
         return undefined;
     }
 
-    const entries = [
-        layout.elementSize === undefined ? undefined : `elementSize: ${String(layout.elementSize)}`,
-        layout.isBytes ? "isBytes: true" : undefined,
-        layout.isCallerAllocated === true ? "isCallerAllocated: true" : undefined,
-    ].filter((entry): entry is string => entry !== undefined);
+    const entries = ARRAY_LAYOUT_FLAGS.filter((flag) => layout[flag] === true).map((flag) => `${flag}: true`);
+
+    if (layout.elementSize !== undefined) {
+        entries.unshift(`elementSize: ${String(layout.elementSize)}`);
+    }
 
     return entries.length === 0 ? undefined : `{ ${entries.join(", ")} }`;
 };
@@ -271,7 +287,7 @@ const tList = (
     name: ListDescriptorName,
     element: string,
     ownership: Ownership,
-    layout: ArrayLayout = { isBytes: false },
+    layout: ArrayLayout = PLAIN_ARRAY_LAYOUT,
 ): string => call(name, [element, sourceStringLiteral(ownership), arrayLayoutArg(ownership, layout)]);
 
 const tArray = (element: string, ownership: Ownership | undefined, layout: ArrayLayout): string =>
@@ -343,8 +359,6 @@ export {
     tVoid,
     tBoolean,
     tUint8,
-    tUint32,
-    tInt32,
     tUint64,
     tBiguint64,
     tGtype,

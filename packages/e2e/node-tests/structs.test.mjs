@@ -1,8 +1,10 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
+import * as GLib from "@gtkx/gi/glib";
+import * as HarfBuzz from "@gtkx/gi/harfbuzz";
 import * as Regress from "@gtkx/gi/regress";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { drainAfterEachTest } from "./helpers/memory.mjs";
+import { drainAfterEachTest, drainGC } from "./helpers/memory.mjs";
 
 drainAfterEachTest();
 
@@ -62,6 +64,36 @@ test("PointerStruct returnv exposes the expected field and passes inv", () => {
     const struct = GIMarshallingTests.PointerStruct.returnv();
     assert.equal(struct.long, 42n);
     struct.inv();
+});
+
+test("a pointer registered struct constructs from props", () => {
+    const empty = new GIMarshallingTests.PointerStruct({});
+    assert.equal(empty.long, 0n);
+
+    const filled = new GIMarshallingTests.PointerStruct({ long: 42n });
+    assert.equal(filled.long, 42n);
+    filled.inv();
+
+    filled.long = 43n;
+    assert.equal(filled.long, 43n);
+    assert.equal(GIMarshallingTests.PointerStruct.returnv().long, 42n);
+});
+
+test("many pointer registered structs survive collection", async () => {
+    for (let index = 0; index < 1000; index += 1) {
+        assert.equal(new GIMarshallingTests.PointerStruct({ long: BigInt(index) }).long, BigInt(index));
+    }
+
+    await drainGC(5);
+});
+
+test("a pointer registered struct rejects field writes it cannot hold", () => {
+    assert.throws(() => new GIMarshallingTests.PointerStruct({ long: 1.5 }));
+    assert.throws(() => new GIMarshallingTests.PointerStruct({ long: "nope" }));
+    const struct = new GIMarshallingTests.PointerStruct({});
+    assert.throws(() => {
+        struct.long = Symbol("nope");
+    });
 });
 
 test("Union round trips through returnv, construction, and field writes", () => {
@@ -155,14 +187,37 @@ test("TestStructFixedArray frob fills the fixed array field", () => {
     assert.deepEqual(struct.array, [42, 43, 44, 45, 46, 47, 48, 49, 50, 51]);
 });
 
-test("TestStructFixedArray field writes update the leading fixed array elements", () => {
+test("a fixed-size array field round-trips exactly its own length", () => {
     const struct = new Regress.TestStructFixedArray({});
     struct.justInt = 5;
     assert.equal(struct.justInt, 5);
     struct.array = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
     assert.deepEqual(struct.array, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+    const readBack = struct.array;
+    struct.array = readBack;
+    assert.deepEqual(struct.array, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+    assert.equal(struct.justInt, 5);
+});
+
+test("a fixed-size array field writes as far as the value reaches", () => {
+    const struct = new Regress.TestStructFixedArray({});
+    struct.array = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+
+    struct.array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    assert.deepEqual(struct.array, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
     struct.array = [9, 8];
-    assert.deepEqual(struct.array, [9, 8, 12, 13, 14, 15, 16, 17, 18, 19]);
+    assert.deepEqual(struct.array, [9, 8, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+    struct.array = [];
+    assert.deepEqual(struct.array, [9, 8, 3, 4, 5, 6, 7, 8, 9, 10]);
+});
+
+test("the fixed-size argument path rejects the same length mismatch", () => {
+    GIMarshallingTests.arrayFixedIntIn([-1, 0, 1, 2]);
+
+    assert.throws(() => GIMarshallingTests.arrayFixedIntIn([-1, 0, 1]));
+    assert.throws(() => GIMarshallingTests.arrayFixedIntIn([-1, 0, 1, 2, 3]));
 });
 
 test("foo unions read back the member that was written", () => {
@@ -229,4 +284,18 @@ test("abstract structs and unions cannot be constructed", () => {
 test("a struct method whose C symbol is missing throws", () => {
     const union = Regress.FooBUnion.new();
     assert.throws(() => union.getContainedType());
+});
+
+test("callables that pass or return a record by value are not bound at all", () => {
+    assert.equal(GIMarshallingTests.gvalueFlatArrayRoundTrip, undefined);
+    assert.equal(Regress.fooMethodExternalReferences, undefined);
+});
+
+test("records GIR spells without a star but that are really pointers still bind", () => {
+    const bytes = GLib.Bytes.new([1, 2, 3]);
+    assert.equal(bytes.equal(GLib.Bytes.new([1, 2, 3])), true);
+    assert.equal(bytes.equal(GLib.Bytes.new([1, 2, 4])), false);
+    assert.equal(bytes.compare(GLib.Bytes.new([1, 2, 3])), 0);
+    assert.equal(typeof HarfBuzz.ftFontCreateReferenced, "function");
+    assert.equal(typeof HarfBuzz.ftFaceCreateReferenced, "function");
 });

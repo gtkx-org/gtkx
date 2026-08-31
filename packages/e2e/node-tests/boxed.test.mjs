@@ -1,9 +1,11 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
+import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
+import * as Pango from "@gtkx/gi/pango";
 import * as Regress from "@gtkx/gi/regress";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { drainAfterEachTest } from "./helpers/memory.mjs";
+import { drainAfterEachTest, drainGC } from "./helpers/memory.mjs";
 
 drainAfterEachTest();
 
@@ -159,9 +161,10 @@ test("refcounted boxed c is adopted on full transfer", () => {
     const c = Regress.TestBoxedC.new();
     assert.equal(c.refcount, 1);
     assert.equal(c.anotherThing, 42);
-    const built = new Regress.TestBoxedC({ refcount: 1, nameConflict: true });
+    const built = new Regress.TestBoxedC({ nameConflict: true });
     assert.equal(built.nameConflict(), true);
-    assert.equal(built.anotherThing, 0);
+    assert.equal(built.refcount, 1);
+    assert.equal(built.anotherThing, 42);
 });
 
 test("refcounted boxed c is referenced on borrowed decode", () => {
@@ -224,6 +227,68 @@ test("boxed arguments reject wrong JS types", () => {
     assert.throws(() => boxed.equals({}));
     assert.throws(() => boxed.equals(null));
     assert.throws(() => GIMarshallingTests.paramSpecInBool({}));
+});
+
+test("a boxed with C invariants is built by its own constructor", () => {
+    const boxed = new Regress.TestBoxed({ someInt8: 7 });
+    assert.equal(boxed.someInt8, 7);
+    assert.ok(boxed.priv instanceof Regress.TestBoxedPrivate);
+
+    const copy = boxed.copy();
+    assert.equal(copy.someInt8, 7);
+    assert.equal(boxed.equals(copy), true);
+    boxed.notAMethod();
+
+    assert.equal(new Regress.TestBoxed({}).someInt8, Regress.TestBoxed.new().someInt8);
+    assert.equal(new Regress.TestBoxedC({}).anotherThing, Regress.TestBoxedC.new().anotherThing);
+    assert.equal(new GIMarshallingTests.BoxedStruct({}).long, GIMarshallingTests.BoxedStruct.new().long);
+});
+
+test("many boxed instances with C invariants survive collection", async () => {
+    for (let index = 0; index < 500; index += 1) {
+        assert.equal(new Regress.TestBoxed({ someInt8: index % 128 }).someInt8, index % 128);
+        assert.equal(new Regress.TestBoxedC({}).refcount, 1);
+    }
+
+    await drainGC(5);
+});
+
+test("records whose boxed free is a real destructor are safe to construct", async () => {
+    const built = [
+        new GLib.Array({}),
+        new GLib.ByteArray({}),
+        new GLib.PtrArray({}),
+        new GLib.Thread({}),
+        new GLib.Source({}),
+        new GLib.VariantBuilder({}),
+        new GLib.VariantDict({}),
+        new GObject.Closure({}),
+        new Pango.Attribute({}),
+        new Pango.FontMetrics({}),
+        new Pango.LayoutLine({}),
+    ];
+
+    assert.equal(built.length, 11);
+    built.length = 0;
+    await drainGC(5);
+});
+
+test("a boxed argument rejects a value of an unrelated boxed type", () => {
+    Regress.testBoxedsNotAMethod(Regress.TestBoxed.new());
+
+    assert.throws(() => Regress.testBoxedsNotAMethod(new GIMarshallingTests.BoxedStruct({ long: 42n })));
+    assert.throws(() => Regress.testBoxedsNotAMethod(Regress.TestBoxedB.new(1, 2n)));
+});
+
+test("a boxed field rejects a value of an unrelated boxed type", () => {
+    const boxed = Regress.TestBoxed.new();
+    boxed.nestedA = new Regress.TestSimpleBoxedA({ someInt: 4, someInt8: 5, someDouble: 6 });
+    assert.equal(boxed.nestedA.someInt, 4);
+
+    assert.throws(() => {
+        boxed.nestedA = new GIMarshallingTests.BoxedStruct({ long: 42n });
+    });
+    assert.equal(boxed.nestedA.someInt, 4);
 });
 
 test("boxed field writes reject invalid values", () => {

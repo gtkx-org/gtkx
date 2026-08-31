@@ -102,6 +102,9 @@ pub enum Descriptor {
         shared_library: String,
         get_type_fn_name: String,
         is_signed: bool,
+        /// Member values of an enumeration with no registered `GType`, which the GIR is the only
+        /// source of. `None` leaves the membership check to the `GType`'s `GEnumClass`.
+        members: Option<Vec<i32>>,
     },
     Flags {
         shared_library: String,
@@ -113,10 +116,15 @@ pub enum Descriptor {
     String {
         ownership: Ownership,
         length: Option<i64>,
+        /// Whether the instance holding the slot owns the string in it, so that a write releases
+        /// what it displaces. Set only on record fields GIR spells as a non-`const` `char *`.
+        has_owned_storage: Option<bool>,
     },
     Object {
         ownership: Ownership,
         is_call_scoped: Option<bool>,
+        /// `GType` name of the declared type, which an argument's instance must be one of.
+        type_name: Option<String>,
     },
     Unichar,
     Void,
@@ -157,6 +165,7 @@ pub enum Descriptor {
         element_size: Option<u32>,
         is_bytes: Option<bool>,
         is_caller_allocated: Option<bool>,
+        is_zero_terminated: Option<bool>,
     },
     Hashtable {
         #[napi(ts_type = "Descriptor")]
@@ -213,12 +222,14 @@ impl Descriptor {
                 shared_library,
                 get_type_fn_name,
                 is_signed,
+                members,
             } => Self::enum_flags(
                 EnumFlagsKind::Enum,
                 shared_library,
                 get_type_fn_name,
                 is_signed,
                 None,
+                members,
             ),
             Self::Flags {
                 shared_library,
@@ -231,18 +242,34 @@ impl Descriptor {
                 get_type_fn_name,
                 is_signed,
                 mask,
+                None,
             ),
-            Self::String { ownership, length } => Codec::String(StringCodec {
+            Self::String {
+                ownership,
+                length,
+                has_owned_storage,
+            } => Codec::String(StringCodec {
                 ownership,
                 length: string_length(length)?,
+                has_owned_storage: has_owned_storage.unwrap_or(false),
             }),
             Self::Object {
                 ownership,
                 is_call_scoped,
-            } => Codec::Object(ObjectCodec {
+                type_name,
+            } => Codec::Object(ObjectCodec::new(
                 ownership,
-                is_call_scoped: is_call_scoped.unwrap_or(false),
-            }),
+                is_call_scoped.unwrap_or(false),
+                type_name,
+            )),
+            other => other.into_instance_codec()?,
+        })
+    }
+
+    /// Builds the codec of a descriptor whose value is an instance somebody owns, which the
+    /// descriptor names the copy and release functions of.
+    fn into_instance_codec(self) -> Result<Codec> {
+        Ok(match self {
             Self::Boxed {
                 ownership,
                 type_name,
@@ -305,6 +332,7 @@ impl Descriptor {
                 element_size,
                 is_bytes,
                 is_caller_allocated,
+                is_zero_terminated,
             } => {
                 let mut codec = ArrayCodec::new(
                     item_descriptor.into_codec()?,
@@ -319,6 +347,9 @@ impl Descriptor {
                     is_bytes.unwrap_or(false),
                 )
                 .map_err(|error| Error::from_reason(error.to_string()))?;
+                if is_zero_terminated.unwrap_or(false) {
+                    codec = codec.zero_terminated();
+                }
                 if is_caller_allocated.unwrap_or(false) {
                     codec = codec
                         .caller_allocated()
@@ -379,6 +410,7 @@ impl Descriptor {
         get_type_fn_name: String,
         is_signed: bool,
         mask: Option<u32>,
+        members: Option<Vec<i32>>,
     ) -> Codec {
         Codec::EnumFlags(EnumFlagsCodec {
             kind,
@@ -390,6 +422,7 @@ impl Descriptor {
                 IntegerCodec::U32
             },
             mask,
+            members,
         })
     }
 

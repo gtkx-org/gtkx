@@ -285,7 +285,11 @@ const renderRecordFieldAccessor = (
     }
 
     const descriptor = context.hoistDescriptor(
-        renderDescriptor(context, field.type, "none", { isInline: isInlineField(context, field), isReceived: true }),
+        renderDescriptor(context, field.type, "none", {
+            isInline: isInlineField(context, field),
+            isReceived: true,
+            hasOwnedStorage: hasOwnedFieldStorage(field),
+        }),
     );
 
     const tsType = fieldTsType(context, field.type);
@@ -342,6 +346,9 @@ const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean =>
 
 const isInlineField = (context: ModuleContext, field: GirField): boolean =>
     field.type !== undefined && resolveInlineStructFields(context, field.type, field.cType) !== undefined;
+
+const hasOwnedFieldStorage = (field: GirField): boolean =>
+    field.cType !== undefined && field.cType.includes("*") && !field.cType.trimStart().startsWith("const ");
 
 const resolveInlineStructFields = (
     context: ModuleContext,
@@ -501,7 +508,12 @@ const visitInlineStructSlot = (
         return;
     }
 
-    const descriptor = context.hoistDescriptor(renderDescriptor(context, field.type, "none", { isReceived: true }));
+    const descriptor = context.hoistDescriptor(
+        renderDescriptor(context, field.type, "none", {
+            isReceived: true,
+            hasOwnedStorage: hasOwnedFieldStorage(field),
+        }),
+    );
     visitors.leaf({ jsName, descriptor, offset, slot, type: field.type });
 };
 
@@ -748,6 +760,7 @@ const inlineArrayGetterBlock = (options: InlineArrayAccessorOptions): string => 
 
 const inlineArraySetterBlock = (options: InlineArrayAccessorOptions): string => {
     const { jsName, tsType, descriptor, resolution } = options;
+    const count = String(resolution.count);
 
     const write =
         `write(getHandle(this), ${descriptor}, ${inlineArrayElementOffset(options)}, ` +
@@ -755,7 +768,7 @@ const inlineArraySetterBlock = (options: InlineArrayAccessorOptions): string => 
 
     const body = [
         "for (const [__index, __element] of __value.entries()) {",
-        indent(`if (__index >= ${String(resolution.count)}) {\n    break;\n}\n\n${write}`, 1),
+        indent(`if (__index >= ${count}) {\n    break;\n}\n\n${write}`, 1),
         "}",
     ].join("\n");
 
@@ -882,6 +895,7 @@ const setterBlock = (options: AccessorOptions): string =>
     );
 
 export {
+    hasOwnedFieldStorage,
     fieldTsType,
     isEmittableField,
     isInlineField,

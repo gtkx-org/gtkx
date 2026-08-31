@@ -10,13 +10,7 @@ fn boxed_type_from_bigint(gtype: Option<BigInt>) -> Result<Option<glib::Type>> {
         return Ok(None);
     };
     let type_ = type_from_bigint(&gtype, "alloc: boxed")?;
-    if !type_.is_a(glib::Type::BOXED) {
-        return Err(Error::new(
-            Status::InvalidArg,
-            format!("alloc: type '{}' is not a boxed type", type_.name()),
-        ));
-    }
-    Ok(Some(type_))
+    Ok(type_.is_a(glib::Type::BOXED).then_some(type_))
 }
 
 fn alloc_handle(size: usize, type_: Option<glib::Type>) -> Handle {
@@ -28,8 +22,10 @@ fn alloc_handle(size: usize, type_: Option<glib::Type>) -> Handle {
 }
 
 /// Allocates a zero-filled native memory block of `size` bytes and returns an opaque handle to it.
-/// The optional `gtype` must be a registered boxed `GType` and selects `g_boxed_free` as the
-/// handle's destructor instead of `g_free`.
+/// A `gtype` naming a registered boxed type selects `g_boxed_free` as the handle's destructor, so a
+/// type whose free function has to run is torn down properly. A `gtype` that is registered but not
+/// boxed, such as one from `g_pointer_type_register_static`, has no boxed free function to select,
+/// so the handle owns the block as a plain struct and releases it with `g_free`.
 #[napi(catch_unwind)]
 pub fn alloc(size: f64, gtype: Option<BigInt>) -> Result<External<Handle>> {
     let type_ = boxed_type_from_bigint(gtype)?;

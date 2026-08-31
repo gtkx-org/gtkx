@@ -24,6 +24,9 @@ fn read_string(value: Unknown<'_>) -> anyhow::Result<Option<String>> {
 pub struct StringCodec {
     pub ownership: Ownership,
     pub length: Option<usize>,
+    /// Whether the instance holding a written slot owns the string in it. Only then is the string a
+    /// write displaces released, which a `const char *` field the record does not own must not be.
+    pub has_owned_storage: bool,
 }
 
 impl Encoder for StringCodec {
@@ -91,20 +94,22 @@ impl PtrWriter for StringCodec {
             Some(s) => str_to_glib_full(&s)?.cast::<c_void>(),
             None => std::ptr::null_mut(),
         };
-        if self.ownership.is_borrowed() {
+        let displaces =
+            init.is_initialized() && (self.has_owned_storage || self.ownership.is_full());
+        let old_ptr = if displaces {
+            unsafe { slot.swap(new_ptr) }
+        } else {
             unsafe { slot.store(new_ptr) };
+            std::ptr::null_mut()
+        };
+        if !old_ptr.is_null() {
+            unsafe { glib::ffi::g_free(old_ptr) };
+        }
+        if self.ownership.is_borrowed() {
             return Ok(Some(ffi::PendingTransfer::new(
                 new_ptr,
                 ffi::ReleaseKind::GFree,
             )));
-        }
-        if !init.is_initialized() {
-            unsafe { slot.store(new_ptr) };
-            return Ok(None);
-        }
-        let old_ptr = unsafe { slot.swap(new_ptr) };
-        if !old_ptr.is_null() {
-            unsafe { glib::ffi::g_free(old_ptr) };
         }
         Ok(None)
     }

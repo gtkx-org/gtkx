@@ -169,6 +169,23 @@ test("object arguments reject values of the wrong type", () => {
     assert.throws(() => new GIMarshallingTests.Object({ int: "nope" }));
 });
 
+test("an object argument rejects an instance of an unrelated type", () => {
+    assert.throws(() => Regress.funcObjNullIn(new Utility.Object({})));
+    assert.throws(() => Regress.funcObjNullIn(new GIMarshallingTests.BoxedStruct({ long: 42n })));
+    assert.throws(() => Regress.funcObjNullIn(Regress.TestBoxed.new()));
+});
+
+test("an object argument still accepts null, subclasses and interface implementers", () => {
+    Regress.funcObjNullIn(null);
+    Regress.funcObjNullIn(new Regress.TestObj({}));
+    Regress.funcObjNullIn(new Regress.TestSubObj({}));
+    new GIMarshallingTests.InterfaceImpl({}).testInt8In(42);
+
+    const holder = new Regress.TestObj({});
+    holder.setBare(new GObject.Object({}));
+    assert.ok(holder.bare instanceof GObject.Object);
+});
+
 test("object calls surface native errors as exceptions", () => {
     assert.throws(() => GIMarshallingTests.Object.newFail(42));
 

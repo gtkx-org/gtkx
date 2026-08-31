@@ -7,6 +7,7 @@ use napi::Env;
 use napi::bindgen_prelude::Unknown;
 use napi_derive::napi;
 
+use crate::handle::Handle;
 use crate::{ffi, value};
 
 mod array;
@@ -182,7 +183,9 @@ impl SlotInit {
 #[enum_dispatch]
 pub trait Encoder {
     fn encode(&self, _env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
-        let ptr = value::handle_ptr(value, self.object_ptr_context())?;
+        let ptr = value::handle_ptr_checked(value, self.object_ptr_context(), |handle| {
+            self.check_instance(handle)
+        })?;
         let transferred = unsafe { self.ref_for_transfer(ptr)? };
         match self.transfer_release() {
             Some(release) if !transferred.is_null() => {
@@ -198,6 +201,12 @@ pub trait Encoder {
 
     fn object_ptr_context(&self) -> &'static str {
         "object"
+    }
+
+    /// Rejects a handle that does not reference an instance of the type this codec marshals. The
+    /// default accepts anything, for a codec whose value carries no type of its own.
+    fn check_instance(&self, _handle: &Handle) -> anyhow::Result<()> {
+        Ok(())
     }
 
     fn transfer_release(&self) -> Option<ffi::ReleaseKind> {

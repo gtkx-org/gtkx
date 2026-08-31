@@ -1,16 +1,28 @@
 import { copy, type Descriptor } from "@gtkx/native";
 import type { CallbackDescriptor, RefDescriptor } from "./descriptors.js";
-import { foldedLengthSources, type LengthSource, type LengthSources } from "./folded-lengths.js";
+import {
+    foldedLengthArgIndices,
+    foldedLengthSources,
+    type LengthSource,
+    type LengthSources,
+} from "./folded-lengths.js";
 import { fromNative, toNative } from "./native-value.js";
-import { getHandle } from "./registry.js";
+import { describeValueKind, getHandle } from "./registry.js";
 import { splitTupleResult } from "./tuple.js";
 import { copyValue } from "./value.js";
 import { popSeedFrame, pushSeedFrame, type RefSeeds } from "./vfunc-seeds.js";
 
 type Callback = (...args: unknown[]) => unknown;
 type CallbackKind = "vfunc" | "signal" | "callback";
-type CallbackTraits = { isInstanceBound: boolean; hasInstanceArg: boolean; hasFoldedLengths: boolean };
+type CallbackTraits = {
+    isInstanceBound: boolean;
+    hasInstanceArg: boolean;
+    hasFoldedLengths: boolean;
+    hasFoldedInputs: boolean;
+};
 type OutParam = { value: unknown; descriptor: Descriptor; argIndex: number };
+type CollectedArgs = { params: OutParam[]; argIndex: number; isFolded: boolean };
+type PartitionedArgs = { inputs: unknown[]; outParams: OutParam[] };
 type LengthLink = { target: OutParam; sources: LengthSource[] };
 type OutParamGroups = { lengthLinks: LengthLink[]; valueParams: OutParam[] };
 type OutValues = Map<number, unknown>;
@@ -31,12 +43,13 @@ type CallbackPlan = {
     lengthSources: LengthSources;
     hasOutParams: boolean;
     hasRefOutParams: boolean;
+    foldedInputIndices: ReadonlySet<number>;
 };
 
 const CALLBACK_TRAITS: Record<CallbackKind, CallbackTraits> = {
-    callback: { isInstanceBound: false, hasInstanceArg: false, hasFoldedLengths: true },
-    signal: { isInstanceBound: false, hasInstanceArg: true, hasFoldedLengths: false },
-    vfunc: { isInstanceBound: true, hasInstanceArg: true, hasFoldedLengths: true },
+    callback: { isInstanceBound: false, hasInstanceArg: false, hasFoldedLengths: true, hasFoldedInputs: true },
+    signal: { isInstanceBound: false, hasInstanceArg: true, hasFoldedLengths: false, hasFoldedInputs: false },
+    vfunc: { isInstanceBound: true, hasInstanceArg: true, hasFoldedLengths: true, hasFoldedInputs: false },
 };
 
 const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
@@ -62,9 +75,9 @@ const collectRefArg = (
     descriptor: RefDescriptor,
     wrappedValue: unknown,
     inputs: unknown[],
-    out: { params: OutParam[]; argIndex: number },
+    out: CollectedArgs,
 ): void => {
-    if (descriptor.inout === true) {
+    if (descriptor.inout === true && !out.isFolded) {
         inputs.push((wrappedValue as { value: unknown }).value);
     }
 
@@ -75,7 +88,7 @@ const collectCallbackArg = (
     descriptor: Descriptor | undefined,
     wrappedValue: unknown,
     inputs: unknown[],
-    out: { params: OutParam[]; argIndex: number },
+    out: CollectedArgs,
 ): void => {
     if (descriptor?.kind === "ref") {
         collectRefArg(descriptor, wrappedValue, inputs, out);
@@ -83,25 +96,24 @@ const collectCallbackArg = (
         return;
     }
 
-    inputs.push(wrappedValue);
+    if (!out.isFolded) {
+        inputs.push(wrappedValue);
+    }
 
     if (descriptor !== undefined && isCallerAllocatedOut(descriptor)) {
         out.params.push({ value: wrappedValue, descriptor, argIndex: out.argIndex });
     }
 };
 
-const partitionCallbackArgs = (
-    effectiveTypes: Descriptor[],
-    wrapped: unknown[],
-    start: number,
-): { inputs: unknown[]; outParams: OutParam[] } => {
+const partitionCallbackArgs = (plan: CallbackPlan, wrapped: unknown[]): PartitionedArgs => {
     const inputs: unknown[] = [];
     const params: OutParam[] = [];
-    const collected = { params, argIndex: start };
+    const collected: CollectedArgs = { params, argIndex: plan.start, isFolded: false };
 
-    for (let i = start; i < effectiveTypes.length; i++) {
+    for (let i = plan.start; i < plan.effectiveTypes.length; i++) {
         collected.argIndex = i;
-        collectCallbackArg(effectiveTypes[i], wrapped[i], inputs, collected);
+        collected.isFolded = plan.foldedInputIndices.has(i);
+        collectCallbackArg(plan.effectiveTypes[i], wrapped[i], inputs, collected);
     }
 
     return { inputs, outParams: params };
@@ -215,17 +227,15 @@ const wrapCallbackArgs = (effectiveTypes: Descriptor[], rawArgs: unknown[]): voi
 };
 
 const trimCallbackInputs = (plan: CallbackPlan, wrapped: unknown[]): unknown[] => {
-    const count = plan.effectiveTypes.length;
+    const inputs: unknown[] = [];
 
-    if (wrapped.length > count) {
-        wrapped.length = count;
+    for (let index = plan.start; index < plan.effectiveTypes.length; index++) {
+        if (!plan.foldedInputIndices.has(index)) {
+            inputs.push(wrapped[index]);
+        }
     }
 
-    for (let index = 0; index < plan.start; index++) {
-        wrapped.shift();
-    }
-
-    return wrapped;
+    return inputs;
 };
 
 const nativeReturn = (plan: CallbackPlan, primary: unknown): unknown =>
@@ -240,7 +250,7 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
         return nativeReturn(plan, plan.fn.apply(thisArg, trimCallbackInputs(plan, rawArgs)));
     }
 
-    const { inputs, outParams } = partitionCallbackArgs(effectiveTypes, rawArgs, plan.start);
+    const { inputs, outParams } = partitionCallbackArgs(plan, rawArgs);
     const result = applyCallback(plan, thisArg, inputs, outParams);
 
     if (outParams.length === 0) {
@@ -270,9 +280,22 @@ const getEffectiveTypes = (spec: CallbackSpec): Descriptor[] => {
 const wrapCallbackValue = (spec: CallbackDescriptor, callback: unknown): unknown =>
     callback == null ? callback : wrapCallback(callback as Callback, spec, "callback");
 
+const planFoldedInputIndices = (spec: CallbackSpec, hasFoldedInputs: boolean): ReadonlySet<number> =>
+    hasFoldedInputs ? foldedLengthArgIndices(spec) : new Set<number>();
+
+/** Thrown when a value passed where a callback, signal handler or vfunc is expected cannot be called. */
+class CallbackMarshalError extends TypeError {
+    /** Name callers match on when the error is caught as a plain `TypeError`. */
+    public override name = "CallbackMarshalError";
+}
+
 function wrapCallback(fn: Callback, spec: CallbackSpec, kind: CallbackKind): Callback {
+    if (typeof fn !== "function") {
+        throw new CallbackMarshalError(`Cannot marshal ${describeValueKind(fn)} into a ${kind}`);
+    }
+
     const effectiveTypes = getEffectiveTypes(spec);
-    const { isInstanceBound, hasInstanceArg, hasFoldedLengths } = CALLBACK_TRAITS[kind];
+    const { isInstanceBound, hasInstanceArg, hasFoldedLengths, hasFoldedInputs } = CALLBACK_TRAITS[kind];
     const start = hasInstanceArg ? 1 : 0;
 
     const plan: CallbackPlan = {
@@ -285,9 +308,10 @@ function wrapCallback(fn: Callback, spec: CallbackSpec, kind: CallbackKind): Cal
         lengthSources: planLengthSources(spec, hasFoldedLengths),
         hasOutParams: haveOutParamArgs(effectiveTypes, start),
         hasRefOutParams: haveRefOutParamArgs(effectiveTypes, start),
+        foldedInputIndices: planFoldedInputIndices(spec, hasFoldedInputs),
     };
 
     return (...rawArgs: unknown[]): unknown => runCallback(plan, rawArgs);
 }
 
-export { isCallerAllocatedOut, wrapCallbackValue, wrapCallback };
+export { CallbackMarshalError, isCallerAllocatedOut, wrapCallbackValue, wrapCallback };

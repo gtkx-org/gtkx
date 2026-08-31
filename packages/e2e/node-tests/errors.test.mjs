@@ -258,3 +258,42 @@ test("glib error field writes reject values the fields cannot hold", () => {
         error.message = 42;
     });
 });
+
+test("overwriting a string field releases the string it displaces", () => {
+    const domain = GLib.quarkFromString("gtkx-field-write");
+    const error = GLib.Error.newLiteral(domain, 1, "B".repeat(40));
+
+    error.message = "CC";
+    assert.equal(error.message, "CC");
+
+    error.message = "D".repeat(40);
+    assert.equal(error.message, "D".repeat(40));
+});
+
+test("a string field written repeatedly on a gtkx-allocated struct still round-trips", () => {
+    const boxed = new GIMarshallingTests.BoxedStruct({ long: 1n, string: "first" });
+    boxed.string = "second";
+    assert.equal(boxed.string, "second");
+
+    const readBack = boxed.string;
+    boxed.string = readBack;
+    assert.equal(boxed.string, "second");
+});
+
+test("a callee that rejects its argument fails the call instead of the process", () => {
+    assert.throws(() => Regress.testIntValueArg(42n));
+
+    const text = new GObject.Value();
+    text.init(GObject.typeFromName("gchararray"));
+    assert.throws(() => text.getInt());
+});
+
+test("a rejected call leaves the binding usable", () => {
+    assert.throws(() => Regress.testIntValueArg(42n));
+
+    const value = new GObject.Value();
+    value.init(GObject.typeFromName("gint"));
+    value.setInt(42);
+    assert.equal(Regress.testIntValueArg(value), 42);
+    assert.equal(Regress.testIntValueArg(42), 42);
+});

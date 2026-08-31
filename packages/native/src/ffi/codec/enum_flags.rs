@@ -35,6 +35,7 @@ pub struct EnumFlagsCodec {
     pub get_type_fn_name: String,
     pub storage: IntegerCodec,
     pub mask: Option<u32>,
+    pub members: Option<Vec<i32>>,
 }
 
 impl IntegerBacked for EnumFlagsCodec {
@@ -51,6 +52,16 @@ impl EnumFlagsCodec {
     }
 
     fn validate_enum_value(&self, value: i32) -> anyhow::Result<()> {
+        if self.get_type_fn_name.is_empty() {
+            let Some(members) = self.members.as_deref() else {
+                return Ok(());
+            };
+            anyhow::ensure!(
+                members.contains(&value),
+                "Enum value {value} is not a valid member of the enumeration"
+            );
+            return Ok(());
+        }
         let type_ = self.resolve_type()?;
         let enum_class = glib::EnumClass::with_type(type_).ok_or_else(|| {
             anyhow::anyhow!(
@@ -96,7 +107,7 @@ impl EnumFlagsCodec {
 }
 
 impl EnumFlagsCodec {
-    fn validate(&self, value: Unknown<'_>) -> anyhow::Result<()> {
+    pub(super) fn validate(&self, value: Unknown<'_>) -> anyhow::Result<()> {
         if !matches!(value.get_type()?, ValueType::Number) {
             return Ok(());
         }

@@ -155,6 +155,12 @@ type ArrayOptions = {
      * decodes the elements the callee wrote into it.
      */
     isCallerAllocated?: boolean | undefined;
+    /**
+     * Whether a length-bounded array also ends at a zero element, as `zero-terminated=1` alongside
+     * a length declares: the encoded buffer carries one zero element past the declared length, so a
+     * callee that walks to the terminator instead of trusting the count stays inside it.
+     */
+    isZeroTerminated?: boolean | undefined;
 };
 
 /** Where a cursor array's base buffer and total length come from. */
@@ -240,18 +246,50 @@ const isGtypeDescriptor = (descriptor: Descriptor): descriptor is TypeDescriptor
 
 /**
  * Builds a descriptor for a C string, whose optional length sizes the caller-allocated buffer
- * used when the string is passed by reference.
+ * used when the string is passed by reference. `hasOwnedStorage` marks a record field whose record
+ * owns the string in it, so that writing the field releases the string it displaces.
  */
-const stringT = (ownership: Ownership = "borrowed", length?: number): StringDescriptor =>
-    length === undefined ? { kind: "string", ownership } : { kind: "string", ownership, length };
+const stringT = (
+    ownership: Ownership = "borrowed",
+    length?: number,
+    hasOwnedStorage?: boolean,
+): StringDescriptor => {
+    const result: StringDescriptor = { kind: "string", ownership };
+
+    if (length !== undefined) {
+        result.length = length;
+    }
+
+    if (hasOwnedStorage === true) {
+        result.hasOwnedStorage = true;
+    }
+
+    return result;
+};
 
 /**
  * Builds a descriptor for a `GObject`, wrapped in the class registered for its runtime GType.
  * `fallbackClass` names the wrapper class of the declared type, retaining it in tree-shaken
  * bundles and wrapping the value in it when nothing at least as derived is registered.
+ * `typeName` is the declared type's GType name, which an encoded instance must be one of.
  */
-const objectT = (ownership: Ownership = "borrowed", fallbackClass?: () => AnyClass): ObjectDescriptor =>
-    fallbackClass === undefined ? { kind: "object", ownership } : { kind: "object", ownership, fallbackClass };
+const objectT = (
+    ownership: Ownership = "borrowed",
+    fallbackClass?: () => AnyClass,
+    typeName?: string,
+): ObjectDescriptor => {
+    const result: ObjectDescriptor = { kind: "object", ownership };
+
+    if (fallbackClass !== undefined) {
+        result.fallbackClass = fallbackClass;
+    }
+
+    if (typeName !== undefined) {
+        result.typeName = typeName;
+    }
+
+    return result;
+};
 
 /** Wraps a descriptor in a pointer to it, for an output or inout argument. */
 const refT = (innerDescriptor: Descriptor, isInout = false): RefDescriptor =>
@@ -269,13 +307,30 @@ const hashTableT = (
     ownership,
 });
 
-/** Builds a descriptor for an enumeration, resolving its GType from the named `get_type` function. */
-const enumT = (sharedLibrary: string, typeFnName: string, isSigned: boolean): EnumDescriptor => ({
-    kind: "enum",
-    sharedLibrary,
-    getTypeFnName: typeFnName,
-    isSigned,
-});
+/**
+ * Builds a descriptor for an enumeration, resolving its GType from the named `get_type` function.
+ * For an enumeration without a registered GType, pass empty library and function names and supply
+ * `members`, the values the GIR declares, which anything outside is rejected against.
+ */
+const enumT = (
+    sharedLibrary: string,
+    typeFnName: string,
+    isSigned: boolean,
+    members?: number[],
+): EnumDescriptor => {
+    const result: EnumDescriptor = {
+        kind: "enum",
+        sharedLibrary,
+        getTypeFnName: typeFnName,
+        isSigned,
+    };
+
+    if (members !== undefined) {
+        result.members = members;
+    }
+
+    return result;
+};
 
 /**
  * Builds a descriptor for a flags type, resolving its GType from the named `get_type` function.
@@ -453,6 +508,10 @@ const arrayT = (
 
     if (options.isCallerAllocated === true) {
         result.isCallerAllocated = true;
+    }
+
+    if (options.isZeroTerminated === true) {
+        result.isZeroTerminated = true;
     }
 
     return result;

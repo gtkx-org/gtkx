@@ -28,6 +28,7 @@ pub struct ArrayCodec {
     pub element_size: Option<usize>,
     pub(crate) is_bytes: bool,
     pub(crate) caller_allocated: bool,
+    pub(crate) zero_terminated: bool,
     pub(crate) container: ArrayContainerCodec,
 }
 
@@ -51,8 +52,18 @@ impl ArrayCodec {
             element_size,
             is_bytes,
             caller_allocated: false,
+            zero_terminated: false,
             container: ArrayContainerCodec::from_kind(kind, bounds)?,
         })
+    }
+
+    /// Marks a length-bounded array whose GIR also declares `zero-terminated=1`. The callee takes
+    /// its count from the length argument but may still walk to the terminating zero element, so
+    /// the encoded buffer carries one zero element past the declared length.
+    #[must_use]
+    pub fn zero_terminated(mut self) -> Self {
+        self.zero_terminated = true;
+        self
     }
 
     /// Marks the array as a caller-allocated out parameter: the runtime allocates the buffer the
@@ -74,7 +85,8 @@ impl ArrayCodec {
         let Some(extent) = self.container.fixed_extent() else {
             bail!("A caller-allocated array descriptor needs a fixed size");
         };
-        Ok(Some(self.element_stride()? * extent))
+        let slots = extent + usize::from(self.zero_terminated);
+        Ok(Some(self.element_stride()? * slots))
     }
 
     pub(crate) fn is_length_bounded(&self) -> bool {
@@ -424,7 +436,7 @@ impl ArrayCodec {
         encoder: &dyn ArrayKindEncoder,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
-        self.encode_items_with_terminator(env, encoder, array, false)
+        self.encode_items_with_terminator(env, encoder, array, self.zero_terminated)
     }
 
     fn encode_zero_terminated_items(
@@ -657,6 +669,11 @@ impl ArrayCodec {
             view.kind(),
             self.item_codec
         );
+        if self.zero_terminated {
+            // The terminator cannot be written into the JavaScript buffer, so a zero-terminated
+            // array always hands the callee a copy carrying one zero element past the view.
+            return Ok(ffi::Stash::Storage(terminated_view_storage(view)));
+        }
         Ok(match encoding {
             ViewEncoding::Passthrough => ffi::Stash::Ptr(view.ptr()),
             ViewEncoding::Copy => ffi::Stash::Storage(owned_view_storage(view)),

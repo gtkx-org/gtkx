@@ -4,7 +4,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getClassType, registerClass } from "@gtkx/runtime";
+import { getClassType, registerClass, typeFromName } from "@gtkx/runtime";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { test } from "node:test";
@@ -378,4 +378,36 @@ test("a render replay lent to its own filter throws once the filter has returned
     assert.equal(replay.filterNode(source), source);
     assert.equal(escaped.length, 1);
     assert.throws(() => escaped[0].filterNode(colorNode(0.5)));
+});
+
+test("fundamental GTK types are not constructible with new", () => {
+    assert.throws(() => new Gsk.RenderNode({}));
+    assert.throws(() => new Gsk.ColorNode({}));
+    assert.throws(() => new Gsk.ContainerNode({}));
+    assert.throws(() => new Gtk.Expression({}));
+    assert.throws(() => new Gtk.ConstantExpression({}));
+    assert.throws(() => new Gdk.Event({}));
+});
+
+test("fundamental GTK instances still come from their own constructors", () => {
+    const node = colorNode(1);
+    assert.ok(node instanceof Gsk.ColorNode);
+    assert.ok(node instanceof Gsk.RenderNode);
+    assert.equal(node.getColor().red, 1);
+
+    const expression = stringExpression();
+    assert.ok(expression instanceof Gtk.PropertyExpression);
+    assert.ok(expression instanceof Gtk.Expression);
+    assert.equal(expression.getValueType(), typeFromName("gchararray"));
+});
+
+test("a gtk precondition failure throws out of the call that caused it", () => {
+    const box = Gtk.Box.new(Gtk.Orientation.VERTICAL, 0);
+    const adopted = Gtk.Label.new("a widget the box adopted");
+    box.append(adopted);
+
+    assert.throws(() => box.remove(Gtk.Label.new("a widget the box never adopted")));
+
+    box.remove(adopted);
+    assert.equal(box.getFirstChild(), null);
 });

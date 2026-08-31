@@ -2,7 +2,7 @@ use anyhow::bail;
 
 use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
-use crate::handle::{Fundamental, Handle, RefFn, UnrefFn};
+use crate::handle::{Fundamental, Handle, HandleClass, RefFn, UnrefFn};
 
 #[derive(Debug, Clone)]
 pub struct FundamentalCodec {
@@ -39,6 +39,33 @@ impl FundamentalCodec {
 impl Encoder for FundamentalCodec {
     fn object_ptr_context(&self) -> &'static str {
         "Fundamental"
+    }
+
+    /// The release function the codec is about to call is the exact primitive here: a fundamental
+    /// need not be a `GTypeInstance` at all, so reading a `GType` out of an arbitrary fundamental
+    /// pointer would itself be the unsafe act the check exists to prevent.
+    fn check_instance(&self, handle: &Handle) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            matches!(
+                handle.class(),
+                HandleClass::Fundamental | HandleClass::Opaque
+            ),
+            "Expected an instance of the fundamental type released by {}, got a {:?} handle",
+            self.unref_fn_name,
+            handle.class()
+        );
+
+        let (Some(expected), Some(actual)) = (self.lookup_fns()?.1, handle.fundamental_unref_fn())
+        else {
+            return Ok(());
+        };
+        anyhow::ensure!(
+            std::ptr::fn_addr_eq(expected, actual),
+            "Expected an instance of the fundamental type released by {}, got one released by a different function",
+            self.unref_fn_name
+        );
+
+        Ok(())
     }
 
     fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
@@ -110,6 +137,7 @@ impl PtrWriter for FundamentalCodec {
                 slot,
                 value,
                 "Fundamental field write",
+                |handle| Encoder::check_instance(self, handle),
                 |new_ptr| unsafe { ref_fn.map_or(new_ptr, |f| f(new_ptr)) },
                 ref_fn.and(unref_fn).map(ffi::ReleaseKind::Fundamental),
             );
@@ -119,6 +147,7 @@ impl PtrWriter for FundamentalCodec {
             value,
             init,
             "Fundamental field write",
+            |handle| Encoder::check_instance(self, handle),
             |new_ptr| unsafe { ref_fn.map_or(new_ptr, |f| f(new_ptr)) },
             |old_ptr| unsafe {
                 if let Some(unref_fn) = unref_fn {

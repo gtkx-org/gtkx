@@ -245,6 +245,92 @@ test("array signal arguments decode to JS arrays", () => {
     assert.deepEqual(strvs[1], []);
 });
 
+test("a handler's return value reaches the emitter even for a void declared marshaller", () => {
+    const obj = new Regress.TestObj({});
+    obj.connect("sig-with-uint64-prop", () => 99n);
+    obj.connect("sig-with-int64-prop", () => 77n);
+
+    assert.equal(obj.emit("sig-with-uint64-prop", 7n), 99n);
+    assert.equal(obj.emit("sig-with-int64-prop", 42n), 77n);
+    assert.equal(obj.emit("sig-with-uint64-prop", 0n), 99n);
+});
+
+test("the last connected handler's return value is the one the emitter sees", () => {
+    const obj = new Regress.TestObj({});
+    obj.connect("sig-with-int64-prop", () => 1n);
+    obj.connect("sig-with-int64-prop", () => 2n);
+
+    assert.equal(obj.emit("sig-with-int64-prop", 0n), 2n);
+});
+
+test("a string returning signal hands the emitter the string the handler built", () => {
+    const obj = new Regress.AnnotationObject({});
+    const seen = [];
+    obj.connect("attribute-signal", (arg1, arg2) => {
+        seen.push([arg1, arg2]);
+
+        return `${arg1}-${arg2}`;
+    });
+
+    assert.equal(obj.emit("attribute-signal", "one", "two"), "one-two");
+    assert.deepEqual(seen, [["one", "two"]]);
+});
+
+test("a handler returning nothing leaves the emitter with the default value", () => {
+    const obj = new Regress.TestObj({});
+    const calls = [];
+    obj.connect("sig-with-uint64-prop", () => {
+        calls.push(true);
+    });
+
+    assert.equal(obj.emit("sig-with-uint64-prop", 7n), 0n);
+    assert.equal(calls.length, 1);
+});
+
+test("a transfer full strv signal argument reaches the handler without being freed twice", () => {
+    const obj = new Regress.TestObj({});
+    const seen = [];
+    obj.connect("sig-with-strv-full", (strs) => {
+        seen.push(strs);
+    });
+
+    obj.emitSigWithGstrvFull();
+    obj.emitSigWithGstrvFull();
+    assert.deepEqual(seen, [
+        ["foo", "bar", "baz"],
+        ["foo", "bar", "baz"],
+    ]);
+});
+
+test("two handlers on the same transfer full signal both see the argument", () => {
+    const obj = new Regress.TestObj({});
+    const seen = [];
+    obj.connect("sig-with-strv-full", (strs) => {
+        seen.push(strs);
+    });
+
+    obj.connect("sig-with-strv-full", (strs) => {
+        seen.push(strs);
+    });
+
+    obj.emitSigWithGstrvFull();
+    assert.equal(seen.length, 2);
+    assert.deepEqual(seen[0], ["foo", "bar", "baz"]);
+    assert.deepEqual(seen[1], ["foo", "bar", "baz"]);
+});
+
+test("a transfer full object signal argument keeps its reference across emissions", () => {
+    const obj = new Regress.TestObj({});
+    const seen = [];
+    obj.connect("sig-with-obj-full", (received) => {
+        seen.push(received.int);
+    });
+
+    obj.emitSigWithObjFull();
+    obj.emitSigWithObjFull();
+    assert.deepEqual(seen, [5, 5]);
+});
+
 test("the gerror signal argument decodes and accepts null", () => {
     const obj = new Regress.TestObj({});
     const errors = [];

@@ -64,7 +64,21 @@ pub fn install(env: Env) -> napi::Result<()> {
     unsafe { install_dispatch_context(raw) }?;
     NODE_ENV.set(raw);
 
+    // Registered before the runloop's own hook and therefore, since Node drains them
+    // last-registered-first, run after it: nothing may reach the async context or the resource
+    // reference once the environment they belong to is gone.
+    env.add_env_cleanup_hook((), |()| uninstall())?;
+
     Ok(())
+}
+
+/// Forgets the environment this thread was installed on, for a thread whose environment is going
+/// away. Only thread-locals are cleared: a cleanup hook must not call into JavaScript, and Node
+/// reclaims the async context and the resource reference itself.
+fn uninstall() {
+    NODE_ENV.set(std::ptr::null_mut());
+    ASYNC_CONTEXT.set(std::ptr::null_mut());
+    RESOURCE_REF.set(std::ptr::null_mut());
 }
 
 pub fn is_installed_on_current_thread() -> bool {

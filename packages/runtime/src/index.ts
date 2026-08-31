@@ -3,6 +3,8 @@ import "./exit-hook.js";
 /** @public */
 export { type ApplicationClass, type CommandLineApplication, createApplication } from "./application-class.js";
 /** @public */
+export { CallbackMarshalError } from "./callback.js";
+/** @public */
 export { type ClosureCallback, ClosureMarshalError, toClosure, tryToClosure } from "./closure.js";
 /** @public */
 export { createErrorDomain, type ErrorDomain } from "./error.js";
@@ -15,7 +17,7 @@ export { offSignal, onceSignal, onSignal } from "./listeners.js";
 /** @public */
 export { installMixins, type Mixin } from "./mixin.js";
 /** @public */
-export { fromNative, toNative } from "./native-value.js";
+export { fromNative, toHashTableEntries, toNative } from "./native-value.js";
 /** @public */
 export {
     type ConstructBinding,

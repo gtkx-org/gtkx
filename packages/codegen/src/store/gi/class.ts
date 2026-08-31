@@ -32,7 +32,7 @@ import {
     renderStaticHead,
     staticMembers,
 } from "./callables.js";
-import { renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
+import { isFundamentalClass, renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
 import { getDoc } from "./doc-spec.js";
 import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
@@ -118,7 +118,8 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
     appendMemberDeclarations({ context, klass, className, accessors, implemented });
 };
 
-const classModifier = (klass: GirClass): string => (klass.isAbstract ? "abstract " : "");
+const classModifier = (context: ModuleContext, klass: GirClass): string =>
+    klass.isAbstract || isFundamentalClass(context, klass) ? "abstract " : "";
 
 const renderImplementsClause = (implemented: ImplementedRef[]): string => {
     const typeRefs = implemented.map((ref) => omittedTypeRef(ref.typeRef, ref.conflicts));
@@ -138,7 +139,7 @@ const declareClass = (context: ModuleContext, options: ClassDeclarationOptions):
         className,
         doc: getDoc(klass),
         owner: klass.name,
-        localDeclaration: `${classModifier(klass)}class ${localName}${heritage} {\n${body}\n}`,
+        localDeclaration: `${classModifier(context, klass)}class ${localName}${heritage} {\n${body}\n}`,
         registrations,
         hasInstanceInterface: true,
     });
@@ -184,7 +185,7 @@ const renderClassMembers = (
 ): ClassMembers => {
     const className = sanitizeTypeIdentifier(klass.name);
     const members: string[] = [gtypeMemberDeclaration(context)];
-    const constructorBlock = renderClassConstructor(context, klass, className, hasParent);
+    const constructorBlock = renderClassConstructor(context, { klass, className, hasParent, callables });
 
     if (constructorBlock !== undefined) {
         members.push(constructorBlock);

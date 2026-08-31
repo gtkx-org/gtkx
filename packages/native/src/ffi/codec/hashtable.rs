@@ -2,7 +2,7 @@ use anyhow::bail;
 
 use super::prelude::*;
 use super::string::str_to_glib_full;
-use crate::ffi::codec::Codec;
+use crate::ffi::codec::{BigIntCodec, Codec, EnumFlagsCodec, FloatCodec, IntegerCodec};
 use crate::ffi::{HashTableData, StashData, StashStorage};
 
 type CVoidPtr = *mut c_void;
@@ -23,9 +23,11 @@ fn entry_ownership_is_full(codec: &Codec) -> bool {
 #[derive(Clone, Debug)]
 pub enum HashTableEntryCodec {
     String,
-    Integer,
+    Integer(IntegerCodec),
+    EnumFlags(EnumFlagsCodec),
     Boolean,
-    Float,
+    Float(FloatCodec),
+    BigInt(BigIntCodec),
     Handle(Box<Codec>),
     PtrArray(Box<Codec>),
 }
@@ -37,35 +39,65 @@ impl HashTableEntryCodec {
         }
         match codec {
             Codec::String(_) => Some(Self::String),
-            Codec::Integer(_) => Some(Self::Integer),
+            Codec::Integer(integer) => Some(Self::Integer(*integer)),
+            Codec::EnumFlags(enum_flags) => Some(Self::EnumFlags(enum_flags.clone())),
             Codec::Boolean(_) => Some(Self::Boolean),
-            Codec::Float(_) => Some(Self::Float),
+            Codec::Float(float) => Some(Self::Float(*float)),
+            Codec::BigInt(bigint) => Some(Self::BigInt(*bigint)),
             Codec::Array(array_codec) => array_codec.ptr_array_item().map(Self::PtrArray),
             _ => None,
         }
     }
 
-    pub fn hash_and_equal(&self) -> (glib::ffi::GHashFunc, glib::ffi::GEqualFunc) {
+    /// Whether the element is too wide, or too fractional, for the table's pointer slot, so that
+    /// it is held behind a `g_malloc`ed copy the table's destroy notify frees.
+    fn is_boxed(&self) -> bool {
+        matches!(self, Self::Float(_) | Self::BigInt(_))
+    }
+
+    pub fn hash_and_equal(&self) -> anyhow::Result<(glib::ffi::GHashFunc, glib::ffi::GEqualFunc)> {
         match self {
-            Self::String => (Some(glib::ffi::g_str_hash), Some(glib::ffi::g_str_equal)),
-            Self::Float => (
+            Self::String => Ok((Some(glib::ffi::g_str_hash), Some(glib::ffi::g_str_equal))),
+            Self::Float(FloatCodec::F64) => Ok((
                 Some(glib::ffi::g_double_hash),
                 Some(glib::ffi::g_double_equal),
+            )),
+            Self::Float(FloatCodec::F32) => bail!(
+                "A 32-bit float cannot be a GHashTable key: GLib has no hash function that reads a gfloat"
             ),
-            Self::Integer | Self::Boolean | Self::Handle(_) | Self::PtrArray(_) => (
+            Self::BigInt(_) => bail!(
+                "A 64-bit integer cannot be a GHashTable key: g_int64_hash dereferences every key the table is handed, including the ones the callee passes beside it, and only the entries encoded here are boxed"
+            ),
+            Self::Integer(_)
+            | Self::EnumFlags(_)
+            | Self::Boolean
+            | Self::Handle(_)
+            | Self::PtrArray(_) => Ok((
                 Some(glib::ffi::g_direct_hash),
                 Some(glib::ffi::g_direct_equal),
-            ),
+            )),
         }
     }
 
     pub fn free_func(&self) -> anyhow::Result<glib::ffi::GDestroyNotify> {
         match self {
-            Self::String | Self::Float => Ok(Some(glib::ffi::g_free)),
-            Self::Integer | Self::Boolean => Ok(None),
+            Self::String | Self::Float(_) | Self::BigInt(_) => Ok(Some(glib::ffi::g_free)),
+            Self::Integer(_) | Self::EnumFlags(_) | Self::Boolean => Ok(None),
             Self::Handle(codec) => Self::transferred_entry_destroy(codec),
             Self::PtrArray(_) => Ok(Some(g_ptr_array_unref_wrapper)),
         }
+    }
+
+    /// Packs a whole-number element into the table's pointer slot the way `GINT_TO_POINTER` does,
+    /// after the same range check a scalar argument of that width gets.
+    fn pointer_word(codec: IntegerCodec, value: Unknown<'_>) -> anyhow::Result<*mut c_void> {
+        let ValueType::Number = value.get_type()? else {
+            bail!("Expected number in GHashTable")
+        };
+        let n = value::read_napi::<f64>(value)?;
+        codec.check_range(n)?;
+
+        Ok(direct_pointer(codec, n))
     }
 
     fn transferred_entry_destroy(codec: &Codec) -> anyhow::Result<glib::ffi::GDestroyNotify> {
@@ -97,25 +129,26 @@ impl HashTableEntryCodec {
                 };
                 Ok(str_to_glib_full(&value::read_napi::<String>(value)?)?.cast::<c_void>())
             }
-            Self::Integer => match value.get_type()? {
-                ValueType::Number => Ok(direct_pointer(value::read_napi::<f64>(value)?)),
-                _ => bail!("Expected number in GHashTable"),
-            },
+            Self::Integer(integer) => Self::pointer_word(*integer, value),
+            Self::EnumFlags(enum_flags) => {
+                enum_flags.validate(value)?;
+
+                Self::pointer_word(enum_flags.storage, value)
+            }
             Self::Boolean => match value.get_type()? {
                 ValueType::Boolean => {
                     Ok(isize::from(value::read_napi::<bool>(value)?) as *mut c_void)
                 }
                 _ => bail!("Expected boolean in GHashTable"),
             },
-            Self::Float => match value.get_type()? {
-                ValueType::Number => {
-                    let n = value::read_napi::<f64>(value)?;
-                    Ok(unsafe {
-                        glib::ffi::g_memdup2((&raw const n).cast::<c_void>(), size_of::<f64>())
-                    })
-                }
-                _ => bail!("Expected number in GHashTable for float"),
-            },
+            Self::Float(float) => {
+                let ValueType::Number = value.get_type()? else {
+                    bail!("Expected number in GHashTable for float")
+                };
+
+                boxed_entry(&float.checked_to_stash(value::read_napi::<f64>(value)?)?)
+            }
+            Self::BigInt(bigint) => boxed_entry(&bigint.entry_stash(value)?),
             Self::Handle(codec) => {
                 let ptr = value::handle_ptr(value, "GHashTable entry")?;
                 unsafe { codec.ref_for_transfer(ptr) }
@@ -168,9 +201,32 @@ unsafe extern "C" fn g_object_unref_wrapper(ptr: *mut c_void) {
     }
 }
 
-#[allow(clippy::cast_possible_truncation)]
-fn direct_pointer(value: f64) -> *mut c_void {
-    value as isize as *mut c_void
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn direct_pointer(codec: IntegerCodec, value: f64) -> *mut c_void {
+    match codec {
+        IntegerCodec::I8 | IntegerCodec::I16 | IntegerCodec::I32 | IntegerCodec::I64 => {
+            value as i64 as isize as *mut c_void
+        }
+        IntegerCodec::U8 | IntegerCodec::U16 | IntegerCodec::U32 | IntegerCodec::U64 => {
+            value as u64 as usize as *mut c_void
+        }
+    }
+}
+
+/// Copies a scalar that does not fit the table's pointer slot onto the heap, which is where the
+/// C side reads it back from through a `gfloat *`, `gdouble *`, `gint64 *` or `guint64 *`.
+fn boxed_entry(stash: &ffi::Stash) -> anyhow::Result<*mut c_void> {
+    match stash {
+        ffi::Stash::F32(v) => Ok(memdup(&v.to_ne_bytes())),
+        ffi::Stash::F64(v) => Ok(memdup(&v.to_ne_bytes())),
+        ffi::Stash::I64(v) => Ok(memdup(&v.to_ne_bytes())),
+        ffi::Stash::U64(v) => Ok(memdup(&v.to_ne_bytes())),
+        other => bail!("Expected a scalar Stash for a GHashTable element, got {other:?}"),
+    }
+}
+
+fn memdup(bytes: &[u8]) -> *mut c_void {
+    unsafe { glib::ffi::g_memdup2(bytes.as_ptr().cast::<c_void>(), bytes.len()) }
 }
 
 fn release_transferred(destroy: glib::ffi::GDestroyNotify, ptr: *mut c_void) {
@@ -217,7 +273,7 @@ impl HashTableCodec {
         let value_free = value_encoder.free_func()?;
         let retains_keys = self.retains_entries(key_encoder, &self.key_codec);
         let retains_values = self.retains_entries(value_encoder, &self.value_codec);
-        let (hash_func, equal_func) = key_encoder.hash_and_equal();
+        let (hash_func, equal_func) = key_encoder.hash_and_equal()?;
         let hash_table = unsafe {
             glib::ffi::g_hash_table_new_full(
                 hash_func,
@@ -289,10 +345,7 @@ impl HashTableCodec {
     /// pointer itself owns no memory.
     fn retains_entries(&self, encoder: &HashTableEntryCodec, codec: &Codec) -> bool {
         self.ownership.is_full()
-            && matches!(
-                encoder,
-                HashTableEntryCodec::String | HashTableEntryCodec::Float
-            )
+            && (matches!(encoder, HashTableEntryCodec::String) || encoder.is_boxed())
             && !entry_ownership_is_full(codec)
     }
 }
@@ -335,7 +388,7 @@ impl HashTableCodec {
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(hash_ptr) = stash.as_non_null_ptr("GHashTable")? else {
-            return value::js_array(env, Vec::new()).map_err(Into::into);
+            return Ok(value::js_null(env)?);
         };
 
         let pairs: anyhow::Result<Vec<Unknown<'e>>> = (|| {

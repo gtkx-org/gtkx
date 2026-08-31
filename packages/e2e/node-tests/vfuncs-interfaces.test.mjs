@@ -2,6 +2,8 @@ import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
+import * as Regress from "@gtkx/gi/regress";
+import * as WarnLib from "@gtkx/gi/warnlib";
 import { callParent, getClassType, getInstanceType, registerClass, typeIsA } from "@gtkx/runtime";
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -775,4 +777,22 @@ test("an abstract registered class cannot be constructed but still serves as a p
     const instance = new Registered({});
     instance.methodInt8In(21);
     assert.deepEqual(seen, [21]);
+});
+
+test("interfaces are not constructible with new", () => {
+    assert.throws(() => new Gio.ListModel());
+    assert.throws(() => new Regress.TestInterface());
+    assert.throws(() => new WarnLib.Whatever());
+});
+
+test("interfaces still narrow implementers and dispatch their methods", () => {
+    const store = Gio.ListStore.new(getClassType(GObject.Object));
+    assert.ok(store instanceof Gio.ListModel);
+    assert.equal(store.getNItems(), 0);
+    store.append(new GObject.Object({}));
+    assert.equal(store.getNItems(), 1);
+
+    const sub = Regress.TestSubObj.new();
+    assert.ok(sub instanceof Regress.TestInterface);
+    assert.equal(sub.instanceMethod(), 0);
 });

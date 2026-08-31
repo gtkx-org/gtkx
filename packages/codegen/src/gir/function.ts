@@ -6,6 +6,7 @@ import { HIDDEN_SYMBOLS } from "./hidden-symbols.js";
 import { PARAMETERS_MISSING_NULLABLE_ANNOTATION } from "./nullable-overrides.js";
 import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallable } from "./parameter.js";
 import { attr, getChild, type RawNode } from "./parse.js";
+import { RETURNS_MISSING_TRANSFER_NONE } from "./transfer-overrides.js";
 import { RETURNS_MISSING_UCS4_ARRAY_TYPE } from "./ucs4-overrides.js";
 
 /** A callable declared by a GIR namespace, class, or record: a function, a method, or a constructor. */
@@ -106,6 +107,14 @@ const bindMissingUcs4ReturnArray = (fn: GirFunction, context: ParseContext): Gir
     return fn;
 };
 
+const relaxMissingTransferNone = (fn: GirFunction): GirFunction => {
+    if (fn.cIdentifier !== undefined && RETURNS_MISSING_TRANSFER_NONE.has(fn.cIdentifier)) {
+        fn.returnValue.transferOwnership = "none";
+    }
+
+    return fn;
+};
+
 const annotatedFinishFunc = (node: RawNode, cIdentifier: string | undefined): string | undefined => {
     const annotated = attr(node, "glib:finish-func");
 
@@ -135,7 +144,9 @@ const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => 
         instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode, context),
     };
 
-    return bindMissingUcs4ReturnArray(bindMissingArrayExtent(relaxMissingNullable(fn)), context);
+    const relaxed = relaxMissingTransferNone(relaxMissingNullable(fn));
+
+    return bindMissingUcs4ReturnArray(bindMissingArrayExtent(relaxed), context);
 };
 
 export { functionFromNode, type GirFunction };

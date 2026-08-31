@@ -22,6 +22,16 @@ pub fn read_napi<T: FromNapiValue>(value: Unknown<'_>) -> Result<T> {
 }
 
 pub fn handle_ptr(value: Unknown<'_>, type_name: &str) -> anyhow::Result<*mut c_void> {
+    handle_ptr_checked(value, type_name, |_| Ok(()))
+}
+
+/// Same as [`handle_ptr`], but runs `check` against the handle before yielding its pointer, so a
+/// codec can reject an instance of the wrong type instead of handing it to C.
+pub fn handle_ptr_checked(
+    value: Unknown<'_>,
+    type_name: &str,
+    check: impl FnOnce(&Handle) -> anyhow::Result<()>,
+) -> anyhow::Result<*mut c_void> {
     match value.get_type()? {
         ValueType::External => {
             let external: &External<Handle> = read_napi(value)?;
@@ -29,6 +39,7 @@ pub fn handle_ptr(value: Unknown<'_>, type_name: &str) -> anyhow::Result<*mut c_
                 !external.is_invalidated(),
                 "The {type_name} handle refers to nothing: {INVALIDATED_HANDLE}"
             );
+            check(external)?;
             Ok(external.as_ptr())
         }
         ValueType::Null | ValueType::Undefined => Ok(std::ptr::null_mut()),

@@ -244,6 +244,14 @@ function isResolvableDescriptor(descriptor: Descriptor): descriptor is Resolvabl
     return RESOLVABLE_DESCRIPTOR_KINDS.has(descriptor.kind);
 }
 
+function resolveEnumOrFlagsType(descriptor: Extract<Descriptor, { kind: "enum" | "flags" }>): bigint {
+    if (descriptor.getTypeFnName === "") {
+        return descriptor.isSigned ? TYPE_INT : TYPE_UINT;
+    }
+
+    return resolveType(descriptor.sharedLibrary, descriptor.getTypeFnName);
+}
+
 function resolveDescriptorType(descriptor: Descriptor): bigint {
     if (descriptor.kind === "biguint64" && "type" in descriptor) {
         return TYPE_GTYPE;
@@ -262,7 +270,7 @@ function resolveDescriptorType(descriptor: Descriptor): bigint {
     switch (descriptor.kind) {
         case "enum":
         case "flags": {
-            return resolveType(descriptor.sharedLibrary, descriptor.getTypeFnName);
+            return resolveEnumOrFlagsType(descriptor);
         }
         case "boxed": {
             return resolveBoxedType(descriptor);

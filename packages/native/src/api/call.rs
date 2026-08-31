@@ -8,6 +8,7 @@ use super::bind::CallDescriptor;
 use super::native_result;
 use crate::ffi::codec::{Codec, Decoder as _, Encoder as _};
 use crate::ffi::{self};
+use crate::host::log_writer::CriticalTrap;
 
 fn execute_call<'e>(
     env: &'e Env,
@@ -49,9 +50,12 @@ fn execute_call<'e>(
         ffi_args.len()
     );
 
-    let result = return_codec
-        .call_cif(&descriptor.cif, descriptor.symbol()?, &ffi_args)
-        .with_context(|| format!("calling {label}"))?;
+    let symbol = descriptor.symbol()?;
+    let trap = CriticalTrap::arm();
+    let called = return_codec.call_cif(&descriptor.cif, symbol, &ffi_args);
+    let critical = trap.disarm();
+
+    let result = called.with_context(|| format!("calling {label}"))?;
 
     for stash in &stashes {
         stash.disarm_pending_transfer();
@@ -72,6 +76,11 @@ fn execute_call<'e>(
 
     ref_updates?;
     retained?;
+
+    if let Some(message) = critical {
+        anyhow::bail!("{label}: {message}");
+    }
+
     return_value
 }
 

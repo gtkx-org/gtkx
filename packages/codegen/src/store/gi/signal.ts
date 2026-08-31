@@ -339,11 +339,20 @@ const renderUnsupportedEmitCase = (signal: GirCallable): string => {
     );
 };
 
+const receivedSignalParameter = (context: ModuleContext, parameter: GirParameter): GirParameter => {
+    const isProduced =
+        isOutParameter(parameter) || isCallerAllocatedOut(parameter) || isCellInout(context.library, parameter);
+
+    return isProduced ? parameter : { ...parameter, transferOwnership: "none" };
+};
+
 const renderCallback = (context: ModuleContext, signal: GirCallable): string => {
     const params = nonVarargParameters(signal);
 
     const callbackParamDescriptors = params.map((parameter) =>
-        renderParamDescriptor(context, parameter, parameter.type, { argIndexOffset: 1 }),
+        renderParamDescriptor(context, receivedSignalParameter(context, parameter), parameter.type, {
+            argIndexOffset: 1,
+        }),
     );
 
     const callbackArgs = [tObject("borrowed"), ...callbackParamDescriptors, tVoid];

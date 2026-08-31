@@ -1,3 +1,4 @@
+import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import { getType } from "@gtkx/native";
@@ -205,6 +206,18 @@ test("instance type inspection needs the declared type a fundamental handle carr
     );
 });
 
+test("a fundamental argument rejects a handle from another family", () => {
+    assert.equal(Regress.testFundamentalArgumentIn(Regress.TestFundamentalSubObject.new("payload")), true);
+
+    assert.throws(() => Regress.testFundamentalArgumentIn(new Regress.TestObj({})));
+    assert.throws(() => Regress.testFundamentalArgumentIn(new GIMarshallingTests.BoxedStruct({ long: 1n })));
+    assert.throws(() =>
+        Regress.testFundamentalArgumentIn(
+            GObject.paramSpecInt("count", null, null, 0, 10, 5, GObject.ParamFlags.READABLE),
+        ),
+    );
+});
+
 test("fundamental arguments reject values that carry no native handle", () => {
     assert.throws(() => Regress.testFundamentalArgumentIn({}));
     assert.throws(() => Regress.testFundamentalArgumentIn(42));
@@ -225,7 +238,26 @@ test("fundamental constructors reject data that is not a string", () => {
     assert.throws(() => Regress.TestFundamentalSubObject.new(42));
     assert.throws(() => Regress.TestFundamentalObjectNoGetSetFunc.new({}));
     assert.throws(() => Regress.TestFundamentalSubObjectNoGetSetFunc.new(Symbol("nope")));
+});
+
+test("fundamental types are not constructible with new", () => {
     assert.throws(() => new Regress.TestFundamentalObject({}));
+    assert.throws(() => new Regress.TestFundamentalSubObject({}));
+    assert.throws(() => new Regress.TestFundamentalObjectNoGetSetFunc({}));
+    assert.throws(() => new Regress.TestFundamentalSubObjectNoGetSetFunc({}));
+    assert.throws(() => new GObject.ParamSpecInt({}));
+});
+
+test("fundamental instances still come from their own constructors", () => {
+    const sub = Regress.TestFundamentalSubObject.new("payload");
+    assert.ok(sub instanceof Regress.TestFundamentalObject);
+
+    const plain = Regress.TestFundamentalObjectNoGetSetFunc.new("payload");
+    assert.equal(plain.getData(), "payload");
+
+    const spec = GObject.paramSpecInt("count", null, null, 0, 10, 5, GObject.ParamFlags.READABLE);
+    assert.ok(spec instanceof GObject.ParamSpecInt);
+    assert.equal(spec.getName(), "count");
 });
 
 test("initializing a GValue rejects instances that carry no native handle", () => {

@@ -331,7 +331,7 @@ const implTypeName = (namespace: GirNamespace, className: string): string => {
     let name = `${className}Impl`;
 
     while (taken.has(name)) {
-        name = `${name}Impl`;
+        name += "Impl";
     }
 
     return name;
@@ -387,10 +387,14 @@ const renderInterfaceImplType = (
         return undefined;
     }
 
-    return `${renderJsDoc(iface.doc, implTypeNote(className, implName), annotationSpec(iface.annotations))}${renderBracedOrEmpty(
+    const doc = renderJsDoc(iface.doc, implTypeNote(className, implName), annotationSpec(iface.annotations));
+
+    const body = renderBracedOrEmpty(
         `export interface ${implName}${implTypeExtends(context, iface)}`,
         members.join("\n"),
-    )}`;
+    );
+
+    return `${doc}${body}`;
 };
 
 const collectMethodMembers = (options: MethodMemberOptions): string[] => {
@@ -462,10 +466,24 @@ const renderInterfaceClass = (
         members.push(gtypeMemberDeclaration(context), renderInterfaceHasInstance(context, className, gtypeExpr));
     }
 
-    members.push(...renderStaticHead(context, callables, className), renderInterfaceBrand(context, implRef));
+    members.push(
+        renderInterfaceGuard(context, className),
+        ...renderStaticHead(context, callables, className),
+        renderInterfaceBrand(context, implRef),
+    );
     const head = localName === undefined ? `export abstract class ${className}` : `abstract class ${localName}`;
 
     return renderBracedOrEmpty(head, members.join("\n\n"));
+};
+
+const renderInterfaceGuard = (context: ModuleContext, className: string): string => {
+    const qualified = `${context.namespace.name}.${className}`;
+
+    const message =
+        `Cannot construct ${qualified} with new: an interface describes what a class implements, ` +
+        "so it has no instances of its own.";
+
+    return renderBlock("constructor()", `throw new globalThis.Error(${sourceStringLiteral(message)});`);
 };
 
 const renderInterfaceBrand = (context: ModuleContext, implRef: string): string => {

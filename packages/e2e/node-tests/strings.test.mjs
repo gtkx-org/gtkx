@@ -100,6 +100,19 @@ test("string arguments reject values of the wrong type", () => {
     assert.throws(() => GIMarshallingTests.filenameExists(7));
 });
 
+test("a non-nullable string parameter rejects null instead of marshalling NULL", () => {
+    assert.throws(() => GIMarshallingTests.utf8NoneIn(null), TypeError);
+    assert.throws(() => GIMarshallingTests.utf8NoneIn(), TypeError);
+    assert.throws(() => Regress.TestBoxedD.new(null, 1), TypeError);
+});
+
+test("a nullable parameter still accepts null", () => {
+    Regress.funcObjNullIn(null);
+    Regress.funcObjNullableIn(null);
+    GIMarshallingTests.utf8NoneIn(UTF8);
+    assert.equal(Regress.TestBoxedD.new("ok", 1).getMagic(), 3);
+});
+
 test("string array arguments reject non-arrays and non-string elements", () => {
     assert.throws(() => Regress.testStrvIn("123"));
     assert.throws(() => Regress.testStrvIn([1, 2, 3]));

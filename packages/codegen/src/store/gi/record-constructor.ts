@@ -13,12 +13,15 @@ import { renderSourceGtype } from "./gtype-binding.js";
 import {
     emitFieldWrite,
     fieldTsType,
+    hasOwnedFieldStorage,
     isEmittableField,
     isInlineField,
     isStorableFieldType,
 } from "./record-field-accessor.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
 import { isConstructibleRecord } from "./value-marshalable.js";
+
+const RECORDS_REQUIRING_BOXED_FREE: Set<string> = new Set(["GObject.Value"]);
 
 type WritableFieldSlot = RecordFieldSlot & { field: GirField & { type: TypeId } };
 
@@ -92,6 +95,31 @@ const renderUnconstructibleGuard = (context: ModuleContext, spec: RecordConstruc
     return renderBlock("constructor()", [...superCall, `throw new globalThis.Error(${message});`].join("\n"));
 };
 
+const isDefaultConstructor = (context: ModuleContext, record: GirRecord, callable: GirFunction): boolean =>
+    !callable.throws &&
+    callable.parameters.length === 0 &&
+    callable.returnValue.transferOwnership === "full" &&
+    !callable.returnValue.nullable &&
+    isSelfReturning(context, record, callable);
+
+const defaultConstructorCall = (context: ModuleContext, spec: RecordConstructorSpec): string | undefined => {
+    const declared: Set<GirFunction> = new Set(spec.callables.constructors);
+
+    for (const { callable, name } of staticMembers(context, spec.callables)) {
+        const { cIdentifier } = callable;
+
+        if (name !== "new" || cIdentifier === undefined || !declared.has(callable)) {
+            continue;
+        }
+
+        if (isDefaultConstructor(context, spec.record, callable)) {
+            return `${toCamelIdentifier(cIdentifier)}()`;
+        }
+    }
+
+    return undefined;
+};
+
 const renderEmptyConstructor = (className: string, isErrorSubclass: boolean): string =>
     isErrorSubclass
         ? renderBlock(`constructor(props: ${className}ConstructorProps = {})`, "super();")
@@ -109,6 +137,25 @@ const renderFieldWrites = (context: ModuleContext, slots: RecordFieldSlot[]): st
     return statements;
 };
 
+const renderConstructedRecord = (
+    context: ModuleContext,
+    spec: RecordConstructorSpec,
+    constructorCall: string,
+    slots: RecordFieldSlot[],
+): string => {
+    context.addRuntimeImport("getHandle");
+    context.addRuntimeImport("setHandle");
+
+    const statements = [
+        ...(spec.isErrorSubclass ? ["super();"] : []),
+        `const __handle = getHandle(${constructorCall});`,
+        ...renderFieldWrites(context, slots),
+        "setHandle(this, __handle);",
+    ];
+
+    return renderBlock(`constructor(props: ${spec.className}ConstructorProps = {})`, statements.join("\n"));
+};
+
 const renderRecordConstructor = (context: ModuleContext, spec: RecordConstructorSpec): string => {
     const { record, className, isErrorSubclass } = spec;
 
@@ -116,13 +163,18 @@ const renderRecordConstructor = (context: ModuleContext, spec: RecordConstructor
         return renderUnconstructibleGuard(context, spec);
     }
 
-    const superCall = isErrorSubclass ? ["super();"] : [];
     const { slots, size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
+    const constructorCall = defaultConstructorCall(context, spec);
+
+    if (constructorCall !== undefined) {
+        return renderConstructedRecord(context, spec, constructorCall, slots);
+    }
 
     if (size === 0) {
         return renderEmptyConstructor(className, isErrorSubclass);
     }
 
+    const superCall = isErrorSubclass ? ["super();"] : [];
     context.addRuntimeImport("alloc");
     context.addRuntimeImport("setHandle");
 
@@ -138,8 +190,9 @@ const renderRecordConstructor = (context: ModuleContext, spec: RecordConstructor
 
 const allocArgs = (context: ModuleContext, record: GirRecord, size: number): string[] => {
     const args = [String(size)];
+    const key = `${context.namespace.name}.${record.name}`;
 
-    if (renderSourceGtype(context, record) !== undefined) {
+    if (renderSourceGtype(context, record) !== undefined && RECORDS_REQUIRING_BOXED_FREE.has(key)) {
         args.push("this.__type__");
     }
 
@@ -150,7 +203,10 @@ const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): str
     context.addRuntimeImport("t");
 
     const descriptor = context.hoistDescriptor(
-        renderDescriptor(context, entry.field.type, "none", { isInline: isInlineField(context, entry.field) }),
+        renderDescriptor(context, entry.field.type, "none", {
+            isInline: isInlineField(context, entry.field),
+            hasOwnedStorage: hasOwnedFieldStorage(entry.field),
+        }),
     );
 
     const name = toCamelIdentifier(entry.field.name);

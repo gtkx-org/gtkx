@@ -155,6 +155,19 @@ test("a worker thread that quits the addon can then be terminated", async () => 
     assert.equal(code, 0);
 });
 
+test("a worker thread that never quits the addon can still be terminated", async () => {
+    const { code, output, signal } = await runFixture("worker-host.mjs", ["kill"]);
+
+    assert.deepEqual(JSON.parse(reportedLine(output, "REPORT ")), {
+        doubled: 42,
+        string: "worker",
+        bare: true,
+    });
+    assert.equal(reportedLine(output, "TERMINATED "), "1");
+    assert.equal(signal, null);
+    assert.equal(code, 0);
+});
+
 test("a library or symbol that is not there fails the call it backs", () => {
     const missingLibrary = bind("libgtkx-not-a-real-library.so.0", "g_free", [], VOID);
     const missingSymbol = bind("libgobject-2.0.so.0", "g_object_not_a_real_symbol", [], VOID);

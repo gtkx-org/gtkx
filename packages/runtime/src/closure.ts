@@ -1,7 +1,17 @@
-import { type ExternalObject, type Handle, read } from "@gtkx/native";
+import { type ExternalObject, type Handle, read, symbolAddress } from "@gtkx/native";
 import { type AnyClass } from "@gtkx/utils";
-import { bind } from "./bind.js";
-import { boxedT, callbackT, sizedArrayT, structT, uint32T, uint64T, voidT } from "./descriptors.js";
+import { bind, createBindCache } from "./bind.js";
+import {
+    biguint64T,
+    boxedT,
+    type CallbackDescriptor,
+    callbackT,
+    sizedArrayT,
+    structT,
+    uint32T,
+    uint64T,
+    voidT,
+} from "./descriptors.js";
 import { CLOSURE_SIZE, LIB, VALUE_SIZE, VALUE_T } from "./library.js";
 import { describeValueKind, getClassType, getHandle, getWrapperClass, wrapHandle } from "./registry.js";
 import { resolveBoxedType, typeIsA } from "./type.js";
@@ -59,7 +69,12 @@ const gCclosureNew = bind(LIB, "g_cclosure_new", [MARSHAL_T], OWNED_CLOSURE_T);
 const gValueGetBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], NESTED_VALUE_T);
 const gClosureRef = bind(LIB, "g_closure_ref", [CLOSURE_T], uint64T);
 const gClosureSink = bind(LIB, "g_closure_sink", [CLOSURE_T], voidT);
-const gClosureSetMarshal = bind(LIB, "g_closure_set_marshal", [CLOSURE_T, uint64T], voidT);
+const gClosureSetMarshal = bind(LIB, "g_closure_set_marshal", [CLOSURE_T, biguint64T], voidT);
+const cclosureNewCache = createBindCache();
+const genericMarshal: { address?: bigint } = {};
+
+const genericClosureMarshal = (): bigint =>
+    (genericMarshal.address ??= symbolAddress(LIB, "g_cclosure_marshal_generic"));
 
 const isClosureInstance = (value: object): boolean =>
     typeIsA(getClassType(value.constructor as AnyClass), resolveBoxedType(CLOSURE_T));
@@ -84,10 +99,20 @@ function marshalFor(callback: ClosureCallback): (...args: unknown[]) => void {
 
 function newClosure(callback: ClosureCallback): ExternalObject<Handle> {
     const handle = gCclosureNew(marshalFor(callback)) as ExternalObject<Handle>;
-    const marshal = read(handle, uint64T, CCLOSURE_CALLBACK_OFFSET);
+    const marshal = read(handle, biguint64T, CCLOSURE_CALLBACK_OFFSET);
     gClosureRef(handle);
     gClosureSink(handle);
     gClosureSetMarshal(handle, marshal);
+
+    return handle;
+}
+
+function newCCallbackClosure(key: string, callback: CallbackDescriptor, fn: unknown): ExternalObject<Handle> {
+    const create = cclosureNewCache(key, LIB, "g_cclosure_new", [callback], OWNED_CLOSURE_T);
+    const handle = create(fn) as ExternalObject<Handle>;
+    gClosureRef(handle);
+    gClosureSink(handle);
+    gClosureSetMarshal(handle, genericClosureMarshal());
 
     return handle;
 }
@@ -121,4 +146,4 @@ class ClosureMarshalError extends TypeError {
     public override name = "ClosureMarshalError";
 }
 
-export { type ClosureCallback, ClosureMarshalError, toClosure, tryToClosure };
+export { type ClosureCallback, ClosureMarshalError, newCCallbackClosure, toClosure, tryToClosure };

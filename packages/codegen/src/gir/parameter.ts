@@ -70,6 +70,8 @@ type GirParameter = {
 type GirReturnValue = {
     /** What the callable returns, absent when the GIR node declares no type. */
     type: TypeId | undefined;
+    /** The C spelling of the returned type, taken from its `type` or `array` child. */
+    cType: string | undefined;
     /** Documentation prose from GIR, emitted as the callable's `@returns` text. */
     doc: string | undefined;
     /** How much ownership the caller takes of the returned value. */
@@ -144,11 +146,19 @@ const isInoutParameter = (parameter: GirParameter): boolean => parameter.directi
 
 const returnValueFromNode = (node: RawNode | undefined, context: ParseContext): GirReturnValue => {
     if (node === undefined) {
-        return { type: undefined, doc: undefined, transferOwnership: "none", nullable: false, skip: false };
+        return {
+            type: undefined,
+            cType: undefined,
+            doc: undefined,
+            transferOwnership: "none",
+            nullable: false,
+            skip: false,
+        };
     }
 
     return {
         type: typeRefFromNode(node, context),
+        cType: parameterCType(node),
         doc: getDoc(node),
         transferOwnership: transferOwnership(node),
         nullable: hasNullableAttr(node),

@@ -165,7 +165,9 @@ impl PtrWriter for StructCodec {
 
         match self.size {
             Some(size) => Self::write_pointer_slot(slot, value, init, size),
-            None => write_object_ptr(slot, value, "Struct field write"),
+            None => write_object_ptr(slot, value, "Struct field write", |handle| {
+                Encoder::check_instance(self, handle)
+            }),
         }
     }
 }

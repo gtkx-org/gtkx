@@ -7,6 +7,7 @@ pub(super) use napi::{Env, ValueType};
 pub(super) use super::{
     Decoder, Encoder, IntegerBacked, Ownership, PtrWriter, ReadCtx, ReadSource, SlotInit,
 };
+use crate::handle::Handle;
 use crate::host::error_reporter::ReportErr as _;
 pub(super) use crate::{ffi, value};
 
@@ -145,8 +146,9 @@ pub(super) fn write_object_ptr(
     slot: ffi::Slot,
     value: Unknown<'_>,
     label: &str,
+    check: impl FnOnce(&Handle) -> anyhow::Result<()>,
 ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
-    let object_ptr = value::handle_ptr(value, label)?;
+    let object_ptr = value::handle_ptr_checked(value, label, check)?;
     unsafe { slot.store(object_ptr) };
     Ok(None)
 }
@@ -166,17 +168,19 @@ pub(super) fn write_return_object_ptr<F>(
     unsafe { ret.store(owned) };
 }
 
-pub(super) fn store_acquired_slot<A>(
+pub(super) fn store_acquired_slot<A, C>(
     slot: ffi::Slot,
     value: Unknown<'_>,
     label: &str,
+    check: C,
     acquire: A,
     release: Option<ffi::ReleaseKind>,
 ) -> anyhow::Result<Option<ffi::PendingTransfer>>
 where
     A: FnOnce(*mut c_void) -> *mut c_void,
+    C: FnOnce(&Handle) -> anyhow::Result<()>,
 {
-    let new_ptr = value::handle_ptr(value, label)?;
+    let new_ptr = value::handle_ptr_checked(value, label, check)?;
     let owned = if new_ptr.is_null() {
         new_ptr
     } else {
@@ -190,19 +194,21 @@ where
     Ok(release.map(|release| ffi::PendingTransfer::new(owned, release)))
 }
 
-pub(super) fn swap_owned_slot<A, R>(
+pub(super) fn swap_owned_slot<A, R, C>(
     slot: ffi::Slot,
     value: Unknown<'_>,
     init: SlotInit,
     label: &str,
+    check: C,
     acquire: A,
     release: R,
 ) -> anyhow::Result<Option<ffi::PendingTransfer>>
 where
     A: FnOnce(*mut c_void) -> *mut c_void,
     R: FnOnce(*mut c_void),
+    C: FnOnce(&Handle) -> anyhow::Result<()>,
 {
-    let new_ptr = value::handle_ptr(value, label)?;
+    let new_ptr = value::handle_ptr_checked(value, label, check)?;
     let owned = if new_ptr.is_null() {
         new_ptr
     } else {
@@ -277,6 +283,30 @@ pub(super) fn owned_view_storage(view: &value::TypedView) -> ffi::StashStorage {
         value::ViewKind::Float64 => view.to_vec::<f64>().into(),
         value::ViewKind::BigInt64 => view.to_vec::<i64>().into(),
         value::ViewKind::BigUint64 => view.to_vec::<u64>().into(),
+    }
+}
+
+fn terminated<T: Copy + Default>(mut values: Vec<T>) -> Vec<T> {
+    values.push(T::default());
+    values
+}
+
+/// Copies a view into storage of this side's own, with one zero element appended, for a callee
+/// that walks a length-bounded array to its terminator instead of trusting the count.
+pub(super) fn terminated_view_storage(view: &value::TypedView) -> ffi::StashStorage {
+    match view.kind() {
+        value::ViewKind::Int8 => terminated(view.to_vec::<i8>()).into(),
+        value::ViewKind::Uint8 | value::ViewKind::Uint8Clamped | value::ViewKind::DataView => {
+            terminated(view.to_vec::<u8>()).into()
+        }
+        value::ViewKind::Int16 => terminated(view.to_vec::<i16>()).into(),
+        value::ViewKind::Uint16 => terminated(view.to_vec::<u16>()).into(),
+        value::ViewKind::Int32 => terminated(view.to_vec::<i32>()).into(),
+        value::ViewKind::Uint32 => terminated(view.to_vec::<u32>()).into(),
+        value::ViewKind::Float32 => terminated(view.to_vec::<f32>()).into(),
+        value::ViewKind::Float64 => terminated(view.to_vec::<f64>()).into(),
+        value::ViewKind::BigInt64 => terminated(view.to_vec::<i64>()).into(),
+        value::ViewKind::BigUint64 => terminated(view.to_vec::<u64>()).into(),
     }
 }
 

@@ -68,6 +68,14 @@ impl Fundamental {
     pub fn is_owned(&self) -> bool {
         self.owned
     }
+
+    /// The function that releases the instance, which names the fundamental family the value
+    /// belongs to without dereferencing the pointer.
+    #[inline]
+    #[must_use]
+    pub fn unref_fn(&self) -> Option<UnrefFn> {
+        self.unref_fn
+    }
 }
 
 impl Drop for Fundamental {

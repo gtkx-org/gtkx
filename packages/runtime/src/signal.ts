@@ -1,9 +1,9 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
 import { getOrInsert, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
-import { bind, createBindCache } from "./bind.js";
+import { bind } from "./bind.js";
 import { wrapCallback } from "./callback.js";
-import { toClosure } from "./closure.js";
+import { newCCallbackClosure, toClosure } from "./closure.js";
 import {
     arrayT,
     biguint64T,
@@ -69,7 +69,6 @@ type EmitArg = Arg & {
     value?: unknown;
 };
 
-const connectCache = createBindCache();
 const connectionTable: WeakMap<object, Map<string, Set<number>>> = new WeakMap();
 const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T);
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
@@ -230,18 +229,6 @@ const signalNamesFor = (type: bigint): string[] => getOrInsert(signalNameCache, 
 const getSignalId = (instance: object, signal: string): number =>
     signalIdFor((instance as TypedClass).__type__, signal);
 
-function connectBind(type: bigint, signal: string, callback: CallbackDescriptor): (...values: unknown[]) => unknown {
-    const key = `${String(type)}\0${getSignalBaseName(signal)}`;
-
-    return connectCache(
-        key,
-        LIB,
-        "g_signal_connect_data",
-        [objectT("borrowed"), stringT("borrowed"), callback, uint32T],
-        uint64T,
-    );
-}
-
 /**
  * Connects a handler to a GObject signal on an instance and returns the handler id.
  * @param instance Emitter to connect to.
@@ -252,8 +239,9 @@ function connectSignal(instance: object, signal: string, spec: SignalConnectSpec
     const { callback, handler, isAfter } = spec;
     const wrapped = wrapCallback(handler, callback, "signal");
     const type: bigint = (instance as TypedClass).__type__;
-    const connect = connectBind(type, signal, callback);
-    const handlerId = connect(getHandle(instance), signal, wrapped, isAfter ? 1 : 0) as number;
+    const key = `${String(type)}\0${getSignalBaseName(signal)}`;
+    const closure = newCCallbackClosure(key, callback, wrapped);
+    const handlerId = gSignalConnectClosure(getHandle(instance), signal, closure, isAfter) as number;
     trackConnection(instance, getSignalBaseName(signal), handlerId);
 
     return handlerId;

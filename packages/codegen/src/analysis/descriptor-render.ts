@@ -40,7 +40,6 @@ import {
     tFundamental,
     tGtype,
     tHashTable,
-    tInt32,
     tList,
     tObject,
     tRef,
@@ -48,7 +47,6 @@ import {
     tSizedArray,
     tString,
     tStruct,
-    tUint32,
     tUint64,
     tVoid,
 } from "./descriptor.js";
@@ -71,6 +69,7 @@ type RenderDescriptorOptions = Partial<ArgIndexOptions> & {
     isCallerAllocated?: boolean;
     isInline?: boolean;
     isNewlyCreated?: boolean;
+    hasOwnedStorage?: boolean;
 };
 
 type RecordPlacement = {
@@ -196,7 +195,7 @@ const renderDescriptor = (
 
     switch (type.kind) {
         case "primitive": {
-            return primitiveExpression(type.category, ownership);
+            return primitiveExpression(type.category, ownership, options.hasOwnedStorage === true);
         }
         case "varargs": {
             return tVoid;
@@ -230,10 +229,6 @@ const renderDescriptor = (
     }
 };
 
-/**
- * Stride of a `GArray` slot when its elements are records stored by value. A `GPtrArray`, a
- * `GList` and a `GSList` always hold one pointer per slot, so only a `GArray` can be inline.
- */
 const inlineListElementSize = (context: ModuleContext, type: ListType): number | undefined => {
     if (type.flavor !== "garray") {
         return undefined;
@@ -324,7 +319,9 @@ const isStrvRef = (library: Library, ref: TypeId | undefined): boolean => {
 
 const isCellInout = (library: Library, parameter: GirParameter): boolean =>
     isInoutParameter(parameter) &&
-    (isScalarRef(library, parameter.type) || isStrvRef(library, parameter.type));
+    (isScalarRef(library, parameter.type) ||
+        isStrvRef(library, parameter.type) ||
+        carrayFor(library, parameter.type) !== undefined);
 
 const renderParamDescriptor = (
     context: ModuleContext,
@@ -354,11 +351,16 @@ const renderParamDescriptor = (
     });
 };
 
-const userDataIndexByName = (parameters: GirParameter[]): number | undefined => {
+const isOpaqueUserData = (library: Library, parameter: GirParameter): boolean =>
+    primitiveCategoryFor(library, parameter.type) === "pointer";
+
+const userDataIndexByName = (library: Library, parameters: GirParameter[]): number | undefined => {
     let userDataIndex: number | undefined;
 
     for (const [index, parameter] of parameters.entries()) {
-        if (parameter.name === "user_data" || parameter.name === "data") {
+        const isNamedUserData = parameter.name === "user_data" || parameter.name === "data";
+
+        if (isNamedUserData && isOpaqueUserData(library, parameter)) {
             userDataIndex = index;
         }
     }
@@ -366,10 +368,10 @@ const userDataIndexByName = (parameters: GirParameter[]): number | undefined => 
     return userDataIndex;
 };
 
-const findUserDataIndex = (parameters: GirParameter[]): number | undefined => {
+const findUserDataIndex = (library: Library, parameters: GirParameter[]): number | undefined => {
     const declared = parameters.find((parameter) => parameter.closureIndex !== undefined);
 
-    return declared?.closureIndex ?? userDataIndexByName(parameters);
+    return declared?.closureIndex ?? userDataIndexByName(library, parameters);
 };
 
 const callbackOptionsArg = (
@@ -423,17 +425,25 @@ const renderCallbackType = (
     return tCallback({
         argTypes,
         returns: renderDescriptor(context, returnValue.type, returnValue.transferOwnership, { isReceived: true }),
-        options: callbackOptionsArg(owningParameter, findUserDataIndex(callback.parameters), callback.throws),
+        options: callbackOptionsArg(
+            owningParameter,
+            findUserDataIndex(context.library, callback.parameters),
+            callback.throws,
+        ),
     });
 };
 
-const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership): string => {
+const primitiveExpression = (
+    category: PrimitiveCategory,
+    ownership: Ownership,
+    hasOwnedStorage: boolean,
+): string => {
     if (category === "void") {
         return tVoid;
     }
 
     if (category === "string") {
-        return tString(ownership);
+        return tString(ownership, undefined, hasOwnedStorage);
     }
 
     if (category === "pointer") {
@@ -490,7 +500,7 @@ const classOrInterfaceExpression = (
     const fallbackClass = fallbackClassThunk(context, resolved.namespace.name, resolved.value.name, options.isReceived);
 
     if (ancestor === undefined) {
-        return tObject(ownership, fallbackClass);
+        return tObject(ownership, fallbackClass, resolved.value.glibTypeName);
     }
 
     return renderFundamental({
@@ -564,7 +574,9 @@ const classSelfDescriptor = (
 ): string => {
     const ancestor = fundamentalAncestor(context, type);
 
-    return ancestor === undefined ? tObject(ownership) : renderFundamental({ ...ancestor, ownership });
+    return ancestor === undefined
+        ? tObject(ownership, undefined, type.value.glibTypeName)
+        : renderFundamental({ ...ancestor, ownership });
 };
 
 const renderSelfDescriptor = (context: ModuleContext, instance: GirParameter): string => {
@@ -741,10 +753,11 @@ const recordExpression = (
     fundamentalRecordPath(context, resolved, ownership, placement) ??
     plainRecordExpression(context, resolved, ownership, placement);
 
-const rawEnumDescriptor = (isSigned: boolean): string => (isSigned ? tInt32 : tUint32);
-
 const flagsMask = (resolved: Extract<EntityType, { kind: "enum" }>): number =>
     resolved.value.members.reduce((mask, member) => (mask | Number(member.value)) >>> 0, 0);
+
+const enumMembers = (resolved: Extract<EntityType, { kind: "enum" }>): number[] =>
+    resolved.value.members.map((member) => Number(member.value));
 
 const enumExpression = (resolved: Extract<EntityType, { kind: "enum" }>): string => {
     const getter = resolved.value.glibGetType;
@@ -753,7 +766,9 @@ const enumExpression = (resolved: Extract<EntityType, { kind: "enum" }>): string
     const isBitfield = resolved.value.kind === "bitfield";
 
     if (getter === undefined || getter === "" || lib === undefined) {
-        return isBitfield ? tFlags("", "", isSigned, flagsMask(resolved)) : rawEnumDescriptor(isSigned);
+        return isBitfield
+            ? tFlags("", "", isSigned, flagsMask(resolved))
+            : tEnum("", "", isSigned, enumMembers(resolved));
     }
 
     return isBitfield ? tFlags(lib, getter, isSigned) : tEnum(lib, getter, isSigned);
@@ -820,9 +835,13 @@ const cursorArrayExpression = (
         options.layout,
     );
 
+const isZeroTerminatedBeyondLength = (ref: CArrayType): boolean =>
+    ref.isZeroTerminated && (ref.lengthParameterIndex !== undefined || ref.fixedSize !== undefined);
+
 const arrayLayout = (context: ModuleContext, ref: CArrayType, options: ArgIndexOptions): ArrayLayout => ({
     elementSize: inlineElementSize(context, ref, options.hasOutIndirection),
     isBytes: !hasUnknownArrayLength(ref) && isByteSequence(context.library, ref),
+    isZeroTerminated: isZeroTerminatedBeyondLength(ref),
 });
 
 const fixedArrayLayout = (layout: ArrayLayout, isCallerAllocated: boolean): ArrayLayout =>

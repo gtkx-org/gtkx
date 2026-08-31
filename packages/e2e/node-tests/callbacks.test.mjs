@@ -1,5 +1,6 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 import * as Regress from "@gtkx/gi/regress";
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -422,4 +423,114 @@ test("a non function where a callback is expected throws", () => {
     assert.throws(() => Regress.testMultiCallback([]));
     assert.throws(() => GIMarshallingTests.callbackReturnValueOnly({}));
     assert.throws(() => Regress.TestObj.staticMethodCallback("nope"));
+});
+
+test("a non function handed to a deferred callback throws at the call site", () => {
+    assert.throws(() => GLib.timeoutAdd(GLib.PRIORITY_DEFAULT, 5, 42));
+    assert.throws(() => GLib.idleAdd(GLib.PRIORITY_DEFAULT, "nope"));
+    assert.throws(() => Regress.testCallbackAsync({}));
+    assert.throws(() => Regress.testCallbackDestroyNotify([]));
+});
+
+test("array callback arguments arrive without the lengths that size them", () => {
+    const seen = [];
+    const sum = Regress.testArrayCallback((...args) => {
+        seen.push(args);
+
+        return 1;
+    });
+
+    assert.equal(sum, 2);
+    assert.equal(seen.length, 2);
+    for (const args of seen) {
+        assert.equal(args.length, 2);
+        assert.deepEqual(args[0], [-1, 0, 1, 2]);
+        assert.deepEqual(args[1], ["one", "two", "three"]);
+    }
+});
+
+test("a hash table callback receives the table it was handed", () => {
+    const seen = [];
+    Regress.testHashTableCallback(
+        new Map([
+            ["foo", 1],
+            ["bar", 2],
+            ["baz", 3],
+        ]),
+        (...args) => {
+            seen.push(args);
+        },
+    );
+
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].length, 1);
+    assert.deepEqual(
+        new Map(seen[0][0]),
+        new Map([
+            ["foo", 1],
+            ["bar", 2],
+            ["baz", 3],
+        ]),
+    );
+});
+
+test("a user data slot GIR leaves unannotated is still elided", () => {
+    const counts = [];
+    const returned = Regress.testCallbackUserData((...args) => {
+        counts.push(args.length);
+
+        return 7;
+    });
+
+    assert.equal(returned, 7);
+    assert.deepEqual(counts, [0]);
+});
+
+test("an inout array callback parameter round-trips through the handler", () => {
+    const seen = [];
+    const remaining = Regress.testArrayInoutCallback((...args) => {
+        seen.push(args);
+
+        return args[0].slice(1);
+    });
+
+    assert.equal(remaining, 3);
+    assert.equal(seen.length, 2);
+    assert.equal(seen[0].length, 1);
+    assert.deepEqual(seen[0][0], [-2, -1, 0, 1, 2]);
+    assert.equal(seen[1].length, 1);
+    assert.deepEqual(seen[1][0], [-1, 0, 1, 2]);
+});
+
+test("an inout array callback accepts a freshly built array as well as a slice", () => {
+    const seen = [];
+    const remaining = Regress.testArrayInoutCallback((ints) => {
+        seen.push(ints);
+
+        return seen.length === 1 ? [-1, 0, 1, 2] : ints.slice(1);
+    });
+
+    assert.equal(remaining, 3);
+    assert.deepEqual(seen, [
+        [-2, -1, 0, 1, 2],
+        [-1, 0, 1, 2],
+    ]);
+});
+
+test("a callback that cannot fill its out parameters throws into the caller", () => {
+    assert.throws(() => GIMarshallingTests.callbackMultipleOutParameters(() => ["a", "b"]));
+    assert.throws(() => GIMarshallingTests.callbackOneOutParameter(() => "nope"));
+    assert.throws(() => GIMarshallingTests.callbackReturnValueAndOneOutParameter(() => [1n, {}]));
+});
+
+test("the binding survives a callback out parameter failure", () => {
+    assert.throws(() => GIMarshallingTests.callbackMultipleOutParameters(() => ["a", "b"]));
+    assert.equal(
+        GIMarshallingTests.callbackReturnValueOnly(() => 42n),
+        42n,
+    );
+    assert.deepEqual(
+        GIMarshallingTests.callbackMultipleOutParameters(() => [1.5, 2.5]),
+        [1.5, 2.5],
+    );
 });

@@ -18,6 +18,33 @@ test("variable-length int arrays pass with the length in any position", () => {
     Regress.testArrayStaticInInt([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 });
 
+test("a length-bounded array annotated zero-terminated carries its terminator", () => {
+    const ints = [-1, 0, 1, 2];
+
+    for (let round = 0; round < 64; round += 1) {
+        GIMarshallingTests.arrayInLenZeroTerminated(ints);
+    }
+
+    assert.deepEqual(ints, [-1, 0, 1, 2]);
+});
+
+test("a zero-terminated length-bounded array terminates a typed-array argument too", () => {
+    const view = new Int32Array([-1, 0, 1, 2]);
+
+    for (let round = 0; round < 64; round += 1) {
+        GIMarshallingTests.arrayInLenZeroTerminated(view);
+    }
+
+    assert.deepEqual([...view], [-1, 0, 1, 2]);
+});
+
+test("zero-terminated length-bounded arrays still validate their elements", () => {
+    assert.throws(() => GIMarshallingTests.arrayInLenZeroTerminated([-1, 0, 1, 2.5]));
+    assert.throws(() => GIMarshallingTests.arrayInLenZeroTerminated([-1, 0, 1, 2 ** 53]));
+    assert.throws(() => GIMarshallingTests.arrayInLenZeroTerminated(["-1", "0", "1", "2"]));
+    assert.throws(() => GIMarshallingTests.arrayInLenZeroTerminated(new Float64Array([-1, 0, 1, 2])));
+});
+
 test("variable-length int arrays come back complete", () => {
     assert.deepEqual(GIMarshallingTests.arrayOut(), [-1, 0, 1, 2]);
     assert.deepEqual(GIMarshallingTests.arrayReturn(), [-1, 0, 1, 2]);

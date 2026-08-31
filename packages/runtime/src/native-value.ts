@@ -255,12 +255,33 @@ function collectionToNative(descriptor: ArrayDescriptor, value: unknown): unknow
     return value == null ? null : mapCollection(descriptor, value, toNative);
 }
 
-function hashTableToNative(descriptor: HashTableDescriptor, value: unknown): unknown {
+/**
+ * Normalises the JavaScript form of a hash table argument into its entry list. A `Map` is the
+ * expected form and any other iterable of pairs is accepted; anything else is rejected, a plain
+ * object above all, which `Array.from` would quietly flatten into an empty table.
+ *
+ * @param value The JavaScript value passed for a hash table argument.
+ */
+function toHashTableEntries(value: unknown): [unknown, unknown][] | null {
     if (value == null) {
         return null;
     }
 
-    return [...(value as Map<unknown, unknown>)].map(([key, val]): [unknown, unknown] => [
+    if (typeof (value as Partial<Iterable<unknown>>)[Symbol.iterator] !== "function") {
+        throw new TypeError("A hash table argument must be a Map or an iterable of [key, value] pairs");
+    }
+
+    return [...(value as Iterable<[unknown, unknown]>)];
+}
+
+function hashTableToNative(descriptor: HashTableDescriptor, value: unknown): unknown {
+    const entries = toHashTableEntries(value);
+
+    if (entries === null) {
+        return null;
+    }
+
+    return entries.map(([key, val]): [unknown, unknown] => [
         toNative(descriptor.keyDescriptor, key),
         toNative(descriptor.valueDescriptor, val),
     ]);
@@ -302,4 +323,4 @@ function toNative(descriptor: Descriptor, value: unknown): unknown {
     }
 }
 
-export { fromNative, toNative };
+export { fromNative, toHashTableEntries, toNative };

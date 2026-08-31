@@ -386,6 +386,12 @@ pub fn install(env: &Env) -> napi::Result<()> {
         });
     });
 
+    // `worker.terminate()` stops the isolate without ever running JavaScript again, so `quit` gets
+    // no chance to tear the loop down. Node still pumps this thread's uv loop while it disposes the
+    // worker, and a prepare handle that is still started would call back into an environment that
+    // is already gone.
+    env.add_env_cleanup_hook((), |()| teardown())?;
+
     Ok(())
 }
 

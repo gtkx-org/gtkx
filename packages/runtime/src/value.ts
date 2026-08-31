@@ -422,6 +422,14 @@ const arrayValueType = (descriptor: ArrayDescriptor): ValueType => {
     throw new Error(`Unsupported array type ${descriptor.arrayKind} of ${descriptor.itemDescriptor.kind}`);
 };
 
+const resolveEnumOrFlagsValueType = (descriptor: Extract<Descriptor, { kind: "enum" | "flags" }>): ValueType => {
+    if (descriptor.getTypeFnName === "") {
+        return descriptor.kind === "flags" ? flagsValueType : enumValueType;
+    }
+
+    return enumOrFlagsValueType(resolveType(descriptor.sharedLibrary, descriptor.getTypeFnName));
+};
+
 const resolveValueType = (descriptor: Descriptor): ValueType => {
     if (descriptor.kind === "biguint64" && "type" in descriptor) {
         return typeValueType;
@@ -440,7 +448,7 @@ const resolveValueType = (descriptor: Descriptor): ValueType => {
     switch (descriptor.kind) {
         case "enum":
         case "flags": {
-            return enumOrFlagsValueType(resolveType(descriptor.sharedLibrary, descriptor.getTypeFnName));
+            return resolveEnumOrFlagsValueType(descriptor);
         }
         case "boxed": {
             return boxedValueType(resolveBoxedType(descriptor));
