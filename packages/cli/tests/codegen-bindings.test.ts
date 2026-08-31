@@ -249,7 +249,7 @@ describe("gtkx codegen (callback arguments of vtable slots)", () => {
         const watchSlot = bindings().split('vfuncName: "watch"', 2)[1] ?? "";
 
         expect(watchSlot).toContain(
-            'argDescriptors: [t.object("borrowed", () => Station), t.biguint64, t.biguint64, t.biguint64]',
+            'argDescriptors: [t.object("borrowed", () => Station, "HookSlotsStation"), t.biguint64, t.biguint64, t.biguint64]',
         );
 
         expect(declarations()).toContain(
@@ -262,7 +262,7 @@ describe("gtkx codegen (callback arguments of vtable slots)", () => {
         const deferSlot = bindings().split('vfuncName: "defer"', 2)[1] ?? "";
 
         expect(deferSlot).toContain(
-            'argDescriptors: [t.object("borrowed", () => Station), t.biguint64, t.int32, t.biguint64]',
+            'argDescriptors: [t.object("borrowed", () => Station, "HookSlotsStation"), t.biguint64, t.int32, t.biguint64]',
         );
 
         expect(declarations()).toContain(

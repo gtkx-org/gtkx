@@ -200,10 +200,7 @@ impl Encoder for BoxedCodec {
 
     fn check_instance(&self, handle: &Handle) -> anyhow::Result<()> {
         anyhow::ensure!(
-            !matches!(
-                handle.class(),
-                HandleClass::Object | HandleClass::Fundamental
-            ),
+            handle.class() != HandleClass::Object,
             "Expected a boxed value of type {}, got a {:?} handle",
             self.type_name,
             handle.class()
