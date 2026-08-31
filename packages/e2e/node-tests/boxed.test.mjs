@@ -278,6 +278,7 @@ test("a boxed argument rejects a value of an unrelated boxed type", () => {
 
     assert.throws(() => Regress.testBoxedsNotAMethod(new GIMarshallingTests.BoxedStruct({ long: 42n })));
     assert.throws(() => Regress.testBoxedsNotAMethod(Regress.TestBoxedB.new(1, 2n)));
+    assert.throws(() => Regress.testBoxedsNotAMethod(new Regress.TestObj({})));
 });
 
 test("a boxed field rejects a value of an unrelated boxed type", () => {

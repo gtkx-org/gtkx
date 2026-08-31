@@ -4,7 +4,7 @@ use glib::{self};
 
 use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
-use crate::handle::{Boxed, BoxedFreeFn, Handle};
+use crate::handle::{Boxed, BoxedFreeFn, Handle, HandleClass};
 use crate::host::error_reporter::ReportErr as _;
 
 const POINTER_TYPE: &str = "it is registered as a plain pointer type rather than a boxed one, so \
@@ -199,9 +199,16 @@ impl Encoder for BoxedCodec {
     }
 
     fn check_instance(&self, handle: &Handle) -> anyhow::Result<()> {
-        // Only a type this side can positively identify is worth comparing. An opaque value that
-        // arrived as a plain pointer, such as a `GdkEventSequence` handed to a signal handler,
-        // carries no boxed type to check and must still pass.
+        anyhow::ensure!(
+            !matches!(
+                handle.class(),
+                HandleClass::Object | HandleClass::Fundamental
+            ),
+            "Expected a boxed value of type {}, got a {:?} handle",
+            self.type_name,
+            handle.class()
+        );
+
         let (Some(expected), Some(actual)) = (self.type_()?, handle.boxed_type()) else {
             return Ok(());
         };
