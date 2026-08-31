@@ -1,5 +1,6 @@
 import gtkx from "@gtkx/vitest";
 import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, mergeConfig } from "vitest/config";
 import { sourceResolveConfig } from "../../../../vitest.config.base.js";
@@ -10,9 +11,8 @@ const MALLOC_DEBUG_CANDIDATES = [
     "/usr/lib64/libc_malloc_debug.so.0",
 ];
 
-const fixtureLibraries = fileURLToPath(
-    new URL("../../../../build/native-tests/gi-tests/build", import.meta.url),
-);
+const nativeTests = fileURLToPath(new URL(".", import.meta.url));
+const fixtureLibraries = join(nativeTests, "../../../../build/native-tests/gi-tests/build");
 
 const libraryPath = [fixtureLibraries, process.env.LD_LIBRARY_PATH]
     .filter((entry) => entry !== undefined && entry !== "")
@@ -48,6 +48,7 @@ const heapChecking = (): Record<string, string> => {
 export default mergeConfig(
     sourceResolveConfig,
     defineConfig({
+        root: nativeTests,
         plugins: [gtkx()],
         test: {
             name: "e2e-native",

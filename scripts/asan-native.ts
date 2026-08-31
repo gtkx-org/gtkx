@@ -4,7 +4,9 @@ import { join } from "node:path";
 import { RUST_NIGHTLY } from "./rust-nightly.js";
 
 const WORKSPACE_ROOT = join(import.meta.dirname, "..");
-const SUPPRESSIONS = join(WORKSPACE_ROOT, "packages", "e2e", "tests", "native", "lsan.supp");
+const NATIVE_TESTS = join(WORKSPACE_ROOT, "packages", "e2e", "tests", "native");
+const SUPPRESSIONS = join(NATIVE_TESTS, "lsan.supp");
+const NATIVE_CONFIG = join(NATIVE_TESTS, "vitest.config.ts");
 const BUILD_ARGS = ["--filter", "@gtkx/native", "exec", "napi", "build", "--platform", "--release", "--esm",
     "--no-dts-cache", "--no-const-enum"];
 
@@ -32,7 +34,7 @@ run("pnpm", [...BUILD_ARGS, "--target", "x86_64-unknown-linux-gnu"], {
 const runtime = asanRuntime();
 
 try {
-    run("pnpm", ["exec", "vitest", "run", "--project", "e2e-native"], {
+    run("pnpm", ["exec", "vitest", "run", "--config", NATIVE_CONFIG], {
         ...process.env,
         LD_PRELOAD: runtime,
         GTKX_ASAN_RUNTIME: runtime,

@@ -58,8 +58,7 @@
                     "nodeTests"
                 ],
                 "options": {
-                    "cwd": ".",
-                    "command": "vitest run --project e2e --project e2e-native"
+                    "command": "vitest run && vitest run --config tests/native/vitest.config.ts"
                 }
             },
             "typecheck": {
