@@ -3,6 +3,12 @@ import * as Regress from "@gtkx/gi/regress";
 import { quit } from "@gtkx/native";
 import { parentPort, workerData } from "node:worker_threads";
 
+if (parentPort === null) {
+    throw new Error("The worker fixture must run as a worker thread");
+}
+
+const port = parentPort;
+
 const obj = new Regress.TestObj({ int: 21 });
 obj.setBare(new GObject.Object({}));
 obj.setString("worker");
@@ -14,10 +20,10 @@ const report = {
 };
 
 if (workerData === "linger") {
-    parentPort.on("message", () => {
+    port.on("message", () => {
         quit();
-        parentPort.postMessage("torn down");
+        port.postMessage("torn down");
     });
 }
 
-parentPort.postMessage(report);
+port.postMessage(report);

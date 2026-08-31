@@ -1,9 +1,8 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import { getInstanceType, registerClass } from "@gtkx/runtime";
-import assert from "node:assert/strict";
-import { test } from "node:test";
-import { drainAfterEachTest } from "./helpers/memory.mjs";
+import { expect, test } from "vitest";
+import { drainAfterEachTest } from "./helpers/memory.js";
 
 drainAfterEachTest();
 
@@ -38,7 +37,7 @@ const Picking = registerClass(Picky, {
 });
 const Muting = registerClass(Mute, { typeName: `GtkxSignalsMute${suffix}`, signals: { hum: {} } });
 
-const askCalls = [];
+const askCalls: [unknown, unknown][] = [];
 const quietRuns = { count: 0 };
 
 GObject.signalOverrideClassClosure(GObject.signalLookup("ask", Answering), Answering, (emitter, question) => {
@@ -53,23 +52,25 @@ GObject.signalOverrideClassClosure(GObject.signalLookup("test", Quieting), Quiet
 
 test("the test signal runs its connected handler with no arguments", () => {
     const obj = new Regress.TestObj({});
-    const calls = [];
+    const calls: unknown[][] = [];
+    const emit: (signal: "test") => unknown = obj.emit.bind(obj);
     const handlerId = obj.connect("test", (...args) => {
         calls.push(args);
     });
 
-    assert.equal(typeof handlerId, "number");
-    assert.equal(GObject.signalHandlerIsConnected(obj, handlerId), true);
-    assert.equal(obj.emit("test"), undefined);
-    assert.deepEqual(calls, [[]]);
+    expect(typeof handlerId).toBe("number");
+    // @ts-expect-error connect hands back a number and the handler-id parameter is declared bigint
+    expect(GObject.signalHandlerIsConnected(obj, handlerId)).toBe(true);
+    expect(emit("test")).toBeUndefined();
+    expect(calls).toEqual([[]]);
 
     obj.emit("test");
-    assert.equal(calls.length, 2);
+    expect(calls).toHaveLength(2);
 });
 
 test("every connected handler runs, with after handlers last", () => {
     const obj = new Regress.TestObj({});
-    const order = [];
+    const order: string[] = [];
     obj.connect("test", () => {
         order.push("first");
     });
@@ -87,13 +88,13 @@ test("every connected handler runs, with after handlers last", () => {
     });
 
     obj.emit("test");
-    assert.deepEqual(order, ["first", "second", "after"]);
+    expect(order).toEqual(["first", "second", "after"]);
 });
 
 test("a disconnected handler no longer runs", () => {
     const obj = new Regress.TestObj({});
-    const runs = [];
-    const kept = [];
+    const runs: boolean[] = [];
+    const kept: boolean[] = [];
     const handlerId = obj.connect("test", () => {
         runs.push(true);
     });
@@ -103,55 +104,58 @@ test("a disconnected handler no longer runs", () => {
     });
 
     obj.emit("test");
-    assert.equal(runs.length, 1);
-    assert.equal(kept.length, 1);
+    expect(runs).toHaveLength(1);
+    expect(kept).toHaveLength(1);
 
     obj.disconnect(handlerId);
-    assert.equal(GObject.signalHandlerIsConnected(obj, handlerId), false);
+    // @ts-expect-error connect hands back a number and the handler-id parameter is declared bigint
+    expect(GObject.signalHandlerIsConnected(obj, handlerId)).toBe(false);
     obj.emit("test");
-    assert.equal(runs.length, 1);
-    assert.equal(kept.length, 2);
+    expect(runs).toHaveLength(1);
+    expect(kept).toHaveLength(2);
 
+    // @ts-expect-error connect hands back a number and the handler-id parameter is declared bigint
     GObject.signalHandlerDisconnect(obj, keptId);
-    assert.equal(GObject.signalHandlerIsConnected(obj, keptId), false);
+    // @ts-expect-error connect hands back a number and the handler-id parameter is declared bigint
+    expect(GObject.signalHandlerIsConnected(obj, keptId)).toBe(false);
     obj.emit("test");
-    assert.equal(kept.length, 2);
+    expect(kept).toHaveLength(2);
 });
 
 test("on, once and off connect and remove handlers by function", () => {
     const obj = new Regress.TestObj({});
-    const seen = [];
+    const seen: string[] = [];
     const handler = () => {
         seen.push("on");
     };
 
     obj.on("test", handler);
     obj.emit("test");
-    assert.deepEqual(seen, ["on"]);
+    expect(seen).toEqual(["on"]);
 
     obj.off("test", handler);
     obj.emit("test");
-    assert.deepEqual(seen, ["on"]);
+    expect(seen).toEqual(["on"]);
 
     obj.once("test", () => {
         seen.push("once");
     });
     obj.emit("test");
     obj.emit("test");
-    assert.deepEqual(seen, ["on", "once"]);
+    expect(seen).toEqual(["on", "once"]);
 });
 
 test("an object signal argument arrives as the very wrapper it was emitted with", () => {
     const obj = new Regress.TestObj({ int: 11 });
-    const received = [];
+    const received: GObject.Object[] = [];
     const handlerId = obj.connect("sig-with-obj", (argument) => {
         received.push(argument);
     });
 
     obj.emit("sig-with-obj", obj);
-    assert.equal(received.length, 1);
-    assert.equal(received[0], obj);
-    assert.equal(received[0].int, 11);
+    expect(received).toHaveLength(1);
+    expect(received[0]).toBe(obj);
+    expect((received[0] as Regress.TestObj).int).toBe(11);
 
     obj.disconnect(handlerId);
     received.length = 0;
@@ -159,8 +163,8 @@ test("an object signal argument arrives as the very wrapper it was emitted with"
 
 test("object signal arguments emitted from C decode by transfer", () => {
     const obj = new Regress.TestObj({});
-    const none = [];
-    const full = [];
+    const none: GObject.Object[] = [];
+    const full: GObject.Object[] = [];
     const noneId = obj.connect("sig-with-obj", (argument) => {
         none.push(argument);
     });
@@ -170,15 +174,15 @@ test("object signal arguments emitted from C decode by transfer", () => {
     });
 
     obj.emitSigWithObj();
-    assert.equal(none.length, 1);
-    assert.ok(none[0] instanceof Regress.TestObj);
-    assert.equal(none[0].int, 3);
-    assert.notEqual(none[0], obj);
+    expect(none).toHaveLength(1);
+    expect(none[0] instanceof Regress.TestObj).toBeTruthy();
+    expect((none[0] as Regress.TestObj).int).toBe(3);
+    expect(none[0]).not.toBe(obj);
 
     obj.emitSigWithObjFull();
-    assert.equal(full.length, 1);
-    assert.ok(full[0] instanceof Regress.TestObj);
-    assert.equal(full[0].int, 5);
+    expect(full).toHaveLength(1);
+    expect(full[0] instanceof Regress.TestObj).toBeTruthy();
+    expect((full[0] as Regress.TestObj).int).toBe(5);
 
     obj.disconnect(noneId);
     obj.disconnect(fullId);
@@ -188,8 +192,8 @@ test("object signal arguments emitted from C decode by transfer", () => {
 
 test("64-bit signal arguments reach the handler as bigints", () => {
     const obj = new Regress.TestObj({});
-    const signed = [];
-    const unsigned = [];
+    const signed: bigint[] = [];
+    const unsigned: bigint[] = [];
     obj.connect("sig-with-int64-prop", (i) => {
         signed.push(i);
     });
@@ -200,33 +204,33 @@ test("64-bit signal arguments reach the handler as bigints", () => {
 
     obj.emit("sig-with-int64-prop", 2n ** 63n - 1n);
     obj.emit("sig-with-int64-prop", -(2n ** 63n));
-    assert.deepEqual(signed, [2n ** 63n - 1n, -(2n ** 63n)]);
+    expect(signed).toEqual([2n ** 63n - 1n, -(2n ** 63n)]);
 
     obj.emit("sig-with-uint64-prop", 2n ** 64n - 1n);
     obj.emit("sig-with-uint64-prop", 0n);
-    assert.deepEqual(unsigned, [2n ** 64n - 1n, 0n]);
+    expect(unsigned).toEqual([2n ** 64n - 1n, 0n]);
 });
 
 test("the inout signal argument the handler returns is written back to C", () => {
     const obj = new Regress.TestObj({});
-    const positions = [];
+    const positions: number[] = [];
     obj.connect("sig-with-inout-int", (position) => {
         positions.push(position);
 
         return position + 1;
     });
 
-    assert.equal(obj.emit("sig-with-inout-int", 10), 11);
-    assert.deepEqual(positions, [10]);
+    expect(obj.emit("sig-with-inout-int", 10)).toBe(11);
+    expect(positions).toEqual([10]);
 
     obj.emitSigWithInoutInt();
-    assert.deepEqual(positions, [10, 42]);
+    expect(positions).toEqual([10, 42]);
 });
 
 test("array signal arguments decode to JS arrays", () => {
     const obj = new Regress.TestObj({});
-    const lengths = [];
-    const strvs = [];
+    const lengths: [number[] | null, number][] = [];
+    const strvs: string[][] = [];
     obj.connect("sig-with-array-len-prop", (arr, len) => {
         lengths.push([arr, len]);
     });
@@ -236,13 +240,13 @@ test("array signal arguments decode to JS arrays", () => {
     });
 
     obj.emitSigWithArrayLenProp();
-    assert.deepEqual(lengths, [[[0, 1, 2, 3, 4], 5]]);
+    expect(lengths).toEqual([[[0, 1, 2, 3, 4], 5]]);
 
     obj.emit("sig-with-strv", ["one", "two", "three"]);
-    assert.deepEqual(strvs, [["one", "two", "three"]]);
+    expect(strvs).toEqual([["one", "two", "three"]]);
 
     obj.emit("sig-with-strv", []);
-    assert.deepEqual(strvs[1], []);
+    expect(strvs[1]).toEqual([]);
 });
 
 test("a handler's return value reaches the emitter even for a void declared marshaller", () => {
@@ -250,9 +254,9 @@ test("a handler's return value reaches the emitter even for a void declared mars
     obj.connect("sig-with-uint64-prop", () => 99n);
     obj.connect("sig-with-int64-prop", () => 77n);
 
-    assert.equal(obj.emit("sig-with-uint64-prop", 7n), 99n);
-    assert.equal(obj.emit("sig-with-int64-prop", 42n), 77n);
-    assert.equal(obj.emit("sig-with-uint64-prop", 0n), 99n);
+    expect(obj.emit("sig-with-uint64-prop", 7n)).toBe(99n);
+    expect(obj.emit("sig-with-int64-prop", 42n)).toBe(77n);
+    expect(obj.emit("sig-with-uint64-prop", 0n)).toBe(99n);
 });
 
 test("the last connected handler's return value is the one the emitter sees", () => {
@@ -260,43 +264,43 @@ test("the last connected handler's return value is the one the emitter sees", ()
     obj.connect("sig-with-int64-prop", () => 1n);
     obj.connect("sig-with-int64-prop", () => 2n);
 
-    assert.equal(obj.emit("sig-with-int64-prop", 0n), 2n);
+    expect(obj.emit("sig-with-int64-prop", 0n)).toBe(2n);
 });
 
 test("a string returning signal hands the emitter the string the handler built", () => {
     const obj = new Regress.AnnotationObject({});
-    const seen = [];
+    const seen: [string, string][] = [];
     obj.connect("attribute-signal", (arg1, arg2) => {
         seen.push([arg1, arg2]);
 
         return `${arg1}-${arg2}`;
     });
 
-    assert.equal(obj.emit("attribute-signal", "one", "two"), "one-two");
-    assert.deepEqual(seen, [["one", "two"]]);
+    expect(obj.emit("attribute-signal", "one", "two")).toBe("one-two");
+    expect(seen).toEqual([["one", "two"]]);
 });
 
 test("a handler returning nothing leaves the emitter with the default value", () => {
     const obj = new Regress.TestObj({});
-    const calls = [];
+    const calls: boolean[] = [];
     obj.connect("sig-with-uint64-prop", () => {
         calls.push(true);
     });
 
-    assert.equal(obj.emit("sig-with-uint64-prop", 7n), 0n);
-    assert.equal(calls.length, 1);
+    expect(obj.emit("sig-with-uint64-prop", 7n)).toBe(0n);
+    expect(calls).toHaveLength(1);
 });
 
 test("a transfer full strv signal argument reaches the handler without being freed twice", () => {
     const obj = new Regress.TestObj({});
-    const seen = [];
+    const seen: string[][] = [];
     obj.connect("sig-with-strv-full", (strs) => {
         seen.push(strs);
     });
 
     obj.emitSigWithGstrvFull();
     obj.emitSigWithGstrvFull();
-    assert.deepEqual(seen, [
+    expect(seen).toEqual([
         ["foo", "bar", "baz"],
         ["foo", "bar", "baz"],
     ]);
@@ -304,7 +308,7 @@ test("a transfer full strv signal argument reaches the handler without being fre
 
 test("two handlers on the same transfer full signal both see the argument", () => {
     const obj = new Regress.TestObj({});
-    const seen = [];
+    const seen: string[][] = [];
     obj.connect("sig-with-strv-full", (strs) => {
         seen.push(strs);
     });
@@ -314,54 +318,54 @@ test("two handlers on the same transfer full signal both see the argument", () =
     });
 
     obj.emitSigWithGstrvFull();
-    assert.equal(seen.length, 2);
-    assert.deepEqual(seen[0], ["foo", "bar", "baz"]);
-    assert.deepEqual(seen[1], ["foo", "bar", "baz"]);
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toEqual(["foo", "bar", "baz"]);
+    expect(seen[1]).toEqual(["foo", "bar", "baz"]);
 });
 
 test("a transfer full object signal argument keeps its reference across emissions", () => {
     const obj = new Regress.TestObj({});
-    const seen = [];
+    const seen: number[] = [];
     obj.connect("sig-with-obj-full", (received) => {
-        seen.push(received.int);
+        seen.push((received as Regress.TestObj).int);
     });
 
     obj.emitSigWithObjFull();
     obj.emitSigWithObjFull();
-    assert.deepEqual(seen, [5, 5]);
+    expect(seen).toEqual([5, 5]);
 });
 
 test("the gerror signal argument decodes and accepts null", () => {
     const obj = new Regress.TestObj({});
-    const errors = [];
+    const errors: (string | null)[] = [];
     obj.connect("sig-with-gerror", (error) => {
         errors.push(error === null ? null : error.message);
     });
 
     obj.emitSigWithError();
-    assert.deepEqual(errors, ["Something failed"]);
+    expect(errors).toEqual(["Something failed"]);
 
     obj.emitSigWithNullError();
-    assert.deepEqual(errors, ["Something failed", null]);
+    expect(errors).toEqual(["Something failed", null]);
 
     obj.emit("sig-with-gerror", null);
-    assert.deepEqual(errors, ["Something failed", null, null]);
+    expect(errors).toEqual(["Something failed", null, null]);
 });
 
 test("the static scope boxed signal argument decodes to its wrapper", () => {
     const obj = new Regress.TestObj({});
-    const boxes = [];
+    const boxes: [boolean, number, number, number][] = [];
     obj.connect("test-with-static-scope-arg", (boxed) => {
         boxes.push([boxed instanceof Regress.TestSimpleBoxedA, boxed.someInt, boxed.someInt8, boxed.someDouble]);
     });
 
     obj.emit("test-with-static-scope-arg", new Regress.TestSimpleBoxedA({ someInt: 9, someInt8: 3, someDouble: 4 }));
-    assert.deepEqual(boxes, [[true, 9, 3, 4]]);
+    expect(boxes).toEqual([[true, 9, 3, 4]]);
 });
 
 test("a detailed signal only reaches the handlers of its own detail", () => {
     const obj = new Regress.TestObj({});
-    const seen = [];
+    const seen: string[] = [];
     obj.connect("all", () => {
         seen.push("plain");
     });
@@ -371,20 +375,20 @@ test("a detailed signal only reaches the handlers of its own detail", () => {
     });
 
     obj.emit("all::mine");
-    assert.deepEqual(seen, ["plain", "mine"]);
+    expect(seen).toEqual(["plain", "mine"]);
 
     seen.length = 0;
     obj.emit("all::other");
-    assert.deepEqual(seen, ["plain"]);
+    expect(seen).toEqual(["plain"]);
 
     seen.length = 0;
     obj.emit("all");
-    assert.deepEqual(seen, ["plain"]);
+    expect(seen).toEqual(["plain"]);
 });
 
 test("run-first and run-cleanup signals reach their handlers", () => {
     const obj = new Regress.TestObj({});
-    const seen = [];
+    const seen: string[] = [];
     obj.connect("first", () => {
         seen.push("first");
     });
@@ -395,13 +399,13 @@ test("run-first and run-cleanup signals reach their handlers", () => {
 
     obj.emit("first");
     obj.emit("cleanup");
-    assert.deepEqual(seen, ["first", "cleanup"]);
+    expect(seen).toEqual(["first", "cleanup"]);
 });
 
 test("an interface signal reaches handlers on an implementing instance", () => {
     const sub = Regress.TestSubObj.new();
-    const pointers = [];
-    const inherited = [];
+    const pointers: number[] = [];
+    const inherited: boolean[] = [];
     sub.connect("interface-signal", (ptr) => {
         pointers.push(ptr);
     });
@@ -411,52 +415,52 @@ test("an interface signal reaches handlers on an implementing instance", () => {
     });
 
     sub.emitSignal();
-    assert.deepEqual(pointers, [0]);
+    expect(pointers).toEqual([0]);
 
     sub.emit("interface-signal", 5);
-    assert.deepEqual(pointers, [0, 5]);
+    expect(pointers).toEqual([0, 5]);
 
     sub.emit("test");
-    assert.equal(inherited.length, 1);
+    expect(inherited).toHaveLength(1);
 });
 
 test("signal ids and names resolve through the GObject signal API", () => {
     const testId = GObject.signalLookup("test", Regress.TestObj);
-    assert.ok(testId > 0);
-    assert.equal(GObject.signalName(testId), "test");
-    assert.notEqual(GObject.signalLookup("first", Regress.TestObj), testId);
-    assert.ok(GObject.signalListIds(Regress.TestObj).includes(testId));
+    expect(testId > 0).toBeTruthy();
+    expect(GObject.signalName(testId)).toBe("test");
+    expect(GObject.signalLookup("first", Regress.TestObj)).not.toBe(testId);
+    expect(GObject.signalListIds(Regress.TestObj).includes(testId)).toBeTruthy();
     const shoutId = GObject.signalLookup("shout", Shouting);
-    assert.ok(shoutId > 0);
+    expect(shoutId > 0).toBeTruthy();
     const shoutType = getInstanceType(new Shouting({}));
-    assert.equal(GObject.signalLookup("shout", shoutType), shoutId);
-    assert.equal(GObject.signalLookup("shout", Regress.TestObj), 0);
+    expect(GObject.signalLookup("shout", shoutType)).toBe(shoutId);
+    expect(GObject.signalLookup("shout", Regress.TestObj)).toBe(0);
 });
 
 test("a declared signal carries its handler's return value back to the emitter", () => {
     const instance = new Shouting({});
-    const heard = [];
+    const heard: string[] = [];
     instance.connect("shout", (text) => {
         heard.push(text);
 
         return 7;
     });
 
-    assert.equal(instance.emit("shout", "hey"), 7);
-    assert.deepEqual(heard, ["hey"]);
+    expect(instance.emit("shout", "hey")).toBe(7);
+    expect(heard).toEqual(["hey"]);
 
-    assert.equal(instance.emit("shout", "again"), 7);
-    assert.deepEqual(heard, ["hey", "again"]);
+    expect(instance.emit("shout", "again")).toBe(7);
+    expect(heard).toEqual(["hey", "again"]);
 });
 
 test("a class closure override runs with the emitter and returns its value", () => {
     const instance = new Answering({});
 
-    assert.equal(instance.emit("ask", "why"), 42);
-    assert.equal(askCalls.length, 1);
-    assert.equal(askCalls[0][0], instance);
-    assert.equal(askCalls[0][1], "why");
-    assert.equal(getInstanceType(instance), GObject.typeFromName(`GtkxSignalsAnswerer${suffix}`));
+    expect(instance.emit("ask", "why")).toBe(42);
+    expect(askCalls).toHaveLength(1);
+    expect(askCalls[0]?.[0]).toBe(instance);
+    expect(askCalls[0]?.[1]).toBe("why");
+    expect(getInstanceType(instance)).toBe(GObject.typeFromName(`GtkxSignalsAnswerer${suffix}`));
 
     askCalls.length = 0;
 });
@@ -467,47 +471,77 @@ test("a class closure override only runs for the derived type", () => {
     const before = quietRuns.count;
 
     derived.emit("test");
-    assert.equal(quietRuns.count, before + 1);
+    expect(quietRuns.count).toBe(before + 1);
 
     plain.emit("test");
-    assert.equal(quietRuns.count, before + 1);
+    expect(quietRuns.count).toBe(before + 1);
 
     derived.emit("test");
-    assert.equal(quietRuns.count, before + 2);
+    expect(quietRuns.count).toBe(before + 2);
 });
 
 test("connecting to or emitting a signal the type does not have throws", () => {
     const obj = new Regress.TestObj({});
-    assert.throws(() => obj.connect("no-such-signal", spareHandler));
-    assert.throws(() => obj.emit("no-such-signal"));
-    assert.throws(() => obj.emit("interface-signal", 1));
+    // @ts-expect-error no-such-signal is not a TestObj signal
+    expect(() => obj.connect("no-such-signal", spareHandler)).toThrow();
+    // @ts-expect-error no-such-signal is not a TestObj signal
+    expect(() => obj.emit("no-such-signal")).toThrow();
+    // @ts-expect-error interface-signal is not a TestObj signal
+    expect(() => obj.emit("interface-signal", 1)).toThrow();
 });
 
 test("signal emission rejects arguments of the wrong type", () => {
     const obj = new Regress.TestObj({});
-    assert.throws(() => obj.emit("sig-with-obj", {}));
-    assert.throws(() => obj.emit("sig-with-obj", "nope"));
-    assert.throws(() => obj.emit("sig-with-obj", Symbol("nope")));
-    assert.throws(() => obj.emit("sig-with-int64-prop", "nope"));
-    assert.throws(() => obj.emit("sig-with-int64-prop", Symbol("nope")));
-    assert.throws(() => obj.emit("sig-with-inout-int", 1.5));
-    assert.throws(() => obj.emit("sig-with-inout-int", "nope"));
-    assert.throws(() => obj.emit("sig-with-strv", 42));
+    expect(() => {
+        // @ts-expect-error a plain object is not a GObject
+        obj.emit("sig-with-obj", {});
+    }).toThrow();
+    expect(() => {
+        // @ts-expect-error a string is not a GObject
+        obj.emit("sig-with-obj", "nope");
+    }).toThrow();
+    expect(() => {
+        // @ts-expect-error a symbol is not a GObject
+        obj.emit("sig-with-obj", Symbol("nope"));
+    }).toThrow();
+    // @ts-expect-error a string is not an int64
+    expect(() => obj.emit("sig-with-int64-prop", "nope")).toThrow();
+    // @ts-expect-error a symbol is not an int64
+    expect(() => obj.emit("sig-with-int64-prop", Symbol("nope"))).toThrow();
+    expect(() => obj.emit("sig-with-inout-int", 1.5)).toThrow();
+    // @ts-expect-error a string is not an inout int
+    expect(() => obj.emit("sig-with-inout-int", "nope")).toThrow();
+    expect(() => {
+        // @ts-expect-error a number is not a strv
+        obj.emit("sig-with-strv", 42);
+    }).toThrow();
 });
 
 test("a declared signal rejects the wrong argument count and types", () => {
     const instance = new Picking({});
-    assert.throws(() => instance.emit("pick"));
-    assert.throws(() => instance.emit("pick", "a", "b"));
-    assert.throws(() => instance.emit("pick", 42));
-    assert.throws(() => instance.emit("pick", {}));
+    expect(() => instance.emit("pick")).toThrow();
+    expect(() => instance.emit("pick", "a", "b")).toThrow();
+    expect(() => instance.emit("pick", 42)).toThrow();
+    expect(() => instance.emit("pick", {})).toThrow();
 });
 
 test("overriding a class closure with a value that is not a closure throws", () => {
     const signalId = GObject.signalLookup("hum", Muting);
-    assert.ok(signalId > 0);
-    assert.throws(() => GObject.signalOverrideClassClosure(signalId, Muting, 42));
-    assert.throws(() => GObject.signalOverrideClassClosure(signalId, Muting, "nope"));
-    assert.throws(() => GObject.signalOverrideClassClosure(signalId, Muting, {}));
-    assert.throws(() => GObject.signalOverrideClassClosure(signalId, Muting, Symbol("nope")));
+    expect(signalId > 0).toBeTruthy();
+    expect(() => {
+        // @ts-expect-error a number is not a closure
+        GObject.signalOverrideClassClosure(signalId, Muting, 42);
+    }).toThrow();
+    expect(() => {
+        // @ts-expect-error a string is not a closure
+        GObject.signalOverrideClassClosure(signalId, Muting, "nope");
+    }).toThrow();
+    expect(() => {
+        // @ts-expect-error a plain object is not a closure
+        GObject.signalOverrideClassClosure(signalId, Muting, {});
+    }).toThrow();
+    expect(() => {
+        // @ts-expect-error a symbol is not a closure
+        GObject.signalOverrideClassClosure(signalId, Muting, Symbol("nope"));
+    }).toThrow();
 });

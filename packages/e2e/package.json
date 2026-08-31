@@ -31,19 +31,6 @@
                 ],
                 "cache": false
             },
-            "test:native": {
-                "dependsOn": [
-                    "@gtkx/native:build",
-                    "test-fixtures",
-                    "@gtkx/runtime:build",
-                    "@gtkx/utils:build"
-                ],
-                "cache": true,
-                "inputs": [
-                    "nodeTests"
-                ],
-                "outputs": []
-            },
             "test:asan": {
                 "dependsOn": [
                     "test-fixtures",
@@ -55,6 +42,16 @@
                     "nodeTests"
                 ],
                 "outputs": []
+            },
+            "test": {
+                "dependsOn": [
+                    "test-fixtures",
+                    "@gtkx/native:build"
+                ],
+                "cache": true,
+                "inputs": [
+                    "nodeTests"
+                ]
             }
         },
         "namedInputs": {
@@ -65,7 +62,6 @@
                 "{workspaceRoot}/packages/native/Cargo.toml",
                 "{workspaceRoot}/packages/native/Cargo.lock",
                 "{workspaceRoot}/rust-toolchain.toml",
-                "{workspaceRoot}/scripts/native-node-tests.ts",
                 "{workspaceRoot}/scripts/native-test-fixtures.ts",
                 "{workspaceRoot}/scripts/asan-native.ts",
                 "{workspaceRoot}/scripts/rust-nightly.ts",
@@ -77,7 +73,6 @@
         }
     },
     "scripts": {
-        "test:native": "tsx ../../scripts/native-node-tests.ts",
         "test:asan": "tsx ../../scripts/asan-native.ts",
         "test-fixtures": "tsx ../../scripts/native-test-fixtures.ts"
     }

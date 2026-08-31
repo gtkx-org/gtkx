@@ -29,7 +29,7 @@ const provokeNothing = () => {
     Gtk.CssProvider.new().loadFromString(BENIGN_CSS);
 };
 
-const provoke = (mode) => {
+const provoke = (mode: string | undefined): void => {
     if (mode === "critical") {
         provokeCritical();
     } else if (mode === "panic") {

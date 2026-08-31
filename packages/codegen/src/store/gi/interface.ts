@@ -1,12 +1,12 @@
 import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
-import type { GirNamespace } from "../../gir/namespace.js";
 import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../analysis/inheritance.js";
 import { omittedTypeRef, prerequisiteConflicts } from "../../analysis/interface-conflicts.js";
 import { resolveClassOrInterface, resolveInterfaces } from "../../gir/ancestry.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
+import { declaredTypeNames, type GirNamespace } from "../../gir/namespace.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
 import {
@@ -307,20 +307,8 @@ const renderInterfaceType = (
     )}`;
 };
 
-const namespaceTypeNames = (namespace: GirNamespace): Set<string> =>
-    new Set(
-        [
-            ...namespace.classes,
-            ...namespace.interfaces,
-            ...namespace.records,
-            ...namespace.enums,
-            ...namespace.callbacks,
-            ...namespace.aliases,
-        ].map((entry) => sanitizeTypeIdentifier(entry.name)),
-    );
-
 const implTypeName = (namespace: GirNamespace, className: string): string => {
-    const taken = namespaceTypeNames(namespace);
+    const taken = declaredTypeNames(namespace);
     let name = `${className}Impl`;
 
     while (taken.has(name)) {
@@ -480,9 +468,9 @@ const renderInterfaceGuard = (context: ModuleContext, className: string): string
 };
 
 const renderInterfaceBrand = (context: ModuleContext, implRef: string): string => {
-    context.addRuntimeTypeImport("Interface");
+    const local = context.addRuntimeTypeImport("Interface");
 
-    return `${renderJsDoc(undefined, BRAND_NOTE)}declare static __impl__: Interface<${implRef}>["__impl__"];`;
+    return `${renderJsDoc(undefined, BRAND_NOTE)}declare static __impl__: ${local}<${implRef}>["__impl__"];`;
 };
 
 const renderInterfaceHasInstance = (context: ModuleContext, className: string, gtypeExpr: string): string => {

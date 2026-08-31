@@ -4,18 +4,15 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import { getWrapper, setWrapper } from "@gtkx/native";
 import { getHandle, registerClass } from "@gtkx/runtime";
-import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { test } from "node:test";
-import { fileURLToPath } from "node:url";
-import { childEnv } from "./helpers/child-process.mjs";
-import { drainAfterEachTest, drainGC, gcUntil } from "./helpers/memory.mjs";
+import { expect, test } from "vitest";
+import { childEnv, fixtureArgs } from "./helpers/child-process.js";
+import { didSettle, drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
 drainAfterEachTest();
 
 const COMPILE_DEFAULT = GLib.RegexCompileFlags.DEFAULT;
 const MATCH_DEFAULT = GLib.RegexMatchFlags.DEFAULT;
-const KEEP_ALIVE_FIXTURE = fileURLToPath(new URL("fixtures/lifecycle-keep-alive.mjs", import.meta.url));
 
 class NameObject extends GObject.Object {
     name = "";
@@ -23,10 +20,14 @@ class NameObject extends GObject.Object {
 
 registerClass(NameObject, { typeName: "GtkxNodeLifecycleNameObject" });
 
-const constructionRecords = [];
+type ConstructionRecord = { self: ObservedObject; wrapper: object | null };
+
+type Marker = { generation: number };
+
+const constructionRecords: ConstructionRecord[] = [];
 
 class ObservedObject extends GObject.Object {
-    vfuncConstructed() {
+    override vfuncConstructed() {
         constructionRecords.push({ self: this, wrapper: getWrapper(getHandle(this)) });
         super.vfuncConstructed();
     }
@@ -44,15 +45,15 @@ const churnAllocations = () => {
     return junk.at(-1);
 };
 
-const isCollected = async (weak) => {
+const isCollected = async (weak: WeakRef<object>): Promise<boolean> => {
     await drainGC();
 
     return weak.deref() === undefined;
 };
 
-const detach = (factory) => new WeakRef(factory());
+const detach = (factory: () => object): WeakRef<object> => new WeakRef(factory());
 
-const appendTracked = (store) => {
+const appendTracked = (store: Gio.ListStore) => {
     const item = new Regress.TestObj({ int: 5 });
     store.append(item);
 
@@ -66,32 +67,34 @@ const matchWithoutKeepingTheRegex = () => {
     return { matched, info, weak: new WeakRef(regex) };
 };
 
-const runKeepAliveFixture = (mode) =>
+const runKeepAliveFixture = (mode: string): Promise<number | null> =>
     new Promise((resolve, reject) => {
-        const child = spawn(process.execPath, [KEEP_ALIVE_FIXTURE, mode], {
+        const child = spawn(process.execPath, [...fixtureArgs("lifecycle-keep-alive.ts"), mode], {
             env: childEnv(),
             stdio: "ignore",
         });
 
         child.once("error", reject);
-        child.once("close", (code) => resolve(code));
+        child.once("close", (code) => {
+            resolve(code);
+        });
     });
 
 test("a handle hands back the wrapper that was last set on it", () => {
     const object = new Regress.TestObj({ int: 3 });
     const handle = getHandle(object);
-    assert.equal(getWrapper(handle), object);
+    expect(getWrapper(handle)).toBe(object);
 
     for (let generation = 1; generation <= 5; generation += 1) {
         const replacement = { generation };
         setWrapper(handle, replacement);
-        assert.equal(getWrapper(handle), replacement);
-        assert.equal(getWrapper(handle).generation, generation);
+        expect(getWrapper(handle)).toBe(replacement);
+        expect((getWrapper(handle) as Marker).generation).toBe(generation);
     }
 
     setWrapper(handle, object);
-    assert.equal(getWrapper(handle), object);
-    assert.equal(object.int, 3);
+    expect(getWrapper(handle)).toBe(object);
+    expect(object.int).toBe(3);
 });
 
 test("a registered subclass keeps its identity and its JavaScript state through a list store", () => {
@@ -101,15 +104,15 @@ test("a registered subclass keeps its identity and its JavaScript state through 
     const store = Gio.ListStore.new(NameObject);
     store.append(item);
 
-    assert.equal(store.getNItems(), 1);
-    assert.equal(store.getItem(0), item);
-    assert.equal(store.getItem(0), store.getItem(0));
-    assert.equal(store.getItem(0).name, "Persisted");
-    assert.ok(store.getItem(0) instanceof NameObject);
-    assert.ok(store.getItem(0) instanceof GObject.Object);
+    expect(store.getNItems()).toBe(1);
+    expect(store.getItem(0)).toBe(item);
+    expect(store.getItem(0)).toBe(store.getItem(0));
+    expect((store.getItem(0) as NameObject).name).toBe("Persisted");
+    expect(store.getItem(0) instanceof NameObject).toBeTruthy();
+    expect(store.getItem(0) instanceof GObject.Object).toBeTruthy();
 
     store.removeAll();
-    assert.equal(store.getNItems(), 0);
+    expect(store.getNItems()).toBe(0);
 });
 
 test("a wrapper held by a native reference survives forced collection", async () => {
@@ -118,47 +121,51 @@ test("a wrapper held by a native reference survives forced collection", async ()
 
     await drainGC(8);
 
-    assert.notEqual(tracked.weak.deref(), undefined);
-    assert.equal(getWrapper(tracked.handle), tracked.weak.deref());
-    assert.equal(store.getItem(0), tracked.weak.deref());
-    assert.equal(store.getItem(0).int, 5);
+    expect(tracked.weak.deref()).toBeDefined();
+    expect(getWrapper(tracked.handle)).toBe(tracked.weak.deref());
+    expect(store.getItem(0)).toBe(tracked.weak.deref());
+    expect((store.getItem(0) as Regress.TestObj).int).toBe(5);
 
     store.removeAll();
-    assert.ok(await gcUntil(() => isCollected(tracked.weak)));
+    expect(await didSettle(() => isCollected(tracked.weak))).toBeTruthy();
 });
 
 test("detached wrappers are collected once nothing references them", async () => {
     const plain = detach(() => new Regress.TestObj({ int: 1 }));
-    assert.ok(await gcUntil(() => isCollected(plain)));
+    expect(await didSettle(() => isCollected(plain))).toBeTruthy();
 
     const registered = detach(() => new NameObject());
-    assert.ok(await gcUntil(() => isCollected(registered)));
+    expect(await didSettle(() => isCollected(registered))).toBeTruthy();
 });
 
 test("a registered subclass already owns its wrapper while constructed runs", () => {
     const instance = new ObservedObject();
     const record = constructionRecords.at(-1);
 
-    assert.equal(constructionRecords.length, 1);
-    assert.equal(record.self, instance);
-    assert.equal(record.wrapper, instance);
-    assert.equal(getWrapper(getHandle(instance)), instance);
-    assert.ok(instance instanceof ObservedObject);
-    assert.ok(instance instanceof GObject.Object);
+    expect(constructionRecords).toHaveLength(1);
+    expect(record?.self).toBe(instance);
+    expect(record?.wrapper).toBe(instance);
+    expect(getWrapper(getHandle(instance))).toBe(instance);
+    expect(instance instanceof ObservedObject).toBeTruthy();
+    expect(instance instanceof GObject.Object).toBeTruthy();
 
     const second = new ObservedObject();
-    assert.equal(constructionRecords.length, 2);
-    assert.equal(constructionRecords.at(-1).wrapper, second);
-    assert.notEqual(second, instance);
+    expect(constructionRecords).toHaveLength(2);
+    expect(constructionRecords.at(-1)?.wrapper).toBe(second);
+    expect(second).not.toBe(instance);
 
     constructionRecords.length = 0;
 });
 
 test("constructing with an uncoercible property value throws", () => {
-    assert.throws(() => new Regress.TestObj({ string: Symbol("title") }));
-    assert.throws(() => new Regress.TestObj({ int: Symbol("count") }));
-    assert.throws(() => new Regress.TestObj({ bare: Symbol("object") }));
-    assert.throws(() => new Regress.TestObj({ string: {} }));
+    // @ts-expect-error a symbol is not a string property value
+    expect(() => new Regress.TestObj({ string: Symbol("title") })).toThrow();
+    // @ts-expect-error a symbol is not an int property value
+    expect(() => new Regress.TestObj({ int: Symbol("count") })).toThrow();
+    // @ts-expect-error a symbol is not an object property value
+    expect(() => new Regress.TestObj({ bare: Symbol("object") })).toThrow();
+    // @ts-expect-error a plain object is not a string property value
+    expect(() => new Regress.TestObj({ string: {} })).toThrow();
 });
 
 test("a match info reads every group after the subject string is churned over", () => {
@@ -166,25 +173,25 @@ test("a match info reads every group after the subject string is churned over", 
     const [matched, info] = regex.match("hello@world", MATCH_DEFAULT);
     churnAllocations();
 
-    assert.equal(matched, true);
-    assert.equal(info.matches(), true);
-    assert.equal(info.getMatchCount(), 3);
+    expect(matched).toBe(true);
+    expect(info.matches()).toBe(true);
+    expect(info.getMatchCount()).toBe(3);
     churnAllocations();
-    assert.deepEqual(info.fetchAll(), ["hello@world", "hello", "world"]);
+    expect(info.fetchAll()).toEqual(["hello@world", "hello", "world"]);
     churnAllocations();
-    assert.equal(info.fetchNamed("user"), "hello");
+    expect(info.fetchNamed("user")).toBe("hello");
     churnAllocations();
-    assert.equal(info.fetchNamed("host"), "world");
+    expect(info.fetchNamed("host")).toBe("world");
     churnAllocations();
-    assert.equal(info.getString(), "hello@world");
+    expect(info.getString()).toBe("hello@world");
     churnAllocations();
-    assert.deepEqual(info.fetchPos(1), [true, 0, 5]);
+    expect(info.fetchPos(1)).toEqual([true, 0, 5]);
     churnAllocations();
-    assert.deepEqual(info.fetchNamedPos("host"), [true, 6, 11]);
+    expect(info.fetchNamedPos("host")).toEqual([true, 6, 11]);
     churnAllocations();
-    assert.equal(info.expandReferences(String.raw`\1 at \2`), "hello at world");
+    expect(info.expandReferences(String.raw`\1 at \2`)).toBe("hello at world");
     churnAllocations();
-    assert.equal(info.getRegex().getPattern(), String.raw`(?P<user>\w+)@(?P<host>\w+)`);
+    expect(info.getRegex().getPattern()).toBe(String.raw`(?P<user>\w+)@(?P<host>\w+)`);
 });
 
 test("match all reports every overlapping match after churn", () => {
@@ -192,10 +199,10 @@ test("match all reports every overlapping match after churn", () => {
     const [matched, info] = regex.matchAll("aaa", MATCH_DEFAULT);
     churnAllocations();
 
-    assert.equal(matched, true);
-    assert.deepEqual(info.fetchAll(), ["aaa", "aa", "a"]);
+    expect(matched).toBe(true);
+    expect(info.fetchAll()).toEqual(["aaa", "aa", "a"]);
     churnAllocations();
-    assert.equal(info.getString(), "aaa");
+    expect(info.getString()).toBe("aaa");
 });
 
 test("a match info walks every match with next", () => {
@@ -210,8 +217,8 @@ test("a match info walks every match with next", () => {
         hasMatch = info.next();
     }
 
-    assert.deepEqual(words, ["one", "two", "three"]);
-    assert.equal(info.matches(), false);
+    expect(words).toEqual(["one", "two", "three"]);
+    expect(info.matches()).toBe(false);
 });
 
 test("a match info that matched nothing still reports its subject", () => {
@@ -219,13 +226,13 @@ test("a match info that matched nothing still reports its subject", () => {
     const [matched, info] = regex.match("letters only", MATCH_DEFAULT);
     churnAllocations();
 
-    assert.equal(matched, false);
-    assert.equal(info.matches(), false);
-    assert.equal(info.getMatchCount(), 0);
-    assert.equal(info.fetch(0), null);
+    expect(matched).toBe(false);
+    expect(info.matches()).toBe(false);
+    expect(info.getMatchCount()).toBe(0);
+    expect(info.fetch(0)).toBeNull();
     churnAllocations();
-    assert.deepEqual(info.fetchAll(), []);
-    assert.equal(info.getString(), "letters only");
+    expect(info.fetchAll()).toEqual([]);
+    expect(info.getString()).toBe("letters only");
 });
 
 test("match positions are byte offsets into a multibyte subject", () => {
@@ -233,11 +240,11 @@ test("match positions are byte offsets into a multibyte subject", () => {
     const [matched, info] = regex.match("aé日本語", MATCH_DEFAULT);
     churnAllocations();
 
-    assert.equal(matched, true);
-    assert.deepEqual(info.fetchPos(0), [true, 3, 12]);
+    expect(matched).toBe(true);
+    expect(info.fetchPos(0)).toEqual([true, 3, 12]);
     churnAllocations();
-    assert.equal(info.fetch(0), "日本語");
-    assert.equal(info.getString(), "aé日本語");
+    expect(info.fetch(0)).toBe("日本語");
+    expect(info.getString()).toBe("aé日本語");
 });
 
 test("groups outside the match report nothing instead of failing", () => {
@@ -245,31 +252,32 @@ test("groups outside the match report nothing instead of failing", () => {
     const [matched, info] = regex.match("ab", MATCH_DEFAULT);
     churnAllocations();
 
-    assert.equal(matched, true);
-    assert.equal(info.getMatchCount(), 3);
-    assert.equal(info.fetch(42), null);
-    assert.deepEqual(info.fetchPos(42), [false, 0, 0]);
-    assert.equal(info.fetchNamed("absent"), null);
-    assert.deepEqual(info.fetchNamedPos("absent"), [false, 0, 0]);
+    expect(matched).toBe(true);
+    expect(info.getMatchCount()).toBe(3);
+    expect(info.fetch(42)).toBeNull();
+    expect(info.fetchPos(42)).toEqual([false, 0, 0]);
+    expect(info.fetchNamed("absent")).toBeNull();
+    expect(info.fetchNamedPos("absent")).toEqual([false, 0, 0]);
 });
 
 test("a match info stays readable after its regex wrapper is collected", async () => {
     const { matched, info, weak } = matchWithoutKeepingTheRegex();
 
-    assert.equal(matched, true);
-    assert.ok(await gcUntil(() => isCollected(weak)));
+    expect(matched).toBe(true);
+    expect(await didSettle(() => isCollected(weak))).toBeTruthy();
     churnAllocations();
 
-    assert.deepEqual(info.fetchAll(), ["left-right", "left", "right"]);
+    expect(info.fetchAll()).toEqual(["left-right", "left", "right"]);
     churnAllocations();
-    assert.equal(info.getString(), "left-right");
-    assert.equal(info.getRegex().getPattern(), String.raw`(\w+)-(\w+)`);
+    expect(info.getString()).toBe("left-right");
+    expect(info.getRegex().getPattern()).toBe(String.raw`(\w+)-(\w+)`);
 });
 
 test("compiling an invalid pattern throws", () => {
-    assert.throws(() => GLib.Regex.new("(", COMPILE_DEFAULT, MATCH_DEFAULT));
-    assert.throws(() => GLib.Regex.new("a{2,1}", COMPILE_DEFAULT, MATCH_DEFAULT));
-    assert.throws(() => GLib.Regex.new(Symbol("pattern"), COMPILE_DEFAULT, MATCH_DEFAULT));
+    expect(() => GLib.Regex.new("(", COMPILE_DEFAULT, MATCH_DEFAULT)).toThrow();
+    expect(() => GLib.Regex.new("a{2,1}", COMPILE_DEFAULT, MATCH_DEFAULT)).toThrow();
+    // @ts-expect-error a symbol is not a pattern
+    expect(() => GLib.Regex.new(Symbol("pattern"), COMPILE_DEFAULT, MATCH_DEFAULT)).toThrow();
 });
 
 test("glib timeouts and idles dispatch through the node event loop", async () => {
@@ -281,7 +289,7 @@ test("glib timeouts and idles dispatch through the node event loop", async () =>
         });
     });
 
-    assert.equal(fromTimeout, "timeout");
+    expect(fromTimeout).toBe("timeout");
 
     const fromIdle = await new Promise((resolve) => {
         GLib.idleAdd(GLib.PRIORITY_DEFAULT_IDLE, () => {
@@ -291,13 +299,13 @@ test("glib timeouts and idles dispatch through the node event loop", async () =>
         });
     });
 
-    assert.equal(fromIdle, "idle");
+    expect(fromIdle).toBe("idle");
 });
 
 test("a timeout repeats until its callback asks to be removed", async () => {
-    const ticks = [];
+    const ticks: number[] = [];
 
-    await new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
         GLib.timeoutAdd(GLib.PRIORITY_DEFAULT, 1, () => {
             ticks.push(ticks.length);
 
@@ -311,7 +319,7 @@ test("a timeout repeats until its callback asks to be removed", async () => {
         });
     });
 
-    assert.deepEqual(ticks, [0, 1, 2]);
+    expect(ticks).toEqual([0, 1, 2]);
 });
 
 test("a source removed before its deadline never runs", async () => {
@@ -322,10 +330,10 @@ test("a source removed before its deadline never runs", async () => {
         return GLib.SOURCE_REMOVE;
     });
 
-    assert.ok(id > 0);
-    assert.equal(GLib.Source.remove(id), true);
+    expect(id > 0).toBeTruthy();
+    expect(GLib.Source.remove(id)).toBe(true);
 
-    await new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
         GLib.idleAdd(GLib.PRIORITY_DEFAULT_IDLE, () => {
             resolve();
 
@@ -333,31 +341,44 @@ test("a source removed before its deadline never runs", async () => {
         });
     });
 
-    assert.equal(seen.hasFired, false);
+    expect(seen.hasFired).toBe(false);
 });
 
 test("a pending timeout alone does not keep the process alive", async () => {
-    assert.equal(await runKeepAliveFixture("released"), 7);
+    expect(await runKeepAliveFixture("released")).toBe(7);
 });
 
 test("keeping alive holds the process open until the pending timeout fires", async () => {
-    assert.equal(await runKeepAliveFixture("held"), 0);
+    expect(await runKeepAliveFixture("held")).toBe(0);
 });
 
 test("the wrapper and source APIs reject values of the wrong type", () => {
     const object = new Regress.TestObj({});
     const handle = getHandle(object);
 
-    assert.throws(() => getWrapper({}));
-    assert.throws(() => getWrapper(42));
-    assert.throws(() => getHandle({}));
-    assert.throws(() => getHandle(Symbol("handle")));
-    assert.throws(() => setWrapper(handle, 42));
-    assert.throws(() => setWrapper(handle, null));
-    assert.throws(() => setWrapper(handle, Symbol("wrapper")));
-    assert.equal(getWrapper(handle), object);
+    // @ts-expect-error a plain object is not a handle
+    expect(() => getWrapper({})).toThrow();
+    // @ts-expect-error a number is not a handle
+    expect(() => getWrapper(42)).toThrow();
+    expect(() => getHandle({})).toThrow();
+    // @ts-expect-error a symbol owns no handle
+    expect(() => getHandle(Symbol("handle"))).toThrow();
+    expect(() => {
+        // @ts-expect-error a number is not a wrapper
+        setWrapper(handle, 42);
+    }).toThrow();
+    expect(() => {
+        // @ts-expect-error a wrapper is not nullable
+        setWrapper(handle, null);
+    }).toThrow();
+    expect(() => {
+        // @ts-expect-error a symbol is not a wrapper
+        setWrapper(handle, Symbol("wrapper"));
+    }).toThrow();
+    expect(getWrapper(handle)).toBe(object);
 
-    assert.throws(() => GLib.timeoutAdd(GLib.PRIORITY_DEFAULT, 1.5, () => GLib.SOURCE_REMOVE));
-    assert.throws(() => GLib.timeoutAdd(GLib.PRIORITY_DEFAULT, Symbol("interval"), () => GLib.SOURCE_REMOVE));
-    assert.throws(() => GLib.idleAdd(1.5, () => GLib.SOURCE_REMOVE));
+    expect(() => GLib.timeoutAdd(GLib.PRIORITY_DEFAULT, 1.5, () => GLib.SOURCE_REMOVE)).toThrow();
+    // @ts-expect-error a symbol is not an interval
+    expect(() => GLib.timeoutAdd(GLib.PRIORITY_DEFAULT, Symbol("interval"), () => GLib.SOURCE_REMOVE)).toThrow();
+    expect(() => GLib.idleAdd(1.5, () => GLib.SOURCE_REMOVE)).toThrow();
 });

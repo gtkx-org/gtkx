@@ -225,7 +225,7 @@ jobs:
       - name: Run tests
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run-many -t test test:native --exclude @gtkx/cli
+          command: pnpm exec nx run-many -t test --exclude @gtkx/cli
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
       - name: Report failures to Nx Cloud

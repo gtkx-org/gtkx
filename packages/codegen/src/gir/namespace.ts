@@ -1,3 +1,4 @@
+import { sanitizeTypeIdentifier } from "@gtkx/utils";
 import type { ParseContext, TypeId } from "./type-id.js";
 import { documentedFromNode, type GirAnnotations } from "./annotations.js";
 import { callbackFromNode, type GirCallback } from "./callback.js";
@@ -169,7 +170,20 @@ const collectEnums = (namespaceNode: RawNode): GirEnum[] => [
     ...getChildren(namespaceNode, "bitfield").map((bitfield) => enumFromNode(bitfield, "bitfield")),
 ];
 
+const declaredTypeNames = (namespace: GirNamespace): Set<string> =>
+    new Set(
+        [
+            ...namespace.classes,
+            ...namespace.interfaces,
+            ...namespace.records,
+            ...namespace.enums,
+            ...namespace.callbacks,
+            ...namespace.aliases,
+        ].map((entry) => sanitizeTypeIdentifier(entry.name)),
+    );
+
 export {
+    declaredTypeNames,
     namespaceDirectory,
     parseNamespaceHeader,
     createNamespaceShell,

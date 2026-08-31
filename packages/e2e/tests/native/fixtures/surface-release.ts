@@ -36,7 +36,7 @@ const presentWindow = () => {
     return window;
 };
 
-const getSurface = (window) => {
+const getSurface = (window: Gtk.Window): Gdk.Surface => {
     const surface = window.getSurface();
 
     if (surface === null) {
@@ -67,7 +67,7 @@ const dropHeld = async () => {
     window.destroy();
 };
 
-const run = async (scenario) => {
+const run = async (scenario: string | undefined): Promise<void> => {
     Gtk.init();
 
     if (scenario === "predestroyed") {

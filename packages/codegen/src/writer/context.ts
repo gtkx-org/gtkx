@@ -1,6 +1,6 @@
 import type { Library } from "../gir/library.js";
-import type { GirNamespace } from "../gir/namespace.js";
 import { externalPackageFor } from "../gir/external-namespaces.js";
+import { declaredTypeNames, type GirNamespace } from "../gir/namespace.js";
 import { type Declaration, ModuleBuilder } from "./module.js";
 
 type BootstrapCallOptions = {
@@ -42,8 +42,11 @@ class ModuleContext {
         this.module.imports.addNamed("@gtkx/runtime", name);
     }
 
-    addRuntimeTypeImport(name: string): void {
-        this.module.imports.addNamed("@gtkx/runtime", name, true);
+    addRuntimeTypeImport(name: string): string {
+        const local = declaredTypeNames(this.namespace).has(name) ? `Runtime${name}` : name;
+        this.module.imports.addNamed("@gtkx/runtime", name, true, local === name ? undefined : local);
+
+        return local;
     }
 
     hoistDescriptor(expression: string): string {

@@ -88,7 +88,7 @@
             "entry": [
                 "gtkx.config.ts!",
                 "elements.ts",
-                "node-tests/**/*.mjs"
+                "tests/native/fixtures/*.ts"
             ]
         },
         "packages/gl": {
