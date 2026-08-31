@@ -2,6 +2,9 @@
     "extends": "../../tsconfig.lib.json",
     "references": [
       {
+        "path": "../native/tsconfig.lib.json"
+      },
+      {
         "path": "../runtime/tsconfig.lib.json"
       },
       {

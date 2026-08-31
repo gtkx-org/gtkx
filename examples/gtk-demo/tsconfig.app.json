@@ -6,13 +6,13 @@
         "path": "../../packages/utils/tsconfig.lib.json"
       },
       {
+        "path": "../../packages/runtime/tsconfig.lib.json"
+      },
+      {
         "path": "../../packages/react/tsconfig.lib.json"
       },
       {
         "path": "../../packages/gl/tsconfig.lib.json"
-      },
-      {
-        "path": "../../packages/runtime/tsconfig.lib.json"
       },
       {
         "path": "../../packages/css/tsconfig.lib.json"
@@ -25,6 +25,9 @@
       },
       {
         "path": "../../packages/testing/tsconfig.lib.json"
+      },
+      {
+        "path": "../../packages/native/tsconfig.lib.json"
       },
       {
         "path": "../../packages/cli/tsconfig.lib.json"

@@ -125,6 +125,12 @@
                     "create-npm-dirs"
                 ],
                 "cache": false
+            },
+            "test": {
+                "dependsOn": [
+                    "build"
+                ],
+                "cache": true
             }
         }
     },
@@ -132,6 +138,7 @@
         "node": ">=26.7.0"
     },
     "devDependencies": {
+        "@gtkx/vitest": "workspace:*",
         "@napi-rs/cli": "^3.8.6"
     }
 }

@@ -5,6 +5,9 @@
     },
     "references": [
       {
+        "path": "../native/tsconfig.lib.json"
+      },
+      {
         "path": "../create-gtkx/tsconfig.lib.json"
       },
       {

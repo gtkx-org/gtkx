@@ -700,6 +700,9 @@ importers:
 
   packages/native:
     devDependencies:
+      '@gtkx/vitest':
+        specifier: workspace:*
+        version: link:../vitest
       '@napi-rs/cli':
         specifier: ^3.8.6
         version: 3.8.6(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@26.2.0)(supports-color@7.2.0)
