@@ -52,6 +52,8 @@ import {
 } from "./descriptor.js";
 import { carrayFor, isByteSequence, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
 
+const BUILT_IN_GTYPE = "intern";
+
 type PrimaryReturnKind = "surfaced" | "void" | "skipped";
 
 type ArgIndexOptions = {
@@ -614,6 +616,9 @@ const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; u
     unrefFunc: record.glibUnrefFunc ?? record.freeFunc,
 });
 
+const isBoxedRecord = (record: ResolvedRecord): boolean =>
+    record.glibGetType !== undefined && record.glibGetType !== BUILT_IN_GTYPE;
+
 const requiresFallbackClass = (record: ResolvedRecord): boolean => {
     const { refFunc, unrefFunc } = recordRefPair(record);
 
@@ -721,7 +726,7 @@ const fundamentalRecordPath = (
     const { refFunc, unrefFunc } = recordRefPair(record);
     const lib = resolved.namespace.sharedLibrary;
 
-    if (refFunc === undefined || unrefFunc === undefined || lib === undefined) {
+    if (refFunc === undefined || unrefFunc === undefined || lib === undefined || isBoxedRecord(record)) {
         return undefined;
     }
 
