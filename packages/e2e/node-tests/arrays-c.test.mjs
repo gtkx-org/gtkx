@@ -1,4 +1,5 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
+import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import assert from "node:assert/strict";
@@ -267,4 +268,17 @@ test("typed-array views reject mismatched kinds and shared buffers", () => {
         shared.set([97, 98, 99, 100]);
         GIMarshallingTests.arrayUint8In(shared);
     });
+});
+
+test("a cursor array reports how far a validating callee read", () => {
+    assert.deepEqual(GLib.utf8Validate(new TextEncoder().encode("héllo")), [true, new Uint8Array([])]);
+    assert.deepEqual(GLib.utf8Validate(new Uint8Array([])), [true, new Uint8Array([])]);
+    assert.deepEqual(GLib.utf8Validate([104, 105]), [true, new Uint8Array([])]);
+    assert.deepEqual(GLib.utf8Validate(new Uint8Array([0x68, 0xFF, 0x69])), [false, new Uint8Array([255, 105])]);
+});
+
+test("a cursor array rejects values that are not byte sequences", () => {
+    assert.throws(() => GLib.utf8Validate("héllo"));
+    assert.throws(() => GLib.utf8Validate(42));
+    assert.throws(() => GLib.utf8Validate([104, "i"]));
 });

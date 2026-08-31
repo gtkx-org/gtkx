@@ -11,6 +11,9 @@ const CHILD_BUDGET_MS = 30_000;
 const GLIB = "libglib-2.0.so.0";
 const VOID = { kind: "void" };
 const INT32 = { kind: "int32" };
+const UINT32 = { kind: "uint32" };
+const BUFFER = { kind: "buffer" };
+const STRING_FULL = { kind: "string", ownership: "full" };
 const NESTING_LIMIT = 80;
 
 drainAfterEachTest();
@@ -193,4 +196,20 @@ test("a malformed descriptor is refused when the call is bound", () => {
     assert.throws(() => bind(GLIB, "g_free", [fixedArray], VOID));
     assert.throws(() => bind(GLIB, "g_free", [sizedArray], VOID));
     assert.throws(() => bind(GLIB, "g_free", [{ kind: "gtkx-not-a-kind" }], VOID));
+});
+
+test("a buffer descriptor hands a typed array to C as a raw pointer", () => {
+    const checksum = bind(GLIB, "g_compute_checksum_for_data", [INT32, BUFFER, UINT32], STRING_FULL);
+    assert.equal(call(checksum, [0, new Uint8Array([97, 98, 99]), 3]), "900150983cd24fb0d6963f7d28e17f72");
+    assert.equal(call(checksum, [0, new TextEncoder().encode("abc"), 3]), "900150983cd24fb0d6963f7d28e17f72");
+    assert.equal(call(checksum, [0, null, 0]), "d41d8cd98f00b204e9800998ecf8427e");
+    assert.equal(call(checksum, [0, 0, 0]), "d41d8cd98f00b204e9800998ecf8427e");
+});
+
+test("a buffer descriptor rejects values that are not a view, an address or null", () => {
+    const checksum = bind(GLIB, "g_compute_checksum_for_data", [INT32, BUFFER, UINT32], STRING_FULL);
+    assert.throws(() => call(checksum, [0, "abc", 3]));
+    assert.throws(() => call(checksum, [0, 1.5, 0]));
+    assert.throws(() => call(checksum, [0, -1, 0]));
+    assert.throws(() => call(checksum, [0, {}, 0]));
 });

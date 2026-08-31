@@ -41,11 +41,6 @@
                 "@gtkx/native"
             ]
         },
-        "scripts": {
-            "entry": [
-                "**/*.ts"
-            ]
-        },
         "website": {
             "entry": [
                 ".vitepress/theme/**/*.{ts,vue}"
