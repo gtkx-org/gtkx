@@ -1,5 +1,6 @@
 {
     "extends": "../../tsconfig.test.json",
+    "exclude": ["${configDir}/tests/native/vitest.config.ts"],
     "references": [
         {
             "path": "../config/tsconfig.lib.json"

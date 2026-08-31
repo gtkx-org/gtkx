@@ -20,6 +20,11 @@
     "nx": {
         "targets": {
             "lint": {
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/gl:codegen",
+                    "test-fixtures"
+                ],
                 "options": {
                     "cwd": ".",
                     "command": "eslint {projectRoot}"
@@ -51,6 +56,18 @@
                 "cache": true,
                 "inputs": [
                     "nodeTests"
+                ],
+                "options": {
+                    "cwd": ".",
+                    "command": "vitest run --project e2e --project e2e-native"
+                }
+            },
+            "typecheck": {
+                "dependsOn": [
+                    "build",
+                    "^typecheck",
+                    "gtkx:codegen",
+                    "test-fixtures"
                 ]
             }
         },

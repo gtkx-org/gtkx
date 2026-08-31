@@ -59,6 +59,7 @@
                 "cache": true,
                 "dependsOn": [
                     "codegen",
+                    "@gtkx/e2e:test-fixtures",
                     "@gtkx/vitest:build",
                     "@gtkx/cairo:build",
                     "@gtkx/cli:build",

@@ -32,7 +32,7 @@ run("pnpm", [...BUILD_ARGS, "--target", "x86_64-unknown-linux-gnu"], {
 const runtime = asanRuntime();
 
 try {
-    run("pnpm", ["exec", "vitest", "run", "--root", "packages/e2e", "--project", "e2e-native"], {
+    run("pnpm", ["exec", "vitest", "run", "--project", "e2e-native"], {
         ...process.env,
         LD_PRELOAD: runtime,
         GTKX_ASAN_RUNTIME: runtime,
