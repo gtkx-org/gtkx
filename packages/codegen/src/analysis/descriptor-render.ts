@@ -1,5 +1,6 @@
 import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirCallback } from "../gir/callback.js";
+import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
 import type { EntityType, GirType } from "../gir/type.js";
@@ -515,22 +516,29 @@ const classOrInterfaceExpression = (
 const isClassOrInterface = (type: GirType | undefined): type is Extract<EntityType, { kind: "class" | "interface" }> =>
     type !== undefined && (type.kind === "class" || type.kind === "interface");
 
+const declaredRefPair = (cls: GirClass): { refFunc: string; unrefFunc: string } | undefined => {
+    const identifier = (name: string): string | undefined =>
+        cls.methods.find((method) => method.name === name)?.cIdentifier;
+
+    const refFunc = cls.glibRefFunc ?? identifier("ref");
+    const unrefFunc = cls.glibUnrefFunc ?? identifier("unref");
+
+    return refFunc === undefined || unrefFunc === undefined ? undefined : { refFunc, unrefFunc };
+};
+
 const getFundamental = (
     node: Extract<EntityType, { kind: "class" | "interface" }>,
 ): AncestorFundamental | undefined => {
     const cls = node.value;
     const lib = node.namespace.sharedLibrary;
 
-    if (lib === undefined || !cls.fundamental || cls.glibRefFunc === undefined || cls.glibUnrefFunc === undefined) {
+    if (lib === undefined || !cls.fundamental) {
         return undefined;
     }
 
-    return {
-        lib,
-        refFunc: cls.glibRefFunc,
-        unrefFunc: cls.glibUnrefFunc,
-        typeName: cls.glibTypeName,
-    };
+    const pair = declaredRefPair(cls);
+
+    return pair === undefined ? undefined : { lib, ...pair, typeName: cls.glibTypeName };
 };
 
 const walkFundamental = (
