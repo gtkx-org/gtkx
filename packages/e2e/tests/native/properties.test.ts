@@ -200,6 +200,7 @@ test("nullable properties accept null and clear their value", () => {
     expect(po.someObject).toBeNull();
     const held = intGvalue(1);
     po.someGvalue = held;
+    expect(po.someGvalue?.getInt()).toBe(1);
     po.someGvalue = null;
     expect(po.someGvalue).toBeNull();
 });

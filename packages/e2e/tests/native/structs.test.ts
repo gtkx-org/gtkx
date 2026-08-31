@@ -204,8 +204,6 @@ test("a fixed-size array field round-trips exactly its own length", () => {
 
 test("a fixed-size array field writes as far as the value reaches", () => {
     const struct = new Regress.TestStructFixedArray({});
-    struct.array = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
-
     struct.array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
     expect(struct.array).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 

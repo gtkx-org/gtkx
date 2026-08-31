@@ -587,6 +587,7 @@ test("registerClass installs declared properties with generated and custom acces
         notified.push(pspec.getName());
     });
     instance.plain = 12;
+    expect(instance.plain).toBe(12);
     instance.plain = 12;
     expect(instance.plain).toBe(12);
     expect(notified).toEqual(["plain"]);
