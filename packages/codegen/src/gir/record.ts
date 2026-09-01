@@ -68,4 +68,11 @@ const recordFromNode = (
 
 const isVtableRecord = (node: RawNode): boolean => attr(node, "glib:is-gtype-struct-for") !== undefined;
 
-export { recordFromNode, isVtableRecord, type GirRecord };
+const INTERN_GTYPE = "intern";
+
+const isInternRecord = (record: GirRecord): boolean => record.glibGetType === INTERN_GTYPE;
+
+const isBoxedRecord = (record: GirRecord): boolean =>
+    record.glibGetType !== undefined && !isInternRecord(record);
+
+export { recordFromNode, isVtableRecord, isBoxedRecord, isInternRecord, type GirRecord };

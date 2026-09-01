@@ -73,11 +73,18 @@ impl StructCodec {
     /// free function, or its size makes it a `g_free`-able block this side can own outright.
     fn ensure_transfer(&self, transfer: Ownership) -> anyhow::Result<()> {
         anyhow::ensure!(
-            transfer.is_borrowed() || self.free_fn_name.is_some() || self.size.is_some(),
+            transfer.is_borrowed() || self.names_free_fn() || self.size.is_some(),
             "{LENT_ONLY}"
         );
 
         Ok(())
+    }
+
+    /// Whether a free function can actually be resolved, which takes the library the symbol lives
+    /// in as well as its name. A name on its own would fall back to `g_free` and free the struct
+    /// through the wrong destructor.
+    fn names_free_fn(&self) -> bool {
+        self.shared_library.is_some() && self.free_fn_name.is_some()
     }
 
     /// Hands back a pointer this side no longer owns: the declared copy function when there is

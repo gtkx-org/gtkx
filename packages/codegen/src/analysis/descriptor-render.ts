@@ -14,6 +14,7 @@ import {
     isOutParameter,
     type ParameterTransfer,
 } from "../gir/parameter.js";
+import { isBoxedRecord, isInternRecord } from "../gir/record.js";
 import {
     type CArrayType,
     hasUnknownArrayLength,
@@ -52,8 +53,6 @@ import {
     tVoid,
 } from "./descriptor.js";
 import { carrayFor, isByteSequence, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
-
-const INTERN_GTYPE = "intern";
 
 type PrimaryReturnKind = "surfaced" | "void" | "skipped";
 
@@ -624,13 +623,10 @@ const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; u
     unrefFunc: record.freeFunc,
 });
 
-const isBoxedRecord = (record: ResolvedRecord): boolean =>
-    record.glibGetType !== undefined && record.glibGetType !== INTERN_GTYPE;
-
 const isFundamentalRecord = (resolved: Extract<EntityType, { kind: "record" }>): boolean => {
     const record = resolved.value;
 
-    if (record.glibGetType !== INTERN_GTYPE || resolved.namespace.sharedLibrary === undefined) {
+    if (!isInternRecord(record) || resolved.namespace.sharedLibrary === undefined) {
         return false;
     }
 

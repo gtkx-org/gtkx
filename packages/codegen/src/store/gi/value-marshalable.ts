@@ -1,9 +1,9 @@
 import type { GirField } from "../../gir/field.js";
 import type { PrimitiveCategory } from "../../gir/primitives.js";
-import type { GirRecord } from "../../gir/record.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { type GirRecord, isBoxedRecord } from "../../gir/record.js";
 
 type Scope = { context: ModuleContext; seen: Set<string> };
 
@@ -12,8 +12,7 @@ const POINTER_CATEGORIES: Set<PrimitiveCategory> = new Set<PrimitiveCategory>(["
 const recordKey = (namespaceName: string, record: GirRecord): string => `${namespaceName}.${record.name}`;
 
 const hasOwnCopySemantics = (record: GirRecord): boolean =>
-    record.glibGetType !== undefined ||
-    (record.copyFunc !== undefined && record.freeFunc !== undefined);
+    isBoxedRecord(record) || (record.copyFunc !== undefined && record.freeFunc !== undefined);
 
 const isOpaqueRecord = (record: GirRecord): boolean => record.opaque || record.disguised;
 
