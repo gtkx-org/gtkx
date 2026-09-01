@@ -114,7 +114,7 @@ the same tree works at `/usr`, at `/app`, and inside an AppImage mount point.
 
 ## Why Node.js is bundled
 
-GTKX needs Node.js 26.7, so `gtkx deploy` bundles the official `nodejs.org` build instead of depending on a distribution package. It verifies the published SHA-256 and caches the archive under `~/.cache/gtkx/node/`, so only the first deploy needs network access.
+GTKX needs Node.js 26.7 or newer, so `gtkx deploy` bundles the official `nodejs.org` build instead of depending on a distribution package. It verifies the published SHA-256 and caches the archive under `~/.cache/gtkx/node/`, so only the first deploy needs network access.
 
 `deploy.node.source` changes where it comes from:
 

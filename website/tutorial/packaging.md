@@ -64,7 +64,7 @@ and the settings schema goes missing on the first `useSetting` call.
 records both the schema sources and JavaScript packages reached by the bundle; deploy consumes it without placing
 it in the installed application.
 
-`node dist/bundle.mjs` runs the app on any machine with GTK4, Adwaita, and Node.js 26.7 installed. That works, but it is not yet something a user can double-click.
+`node dist/bundle.mjs` runs the app on any machine with GTK4, Adwaita, and Node.js 26.7 or newer installed. That works, but it is not yet something a user can double-click.
 
 ## Icons
 
@@ -161,7 +161,7 @@ npm run deploy
 
 The command regenerates the project types, builds the application, validates its desktop entry and metainfo, stages one install tree, and turns that tree into every requested format. The next chapter adds a translation catalog; the same command will then own its extraction, synchronization, compilation, metadata localization, and packaging too.
 
-Node.js is bundled into the package because GTKX needs Node.js 26.7. `gtkx deploy` fetches the official build matching yours, verifies its checksum, and caches it, which is where most of each package's size comes from.
+Node.js is bundled into the package because GTKX needs Node.js 26.7 or newer. `gtkx deploy` fetches the official build matching yours, verifies its checksum, and caches it, which is where most of each package's size comes from.
 
 ## What is inside
 
