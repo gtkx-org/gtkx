@@ -84,6 +84,30 @@ fn ensure_instantiable(type_: glib::Type) -> Result<()> {
     Ok(())
 }
 
+/// Rejects a construct property the type does not declare before anything is built. Left to
+/// `g_object_new_with_properties`, an unknown name only logs a critical and is then ignored, so the
+/// caller would receive an instance quietly missing the state it asked for.
+fn ensure_properties_exist(type_: glib::Type, properties: &ConstructProperties) -> Result<()> {
+    let class = unsafe { gobject_ffi::g_type_class_ref(type_.into_glib()) };
+    let missing = properties
+        .names
+        .iter()
+        .find(|name| {
+            unsafe { gobject_ffi::g_object_class_find_property(class.cast(), name.as_ptr()) }
+                .is_null()
+        })
+        .map(|name| name.to_string_lossy().into_owned());
+    unsafe { gobject_ffi::g_type_class_unref(class) };
+
+    match missing {
+        Some(name) => Err(Error::new(
+            Status::InvalidArg,
+            format!("new_object: '{type_}' has no property named '{name}'"),
+        )),
+        None => Ok(()),
+    }
+}
+
 unsafe fn construct(
     type_: glib::Type,
     properties: &ConstructProperties,
@@ -102,17 +126,15 @@ unsafe fn construct(
         )
     };
 
-    if let Some(critical) = trap.disarm() {
-        return Err(Error::new(
-            Status::GenericFailure,
-            format!("new_object: {critical}"),
-        ));
-    }
+    let critical = trap.disarm();
 
     if ptr.is_null() {
         return Err(Error::new(
             Status::GenericFailure,
-            format!("new_object: could not construct an instance of '{type_}'"),
+            critical.map_or_else(
+                || format!("new_object: could not construct an instance of '{type_}'"),
+                |critical| format!("new_object: {critical}"),
+            ),
         ));
     }
 
@@ -189,6 +211,7 @@ pub fn new_object<'env>(
     let type_ = type_from_bigint(&gtype, "new_object:")?;
     ensure_instantiable(type_)?;
     let properties = ConstructProperties::new(names, &values)?;
+    ensure_properties_exist(type_, &properties)?;
     let guard = unsafe { pending_wrapper::push(type_.into_glib(), wrapper.raw(), associate.raw()) };
     let ptr = unsafe { construct(type_, &properties) }?;
 
