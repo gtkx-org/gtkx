@@ -442,7 +442,6 @@ describe("registerClass — implements, rejected and redundant entries", () => {
             });
 
         expect(register).toThrow();
-        expect(register).toThrow();
     });
 });
 
