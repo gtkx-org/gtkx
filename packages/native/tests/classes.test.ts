@@ -432,3 +432,11 @@ test("constructing with an unknown property name throws", () => {
 
     expect(() => newObject(gtype, ["no-such-property"], [alloc(24)], {}, ignore)).toThrow();
 });
+
+test("constructing a registered type that is not instantiatable throws", () => {
+    expect(() => newObject(closureType, [], [], {}, ignore)).toThrow();
+});
+
+test("constructing a not instantiatable type with properties throws", () => {
+    expect(() => newObject(closureType, ["name"], [alloc(24)], {}, ignore)).toThrow();
+});

@@ -70,9 +70,20 @@ impl ConstructProperties {
 }
 
 fn ensure_instantiable(type_: glib::Type) -> Result<()> {
-    let is_abstract = unsafe {
-        gobject_ffi::g_type_test_flags(type_.into_glib(), gobject_ffi::G_TYPE_FLAG_ABSTRACT) != 0
+    let raw = type_.into_glib();
+    let is_instantiatable = unsafe {
+        gobject_ffi::g_type_test_flags(raw, gobject_ffi::G_TYPE_FLAG_INSTANTIATABLE) != 0
     };
+
+    if !is_instantiatable {
+        return Err(Error::new(
+            Status::InvalidArg,
+            format!("new_object: type '{type_}' cannot be instantiated"),
+        ));
+    }
+
+    let is_abstract =
+        unsafe { gobject_ffi::g_type_test_flags(raw, gobject_ffi::G_TYPE_FLAG_ABSTRACT) != 0 };
 
     if is_abstract {
         return Err(Error::new(
@@ -89,6 +100,14 @@ fn ensure_instantiable(type_: glib::Type) -> Result<()> {
 /// caller would receive an instance quietly missing the state it asked for.
 fn ensure_properties_exist(type_: glib::Type, properties: &ConstructProperties) -> Result<()> {
     let class = unsafe { gobject_ffi::g_type_class_ref(type_.into_glib()) };
+
+    if class.is_null() {
+        return Err(Error::new(
+            Status::InvalidArg,
+            format!("new_object: type '{type_}' carries no class to look properties up in"),
+        ));
+    }
+
     let missing = properties
         .names
         .iter()
