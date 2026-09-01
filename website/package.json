@@ -82,7 +82,7 @@
                     "{workspaceRoot}/api.json",
                     "{workspaceRoot}/packages/eslint/src/api-entrypoints.ts",
                     {
-                        "dependentTasksOutputFiles": "**/*.{d.ts,d.cts,d.mts}",
+                        "dependentTasksOutputFiles": "**/*.{d.ts,d.mts}",
                         "transitive": true
                     },
                     {

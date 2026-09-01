@@ -16,7 +16,7 @@ Install the package:
 npm install @gtkx/i18n
 ```
 
-The extraction and compilation tools come from GNU gettext. On Debian or Ubuntu:
+The extraction and compilation tools require GNU gettext 0.25 or newer. On Debian or Ubuntu:
 
 ```bash
 sudo apt install appstream desktop-file-utils gettext
@@ -83,10 +83,15 @@ import { t } from "@gtkx/i18n";
 if (days === 0) return t("Today at {{time}}", { time });
 if (days === 1) return t("Tomorrow at {{time}}", { time });
 if (days === -1) return t("Yesterday at {{time}}", { time });
-if (days < 0) return t("{{count}} day ago", "{{count}} days ago", { count: -days });
+if (days < 0)
+    return t("{{count}} day ago", {
+        count: -days,
+        defaultValue_one: "{{count}} day ago",
+        defaultValue_other: "{{count}} days ago",
+    });
 ```
 
-Interpolation names are part of the message contract. A translator can move `{{time}}` or `{{count}}`, while the generated TypeScript declarations ensure every caller supplies the required value. The singular and plural arguments become one GNU gettext plural entry, so each locale's `Plural-Forms` rule chooses the result.
+Interpolation names are part of the message contract. A translator can move `{{time}}` or `{{count}}`, while the generated TypeScript declarations ensure every caller supplies the required value. The one/other defaults become one GNU gettext plural entry, so each locale's `Plural-Forms` rule chooses the result.
 
 Apply the same rule everywhere the application authors the text:
 
@@ -130,7 +135,7 @@ Now run one manifest preview:
 npm run deploy -- --print-manifests
 ```
 
-That command runs codegen, discovers the `t` and react-i18next bindings, writes `po/POTFILES.in`, extracts the source strings, initializes the missing `po/fr.po` with the correct French headers and plural rule, adds the name, summary, descriptions, screenshots, release notes, and other translatable deploy metadata, then synchronizes the catalog. The preview validates the desktop entry and AppStream file but builds no packages.
+That command runs codegen, extracts statically recoverable messages declared with the exact names `t`, `useTranslation`, `Trans`, and `TransWithoutContext`, writes `po/POTFILES.in`, initializes the missing `po/fr.po` with the correct French headers and plural rule, adds the name, summary, descriptions, screenshots, release notes, and other translatable deploy metadata, then synchronizes the catalog. Imported aliases, member calls, dynamic keys, and CommonJS declarations are not extraction forms. The preview validates the desktop entry and AppStream file but builds no packages.
 
 Fill every empty `msgstr` in `po/fr.po`; an empty value deliberately falls back to English and would make the localized integration test fail. These entries include the controls and starter content that test reaches, plus interpolation, a plural, and the application name that also appears in desktop metadata:
 
@@ -165,7 +170,7 @@ Commit `po/LINGUAS`, the PO and POT files, and `POTFILES.in`. Do not commit `dis
 
 ## See the generated contract
 
-Codegen writes the application-specific types to `node_modules/.gtkx/i18n.d.ts` and references them from GTKX's generated environment declarations. You never maintain an interface of message keys by hand.
+Codegen writes standard i18next resources under `node_modules/.gtkx` and augments the `I18nResources` interface exported by `@gtkx/i18n`. That interface supplies i18next's `CustomTypeOptions`, so you never maintain message-key types by hand.
 
 After extraction, TypeScript knows that this message requires `query`:
 
@@ -175,7 +180,7 @@ t("No tasks match “{{query}}”"); // type error
 t("No tasks match “{{query}}”", { name }); // type error
 ```
 
-It also rejects unknown literal messages and a plural call without a numeric `count`. The strict function flows through direct `t`, `useTranslation`, `withTranslation`, and the `Translation` render callback because they are all tied to the same generated registry.
+The upstream i18next types also reject unknown literal messages and a plural call without a numeric `count`. GTKX does not maintain a separate message registry.
 
 ## Run it in French
 
@@ -244,7 +249,7 @@ The release is still one command, and the localization work is visible in the sh
 [gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to appimage, deb, flatpak, rpm
 [gtkx] Building ~/tasks/src/index.tsx
 [gtkx] Validated the desktop entry and the metainfo
-[gtkx] Bundled Node.js v24.19.0 (100.8 MiB, glibc >= 2.28)
+[gtkx] Bundled Node.js v26.7.0 (109.4 MiB, glibc >= 2.28)
 [gtkx] Staged 11 files into build/stage
 [gtkx] Wrote build/targets/appimage/AppRun
 [gtkx] Wrote build/targets/deb/nfpm.yaml

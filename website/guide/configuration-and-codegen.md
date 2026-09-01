@@ -5,7 +5,7 @@ description: "Configuring GTKX with gtkx.config.ts, what codegen generates into 
 
 # Configuration and Codegen
 
-Codegen is driven from `gtkx.config.ts`, which declares which libraries to generate bindings for, and your application ID.
+Codegen is driven from `gtkx.config.ts`, which declares your application ID and any GIR libraries to bind beyond GTK4 and Adwaita.
 
 ## The config file
 
@@ -15,7 +15,6 @@ Codegen is driven from `gtkx.config.ts`, which declares which libraries to gener
 import { defineConfig } from "@gtkx/config";
 
 export default defineConfig({
-    libraries: ["Gtk-4.0", "Adw-1"],
     applicationId: "com.gtkx.tutorial",
 });
 ```
@@ -27,9 +26,7 @@ export default defineConfig({
 `applicationId` is the only required key; the rest have defaults.
 
 - **`applicationId`**: the GApplication identifier the app registers under, in reverse-DNS form (`com.example.Tasks`).
-- **`libraries`**: the GIR libraries to bind, as `Name-Version`. `Gtk-4.0` is the default, and joins any list that does not already name a Gtk version. Under [`v2DefaultLibraries`](#future-flags) `Adw-1` joins on the same terms, so the list becomes the libraries you want *on top of* GTK and Adwaita — `["WebKit-6.0"]` rather than `["Gtk-4.0", "Adw-1", "WebKit-6.0"]`. Each default is mandatory by namespace rather than by version, so a list that pins `Gtk-4.2` or a later Adwaita keeps its pin.
-
-  The bare string `"*"` (never an array entry) binds everything on the GIR path. **Deprecated: the wildcard is removed in GTKX 2.0.** What it resolves to depends on which introspection packages the build host happens to have installed, so the generated store — and every type your code compiles against — changes with the machine. List the libraries the project needs instead. Codegen names the wildcard on each run while it still works.
+- **`libraries`**: additional GIR libraries to bind, as `Name-Version`. GTKX always binds `Gtk-4.0` and `Adw-1`, so list only what the project needs beyond them — `["WebKit-6.0"]` rather than `["Gtk-4.0", "Adw-1", "WebKit-6.0"]`. Explicitly listing either default or using the removed `"*"` wildcard is rejected. A different version of the Gtk or Adwaita namespace replaces its default version.
 - **`girPath`**: directories searched for `.gir` files ahead of the standard locations.
 - **`reactCompiler`**: the React Compiler, on by default. `false` disables it; an object forwards `compilationMode` and `panicThreshold`.
 - **`codegen: false`**: skips generation, so the project imports whatever binding store is already installed.
@@ -41,7 +38,6 @@ export default defineConfig({
 - **`elements`**: the [element customizations](#advanced-customizing-elements): `behaviors` is the module default-exporting your `defineElements` map, `config` sets per-type codegen output (`component`, `props`, `omittedProps`, `isLazy`).
 - **`agents`**: what codegen writes for coding agents, both on by default. `rules: false` stops the `AGENTS.md` block, `reference: false` stops the on-disk element reference. See [What agents are given](#what-agents-are-given).
 - **`mcp`**: which tools the [MCP server](/guide/mcp) registers: `tools` is a list of name patterns, `readOnly` drops the tools that drive the app.
-- **`future`**: opts into behavior that becomes the default in the next major. See [Future flags](#future-flags).
 
 ### The application resource base
 
@@ -63,7 +59,7 @@ Codegen writes packages into `node_modules/.gtkx` and links them into `node_modu
 - **`@gtkx/gi`** is the introspected API, one subpath per namespace (`@gtkx/gi/gtk`, `@gtkx/gi/adw`): the classes, enums, and functions you call imperatively, for refs and values such as `Gtk.Orientation.VERTICAL`.
 - **`@gtkx/jsx`** is the React layer, likewise per namespace (`@gtkx/jsx/gtk`, `@gtkx/jsx/adw`): a PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a `React.JSX.IntrinsicElements` augmentation.
 
-The `cairo` namespace is provided by the [`@gtkx/cairo`](/guide/cairo) package rather than generated; the store re-exports it as `@gtkx/gi/cairo` for backward compatibility.
+The `cairo` namespace is provided by the [`@gtkx/cairo`](/guide/cairo) package rather than generated.
 
 Record fields appear as accessors: a getter wherever the read lands on the right memory, and a setter only where a field slot can hold what it stores. `null`-terminated pointer arrays read, so `Gio.DBusNodeInfo.interfaces` hands back its array, but they are read-only and absent from the record's constructor props, since the slot cannot keep an array alive. Fields whose element count lives in a sibling field, and `GList` or `GSList` links, carry no accessor and are absent from the class.
 
@@ -144,171 +140,32 @@ Gdk.ContentProvider.newForValue(value);
 
 Passing a `GObject.Value` you built yourself always works, wherever inference would guess something else.
 
-## Future flags
+## Import project data
 
-The `future` block opts into behavior that becomes the default in the next major version, so you can migrate one change at a time instead of all at once during an upgrade. Every flag is off by default, and the CLI warns once per run about the ones you have not set, so nothing 2.0 removes reaches you without notice. Clear every warning on the last 1.x release and upgrading to 2.0 changes nothing.
-
-```ts
-export default defineConfig({
-    applicationId: "com.example.Tasks",
-    future: { v2ByteArrays: true },
-});
-```
-
-Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
-
-- **`v2ByteArrays`**: represents GIR byte sequences as `Uint8Array` instead of `number[]`. It covers `guint8` C arrays and `GByteArray`, in return values, out parameters, record fields, and properties, and it sets what the runtime's `fromVariant` unpacks a byte array variant (`ay`) to. It does not cover `@gtkx/cairo` or `@gtkx/gl`, which already use typed arrays.
-
-  Parameters accept `Uint8Array | number[]` either way, so turning this flag on never breaks a call site that passes values *in*. What changes is what you get *back*: `GLib.fileGetContents` returns `[boolean, Uint8Array]` rather than `[boolean, number[]]`, so code that calls `.push`, `.concat`, `Array.isArray`, or `JSON.stringify` on a result needs updating. Flip the flag and run `tsc`: every site that needs attention is a type error.
-
-- **`v2ValueReturns`**: hands back what a `GObject.Value` holds rather than the value itself, the read-direction counterpart of the inference above. It covers the bindings whose return type or caller-allocated out parameter is a `GValue`: `Gtk.DropTarget.getValue`, `Gtk.ConstantExpression.getValue`, `Gdk.Clipboard.readValueAsync`, `Gtk.Builder.valueFromStringType`, `Gtk.TreeModel.getValue`, and a handful more. Their type becomes `unknown`, since GIR says nothing about what the value holds, so the call site asserts the type it asked for: `(await clipboard.readValueAsync(Gio.File, 0, null)) as Gio.File`. Signal parameters and properties keep handing over a `GObject.Value`, which a handler for a binding transform writes into.
-
-  Unlike the byte sequence flag, this one only changes what comes *back*; the `GObject.Value | JsValue` parameter widening is not part of it and applies either way. `tsc` reports every return site that needs attention, since `unknown` cannot be used without an assertion.
-
-- **`v2FinishResults`**: drops the leading success boolean from what a promisified async method resolves to. It covers every pair whose finish function reports failure by throwing and hands results back through out parameters, where the boolean is always `true`: `Gio.File.loadContentsAsync` resolves to `[Uint8Array, string | null]` rather than `[boolean, Uint8Array, string | null]`, and a call left with a single out parameter resolves to that value directly, so `Gio.File.replaceContentsAsync` resolves to the new etag rather than `[boolean, string | null]`. The finish methods themselves, like `loadContentsFinish`, keep the boolean, as do async methods whose finish returns only the boolean.
-
-  Flip the flag and run `tsc`: destructuring sites written for the old tuple, such as `const [, contents] = await file.loadContentsAsync(null)`, become type errors pointing at what to update.
-- **`v2InoutReturns`**: stops repeating an inout record or boxed parameter in a method's return value. Such a parameter is mutated in place — the instance you pass is the instance the callee updates — so the returned entry was always the same object you already hold. `Gsk.Path.getNext(point)` becomes `boolean` instead of `[boolean, PathPoint]`, `Pango.Matrix.transformRectangle(rect)` becomes `void` instead of `Rectangle`, and mixed cases only drop the repeated entry: `Soup.MessageHeadersIter.next` keeps its other out parameters. Primitive inout parameters, which cannot be mutated in place, stay in the result either way, and signal emission and virtual methods already work this way. `tsc` flags every call site that destructured the repeated value.
-- **`v2ResourceImports`**: replaces the `#data/` import map with relative, query-suffixed asset imports. Remove
-  `"imports": { "#data/*": "./data/*" }` from `package.json`, then migrate assets and schemas separately:
-
-  ```ts
-  // Before
-  import logoUri from "#data/logo.png";
-  import schema from "#data/com.example.Tasks.gschema.xml";
-
-  // After, from src/app.tsx
-  import logoPath from "../data/logo.png?resource";
-  import schema from "../data/com.example.Tasks.gschema.xml";
-  ```
-
-  `?resource` bundles an asset and returns its GResource path; `?resource=/org/example/exact.png` chooses an
-  exact path. Use `?url` when an API needs a real file. Schema imports stay query-free and become typed from
-  their relative import. While this flag is staged, a bare relative asset import is rejected so every call
-  site has to choose deliberately. Build a URI only where an API requires one: `` `resource://${logoPath}` ``.
-
-  `?icon` bundles an SVG, PNG, or XPM as a private icon-theme resource and returns its extensionless icon
-  name. `?icon=example-confirm-symbolic` overrides that name, which is useful for libraries that ship their
-  own icons:
-
-  ```ts
-  import confirmIcon from "./icons/scalable/actions/confirm.svg?icon=example-confirm-symbolic";
-  ```
-
-  An import below an `icons/hicolor/<size>/<context>/` or `icons/<size>/<context>/` tree keeps its recognized
-  hicolor layout, including directories such as `scalable/actions` and `16x16/apps`. A file outside one of
-  those layouts is placed directly in the app's resource icon path as an unthemed fallback; put symbolic and
-  size-specific icons in a theme layout when recoloring or size selection matters. Dependency imports use the
-  consuming application's resource prefix, and GTKX registers that private path with the current icon theme,
-  so they need no system installation. Choose package-specific icon names because two imports cannot claim
-  the same icon name and layout.
-
-  Production builds place these bundled assets in `gtkx.gresource` beside `bundle.mjs`. Generated resource
-  modules load and register that file automatically; no application bootstrap code or data-file installation
-  rule is required.
-- **`v2DefaultLibraries`**: binds `Adw-1` alongside `Gtk-4.0` whether or not `libraries` names it. Every
-  project then generates the Adwaita bindings, so `@gtkx/gi/adw` and `@gtkx/jsx/adw` are always present and
-  the packages built on them — [`@gtkx/components/adw`](/guide/components), [`@gtkx/forms`](/guide/forms),
-  [`@gtkx/navigation`](/guide/navigation) — need no opt-in. Each joins by namespace, so a list that pins
-  another version of Gtk or Adwaita keeps its pin. Naming `Gtk-4.0` or `Adw-1` outright then changes nothing,
-  and codegen says so on its next run; in 2.0, once the behavior is unconditional, naming either becomes a
-  configuration error asking you to delete the line.
-
-  Nothing reports this flag for you: it is not a type error, and unlike `v2ResourceImports` there is no build
-  failure either. What it changes on its own is the build: codegen fails on a host without the Adwaita
-  introspection data, since a mandatory library has to resolve to a `.gir` file; every deb and rpm gains a
-  `libadwaita-1-0` or `libadwaita` relation, because those come from the libraries the store recorded; and
-  every generated NOTICE file gains libadwaita's LGPL entry.
-
-  The rest waits until something imports the generated Adwaita module — `@gtkx/gi/adw`, `@gtkx/jsx/adw`, one
-  of the packages built on them, or the flat `@gtkx/jsx` root, which pulls every namespace the store carries.
-  Binding `Adw-1` alone changes nothing at runtime: an application that only imports `@gtkx/jsx/gtk` never
-  evaluates the Adwaita module. Once it does, `@gtkx/gi/adw` calls libadwaita's `adw_init`
-  while the module evaluates, which installs the Adwaita style manager and stylesheet, so the application
-  restyles even where it renders no Adwaita widget. And libadwaita becomes a hard requirement: the module
-  resolves its types out of `libadwaita-1.so.0` at module scope, so a host without the library fails before
-  any application code runs. Turn the flag on, import what you were going to import, run the app, and look
-  at it.
-
-- **`v2TreeShaking`**: folds each generated class's registration into its own definition, so `gtkx build`
-  drops the classes an app never reaches instead of shipping every binding of every configured library.
-  Rendered elements, classes your code touches, and everything their signatures reference stay; the rest —
-  typically most of the store — is removed, which roughly halves a small app's bundle. No call site changes,
-  so `tsc` reports nothing for this flag.
-
-  Three behaviors move with it: a bare `import "@gtkx/gi/gtk"` registers nothing on its own; import a value
-  from the namespace instead (namespace initialization such as `gtk_init` and the prototype overrides still
-  run whenever the namespace is imported at all). String-driven rendering keeps working, because every path
-  that resolves a type name only ever meets registered types: a rendered element's component keeps its class,
-  and a value a binding hands back keeps the classes its signature names — but rendering an element whose
-  component the bundle never imported throws, since constructing through an ancestor would build the wrong
-  type. `typeFromName` keeps GLib's contract everywhere: it finds only types already registered in-process,
-  and a production bundle registers a generated type when its class is retained, so import the class if you
-  need its name to resolve — `gtkx dev` and tests never bundle, and there every type stays registered
-  exactly as today.
-
-  The `animated` binding gets a build-time rewrite of its own: `animated.GtkX` member accesses and
-  `animated(...)` calls become imports of exactly the widgets they animate, while a dynamic use of the
-  `animated` value itself — spreading it, `Object.keys`, computed access — keeps the whole widget namespace
-  and `gtkx build` warns about the file. Property access on `animated` is deprecated and removed in GTKX 2.0
-  along with its rewrite — prefer importing the component and calling `animated(GtkX)`, the only form 2.0
-  keeps, where `animated` is plainly callable and no rewrite exists at all; `gtkx build` names each file
-  still reading components off `animated`.
-
-Changing a flag invalidates the generated store, so the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates it automatically. A key the `future` block does not define is ignored rather than rejected, and codegen names it on each run so a typo does not stay silent.
-
-### The deprecation warning
-
-Loading a configuration that leaves a flag unset prints one grouped block on stderr, naming every pending
-flag with the stable id that identifies it:
-
-```
-[gtkx] warn 2 of 7 future flags are unset. Their behavior becomes the default in GTKX 2.0.
-
-  [gtkx-v2-byte-arrays]       future: { v2ByteArrays: true }
-    Byte sequences come back as number[]. In 2.0 they come back as Uint8Array. `Array.isArray` and `JSON.stringify` change silently; grep for them.
-
-  [gtkx-v2-default-libraries] future: { v2DefaultLibraries: true }
-    Only Gtk-4.0 is bound by default. In 2.0 Adw-1 is bound alongside it. Nothing reports this one; check the app yourself.
-
-  Set one flag at a time and run tsc: it reports every affected call site except where noted above.
-  Guide    https://gtkx.dev/guide/upgrading-to-2
-  Silence  deprecations: { silence: ["gtkx-v2-byte-arrays"] }
-```
-
-The block goes to stderr, never stdout, so it cannot corrupt the JSON-RPC stream `gtkx mcp` speaks. It prints
-once and then stays quiet until the set of pending flags changes, so `gtkx dev` shows it once at startup rather
-than once in the supervisor and again in the runner it forks. Editing `gtkx.config.ts` to add or remove a flag
-prints the new block.
-
-Every flag has an id, and each one can be silenced on its own:
-
-| Flag | Deprecation id |
-| --- | --- |
-| `v2ByteArrays` | `gtkx-v2-byte-arrays` |
-| `v2ValueReturns` | `gtkx-v2-value-returns` |
-| `v2FinishResults` | `gtkx-v2-finish-results` |
-| `v2InoutReturns` | `gtkx-v2-inout-returns` |
-| `v2ResourceImports` | `gtkx-v2-resource-imports` |
-| `v2DefaultLibraries` | `gtkx-v2-default-libraries` |
-| `v2TreeShaking` | `gtkx-v2-tree-shaking` |
+Use relative imports so GTKX can follow project files from source to the production resource bundle:
 
 ```ts
-export default defineConfig({
-    applicationId: "com.example.Tasks",
-    future: { v2ByteArrays: true },
-    deprecations: { silence: ["gtkx-v2-inout-returns"] },
-});
+import logoPath from "../data/logo.png?resource";
+import saveIcon from "../data/icons/scalable/actions/save.svg?icon=example-save-symbolic";
+import sourcePath from "../data/template.txt?url";
+import settings from "../data/com.example.Tasks.gschema.xml";
 ```
 
-Silencing is an acknowledgement, not a fix: the behavior still changes in 2.0. It exists so a project working
-through the flags one at a time is not re-reading the same block every run. A silenced flag still counts in the
-summary line, which reports how many are silenced, so the count never understates what 2.0 will change. An id
-no flag reports is a configuration error, so a typo cannot quietly turn the warning off.
+`?resource` bundles an asset and returns its GResource path; `?resource=/org/example/exact.png` chooses an exact path. Use `?url` when an API needs a real file. Settings schemas stay query-free and receive generated types. Build a URI only where an API requires one: `` `resource://${logoPath}` ``.
 
-### When a flag graduates
+`?icon` bundles an SVG, PNG, or XPM as a private icon-theme resource and returns its extensionless icon name. An import below an `icons/hicolor/<size>/<context>/` or `icons/<size>/<context>/` tree keeps that layout. Files outside those trees become unthemed fallbacks. A query value such as `?icon=example-confirm-symbolic` overrides the name.
 
-In the next major each flag's behavior becomes unconditional and its key is removed. Leaving a graduated flag at `true` will be accepted as a no-op with a single warning naming the key, and setting it to `false` will be a configuration error, because at that point it can no longer be honored. [Upgrading to 2.0](/guide/upgrading-to-2) walks through the whole move.
+Production builds place bundled assets in `gtkx.gresource` beside `bundle.mjs`. Generated resource modules load and register it automatically.
+
+## Generated return values
+
+GIR byte sequences are `Uint8Array` in return values, out parameters, record fields, and properties. Parameters accept either `Uint8Array` or `number[]`. The cairo and OpenGL packages use their own typed-array contracts.
+
+Bindings that return a `GObject.Value` hand back its payload typed as `unknown`, so assert the type established by the operation at the call site. Promisified finish methods omit a leading success boolean when failure already rejects, and inout records and boxed values mutate the passed object without repeating it in the return value. [Async Operations](/guide/async-operations) covers the promise shapes.
+
+## Tree-shaken bindings
+
+Each generated class registers as part of its own definition, so production builds retain the widgets, classes, and signature dependencies the application reaches. A bare namespace import runs namespace initialization but retains no generated class by itself. Import a class explicitly when `GObject.typeFromName` must find it in a production bundle. Development and tests do not bundle and keep every generated type registered.
 
 ## The JSX prop model
 
@@ -392,7 +249,6 @@ Pass the class as the type argument so the hooks are typed. Point `elements.beha
 import { defineConfig } from "@gtkx/config";
 
 export default defineConfig({
-    libraries: ["Gtk-4.0", "Adw-1"],
     applicationId: "com.gtkx.tutorial",
     elements: { behaviors: "./src/elements.ts" },
 });

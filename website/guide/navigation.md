@@ -11,17 +11,7 @@ description: "Stack, tab, drawer, and split view navigation with @gtkx/navigatio
 npm install @gtkx/navigation
 ```
 
-Every navigator draws itself with libadwaita widgets, so the package needs `@gtkx/jsx/adw`, which exists once `Adw-1` is bound. A project scaffolded by `npm create gtkx` already has it, through [`v2DefaultLibraries`](/guide/configuration-and-codegen#future-flags). An older project that binds GTK alone adds it in `gtkx.config.ts`:
-
-```diff
- export default defineConfig({
--    libraries: ["Gtk-4.0"],
-+    libraries: ["Gtk-4.0", "Adw-1"],
-     applicationId: "com.example.notes",
- });
-```
-
-Changing that list invalidates the generated bindings, so run codegen again: the next `gtkx dev`, `gtkx build`, or `gtkx codegen` regenerates them for you.
+Every navigator draws itself with libadwaita widgets. GTKX 2 binds Adwaita alongside GTK4 by default, so every generated store includes the `@gtkx/jsx/adw` bindings the package needs.
 
 The navigators, their options, and the re-exported core API are in the [@gtkx/navigation reference](/reference/@gtkx/navigation/).
 

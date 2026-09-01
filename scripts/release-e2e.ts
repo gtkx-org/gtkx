@@ -16,7 +16,6 @@ import { assertPublishedShape, type PackageManifest } from "./publish-manifest.j
 type ConsumerVariant = { appName: string; applicationId: string; isTypescript: boolean };
 
 type Packument = {
-    "dist-tags": { latest?: string };
     versions: Record<string, { dist: { tarball: string } }>;
 };
 
@@ -97,19 +96,14 @@ async function tarballUrl(name: string): Promise<string> {
     }
 
     const packument = (await response.json()) as Packument;
-    const latest = packument["dist-tags"].latest;
+    const releaseVersion = createGtkxVersion();
+    const release = packument.versions[releaseVersion];
 
-    if (latest === undefined) {
-        throw new Error(`Registry reports no latest version for ${name}`);
+    if (release === undefined) {
+        throw new Error(`Registry is missing the manifest for ${name}@${releaseVersion}`);
     }
 
-    const version = packument.versions[latest];
-
-    if (version === undefined) {
-        throw new Error(`Registry is missing the manifest for ${name}@${latest}`);
-    }
-
-    return version.dist.tarball;
+    return release.dist.tarball;
 }
 
 async function inspectTarball(

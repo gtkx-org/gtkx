@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/codegen",
-    "version": "1.6.0",
+    "version": "2.0.0-beta.1",
     "description": "Generates typed GTK bindings and API docs from GIR and GL registries.",
     "keywords": [
         "gtkx",

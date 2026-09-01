@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/i18n",
-    "version": "1.6.0",
+    "version": "2.0.0-beta.1",
     "description": "A react-i18next backend for GTKX applications using GNU gettext catalogs.",
     "keywords": [
         "gtkx",

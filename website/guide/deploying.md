@@ -14,7 +14,7 @@ gtkx deploy
 [gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to flatpak
 [gtkx] Validated the desktop entry and the metainfo
 [gtkx] Building ~/tasks/src/index.tsx
-[gtkx] Bundled Node.js v24.19.0 (100.8 MiB, glibc >= 2.28)
+[gtkx] Bundled Node.js v26.7.0 (109.4 MiB, glibc >= 2.28)
 [gtkx] Staged 12 files into build/stage
 [gtkx] Wrote build/targets/flatpak/com.gtkx.tutorial.yml
 [gtkx] flatpak: running flatpak-builder, this can take several minutes
@@ -45,7 +45,6 @@ With neither, `gtkx deploy` builds a Flatpak.
 import { defineConfig } from "@gtkx/config";
 
 export default defineConfig({
-    libraries: ["Gtk-4.0"],
     applicationId: "com.example.Tasks",
     applicationIcon: "data/icons",
     deploy: {
@@ -76,7 +75,7 @@ Anything you leave out is derived, so the same fact never lives in two places:
 | `copyright` | `Copyright © <year> <developer.name>` |
 | `releases` | one entry, from the version and today's date |
 | deb `section`, rpm `group` | the first entry in `categories` |
-| deb `Depends`, rpm `Requires` | GTK and libadwaita when your `libraries` bind them, plus the glibc minimum read out of the built binaries. Every other dependency is yours to declare through `deploy.depends` |
+| deb `Depends`, rpm `Requires` | GTK, libadwaita, and the glibc minimum read out of the built binaries. Every other dependency is yours to declare through `deploy.depends` |
 | `screenshotBaseUrl` | the `origin` git remote, including the project's path inside the repository |
 
 The application icon is the one thing that has to exist. Set the top-level `applicationIcon` option to an
@@ -115,7 +114,7 @@ the same tree works at `/usr`, at `/app`, and inside an AppImage mount point.
 
 ## Why Node.js is bundled
 
-GTKX needs Node.js 24, and Debian 13 ships 20 while Ubuntu 26.04 ships 22, so the package cannot depend on the distribution's. `gtkx deploy` downloads the official `nodejs.org` build matching the Node.js you are running and verifies it against the published SHA-256. The release archive is cached under `~/.cache/gtkx/node/` and re-verified on every reuse, so only the first deploy needs network access. That costs about 100 MiB per package.
+GTKX needs Node.js 26.7, so `gtkx deploy` bundles the official `nodejs.org` build instead of depending on a distribution package. It verifies the published SHA-256 and caches the archive under `~/.cache/gtkx/node/`, so only the first deploy needs network access.
 
 `deploy.node.source` changes where it comes from:
 
@@ -152,7 +151,7 @@ out of the `dist/` it packages, so a tree built by an older `gtkx build` has to 
 
 ## Tools you need installed
 
-`desktop-file-validate` and `appstreamcli` are always required, because they are what catch a metadata mistake before it reaches a software center. Projects with a `po/` directory also need GNU gettext: deploy uses `xgettext` to refresh the catalog template, `msggrep` to retain generated metadata during intermediate source builds, `msginit` to initialize a missing PO listed in `LINGUAS`, `msgmerge` to synchronize every existing PO, and `msgfmt` to compile catalogs and merge translations into generated metadata. Normal codegen and builds use the same tools as their catalog paths require. A `--skip-build` deploy needs only `msgfmt`: it recompiles the existing catalogs without rewriting the POT or PO files. `tar` is required whenever packages are actually built, since the bundled Node.js is extracted from its release archive. Beyond that it depends on the target:
+`desktop-file-validate` and `appstreamcli` are always required, because they are what catch a metadata mistake before it reaches a software center. Projects with a `po/` directory also need GNU gettext 0.25 or newer: deploy uses `xgettext` to refresh the catalog template, `msggrep` to retain generated metadata during intermediate source builds, `msginit` to initialize a missing PO listed in `LINGUAS`, `msgmerge` to synchronize every existing PO, and `msgfmt` to compile catalogs and merge translations into generated metadata. Normal codegen and builds use the same tools as their catalog paths require. A `--skip-build` deploy needs only `msgfmt`: it recompiles the existing catalogs without rewriting the POT or PO files. `tar` is required whenever packages are actually built, since the bundled Node.js is extracted from its release archive. Beyond that it depends on the target:
 
 | Target | Needs | Fetched automatically |
 | --- | --- | --- |
