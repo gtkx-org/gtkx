@@ -61,6 +61,6 @@
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",
         "@types/node": "catalog:",
-        "fast-xml-parser": "^5.11.0"
+        "fast-xml-parser": "^5.11.1"
     }
 }
