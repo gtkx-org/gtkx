@@ -720,7 +720,7 @@ const plainRecordExpression = (
     const record = resolved.value;
     const layout = recordLayout(placement);
 
-    if (!isBoxedRecord(record) || record.glibGetType === undefined) {
+    if (!isBoxedRecord(record)) {
         return structExpression(context, resolved, ownership, layout);
     }
 

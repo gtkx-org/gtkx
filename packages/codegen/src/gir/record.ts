@@ -72,7 +72,7 @@ const INTERN_GTYPE = "intern";
 
 const isInternRecord = (record: GirRecord): boolean => record.glibGetType === INTERN_GTYPE;
 
-const isBoxedRecord = (record: GirRecord): boolean =>
+const isBoxedRecord = (record: GirRecord): record is GirRecord & { glibGetType: string } =>
     record.glibGetType !== undefined && !isInternRecord(record);
 
 export { recordFromNode, isVtableRecord, isBoxedRecord, isInternRecord, type GirRecord };

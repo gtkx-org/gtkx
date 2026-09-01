@@ -203,7 +203,7 @@ type StructOptions = {
     size?: number;
     /** Class a decoded value is wrapped in, instead of the one registered for its GType. */
     wrapperClass?: AnyClass;
-    /** Library the struct's declared copy and free functions are resolved from. */
+    /** Library the struct's declared copy and free functions are resolved from; without it neither is used. */
     sharedLibrary?: string;
     /** Function duplicating an instance, used instead of a byte copy when the struct declares one. */
     copyFnName?: string;
@@ -406,9 +406,11 @@ const boxedT = (typeName: string, options: BoxedOptions = {}): BoxedDescriptor =
 };
 
 const applyStructLifecycle = (result: StructDescriptor, options: StructOptions): void => {
-    if (options.sharedLibrary !== undefined) {
-        result.sharedLibrary = options.sharedLibrary;
+    if (options.sharedLibrary === undefined) {
+        return;
     }
+
+    result.sharedLibrary = options.sharedLibrary;
 
     if (options.copyFnName !== undefined) {
         result.copyFnName = options.copyFnName;

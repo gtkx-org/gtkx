@@ -87,6 +87,23 @@ test("many pointer registered structs survive collection", async () => {
     await drainGC(5);
 });
 
+test("a struct handed over with its own free function is owned and usable", () => {
+    const queue = GLib.AsyncQueue.new();
+    expect(queue).toBeInstanceOf(GLib.AsyncQueue);
+    expect(queue.length()).toBe(0);
+    queue.lock();
+    expect(queue.lengthUnlocked()).toBe(0);
+    queue.unlock();
+});
+
+test("many structs released by their own free function survive collection", async () => {
+    for (let index = 0; index < 1000; index += 1) {
+        expect(GLib.AsyncQueue.new().length()).toBe(0);
+    }
+
+    await drainGC(5);
+});
+
 test("a pointer registered struct rejects field writes it cannot hold", () => {
     // @ts-expect-error a fractional number is not a long field value
     expect(() => new GIMarshallingTests.PointerStruct({ long: 1.5 })).toThrow();
