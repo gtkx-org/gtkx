@@ -13,7 +13,7 @@ const recordKey = (namespaceName: string, record: GirRecord): string => `${names
 
 const hasOwnCopySemantics = (record: GirRecord): boolean =>
     record.glibGetType !== undefined ||
-    ((record.glibRefFunc ?? record.copyFunc) !== undefined && (record.glibUnrefFunc ?? record.freeFunc) !== undefined);
+    (record.copyFunc !== undefined && record.freeFunc !== undefined);
 
 const isOpaqueRecord = (record: GirRecord): boolean => record.opaque || record.disguised;
 

@@ -78,6 +78,9 @@ type StructOptions = {
     wrapperClass: string | undefined;
     isCallerAllocated: boolean;
     isInline?: boolean;
+    sharedLibrary?: string | undefined;
+    copyFnName?: string | undefined;
+    freeFnName?: string | undefined;
 };
 
 type FundamentalOptions = {
@@ -221,6 +224,9 @@ const tStruct = (ownership: Ownership, options: StructOptions): string =>
             options.wrapperClass === undefined ? undefined : `wrapperClass: ${options.wrapperClass}`,
             options.isCallerAllocated ? "isCallerAllocated: true" : undefined,
             options.isInline === true ? "isInline: true" : undefined,
+            optionalLiteralEntry("sharedLibrary", options.sharedLibrary),
+            optionalLiteralEntry("copyFnName", options.copyFnName),
+            optionalLiteralEntry("freeFnName", options.freeFnName),
         ]),
     ]);
 

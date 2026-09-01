@@ -53,7 +53,7 @@ import {
 } from "./descriptor.js";
 import { carrayFor, isByteSequence, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
 
-const BUILT_IN_GTYPE = "intern";
+const INTERN_GTYPE = "intern";
 
 type PrimaryReturnKind = "surfaced" | "void" | "skipped";
 
@@ -620,21 +620,33 @@ const recordLayout = (placement: RecordPlacement): RecordLayout => ({
 });
 
 const recordRefPair = (record: ResolvedRecord): { refFunc: string | undefined; unrefFunc: string | undefined } => ({
-    refFunc: record.glibRefFunc ?? record.copyFunc,
-    unrefFunc: record.glibUnrefFunc ?? record.freeFunc,
+    refFunc: record.copyFunc,
+    unrefFunc: record.freeFunc,
 });
 
 const isBoxedRecord = (record: ResolvedRecord): boolean =>
-    record.glibGetType !== undefined && record.glibGetType !== BUILT_IN_GTYPE;
+    record.glibGetType !== undefined && record.glibGetType !== INTERN_GTYPE;
 
-const requiresFallbackClass = (record: ResolvedRecord): boolean => {
-    const { refFunc, unrefFunc } = recordRefPair(record);
+const isFundamentalRecord = (resolved: Extract<EntityType, { kind: "record" }>): boolean => {
+    const record = resolved.value;
 
-    if (refFunc !== undefined && unrefFunc !== undefined) {
-        return record.glibTypeName === undefined;
+    if (record.glibGetType !== INTERN_GTYPE || resolved.namespace.sharedLibrary === undefined) {
+        return false;
     }
 
-    return record.glibGetType === undefined;
+    const { refFunc, unrefFunc } = recordRefPair(record);
+
+    return refFunc !== undefined && unrefFunc !== undefined;
+};
+
+const requiresFallbackClass = (record: ResolvedRecord): boolean => record.glibTypeName === undefined;
+
+const structLifecycleLibrary = (resolved: Extract<EntityType, { kind: "record" }>): string | undefined => {
+    const record = resolved.value;
+
+    return record.copyFunc === undefined && record.freeFunc === undefined
+        ? undefined
+        : resolved.namespace.sharedLibrary;
 };
 
 const structExpression = (
@@ -643,15 +655,21 @@ const structExpression = (
     ownership: Ownership,
     options: { isCallerAllocated: boolean; isInline: boolean },
 ): string => {
-    const { size } = computeRecordFieldSlots(context, resolved.value.fields, resolved.value.isUnion);
-    const wrapperClass = context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(resolved.value.name));
-    const isCopyable = isValueMarshalable(context, resolved.namespace.name, resolved.value);
+    const record = resolved.value;
+    const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
+    const wrapperClass = context.qualify(resolved.namespace.name, sanitizeTypeIdentifier(record.name));
+    const isCopyable = isValueMarshalable(context, resolved.namespace.name, record);
+    const { refFunc, unrefFunc } = recordRefPair(record);
+    const lib = structLifecycleLibrary(resolved);
 
     return tStruct(ownership, {
         size: isCopyable && size > 0 ? size : undefined,
         wrapperClass,
         isCallerAllocated: options.isCallerAllocated,
         isInline: options.isInline,
+        sharedLibrary: lib,
+        copyFnName: lib === undefined ? undefined : refFunc,
+        freeFnName: lib === undefined ? undefined : unrefFunc,
     });
 };
 
@@ -706,22 +724,30 @@ const plainRecordExpression = (
     const record = resolved.value;
     const layout = recordLayout(placement);
 
-    if (record.glibGetType === undefined) {
+    if (!isBoxedRecord(record) || record.glibGetType === undefined) {
         return structExpression(context, resolved, ownership, layout);
     }
 
     return boxedRecordExpression({ context, resolved, ownership, ...layout, typeFnName: record.glibGetType });
 };
 
-const isPlainStruct = (resolved: Extract<EntityType, { kind: "record" }>): boolean => {
-    const record = resolved.value;
-    const { refFunc, unrefFunc } = recordRefPair(record);
+const isPlainStruct = (resolved: Extract<EntityType, { kind: "record" }>): boolean =>
+    !isBoxedRecord(resolved.value) && !isFundamentalRecord(resolved);
 
-    if (refFunc !== undefined && unrefFunc !== undefined && resolved.namespace.sharedLibrary !== undefined) {
+const isUnownableStruct = (context: ModuleContext, resolved: Extract<EntityType, { kind: "record" }>): boolean => {
+    if (!isPlainStruct(resolved)) {
         return false;
     }
 
-    return record.glibGetType === undefined;
+    const record = resolved.value;
+
+    if (structLifecycleLibrary(resolved) !== undefined && record.freeFunc !== undefined) {
+        return false;
+    }
+
+    const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
+
+    return !(isValueMarshalable(context, resolved.namespace.name, record) && size > 0);
 };
 
 const fundamentalRecordPath = (
@@ -734,7 +760,7 @@ const fundamentalRecordPath = (
     const { refFunc, unrefFunc } = recordRefPair(record);
     const lib = resolved.namespace.sharedLibrary;
 
-    if (refFunc === undefined || unrefFunc === undefined || lib === undefined || isBoxedRecord(record)) {
+    if (refFunc === undefined || unrefFunc === undefined || lib === undefined || !isFundamentalRecord(resolved)) {
         return undefined;
     }
 
@@ -925,7 +951,7 @@ const aliasExpression = (
 };
 
 export {
-    isPlainStruct,
+    isUnownableStruct,
     transferOwnership,
     isInlineCallbackRef,
     isSkippedPrimaryReturn,

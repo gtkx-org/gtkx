@@ -166,8 +166,8 @@ describe("a binding returning a fundamental instance", () => {
     });
 });
 
-describe("a fundamental descriptor that names its wrapper class", () => {
-    it("wraps without resolving a GType the descriptor does not carry", () => {
+describe("a struct descriptor that names its wrapper class", () => {
+    it("takes ownership of a record released by its declared free function", () => {
         expect(GLib.AsyncQueue.new()).toBeInstanceOf(GLib.AsyncQueue);
     });
 });

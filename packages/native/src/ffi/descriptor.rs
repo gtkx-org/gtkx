@@ -144,6 +144,9 @@ pub enum Descriptor {
         size: Option<u32>,
         is_caller_allocated: Option<bool>,
         is_inline: Option<bool>,
+        shared_library: Option<String>,
+        copy_fn_name: Option<String>,
+        free_fn_name: Option<String>,
     },
     Fundamental {
         ownership: Ownership,
@@ -294,11 +297,17 @@ impl Descriptor {
                 size,
                 is_caller_allocated,
                 is_inline,
+                shared_library,
+                copy_fn_name,
+                free_fn_name,
             } => Codec::Struct(StructCodec {
                 ownership,
                 size: size.map(|n| n as usize),
                 caller_allocated: is_caller_allocated.unwrap_or(false),
                 inline: is_inline.unwrap_or(false),
+                shared_library,
+                copy_fn_name,
+                free_fn_name,
             }),
             Self::Fundamental {
                 ownership,

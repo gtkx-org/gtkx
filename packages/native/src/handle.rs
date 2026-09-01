@@ -128,7 +128,10 @@ enum HandleKind {
     },
     Boxed(Boxed),
     Fundamental(Fundamental),
-    Struct(*mut c_void),
+    Struct {
+        ptr: *mut c_void,
+        free_fn: Option<BoxedFreeFn>,
+    },
     Borrowed(*mut c_void),
     Field {
         owner: Handle,
@@ -157,7 +160,7 @@ impl std::fmt::Debug for Handle {
             HandleKind::Object { .. } => "Object",
             HandleKind::Boxed(_) => "Boxed",
             HandleKind::Fundamental(_) => "Fundamental",
-            HandleKind::Struct(_) => "Struct",
+            HandleKind::Struct { .. } => "Struct",
             HandleKind::Borrowed(_) => "Borrowed",
             HandleKind::Field { .. } => "Field",
         };
@@ -207,7 +210,14 @@ impl Handle {
 
     #[must_use]
     pub fn owned_struct(ptr: *mut c_void) -> Self {
-        HandleKind::Struct(ptr).into()
+        Self::owned_struct_with_free_fn(ptr, None)
+    }
+
+    /// Owns a plain struct allocation released by `free_fn`, falling back to `g_free` when the
+    /// struct declares no free function of its own.
+    #[must_use]
+    pub fn owned_struct_with_free_fn(ptr: *mut c_void, free_fn: Option<BoxedFreeFn>) -> Self {
+        HandleKind::Struct { ptr, free_fn }.into()
     }
 
     /// Records how many bytes the handle's own allocation holds, which only the caller that
@@ -249,7 +259,7 @@ impl Handle {
     #[must_use]
     pub fn field_store(&self) -> Option<(&FieldStore, usize)> {
         match &self.inner.kind {
-            HandleKind::Struct(_) => Some((&self.inner.fields, 0)),
+            HandleKind::Struct { .. } => Some((&self.inner.fields, 0)),
             HandleKind::Field { owner, offset } => {
                 let (store, base) = owner.field_store()?;
 
@@ -319,7 +329,7 @@ impl Handle {
             HandleKind::Object { .. } => HandleClass::Object,
             HandleKind::Boxed(_) => HandleClass::Boxed,
             HandleKind::Fundamental(_) => HandleClass::Fundamental,
-            HandleKind::Struct(_) => HandleClass::Struct,
+            HandleKind::Struct { .. } => HandleClass::Struct,
             HandleKind::Borrowed(_) | HandleKind::Field { .. } => HandleClass::Opaque,
         }
     }
@@ -420,7 +430,7 @@ impl Handle {
 
         match &self.inner.kind {
             HandleKind::Object { ptr, .. } => ptr.get(),
-            HandleKind::Struct(ptr) | HandleKind::Borrowed(ptr) => *ptr,
+            HandleKind::Struct { ptr, .. } | HandleKind::Borrowed(ptr) => *ptr,
             HandleKind::Boxed(boxed) => boxed.as_ptr(),
             HandleKind::Fundamental(fundamental) => fundamental.as_ptr(),
             HandleKind::Field { owner, offset } => {
@@ -441,7 +451,7 @@ impl Handle {
             HandleKind::Object { .. } => GOBJECT_SIZE_HINT,
             HandleKind::Boxed(_) => Boxed::SIZE_HINT,
             HandleKind::Fundamental(_) => Fundamental::SIZE_HINT,
-            HandleKind::Struct(_) => STRUCT_SIZE_HINT,
+            HandleKind::Struct { .. } => STRUCT_SIZE_HINT,
             HandleKind::Borrowed(_) | HandleKind::Field { .. } => 0,
         }
     }
@@ -455,7 +465,12 @@ impl Drop for HandleKind {
                     glib::idle_add_local_once(move || surface::release(object));
                 }
             }
-            Self::Struct(ptr) => unsafe { glib::ffi::g_free(*ptr) },
+            Self::Struct { ptr, free_fn } => unsafe {
+                match free_fn {
+                    Some(free_fn) => free_fn(*ptr),
+                    None => glib::ffi::g_free(*ptr),
+                }
+            },
             _ => {}
         }
     }

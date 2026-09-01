@@ -11,7 +11,7 @@ import {
     underlyingType,
 } from "../store/gi/param-marshal.js";
 import { recordInlineSize } from "../store/gi/record-layout.js";
-import { isPlainStruct, isScalarRef, transferOwnership } from "./descriptor-render.js";
+import { isScalarRef, isUnownableStruct, transferOwnership } from "./descriptor-render.js";
 import { closureAndDestroyIndices } from "./param-structure.js";
 
 type UnmarshalableSubject = GirCallable & { instance?: GirParameter | undefined };
@@ -194,7 +194,7 @@ const isRefusedTransfer = (
 
     const type = underlyingType(context, ref);
 
-    return type?.kind === "record" && isPlainStruct(type);
+    return type?.kind === "record" && isUnownableStruct(context, type);
 };
 
 const isLentInPlace = (context: ModuleContext, parameter: GirParameter): boolean =>

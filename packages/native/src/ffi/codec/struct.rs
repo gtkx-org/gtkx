@@ -1,10 +1,15 @@
 use anyhow::bail;
 
 use super::prelude::*;
-use crate::handle::Handle;
+use crate::ffi::library_cache::FfiCache;
+use crate::handle::{BoxedFreeFn, Handle};
 use crate::host::error_reporter::ReportErr as _;
 
-const LENT_ONLY: &str = "a plain struct is not registered as a boxed type, so nothing names the function that would free it: it can only be lent (transfer none), never handed over";
+const LENT_ONLY: &str = "a plain struct declares no free function and has no known size, so nothing names the function that would release it: it can only be lent (transfer none), never handed over";
+
+/// A struct's declared copy function, which duplicates an instance. A refcounted record spells the
+/// same slot as its ref function, which returns the very pointer it was handed.
+type StructCopyFn = unsafe extern "C" fn(*const c_void) -> *mut c_void;
 
 #[derive(Debug, Clone)]
 pub struct StructCodec {
@@ -12,6 +17,9 @@ pub struct StructCodec {
     pub size: Option<usize>,
     pub caller_allocated: bool,
     pub inline: bool,
+    pub shared_library: Option<String>,
+    pub copy_fn_name: Option<String>,
+    pub free_fn_name: Option<String>,
 }
 
 impl Encoder for StructCodec {
@@ -20,28 +28,101 @@ impl Encoder for StructCodec {
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
-        self.ensure_lent()?;
-
-        Ok(ptr)
+        ref_for_full_transfer(self.ownership, ptr, |ptr| self.duplicate(ptr))
     }
 }
 
 impl StructCodec {
-    fn ensure_lent(&self) -> anyhow::Result<()> {
-        Self::ensure_lent_transfer(self.ownership)
+    /// The declared copy and free functions, resolved together: a copy is only usable when
+    /// something also names how to release what it returns.
+    fn lifecycle_fns(&self) -> anyhow::Result<Option<(StructCopyFn, BoxedFreeFn)>> {
+        let (Some(library), Some(copy_fn_name), Some(free_fn_name)) = (
+            self.shared_library.as_deref(),
+            self.copy_fn_name.as_deref(),
+            self.free_fn_name.as_deref(),
+        ) else {
+            return Ok(None);
+        };
+
+        FfiCache::with(|state| unsafe {
+            Ok(Some((
+                state.resolve_symbol::<StructCopyFn>(library, copy_fn_name)?,
+                state.resolve_symbol::<BoxedFreeFn>(library, free_fn_name)?,
+            )))
+        })
     }
 
-    fn ensure_lent_transfer(transfer: Ownership) -> anyhow::Result<()> {
-        anyhow::ensure!(transfer.is_borrowed(), "{LENT_ONLY}");
+    fn free_fn(&self) -> anyhow::Result<Option<BoxedFreeFn>> {
+        let (Some(library), Some(free_fn_name)) =
+            (self.shared_library.as_deref(), self.free_fn_name.as_deref())
+        else {
+            return Ok(None);
+        };
+
+        FfiCache::with(|state| unsafe {
+            state.resolve_symbol::<BoxedFreeFn>(library, free_fn_name)
+        })
+        .map(Some)
+    }
+
+    fn ensure_lent(&self) -> anyhow::Result<()> {
+        self.ensure_transfer(self.ownership)
+    }
+
+    /// A full transfer is only accepted when the struct can be released: either it names its own
+    /// free function, or its size makes it a `g_free`-able block this side can own outright.
+    fn ensure_transfer(&self, transfer: Ownership) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            transfer.is_borrowed() || self.free_fn_name.is_some() || self.size.is_some(),
+            "{LENT_ONLY}"
+        );
 
         Ok(())
     }
 
-    fn borrow_or_copy(&self, ptr: *mut c_void) -> Handle {
-        self.size.map_or_else(
+    /// Hands back a pointer this side no longer owns: the declared copy function when there is
+    /// one, a byte copy when the size makes that sound, and an error when neither is available.
+    fn duplicate(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+        if let Some((copy_fn, _)) = self.lifecycle_fns()? {
+            return Ok(unsafe { copy_fn(ptr.cast_const()) });
+        }
+
+        match self.size {
+            Some(size) => Ok(unsafe { glib::ffi::g_memdup2(ptr.cast_const(), size) }),
+            None => bail!("{LENT_ONLY}"),
+        }
+    }
+
+    /// Wraps a pointer the callee handed over, owning it through the declared free function when
+    /// there is one and through `g_free` when only the size vouches for the allocation.
+    fn take_ownership(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
+        Ok(Handle::owned_struct_with_free_fn(ptr, self.free_fn()?))
+    }
+
+    /// Wraps a pointer the callee keeps owning: copied through the declared copy function, else
+    /// through a byte copy when the size makes one sound, else borrowed for the call's duration.
+    fn borrow_or_copy(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
+        if let Some((copy_fn, free_fn)) = self.lifecycle_fns()? {
+            return Ok(Handle::owned_struct_with_free_fn(
+                unsafe { copy_fn(ptr.cast_const()) },
+                Some(free_fn),
+            ));
+        }
+
+        Ok(self.size.map_or_else(
             || Handle::from_glib_borrow(ptr),
             |size| Handle::owned_struct(unsafe { glib::ffi::g_memdup2(ptr.cast_const(), size) }),
-        )
+        ))
+    }
+
+    fn acquire(&self, ptr: *mut c_void, transfer: Ownership) -> anyhow::Result<Handle> {
+        self.ensure_transfer(transfer)?;
+
+        if transfer.is_full() {
+            return self.take_ownership(ptr);
+        }
+
+        self.borrow_or_copy(ptr)
     }
 
     fn write_inline(
@@ -100,18 +181,16 @@ impl Decoder for StructCodec {
         self.decode_call_non_null(env, stash, "Struct", |struct_ptr| {
             Ok(value::handle_to_unknown(
                 env,
-                self.borrow_or_copy(struct_ptr),
+                self.acquire(struct_ptr, self.ownership)?,
             )?)
         })
     }
 
     read_value_non_null!(|self, env, ptr, transfer| {
-        Self::ensure_lent_transfer(transfer)?;
-
         let handle = if self.caller_allocated {
             Handle::from_glib_borrow(ptr)
         } else {
-            self.borrow_or_copy(ptr)
+            self.acquire(ptr, transfer)?
         };
 
         Ok(value::handle_to_unknown(env, handle)?)
@@ -124,7 +203,10 @@ impl Decoder for StructCodec {
         _context: &str,
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
-        Self::ensure_lent_transfer(transfer)?;
+        anyhow::ensure!(
+            transfer.is_borrowed(),
+            "a plain struct lent for the duration of a call is read in place, so it cannot also be handed over"
+        );
 
         self.decode_non_null(env, ptr, |ptr| {
             Ok(value::handle_to_unknown(
@@ -142,12 +224,11 @@ impl PtrWriter for StructCodec {
         ret: ffi::Slot,
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
-        if self.ensure_lent().report_err("Struct return").is_none() {
-            unsafe { ret.store(std::ptr::null_mut()) };
-            return;
-        }
-
-        write_return_object_ptr(ret, value, |ptr| ptr);
+        write_return_object_ptr(ret, value, |ptr| {
+            unsafe { self.ref_for_transfer(ptr) }
+                .report_err("Struct return")
+                .unwrap_or(std::ptr::null_mut())
+        });
     }
 
     fn write_value_to_ptr(
