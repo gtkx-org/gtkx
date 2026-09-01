@@ -18,7 +18,7 @@
         "typescript": "catalog:",
         "vite": "catalog:",
         "vitepress": "^2.0.0-alpha.19",
-        "vue": "^3.5.41"
+        "vue": "^3.5.42"
     },
     "nx": {
         "implicitDependencies": [
