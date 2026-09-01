@@ -7,6 +7,12 @@ use crate::host::error_reporter::ReportErr as _;
 
 const LENT_ONLY: &str = "a plain struct declares no free function and has no known size, so nothing names the function that would release it: it can only be lent (transfer none), never handed over";
 
+const CALL_LENT_ONLY: &str = "a plain struct lent for the duration of a call is read in place, so it cannot also be handed over";
+
+const CALLER_ALLOCATED_LENT_ONLY: &str = "a caller-allocated plain struct is filled into storage this side already owns, so it cannot also be handed over";
+
+const SLOT_LENT_ONLY: &str = "a plain struct written into a pointer slot is stored in place, and nothing would release what the slot held, so it cannot be handed over";
+
 /// A struct's declared copy function, which duplicates an instance. A refcounted record spells the
 /// same slot as its ref function, which returns the very pointer it was handed.
 type StructCopyFn = unsafe extern "C" fn(*const c_void) -> *mut c_void;
@@ -65,8 +71,12 @@ impl StructCodec {
         .map(Some)
     }
 
-    fn ensure_lent(&self) -> anyhow::Result<()> {
-        self.ensure_transfer(self.ownership)
+    /// Paths that store or read a pointer in place never release what was there before, so they
+    /// take a struct only on loan however well its own lifecycle is described.
+    fn ensure_lent(transfer: Ownership, context: &str) -> anyhow::Result<()> {
+        anyhow::ensure!(transfer.is_borrowed(), "{context}");
+
+        Ok(())
     }
 
     /// A full transfer is only accepted when the struct can be released: either it names its own
@@ -183,8 +193,6 @@ impl Decoder for StructCodec {
     }
 
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
-        self.ensure_lent()?;
-
         self.decode_call_non_null(env, stash, "Struct", |struct_ptr| {
             Ok(value::handle_to_unknown(
                 env,
@@ -195,6 +203,8 @@ impl Decoder for StructCodec {
 
     read_value_non_null!(|self, env, ptr, transfer| {
         let handle = if self.caller_allocated {
+            Self::ensure_lent(transfer, CALLER_ALLOCATED_LENT_ONLY)?;
+
             Handle::from_glib_borrow(ptr)
         } else {
             self.acquire(ptr, transfer)?
@@ -210,10 +220,7 @@ impl Decoder for StructCodec {
         _context: &str,
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
-        anyhow::ensure!(
-            transfer.is_borrowed(),
-            "a plain struct lent for the duration of a call is read in place, so it cannot also be handed over"
-        );
+        Self::ensure_lent(transfer, CALL_LENT_ONLY)?;
 
         self.decode_non_null(env, ptr, |ptr| {
             Ok(value::handle_to_unknown(
@@ -249,7 +256,7 @@ impl PtrWriter for StructCodec {
             return self.write_inline(slot, value);
         }
 
-        self.ensure_lent()?;
+        Self::ensure_lent(self.ownership, SLOT_LENT_ONLY)?;
 
         match self.size {
             Some(size) => Self::write_pointer_slot(slot, value, init, size),
