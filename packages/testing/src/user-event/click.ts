@@ -252,33 +252,7 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
     return isActivated;
 };
 
-/**
- * Activates a widget that neither claims the click nor carries a click gesture of its own, and
- * otherwise delivers a press and release. The press travels outwards from the clicked widget
- * through every widget carrying a click gesture with a pressed or released handler, the way GTK
- * hands the same press to each of them, and stops at the first Gtk.Button or indexed child of a
- * list box or flow box, which claims it. A gesture GTK attached itself takes the press only when no
- * widget below it handles one, and stops it there, so an expander or a notebook tab nested in a row
- * opens instead of activating the row. Coordinates are the clicked widget's position in each
- * carrier, so a gesture the container of an indexed child carries reads the child's position rather
- * than the container's center. An indexed child that the press reaches is then activated, or
- * exclusively selected when its container does not activate on a single click. A widget with the
- * label role is never activated, but does consume the click when it carries a gesture of its own.
- *
- * The press also stops at a widget whose click GTK4 implements in C on a gesture it attached
- * itself, reading a GdkEvent that off-screen synthesis cannot produce. Gestures that widget carries
- * of its own still take the press and release, the way GTK hands them the press before its own
- * gesture claims it, and the same outcome is then applied through the public action GTK's own
- * handler invokes: a list, grid, or column-view row is focused and selected, and activated as well
- * on a second press or when its view activates on a single click; an expandable tree expander
- * toggles its expansion, once per press, and only when it is the widget clicked, so a click on its
- * child falls through to the enclosing row; a notebook tab, clicked directly or through its label,
- * focuses its notebook and switches to its page; a column header sorts by its column. Sorting goes
- * through Gtk.ColumnView.sortByColumn, so the primary sort column and order match what a pointer
- * produces while previously sorted columns are dropped rather than kept as secondary keys. A
- * column-view cell and the row that carries the column headers stand in the way of the click rather
- * than taking it, so a click on either reaches the row or the view behind it.
- */
+/** Activates or presses and releases a widget. */
 const click = async (widget: Gtk.Widget): Promise<void> => {
     if (!isSelfClickTarget(widget) && (await tryActivate(widget))) {
         return;
@@ -287,21 +261,9 @@ const click = async (widget: Gtk.Widget): Promise<void> => {
     await deliverClick(widget, 1);
 };
 
-/**
- * Delivers a two-press click gesture the way {@link click} delivers a single press, without trying
- * activation first. A list box row or flow box child the presses reach, clicked directly or through
- * a descendant, is activated and exclusively selected, as GTK's double-click path does whether or
- * not the container activates on a single click. A widget whose click GTK4 implements itself
- * receives that outcome once per press, so a list, grid, or column-view row is selected and then
- * activated by the second press, a tree expander ends back where it started, a notebook tab stays on
- * the page the first press opened, and a column header sorts and then inverts its order.
- */
+/** Delivers a double-click gesture. */
 const dblClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, 2);
-/**
- * Delivers a three-press click gesture the same way a double click is delivered, applying the same
- * outcome to a list box row or flow box child the presses reach, and applying the outcome GTK4
- * implements itself once per press to a row, tree expander, notebook tab, or column header.
- */
+/** Delivers a triple-click gesture. */
 const tripleClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, 3);
 
 export { clickGestures, emitClickPhase, getAuthoredClickGestures, click, dblClick, tripleClick };

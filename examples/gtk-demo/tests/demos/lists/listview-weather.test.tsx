@@ -23,19 +23,6 @@ const renderListView = async (): Promise<Gtk.ListView> => {
     return await screen.findByName("list-view", { as: Gtk.ListView });
 };
 
-describe("listviewWeatherDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(listviewWeatherDemo.id).toBe("listview-weather");
-        expect(listviewWeatherDemo.title).toBe("Lists/Weather");
-        expect(listviewWeatherDemo.description).toContain("rarer features of GtkListView");
-        expect(listviewWeatherDemo.keywords).toEqual([]);
-        expect(listviewWeatherDemo.sourceCode).toContain("const listviewWeatherDemo: Demo = {");
-        expect(listviewWeatherDemo.defaultWidth).toBe(600);
-        expect(listviewWeatherDemo.defaultHeight).toBe(400);
-        expect(listviewWeatherDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("listviewWeatherDemo list view", () => {
     it("renders a horizontal GtkListView with separators and no selection", async () => {
         const lv = await renderListView();

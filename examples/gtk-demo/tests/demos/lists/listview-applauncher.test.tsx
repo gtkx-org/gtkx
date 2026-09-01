@@ -32,19 +32,6 @@ const activateFirstRowAndExpectLaunch = async (launchSpy: ReturnType<typeof vi.s
     });
 };
 
-describe("listviewApplauncherDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(listviewApplauncherDemo.id).toBe("listview-applauncher");
-        expect(listviewApplauncherDemo.title).toBe("Lists/Application launcher");
-        expect(listviewApplauncherDemo.description).toContain("GtkListView widget as a fancy application launcher");
-        expect(listviewApplauncherDemo.keywords).toEqual(["GtkListItemFactory", "GListModel"]);
-        expect(listviewApplauncherDemo.sourceCode).toContain("const listviewApplauncherDemo: Demo = {");
-        expect(listviewApplauncherDemo.defaultWidth).toBe(640);
-        expect(listviewApplauncherDemo.defaultHeight).toBe(320);
-        expect(listviewApplauncherDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("listviewApplauncherDemo structure", () => {
     it("wraps a single GtkListView inside a scrolled window", async () => {
         await renderDemo(listviewApplauncherDemo);

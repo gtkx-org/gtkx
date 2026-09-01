@@ -22,19 +22,6 @@ const renderListModel = async (): Promise<Gtk.SelectionModel> => {
     return await listModel();
 };
 
-describe("listviewSettings2Demo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(listviewSettings2Demo.id).toBe("listview-settings2");
-        expect(listviewSettings2Demo.title).toBe("Lists/Alternative Settings");
-        expect(listviewSettings2Demo.description).toContain("This demo shows an alternative settings viewer");
-        expect(listviewSettings2Demo.keywords).toEqual(["GtkListHeaderFactory", "GtkSectionModel"]);
-        expect(listviewSettings2Demo.sourceCode).toContain("const listviewSettings2Demo: Demo = {");
-        expect(listviewSettings2Demo.defaultWidth).toBe(640);
-        expect(listviewSettings2Demo.defaultHeight).toBe(480);
-        expect(listviewSettings2Demo.component).toBeTypeOf("function");
-    });
-});
-
 describe("listviewSettings2Demo layout", () => {
     it("installs a search toggle in the header bar starting inactive", async () => {
         await renderDemo(listviewSettings2Demo);

@@ -1,5 +1,5 @@
+import type { AnyClass } from "@gtkx/utils";
 import { bindVfunc, type BindVfuncOptions } from "@gtkx/native";
-import { type AnyClass, getOrInsert } from "@gtkx/utils";
 import { type Arg, isCallerAllocatedArg, requiresInputArg } from "./arg.js";
 import { buildNativeArgTypes, fromNativeCallable } from "./fn.js";
 import { toNative } from "./native-value.js";
@@ -105,9 +105,9 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
 }
 
 function cachedInvoker(cache: InvokerCache, owner: AnyClass, key: string, build: () => Invoker): Invoker {
-    const byKey = getOrInsert(cache, owner, () => new Map<string, Invoker>());
+    const byKey = cache.getOrInsertComputed(owner, () => new Map<string, Invoker>());
 
-    return getOrInsert(byKey, key, build);
+    return byKey.getOrInsertComputed(key, build);
 }
 
 function resolveParentSlot(klass: AnyClass, parentType: bigint, methodName: string): ResolvedSlot | undefined {

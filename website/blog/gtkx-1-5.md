@@ -59,7 +59,7 @@ const TaskForm = () => {
 
 Validation is native too. An invalid row gains Adwaita's error style, exposes GTK's accessible invalid state, and can show the rule message as its tooltip. React Hook Form's `setFocus`, focus-on-first-error, `reset`, `resetField`, and `setValue` reach the GTK widget. Native event handlers still run after the form receives a real user edit, so an application can persist a switch immediately or submit an entry from its Apply button without taking ownership of the controlled value.
 
-The [forms guide](/guide/forms) covers validation, disabled fields, custom controls, selection, and programmatic updates. The [tutorial task editor](/tutorial/the-task-editor) puts the adapter in a complete application with navigation and persisted state.
+The [forms guide](/guide/forms) covers validation, disabled fields, custom controls, selection, and programmatic updates. The [tutorial editor](/tutorial/an-adaptive-layout#edit-a-draft) puts the adapter in a complete application with navigation and persisted state.
 
 ## The real react-i18next API, with gettext storage
 
@@ -103,7 +103,7 @@ Extraction is equally automatic. The project chooses locales in `po/LINGUAS` and
 
 The generated launcher finds that tree relative to the installed application. Deb and RPM packages use `/usr/share/locale`, Flatpak uses `/app/share/locale`, and AppImage uses the image's runtime mount point. Source-mode Flatpak builds carry the same inputs. There is no format-specific locale path in application code and no second set of metadata translations.
 
-The [internationalization tutorial](/tutorial/internationalization) takes the Tasks app from its first `t` call through a French integration test and localized Flatpak, deb, RPM, and AppImage artifacts. It deliberately starts from only `LINGUAS`; every mechanical catalog and packaging step is performed through the CLI.
+The [internationalization tutorial](/tutorial/actions-menus-shortcuts#localize-one-catalog) takes the Tasks app from its first `t` call through a French integration test and localized Flatpak, deb, RPM, and AppImage artifacts. It deliberately starts from only `LINGUAS`; every mechanical catalog and packaging step is performed through the CLI.
 
 ## Also in 1.5
 

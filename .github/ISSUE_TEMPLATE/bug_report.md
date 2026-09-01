@@ -1,36 +1,22 @@
 ---
 name: Bug Report
-about: Report a bug or unexpected behavior
+about: Report unexpected behavior
 title: ""
 labels: bug
 assignees: ""
 ---
 
-## Description
+## Reproduction
 
-A clear description of the bug.
+Steps and a minimal example.
 
-## Steps to Reproduce
+## Expected and actual behavior
 
-1.
-2.
-3.
-
-## Expected Behavior
-
-What you expected to happen.
-
-## Actual Behavior
-
-What actually happened.
+What should happen, what happens, and any error output.
 
 ## Environment
 
-- GTKX version:
-- Node.js version:
-- GTK4 version:
+- GTKX:
+- Node.js:
+- GTK4:
 - OS:
-
-## Additional Context
-
-Any other context, screenshots, or error messages.

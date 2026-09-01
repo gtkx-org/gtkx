@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { rootElement } from "@gtkx/react";
-import { render, type RenderResult, screen } from "@gtkx/testing";
+import { render, type RenderResult, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 import { demos } from "../src/demos/index.js";
@@ -40,10 +40,28 @@ describe("App", () => {
         }
     });
 
-    it("shows the first demo page's content", async () => {
+    it("opens every demo from the sidebar", async () => {
         await renderApp();
-        const card = await screen.findByName("springs-label", { as: Gtk.Label });
-        expect(card).toBeVisible();
-        expect(await screen.findByName("springs-toggle", { as: Gtk.ToggleButton })).toBeVisible();
+        const sidebar = await screen.findByName("sidebar", { as: Gtk.StackSidebar });
+        const stack = sidebar.getStack();
+
+        if (!stack) {
+            throw new Error("the sidebar has no stack");
+        }
+
+        for (const { id, title } of demos) {
+            await userEvent.click(await within(sidebar).findByText(title));
+
+            await waitFor(() => {
+                expect(stack).toHaveObjectProperty("visibleChildName", id);
+            });
+
+            const page = stack.getVisibleChild();
+            if (!page) {
+                throw new Error(`the ${title} page is not visible`);
+            }
+
+            expect(await within(page).findByText(title)).toBeVisible();
+        }
     });
 });

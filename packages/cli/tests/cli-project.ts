@@ -1,12 +1,13 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempDisposableSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import workspaceConfig from "../../../gtkx.config.base.js";
 
 type CliProject = { root: string; nodeModules: string };
+type DisposableCliProject = CliProject & Disposable;
 type CliRun = { status: number | null; output: string; stdout: string; stderr: string };
 
 type CliProjectOptions = {
@@ -94,8 +95,9 @@ const installStore = (nodeModules: string): void => {
     }
 };
 
-const createCliProject = (options: CliProjectOptions): CliProject => {
-    const root = mkdtempSync(join(tmpdir(), options.prefix));
+const createCliProject = (options: CliProjectOptions): DisposableCliProject => {
+    const temporary = mkdtempDisposableSync(join(tmpdir(), options.prefix));
+    const root = temporary.path;
     const nodeModules = join(root, "node_modules");
     mkdirSync(join(nodeModules, SCOPE), { recursive: true });
     installPeers(nodeModules, options.omitPackages ?? []);
@@ -111,7 +113,9 @@ const createCliProject = (options: CliProjectOptions): CliProject => {
         writeFileSync(join(root, "gtkx.config.ts"), options.config);
     }
 
-    return { root, nodeModules };
+    return { root, nodeModules, [Symbol.dispose]: () => {
+        temporary.remove();
+    } };
 };
 
 const listProjectFiles = (project: CliProject, directory: string): string[] =>

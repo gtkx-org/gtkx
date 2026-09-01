@@ -10,7 +10,7 @@ import {
     TabsApp,
 } from "./helpers/tab-fixtures.js";
 
-describe("tabs - edge cases (1)", () => {
+describe("tabs - edge cases", () => {
     it("ignores a click on the selected tab", async () => {
         const onStateChange: StateSpy = vi.fn();
         const onTabPress: TabPressSpy = vi.fn();
@@ -42,9 +42,7 @@ describe("tabs - edge cases (1)", () => {
         expectSelectedTab("First Tab");
         expect(screen.getAllByRole(Gtk.AccessibleRole.TAB)).toHaveLength(1);
     });
-});
 
-describe("tabs - edge cases (2)", () => {
     it("updates the tab name when the title changes", async () => {
         const { rerender } = await render(<TabsApp options={{ First: { title: "First Tab" } }} />);
         await findTab("First Tab");

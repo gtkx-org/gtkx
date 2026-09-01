@@ -14,7 +14,7 @@ import {
     renderStack,
 } from "./helpers/stack-fixtures.js";
 
-describe("stack - header (1)", () => {
+describe("stack - header", () => {
     it("renders the screen without a header bar when headerShown is false", async () => {
         await renderStack({ details: { headerShown: false } });
         await clickButton("Go to details");
@@ -50,9 +50,7 @@ describe("stack - header (1)", () => {
         expect(header.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Start Action" })).toBeVisible();
         expect(header.getByText("End Widget")).toBeVisible();
     });
-});
 
-describe("stack - header (2)", () => {
     it("renders a custom header with the route, options and back page", async () => {
         await renderStack({ navigator: { screenOptions: { header: CustomHeader } } });
         await screen.findByText("Header Home");

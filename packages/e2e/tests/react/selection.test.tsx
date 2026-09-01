@@ -493,7 +493,7 @@ describe("userEvent click - container gestures", () => {
     });
 });
 
-describe("userEvent click - controller hygiene (1)", () => {
+describe("userEvent click - controller hygiene", () => {
     it("leaves no gesture behind on a gesture-less widget and still reaches the button", async () => {
         const boxRef = createRef<Gtk.Box>();
         const onClicked = vi.fn();
@@ -532,9 +532,7 @@ describe("userEvent click - controller hygiene (1)", () => {
         await userEvent.click(screen.getByText("pointer box"));
         expect(onPressed).toHaveBeenCalledTimes(1);
     });
-});
 
-describe("userEvent click - controller hygiene (2)", () => {
     it("leaves no gesture behind on the rows it clicks", async () => {
         const refs = await renderRowBox({ selectionMode: Gtk.SelectionMode.SINGLE }, 3);
         await userEvent.click(screen.getByText("Row 0"));
@@ -778,7 +776,7 @@ describe("userEvent deselection - empty containers", () => {
     });
 });
 
-describe("userEvent click - flow box children (1)", () => {
+describe("userEvent click - flow box children", () => {
     it("activates the child owning the clicked label when a single click activates", async () => {
         const { refs, onChildActivated } = await renderActivatableChildren({
             selectionMode: Gtk.SelectionMode.SINGLE,
@@ -825,9 +823,7 @@ describe("userEvent click - flow box children (1)", () => {
         expect(onChildActivated).toHaveBeenCalledTimes(1);
         expect(getSelection(refs)).toEqual([false, true, false]);
     });
-});
 
-describe("userEvent click - flow box children (2)", () => {
     it("leaves no gesture behind on the children it clicks", async () => {
         const refs = await renderChildren({ selectionMode: Gtk.SelectionMode.SINGLE });
         await userEvent.click(screen.getByText("Child 1"));

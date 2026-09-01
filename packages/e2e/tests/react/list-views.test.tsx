@@ -394,7 +394,7 @@ describe("clicking the row that carries the column headers", () => {
 
 beforeEach(resetTree);
 
-describe("clicking a tree expander (1)", () => {
+describe("clicking a tree expander", () => {
     it("expands the row behind it and leaves the enclosing row unselected", async () => {
         const { tree, expander, selection } = await renderFixture(EXPANDABLE_ROOT);
         await userEvent.click(expander);
@@ -440,9 +440,7 @@ describe("clicking a tree expander (1)", () => {
         expectCollapsed(fixture);
         expect(fixture.selection.isSelected(1)).toBe(true);
     });
-});
 
-describe("clicking a tree expander (2)", () => {
     it("selects the enclosing row when the expander is hidden", async () => {
         const fixture = await renderFixture(EXPANDABLE_ROOT, true);
         await userEvent.click(fixture.expander);

@@ -33,25 +33,6 @@ const openPictureFileDialog = async (): Promise<PictureState> => {
     return { picture, initial };
 };
 
-describe("paintableSvgDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(paintableSvgDemo.id).toBe("paintable-svg");
-        expect(paintableSvgDemo.title).toBe("Paintable/SVG");
-
-        expect(paintableSvgDemo.description).toBe(
-            "This demo shows using GtkSvg to display an SVG image in a GtkPicture that can be scaled by resizing " +
-            "the window.",
-        );
-
-        expect(paintableSvgDemo.keywords).toEqual([]);
-        expect(paintableSvgDemo.windowTitle).toBe("Paintable — SVG");
-        expect(paintableSvgDemo.sourceCode).toContain("const paintableSvgDemo: Demo = {");
-        expect(paintableSvgDemo.defaultWidth).toBe(330);
-        expect(paintableSvgDemo.defaultHeight).toBe(330);
-        expect(paintableSvgDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("paintableSvgDemo rendering", () => {
     it("renders the Open button in the header bar", async () => {
         await renderDemo(paintableSvgDemo);

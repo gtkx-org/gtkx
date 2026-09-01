@@ -248,39 +248,6 @@ const hasBufferTag = (view: Gtk.TextView, tagName: string): boolean => {
     return false;
 };
 
-const findCssLoadedOnMount = async (demo: Demo, needle: string): Promise<string | undefined> => {
-    const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
-
-    try {
-        await renderDemo(demo);
-
-        return loadSpy.mock.calls
-            .map(([css]) => css)
-            .find((css) => typeof css === "string" && css.includes(needle));
-    } finally {
-        loadSpy.mockRestore();
-    }
-};
-
-const expectCssReloadedOnEdit = async (demo: Demo, edit: string, needle: string): Promise<void> => {
-    const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
-
-    try {
-        await renderDemo(demo);
-        const textView = await screen.findByName("text-view", { as: Gtk.TextView });
-        loadSpy.mockClear();
-        await userEvent.clear(textView);
-        await userEvent.type(textView, edit);
-
-        await waitFor(() => {
-            const loaded = loadSpy.mock.calls.find(([css]) => typeof css === "string" && css.includes(needle));
-            expect(loaded, "expected the buffer edit to be loaded into a CssProvider").toBeDefined();
-        });
-    } finally {
-        loadSpy.mockRestore();
-    }
-};
-
 const activateSearchBar = async (): Promise<{ toggle: Gtk.ToggleButton; bar: Gtk.SearchBar }> => {
     const toggle = await screen.findByName("search-toggle", { as: Gtk.ToggleButton });
     await userEvent.click(toggle);
@@ -313,9 +280,7 @@ export {
     activateSearchBar,
     collectWidgets,
     createApplicationIdFactory,
-    expectCssReloadedOnEdit,
     findButton,
-    findCssLoadedOnMount,
     findInactiveSearchToggle,
     findWidget,
     getChildren,

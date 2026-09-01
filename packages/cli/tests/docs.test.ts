@@ -86,17 +86,13 @@ describe("gtkx docs (directories it refuses to write to)", () => {
 
 describe("gtkx docs (a project with nothing to document)", () => {
     it("fails when the project generates no bindings", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-docs-disabled-",
             config: config(", codegen: false"),
             hasStore: true,
         });
 
-        try {
-            expect(runDocs(project)).not.toBe(0);
-            expect(existsSync(docsDir(project))).toBe(false);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runDocs(project)).not.toBe(0);
+        expect(existsSync(docsDir(project))).toBe(false);
     });
 });

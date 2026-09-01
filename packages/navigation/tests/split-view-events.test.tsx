@@ -15,7 +15,7 @@ import {
 const getEvents = (onEvent: Mock<(event: SplitEvent) => void>): SplitEvent[] =>
     onEvent.mock.calls.map(([event]) => event);
 
-describe("split view - events (1)", () => {
+describe("split view - events", () => {
     it("reports no transition when the first content route fills an empty pane", async () => {
         const onEvent = createEventSpy();
         await renderSplit({ isAnimated: true, spies: { onEvent } });
@@ -61,9 +61,7 @@ describe("split view - events (1)", () => {
 
         expect(getEvents(onEvent)).toContainEqual({ type: "transitionStart", route: "Task", isClosing: true });
     });
-});
 
-describe("split view - events (2)", () => {
     it("keeps the content page when usePreventRemove prevents a collapsed Back press", async () => {
         const onPrevent = createPreventSpy();
         await renderSplit({ navigator: { collapsed: true }, spies: { onPrevent } });

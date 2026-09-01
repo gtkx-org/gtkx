@@ -100,17 +100,6 @@ const beginItemDrag = async (item: Gtk.Label): Promise<Gtk.DragSource> => {
 };
 
 describe("dndDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(dndDemo.id).toBe("dnd");
-        expect(dndDemo.title).toBe("Drag-and-Drop");
-        expect(dndDemo.description).toContain("This demo shows dragging colors and widgets");
-        expect(dndDemo.keywords).toEqual(["dnd", "menu", "popover", "gesture"]);
-        expect(dndDemo.sourceCode).toContain("const dndDemo: Demo = {");
-        expect(dndDemo.component).toBeTypeOf("function");
-        expect(dndDemo.defaultWidth).toBe(640);
-        expect(dndDemo.defaultHeight).toBe(480);
-    });
-
     it("applies the default 640x480 size to the host window", async () => {
         await renderDemo(dndDemo);
         const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });

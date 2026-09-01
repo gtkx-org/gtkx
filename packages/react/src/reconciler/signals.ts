@@ -1,6 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { getSignalBaseName, type SignalHandler } from "@gtkx/runtime";
-import { getOrInsert, toCamelIdentifier } from "@gtkx/utils";
+import { toCamelIdentifier } from "@gtkx/utils";
 import type { HandlerRecord, SignalTarget } from "./node.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 
@@ -12,7 +12,7 @@ const pendingWrites: (string | null)[] = [];
 const canonicalNames: Map<string, string> = new Map();
 
 const isApplyingWrite = (): boolean => pendingWrites.length > 0;
-const canonicalName = (property: string): string => getOrInsert(canonicalNames, property, toCamelIdentifier);
+const canonicalName = (property: string): string => canonicalNames.getOrInsertComputed(property, toCamelIdentifier);
 
 const runWrite = <T>(property: string | null, write: () => T): T => {
     pendingWrites.push(property === null ? null : canonicalName(property));

@@ -97,19 +97,6 @@ const filterKeysToZero = async (): Promise<FilteredToZeroState> => {
     return { columnView, full, entry };
 };
 
-describe("listviewSettingsDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(listviewSettingsDemo.id).toBe("listview-settings");
-        expect(listviewSettingsDemo.title).toBe("Lists/Settings");
-        expect(listviewSettingsDemo.description).toContain("This demo shows a settings viewer for GSettings.");
-        expect(listviewSettingsDemo.keywords).toEqual(["GtkListItemFactory", "GListModel"]);
-        expect(listviewSettingsDemo.sourceCode).toContain("const listviewSettingsDemo: Demo = {");
-        expect(listviewSettingsDemo.defaultWidth).toBe(640);
-        expect(listviewSettingsDemo.defaultHeight).toBe(480);
-        expect(listviewSettingsDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("listviewSettingsDemo layout", () => {
     it("installs a header bar with a search toggle starting inactive", async () => {
         await renderDemo(listviewSettingsDemo);

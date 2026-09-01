@@ -15,24 +15,6 @@ const clickSourceToggle = async (): Promise<Gtk.CheckButton> => {
     return sourceToggle;
 };
 
-describe("markupDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(markupDemo.id).toBe("markup");
-        expect(markupDemo.title).toBe("Text View/Markup");
-
-        expect(markupDemo.description).toBe(
-            "GtkTextBuffer lets you define your own tags that can influence text formatting in a variety of ways. " +
-            "In this example, we show that GtkTextBuffer can load Pango markup and automatically generate " +
-            "suitable tags.",
-        );
-
-        expect(markupDemo.sourceCode).toContain("const markupDemo: Demo = {");
-        expect(markupDemo.defaultWidth).toBe(600);
-        expect(markupDemo.defaultHeight).toBe(680);
-        expect(markupDemo.keywords).toEqual(["GtkTextView"]);
-    });
-});
-
 describe("markupDemo initial state", () => {
     it("renders the 'Source' toggle that controls the visible stack page", async () => {
         await renderDemo(markupDemo);

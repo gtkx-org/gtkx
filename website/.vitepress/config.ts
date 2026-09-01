@@ -2,7 +2,6 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { defineConfig, type HeadConfig } from "vitepress";
 import typedocSidebar from "../reference/typedoc-sidebar.json" with { type: "json" };
-import { highlightPlugin } from "./highlight.js";
 
 const title = "GTKX";
 const description = "Write declarative JSX. GTKX renders it to GObject instances, powered by a native Rust core.";
@@ -10,25 +9,12 @@ const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 
 const tutorialItems = [
-    { text: "Introduction", link: "/tutorial/" },
-    { text: "Your First Window", link: "/tutorial/your-first-window" },
-    { text: "A List of Tasks", link: "/tutorial/a-list-of-tasks" },
-    { text: "The Task Store", link: "/tutorial/the-task-store" },
-    { text: "Interactive Rows", link: "/tutorial/completing-and-deleting" },
-    { text: "Saving to Disk", link: "/tutorial/saving-to-disk" },
-    { text: "Lists and the Sidebar", link: "/tutorial/lists-and-the-sidebar" },
-    { text: "Adaptive Layout", link: "/tutorial/an-adaptive-layout" },
-    { text: "Smart Views and Search", link: "/tutorial/smart-views-and-search" },
-    { text: "The Task Editor", link: "/tutorial/the-task-editor" },
-    { text: "Actions and Menus", link: "/tutorial/actions-menus-shortcuts" },
-    { text: "Trash and Toasts", link: "/tutorial/trash-and-toasts" },
-    { text: "Preferences and Theming", link: "/tutorial/preferences-and-theming" },
-    { text: "Drag to Reorder", link: "/tutorial/drag-to-reorder" },
-    { text: "Reminders", link: "/tutorial/reminders" },
-    { text: "Appendix A: Testing", link: "/tutorial/testing" },
-    { text: "Appendix B: Packaging", link: "/tutorial/packaging" },
-    { text: "Internationalization", link: "/tutorial/internationalization" },
-    { text: "Appendix C: Flathub", link: "/tutorial/flatpak" },
+    { text: "Build Tasks", link: "/tutorial/" },
+    { text: "State and Persistence", link: "/tutorial/the-task-store" },
+    { text: "Adaptive Navigation", link: "/tutorial/an-adaptive-layout" },
+    { text: "Desktop Integration", link: "/tutorial/actions-menus-shortcuts" },
+    { text: "Testing", link: "/tutorial/testing" },
+    { text: "Packaging", link: "/tutorial/packaging" },
 ];
 
 const guideSidebar = [
@@ -56,23 +42,6 @@ const guideSidebar = [
 
 const tutorialSidebar = [{ text: "Tutorial", items: tutorialItems }];
 const docItems = [...guideSidebar.filter((item) => !item.link.startsWith("/reference")), ...tutorialItems];
-const isProdBuild = process.argv.includes("build");
-
-const fontPreloads: HeadConfig[] = isProdBuild
-    ? ["red-hat-display", "red-hat-text", "red-hat-mono"].map(
-            (family): HeadConfig => [
-                "link",
-                {
-                    rel: "preload",
-                    href: `/fonts/${family}-normal-latin.woff2`,
-                    as: "font",
-                    type: "font/woff2",
-                    crossorigin: "",
-                },
-            ],
-        )
-    : [];
-
 const docFile = (link: string): string => (link.endsWith("/") ? `${link.slice(1)}index.md` : `${link.slice(1)}.md`);
 
 const frontmatterHead = (frontmatter: Record<string, unknown>): HeadConfig[] => {
@@ -96,7 +65,6 @@ export default defineConfig({
     lastUpdated: true,
     sitemap: { hostname: url },
     vite: {
-        plugins: [highlightPlugin()],
         server: {
             allowedHosts: ["workstation"],
         },
@@ -111,7 +79,6 @@ export default defineConfig({
         ["link", { rel: "apple-touch-icon", href: "/apple-touch-icon.png" }],
         ["link", { rel: "manifest", href: "/site.webmanifest" }],
         ["meta", { name: "theme-color", content: "#e03a3e" }],
-        ...fontPreloads,
         ["meta", { property: "og:site_name", content: title }],
         ["meta", { name: "twitter:card", content: "summary_large_image" }],
     ],

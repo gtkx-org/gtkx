@@ -16,17 +16,6 @@ const enableSearchMode = async (): Promise<{ toggle: Gtk.ToggleButton; searchBar
     return { toggle, searchBar };
 };
 
-describe("searchEntryDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(searchEntryDemo.id).toBe("search-entry");
-        expect(searchEntryDemo.title).toBe("Entry/Search Entry");
-        expect(searchEntryDemo.description).toContain("GtkSearchEntry provides an entry that is ready for search.");
-        expect(searchEntryDemo.keywords).toEqual([]);
-        expect(searchEntryDemo.sourceCode).toContain("const searchEntryDemo: Demo = {");
-        expect(searchEntryDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("searchEntryDemo rendering", () => {
     it("renders the search toggle, the search bar with the entry, and the result labels", async () => {
         await renderDemo(searchEntryDemo);

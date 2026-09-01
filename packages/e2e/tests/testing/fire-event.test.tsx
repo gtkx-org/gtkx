@@ -61,7 +61,7 @@ describe("fireEvent", () => {
     });
 });
 
-describe("keyboard drives real widget key bindings (1)", () => {
+describe("keyboard drives real widget key bindings", () => {
     it("moves a Gtk.Scale via arrow, page, home and end keys", async () => {
         await render(
             <GtkScale
@@ -98,9 +98,7 @@ describe("keyboard drives real widget key bindings (1)", () => {
         await userEvent.keyboard(view, "{Control>}z{/Control}");
         expect(bufferText(view)).toBe("");
     });
-});
 
-describe("keyboard drives real widget key bindings (2)", () => {
     it("activates a ListView row via arrow navigation and Enter", async () => {
         const activated: number[] = [];
         const ref = createRef<Gtk.ListView>();

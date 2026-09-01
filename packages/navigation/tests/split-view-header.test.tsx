@@ -52,7 +52,7 @@ const expectHeaderText = (paneText: string, headerText: string): void => {
     expect(within(headerBar(paneText)).getByText(headerText)).toBeVisible();
 };
 
-describe("split view - header (1)", () => {
+describe("split view - header", () => {
     it("shows the sidebar title with its header widgets and no Back button", async () => {
         await renderSplit({ lists: SIDEBAR_ACTIONS });
         await screen.findByText("Lists Content");
@@ -81,9 +81,7 @@ describe("split view - header (1)", () => {
         expect(queryBackButton("Task 7")).toBeVisible();
         expect(queryBackButton("Lists Content")).toBeNull();
     });
-});
 
-describe("split view - header (2)", () => {
     it("renders the sidebar without a header bar when headerShown is false", async () => {
         await renderSplit({ lists: { headerShown: false } });
         await screen.findByText("Lists Content");
@@ -110,9 +108,7 @@ describe("split view - header (2)", () => {
         expectHeaderText("Tasks personal", "Custom Title");
         expectHidden("Task List");
     });
-});
 
-describe("split view - header (3)", () => {
     it("uses a headerTitle element as the content title widget", async () => {
         await renderSplit({ tasks: { headerTitle: <GtkLabel>Title Widget</GtkLabel>, title: "Task List" } });
         await clickButton("Open personal");
@@ -138,9 +134,7 @@ describe("split view - header (3)", () => {
         await screen.findByText("Nothing Selected");
         expectHidden("Content Task List");
     });
-});
 
-describe("split view - header (4)", () => {
     it("rejects when the sidebar header renderer throws", async () => {
         await expect(renderSplit({ lists: { header: ThrowingHeader } })).rejects.toThrow();
     });

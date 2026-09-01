@@ -51,7 +51,11 @@
         }
     },
     "dependencies": {
-        "picocolors": "^1.1.1"
+        "picocolors": "^1.1.1",
+        "which": "^7.0.0"
+    },
+    "devDependencies": {
+        "@types/which": "^3.0.4"
     },
     "engines": {
         "node": ">=26.7.0"

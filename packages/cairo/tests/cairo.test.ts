@@ -69,7 +69,7 @@ const expectCurveEndsAt30 = (curve: (ctx: Context) => void): void => {
     expect(point?.y).toBeCloseTo(30);
 };
 
-describe("Matrix (1)", () => {
+describe("Matrix", () => {
     it("constructs from explicit components", () => {
         const m = new Matrix(1, 0, 0, 1, 5, 7);
         const p = m.transformPoint(0, 0);
@@ -99,9 +99,7 @@ describe("Matrix (1)", () => {
         expect(d.dx).toBeCloseTo(2);
         expect(d.dy).toBeCloseTo(3);
     });
-});
 
-describe("Matrix (2)", () => {
     it("creates a rotation matrix", () => {
         const m = createIdentityMatrix();
         m.rotate(Math.PI / 2);
@@ -1061,7 +1059,7 @@ describe("Surface — getReferenceCount", () => {
     });
 });
 
-describe("ImageSurface (1)", () => {
+describe("ImageSurface", () => {
     it("creates an image surface", () => {
         const surface = ImageSurface.create(Format.ARGB32, 100, 50);
         expect(surface.getWidth()).toBe(100);
@@ -1084,9 +1082,7 @@ describe("ImageSurface (1)", () => {
         const surface = ImageSurface.create(Format.ARGB32, 10, 10);
         expect(surface.getStride()).toBeGreaterThanOrEqual(40);
     });
-});
 
-describe("ImageSurface (2)", () => {
     describe("getData", () => {
         it("returns data with correct length", () => {
             const surface = ImageSurface.create(Format.ARGB32, 10, 10);

@@ -1,5 +1,4 @@
 import type { Descriptor } from "@gtkx/native";
-import { getOrInsert } from "@gtkx/utils";
 
 type LengthSource = { kind: "return" } | { kind: "outArg"; argIndex: number };
 type LengthSources = Map<number, LengthSource[]>;
@@ -29,7 +28,7 @@ const addLengthSource = (sources: LengthSources, index: number | undefined, sour
         return;
     }
 
-    getOrInsert(sources, index, () => []).push(source);
+    sources.getOrInsertComputed(index, () => []).push(source);
 };
 
 const addOutArgLengthSources = (sources: LengthSources, spec: FoldedLengthSpec): void => {

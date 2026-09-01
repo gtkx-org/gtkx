@@ -18,26 +18,6 @@ const findTitleEntry = (): Promise<Adw.EntryRow> =>
 const importantSwitch = (isChecked: boolean): Gtk.Switch =>
     screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: isChecked, as: Gtk.Switch });
 
-describe("the store", () => {
-    it("adds a task and completes it", () => {
-        const id = useStore.getState().addTask("personal", "  Call the plumber  ");
-
-        expect(id).not.toBeNull();
-
-        const added = useStore.getState().tasks.find((task) => task.id === id);
-
-        expect(added?.title).toBe("Call the plumber");
-        expect(added?.done).toBe(false);
-
-        if (id) useStore.getState().setDone(id, true);
-
-        const completed = useStore.getState().tasks.find((task) => task.id === id);
-
-        expect(completed?.done).toBe(true);
-        expect(completed?.completedAt).not.toBeNull();
-    });
-});
-
 describe("Tasks", () => {
     it("adds a task from the entry row", async () => {
         await render(<App />, { container: rootElement });

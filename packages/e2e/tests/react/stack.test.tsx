@@ -17,7 +17,7 @@ const buildTitledPages = (stackRef: RefObject<Gtk.Stack | null>) => (pages: { ke
     </GtkStack>
 );
 
-describe("render - Stack (1)", () => {
+describe("render - Stack", () => {
     it("creates Stack widget", async () => {
         const ref = createRef<Gtk.Stack>();
         await render(<GtkStack ref={ref} />);
@@ -52,30 +52,24 @@ describe("render - Stack (1)", () => {
         await screen.findByText("Titled Content");
         expect(pageNamed(stackRef.current, "titled")).toHaveObjectProperty("title", "Page Title");
     });
-});
 
-describe("render - Stack (2)", () => {
-    describe("StackPage (2)", () => {
-        it("sets page properties (iconName, needsAttention, etc.)", async () => {
-            const stackRef = createRef<Gtk.Stack>();
+    it("sets page properties (iconName, needsAttention, etc.)", async () => {
+        const stackRef = createRef<Gtk.Stack>();
 
-            await render(
-                <GtkStack ref={stackRef}>
-                    <GtkStackPage name="props-test" iconName="dialog-information" needsAttention={true}>
-                        <GtkLabel>With Props</GtkLabel>
-                    </GtkStackPage>
-                </GtkStack>,
-            );
+        await render(
+            <GtkStack ref={stackRef}>
+                <GtkStackPage name="props-test" iconName="dialog-information" needsAttention={true}>
+                    <GtkLabel>With Props</GtkLabel>
+                </GtkStackPage>
+            </GtkStack>,
+        );
 
-            await screen.findByText("With Props");
-            const page = pageNamed(stackRef.current, "props-test");
-            expect(page).toHaveObjectProperty("iconName", "dialog-information");
-            expect(page).toHaveObjectProperty("needsAttention", true);
-        });
+        await screen.findByText("With Props");
+        const page = pageNamed(stackRef.current, "props-test");
+        expect(page).toHaveObjectProperty("iconName", "dialog-information");
+        expect(page).toHaveObjectProperty("needsAttention", true);
     });
-});
 
-describe("render - Stack (3)", () => {
     describe("page management", () => {
         it("inserts page before existing page", async () => {
             const stackRef = createRef<Gtk.Stack>();
@@ -114,9 +108,7 @@ describe("render - Stack (3)", () => {
             expect(pageNamed(stackRef.current, "dynamic")).toHaveObjectProperty("iconName", "dialog-warning");
         });
     });
-});
 
-describe("render - Stack (4)", () => {
     describe("visibleChild", () => {
         it("sets visible child by name", async () => {
             const stackRef = createRef<Gtk.Stack>();
@@ -158,9 +150,7 @@ describe("render - Stack (4)", () => {
             });
         });
     });
-});
 
-describe("render - Stack (5)", () => {
     describe("page navigation with waitFor", () => {
         it("changes visible page with controlled state", async () => {
             const stackRef = createRef<Gtk.Stack>();
@@ -206,7 +196,7 @@ describe("render - Stack (5)", () => {
     });
 });
 
-describe("render - StackPage (1)", () => {
+describe("render - StackPage", () => {
     it("adds named page to Stack", async () => {
         const stack = await renderSinglePage({ name: "test-page" });
         expect(stack.getChildByName("test-page")).not.toBeNull();
@@ -229,9 +219,7 @@ describe("render - StackPage (1)", () => {
         await rerender(["a"]);
         expect(stackRef.current?.getChildByName("b")).toBeNull();
     });
-});
 
-describe("render - StackPage (2)", () => {
     it("keeps updated page props after a reorder-triggered rebuild", async () => {
         const stackRef = createRef<Gtk.Stack>();
 

@@ -8,21 +8,6 @@ import { getChildren, renderDemo } from "../../test-utils.js";
 const ACCORDION_LABELS = ["This", "Is", "A", "CSS", "Accordion", ":-)"];
 
 describe("cssAccordionDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(cssAccordionDemo.id).toBe("css-accordion");
-        expect(cssAccordionDemo.title).toBe("Theming/CSS Accordion");
-
-        expect(cssAccordionDemo.description).toBe(
-            "A simple accordion demo written using CSS transitions and multiple backgrounds",
-        );
-
-        expect(cssAccordionDemo.keywords).toEqual([]);
-        expect(cssAccordionDemo.sourceCode).toContain("const cssAccordionDemo: Demo = {");
-        expect(cssAccordionDemo.defaultWidth).toBe(600);
-        expect(cssAccordionDemo.defaultHeight).toBe(300);
-        expect(cssAccordionDemo.component).toBeTypeOf("function");
-    });
-
     it("renders six accordion buttons with the expected labels", async () => {
         await renderDemo(cssAccordionDemo);
 

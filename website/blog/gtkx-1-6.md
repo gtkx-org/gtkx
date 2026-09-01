@@ -4,10 +4,6 @@ description: "GTKX 1.6 gives coding agents project-specific rules, a generated G
 image: /og.png
 ---
 
-<script setup>
-import TreeShakingBenchmarks from "../.vitepress/theme/components/TreeShakingBenchmarks.vue";
-</script>
-
 # GTKX 1.6
 
 <p class="post-date">August 29, 2026</p>
@@ -77,7 +73,23 @@ Generated stores previously registered every class as soon as a namespace loaded
 
 Across all six example applications, enabling the flag reduced their combined minified production JavaScript from 36.74 MB to 22.13 MB, a 39.8% reduction. Focused applications shed between 47.7% and 60.6%; GTK Demo dropped 10.6% because its large demo source payload and broad binding surface dominate the bundle. The measured median startup to the first mapped window was 5.3% to 30.0% lower in five examples, while Animations was effectively unchanged.
 
-<TreeShakingBenchmarks />
+| Example | Bundle off | Bundle on | Reduction |
+| --- | ---: | ---: | ---: |
+| Animations | 5.04 MB | 1.99 MB | 60.6% |
+| Browser | 4.74 MB | 2.48 MB | 47.8% |
+| GTK Demo | 10.65 MB | 9.52 MB | 10.6% |
+| Hello World | 3.81 MB | 1.86 MB | 51.3% |
+| Navigation | 4.34 MB | 2.27 MB | 47.7% |
+| Tutorial | 8.16 MB | 4.02 MB | 50.7% |
+
+| Example | Startup off, median (IQR) | Startup on, median (IQR) | Change |
+| --- | ---: | ---: | ---: |
+| Animations | 198.1 ms (195.3–212.5) | 196.4 ms (194.4–210.3) | −0.9% |
+| Browser | 248.0 ms (246.2–269.9) | 196.5 ms (194.6–211.2) | −20.8% |
+| GTK Demo | 356.3 ms (309.0–400.8) | 337.3 ms (293.7–388.0) | −5.3% |
+| Hello World | 200.8 ms (192.3–207.4) | 140.6 ms (137.3–148.7) | −30.0% |
+| Navigation | 240.8 ms (230.1–258.3) | 180.3 ms (173.2–191.6) | −25.1% |
+| Tutorial | 286.0 ms (233.6–299.6) | 222.7 ms (191.7–235.5) | −22.1% |
 
 Both variants start from the GTKX 1.6 source at commit `76c6292f`; only `future.v2TreeShaking` differs. Bundle size is the raw decimal size of the minified `dist/bundle.mjs`; the native addon, resources, and assets are unchanged and excluded. The startup builds add the same readiness handler to both variants. Startup was measured on an AMD Ryzen 7 9700X with Fedora 44, Node 24.19.0, GTK 4.22.4, libadwaita 1.9.3, and Weston 15.0.1. Each value is the median of 30 alternating fresh-process launches after five warm-ups per variant under one headless Weston compositor with Cairo software rendering. The timer runs from spawning Node to the primary application window's first `map` signal. These are warm-filesystem window-mapping measurements, not cold-disk startup, first painted frame, or WebKit network completion.
 

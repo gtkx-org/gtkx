@@ -112,19 +112,6 @@ afterAll(() => {
     process.chdir(originalCwd);
 });
 
-describe("listviewFilebrowserDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(listviewFilebrowserDemo.id).toBe("listview-filebrowser");
-        expect(listviewFilebrowserDemo.title).toBe("Lists/File browser");
-        expect(listviewFilebrowserDemo.description).toContain("implementing a file browser with different views");
-        expect(listviewFilebrowserDemo.keywords).toEqual(["GListModel"]);
-        expect(listviewFilebrowserDemo.sourceCode).toContain("const listviewFilebrowserDemo: Demo = {");
-        expect(listviewFilebrowserDemo.defaultWidth).toBe(600);
-        expect(listviewFilebrowserDemo.defaultHeight).toBe(400);
-        expect(listviewFilebrowserDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("listviewFilebrowserDemo header bar", () => {
     it("installs a header bar with the up-button and view-switcher packed into it", async () => {
         await renderDemo(listviewFilebrowserDemo);

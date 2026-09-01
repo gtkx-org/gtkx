@@ -36,19 +36,6 @@ afterEach(() => {
     rmSync(tempDirRef.path, { recursive: true, force: true });
 });
 
-describe("listviewWordsDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(listviewWordsDemo.id).toBe("listview-words");
-        expect(listviewWordsDemo.title).toBe("Lists/Words");
-        expect(listviewWordsDemo.description).toContain("This demo shows filtering a long list - of words.");
-        expect(listviewWordsDemo.keywords).toEqual(["GtkListView", "GtkFilterListModel", "GtkInscription"]);
-        expect(listviewWordsDemo.sourceCode).toContain("const listviewWordsDemo: Demo = {");
-        expect(listviewWordsDemo.defaultWidth).toBe(400);
-        expect(listviewWordsDemo.defaultHeight).toBe(600);
-        expect(listviewWordsDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("listviewWordsDemo layout", () => {
     it("installs a header bar with an Open button", async () => {
         await renderDemo(listviewWordsDemo);

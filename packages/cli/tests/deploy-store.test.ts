@@ -66,48 +66,40 @@ describe("gtkx deploy (a store inventory it cannot use)", () => {
 
 describe("gtkx deploy (a build it cannot account for)", () => {
     it("fails when the build metadata is missing", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-deploy-stale-build-",
             config: config(DEPLOY_BLOCK),
             files: projectFiles(),
             hasStore: true,
         });
 
-        try {
-            expect(runCli(project, ["build"]).status).toBe(0);
-            rmSync(join(project.root, "dist", BUILD_METADATA));
-            const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
-            expect(() => runCliOrThrow(project, args)).toThrow();
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["build"]).status).toBe(0);
+        rmSync(join(project.root, "dist", BUILD_METADATA));
+        const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
+        expect(() => runCliOrThrow(project, args)).toThrow();
     });
 });
 
 describe("gtkx deploy (build metadata it cannot trust)", () => {
     it("fails when the format or a package record is invalid", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-deploy-newer-build-",
             config: config(DEPLOY_BLOCK),
             files: projectFiles(),
             hasStore: true,
         });
 
-        try {
-            expect(runCli(project, ["build"]).status).toBe(0);
-            const metadataPath = join(project.root, "dist", BUILD_METADATA);
-            const metadata = JSON.parse(readFileSync(metadataPath, "utf8")) as BuildMetadata;
-            const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
+        expect(runCli(project, ["build"]).status).toBe(0);
+        const metadataPath = join(project.root, "dist", BUILD_METADATA);
+        const metadata = JSON.parse(readFileSync(metadataPath, "utf8")) as BuildMetadata;
+        const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
 
-            for (const invalid of [
-                { ...metadata, formatVersion: 2 },
-                { ...metadata, packages: [{ name: "invalid", version: 1, dir: ".." }] },
-            ]) {
-                writeFileSync(metadataPath, `${JSON.stringify(invalid, null, 4)}\n`);
-                expect(() => runCliOrThrow(project, args)).toThrow();
-            }
-        } finally {
-            removeCliProject(project);
+        for (const invalid of [
+            { ...metadata, formatVersion: 2 },
+            { ...metadata, packages: [{ name: "invalid", version: 1, dir: ".." }] },
+        ]) {
+            writeFileSync(metadataPath, `${JSON.stringify(invalid, null, 4)}\n`);
+            expect(() => runCliOrThrow(project, args)).toThrow();
         }
     });
 

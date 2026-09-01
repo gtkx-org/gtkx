@@ -4,19 +4,6 @@ import { describe, expect, it } from "vitest";
 import { overlayDemo } from "../../../src/demos/layout/overlay.js";
 import { renderDemo } from "../../test-utils.js";
 
-describe("overlayDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(overlayDemo.id).toBe("overlay");
-        expect(overlayDemo.title).toBe("Overlay/Interactive Overlay");
-        expect(overlayDemo.description).toContain("Shows widgets in static positions over a main widget.");
-        expect(overlayDemo.keywords).toEqual(["GtkOverlay"]);
-        expect(overlayDemo.sourceCode).toContain("const overlayDemo: Demo = {");
-        expect(overlayDemo.defaultWidth).toBe(500);
-        expect(overlayDemo.defaultHeight).toBe(510);
-        expect(overlayDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("overlayDemo grid and labels", () => {
     it("renders a 5x5 grid of numbered buttons", async () => {
         await renderDemo(overlayDemo);

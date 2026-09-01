@@ -1,7 +1,7 @@
 import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createCliProject, removeCliProject, runCli } from "./cli-project.js";
+import { createCliProject, runCli } from "./cli-project.js";
 import {
     APPLICATION_STANZA,
     bareFiles,
@@ -131,21 +131,17 @@ describe("gtkx deploy (a bundle with nothing third-party in it)", () => {
 
 describe("gtkx deploy (a build whose packages have moved)", () => {
     it("still names a dependency whose recorded directory is gone", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-deploy-moved-",
             config: config(NOTICES_BLOCK),
             files: noticesFiles(),
             hasStore: true,
         });
 
-        try {
-            expect(runCli(project, ["build"]).status).toBe(0);
-            rmSync(join(project.root, "node_modules", DEPENDENCY_NAME), { recursive: true, force: true });
-            const args = ["deploy", "--print-manifests", "--skip-build", "--target", "rpm"];
-            expect(runCli(project, args).status).toBe(0);
-            expect(noticesFor(project, "rpm")).toContain(`${DEPENDENCY_NAME} ${DEPENDENCY_VERSION}`);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["build"]).status).toBe(0);
+        rmSync(join(project.root, "node_modules", DEPENDENCY_NAME), { recursive: true, force: true });
+        const args = ["deploy", "--print-manifests", "--skip-build", "--target", "rpm"];
+        expect(runCli(project, args).status).toBe(0);
+        expect(noticesFor(project, "rpm")).toContain(`${DEPENDENCY_NAME} ${DEPENDENCY_VERSION}`);
     });
 });

@@ -27,19 +27,6 @@ const clickMessageDialogResponse = async (response: RegExp): Promise<void> => {
 };
 
 describe("dialogDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(dialogDemo.id).toBe("dialog");
-        expect(dialogDemo.title).toBe("Dialogs");
-
-        expect(dialogDemo.description).toBe(
-            "Dialogs are used to pop up transient windows for information and user feedback.",
-        );
-
-        expect(dialogDemo.keywords).toEqual([]);
-        expect(dialogDemo.sourceCode).toContain("const dialogDemo: Demo = {");
-        expect(dialogDemo.component).toBeTypeOf("function");
-    });
-
     it("renders the Message Dialog button, the Interactive Dialog button and two empty entries", async () => {
         await renderDemo(dialogDemo);
         await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Message Dialog" });

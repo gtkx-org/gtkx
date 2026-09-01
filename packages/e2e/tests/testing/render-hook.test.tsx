@@ -21,7 +21,7 @@ const useCounter = (initial: number) => {
     };
 };
 
-describe("renderHook (1)", () => {
+describe("renderHook", () => {
     it("returns the hook result and keeps it current as its state changes", async () => {
         const { result } = await renderHook(() => useState({ count: 0 }));
         expect(result.current[0]).toEqual({ count: 0 });
@@ -53,9 +53,7 @@ describe("renderHook (1)", () => {
         await counted.rerender();
         expect(counted.result.current).toBe(2);
     });
-});
 
-describe("renderHook (2)", () => {
     it("preserves state, memoized callbacks and refs across rerenders", async () => {
         const counter = await renderHook(({ initial }: { initial: number }) => useCounter(initial), {
             initialProps: { initial: 10 },
@@ -83,9 +81,7 @@ describe("renderHook (2)", () => {
         expect(memo.result.current()).toBe(2);
         expect(memo.result.current).not.toBe(first);
     });
-});
 
-describe("renderHook (3)", () => {
     it("runs and cleans up effects on every prop change and on unmount", async () => {
         const effects: string[] = [];
 
@@ -125,9 +121,7 @@ describe("renderHook (3)", () => {
         expect(rendered.didRenderWrapper).toBe(true);
         expect(result.current).toBe("from-wrapper");
     });
-});
 
-describe("renderHook (4)", () => {
     it("throws when the hook throws on the first render and on a rerender", async () => {
         await expect(renderHook(errorHook)).rejects.toThrow();
         let shouldThrow = false;

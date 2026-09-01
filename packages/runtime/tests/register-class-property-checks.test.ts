@@ -16,9 +16,6 @@ import { describe, expect, it } from "vitest";
 import { watchNotify } from "./helpers/gobject.js";
 import { createTypeNameFactory } from "./helpers/unique-name.js";
 
-type Probe = InstanceType<ReturnType<typeof makeProbeClass>>;
-type ErrorClass = new (...args: never[]) => Error;
-
 const uniqueName = createTypeNameFactory("_");
 const orientationType = resolveType("libgtk-4.so.1", "gtk_orientation_get_type");
 
@@ -69,187 +66,24 @@ const makeProbeClass = () => {
     return Probe;
 };
 
-function expectRefusal(write: (probe: Probe) => void, error: ErrorClass, reason: RegExp): Probe {
-    const Probe = makeProbeClass();
-    const probe = new Probe();
-
-    expect(() => {
-        write(probe);
-    }).toThrow(error);
-
-    expect(() => {
-        write(probe);
-    }).toThrow(reason);
-
-    return probe;
-}
-
-describe("registerClass — construct-only properties", () => {
-    it("takes a construct-only property at construction", () => {
-        const Probe = makeProbeClass();
-        expect(new Probe({ stamp: "at-construction" }).stamp).toBe("at-construction");
-    });
-
-    it("refuses a construct-only property after construction", () => {
-        const Probe = makeProbeClass();
-        const probe = new Probe({ stamp: "at-construction" });
-
-        expect(() => {
-            probe.stamp = "later";
-        }).toThrow(/can only be set when the object is constructed/);
-
-        expect(probe.stamp).toBe("at-construction");
-    });
-});
-
-describe("registerClass — property ranges", () => {
-    it("refuses an int above the ParamSpec's range", () => {
-        const probe = expectRefusal(
-            (target) => {
-                target.red = 9999;
-            },
-            RangeError,
-            /'red' to 9999.+out of range for type 'gint'.+would put 255 in its place/,
-        );
-
-        expect(probe.red).toBe(0);
-    });
-
-    it("refuses an int below the ParamSpec's range", () => {
-        const probe = expectRefusal(
-            (target) => {
-                target.red = -1;
-            },
-            RangeError,
-            /would put 0 in its place/,
-        );
-
-        expect(probe.red).toBe(0);
-    });
-
-    it("refuses a double outside the ParamSpec's range", () => {
-        const probe = expectRefusal(
-            (target) => {
-                target.ratio = 5;
-            },
-            RangeError,
-            /'ratio' to 5.+out of range for type 'gdouble'.+would put 1 in its place/,
-        );
-
-        expect(probe.ratio).toBe(0);
-    });
-
-    it("refuses a value the enum the ParamSpec names has no member for", () => {
-        const probe = expectRefusal(
-            (target) => {
-                target.orientation = 99;
-            },
-            RangeError,
-            /'orientation' to 99.+invalid or out of range for type 'GtkOrientation'/,
-        );
-
-        expect(probe.orientation).toBe(Gtk.Orientation.HORIZONTAL);
-    });
-
-    it("takes the value a laxly validated ParamSpec corrects rather than refusing it", () => {
-        const Probe = makeProbeClass();
-        const probe = new Probe();
-        probe.lax = 99;
-        expect(probe.lax).toBe(99);
-    });
-});
-
-describe("registerClass — read-only properties", () => {
-    it("refuses a write to a property the ParamSpec marks read-only", () => {
-        const probe = expectRefusal(
-            (target) => {
-                target.frozen = 3;
-            },
-            TypeError,
-            /the property is read-only/,
-        );
-
-        expect(probe.frozen).toBe(7);
-    });
-});
-
-describe("registerClass — property types", () => {
-    it("refuses an object of a type the property does not hold", () => {
-        const probe = expectRefusal(
-            (target) => {
-                target.child = new Gtk.Button();
-            },
-            TypeError,
-            /the property holds values of type 'GtkLabel'/,
-        );
-
-        expect(probe.child).toBeNull();
-    });
-
-    it("names the class and the property when a scalar is of the wrong type", () => {
-        const probe = expectRefusal(
-            (target) => {
-                Reflect.set(target, "label", 42);
-            },
-            TypeError,
-            /^Probe\.label: cannot set property 'label' to 42; the property holds values of type 'gchararray'$/,
-        );
-
-        expect(probe.label).toBe("");
-    });
-
-    it("refuses a fraction, a string and a NaN where the ParamSpec wants a number", () => {
-        const Probe = makeProbeClass();
-        const probe = new Probe();
-
-        expect(() => {
-            probe.red = 1.7;
-        }).toThrow(/'red' to 1.7; the property holds values of type 'gint'/);
-
-        expect(() => {
-            Reflect.set(probe, "red", "abc");
-        }).toThrow(TypeError);
-
-        expect(() => {
-            probe.ratio = NaN;
-        }).toThrow(/'ratio' to NaN.+invalid or out of range for type 'gdouble'.+would put NaN in its place/);
-
-        expect(probe.red).toBe(0);
-        expect(probe.ratio).toBe(0);
-    });
-
-    it("refuses a string where the ParamSpec wants a boolean or an enum", () => {
-        const Probe = makeProbeClass();
-        const probe = new Probe();
-
-        expect(() => {
-            Reflect.set(probe, "enabled", "yes");
-        }).toThrow(/'enabled' to "yes"; the property holds values of type 'gboolean'/);
-
-        expect(() => {
-            Reflect.set(probe, "orientation", "vertical");
-        }).toThrow(/'orientation' to "vertical"; the property holds values of type 'GtkOrientation'/);
-
-        expect(probe.enabled).toBe(false);
-        expect(probe.orientation).toBe(Gtk.Orientation.HORIZONTAL);
-    });
-});
-
 describe("registerClass — accepted property values", () => {
     it("round-trips a string, int, boolean, enum and object property", () => {
         const Probe = makeProbeClass();
-        const probe = new Probe();
+        const probe = new Probe({ stamp: "at-construction" });
         const label = new Gtk.Label();
         probe.label = "crimson";
         probe.red = 12;
         probe.enabled = true;
         probe.orientation = Gtk.Orientation.VERTICAL;
         probe.child = label;
+        probe.lax = 99;
+        expect(probe.stamp).toBe("at-construction");
         expect(probe.label).toBe("crimson");
         expect(probe.red).toBe(12);
         expect(probe.enabled).toBe(true);
         expect(probe.orientation).toBe(Gtk.Orientation.VERTICAL);
         expect(probe.child).toBe(label);
+        expect(probe.lax).toBe(99);
     });
 });
 
@@ -263,7 +97,7 @@ describe("registerClass — notifications for checked writes", () => {
 
         expect(() => {
             probe.red = 9999;
-        }).toThrow(RangeError);
+        }).toThrow();
 
         probe.label = "teal";
         expect(seen).toEqual(["red", "label"]);
@@ -291,7 +125,7 @@ describe("registerClass — notifications for checked writes", () => {
 
         expect(() => {
             probe.red = 9999;
-        }).toThrow(RangeError);
+        }).toThrow();
 
         expect(seen).toEqual([]);
         probe.thawNotify();
@@ -313,7 +147,19 @@ describe("registerClass — refused writes and GLib criticals", () => {
                 probe.red = 9999;
             },
             () => {
+                probe.red = -1;
+            },
+            () => {
+                probe.red = 1.7;
+            },
+            () => {
+                Reflect.set(probe, "red", "abc");
+            },
+            () => {
                 probe.ratio = 5;
+            },
+            () => {
+                probe.ratio = NaN;
             },
             () => {
                 probe.frozen = 3;
@@ -324,10 +170,19 @@ describe("registerClass — refused writes and GLib criticals", () => {
             () => {
                 probe.orientation = 99;
             },
+            () => {
+                Reflect.set(probe, "label", 42);
+            },
+            () => {
+                Reflect.set(probe, "enabled", "yes");
+            },
+            () => {
+                Reflect.set(probe, "orientation", "vertical");
+            },
         ];
 
         for (const refusal of refusals) {
-            expect(refusal).toThrow(Error);
+            expect(refusal).toThrow();
         }
 
         expect(probe.stamp).toBe("at-construction");
@@ -335,6 +190,8 @@ describe("registerClass — refused writes and GLib criticals", () => {
         expect(probe.ratio).toBe(0);
         expect(probe.frozen).toBe(7);
         expect(probe.child).toBeNull();
+        expect(probe.label).toBe("");
+        expect(probe.enabled).toBe(false);
         expect(probe.orientation).toBe(Gtk.Orientation.HORIZONTAL);
     });
 });

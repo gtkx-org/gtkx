@@ -11,7 +11,7 @@ import {
     TabsApp,
 } from "./helpers/tab-fixtures.js";
 
-describe("tabs - switching (1)", () => {
+describe("tabs - switching", () => {
     it("shows the clicked tab and hides the previous one", async () => {
         await render(<TabsApp />);
         await screen.findByText("First Content");
@@ -56,9 +56,7 @@ describe("tabs - switching (1)", () => {
 
         expect(focusedRouteName(onStateChange)).toBe("Third");
     });
-});
 
-describe("tabs - switching (2)", () => {
     it("reports tab states to onStateChange", async () => {
         const onStateChange: StateSpy = vi.fn();
         await render(<TabsApp onStateChange={onStateChange} />);

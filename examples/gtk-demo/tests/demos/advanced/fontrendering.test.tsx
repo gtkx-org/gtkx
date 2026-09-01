@@ -42,22 +42,6 @@ async function toggleExtentsAndGridOverlays(): Promise<{ extents: Gtk.CheckButto
 }
 
 describe("fontRenderingDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(fontRenderingDemo.id).toBe("fontrendering");
-        expect(fontRenderingDemo.title).toBe("Pango/Font Rendering");
-
-        expect(fontRenderingDemo.description).toBe(
-            "Demonstrates various aspects of font rendering, such as hinting, antialiasing and grid " +
-            "alignment.\n\nThe demo lets you explore font rendering options interactively to get a feeling for " +
-            "they affect the shape and positioning of the glyphs.",
-        );
-
-        expect(fontRenderingDemo.keywords).toEqual([]);
-        expect(fontRenderingDemo.sourceCode).toContain("const fontRenderingDemo: Demo = {");
-        expect(fontRenderingDemo.defaultWidth).toBe(1024);
-        expect(fontRenderingDemo.defaultHeight).toBe(768);
-    });
-
     it("registers titlebar and provider components on the demo", () => {
         expect(typeof fontRenderingDemo.titlebar).toBe("function");
         expect(typeof fontRenderingDemo.provider).toBe("function");

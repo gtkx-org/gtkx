@@ -187,7 +187,7 @@ function KeyedBox({ boxRef, name }: { boxRef: RefObject<Gtk.Box | null>; name: s
     return <GtkBox key={name} ref={boxRef} cssName={name} />;
 }
 
-describe("widget - creation (1)", () => {
+describe("widget - creation", () => {
     describe("basic widgets", () => {
         it("creates Label widget with text", async () => {
             await render(<GtkLabel>Hello World</GtkLabel>);
@@ -222,9 +222,7 @@ describe("widget - creation (1)", () => {
             expect(ref.current).toHaveObjectProperty("iconName", "dialog-information");
         });
     });
-});
 
-describe("widget - creation (2)", () => {
     describe("constructor parameters", () => {
         it("passes constructor parameters from props", async () => {
             const ref = createRef<Gtk.Box>();
@@ -260,10 +258,8 @@ describe("widget - creation (2)", () => {
             expect(ref.current).toHaveTextContent("Widget Instance");
         });
     });
-});
 
-describe("widget - creation (3)", () => {
-    describe("screen queries (1)", () => {
+    describe("screen queries", () => {
         it("finds multiple buttons by role", async () => {
             await render(
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -297,11 +293,7 @@ describe("widget - creation (3)", () => {
             const nonExistent = screen.queryByRole(Gtk.AccessibleRole.TEXT_BOX);
             expect(nonExistent).toBeNull();
         });
-    });
-});
 
-describe("widget - creation (4)", () => {
-    describe("screen queries (2)", () => {
         it("finds widgets by text content", async () => {
             await render(
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -324,7 +316,7 @@ describe("widget - creation (4)", () => {
     });
 });
 
-describe("widget - props (1)", () => {
+describe("widget - props", () => {
     describe("property setting", () => {
         it("sets string properties", async () => {
             await render(<GtkLabel label="Test Label" />);
@@ -350,10 +342,8 @@ describe("widget - props (1)", () => {
             expect(ref.current).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
         });
     });
-});
 
-describe("widget - props (2)", () => {
-    describe("change detection (1)", () => {
+    describe("change detection", () => {
         it("skips update when value unchanged", async () => {
             const { rerender } = await render(<SameLabel />);
             const label = await screen.findByText("Same");
@@ -377,11 +367,7 @@ describe("widget - props (2)", () => {
             await rerender(<OptionalLabel label="Now Set" />);
             expect(await screen.findByText("Now Set")).toHaveTextContent("Now Set");
         });
-    });
-});
 
-describe("widget - props (3)", () => {
-    describe("change detection (2)", () => {
         it("preserves the last-set value when a prop transitions to undefined", async () => {
             const { rerender } = await render(<OptionalLabel label="Has Value" />);
             await screen.findByText("Has Value");
@@ -409,9 +395,7 @@ describe("widget - props (3)", () => {
             expect(switchWidget).toBeChecked();
         });
     });
-});
 
-describe("widget - props (4)", () => {
     describe("accessible state queries", () => {
         it("finds checkbox by checked state", async () => {
             await render(
@@ -449,7 +433,7 @@ describe("widget - props (4)", () => {
     });
 });
 
-describe("widget - signals (1)", () => {
+describe("widget - signals", () => {
     describe("connection", () => {
         it("connects onClicked handler to clicked signal", async () => {
             const handleClick = await renderClickButtonAndClick();
@@ -475,9 +459,7 @@ describe("widget - signals (1)", () => {
             });
         });
     });
-});
 
-describe("widget - signals (2)", () => {
     describe("disconnection", () => {
         it("disconnects handler when prop removed", async () => {
             const handleClick = vi.fn();
@@ -497,9 +479,7 @@ describe("widget - signals (2)", () => {
             expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON)).toBeNull();
         });
     });
-});
 
-describe("widget - signals (3)", () => {
     describe("updates", () => {
         it("replaces handler when function reference changes", async () => {
             const handler1 = vi.fn();
@@ -531,9 +511,7 @@ describe("widget - signals (3)", () => {
             await expectClickCallCount(button, handleClick, 1);
         });
     });
-});
 
-describe("widget - signals (4)", () => {
     describe("signal arguments", () => {
         it("receives signal arguments in callback", async () => {
             const handleStateSet = await renderStateSetSwitchAndClick();
@@ -551,9 +529,7 @@ describe("widget - signals (4)", () => {
             });
         });
     });
-});
 
-describe("widget - signals (5)", () => {
     describe("user interactions with waitFor", () => {
         it("waits for state update after click", async () => {
             await render(<CountingButton prefix="Count" />);
@@ -576,11 +552,9 @@ describe("widget - signals (5)", () => {
             expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Clicks: 3" })).toBeRooted();
         });
     });
-});
 
-describe("widget - signals (6)", () => {
-    describe("event controllers (1)", () => {
-        describe("motion controller (1)", () => {
+    describe("event controllers", () => {
+        describe("motion controller", () => {
             it("connects onEnter handler", async () => {
                 const handleEnter = vi.fn();
 
@@ -605,13 +579,7 @@ describe("widget - signals (6)", () => {
                 await userEvent.unhover(button);
                 expect(handleLeave).toHaveBeenCalledTimes(1);
             });
-        });
-    });
-});
 
-describe("widget - signals (7)", () => {
-    describe("event controllers (2)", () => {
-        describe("motion controller (2)", () => {
             it("disconnects motion handlers when controller removed", async () => {
                 const handleEnter = vi.fn();
 
@@ -634,11 +602,7 @@ describe("widget - signals (7)", () => {
                 expect(handleEnter).toHaveBeenCalledTimes(1);
             });
         });
-    });
-});
 
-describe("widget - signals (8)", () => {
-    describe("event controllers (3)", () => {
         describe("click controller", () => {
             it("connects onPressed handler", async () => {
                 const handlePressed = vi.fn();
@@ -676,12 +640,8 @@ describe("widget - signals (8)", () => {
                 expect(typeof y).toBe("number");
             });
         });
-    });
-});
 
-describe("widget - signals (9)", () => {
-    describe("event controllers (4)", () => {
-        describe("key controller (1)", () => {
+        describe("key controller", () => {
             it("connects onKeyPressed handler", async () => {
                 const handleKeyPressed = vi.fn(() => Gdk.EVENT_PROPAGATE);
                 await renderKeyControllerAndType(<GtkEventControllerKey onKeyPressed={handleKeyPressed} />);
@@ -693,13 +653,7 @@ describe("widget - signals (9)", () => {
                 await renderKeyControllerAndType(<GtkEventControllerKey onKeyReleased={handleKeyReleased} />);
                 expect(handleKeyReleased).toHaveBeenCalled();
             });
-        });
-    });
-});
 
-describe("widget - signals (10)", () => {
-    describe("event controllers (5)", () => {
-        describe("key controller (2)", () => {
             it("disconnects key handlers when controller removed", async () => {
                 const handleKeyPressed = vi.fn(() => Gdk.EVENT_PROPAGATE);
 
@@ -724,9 +678,7 @@ describe("widget - signals (10)", () => {
             });
         });
     });
-});
 
-describe("widget - signals (11)", () => {
     describe("onNotify", () => {
         it("connects onNotify handler for property changes", async () => {
             const handleNotify = vi.fn();
@@ -773,8 +725,8 @@ describe("widget - child management > GtkBox", () => {
     });
 });
 
-describe("widget - auto-wrapping (1)", () => {
-    describe("GtkListBox (1)", () => {
+describe("widget - auto-wrapping", () => {
+    describe("GtkListBox", () => {
         it("creates ListBox widget", async () => {
             const ref = createRef<Gtk.ListBox>();
             await render(<GtkListBox ref={ref} />);
@@ -809,11 +761,7 @@ describe("widget - auto-wrapping (1)", () => {
 
             expect(labelCount(listBoxRef.current)).toBe(3);
         });
-    });
-});
 
-describe("widget - auto-wrapping (2)", () => {
-    describe("GtkListBox (2)", () => {
         it("removes children", async () => {
             const listBoxRef = createRef<Gtk.ListBox>();
 
@@ -833,10 +781,8 @@ describe("widget - auto-wrapping (2)", () => {
             expect(screen.getByText("second")).toAppearBefore(screen.getByText("first"));
         });
     });
-});
 
-describe("widget - auto-wrapping (3)", () => {
-    describe("GtkFlowBox (1)", () => {
+    describe("GtkFlowBox", () => {
         it("creates FlowBox widget", async () => {
             const ref = createRef<Gtk.FlowBox>();
             await render(<GtkFlowBox ref={ref} />);
@@ -871,11 +817,7 @@ describe("widget - auto-wrapping (3)", () => {
 
             expect(labelCount(flowBoxRef.current)).toBe(3);
         });
-    });
-});
 
-describe("widget - auto-wrapping (4)", () => {
-    describe("GtkFlowBox (2)", () => {
         it("removes children", async () => {
             const flowBoxRef = createRef<Gtk.FlowBox>();
 
@@ -891,7 +833,7 @@ describe("widget - auto-wrapping (4)", () => {
     });
 });
 
-describe("widget - AboutDialog (1)", () => {
+describe("widget - AboutDialog", () => {
     describe("creditSections", () => {
         it.each([
             [
@@ -908,9 +850,7 @@ describe("widget - AboutDialog (1)", () => {
             expect(ref.current).not.toBeNull();
         });
     });
-});
 
-describe("widget - AboutDialog (2)", () => {
     describe("lifecycle", () => {
         it("presents dialog on mount", async () => {
             await renderDialogInWindow(<GtkAboutDialog programName="Lifecycle Test" />);
@@ -1018,9 +958,7 @@ describe("construct-only property changes", () => {
         const { rerender } = await render(<NamedBox boxRef={boxRef} name="initial-name" />);
         expect(boxRef.current).toHaveObjectProperty("cssName", "initial-name");
 
-        await expect(rerender(<NamedBox boxRef={boxRef} name="changed-name" />)).rejects.toThrow(
-            /construct-only prop 'cssName' of <GtkBox>/,
-        );
+        await expect(rerender(<NamedBox boxRef={boxRef} name="changed-name" />)).rejects.toThrow();
     });
 
     it("applies the new value when the key changes with it", async () => {

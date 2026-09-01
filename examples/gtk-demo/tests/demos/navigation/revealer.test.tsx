@@ -40,18 +40,6 @@ const findAllRevealers = async (): Promise<Gtk.Revealer[]> => {
     return revealers;
 };
 
-describe("revealerDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(revealerDemo.id).toBe("revealer");
-        expect(revealerDemo.title).toBe("Revealer");
-        expect(revealerDemo.description).toContain("GtkRevealer");
-        expect(revealerDemo.sourceCode).toContain("const revealerDemo: Demo = {");
-        expect(revealerDemo.defaultWidth).toBe(300);
-        expect(revealerDemo.defaultHeight).toBe(300);
-        expect(revealerDemo.keywords).toEqual([]);
-    });
-});
-
 describe("revealerDemo structure", () => {
     it("renders exactly nine GtkRevealer widgets initially hidden", async () => {
         await renderDemo(revealerDemo);

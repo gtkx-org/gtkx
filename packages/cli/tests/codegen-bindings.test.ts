@@ -29,35 +29,27 @@ import {
 
 describe("gtkx codegen (libraries the generated types have to escape)", () => {
     it("binds a class whose static narrows the one it inherits", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-codegen-statics-",
             config: fixtureConfig("StaticNarrow-1.0"),
         });
 
-        try {
-            expect(runCli(project, ["codegen"]).status).toBe(0);
-            expect(generatedModule(project, "gi", "staticnarrow", "staticnarrow.d.ts")).toContain("StaticBase<");
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        expect(generatedModule(project, "gi", "staticnarrow", "staticnarrow.d.ts")).toContain("StaticBase<");
     });
 
     it("binds a type whose GIR name starts with a digit", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-codegen-digit-",
             config: fixtureConfig("DigitName-1.0"),
         });
 
-        try {
-            expect(runCli(project, ["codegen"]).status).toBe(0);
-            expect(generatedModule(project, "gi", "digitname", "digitname.d.ts")).toContain("enum _80211Mode");
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        expect(generatedModule(project, "gi", "digitname", "digitname.d.ts")).toContain("enum _80211Mode");
 
-            expect(generatedModule(project, "gi", "digitname", "digitname.js")).toContain(
-                `= ${PURE} t.fn("libdigitname.so.0", "digit_name_radio_get_mode", () => (`,
-            );
-        } finally {
-            removeCliProject(project);
-        }
+        expect(generatedModule(project, "gi", "digitname", "digitname.js")).toContain(
+            `= ${PURE} t.fn("libdigitname.so.0", "digit_name_radio_get_mode", () => (`,
+        );
     });
 });
 

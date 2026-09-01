@@ -39,16 +39,6 @@ const findFramesHeader = async (): Promise<Gtk.HeaderBar> => {
 
 vi.setConfig({ testTimeout: 30_000 });
 
-describe("framesDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(framesDemo.id).toBe("frames");
-        expect(framesDemo.title).toBe("Benchmark/Frames");
-        expect(framesDemo.defaultWidth).toBe(600);
-        expect(framesDemo.defaultHeight).toBe(400);
-        expect(framesDemo.sourceCode).toContain("const framesDemo: Demo = {");
-    });
-});
-
 describe("framesDemo header bar", () => {
     it("renders the fps label in the header bar driven by shared state", async () => {
         const header = await findFramesHeader();

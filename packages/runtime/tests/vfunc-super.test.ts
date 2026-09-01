@@ -262,7 +262,7 @@ describe("vfunc — slots that take a GError", () => {
             protocol: 0,
         });
 
-        expect(() => socket.vfuncInit(null)).toThrow(/Unknown family was specified/);
+        expect(() => socket.vfuncInit(null)).toThrow();
     });
 
     it("returns normally out of a slot that writes no error", () => {

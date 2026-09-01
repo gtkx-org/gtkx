@@ -1,4 +1,4 @@
-import { sortStrings, warn } from "@gtkx/utils";
+import { isPathInside, sortStrings, toPosixPath, warn } from "@gtkx/utils";
 import { createHash } from "node:crypto";
 import {
     copyFileSync,
@@ -10,7 +10,7 @@ import {
     writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { I18N_TYPES_FILENAME, i18nTypesPath } from "../i18n/types.js";
 import { discoverSourceImports, type SourceImport } from "../internal/source-imports.js";
 import { removeTempDir } from "../internal/staging-dir.js";
@@ -53,22 +53,18 @@ const stageSchema = (dir: string, filePath: string): void => {
     copyFileSync(filePath, join(dir, stagedSchemaName(filePath)));
 };
 
-const toForwardSlashes = (value: string): string => value.replaceAll(/[/\\]/g, "/");
-
 const projectRelativeSchemaPath = (root: string, filePath: string): string | null => {
-    let rel: string;
+    let projectRoot: string;
+    let path: string;
 
     try {
-        rel = relative(realpathSync(root), realpathSync(filePath));
+        projectRoot = realpathSync(root);
+        path = realpathSync(filePath);
     } catch {
         return null;
     }
 
-    if (rel === "" || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
-        return null;
-    }
-
-    return toForwardSlashes(rel);
+    return isPathInside(projectRoot, path) ? toPosixPath(relative(projectRoot, path)) : null;
 };
 
 const getRelativeModuleSpecifier = (filePath: string): string => `*/${basename(filePath)}`;

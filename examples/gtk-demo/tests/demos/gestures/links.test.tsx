@@ -14,15 +14,6 @@ const renderLinksLabel = async (): Promise<Gtk.Label> => {
 };
 
 describe("linksDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(linksDemo.id).toBe("links");
-        expect(linksDemo.title).toBe("Links");
-        expect(linksDemo.description).toContain("GtkLabel can show hyperlinks");
-        expect(linksDemo.keywords).toEqual([]);
-        expect(linksDemo.sourceCode).toContain("const linksDemo: Demo = {");
-        expect(linksDemo.component).toBeTypeOf("function");
-    });
-
     it("renders a markup-enabled label that wraps on word boundaries", async () => {
         const label = await renderLinksLabel();
         expect(label).toHaveObjectProperty("useMarkup", true);

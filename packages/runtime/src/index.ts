@@ -1,24 +1,14 @@
 import "./exit-hook.js";
 
-/** @public */
 export { type ApplicationClass, type CommandLineApplication, createApplication } from "./application-class.js";
-/** @public */
 export { CallbackMarshalError } from "./callback.js";
-/** @public */
 export { type ClosureCallback, ClosureMarshalError, toClosure, tryToClosure } from "./closure.js";
-/** @public */
 export { createErrorDomain, type ErrorDomain } from "./error.js";
-/** @public */
 export { type Field, type StridedField } from "./field.js";
-/** @public */
 export { onExit, quit, quitApplication, runApplication, type RunApplicationResult } from "./lifecycle.js";
-/** @public */
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
-/** @public */
 export { installMixins, type Mixin } from "./mixin.js";
-/** @public */
 export { fromNative, toHashTableEntries, toNative } from "./native-value.js";
-/** @public */
 export {
     type ConstructBinding,
     type ConstructBindings,
@@ -27,22 +17,16 @@ export {
     registerConstructProperties,
     setObjectProperty,
 } from "./object.js";
-/** @public */
 export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "./param-spec.js";
-/** @public */
 export { promisify, trimFinish } from "./promisify.js";
-/** @public */
 export {
     coerceObjectProperty,
     getDeclaredPropertyName,
     isReadableProperty,
     newParamSpecOverride,
 } from "./properties.js";
-/** @public */
 export { matchAllRegex, matchRegex } from "./regex.js";
-/** @public */
 export { type Interface, registerClass, type SignalGType, type SignalSpec } from "./register-class.js";
-/** @public */
 export {
     getClassType,
     getHandle,
@@ -60,7 +44,6 @@ export {
     type WrapperClass,
     type WrapperClassResolver,
 } from "./registry.js";
-/** @public */
 export {
     connectSignal,
     disconnectSignal,
@@ -69,9 +52,7 @@ export {
     type SignalHandler,
     signalForHandlerName,
 } from "./signal.js";
-/** @public */
 export { t } from "./t.js";
-/** @public */
 export {
     resolveType,
     TYPE_BOOLEAN,
@@ -107,7 +88,6 @@ export {
     typeParent,
     valueIsA,
 } from "./type.js";
-/** @public */
 export {
     fromValue,
     getBoxedValue,
@@ -117,7 +97,6 @@ export {
     tryToValueHandle,
     ValueMarshalError,
 } from "./value.js";
-/** @public */
 export {
     type ByteArray,
     type FromVariantOptions,
@@ -128,9 +107,6 @@ export {
     type VariantInput,
     type VariantValue,
 } from "./variant.js";
-/** @public */
 export { callParent, callVfunc } from "./vfunc-call.js";
-/** @public */
 export { alloc, type ExternalObject, type Handle, read, write } from "@gtkx/native";
-/** @public */
 export { type AnyClass } from "@gtkx/utils";

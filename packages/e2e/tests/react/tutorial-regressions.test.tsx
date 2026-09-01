@@ -102,7 +102,7 @@ const detailShell = (buttonRef: Ref<Gtk.Button | null>, onBack: () => void): Rea
     </AdwNavigationSplitView>
 );
 
-describe("tutorial regressions (1)", () => {
+describe("tutorial regressions", () => {
     it("quits the application when the window close-request handler calls quit()", async () => {
         const appRef = createRef<Adw.Application>();
         const windowRef = createRef<Adw.ApplicationWindow>();
@@ -149,9 +149,7 @@ describe("tutorial regressions (1)", () => {
         await rerender(<ReuseShell buttonRef={buttonRef} isDetail={true} />);
         expect(buttonRef.current).toBeEnabled();
     });
-});
 
-describe("tutorial regressions (2)", () => {
     it("opens a second dialog while the first one's onClosed clears the state that mounted it", async () => {
         const { rerender } = await render(<DialogShell shown="about" />, { container: rootElement });
         await rerender(<DialogShell shown="shortcuts" />);

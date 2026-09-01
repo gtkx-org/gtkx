@@ -31,16 +31,6 @@ const clickPageRow = async (sidebar: Gtk.StackSidebar, name: string): Promise<vo
     await userEvent.click(within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name }));
 };
 
-describe("sidebarDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(sidebarDemo.id).toBe("sidebar");
-        expect(sidebarDemo.title).toBe("Stack Sidebar");
-        expect(sidebarDemo.description).toContain("GtkStackSidebar provides an automatic sidebar widget");
-        expect(sidebarDemo.sourceCode).toContain("const sidebarDemo: Demo = {");
-        expect(sidebarDemo.keywords).toEqual([]);
-    });
-});
-
 describe("sidebarDemo structure", () => {
     it("registers nine stack pages with the expected titles", async () => {
         await renderDemo(sidebarDemo);

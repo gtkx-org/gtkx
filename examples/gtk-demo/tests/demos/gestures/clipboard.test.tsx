@@ -178,17 +178,6 @@ const expectCopyEnabledAfterDialog = async (
     return copyButton;
 };
 
-describe("clipboardDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(clipboardDemo.id).toBe("clipboard");
-        expect(clipboardDemo.title).toBe("Clipboard");
-        expect(clipboardDemo.description).toContain("GdkClipboard is used for clipboard handling");
-        expect(clipboardDemo.keywords).toEqual(["drag-and-drop", "dnd"]);
-        expect(clipboardDemo.sourceCode).toContain("const clipboardDemo: Demo = {");
-        expect(clipboardDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("clipboardDemo rendering", () => {
     it(
         "renders the intro label, the text source entry initialised to 'Copy this!' and the Copy/Paste buttons",

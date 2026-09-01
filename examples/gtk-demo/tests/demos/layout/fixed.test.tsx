@@ -17,20 +17,6 @@ const findCubeFaces = async (): Promise<Gtk.Frame[]> => {
     return faces;
 };
 
-describe("fixedDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(fixedDemo.id).toBe("fixed");
-        expect(fixedDemo.title).toBe("Fixed Layout / Cube");
-        expect(fixedDemo.windowTitle).toBe("Fixed Layout ‐ Cube");
-        expect(fixedDemo.description).toContain("create a cube out of child widgets");
-        expect(fixedDemo.keywords).toEqual(["GtkLayoutManager"]);
-        expect(fixedDemo.sourceCode).toContain("const fixedDemo: Demo = {");
-        expect(fixedDemo.defaultWidth).toBe(600);
-        expect(fixedDemo.defaultHeight).toBe(400);
-        expect(fixedDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("fixedDemo containers", () => {
     it("wraps the outer fixed inside the scrolled window's viewport", async () => {
         await renderDemo(fixedDemo);

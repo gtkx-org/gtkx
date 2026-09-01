@@ -1,6 +1,6 @@
-import { isRecord, sortStrings } from "@gtkx/utils";
+import { isPathInside, isRecord, sortStrings } from "@gtkx/utils";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import type { DeploySettings } from "../types.js";
 import {
     BUILD_MANIFEST_FILENAME,
@@ -69,12 +69,6 @@ const parseBuildManifest = (value: unknown, path: string): BuildManifest => {
 
 const isFile = (path: string): boolean => statSync(path, { throwIfNoEntry: false })?.isFile() === true;
 
-const isInsideProject = (root: string, filePath: string): boolean => {
-    const rel = relative(root, filePath);
-
-    return rel.length > 0 && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
-};
-
 const resolveRecordedSchema = (root: string, manifestPath: string, entry: string): string => {
     if (isAbsolute(entry) || !entry.endsWith(SCHEMA_SUFFIX)) {
         throw new Error(`Cannot deploy: ${manifestPath} records an invalid GSettings schema path.`);
@@ -82,7 +76,7 @@ const resolveRecordedSchema = (root: string, manifestPath: string, entry: string
 
     const filePath = resolve(root, entry);
 
-    if (!isInsideProject(root, filePath)) {
+    if (!isPathInside(root, filePath)) {
         throw new Error(`Cannot deploy: ${manifestPath} records a GSettings schema outside the project.`);
     }
 

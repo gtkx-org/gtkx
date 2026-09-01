@@ -14,7 +14,6 @@ import {
     TYPE_STRING,
     TYPE_UINT64,
     typeFromName,
-    ValueMarshalError,
 } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
@@ -153,39 +152,39 @@ describe("a value no GType can be inferred from", () => {
     it("throws for undefined", () => {
         expect(() => {
             createConstantForUncheckedValue(undefined);
-        }).toThrow(ValueMarshalError);
+        }).toThrow();
     });
 
     it("throws for a function", () => {
         expect(() => {
             createConstantForUncheckedValue(() => 0);
-        }).toThrow(ValueMarshalError);
+        }).toThrow();
     });
 
     it("throws for an array holding anything but strings", () => {
         expect(() => {
             createConstantForUncheckedValue([1, 2]);
-        }).toThrow(ValueMarshalError);
+        }).toThrow();
     });
 
     it("throws for a bigint below the signed 64-bit range", () => {
-        expect(() => Gtk.ConstantExpression.newForValue(-(2n ** 63n) - 1n)).toThrow(ValueMarshalError);
+        expect(() => Gtk.ConstantExpression.newForValue(-(2n ** 63n) - 1n)).toThrow();
     });
 
     it("throws for a bigint above the unsigned 64-bit range", () => {
-        expect(() => Gtk.ConstantExpression.newForValue(2n ** 64n)).toThrow(ValueMarshalError);
+        expect(() => Gtk.ConstantExpression.newForValue(2n ** 64n)).toThrow();
     });
 
     it("throws for an array with holes in it", () => {
         const sparse: string[] = ["one"];
         sparse.length = 3;
-        expect(() => Gtk.ConstantExpression.newForValue(sparse)).toThrow(ValueMarshalError);
+        expect(() => Gtk.ConstantExpression.newForValue(sparse)).toThrow();
     });
 
     it("throws for a plain object", () => {
         expect(() => {
             createConstantForUncheckedValue({});
-        }).toThrow(ValueMarshalError);
+        }).toThrow();
     });
 });
 

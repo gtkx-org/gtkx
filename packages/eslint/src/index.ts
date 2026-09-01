@@ -217,6 +217,7 @@ const SOURCE_RULES: Linter.RulesRecord = {
 
 const TEST_RULES: Linter.RulesRecord = {
     "@typescript-eslint/unbound-method": "off",
+    "max-lines-per-function": "off",
     "vitest/expect-expect": ["error", { assertFunctionNames: ["expect", "assert", "expect*"] }],
     "vitest/unbound-method": "error",
 };

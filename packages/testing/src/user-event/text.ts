@@ -198,15 +198,7 @@ const runEditableEvent = (
         action(widget);
     });
 
-/**
- * Focuses the widget unless `shouldFocus` is false, applies any initial selection, and inserts the
- * text at the cursor, deleting the text the widget has selected first, the way typing over a
- * selection does in GTK4. Focusing works the way clicking into the widget does, leaving its text
- * unselected: a `Gtk.Editable` takes its caret to the end of its text, a `Gtk.TextView` keeps the
- * caret where it stands, and the replaced text stays on the widget's undo stack either way.
- *
- * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
- */
+/** Types into an editable widget. */
 const type = (widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
     runEditableEvent(widget, "Cannot type into element", (editable) => {
         if (options?.shouldFocus ?? true) {
@@ -286,45 +278,24 @@ const clearEditable = (editable: EditableTarget): void => {
     }
 };
 
-/**
- * Focuses an editable widget and deletes its whole text through the widget's own editing API, so the
- * deletion emits the signals an edit made by hand emits. Text a tag protects is detected before the
- * deletion runs, leaving such a widget untouched. A widget that writes a new value back in response
- * to the deletion, as an input mask does, is cleared successfully and keeps whatever it wrote.
- *
- * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView, when it refuses edits, when
- * a tag protects part of its text, or when a handler blocks the deletion.
- */
+/** Deletes all text from an editable widget. */
 const clear = (widget: Gtk.Widget): Promise<void> =>
     runEditableEvent(widget, "Cannot clear element", clearEditable);
 
-/**
- * Writes an editable widget's selected text to its clipboard, or the empty string when nothing is selected.
- *
- * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
- */
+/** Copies the current selection. */
 const copy = (widget: Gtk.Widget): Promise<void> =>
     runEditableEvent(widget, "Cannot copy", (editable) => {
         writeClipboardText(editable, readSelection(editable));
     });
 
-/**
- * Writes an editable widget's selected text to its clipboard, then deletes that selection.
- *
- * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
- */
+/** Cuts the current selection. */
 const cut = (widget: Gtk.Widget): Promise<void> =>
     runEditableEvent(widget, "Cannot cut", (editable) => {
         writeClipboardText(editable, readSelection(editable));
         deleteSelection(editable);
     });
 
-/**
- * Inserts the given text at an editable widget's cursor, reading the clipboard instead when no text
- * is given, and deleting the text the widget has selected first, the way a paste does in GTK4.
- *
- * @throws When the widget is neither a Gtk.Editable nor a Gtk.TextView.
- */
+/** Pastes text or clipboard contents. */
 const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {
     if (!isEditable(widget)) {
         throw new Error(`Cannot paste: ${EDITABLE_REQUIRED}`);

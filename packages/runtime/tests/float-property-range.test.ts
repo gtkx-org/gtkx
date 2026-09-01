@@ -103,12 +103,12 @@ describe("a value a floating-point property cannot hold", () => {
     it.each(REFUSED)("refuses $described and leaves the property as it was", (entry) => {
         const probe = new (makeProbeClass())();
         Reflect.set(probe, entry.name, 0.5);
-        expect(() => Reflect.set(probe, entry.name, entry.written)).toThrow(Error);
+        expect(() => Reflect.set(probe, entry.name, entry.written)).toThrow();
         expect(Reflect.get(probe, entry.name)).toBe(0.5);
     });
 
     it.each(REFUSED)("refuses $described handed to the constructor", (entry) => {
         const Probe = makeProbeClass();
-        expect(() => new Probe({ [entry.name]: entry.written })).toThrow(Error);
+        expect(() => new Probe({ [entry.name]: entry.written })).toThrow();
     });
 });

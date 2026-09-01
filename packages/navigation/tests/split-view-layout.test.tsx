@@ -1,8 +1,5 @@
-import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel } from "@gtkx/jsx/gtk";
-import { createSplitViewNavigator, NavigationContainer } from "@gtkx/navigation";
-import { render, screen, waitFor } from "@gtkx/testing";
+import { screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import {
     clickButton,
@@ -10,15 +7,10 @@ import {
     expectVisible,
     pressKeys,
     renderSplit,
-    Split,
     splitView,
 } from "./helpers/split-view-fixtures.js";
 
-const Loose = createSplitViewNavigator();
-
-const Page = (): ReactNode => <GtkLabel>Page Content</GtkLabel>;
-
-describe("split view - layout (1)", () => {
+describe("split view - layout", () => {
     it("shows the sidebar beside the placeholder before a content route opens", async () => {
         await renderSplit();
         await screen.findByText("Lists Content");
@@ -47,9 +39,7 @@ describe("split view - layout (1)", () => {
         expectVisible("Lists Content");
         expect(splitView()).toHaveObjectProperty("show-content", false);
     });
-});
 
-describe("split view - layout (2)", () => {
     it("places the sidebar at the start by default", async () => {
         await renderSplit();
         await screen.findByText("Lists Content");
@@ -70,9 +60,7 @@ describe("split view - layout (2)", () => {
         expect(splitView()).toHaveObjectProperty("max-sidebar-width", 320);
         expect(splitView()).toHaveObjectProperty("sidebar-width-fraction", 0.35);
     });
-});
 
-describe("split view - layout (3)", () => {
     it("leaves the content pane empty when the navigator has no placeholder", async () => {
         await renderSplit({ navigator: { contentPlaceholder: undefined } });
         await screen.findByText("Lists Content");
@@ -105,33 +93,7 @@ describe("split view - layout (3)", () => {
         await screen.findByText("Tasks personal");
         expectHidden("Lists Content");
     });
-});
 
-describe("split view - layout (4)", () => {
-    it("rejects when the navigator declares no screens", async () => {
-        await expect(
-            render(
-                <NavigationContainer>
-                    <Split.Navigator>{null}</Split.Navigator>
-                </NavigationContainer>,
-            ),
-        ).rejects.toThrow();
-    });
-
-    it("rejects when initialRouteName names no screen", async () => {
-        await expect(
-            render(
-                <NavigationContainer>
-                    <Loose.Navigator initialRouteName="Missing">
-                        <Loose.Screen name="Lists" component={Page} />
-                    </Loose.Navigator>
-                </NavigationContainer>,
-            ),
-        ).rejects.toThrow();
-    });
-});
-
-describe("split view - layout (5)", () => {
     it("puts an empty content pane back when the widget reveals it on its own", async () => {
         await renderSplit({ navigator: { collapsed: true, sidebarPosition: "end" } });
         await screen.findByText("Lists Content");

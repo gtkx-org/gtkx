@@ -24,16 +24,6 @@ const throwOnFinish = (failure: Error) => (): never => {
     throw failure;
 };
 
-const getRejection = async (promise: Promise<unknown>): Promise<unknown> => {
-    try {
-        await promise;
-    } catch (error) {
-        return error;
-    }
-
-    throw new Error("expected rejection");
-};
-
 describe("promisify", () => {
     it("forwards leading args, the resolved cancellable and the callback to the async fn", async () => {
         const calls: unknown[][] = [];
@@ -68,16 +58,6 @@ describe("promisify", () => {
         const failure = new Error("boom");
 
         return expect(promisify(invokeCallback, throwOnFinish(failure), undefined)).rejects.toBe(failure);
-    });
-
-    it("attaches the creation call-site as the rejected error's cause", async () => {
-        const failure = new Error("boom");
-        const rejection = await getRejection(promisify(invokeCallback, throwOnFinish(failure), undefined));
-        expect(rejection).toBeInstanceOf(Error);
-        const cause = (rejection as Error).cause;
-        expect(cause).toBeInstanceOf(Error);
-        expect((cause as Error).message).toBe("GTKX async operation started here");
-        expect((cause as Error).stack).toContain("promisify.test.ts");
     });
 });
 

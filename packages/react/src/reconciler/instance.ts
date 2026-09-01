@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import { TYPE_INVALID, typeFromName, typeIsA } from "@gtkx/runtime";
 import { getExactWrapperClass } from "@gtkx/runtime/internal";
-import { getOrInsert, pickBy } from "@gtkx/utils";
+import { pickBy } from "@gtkx/utils";
 import type { Props } from "./registry.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 import {
@@ -47,7 +47,7 @@ const findContentKind = (type: bigint): ContentKind | null => {
     return null;
 };
 
-const contentKindFor = (type: bigint): ContentKind | null => getOrInsert(contentKinds, type, findContentKind);
+const contentKindFor = (type: bigint): ContentKind | null => contentKinds.getOrInsertComputed(type, findContentKind);
 
 const constructInput = (info: TypeInfo, props: Props): Props =>
     pickBy(

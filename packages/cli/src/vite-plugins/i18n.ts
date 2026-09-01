@@ -1,6 +1,7 @@
 import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, ResolvedConfig } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
+import { toPosixPath } from "@gtkx/utils";
 import { existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, posix, relative, resolve } from "node:path";
@@ -32,7 +33,7 @@ const isI18nLocaleModule = (state: I18nState, id: string): boolean => {
         return false;
     }
 
-    const path = relative(state.i18nRoot, stripQuery(id)).replaceAll("\\", "/");
+    const path = toPosixPath(relative(state.i18nRoot, stripQuery(id)));
 
     return LOCALE_MODULE_PATHS.has(path);
 };

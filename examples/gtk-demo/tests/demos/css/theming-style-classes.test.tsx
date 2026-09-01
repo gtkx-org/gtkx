@@ -5,21 +5,6 @@ import { themingStyleClassesDemo } from "../../../src/demos/css/theming-style-cl
 import { renderDemo } from "../../test-utils.js";
 
 describe("themingStyleClassesDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(themingStyleClassesDemo.id).toBe("theming-style-classes");
-        expect(themingStyleClassesDemo.title).toBe("Theming/Style Classes");
-
-        expect(themingStyleClassesDemo.description).toBe(
-            "GTK uses CSS for theming. Style classes can be associated with widgets to inform the theme about " +
-            "intended rendering.\n\nThis demo shows some common examples where theming features of GTK are used " +
-            "for certain effects: primary toolbars and linked buttons.",
-        );
-
-        expect(themingStyleClassesDemo.keywords).toEqual([]);
-        expect(themingStyleClassesDemo.sourceCode).toContain("const themingStyleClassesDemo: Demo = {");
-        expect(themingStyleClassesDemo.component).toBeTypeOf("function");
-    });
-
     it("renders the linked button group with three buttons", async () => {
         await renderDemo(themingStyleClassesDemo);
         await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hi, I am a button" });

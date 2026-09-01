@@ -1,5 +1,6 @@
+import { isPathInside } from "@gtkx/utils";
 import { chmodSync, copyFileSync, mkdirSync, statSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, relative } from "node:path";
+import { dirname, join } from "node:path";
 import type { StagedFile } from "../types.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 
@@ -16,9 +17,7 @@ const modeFor = (rel: string): number => {
 };
 
 const assertInsideRoot = (root: string, rel: string, abs: string): void => {
-    const escape = relative(root, abs);
-
-    if (escape.length === 0 || escape.startsWith("..") || isAbsolute(escape)) {
+    if (!isPathInside(root, abs)) {
         throw new Error(`Cannot stage "${rel}": it resolves outside the staging directory`);
     }
 };

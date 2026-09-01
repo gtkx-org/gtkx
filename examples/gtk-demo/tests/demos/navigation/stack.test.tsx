@@ -16,16 +16,6 @@ const clickTab = async (name: string): Promise<void> => {
     await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TAB, { name }));
 };
 
-describe("stackDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(stackDemo.id).toBe("stack");
-        expect(stackDemo.title).toBe("Stack");
-        expect(stackDemo.description).toContain("GtkStack is a container that shows a single child at a time");
-        expect(stackDemo.sourceCode).toContain("const stackDemo: Demo = {");
-        expect(stackDemo.keywords).toEqual([]);
-    });
-});
-
 describe("stackDemo structure", () => {
     it("renders a GtkStack containing three pages", async () => {
         await renderDemo(stackDemo);

@@ -25,17 +25,6 @@ const scrollMarkLine = (view: Gtk.TextView, markName: string): { line: number; l
 };
 
 describe("textscrollDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(textscrollDemo.id).toBe("textscroll");
-        expect(textscrollDemo.title).toBe("Text View/Automatic Scrolling");
-        expect(textscrollDemo.description).toContain("the gravity of GtkTextMarks");
-        expect(textscrollDemo.keywords).toEqual(["GtkTextView", "GtkScrolledWindow"]);
-        expect(textscrollDemo.sourceCode).toContain("const textscrollDemo: Demo = {");
-        expect(textscrollDemo.defaultWidth).toBe(600);
-        expect(textscrollDemo.defaultHeight).toBe(400);
-        expect(textscrollDemo.component).toBeTypeOf("function");
-    });
-
     it("renders each named view with its own distinct appended text", async () => {
         await renderDemo(textscrollDemo);
         const [end, scroll] = await findTextViews();

@@ -70,7 +70,7 @@ const renderSidebar = async (children: ReactNode): Promise<Adw.Sidebar> => {
     return current;
 };
 
-describe("render - NavigationPage (1)", () => {
+describe("render - NavigationPage", () => {
     it("adds page with id", async () => {
         const viewRef = createRef<Adw.NavigationView>();
 
@@ -113,9 +113,7 @@ describe("render - NavigationPage (1)", () => {
         expect(viewRef.current?.findPage("page1")).not.toBeNull();
         expect(viewRef.current?.findPage("page2")).not.toBeNull();
     });
-});
 
-describe("render - NavigationPage (2)", () => {
     it("sets canPop property", async () => {
         const viewRef = createRef<Adw.NavigationView>();
 
@@ -155,9 +153,7 @@ describe("render - NavigationPage (2)", () => {
         await render(<App shouldShowPage={false} />);
         expect(viewRef.current?.findPage("removable")).toBeNull();
     });
-});
 
-describe("render - NavigationPage (3)", () => {
     it("updates page title when prop changes", async () => {
         const viewRef = createRef<Adw.NavigationView>();
 
@@ -239,7 +235,7 @@ describe("render - NavigationSplitView", () => {
     });
 });
 
-describe("render - page adoption > NotebookPage (1)", () => {
+describe("render - page adoption > NotebookPage", () => {
     it("exposes the real Gtk.NotebookPage through ref", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();
@@ -275,9 +271,7 @@ describe("render - page adoption > NotebookPage (1)", () => {
         expect(page).toHaveObjectProperty("detachable", true);
         expect(page).toHaveObjectProperty("menuLabel", "Menu Entry");
     });
-});
 
-describe("render - page adoption > NotebookPage (2)", () => {
     it("resets a page prop to its default when it is removed", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();

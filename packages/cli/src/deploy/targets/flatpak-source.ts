@@ -1,3 +1,4 @@
+import { isPathInside, toPosixPath } from "@gtkx/utils";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { posix, relative, resolve } from "node:path";
 import type { DeployPayload, DeploySettings } from "../types.js";
@@ -11,7 +12,6 @@ import { executableModeFor } from "../payload/copy-tree.js";
 import { iconPathFor } from "../payload/icons.js";
 import { renderLauncher } from "../payload/launcher.js";
 import { licenseDestination, nodeLicenseDestination, NOTICES_FILENAME, noticesDestination } from "../payload/stage.js";
-import { isInside } from "../settings/paths.js";
 import { pnpmPathFor, type PnpmPin, pnpmSources } from "./flatpak-pnpm.js";
 import { DESTINATION, type FlatpakModule, postInstallCommands, validationCommands } from "./flatpak-prebuilt.js";
 import {
@@ -46,7 +46,7 @@ const inlineSource = (fileName: string, contents: string): FlatpakModule => ({
 });
 
 const projectRelative = (settings: DeploySettings, path: string): string =>
-    relative(settings.paths.root, path).replaceAll("\\", "/");
+    toPosixPath(relative(settings.paths.root, path));
 
 const shellArgument = (value: string): string =>
     PLAIN_ARGUMENT.test(value) ? value : `'${value.split("'").join(QUOTE_ESCAPE)}'`;
@@ -155,7 +155,7 @@ const schemaInstallCommands = (settings: DeploySettings): string[] =>
 const iconInstallCommand = (settings: DeploySettings, source: string, rel: string): string =>
     installCommand(
         projectRelative(settings, source),
-        `${DESTINATION}/share/icons/${shellArgument(rel.replaceAll("\\", "/"))}`,
+        `${DESTINATION}/share/icons/${shellArgument(toPosixPath(rel))}`,
         "m644",
     );
 
@@ -177,7 +177,7 @@ const assertInsideProject = (settings: DeploySettings, installed: InstalledFile)
     const { resolved } = installed;
     const target = existsSync(resolved) ? realpathSync(resolved) : resolved;
 
-    if (isInside(settings.paths.root, target)) {
+    if (isPathInside(settings.paths.root, target)) {
         return;
     }
 

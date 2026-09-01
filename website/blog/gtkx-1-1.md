@@ -66,7 +66,7 @@ What you do have to install yourself is `desktop-file-validate`, `appstreamcli`,
 
 ## Upgrading
 
-There are no breaking changes in 1.1. Add a `deploy` block, delete your packaging scripts, and read [Deploying](/guide/deploying) for the full field reference. The tutorial's [Appendix B](/tutorial/packaging) and [Appendix C](/tutorial/flatpak) have been rewritten around the command.
+There are no breaking changes in 1.1. Add a `deploy` block, delete your packaging scripts, and read [Deploying](/guide/deploying) for the full field reference. The tutorial's [packaging guide](/tutorial/packaging) has been rewritten around the command.
 
 ## What's next
 

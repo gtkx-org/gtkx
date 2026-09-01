@@ -79,7 +79,7 @@ const StateReader = (): ReactNode => {
     return <GtkLabel>{`Index ${String(index)}`}</GtkLabel>;
 };
 
-describe("container - callbacks (1)", () => {
+describe("container - callbacks", () => {
     it("calls onReady once after mount and not again on navigation", async () => {
         const onReady = vi.fn();
 
@@ -122,9 +122,7 @@ describe("container - callbacks (1)", () => {
             }),
         );
     });
-});
 
-describe("container - callbacks (2)", () => {
     it("restores a nested stack inside a tab from initialState", async () => {
         await render(
             <NavigationContainer initialState={nestedInitialState}>
@@ -141,7 +139,7 @@ describe("container - callbacks (2)", () => {
     });
 });
 
-describe("container - ref (1)", () => {
+describe("container - ref", () => {
     it("drives navigation through a created ref", async () => {
         const ref = createNavigationContainerRef<RootParams>();
         expect(ref.isReady()).toBe(false);
@@ -181,9 +179,7 @@ describe("container - ref (1)", () => {
         await screen.findByText("Details 9");
         expect(screen.queryByText("Home Content")).toBeNull();
     });
-});
 
-describe("container - ref (2)", () => {
     it("notifies state listeners until they unsubscribe", async () => {
         const ref = createNavigationContainerRef<RootParams>();
         const listener = vi.fn<EventListenerCallback<NavigationContainerEventMap, "state">>();

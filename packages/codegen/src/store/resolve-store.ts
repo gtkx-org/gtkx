@@ -1,5 +1,6 @@
+import { isPathWithin } from "@gtkx/utils";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { dirname, join, parse, relative, sep } from "node:path";
+import { dirname, join, parse } from "node:path";
 import type { StoreOptions } from "./store-fs.js";
 import { sweepStagingDirs } from "../staging.js";
 
@@ -80,14 +81,8 @@ const resolvePackage = (projectRoot: string, packageName: string): ResolvedPacka
     return loadPackage(join(projectRoot, "packages", unscoped, "package.json"), join(projectRoot, "node_modules"));
 };
 
-const isWithin = (parent: string, child: string): boolean => {
-    const path = relative(parent, child);
-
-    return path === "" || (path !== ".." && !path.startsWith(`..${sep}`));
-};
-
 const canImport = (fromNodeModules: string, targetNodeModules: string): boolean =>
-    isWithin(dirname(targetNodeModules), dirname(fromNodeModules));
+    isPathWithin(dirname(targetNodeModules), dirname(fromNodeModules));
 
 const storeOptions = (nodeModules: string, name: string, version: string): StoreOptions => ({
     storeDir: join(nodeModules, STORE_DIR, name),

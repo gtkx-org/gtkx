@@ -11,23 +11,6 @@ const activateRow = async (name: string): Promise<void> => {
     await userEvent.keyboard(listbox, "{Enter}");
 };
 
-describe("cssBlendmodesDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(cssBlendmodesDemo.id).toBe("css-blendmodes");
-        expect(cssBlendmodesDemo.title).toBe("Theming/CSS Blend Modes");
-
-        expect(cssBlendmodesDemo.description).toBe(
-            "You can blend multiple backgrounds using the CSS blend modes available.",
-        );
-
-        expect(cssBlendmodesDemo.keywords).toEqual([]);
-        expect(cssBlendmodesDemo.sourceCode).toContain("const cssBlendmodesDemo: Demo = {");
-        expect(cssBlendmodesDemo.defaultWidth).toBe(400);
-        expect(cssBlendmodesDemo.defaultHeight).toBe(300);
-        expect(cssBlendmodesDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("cssBlendmodesDemo rendering", () => {
     it("renders the blend mode list and the Blend mode label", async () => {
         await renderDemo(cssBlendmodesDemo);

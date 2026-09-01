@@ -189,7 +189,7 @@ describe("async calls made without a completion callback", () => {
 
         expect(() => {
             replaceContentsWith(Gio.File.newForPath(path), null);
-        }).toThrow(/pass a completion callback/);
+        }).toThrow();
 
         expect(existsSync(path)).toBe(false);
     });

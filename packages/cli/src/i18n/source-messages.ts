@@ -1,4 +1,5 @@
 import type { ExtractedKey, ExtractedKeysMap, Logger, Plugin } from "i18next-cli";
+import { isPathInside, isPathWithin, toPosixPath } from "@gtkx/utils";
 import { runExtractor } from "i18next-cli";
 import {
     existsSync,
@@ -8,7 +9,7 @@ import {
     rmSync,
     writeFileSync,
 } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { CatalogProject } from "./catalogs.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { replaceCatalogTemplate } from "./catalog-template.js";
@@ -288,11 +289,7 @@ const inferLocations = (message: SourceMessage, sources: Map<string, string>): S
 const normalizedSourceFiles = (root: string, paths: string[]): string[] => {
     const files = paths
         .map((path) => resolve(root, path))
-        .filter((path) => {
-            const projectPath = relative(root, path);
-
-            return projectPath !== ".." && !projectPath.startsWith(`..${sep}`) && !isAbsolute(projectPath);
-        });
+        .filter((path) => isPathWithin(root, path));
 
     return new Set(files).values().toArray().toSorted((left, right) => left.localeCompare(right));
 };
@@ -336,16 +333,11 @@ const projectPath = (root: string, path: string): string | null => {
     const absolute = isAbsolute(path) ? resolve(path) : resolve(root, path);
     const projectRelative = relative(root, absolute);
 
-    if (
-        projectRelative === "" ||
-        projectRelative === ".." ||
-        projectRelative.startsWith(`..${sep}`) ||
-        isAbsolute(projectRelative)
-    ) {
+    if (!isPathInside(root, absolute)) {
         return null;
     }
 
-    return projectRelative.replaceAll("\\", "/");
+    return toPosixPath(projectRelative);
 };
 
 const writePotfiles = (project: CatalogProject, sourceFiles: string[]): string => {

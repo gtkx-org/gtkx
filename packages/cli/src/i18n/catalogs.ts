@@ -1,3 +1,4 @@
+import { isPathInside } from "@gtkx/utils";
 import {
     chmodSync,
     existsSync,
@@ -198,7 +199,7 @@ const isCatalogSource = (root: string, path: string): boolean => {
     const sourcePath = isAbsolute(path) ? resolve(path) : resolve(projectRoot, path);
     const poPath = relative(join(projectRoot, PO_DIRNAME), sourcePath);
 
-    if (poPath === "" || poPath === ".." || poPath.startsWith(`..${sep}`) || isAbsolute(poPath)) {
+    if (!isPathInside(join(projectRoot, PO_DIRNAME), sourcePath)) {
         return false;
     }
 

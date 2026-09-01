@@ -29,7 +29,7 @@ const CustomContent = (props: DrawerContentProps): ReactNode => (
     </GtkBox>
 );
 
-describe("drawer - sidebar (1)", () => {
+describe("drawer - sidebar", () => {
     it("lists every route labelled by drawerLabel, then title, then name", async () => {
         await render(
             <NavigationContainer>
@@ -70,9 +70,7 @@ describe("drawer - sidebar (1)", () => {
         await screen.findByText("Archive Content");
         expect(screen.queryByText("Inbox Content")).toBeNull();
     });
-});
 
-describe("drawer - sidebar (2)", () => {
     it("renders drawerIcon as an image in the row", async () => {
         await render(
             <NavigationContainer>
@@ -118,9 +116,7 @@ describe("drawer - sidebar (2)", () => {
         expect(querySidebarLabel("Inbox")).not.toBeNull();
         expect(sidebarList().getSelectedRow()).toBe(sidebarRow("Settings"));
     });
-});
 
-describe("drawer - sidebar (3)", () => {
     it("updates the row when drawerLabel changes", async () => {
         const { rerender } = await render(
             <NavigationContainer>

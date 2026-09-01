@@ -20,15 +20,6 @@ const renderAndFindSourceView = async (): Promise<Gtk.TextView> => {
 vi.setConfig({ testTimeout: 30_000 });
 
 describe("shadertoyDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(shadertoyDemo.id).toBe("shadertoy");
-        expect(shadertoyDemo.title).toBe("OpenGL/Shadertoy");
-        expect(shadertoyDemo.description).toContain("Generate pixels using a custom fragment shader.");
-        expect(shadertoyDemo.keywords).toEqual(["GtkGLArea"]);
-        expect(shadertoyDemo.sourceCode).toContain("const shadertoyDemo: Demo = {");
-        expect(shadertoyDemo.component).toBeTypeOf("function");
-    });
-
     it("renders the main GtkGLArea panel configured with an ES context", async () => {
         await renderDemo(shadertoyDemo);
         const glArea = await screen.findByName("shadertoy-gl-area", { as: Gtk.GLArea });

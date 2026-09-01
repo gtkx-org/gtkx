@@ -40,20 +40,6 @@ const establishTimeValue = async (timeButton: Gtk.SpinButton): Promise<void> => 
 };
 
 describe("spinbuttonDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(spinbuttonDemo.id).toBe("spinbutton");
-        expect(spinbuttonDemo.title).toBe("Spin Buttons");
-
-        expect(spinbuttonDemo.description).toBe(
-            "GtkSpinButton provides convenient ways to input data that can be seen as a value in a range. " +
-            "The examples here show that this does not necessarily mean numeric values, " +
-            "and it can include custom formatting.",
-        );
-
-        expect(spinbuttonDemo.keywords).toEqual(["GtkEntry"]);
-        expect(spinbuttonDemo.sourceCode).toContain("const spinbuttonDemo: Demo = {");
-    });
-
     it("renders the four labelled spin rows", async () => {
         await renderDemo(spinbuttonDemo);
         const spinButtons = await screen.findAllByRole(Gtk.AccessibleRole.SPIN_BUTTON);

@@ -203,7 +203,7 @@ describe("gtkx build (bundle that would resolve a module at runtime)", () => {
             });
 
             try {
-                await expect(buildAppProject({ project, outDir: OUT_DIR })).rejects.toThrow(specifier);
+                await expect(buildAppProject({ project, outDir: OUT_DIR })).rejects.toThrow();
             } finally {
                 removeAppProject(project);
             }

@@ -242,7 +242,7 @@ export const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {
 };
 ```
 
-`gtkx docs` emits reference pages for the elements your own project generated, with the props, signal handlers, and `ref` methods each one actually has. The [`@gtkx/mcp`](/guide/mcp) server exposes those same pages to an agent and lets it read the widget tree of the running app, query it, and click through it. Shipping the thing is documented too: a [desktop entry and an AppStream file](/tutorial/packaging), then a [Flatpak manifest and a Flathub submission](/tutorial/flatpak).
+`gtkx docs` emits reference pages for the elements your own project generated, with the props, signal handlers, and `ref` methods each one actually has. The [`@gtkx/mcp`](/guide/mcp) server exposes those same pages to an agent and lets it read the widget tree of the running app, query it, and click through it. Shipping the thing is documented too: a [desktop entry and an AppStream file](/tutorial/packaging), then a [Flatpak manifest and a Flathub submission](/tutorial/packaging#submit-to-flathub).
 
 ## What 1.0 means
 

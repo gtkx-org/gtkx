@@ -41,23 +41,6 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe("listviewMinesweeperDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(listviewMinesweeperDemo.id).toBe("listview-minesweeper");
-        expect(listviewMinesweeperDemo.title).toBe("Lists/Minesweeper");
-
-        expect(listviewMinesweeperDemo.description).toBe(
-            "This demo shows how to develop a user interface for small game using a grid view.\n\nIt demonstrates " +
-            "how to use the activate signal and single-press behavior to implement rather different interaction " +
-            "behavior to a typical list.",
-        );
-
-        expect(listviewMinesweeperDemo.keywords).toEqual(["GtkGridView", "GListModel", "game"]);
-        expect(listviewMinesweeperDemo.sourceCode).toContain("const listviewMinesweeperDemo: Demo = {");
-        expect(listviewMinesweeperDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("listviewMinesweeperDemo rendering", () => {
     it("renders the New Game button and a fresh 8x8 board of unrevealed cells", async () => {
         await renderDemo(listviewMinesweeperDemo);

@@ -14,19 +14,6 @@ const renderMarginTargets = async (): Promise<MarginTargets> => {
     return { scale, textView, topMarginTag: textView.getBuffer().getTagTable().lookup("top-margin") as Gtk.TextTag };
 };
 
-describe("overlayDecorativeDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(overlayDecorativeDemo.id).toBe("overlay-decorative");
-        expect(overlayDecorativeDemo.title).toBe("Overlay/Decorative Overlay");
-        expect(overlayDecorativeDemo.description).toContain("Another example of an overlay with some decorative");
-        expect(overlayDecorativeDemo.keywords).toEqual(["GtkOverlay"]);
-        expect(overlayDecorativeDemo.sourceCode).toContain("const overlayDecorativeDemo: Demo = {");
-        expect(overlayDecorativeDemo.defaultWidth).toBe(500);
-        expect(overlayDecorativeDemo.defaultHeight).toBe(510);
-        expect(overlayDecorativeDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("overlayDecorativeDemo overlay structure", () => {
     it("renders a single GtkOverlay containing the scrolled text view and three overlay children", async () => {
         await renderDemo(overlayDecorativeDemo);

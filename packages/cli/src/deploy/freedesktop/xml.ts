@@ -1,3 +1,5 @@
+import XMLBuilder from "fast-xml-builder";
+
 type XmlNode = {
     tag: string;
     attributes?: Record<string, string>;
@@ -5,23 +7,26 @@ type XmlNode = {
     text?: string;
 };
 
-const XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8"?>';
-const INDENT = " ".repeat(4);
+type OrderedNode = Record<string, unknown>;
 
-const ESCAPES: Record<string, string> = {
-    '"': "&quot;",
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-};
+const XML_ENCODING = ["UTF", "8"].join("-");
 
-const escapeXml = (value: string): string =>
-    value.replaceAll(/["&<>]/g, (character) => ESCAPES[character] ?? character);
+const builder = new XMLBuilder({
+    format: true,
+    ignoreAttributes: false,
+    indentBy: " ".repeat(4),
+    preserveOrder: true,
+    suppressEmptyNode: true,
+});
 
-const renderAttributes = (attributes: Record<string, string> | undefined): string =>
-    Object.entries(attributes ?? {})
-        .map(([key, value]) => ` ${key}="${escapeXml(value)}"`)
-        .join("");
+const orderedNode = (node: XmlNode): OrderedNode => ({
+    [node.tag]: node.text === undefined
+        ? (node.children ?? []).map((child) => orderedNode(child))
+        : [{ "#text": node.text }],
+    ...(node.attributes && {
+        ":@": Object.fromEntries(Object.entries(node.attributes).map(([key, value]) => [`@_${key}`, value])),
+    }),
+});
 
 const element = (tag: string, attributes: Record<string, string>, children: XmlNode[]): XmlNode => ({
     tag,
@@ -31,23 +36,10 @@ const element = (tag: string, attributes: Record<string, string>, children: XmlN
 
 const text = (tag: string, value: string): XmlNode => ({ tag, text: value });
 
-const renderNode = (node: XmlNode, depth: number): string[] => {
-    const padding = INDENT.repeat(depth);
-    const open = `${padding}<${node.tag}${renderAttributes(node.attributes)}`;
-
-    if (node.text !== undefined) {
-        return [`${open}>${escapeXml(node.text)}</${node.tag}>`];
-    }
-
-    const children = node.children ?? [];
-
-    if (children.length === 0) {
-        return [`${open}/>`];
-    }
-
-    return [`${open}>`, ...children.flatMap((child) => renderNode(child, depth + 1)), `${padding}</${node.tag}>`];
-};
-
-const renderDocument = (root: XmlNode): string => [XML_DECLARATION, ...renderNode(root, 0), ""].join("\n");
+const renderDocument = (root: XmlNode): string =>
+    `${builder.build([
+        { "?xml": [{ "#text": "" }], ":@": { "@_version": "1.0", "@_encoding": XML_ENCODING } },
+        orderedNode(root),
+    ])}\n`;
 
 export { element, renderDocument, text, type XmlNode };

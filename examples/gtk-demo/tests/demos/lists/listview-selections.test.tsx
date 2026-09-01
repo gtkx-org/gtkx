@@ -60,17 +60,6 @@ async function findDropDowns() {
     };
 }
 
-describe("listviewSelectionsDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(listviewSelectionsDemo.id).toBe("listview-selections");
-        expect(listviewSelectionsDemo.title).toBe("Lists/Selections");
-        expect(listviewSelectionsDemo.description).toContain("The GtkDropDown widget presents a list of choices.");
-        expect(listviewSelectionsDemo.keywords).toEqual(["suggestion", "completion"]);
-        expect(listviewSelectionsDemo.sourceCode).toContain("const listviewSelectionsDemo: Demo = {");
-        expect(listviewSelectionsDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("listviewSelectionsDemo layout", () => {
     it("renders Dropdowns and Suggestions section titles", async () => {
         await renderDemo(listviewSelectionsDemo);

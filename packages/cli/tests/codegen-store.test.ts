@@ -164,13 +164,9 @@ describe("gtkx codegen (the libraries a project binds without naming them)", () 
 
 describe("gtkx codegen (projects it cannot generate from)", () => {
     it.each(BROKEN_CASES)("fails over $title", ({ config: body }) => {
-        const project = createCliProject({ prefix: "gtkx-cli-codegen-broken-", config: body });
+        using project = createCliProject({ prefix: "gtkx-cli-codegen-broken-", config: body });
 
-        try {
-            expect(runCli(project, ["codegen"]).status).not.toBe(0);
-            expect(existsSync(storePath(project, "gi"))).toBe(false);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["codegen"]).status).not.toBe(0);
+        expect(existsSync(storePath(project, "gi"))).toBe(false);
     });
 });

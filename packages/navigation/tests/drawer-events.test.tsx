@@ -22,7 +22,7 @@ const clickButton = async (name: string): Promise<void> => {
     await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name }));
 };
 
-describe("drawer - events (1)", () => {
+describe("drawer - events", () => {
     it("emits drawerItemPress targeted at the activated route", async () => {
         const onStateChange = vi.fn();
         const onItemPress = vi.fn<(event: TargetEvent) => void>();
@@ -66,9 +66,7 @@ describe("drawer - events (1)", () => {
         expect(sidebarList().getSelectedRow()).toBe(sidebarRow("Inbox"));
         expect(onStateChange).not.toHaveBeenCalled();
     });
-});
 
-describe("drawer - events (2)", () => {
     it("emits blur on the previous route and focus on the next one", async () => {
         const onStateChange = vi.fn();
         const onFocus = vi.fn<(event: TargetEvent) => void>();
@@ -112,9 +110,7 @@ describe("drawer - events (2)", () => {
         await screen.findByText("Nested Home");
         expect(screen.queryByText("Nested Details")).toBeNull();
     });
-});
 
-describe("drawer - events (3)", () => {
     it("returns to the previously focused screen on goBack with backBehavior history", async () => {
         await render(
             <NavigationContainer>

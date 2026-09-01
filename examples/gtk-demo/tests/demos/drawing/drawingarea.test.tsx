@@ -13,24 +13,6 @@ const renderFrames = async (): Promise<{ knockoutFrame: Gtk.Frame; scribbleFrame
 };
 
 describe("drawingAreaDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(drawingAreaDemo.id).toBe("drawingarea");
-        expect(drawingAreaDemo.title).toBe("Drawing Area");
-
-        expect(drawingAreaDemo.description).toBe(
-            "GtkDrawingArea is a blank area where you can draw custom displays of various kinds.\n\nThis demo has " +
-            "two drawing areas. The checkerboard area shows how you can just draw something; all you have to do " +
-            'is set a function via gtk_drawing_area_set_draw_func(), as shown here.\n\nThe "scribble" area is a ' +
-            "bit more advanced, and shows how to handle events such as button presses and mouse motion. Click " +
-            "the mouse and drag in the scribble area to draw squiggles. Resize the window to clear the area.",
-        );
-
-        expect(drawingAreaDemo.keywords).toEqual(["GtkDrawingArea"]);
-        expect(drawingAreaDemo.sourceCode).toContain("const drawingAreaDemo: Demo = {");
-        expect(drawingAreaDemo.defaultWidth).toBe(250);
-        expect(drawingAreaDemo.component).toBeTypeOf("function");
-    });
-
     it("mounts both framed drawing areas inside the host window, knockout above scribble", async () => {
         const { knockoutFrame, scribbleFrame } = await renderFrames();
         const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW);

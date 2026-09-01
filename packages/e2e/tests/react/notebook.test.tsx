@@ -60,7 +60,7 @@ const renderAndClick = async (text: string): Promise<NotebookFixture> => {
     return fixture;
 };
 
-describe("render - Notebook (1)", () => {
+describe("render - Notebook", () => {
     describe("GtkNotebook", () => {
         it("creates Notebook widget", async () => {
             const ref = createRef<Gtk.Notebook>();
@@ -86,9 +86,7 @@ describe("render - Notebook (1)", () => {
             expect(labels).toEqual(["Tab 1"]);
         });
     });
-});
 
-describe("render - Notebook (2)", () => {
     describe("page management", () => {
         it("inserts page before existing page", async () => {
             const notebookRef = createRef<Gtk.Notebook>();
@@ -128,7 +126,7 @@ describe("render - Notebook (2)", () => {
     });
 });
 
-describe("render - NotebookPage (1)", () => {
+describe("render - NotebookPage", () => {
     it("adds page to Notebook", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
         await renderChildren(["Page 1"], buildPlainNotebook(notebookRef));
@@ -139,9 +137,7 @@ describe("render - NotebookPage (1)", () => {
         const page = await renderPage({ tabLabel: "My Tab" });
         expect(page).toHaveObjectProperty("tabLabel", "My Tab");
     });
-});
 
-describe("render - NotebookPage (2)", () => {
     it("updates tab label on prop change", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();
@@ -177,18 +173,14 @@ describe("render - NotebookPage (2)", () => {
         await rerender(["A", "C"]);
         expect(notebookRef.current?.getNPages()).toBe(2);
     });
-});
 
-describe("render - NotebookPage (3)", () => {
     it("handles page reordering", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const { rerender } = await renderChildren(["First", "Second", "Third"], buildPlainNotebook(notebookRef));
         await rerender(["Second", "First", "Third"]);
         expect(notebookRef.current?.getNPages()).toBe(3);
     });
-});
 
-describe("render - NotebookPage (4)", () => {
     it("attaches the page when content is inserted before an existing tab wrapper element", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const contentRef = createRef<Gtk.Label>();
@@ -210,9 +202,7 @@ describe("render - NotebookPage (4)", () => {
         const page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
         expect(page).toHaveObjectProperty("tabLabel", "Tab");
     });
-});
 
-describe("render - NotebookPage (5)", () => {
     it("applies tabExpand and tabFill page metadata", async () => {
         const page = await renderPage({ tabLabel: "Meta Tab", tabExpand: true, tabFill: false });
         expect(page).toHaveObjectProperty("tabExpand", true);

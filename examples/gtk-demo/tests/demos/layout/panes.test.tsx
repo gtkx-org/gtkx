@@ -4,19 +4,6 @@ import { describe, expect, it } from "vitest";
 import { panesDemo } from "../../../src/demos/layout/panes.js";
 import { renderDemo } from "../../test-utils.js";
 
-describe("panesDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(panesDemo.id).toBe("panes");
-        expect(panesDemo.title).toBe("Paned Widgets");
-        expect(panesDemo.description).toContain("The GtkPaned Widget divides its content area into two panes");
-        expect(panesDemo.keywords).toEqual([]);
-        expect(panesDemo.sourceCode).toContain("const panesDemo: Demo = {");
-        expect(panesDemo.defaultWidth).toBe(330);
-        expect(panesDemo.defaultHeight).toBe(250);
-        expect(panesDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("panesDemo content", () => {
     it("renders the 'Hi there', 'Hello' and 'Goodbye' labels", async () => {
         await renderDemo(panesDemo);

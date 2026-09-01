@@ -16,19 +16,6 @@ const rowFramesFor = async (name: string): Promise<Gtk.Frame[]> => {
     return row ? collectWidgets(row, Gtk.Frame) : [];
 };
 
-describe("cursorsDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(cursorsDemo.id).toBe("cursors");
-        expect(cursorsDemo.title).toBe("Cursors");
-        expect(cursorsDemo.description).toContain("Demonstrates a useful set of available cursors");
-        expect(cursorsDemo.keywords).toEqual([]);
-        expect(cursorsDemo.sourceCode).toContain("const cursorsDemo: Demo = {");
-        expect(cursorsDemo.component).toBeTypeOf("function");
-        expect(cursorsDemo.defaultWidth).toBe(300);
-        expect(cursorsDemo.defaultHeight).toBe(300);
-    });
-});
-
 describe("cursorsDemo list structure", () => {
     it("wraps the cursor list in a scrolled window that never shows the horizontal scrollbar", async () => {
         await renderDemo(cursorsDemo);

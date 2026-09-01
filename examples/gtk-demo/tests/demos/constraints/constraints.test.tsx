@@ -63,25 +63,6 @@ const renderAndMeasure = async () => {
     };
 };
 
-describe("constraintsDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(constraintsDemo.id).toBe("constraints");
-        expect(constraintsDemo.title).toBe("Constraints/Simple Constraints");
-
-        expect(constraintsDemo.description).toBe(
-            "GtkConstraintLayout provides a layout manager that uses relations between widgets (also known as " +
-            "“constraints”) to compute the position and size of each child.\n\nIn addition to child widgets, the " +
-            "constraints can involve spacer objects (also known as “guides”). This example has a guide between " +
-            "the two buttons in the top row.\n\nTry resizing the window to see how the constraints react to " +
-            "update the layout.",
-        );
-
-        expect(constraintsDemo.sourceCode).toContain("const constraintsDemo: Demo = {");
-        expect(constraintsDemo.defaultWidth).toBe(260);
-        expect(constraintsDemo.keywords).toEqual(["GtkLayoutManager"]);
-    });
-});
-
 describe("constraintsDemo layout", () => {
     it("caps button1 with a width <= 200 constraint on the layout", async () => {
         await renderDemo(constraintsDemo);

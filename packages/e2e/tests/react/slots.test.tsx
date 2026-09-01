@@ -211,7 +211,7 @@ function TitledPortal({ title }: { title: string }) {
     return <>{createPortal(<GtkApplicationWindow title={title} />, app)}</>;
 }
 
-describe("render - Slot (1)", () => {
+describe("render - Slot", () => {
     it("sets slot child via ReactNode prop", async () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
         const titleRef = createRef<Gtk.Label>();
@@ -251,9 +251,7 @@ describe("render - Slot (1)", () => {
         await render(<App shouldShowTitle={false} />);
         expect(headerBarRef.current?.getTitleWidget()).toBeNull();
     });
-});
 
-describe("render - Slot (2) (1)", () => {
     it("updates slot when child changes", async () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
         const label1Ref = createRef<Gtk.Label>();
@@ -289,9 +287,7 @@ describe("render - Slot (2) (1)", () => {
     it("handles Paned.StartChild slot", async () => {
         await expectPanedStartChild("Start Child");
     });
-});
 
-describe("render - Slot (2) (2)", () => {
     it("handles MenuButton.Popover slot", async () => {
         const menuButtonRef = createRef<Gtk.MenuButton>();
         const popoverRef = createRef<Gtk.Popover>();
@@ -309,9 +305,7 @@ describe("render - Slot (2) (2)", () => {
 
         expect(menuButtonRef.current).toHaveObjectProperty("popover", popoverRef.current);
     });
-});
 
-describe("render - Slot (3)", () => {
     it("handles multiple slots on same parent", async () => {
         const panedRef = createRef<Gtk.Paned>();
         const startRef = createRef<Gtk.Label>();
@@ -330,8 +324,8 @@ describe("render - Slot (3)", () => {
     });
 });
 
-describe("render - ContainerProp (1)", () => {
-    describe("AdwActionRow (prefix/suffix) (1)", () => {
+describe("render - ContainerProp", () => {
+    describe("AdwActionRow (prefix/suffix)", () => {
         it("creates ActionRow widget", async () => {
             const ref = createRef<Adw.ActionRow>();
 
@@ -350,11 +344,7 @@ describe("render - ContainerProp (1)", () => {
             expect(prefixRef.current).not.toBeNull();
             expect(suffixRef.current).not.toBeNull();
         });
-    });
-});
 
-describe("render - ContainerProp (2)", () => {
-    describe("AdwActionRow (prefix/suffix) (2)", () => {
         it("removes prefix and suffix children", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const labelRefs = [createRef<Gtk.Label>(), createRef<Gtk.Label>(), createRef<Gtk.Label>()];
@@ -393,11 +383,7 @@ describe("render - ContainerProp (2)", () => {
             await render(actionRowInListBox(rowRef, { prefix: <GtkLabel ref={prefixRef}>Prefix</GtkLabel> }));
             expect(prefixRef.current).not.toBeNull();
         });
-    });
-});
 
-describe("render - ContainerProp (3)", () => {
-    describe("AdwActionRow (prefix/suffix) (3)", () => {
         it("adds child as suffix via suffix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const suffixRef = createRef<Gtk.Label>();
@@ -410,11 +396,7 @@ describe("render - ContainerProp (3)", () => {
             expect(prefixRef.current).not.toBeNull();
             expect(suffixRef.current).not.toBeNull();
         });
-    });
-});
 
-describe("render - ContainerProp (4)", () => {
-    describe("AdwActionRow (prefix/suffix) (4)", () => {
         it("removes prefix child", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const prefixRef = createRef<Gtk.Label>();
@@ -434,11 +416,7 @@ describe("render - ContainerProp (4)", () => {
             expect(prefixRef.current).toBeNull();
             expect(alwaysRef.current).not.toBeNull();
         });
-    });
-});
 
-describe("render - ContainerProp (5)", () => {
-    describe("AdwActionRow (prefix/suffix) (5)", () => {
         it("adds multiple children as prefix via prefix", async () => {
             await expectTwoLabelSlotMounts((labels) =>
                 actionRowInListBox(createRef<Adw.ActionRow>(), { prefix: labels }),
@@ -450,11 +428,7 @@ describe("render - ContainerProp (5)", () => {
                 actionRowInListBox(createRef<Adw.ActionRow>(), { suffix: labels }),
             );
         });
-    });
-});
 
-describe("render - ContainerProp (6)", () => {
-    describe("AdwActionRow (prefix/suffix) (6)", () => {
         it("removes individual children from prefix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const firstRef = createRef<Gtk.Label>();
@@ -480,10 +454,8 @@ describe("render - ContainerProp (6)", () => {
             );
         });
     });
-});
 
-describe("render - ContainerProp (7)", () => {
-    describe("AdwExpanderRow (rows/suffix) (1)", () => {
+    describe("AdwExpanderRow (rows/suffix)", () => {
         it("creates ExpanderRow widget", async () => {
             const ref = createRef<Adw.ExpanderRow>();
             await render(<AdwExpanderRow ref={ref} title="Test" />);
@@ -515,11 +487,7 @@ describe("render - ContainerProp (7)", () => {
 
             expect(screen.getByText("Prefix")).toAppearBefore(screen.getByText("Suffix"));
         });
-    });
-});
 
-describe("render - ContainerProp (8)", () => {
-    describe("AdwExpanderRow (rows/suffix) (2)", () => {
         it("adds nested rows to ExpanderRow", async () => {
             const rowRef = createRef<Adw.ActionRow>();
 
@@ -546,11 +514,7 @@ describe("render - ContainerProp (8)", () => {
 
             expect(await screen.findByText("Option 1")).toAppearBefore(await screen.findByText("Option 2"));
         });
-    });
-});
 
-describe("render - ContainerProp (9)", () => {
-    describe("AdwExpanderRow (rows/suffix) (3)", () => {
         it("removes nested rows when unmounted", async () => {
             const expanderRef = createRef<Adw.ExpanderRow>();
 
@@ -579,11 +543,7 @@ describe("render - ContainerProp (9)", () => {
             await render(<AdwExpanderRow title="Group" suffix={<GtkButton label="Action" />} />);
             expect(screen.getByText("Action")).toBeRooted();
         });
-    });
-});
 
-describe("render - ContainerProp (10)", () => {
-    describe("AdwExpanderRow (rows/suffix) (4)", () => {
         it("adds multiple action widgets", async () => {
             await render(
                 <AdwExpanderRow
@@ -628,10 +588,8 @@ describe("render - ContainerProp (10)", () => {
             expect(ref.current).not.toBeNull();
         });
     });
-});
 
-describe("render - ContainerProp (11)", () => {
-    describe("GtkHeaderBar (start/end) (1)", () => {
+    describe("GtkHeaderBar (start/end)", () => {
         it("packs child at start via start", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const startRef = createRef<Gtk.Label>();
@@ -647,11 +605,7 @@ describe("render - ContainerProp (11)", () => {
             expect(headerBarRef.current).toContainElement(endRef.current);
             expect(screen.getByText("End")).toBeRooted();
         });
-    });
-});
 
-describe("render - ContainerProp (12)", () => {
-    describe("GtkHeaderBar (start/end) (2)", () => {
         it("combines start and end", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const startRef = createRef<Gtk.Label>();
@@ -690,11 +644,7 @@ describe("render - ContainerProp (12)", () => {
             expect(startRef.current).toBeNull();
             expect(alwaysRef.current).not.toBeNull();
         });
-    });
-});
 
-describe("render - ContainerProp (13)", () => {
-    describe("GtkHeaderBar (start/end) (3)", () => {
         it("packs multiple children at start via start", async () => {
             await expectTwoLabelSlotMounts((labels) =>
                 headerBarWithPack(createRef<Gtk.HeaderBar>(), { start: labels }),
@@ -704,11 +654,7 @@ describe("render - ContainerProp (13)", () => {
         it("packs multiple children at end via end", async () => {
             await expectTwoLabelSlotMounts((labels) => headerBarWithPack(createRef<Gtk.HeaderBar>(), { end: labels }));
         });
-    });
-});
 
-describe("render - ContainerProp (14)", () => {
-    describe("GtkHeaderBar (start/end) (4)", () => {
         it("swaps keyed children in start without duplication", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const { rerender } = await render(<SwapKeyedApp headerBarRef={headerBarRef} shouldShowBack={false} />);
@@ -725,22 +671,14 @@ describe("render - ContainerProp (14)", () => {
             await rerender(<SwapKeyedApp headerBarRef={headerBarRef} shouldShowBack={false} />);
             expect(buttonCount()).toBe(initialCount);
         });
-    });
-});
 
-describe("render - ContainerProp (15)", () => {
-    describe("GtkHeaderBar (start/end) (5)", () => {
         it("reorders children in start via insertBefore", async () => {
             const { rerender } = await render(<App order="ab" />);
             expect(screen.getByText("A")).toAppearBefore(screen.getByText("B"));
             await rerender(<App order="ba" />);
             expect(screen.getByText("B")).toAppearBefore(screen.getByText("A"));
         });
-    });
-});
 
-describe("render - ContainerProp (16)", () => {
-    describe("GtkHeaderBar (start/end) (6)", () => {
         it("removes individual children from start", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const firstRef = createRef<Gtk.Label>();
@@ -763,10 +701,8 @@ describe("render - ContainerProp (16)", () => {
             );
         });
     });
-});
 
-describe("render - ContainerProp (17)", () => {
-    describe("AdwToolbarView (topBar/bottomBar) (1)", () => {
+    describe("AdwToolbarView (topBar/bottomBar)", () => {
         it("adds child to top bar via topBar", async () => {
             const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({ topBar: <AdwHeaderBar /> });
             expect(contentRef.current).not.toBeNull();
@@ -778,11 +714,7 @@ describe("render - ContainerProp (17)", () => {
             expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
-    });
-});
 
-describe("render - ContainerProp (18)", () => {
-    describe("AdwToolbarView (topBar/bottomBar) (2)", () => {
         it("handles multiple top bars", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
             const secondTopRef = createRef<Gtk.Label>();
@@ -826,7 +758,7 @@ describe("render - ContainerProp (18)", () => {
     });
 });
 
-describe("createPortal (1) (1)", () => {
+describe("createPortal", () => {
     it("renders children at root level when no container specified", async () => {
         await renderPortalWindow("Portal Window");
 
@@ -867,9 +799,7 @@ describe("createPortal (1) (1)", () => {
         await rerender(<App order={["b", "a"]} />);
         expect(stackChildOrder(stackRef.current as Gtk.Stack)).toEqual(["b", "portal", "a"]);
     });
-});
 
-describe("createPortal (1) (2)", () => {
     it("preserves key when provided", async () => {
         await renderPortalWindow("Keyed Window", "my-key");
 
@@ -880,9 +810,7 @@ describe("createPortal (1) (2)", () => {
 
         expect(keyedWindow).toBeRooted();
     });
-});
 
-describe("createPortal (2)", () => {
     it("unmounts portal children when portal is removed", async () => {
         const { rerender } = await renderApplication(<OptionalPortal shouldShowPortal={true} />);
         expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Portal", hidden: true })).toBeRooted();
@@ -899,9 +827,7 @@ describe("createPortal (2)", () => {
         await rerender(<TitledPortal title="Second" />);
         expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Second", hidden: true })).toBeRooted();
     });
-});
 
-describe("createPortal (3)", () => {
     it("handles multiple portals to same container", async () => {
         const box = await renderPortalIntoBox((target) => (
             <>

@@ -27,17 +27,6 @@ const typePasswords = async (
     await userEvent.type(fields.confirm, confirmation);
 };
 
-describe("passwordEntryDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(passwordEntryDemo.id).toBe("password-entry");
-        expect(passwordEntryDemo.title).toBe("Entry/Password Entry");
-        expect(passwordEntryDemo.description).toContain("GtkPasswordEntry provides common functionality of entries");
-        expect(passwordEntryDemo.keywords).toEqual([]);
-        expect(passwordEntryDemo.sourceCode).toContain("const passwordEntryDemo: Demo = {");
-        expect(passwordEntryDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("passwordEntryDemo form behavior", () => {
     it("renders two password entries and a disabled Done button", async () => {
         await renderDemo(passwordEntryDemo);

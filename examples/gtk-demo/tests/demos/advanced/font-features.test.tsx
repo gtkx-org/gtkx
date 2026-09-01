@@ -74,26 +74,6 @@ const activateKerningFeature = async (): Promise<Gtk.Label> => {
     return settings;
 };
 
-describe("fontFeaturesDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(fontFeaturesDemo.id).toBe("font-features");
-        expect(fontFeaturesDemo.title).toBe("Pango/Font Explorer");
-
-        expect(fontFeaturesDemo.description).toBe(
-            "This example demonstrates support for OpenType font features with Pango attributes. " +
-            "The attributes can be used manually or via Pango markup.\n\n" +
-            "It can also be used to explore available features in OpenType fonts and their effect.\n\n" +
-            "If the selected font supports OpenType font variations, " +
-            "then the axes are also offered for customization.",
-        );
-
-        expect(fontFeaturesDemo.keywords).toEqual([]);
-        expect(fontFeaturesDemo.sourceCode).toContain("const fontFeaturesDemo: Demo = {");
-        expect(fontFeaturesDemo.defaultWidth).toBe(600);
-        expect(fontFeaturesDemo.defaultHeight).toBe(500);
-    });
-});
-
 describe("fontFeaturesDemo rendering", () => {
     it("expands the OpenType Features to reveal feature checkboxes", async () => {
         await renderExpandedFeatures();

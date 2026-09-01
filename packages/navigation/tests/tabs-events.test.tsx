@@ -11,7 +11,7 @@ import {
     TabsApp,
 } from "./helpers/tab-fixtures.js";
 
-describe("tabs - events (1)", () => {
+describe("tabs - events", () => {
     it("emits tabPress targeting the pressed route", async () => {
         const onStateChange: StateSpy = vi.fn();
         const onTabPress: TabPressSpy = vi.fn();
@@ -45,9 +45,7 @@ describe("tabs - events (1)", () => {
         expect(screen.queryByText("Second Content")).toBeNull();
         expect(onStateChange).not.toHaveBeenCalled();
     });
-});
 
-describe("tabs - events (2)", () => {
     it("emits focus and blur when switching", async () => {
         const onFocus = vi.fn();
         const onBlur = vi.fn();

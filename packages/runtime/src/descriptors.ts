@@ -36,12 +36,7 @@ type StringDescriptor = Extract<Descriptor, { kind: "string" }>;
 
 /** Descriptor variant for a `GObject`, extended with the statically declared type of its value. */
 type ObjectDescriptor = Extract<Descriptor, { kind: "object" }> & {
-    /**
-     * Returns the wrapper class of the value's declared type. Referencing the class here keeps it
-     * in a tree-shaken bundle; the registry is still consulted first, so the thunk only decides
-     * the wrapper when no class is registered for the value's runtime type or an ancestor below
-     * the declared one.
-     */
+    /** Retains and supplies the declared wrapper when no more-derived wrapper is registered. */
     fallbackClass?: () => AnyClass;
 };
 
@@ -54,10 +49,7 @@ type BufferDescriptor = Extract<Descriptor, { kind: "buffer" }>;
 
 /** Descriptor variant for a `GBoxed` value, extended with the statically declared type of its value. */
 type BoxedDescriptor = Extract<Descriptor, { kind: "boxed" }> & {
-    /**
-     * Returns the wrapper class of the value's declared type, used when no class is registered
-     * for the boxed GType. Referencing the class here keeps it in a tree-shaken bundle.
-     */
+    /** Retains and supplies the declared wrapper when none is registered. */
     fallbackClass?: () => AnyClass;
 };
 
@@ -71,12 +63,7 @@ type StructDescriptor = Extract<Descriptor, { kind: "struct" }> & {
 type FundamentalDescriptor = Extract<Descriptor, { kind: "fundamental" }> & {
     /** Class a decoded value is wrapped in; without it the wrapper comes from the type named by `typeName`. */
     wrapperClass?: AnyClass;
-    /**
-     * Returns the wrapper class of the value's declared type, used when no class is registered
-     * for the value's runtime type or an ancestor. Referencing the class here keeps it in a
-     * tree-shaken bundle. Unlike `wrapperClass`, the registry is consulted first, so a value of
-     * a more derived registered type keeps its own wrapper.
-     */
+    /** Retains and supplies the declared wrapper after checking the runtime-type registry. */
     fallbackClass?: () => AnyClass;
 };
 
@@ -115,10 +102,7 @@ type BoxedOptions = {
     fallbackClass?: () => AnyClass;
 };
 
-/**
- * What the bindings do with a callback's return value, how the callee takes its closure, and how
- * long that closure has to stay alive.
- */
+/** Callback result, closure ownership, and lifetime options. */
 type CallbackOptions = {
     /** The callee also takes a destroy notify, which frees the closure once it is done with it. */
     hasDestroy?: boolean;
@@ -128,10 +112,7 @@ type CallbackOptions = {
     hasUserData?: boolean;
     /** Position of `user_data` among the callback's own arguments, dropped before the closure is called. */
     userDataIndex?: number;
-    /**
-     * The callback's C signature ends with a `GError**`, which receives a `GError` built from
-     * whatever the JavaScript function throws while the callback returns its failure value.
-     */
+    /** Converts a thrown value to the callback's trailing `GError**`. */
     canThrow?: boolean;
     /** Lifetime of the closure; defaults to `notified` when `hasDestroy` is set and `call` otherwise. */
     scope?: CallbackDescriptor["scope"];
@@ -149,17 +130,9 @@ type ArrayOptions = {
     fixedSize?: number | undefined;
     /** Whether the array carries raw bytes, and so decodes to a `Uint8Array` rather than to numbers. */
     isBytes?: boolean | undefined;
-    /**
-     * Whether the caller supplies the storage for a fixed-length out array: the runtime allocates
-     * a buffer of the element stride times the fixed element count, passes its pointer, and
-     * decodes the elements the callee wrote into it.
-     */
+    /** Allocates and decodes caller-owned storage for a fixed-length out array. */
     isCallerAllocated?: boolean | undefined;
-    /**
-     * Whether a length-bounded array also ends at a zero element, as `zero-terminated=1` alongside
-     * a length declares: the encoded buffer carries one zero element past the declared length, so a
-     * callee that walks to the terminator instead of trusting the count stays inside it.
-     */
+    /** Adds a zero element after the declared length. */
     isZeroTerminated?: boolean | undefined;
 };
 
@@ -250,11 +223,7 @@ const fundamentalLifecycles: Map<string, FundamentalLifecycle> = new Map();
 const isGtypeDescriptor = (descriptor: Descriptor): descriptor is TypeDescriptor =>
     descriptor.kind === "biguint64" && "type" in descriptor;
 
-/**
- * Builds a descriptor for a C string, whose optional length sizes the caller-allocated buffer
- * used when the string is passed by reference. `hasOwnedStorage` marks a record field whose record
- * owns the string in it, so that writing the field releases the string it displaces.
- */
+/** Builds a C-string descriptor, including optional buffer length and record-owned storage. */
 const stringT = (
     ownership: Ownership = "borrowed",
     length?: number,
@@ -273,12 +242,7 @@ const stringT = (
     return result;
 };
 
-/**
- * Builds a descriptor for a `GObject`, wrapped in the class registered for its runtime GType.
- * `fallbackClass` names the wrapper class of the declared type, retaining it in tree-shaken
- * bundles and wrapping the value in it when nothing at least as derived is registered.
- * `typeName` is the declared type's GType name, which an encoded instance must be one of.
- */
+/** Builds a runtime-typed `GObject` descriptor with an optional retained fallback class. */
 const objectT = (
     ownership: Ownership = "borrowed",
     fallbackClass?: () => AnyClass,
@@ -313,11 +277,7 @@ const hashTableT = (
     ownership,
 });
 
-/**
- * Builds a descriptor for an enumeration, resolving its GType from the named `get_type` function.
- * For an enumeration without a registered GType, pass empty library and function names and supply
- * `members`, the values the GIR declares, which anything outside is rejected against.
- */
+/** Builds an enum descriptor from a GType function or an explicit set of members. */
 const enumT = (
     sharedLibrary: string,
     typeFnName: string,
@@ -338,11 +298,7 @@ const enumT = (
     return result;
 };
 
-/**
- * Builds a descriptor for a flags type, resolving its GType from the named `get_type` function.
- * For flags without a registered GType, pass empty library and function names and supply `mask`,
- * the union of all valid bits, which invalid combinations are rejected against.
- */
+/** Builds a flags descriptor from a GType function or an explicit bit mask. */
 const flagsT = (sharedLibrary: string, typeFnName: string, isSigned: boolean, mask?: number): FlagsDescriptor => {
     const result: FlagsDescriptor = {
         kind: "flags",
@@ -581,10 +537,7 @@ const sizedArrayT = (
     options: ArrayOptions = {},
 ): ArrayDescriptor => arrayT(itemDescriptor, "sized", ownership, { ...options, sizeParamIndex });
 
-/**
- * Builds a descriptor for an out pointer into the buffer another argument supplied, decoded as the
- * elements from where it points to the end of that buffer.
- */
+/** Builds an out-array cursor into another argument's buffer. */
 const cursorArrayT = (
     itemDescriptor: Descriptor,
     bounds: CursorBounds,

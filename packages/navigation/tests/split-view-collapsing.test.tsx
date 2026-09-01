@@ -12,7 +12,7 @@ import {
 
 const queryBackButton = (): Gtk.Widget | null => screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" });
 
-describe("split view - collapsing (1)", () => {
+describe("split view - collapsing", () => {
     it("shows only the sidebar until a list is selected", async () => {
         await renderSplit({ navigator: { collapsed: true } });
         await screen.findByText("Lists Content");
@@ -51,9 +51,7 @@ describe("split view - collapsing (1)", () => {
 
         expectHidden("Nothing Selected");
     });
-});
 
-describe("split view - collapsing (2)", () => {
     it("pops the detail with the first Back press and the content pane with the second", async () => {
         await renderSplit({ navigator: { collapsed: true } });
         await clickButton("Open personal");
@@ -93,9 +91,7 @@ describe("split view - collapsing (2)", () => {
         expectHidden("Tasks personal");
         expectHidden("Lists Content");
     });
-});
 
-describe("split view - collapsing (3)", () => {
     it("keeps the open detail when the navigator collapses at runtime", async () => {
         const { rerender } = await renderSplit();
         await clickButton("Open personal");

@@ -37,22 +37,6 @@ const findLevelErrorLabel = async (): Promise<Gtk.Label> =>
     await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: "Level too low", as: Gtk.Label });
 
 describe("errorstatesDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(errorstatesDemo.id).toBe("errorstates");
-        expect(errorstatesDemo.title).toBe("Error States");
-
-        expect(errorstatesDemo.description).toBe(
-            "GtkLabel and GtkEntry can indicate errors if you set the .error style class on them.\n\n" +
-            "This examples shows how this can be used in a dialog for input validation.\n\n" +
-            "It also shows how pass callbacks and objects to GtkBuilder with GtkBuilderScope and " +
-            "gtk_builder_expose_object().",
-        );
-
-        expect(errorstatesDemo.keywords).toEqual([]);
-        expect(errorstatesDemo.sourceCode).toContain("const errorstatesDemo: Demo = {");
-        expect(errorstatesDemo.component).toBeTypeOf("function");
-    });
-
     it("renders both entries, the scale and the switch in initial state", async () => {
         await renderDemo(errorstatesDemo);
         const entries = await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX);

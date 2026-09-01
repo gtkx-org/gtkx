@@ -62,17 +62,13 @@ describe("gtkx codegen (callbacks whose C signature ends with a GError**)", () =
     });
 
     it("fails codegen for a library whose GIR file is absent", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-codegen-throws-broken-",
             config:
                 `export default { applicationId: "${APPLICATION_ID}", ` +
                 `libraries: ["ThrowingHookAbsent-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])} };\n`,
         });
 
-        try {
-            expect(runCli(project, ["codegen"]).status).not.toBe(0);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["codegen"]).status).not.toBe(0);
     });
 });

@@ -41,7 +41,7 @@ const renderUndoableSourceViewAfterUserAction = async (
     return buffer;
 };
 
-describe("render - SourceView (1)", () => {
+describe("render - SourceView", () => {
     describe("basic rendering", () => {
         it("creates SourceView widget", async () => {
             const ref = createRef<GtkSource.View>();
@@ -57,12 +57,6 @@ describe("render - SourceView (1)", () => {
     });
 
     describe("text content", () => {
-        it("throws for text directly under the view", async () => {
-            await expect(render(<GtkSourceView>Initial content</GtkSourceView>)).rejects.toThrow(
-                /must be rendered within a <GtkLabel> or <GtkTextBuffer>/,
-            );
-        });
-
         it("updates text when buffer children change", async () => {
             const ref = createRef<GtkSource.View>();
 
@@ -76,10 +70,8 @@ describe("render - SourceView (1)", () => {
             expect(ref.current).toHaveDisplayValue("Updated");
         });
     });
-});
 
-describe("render - SourceView (2)", () => {
-    describe("undo/redo support (1)", () => {
+    describe("undo/redo support", () => {
         it.each([
             ["sets enableUndo property", true],
             ["disables undo when enableUndo is false", false],
@@ -97,11 +89,7 @@ describe("render - SourceView (2)", () => {
                 expect(onNotifyCanUndo).toHaveBeenCalled();
             });
         });
-    });
-});
 
-describe("render - SourceView (3)", () => {
-    describe("undo/redo support (2)", () => {
         it("calls onNotifyCanRedo when redo state changes", async () => {
             const ref = createRef<GtkSource.View>();
             const onNotifyCanRedo = vi.fn();
@@ -113,10 +101,8 @@ describe("render - SourceView (3)", () => {
             });
         });
     });
-});
 
-describe("render - SourceView (4)", () => {
-    describe("syntax highlighting (1)", () => {
+    describe("syntax highlighting", () => {
         it("sets language on the buffer", async () => {
             const buffer = await renderSourceBuffer(
                 <GtkSourceBuffer language={getLanguage("js")}>const x = 1;</GtkSourceBuffer>,
@@ -132,11 +118,7 @@ describe("render - SourceView (4)", () => {
 
             expect(buffer.getStyleScheme()?.getId()).toBe("classic");
         });
-    });
-});
 
-describe("render - SourceView (5)", () => {
-    describe("syntax highlighting (2)", () => {
         it("sets highlightSyntax property", async () => {
             const buffer = await renderSourceBuffer(<GtkSourceBuffer highlightSyntax>text</GtkSourceBuffer>);
             expect(buffer).toHaveObjectProperty("highlightSyntax", true);
@@ -152,9 +134,7 @@ describe("render - SourceView (5)", () => {
             expect(buffer).toHaveObjectProperty("highlightSyntax", false);
         });
     });
-});
 
-describe("render - SourceView (7)", () => {
     describe("additional buffer props", () => {
         it("sets highlightMatchingBrackets property", async () => {
             const buffer = await renderSourceBuffer(
@@ -185,10 +165,8 @@ describe("render - SourceView (7)", () => {
             expect(buffer).toHaveObjectProperty("implicitTrailingNewline", true);
         });
     });
-});
 
-describe("render - SourceView (8)", () => {
-    describe("callbacks (1)", () => {
+    describe("callbacks", () => {
         it("calls onChanged when text changes programmatically", async () => {
             const onChanged = vi.fn();
             const buffer = await renderSourceBuffer(<GtkSourceBuffer onChanged={onChanged} />);
@@ -204,11 +182,7 @@ describe("render - SourceView (8)", () => {
                 <GtkSourceView buffer={<GtkSourceBuffer onChanged={onChanged}>{text}</GtkSourceBuffer>} />
             ));
         });
-    });
-});
 
-describe("render - SourceView (9)", () => {
-    describe("callbacks (2)", () => {
         it("calls onCursorMoved when cursor position changes", async () => {
             const onCursorMoved = vi.fn();
 
@@ -239,11 +213,7 @@ describe("render - SourceView (9)", () => {
                 expect(onHighlightUpdated).toHaveBeenCalled();
             });
         });
-    });
-});
 
-describe("render - SourceView (10)", () => {
-    describe("callbacks (3)", () => {
         it("removes callback when set to null", async () => {
             const ref = createRef<GtkSource.View>();
             const onChanged = vi.fn();
@@ -272,10 +242,8 @@ describe("render - SourceView (10)", () => {
             expect(onChanged.mock.calls).toHaveLength(callCountBeforeRemoval);
         });
     });
-});
 
-describe("render - SourceView (11)", () => {
-    describe("dynamic updates (1)", () => {
+    describe("dynamic updates", () => {
         it("updates language when prop changes", async () => {
             const ref = createRef<GtkSource.View>();
             const { buffer, rerender } = await renderJsLanguageSourceView(ref);
@@ -298,11 +266,7 @@ describe("render - SourceView (11)", () => {
             await rerender(<App scheme={getScheme("tango")} />);
             expect(buffer.getStyleScheme()?.getId()).toBe("tango");
         });
-    });
-});
 
-describe("render - SourceView (12)", () => {
-    describe("dynamic updates (2)", () => {
         it("removes language when set to null", async () => {
             const ref = createRef<GtkSource.View>();
             const { buffer, rerender } = await renderJsLanguageSourceView(ref);

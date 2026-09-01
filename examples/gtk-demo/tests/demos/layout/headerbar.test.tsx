@@ -5,17 +5,6 @@ import { headerbarDemo } from "../../../src/demos/layout/headerbar.js";
 import { renderDemo } from "../../test-utils.js";
 
 describe("headerbarDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(headerbarDemo.id).toBe("headerbar");
-        expect(headerbarDemo.title).toBe("Header Bar");
-        expect(headerbarDemo.description).toContain("GtkHeaderBar is a container that is suitable");
-        expect(headerbarDemo.keywords).toEqual(["GtkWindowHandle", "GtkWindowControls"]);
-        expect(headerbarDemo.sourceCode).toContain("const headerbarDemo: Demo = {");
-        expect(headerbarDemo.defaultWidth).toBe(600);
-        expect(headerbarDemo.defaultHeight).toBe(400);
-        expect(headerbarDemo.component).toBeTypeOf("function");
-    });
-
     it("installs the named GtkHeaderBar and packs the nav/check-out buttons into it", async () => {
         await renderDemo(headerbarDemo);
         const headerbar = await screen.findByName("headerbar-titlebar", { as: Gtk.HeaderBar });

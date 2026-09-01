@@ -83,56 +83,38 @@ const buildDropValue = (content: DropContent): GObject.Value => {
     });
 };
 
-/** Emits `enter` at the widget's origin on its motion controllers, adding one when it has none. */
+/** Enters a widget. */
 const hover = (widget: Gtk.Widget): Promise<void> =>
     dispatchOnOrCreateControllers(widget, Gtk.EventControllerMotion, (controller) => {
         controller.emit("enter", 0, 0);
     });
 
-/** Emits `leave` on the widget's motion controllers, adding one when it has none. */
+/** Leaves a widget. */
 const unhover = (widget: Gtk.Widget): Promise<void> =>
     dispatchOnOrCreateControllers(widget, Gtk.EventControllerMotion, (controller) => {
         controller.emit("leave");
     });
 
-/**
- * Emits `angle-changed` on the widget's rotate gestures.
- *
- * @param angle Current angle, in radians.
- * @param deltaAngle Difference from the angle the gesture started at; defaults to `angle`.
- * @throws When the widget has no Gtk.GestureRotate.
- */
+/** Rotates a widget's gestures. */
 const rotate = (widget: Gtk.Widget, angle: number, deltaAngle: number = angle): Promise<void> =>
     dispatchOnControllers(widget, Gtk.GestureRotate, (controller) => {
         controller.emit("angle-changed", angle, deltaAngle);
     },
     );
 
-/**
- * Emits `scale-changed` with the given scale delta on the widget's zoom gestures.
- *
- * @throws When the widget has no Gtk.GestureZoom.
- */
+/** Zooms a widget's gestures. */
 const zoom = (widget: Gtk.Widget, scale: number): Promise<void> =>
     dispatchOnControllers(widget, Gtk.GestureZoom, (controller) => {
         controller.emit("scale-changed", scale);
     });
 
-/**
- * Emits `swipe` with the given per-axis velocity, in pixels per second, on the widget's swipe gestures.
- *
- * @throws When the widget has no Gtk.GestureSwipe.
- */
+/** Swipes a widget's gestures. */
 const swipe = (widget: Gtk.Widget, velocityX: number, velocityY: number): Promise<void> =>
     dispatchOnControllers(widget, Gtk.GestureSwipe, (controller) => {
         controller.emit("swipe", velocityX, velocityY);
     });
 
-/**
- * Emits `pressed` at the given point in widget coordinates on the widget's long-press gestures.
- *
- * @throws When the widget has no Gtk.GestureLongPress.
- */
+/** Long-presses a widget. */
 const longPress = (widget: Gtk.Widget, x = 0, y = 0): Promise<void> =>
     dispatchOnControllers(widget, Gtk.GestureLongPress, (controller) => {
         controller.emit("pressed", x, y);
@@ -219,14 +201,7 @@ const resolveDragUpdates = (dx: number, dy: number, options: DragOptions): DragO
     return updates;
 };
 
-/**
- * Runs a `drag-begin`, `drag-update`, `drag-end` sequence ending at the offset `dx`, `dy` on the
- * widget's drag gestures, overriding each gesture's start point and offset for the duration so
- * handlers read the simulated values back.
- *
- * @throws When the widget is a Gtk.Range, whose slider reads pointer coordinates from the display,
- * or when it has no Gtk.GestureDrag.
- */
+/** Drags a widget by an offset. */
 const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOptions = {}): Promise<void> => {
     if (widget instanceof Gtk.Range) {
         throw new TypeError(
@@ -252,22 +227,13 @@ const emitDrop = (target: Gtk.Widget, content: DropContent, options: DropOptions
     }
 };
 
-/**
- * Emits `drop` with the given content on every drop target attached to the widget.
- *
- * @throws When the widget has no Gtk.DropTarget.
- */
+/** Drops content on a widget. */
 const drop = (widget: Gtk.Widget, content: DropContent, options: DropOptions = {}): Promise<void> =>
     wrapEvent(widget, () => {
         emitDrop(widget, content, options);
     });
 
-/**
- * Emits `drop` with the given content on the target's drop targets, after checking that the source
- * carries a drag source.
- *
- * @throws When the source has no Gtk.DragSource, or the target no Gtk.DropTarget.
- */
+/** Drags content from one widget and drops it on another. */
 const dragAndDrop = async (
     source: Gtk.Widget,
     target: Gtk.Widget,

@@ -30,7 +30,7 @@ const GatedSplit = ({ hasLists, onStateChange }: GatedSplitProps): ReactNode => 
     </NavigationContainer>
 );
 
-describe("split view - router (1)", () => {
+describe("split view - router", () => {
     it("keeps the sidebar at the root when a replace targets the first content route", async () => {
         const onStateChange = createStateSpy();
         await renderSplit({ container: { onStateChange } });
@@ -58,9 +58,7 @@ describe("split view - router (1)", () => {
         expectVisible("Lists Content");
         expectRouteNames(onStateChange, ["Lists", "Task"]);
     });
-});
 
-describe("split view - router (2)", () => {
     it("keeps the sidebar usable after a reset that omits it", async () => {
         const onStateChange = createStateSpy();
         await renderSplit({ container: { onStateChange } });
@@ -94,9 +92,7 @@ describe("split view - router (2)", () => {
         expectVisible("Lists Content");
         expectRouteNames(onStateChange, ["Lists"]);
     });
-});
 
-describe("split view - router (3)", () => {
     it("ignores goBack and Escape while only the sidebar is on the stack", async () => {
         const ref = createNavigationContainerRef<Params>();
         const onUnhandledAction = vi.fn();
@@ -126,9 +122,7 @@ describe("split view - router (3)", () => {
         expectVisible("Lists Content");
         expectRouteNames(onStateChange, ["Lists"]);
     });
-});
 
-describe("split view - router (4)", () => {
     it("takes a new sidebar route when the first screen is swapped out", async () => {
         const onStateChange = createStateSpy();
         const { rerender } = await render(<GatedSplit hasLists onStateChange={onStateChange} />);

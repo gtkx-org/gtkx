@@ -5,9 +5,9 @@ export {
     registeredElementProperties,
     registeredElementSignals,
 } from "./element-metadata.js";
-export { checkError, createErrorDomain } from "./error.js";
+export { createErrorDomain } from "./error.js";
 export { type ApplicationInstance, getApplicationInstance } from "./lifecycle.js";
-export { getExactWrapperClass, registerClassType, resolveWrapperClass, wrapHandle } from "./registry.js";
+export { getExactWrapperClass, resolveWrapperClass } from "./registry.js";
 export { hasSignalListener } from "./signal.js";
 export { resolveType } from "./type.js";
 export {

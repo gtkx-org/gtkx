@@ -19,7 +19,7 @@ const clickButton = async (name: string): Promise<void> => {
     await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name }));
 };
 
-describe("drawer - status (1)", () => {
+describe("drawer - status", () => {
     it("closes and reopens the sidebar from the Toggle Sidebar button", async () => {
         const onStateChange = vi.fn();
 
@@ -58,9 +58,7 @@ describe("drawer - status (1)", () => {
         await clickButton("Toggle drawer");
         expect(querySidebarLabel("Settings")).toBeNull();
     });
-});
 
-describe("drawer - status (2)", () => {
     it("starts with the sidebar hidden when defaultStatus is closed", async () => {
         const onStateChange = vi.fn();
 
@@ -107,9 +105,7 @@ describe("drawer - status (2)", () => {
         expect(screen.queryByText("Inbox Content")).toBeNull();
         expect(querySidebarLabel("Settings")).toBeNull();
     });
-});
 
-describe("drawer - status (3)", () => {
     it("returns to the initial status after toggling the sidebar twice", async () => {
         await render(
             <NavigationContainer>

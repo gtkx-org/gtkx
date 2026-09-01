@@ -1,17 +1,11 @@
 import * as Gio from "@gtkx/gi/gio";
 import { Object as GObject, ParamFlags, paramSpecString, Value } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getClassType, registerClass, t } from "@gtkx/runtime";
-import { fromValue, getValueType, toValue } from "@gtkx/runtime/internal";
+import { getClassType, registerClass } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import { createTypeNameFactory } from "./helpers/unique-name.js";
 
 const uniqueName = createTypeNameFactory("_");
-
-const expressionDescriptor = t.fundamental("libgtk-4.so.1", "gtk_expression_ref", "gtk_expression_unref", {
-    ownership: "borrowed",
-    typeName: "GtkExpression",
-});
 
 const makeRowClass = () => {
     class Row extends GObject {
@@ -55,21 +49,6 @@ const evaluateTitle = (expression: Gtk.Expression | null, row: GObject): string 
 
     return value.getString();
 };
-
-describe("GValue conversion for GtkExpression", () => {
-    it("round-trips an expression through a fundamental descriptor keyed by typeName", () => {
-        const expression = titleExpression();
-        const value = toValue(expressionDescriptor, expression);
-        expect(getValueType(value)).toBe(getClassType(Gtk.Expression));
-        const result = fromValue(value);
-        expect(result).toBeInstanceOf(Gtk.Expression);
-        expect((result as Gtk.Expression).getValueType()).toBe(expression.getValueType());
-    });
-
-    it("round-trips a null expression", () => {
-        expect(fromValue(toValue(expressionDescriptor, null))).toBeNull();
-    });
-});
 
 describe("GtkExpression construct properties", () => {
     it("takes an expression through the constructor of a stock GTK class", () => {

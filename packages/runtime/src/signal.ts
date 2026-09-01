@@ -1,5 +1,5 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
-import { getOrInsert, toCamelIdentifier, upperFirst } from "@gtkx/utils";
+import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind } from "./bind.js";
 import { wrapCallback } from "./callback.js";
@@ -128,8 +128,8 @@ const isSignalHandlerConnected = (instance: object, handlerId: number): boolean 
     gSignalHandlerIsConnected(getHandle(instance), handlerId) as boolean;
 
 const trackConnection = (instance: object, signal: string, handlerId: number): void => {
-    const bySignal = getOrInsert(connectionTable, instance, () => new Map<string, Set<number>>());
-    getOrInsert(bySignal, signal, () => new Set<number>()).add(handlerId);
+    const bySignal = connectionTable.getOrInsertComputed(instance, () => new Map<string, Set<number>>());
+    bySignal.getOrInsertComputed(signal, () => new Set<number>()).add(handlerId);
 };
 
 const untrackConnection = (instance: object, handlerId: number): void => {
@@ -224,7 +224,7 @@ const buildSignalNames = (type: bigint): string[] => {
     return [...names];
 };
 
-const signalNamesFor = (type: bigint): string[] => getOrInsert(signalNameCache, type, buildSignalNames);
+const signalNamesFor = (type: bigint): string[] => signalNameCache.getOrInsertComputed(type, buildSignalNames);
 
 const getSignalId = (instance: object, signal: string): number =>
     signalIdFor((instance as TypedClass).__type__, signal);

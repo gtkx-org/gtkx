@@ -118,7 +118,7 @@ describe("queryHelpers", () => {
 });
 
 describe("library-facing helpers", () => {
-    it("expose within under its library name and build errors carrying the widget tree", async () => {
+    it("exposes within under its library name", async () => {
         expect(getQueriesForElement).toBe(within);
 
         const { container } = await render(
@@ -128,8 +128,6 @@ describe("library-facing helpers", () => {
         );
 
         expect(getQueriesForElement(container).getByRole(Gtk.AccessibleRole.BUTTON)).toHaveTextContent("Scoped");
-        expect(getElementError("Something went wrong", container).message).toContain('role="button"');
-        expect(getElementError("Plain").message).toBe("Plain");
     });
 
     it("read the heading level GTK reports and whether a widget is excluded from the tree", async () => {

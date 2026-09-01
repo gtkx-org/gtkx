@@ -70,19 +70,6 @@ const expectSelectionSize = async (model: Gtk.MultiSelection, size: number): Pro
 
 vi.setConfig({ testTimeout: 30_000 });
 
-describe("listviewColorsDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(listviewColorsDemo.id).toBe("listview-colors");
-        expect(listviewColorsDemo.title).toBe("Lists/Colors");
-        expect(listviewColorsDemo.description).toContain("This demo displays a grid of colors.");
-        expect(listviewColorsDemo.keywords).toEqual(["GtkMultiSelection"]);
-        expect(listviewColorsDemo.sourceCode).toContain("const listviewColorsDemo: Demo = {");
-        expect(listviewColorsDemo.defaultWidth).toBe(800);
-        expect(listviewColorsDemo.defaultHeight).toBe(400);
-        expect(listviewColorsDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("listviewColorsDemo header bar", () => {
     it("hosts the refill button and the three drop-downs inside the header bar", async () => {
         await renderDemo(listviewColorsDemo);

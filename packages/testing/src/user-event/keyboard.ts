@@ -65,7 +65,7 @@ const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
     [Gdk.KEY_Meta_R]: Gdk.ModifierType.META_MASK,
 };
 
-/** Moves focus within the widget's root, forward by default and backward when `isShiftHeld` is set. */
+/** Moves focus within the widget's root. */
 const tab = (widget: Gtk.Widget, options?: TabOptions): Promise<void> =>
     wrapEvent(widget, () => {
         const direction = options?.isShiftHeld ? Gtk.DirectionType.TAB_BACKWARD : Gtk.DirectionType.TAB_FORWARD;

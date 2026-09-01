@@ -413,7 +413,7 @@ describe("signal emit() - boxed inout-parameter (GtkSource.View::push-snippet)",
     });
 });
 
-describe("signal connect()/emit() - notify::<property> detailed signal (1)", () => {
+describe("signal connect()/emit() - notify::<property> detailed signal", () => {
     it("fires a notify::<property> handler only when that property changes", async () => {
         const labelRef = createRef<Gtk.Label>();
 
@@ -436,9 +436,7 @@ describe("signal connect()/emit() - notify::<property> detailed signal (1)", () 
         label.setXalign(1);
         expect(onLabelNotify).not.toHaveBeenCalled();
     });
-});
 
-describe("signal connect()/emit() - notify::<property> detailed signal (2)", () => {
     it("routes a typed emit('notify::<property>', pspec) to the detailed handler", async () => {
         const labelRef = createRef<Gtk.Label>();
         await render(<GtkLabel ref={labelRef}>initial</GtkLabel>);
@@ -493,7 +491,7 @@ describe("reentrant signal commits", () => {
     });
 });
 
-describe("user event signals (1)", () => {
+describe("user event signals", () => {
     it("suppresses onChanged while a commit writes text, then delivers user edits", async () => {
         const handleChanged = vi.fn();
         const { rerender } = await render(<GtkEntry text="first" onChanged={handleChanged} />);
@@ -537,9 +535,7 @@ describe("user event signals (1)", () => {
             expect(handleRealize).toHaveBeenCalled();
         });
     });
-});
 
-describe("user event signals (2)", () => {
     it("delivers the notify of a property the widget changes in reaction to a commit write", async () => {
         const handlers = { onNotifyText: vi.fn(), onNotifyCursorPosition: vi.fn() };
         const { rerender } = await render(<BufferProbe text="first" {...handlers} />);
@@ -593,9 +589,7 @@ describe("user event signals (2)", () => {
         expect(notified).toContain("cursor-position");
         expect(notified).not.toContain("text");
     });
-});
 
-describe("user event signals (3)", () => {
     it("suppresses a delegate's notify of the property a commit writes", async () => {
         const handlers = { onNotifyValue: vi.fn(), onNotifyText: vi.fn() };
         const { rerender } = await render(<SpinProbe value={10} {...handlers} />);

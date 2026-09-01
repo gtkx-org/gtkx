@@ -1,57 +1,36 @@
 ---
 title: "Components"
-description: "Choose and use GTKX collection components without building GTK factories by hand."
+description: "Render native GTK collections from application data."
 ---
 
 # Components
 
-`@gtkx/components` turns arrays into GTK4 collection widgets. It owns the model and factories; your component supplies stable IDs, values, and React renderers.
+`@gtkx/components` owns GTK models and factories while your component supplies stable IDs and React renderers.
 
 ```bash
 npm install @gtkx/components
 ```
 
-## Choose the collection
+Use `ListView` for rows and trees, `GridView` for tiles, `ColumnView` for tables, `DropDown` for a compact choice, and `ComboRow` for an Adwaita preferences group. A plain `<GtkListBox>` is simpler when a small, static collection is already expressed as JSX children.
 
-| Component | Use it for |
-| --- | --- |
-| `ListView` | Rows, optional sections, and trees |
-| `GridView` | Tile or icon collections |
-| `ColumnView` | Multi-column data and controlled sorting |
-| `DropDown` | A compact single choice |
-| `ComboRow` | The same choice inside an Adwaita preferences group |
-
-Use a plain `<GtkListBox>` when the rows are already JSX children and the collection does not need a model. Complete component props and renderer types live in the [API reference](/reference/@gtkx/components/).
-
-## Build a controlled list
-
-Map domain objects to `{ id, value }` entries. IDs preserve selection and expansion when values are replaced or reordered:
+## Render a controlled list
 
 ```tsx
 import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 
-const TaskList = ({ tasks, selectedIds, onSelectionChanged }: TaskListProps) => (
+const Tasks = ({ tasks, selectedIds, onSelectionChanged }: TaskListProps) => (
     <ListView<Task>
         items={tasks.map((task) => ({ id: task.id, value: task }))}
         selectionMode={Gtk.SelectionMode.MULTIPLE}
         selectedIds={selectedIds}
         onSelectionChanged={onSelectionChanged}
-        estimatedItemHeight={56}
-        renderItem={({ item }) => <GtkLabel halign={Gtk.Align.START}>{item.title}</GtkLabel>}
+        renderItem={({ item }) => <GtkLabel label={item.title} />}
     />
 );
 ```
 
-Selection is controlled: feed the IDs reported by `onSelectionChanged` back through `selectedIds`. The same model applies to grids and columns.
+Feed IDs from `onSelectionChanged` back into `selectedIds`. Stable IDs preserve selection and expansion across replacement and reordering. The same model applies to grids, columns, and choices.
 
-Use `sections` with `renderHeader` for grouped data. Give a `ListView` or `ColumnView` nested `children` entries for a tree, then control it through `expandedIds` and `onExpandedChange`. For a table, define `columns` and sort the source array when `onSortChanged` fires.
-
-## Choose between DropDown and ComboRow
-
-Both store the selected item ID rather than its position, so reordering or relabeling choices does not change the saved value. `DropDown` works in ordinary layouts; import `ComboRow` from `@gtkx/components/adw` for a preferences page. Add `renderItem` only when the default text rendering is insufficient.
-
-## Next
-
-[Forms](/guide/forms) connects `ComboRow` and native Adwaita rows to React Hook Form. The [collection tutorial](/tutorial/a-list-of-tasks) builds a list from application state.
+The [components reference](/reference/@gtkx/components/) covers sections, trees, columns, sorting, and custom renderers. Continue with [Forms](/guide/forms) or the [state tutorial](/tutorial/the-task-store).

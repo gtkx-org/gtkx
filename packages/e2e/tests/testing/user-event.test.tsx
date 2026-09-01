@@ -361,7 +361,7 @@ describe("userEvent.click", () => {
     });
 });
 
-describe("userEvent.type (1)", () => {
+describe("userEvent.type", () => {
     it("appends to an entry's text, and honors an initial collapsed or ranged selection", async () => {
         const appended = await renderTextBox("Initial ");
         await userEvent.type(appended, "appended");
@@ -403,9 +403,7 @@ describe("userEvent.type (1)", () => {
         expect(editableText(tabbed)).toBe("typed");
         expect(bufferText(await typeOverTextViewSelection("abcdef", "abcdef".length))).toBe("Z");
     });
-});
 
-describe("userEvent.type (2)", () => {
     it("leaves a non-editable entry's and text view's selected text alone", async () => {
         const entry = await renderTextBox("Locked");
         entry.setEditable(false);
@@ -446,7 +444,7 @@ describe("userEvent.type (2)", () => {
     });
 });
 
-describe("userEvent.clear (1)", () => {
+describe("userEvent.clear", () => {
     it("empties an entry, and does so while a modifier is held without dispatching keys", async () => {
         const plain = await renderTextBox("Some text");
         await userEvent.clear(plain);
@@ -487,9 +485,7 @@ describe("userEvent.clear (1)", () => {
         expect(edits).toEqual(["delete-text", "changed"]);
         expect(presses).toEqual([Gdk.KEY_Shift_L]);
     });
-});
 
-describe("userEvent.clear (2)", () => {
     it("throws for a widget that is not editable, refuses edits or blocks the deletion", async () => {
         await expect(actOnPlainButton((button) => userEvent.clear(button))).rejects.toThrow();
         const locked = await renderScoped(<GtkEntry text="Locked" editable={false} />);
@@ -649,7 +645,7 @@ describe("userEvent gestures", () => {
     });
 });
 
-describe("userEvent.drag (1)", () => {
+describe("userEvent.drag", () => {
     it("emits drag-begin, one drag-update per step and drag-end, interpolating the offsets", async () => {
         const events: string[] = [];
         const recorded = await renderGesturedLabel("dragged", "Drag me", <GtkGestureDrag {...record(events)} />);
@@ -685,9 +681,7 @@ describe("userEvent.drag (1)", () => {
             [40, -20],
         ]);
     });
-});
 
-describe("userEvent.drag (2)", () => {
     it("reports a realistic start point and offset to the handlers", async () => {
         const started = await renderDragSelfCapture((self) => self.getStartPoint());
         await userEvent.drag(started.label, 30, -15, { startX: 50, startY: 25 });
@@ -702,7 +696,7 @@ describe("userEvent.drag (2)", () => {
     });
 });
 
-describe("controller fan-out (1)", () => {
+describe("controller fan-out", () => {
     it("delivers a click to every gesture controller alongside the widget's own, at its center", async () => {
         const handleClick = vi.fn();
         const handlePressed = vi.fn<(nPress: number, x: number, y: number) => void>();
@@ -726,9 +720,7 @@ describe("controller fan-out (1)", () => {
         expect(y).toBe(button.getHeight() / 2);
         expect(x).toBeGreaterThan(0);
     });
-});
 
-describe("controller fan-out (2)", () => {
     it("delivers hover and drag sequences to every controller of their kind", async () => {
         const firstEnter = vi.fn();
         const secondEnter = vi.fn();
@@ -766,9 +758,7 @@ describe("controller fan-out (2)", () => {
         expect(firstEvents).toEqual(["begin", "update", "update", "end"]);
         expect(secondEvents).toEqual(firstEvents);
     });
-});
 
-describe("controller fan-out (3)", () => {
     it("delivers key events to every key controller", async () => {
         const firstPressed = vi.fn();
         const secondPressed = vi.fn();
@@ -830,7 +820,7 @@ describe("userEvent.dragAndDrop", () => {
     });
 });
 
-describe("userEvent.keyboard: shortcuts (1)", () => {
+describe("userEvent.keyboard: shortcuts", () => {
     it("activates keyval and alternative triggers, and ignores keys that do not match", async () => {
         const keyval = await renderShortcutHost({ trigger: Gtk.ShortcutTrigger.parseString("F5") });
         await userEvent.keyboard(keyval.host, "{F5}");
@@ -872,9 +862,7 @@ describe("userEvent.keyboard: shortcuts (1)", () => {
             await pressShortcutFromField({ scope: Gtk.ShortcutScope.GLOBAL, isSensitive: false, sibling }),
         ).not.toHaveBeenCalled();
     });
-});
 
-describe("userEvent.keyboard: shortcuts (2)", () => {
     it("runs a global-scope shortcut at the root, behind the key controllers above its host", async () => {
         const order: string[] = [];
 

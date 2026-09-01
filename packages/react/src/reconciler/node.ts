@@ -1,7 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { SignalHandler } from "@gtkx/runtime";
-import { getOrInsert } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 
 type ContentKind = "label" | "buffer" | "tag" | "anchor";
@@ -131,7 +130,7 @@ const lazyTarget = (node: LazyNode, adopted: GObject.Object): SignalTarget => ({
 });
 
 const getOrCreateContext = (node: ElementNode, behavior: ElementBehavior): unknown =>
-    getOrInsert(node.contexts, behavior, () => behavior.initialize?.(node.object));
+    node.contexts.getOrInsertComputed(behavior, () => behavior.initialize?.(node.object));
 
 export {
     ELEMENT_KIND,

@@ -6,17 +6,6 @@ import { gearsDemo } from "../../../src/demos/opengl/gears.js";
 import { renderDemo } from "../../test-utils.js";
 
 describe("gearsDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(gearsDemo.id).toBe("gears");
-        expect(gearsDemo.title).toBe("OpenGL/Gears");
-        expect(gearsDemo.description).toContain("This is a classic OpenGL demo, running in a GtkGLArea.");
-        expect(gearsDemo.keywords).toEqual([]);
-        expect(gearsDemo.sourceCode).toContain("const gearsDemo: Demo = {");
-        expect(gearsDemo.component).toBeTypeOf("function");
-        expect(gearsDemo.defaultWidth).toBe(640);
-        expect(gearsDemo.defaultHeight).toBe(640);
-    });
-
     it("renders a GtkGLArea configured with an ES context and a depth buffer", async () => {
         await renderDemo(gearsDemo);
         const glArea = await screen.findByName("gl-area", { as: Gtk.GLArea });

@@ -65,7 +65,7 @@ const widgetFor = <T extends Gtk.Widget>(ref: RefObject<T | null>): T => {
     return current;
 };
 
-describe("screenshot (1)", () => {
+describe("screenshot", () => {
     it("returns a PNG whose declared size matches the encoded one and supersamples on request", async () => {
         const { container } = await render(<GtkLabel>Scaled</GtkLabel>);
         const base = await screenshot(container);
@@ -105,9 +105,7 @@ describe("screenshot (1)", () => {
         const reclosed = await screenshot(window);
         expect(reclosed.data).toBe(closedWindow.data);
     });
-});
 
-describe("screenshot (2)", () => {
     it("captures content the compositor never presented", async () => {
         const { rerender } = await render(
             <GtkBox>
@@ -140,9 +138,7 @@ describe("screenshot (2)", () => {
         expect(reloaded.height).toBe(presented.height);
         expect(reloaded.data).not.toBe(reverted.data);
     });
-});
 
-describe("screenshot (3)", () => {
     it("throws for a non-positive scale, an unpresented window and a widget with nothing painted", async () => {
         const boxRef = createRef<Gtk.Box>();
         const { container } = await render(<GtkBox ref={boxRef} widthRequest={40} heightRequest={20} />);

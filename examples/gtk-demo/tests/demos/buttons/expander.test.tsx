@@ -10,22 +10,6 @@ const renderExpander = async (): Promise<Gtk.Expander> => {
     return await screen.findByName("expander", { as: Gtk.Expander });
 };
 
-describe("expanderDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(expanderDemo.id).toBe("expander");
-        expect(expanderDemo.title).toBe("Expander");
-
-        expect(expanderDemo.description).toBe(
-            "GtkExpander allows to provide additional content that is initially hidden. " +
-            'This is also known as "disclosure triangle".\n\n' +
-            "This example also shows how to make the window resizable only if the expander is expanded.",
-        );
-
-        expect(expanderDemo.keywords).toEqual(["gtkexpander"]);
-        expect(expanderDemo.sourceCode).toContain("const expanderDemo: Demo = {");
-    });
-});
-
 describe("expanderDemo rendering", () => {
     it("renders the headline label, the details summary, and the collapsed Details expander", async () => {
         await renderDemo(expanderDemo);

@@ -243,7 +243,7 @@ const renderModalDialog = async (dialogContent: ReactNode) => {
     return { ...rendered, dialog: await findMappedWindow("Dialog") };
 };
 
-describe("userEvent actionability - insensitive targets (1)", () => {
+describe("userEvent actionability - insensitive targets", () => {
     setupShortTimeout();
 
     it("refuses every pointer helper on an insensitive button, and on one inside an insensitive box", async () => {
@@ -283,9 +283,7 @@ describe("userEvent actionability - insensitive targets (1)", () => {
         expect(toggle.getActive()).toBe(false);
         expect(checkbox.getActive()).toBe(false);
     });
-});
 
-describe("userEvent actionability - insensitive targets (2)", () => {
     setupShortTimeout();
 
     it("refuses to type into, clear or paste into an insensitive entry", async () => {
@@ -317,9 +315,7 @@ describe("userEvent actionability - insensitive targets (2)", () => {
         await expect(userEvent.scroll(scrolledWindow, { y: 100 })).rejects.toThrow();
         expect(scrolledWindow.getVadjustment().getValue()).toBe(0);
     });
-});
 
-describe("userEvent actionability - insensitive targets (3)", () => {
     setupShortTimeout();
 
     it("refuses to select or deselect on an insensitive drop-down or list box", async () => {
@@ -351,9 +347,7 @@ describe("userEvent actionability - insensitive targets (3)", () => {
         await expect(userEvent.keyboard(host, "{F5}")).rejects.toThrow();
         expect(onActivate).not.toHaveBeenCalled();
     });
-});
 
-describe("userEvent actionability - insensitive targets (4)", () => {
     setupShortTimeout();
 
     it("refuses every gesture helper on an insensitive widget without emitting its signals", async () => {
@@ -388,9 +382,7 @@ describe("userEvent actionability - insensitive targets (4)", () => {
         await expect(userEvent.drag(dragged, 10, 10)).rejects.toThrow();
         expect(handleDragBegin).not.toHaveBeenCalled();
     });
-});
 
-describe("userEvent actionability - insensitive targets (5)", () => {
     setupShortTimeout();
 
     it("refuses to drop onto an insensitive target and to drag from an insensitive source", async () => {
@@ -409,7 +401,7 @@ describe("userEvent actionability - insensitive targets (5)", () => {
     });
 });
 
-describe("userEvent actionability - targets outside a mapped toplevel (1)", () => {
+describe("userEvent actionability - targets outside a mapped toplevel", () => {
     setupShortTimeout();
 
     it("refuses a widget whose conditional render was removed", async () => {
@@ -439,9 +431,7 @@ describe("userEvent actionability - targets outside a mapped toplevel (1)", () =
         await expect(userEvent.click(button)).rejects.toThrow();
         expect(handleClick).not.toHaveBeenCalled();
     });
-});
 
-describe("userEvent actionability - targets outside a mapped toplevel (2)", () => {
     setupShortTimeout();
 
     it("refuses a widget on a stack page that is not visible", async () => {
@@ -488,9 +478,7 @@ describe("userEvent actionability - targets outside a mapped toplevel (2)", () =
         await userEvent.click(button);
         expect(handleClick).toHaveBeenCalledTimes(1);
     });
-});
 
-describe("userEvent actionability - targets outside a mapped toplevel (3)", () => {
     setupShortTimeout();
 
     it("refuses an unmapped button inside a drag icon", async () => {

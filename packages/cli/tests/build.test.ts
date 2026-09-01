@@ -385,7 +385,7 @@ const installSideEffectIconPackage = (project: CliProject): void => {
 };
 
 const expectBuildFailure = (broken: BrokenBuild): void => {
-    const project = createCliProject({
+    using project = createCliProject({
         prefix: broken.prefix,
         config: broken.config ?? config(STORE_LIBRARIES, ", codegen: false"),
         files: broken.files,
@@ -394,11 +394,7 @@ const expectBuildFailure = (broken: BrokenBuild): void => {
 
     installResourcePackage(project);
 
-    try {
-        expect(() => runCliOrThrow(project, ["build"])).toThrow();
-    } finally {
-        removeCliProject(project);
-    }
+    expect(() => runCliOrThrow(project, ["build"])).toThrow();
 };
 
 const expectOutsideSchemaBuildFailure = (): void => {
@@ -535,7 +531,7 @@ describe("gtkx codegen (imports under hidden directories)", () => {
     it("ignores schema imports a hidden directory holds", () => {
         const hiddenSchema = "hidden-probe.gschema.xml";
 
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-build-hidden-",
             config: config(STORE_LIBRARIES, ", codegen: false", null),
             files: {
@@ -547,20 +543,16 @@ describe("gtkx codegen (imports under hidden directories)", () => {
             },
         });
 
-        try {
-            expect(runCli(project, ["codegen"]).status).toBe(0);
-            const declarations = readFileSync(join(project.root, SCHEMA_TYPES), "utf8");
-            expect(declarations).toContain(`declare module "*/${SCHEMA_FILE}"`);
-            expect(declarations).not.toContain(hiddenSchema);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        const declarations = readFileSync(join(project.root, SCHEMA_TYPES), "utf8");
+        expect(declarations).toContain(`declare module "*/${SCHEMA_FILE}"`);
+        expect(declarations).not.toContain(hiddenSchema);
     });
 });
 
 describe("gtkx build (application icons)", () => {
     it("places the file in the hicolor application theme", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-build-icon-",
             config: config(STORE_LIBRARIES, ", codegen: false", "application.svg"),
             files: { ...appFiles("index.tsx"), "application.svg": "<svg/>\n" },
@@ -569,16 +561,12 @@ describe("gtkx build (application icons)", () => {
 
         installResourcePackage(project);
 
-        try {
-            expect(runCli(project, ["build"]).status).toBe(0);
-            expect(emittedNames(project)).toContain(ICON_PATH);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["build"]).status).toBe(0);
+        expect(emittedNames(project)).toContain(ICON_PATH);
     });
 
     it("uses an application-id icon in the project root by default", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-build-default-icon-",
             config: config(STORE_LIBRARIES, ", codegen: false", null),
             files: { ...appFiles("index.tsx"), [`${APPLICATION_ID}.svg`]: "<svg/>\n" },
@@ -587,18 +575,14 @@ describe("gtkx build (application icons)", () => {
 
         installResourcePackage(project);
 
-        try {
-            expect(runCli(project, ["build"]).status).toBe(0);
-            expect(emittedNames(project)).toContain(ICON_PATH);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["build"]).status).toBe(0);
+        expect(emittedNames(project)).toContain(ICON_PATH);
     });
 });
 
 describe("gtkx build (an entry the command is given)", () => {
     it("builds the named entry", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-build-entry-",
             config: config(STORE_LIBRARIES, ", codegen: false"),
             files: appFiles("main.tsx"),
@@ -607,19 +591,15 @@ describe("gtkx build (an entry the command is given)", () => {
 
         installResourcePackage(project);
 
-        try {
-            expect(runCli(project, ["build", "src/main.tsx"]).status).toBe(0);
-            expect(emittedNames(project)).toContain(BUNDLE);
-            expect(runApp(project).stdout).toContain(READY_MARKER);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["build", "src/main.tsx"]).status).toBe(0);
+        expect(emittedNames(project)).toContain(BUNDLE);
+        expect(runApp(project).stdout).toContain(READY_MARKER);
     });
 });
 
 describe("gtkx build (a lazy resource-backed icon)", () => {
     it("loads the icon from an emitted chunk", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-build-lazy-icon-",
             config: config(STORE_LIBRARIES, ", codegen: false"),
             files: {
@@ -632,25 +612,21 @@ describe("gtkx build (a lazy resource-backed icon)", () => {
 
         installResourcePackage(project);
 
-        try {
-            expect(runCli(project, ["build"]).status).toBe(0);
-            const emitted = emittedNames(project);
-            expect(emitted).toContain("gtkx.node");
-            expect(emitted).toContain("gtkx.gresource");
-            expect(emitted.some((name) => name.startsWith("assets/") && name.endsWith(".mjs"))).toBe(true);
-            const run = runApp(project);
-            expect(run.stderr).toBe("");
-            expect(run.stdout).toBe(LAZY_ICON_NAME);
-            expect(run.status).toBe(0);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["build"]).status).toBe(0);
+        const emitted = emittedNames(project);
+        expect(emitted).toContain("gtkx.node");
+        expect(emitted).toContain("gtkx.gresource");
+        expect(emitted.some((name) => name.startsWith("assets/") && name.endsWith(".mjs"))).toBe(true);
+        const run = runApp(project);
+        expect(run.stderr).toBe("");
+        expect(run.stdout).toBe(LAZY_ICON_NAME);
+        expect(run.status).toBe(0);
     });
 });
 
 describe("gtkx build (a side-effect-only dependency icon)", () => {
     it("retains the icon from a side-effect-free package", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-build-side-effect-icon-",
             config: config(STORE_LIBRARIES, ", codegen: false"),
             files: {
@@ -662,15 +638,11 @@ describe("gtkx build (a side-effect-only dependency icon)", () => {
 
         installSideEffectIconPackage(project);
 
-        try {
-            expect(runCli(project, ["build"]).status).toBe(0);
-            const run = runApp(project);
-            expect(run.stderr).toBe("");
-            expect(run.stdout).toBe(`7 ${SIDE_EFFECT_ICON_NAME} true`);
-            expect(run.status).toBe(0);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["build"]).status).toBe(0);
+        const run = runApp(project);
+        expect(run.stderr).toBe("");
+        expect(run.stdout).toBe(`7 ${SIDE_EFFECT_ICON_NAME} true`);
+        expect(run.status).toBe(0);
     });
 });
 

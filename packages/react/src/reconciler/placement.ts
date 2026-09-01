@@ -1,6 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getOrInsert, indexBeforeOrEnd } from "@gtkx/utils";
+import { indexBeforeOrEnd } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
 import { applyAdoptedProps, markFlush } from "./apply-props.js";
 import { typeInfoFor } from "./metadata.js";
@@ -224,7 +224,7 @@ const placeChild = (
     node: PlaceableNode,
     before: PlaceableNode | null,
 ): void => {
-    const entries = getOrInsert(parent.placements, slot, () => []);
+    const entries = parent.placements.getOrInsertComputed(slot, () => []);
     const existing = entries.findIndex((entry) => entry.node === node);
     const entry = resolveEntry(entries, existing, slot, node);
 

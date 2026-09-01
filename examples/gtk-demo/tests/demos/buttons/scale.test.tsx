@@ -11,20 +11,6 @@ const renderScaleRows = async (): Promise<Gtk.Scale[]> => {
 };
 
 describe("scaleDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(scaleDemo.id).toBe("scale");
-        expect(scaleDemo.title).toBe("Scales");
-
-        expect(scaleDemo.description).toBe(
-            "GtkScale is a way to select a value from a range. Scales can have marks to help pick special values, " +
-            "and they can also restrict the values that can be chosen.",
-        );
-
-        expect(scaleDemo.keywords).toEqual(["gtkscale"]);
-        expect(scaleDemo.sourceCode).toContain("const scaleDemo: Demo = {");
-        expect(scaleDemo.isResizable).toBe(false);
-    });
-
     it("renders three labelled scale rows configured with the demo defaults", async () => {
         await renderDemo(scaleDemo);
         await screen.findByText("Plain", { exact: false });

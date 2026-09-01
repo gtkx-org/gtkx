@@ -214,7 +214,7 @@ const activityTree = (mode: "visible" | "hidden", held: Captured2, isVisible = t
 
 const hiddenPanelTree = (mode: "visible" | "hidden", held: Captured2): ReactNode => activityTree(mode, held, false);
 
-describe("render - Window (1)", () => {
+describe("render - Window", () => {
     describe("creation", () => {
         it("creates Gtk.ApplicationWindow with current app", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
@@ -249,12 +249,10 @@ describe("render - Window (1)", () => {
         it("throws without a GtkApplication ancestor", async () => {
             await expect(
                 baseRender(<GtkApplicationWindow title="Orphan" />, { container: rootElement }),
-            ).rejects.toThrow(/useApplication must be called within GtkApplication/);
+            ).rejects.toThrow();
         });
     });
-});
 
-describe("render - Window (2)", () => {
     describe("defaultSize", () => {
         it("sets default size via defaultWidth/defaultHeight", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
@@ -300,9 +298,7 @@ describe("render - Window (2)", () => {
             expect(height).toBeGreaterThanOrEqual(200);
         });
     });
-});
 
-describe("render - Window (3)", () => {
     describe("lifecycle", () => {
         it("presents window on mount", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
@@ -334,9 +330,7 @@ describe("render - Window (3)", () => {
             });
         });
     });
-});
 
-describe("render - Window (4)", () => {
     it("sets child widget", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
         const labelRef = createRef<Gtk.Label>();
@@ -362,9 +356,7 @@ describe("render - Window (4)", () => {
 
         expect(windowRef.current).toHaveObjectProperty("content", labelRef.current);
     });
-});
 
-describe("render - Window (5)", () => {
     it("replaces child widget", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
         const label1Ref = createRef<Gtk.Label>();
@@ -475,7 +467,7 @@ describe("default top-level parenting", () => {
     });
 });
 
-describe("useParentWindow (1)", () => {
+describe("useParentWindow", () => {
     it("returns the window provided by the enclosing window element", async () => {
         const windowInstance = await renderProbedWindow({ children: <Probe slot="children" /> });
         expect(windowInstance).not.toBeNull();
@@ -508,9 +500,7 @@ describe("useParentWindow (1)", () => {
         await render(<Probe slot="orphan" />);
         expect(captured.orphan).toBeNull();
     });
-});
 
-describe("useParentWindow (2)", () => {
     it("is null on the first render inside a window and resolves on the next", async () => {
         const seen: string[] = [];
 

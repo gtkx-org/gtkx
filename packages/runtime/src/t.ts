@@ -41,10 +41,7 @@ type T = {
     unichar: typeof helpers.unicharT;
     /** Descriptor for an opaque `gpointer` argument, taken from a typed array's memory or a numeric address. */
     buffer: typeof helpers.bufferT;
-    /**
-     * Builds a descriptor for a C string, whose optional length sizes the caller-allocated buffer
-     * used when the string is passed by reference.
-     */
+    /** Builds a C-string descriptor with optional caller-allocated length. */
     string: typeof helpers.stringT;
     /** Builds a descriptor for a `GObject`, wrapped in the class registered for its runtime GType. */
     object: typeof helpers.objectT;
@@ -82,28 +79,15 @@ type T = {
     cursorArray: typeof helpers.cursorArrayT;
     /** Builds a descriptor for a function pointer, marshalling a JavaScript function into a native closure. */
     callback: typeof helpers.callbackT;
-    /**
-     * Binds a native function, wiring up argument directions, `GError` checking, and packing output
-     * arguments into the result.
-     */
+    /** Binds a native function with argument directions, errors, and packed outputs. */
     fn: typeof fn;
-    /**
-     * Binds a struct field at a fixed offset, compiling its descriptor once into an accessor that
-     * reads and writes it.
-     */
+    /** Binds a struct field at a fixed offset. */
     field: typeof field;
-    /**
-     * Binds a struct field whose offset is supplied per access, for walking records stored at a
-     * stride in a buffer.
-     */
+    /** Binds a struct field whose offset is supplied per access. */
     fieldAt: typeof fieldAt;
 };
 
-/**
- * Type descriptor builder: a collection of factory helpers that describe C types for
- * FFI marshalling, plus `bind` to bind a native function and `fn` to describe a
- * function signature.
- */
+/** FFI descriptor factories and native function binders. */
 const t: T = {
     bind,
     int8: helpers.int8T,

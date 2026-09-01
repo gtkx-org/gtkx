@@ -17,17 +17,6 @@ const renderDropDowns = async (): Promise<Gtk.Widget[]> => {
     return await screen.findAllByRole(Gtk.AccessibleRole.COMBO_BOX);
 };
 
-describe("sizegroupDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(sizegroupDemo.id).toBe("sizegroup");
-        expect(sizegroupDemo.title).toBe("Size Groups");
-        expect(sizegroupDemo.description).toContain("GtkSizeGroup provides a mechanism for grouping");
-        expect(sizegroupDemo.keywords).toEqual([]);
-        expect(sizegroupDemo.sourceCode).toContain("const sizegroupDemo: Demo = {");
-        expect(sizegroupDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("sizegroupDemo frames and labels", () => {
     it("renders the Color Options and Line Options frames with their labels", async () => {
         await renderDemo(sizegroupDemo);

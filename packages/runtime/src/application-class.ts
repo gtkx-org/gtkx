@@ -1,4 +1,4 @@
-import { type AnyClass, getOrInsert } from "@gtkx/utils";
+import type { AnyClass } from "@gtkx/utils";
 import { releaseDefaultApplication } from "./default-application.js";
 import { registerClass } from "./register-class.js";
 import { getClassType } from "./registry.js";
@@ -93,7 +93,7 @@ const shutDownThroughRun = (application: ShutdownApplication): void => {
 };
 
 const deriveApplicationClass = <T extends CommandLineApplication>(base: AnyClass<T>): AnyClass<T> =>
-    getOrInsert(derivedClasses, base, () => buildApplicationClass(base)) as AnyClass<T>;
+    derivedClasses.getOrInsertComputed(base, () => buildApplicationClass(base)) as AnyClass<T>;
 
 /**
  * Constructs an application GTKX can shut down. GLib parses an application's command line at most

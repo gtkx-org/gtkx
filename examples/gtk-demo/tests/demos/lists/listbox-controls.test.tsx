@@ -4,18 +4,6 @@ import { describe, expect, it } from "vitest";
 import { listboxControlsDemo } from "../../../src/demos/lists/listbox-controls.js";
 import { renderDemo } from "../../test-utils.js";
 
-describe("listboxControlsDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(listboxControlsDemo.id).toBe("listbox-controls");
-        expect(listboxControlsDemo.title).toBe("List Box/Controls");
-        expect(listboxControlsDemo.description).toContain("GtkListBox is well-suited for creating");
-        expect(listboxControlsDemo.keywords).toEqual([]);
-        expect(listboxControlsDemo.sourceCode).toContain("const listboxControlsDemo: Demo = {");
-        expect(listboxControlsDemo.defaultHeight).toBe(400);
-        expect(listboxControlsDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("listboxControlsDemo Group 1 structure", () => {
     it("renders two non-selectable list boxes that leave rows unselected on click", async () => {
         await renderDemo(listboxControlsDemo);

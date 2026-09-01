@@ -84,7 +84,7 @@ afterEach(() => {
     vi.useRealTimers();
 });
 
-describe("act (1)", () => {
+describe("act", () => {
     it("runs a sync callback eagerly, drains microtasks and resolves with its result", async () => {
         const order: number[] = [];
         let isRan = false;
@@ -122,9 +122,7 @@ describe("act (1)", () => {
         expect(order).toEqual([1, 2, 3]);
         expect(value).toBe("ready");
     });
-});
 
-describe("act (2)", () => {
     it("throws when the callback throws, synchronously or asynchronously", async () => {
         expect(() =>
             act(() => {
@@ -141,7 +139,7 @@ describe("act (2)", () => {
     });
 });
 
-describe("waitFor (1)", () => {
+describe("waitFor", () => {
     it("retries until the callback passes and resolves with its result", async () => {
         let value = 0;
         let attempts = 0;
@@ -182,9 +180,7 @@ describe("waitFor (1)", () => {
         expect(elapsed).toBeGreaterThanOrEqual(300);
         expect(callCount).toBeGreaterThanOrEqual(2);
     });
-});
 
-describe("waitFor (2)", () => {
     it("routes a custom onTimeout through waitFor and through a find query", async () => {
         await expect(waitFor(failingCallback, { timeout: 100, onTimeout: customTimeout })).rejects.toThrow();
         const { container } = await render(<GtkLabel>Present</GtkLabel>);

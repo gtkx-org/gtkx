@@ -15,15 +15,6 @@ const typeIntoEntry = async (text: string): Promise<Gtk.Entry> => {
 };
 
 describe("entryUndoDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(entryUndoDemo.id).toBe("entry-undo");
-        expect(entryUndoDemo.title).toBe("Entry/Undo and Redo");
-        expect(entryUndoDemo.description).toContain("GtkEntry can provide basic Undo/Redo support");
-        expect(entryUndoDemo.keywords).toEqual([]);
-        expect(entryUndoDemo.sourceCode).toContain("const entryUndoDemo: Demo = {");
-        expect(entryUndoDemo.component).toBeTypeOf("function");
-    });
-
     it("labels the entry with the instructional label via accessibleLabelledBy", async () => {
         await renderDemo(entryUndoDemo);
         await screen.findByText(LABEL_TEXT);

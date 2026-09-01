@@ -16,11 +16,7 @@ type ScrollAdjustments = {
     vertical: Gtk.Adjustment | null;
 };
 
-/**
- * Emits a jump `change-value` so a Gtk.Range moves to the given value.
- *
- * @throws When the widget is not a Gtk.Range.
- */
+/** Moves a range to a value. */
 const slide = (widget: Gtk.Widget, value: number): Promise<void> =>
     wrapEvent(widget, () => {
         if (!(widget instanceof Gtk.Range)) {
@@ -76,15 +72,7 @@ const applyScrollDelta = (adjustment: Gtk.Adjustment | null, delta: number): voi
     rampTo(adjustment, adjustment.getValue() + delta, pageSize > 0 ? pageSize : Math.abs(delta));
 };
 
-/**
- * Adds the delta to the adjustments of the widget itself, or of its nearest Gtk.ScrolledWindow or
- * Gtk.Scrollable ancestor.
- *
- * Each adjustment advances in viewport-sized steps rather than one jump, so virtualized views such
- * as Gtk.ListView, Gtk.GridView and Gtk.ColumnView re-anchor onto the rows the new offset shows.
- *
- * @throws When neither the widget nor any of its ancestors is scrollable.
- */
+/** Scrolls the widget or its nearest scrollable ancestor. */
 const scroll = (widget: Gtk.Widget, delta: ScrollDelta): Promise<void> =>
     wrapEvent(widget, async () => {
         const adjustments = resolveScrollAdjustments(widget);

@@ -570,7 +570,7 @@ describe("render - GtkConstraintLayout vfl", () => {
     });
 });
 
-describe("render - GtkGridLayoutChild (1)", () => {
+describe("render - GtkGridLayoutChild", () => {
     it("attaches children at their cells", async () => {
         const gridRef = createRef<Gtk.Grid>();
 
@@ -607,9 +607,7 @@ describe("render - GtkGridLayoutChild (1)", () => {
         expect(label).toHaveTextContent(/^wide$/);
         expect(grid.getChildAt(1, 1)).toBe(label);
     });
-});
 
-describe("render - GtkGridLayoutChild (2)", () => {
     it("moves a child in place when its cell changes", async () => {
         const gridRef = createRef<Gtk.Grid>();
         const { rerender } = await render(<MovableCellApp gridRef={gridRef} column={0} />);
@@ -690,7 +688,7 @@ describe("render - GtkFixedLayoutChild", () => {
     });
 });
 
-describe("render - GtkOverlayLayoutChild (1)", () => {
+describe("render - GtkOverlayLayoutChild", () => {
     it("keeps the main child and stacks overlays on top", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
         const mainRef = createRef<Gtk.Label>();
@@ -726,9 +724,7 @@ describe("render - GtkOverlayLayoutChild (1)", () => {
         expect(overlay.getClipOverlay(button)).toBe(true);
         expect(addOverlay).not.toHaveBeenCalled();
     });
-});
 
-describe("render - GtkOverlayLayoutChild (2)", () => {
     it("keeps the main child mounted when an overlay appears and disappears", async () => {
         const labelRef = createRef<Gtk.Label>();
         const { rerender } = await render(<TransientOverlayApp labelRef={labelRef} shouldShow={false} />);

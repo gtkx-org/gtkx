@@ -14,7 +14,6 @@ import {
     registeredElementProperties,
     registeredElementSignals,
 } from "@gtkx/runtime/internal";
-import { getOrInsert } from "@gtkx/utils";
 import { properties, type PropertyEntry, signals, userEventSignals } from "virtual:gtkx-config";
 import { deferredProps, type ElementBehavior, ELEMENTS } from "./registry.js";
 
@@ -82,7 +81,7 @@ const buildAncestry = (name: string): string[] => {
     return names;
 };
 
-const ancestryFor = (name: string): string[] => getOrInsert(ancestryCache, name, buildAncestry);
+const ancestryFor = (name: string): string[] => ancestryCache.getOrInsertComputed(name, buildAncestry);
 
 const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
     const items = source ?? [];
@@ -170,7 +169,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
 const typeInfoFor = (name: string): TypeInfo => {
     dropStaleCaches();
 
-    return getOrInsert(typeInfoCache, name, buildTypeInfo);
+    return typeInfoCache.getOrInsertComputed(name, buildTypeInfo);
 };
 
 const getTypeInfo = (object: GObject.Object): TypeInfo | undefined => {

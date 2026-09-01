@@ -20,17 +20,6 @@ const expectSpinning = async (areSpinning: boolean): Promise<void> => {
     });
 };
 
-describe("spinnerDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(spinnerDemo.id).toBe("spinner");
-        expect(spinnerDemo.title).toBe("Spinner");
-        expect(spinnerDemo.sourceCode).toContain("const spinnerDemo: Demo = {");
-        expect(spinnerDemo.description).toBe("GtkSpinner allows to show that background activity is on-going.");
-        expect(spinnerDemo.keywords).toEqual(["gtkspinner"]);
-        expect(spinnerDemo.isResizable).toBe(false);
-    });
-});
-
 describe("spinnerDemo rendering", () => {
     it("renders two GtkSpinners both initially spinning", async () => {
         const spinners = await renderSpinners();

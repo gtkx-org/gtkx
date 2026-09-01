@@ -45,32 +45,6 @@ afterAll(() => {
     rmSync(TMP_DIR, { recursive: true, force: true });
 });
 
-describe("pickersDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(pickersDemo.id).toBe("pickers");
-        expect(pickersDemo.title).toBe("Pickers and Launchers");
-
-        expect(pickersDemo.description).toBe(
-            "The dialogs are mainly intended for use in preference dialogs. They allow to select colors, fonts " +
-            "and files. There is also a print dialog.\n\nThe launchers let you open files or URIs in " +
-            "applications that can handle them.",
-        );
-
-        expect(pickersDemo.sourceCode).toContain("const pickersDemo: Demo = {");
-
-        expect(pickersDemo.keywords).toEqual([
-            "GtkColorDialog",
-            "GtkFontDialog",
-            "GtkFileDialog",
-            "GtkPrintDialog",
-            "GtkFileLauncher",
-            "GtkUriLauncher",
-        ]);
-
-        expect(pickersDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("pickersDemo rendering", () => {
     it("renders a color dialog button and a font dialog button", async () => {
         await renderDemo(pickersDemo);

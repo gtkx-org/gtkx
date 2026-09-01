@@ -1,101 +1,50 @@
 ---
-description: "Build Tasks, a GNOME task manager, one running step at a time, and ship it as a Flatpak."
+title: "Tutorial: Build Tasks"
+description: "Build and ship a small native GTKX task manager in six focused steps."
 ---
 
-# Build a Tasks App with GTKX
+# Build Tasks
 
-<picture>
-  <source srcset="/tasks-screenshot.webp" type="image/webp" />
-  <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
-</picture>
+This tutorial builds **Tasks**, a native task manager with persistence, adaptive navigation, forms, actions, localization, tests, and Linux packages. The finished application lives in [`examples/tutorial`](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial).
 
-That is **Tasks**, a GNOME task manager. In this tutorial you build it from an empty directory to a set of localized Flatpak, deb, rpm, and AppImage packages, then prepare it for Flathub. Along the way you cover the pieces every GNOME app is made of: adaptive layout, settings, actions and accelerators, dialogs, desktop notifications that keep working after the app closes, and gettext catalogs behind the actual react-i18next API.
+Use the tutorial to understand how the pieces fit together. Use the [guides](/guide/getting-started) for focused workflows and the [API reference](/reference/) for signatures and options.
 
-You build it one running step at a time: after every chapter you have an app you can launch.
+## Create the project
 
-You need working familiarity with [React](https://react.dev/learn) and [TypeScript](https://www.typescriptlang.org/docs/handbook/2/basic-types.html), which this tutorial does not teach: it spends its words on GTK4 and Adwaita instead. You also need Linux with the GTK4 development libraries and Node.js 26.7 or later. [Getting Started](/guide/getting-started) covers what to install.
-
-## Check your setup
-
-Check your Node.js version:
+GTKX requires Linux, Node.js 26.7 or newer, and the GTK4, Adwaita, and GLib development packages.
 
 ```bash
-node --version
-```
-
-You should see 26.7 or later:
-
-```
-v26.7.0
-```
-
-Scaffold the project:
-
-::: code-group
-
-```bash [npm]
-npm create gtkx
-```
-
-```bash [pnpm]
-pnpm create gtkx
-```
-
-```bash [yarn]
-yarn create gtkx
-```
-
-:::
-
-Answer the prompts like this:
-
-```
-┌  Create GTKX App
-│
-◇  Project directory
-│  tasks
-│
-◇  Application ID
-│  com.gtkx.tutorial
-│
-◇  Package manager
-│  npm
-│
-◇  Use TypeScript?
-│  Yes
-│
-◇  Include testing setup (Vitest)?
-│  Yes
-│
-```
-
-It then writes the project, installs the dependencies, initializes a git repository, and prints the commands to start it.
-
-Pick whichever package manager you use. This tutorial writes `npm run` in its commands; substitute freely.
-
-The application ID takes reverse-DNS form. Changing it later orphans every setting a user has saved, so pick one you can live with. If you use your own, substitute it consistently from here on.
-
-Start the app:
-
-```bash
+npm create gtkx -- tasks --yes --application-id com.gtkx.tutorial
 cd tasks
 npm run dev
 ```
 
-This opens a small window with a counter in it, which the next chapter replaces.
+The scaffold supplies the configuration, generated imports, Vitest setup, and a counter window. Replace the counter with the application shell:
 
-Keep this `npm run dev` running for the whole tutorial. Saving a `.ts` or `.tsx` file patches the running widget tree through Fast Refresh, so a `## Run it` section means save and look at the open window. Saving `gtkx.config.ts` regenerates bindings and relaunches the app for you.
+```tsx
+import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+import { createRoot, quit } from "@gtkx/react";
 
-## How this tutorial works
+const App = () => (
+    <AdwApplication>
+        <AdwApplicationWindow title="Tasks" defaultWidth={900} defaultHeight={640} onCloseRequest={quit}>
+            <GtkLabel label="No tasks yet" />
+        </AdwApplicationWindow>
+    </AdwApplication>
+);
 
-Every chapter names a capability, adds it to an app that already runs, and ends with a `## Run it` section stating exactly what you should see. If you do not see it, something went wrong in that chapter, not an earlier one.
+createRoot().render(<App />);
+```
 
-Every code block carries its file path in the sentence directly above it. Edits to a file you already have appear as partials, with `// ...` standing in for lines you leave alone. No code block ever depends on a chapter you have not read yet.
+GTKX elements come from `@gtkx/jsx/<namespace>`. Classes, enums, and functions come from `@gtkx/gi/<namespace>`. Children describe containment, signals are `on*` props, and a `ref` exposes the native instance.
 
-## Scope
+## Work through the app
 
-GNOME To Do is a mature application, and Tasks is smaller. What they share is the platform: the same GTK4 widgets, the same Adwaita patterns, the same settings, actions, and notifications. Finishing this tutorial leaves you able to open the To Do source and recognize what you see.
+1. [Store tasks and save them](/tutorial/the-task-store).
+2. [Add adaptive navigation and the editor](/tutorial/an-adaptive-layout).
+3. [Wire actions, settings, notifications, and translations](/tutorial/actions-menus-shortcuts).
+4. [Test workflows through the UI](/tutorial/testing).
+5. [Package and publish the application](/tutorial/packaging).
 
-## Next
-
-Continue to [Your First Window](/tutorial/your-first-window).
+Keep `npm run dev` open while you work. Fast Refresh updates the mounted tree; changes to process-level setup restart the application.

@@ -409,7 +409,7 @@ describe("render - PopoverMenu actions", () => {
     });
 });
 
-describe("render - Shortcut (1)", () => {
+describe("render - Shortcut", () => {
     it("attaches shortcuts to the parent ShortcutController", async () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
 
@@ -457,9 +457,7 @@ describe("render - Shortcut (1)", () => {
 
         expect(controllerRef.current).toHaveObjectProperty("nItems", 1);
     });
-});
 
-describe("render - Shortcut (2)", () => {
     it("removes the shortcut from the controller when unmounted", async () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
 
@@ -495,9 +493,7 @@ describe("render - Shortcut (2)", () => {
         await rerender(<Empty />);
         expect(controllerRef.current).toHaveObjectProperty("nItems", 0);
     });
-});
 
-describe("render - Shortcut (3)", () => {
     it("re-applies the trigger when it changes", async () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
 

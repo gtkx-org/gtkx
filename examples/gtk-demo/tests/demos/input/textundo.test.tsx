@@ -26,17 +26,6 @@ const renderAndInsert = async (insertedText: string): Promise<EditedTextView> =>
 };
 
 describe("textundoDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(textundoDemo.id).toBe("textundo");
-        expect(textundoDemo.title).toBe("Text View/Undo and Redo");
-        expect(textundoDemo.description).toContain("The GtkTextView supports undo and redo");
-        expect(textundoDemo.keywords).toEqual([]);
-        expect(textundoDemo.sourceCode).toContain("const textundoDemo: Demo = {");
-        expect(textundoDemo.defaultWidth).toBe(330);
-        expect(textundoDemo.defaultHeight).toBe(330);
-        expect(textundoDemo.component).toBeTypeOf("function");
-    });
-
     it("renders a text view with the introductory content and word wrap", async () => {
         const textView = await renderTextView();
         const initial = readBufferText(textView);

@@ -15,24 +15,6 @@ const replaceCss = async (textView: Gtk.TextView, css: string): Promise<void> =>
     await userEvent.type(textView, css);
 };
 
-describe("cssBasicsDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(cssBasicsDemo.id).toBe("css-basics");
-        expect(cssBasicsDemo.title).toBe("Theming/CSS Basics");
-
-        expect(cssBasicsDemo.description).toBe(
-            "GTK themes are written using CSS. Every widget is build of multiple items " +
-            "that you can style very similarly to a regular website.",
-        );
-
-        expect(cssBasicsDemo.keywords).toEqual([]);
-        expect(cssBasicsDemo.sourceCode).toContain("const cssBasicsDemo: Demo = {");
-        expect(cssBasicsDemo.defaultWidth).toBe(400);
-        expect(cssBasicsDemo.defaultHeight).toBe(300);
-        expect(cssBasicsDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("cssBasicsDemo rendering", () => {
     it("renders a text view inside a scrolled window with the default CSS preloaded", async () => {
         const textView = await renderTextView();
@@ -57,7 +39,7 @@ describe("cssBasicsDemo behavior", () => {
         expect(textView).toHaveDisplayValue("/* edited */\nwindow { color: red; }\n");
     });
 
-    it("marks invalid CSS by adding an error tag to the buffer", async () => {
+    it("updates diagnostic tags as invalid, warning-level, and valid CSS is entered", async () => {
         const textView = await renderTextView();
         await replaceCss(textView, "window { color: this-is-not-a-valid-color; }");
 
@@ -66,10 +48,6 @@ describe("cssBasicsDemo behavior", () => {
         });
 
         expect(hasBufferTag(textView, "warning")).toBe(false);
-    });
-
-    it("marks warning-level CSS with the warning tag rather than the error tag", async () => {
-        const textView = await renderTextView();
         await replaceCss(textView, "window { color: green }");
 
         await waitFor(() => {
@@ -77,16 +55,6 @@ describe("cssBasicsDemo behavior", () => {
         });
 
         expect(hasBufferTag(textView, "error")).toBe(false);
-    });
-
-    it("clears a previously applied error tag once the CSS becomes valid again", async () => {
-        const textView = await renderTextView();
-        await replaceCss(textView, "window { color: this-is-not-a-valid-color; }");
-
-        await waitFor(() => {
-            expect(hasBufferTag(textView, "error")).toBe(true);
-        });
-
         await replaceCss(textView, "window { color: red; }");
 
         await waitFor(() => {

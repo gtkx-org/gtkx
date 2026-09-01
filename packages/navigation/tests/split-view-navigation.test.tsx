@@ -45,7 +45,7 @@ const expectStateRouteNames = (state: NavigationState | undefined, names: string
     expect(state?.routes.map((route) => route.name)).toEqual(names);
 };
 
-describe("split view - navigation (1)", () => {
+describe("split view - navigation", () => {
     it("fills the content pane and hides the placeholder when a list is selected", async () => {
         const onStateChange = createStateSpy();
         await renderSplit({ container: { onStateChange } });
@@ -79,9 +79,7 @@ describe("split view - navigation (1)", () => {
         expectHidden("Task 7");
         expectRouteNames(onStateChange, ["Lists", "Tasks"]);
     });
-});
 
-describe("split view - navigation (2)", () => {
     it("returns from the list to the placeholder with the sidebar still visible", async () => {
         const onStateChange = createStateSpy();
         await renderSplit({ container: { onStateChange } });
@@ -118,9 +116,7 @@ describe("split view - navigation (2)", () => {
         expectVisible("Lists Content");
         expectRouteNames(onStateChange, ["Lists"]);
     });
-});
 
-describe("split view - navigation (3)", () => {
     it("opens on the content route named by initialRouteName with the sidebar pinned below it", async () => {
         const ref = createNavigationContainerRef<Params>();
         await render(initialApp({ ref }));

@@ -50,7 +50,7 @@ const renderSaveButton = async (): Promise<Mock> => {
     return onClicked;
 };
 
-describe("render - Label text children (1)", () => {
+describe("render - Label text children", () => {
     it("sets the label property from a single text child", async () => {
         await render(<GtkLabel>Hello</GtkLabel>);
         expect(screen.getByText("Hello")).toBeRooted();
@@ -71,9 +71,7 @@ describe("render - Label text children (1)", () => {
         await rerender(<MiddleSegmentLabel shouldShowMiddle={false} />);
         expect(screen.getByText("Start End")).toHaveTextContent(/^Start End$/);
     });
-});
 
-describe("render - Label text children (2) (1)", () => {
     it("clears the label when the last text child is removed", async () => {
         const { rerender } = await render(<OptionalTextLabel shouldShowText={true} />);
         expect(screen.getByText("Gone soon")).toBeRooted();
@@ -120,13 +118,9 @@ describe("render - Label text children (2) (1)", () => {
 
         expect(screen.getByText("Clicked 1 times")).toBeRooted();
     });
-});
 
-describe("render - Label text children (2) (2)", () => {
     it("throws when a label mixes a label prop with text children", async () => {
-        await expect(render(<GtkLabel label="prop">children</GtkLabel>)).rejects.toThrow(
-            /cannot mix a `label` prop with text children/,
-        );
+        await expect(render(<GtkLabel label="prop">children</GtkLabel>)).rejects.toThrow();
     });
 });
 

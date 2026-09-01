@@ -12,17 +12,6 @@ const renderTextView = async (): Promise<Gtk.TextView> => {
 };
 
 describe("tabsDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(tabsDemo.id).toBe("tabs");
-        expect(tabsDemo.title).toBe("Text View/Tabs");
-        expect(tabsDemo.description).toContain("GtkTextView can position text at fixed positions, using tabs.");
-        expect(tabsDemo.keywords).toEqual([]);
-        expect(tabsDemo.sourceCode).toContain("const tabsDemo: Demo = {");
-        expect(tabsDemo.defaultWidth).toBe(330);
-        expect(tabsDemo.defaultHeight).toBe(130);
-        expect(tabsDemo.component).toBeTypeOf("function");
-    });
-
     it("renders a GtkTextView populated with tab-separated rows", async () => {
         const textView = await renderTextView();
         expect(await screen.findByDisplayValue(/one\t2\.0\tthree/, { collapseWhitespace: false })).toBe(textView);

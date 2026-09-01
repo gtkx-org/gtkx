@@ -188,7 +188,7 @@ const BlurForm = ({ entryRef }: { entryRef: RefObject<Adw.EntryRow | null> }): R
     );
 };
 
-describe("forms - edge cases (1)", () => {
+describe("forms - edge cases", () => {
     it("applies programmatic values and resets every row to falsy defaults", async () => {
         const refs = createFormRefs();
         await render(<ResetForm {...refs} />);
@@ -236,9 +236,7 @@ describe("forms - edge cases (1)", () => {
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Submit" }));
         expect(await screen.findByName("submitted-name")).toHaveTextContent("Ada");
     });
-});
 
-describe("forms - edge cases (2)", () => {
     it("omits disabled fields while preserving insensitive field values", async () => {
         const disabledRef = createRef<Adw.EntryRow>();
         await render(<DisabledForm disabledRef={disabledRef} />);

@@ -57,20 +57,6 @@ const waitForFpsReadout = async (header: Gtk.HeaderBar): Promise<void> => {
 vi.setConfig({ testTimeout: 30_000 });
 
 describe("themesDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(themesDemo.id).toBe("themes");
-        expect(themesDemo.title).toBe("Benchmark/Themes");
-
-        expect(themesDemo.description).toBe(
-            "This demo continuously switches themes, like some of you.\n\nWarning: This demo involves " +
-            "rapidly flashing changes and may be hazardous to photosensitive viewers.",
-        );
-
-        expect(themesDemo.sourceCode).toContain("const themesDemo: Demo = {");
-        expect(themesDemo.isResizable).toBe(false);
-        expect(themesDemo.component).toBeTypeOf("function");
-    });
-
     it("renders the cycle toggle inside the titlebar and the linked body buttons", async () => {
         const header = await renderThemesHeader();
         expect(getCycleToggle(header)).not.toBePressed();

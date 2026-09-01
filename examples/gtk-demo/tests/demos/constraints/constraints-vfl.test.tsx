@@ -92,22 +92,6 @@ const findSuperviewEdge = (context: VflContext, attribute: Gtk.ConstraintAttribu
     context.constraints.find((constraint) => isSuperviewEdge(context, constraint, attribute));
 
 describe("constraintsVflDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(constraintsVflDemo.id).toBe("constraints-vfl");
-        expect(constraintsVflDemo.title).toBe("Constraints/VFL");
-
-        expect(constraintsVflDemo.description).toBe(
-            "GtkConstraintLayout allows defining constraints using a compact syntax called Visual Format " +
-            "Language, or VFL.\n\nA typical example of a VFL specification looks like " +
-            "this:\n\nH:|-[button1(==button2)]-12-[button2]-|",
-        );
-
-        expect(constraintsVflDemo.keywords).toEqual([]);
-        expect(constraintsVflDemo.windowTitle).toBe("Constraints — VFL");
-        expect(constraintsVflDemo.sourceCode).toContain("const constraintsVflDemo: Demo = {");
-        expect(constraintsVflDemo.defaultWidth).toBe(260);
-    });
-
     it("attaches a GtkConstraintLayout manager to the container box", async () => {
         await renderDemo(constraintsVflDemo);
         const box = await screen.findByName("container", { as: Gtk.Box });

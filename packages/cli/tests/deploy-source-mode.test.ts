@@ -173,22 +173,18 @@ describe("gtkx deploy (flatpak source mode escapes)", () => {
 
 describe("gtkx deploy (flatpak source revisions)", () => {
     it("pins the commit behind a configured tag", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-deploy-tag-",
             config: sourceConfig(TAGGED_SOURCE),
             files: sourceFiles(PNPM_PIN),
             hasStore: true,
         });
 
-        try {
-            initGitRepo(project, SOURCE_TAG);
-            expect(runCli(project, SOURCE_ARGS).status).toBe(0);
-            const git = findSource(flatpakModule(project), "git");
-            expect(git?.tag).toBe(SOURCE_TAG);
-            expect(git?.commit).toMatch(COMMIT_PATTERN);
-        } finally {
-            removeCliProject(project);
-        }
+        initGitRepo(project, SOURCE_TAG);
+        expect(runCli(project, SOURCE_ARGS).status).toBe(0);
+        const git = findSource(flatpakModule(project), "git");
+        expect(git?.tag).toBe(SOURCE_TAG);
+        expect(git?.commit).toMatch(COMMIT_PATTERN);
     });
 });
 

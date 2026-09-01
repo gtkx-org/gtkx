@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBRARIES } from "./cli-project.js";
+import { createCliProject, runCli, STORE_LIBRARIES } from "./cli-project.js";
 
 type RejectedConfig = { title: string; config: string };
 
@@ -57,7 +57,7 @@ const REJECTED_CONFIGS: RejectedConfig[] = [
     },
 ];
 
-const buildWith = (config: string): CliProject => {
+const buildWith = (config: string): ReturnType<typeof createCliProject> => {
     const project = createCliProject({
         prefix: "gtkx-cli-config-",
         config,
@@ -72,13 +72,9 @@ const buildWith = (config: string): CliProject => {
 
 describe("gtkx.config.ts", () => {
     it("reads a configuration authored as a function, with the branch for the mode it builds in", () => {
-        const project = buildWith(FUNCTION_CONFIG);
+        using project = buildWith(FUNCTION_CONFIG);
 
-        try {
-            expect(readFileSync(join(project.root, BUNDLE), "utf8")).toContain(PRODUCTION_ID);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(readFileSync(join(project.root, BUNDLE), "utf8")).toContain(PRODUCTION_ID);
     });
 
     it("accepts graduated future flags left enabled", () => {
@@ -92,24 +88,16 @@ describe("gtkx.config.ts", () => {
             v2TreeShaking: true,
         } };\n`;
 
-        const project = createCliProject({ prefix: "gtkx-cli-config-graduated-", config, hasStore: true });
+        using project = createCliProject({ prefix: "gtkx-cli-config-graduated-", config, hasStore: true });
 
-        try {
-            expect(runCli(project, ["codegen"]).status).toBe(0);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["codegen"]).status).toBe(0);
     });
 });
 
 describe("gtkx.config.ts (configurations the commands reject)", () => {
     it.each(REJECTED_CONFIGS)("fails over $title", ({ config }) => {
-        const project = createCliProject({ prefix: "gtkx-cli-config-broken-", config, hasStore: true });
+        using project = createCliProject({ prefix: "gtkx-cli-config-broken-", config, hasStore: true });
 
-        try {
-            expect(runCli(project, ["codegen"]).status).not.toBe(0);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["codegen"]).status).not.toBe(0);
     });
 });

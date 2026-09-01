@@ -2,9 +2,9 @@ import { mergeOmittedProps, resolveGirPath, resolveLibraries } from "@gtkx/codeg
 import { writeDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
 import { resolveOmittedProps } from "@gtkx/config/internal";
-import { info } from "@gtkx/utils";
+import { info, isPathInside } from "@gtkx/utils";
 import { defineCommand } from "citty";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { resolve } from "node:path";
 import { resolveDocsElements } from "../internal/docs-elements.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
@@ -87,12 +87,6 @@ const docs = defineCommand({
     },
 });
 
-const isBelow = (parent: string, child: string): boolean => {
-    const path = relative(parent, child);
-
-    return path !== "" && path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path);
-};
-
 const outDirReason = (cwd: string, out: string, outDir: string): string => {
     if (out.trim() === "") {
         return "it was empty, which names the project root itself";
@@ -108,7 +102,7 @@ const outDirReason = (cwd: string, out: string, outDir: string): string => {
 const resolveOutDir = (cwd: string, out: string): string => {
     const outDir = out.trim() === "" ? cwd : resolve(cwd, out);
 
-    if (isBelow(cwd, outDir)) {
+    if (isPathInside(cwd, outDir)) {
         return outDir;
     }
 

@@ -1,5 +1,6 @@
+import { isPathInside } from "@gtkx/utils";
 import { statSync } from "node:fs";
-import { basename, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, extname, isAbsolute, join, resolve } from "node:path";
 
 type ResolvedApplicationIcon = { kind: "file"; path: string } |
     { kind: "none" } |
@@ -9,12 +10,6 @@ const ICON_EXTENSIONS: Set<string> = new Set([".svg", ".png", ".xpm"]);
 const SCALABLE_DIR = "hicolor/scalable/apps";
 const SIZE_PATTERN = /^(?<width>[1-9]\d{0,3})x(?<height>[1-9]\d{0,3})$/;
 const SIZE_SEPARATORS = /[-_.]/;
-
-const isInside = (parent: string, candidate: string): boolean => {
-    const rel = relative(parent, candidate);
-
-    return rel.length > 0 && !rel.startsWith("..") && !isAbsolute(rel);
-};
 
 const iconExtension = (file: string): string => {
     const extension = extname(file).toLowerCase();
@@ -68,7 +63,7 @@ const resolveApplicationIcon = (
 
     const path = resolve(root, configured);
 
-    if (!isInside(root, path)) {
+    if (!isPathInside(root, path)) {
         throw new Error(`Cannot use "${configured}" as the application icon: it is outside ${root}`);
     }
 

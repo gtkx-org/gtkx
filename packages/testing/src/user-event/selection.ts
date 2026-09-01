@@ -153,16 +153,7 @@ const runSelectionEvent = (
         byRole(widget, valueArray);
     });
 
-/**
- * Selects the items at the given positions through a list, grid, or column view's selection model,
- * by setting the selected position of a widget with the COMBO_BOX role, or by selecting the indexed
- * children of a list box or flow box through their container. An empty array clears a view's
- * selection. The children are never activated, so no row-activated handler runs.
- *
- * @throws When a view has no selection model, when a COMBO_BOX-role widget is given more than one
- * position or exposes no `setSelected`, or when the widget's role is none of COMBO_BOX, GRID, or
- * LIST.
- */
+/** Selects positions without activating them. */
 const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     runSelectionEvent(widget, values, selectInListView, selectByRole);
 
@@ -184,14 +175,7 @@ const deselectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     applyIndexedChildren(widget, valueArray, unselectChildRow);
 };
 
-/**
- * Unselects the items at the given positions in a list, grid, or column view, or unselects the
- * indexed children of a list box or flow box through their container. A child that is not selected
- * is left alone, and no child is activated.
- *
- * @throws When a view has no selection model, when the widget's role is none of COMBO_BOX, GRID, or
- * LIST, or when it exposes no indexed children.
- */
+/** Unselects positions without activating them. */
 const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
     runSelectionEvent(widget, values, deselectInListView, deselectByRole);
 

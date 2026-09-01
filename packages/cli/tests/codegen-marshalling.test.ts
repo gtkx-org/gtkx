@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createCliProject, removeCliProject, runCli } from "./cli-project.js";
+import { createCliProject, runCli } from "./cli-project.js";
 import {
     fixtureConfig,
     generatedModule,
@@ -10,20 +10,16 @@ import {
 type ExpectedOutput = { bindings: string[]; declarations: string[] };
 
 const expectGenerated = (library: string, namespace: string, expected: ExpectedOutput): void => {
-    const project = createCliProject({
+    using project = createCliProject({
         prefix: `gtkx-cli-codegen-${namespace}-`,
         config: fixtureConfig(library),
     });
 
-    try {
-        expect(runCli(project, ["codegen"]).status).toBe(0);
-        const declarations = generatedModule(project, "gi", namespace, `${namespace}.d.ts`);
-        const bindings = generatedModule(project, "gi", namespace, `${namespace}.js`);
-        expect(expected.declarations.filter((text) => !declarations.includes(text))).toEqual([]);
-        expect(expected.bindings.filter((text) => !bindings.includes(text))).toEqual([]);
-    } finally {
-        removeCliProject(project);
-    }
+    expect(runCli(project, ["codegen"]).status).toBe(0);
+    const declarations = generatedModule(project, "gi", namespace, `${namespace}.d.ts`);
+    const bindings = generatedModule(project, "gi", namespace, `${namespace}.js`);
+    expect(expected.declarations.filter((text) => !declarations.includes(text))).toEqual([]);
+    expect(expected.bindings.filter((text) => !bindings.includes(text))).toEqual([]);
 };
 
 describe("gtkx codegen marshalling", () => {

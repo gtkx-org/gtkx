@@ -31,7 +31,7 @@ const renderProbe = async (props: Omit<BoxProbeProps, "boxRef">) => {
     return { boxRef, ...result };
 };
 
-describe("list box selection (1)", () => {
+describe("list box selection", () => {
     it("selects the row at the given index", async () => {
         const { boxRef } = await renderProbe({ count: 3, selectedIndex: 1 });
         expect(getSelectedIndex(boxRef.current)).toBe(1);
@@ -59,9 +59,7 @@ describe("list box selection (1)", () => {
         const boxRef = createRef<Gtk.ListBox>();
         await expect(render(<BoxProbe boxRef={boxRef} count={3} selectedIndex={1.5} />)).rejects.toThrow();
     });
-});
 
-describe("list box selection (2)", () => {
     it("waits for a row that no commit has added yet, holding the selection it has", async () => {
         const { boxRef, rerender } = await renderProbe({ count: 3, selectedIndex: 1 });
         await rerender(<BoxProbe boxRef={boxRef} count={3} selectedIndex={4} />);
@@ -112,9 +110,7 @@ describe("list box selection (2)", () => {
         expect(getSelectedIndex(boxRef.current)).toBe(2);
         expect(handleRowSelected).not.toHaveBeenCalled();
     });
-});
 
-describe("list box selection (3)", () => {
     it("does not report the row it puts back as a selection the user made", async () => {
         const onRowSelected = vi.fn();
         const { boxRef } = await renderProbe({ count: 3, selectedIndex: 1, onRowSelected });

@@ -1,3 +1,4 @@
+import { toPosixPath } from "@gtkx/utils";
 import { join, relative } from "node:path";
 import type { CatalogProject } from "./catalogs.js";
 
@@ -14,7 +15,7 @@ const METADATA_TEMPLATE_DIRNAME = ".gtkx-metadata";
 
 const metadataTemplateFile = (project: CatalogProject, kind: MetadataTemplateKind): MetadataTemplateFile => {
     const path = join(project.poDir, METADATA_TEMPLATE_DIRNAME, `${project.domain}.template.${kind}`);
-    const relativePath = relative(project.root, path).replaceAll("\\", "/");
+    const relativePath = toPosixPath(relative(project.root, path));
 
     return { kind, path, relativePath };
 };

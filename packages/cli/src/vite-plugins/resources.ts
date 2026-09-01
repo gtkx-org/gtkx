@@ -1,7 +1,7 @@
 import type { ConfigLoader } from "@gtkx/config";
 import type { ModuleNode, Plugin, ResolvedConfig, Rolldown, UserConfig, ViteDevServer } from "vite";
 import { createConfigLoader, resourceBasePath } from "@gtkx/config/internal";
-import { error, info, isRecord, sortStrings } from "@gtkx/utils";
+import { error, info, isPathInside, isRecord, sortStrings, toPosixPath } from "@gtkx/utils";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, posix, relative, sep } from "node:path";
 import { parseSync } from "vite";
@@ -159,16 +159,8 @@ const STOCK_ICON_CONTEXTS: Set<string> = new Set([
 const ICON_SIZE_RE = /^([1-9]\d*)x\1(?:@[1-9]\d*)?$/;
 const RESERVED_ICON_NAMES: Set<string> = new Set(["", ".", ".."]);
 
-const toForwardSlashes = (value: string): string => value.replaceAll(/[/\\]/g, "/");
-
-const isWithin = (root: string, path: string): boolean => {
-    const rel = relative(root, path);
-
-    return rel.length > 0 && !isAbsolute(rel) && rel !== ".." && !rel.startsWith(`..${sep}`);
-};
-
 const isDependencyFile = (root: string, path: string): boolean =>
-    isWithin(root, path) && relative(root, path).split(sep).includes("node_modules");
+    isPathInside(root, path) && relative(root, path).split(sep).includes("node_modules");
 
 const packageIdentityIn = (dir: string): string | null => {
     try {
@@ -211,17 +203,17 @@ const validateResourcePath = (resourcePath: string): string => {
 };
 
 const derivedResourcePath = (state: PluginState, sourcePath: string): string => {
-    if (isWithin(state.root, sourcePath) && !isDependencyFile(state.root, sourcePath)) {
-        return validateResourcePath(`${state.prefix}/${toForwardSlashes(relative(state.root, sourcePath))}`);
+    if (isPathInside(state.root, sourcePath) && !isDependencyFile(state.root, sourcePath)) {
+        return validateResourcePath(`${state.prefix}/${toPosixPath(relative(state.root, sourcePath))}`);
     }
 
     const owner = packageForFile(sourcePath);
 
-    if (owner === null || !isWithin(owner.dir, sourcePath)) {
+    if (owner === null || !isPathInside(owner.dir, sourcePath)) {
         throw new Error(`${sourcePath} is outside the application and does not belong to a named package`);
     }
 
-    const packagePath = toForwardSlashes(relative(owner.dir, sourcePath));
+    const packagePath = toPosixPath(relative(owner.dir, sourcePath));
 
     return validateResourcePath(`${state.prefix}/${owner.name}/${packagePath}`);
 };
@@ -287,7 +279,7 @@ const iconLayoutInParts = (parts: string[], beforeIndex: number): string | null 
 };
 
 const iconLayoutFromTree = (sourcePath: string): string | null => {
-    const parts = toForwardSlashes(sourcePath).split("/");
+    const parts = toPosixPath(sourcePath).split("/");
 
     return iconLayoutInParts(parts, parts.length - 2);
 };

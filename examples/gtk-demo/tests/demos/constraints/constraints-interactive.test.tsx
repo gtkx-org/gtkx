@@ -24,22 +24,6 @@ const isDividerLeftConstraint = (constraint: Gtk.Constraint): boolean => {
 const findDividerLeftConstant = (layout: Gtk.ConstraintLayout): number | null =>
     collectConstraints(layout).find((constraint) => isDividerLeftConstraint(constraint))?.getConstant() ?? null;
 
-describe("constraintsInteractiveDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(constraintsInteractiveDemo.id).toBe("constraints-interactive");
-        expect(constraintsInteractiveDemo.title).toBe("Constraints/Interactive Constraints");
-
-        expect(constraintsInteractiveDemo.description).toBe(
-            "This example shows how constraints can be updated during user interaction. The vertical edge " +
-            "between the buttons can be dragged with the mouse.",
-        );
-
-        expect(constraintsInteractiveDemo.sourceCode).toContain("const constraintsInteractiveDemo: Demo = {");
-        expect(constraintsInteractiveDemo.defaultWidth).toBe(260);
-        expect(constraintsInteractiveDemo.keywords).toEqual(["GtkConstraintLayout"]);
-    });
-});
-
 describe("constraintsInteractiveDemo content", () => {
     it("renders three button children with the expected labels", async () => {
         await renderDemo(constraintsInteractiveDemo);

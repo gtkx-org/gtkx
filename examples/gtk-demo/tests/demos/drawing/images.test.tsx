@@ -24,23 +24,6 @@ const findStatefulSvg = async (): Promise<Gtk.Svg> => {
 };
 
 describe("imagesDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(imagesDemo.id).toBe("images");
-        expect(imagesDemo.title).toBe("Images");
-
-        expect(imagesDemo.description).toBe(
-            "GtkImage and GtkPicture are used to display an image; the image can be in a number of formats.\n\n" +
-            "GtkImage is the widget used to display icons or images that should be sized and styled like an " +
-            "icon, while GtkPicture is used for images that should be displayed as-is.\n\n" +
-            "This demo code shows some of the more obscure cases, in the simple case a call to " +
-            "gtk_picture_new_for_file() or gtk_image_new_from_icon_name() is all you need.",
-        );
-
-        expect(imagesDemo.keywords).toEqual(["GdkPaintable", "GtkWidgetPaintable"]);
-        expect(imagesDemo.sourceCode).toContain("const imagesDemo: Demo = {");
-        expect(imagesDemo.component).toBeTypeOf("function");
-    });
-
     it("renders the section headings for every image panel", async () => {
         await renderDemo(imagesDemo);
 

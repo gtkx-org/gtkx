@@ -124,7 +124,7 @@ const expectDefaultContentSize = async (drawFunc: Gtk.DrawingAreaDrawFunc | unde
     expect(ref.current).toHaveObjectProperty("contentHeight", 0);
 };
 
-describe("render - Scale marks (1)", () => {
+describe("render - Scale marks", () => {
     it("creates Scale widget without marks", async () => {
         await render(<ScaleWithMarks />);
         expectDefaultRange();
@@ -147,9 +147,7 @@ describe("render - Scale marks (1)", () => {
 
         expectDefaultRange();
     });
-});
 
-describe("render - Scale marks (2)", () => {
     it("sets marks without labels", async () => {
         await render(
             <ScaleWithMarks
@@ -178,9 +176,7 @@ describe("render - Scale marks (2)", () => {
             ],
         );
     });
-});
 
-describe("render - Scale marks (3)", () => {
     it("removes marks when array changes", async () => {
         await expectMarksTransition(MIN_MID_MAX_MARKS, MIN_MAX_MARKS);
     });
@@ -190,7 +186,7 @@ describe("render - Scale marks (3)", () => {
     });
 });
 
-describe("render - adjustment element (1)", () => {
+describe("render - adjustment element", () => {
     it("supplies an Adjustment to the Scale widget", async () => {
         const ref = createRef<Gtk.Scale>();
         await render(<ScaleWithAdjustment config={{ value: 50, lower: 0, upper: 100 }} scaleRef={ref} />);
@@ -220,9 +216,7 @@ describe("render - adjustment element (1)", () => {
             5,
         );
     });
-});
 
-describe("render - adjustment element (2)", () => {
     it("sets page increment", async () => {
         await expectScaleAdjustment(
             { value: 50, lower: 0, upper: 100, pageIncrement: 20 },
@@ -248,9 +242,7 @@ describe("render - adjustment element (2)", () => {
         expect(adjustment).toHaveObjectProperty("pageIncrement", 0);
         expect(adjustment).toHaveObjectProperty("pageSize", 0);
     });
-});
 
-describe("render - adjustment element (3)", () => {
     it("keeps a stable adjustment but follows config value and bounds", async () => {
         const ref = createRef<Gtk.Scale>();
 
@@ -273,9 +265,7 @@ describe("render - adjustment element (3)", () => {
         adjustment?.setValue(80);
         expectSliderRange(80, 0, 200);
     });
-});
 
-describe("render - adjustment element (4)", () => {
     it("fires onValueChanged when the value changes", async () => {
         const ref = createRef<Gtk.Scale>();
         const onValueChanged = vi.fn();
@@ -321,7 +311,7 @@ describe("render - adjustment element (4)", () => {
     });
 });
 
-describe("render - LevelBar (1)", () => {
+describe("render - LevelBar", () => {
     it("creates LevelBar widget without offsets", async () => {
         const ref = createRef<Gtk.LevelBar>();
         await render(<GtkLevelBar ref={ref} />);
@@ -362,9 +352,7 @@ describe("render - LevelBar (1)", () => {
         await render(<App value={0.75} />);
         expect(ref.current?.getOffsetValue("threshold")[1]).toBe(0.75);
     });
-});
 
-describe("render - LevelBar (2) (1)", () => {
     it("updates offset name", async () => {
         const ref = createRef<Gtk.LevelBar>();
 
@@ -401,9 +389,7 @@ describe("render - LevelBar (2) (1)", () => {
         expect(ref.current?.getOffsetValue("always")[0]).toBe(true);
         expect(ref.current?.getOffsetValue("extra")[0]).toBe(false);
     });
-});
 
-describe("render - LevelBar (2) (2)", () => {
     it("flushes an in-place mutation of a reused offset object", async () => {
         const ref = createRef<Gtk.LevelBar>();
         const offset = { name: "threshold", value: 0.5 };
@@ -472,7 +458,7 @@ describe("render - Calendar > marks updates", () => {
     });
 });
 
-describe("render - ScrolledWindow (1)", () => {
+describe("render - ScrolledWindow", () => {
     it("sets AUTOMATIC scroll policy by default", async () => {
         const scrolledWindow = await renderContentWindow({});
         const [hPolicy, vPolicy] = scrolledWindow.getPolicy();
@@ -485,9 +471,7 @@ describe("render - ScrolledWindow (1)", () => {
         const [hPolicy] = scrolledWindow.getPolicy();
         expect(hPolicy).toBe(Gtk.PolicyType.NEVER);
     });
-});
 
-describe("render - ScrolledWindow (2)", () => {
     it("sets vertical scroll policy", async () => {
         const scrolledWindow = await renderContentWindow({ vscrollbarPolicy: Gtk.PolicyType.ALWAYS });
         const [, vPolicy] = scrolledWindow.getPolicy();
@@ -504,9 +488,7 @@ describe("render - ScrolledWindow (2)", () => {
         expect(hPolicy).toBe(Gtk.PolicyType.NEVER);
         expect(vPolicy).toBe(Gtk.PolicyType.ALWAYS);
     });
-});
 
-describe("render - ScrolledWindow (3)", () => {
     it("updates scroll policy when props change", async () => {
         const ref = createRef<Gtk.ScrolledWindow>();
 
@@ -537,9 +519,7 @@ describe("render - ScrolledWindow (3)", () => {
 
         expect(screen.getByText("Scrollable Content")).toBeRooted();
     });
-});
 
-describe("render - ScrolledWindow (4)", () => {
     it("works with Box as child", async () => {
         await render(
             <GtkScrolledWindow>
@@ -563,7 +543,7 @@ describe("render - ScrolledWindow (4)", () => {
     });
 });
 
-describe("render - DrawingArea (1)", () => {
+describe("render - DrawingArea", () => {
     it("creates DrawingArea without a draw function", async () => {
         await expectDefaultContentSize(undefined);
     });
@@ -578,9 +558,7 @@ describe("render - DrawingArea (1)", () => {
         expect(ref.current).toHaveObjectProperty("contentWidth", 200);
         expect(ref.current).toHaveObjectProperty("contentHeight", 100);
     });
-});
 
-describe("render - DrawingArea (2)", () => {
     it("updates content size when props change", async () => {
         const ref = createRef<Gtk.DrawingArea>();
 
@@ -621,9 +599,7 @@ describe("render - DrawingArea (2)", () => {
 
         expect(drawFunc1).not.toHaveBeenCalled();
     });
-});
 
-describe("render - DrawingArea (3)", () => {
     it("sets widget properties alongside drawFunc", async () => {
         const ref = createRef<Gtk.DrawingArea>();
 

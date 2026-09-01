@@ -216,7 +216,7 @@ describe("accessible props - states GTK collects as boolean or undefined", () =>
     });
 });
 
-describe("accessible props - GValue marshaling regression (1)", () => {
+describe("accessible props - GValue marshaling regression", () => {
     it("sets accessibleLabel (string) without crashing", async () => {
         const ref = createRef<Gtk.Button>();
         await render(<GtkButton ref={ref} accessibleLabel="Zoom in" />);
@@ -240,9 +240,7 @@ describe("accessible props - GValue marshaling regression (1)", () => {
         await render(<GtkEntry ref={ref} accessibleInvalid={Gtk.AccessibleInvalidState.TRUE} />);
         expect(Gtk.testAccessibleHasState(getAccessible(ref.current), Gtk.AccessibleState.INVALID)).toBe(true);
     });
-});
 
-describe("accessible props - GValue marshaling regression (2)", () => {
     it("sets accessibleLabelledBy (reference list) without crashing", async () => {
         const entryRef = createRef<Gtk.Entry>();
 
@@ -276,9 +274,7 @@ describe("accessible props - GValue marshaling regression (2)", () => {
         await rerender(<App label="Third" />);
         expect(hasAccessibleProperty(ref, Gtk.AccessibleProperty.LABEL)).toBe(true);
     });
-});
 
-describe("accessible props - GValue marshaling regression (3)", () => {
     it("combines multiple accessible props on the same widget", async () => {
         const ref = createRef<Gtk.Button>();
 

@@ -59,4 +59,4 @@ function SpringsListDemo() {
     );
 }
 
-export { presets, springsListDemo };
+export { springsListDemo };

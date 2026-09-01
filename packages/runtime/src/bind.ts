@@ -1,5 +1,4 @@
 import { call, type Descriptor, bind as nativeBind } from "@gtkx/native";
-import { getOrInsert } from "@gtkx/utils";
 
 /**
  * Precompiles a call to a C function, marshalling the values it is given through the argument
@@ -26,7 +25,7 @@ function bind(
 function createBindCache(): (key: string, ...args: Parameters<typeof bind>) => ReturnType<typeof bind> {
     const cache: Map<string, ReturnType<typeof bind>> = new Map();
 
-    return (key, ...args) => getOrInsert(cache, key, () => bind(...args));
+    return (key, ...args) => cache.getOrInsertComputed(key, () => bind(...args));
 }
 
 export { bind, createBindCache };

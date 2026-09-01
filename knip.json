@@ -41,12 +41,14 @@
                 "@gtkx/native"
             ]
         },
-        "website": {
-            "entry": [
-                ".vitepress/theme/**/*.{ts,vue}"
-            ]
+        "packages/codegen": {
+            "includeEntryExports": false
+        },
+        "packages/config": {
+            "includeEntryExports": false
         },
         "packages/react": {
+            "includeEntryExports": false,
             "entry": [
                 "src/env.d.ts!"
             ]

@@ -9,7 +9,7 @@
     "scripts": {
         "build": "nx run-many -t build",
         "codegen": "nx run-many -t codegen",
-        "coverage": "nx run-many -t coverage",
+        "coverage": "nx run-many -t coverage --parallel=1",
         "lint": "nx run-many -t lint lint:rust lint:knip",
         "postinstall": "tsc -b --force packages/vitest/tsconfig.lib.json",
         "release": "nx run-many -t release",

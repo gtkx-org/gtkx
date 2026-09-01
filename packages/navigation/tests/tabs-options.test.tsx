@@ -14,7 +14,7 @@ const CustomHeader = ({ viewSwitcher }: TabHeaderProps): ReactNode => (
     </GtkBox>
 );
 
-describe("tabs - options (1)", () => {
+describe("tabs - options", () => {
     it("uses tabBarLabel as the tab name", async () => {
         await render(<TabsApp options={{ Second: { tabBarLabel: "Labelled Tab" } }} />);
         await findTab("Labelled Tab");
@@ -40,9 +40,7 @@ describe("tabs - options (1)", () => {
         await screen.findByText("Second Content");
         expectSelectedTab("Second Tab");
     });
-});
 
-describe("tabs - options (2)", () => {
     it("renders a switcher bar at the bottom and the focused title in the header", async () => {
         const { baseElement } = await render(<TabsApp navigator={{ tabBarPosition: "bottom" }} />);
         await screen.findByText("First Content");
@@ -89,9 +87,7 @@ describe("tabs - options (2)", () => {
         await screen.findByText("Custom Header");
         expectSelectedTab("Second Tab");
     });
-});
 
-describe("tabs - options (3)", () => {
     it("mounts a lazy tab on first focus", async () => {
         const onMount = vi.fn();
         const renderSecond = (): ReactNode => <SpyPage text="Second Content" onMount={onMount} />;

@@ -85,7 +85,7 @@ const renderTwoButtons = () =>
         </VBox>,
     );
 
-describe("ByRole (1)", () => {
+describe("ByRole", () => {
     it("matches a role, and narrows it by name, level, description and busy state", async () => {
         const { container } = await render(
             <VBox>
@@ -136,9 +136,7 @@ describe("ByRole (1)", () => {
             true,
         );
     });
-});
 
-describe("ByRole (2)", () => {
     it("narrows sliders, progress bars and level bars by their live value", async () => {
         const { container } = await render(
             <VBox>
@@ -179,9 +177,7 @@ describe("ByRole (2)", () => {
         expect(await findByRole(container, Gtk.AccessibleRole.GROUP, { name: "A group" })).toBeEmptyWidget();
         expect(await findByRole(container, Gtk.AccessibleRole.LABEL, { name: "visible" })).toHaveTextContent("visible");
     });
-});
 
-describe("ByRole (3)", () => {
     it("skips accessibility-hidden widgets by default and never-mapped ones either way", async () => {
         const hidden = await queryButtonsBesideHidden(<GtkButton label="Hidden" accessibleHidden />);
         expect(hidden.defaultMatches).toHaveLength(1);

@@ -1,4 +1,5 @@
 import { sortStringsBy, warn } from "@gtkx/utils";
+import hostedGitInfo from "hosted-git-info";
 import { existsSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { RecordedPackage } from "../../internal/build-manifest.js";
@@ -17,10 +18,6 @@ type BundledPackage = {
 };
 
 const MANIFEST_FILENAME = "package.json";
-const GIT_PREFIX = /^git\+/;
-const GIT_SUFFIX = /\.git$/;
-const GIT_SCHEME = /^git:\/\//;
-const GITHUB_SLUG = /^(?:github:)?(?<slug>[\w.-]+\/[\w.-]+)$/;
 
 const realPath = (path: string): string => {
     try {
@@ -47,14 +44,9 @@ const sourceUrl = (manifest: PackageManifest): string | null => {
         return null;
     }
 
-    const url = configured.replace(GIT_PREFIX, "").replace(GIT_SUFFIX, "").replace(GIT_SCHEME, "https://");
-    const slug = GITHUB_SLUG.exec(url)?.groups?.slug;
+    const url = configured.replace(/^git\+/, "").replace(/\.git$/, "").replace(/^git:\/\//, "https://");
 
-    if (slug !== undefined) {
-        return `https://github.com/${slug}`;
-    }
-
-    return url.startsWith("http") ? url : null;
+    return hostedGitInfo.fromUrl(url)?.browse() ?? (url.startsWith("http") ? url : null);
 };
 
 const missingPackage = (entry: RecordedPackage): BundledPackage => ({

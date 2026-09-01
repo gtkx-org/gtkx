@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createCliProject, removeCliProject, runCli, runCliOrThrow } from "./cli-project.js";
+import { createCliProject, runCli, runCliOrThrow } from "./cli-project.js";
 import {
     APPLICATION_ID,
     BAD_MODE_BLOCK,
@@ -88,29 +88,25 @@ describe("gtkx deploy (manifests only)", () => {
 
 describe("gtkx deploy (application icon selection)", () => {
     it("packages an application-id icon in the project root by default", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-deploy-default-icon-",
             config: config(DEPLOY_BLOCK, null),
             files: { ...projectFiles(), [`${APPLICATION_ID}.svg`]: "<svg/>\n" },
             hasStore: true,
         });
 
-        try {
-            expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).toBe(0);
+        expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).toBe(0);
 
-            expect(outputNames(project)).toContain(
-                join(STAGE_PREFIX, "share", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`),
-            );
-        } finally {
-            removeCliProject(project);
-        }
+        expect(outputNames(project)).toContain(
+            join(STAGE_PREFIX, "share", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`),
+        );
     });
 
     it("preserves scaled and symbolic files in a configured hicolor theme", () => {
         const scaled = join("hicolor", "128x128@2", "apps", `${APPLICATION_ID}.png`);
         const symbolic = join("hicolor", "symbolic", "apps", `${APPLICATION_ID}-symbolic.svg`);
 
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-deploy-icon-variants-",
             config: config(DEPLOY_BLOCK, "data/variant-icons"),
             files: {
@@ -121,37 +117,29 @@ describe("gtkx deploy (application icon selection)", () => {
             hasStore: true,
         });
 
-        try {
-            expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).toBe(0);
+        expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).toBe(0);
 
-            expect(outputNames(project)).toEqual(expect.arrayContaining([
-                join(STAGE_PREFIX, "share", "icons", scaled),
-                join(STAGE_PREFIX, "share", "icons", symbolic),
-            ]));
-        } finally {
-            removeCliProject(project);
-        }
+        expect(outputNames(project)).toEqual(expect.arrayContaining([
+            join(STAGE_PREFIX, "share", "icons", scaled),
+            join(STAGE_PREFIX, "share", "icons", symbolic),
+        ]));
     });
 });
 
 describe("gtkx deploy (invalid application icon themes)", () => {
     it("fails when the project provides no application icon", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-deploy-missing-icon-",
             config: config(DEPLOY_BLOCK, null),
             files: projectFiles(),
             hasStore: true,
         });
 
-        try {
-            expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
-        } finally {
-            removeCliProject(project);
-        }
+        expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
     });
 
     it("fails when the application icon is outside a usable icon-theme layout", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-deploy-malformed-icon-theme-",
             config: config(DEPLOY_BLOCK, "data/malformed-icons"),
             files: {
@@ -161,11 +149,7 @@ describe("gtkx deploy (invalid application icon themes)", () => {
             hasStore: true,
         });
 
-        try {
-            expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
-        } finally {
-            removeCliProject(project);
-        }
+        expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
     });
 });
 
@@ -186,69 +170,53 @@ describe("gtkx deploy (minimum library versions the project sets itself)", () =>
 
 describe("gtkx deploy (flatpak defaults a config drops)", () => {
     it("drops the sockets it negates and the cleanup it empties, keeping every other default", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-deploy-sockets-",
             config: config(NO_DISPLAY_BLOCK),
             files: projectFiles(),
             hasStore: true,
         });
 
-        try {
-            expect(runCli(project, SOURCE_ARGS).status).toBe(0);
-            const manifest = flatpakManifest(project);
-            expect(manifest["finish-args"]).toEqual(MERGED_NEGATIONS);
-            expect(manifest.cleanup).toEqual([]);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, SOURCE_ARGS).status).toBe(0);
+        const manifest = flatpakManifest(project);
+        expect(manifest["finish-args"]).toEqual(MERGED_NEGATIONS);
+        expect(manifest.cleanup).toEqual([]);
     });
 });
 
 describe("gtkx deploy (projects it refuses to package)", () => {
     it("fails when the configuration declares nothing to deploy", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-deploy-bare-",
             config: config(""),
             files: projectFiles(),
             hasStore: true,
         });
 
-        try {
-            expect(runCli(project, ["deploy", "--print-manifests"]).status).not.toBe(0);
-            expect(existsSync(join(project.root, OUT_DIR))).toBe(false);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["deploy", "--print-manifests"]).status).not.toBe(0);
+        expect(existsSync(join(project.root, OUT_DIR))).toBe(false);
     });
 
     it("fails over an extra file mode that is not octal", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-deploy-mode-",
             config: config(BAD_MODE_BLOCK),
             files: projectFiles(),
             hasStore: true,
         });
 
-        try {
-            expect(runCli(project, ["deploy", "--print-manifests"]).status).not.toBe(0);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["deploy", "--print-manifests"]).status).not.toBe(0);
     });
 
     it("fails over a target it does not know", () => {
-        const project = createCliProject({
+        using project = createCliProject({
             prefix: "gtkx-cli-deploy-target-",
             config: config(DEPLOY_BLOCK),
             files: projectFiles(),
             hasStore: true,
         });
 
-        try {
-            expect(runCli(project, ["deploy", "--print-manifests", "--target", "snap"]).status).not.toBe(0);
-            expect(existsSync(join(project.root, OUT_DIR))).toBe(false);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["deploy", "--print-manifests", "--target", "snap"]).status).not.toBe(0);
+        expect(existsSync(join(project.root, OUT_DIR))).toBe(false);
     });
 });

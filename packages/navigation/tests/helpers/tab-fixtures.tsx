@@ -16,7 +16,6 @@ import {
     type TabNavigationState,
     type TabNavigatorProps,
     type TabScreenProps,
-    useRoute,
 } from "@gtkx/navigation";
 import { screen } from "@gtkx/testing";
 import { useEffect } from "react";
@@ -78,8 +77,6 @@ const TabPage = ({ route, navigation }: TabScreenProps<ParamListBase>): ReactNod
         />
     </GtkBox>
 );
-
-const RoutePage = (): ReactNode => <GtkLabel>{`${useRoute().name} Content`}</GtkLabel>;
 
 const SpyPage = ({ text, onMount }: SpyPageProps): ReactNode => {
     useEffect(() => {
@@ -210,10 +207,8 @@ export {
     focusedRouteName,
     lastState,
     NestedStackScreen,
-    RoutePage,
     SpyPage,
     type StateSpy,
     type TabPressSpy,
-    Tabs,
     TabsApp,
 };

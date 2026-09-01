@@ -399,12 +399,8 @@ describe("gtkx dev", () => {
 
 describe("gtkx dev (projects it refuses to start)", () => {
     it("fails when the project has no entry file", () => {
-        const project = createCliProject({ prefix: "gtkx-cli-dev-broken-", config: config(), hasStore: true });
+        using project = createCliProject({ prefix: "gtkx-cli-dev-broken-", config: config(), hasStore: true });
 
-        try {
-            expect(runCli(project, ["dev"]).status).not.toBe(0);
-        } finally {
-            removeCliProject(project);
-        }
+        expect(runCli(project, ["dev"]).status).not.toBe(0);
     });
 });

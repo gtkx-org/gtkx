@@ -1,6 +1,7 @@
 import type { Config } from "@gtkx/config";
+import { isPathInside } from "@gtkx/utils";
 import { statSync } from "node:fs";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import type { DeployConfig, DeployPaths } from "../types.js";
 import { resolveApplicationIcon } from "../../internal/icon-path.js";
 
@@ -16,17 +17,11 @@ const DEFAULT_OUT_DIR = "build";
 const DIST_DIR = "dist";
 const LICENSE_CANDIDATES = ["LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING", "COPYING.md"];
 
-const isInside = (parent: string, candidate: string): boolean => {
-    const rel = relative(parent, candidate);
-
-    return rel.length > 0 && !rel.startsWith("..") && !isAbsolute(rel);
-};
-
 const resolveOutDir = ({ root, deploy, outDirOverride }: PathsRequest): string => {
     const configured = outDirOverride ?? deploy.outDir ?? DEFAULT_OUT_DIR;
     const outDir = resolve(root, configured);
 
-    if (!isInside(root, outDir)) {
+    if (!isPathInside(root, outDir)) {
         throw new Error(`Cannot use "${configured}" as the deploy output directory: it is outside ${root}`);
     }
 
@@ -70,4 +65,4 @@ const resolvePaths = (request: PathsRequest): DeployPaths => {
     };
 };
 
-export { isInside, resolvePaths };
+export { resolvePaths };

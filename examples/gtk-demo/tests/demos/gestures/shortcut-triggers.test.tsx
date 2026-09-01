@@ -17,18 +17,6 @@ const expectShortcutLog = async (labelName: string, keys: string, message: strin
     }
 };
 
-describe("shortcutTriggersDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(shortcutTriggersDemo.id).toBe("shortcut-triggers");
-        expect(shortcutTriggersDemo.title).toBe("Shortcuts");
-        expect(shortcutTriggersDemo.description).toContain("GtkShortcut is the abstraction used by GTK");
-        expect(shortcutTriggersDemo.keywords).toEqual(["GtkShortcutController"]);
-        expect(shortcutTriggersDemo.sourceCode).toContain("const shortcutTriggersDemo: Demo = {");
-        expect(shortcutTriggersDemo.component).toBeTypeOf("function");
-        expect(shortcutTriggersDemo.defaultWidth).toBe(200);
-    });
-});
-
 describe("shortcutTriggersDemo rendering", () => {
     it("renders the two instruction labels in the listbox", async () => {
         await renderDemo(shortcutTriggersDemo);

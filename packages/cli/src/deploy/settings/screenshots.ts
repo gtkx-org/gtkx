@@ -1,3 +1,4 @@
+import hostedGitInfo from "hosted-git-info";
 import type { DeployConfig, DeployScreenshot } from "../types.js";
 import { gitRemoteUrl, runGit } from "../git.js";
 
@@ -6,22 +7,8 @@ type ScreenshotRequest = {
     deploy: DeployConfig;
 };
 
-type RemoteParts = {
-    host: string;
-    owner: string;
-    repo: string;
-};
-
 const DEFAULT_BRANCH = "main";
-const GIT_SUFFIX = ".git";
-const PORTED_HOST = /^([^/]*):\d+(?=\/|$)/;
-const SCHEME_SEPARATOR = "://";
 const TRAILING_SLASH = "/";
-
-const RAW_BASE_BY_HOST: Record<string, (owner: string, repo: string, branch: string) => string> = {
-    "github.com": (owner, repo, branch) => `https://raw.githubusercontent.com/${owner}/${repo}/${branch}`,
-    "gitlab.com": (owner, repo, branch) => `https://gitlab.com/${owner}/${repo}/-/raw/${branch}`,
-};
 
 const readRepositoryPrefix = (root: string): string =>
     trimTrailingSlash(runGit(root, ["rev-parse", "--show-prefix"]) ?? "");
@@ -33,29 +20,6 @@ const trimLeadingSlash = (value: string): string => {
     const withoutDot = value.startsWith("./") ? value.slice(2) : value;
 
     return withoutDot.startsWith(TRAILING_SLASH) ? withoutDot.slice(1) : withoutDot;
-};
-
-const afterMarker = (value: string, marker: string): string => {
-    const index = value.indexOf(marker);
-
-    return index === -1 ? value : value.slice(index + marker.length);
-};
-
-const normalizeLocation = (trimmed: string): string => {
-    const location = afterMarker(afterMarker(trimmed, SCHEME_SEPARATOR), "@");
-
-    return trimmed.includes(SCHEME_SEPARATOR) ? location.replace(PORTED_HOST, "$1") : location.replace(":", "/");
-};
-
-const parseRemote = (remote: string): RemoteParts | null => {
-    const trimmed = remote.endsWith(GIT_SUFFIX) ? remote.slice(0, -GIT_SUFFIX.length) : remote;
-    const [host, owner, repo, ...extra] = normalizeLocation(trimmed).split("/");
-
-    if (repo === undefined || extra.length > 0) {
-        return null;
-    }
-
-    return { host: host ?? "", owner: owner ?? "", repo };
 };
 
 const readDefaultBranch = (root: string): string => {
@@ -70,16 +34,16 @@ const readDefaultBranch = (root: string): string => {
     return separator === -1 ? head : head.slice(separator + 1);
 };
 
-const baseForRemote = (remote: string, branch: string): string | null => {
-    const parts = parseRemote(remote);
+const baseForRemote = (root: string, remote: string): string | null => {
+    const repository = hostedGitInfo.fromUrl(remote);
 
-    if (parts === null) {
+    if (repository === undefined || (repository.type !== "github" && repository.type !== "gitlab")) {
         return null;
     }
 
-    const build = RAW_BASE_BY_HOST[parts.host];
-
-    return build === undefined ? null : build(parts.owner, parts.repo, branch);
+    return trimTrailingSlash(
+        repository.file(readRepositoryPrefix(root), { committish: readDefaultBranch(root) }),
+    );
 };
 
 const resolveScreenshotBaseUrl = ({ root, deploy }: ScreenshotRequest): string | null => {
@@ -88,10 +52,8 @@ const resolveScreenshotBaseUrl = ({ root, deploy }: ScreenshotRequest): string |
     }
 
     const remote = gitRemoteUrl(root);
-    const base = remote === null ? null : baseForRemote(remote, readDefaultBranch(root));
-    const prefix = base === null ? "" : readRepositoryPrefix(root);
 
-    return base === null || prefix.length === 0 ? base : `${base}/${prefix}`;
+    return remote === null ? null : baseForRemote(root, remote);
 };
 
 const urlForScreenshot = (file: string, baseUrl: string | null): string => {

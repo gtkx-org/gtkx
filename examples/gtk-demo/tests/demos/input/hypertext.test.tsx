@@ -70,19 +70,6 @@ vi.mock("node:child_process", async (importOriginal) => {
     return { ...actual, spawn: spawnMock };
 });
 
-describe("hypertextDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(hypertextDemo.id).toBe("hypertext");
-        expect(hypertextDemo.title).toBe("Text View/Hypertext");
-        expect(hypertextDemo.description).toContain("tags modify the appearance of text in the view");
-        expect(hypertextDemo.keywords).toEqual(["GtkTextView", "GtkTextBuffer"]);
-        expect(hypertextDemo.sourceCode).toContain("const hypertextDemo: Demo = {");
-        expect(hypertextDemo.defaultWidth).toBe(330);
-        expect(hypertextDemo.defaultHeight).toBe(330);
-        expect(hypertextDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("hypertextDemo rendering", () => {
     it("renders page 1 with the hypertext and tags introduction", async () => {
         const textView = await renderTextView();

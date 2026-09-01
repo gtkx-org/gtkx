@@ -14,7 +14,7 @@ import {
 const getEvents = (onEvent: ReturnType<typeof createEventSpy>): StackEvent[] =>
     onEvent.mock.calls.map(([event]) => event);
 
-describe("stack - events (1)", () => {
+describe("stack - events", () => {
     it("emits transition events to the outgoing page and ends the incoming one", async () => {
         const onEvent = createEventSpy();
         await renderStack({ isAnimated: true, spies: { onEvent } });
@@ -63,9 +63,7 @@ describe("stack - events (1)", () => {
 
         expect(getEvents(onEvent)).toContainEqual({ type: "transitionEnd", route: "Details", isClosing: true });
     });
-});
 
-describe("stack - events (2)", () => {
     it("emits focus and blur on push and pop", async () => {
         const onEvent = createEventSpy();
         await renderStack({ spies: { onEvent } });
@@ -107,9 +105,7 @@ describe("stack - events (2)", () => {
         expect(onPrevent).toHaveBeenCalledTimes(1);
         expect(onPrevent.mock.calls[0]?.[0].action.type).toBe("POP");
     });
-});
 
-describe("stack - events (3)", () => {
     it("keeps the page visible when usePreventRemove prevents Escape", async () => {
         const onPrevent = createPreventSpy();
         await renderStack({ spies: { onPrevent } });
@@ -139,9 +135,7 @@ describe("stack - events (3)", () => {
         expectHidden("Compose Content");
         expect(onPrevent).toHaveBeenCalledTimes(1);
     });
-});
 
-describe("stack - events (4)", () => {
     it("pops without animating when animation is none", async () => {
         await renderStack({ isAnimated: true, details: { animation: "none" } });
         await clickButton("Go to details");

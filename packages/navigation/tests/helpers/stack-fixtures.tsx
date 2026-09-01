@@ -20,7 +20,6 @@ import {
     NavigationContainer,
     useNavigationContainerRef,
     usePreventRemove,
-    useRoute,
 } from "@gtkx/navigation";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createContext, useContext, useEffect, useState } from "react";
@@ -249,12 +248,6 @@ const CustomHeader = ({ route, options, back, navigation }: StackHeaderProps): R
     </GtkBox>
 );
 
-const Orphan = (): ReactNode => {
-    const route = useRoute();
-
-    return <GtkLabel>{route.name}</GtkLabel>;
-};
-
 const buildStack = (options: StackOptions = {}): ReactNode => (
     <SpyContext value={options.spies ?? {}}>
         <NavigationContainer {...options.container}>
@@ -393,7 +386,6 @@ export {
     getPreloadedKeys,
     getRouteKeys,
     getRouteNames,
-    Orphan,
     popToPage,
     pressKeys,
     queryBackButton,

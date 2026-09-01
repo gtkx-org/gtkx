@@ -121,7 +121,7 @@ describe("text and value matchers", () => {
     });
 });
 
-describe("state matchers (1)", () => {
+describe("state matchers", () => {
     it("read sensitivity, visibility and rooting", async () => {
         await render(
             <GtkBox opacity={0}>
@@ -166,9 +166,7 @@ describe("state matchers (1)", () => {
         expect(outer).toContainElement(inside);
         expect(inside).toContainElement(inside);
     });
-});
 
-describe("state matchers (2)", () => {
     it("read focus, and fail once the window holding it loses activation", async () => {
         const entry = await renderEntry("focused");
         entry.grabFocus();
@@ -214,9 +212,7 @@ describe("state matchers (2)", () => {
         expect(await toggles.findByRole(Gtk.AccessibleRole.RADIO, { name: "List" })).toBeChecked();
         expect(await toggles.findByRole(Gtk.AccessibleRole.RADIO, { name: "Grid" })).not.toBeChecked();
     });
-});
 
-describe("state matchers (3)", () => {
     it("throw for a widget that exposes no such state", async () => {
         const label = await renderLabel("plain");
 
@@ -280,7 +276,7 @@ describe("toHaveObjectProperty", () => {
     });
 });
 
-describe("accessible state and property matchers (1)", () => {
+describe("accessible state and property matchers", () => {
     it("read plain, optional and tristate states", async () => {
         await render(<GtkBox name="loading" accessibleBusy={true} />);
         const box = await screen.findByName("loading");
@@ -326,9 +322,7 @@ describe("accessible state and property matchers (1)", () => {
         expect(label).not.toHaveAccessibleState(Gtk.AccessibleState.EXPANDED);
         expect(label).not.toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, false);
     });
-});
 
-describe("accessible state and property matchers (2)", () => {
     it("read string, boolean, numeric and token properties", async () => {
         await render(
             <GtkBox

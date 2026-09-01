@@ -1,4 +1,4 @@
-import { getOrInsert, warn } from "@gtkx/utils";
+import { warn } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -100,7 +100,7 @@ const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
     const resolved: Map<string, Promise<ResolvedConfig>> = new Map();
 
     const load = (cwd: string): Promise<LoadedConfig> =>
-        getOrInsert(loaded, resolve(cwd), (root) => loadConfig(root, options));
+        loaded.getOrInsertComputed(resolve(cwd), (root) => loadConfig(root, options));
 
     const resolveAt = async (root: string): Promise<ResolvedConfig> => {
         const { config, root: configRoot } = await load(root);
@@ -110,7 +110,7 @@ const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
 
     return {
         load,
-        resolve: (cwd: string): Promise<ResolvedConfig> => getOrInsert(resolved, resolve(cwd), resolveAt),
+        resolve: (cwd: string): Promise<ResolvedConfig> => resolved.getOrInsertComputed(resolve(cwd), resolveAt),
     };
 };
 

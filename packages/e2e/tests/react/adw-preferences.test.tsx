@@ -159,7 +159,7 @@ describe("render - PreferencesPage", () => {
     });
 });
 
-describe("render - SpinRow (1)", () => {
+describe("render - SpinRow", () => {
     it("creates a SpinRow with a value", async () => {
         const adjustment = Gtk.Adjustment.new(5, 0, 100, 1, 10, 0);
 
@@ -198,9 +198,7 @@ describe("render - SpinRow (1)", () => {
         const lastCall = onValueChanged.mock.calls.at(-1);
         expect(lastCall?.[0]).toBe(7);
     });
-});
 
-describe("render - SpinRow (2)", () => {
     it("removes the listener when onValueChanged is set to null", async () => {
         await expectListenerClearedWhenHandlerNull<Adw.SpinRow>({
             renderRow: (ref, handler) => (
@@ -219,7 +217,7 @@ describe("render - SpinRow (2)", () => {
     });
 });
 
-describe("render - SwitchRow (1)", () => {
+describe("render - SwitchRow", () => {
     it("creates a SwitchRow", async () => {
         await render(
             <AdwPreferencesGroup>
@@ -259,9 +257,7 @@ describe("render - SwitchRow (1)", () => {
         const lastCall = onActiveChanged.mock.calls.at(-1);
         expect(lastCall?.[0]).toBe(true);
     });
-});
 
-describe("render - SwitchRow (2)", () => {
     it("clears the listener when onActiveChanged becomes null", async () => {
         await expectListenerClearedWhenHandlerNull<Adw.SwitchRow>({
             renderRow: (ref, handler) => (
@@ -290,8 +286,8 @@ describe("userEvent selection - AdwComboRow", () => {
     });
 });
 
-describe("render - ToggleGroup (1)", () => {
-    describe("AdwToggleGroup (1)", () => {
+describe("render - ToggleGroup", () => {
+    describe("AdwToggleGroup", () => {
         it("creates ToggleGroup widget without toggles", async () => {
             const ref = createRef<Adw.ToggleGroup>();
             await render(<AdwToggleGroup ref={ref} />);
@@ -328,11 +324,7 @@ describe("render - ToggleGroup (1)", () => {
             await renderActiveNameGroup(ref);
             expect(ref.current).toHaveObjectProperty("activeName", "done");
         });
-    });
-});
 
-describe("render - ToggleGroup (2)", () => {
-    describe("AdwToggleGroup (2)", () => {
         it("updates toggle props", async () => {
             const ref = createRef<Adw.ToggleGroup>();
             const { rerender } = await renderChildren([{ id: "test", label: "Initial" }], buildToggleGroup(ref));
@@ -368,11 +360,7 @@ describe("render - ToggleGroup (2)", () => {
             expect(screen.getByRole(Gtk.AccessibleRole.RADIO, { name: "Always" })).toBeRooted();
             expect(screen.queryByRole(Gtk.AccessibleRole.RADIO, { name: "Extra" })).toBeNull();
         });
-    });
-});
 
-describe("render - ToggleGroup (3)", () => {
-    describe("AdwToggleGroup (3)", () => {
         it("handles inserting toggles dynamically", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
@@ -401,10 +389,8 @@ describe("render - ToggleGroup (3)", () => {
             expect(middle).toAppearBefore(screen.getByRole(Gtk.AccessibleRole.RADIO, { name: "Last" }));
         });
     });
-});
 
-describe("render - ToggleGroup (4)", () => {
-    describe("user interactions (1)", () => {
+    describe("user interactions", () => {
         it("clicks toggle to activate it", async () => {
             await render(<AdwToggleGroup>{LIST_GRID_TOGGLES}</AdwToggleGroup>);
             await expectToggleActiveAfterClick("List");
@@ -415,9 +401,7 @@ describe("render - ToggleGroup (4)", () => {
             await expectToggleActiveAfterClick("Grid");
         });
     });
-});
 
-describe("render - ToggleGroup (6)", () => {
     describe("uncontrolled selection", () => {
         it("preserves the clicked selection across an unrelated re-render", async () => {
             const { rerender } = await render(<AdwToggleGroup>{LIST_GRID_TOGGLES}</AdwToggleGroup>);
@@ -425,11 +409,7 @@ describe("render - ToggleGroup (6)", () => {
             await rerender(<AdwToggleGroup cssClasses={["flat"]}>{LIST_GRID_TOGGLES}</AdwToggleGroup>);
             expect(await screen.findByRole(Gtk.AccessibleRole.RADIO, { name: "Grid" })).toBePressed();
         });
-    });
-});
 
-describe("render - ToggleGroup (5)", () => {
-    describe("user interactions (2)", () => {
         it("finds all toggles by role in a toggle group", async () => {
             await render(THREE_VIEW_GROUP);
             const toggles = await screen.findAllByRole(Gtk.AccessibleRole.RADIO);

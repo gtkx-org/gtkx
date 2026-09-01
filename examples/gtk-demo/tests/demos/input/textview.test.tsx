@@ -115,19 +115,6 @@ const openEasterEggFromClonedButton = async (): Promise<{
     return { result, beforeWindows, newWindow };
 };
 
-describe("textviewDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(textviewDemo.id).toBe("textview");
-        expect(textviewDemo.title).toBe("Text View/Multiple Views");
-        expect(textviewDemo.description).toContain("The GtkTextView widget displays a GtkTextBuffer.");
-        expect(textviewDemo.keywords).toEqual([]);
-        expect(textviewDemo.sourceCode).toContain("const textviewDemo: Demo = {");
-        expect(textviewDemo.defaultWidth).toBe(450);
-        expect(textviewDemo.defaultHeight).toBe(450);
-        expect(textviewDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("textviewDemo rendering", () => {
     it("renders two text views sharing a single buffer", async () => {
         await renderDemo(textviewDemo);

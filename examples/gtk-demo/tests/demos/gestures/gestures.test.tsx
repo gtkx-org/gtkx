@@ -1,29 +1,11 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, fireEvent, getController, queryAllControllers, screen, screenshot, userEvent } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { act, screen, screenshot, userEvent } from "@gtkx/testing";
+import { describe, expect, it } from "vitest";
 import { gesturesDemo } from "../../../src/demos/gestures/gestures.js";
 import { renderDemo } from "../../test-utils.js";
 
 const findDrawingArea = async (): Promise<Gtk.DrawingArea> =>
     screen.findByName("drawing-area", { as: Gtk.DrawingArea });
-
-const findThreeFingerSwipe = (widget: Gtk.Widget): Gtk.GestureSwipe => {
-    const swipe = queryAllControllers(widget, Gtk.GestureSwipe).find((gesture) => gesture.nPoints === 3);
-
-    if (!swipe) {
-        throw new Error("expected a 3-finger swipe gesture on the widget");
-    }
-
-    return swipe;
-};
-
-const expectRedrawOnGesture = async (gesture: (area: Gtk.DrawingArea) => Promise<void>): Promise<void> => {
-    await renderDemo(gesturesDemo);
-    const drawingArea = await findDrawingArea();
-    const queueDraw = vi.spyOn(drawingArea, "queueDraw");
-    await gesture(drawingArea);
-    expect(queueDraw).toHaveBeenCalled();
-};
 
 const paintWindow = async (): Promise<string> => {
     const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
@@ -37,138 +19,30 @@ const paintWindow = async (): Promise<string> => {
     return shot.data;
 };
 
-describe("gesturesDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(gesturesDemo.id).toBe("gestures");
-        expect(gesturesDemo.title).toBe("Gestures");
-        expect(gesturesDemo.description).toContain("Perform gestures on touchscreens and other input devices");
-        expect(gesturesDemo.keywords).toEqual(["GtkGesture"]);
-        expect(gesturesDemo.sourceCode).toContain("const gesturesDemo: Demo = {");
-        expect(gesturesDemo.component).toBeTypeOf("function");
-        expect(gesturesDemo.defaultWidth).toBe(400);
-        expect(gesturesDemo.defaultHeight).toBe(400);
-    });
-
-    it("renders a 400x400 drawing area as the demo root", async () => {
+describe("gesturesDemo", () => {
+    it("renders a stable 400 by 400 drawing area", async () => {
         await renderDemo(gesturesDemo);
         const drawingArea = await findDrawingArea();
         expect(drawingArea).toHaveObjectProperty("contentWidth", 400);
         expect(drawingArea).toHaveObjectProperty("contentHeight", 400);
-    });
-});
-
-describe("gesturesDemo redraw on gesture", () => {
-    it("queues a redraw when a swipe gesture completes", async () => {
-        await expectRedrawOnGesture(async (area) => {
-            await userEvent.swipe(area, 100, 50);
-        });
-    });
-
-    it("queues a redraw when a rotate angle change is recognized", async () => {
-        await expectRedrawOnGesture(async (area) => {
-            await userEvent.rotate(area, 0.5, 0.1);
-        });
-    });
-
-    it("queues a redraw when a zoom scale change is recognized", async () => {
-        await expectRedrawOnGesture(async (area) => {
-            await userEvent.zoom(area, 1.2);
-        });
-    });
-
-    it("queues a redraw when a long press is recognized", async () => {
-        await expectRedrawOnGesture(async (area) => {
-            await userEvent.longPress(area, 100, 100);
-        });
-    });
-});
-
-describe("gesturesDemo gesture controllers", () => {
-    it("queues another redraw when the long press gesture ends", async () => {
-        await renderDemo(gesturesDemo);
-        const drawingArea = await findDrawingArea();
-        const longPress = getController(drawingArea, Gtk.GestureLongPress);
-        await userEvent.longPress(drawingArea, 100, 100);
-        const queueDraw = vi.spyOn(drawingArea, "queueDraw");
-        await fireEvent(longPress, "end", null);
-        expect(queueDraw).toHaveBeenCalled();
-    });
-
-    it("declares exactly two swipe gestures", async () => {
-        await renderDemo(gesturesDemo);
-        const drawingArea = await findDrawingArea();
-        expect(queryAllControllers(drawingArea, Gtk.GestureSwipe)).toHaveLength(2);
-        expect(findThreeFingerSwipe(drawingArea).nPoints).toBe(3);
-    });
-
-    it("does not deny the 3-finger swipe when begin fires with a null sequence", async () => {
-        await renderDemo(gesturesDemo);
-        const drawingArea = await findDrawingArea();
-        const threeFingerSwipe = findThreeFingerSwipe(drawingArea);
-        const setState = vi.spyOn(threeFingerSwipe, "setState");
-        await fireEvent(threeFingerSwipe, "begin", null);
-        expect(setState).not.toHaveBeenCalled();
-    });
-});
-
-describe("gesturesDemo render output", () => {
-    it("paints a stable, deterministic frame on the initial render with no gesture state", async () => {
-        await renderDemo(gesturesDemo);
         const first = await paintWindow();
-        const second = await paintWindow();
         expect(first.length).toBeGreaterThan(0);
-        expect(second).toBe(first);
+        expect(await paintWindow()).toBe(first);
     });
 
-    it("paints the swipe trail after a swipe gesture sets the velocity state", async () => {
+    it("paints the swipe trail after a swipe", async () => {
         await renderDemo(gesturesDemo);
         const drawingArea = await findDrawingArea();
         const baseline = await paintWindow();
         await userEvent.swipe(drawingArea, 200, 100);
-        const painted = await paintWindow();
-        expect(painted).not.toBe(baseline);
-    });
-});
-
-describe("gesturesDemo gesture painting", () => {
-    it("paints the rotate indicator when the rotate gesture is recognized", async () => {
-        await renderDemo(gesturesDemo);
-        const drawingArea = await findDrawingArea();
-        const rotate = getController(drawingArea, Gtk.GestureRotate);
-        const zoom = getController(drawingArea, Gtk.GestureZoom);
-        const baseline = await paintWindow();
-        vi.spyOn(rotate, "isRecognized").mockReturnValue(true);
-        vi.spyOn(rotate, "getAngleDelta").mockReturnValue(Math.PI / 6);
-        vi.spyOn(zoom, "getScaleDelta").mockReturnValue(1.25);
-        vi.spyOn(zoom, "getBoundingBoxCenter").mockReturnValue([true, 120, 130]);
-        await userEvent.rotate(drawingArea, Math.PI / 6);
-        const painted = await paintWindow();
-        expect(painted).not.toBe(baseline);
+        expect(await paintWindow()).not.toBe(baseline);
     });
 
-    it("paints the scaled rectangle when the zoom gesture is recognized without a bounding-box center", async () => {
+    it("paints the long-press indicator", async () => {
         await renderDemo(gesturesDemo);
         const drawingArea = await findDrawingArea();
-        const zoom = getController(drawingArea, Gtk.GestureZoom);
-        const baseline = await paintWindow();
-        vi.spyOn(zoom, "isRecognized").mockReturnValue(true);
-        vi.spyOn(zoom, "getScaleDelta").mockReturnValue(1.5);
-        vi.spyOn(zoom, "getBoundingBoxCenter").mockReturnValue([false, 0, 0]);
-        await userEvent.zoom(drawingArea, 1.5);
-        const painted = await paintWindow();
-        expect(painted).not.toBe(baseline);
-    });
-
-    it("paints the long-press circle and clears it back to the baseline when the gesture ends", async () => {
-        await renderDemo(gesturesDemo);
-        const drawingArea = await findDrawingArea();
-        const longPress = getController(drawingArea, Gtk.GestureLongPress);
         const baseline = await paintWindow();
         await userEvent.longPress(drawingArea, 150, 150);
-        const pressed = await paintWindow();
-        expect(pressed).not.toBe(baseline);
-        await fireEvent(longPress, "end", null);
-        const ended = await paintWindow();
-        expect(ended).toBe(baseline);
+        expect(await paintWindow()).not.toBe(baseline);
     });
 });

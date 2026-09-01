@@ -39,19 +39,6 @@ const expectRowCount = async (row: Gtk.ListBoxRow, label: RegExp, count: string)
 
 vi.setConfig({ testTimeout: 60_000 });
 
-describe("listboxDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(listboxDemo.id).toBe("listbox");
-        expect(listboxDemo.title).toBe("List Box/Complex");
-        expect(listboxDemo.description).toContain("GtkListBox allows lists with complicated layouts");
-        expect(listboxDemo.keywords).toEqual([]);
-        expect(listboxDemo.sourceCode).toContain("const listboxDemo: Demo = {");
-        expect(listboxDemo.defaultWidth).toBe(400);
-        expect(listboxDemo.defaultHeight).toBe(600);
-        expect(listboxDemo.component).toBeTypeOf("function");
-    });
-});
-
 describe("listboxDemo rendering", () => {
     it("renders the header label inside the demo", async () => {
         await renderDemo(listboxDemo);

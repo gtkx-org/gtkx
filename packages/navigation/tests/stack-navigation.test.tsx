@@ -18,7 +18,7 @@ import {
     type RootParams,
 } from "./helpers/stack-fixtures.js";
 
-describe("stack - navigation (1)", () => {
+describe("stack - navigation", () => {
     it("pushes a page on navigate and hides the previous one", async () => {
         const onStateChange = createStateSpy();
         await renderStack({ container: { onStateChange } });
@@ -53,9 +53,7 @@ describe("stack - navigation (1)", () => {
         await screen.findByText("Home Content");
         expectHidden("Details 1");
     });
-});
 
-describe("stack - navigation (2)", () => {
     it("pushes twice then pops to top", async () => {
         const onStateChange = createStateSpy();
         await renderStack({ container: { onStateChange } });
@@ -98,9 +96,7 @@ describe("stack - navigation (2)", () => {
         await clickButton("Back");
         await screen.findByText("Home Content");
     });
-});
 
-describe("stack - navigation (3)", () => {
     it("renders the last route of initialState visible", async () => {
         const initialState = { index: 1, routes: [{ name: "Home" }, { name: "Details", params: { id: "3" } }] };
         await renderStack({ container: { initialState } });
@@ -121,9 +117,7 @@ describe("stack - navigation (3)", () => {
         expect(queryBackButton()).toBeNull();
         expectRouteNames(onStateChange, ["Settings"]);
     });
-});
 
-describe("stack - navigation (4)", () => {
     it("reports every stack state to onStateChange", async () => {
         const onStateChange = createStateSpy();
         await renderStack({ container: { onStateChange } });
@@ -167,7 +161,7 @@ describe("stack - navigation (4)", () => {
     });
 });
 
-describe("stack - edge cases (1)", () => {
+describe("stack - edge cases", () => {
     it("pushes the same route twice and pops one page at a time", async () => {
         await renderStack();
         await clickButton("Push details");
@@ -203,9 +197,7 @@ describe("stack - edge cases (1)", () => {
         await clickButton("Back");
         await screen.findByText("Home Content");
     });
-});
 
-describe("stack - edge cases (2)", () => {
     it("pushes two pages on a rapid double click with push", async () => {
         const onStateChange = createStateSpy();
         await renderStack({ container: { onStateChange } });

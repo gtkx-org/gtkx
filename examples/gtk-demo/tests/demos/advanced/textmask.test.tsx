@@ -27,20 +27,6 @@ const captureDrawFunc = async (): Promise<{ drawingArea: Gtk.DrawingArea; drawFu
 };
 
 describe("textmaskDemo metadata", () => {
-    it("exposes the expected metadata", () => {
-        expect(textmaskDemo.id).toBe("textmask");
-        expect(textmaskDemo.title).toBe("Pango/Text Mask");
-
-        expect(textmaskDemo.description).toBe(
-            "This demo shows how to use PangoCairo to draw text with more than just a single color.",
-        );
-
-        expect(textmaskDemo.sourceCode).toContain("const textmaskDemo: Demo = {");
-        expect(textmaskDemo.defaultWidth).toBe(400);
-        expect(textmaskDemo.defaultHeight).toBe(240);
-        expect(textmaskDemo.keywords).toEqual([]);
-    });
-
     it("provides source code that references PangoCairo and a linear gradient", () => {
         const source = textmaskDemo.sourceCode ?? "";
         expect(source).toContain("PangoCairo");

@@ -1,7 +1,6 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { type AnyClass, getClassType, typeName } from "@gtkx/runtime";
-import { getOrInsert } from "@gtkx/utils";
 import { createContext } from "react";
 import ReactReconciler from "react-reconciler";
 import { DefaultEventPriority, DiscreteEventPriority, NoEventPriority } from "react-reconciler/constants.js";
@@ -52,7 +51,7 @@ type PriorityTracker = {
 
 const RENDERER_VERSION = packageManifest.version;
 const HOST_CONTEXT: Record<string, never> = {};
-const containerNodes: WeakMap<object, ElementNode> = new WeakMap();
+const containerNodes: WeakMap<GObject.Object, ElementNode> = new WeakMap();
 const priority = createPriorityTracker();
 
 const hostConfig = {
@@ -254,7 +253,7 @@ const adoptContainer = (container: GObject.Object): ElementNode => {
 };
 
 const getOrCreateContainerNode = (container: GObject.Object): ElementNode =>
-    getOrInsert(containerNodes, container, adoptContainer);
+    containerNodes.getOrInsertComputed(container, adoptContainer);
 
 const createNode = (type: string, props: Props): Instance => {
     if (type === Prop) {

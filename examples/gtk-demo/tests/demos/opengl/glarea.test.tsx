@@ -5,15 +5,6 @@ import { glareaDemo } from "../../../src/demos/opengl/glarea.js";
 import { renderDemo } from "../../test-utils.js";
 
 describe("glareaDemo", () => {
-    it("exposes the expected metadata", () => {
-        expect(glareaDemo.id).toBe("glarea");
-        expect(glareaDemo.title).toBe("OpenGL/OpenGL Area");
-        expect(glareaDemo.description).toBe("GtkGLArea is a widget that allows custom drawing using OpenGL calls.");
-        expect(glareaDemo.keywords).toEqual([]);
-        expect(glareaDemo.sourceCode).toContain("const glareaDemo: Demo = {");
-        expect(glareaDemo.component).toBeTypeOf("function");
-    });
-
     it("renders a GtkGLArea with the configured size hints", async () => {
         await renderDemo(glareaDemo);
         const glArea = await screen.findByName("gl-area", { as: Gtk.GLArea });

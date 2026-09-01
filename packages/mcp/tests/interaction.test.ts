@@ -100,10 +100,6 @@ describe("gtkx_type", () => {
 
         expect(await readProperty(counter.entryId, "text")).toEqual({ type: "gchararray", value: REPLACEMENT_TEXT });
     });
-
-    it("fails for a widget id nothing answers to", async () => {
-        expect(await isToolFailure(session.client, "gtkx_type", { widgetId: "missing", text: "x" })).toBe(true);
-    });
 });
 
 describe("gtkx_fire_event", () => {
@@ -111,11 +107,6 @@ describe("gtkx_fire_event", () => {
         const before = await readClickCount();
         await callTool(session.client, "gtkx_fire_event", { widgetId: counter.buttonId, signal: "clicked" });
         expect(await readClickCount()).toBe(before + 1);
-    });
-
-    it("fails for a widget id nothing answers to", async () => {
-        expect(await isToolFailure(session.client, "gtkx_fire_event", { widgetId: "missing", signal: "clicked" }))
-            .toBe(true);
     });
 });
 

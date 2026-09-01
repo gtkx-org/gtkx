@@ -1,6 +1,6 @@
 import type { ESTree, ParseResult, ParserOptions } from "vite";
 import { sortStringsBy } from "@gtkx/utils";
-import { type Dirent, readdirSync, readFileSync } from "node:fs";
+import { globSync, readFileSync } from "node:fs";
 import { extname, join } from "node:path";
 import { parseSync, Visitor } from "vite";
 
@@ -21,14 +21,6 @@ const SOURCE_LANGUAGES: Map<string, SourceLanguage> = new Map([
     [".tsx", "tsx"],
 ]);
 
-const EXCLUDED_DIRECTORIES: Set<string> = new Set([
-    "build",
-    "coverage",
-    "dist",
-    "node_modules",
-    "out-tsc",
-]);
-
 const sourceLanguage = (path: string): SourceLanguage | undefined => {
     if (path.endsWith(".d.ts") || path.endsWith(".d.mts")) {
         return undefined;
@@ -37,44 +29,18 @@ const sourceLanguage = (path: string): SourceLanguage | undefined => {
     return SOURCE_LANGUAGES.get(extname(path).toLowerCase());
 };
 
-const isWalkableDirectory = (name: string): boolean => !name.startsWith(".") && !EXCLUDED_DIRECTORIES.has(name);
-
-const collectSourceEntry = (dir: string, entry: Dirent, found: string[]): void => {
-    const path = join(dir, entry.name);
-
-    if (entry.isDirectory()) {
-        if (isWalkableDirectory(entry.name)) {
-            sourceFilesIn(path, found);
-        }
-
-        return;
-    }
-
-    if (entry.isFile() && sourceLanguage(path) !== undefined) {
-        found.push(path);
-    }
-};
-
-const sourceFilesIn = (dir: string, found: string[]): void => {
-    let entries: Dirent[];
-
-    try {
-        entries = readdirSync(dir, { withFileTypes: true });
-    } catch {
-        return;
-    }
-
-    for (const entry of entries) {
-        collectSourceEntry(dir, entry, found);
-    }
-};
-
-const discoverSourceFiles = (dir: string): string[] => {
-    const files: string[] = [];
-    sourceFilesIn(dir, files);
-
-    return sortStringsBy(files, (path) => path);
-};
+const discoverSourceFiles = (dir: string): string[] =>
+    sortStringsBy(
+        globSync("**/{*,.*}", {
+            cwd: dir,
+            exclude: ["**/{build,coverage,dist,node_modules,out-tsc}/**"],
+            withFileTypes: true,
+        })
+            .filter((entry) => entry.isFile())
+            .map((entry) => join(entry.parentPath, entry.name))
+            .filter((path) => sourceLanguage(path) !== undefined),
+        (path) => path,
+    );
 
 const staticImportSources = (module: ParsedModule): string[] => [
     ...module.staticImports.map((statement) => statement.moduleRequest.value),

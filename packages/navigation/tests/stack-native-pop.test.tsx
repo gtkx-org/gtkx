@@ -14,7 +14,7 @@ import {
     renderStack,
 } from "./helpers/stack-fixtures.js";
 
-describe("stack - native pop (1)", () => {
+describe("stack - native pop", () => {
     it("animates the page out instead of dropping it when Back is clicked", async () => {
         await renderStack({ isAnimated: true });
         await clickButton("Go to details");
@@ -62,9 +62,7 @@ describe("stack - native pop (1)", () => {
             });
         });
     });
-});
 
-describe("stack - native pop (2)", () => {
     it("keeps the page when the prevent callback changes the route params", async () => {
         const onPrevent = createPreventSpy();
         const onStateChange = createStateSpy();

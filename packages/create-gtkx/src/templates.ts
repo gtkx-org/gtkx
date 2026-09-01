@@ -1,4 +1,4 @@
-import { sortStrings, sourceStringLiteral } from "@gtkx/utils";
+import { sortStrings, sourceStringLiteral, toPosixPath } from "@gtkx/utils";
 import ejs from "ejs";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -21,7 +21,7 @@ const listTemplates = (): string[] =>
         readdirSync(TEMPLATES_DIR, { recursive: true, withFileTypes: true })
             .filter((entry) => entry.isFile())
             .map((entry) => join(entry.parentPath, entry.name))
-            .map((absolute) => absolute.slice(TEMPLATES_DIR.length + 1).replaceAll(/[/\\]/g, "/"))
+            .map((absolute) => toPosixPath(absolute.slice(TEMPLATES_DIR.length + 1)))
             .map((relative) => relative.replace(/\.ejs$/, "")),
     );
 

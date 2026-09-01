@@ -30,7 +30,7 @@ const CustomHeader = ({ route, navigation, options }: DrawerHeaderProps): ReactN
     </GtkBox>
 );
 
-describe("drawer - header (1)", () => {
+describe("drawer - header", () => {
     it("shows the focused screen's title and the toggle button", async () => {
         await render(
             <NavigationContainer>
@@ -81,9 +81,7 @@ describe("drawer - header (1)", () => {
         await screen.findByText("Settings Content");
         expectHeaderTitle("Title Widget");
     });
-});
 
-describe("drawer - header (2)", () => {
     it("packs headerStart and headerEnd beside the toggle button", async () => {
         const options = {
             headerStart: <GtkButton label="Start action" />,
@@ -117,9 +115,7 @@ describe("drawer - header (2)", () => {
         await screen.findByText("Settings Content");
         expect(screen.queryByText("Custom Inbox Inbox Title")).toBeNull();
     });
-});
 
-describe("drawer - header (3)", () => {
     it("mounts screens on first focus by default", async () => {
         const onInboxMount = vi.fn();
         const onSettingsMount = vi.fn();
