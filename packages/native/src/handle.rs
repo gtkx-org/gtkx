@@ -465,12 +465,17 @@ impl Drop for HandleKind {
                     glib::idle_add_local_once(move || surface::release(object));
                 }
             }
-            Self::Struct { ptr, free_fn } => unsafe {
-                match free_fn {
-                    Some(free_fn) => free_fn(*ptr),
-                    None => glib::ffi::g_free(*ptr),
+            Self::Struct { ptr, free_fn } => {
+                if ptr.is_null() {
+                    return;
                 }
-            },
+                unsafe {
+                    match free_fn {
+                        Some(free_fn) => free_fn(*ptr),
+                        None => glib::ffi::g_free(*ptr),
+                    }
+                }
+            }
             _ => {}
         }
     }

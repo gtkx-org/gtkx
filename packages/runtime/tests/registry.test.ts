@@ -167,7 +167,7 @@ describe("a binding returning a fundamental instance", () => {
 });
 
 describe("a struct descriptor that names its wrapper class", () => {
-    it("takes ownership of a record released by its declared free function", () => {
+    it("wraps a record handed over by a function that transfers ownership", () => {
         expect(GLib.AsyncQueue.new()).toBeInstanceOf(GLib.AsyncQueue);
     });
 });
