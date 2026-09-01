@@ -33,13 +33,13 @@
         }
     },
     "sideEffects": [
-        "./init.js",
+        "./bootstrap.js",
         "./main.js"
     ],
     "files": [
+        "bootstrap.js",
         "index.js",
         "index.d.ts",
-        "init.js",
         "main.js",
         "main.d.ts"
     ],

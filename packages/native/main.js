@@ -1,3 +1,3 @@
-import "./init.js";
+import "./bootstrap.js";
 
 export * from "./index.js";
