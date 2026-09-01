@@ -164,7 +164,7 @@
         "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@nx/eslint": "^23.1.1",
-        "@nx/js": "^23.1.1",
+        "@nx/js": "^23.1.2",
         "@nx/vitest": "^23.1.1",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
