@@ -20,7 +20,7 @@ trustPolicyExclude:
 
 catalog:
   '@types/ejs': ^3.1.5
-  '@types/node': ^26.2.0
+  '@types/node': ^26.4.0
   '@types/react': ^19.2.18
   '@vitest/coverage-v8': ^4.1.11
   ejs: ^6.0.1
@@ -29,7 +29,7 @@ catalog:
   vite: ^8.2.2
   vitest: ^4.1.11
   yaml: ^2.9.0
-  zod: ^4.4.3
+  zod: ^4.5.4
 
 allowBuilds:
   '@swc/core': true
@@ -47,8 +47,8 @@ peerDependencyRules:
 
 overrides:
   vite: ^8.2.2
-  qs: ^6.15.3
-  axios: ^1.19.0
+  qs: ^6.16.0
+  axios: ^1.20.0
   brace-expansion: ^5.0.9
 
 patchedDependencies:

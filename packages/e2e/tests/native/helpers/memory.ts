@@ -22,9 +22,9 @@ const drainGC = async (rounds = 3): Promise<void> => {
     }
 };
 
-const didSettle = async (predicate: () => boolean | Promise<boolean>, rounds = 30): Promise<boolean> => {
+const didSettle = async (isSatisfied: () => boolean | Promise<boolean>, rounds = 30): Promise<boolean> => {
     for (let round = 0; round < rounds; round++) {
-        if (await predicate()) {
+        if (await isSatisfied()) {
             return true;
         }
 
@@ -33,7 +33,7 @@ const didSettle = async (predicate: () => boolean | Promise<boolean>, rounds = 3
         await settle();
     }
 
-    return predicate();
+    return isSatisfied();
 };
 
 const drainAfterEachTest = (): void => {

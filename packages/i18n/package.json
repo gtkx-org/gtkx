@@ -74,8 +74,8 @@
     },
     "dependencies": {
         "@gtkx/runtime": "workspace:*",
-        "i18next": "^26.4.0",
-        "react-i18next": "^17.0.12"
+        "i18next": "^26.4.1",
+        "react-i18next": "^17.0.13"
     },
     "peerDependencies": {
         "react": "^19.2"

@@ -60,7 +60,7 @@ RUN apt-get update \
         libglib2.0-0t64-dbgsym \
     && rm -rf /var/lib/apt/lists/*
 
-ARG FLATPAK_BUILDER_TOOLS=737c0085912f9f7dabf9341d4608e2a77a51a73a
+ARG FLATPAK_BUILDER_TOOLS=1fc32195e3e60fe5c97f0af646dec7a99df5962b
 ENV PIPX_HOME=/opt/pipx
 ENV PIPX_BIN_DIR=/usr/local/bin
 RUN pipx install \
@@ -94,7 +94,7 @@ ENV RUSTUP_MAX_RETRIES=10
 ENV CARGO_HTTP_MULTIPLEXING=false
 
 ARG RUST_VERSION=1.98.0
-ARG RUST_NIGHTLY=nightly-2026-08-20
+ARG RUST_NIGHTLY=nightly-2026-09-01
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
