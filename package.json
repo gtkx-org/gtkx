@@ -173,7 +173,7 @@
         "eslint": "^10.9.1",
         "jiti": "^2.7.0",
         "knip": "^6.32.2",
-        "nx": "^23.1.1",
+        "nx": "^23.1.2",
         "react": "catalog:",
         "tsx": "^4.23.12",
         "typescript": "catalog:",
