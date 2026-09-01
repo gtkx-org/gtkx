@@ -440,3 +440,9 @@ test("constructing a registered type that is not instantiatable throws", () => {
 test("constructing a not instantiatable type with properties throws", () => {
     expect(() => newObject(closureType, ["name"], [alloc(24)], {}, ignore)).toThrow();
 });
+
+test("constructing an instantiatable type that is not a GObject throws", () => {
+    const paramType = call(typeFromName, ["GParamInt"]) as bigint;
+
+    expect(() => newObject(paramType, ["name"], [alloc(VALUE_SIZE)], {}, ignore)).toThrow();
+});

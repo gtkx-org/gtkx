@@ -69,19 +69,18 @@ impl ConstructProperties {
     }
 }
 
+/// Everything here speaks `GObject`: the constructor, the construction reference and the wrapper
+/// the instance carries. A classed, instantiatable type is not enough, since a `GParamSpec` is both
+/// and its class is not a `GObjectClass`, so reading properties out of it is a type confusion.
 fn ensure_instantiable(type_: glib::Type) -> Result<()> {
-    let raw = type_.into_glib();
-    let is_instantiatable = unsafe {
-        gobject_ffi::g_type_test_flags(raw, gobject_ffi::G_TYPE_FLAG_INSTANTIATABLE) != 0
-    };
-
-    if !is_instantiatable {
+    if !type_.is_a(glib::Type::OBJECT) {
         return Err(Error::new(
             Status::InvalidArg,
-            format!("new_object: type '{type_}' cannot be instantiated"),
+            format!("new_object: type '{type_}' does not derive from GObject"),
         ));
     }
 
+    let raw = type_.into_glib();
     let is_abstract =
         unsafe { gobject_ffi::g_type_test_flags(raw, gobject_ffi::G_TYPE_FLAG_ABSTRACT) != 0 };
 
