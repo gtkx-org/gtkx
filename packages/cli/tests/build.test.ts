@@ -185,6 +185,8 @@ createRoot();
 process.stdout.write(String(Object.keys(absent).length));
 `;
 
+const MISSING_DEFAULT_BINDING_SOURCE = "import \"@gtkx/gi/gtk\";\n";
+
 const BARE_ASSET_SOURCE = `import logo from "../data/logo.png";
 
 const path: string = logo;
@@ -698,6 +700,16 @@ describe("gtkx build (projects it refuses to build)", () => {
 
     it("fails over an entry that imports bindings the project has no library for", () => {
         expect(runCli(state.project, ["build", "src/absent.tsx"]).status).not.toBe(0);
+    });
+
+    it("fails when a default binding has not been generated", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-build-missing-default-binding-",
+            config: config(STORE_LIBRARIES, ", codegen: false", null),
+            files: { [join("src", "index.ts")]: MISSING_DEFAULT_BINDING_SOURCE },
+        });
+
+        expect(runCli(project, ["build"]).status).not.toBe(0);
     });
 
     it("fails over two schema ids that cannot both keep an export name", () => {
