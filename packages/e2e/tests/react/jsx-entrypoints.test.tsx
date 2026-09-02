@@ -37,12 +37,12 @@ describe("@gtkx/jsx namespace entrypoints", () => {
     it("renders an augmented widget imported from its namespace", async () => {
         const boxRef = createRef<Gtk.Box>();
         await render(
-            <gtk.GtkBox ref={boxRef} namespaceAugmented>
+            <gtk.GtkBox ref={boxRef} indexAugmented>
                 <gtk.GtkLabel>Hello from the namespace</gtk.GtkLabel>
             </gtk.GtkBox>,
         );
         expect(screen.getByText("Hello from the namespace")).toBeRooted();
-        expect(boxRef.current).toHaveClass("namespace-augmented");
+        expect(boxRef.current).toHaveClass("index-augmented");
     });
 
     it("publishes every namespace without a package root", () => {
@@ -63,7 +63,7 @@ describe("@gtkx/jsx namespace entrypoints", () => {
 declare module "@gtkx/jsx/gtk" {
     /* eslint-disable @typescript-eslint/consistent-type-definitions -- declaration merging requires interfaces */
     interface GtkBoxProps {
-        namespaceAugmented?: boolean;
+        indexAugmented?: boolean;
     }
     /* eslint-enable @typescript-eslint/consistent-type-definitions */
 }

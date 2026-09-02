@@ -89,11 +89,6 @@ const ADW_ENTRYPOINT_MESSAGE =
     "Only the ./adw entrypoint may reference the Adwaita bindings, so projects that do not declare Adw-1 " +
     "still typecheck.";
 
-const JSX_ROOT_RESTRICTION = {
-    name: "@gtkx/jsx",
-    message: "Import JSX elements from generated namespace subpaths such as @gtkx/jsx/gtk.",
-};
-
 const IGNORES = [
     "**/*.vue",
     ".claude/**",
@@ -184,7 +179,17 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "@typescript-eslint/consistent-type-definitions": ["error", "type"],
     "@typescript-eslint/naming-convention": ["error", ...NAMING_CONVENTION],
     "@typescript-eslint/no-empty-object-type": ["error", { allowInterfaces: "with-single-extends" }],
-    "@typescript-eslint/no-restricted-imports": ["error", { paths: [JSX_ROOT_RESTRICTION] }],
+    "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+            paths: [
+                {
+                    name: "@gtkx/jsx",
+                    message: "Import JSX elements from generated namespace subpaths such as @gtkx/jsx/gtk.",
+                },
+            ],
+        },
+    ],
     "@typescript-eslint/non-nullable-type-assertion-style": "off",
     "@typescript-eslint/restrict-template-expressions": [
         "error",
@@ -232,10 +237,7 @@ const restrictAdwImports = (message: string, extra: string[]): Linter.RulesRecor
     "@typescript-eslint/no-restricted-imports": [
         "error",
         {
-            paths: [
-                JSX_ROOT_RESTRICTION,
-                ...["@gtkx/gi/adw", "@gtkx/jsx/adw", ...extra].map((name) => ({ name, message })),
-            ],
+            paths: ["@gtkx/gi/adw", "@gtkx/jsx", "@gtkx/jsx/adw", ...extra].map((name) => ({ name, message })),
         },
     ],
 });

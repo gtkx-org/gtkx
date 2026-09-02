@@ -21,17 +21,17 @@ export default defineElements({
         behaviors: [
             {
                 update: (box: Gtk.Box, prev, next) => {
-                    if (Object.is(prev.namespaceAugmented, next.namespaceAugmented)) {
-                        return ["namespaceAugmented"];
+                    if (Object.is(prev.indexAugmented, next.indexAugmented)) {
+                        return ["indexAugmented"];
                     }
 
-                    if (next.namespaceAugmented === true) {
-                        box.addCssClass("namespace-augmented");
+                    if (next.indexAugmented === true) {
+                        box.addCssClass("index-augmented");
                     } else {
-                        box.removeCssClass("namespace-augmented");
+                        box.removeCssClass("index-augmented");
                     }
 
-                    return ["namespaceAugmented"];
+                    return ["indexAugmented"];
                 },
             },
         ],
