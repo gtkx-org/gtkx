@@ -84,6 +84,7 @@ const ensureStableCommit = () => {
 const generateStable = () => {
     ensureStableCommit();
 
+    const origin = read("git", ["remote", "get-url", "origin"], root);
     const store = read(pnpm, ["store", "path"], root);
     const temporary = mkdtempSync(join(tmpdir(), "gtkx-reference-"));
     const archive = join(temporary, "source.tar");
@@ -100,6 +101,9 @@ const generateStable = () => {
         );
         environment.NX_DAEMON = "false";
         run("git", ["init", "--quiet", "--initial-branch=main"], source, environment);
+        run("git", ["fetch", "--quiet", "--no-tags", "--depth=1", root, stableCommit], source, environment);
+        run("git", ["update-ref", "refs/heads/main", "FETCH_HEAD"], source, environment);
+        run("git", ["remote", "add", "origin", origin], source, environment);
         run(pnpm, ["install", "--frozen-lockfile", "--store-dir", store], source, environment);
         run(pnpm, ["exec", "nx", "run", "@gtkx/website:reference"], source, environment);
 
