@@ -8,7 +8,7 @@ You have a scaffolded project that runs. Replace its contents with the first pie
 
 ## What the scaffolder made
 
-Open the `tasks` directory. The files the scaffolder wrote, alongside the `node_modules` it installed and the `.git` repository it initialized:
+Open the `tasks` directory. It contains the files the scaffolder wrote, alongside the `node_modules` it installed and the `.git` repository it initialized:
 
 ```
 tasks/

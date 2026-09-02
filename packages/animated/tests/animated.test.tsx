@@ -1,5 +1,5 @@
 import type { ReactNode, Ref, RefObject } from "react";
-import { animated, config, useSpring } from "@gtkx/animated";
+import { animated, type AnimatedElementMap, config, useSpring } from "@gtkx/animated";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -26,7 +26,7 @@ const AnimatedAdjustment = animated(GtkAdjustment);
 const AnimatedBox = animated(GtkBox);
 const AnimatedButton = animated(GtkButton);
 const AnimatedFixedLayoutChild = animated(GtkFixedLayoutChild);
-const AnimatedLabel = animated(GtkLabel);
+const AnimatedLabel: AnimatedElementMap["GtkLabel"] = animated(GtkLabel);
 const AnimatedSpinButton = animated(GtkSpinButton);
 const SLOW = { duration: 400 };
 const LONG = { duration: 1500 };

@@ -54,7 +54,9 @@ type AnimatedElementMap = {
                 : NonNullable<Instance> extends Gtk.Widget
                     ? K
                     : never
-        : never]: AnimatedComponent<FunctionComponent<JSX.IntrinsicElements[K]>>;
+        : never]: JSX.IntrinsicElements[K] extends object
+        ? FunctionComponent<AnimatedProps<JSX.IntrinsicElements[K]>>
+        : never;
 };
 
 export type {

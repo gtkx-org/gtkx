@@ -27,7 +27,7 @@ const directory = join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "s
 const file = join(directory, "tasks.json");
 
 export const fileStorage = {
-    getItem: (): string | null => {
+    getItem: (_name: string): string | null => {
         try {
             return readFileSync(file, "utf8");
         } catch {
@@ -39,7 +39,7 @@ export const fileStorage = {
         writeFileSync(`${file}.tmp`, value);
         renameSync(`${file}.tmp`, file);
     },
-    removeItem: (): void => rmSync(file, { force: true }),
+    removeItem: (_name: string): void => rmSync(file, { force: true }),
 };
 ```
 
