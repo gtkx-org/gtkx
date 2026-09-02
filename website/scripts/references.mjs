@@ -69,7 +69,7 @@ const ensureStableCommit = () => {
 const generateStable = () => {
     ensureStableCommit();
 
-    const store = dirname(read(pnpm, ["store", "path"], root));
+    const store = read(pnpm, ["store", "path"], root);
     const temporary = mkdtempSync(join(tmpdir(), "gtkx-reference-"));
     const archive = join(temporary, "source.tar");
     const source = join(temporary, "source");

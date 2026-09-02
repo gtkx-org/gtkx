@@ -19,7 +19,9 @@ const selectedVersion = computed<DocumentationVersion>({
         }
 
         const targetPath = resolveVersionPath(route.path, targetVersion);
-        const routeSuffix = hasVersionCounterpart(route.path) ? `${route.query}${route.hash}` : "";
+        const routeSuffix = hasVersionCounterpart(route.path)
+            ? `${window.location.search}${window.location.hash}`
+            : "";
         router.go(`${targetPath}${routeSuffix}`);
     },
 });
