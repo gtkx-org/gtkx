@@ -100,8 +100,8 @@ describe("style prop", () => {
     });
 
     it("resolves a GTK named color", async () => {
-        const { styled } = await renderPair({ color: "alpha(@theme_fg_color, 0.4)" });
-        expect(getAlpha(styled)).toBeCloseTo(NAMED_ALPHA, 2);
+        const { plain, styled } = await renderPair({ color: "alpha(@theme_fg_color, 0.4)" });
+        expect(getAlpha(styled)).toBeCloseTo(getAlpha(plain) * NAMED_ALPHA, 2);
     });
 
     it("nests a block under the selector its key derives", async () => {

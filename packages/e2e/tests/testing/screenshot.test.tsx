@@ -35,6 +35,12 @@ const settle = async (action: () => void): Promise<void> => {
     });
 };
 
+const clearHover = async (widget: Gtk.Widget): Promise<void> => {
+    await settle(() => {
+        widget.unsetStateFlags(Gtk.StateFlags.PRELIGHT);
+    });
+};
+
 const firstWindow = (): Gtk.Window => {
     const [toplevel] = Gtk.Window.listToplevels();
 
@@ -105,6 +111,7 @@ describe("screenshot", () => {
         await waitFor(() => {
             expect(popoverRef.current?.getMapped()).toBe(false);
         });
+        await clearHover(button);
         const reclosed = await screenshot(window);
         expect(reclosed.data).toBe(closedWindow.data);
     });

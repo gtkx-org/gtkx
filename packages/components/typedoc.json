@@ -7,6 +7,7 @@
         "ColumnViewOwnProps",
         "ComboRowComponent",
         "DropDownComponent",
+        "DropDownWidgetProps",
         "GridViewOwnProps",
         "ListViewOwnProps"
     ]
