@@ -89,13 +89,19 @@ function verifyManifests(): void {
 }
 
 function verifyRpm(): void {
-    const files = execFileSync(resolveExecutable("rpm"), ["-qpl", findArtifact(".rpm")], {
-        cwd: TUTORIAL_DIR,
-        encoding: "utf8",
-    });
+    const database = mkdtempSync(join(tmpdir(), "gtkx-tutorial-rpm-"));
 
-    if (!files.split(/\r?\n/).includes(`/usr/${LOCALE_PATH}`)) {
-        throw new Error(`tutorial: the rpm does not contain /usr/${LOCALE_PATH}`);
+    try {
+        const files = execFileSync(resolveExecutable("rpm"), ["--dbpath", database, "-qpl", findArtifact(".rpm")], {
+            cwd: TUTORIAL_DIR,
+            encoding: "utf8",
+        });
+
+        if (!files.split(/\r?\n/).includes(`/usr/${LOCALE_PATH}`)) {
+            throw new Error(`tutorial: the rpm does not contain /usr/${LOCALE_PATH}`);
+        }
+    } finally {
+        rmSync(database, { recursive: true, force: true });
     }
 }
 

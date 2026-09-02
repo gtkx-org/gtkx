@@ -5,12 +5,11 @@ runs:
   using: composite
   steps:
     - name: Log in to GHCR
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-        GITHUB_ACTOR: ${{ github.actor }}
-      run: |
-        printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
 
     - name: Pull image
       id: pull

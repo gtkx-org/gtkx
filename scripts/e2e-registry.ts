@@ -202,6 +202,7 @@ function registryEnv(userConfig: string, registryDir: string): NodeJS.ProcessEnv
         NPM_CONFIG_USERCONFIG: userConfig,
     };
 
+    delete env.GITHUB_ACTIONS;
     delete env.NPM_CONFIG_PROVENANCE;
 
     return env;
