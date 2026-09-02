@@ -14,12 +14,24 @@ const stableTag = "v1.6.0";
 const stableCommit = "76c6292fdecb0b18060d7c54bb7e001a4a139440";
 const commitType = "commit";
 
+const execute = (command, args, options) => {
+    try {
+        return execFileSync(command, args, options);
+    } catch (error) {
+        if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+            throw new Error(`Required executable "${command}" was not found.`, { cause: error });
+        }
+
+        throw error;
+    }
+};
+
 const run = (command, args, cwd, environment = process.env) => {
-    execFileSync(command, args, { cwd, env: environment, stdio: "inherit" });
+    execute(command, args, { cwd, env: environment, stdio: "inherit" });
 };
 
 const read = (command, args, cwd) =>
-    execFileSync(command, args, { cwd, encoding: "utf8" }).trim();
+    execute(command, args, { cwd, encoding: "utf8" }).trim();
 
 const commitRevision = (revision) => `${revision}^{${commitType}}`;
 
