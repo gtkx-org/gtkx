@@ -30,9 +30,9 @@ test("dangling and uninitialized out strings decode as null", () => {
 });
 
 test("invalid utf8 decodes with replacement characters", () => {
-    expect(GIMarshallingTests.extraUtf8FullReturnInvalid()).toBe("invalid utf8 ��");
-    expect(GIMarshallingTests.extraUtf8FullOutInvalid()).toBe("invalid utf8 ��");
-    expect(Regress.testArrayOfNonUtf8Strings()).toEqual(["Andr� Lur�at"]);
+    expect(GIMarshallingTests.extraUtf8FullReturnInvalid()).toBe("invalid utf8 \u{FFFD}\u{FFFD}");
+    expect(GIMarshallingTests.extraUtf8FullOutInvalid()).toBe("invalid utf8 \u{FFFD}\u{FFFD}");
+    expect(Regress.testArrayOfNonUtf8Strings()).toEqual(["Andr\u{FFFD} Lur\u{FFFD}at"]);
 });
 
 test("regress utf8 functions exchange the documented constants", () => {

@@ -238,8 +238,8 @@ test("unichar values round trip as single-character strings", () => {
     // @ts-expect-error a number is not a unichar string
     expect(Regress.testUnichar(66)).toBe("B");
     expect(Regress.testUnichar("")).toBe("\u{0}");
-    expect(Regress.testUnichar("\u{D800}")).toBe("�");
-    expect(Regress.testUnichar("\u{DC00}")).toBe("�");
+    expect(Regress.testUnichar("\u{D800}")).toBe("\u{FFFD}");
+    expect(Regress.testUnichar("\u{DC00}")).toBe("\u{FFFD}");
     expect(() => Regress.testUnichar("ab")).toThrow();
     // @ts-expect-error a number is not a unichar string
     expect(() => Regress.testUnichar(0x11_00_00)).toThrow();

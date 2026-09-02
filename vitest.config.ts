@@ -16,6 +16,7 @@ export default defineConfig({
             exclude: [
                 "**/dist/**",
                 "**/out-tsc/**",
+                "**/*.d.ts",
                 "**/*.test.{ts,tsx}",
                 "**/*.spec.{ts,tsx}",
                 "packages/e2e/**",

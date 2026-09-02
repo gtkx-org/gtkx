@@ -14,6 +14,7 @@ const EXCLUDES = [
     "**/out-tsc/**",
     "**/node_modules/**",
     "**/tests/**",
+    "**/*.d.ts",
     "**/*.test.ts",
     "**/*.test.tsx",
     "packages/e2e/**",
