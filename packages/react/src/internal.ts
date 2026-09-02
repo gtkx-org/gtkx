@@ -4,6 +4,8 @@ import "./bootstrap.js";
 export { createApplicationWindowComponent } from "./components/application-window.js";
 /** @internal */
 export { createApplicationComponent } from "./components/application.js";
+/** @internal */
+export { createDialogComponent } from "./components/dialog.js";
 export { createElementComponent } from "./components/element.js";
 /** @internal */
 export { createPortaledComponent } from "./components/portaled.js";

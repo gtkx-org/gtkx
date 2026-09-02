@@ -1,4 +1,4 @@
-import { ToastProvider } from "@gtkx/components/adw";
+import { ToastProvider } from "@gtkx/components";
 import * as Adw from "@gtkx/gi/adw";
 import { useTranslation } from "@gtkx/i18n";
 import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage, AdwToastOverlay } from "@gtkx/jsx/adw";

@@ -1,4 +1,4 @@
-import { ComboRow } from "@gtkx/components/adw";
+import { ComboRow } from "@gtkx/components";
 import { t } from "@gtkx/i18n";
 import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";

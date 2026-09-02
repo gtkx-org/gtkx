@@ -7,13 +7,13 @@ type DocsElements = {
 };
 
 const resolveDocsElements = async (cwd: string): Promise<DocsElements> => {
-    const { gi, reactSubexports } = resolveStore(cwd);
+    const { gi } = resolveStore(cwd);
 
     if (!existsSync(gi.storeDir)) {
         return { props: {}, omittedProps: {} };
     }
 
-    const { props, omittedProps } = await readBuiltinElements(reactSubexports, gi.storeDir);
+    const { props, omittedProps } = await readBuiltinElements();
 
     return { props, omittedProps };
 };

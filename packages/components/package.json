@@ -32,13 +32,6 @@
             "import": "./dist/index.js",
             "require": null,
             "default": "./dist/index.js"
-        },
-        "./adw": {
-            "source": "./src/adw/index.ts",
-            "types": "./dist/adw/index.d.ts",
-            "import": "./dist/adw/index.js",
-            "require": null,
-            "default": "./dist/adw/index.js"
         }
     },
     "sideEffects": false,

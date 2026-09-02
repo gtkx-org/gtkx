@@ -6,7 +6,6 @@
         "@gtkx/cli/vitest-plugin",
         "@gtkx/codegen",
         "@gtkx/components",
-        "@gtkx/components/adw",
         "@gtkx/config",
         "@gtkx/config/vite-plugin",
         "@gtkx/css",
@@ -23,10 +22,6 @@
     "modules": [
         {
             "path": "packages/react/src/prop-types.ts",
-            "reason": "Element props reach users through the generated @gtkx/jsx store, which the registry wires by name."
-        },
-        {
-            "path": "packages/react/src/adw/prop-types.ts",
             "reason": "Element props reach users through the generated @gtkx/jsx store, which the registry wires by name."
         }
     ]

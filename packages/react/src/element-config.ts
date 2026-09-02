@@ -1,6 +1,14 @@
 import { type ElementConfig, forTypes, internal } from "./reconciler/registry.js";
 
 const SINGLE_CHILD_TYPES: string[] = [
+    "AdwBin",
+    "AdwClamp",
+    "AdwNavigationPage",
+    "AdwSplitButton",
+    "AdwStatusPage",
+    "AdwTabOverview",
+    "AdwToastOverlay",
+    "AdwToggle",
     "GtkAspectFrame",
     "GtkButton",
     "GtkCheckButton",
@@ -23,8 +31,10 @@ const SINGLE_CHILD_TYPES: string[] = [
     "GtkWindowHandle",
 ];
 
+const CONTENT_SETTER_TYPES: string[] = ["AdwBottomSheet", "AdwOverlaySplitView"];
+
 /**
- * The framework's own element configuration for the GTK types it customizes: the base props interface each
+ * The framework's own element configuration for the GTK and Adwaita types it customizes: the base props interface each
  * generated element extends, the component that wraps it, the GObject properties left out of its generated
  * props, and whether its GObject is created by its parent. Carries no behaviors, so importing it never
  * reaches the GObject bindings.
@@ -150,6 +160,106 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     GtkDragSource: {
         props: internal("GtkDragSourceProps"),
     },
+    ...forTypes(CONTENT_SETTER_TYPES, {
+        props: internal("ChildrenProps"),
+        omittedProps: ["content"],
+    }),
+    AdwClampScrollable: {
+        props: internal("ChildrenProps"),
+        omittedProps: ["child"],
+    },
+    AdwViewStackPage: {
+        isLazy: true,
+    },
+    AdwTabPage: {
+        isLazy: true,
+    },
+    AdwLayout: {
+        isLazy: true,
+    },
+    AdwSidebarSection: {
+        props: internal("ChildrenProps"),
+    },
+    AdwMultiLayoutView: {
+        props: internal("AdwMultiLayoutViewProps"),
+    },
+    AdwPreferencesRow: {
+        props: internal("AdwPreferencesRowProps"),
+    },
+    AdwDialog: {
+        props: internal("AdwBreakpointsProps"),
+        component: internal("createDialogComponent"),
+        omittedProps: ["child"],
+    },
+    AdwApplicationWindow: {
+        props: internal("AdwBreakpointsProps"),
+        omittedProps: ["content"],
+    },
+    AdwWindow: {
+        props: internal("AdwBreakpointsProps"),
+        omittedProps: ["content"],
+    },
+    AdwBreakpointBin: {
+        props: internal("AdwBreakpointsProps"),
+        omittedProps: ["child"],
+    },
+    AdwActionRow: {
+        props: internal("AdwPreferencesRowProps"),
+    },
+    AdwEntryRow: {
+        props: internal("AdwPreferencesRowProps"),
+    },
+    AdwExpanderRow: {
+        props: internal("AdwExpanderRowProps"),
+    },
+    AdwNavigationSplitView: {
+        props: internal("ChildrenProps"),
+        omittedProps: ["content"],
+    },
+    AdwWrapBox: {
+        props: internal("ChildrenProps"),
+    },
+    AdwCarousel: {
+        props: internal("ChildrenProps"),
+    },
+    AdwPreferencesPage: {
+        props: internal("ChildrenProps"),
+    },
+    AdwPreferencesDialog: {
+        props: internal("ChildrenProps"),
+    },
+    AdwPreferencesGroup: {
+        props: internal("ChildrenProps"),
+    },
+    AdwTabView: {
+        props: internal("ChildrenProps"),
+    },
+    AdwNavigationView: {
+        props: internal("ChildrenProps"),
+    },
+    AdwViewStack: {
+        props: internal("ChildrenProps"),
+    },
+    AdwToolbarView: {
+        props: internal("AdwToolbarViewProps"),
+        omittedProps: ["content"],
+    },
+    AdwHeaderBar: {
+        props: internal("GtkHeaderBarProps"),
+    },
+    AdwShortcutsDialog: {
+        props: internal("ChildrenProps"),
+    },
+    AdwShortcutsSection: {
+        props: internal("ChildrenProps"),
+    },
+    AdwToggleGroup: {
+        props: internal("ChildrenProps"),
+    },
+    AdwAlertDialog: {
+        props: internal("AdwAlertDialogProps"),
+        omittedProps: ["extraChild"],
+    },
 };
 
-export { SINGLE_CHILD_TYPES, BUILTIN_ELEMENTS };
+export { SINGLE_CHILD_TYPES, CONTENT_SETTER_TYPES, BUILTIN_ELEMENTS };

@@ -289,7 +289,7 @@ The shortcuts window is documentation, not wiring, so it needs the row added by 
 Create `src/components/preferences.tsx`:
 
 ```tsx
-import { ComboRow } from "@gtkx/components/adw";
+import { ComboRow } from "@gtkx/components";
 import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
@@ -352,7 +352,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-`ComboRow` from `@gtkx/components/adw` presents a choice as a row inside a preferences group, which is what belongs here; `DropDown` from `@gtkx/components` is the same collection API rendered as a plain `Gtk.DropDown`. `selectedId` drives the selection and `onSelectionChanged` reports the id the user picked: the controlled-widget pairing from [Completing, Starring, and Deleting](/v2/tutorial/completing-and-deleting), with a settings key on the other end instead of the store.
+`ComboRow` from `@gtkx/components` presents a choice as a row inside a preferences group, which is what belongs here; `DropDown` from `@gtkx/components` is the same collection API rendered as a plain `Gtk.DropDown`. `selectedId` drives the selection and `onSelectionChanged` reports the id the user picked: the controlled-widget pairing from [Completing, Starring, and Deleting](/v2/tutorial/completing-and-deleting), with a settings key on the other end instead of the store.
 
 `AdwSpinRow` takes its bounds through a `GtkAdjustment` in the `adjustment` slot, the same JSX-valued-prop shape as `topBar` and `prefix`. The adjustment carries the value, the floor, the ceiling, and the step, so the row itself takes none of them. The lead time it sets has no effect yet: the sweep that reads it arrives in [Reminders That Reach the Desktop](/v2/tutorial/reminders).
 

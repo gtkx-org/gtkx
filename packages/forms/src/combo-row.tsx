@@ -1,6 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type { ReactNode } from "react";
-import { ComboRow as BaseComboRow } from "@gtkx/components/adw";
+import { ComboRow as BaseComboRow } from "@gtkx/components";
 import { type FieldValues, useController } from "react-hook-form";
 import type { ComboRowProps, FormFieldPath } from "./types.js";
 import { useFieldWidget, widgetProps } from "./internal/field.js";

@@ -48,6 +48,14 @@ import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
 Namespace subpaths are the public JSX surface and keep unrelated generated libraries out of the module graph.
 
+## Drop the Adwaita subpaths
+
+Adwaita is part of the core packages. `ComboRow`, `ToastProvider`, `useToast`, and `useToastOverlay` moved from `@gtkx/components/adw` to `@gtkx/components`, and the internal `@gtkx/react/adw` entry point is gone:
+
+```tsx
+import { ComboRow, ToastProvider, useToast } from "@gtkx/components";
+```
+
 ## Update internationalization
 
 GTKX now delegates extraction and resource typing to `i18next-cli`. Keep catalog declarations in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`; replace imported aliases, `i18n.t` member calls, dynamic keys, and CommonJS declarations with those static forms.
@@ -76,6 +84,7 @@ Run codegen after migrating. The generated declaration now uses i18next's standa
 | `Graphene.Size.create(width, height)` | `new Graphene.Size({ width, height })` |
 | `GObject.buildValue(...)` | Pass the JavaScript value, or initialize `new GObject.Value()` |
 | `@gtkx/gi/cairo` | `@gtkx/cairo` |
+| `@gtkx/components/adw` | `@gtkx/components` |
 | `animated.GtkLabel` | `animated(GtkLabel)` |
 | `AnimatedElements` | `AnimatedElementMap` |
 
@@ -89,6 +98,6 @@ tsc --noEmit
 gtkx build
 ```
 
-Finally run the application and inspect it. Importing Adwaita initializes its stylesheet, and the build now depends on the Adwaita introspection and runtime libraries even when `libraries` omits it.
+Finally run the application and inspect it. `@gtkx/react` now registers the Adwaita elements itself, so every application initializes the Adwaita stylesheet and the build depends on the Adwaita introspection and runtime libraries even when it renders no Adwaita widget.
 
 For current configuration and binding behavior, see [Configuration and Codegen](/v2/guide/configuration-and-codegen) and the [API reference](/v2/reference/).

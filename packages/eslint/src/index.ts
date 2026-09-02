@@ -26,8 +26,6 @@ const SOURCES = ["**/*.{ts,tsx,mts,js,jsx,mjs}"];
 const JS_SOURCES = ["**/*.{js,jsx,mjs}"];
 const TS_SOURCES = ["**/*.{ts,tsx,mts}"];
 const TESTS = ["**/tests/**/*.{ts,tsx}", "**/*.{test,spec,bench}.{ts,tsx}"];
-const CORE_SOURCES = ["packages/*/src/**/*.{ts,tsx}"];
-const ADW_SOURCES = ["packages/react/src/adw/**", "packages/components/src/adw/**"];
 const MANIFESTS = ["packages/*/package.json"];
 const TOOLING = ["**/*.config.{ts,mts,js,mjs}", "**/*.config.base.ts", "**/scripts/**/*.ts"];
 const TYPE_ONLY_DEPS = ["@types/ejs", "@types/node", "@types/react"];
@@ -80,14 +78,6 @@ const NX_CONFIGS: FlatConfig[] = [
         },
     },
 ];
-
-const ADW_CORE_MESSAGE =
-    "Adwaita must stay out of the core graph. Put Adwaita-dependent code under a dedicated adw subpath " +
-    "(packages/react/src/adw or packages/components/src/adw) and reach it from the generated adw module.";
-
-const ADW_ENTRYPOINT_MESSAGE =
-    "Only the ./adw entrypoint may reference the Adwaita bindings, so projects that do not declare Adw-1 " +
-    "still typecheck.";
 
 const IGNORES = [
     "**/*.vue",
@@ -233,15 +223,6 @@ const TEST_RULES: Linter.RulesRecord = {
     "vitest/unbound-method": "error",
 };
 
-const restrictAdwImports = (message: string, extra: string[]): Linter.RulesRecord => ({
-    "@typescript-eslint/no-restricted-imports": [
-        "error",
-        {
-            paths: ["@gtkx/gi/adw", "@gtkx/jsx", "@gtkx/jsx/adw", ...extra].map((name) => ({ name, message })),
-        },
-    ],
-});
-
 const scopeTo = (files: string[], configs: (FlatConfig | FlatConfig[])[]): FlatConfig[] =>
     configs.flat().map((entry) => ({ ...entry, files }));
 
@@ -277,16 +258,6 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
     ...NX_CONFIGS,
     documentPublicApi(root, surface),
     classifyEntrypoints(surface),
-    {
-        files: CORE_SOURCES,
-        ignores: [...ADW_SOURCES, "packages/animated/src/**", "packages/forms/src/**", "packages/navigation/src/**"],
-        rules: restrictAdwImports(ADW_CORE_MESSAGE, []),
-    },
-    {
-        files: ["packages/react/src/**/*.{ts,tsx}", "packages/components/src/**/*.{ts,tsx}"],
-        ignores: ADW_SOURCES,
-        rules: restrictAdwImports(ADW_ENTRYPOINT_MESSAGE, ["@gtkx/react/adw"]),
-    },
     {
         files: ["packages/cli/src/vite-plugins/**/*.ts", "packages/runtime/src/properties.ts"],
         rules: { "unicorn/no-this-outside-of-class": "off" },

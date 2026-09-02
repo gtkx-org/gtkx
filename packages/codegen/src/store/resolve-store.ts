@@ -13,11 +13,9 @@ type ResolvedStore = {
     gi: StoreOptions;
     /** Where the `@gtkx/jsx` store goes, versioned by the installed `@gtkx/react`; null when it is absent. */
     jsx: StoreOptions | null;
-    /** Subexport names of the installed `@gtkx/react`, empty when it is absent. */
-    reactSubexports: string[];
 };
 
-type ResolvedPackage = { dir: string; nodeModules: string; version: string };
+type ResolvedPackage = { nodeModules: string; version: string };
 type StoreConsumer = { name: string; nodeModules: string };
 
 const STORE_DIR = ".gtkx";
@@ -37,13 +35,8 @@ const STORE_CONSUMERS: string[] = [
     "@gtkx/testing",
 ];
 
-const readManifest = (path: string): { version?: string; exports?: Record<string, unknown> } =>
-    JSON.parse(readFileSync(path, "utf8")) as { version?: string; exports?: Record<string, unknown> };
-
-const subexportNames = (packageDir: string): string[] =>
-    Object.keys(readManifest(join(packageDir, "package.json")).exports ?? {})
-        .filter((key) => key.startsWith("./") && key !== "./package.json")
-        .map((key) => key.slice(2));
+const readManifest = (path: string): { version?: string } =>
+    JSON.parse(readFileSync(path, "utf8")) as { version?: string };
 
 const loadPackage = (manifest: string, nodeModules: string): ResolvedPackage | null => {
     if (!existsSync(manifest)) {
@@ -52,7 +45,7 @@ const loadPackage = (manifest: string, nodeModules: string): ResolvedPackage | n
 
     const real = realpathSync(manifest);
 
-    return { dir: dirname(real), nodeModules, version: readManifest(real).version ?? "0.0.0" };
+    return { nodeModules, version: readManifest(real).version ?? "0.0.0" };
 };
 
 const nodeModulesChain = function* (projectRoot: string): Generator<string> {
@@ -189,7 +182,7 @@ const sweepProjectStaging = (projectRoot: string): void => {
  * invalidates the stores. Pass explicit `gi` or `jsx` options to `runCodegen` to override any of it.
  *
  * @param projectRoot Directory holding the project's `package.json`, whose `node_modules` chain is walked.
- * @returns The store locations and the React subexports that shape the jsx store.
+ * @returns Where each store belongs.
  * @throws If `@gtkx/runtime` cannot be resolved from the project, or a `@gtkx` package that imports the
  * bindings is installed above the `node_modules` the stores would go in, since it could not reach them.
  */
@@ -202,7 +195,6 @@ const resolveStore = (projectRoot: string): ResolvedStore => {
     return {
         gi: storeOptions(nodeModules, "gi", runtime.version),
         jsx: react === null ? null : storeOptions(nodeModules, "jsx", react.version),
-        reactSubexports: react === null ? [] : subexportNames(react.dir),
     };
 };
 

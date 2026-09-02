@@ -81,7 +81,7 @@ import { DropDown } from "@gtkx/components";
 />
 ```
 
-`ComboRow<T, S>` from `@gtkx/components/adw` takes the same collection props and renders an `Adw.ComboRow`, presenting the choice as a row inside a preferences group, as the tutorial's [preferences chapter](/v2/tutorial/preferences-and-theming) does.
+`ComboRow<T, S>` from `@gtkx/components` takes the same collection props and renders an `Adw.ComboRow`, presenting the choice as a row inside a preferences group, as the tutorial's [preferences chapter](/v2/tutorial/preferences-and-theming) does.
 
 ### GtkListBox
 

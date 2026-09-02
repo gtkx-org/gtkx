@@ -1,6 +1,6 @@
-import type { ComboRowProps } from "@gtkx/components/adw";
+import type { ComboRowProps } from "@gtkx/components";
 import type * as Adw from "@gtkx/gi/adw";
-import { ComboRow } from "@gtkx/components/adw";
+import { ComboRow } from "@gtkx/components";
 import { GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type ReactNode, type Ref } from "react";

@@ -91,10 +91,7 @@ type ElementConfig<T extends GObject.Object = GObject.Object> = {
     omittedProps?: string[];
 };
 
-/**
- * Every registered element config, keyed by GLib type name. Adwaita entries appear once `@gtkx/react/adw`
- * is loaded.
- */
+/** Every registered element config, keyed by GLib type name. */
 const ELEMENTS: Record<string, ElementConfig> = {};
 
 const deferredProps = (behavior: ElementBehavior): string[] => behavior.deferred ?? [];

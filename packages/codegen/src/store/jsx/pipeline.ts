@@ -25,7 +25,6 @@ type JsxFiles = {
 };
 
 type JsxGenerationOptions = {
-    reactSubexports?: string[];
     components?: ElementComponentOverrides;
     props?: ElementProps;
     omittedProps?: OmittedProps;
@@ -37,7 +36,6 @@ type NamespaceFilesOptions = {
     intrinsicElements: GlibNamedClass[];
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
     lazyByNamespace: Map<string, LazyElementSpec[]>;
-    reactSubexports: string[];
     components: ElementComponentOverrides;
 };
 
@@ -45,7 +43,6 @@ type JsxNamespaceContext = {
     lazyElements: LazyElementSpec[];
     intrinsicElements: GlibNamedClass[];
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
-    reactSubexports: string[];
     components: ElementComponentOverrides;
 };
 
@@ -62,7 +59,6 @@ const generateJsxFiles = (library: Library, options: JsxGenerationOptions = {}):
         intrinsicElements,
         intrinsicElementByGlibName,
         lazyByNamespace,
-        reactSubexports: options.reactSubexports ?? [],
         components: options.components ?? {},
     });
 
@@ -84,8 +80,7 @@ const orderedIntrinsicNamespaces = (intrinsicElements: GlibNamedClass[]): GirNam
 const generateNamespaceFiles = (
     options: NamespaceFilesOptions,
 ): { namespaces: JsxNamespaceFile[]; intrinsicElementCount: number } => {
-    const { library, intrinsicElements, intrinsicElementByGlibName, lazyByNamespace, reactSubexports, components } =
-        options;
+    const { library, intrinsicElements, intrinsicElementByGlibName, lazyByNamespace, components } = options;
 
     const namespaces: JsxNamespaceFile[] = [];
     let intrinsicElementCount = 0;
@@ -95,7 +90,6 @@ const generateNamespaceFiles = (
             lazyElements: lazyByNamespace.get(namespace.name) ?? [],
             intrinsicElements,
             intrinsicElementByGlibName,
-            reactSubexports,
             components,
         });
 
@@ -111,14 +105,10 @@ const generateJsxNamespace = (
     library: Library,
     context: JsxNamespaceContext,
 ): { source: string; count: number } => {
-    const { lazyElements, intrinsicElements, intrinsicElementByGlibName, reactSubexports, components } = context;
+    const { lazyElements, intrinsicElements, intrinsicElementByGlibName, components } = context;
     const targetDirectory = namespaceDirectory(targetNamespace);
     const imports = new ImportsBuilder();
     imports.addSideEffect(`@gtkx/gi/${targetDirectory}`);
-
-    if (reactSubexports.includes(targetDirectory)) {
-        imports.addSideEffect(`@gtkx/react/${targetDirectory}`);
-    }
 
     const elementComponents = generateElementComponentsSection(targetNamespace, library, {
         imports,

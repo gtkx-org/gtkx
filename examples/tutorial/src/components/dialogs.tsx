@@ -1,4 +1,4 @@
-import { useToast } from "@gtkx/components/adw";
+import { useToast } from "@gtkx/components";
 import { t } from "@gtkx/i18n";
 import { closeTaskIfOpen } from "../navigation.js";
 import { useStore } from "../store/index.js";

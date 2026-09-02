@@ -16,7 +16,6 @@ type CodegenStore = {
 
 type CodegenReactPackage = {
     version: string;
-    subexports: string[];
 };
 
 type CodegenContext = {
@@ -57,7 +56,7 @@ const resolveCodegenStore = (dir: string): CodegenStore => {
         runtimeVersion: store.gi.version,
         react:
             hasReactRuntime && store.jsx !== null
-                ? { version: store.jsx.version, subexports: store.reactSubexports }
+                ? { version: store.jsx.version }
                 : null,
     };
 };

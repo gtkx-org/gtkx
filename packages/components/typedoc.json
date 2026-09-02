@@ -1,14 +1,12 @@
 {
     "entryPoints": [
-        "./dist/index.d.ts",
-        "./dist/adw/index.d.ts"
+        "./dist/index.d.ts"
     ],
     "$schema": "https://typedoc.org/schema.json",
     "intentionallyNotExported": [
         "ColumnViewOwnProps",
         "ComboRowComponent",
         "DropDownComponent",
-        "DropDownWidgetProps",
         "GridViewOwnProps",
         "ListViewOwnProps"
     ]

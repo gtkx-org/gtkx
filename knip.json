@@ -23,9 +23,6 @@
         "packages/react/src/prop-types.ts": [
             "types"
         ],
-        "packages/react/src/adw/prop-types.ts": [
-            "types"
-        ],
         "packages/cli/src/refresh-runtime.ts": [
             "exports"
         ]

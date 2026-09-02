@@ -1,4 +1,4 @@
-import type { ComboRowProps as BaseComboRowProps } from "@gtkx/components/adw";
+import type { ComboRowProps as BaseComboRowProps } from "@gtkx/components";
 import type {
     AdwEntryRowProps,
     AdwPasswordEntryRowProps,

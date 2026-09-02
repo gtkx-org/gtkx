@@ -4,7 +4,7 @@ import {
     ToastProvider,
     useToast,
     useToastOverlay,
-} from "@gtkx/components/adw";
+} from "@gtkx/components";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwToastOverlay } from "@gtkx/jsx/adw";

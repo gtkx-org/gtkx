@@ -27,8 +27,6 @@ type CodegenRunnerOptions = {
     gi: StoreOptions;
     /** Where to write and link the `@gtkx/jsx` store; omit to generate the gi store alone. */
     jsx?: StoreOptions | undefined;
-    /** Subexport names of the installed `@gtkx/react`, whose element config shapes the jsx store. */
-    reactSubexports?: string[];
     /** Component wrappers the project layers over the built-ins, keyed by GLib type name. */
     userComponents?: Record<string, ModuleExport>;
     /** GLib type names whose GObject their parent container creates, added to the framework's own. */
@@ -107,7 +105,6 @@ const runGlCodegen = (options: GlCodegenOptions): GlGenerationReport => {
 };
 
 const jsxUserOptions = (options: CodegenRunnerOptions) => ({
-    reactSubexports: options.reactSubexports ?? [],
     userComponents: options.userComponents ?? {},
     userLazyElements: options.userLazyElements ?? [],
     userProps: options.userProps ?? {},
@@ -117,18 +114,16 @@ const jsxUserOptions = (options: CodegenRunnerOptions) => ({
 const emitJsxStore = async (input: {
     options: CodegenRunnerOptions;
     jsx: StoreOptions;
-    gi: StoreOptions;
     loadLibrary: () => Library;
     isGiRegenerated: boolean;
     namespaces: number;
 }): Promise<StoreResult> => {
-    const { options, jsx, gi, loadLibrary, isGiRegenerated, namespaces } = input;
+    const { options, jsx, loadLibrary, isGiRegenerated, namespaces } = input;
     const { runJsxCodegen } = await import("./jsx.js");
 
     const jsxResult = await runJsxCodegen({
         getLibrary: loadLibrary,
         jsx,
-        giStoreDir: gi.storeDir,
         ...jsxUserOptions(options),
         isGiRegenerated,
         isForced: options.isForced === true,
@@ -173,7 +168,7 @@ const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> =
         return { isRegenerated: isGiRegenerated, namespaces, intrinsicElements: 0 };
     }
 
-    return emitJsxStore({ options, jsx, gi, loadLibrary, isGiRegenerated, namespaces });
+    return emitJsxStore({ options, jsx, loadLibrary, isGiRegenerated, namespaces });
 };
 
 export { runCodegen, runGlCodegen, type CodegenRunnerOptions, type CodegenRunnerResult };

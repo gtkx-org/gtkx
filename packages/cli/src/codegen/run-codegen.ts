@@ -93,7 +93,6 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
                     linkDir: store.jsxLinkDir,
                     version: store.react.version,
                 },
-    reactSubexports: store.react?.subexports ?? [],
     userComponents: resolveElementComponents(elements),
     userProps: resolveElementProps(elements),
     userLazyElements: resolveLazyElements(elements),

@@ -37,7 +37,6 @@ type DocsFingerprint = {
 
 type JsxFingerprintInput = {
     reactVersion: string;
-    reactSubexports: string[];
     components: Record<string, ModuleExport>;
     lazyElements: string[];
     props: Record<string, ModuleExport>;
@@ -283,7 +282,6 @@ const hashJsx = (input: JsxFingerprintInput): string =>
             JSON.stringify([
                 codegenHash(),
                 input.reactVersion,
-                sortOrdinal(input.reactSubexports),
                 serializeModuleExports(input.components),
                 sortOrdinal(input.lazyElements),
                 serializeModuleExports(input.props),

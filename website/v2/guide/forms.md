@@ -135,7 +135,7 @@ The rows keep their underlying native props and handlers, apart from the value p
 | `SpinRow` | `number` | `Adw.SpinRow:value` |
 | `ComboRow` | `string` | selected item ID |
 
-`ComboRow` takes the same `items`, `sections`, and renderer props as [`ComboRow` from `@gtkx/components/adw`](/v2/guide/components#dropdown). Passing `control={form.control}`, as in the example, lets TypeScript infer both the form field path and the item and section types used by those renderers. The stored value is the stable item `id`, not its current position or display value, so reordering or relabeling the items does not change the submitted value.
+`ComboRow` takes the same `items`, `sections`, and renderer props as [`ComboRow` from `@gtkx/components`](/v2/guide/components#dropdown). Passing `control={form.control}`, as in the example, lets TypeScript infer both the form field path and the item and section types used by those renderers. The stored value is the stable item `id`, not its current position or display value, so reordering or relabeling the items does not change the submitted value.
 
 ## Validation feedback
 

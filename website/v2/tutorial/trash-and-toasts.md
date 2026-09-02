@@ -22,7 +22,7 @@ Adwaita shows toasts through an `AdwToastOverlay`, which wraps the widgets they 
 
 A task is deleted from a row, from the open task's header, and from the Delete key, all far from the overlay. Threading a callback down through the sidebar, the screens, and every row is the prop-drilling the store exists to avoid. Reach the overlay through React context instead: `useToast` returns a controller that shows one.
 
-The overlay is a widget, so it can only wrap what is on screen. The Delete shortcut is not on screen: it sits in the window's `controllers` slot, outside the navigator and outside the overlay, and it deletes tasks too. So the context that carries the overlay has to sit higher than the overlay widget does. `@gtkx/components/adw` ships that split as `ToastProvider` and `useToast`: you hand the provider a ref, give the same ref to an `AdwToastOverlay` mounted wherever the toasts should appear, and every `useToast` below the provider shows toasts on that overlay.
+The overlay is a widget, so it can only wrap what is on screen. The Delete shortcut is not on screen: it sits in the window's `controllers` slot, outside the navigator and outside the overlay, and it deletes tasks too. So the context that carries the overlay has to sit higher than the overlay widget does. `@gtkx/components` ships that split as `ToastProvider` and `useToast`: you hand the provider a ref, give the same ref to an `AdwToastOverlay` mounted wherever the toasts should appear, and every `useToast` below the provider shows toasts on that overlay.
 
 The scaffolder did not install that package. From `tasks/`:
 
@@ -43,7 +43,7 @@ Like zustand, it belongs in `dependencies`: the toast helpers it supplies run in
 Wire both in `src/components/window.tsx`. Hold the overlay in a ref, wrap the window in `ToastProvider`, and mount the overlay around the navigator:
 
 ```tsx
-import { ToastProvider } from "@gtkx/components/adw";
+import { ToastProvider } from "@gtkx/components";
 import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage, AdwToastOverlay } from "@gtkx/jsx/adw";
 import { useRef } from "react";
 
@@ -208,7 +208,7 @@ The trash button on a row, the trash button in the open task's header, and the D
 Because that branch raises a toast, it reads the overlay from context, which makes it a hook. Add to `src/components/dialogs.tsx`:
 
 ```tsx
-import { useToast } from "@gtkx/components/adw";
+import { useToast } from "@gtkx/components";
 import { closeTaskIfOpen } from "../navigation.js";
 import type { Task } from "../types.js";
 

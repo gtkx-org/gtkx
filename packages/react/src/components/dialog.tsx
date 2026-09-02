@@ -1,9 +1,9 @@
 import type * as Adw from "@gtkx/gi/adw";
 import { type ElementType, type ReactNode, useCallback } from "react";
-import { createPortaledComponent } from "../components/portaled.js";
 import { useParentWindow } from "../hooks/use-parent-window.js";
 import { createPresentedComponent, type PresentedProps } from "../hooks/use-presented-instance.js";
 import { applyMutation } from "../reconciler/signals.js";
+import { createPortaledComponent } from "./portaled.js";
 
 type DialogComponentProps = PresentedProps<Adw.Dialog>;
 

@@ -16,8 +16,6 @@ import { generateJsxFiles } from "./store/jsx/pipeline.js";
 type RunJsxCodegenOptions = {
     getLibrary: () => Library;
     jsx: StoreOptions;
-    giStoreDir: string;
-    reactSubexports: string[];
     userComponents: Record<string, ModuleExport>;
     userLazyElements: string[];
     userProps: Record<string, ModuleExport>;
@@ -32,7 +30,7 @@ type RunJsxCodegenResult = {
 };
 
 const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodegenResult> => {
-    const builtin = await readBuiltinElements(options.reactSubexports, options.giStoreDir);
+    const builtin = await readBuiltinElements();
     const components = { ...builtin.components, ...options.userComponents };
     const lazyElements = [...builtin.lazyElements, ...options.userLazyElements];
     const props = { ...builtin.props, ...options.userProps };
@@ -40,7 +38,6 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
 
     const fingerprintInput: JsxFingerprintInput = {
         reactVersion: options.jsx.version,
-        reactSubexports: options.reactSubexports,
         components,
         lazyElements,
         props,
@@ -58,7 +55,6 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
     const library = options.getLibrary();
 
     const { namespaces, metadata, intrinsicElementCount, elements } = generateJsxFiles(library, {
-        reactSubexports: options.reactSubexports,
         components,
         lazyElements,
         props,
