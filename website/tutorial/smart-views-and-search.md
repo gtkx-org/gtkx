@@ -132,7 +132,7 @@ const lists = useStore((state) => state.lists);
 const visible = visibleTasks(tasks, selection, { query: searchQuery, filter });
 ```
 
-Do not move that work into the selector. A selector runs on every store change, and zustand compares its result with `Object.is` to decide whether to re-render. `state.tasks` is the same array object until something writes to it, so the comparison holds. A selector that builds a fresh array or object never compares equal to its previous result, so the component re-renders on every change to any part of the store.
+Do not move that work into the selector. Zustand uses the selector result as React's external-store snapshot, which React compares with `Object.is`. `state.tasks` is the same array object until something writes to it, so the comparison holds. A selector that builds a fresh array or object produces a different snapshot even when the store has not changed, which can trigger an infinite render loop in zustand 5.
 
 ## Counting what is still open
 

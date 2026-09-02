@@ -50,7 +50,10 @@ if (!existsSync(join(buildDir, "build.ninja"))) {
     execFileSync(meson, ["setup", buildDir, sourceDir, "-Dcairo=false"], { stdio: "inherit" });
 }
 
-execFileSync(meson, ["compile", "-C", buildDir], { stdio: "inherit" });
+execFileSync(meson, ["compile", "-C", buildDir], {
+    env: { ...process.env, GI_SCANNER_DISABLE_CACHE: "1" },
+    stdio: "inherit",
+});
 
 await runCodegen({
     libraries: ["Regress-1.0", "RegressUnix-1.0", "GIMarshallingTests-1.0", "Utility-1.0", "WarnLib-1.0", "Gtk-4.0"],

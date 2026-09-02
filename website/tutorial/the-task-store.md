@@ -156,7 +156,7 @@ export const TaskList = () => {
 
 `useStore` takes a selector, subscribes the component to whatever that selector returns, and re-renders when the value changes by `Object.is`. Delete the `TASKS` constant and the `Task` import with it, since the rest of the component already maps over `tasks`.
 
-The rest of this tutorial follows one rule for reading: **select the smallest stable thing, and derive the rest during render.** `state.tasks` returns the same array reference until a task changes, so the component stays put. A selector that built a fresh value on every call, such as `state.tasks.filter(...)`, would fail the identity check and re-render endlessly. Filtering and counting belong in ordinary functions called during render, which [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) builds.
+The rest of this tutorial follows one rule for reading: **select the smallest stable thing, and derive the rest during render.** `state.tasks` returns the same array reference until a task changes, so the component stays put. A selector that builds a fresh value on every call, such as `state.tasks.filter(...)`, produces an unstable snapshot. With zustand 5, that can trigger an infinite render loop because React sees a different value even when the store has not changed. Filtering and counting belong in ordinary functions called during render, which [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) builds.
 
 Actions follow the rule automatically. Their identity is fixed for the life of the store, so selecting one never triggers a re-render and never needs a dependency array:
 
