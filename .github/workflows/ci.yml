@@ -17,6 +17,9 @@ permissions:
   packages: read
 
 env:
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
   NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
 
 jobs:
@@ -210,7 +213,7 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm exec nx fix-ci
+          command: &fix-ci-command NODE_OPTIONS=--disable-warning=DEP0040 pnpm exec nx fix-ci
           install: "false"
 
   test:
@@ -233,7 +236,7 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm exec nx fix-ci
+          command: *fix-ci-command
           install: "false"
 
   test-cli:
@@ -259,7 +262,7 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm exec nx fix-ci
+          command: *fix-ci-command
           install: "false"
 
   asan:
@@ -297,7 +300,7 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm exec nx fix-ci
+          command: *fix-ci-command
           install: "false"
 
   publish-e2e:

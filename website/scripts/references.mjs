@@ -37,7 +37,10 @@ const commitRevision = (revision) => `${revision}^{${commitType}}`;
 
 const hasRevision = (revision) => {
     try {
-        read("git", ["cat-file", "-e", commitRevision(revision)], root);
+        execute("git", ["cat-file", "-e", commitRevision(revision)], {
+            cwd: root,
+            stdio: "ignore",
+        });
 
         return true;
     } catch {
@@ -96,6 +99,7 @@ const generateStable = () => {
             Object.entries(process.env).filter(([key]) => !key.startsWith("NX_TASK_") && key !== "NX_WORKSPACE_ROOT"),
         );
         environment.NX_DAEMON = "false";
+        run("git", ["init", "--quiet", "--initial-branch=main"], source, environment);
         run(pnpm, ["install", "--frozen-lockfile", "--store-dir", store], source, environment);
         run(pnpm, ["exec", "nx", "run", "@gtkx/website:reference"], source, environment);
 
