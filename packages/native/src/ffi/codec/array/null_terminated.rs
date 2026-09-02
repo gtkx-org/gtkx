@@ -171,6 +171,10 @@ impl ArrayCodec {
             );
         }
 
+        if matches!(&*self.item_codec, Codec::Array(_)) {
+            return self.decode_null_terminated_ptr_array(env, *ptr, transfer);
+        }
+
         match self.item_codec("array")? {
             ItemCodec::String => self.decode_null_terminated_string_array(env, *ptr, transfer),
             ItemCodec::Pointer => self.decode_null_terminated_ptr_array(env, *ptr, transfer),

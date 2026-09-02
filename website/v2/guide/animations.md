@@ -1,6 +1,6 @@
 ---
 title: "Animations"
-description: "Animate native widgets with @gtkx/animated, the React Spring target for GTKX: animated(Component), springs, interpolations, animated styles, transitions, the GTK frame clock, and reduced motion."
+description: "Animate native widgets with @gtkx/animated, the React Spring target for GTKX: animated(Component), springs, interpolations, transitions, the GTK frame clock, and reduced motion."
 ---
 
 # Animations
@@ -32,7 +32,7 @@ This works for every generated JSX element, whichever library it comes from, and
 
 The call form also works for elements that are not widgets, such as `GtkAdjustment`, and components of your own, while letting a production bundle retain only the components it reaches.
 
-Each frame, the current values are written straight onto the widget through its `ref`, so the component does not re-render while the spring runs. Every GObject property a widget exposes as a prop can be animated this way: `opacity`, the margins, `widthRequest` and `heightRequest`, `spacing`, a `Gtk.Adjustment`'s `value`, a progress bar's `fraction`, and so on. So can the `style` prop, which is not a GObject property at all. A `label` or a text child can be an interpolation too:
+Each frame, the current values are written straight onto the widget through its `ref`, so the component does not re-render while the spring runs. Every GObject property a widget exposes as a prop can be animated this way: `opacity`, the margins, `widthRequest` and `heightRequest`, `spacing`, a `Gtk.Adjustment`'s `value`, a progress bar's `fraction`, and so on. A `label` or a text child can be an interpolation too:
 
 ```tsx
 const { count } = useSpring({ from: { count: 0 }, to: { count: 100 } });
@@ -44,44 +44,13 @@ A value the property cannot hold as written is fitted to it: a spring headed for
 
 The wrapper passes a `ref` through. A component of your own that forwards it to the widget it renders gets the same per-frame writes, while one that keeps the `ref` re-renders with the current values instead.
 
-Props that are not GObject properties, such as the `accessible*` props, still animate: the component re-renders with the current value on each frame. `style` is the exception, and it gets its own section next.
+Props that are not GObject properties, such as the `accessible*` props, still animate by re-rendering the component with the current value on each frame. Reserve that path for values that genuinely need it. `style` accepts animated values too, but it is not suitable for per-frame updates.
 
-## Animated styles
+## Avoid per-frame style changes
 
-GTK4 has no inline styles, so the [`style` prop](/v2/guide/css) compiles to a rule in a `Gtk.CssProvider` that belongs to the widget alone. That provider is what a spring writes each frame: it reloads one rule for one widget, and the component does not re-render, exactly as for a GObject property. It is how you animate what GTK4 exposes through CSS and through nothing else, a color above all:
+GTK4 has no inline styles, so the [`style` prop](/v2/guide/css) serializes its object into a rule in a `Gtk.CssProvider`. Every animated `style` update reparses and reloads that rule, and GTK invalidates styling across the display. The provider belongs to one widget, but the invalidation cost does not. Feeding it a spring every frame scales poorly with the size of the visible tree.
 
-```tsx
-import { animated, useSpring } from "@gtkx/animated";
-import { GtkLabel } from "@gtkx/jsx/gtk";
-
-const AnimatedLabel = animated(GtkLabel);
-
-export const Deadline = ({ isOverdue }: { isOverdue: boolean }) => {
-    const { level } = useSpring({ level: isOverdue ? 1 : 0 });
-
-    return (
-        <AnimatedLabel
-            label="Due today"
-            style={level.to((value) => ({ color: `mix(var(--window-fg-color), var(--error-color), ${value})` }))}
-        />
-    );
-};
-```
-
-The spring carries a number and the interpolation builds the declaration around it. GTK4's `mix()` blends two colors by a fraction and `alpha()` scales one's opacity, so a color animation is a number animation; any other property is built the same way, out of a template string.
-
-A spring can also sit on a single declaration rather than on the whole prop, which is how React Spring is written for the DOM:
-
-```tsx
-const styles = useSpring({ from: { color: "red" }, to: { color: "blue" } });
-
-<AnimatedLabel style={styles} label="Due today" />;
-<AnimatedLabel style={{ color: styles.color, paddingTop: 4 }} label="Due today" />;
-```
-
-Both forms work, nested blocks included, so <span v-pre>`style={{ "&:hover": { color: spring } }}`</span> animates on hover. Hand the object a spring hook returns straight to `style`, put springs on the declarations you want to move, or interpolate the whole object out with `spring.to(…)` — whichever reads better for the animation at hand. Only the `style` prop is read this way; a spring nested inside any other object-valued prop, such as a `Pango.AttrList`, is not tracked.
-
-Because the rule is scoped to that one widget, this also animates what a widget has no property for at all: a `border-radius` that opens up, a `box-shadow` that lifts, a `filter` that desaturates a row as it is dismissed.
+Animate a native GObject property whenever one represents the effect. For CSS-only state changes, switch a class once and let GTK run a CSS `transition` or `@keyframes` animation internally. For continuously changing custom pixels, draw them in a `GtkDrawingArea` and call `queueDraw()` as the value changes. Keep `style` for state changes at React-render frequency, not the frame loop.
 
 ## Moving widgets
 
@@ -110,7 +79,7 @@ export const Slide = ({ isOpen }: { isOpen: boolean }) => {
 };
 ```
 
-Elsewhere, animate the margins, the size requests, a `Gtk.Paned`'s `position`, or a CSS `transform` through `style`, which moves what the widget paints without disturbing the layout around it.
+Elsewhere, animate the margins, the size requests, or a `Gtk.Paned`'s `position`. When an effect exists only in CSS, use a CSS transition or keyframes rather than feeding a `transform` through `style` each frame.
 
 ## Transitions and the rest of React Spring
 

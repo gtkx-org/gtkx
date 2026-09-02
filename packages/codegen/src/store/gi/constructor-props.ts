@@ -6,7 +6,7 @@ import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { collectInterfaceProperties } from "../../analysis/inheritance.js";
 import { inputParameters, parameterIdentifier } from "../../analysis/param-structure.js";
 import { renderTsType } from "../../analysis/ts-type.js";
-import { ancestorChain } from "../../gir/ancestry.js";
+import { ancestorChain, resolveInterfaces } from "../../gir/ancestry.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
 import { type Callables, staticMembers } from "./callables.js";
@@ -104,6 +104,41 @@ const fundamentalMessage = (qualified: string, hint: string | undefined): string
         : `${reason}; use ${qualified}.${hint} instead.`;
 };
 
+const INITIALIZATION_INTERFACES: Set<string> = new Set(["AsyncInitable", "Initable"]);
+
+const requiresFactoryInitialization = (context: ModuleContext, spec: ClassConstructorSpec): boolean => {
+    for (const ancestor of ancestorChain(context.library, spec.klass, context.namespace.name)) {
+        const interfaces = resolveInterfaces(
+            context.library,
+            ancestor.namespaceName,
+            ancestor.klass.implements,
+        );
+
+        if (interfaces.some((entry) =>
+            entry.namespaceName === "Gio" && INITIALIZATION_INTERFACES.has(entry.klass.name))) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const initializationMessage = (qualified: string, hint: string | undefined): string => {
+    const reason = `Cannot construct ${qualified} with new: it requires Gio factory initialization`;
+
+    return hint === undefined
+        ? `${reason} through a factory function.`
+        : `${reason}; use ${qualified}.${hint} instead.`;
+};
+
+const renderInitializationGuard = (context: ModuleContext, spec: ClassConstructorSpec): string => {
+    const qualified = `${context.namespace.name}.${spec.className}`;
+    const hint = constructionHint(context, spec.klass, spec.callables);
+    const message = sourceStringLiteral(initializationMessage(qualified, hint));
+
+    return renderBlock("constructor()", `throw new globalThis.Error(${message});`);
+};
+
 const renderFundamentalGuard = (context: ModuleContext, spec: ClassConstructorSpec): string => {
     const qualified = `${context.namespace.name}.${spec.className}`;
     const hint = constructionHint(context, spec.klass, spec.callables);
@@ -117,6 +152,10 @@ const renderClassConstructor = (context: ModuleContext, spec: ClassConstructorSp
 
     if (isFundamentalClass(context, klass)) {
         return renderFundamentalGuard(context, spec);
+    }
+
+    if (requiresFactoryInitialization(context, spec)) {
+        return renderInitializationGuard(context, spec);
     }
 
     if (!hasParent) {

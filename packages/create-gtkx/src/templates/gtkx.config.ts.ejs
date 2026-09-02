@@ -4,11 +4,10 @@ export default defineConfig({
     applicationId: "<%= applicationId %>",
     applicationIcon: "data/icons",
     deploy: {
-        name: "<%= title %>",
+        name: <%- sourceStringLiteral(displayName) %>,
         summary: "A GTK4 application built with GTKX",
         description: [
-            "<%= title %> is a GTK4 and Adwaita application built with GTKX, which renders native GObject "
-            + "widgets from React. Replace this paragraph with a description of what your application does.",
+            <%- sourceStringLiteral(`${displayName} is a GTK4 and Adwaita application built with GTKX, which renders native GObject widgets from React. Replace this paragraph with a description of what your application does.`) %>,
         ],
         categories: ["Utility"],
     },

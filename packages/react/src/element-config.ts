@@ -177,6 +177,9 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     AdwLayout: {
         isLazy: true,
     },
+    AdwSidebar: {
+        props: internal("ChildrenProps"),
+    },
     AdwSidebarSection: {
         props: internal("ChildrenProps"),
     },

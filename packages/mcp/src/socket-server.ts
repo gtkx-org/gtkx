@@ -3,11 +3,16 @@ import * as fs from "node:fs";
 import * as net from "node:net";
 import { basename, dirname, join, resolve as resolvePath } from "node:path";
 import type { ConnectionRegistry } from "./connection-registry.js";
-import { DEFAULT_SOCKET_PATH } from "./protocol/schemas.js";
+import {
+    cleanupMcpSocketAddress,
+    type McpSocketAddress,
+    prepareMcpSocketAddress,
+    resolveMcpSocketAddress,
+} from "./socket-path.js";
 import { connectionErrorEvent } from "./transport.js";
 
 type ProbeOutcome = { kind: "live" } | { kind: "unknown"; code: string } | { kind: "vacant" };
-type PathVerdict = ProbeOutcome | { kind: "directory" };
+type PathVerdict = ProbeOutcome | { kind: "invalid" };
 type ClaimOutcome = "occupied" | "published";
 
 const PROBE_TIMEOUT_MS = 1000;
@@ -73,12 +78,6 @@ const acquireClaimLock = async (socketPath: string): Promise<net.Server | null> 
     }
 
     return lock;
-};
-
-const releaseClaimLock = async (lock: net.Server | null): Promise<void> => {
-    if (lock) {
-        await closeServer(lock);
-    }
 };
 
 const withClaimLock = async <T>(socketPath: string, action: () => Promise<T> | T): Promise<T> => {
@@ -159,10 +158,10 @@ const undecidedOwnerError = (socketPath: string, code: string): Error =>
         "Retry, or delete the file by hand once no server is running.",
     );
 
-const directoryPathError = (socketPath: string): Error =>
+const invalidPathError = (socketPath: string): Error =>
     new Error(
-        `The GTKX MCP socket path ${socketPath} is a directory, not a socket. ` +
-        "Remove it, or point XDG_RUNTIME_DIR at a directory where GTKX can create its socket.",
+        `The GTKX MCP socket path ${socketPath} exists and is not a socket. ` +
+        "Move it, or point XDG_RUNTIME_DIR at a directory where GTKX can create its socket.",
     );
 
 const listenFailureError = (socketPath: string, code: string): Error =>
@@ -184,8 +183,8 @@ const clearStalePath = async (target: string): Promise<PathVerdict> => {
         return { kind: "vacant" };
     }
 
-    if (entry.isDirectory()) {
-        return { kind: "directory" };
+    if (!entry.isSocket()) {
+        return { kind: "invalid" };
     }
 
     const outcome = await probeUntilConclusive(target);
@@ -204,8 +203,8 @@ const requireVacantPath = async (socketPath: string): Promise<void> => {
         throw alreadyOwnedError(socketPath);
     }
 
-    if (verdict.kind === "directory") {
-        throw directoryPathError(socketPath);
+    if (verdict.kind === "invalid") {
+        throw invalidPathError(socketPath);
     }
 
     if (verdict.kind === "unknown") {
@@ -242,26 +241,18 @@ const publishSocket = async (privatePath: string, socketPath: string): Promise<n
     throw alreadyOwnedError(socketPath);
 };
 
-const releaseSocketPath = async (socketPath: string, inode: number): Promise<void> => {
-    const lock = await acquireClaimLock(socketPath);
-
-    try {
-        removeEntry(socketPath, inode);
-    } finally {
-        await releaseClaimLock(lock);
-    }
-};
-
 class SocketServer {
     private server: net.Server | null = null;
     private socketPath: string;
     private registry: ConnectionRegistry;
+    private address: McpSocketAddress;
     private boundInode: number | null = null;
     private startup: Promise<void> | null = null;
 
-    constructor(registry: ConnectionRegistry, socketPath: string = DEFAULT_SOCKET_PATH) {
+    constructor(registry: ConnectionRegistry, address: McpSocketAddress = resolveMcpSocketAddress()) {
         this.registry = registry;
-        this.socketPath = socketPath;
+        this.address = address;
+        this.socketPath = address.path;
     }
 
     private listen(privatePath: string): Promise<net.Server> {
@@ -294,21 +285,46 @@ class SocketServer {
     }
 
     private async bind(): Promise<void> {
+        prepareMcpSocketAddress(this.address);
         const privatePath = privatePathFor(this.socketPath);
         await clearStalePath(privatePath);
         const server = await this.listenPrivately(privatePath);
+        const privateInode = inodeFor(privatePath);
 
         try {
-            this.boundInode = await publishSocket(privatePath, this.socketPath);
+            if (privateInode === null) {
+                throw listenFailureError(this.socketPath, "ENOENT");
+            }
+
+            const publishedInode = await publishSocket(privatePath, this.socketPath);
+
+            if (publishedInode !== privateInode) {
+                throw listenFailureError(this.socketPath, "ESTALE");
+            }
+
+            this.boundInode = privateInode;
             this.server = server;
         } catch (error) {
             await closeServer(server);
+
+            if (privateInode !== null) {
+                removeEntry(privatePath, privateInode);
+                removeEntry(this.socketPath, privateInode);
+            }
+
             throw error;
         }
     }
 
     private open(): Promise<void> {
-        return withClaimLock(this.socketPath, () => this.bind());
+        return withClaimLock(this.socketPath, async () => {
+            try {
+                await this.bind();
+            } catch (error) {
+                cleanupMcpSocketAddress(this.address);
+                throw error;
+            }
+        });
     }
 
     private async settleStartup(): Promise<void> {
@@ -320,13 +336,23 @@ class SocketServer {
         }
     }
 
-    private async release(): Promise<void> {
+    private async release(server: net.Server): Promise<void> {
         const inode = this.boundInode;
-        this.boundInode = null;
 
-        if (inode !== null) {
-            await releaseSocketPath(this.socketPath, inode);
-        }
+        await withClaimLock(this.socketPath, async () => {
+            this.registry.dispose();
+            await closeServer(server);
+
+            try {
+                if (inode !== null) {
+                    removeEntry(this.socketPath, inode);
+                }
+            } finally {
+                cleanupMcpSocketAddress(this.address);
+            }
+        });
+
+        this.boundInode = null;
     }
 
     async start(): Promise<void> {
@@ -352,10 +378,8 @@ class SocketServer {
             return;
         }
 
+        await this.release(server);
         this.server = null;
-        this.registry.dispose();
-        await closeServer(server);
-        await this.release();
     }
 }
 

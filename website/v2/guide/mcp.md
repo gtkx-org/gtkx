@@ -7,7 +7,7 @@ description: "Give AI coding agents eyes and hands on your running app: the @gtk
 
 `@gtkx/mcp` is a stdio MCP (Model Context Protocol) server that connects any MCP client, Claude Code or otherwise, to a running GTKX app. Through it an agent inspects and drives the live window, and looks up the exact props, signals, and method signatures of the project's generated bindings instead of guessing. Combined with the Fast Refresh loop of `gtkx dev`, that gives an agent the same edit, look, verify cycle you have.
 
-`gtkx dev` starts the app side automatically as soon as the entry module mounts an application, and the two halves find each other whenever both are up, so start order does not matter. Several apps can register with one server: every tool that targets a running app takes an optional `applicationId` and defaults to the first connected app, while the reference tools take `projectRoot` instead. All of this is development tooling, so `gtkx build` bundles none of it and a production app has nothing listening.
+`gtkx dev` starts the app side automatically as soon as the entry module mounts an application, and the two halves find each other whenever both are up, so start order does not matter. Several apps can register with one server: every tool that targets a running app takes an optional `applicationId` and defaults to the first connected app, while the reference tools take `projectRoot` instead. A widget tool waits up to ten seconds for that specific app to register; `appTimeout` changes the wait in milliseconds. All of this is development tooling, so `gtkx build` bundles none of it and a production app has nothing listening.
 
 ## Setup
 
@@ -52,7 +52,9 @@ Written out, the configuration is a stdio server launched from the project root:
 
 `gtkx mcp` runs the server through the CLI the project already depends on, so the server always matches the bindings it documents. The standalone `gtkx-mcp` binary from `@gtkx/mcp` does the same thing and stays supported, but it has to be a direct dev dependency to be on `PATH`: under pnpm the nested copy `@gtkx/cli` pulls in stays in the virtual store, and launching it fails with `gtkx-mcp: command not found`.
 
-The widget tools fail until an app is running under `gtkx dev`.
+Widget tools can be called while `gtkx dev` is starting. They wait briefly for the requested application and fail if it does not register before the timeout.
+
+The app and server normally meet at `$XDG_RUNTIME_DIR/gtkx-mcp.sock`. If that name would exceed the safe Unix socket byte budget, both sides derive the same shorter path inside a private, user-owned directory under `/tmp`; the server prints the fallback path when it starts.
 
 ## Choosing which tools to register
 

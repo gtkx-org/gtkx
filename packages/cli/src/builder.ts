@@ -1,6 +1,7 @@
-import { join, posix } from "node:path";
+import { loadConfig } from "@gtkx/config";
+import { join, posix, relative, resolve } from "node:path";
 import { type InlineConfig, mergeConfig, build as viteBuild } from "vite";
-import { createBuildManifestCollector } from "./internal/build-manifest.js";
+import { configDigest, createBuildManifestCollector } from "./internal/build-manifest.js";
 import { gtkxBuildManifest } from "./vite-plugins/build-manifest.js";
 import { BUNDLE_FILENAME, ESM_EXTENSION } from "./vite-plugins/esm-extension.js";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
@@ -10,6 +11,7 @@ import { gtkxWorker } from "./vite-plugins/worker.js";
 
 type BuildOptions = {
     entry: string;
+    configFile?: string | undefined;
     shouldPreserveI18nMetadata?: boolean | undefined;
     vite?: InlineConfig | undefined;
 };
@@ -34,16 +36,27 @@ const buildDefaults: InlineConfig = {
 
 const build = async (options: BuildOptions): Promise<string> => {
     const { entry, shouldPreserveI18nMetadata = true, vite: viteConfig } = options;
-    const root = viteConfig?.root ?? process.cwd();
+    const root = resolve(viteConfig?.root ?? process.cwd());
     const assetsDir = viteConfig?.build?.assetsDir ?? DEFAULT_ASSETS_DIR;
     const buildManifest = createBuildManifestCollector();
+    const loadedConfig = await loadConfig(root, { mode: BUILD_MODE, configFile: options.configFile });
+    const buildConfigIdentity = {
+        configFile: posix.normalize(relative(root, loadedConfig.configFile).replaceAll("\\", "/")),
+        configDigest: configDigest(loadedConfig.config),
+    };
 
     const forced: InlineConfig = {
         plugins: [
-            ...gtkxVitePlugins(BUILD_MODE, entry, buildManifest, shouldPreserveI18nMetadata),
+            ...gtkxVitePlugins({
+                mode: BUILD_MODE,
+                entryPath: entry,
+                buildManifest,
+                shouldPreserveI18nMetadata,
+                configFile: options.configFile,
+            }),
             gtkxWorker(),
             gtkxNative(root),
-            gtkxBuildManifest(root, buildManifest),
+            gtkxBuildManifest(root, buildManifest, buildConfigIdentity),
             gtkxSelfContained(),
         ],
         build: {

@@ -4,6 +4,11 @@ import { Worker } from "node:worker_threads";
 const mode = process.argv[2];
 const willLinger = mode === "terminate" || mode === "kill";
 const task = fileURLToPath(new URL("worker-task.ts", import.meta.url));
+
+if (mode === "conflict") {
+    await import("@gtkx/gi/glib");
+}
+
 const worker = new Worker(task, willLinger ? { workerData: "linger" } : {});
 
 const nextMessage = () =>

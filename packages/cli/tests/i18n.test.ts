@@ -19,6 +19,8 @@ const IT_CATALOG = join("po", "it.po");
 const IT_MO = join("dist", "locale", "it", "LC_MESSAGES", `${APPLICATION_ID}.mo`);
 const GENERATED_ENV = join("node_modules", ".gtkx", "env.d.ts");
 const GENERATED_I18N_TYPES = join("node_modules", ".gtkx", "i18n.d.ts");
+const GENERATED_I18N_RESOURCES = join("node_modules", ".gtkx", "i18n-resources.d.ts");
+const GENERATED_EN_MESSAGES = join("node_modules", ".gtkx", "i18n", "en", "translation.json");
 const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
 const ENTRY = join("src", "index.ts");
 const RUN_TIMEOUT = 60_000;
@@ -67,11 +69,33 @@ export const contextFree = (
 `;
 
 const IGNORED_SOURCE = `import { t as translate } from "@gtkx/i18n";
+import i18next from "i18next";
 
-translate("Aliased message");
+const key = process.argv[2] ?? "Local message";
+const t = (message: string | TemplateStringsArray): string =>
+    typeof message === "string" ? message : message[0] ?? "";
+const localTranslate = t;
 const instance = { t: (message: string): string => message };
+const shadowedAlias = (translate: (message: string) => string): string => translate(key);
+const shadowedMember = (i18next: typeof instance): string => i18next.t(key);
+t(key);
+t("Open", { context: "fake" });
+t("Shared", { defaultValue: "Local source" });
+t\`Local tagged message\`;
+localTranslate("Local alias message");
 instance.t("Member message");
+shadowedAlias(t);
+shadowedMember(instance);
 `;
+
+const LOCAL_TRANS_SOURCE = [
+    'const key = process.argv[2] ?? "Local component";',
+    'const value = "Local child";',
+    "const Trans = (_props: { i18nKey?: string; children?: unknown }): null => null;",
+    "export const local = <Trans i18nKey={key} />;",
+    "export const localChildren = <Trans>{value}</Trans>;",
+    "",
+].join("\n");
 
 const CJS_SOURCE = `const { t } = require("@gtkx/i18n");
 t("CommonJS message");
@@ -115,6 +139,7 @@ const projectFiles = (linguas: string, po: string | null): Record<string, string
     [ENTRY]: ENTRY_SOURCE,
     [join("src", "components.tsx")]: REACT_SOURCE,
     [join("src", "ignored.ts")]: IGNORED_SOURCE,
+    [join("src", "local-component.tsx")]: LOCAL_TRANS_SOURCE,
     [join("src", "lazy.ts")]: LAZY_SOURCE,
     [join("src", "legacy.cjs")]: CJS_SOURCE,
     [join("po", "LINGUAS")]: linguas,
@@ -189,18 +214,31 @@ const expectTypecheckToThrow = (project: CliProject): void => {
 
 const expectExtractedMessages = (project: CliProject): void => {
     const pot = readFileSync(join(project.root, POT), "utf8");
+    const resources = readFileSync(join(project.root, GENERATED_EN_MESSAGES), "utf8");
+    const resourceTypes = readFileSync(join(project.root, GENERATED_I18N_RESOURCES), "utf8");
     expect(pot).toContain('msgid "Hello"');
     expect(pot).toContain('msgid "Welcome, {{name}}!"');
     expect(pot).toContain('msgid "{{count}} file"');
     expect(pot).toContain('msgid_plural "{{count}} files"');
     expect(pot).toContain('msgctxt "menu"');
+    expect(pot).not.toContain('msgctxt "fake"');
+    expect(pot).not.toContain('msgid "Local source"');
+    expect(pot).not.toContain('msgid "Local tagged message"');
+    expect(pot).not.toContain('msgid "Local alias message"');
     expect(pot).toContain('msgid "Lazy message"');
     expect(pot).toContain('msgid "Hook message"');
     expect(pot).toContain('msgid "Component welcome"');
     expect(pot).toContain('msgid "Context-free welcome"');
-    expect(pot).not.toContain("Aliased message");
     expect(pot).not.toContain("Member message");
     expect(pot).not.toContain("CommonJS message");
+    expect(resources).toContain("Hello");
+    expect(resources).not.toContain("Local message");
+    expect(resources).not.toContain("Local source");
+    expect(resources).not.toContain("Local tagged message");
+    expect(resources).not.toContain("Local alias message");
+    expect(resources).not.toContain("Member message");
+    expect(resourceTypes).toContain("Hello");
+    expect(resourceTypes).not.toContain("Local source");
 };
 
 const expectBuiltCatalog = (project: CliProject): void => {
@@ -235,9 +273,36 @@ const expectEdgeCases = (): void => {
     });
 
     withProject(createI18nProject("", null), (project) => {
+        writeFileSync(join(project.root, ENTRY), `import { t, useTranslation } from "@gtkx/i18n";
+
+t("settings", { context: "menu", keyPrefix: "panel." });
+t("Shared", { defaultValue: "Canonical source" });
+t("Asserted message" as const);
+t("outer", { defaultValue: "Outer $t(inner)" });
+t("nested outer", { defaultValue: 'Outer $t(inner, { defaultValue: ")", context: "menu" })' });
+
+export const tupleProbe = (): string => {
+    const [t] = useTranslation();
+    return t("Tuple hook message");
+};
+
+export const prefixedProbe = (): string => {
+    const { t } = useTranslation("translation", { keyPrefix: "panel" });
+    return t("title", { context: "menu" });
+};
+`);
         runCliOrThrow(project, ["build"]);
+        const pot = readFileSync(join(project.root, POT), "utf8");
         expect(existsSync(join(project.root, POT))).toBe(true);
         expect(existsSync(join(project.root, "dist", "locale"))).toBe(false);
+        expect(pot).toContain('msgid "panel.settings"');
+        expect(pot).toContain('msgid "Canonical source"');
+        expect(pot).toContain('msgid "Asserted message"');
+        expect(pot).toContain('msgid "Tuple hook message"');
+        expect(pot).toContain('msgid "panel.title"');
+        expect(pot).toContain('msgid "inner"');
+        expect(pot).toContain('msgid "inner_menu"');
+        expect(pot).not.toContain('msgid "Local source"');
     });
 };
 
@@ -260,6 +325,147 @@ t("rank", {
     defaultValue_ordinal_one: "first",
     defaultValue_ordinal_other: "{{count}}th",
     ordinal: true,
+});
+`,
+        );
+
+        expect(() => runCliOrThrow(project, ["build"])).toThrow();
+    });
+
+    for (const [file, source] of [
+        [ENTRY, `import { t as translate } from "@gtkx/i18n";
+translate("Aliased message");
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+const translate = t;
+translate("Local alias message");
+`],
+        [ENTRY, `import * as i18n from "@gtkx/i18n";
+i18n.t("Member message");
+`],
+        [ENTRY, `import * as i18n from "@gtkx/i18n";
+const { t } = i18n;
+t("Destructured member message");
+`],
+        [ENTRY, `import { useTranslation as useT } from "@gtkx/i18n";
+const { t } = useT();
+t("Aliased hook message");
+`],
+        [ENTRY, `import { useTranslation } from "@gtkx/i18n";
+const translate = useTranslation().t;
+translate("Hook property alias message");
+`],
+        [ENTRY, `import { useTranslation } from "@gtkx/i18n";
+const translation = useTranslation();
+translation.t("Hook member message");
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+const translate = t.bind(undefined);
+translate("Bound alias message");
+`],
+        [ENTRY, `import { useTranslation } from "@gtkx/i18n";
+const { t } = useTranslation("translation", { keyPrefix: "panel" });
+t("title", { keyPrefix: "" });
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+(t)("Wrapped callee message");
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+t\`Tagged message\`;
+`],
+        [ENTRY, `import { t as translate } from "@gtkx/i18n";
+translate\`Aliased tagged message\`;
+`],
+        [ENTRY, `import * as i18n from "@gtkx/i18n";
+i18n.t\`Member tagged message\`;
+`],
+        [ENTRY, `import * as i18n from "@gtkx/i18n";
+i18n?.t("Optional member message");
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+const key = process.argv[2];
+t(key);
+`],
+        [
+            join("src", "components.tsx"),
+            'import { Trans } from "@gtkx/i18n";\n' +
+            "const key = process.argv[2];\n" +
+            "export const Invalid = <Trans i18nKey={key}>fallback</Trans>;\n",
+        ],
+        [
+            join("src", "components.tsx"),
+            'import { Trans } from "@gtkx/i18n";\n' +
+            "const context = process.argv[2];\n" +
+            'export const Invalid = <Trans i18nKey="open" context={context}>Open</Trans>;\n',
+        ],
+        [
+            join("src", "components.tsx"),
+            'import { Trans } from "@gtkx/i18n";\n' +
+            "const defaults = process.argv[2];\n" +
+            'export const Invalid = <Trans i18nKey="greeting" defaults={defaults}>Visible child</Trans>;\n',
+        ],
+        [join("src", "components.tsx"), `import { Trans } from "@gtkx/i18n";
+const context = process.argv[2];
+export const Invalid = <Trans i18nKey="open" tOptions={{ context }}>Open</Trans>;
+`],
+        [join("src", "components.tsx"), `import { Trans } from "@gtkx/i18n";
+const fallback = process.argv[2];
+export const Invalid = (
+    <Trans i18nKey="greeting" tOptions={{ defaultValue: fallback }}>Visible child</Trans>
+);
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+t("files", "files", { count: 2, defaultValue_few: "few files" });
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+t("files", { count: 2, ["defaultValue_two"]: "paired files" });
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+const defaults = { defaultValue_many: "many files" };
+t("files", { count: 2, ...defaults });
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+const options = { count: 2, defaultValue_one: "one", defaultValue_other: "many" };
+t("files", options);
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+t("open", { ["con" + "text"]: "menu" });
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+t("files", ({
+    count: 2,
+    defaultValue_one: "one file",
+    defaultValue_other: "many files",
+    defaultValue_zero: "no files",
+} as const));
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+t(("Parenthesized message"));
+`],
+        [ENTRY, `import { t } from "@gtkx/i18n";
+t("Satisfied message" satisfies string);
+`],
+        [join("src", "components.tsx"), `import { Trans } from "@gtkx/i18n";
+export const Invalid = () => (
+    <Trans i18nKey="files" count={2} tOptions={{ defaultValue_zero: "no files" }}>files</Trans>
+);
+`],
+    ] as const) {
+        withProject(createI18nProject(), (project) => {
+            writeFileSync(join(project.root, file), source);
+            expect(() => runCliOrThrow(project, ["build"])).toThrow();
+        });
+    }
+
+    withProject(createI18nProject(), (project) => {
+        writeFileSync(
+            join(project.root, ENTRY),
+            `import { t } from "@gtkx/i18n";
+t("files", {
+    count: 2,
+    defaultValue_one: "{{count}} file",
+    defaultValue_two: "{{count}} paired files",
+    defaultValue_other: "{{count}} files",
 });
 `,
         );

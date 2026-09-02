@@ -6,7 +6,7 @@ import { join } from "node:path";
 type TemplateContext = {
     name: string;
     applicationId: string;
-    title: string;
+    displayName: string;
     shouldIncludeTesting: boolean;
     isTypescript: boolean;
     importExtension: string;

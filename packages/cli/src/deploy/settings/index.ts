@@ -31,6 +31,7 @@ import { resolveVersions } from "./version.js";
 type SettingsRequest = {
     root: string;
     config: Config;
+    configFile: string;
     outDirOverride?: string | undefined;
     now?: Date | undefined;
 };
@@ -174,10 +175,11 @@ const resolveDeploySettings = (request: SettingsRequest): DeploySettings => {
     const deploy = core.identity.deploy;
 
     return {
+        configFile: request.configFile,
         ...identitySlice(core),
         ...metadataSlice(request.root, core),
         ...desktopSlice(deploy),
-        extraFiles: resolveExtraFiles(deploy),
+        extraFiles: resolveExtraFiles(request.root, deploy),
         versions: core.versions,
         arch: resolveArch(),
         paths: resolvePaths({

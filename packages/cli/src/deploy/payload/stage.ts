@@ -108,10 +108,10 @@ const stagePayload = ({ settings, node, metadata }: StageRequest): StagedFile[] 
         ...stageNodeBinary(settings, root, node),
         ...stageRuntimeFiles(settings, root),
         ...stageCatalogs(settings, root),
+        ...stageExtraFiles(settings, root),
         ...stageMetadata(settings, root, metadata),
         ...stageIcons(settings, root),
         ...stageSchemas(settings, root),
-        ...stageExtraFiles(settings, root),
     ]);
 };
 

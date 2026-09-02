@@ -1,12 +1,14 @@
-import { isPathInside, isRecord, sortStrings } from "@gtkx/utils";
+import type { Config } from "@gtkx/config";
+import { isPathInside, isRecord, sortStrings, toPosixPath } from "@gtkx/utils";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import type { DeploySettings } from "../types.js";
 import {
     BUILD_MANIFEST_FILENAME,
     BUILD_MANIFEST_FORMAT_VERSION,
     BUILD_MANIFEST_GENERATOR,
     type BuildManifest,
+    configDigest,
     type RecordedPackage,
 } from "../../internal/build-manifest.js";
 import {
@@ -18,6 +20,11 @@ import {
 type ResolvedBuildManifest = {
     packages: RecordedPackage[];
     schemaFiles: string[];
+};
+
+type ExpectedBuildConfig = {
+    config: Config;
+    configFile: string;
 };
 
 const invalidManifest = (path: string): Error =>
@@ -51,6 +58,8 @@ const parseBuildManifest = (value: unknown, path: string): BuildManifest => {
         !isRecord(value) ||
         value.generator !== BUILD_MANIFEST_GENERATOR ||
         value.formatVersion !== BUILD_MANIFEST_FORMAT_VERSION ||
+        typeof value.configFile !== "string" ||
+        typeof value.configDigest !== "string" ||
         !Array.isArray(value.schemas) ||
         !Array.isArray(value.packages)
     ) {
@@ -62,6 +71,8 @@ const parseBuildManifest = (value: unknown, path: string): BuildManifest => {
     return {
         generator: BUILD_MANIFEST_GENERATOR,
         formatVersion: BUILD_MANIFEST_FORMAT_VERSION,
+        configFile: value.configFile,
+        configDigest: value.configDigest,
         schemas: recordedSchemas(value.schemas, path),
         packages: packages.map((entry) => recordedPackage(entry, path)),
     };
@@ -91,7 +102,20 @@ const resolveRecordedSchema = (root: string, manifestPath: string, entry: string
     return filePath;
 };
 
-const readBuildManifest = (settings: DeploySettings): ResolvedBuildManifest => {
+const assertBuildConfig = (
+    settings: DeploySettings,
+    manifestPath: string,
+    manifest: BuildManifest,
+    expected: ExpectedBuildConfig,
+): void => {
+    const expectedFile = toPosixPath(relative(settings.paths.root, expected.configFile));
+
+    if (manifest.configFile !== expectedFile || manifest.configDigest !== configDigest(expected.config)) {
+        throw new Error(`Cannot deploy: ${manifestPath} was built from a different GTKX configuration.`);
+    }
+};
+
+const readBuildManifest = (settings: DeploySettings, expected: ExpectedBuildConfig): ResolvedBuildManifest => {
     const manifestPath = join(settings.paths.dist, BUILD_MANIFEST_FILENAME);
 
     if (!existsSync(manifestPath)) {
@@ -100,6 +124,7 @@ const readBuildManifest = (settings: DeploySettings): ResolvedBuildManifest => {
 
     const parsed: unknown = JSON.parse(readFileSync(manifestPath, "utf8"));
     const manifest = parseBuildManifest(parsed, manifestPath);
+    assertBuildConfig(settings, manifestPath, manifest, expected);
     const files = manifest.schemas.map((entry) => resolveRecordedSchema(settings.paths.root, manifestPath, entry));
     const unique = sortStrings(new Set(files));
     assertUniqueSchemaBasenames(unique);

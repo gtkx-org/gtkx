@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::ffi::c_void;
 use std::os::raw::c_int;
+use std::sync::Mutex;
+use std::thread::{self, ThreadId};
 use std::time::{Duration, Instant};
 
 use glib::ffi::{
@@ -28,6 +30,7 @@ const UV_PRIORITIZED: c_int = 8;
 const HANDLE_ALIGN: usize = 16;
 
 const DISPATCH_BUDGET: Duration = Duration::from_millis(4);
+static CONTEXT_OWNER: Mutex<Option<ThreadId>> = Mutex::new(None);
 
 type UvVoidCb = unsafe extern "C" fn(*mut c_void);
 type UvPollCb = unsafe extern "C" fn(*mut c_void, c_int, c_int);
@@ -317,6 +320,21 @@ unsafe extern "C" fn on_timer(_handle: *mut c_void) {}
 
 unsafe extern "C" fn on_poll(_handle: *mut c_void, _status: c_int, _events: c_int) {}
 
+fn context_owner() -> std::sync::MutexGuard<'static, Option<ThreadId>> {
+    CONTEXT_OWNER
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+fn clear_context_owner() {
+    let current = thread::current().id();
+    let mut owner = context_owner();
+
+    if owner.as_ref() == Some(&current) {
+        *owner = None;
+    }
+}
+
 pub fn install(env: &Env) -> napi::Result<()> {
     if RUNLOOP.with_borrow(Option::is_some) {
         return Ok(());
@@ -337,11 +355,16 @@ pub fn install(env: &Env) -> napi::Result<()> {
     let ctx = unsafe { g_main_context_default() };
 
     if unsafe { glib::ffi::g_main_context_acquire(ctx) } == 0 {
-        return Err(napi::Error::new(
-            napi::Status::GenericFailure,
-            "Failed to acquire the default GLib main context on the Node thread",
-        ));
+        let message = if context_owner().is_some() {
+            "GTKX is already running on another thread; worker threads cannot import @gtkx/* — post plain data back to the owning thread instead"
+        } else {
+            "Failed to acquire the default GLib main context on the Node thread"
+        };
+
+        return Err(napi::Error::new(napi::Status::GenericFailure, message));
     }
+
+    *context_owner() = Some(thread::current().id());
 
     let prepare = alloc_uv_handle(UV_PREPARE);
     let rc = unsafe { (uv.prepare_init)(uv_loop, prepare) };
@@ -405,6 +428,7 @@ fn fail_install(
         close_uv_handle(handle);
     }
     unsafe { g_main_context_release(ctx) };
+    clear_context_owner();
     napi::Error::new(
         napi::Status::GenericFailure,
         format!("{call} failed while installing the GLib runloop (uv error {rc})"),
@@ -442,4 +466,5 @@ pub fn teardown() {
     };
 
     unsafe { g_main_context_release(ctx) };
+    clear_context_owner();
 }

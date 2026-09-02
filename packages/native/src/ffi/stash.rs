@@ -134,6 +134,12 @@ macro_rules! ffi_numeric_with {
 }
 
 impl Stash {
+    pub fn retain_forever(&self) {
+        if let Self::Callback(callback) = self {
+            callback.retain_forever();
+        }
+    }
+
     pub fn disarm_pending_transfer(&self) {
         match self {
             Self::Storage(storage) => storage.disarm_pending_transfer(),

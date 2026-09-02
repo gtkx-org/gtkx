@@ -1,6 +1,6 @@
 import { resolveExecutable, spawnWithParentDeathSignal } from "@gtkx/utils";
 import { type ChildProcess, spawnSync } from "node:child_process";
-import { chmodSync, createWriteStream, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, closeSync, existsSync, mkdtempSync, openSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -57,6 +57,11 @@ type DisplaySockets = {
     busMonitor: ChildMonitor;
 };
 
+type CapturedStderr = {
+    chunks: string[];
+    stop: () => void;
+};
+
 type SocketWatch = {
     options: WaitForSocketOptions;
     resolve: () => void;
@@ -65,6 +70,7 @@ type SocketWatch = {
 
 const DEFAULT_HEADLESS_SIZE = "1024x768";
 const DEFAULT_HEADLESS_COMPOSITOR: CompositorId = "sway";
+const HEADLESS_SIZE_PATTERN = /^[1-9]\d*x[1-9]\d*$/;
 
 const BUS_CONFIG_DOCTYPE =
     '<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN" ' +
@@ -100,7 +106,10 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
                 ].join("\n"),
             );
 
-            return spawnWithParentDeathSignal("sway", ["-c", configPath], { stdio: ["ignore", "ignore", "pipe"] });
+            return spawnWithParentDeathSignal("sway", ["-c", configPath], {
+                stdio: ["ignore", "ignore", "pipe"],
+                cleanupDirectories: [runtimeDir],
+            });
         },
     },
     weston: {
@@ -118,7 +127,7 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
                     `--height=${height}`,
                     "--socket=wayland-0",
                 ],
-                { stdio: ["ignore", "ignore", "pipe"] },
+                { stdio: ["ignore", "ignore", "pipe"], cleanupDirectories: [_runtimeDir] },
             ),
     },
 };
@@ -136,10 +145,18 @@ const STATIC_HEADLESS_ENV = {
     ALSOFT_LOGLEVEL: "0",
 };
 
-const resolveHeadlessOptions = (provided: Partial<HeadlessOptions>): HeadlessOptions => ({
-    size: provided.size ?? DEFAULT_HEADLESS_SIZE,
-    compositor: provided.compositor ?? DEFAULT_HEADLESS_COMPOSITOR,
-});
+const resolveHeadlessOptions = (provided: Partial<HeadlessOptions>): HeadlessOptions => {
+    const size = provided.size ?? DEFAULT_HEADLESS_SIZE;
+
+    if (!HEADLESS_SIZE_PATTERN.test(size)) {
+        throw new Error(`Invalid headless display size: ${size}`);
+    }
+
+    return {
+        size,
+        compositor: provided.compositor ?? DEFAULT_HEADLESS_COMPOSITOR,
+    };
+};
 
 const applyEnv = (snapshot: EnvSnapshot, values: Record<string, string>): void => {
     for (const [name, value] of Object.entries(values)) {
@@ -361,22 +378,41 @@ const waitForSocket = (options: WaitForSocketOptions): Promise<void> =>
         watchForSocket({ options, resolve, reject });
     });
 
-const captureCompositorStderr = (child: ChildProcess, logPath: string): string[] => {
+const captureCompositorStderr = (child: ChildProcess, logPath: string): CapturedStderr => {
     const captured: string[] = [];
     const stderr = child.stderr;
 
-    if (stderr !== null) {
-        stderr.setEncoding("utf8");
-        const logStream = createWriteStream(logPath);
-        logStream.on("error", (): void => undefined);
-
-        stderr.on("data", (chunk: string) => {
-            captured.push(chunk);
-            logStream.write(chunk);
-        });
+    if (stderr === null) {
+        return { chunks: captured, stop: noVirtualSeat };
     }
 
-    return captured;
+    stderr.setEncoding("utf8");
+    const descriptor = openSync(logPath, "a");
+    let isOpen = true;
+
+    const onData = (chunk: string): void => {
+        captured.push(chunk);
+
+        try {
+            writeSync(descriptor, chunk);
+        } catch {
+            return;
+        }
+    };
+
+    stderr.on("data", onData);
+
+    return {
+        chunks: captured,
+        stop: () => {
+            stderr.removeListener("data", onData);
+
+            if (isOpen) {
+                isOpen = false;
+                closeSync(descriptor);
+            }
+        },
+    };
 };
 
 const compositorExitMessage = (
@@ -433,6 +469,7 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
     };
 
     try {
+        applyEnv(env, STATIC_HEADLESS_ENV);
         applyEnv(env, { XDG_RUNTIME_DIR: runtimeDir });
         const busConfigPath = join(runtimeDir, "session.conf");
         const busSocketPath = join(runtimeDir, "bus");
@@ -440,6 +477,7 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
 
         const busChild = spawnWithParentDeathSignal("dbus-daemon", [`--config-file=${busConfigPath}`], {
             stdio: ["ignore", "ignore", "pipe"],
+            cleanupDirectories: [runtimeDir],
         });
 
         busChild.unref();
@@ -456,10 +494,11 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
         const stopVirtualSeat = await attachVirtualSeat(compositor, compositorSocketPath);
         const stopNotifications = await startNotificationService(`unix:path=${busSocketPath}`);
         const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "compositor.stderr.log"));
-        const stopExitWatch = watchCompositorExit(compositor.child, capturedStderr);
+        const stopExitWatch = watchCompositorExit(compositor.child, capturedStderr.chunks);
 
         return makeTeardown([
             stopExitWatch,
+            capturedStderr.stop,
             () => {
                 killSpawned(spawned);
             },

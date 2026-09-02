@@ -54,7 +54,7 @@ po/
 └─ POTFILES.in
 ```
 
-`gtkx codegen`, `gtkx dev`, and `gtkx build` scan the application source with the upstream i18next extractor. GTKX writes `po/POTFILES.in`, passes normalized point, plural, and context messages to `xgettext`, and produces `po/<applicationId>.pot`. It uses `msginit --no-translator` to create a missing catalog and `msgmerge` to refresh an existing one. All outputs are prepared separately and replace the PO files only after every command succeeds, so one invalid locale or malformed catalog cannot leave the others half-updated.
+`gtkx codegen`, `gtkx dev`, and `gtkx build` scan the application source with the upstream i18next extractor. GTKX writes `po/POTFILES.in`, passes normalized point, plural, and context messages to `xgettext`, and produces `po/<applicationId>.pot`. Codegen, builds, and dev startup use `msginit --no-translator` to create a missing catalog and `msgmerge` to refresh an existing one. All outputs are prepared separately and replace the PO files only after every command succeeds, so one invalid locale or malformed catalog cannot leave the others half-updated.
 
 Choosing the locales and translating their `msgstr` values remain human decisions. GTKX owns catalog initialization, template refresh, synchronization, compilation, and packaging; no manual `msginit`, `msgmerge`, or `msgfmt` command is needed. Messages removed from the source remain as standard obsolete PO entries, and a close source-string change may become fuzzy for a translator to review instead of shipping an unchecked translation.
 
@@ -80,7 +80,7 @@ const label = t("{{count}} file", {
 });
 ```
 
-Codegen requires a recoverable singular/plural source pair. It rejects unpaired count calls, ordinal plurals, and zero-specific defaults because a GNU gettext cardinal entry cannot represent those i18next forms without changing their meaning.
+Codegen requires a recoverable singular/plural source pair. It rejects unpaired count calls, ordinal plurals, and zero-, two-, few-, or many-specific defaults because a GNU gettext cardinal entry cannot represent those i18next forms without changing their meaning.
 
 Use i18next's `context` option when identical source text needs different translations:
 
@@ -125,11 +125,11 @@ Gettext uses one process-wide application domain. Passing a namespace to a react
 
 ## Generated types and static extraction
 
-GTKX delegates source scanning to `i18next-cli`. Catalog-owning ESM code must use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext` with statically recoverable keys and defaults. Imported aliases, member calls such as `i18n.t`, dynamic keys or prefixes, and CommonJS are not extraction forms.
+GTKX delegates source scanning to `i18next-cli`. Catalog-owning ESM code must use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`. Direct calls and explicit `i18nKey` props require string-literal keys; tagged-template calls are not an extraction form. A `Trans` component without `i18nKey` can derive its source from static children, while its `context`, `defaults`, and source-bearing `tOptions` must be string literals. Extraction fails when it finds an imported or locally bound alias of `t`, a `.t` call from a recognized `@gtkx/i18n` or `i18next` import or hook result, or a nonliteral key, so those messages cannot disappear silently. An unrelated object's method named `t` is left alone. CommonJS is not scanned.
 
 Codegen writes standard i18next resources under `node_modules/.gtkx` and augments the `I18nResources` interface exported by `@gtkx/i18n`. That interface supplies i18next's `CustomTypeOptions`, so the upstream `t`, hook, and component types reject unknown literal keys, missing interpolation values, plurals without a numeric `count`, and contextual calls without their literal context. GTKX does not maintain a separate message registry.
 
-Run codegen after adding or changing a source message so the catalog template, every listed PO file, and the TypeScript declarations stay in sync.
+During `gtkx dev`, saving a source file re-extracts the catalog template and regenerates the TypeScript declarations before Fast Refresh. It leaves translator-owned PO files alone during that save; run codegen or a build when you also want every listed PO file merged with the new template.
 
 ## Development and builds
 

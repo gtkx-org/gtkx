@@ -1,7 +1,8 @@
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { build as buildApp } from "../builder.js";
-import { entryArg } from "../internal/entry-arg.js";
+import { resolveBuildOutDir } from "../internal/build-output.js";
+import { configArg, entryArg } from "../internal/entry-arg.js";
 import { prepareProject } from "../internal/prepare-project.js";
 
 const BUILD_MODE = "production";
@@ -13,15 +14,23 @@ const build = defineCommand({
     },
     args: {
         ...entryArg,
+        ...configArg,
+        out: {
+            type: "string",
+            description: "Output directory below the project root (default: dist)",
+        },
     },
     async run({ args }) {
-        const { cwd, entry } = await prepareProject(args, BUILD_MODE);
+        const { cwd, entry, configFile } = await prepareProject(args, BUILD_MODE);
+        const outDir = resolveBuildOutDir(cwd, args.out);
         info(`Building ${entry}`);
 
         const bundlePath = await buildApp({
             entry,
+            configFile,
             vite: {
                 root: cwd,
+                build: { outDir },
             },
         });
 

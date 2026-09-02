@@ -14,6 +14,13 @@ const cwdArg: { cwd: StringArgDef } = {
     },
 };
 
+const configArg: { config: StringArgDef } = {
+    config: {
+        type: "string",
+        description: "Project-relative configuration file (default: gtkx.config.*)",
+    },
+};
+
 const entryArg: { entry: PositionalArgDef; cwd: StringArgDef } = {
     entry: {
         type: "positional",
@@ -57,4 +64,4 @@ const resolveGivenEntry = (cwd: string, entry: string): string => {
 const resolveEntry = (cwd: string, entry: string | undefined): string =>
     entry ? resolveGivenEntry(cwd, entry) : resolveDefaultEntry(cwd);
 
-export { cwdArg, entryArg, resolveCwd, resolveEntry };
+export { configArg, cwdArg, entryArg, resolveCwd, resolveEntry };

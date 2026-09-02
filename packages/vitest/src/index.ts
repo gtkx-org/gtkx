@@ -1,4 +1,5 @@
 import type { Plugin } from "vitest/config";
+import { assertSupportedNodeVersion } from "@gtkx/config/internal";
 import createConfigPlugin from "@gtkx/config/vite-plugin";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -39,8 +40,10 @@ const headlessPreloadSpecifier = (options: PluginOptions): string => {
  * @param options Headless display settings (size, compositor) forwarded to each worker.
  * @returns A Vitest config plugin.
  */
-const gtkx = (options: PluginOptions = {}): Plugin =>
-    createConfigPlugin({
+const gtkx = (options: PluginOptions = {}): Plugin => {
+    assertSupportedNodeVersion();
+
+    return createConfigPlugin({
         name: "gtkx:vitest",
         config(config) {
             return {
@@ -60,6 +63,7 @@ const gtkx = (options: PluginOptions = {}): Plugin =>
             };
         },
     });
+};
 
 export default gtkx;
 export { type CompositorId, type HeadlessOptions } from "./headless-display.ts";

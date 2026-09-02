@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="InvalidXml"
+             version="1.0"
+             shared-library="libinvalidxml.so.0"
+             c:identifier-prefixes="InvalidXml"
+             c:symbol-prefixes="invalid_xml">
+    <constant name="BROKEN" value="1" c:type="gint">
+      <type name="gint" c:type="gint"/>
+  </namespace>
+</repository>

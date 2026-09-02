@@ -244,6 +244,17 @@ const appendPathFor = (settings: DeploySettings, pin: PnpmPin | null, nodeExtens
         ? `${nodeExtensionPath}/bin`
         : `${pnpmPathFor(moduleDirFor(settings))}:${nodeExtensionPath}/bin`;
 
+const sourceBuildCommand = (settings: DeploySettings): string => {
+    const configFile = projectRelative(settings, settings.configFile);
+    assertInsideProject(settings, {
+        destination: "the Flatpak build configuration",
+        source: configFile,
+        resolved: settings.configFile,
+    });
+
+    return `npx gtkx build --config ${pathArgument(configFile)}`;
+};
+
 const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
     const settings = payload.settings;
     const manager = detectPackageManager(settings);
@@ -271,14 +282,14 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
         ],
         "build-commands": [
             installCommandFor(settings, manager),
-            "npx gtkx build",
+            sourceBuildCommand(settings),
             ...runtimeInstallCommands(settings, nodeExtensionPath),
+            ...extraFileInstallCommands(settings),
             ...metadataInstallCommands(settings),
             ...schemaInstallCommands(settings),
             ...iconInstallCommands(settings),
             ...licenseInstallCommands(settings),
             ...noticesInstallCommands(settings),
-            ...extraFileInstallCommands(settings),
             ...(settings.deploy.flatpak?.buildCommands ?? []),
             ...validationCommands(settings),
         ],

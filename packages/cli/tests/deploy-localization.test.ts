@@ -44,12 +44,12 @@ describe("gtkx deploy (gettext localization)", () => {
         expectPlainBuildPreservesMetadata(state.project);
     });
 
-    it("replaces old metadata when a later deploy removes it", () => {
-        expectRedeployDropsRemovedMetadata(state.project);
-    });
-
     it("does not rewrite the catalog template when the build is skipped", () => {
         expectSkipBuildPreservesPot(state.project);
+    });
+
+    it("replaces old metadata when a later deploy removes it", () => {
+        expectRedeployDropsRemovedMetadata(state.project);
     });
 });
 

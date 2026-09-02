@@ -43,7 +43,7 @@ const BROKEN_CASES: BrokenCase[] = [
     { title: "a library that has no GIR file installed", config: `${HEAD}, libraries: ["Absent-1.0"] };\n` },
     {
         title: "a GIR file that is not well-formed XML",
-        config: `${HEAD}, libraries: ["Malformed-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])} };\n`,
+        config: `${HEAD}, libraries: ["InvalidXml-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])} };\n`,
     },
 ];
 

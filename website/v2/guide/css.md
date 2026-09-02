@@ -36,7 +36,7 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 
 The `&` is not optional, and the type enforces it: a bare `":hover"` key would compile to a *descendant* `:hover`, which is not what it reads like. Every rule has to start from the widget's own class, and one that does not is dropped with a warning instead of applied, so a declaration cannot break out of its block and repaint the rest of the window. A combinator after the `&` does reach past the widget on purpose, which is what `& label` above relies on.
 
-Setting the prop to `undefined` or `null` removes the declarations again. A spring can drive the whole object or an individual declaration; see [Animations](/v2/guide/animations).
+Setting the prop to `undefined` or `null` removes the declarations again. Do not drive the object or one of its declarations from a spring: every change reparses CSS and invalidates styling across the display. [Animations](/v2/guide/animations#avoid-per-frame-style-changes) covers the native-property, CSS-transition, and custom-drawing alternatives.
 
 ### GTK4 CSS has no layout
 
@@ -46,11 +46,11 @@ Layout belongs to the widget instead, so it stays in props. `widthRequest` and `
 
 ### Choosing between `style` and a class
 
-Reach for `style` when the declarations belong to one widget and nowhere else: a color derived from data, a one-off `min-height`, a `transform` a spring is driving. Reach for `css` and `cssClasses` when they are worth naming, when several widgets share the same look, or when you need something `style` deliberately cannot express, such as `@keyframes`, a `@media` query, a custom property, a `-gtk-` property, or a selector that does not start from the widget it is written on. The two mix on one element, and `cssClasses` keeps whatever you put in it.
+Reach for `style` when the declarations belong to one widget and change only at React-render frequency: a color derived from data or a one-off `min-height`. Reach for `css` and `cssClasses` when they are worth naming, when several widgets share the same look, or when you need something `style` deliberately cannot express, such as `@keyframes`, a `@media` query, a custom property, a `-gtk-` property, or a selector that does not start from the widget it is written on. The two mix on one element, and `cssClasses` keeps whatever you put in it.
 
 ### One provider per widget
 
-Each styled widget gets a `Gtk.CssProvider` of its own holding exactly one rule, keyed by a class the reconciler adds to the widget, so changing `style` reparses that one rule and no other CSS in the app. GTK still invalidates the display's style on every reload, though, which is work that grows with how many widgets are on screen rather than with how many of them are styled: driving `style` from a spring is cheap in a small tree, and animating many widgets at once in a large one is not. That provider sits one priority step above the stylesheet the generated classes go into, which is what makes a declaration in `style` outrank the same declaration coming from `cssClasses`. The generated class is an ordinary class named `gtkx-s` followed by a number: it shows up in `getCssClasses()` and it counts against `toHaveClass` under `{ exact: true }`. Do not write selectors against it.
+Each styled widget gets a `Gtk.CssProvider` of its own holding exactly one rule, keyed by a class the reconciler adds to the widget, so changing `style` reparses that one rule and no other CSS in the app. GTK still invalidates the display's style on every reload, which is work that grows with how many widgets are on screen rather than with how many of them are styled. This makes `style` appropriate for occasional state changes and inappropriate for per-frame animation. That provider sits one priority step above the stylesheet the generated classes go into, which is what makes a declaration in `style` outrank the same declaration coming from `cssClasses`. The generated class is an ordinary class named `gtkx-s` followed by a number: it shows up in `getCssClasses()` and it counts against `toHaveClass` under `{ exact: true }`. Do not write selectors against it.
 
 ## The `css` tagged template
 

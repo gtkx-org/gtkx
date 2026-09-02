@@ -135,7 +135,7 @@ Now run one manifest preview:
 npm run deploy -- --print-manifests
 ```
 
-That command runs codegen, extracts statically recoverable messages declared with the exact names `t`, `useTranslation`, `Trans`, and `TransWithoutContext`, writes `po/POTFILES.in`, initializes the missing `po/fr.po` with the correct French headers and plural rule, adds the name, summary, descriptions, screenshots, release notes, and other translatable deploy metadata, then synchronizes the catalog. Imported aliases, member calls, dynamic keys, and CommonJS declarations are not extraction forms. The preview validates the desktop entry and AppStream file but builds no packages.
+That command runs codegen, extracts messages declared with the exact names `t`, `useTranslation`, `Trans`, and `TransWithoutContext`, writes `po/POTFILES.in`, initializes the missing `po/fr.po` with the correct French headers and plural rule, adds the name, summary, descriptions, screenshots, release notes, and other translatable deploy metadata, then synchronizes the catalog. Translation calls and explicit `i18nKey` props use string-literal keys. Codegen rejects imported aliases of `t`, recognized i18next member calls, and nonliteral keys instead of silently omitting their messages; CommonJS declarations are not scanned. The preview validates the desktop entry and AppStream file but builds no packages.
 
 Fill every empty `msgstr` in `po/fr.po`; an empty value deliberately falls back to English and would make the localized integration test fail. These entries include the controls and starter content that test reaches, plus interpolation, a plural, and the application name that also appears in desktop metadata:
 

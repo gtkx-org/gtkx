@@ -5,9 +5,9 @@ use napi_derive::napi;
 
 use crate::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, BoxedCodec, BufferCodec,
-    CallbackCodec, CallbackScope, Codec, DestroyNotifyKind, EnumFlagsCodec, EnumFlagsKind,
-    FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, RefCodec,
-    StringCodec, StructCodec, UnicharCodec, VoidCodec,
+    CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind, EnumFlagsCodec,
+    EnumFlagsKind, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec,
+    Ownership, RefCodec, StringCodec, StructCodec, UnicharCodec, VoidCodec,
 };
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
@@ -387,6 +387,14 @@ impl Descriptor {
             } => {
                 let has_destroy = has_destroy.unwrap_or(false);
                 let has_user_data = has_user_data.unwrap_or(false);
+                let release_policy = if matches!(scope.as_ref(), Some(CallbackScope::Notified))
+                    && !has_destroy
+                    && has_user_data
+                {
+                    CallbackReleasePolicy::AsyncCompletion
+                } else {
+                    CallbackReleasePolicy::Scope
+                };
                 Codec::Callback(CallbackCodec {
                     arg_codecs: arg_descriptors
                         .0
@@ -400,6 +408,7 @@ impl Descriptor {
                     user_data_index: user_data_index.map(|n| n as usize),
                     can_throw: can_throw.unwrap_or(false),
                     scope: Self::callback_scope(scope, has_destroy, has_user_data),
+                    release_policy,
                 })
             }
             Self::Ref {

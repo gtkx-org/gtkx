@@ -2,7 +2,7 @@ import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { formatCodegenResult } from "../codegen/report.js";
 import { ensureGenerated, isCodegenDisabled, runCodegen } from "../codegen/run-codegen.js";
-import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
+import { configArg, cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 const FORCED_WHILE_DISABLED_MESSAGE =
     "codegen is disabled for this project, so --force has no store to regenerate here. " +
@@ -20,29 +20,30 @@ const codegen = defineCommand({
             description: "Wipe the generated store and regenerate unconditionally (recover a corrupted store)",
             default: false,
         },
+        ...configArg,
         ...cwdArg,
     },
     async run({ args }) {
         const cwd = resolveCwd(args);
-        const isDisabled = await isCodegenDisabled(cwd);
+        const isDisabled = await isCodegenDisabled(cwd, undefined, args.config);
         checkForce(isDisabled, args.force);
 
         if (isDisabled) {
-            await runCodegen({ cwd });
+            await runCodegen({ cwd, configFile: args.config });
             info("codegen: disabled for this project; reusing an installed binding store");
 
             return;
         }
 
         if (!args.force) {
-            const isRan = await ensureGenerated(cwd);
+            const isRan = await ensureGenerated(cwd, { configFile: args.config });
             info(isRan ? "codegen: regenerated stale bindings" : "codegen: bindings up to date");
 
             return;
         }
 
         const startedAt = Date.now();
-        const result = await runCodegen({ cwd, isForced: true });
+        const result = await runCodegen({ cwd, configFile: args.config, isForced: true });
         const lines = formatCodegenResult(result, Date.now() - startedAt);
 
         for (const line of lines) {

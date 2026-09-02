@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { APPLICATION_ID, createProject, type McpServer, startServer } from "./app-session.js";
@@ -9,7 +9,7 @@ type ListedTool = { name: string; annotations?: Annotations };
 const LIBRARIES = ["GtkSource-5", "WebKit-6.0"];
 const ACTION_TOOLS = ["gtkx_click", "gtkx_type", "gtkx_fire_event"];
 const CONFIG_NAME = "gtkx.config.mjs";
-const state: { servers: McpServer[] } = { servers: [] };
+const state: { servers: McpServer[]; projects: string[] } = { servers: [], projects: [] };
 
 const configSource = (mcp: string): string =>
     `export default { applicationId: ${JSON.stringify(APPLICATION_ID)}, ` +
@@ -17,6 +17,7 @@ const configSource = (mcp: string): string =>
 
 const projectWith = (mcp: string): string => {
     const root = createProject();
+    state.projects.push(root);
     writeFileSync(join(root, CONFIG_NAME), configSource(mcp));
 
     return root;
@@ -36,6 +37,12 @@ afterEach(async () => {
     const servers = [...state.servers];
     state.servers.length = 0;
     await Promise.all(servers.map((server) => server.stop()));
+
+    for (const project of state.projects) {
+        rmSync(project, { recursive: true, force: true });
+    }
+
+    state.projects.length = 0;
 });
 
 describe("gtkx-mcp tool gating", () => {

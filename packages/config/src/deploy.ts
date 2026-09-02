@@ -37,15 +37,21 @@ const URL_KINDS = [
 const BOOLEAN_ERROR = "must be a boolean";
 const EPOCH_ERROR = "must be a non-negative integer";
 const EXTRA_FILE_ERROR = "must be a source path or a { source, mode } entry";
-const FILE_MODE_ERROR = "must be an octal file mode such as 755";
+const FILE_MODE_ERROR = "must be an octal file mode without setuid or setgid bits, such as 755";
 const FILE_MODE_PATTERN = /^[0-7]{3,4}$/;
+const FILE_MODE_RADIX = 8;
+const PRIVILEGED_FILE_MODE_MASK = 0o6000;
 const HEX_COLOR_ERROR = "must be a #rrggbb color";
 const HEX_COLOR_PATTERN = /^#[\dA-Fa-f]{6}$/;
 const KEY_FILE_ERROR = "must be a path to a PGP key file";
 const KEY_ID_ERROR = "must be a PGP key id";
+const LAUNCHER_ENV_ERROR = "must be a record of POSIX environment names to values without null bytes";
+const LAUNCHER_ENV_NAME_ERROR = "must be a POSIX environment name";
+const LAUNCHER_ENV_NAME_PATTERN = /^[A-Za-z_]\w*$/;
 const MINIMUM_LIBRARY_VERSION_ERROR = "must be a version such as 4.18";
 const MINIMUM_LIBRARY_VERSION_PATTERN = /^\d+(?:\.\d+)*$/;
 const MINIMUM_LIBRARY_VERSIONS_ERROR = "must be a record of GIR library ids to a minimum version";
+const NODE_FLAG_ERROR = "must be a Node.js flag beginning with a hyphen and containing no null bytes";
 const LIBRARY_ID_ERROR = 'must be a GIR library identifier of the form "Name-Version", such as "Gtk-4.0"';
 const SCRIPT_ERROR = "must be a path to a shell script";
 const SOURCE_PATH_ERROR = "must be a source path";
@@ -112,10 +118,29 @@ const brandingSchema = z.strictObject({
 
 const extraFileSchema = z.strictObject({
     source: text(SOURCE_PATH_ERROR),
-    mode: z.string({ error: FILE_MODE_ERROR }).regex(FILE_MODE_PATTERN, { error: FILE_MODE_ERROR }).optional(),
+    mode: z
+        .string({ error: FILE_MODE_ERROR })
+        .regex(FILE_MODE_PATTERN, { error: FILE_MODE_ERROR })
+        .refine((mode) => (Number.parseInt(mode, FILE_MODE_RADIX) & PRIVILEGED_FILE_MODE_MASK) === 0, {
+            error: FILE_MODE_ERROR,
+        })
+        .optional(),
 });
 
 const extraFileEntrySchema = z.union([text(SOURCE_PATH_ERROR), extraFileSchema], { error: EXTRA_FILE_ERROR });
+
+const launcherEnvSchema = z.record(
+    z.string({ error: LAUNCHER_ENV_NAME_ERROR }).regex(LAUNCHER_ENV_NAME_PATTERN, { error: LAUNCHER_ENV_NAME_ERROR }),
+    z.string({ error: LAUNCHER_ENV_ERROR }).refine((value) => !value.includes("\0"), { error: LAUNCHER_ENV_ERROR }),
+    { error: LAUNCHER_ENV_ERROR },
+);
+
+const nodeFlagsSchema = z.array(
+    z
+        .string({ error: NODE_FLAG_ERROR })
+        .refine((value) => value.startsWith("-") && !value.includes("\0"), { error: NODE_FLAG_ERROR }),
+    { error: "must be an array of Node.js flags" },
+);
 
 const nodeRuntimeSchema = z.strictObject({
     source: z.enum(NODE_SOURCES, { error: "must be one of download, host, path" }).optional(),
@@ -262,6 +287,8 @@ const deploySchema = z.strictObject({
         .optional(),
     releases: z.array(releaseSchema, { error: "must be an array of releases" }).optional(),
     execArgs: textList("argument", "must be an array of arguments appended to Exec").optional(),
+    launcherEnv: launcherEnvSchema.optional(),
+    nodeFlags: nodeFlagsSchema.optional(),
     fileAssociations: z
         .array(fileAssociationSchema, { error: "must be an array of file associations" })
         .optional(),
@@ -271,6 +298,7 @@ const deploySchema = z.strictObject({
         .optional(),
     desktopEntry: textRecord("must be a desktop entry value", "must be a record of desktop entry keys to values")
         .optional(),
+    metainfoExtra: textList("AppStream XML fragment", "must be an array of AppStream XML fragments").optional(),
     isDbusActivatable: flag(BOOLEAN_ERROR).optional(),
     extraFiles: relativePathRecord(
         "must be a destination path inside the install prefix, without a leading slash or a .. segment",

@@ -49,7 +49,13 @@ function renameReservedTag(tag: string): string {
 }
 
 const parseGirFile = (path: string): RawNode =>
-    parseXmlFile({ parser: PARSER, label: GIR_LABEL, path, malformedRemedy: GIR_MALFORMED_REMEDY }) as RawNode;
+    parseXmlFile({
+        parser: PARSER,
+        label: GIR_LABEL,
+        path,
+        malformedRemedy: GIR_MALFORMED_REMEDY,
+        preserveIllegalControls: true,
+    }) as RawNode;
 
 const attr = (node: RawNode | undefined, name: string): string | undefined => {
     if (node === undefined) {

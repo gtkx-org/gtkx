@@ -1,4 +1,4 @@
-import { warn } from "@gtkx/utils";
+import { isPathInside, warn } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -10,6 +10,7 @@ import {
     type ResolvedConfig,
     validateConfig,
 } from "./config.ts";
+import { assertSupportedNodeVersion } from "./node-version.ts";
 
 /** Result of loading a project's `gtkx.config.ts` file. */
 type LoadedConfig = {
@@ -28,7 +29,7 @@ type LoadConfigOptions = {
      * top-level values, and the name is passed to a config authored as a function.
      */
     mode?: string | undefined;
-};
+} & Partial<Record<"configFile", string | undefined>>;
 
 /** Reads a project's configuration once per directory, caching what it loads and what it resolves. */
 type ConfigLoader = {
@@ -40,6 +41,20 @@ type ConfigLoader = {
 
 const GRADUATED_FUTURE_ENV = "GTKX_GRADUATED_FUTURE_SHOWN";
 const graduatedFutureWarnings: Map<string, string> = new Map();
+
+const selectedConfigFile = (root: string, configured: string | undefined): string | undefined => {
+    if (configured === undefined) {
+        return undefined;
+    }
+
+    const path = resolve(root, configured);
+
+    if (!isPathInside(root, path)) {
+        throw new Error(`Configuration file ${configured} must be inside the project root ${root}`);
+    }
+
+    return path;
+};
 
 const warnGraduatedFuture = (config: unknown, root: string): void => {
     const keys = graduatedFutureKeys(config);
@@ -65,7 +80,9 @@ const warnGraduatedFuture = (config: unknown, root: string): void => {
  * @throws When that directory holds no configuration file, or when the configuration fails validation.
  */
 const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise<LoadedConfig> => {
+    assertSupportedNodeVersion();
     const searched = resolve(cwd);
+    const requestedConfigFile = selectedConfigFile(searched, options.configFile);
 
     const result = await loadConfigFile<Config>({
         name: "gtkx",
@@ -74,6 +91,7 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
         globalRc: false,
         packageJson: false,
         context: { mode: options.mode },
+        ...(requestedConfigFile !== undefined && { configFile: requestedConfigFile }),
         ...((options.mode !== undefined) && { envName: options.mode }),
     });
 
@@ -96,6 +114,7 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
 };
 
 const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
+    assertSupportedNodeVersion();
     const loaded: Map<string, Promise<LoadedConfig>> = new Map();
     const resolved: Map<string, Promise<ResolvedConfig>> = new Map();
 

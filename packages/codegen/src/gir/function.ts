@@ -40,6 +40,8 @@ type GirFunction = {
     returnValue: GirReturnValue;
 };
 
+const DECLARED_FUNCTION_NAMES: WeakMap<GirFunction, string> = new WeakMap();
+
 const relaxParameters = (parameters: GirParameter[], names: string[]): void => {
     for (const parameter of parameters) {
         if (names.includes(parameter.name)) {
@@ -132,11 +134,12 @@ const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => 
     const instanceNode = getChild(getChild(node, "parameters"), "instance-parameter");
     const callable = parseCallable(node, context);
     const cIdentifier = attr(node, "c:identifier");
+    const declaredName = attr(node, "name") ?? "";
 
     const fn: GirFunction = {
         ...callable,
         introspectable: callable.introspectable && !isHiddenSymbol(cIdentifier),
-        name: attr(node, "shadows") ?? attr(node, "name") ?? "",
+        name: attr(node, "shadows") ?? declaredName,
         cIdentifier,
         movedTo: attr(node, "moved-to"),
         shadowedBy: attr(node, "shadowed-by"),
@@ -144,9 +147,15 @@ const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => 
         instance: instanceNode === undefined ? undefined : parameterFromNode(instanceNode, context),
     };
 
+    if (declaredName !== fn.name) {
+        DECLARED_FUNCTION_NAMES.set(fn, declaredName);
+    }
+
     const relaxed = relaxMissingTransferNone(relaxMissingNullable(fn));
 
     return bindMissingUcs4ReturnArray(bindMissingArrayExtent(relaxed), context);
 };
 
-export { functionFromNode, type GirFunction };
+const declaredFunctionName = (fn: GirFunction): string => DECLARED_FUNCTION_NAMES.get(fn) ?? fn.name;
+
+export { declaredFunctionName, functionFromNode, type GirFunction };

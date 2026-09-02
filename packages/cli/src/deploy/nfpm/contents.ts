@@ -13,10 +13,16 @@ const FILESYSTEM_OWNED_PREFIXES = new Set([
     "/usr",
     "/usr/bin",
     "/usr/lib",
+    "/usr/lib/systemd",
+    "/usr/lib/systemd/system",
+    "/usr/lib/systemd/user",
+    "/usr/libexec",
     "/usr/share",
     "/usr/share/applications",
     "/usr/share/dbus-1",
     "/usr/share/dbus-1/services",
+    "/usr/share/dbus-1/system-services",
+    "/usr/share/dbus-1/system.d",
     "/usr/share/doc",
     "/usr/share/glib-2.0",
     "/usr/share/glib-2.0/schemas",
@@ -25,6 +31,8 @@ const FILESYSTEM_OWNED_PREFIXES = new Set([
     "/usr/share/metainfo",
     "/usr/share/mime",
     "/usr/share/mime/packages",
+    "/usr/share/polkit-1",
+    "/usr/share/polkit-1/actions",
 ]);
 
 const ICON_THEME_PREFIX = "/usr/share/icons/";

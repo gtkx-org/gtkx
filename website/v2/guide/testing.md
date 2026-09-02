@@ -32,7 +32,76 @@ export default defineConfig({
 
 Each Vitest worker runs in its own headless environment, started before any test code loads and torn down with the worker. Headless runs need the compositor binary, `dbus-daemon`, and `setpriv` on the host; plugin options are in the [@gtkx/vitest reference](/v2/reference/@gtkx/vitest/).
 
+If a machine was interrupted while running an older GTKX release, inspect verified orphaned displays with `gtkx cleanup --dry-run`. Reap one with `gtkx cleanup --pid PID`, or all verified matches with the explicit `gtkx cleanup --all` option.
+
+The development server can use the same isolated display when no graphical session is available:
+
+```bash
+gtkx dev --headless --size 1280x720
+```
+
+`--size` is optional and defaults to `1024x768`. The app remains connected to the same MCP server after the private Wayland runtime starts, so widget inspection and screenshots work in a display-less development session too.
+
 Importing `@gtkx/testing` is the entire setup: cleanup, GTK4 loop teardown, and the `expect` matchers all come with the import. There is no setup file to write.
+
+## Faking session services
+
+Every worker gets a private session bus, not a bridge to the user's desktop bus. Services such as portals, keyrings, GNOME Shell, and Housekeeping are therefore absent. GTKX supplies a minimal notifications service; register a fake object for any other D-Bus dependency and point the client at the connection's unique name:
+
+```ts
+import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
+import { fromVariant, toVariant } from "@gtkx/runtime";
+import { expect, it } from "vitest";
+
+const path = "/com/example/Echo";
+const interfaceName = "com.example.Echo";
+const xml = `<node><interface name="${interfaceName}">
+    <method name="Echo">
+        <arg type="s" direction="in"/>
+        <arg type="s" direction="out"/>
+    </method>
+</interface></node>`;
+
+it("calls the fake service on the private bus", async () => {
+    const connection = Gio.busGetSync(Gio.BusType.SESSION, null);
+    const uniqueName = connection.getUniqueName();
+    const info = Gio.DBusNodeInfo.newForXml(xml).lookupInterface(interfaceName);
+
+    if (uniqueName === null || info === null) throw new Error("D-Bus setup failed");
+
+    const handleCall = (...args: unknown[]): void => {
+        const [input] = fromVariant("(s)", args[5] as GLib.Variant);
+        (args[6] as Gio.DBusMethodInvocation).returnValue(toVariant("(s)", [`reply:${input}`]));
+    };
+    const registrationId = connection.registerObjectWithClosures2(path, info, handleCall, null, null);
+
+    try {
+        const proxy = await Gio.DBusProxy.new(
+            connection,
+            Gio.DBusProxyFlags.NONE,
+            info,
+            uniqueName,
+            path,
+            interfaceName,
+            null,
+        );
+        const reply = await proxy.call(
+            "Echo",
+            toVariant("(s)", ["hello"]),
+            Gio.DBusCallFlags.NONE,
+            -1,
+            null,
+        );
+
+        expect(fromVariant("(s)", reply)).toEqual(["reply:hello"]);
+    } finally {
+        connection.unregisterObject(registrationId);
+    }
+});
+```
+
+Using the unique name needs no well-known-name acquisition and keeps parallel workers isolated. Make the destination name injectable in the production D-Bus client, then substitute `connection.getUniqueName()` in the test. Register in the test that needs the service and always unregister in `finally` or teardown.
 
 ## Rendering and cleanup
 
@@ -129,7 +198,7 @@ expect(grid).toHaveAccessibleProperty(Gtk.AccessibleProperty.SORT, Gtk.Accessibl
 Tests written this way double as a basic accessibility audit: a widget `getByRole` cannot find by name is usually one that is missing an accessible label.
 :::
 
-A test also fails when the code under test provokes a GLib `CRITICAL` or a panic inside the GTKX addon. Those cannot be thrown out of the call that caused them, so GTKX raises them as an uncaught exception, which the runner reports against the test that was running. The failure names the contract that was broken, or the Rust file and line that panicked. Levels below `CRITICAL` stay as stderr lines and fail nothing. [Error Handling](/v2/guide/error-handling#failures-nothing-can-throw) covers the channel and the one handler that overrides it.
+A `CRITICAL` emitted during a generated binding call throws an ordinary error from that call, or rejects its generated promise, so an intentional error-path test can catch it. A critical emitted with no active call and a panic inside the GTKX addon arrive as uncaught exceptions and fail the running test; a GLib `ERROR` aborts the worker regardless. Levels below `CRITICAL` stay as stderr lines and fail nothing. [Error Handling](/v2/guide/error-handling#failures-nothing-can-throw) separates the catchable and uncaught paths.
 
 ## A simple example
 

@@ -73,10 +73,13 @@ fn write_log(level: LogLevel, fields: &[LogField<'_>]) -> LogWriterOutput {
         let domain = field_value(fields, "GLIB_DOMAIN").unwrap_or("unknown");
         let message = field_value(fields, "MESSAGE").unwrap_or("(no message)");
         let report = format!("{domain}-{severity}: {message}");
+        let was_trapped = matches!(level, LogLevel::Critical) && trap(&report);
 
-        if !matches!(level, LogLevel::Critical) || !trap(&report) {
-            error_reporter::report_str(&report);
+        if was_trapped {
+            return LogWriterOutput::Handled;
         }
+
+        error_reporter::report_str(&report);
     }
     glib::log_writer_default(level, fields)
 }

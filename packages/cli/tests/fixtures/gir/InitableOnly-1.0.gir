@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <include name="Gio" version="2.0"/>
+  <package name="initable-only-1.0"/>
+  <namespace name="InitableOnly"
+             version="1.0"
+             shared-library="libinitable-only.so.0"
+             c:identifier-prefixes="InitableOnly"
+             c:symbol-prefixes="initable_only">
+    <class name="Client"
+           c:symbol-prefix="client"
+           c:type="InitableOnlyClient"
+           parent="GObject.Object"
+           glib:type-name="InitableOnlyClient"
+           glib:get-type="initable_only_client_get_type">
+      <implements name="Gio.Initable"/>
+      <constructor name="new_full" c:identifier="initable_only_client_new_full" throws="1">
+        <return-value transfer-ownership="full">
+          <type name="Client" c:type="InitableOnlyClient*"/>
+        </return-value>
+        <parameters>
+          <parameter name="cancellable" transfer-ownership="none" nullable="1" allow-none="1">
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+    </class>
+  </namespace>
+</repository>

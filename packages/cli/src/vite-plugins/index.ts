@@ -13,13 +13,20 @@ import { gtkxSettings } from "./settings.js";
 import { gtkxStoreLinks } from "./store-links.js";
 import { gtkxUndeclaredLibrary } from "./undeclared-library.js";
 
-const gtkxVitePlugins = (
-    mode?: string,
-    entryPath?: string,
-    buildManifest?: BuildManifestCollector,
-    shouldPreserveI18nMetadata = true,
-): Plugin[] => {
-    const loadConfig = createConfigLoader(mode === undefined ? {} : { mode });
+type GtkxVitePluginOptions = {
+    buildManifest?: BuildManifestCollector | undefined;
+    configFile?: string | undefined;
+    entryPath?: string | undefined;
+    mode?: string | undefined;
+    shouldPreserveI18nMetadata?: boolean | undefined;
+};
+
+const gtkxVitePlugins = (options: GtkxVitePluginOptions = {}): Plugin[] => {
+    const { buildManifest, configFile, entryPath, mode, shouldPreserveI18nMetadata = true } = options;
+    const loadConfig = createConfigLoader({
+        ...(mode !== undefined && { mode }),
+        ...(configFile !== undefined && { configFile }),
+    });
 
     return [
         createConfigPlugin({ name: "gtkx:config", loadConfig }),

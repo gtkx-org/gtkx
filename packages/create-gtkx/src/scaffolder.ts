@@ -2,8 +2,8 @@ import * as p from "@clack/prompts";
 import { APPLICATION_ID_MAX_LENGTH, isValidApplicationId } from "@gtkx/config/internal";
 import { errorMessage, tryResolveExecutable, upperFirst } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { lstatSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
 import packageManifest from "../package.json" with { type: "json" };
@@ -23,6 +23,7 @@ import { listTemplates, renderFile, type TemplateContext } from "./templates.js"
 type CreateOptions = {
     name?: string | undefined;
     applicationId?: string | undefined;
+    displayName?: string | undefined;
     packageManager?: string | undefined;
     isTypescript?: boolean | undefined;
     shouldIncludeTesting?: boolean | undefined;
@@ -35,12 +36,15 @@ type ResolvedOptions = {
     root: string;
     isCurrentDirectory: boolean;
     name: string;
+    displayName: string;
     applicationId: string;
     packageManager: PackageManager;
     isTypescript: boolean;
     shouldIncludeTesting: boolean;
-    shouldEmptyTarget: boolean;
+    shouldInitializeGit: boolean;
 };
+
+type ScaffoldFile = { destination: string; contents: string };
 
 type InstallDependenciesOptions = {
     cwd: string;
@@ -106,7 +110,8 @@ const APPLICATION_ID_SUFFIX = ".app";
 const APPLICATION_ID_SEGMENT_LIMIT = APPLICATION_ID_MAX_LENGTH - APPLICATION_ID_PREFIX.length -
     APPLICATION_ID_SUFFIX.length;
 
-const titleFromName = (name: string): string => name.split("-").map((part) => upperFirst(part)).join(" ");
+const displayNameFromProjectName = (name: string): string =>
+    name.split("-").map((part) => upperFirst(part)).join(" ");
 
 const gitConfigValue = (key: string): string | null => {
     const git = tryResolveExecutable("git");
@@ -151,6 +156,12 @@ const isDirEmpty = (dir: string): boolean => {
     const entries = readdirSync(dir);
 
     return entries.length === 0 || (entries.length === 1 && entries[0] === ".git");
+};
+
+const shouldInitializeGit = (root: string): boolean => {
+    const entry = lstatSync(root, { throwIfNoEntry: false });
+
+    return entry === undefined || (entry.isDirectory() && readdirSync(root).length === 0);
 };
 
 const getDevDependencies = ({
@@ -199,6 +210,17 @@ const validateApplicationIdInput = (value: string | undefined): string | undefin
 
 const validateApplicationIdAnswer = (value: string | undefined): string | undefined =>
     value ? validateApplicationIdFormat(value) : undefined;
+
+const validateDisplayName = (value: string | undefined): string | undefined => {
+    if (value === undefined || value.trim().length === 0) {
+        return "Display name is required";
+    }
+
+    return value.includes("\n") || value.includes("\r") ? "Display name must be a single line" : undefined;
+};
+
+const validateDisplayNameAnswer = (value: string | undefined): string | undefined =>
+    value ? validateDisplayName(value) : undefined;
 
 const fail = (message: string): never => {
     p.log.error(message);
@@ -252,6 +274,19 @@ const promptApplicationId = async (name: string): Promise<string> => {
     );
 };
 
+const promptDisplayName = async (name: string): Promise<string> => {
+    const defaultDisplayName = displayNameFromProjectName(name);
+
+    return guardCancellation(
+        await p.text({
+            message: "Display name",
+            placeholder: defaultDisplayName,
+            defaultValue: defaultDisplayName,
+            validate: validateDisplayNameAnswer,
+        }),
+    );
+};
+
 const packageManagerOption = (manager: (typeof PACKAGE_MANAGERS)[number], detected: PackageManager | undefined) => {
     let hint: string | undefined;
 
@@ -297,16 +332,6 @@ const isOptionEnabled = async (
         ? guardCancellation(await p.confirm({ message, initialValue: true }))
         : true);
 
-const emptyDir = (root: string): void => {
-    for (const entry of readdirSync(root)) {
-        if (entry === ".git") {
-            continue;
-        }
-
-        rmSync(join(root, entry), { recursive: true, force: true });
-    }
-};
-
 const shouldOverwriteDirectory = async (target: string, options: CreateOptions): Promise<boolean> => {
     if (!options.isInteractive) {
         return options.shouldOverwrite === true;
@@ -314,17 +339,17 @@ const shouldOverwriteDirectory = async (target: string, options: CreateOptions):
 
     return guardCancellation(
         await p.confirm({
-            message: `Directory "${target}" is not empty. Overwrite its contents?`,
+            message: `Directory "${target}" is not empty. Replace scaffold files?`,
             initialValue: false,
         }),
     );
 };
 
-const shouldEmptyTargetDirectory = async (root: string, target: string, options: CreateOptions): Promise<boolean> => {
+const validateTargetAvailability = async (root: string, target: string, options: CreateOptions): Promise<void> => {
     const stats = statSync(root, { throwIfNoEntry: false });
 
     if (stats === undefined) {
-        return false;
+        return;
     }
 
     if (!stats.isDirectory()) {
@@ -332,14 +357,14 @@ const shouldEmptyTargetDirectory = async (root: string, target: string, options:
     }
 
     if (isDirEmpty(root)) {
-        return false;
+        return;
     }
 
     if (await shouldOverwriteDirectory(target, options)) {
-        return true;
+        return;
     }
 
-    return fail(`Directory "${target}" is not empty`);
+    fail(`Directory "${target}" is not empty`);
 };
 
 const resolveTarget = async (options: CreateOptions): Promise<string> => {
@@ -362,6 +387,14 @@ const resolveApplicationId = async (options: CreateOptions, name: string): Promi
     return error === undefined ? applicationId : fail(error);
 };
 
+const resolveDisplayName = async (options: CreateOptions, name: string): Promise<string> => {
+    const value = options.displayName ??
+        (options.isInteractive ? await promptDisplayName(name) : displayNameFromProjectName(name));
+    const error = validateDisplayName(value);
+
+    return error === undefined ? value.trim() : fail(error);
+};
+
 const resolvePackageManager = async (
     requested: PackageManager | undefined,
     options: CreateOptions,
@@ -381,10 +414,12 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
     const requested = requestedPackageManager(options.packageManager);
     const target = await resolveTarget(options);
     const name = deriveProjectName(target);
+    const displayName = await resolveDisplayName(options, name);
     const applicationId = await resolveApplicationId(options, name);
     const root = resolve(process.cwd(), target);
     const isCurrentDirectory = root === process.cwd();
-    const shouldEmptyTarget = await shouldEmptyTargetDirectory(root, target, options);
+    const shouldInitialize = shouldInitializeGit(root);
+    await validateTargetAvailability(root, target, options);
     const packageManager = await resolvePackageManager(requested, options);
     const isTypescript = await isOptionEnabled(options.isTypescript, options.isInteractive, "Use TypeScript?");
 
@@ -399,11 +434,12 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
         root,
         isCurrentDirectory,
         name,
+        displayName,
         applicationId,
         packageManager,
         isTypescript,
         shouldIncludeTesting,
-        shouldEmptyTarget,
+        shouldInitializeGit: shouldInitialize,
     };
 };
 
@@ -430,25 +466,123 @@ const destinationPath = (template: string, resolved: ResolvedOptions): string =>
 const templateContext = (resolved: ResolvedOptions): TemplateContext => ({
     name: resolved.name,
     applicationId: resolved.applicationId,
-    title: titleFromName(resolved.name),
+    displayName: resolved.displayName,
     shouldIncludeTesting: resolved.shouldIncludeTesting,
     isTypescript: resolved.isTypescript,
     importExtension: resolved.isTypescript ? ".js" : ".jsx",
-    developerName: gitConfigValue("user.name") ?? titleFromName(resolved.name),
+    developerName: gitConfigValue("user.name") ?? resolved.displayName,
     developerEmail: gitConfigValue("user.email"),
 });
 
-const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise<void> => {
+const replaceTemplateDestination = (destination: string): void => {
+    const entry = lstatSync(destination, { throwIfNoEntry: false });
+
+    if (entry === undefined) {
+        return;
+    }
+
+    if (!entry.isFile() && !entry.isSymbolicLink()) {
+        fail(`Cannot replace scaffold file because its destination is not a file: ${destination}`);
+    }
+
+    rmSync(destination, { force: true });
+};
+
+const projectRelativeDestination = (root: string, destination: string): string => {
+    const relativePath = relative(root, destination);
+    const isOutsideProject = relativePath.length === 0 || relativePath.startsWith(`..${sep}`) ||
+        isAbsolute(relativePath);
+
+    if (isOutsideProject) {
+        fail(`Scaffold destination is outside the project: ${destination}`);
+    }
+
+    return relativePath;
+};
+
+const assertRootIsNotSymbolicLink = (root: string): void => {
+    const rootEntry = lstatSync(root, { throwIfNoEntry: false });
+
+    if (rootEntry?.isSymbolicLink()) {
+        fail(`Cannot scaffold through a symbolic link: ${root}`);
+    }
+};
+
+const assertSafeAncestor = (ancestor: string): void => {
+    const entry = lstatSync(ancestor, { throwIfNoEntry: false });
+
+    if (entry?.isSymbolicLink()) {
+        fail(`Cannot scaffold through a symbolic link: ${ancestor}`);
+    }
+
+    if (entry !== undefined && !entry.isDirectory()) {
+        fail(`Cannot scaffold through a non-directory path: ${ancestor}`);
+    }
+};
+
+const assertSafeAncestors = (root: string, relativePath: string): void => {
+    let ancestor = root;
+    const segments = relativePath.split(sep);
+    const ancestorSegments = segments.slice(0, -1);
+
+    for (const segment of ancestorSegments) {
+        ancestor = join(ancestor, segment);
+        assertSafeAncestor(ancestor);
+    }
+};
+
+const assertReplaceableDestination = (destination: string): void => {
+    const entry = lstatSync(destination, { throwIfNoEntry: false });
+    const isReplaceable = entry === undefined || entry.isFile() || entry.isSymbolicLink();
+
+    if (!isReplaceable) {
+        fail(`Cannot replace scaffold file because its destination is not a file: ${destination}`);
+    }
+};
+
+const assertSafeDestination = (root: string, destination: string): void => {
+    const relativePath = projectRelativeDestination(root, destination);
+    assertRootIsNotSymbolicLink(root);
+    assertSafeAncestors(root, relativePath);
+    assertReplaceableDestination(destination);
+};
+
+const plannedScaffoldFiles = async (root: string, resolved: ResolvedOptions): Promise<ScaffoldFile[]> => {
     const context = templateContext(resolved);
+    const files: ScaffoldFile[] = [];
 
     for (const template of listTemplates()) {
-        if (!isTemplateIncluded(template, resolved)) {
-            continue;
+        if (isTemplateIncluded(template, resolved)) {
+            files.push({
+                destination: join(root, destinationPath(template, resolved)),
+                contents: await renderFile(template, context),
+            });
         }
+    }
 
-        const destination = join(root, destinationPath(template, resolved));
-        mkdirSync(dirname(destination), { recursive: true });
-        writeFileSync(destination, await renderFile(template, context));
+    return files;
+};
+
+const auxiliaryDestinations = (root: string, resolved: ResolvedOptions): string[] => [
+    ...(resolved.packageManager === "pnpm" ? [join(root, "pnpm-workspace.yaml")] : []),
+    ...(resolved.isTypescript ? [join(root, "node_modules", ".gtkx", "env.d.ts")] : []),
+];
+
+const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise<void> => {
+    const files = await plannedScaffoldFiles(root, resolved);
+    const destinations = [...files.map((file) => file.destination), ...auxiliaryDestinations(root, resolved)];
+
+    for (const destination of destinations) {
+        assertSafeDestination(root, destination);
+    }
+
+    for (const destination of destinations) {
+        replaceTemplateDestination(destination);
+    }
+
+    for (const file of files) {
+        mkdirSync(dirname(file.destination), { recursive: true });
+        writeFileSync(file.destination, file.contents);
     }
 
     if (resolved.shouldIncludeTesting) {
@@ -550,7 +684,27 @@ const writeInitialEnvModule = (root: string): void => {
     writeFileSync(join(storeDir, "env.d.ts"), `${GTKX_ENV_MODULE_HEADER}\n`);
 };
 
-const initializeGitRepo = async (root: string): Promise<void> => {
+const isInsideGitRepository = (root: string): boolean => {
+    const git = tryResolveExecutable("git");
+
+    if (git === undefined) {
+        return false;
+    }
+
+    try {
+        execFileSync(git, ["-C", root, "rev-parse", "--show-toplevel"], { stdio: "ignore" });
+
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+const initializeGitRepo = async (root: string, shouldInitialize: boolean): Promise<void> => {
+    if (!shouldInitialize || isInsideGitRepository(root)) {
+        return;
+    }
+
     const spinner = p.spinner();
     spinner.start("Initializing git repository...");
 
@@ -579,13 +733,12 @@ const createProjectStructure = async (root: string, resolved: ResolvedOptions): 
         failed: "Failed to create the project structure",
         run: async () => {
             mkdirSync(root, { recursive: true });
-
-            if (resolved.shouldEmptyTarget) {
-                emptyDir(root);
-            }
-
             await scaffoldProject(root, resolved);
             writeBuildAllowance(root, resolved.packageManager);
+
+            if (resolved.isTypescript) {
+                writeInitialEnvModule(root);
+            }
         },
     });
 };
@@ -598,11 +751,7 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     await createProjectStructure(root, resolved);
     await installAllDependencies({ resolved, devDependencies: devDeps });
 
-    if (resolved.isTypescript) {
-        writeInitialEnvModule(root);
-    }
-
-    await initializeGitRepo(root);
+    await initializeGitRepo(root, resolved.shouldInitializeGit);
     printNextSteps(resolved);
 };
 

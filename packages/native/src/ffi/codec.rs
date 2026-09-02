@@ -33,6 +33,7 @@ pub use bigint::BigIntCodec;
 pub use boolean::BooleanCodec;
 pub use boxed::BoxedCodec;
 pub use buffer::BufferCodec;
+pub(crate) use callback::CallbackReleasePolicy;
 pub use callback::{CallbackCodec, CallbackScope, DestroyNotifyKind};
 pub use enum_flags::{EnumFlagsCodec, EnumFlagsKind};
 pub use fundamental::FundamentalCodec;

@@ -12,6 +12,19 @@
              shared-library="libasyncpair.so.0"
              c:identifier-prefixes="AsyncPair"
              c:symbol-prefixes="async_pair">
+    <callback name="ProgressCallback" c:type="AsyncPairProgressCallback">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="percentage" transfer-ownership="none">
+          <type name="guint" c:type="guint"/>
+        </parameter>
+        <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1" closure="1">
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+      </parameters>
+    </callback>
     <class name="Job"
            c:symbol-prefix="job"
            c:type="AsyncPairJob"
@@ -80,6 +93,103 @@
         </parameters>
       </method>
       <method name="probe_finish" c:identifier="async_pair_job_probe_finish" throws="1">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Job" c:type="AsyncPairJob*"/>
+          </instance-parameter>
+          <parameter name="res" transfer-ownership="none">
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="load_async"
+              c:identifier="async_pair_job_load_async"
+              glib:finish-func="load_finish">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Job" c:type="AsyncPairJob*"/>
+          </instance-parameter>
+          <parameter name="cancellable" transfer-ownership="none" nullable="1" allow-none="1">
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+          <parameter name="progress_callback" transfer-ownership="none" scope="notified" closure="2">
+            <type name="ProgressCallback" c:type="AsyncPairProgressCallback"/>
+          </parameter>
+          <parameter name="progress_user_data" transfer-ownership="none" nullable="1" allow-none="1">
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+          <parameter name="callback_ready"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="4">
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1">
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="load_finish" c:identifier="async_pair_job_load_finish" throws="1">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Job" c:type="AsyncPairJob*"/>
+          </instance-parameter>
+          <parameter name="res" transfer-ownership="none">
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="transform_async" c:identifier="async_pair_job_transform_async">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Job" c:type="AsyncPairJob*"/>
+          </instance-parameter>
+          <parameter name="transform" transfer-ownership="none" scope="notified" closure="1">
+            <callback name="transform" c:type="AsyncPairTransformCallback">
+              <return-value transfer-ownership="none">
+                <type name="gint" c:type="gint"/>
+              </return-value>
+              <parameters>
+                <parameter name="value" transfer-ownership="none">
+                  <type name="gint" c:type="gint"/>
+                </parameter>
+                <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1">
+                  <type name="gpointer" c:type="gpointer"/>
+                </parameter>
+              </parameters>
+            </callback>
+          </parameter>
+          <parameter name="transform_data" transfer-ownership="none" nullable="1" allow-none="1">
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="3">
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1">
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="transform_finish" c:identifier="async_pair_job_transform_finish" throws="1">
         <return-value transfer-ownership="none">
           <type name="gboolean" c:type="gboolean"/>
         </return-value>

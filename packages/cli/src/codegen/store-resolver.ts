@@ -61,8 +61,8 @@ const resolveCodegenStore = (dir: string): CodegenStore => {
     };
 };
 
-const resolveCodegenContext = async (cwd: string, mode?: string): Promise<CodegenContext> => {
-    const { config, configFile } = await loadConfig(cwd, { mode });
+const resolveCodegenContext = async (cwd: string, mode?: string, selectedConfig?: string): Promise<CodegenContext> => {
+    const { config, configFile } = await loadConfig(cwd, { mode, configFile: selectedConfig });
 
     return { root: cwd, config, configFile };
 };

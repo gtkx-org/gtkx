@@ -8,7 +8,7 @@ const MainWindow = () => {
 
     return (
         <GtkApplicationWindow
-            title="<%= title %>"
+            title={<%- sourceStringLiteral(displayName) %>}
             defaultWidth={400}
             defaultHeight={300}
             onCloseRequest={quit}

@@ -16,6 +16,7 @@ import { type AppInfo, RegisterParamsSchema } from "./protocol/schemas.js";
 
 type AppRegisteredEvent = CustomEvent<AppInfo>;
 type AppUnregisteredEvent = CustomEvent<string>;
+type PendingAppWait = { reject: (error: Error) => void };
 
 type RegisteredApp = {
     info: AppInfo;
@@ -23,6 +24,14 @@ type RegisteredApp = {
 };
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+
+const routerStoppedError = (): Error => new Error("GTKX MCP server stopped while waiting for an application");
+
+const appWaitTimeoutError = (timeout: number): Error =>
+    new Error(
+        `Timeout waiting for app registration after ${String(timeout)}ms. ` +
+        "Make sure your GTKX app is running with 'gtkx dev'.",
+    );
 
 function appRegisteredEvent(info: AppInfo): AppRegisteredEvent {
     return new CustomEvent("appRegistered", { detail: info });
@@ -42,6 +51,10 @@ class AppRouter extends EventTarget {
     private requestTimeout: number;
 
     private connections: AppConnections;
+
+    private pendingAppWaits: Set<PendingAppWait> = new Set();
+
+    private isDisposed = false;
 
     constructor(connections: AppConnections, options: { requestTimeout?: number } = {}) {
         super();
@@ -69,6 +82,10 @@ class AppRouter extends EventTarget {
     }
 
     private handleRequest(connection: ProtocolConnection, request: JSONRPCRequest): Promise<Result> {
+        if (this.isDisposed) {
+            return Promise.reject(routerStoppedError());
+        }
+
         if (request.method === "app.register") {
             return Promise.resolve(this.handleRegister(connection, request));
         }
@@ -134,6 +151,40 @@ class AppRouter extends EventTarget {
         this.dispatchEvent(appUnregisteredEvent(applicationId));
     }
 
+    private async waitForRegistration(applicationId: string | undefined, timeout: number): Promise<AppInfo> {
+        const controller = new AbortController();
+        const { promise, reject, resolve } = Promise.withResolvers<AppInfo>();
+        const rejectWait = (error: Error): void => {
+            controller.abort();
+            reject(error);
+        };
+        const pendingWait: PendingAppWait = { reject: rejectWait };
+        const timeoutId = setTimeout(() => {
+            rejectWait(appWaitTimeoutError(timeout));
+        }, timeout);
+
+        this.addEventListener(
+            "appRegistered",
+            (event) => {
+                const info = (event as AppRegisteredEvent).detail;
+
+                if (applicationId === undefined || info.applicationId === applicationId) {
+                    resolve(info);
+                }
+            },
+            { signal: controller.signal },
+        );
+        this.pendingAppWaits.add(pendingWait);
+
+        try {
+            return await promise;
+        } finally {
+            clearTimeout(timeoutId);
+            controller.abort();
+            this.pendingAppWaits.delete(pendingWait);
+        }
+    }
+
     getApps(): AppInfo[] {
         return this.apps.values().map((app) => app.info).toArray();
     }
@@ -152,36 +203,40 @@ class AppRouter extends EventTarget {
         return this.getDefaultApp()?.info.projectRoot;
     }
 
-    waitForApp(timeout: number = AppRouter.defaultWaitTimeout): Promise<AppInfo> {
-        const defaultApp = this.getDefaultApp();
-
-        if (defaultApp) {
-            return Promise.resolve(defaultApp.info);
+    dispose(): void {
+        if (this.isDisposed) {
+            return;
         }
 
-        return new Promise((resolve, reject) => {
-            const timeoutId = setTimeout(() => {
-                this.removeEventListener("appRegistered", onRegister);
+        this.isDisposed = true;
+        const error = routerStoppedError();
 
-                reject(
-                    new Error(
-                        `Timeout waiting for app registration after ${String(timeout)}ms. ` +
-                        "Make sure your GTKX app is running with 'gtkx dev'.",
-                    ),
-                );
-            }, timeout);
-
-            const onRegister = (event: Event): void => {
-                clearTimeout(timeoutId);
-                this.removeEventListener("appRegistered", onRegister);
-                resolve((event as AppRegisteredEvent).detail);
-            };
-
-            this.addEventListener("appRegistered", onRegister);
-        });
+        for (const pendingWait of this.pendingAppWaits) {
+            pendingWait.reject(error);
+        }
     }
 
-    async sendToApp<T>(applicationId: string | undefined, method: string, params?: RequestParams): Promise<T> {
+    waitForApp(applicationId?: string, timeout: number = AppRouter.defaultWaitTimeout): Promise<AppInfo> {
+        if (this.isDisposed) {
+            return Promise.reject(routerStoppedError());
+        }
+
+        const app = applicationId === undefined ? this.getDefaultApp() : this.apps.get(applicationId);
+
+        if (app) {
+            return Promise.resolve(app.info);
+        }
+
+        return this.waitForRegistration(applicationId, timeout);
+    }
+
+    async sendToApp<T>(
+        applicationId: string | undefined,
+        method: string,
+        params?: RequestParams,
+        waitTimeout?: number,
+    ): Promise<T> {
+        await this.waitForApp(applicationId, waitTimeout);
         const app = this.resolveTargetApp(applicationId);
 
         try {

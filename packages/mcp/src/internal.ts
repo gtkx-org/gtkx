@@ -6,7 +6,6 @@ export {
     widgetNotFoundError,
 } from "./protocol/errors.js";
 export {
-    DEFAULT_SOCKET_PATH,
     DEFAULT_SUBTREE_DEPTH,
     MAX_SUBTREE_WIDGETS,
     type ParamsSchema,
@@ -16,5 +15,9 @@ export {
     type ServerRequestParams,
     ServerRequestParamsSchemas,
 } from "./protocol/schemas.js";
+export {
+    MCP_SOCKET_PATH_ENV,
+    resolveMcpSocketPath,
+} from "./socket-path.js";
 export { ProtocolConnection } from "./transport.js";
 export type { JSONRPCRequest, Result } from "@modelcontextprotocol/sdk/types.js";

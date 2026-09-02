@@ -1,4 +1,4 @@
-import { loadConfig } from "@gtkx/config";
+import { type Config, loadConfig } from "@gtkx/config";
 import { info, warn } from "@gtkx/utils";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -22,6 +22,7 @@ import {
     synchronizeCatalogs,
 } from "../i18n/catalogs.js";
 import { extractSourceCatalogTo } from "../i18n/source-messages.js";
+import { resolveBuildOutDir } from "../internal/build-output.js";
 import { discoverSourceFiles } from "../internal/source-imports.js";
 import { renderDesktopEntry } from "./freedesktop/desktop-entry.js";
 import { extractMetadataMessages, localizeMetadata } from "./freedesktop/localize.js";
@@ -35,6 +36,7 @@ import { DEFAULT_TARGETS, parseTargetList, targetsFor } from "./registry.js";
 import { readBuildManifest } from "./settings/build-manifest.js";
 import { resolveDeploySettings } from "./settings/index.js";
 import { readPackageManifest } from "./settings/package-manifest.js";
+import { prepareDeployOutDir } from "./settings/paths.js";
 import { missingDeployError } from "./settings/starter.js";
 import { finishArgsFor, hasDisplaySocket, runtimeLabelFor } from "./targets/flatpak-manifest.js";
 import { detectPackageManager } from "./targets/flatpak-sources.js";
@@ -58,6 +60,7 @@ import {
 type DeployOptions = {
     entry: string;
     cwd: string;
+    configFile?: string | undefined;
     targets?: string | undefined;
     outDir?: string | undefined;
     shouldPrintManifests: boolean;
@@ -70,6 +73,20 @@ type PreflightRequest = {
     project: CatalogProject | null;
     shouldPrintManifests: boolean;
     shouldSkipBuild: boolean;
+};
+
+type LoadedDeploySettings = {
+    config: Config;
+    configFile: string;
+    settings: DeploySettings;
+};
+
+type BuildPayloadRequest = {
+    options: DeployOptions;
+    loaded: LoadedDeploySettings;
+    targets: DeployTarget[];
+    project: CatalogProject | null;
+    buildOutDir: string | null;
 };
 
 const BUILD_MODE = "production";
@@ -282,14 +299,26 @@ const resolveTargetNames = (options: DeployOptions, settings: DeploySettings): s
     return settings.deploy.targets ?? DEFAULT_TARGETS;
 };
 
-const loadSettings = async (options: DeployOptions): Promise<DeploySettings> => {
-    const { config, root } = await loadConfig(options.cwd, { mode: BUILD_MODE });
+const loadSettings = async (options: DeployOptions): Promise<LoadedDeploySettings> => {
+    const { config, configFile, root } = await loadConfig(options.cwd, {
+        mode: BUILD_MODE,
+        configFile: options.configFile,
+    });
 
     if (config.deploy === undefined) {
         throw missingDeployError(config.applicationId, readPackageManifest(root));
     }
 
-    return resolveDeploySettings({ root, config, outDirOverride: options.outDir });
+    return {
+        config,
+        configFile,
+        settings: resolveDeploySettings({
+            root,
+            config,
+            configFile,
+            outDirOverride: options.outDir,
+        }),
+    };
 };
 
 const synchronizeMetadataCatalogs = async (
@@ -318,20 +347,23 @@ const synchronizeMetadataCatalogs = async (
     }
 };
 
-const buildPayload = async (
-    options: DeployOptions,
-    settings: DeploySettings,
-    targets: DeployTarget[],
-    project: CatalogProject | null,
-): Promise<DeployPayload> => {
+const buildPayload = async ({
+    options,
+    loaded,
+    targets,
+    project,
+    buildOutDir,
+}: BuildPayloadRequest): Promise<DeployPayload> => {
+    const settings = loaded.settings;
     const templates = renderMetadata(settings);
 
-    if (!options.shouldSkipBuild) {
+    if (buildOutDir !== null) {
         info(`Building ${options.entry}`);
 
         await buildApp({
             entry: options.entry,
-            vite: { root: options.cwd },
+            configFile: options.configFile,
+            vite: { root: options.cwd, build: { outDir: buildOutDir } },
         });
 
         await synchronizeMetadataCatalogs(settings, templates, project);
@@ -341,7 +373,7 @@ const buildPayload = async (
 
     const metadata = localizeMetadata(templates, project);
     validateMetadata(settings, metadata, isFlathubSubmission(settings, targets));
-    const buildManifest = readBuildManifest(settings);
+    const buildManifest = readBuildManifest(settings, loaded);
 
     const builtSettings: DeploySettings = {
         ...settings,
@@ -411,9 +443,11 @@ const announce = (settings: DeploySettings, targets: DeployTarget[]): void => {
 };
 
 const runDeploy = async (options: DeployOptions): Promise<void> => {
-    let settings = await loadSettings(options);
+    let loaded = await loadSettings(options);
+    let settings = loaded.settings;
     let project = resolveCatalogProject(settings.paths.root, settings.applicationId);
     let targets = targetsFor(resolveTargetNames(options, settings));
+    let buildOutDir = options.shouldSkipBuild ? null : resolveBuildOutDir(settings.paths.root, settings.paths.dist);
     announce(settings, targets);
 
     preflight({
@@ -428,14 +462,18 @@ const runDeploy = async (options: DeployOptions): Promise<void> => {
         await ensureGenerated(options.cwd, {
             shouldAnnounce: true,
             mode: BUILD_MODE,
+            configFile: options.configFile,
         });
 
-        settings = await loadSettings(options);
+        loaded = await loadSettings(options);
+        settings = loaded.settings;
         project = resolveCatalogProject(settings.paths.root, settings.applicationId);
         targets = targetsFor(resolveTargetNames(options, settings));
+        buildOutDir = resolveBuildOutDir(settings.paths.root, settings.paths.dist);
     }
 
-    const payload = await buildPayload(options, settings, targets, project);
+    prepareDeployOutDir(settings.paths.root, settings.paths.outDir);
+    const payload = await buildPayload({ options, loaded, targets, project, buildOutDir });
     const rendered = renderTargetManifests(targets, payload);
 
     if (options.shouldPrintManifests) {

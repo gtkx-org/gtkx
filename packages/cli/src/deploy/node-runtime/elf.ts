@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { closeSync, openSync, readFileSync, readSync } from "node:fs";
 
 type ElfSection = {
     name: string;
@@ -17,6 +17,7 @@ type DynamicEntry = {
 };
 
 const ELF_MAGIC = "ELF";
+const ELF_MAGIC_SIZE = 4;
 const CLASS_64 = 2;
 const LITTLE_ENDIAN = 1;
 const OFFSET_CLASS = 4;
@@ -35,8 +36,11 @@ const DYNAMIC_VALUE_OFFSET = 8;
 const GLIBC_VERSION = /GLIBC_(\d+)\.(\d+)/g;
 const VERSION_RADIX = 1000;
 
+const hasElfMagic = (buffer: Buffer): boolean =>
+    buffer.length >= OFFSET_CLASS && buffer.subarray(0, 4).toString("latin1") === ELF_MAGIC;
+
 const assertElf64 = (buffer: Buffer, path: string): void => {
-    if (buffer.length < OFFSET_SECTION_NAME_INDEX || buffer.subarray(0, 4).toString("latin1") !== ELF_MAGIC) {
+    if (buffer.length < OFFSET_SECTION_NAME_INDEX || !hasElfMagic(buffer)) {
         throw new Error(`Cannot read ${path}: it is not an ELF binary`);
     }
 
@@ -130,8 +134,7 @@ const readGlibcMinimum = (strings: Buffer): string | null => {
 const stringTable = (buffer: Buffer, dynstr: ElfSection | undefined): Buffer =>
     dynstr === undefined ? Buffer.alloc(0) : buffer.subarray(dynstr.offset, dynstr.offset + dynstr.size);
 
-const readElfInfo = (path: string): ElfInfo => {
-    const buffer = readFileSync(path);
+const readElfBuffer = (buffer: Buffer, path: string): ElfInfo => {
     assertElf64(buffer, path);
     const sections = readSections(buffer);
     const strings = stringTable(buffer, sectionFor(sections, ".dynstr"));
@@ -142,4 +145,39 @@ const readElfInfo = (path: string): ElfInfo => {
     };
 };
 
-export { type ElfInfo, readElfInfo };
+const readElfInfo = (path: string): ElfInfo => readElfBuffer(readFileSync(path), path);
+
+const readFilePrefix = (descriptor: number, size: number): Buffer => {
+    const buffer = Buffer.alloc(size);
+    const bytesRead = readSync(descriptor, buffer, 0, size, 0);
+
+    return buffer.subarray(0, bytesRead);
+};
+
+const readOptionalElfInfo = (path: string): ElfInfo | null => {
+    const descriptor = openSync(path, "r");
+
+    try {
+        const prefix = readFilePrefix(descriptor, ELF_MAGIC_SIZE);
+
+        return hasElfMagic(prefix) ? readElfBuffer(readFileSync(descriptor), path) : null;
+    } finally {
+        closeSync(descriptor);
+    }
+};
+
+const glibcMinimumForFiles = (paths: Iterable<string>): string | null => {
+    const versions: number[][] = [];
+
+    for (const path of paths) {
+        const minimum = readOptionalElfInfo(path)?.glibcMinimum;
+
+        if (minimum !== undefined && minimum !== null) {
+            versions.push(minimum.split(".").map(Number));
+        }
+    }
+
+    return formatVersion(highestVersion(versions));
+};
+
+export { type ElfInfo, glibcMinimumForFiles, readElfInfo };

@@ -1,6 +1,6 @@
 import { warn } from "@gtkx/utils";
 import type { DeploySettings, NodeRuntime, NoticeSection } from "../types.js";
-import { sourcePathFor } from "../node-runtime/index.js";
+import { resolveNodeVersion, sourcePathFor } from "../node-runtime/index.js";
 import { licenseBesideNode } from "../node-runtime/license.js";
 import { NODE_FILENAME } from "../payload/launcher.js";
 import { nodeLicenseDestination } from "../payload/stage.js";
@@ -32,7 +32,7 @@ const MISSING_LICENSE =
 const isSourceMode = (settings: DeploySettings): boolean => settings.deploy.flatpak?.mode === "source";
 
 const versionFor = (settings: DeploySettings, node: NodeRuntime | null): string =>
-    node?.version ?? settings.deploy.node?.version ?? process.versions.node;
+    node?.version ?? resolveNodeVersion(settings);
 
 const licenseFileFor = (settings: DeploySettings, node: NodeRuntime | null): string | null => {
     if (node !== null) {

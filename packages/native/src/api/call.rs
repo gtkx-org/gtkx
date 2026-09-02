@@ -1,3 +1,5 @@
+use std::ptr::NonNull;
+
 use anyhow::Context as _;
 use libffi::middle as libffi;
 use napi::Env;
@@ -6,6 +8,7 @@ use napi_derive::napi;
 
 use super::bind::CallDescriptor;
 use super::native_result;
+use crate::ffi::closure::ClosureData;
 use crate::ffi::codec::{Codec, Decoder as _, Encoder as _};
 use crate::ffi::{self};
 use crate::host::log_writer::CriticalTrap;
@@ -57,9 +60,7 @@ fn execute_call<'e>(
 
     let result = called.with_context(|| format!("calling {label}"))?;
 
-    for stash in &stashes {
-        stash.disarm_pending_transfer();
-    }
+    commit_pending_transfers(completion.as_ref(), arg_codecs, &stashes);
 
     let ref_updates = write_ref_updates(env, arg_codecs, values, &stashes);
 
@@ -69,19 +70,40 @@ fn execute_call<'e>(
 
     release_sized_array_return(return_codec, &result);
 
-    let retained = completion
-        .map(|completion| completion.retain(stashes))
-        .transpose()
-        .with_context(|| format!("retaining the arguments of {label}"));
+    if let Some(completion) = completion {
+        completion.retain(stashes);
+    }
 
     ref_updates?;
-    retained?;
 
     if let Some(message) = critical {
         anyhow::bail!("{label}: {message}");
     }
 
     return_value
+}
+
+fn commit_pending_transfers(
+    completion: Option<&AsyncCompletion>,
+    arg_codecs: &[Codec],
+    stashes: &[ffi::Stash],
+) {
+    for (index, (codec, stash)) in arg_codecs.iter().zip(stashes).enumerate() {
+        let releases_with_completion = matches!(
+            codec,
+            Codec::Callback(callback) if callback.can_release_with_async_completion()
+        );
+
+        if releases_with_completion && completion.is_some_and(|value| value.index != index) {
+            continue;
+        }
+
+        if releases_with_completion {
+            stash.retain_forever();
+        }
+
+        stash.disarm_pending_transfer();
+    }
 }
 
 fn completion_callback_index(arg_codecs: &[Codec]) -> Option<usize> {
@@ -109,6 +131,7 @@ fn lends_element_buffer(codec: &Codec, stash: &ffi::Stash) -> bool {
 
 struct AsyncCompletion {
     index: usize,
+    data: NonNull<ClosureData>,
 }
 
 impl AsyncCompletion {
@@ -124,8 +147,11 @@ impl AsyncCompletion {
             .get(index)
             .with_context(|| format!("arg {index} takes the completion callback of the call"))?;
 
-        if completion_callback(stash)?.closure_data().is_some() {
-            return Ok(Some(Self { index }));
+        if let Some(data) = completion_callback(stash)?.closure_data() {
+            return Ok(Some(Self {
+                index,
+                data: NonNull::from(data),
+            }));
         }
 
         for (i, (codec, stash)) in arg_codecs.iter().zip(stashes).enumerate() {
@@ -140,17 +166,15 @@ impl AsyncCompletion {
         Ok(None)
     }
 
-    fn retain(self, mut stashes: Vec<ffi::Stash>) -> anyhow::Result<()> {
+    fn retain(self, mut stashes: Vec<ffi::Stash>) {
         let completion = stashes.remove(self.index);
-        let data = completion_callback(&completion)?
-            .closure_data()
-            .context("the completion callback lost the closure it was marshalled with")?;
+        let data = unsafe { self.data.as_ref() };
 
         for stash in stashes {
             data.retain_container(stash);
         }
 
-        Ok(())
+        drop(completion);
     }
 }
 

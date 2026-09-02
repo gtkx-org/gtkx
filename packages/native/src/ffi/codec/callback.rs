@@ -18,6 +18,12 @@ pub enum CallbackScope {
     Forever,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CallbackReleasePolicy {
+    Scope,
+    AsyncCompletion,
+}
+
 /// Signature of the destroy the callee is handed: `destroyNotify` is a `GDestroyNotify`, taking the
 /// user data alone, and `closureNotify` is a `GClosureNotify`, taking the user data and the
 /// `GClosure` being finalized.
@@ -39,6 +45,7 @@ pub struct CallbackCodec {
     pub user_data_index: Option<usize>,
     pub can_throw: bool,
     pub scope: CallbackScope,
+    pub(crate) release_policy: CallbackReleasePolicy,
 }
 
 impl DestroyNotifyKind {
@@ -106,8 +113,9 @@ impl Encoder for CallbackCodec {
             )));
         }
 
-        let is_immortal = self.scope == CallbackScope::Forever
-            || (self.scope == CallbackScope::Notified && !has_user_data);
+        let is_immortal = self.release_policy != CallbackReleasePolicy::AsyncCompletion
+            && (self.scope == CallbackScope::Forever
+                || (self.scope == CallbackScope::Notified && !has_user_data));
         let value = ffi::CallbackValue::new_pending_transfer(fn_ptr, has_user_data, destroy, state);
 
         if is_immortal {
@@ -123,6 +131,11 @@ impl Decoder for CallbackCodec {}
 impl PtrWriter for CallbackCodec {}
 
 impl CallbackCodec {
+    #[must_use]
+    pub(crate) fn can_release_with_async_completion(&self) -> bool {
+        self.release_policy == CallbackReleasePolicy::AsyncCompletion
+    }
+
     #[must_use]
     pub fn is_async_completion(&self) -> bool {
         self.scope == CallbackScope::Async

@@ -17,6 +17,7 @@ import {
 type InstalledBundle = { project: AppProject; installDir: string; source: string; run: AppRun };
 type ReactManifest = { version: string; description: string };
 type ResolvingCase = { title: string; specifier: string; applicationId: string; prefix: string };
+type ResolverSyntaxCase = { title: string; entry: string; applicationId: string; prefix: string };
 
 const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const VERSION_PREFIX = "rendererVersion=";
@@ -99,6 +100,71 @@ globalThis.__gtkxLateVersion = () => createRequire(import.meta.url)("${specifier
 
 process.stdout.write("started\n");
 `;
+
+const SCOPED_RESOLVER_ENTRY = String.raw`import { createRequire as factory } from "node:module";
+
+const load = factory(import.meta.url);
+const retain = (load) => load;
+globalThis.__gtkxRetain = retain;
+globalThis.__gtkxLateVersion = () => load("picomatch").version;
+process.stdout.write("started\n");
+`;
+
+const LOCAL_FACTORY_ENTRY = `const moduleApi = {
+    createRequire: (url) => (specifier) => url + ":" + specifier,
+};
+const createRequire = moduleApi.createRequire;
+const require = () => moduleApi;
+
+process.stdout.write([
+    createRequire(import.meta.url)("picomatch"),
+    moduleApi.createRequire(import.meta.url)("picomatch"),
+    require("node:module").createRequire(import.meta.url)("picomatch"),
+].join(","));
+`;
+
+const resolverSyntaxEntry = (setup: string, mutation = ""): string => String.raw`${setup}
+
+${mutation}globalThis.__gtkxLateVersion = () => load("picomatch").version;
+process.stdout.write("started\n");
+`;
+
+const RESOLVER_SYNTAX_CASES: ResolverSyntaxCase[] = [
+    {
+        title: "a mutable resolver binding",
+        entry: resolverSyntaxEntry(
+            'import { createRequire } from "node:module";\nlet load = createRequire(import.meta.url);',
+            `if (globalThis.__gtkxUseLocalResolver) {
+    load = (specifier) => ({ version: specifier });
+}
+`,
+        ),
+        applicationId: "com.gtkx.clibundlemutable",
+        prefix: "gtkx-bundle-mutable-",
+    },
+    {
+        title: "createRequire imported from module",
+        entry: resolverSyntaxEntry(
+            'import { createRequire as factory } from "module";\nconst load = factory(import.meta.url);',
+        ),
+        applicationId: "com.gtkx.clibundlemodule",
+        prefix: "gtkx-bundle-module-",
+    },
+    {
+        title: "createRequire read from a module namespace",
+        entry: resolverSyntaxEntry(
+            'import * as moduleApi from "node:module";\nconst load = moduleApi.createRequire(import.meta.url);',
+        ),
+        applicationId: "com.gtkx.clibundlenamespace",
+        prefix: "gtkx-bundle-namespace-",
+    },
+    {
+        title: "createRequire read from a required module builtin",
+        entry: resolverSyntaxEntry('const load = require("node:module").createRequire(import.meta.url);'),
+        applicationId: "com.gtkx.clibundlerequiremember",
+        prefix: "gtkx-bundle-require-member-",
+    },
+];
 
 const scriptNames = (outDir: string): string[] =>
     readdirSync(outDir, { recursive: true, encoding: "utf8" }).filter((name) =>
@@ -210,4 +276,49 @@ describe("gtkx build (bundle that would resolve a module at runtime)", () => {
         },
         BUILD_TIMEOUT,
     );
+
+    it.each(RESOLVER_SYNTAX_CASES)(
+        "fails when the bundle uses $title",
+        async ({ entry, applicationId, prefix }) => {
+            const project = createAppProject({ applicationId, entry, prefix });
+
+            try {
+                await expect(buildAppProject({ project, outDir: OUT_DIR })).rejects.toThrow();
+            } finally {
+                removeAppProject(project);
+            }
+        },
+        BUILD_TIMEOUT,
+    );
+
+    it("fails when an unrelated nested binding reuses the resolver name", async () => {
+        const project = createAppProject({
+            applicationId: "com.gtkx.clibundlescope",
+            entry: SCOPED_RESOLVER_ENTRY,
+            prefix: "gtkx-bundle-scope-",
+        });
+
+        try {
+            await expect(buildAppProject({ project, outDir: OUT_DIR })).rejects.toThrow();
+        } finally {
+            removeAppProject(project);
+        }
+    }, BUILD_TIMEOUT);
+
+    it("allows a local function that only shares the factory name", async () => {
+        const project = createAppProject({
+            applicationId: "com.gtkx.clibundlelocalscope",
+            entry: LOCAL_FACTORY_ENTRY,
+            prefix: "gtkx-bundle-local-scope-",
+        });
+
+        try {
+            await buildAppProject({ project, outDir: OUT_DIR });
+            const run = runNode(join(project.root, OUT_DIR, BUNDLE_NAME));
+            expect(run.status).toBe(0);
+            expect(run.stdout).toContain(":picomatch");
+        } finally {
+            removeAppProject(project);
+        }
+    }, BUILD_TIMEOUT);
 });

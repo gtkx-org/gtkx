@@ -1,14 +1,47 @@
 import type * as GObject from "@gtkx/gi/gobject";
+import type { Descriptor } from "@gtkx/native";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Regress from "@gtkx/gi/regress";
+import { bind, call } from "@gtkx/native";
+import { getHandle } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 import { drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
 type Counter = { calls: number };
 type Holder<T> = { value: T | null };
 type NotifiedCallback = WeakRef<Regress.TestCallbackUserData>;
+
+const VOID: Descriptor = { kind: "void" };
+const BORROWED_OBJECT = (typeName: string): Descriptor => ({ kind: "object", ownership: "borrowed", typeName });
+const completionTiedFunction = bind(
+    "libregress.so",
+    "regress_test_obj_function2",
+    [
+        BORROWED_OBJECT("RegressTestObj"),
+        { kind: "int32" },
+        BORROWED_OBJECT("GCancellable"),
+        {
+            kind: "callback",
+            argDescriptors: [{ kind: "biguint64" }],
+            returnDescriptor: { kind: "int32" },
+            hasUserData: true,
+            userDataIndex: 0,
+            scope: "notified",
+        },
+        { kind: "buffer" },
+        {
+            kind: "callback",
+            argDescriptors: [BORROWED_OBJECT("GObject"), BORROWED_OBJECT("GAsyncResult"), { kind: "biguint64" }],
+            returnDescriptor: VOID,
+            hasUserData: true,
+            userDataIndex: 2,
+            scope: "async",
+        },
+    ],
+    VOID,
+);
 
 drainAfterEachTest();
 
@@ -42,6 +75,31 @@ const registerAsync = (counter: Counter, value: number): NotifiedCallback => {
     Regress.testCallbackAsync(callback);
 
     return new WeakRef(callback);
+};
+
+const registerCompletionTied = (
+    obj: Regress.TestObj,
+    counter: Counter,
+): { completion: Promise<undefined>; weak: NotifiedCallback } => {
+    const { promise, resolve } = Promise.withResolvers<undefined>();
+    const callback = (): number => {
+        counter.calls += 1;
+
+        return 1;
+    };
+
+    call(completionTiedFunction, [
+        getHandle(obj),
+        0,
+        null,
+        callback,
+        null,
+        () => {
+            resolve(undefined);
+        },
+    ]);
+
+    return { completion: promise, weak: new WeakRef(callback) };
 };
 
 test("a call scoped callback runs once and hands its return value back to C", () => {
@@ -225,6 +283,20 @@ test("async scope callbacks are deferred until the async queue is thawed", async
     expect(Regress.testCallbackThawAsync()).toBe(0);
     expect(counter.calls).toBe(1);
     await drainGC(5);
+    expect(weak.deref()).toBeUndefined();
+});
+
+test("a notified side callback is released with its async completion", async () => {
+    const obj = new Regress.TestObj({});
+    const counter: Counter = { calls: 0 };
+    const { completion, weak } = registerCompletionTied(obj, counter);
+
+    expect(counter.calls).toBe(1);
+    await drainGC();
+    expect(weak.deref()).toBeDefined();
+    expect(obj.functionThawAsync()).toBeGreaterThan(0);
+    await completion;
+    await drainGC(8);
     expect(weak.deref()).toBeUndefined();
 });
 

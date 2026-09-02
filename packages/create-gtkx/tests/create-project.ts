@@ -1,3 +1,4 @@
+import { tryResolveExecutable } from "@gtkx/utils";
 import { spawnSync } from "node:child_process";
 import {
     chmodSync,
@@ -11,7 +12,7 @@ import {
     writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 type CreateRun = { status: number | null; output: string; target: string; installs: string[] };
@@ -19,6 +20,8 @@ type CreateRun = { status: number | null; output: string; target: string; instal
 type CreateOptions = {
     args: string[];
     files?: Record<string, string> | undefined;
+    links?: Record<string, string> | undefined;
+    hasParentGit?: boolean | undefined;
     isInstallFailing?: boolean | undefined;
     name?: string | undefined;
 };
@@ -63,15 +66,48 @@ const createEnvironment = (workspace: Workspace): NodeJS.ProcessEnv => ({
 const readInstalls = (logPath: string): string[] =>
     existsSync(logPath) ? readFileSync(logPath, "utf8").split("\n").filter(Boolean) : [];
 
+const initializeParentGit = (root: string, hasParentGit: boolean): void => {
+    if (!hasParentGit) {
+        return;
+    }
+
+    const git = tryResolveExecutable("git");
+
+    if (git === undefined) {
+        throw new Error("Git is required for this test");
+    }
+
+    const initialized = spawnSync(git, ["init", "--quiet", root], { encoding: "utf8" });
+
+    if (initialized.status !== 0) {
+        throw new Error(initialized.stderr);
+    }
+};
+
+const seedFiles = (target: string, files: [string, string][]): void => {
+    for (const [name, contents] of files) {
+        const path = join(target, name);
+        mkdirSync(dirname(path), { recursive: true });
+        writeFileSync(path, contents);
+    }
+};
+
+const seedLinks = (target: string, links: [string, string][]): void => {
+    for (const [name, targetPath] of links) {
+        const path = join(target, name);
+        mkdirSync(dirname(path), { recursive: true });
+        symlinkSync(targetPath, path, "dir");
+    }
+};
+
 const runCreate = (options: CreateOptions): CreateRun => {
     const workspace = createWorkspace(options.isInstallFailing ?? false);
     const target = join(workspace.root, options.name ?? PROJECT_NAME);
     const seeded = Object.entries(options.files ?? {});
-
-    for (const [name, contents] of seeded) {
-        mkdirSync(target, { recursive: true });
-        writeFileSync(join(target, name), contents);
-    }
+    const links = Object.entries(options.links ?? {});
+    initializeParentGit(workspace.root, options.hasParentGit === true);
+    seedFiles(target, seeded);
+    seedLinks(target, links);
 
     const result = spawnSync(process.execPath, [...CLI_ARGV, target, ...options.args], {
         cwd: workspace.root,

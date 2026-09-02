@@ -1,7 +1,7 @@
 import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, ResolvedConfig } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
-import { toPosixPath } from "@gtkx/utils";
+import { isPathWithin, toPosixPath } from "@gtkx/utils";
 import { existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, posix, relative, resolve } from "node:path";
@@ -13,7 +13,8 @@ import {
     synchronizeCatalogs,
 } from "../i18n/catalogs.js";
 import { extractSourceCatalog } from "../i18n/source-messages.js";
-import { discoverSourceFiles } from "../internal/source-imports.js";
+import { emitI18nTypes } from "../i18n/types.js";
+import { discoverSourceFiles, sourceLanguage } from "../internal/source-imports.js";
 import { stripQuery } from "./strip-query.js";
 
 type I18nState = {
@@ -21,6 +22,7 @@ type I18nState = {
     i18nRoot: string;
     outDir: string;
     project: CatalogProject | null;
+    extraction: Promise<void>;
 };
 
 const BOOTSTRAP_SPECIFIER = "@gtkx/i18n/bootstrap";
@@ -94,6 +96,7 @@ const buildCatalogs = (state: I18nState): void => {
 const extractProjectMessages = async (
     state: I18nState,
     shouldPreserveMetadataMessages: boolean,
+    shouldSynchronizeCatalogs: boolean,
 ): Promise<void> => {
     const project = state.project;
 
@@ -104,7 +107,65 @@ const extractProjectMessages = async (
     const srcDir = join(project.root, "src");
     const sourceFiles = discoverSourceFiles(existsSync(srcDir) ? srcDir : project.root);
     await extractSourceCatalog(project, sourceFiles, shouldPreserveMetadataMessages);
-    synchronizeCatalogs(project);
+
+    if (shouldSynchronizeCatalogs) {
+        synchronizeCatalogs(project);
+    }
+
+    await emitI18nTypes(project.root);
+};
+
+const settleExtraction = async (pending: Promise<void>): Promise<void> => {
+    try {
+        await pending;
+    } catch {
+        return;
+    }
+};
+
+const queueExtraction = (
+    state: I18nState,
+    shouldPreserveMetadataMessages: boolean,
+    shouldSynchronizeCatalogs: boolean,
+): Promise<void> => {
+    const prior = state.extraction;
+    const pending = (async (): Promise<void> => {
+        await settleExtraction(prior);
+        await extractProjectMessages(
+            state,
+            shouldPreserveMetadataMessages,
+            shouldSynchronizeCatalogs,
+        );
+    })();
+
+    state.extraction = pending;
+
+    return pending;
+};
+
+const isProjectSource = (state: I18nState, path: string): boolean => {
+    const project = state.project;
+
+    if (project === null || sourceLanguage(path) === undefined) {
+        return false;
+    }
+
+    const srcDir = join(project.root, "src");
+    const sourceRoot = existsSync(srcDir) ? srcDir : project.root;
+
+    return isPathWithin(sourceRoot, path);
+};
+
+const refreshProjectMessages = async (
+    state: I18nState,
+    shouldPreserveMetadataMessages: boolean,
+    reportError: (message: string) => void,
+): Promise<void> => {
+    try {
+        await queueExtraction(state, shouldPreserveMetadataMessages, false);
+    } catch (error) {
+        reportError(error instanceof Error ? error.message : String(error));
+    }
 };
 
 const gtkxI18n = (
@@ -112,7 +173,13 @@ const gtkxI18n = (
     loadConfig: ConfigLoader = createConfigLoader(),
     shouldPreserveMetadataMessages = true,
 ): Plugin => {
-    const state: I18nState = { entryPath, i18nRoot: "", outDir: "", project: null };
+    const state: I18nState = {
+        entryPath,
+        extraction: Promise.resolve(),
+        i18nRoot: "",
+        outDir: "",
+        project: null,
+    };
 
     return {
         name: "gtkx:i18n",
@@ -120,7 +187,21 @@ const gtkxI18n = (
 
         configResolved: (config) => applyResolvedConfig(state, config, loadConfig),
 
-        buildStart: () => extractProjectMessages(state, shouldPreserveMetadataMessages),
+        buildStart: () => queueExtraction(state, shouldPreserveMetadataMessages, true),
+
+        hotUpdate(options) {
+            if (!isProjectSource(state, options.file)) {
+                return;
+            }
+
+            return refreshProjectMessages(
+                state,
+                shouldPreserveMetadataMessages,
+                (message) => {
+                    options.server.config.logger.error(message);
+                },
+            );
+        },
 
         transform(code, id) {
             if (isI18nLocaleModule(state, id)) {

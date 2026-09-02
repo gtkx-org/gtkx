@@ -1,5 +1,3 @@
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { z } from "zod";
 
 type SerializedWidget = {
@@ -130,12 +128,6 @@ const ServerRequestParamsSchemas: {
     "widget.screenshot": screenshotParams,
 };
 
-const DEFAULT_SOCKET_PATH: string = join(getRuntimeDir(), "gtkx-mcp.sock");
-
-function getRuntimeDir(): string {
-    return process.env.XDG_RUNTIME_DIR ?? tmpdir();
-}
-
 export {
     DEFAULT_SUBTREE_DEPTH,
     MAX_SUBTREE_WIDGETS,
@@ -148,7 +140,6 @@ export {
     fireEventParams,
     screenshotParams,
     ServerRequestParamsSchemas,
-    DEFAULT_SOCKET_PATH,
     type SerializedWidget,
     type SerializedProperty,
     type AppInfo,

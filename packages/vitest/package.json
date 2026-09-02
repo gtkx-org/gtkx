@@ -33,6 +33,13 @@
             "import": "./dist/index.js",
             "require": null,
             "default": "./dist/index.js"
+        },
+        "./headless": {
+            "source": "./src/headless.ts",
+            "types": "./dist/headless.d.ts",
+            "import": "./dist/headless.js",
+            "require": null,
+            "default": "./dist/headless.js"
         }
     },
     "sideEffects": false,

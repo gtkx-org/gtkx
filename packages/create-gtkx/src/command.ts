@@ -8,6 +8,7 @@ import { scaffold } from "./scaffolder.js";
 type CreateCommandArgs = {
     name?: string | undefined;
     "application-id"?: string | undefined;
+    "display-name"?: string | undefined;
     "package-manager"?: string | undefined;
     typescript?: boolean | undefined;
     vitest?: boolean | undefined;
@@ -30,6 +31,10 @@ const scaffoldCommand = defineCommand({
         "application-id": {
             type: "string",
             description: "Application ID (e.g., com.example.myapp)",
+        },
+        "display-name": {
+            type: "string",
+            description: "Application display name (e.g., My App)",
         },
         "package-manager": {
             type: "string",
@@ -59,7 +64,7 @@ const scaffoldCommand = defineCommand({
         overwrite: {
             type: "boolean",
             alias: "f",
-            description: "Overwrite the contents of a non-empty target directory when running without prompts",
+            description: "Replace scaffold files in a non-empty target directory when running without prompts",
         },
     },
     run: ({ args }) => runCreate(args),
@@ -84,6 +89,7 @@ const runCreate = async (args: CreateCommandArgs): Promise<void> => {
         await scaffold({
             name: args.name,
             applicationId: args["application-id"],
+            displayName: args["display-name"],
             packageManager: args["package-manager"],
             isTypescript: args.typescript,
             shouldIncludeTesting: args.vitest,

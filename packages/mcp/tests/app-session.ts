@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { SerializedProperty, SerializedWidget } from "../src/protocol/schemas.js";
+import { resolveMcpSocketPath } from "../src/socket-path.js";
 import { APP_SOURCE } from "./app-source.js";
 
 type McpServer = {
@@ -140,7 +141,7 @@ const startServer = async (
         client,
         pid: transport.pid,
         runtimeDir,
-        socketPath: join(runtimeDir, SOCKET_NAME),
+        socketPath: resolveMcpSocketPath(join(runtimeDir, SOCKET_NAME)),
         stop: async () => {
             await client.close();
 
@@ -151,8 +152,8 @@ const startServer = async (
     };
 };
 
-const startApp = (root: string, runtimeDir: string): ChildProcess =>
-    spawn(process.execPath, ["--enable-source-maps", CLI_ENTRY, "dev"], {
+const startApp = (root: string, runtimeDir: string, cliArgs: string[] = []): ChildProcess =>
+    spawn(process.execPath, ["--enable-source-maps", CLI_ENTRY, "dev", ...cliArgs], {
         cwd: root,
         env: childEnvironment(runtimeDir),
         stdio: ["ignore", "ignore", "ignore"],
@@ -250,6 +251,8 @@ export {
     queryWidgets,
     readWidgetProps,
     startAppSession,
+    startApp,
     startServer,
+    stopApp,
     type WidgetProps,
 };

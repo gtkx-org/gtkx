@@ -12,5 +12,8 @@
     <constant name="EOT_STR" value="" c:type="MALFORMED_EOT_STR">
       <type name="utf8" c:type="gchar*"/>
     </constant>
+    <constant name="PUA_STR" value="&#xE004;" c:type="MALFORMED_PUA_STR">
+      <type name="utf8" c:type="gchar*"/>
+    </constant>
   </namespace>
 </repository>

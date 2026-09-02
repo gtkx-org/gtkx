@@ -114,6 +114,7 @@ type DeployPaths = {
 
 type DeploySettings = {
     applicationId: string;
+    configFile: string;
     binaryName: string;
     name: string;
     genericName: string | null;

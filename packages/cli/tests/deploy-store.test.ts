@@ -59,7 +59,9 @@ describe("gtkx deploy (a store inventory it cannot use)", () => {
         for (const packaged of dependencies) {
             expect(packaged).toContain("libgtk-4-1");
             expect(packaged).toContain("libadwaita-1-0");
-            expect(packaged.filter((entry) => entry.includes("(>="))).toEqual([]);
+            const versionedToolkit = packaged.filter((entry) =>
+                (entry.startsWith("libgtk") || entry.startsWith("libadwaita")) && entry.includes("(>="));
+            expect(versionedToolkit).toEqual([]);
         }
     });
 });
@@ -95,7 +97,7 @@ describe("gtkx deploy (build metadata it cannot trust)", () => {
         const args = ["deploy", "--print-manifests", "--skip-build", "--target", "deb"];
 
         for (const invalid of [
-            { ...metadata, formatVersion: 2 },
+            { ...metadata, formatVersion: metadata.formatVersion + 1 },
             { ...metadata, packages: [{ name: "invalid", version: 1, dir: ".." }] },
         ]) {
             writeFileSync(metadataPath, `${JSON.stringify(invalid, null, 4)}\n`);

@@ -24,6 +24,7 @@ import { type CodegenContext, type CodegenStore, resolveCodegenContext } from ".
 type RunCodegenOptions = {
     cwd?: string;
     mode?: string | undefined;
+    configFile?: string | undefined;
     isForced?: boolean;
     inputs?: CodegenInputs;
     resolved?: LoadedConfig;
@@ -58,6 +59,7 @@ type PreparedCodegen = CodegenInputs & { isForced: boolean };
 type EnsureGeneratedOptions = {
     shouldAnnounce?: boolean;
     mode?: string;
+    configFile?: string | undefined;
     shouldPreserveI18nMetadata?: boolean | undefined;
 };
 
@@ -131,7 +133,10 @@ const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config)
 
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
-    const { config, configFile } = options.resolved ?? (await loadConfig(cwd, { mode: options.mode }));
+    const { config, configFile } = options.resolved ?? (await loadConfig(cwd, {
+        mode: options.mode,
+        configFile: options.configFile,
+    }));
     await syncI18n(cwd, config.applicationId, options.shouldPreserveI18nMetadata);
     emitSchemaEnv(cwd);
 
@@ -190,9 +195,9 @@ const syncI18n = async (
     await emitI18nTypes(root);
 };
 
-const isCodegenDisabled = async (cwd: string, mode?: string): Promise<boolean> => {
+const isCodegenDisabled = async (cwd: string, mode?: string, configFile?: string): Promise<boolean> => {
     try {
-        const { config } = await loadConfig(cwd, { mode });
+        const { config } = await loadConfig(cwd, { mode, configFile });
 
         return config.codegen === false;
     } catch {
@@ -257,18 +262,21 @@ const ensureGeneratedIn = async (
 
 /* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
 const ensureGenerated = async (cwd: string, options: EnsureGeneratedOptions = {}): Promise<boolean> =>
-    isPreflightSkipped(options) ? false : generate(await resolveCodegenContext(cwd, options.mode), options);
+    isPreflightSkipped(options)
+        ? false
+        : generate(await resolveCodegenContext(cwd, options.mode, options.configFile), options);
 
 const resolveConfigWatch = async (
     cwd: string,
     mode?: string,
+    configFile?: string,
 ): Promise<{ paths: string[]; regenerate: () => Promise<void> }> => {
-    const { configFile, root } = await loadConfig(cwd, { mode });
+    const loaded = await loadConfig(cwd, { mode, configFile });
 
     return {
-        paths: [resolve(root, configFile)],
+        paths: [resolve(loaded.root, loaded.configFile)],
         regenerate: async () => {
-            await runCodegen({ cwd: root, mode });
+            await runCodegen({ cwd: loaded.root, mode, configFile: loaded.configFile });
         },
     };
 };

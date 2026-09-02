@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
     APPLICATION_ID,
@@ -16,6 +17,8 @@ type Scripts = Record<string, string | undefined>;
 const BASE_ARGS = ["--no-interactive", "--application-id", APPLICATION_ID, "--package-manager", "pnpm"];
 const ICON_PATH = `data/icons/hicolor/scalable/apps/${APPLICATION_ID}.svg`;
 const STALE_FILE = "stale.txt";
+const CUSTOM_SOURCE = "src/custom.ts";
+const MISE_PIN = '[tools]\nnode = "26"\n';
 
 const create = (args: string[] = []): CreateRun => runCreate({ args: [...BASE_ARGS, ...args] });
 const getScripts = (run: CreateRun): Scripts => readManifest(run).scripts as Scripts;
@@ -54,6 +57,7 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
             "tests/app.test.tsx",
             ".mcp.json",
             ".claude/settings.json",
+            "mise.toml",
             ICON_PATH,
         ]));
 
@@ -103,6 +107,8 @@ describe("create-gtkx scaffolding for coding agents", () => {
             "Bash(npx gtkx codegen:*)",
             "Bash(npx vitest run:*)",
         ]));
+
+        expect(readProject(typescriptState.run, "mise.toml")).toBe(MISE_PIN);
     });
 
     it("keeps the generated reference out of git and the agent files in it", () => {
@@ -125,6 +131,7 @@ describe("create-gtkx scaffolding without TypeScript or testing", () => {
             expect(files).not.toContain("tests/app.test.tsx");
             expect(getScripts(run).test).toBeUndefined();
             expect(getScripts(run).typecheck).toBeUndefined();
+            expect(readProject(run, "mise.toml")).toBe(MISE_PIN);
         } finally {
             removeRun(run);
         }
@@ -148,12 +155,28 @@ describe("create-gtkx and the package manager it scaffolds for", () => {
 });
 
 describe("create-gtkx and a directory that already holds files", () => {
-    it("empties the directory when it is told to overwrite it", () => {
-        const run = runCreate({ args: [...BASE_ARGS, "--overwrite"], files: { [STALE_FILE]: "old" } });
+    it("preserves unrelated files and replaces scaffold files when told to overwrite", () => {
+        const run = runCreate({
+            args: [...BASE_ARGS, "--overwrite"],
+            files: { [CUSTOM_SOURCE]: "custom source", "gtkx.config.ts": "stale config" },
+        });
 
         try {
             expect(run.status).toBe(0);
-            expect(listProject(run)).not.toContain(STALE_FILE);
+            expect(readProject(run, CUSTOM_SOURCE)).toBe("custom source");
+            expect(readProject(run, "gtkx.config.ts")).not.toBe("stale config");
+            expect(hasProjectPath(run, ".git")).toBe(false);
+        } finally {
+            removeRun(run);
+        }
+    });
+
+    it("joins an existing parent repository without nesting another one", () => {
+        const run = runCreate({ args: BASE_ARGS, hasParentGit: true });
+
+        try {
+            expect(run.status).toBe(0);
+            expect(hasProjectPath(run, ".git")).toBe(false);
         } finally {
             removeRun(run);
         }
@@ -165,6 +188,70 @@ describe("create-gtkx and a directory that already holds files", () => {
         try {
             expect(run.status).not.toBe(0);
             expect(listProject(run)).toContain(STALE_FILE);
+        } finally {
+            removeRun(run);
+        }
+    });
+
+    it("refuses to replace a directory at a scaffold file destination", () => {
+        const nested = join("src", "app.tsx", STALE_FILE);
+        const run = runCreate({
+            args: [...BASE_ARGS, "--overwrite"],
+            files: { [nested]: "old", "gtkx.config.ts": "stale config" },
+        });
+
+        try {
+            expect(run.status).not.toBe(0);
+            expect(readProject(run, nested)).toBe("old");
+            expect(readProject(run, "gtkx.config.ts")).toBe("stale config");
+        } finally {
+            removeRun(run);
+        }
+    });
+
+    it("refuses to write through a symbolic-link ancestor", () => {
+        const run = runCreate({
+            args: [...BASE_ARGS, "--overwrite"],
+            files: { "../outside/app.tsx": "outside", "gtkx.config.ts": "stale config" },
+            links: { src: "../outside" },
+        });
+
+        try {
+            expect(run.status).not.toBe(0);
+            expect(readProject(run, "../outside/app.tsx")).toBe("outside");
+            expect(readProject(run, "gtkx.config.ts")).toBe("stale config");
+        } finally {
+            removeRun(run);
+        }
+    });
+});
+
+describe("create-gtkx display names", () => {
+    it("propagates an explicit display name to the generated application", () => {
+        const run = runCreate({
+            args: [...BASE_ARGS, "--display-name", "Clean My Linux", "--no-typescript", "--no-vitest"],
+            name: "cleanmylinux",
+        });
+
+        try {
+            expect(run.status).toBe(0);
+            expect(readProject(run, "gtkx.config.js")).toContain('name: "Clean My Linux"');
+            expect(readProject(run, "src/app.jsx")).toContain('title={"Clean My Linux"}');
+        } finally {
+            removeRun(run);
+        }
+    });
+
+    it("derives a display name from a hyphenated project name", () => {
+        expect(readProject(typescriptState.run, "gtkx.config.ts")).toContain('name: "My App"');
+        expect(readProject(typescriptState.run, "src/app.tsx")).toContain('title={"My App"}');
+    });
+
+    it("fails when the display name is empty", () => {
+        const run = runCreate({ args: [...BASE_ARGS, "--display-name", " ".repeat(3)] });
+
+        try {
+            expect(run.status).not.toBe(0);
         } finally {
             removeRun(run);
         }

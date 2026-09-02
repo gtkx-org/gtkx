@@ -45,6 +45,8 @@ type DeployProbe = { project: CliProject; status: number | null; output: string 
 type BuildMetadata = {
     generator: string;
     formatVersion: number;
+    configFile: string;
+    configDigest: string;
     schemas: string[];
     packages: { name: string; version: string | null; dir: string }[];
 };
@@ -296,6 +298,7 @@ const DEPENDENCY_VERSION = "1.0.0";
 const UNDECLARED_LICENSE = "License: unknown";
 const RUNTIME_BINARY = join("runtime", "bin", "node");
 const RUNTIME_LICENSE = join("runtime", "LICENSE");
+const RUNTIME_SOURCE = "#!/bin/sh\nprintf 'v26.7.0\\n'\n";
 const NODE_LICENSE_TEXT = "Node.js probe license, standing in for the release archive.";
 const OWN_LICENSE_TEXT = "Probe proprietary license, all rights reserved, and not Node's.";
 const APPLICATION_STANZA = "Deploy Probe (MPL-2.0)";
@@ -425,7 +428,7 @@ const noticesFiles = (): Record<string, string> => ({
     [join("src", "index.tsx")]: NOTICES_APP_SOURCE,
     [join("node_modules", DEPENDENCY_NAME, "package.json")]: `${JSON.stringify(DEPENDENCY_MANIFEST, null, 4)}\n`,
     [join("node_modules", DEPENDENCY_NAME, "index.js")]: DEPENDENCY_SOURCE,
-    [RUNTIME_BINARY]: "",
+    [RUNTIME_BINARY]: RUNTIME_SOURCE,
     [RUNTIME_LICENSE]: `${NODE_LICENSE_TEXT}\n`,
 });
 
@@ -839,6 +842,7 @@ export {
     PNPM_VERSION,
     projectFiles,
     RPM_NFPM_PATH,
+    RUNTIME_BINARY,
     SCHEMA,
     SCHEMA_INSTALL,
     SECRET_DESTINATION,

@@ -20,6 +20,8 @@ type BrokenBuild = { config?: string | undefined; files: Record<string, string>;
 type BuildMetadata = {
     generator: string;
     formatVersion: number;
+    configFile: string;
+    configDigest: string;
     schemas: string[];
     packages: { name: string; version: string | null; dir: string }[];
 };
@@ -326,7 +328,9 @@ const expectUnifiedBuildMetadata = (project: CliProject): void => {
     const contents = readFileSync(join(project.root, OUT_DIR, BUILD_METADATA), "utf8");
     const metadata = JSON.parse(contents) as BuildMetadata;
     expect(metadata.generator).toBe("gtkx-build");
-    expect(metadata.formatVersion).toBe(1);
+    expect(metadata.formatVersion).toBe(2);
+    expect(metadata.configFile).toBe("gtkx.config.ts");
+    expect(metadata.configDigest).toMatch(/^[\da-f]{64}$/);
     expect(metadata.schemas).toEqual([join("data", SCHEMA_FILE)]);
 
     expect(metadata.packages).toEqual(expect.arrayContaining([

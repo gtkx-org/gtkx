@@ -1,4 +1,5 @@
-import { existsSync, realpathSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -56,6 +57,15 @@ describe("gtkx codegen", () => {
         expect(storeManifest(state.project, "jsx").peerDependencies?.[CAIRO_PACKAGE]).toBe("*");
         const installed = realpathSync(join(state.project.nodeModules, "@gtkx", "cairo", "package.json"));
         expect(realpathSync(resolveCairoFrom(state.project))).toBe(installed);
+    });
+
+    it("records an ABI version for every GIR library", () => {
+        const inventory = JSON.parse(
+            readFileSync(storePath(state.project, "gi", "libraries.json"), "utf8"),
+        ) as { libraries: string[]; girVersions: Record<string, string> };
+
+        expect(new Set(Object.keys(inventory.girVersions))).toEqual(new Set(inventory.libraries));
+        expect(Object.values(inventory.girVersions).every((version) => version.length > 0)).toBe(true);
     });
 
     it("leaves a fresh store alone, and restores a link an install pruned", () => {
@@ -153,6 +163,23 @@ describe("gtkx codegen (the libraries a project binds without naming them)", () 
         withProject("default-libraries-extra", source, (project) => {
             expect(runCli(project, ["codegen", "--force"]).status).toBe(0);
             expect(existsSync(storePath(project, "gi", "documented"))).toBe(true);
+        });
+    });
+
+    it("preserves illegal control codes in GIR constants", () => {
+        const source = fixtureLibrariesConfig(["Malformed-1.0"]);
+
+        withProject("control-code-library", source, (project) => {
+            expect(runCli(project, ["codegen", "--force"]).status).toBe(0);
+            const moduleSource = `import { EOT_STR, PUA_STR } from "@gtkx/gi/malformed";
+process.stdout.write(JSON.stringify([EOT_STR, PUA_STR]));`;
+            const output = execFileSync(
+                process.execPath,
+                ["--conditions=source", "--import=tsx", "--input-type=module", "--eval", moduleSource],
+                { cwd: project.root, encoding: "utf8" },
+            );
+
+            expect(output).toBe(JSON.stringify([String.fromCodePoint(4), "&#xE004;"]));
         });
     });
 

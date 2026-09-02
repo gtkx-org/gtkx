@@ -66,6 +66,14 @@ const runFixture = (name: string, args: string[] = []): Promise<FixtureRun> =>
         });
     });
 
+const runFailingFixture = async (name: string, args: string[] = []): Promise<void> => {
+    const result = await runFixture(name, args);
+
+    if (result.code !== 0 || result.signal !== null) {
+        throw new Error(result.output);
+    }
+};
+
 const reportedLine = (output: string, prefix: string): string | undefined =>
     output
         .split("\n")
@@ -141,6 +149,22 @@ test("the process exits on its own when only unref'd GLib sources remain", async
     expect(code).toBe(0);
 });
 
+test("a fresh process registers GStrv before its first string-array value", async () => {
+    const { code, output, signal } = await runFixture("strv-first-use.ts");
+
+    expect(output).toMatch(/STRV READY/);
+    expect(signal).toBeNull();
+    expect(code).toBe(0);
+});
+
+test("GioUnix search returns nested string arrays", async () => {
+    const { code, output, signal } = await runFixture("gio-unix-search.ts");
+
+    expect(output).toMatch(/NESTED STRINGS/);
+    expect(signal).toBeNull();
+    expect(code).toBe(0);
+});
+
 test("the addon drives real bindings inside a worker thread that finishes on its own", async () => {
     const { code, output, signal } = await runFixture("worker-host.ts", ["graceful"]);
 
@@ -167,6 +191,10 @@ test("a worker thread that never quits the addon can still be terminated", async
     expect(reportedLine(output, "TERMINATED ")).toBe("1");
     expect(signal).toBeNull();
     expect(code).toBe(0);
+});
+
+test("a worker cannot acquire GTKX after the main thread", async () => {
+    await expect(runFailingFixture("worker-host.ts", ["conflict"])).rejects.toThrow();
 });
 
 test("a library or symbol that is not there fails the call it backs", () => {

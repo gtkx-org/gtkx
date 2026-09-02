@@ -1,5 +1,6 @@
 import type { DeployPayload, DeploySettings, StagedFile } from "../types.js";
 import { resolveDepends } from "../depends.js";
+import { glibcMinimumForFiles } from "../node-runtime/elf.js";
 import { groupForCategories, sectionForCategories } from "../settings/categories.js";
 import { nfpmContents } from "./contents.js";
 import { debDescription, rpmDescription } from "./description.js";
@@ -125,7 +126,9 @@ const descriptionFor = (settings: DeploySettings, packager: NfpmPackager): strin
 const renderNfpmConfig = (payload: DeployPayload, packager: NfpmPackager): NfpmConfig => {
     const settings = payload.settings;
     const isRpm = packager === "rpm";
-    const depends = resolveDepends(settings, payload.node?.glibcMinimum ?? null);
+    const staged = stagedFilesFor(payload, packager);
+    const glibcMinimum = glibcMinimumForFiles(staged.map((file) => file.abs));
+    const depends = resolveDepends(settings, glibcMinimum);
 
     return {
         name: packageNameFor(settings, packager),
@@ -146,7 +149,7 @@ const renderNfpmConfig = (payload: DeployPayload, packager: NfpmPackager): NfpmC
         ...relationsFor(settings, packager),
         ...optional("scripts", scriptsFor(settings)),
         [packager]: packagerSettings(settings, packager),
-        contents: nfpmContents(PREFIX, stagedFilesFor(payload, packager), isRpm),
+        contents: nfpmContents(PREFIX, staged, isRpm),
     };
 };
 

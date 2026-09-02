@@ -1,10 +1,10 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
-    DEFAULT_SOCKET_PATH,
     isConnectionClosedError,
     type JSONRPCRequest,
     ProtocolConnection,
+    resolveMcpSocketPath,
     type Result,
 } from "@gtkx/mcp/internal";
 import { error, errorMessage, info, normalizeError } from "@gtkx/utils";
@@ -65,7 +65,7 @@ class McpClient {
     private registry = new WidgetRegistry();
 
     constructor(options: McpClientOptions) {
-        this.socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
+        this.socketPath = resolveMcpSocketPath(options.socketPath);
         this.applicationId = options.applicationId;
     }
 

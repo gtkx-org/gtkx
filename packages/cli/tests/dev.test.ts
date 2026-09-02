@@ -31,6 +31,8 @@ const SECOND_ASSET = join("data", "second.data");
 const LINGUAS = join("po", "LINGUAS");
 const IT_CATALOG = join("po", "it.po");
 const FR_CATALOG = join("po", "fr.po");
+const POT = join("po", `${APPLICATION_ID}.pot`);
+const GENERATED_I18N_RESOURCES = join("node_modules", ".gtkx", "i18n-resources.d.ts");
 const ICON_ASSET = join("data", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
 const RESOURCE_ICON_NAME = "gtkx-dev-probe-symbolic";
 const RESOURCE_ICON_PATH = `/com/gtkx/clidev/icons/scalable/actions/${RESOURCE_ICON_NAME}.svg`;
@@ -86,7 +88,7 @@ import firstFile from "../data/first.data?url";
 import secondResourcePath from "../data/second.data?resource";
 `;
 
-const APP_BODY = String.raw`;
+const appBody = (translationKey: string): string => String.raw`;
 const resourceText = (path: string) => Buffer.from(
     Gio.resourcesLookupData(path, Gio.ResourceLookupFlags.NONE).getData() ?? [],
 ).toString("utf8").trim();
@@ -109,7 +111,7 @@ const App = () => {
             "${READY_MARKER} " + REVISION + " " + firstResourcePath + " " + resourceText(firstResourcePath) +
             " " + resourceText(secondResourcePath) + " " + readFileSync(firstFile, "utf8").trim() + " " +
             String(hasIcon) + " " + resourceIconName + " " + String(hasResourceIcon) + " " +
-            resourceIconRevision + " " + t("translation") + "\n",
+            resourceIconRevision + " " + t(${JSON.stringify(translationKey)}) + "\n",
         );
     });
 
@@ -150,8 +152,11 @@ const appHead = (iconFile: ResourceIconSource): string => {
     return `${APP_HEAD_START}${iconImport}\n\nconst REVISION = `;
 };
 
-const appSource = (revision: string, iconFile: ResourceIconSource = null): string =>
-    `${appHead(iconFile)}${JSON.stringify(revision)}${APP_BODY}`;
+const appSource = (
+    revision: string,
+    iconFile: ResourceIconSource = null,
+    translationKey = "translation",
+): string => `${appHead(iconFile)}${JSON.stringify(revision)}${appBody(translationKey)}`;
 
 const config = (): string =>
     `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)}, ` +
@@ -354,11 +359,20 @@ describe("gtkx dev", () => {
             `${READY_MARKER} one`,
         );
 
-        writeApp(state.project, appSource("two"));
+        writeApp(state.project, appSource("two", null, "Source refresh"));
 
         expect(await waitForOutput(state.session, `${READY_MARKER} two`, RELOAD_TIMEOUT)).toContain(
             `${READY_MARKER} two`,
         );
+        expect(readFileSync(join(state.project.root, POT), "utf8")).toContain('msgid "Source refresh"');
+        expect(readFileSync(join(state.project.root, GENERATED_I18N_RESOURCES), "utf8")).toContain(
+            "Source refresh",
+        );
+
+        writeApp(state.project, appSource("two-restored"));
+        expect(
+            await waitForOutput(state.session, `${READY_MARKER} two-restored`, RELOAD_TIMEOUT),
+        ).toContain(`${READY_MARKER} two-restored`);
     });
 
     it("compiles translations, initializes locales, and restarts for catalog changes", async () => {

@@ -21,6 +21,11 @@ type ManifestState = {
     outDir: string;
 };
 
+type BuildConfigIdentity = {
+    configFile: string;
+    configDigest: string;
+};
+
 const PACKAGE_MANIFEST_FILENAME = "package.json";
 const DEFAULT_OUT_DIR = "dist";
 const JSON_INDENT = 4;
@@ -73,7 +78,7 @@ const packagesFor = (outDir: string, ids: string[]): RecordedPackage[] => {
 
 const renderManifest = (manifest: BuildManifest): string => `${JSON.stringify(manifest, null, JSON_INDENT)}\n`;
 
-function gtkxBuildManifest(root: string, collector: BuildManifestCollector): Plugin {
+function gtkxBuildManifest(root: string, collector: BuildManifestCollector, identity: BuildConfigIdentity): Plugin {
     const state: ManifestState = { outDir: join(root, DEFAULT_OUT_DIR) };
 
     return {
@@ -90,6 +95,7 @@ function gtkxBuildManifest(root: string, collector: BuildManifestCollector): Plu
             const manifest: BuildManifest = {
                 generator: BUILD_MANIFEST_GENERATOR,
                 formatVersion: BUILD_MANIFEST_FORMAT_VERSION,
+                ...identity,
                 schemas: collector.schemas,
                 packages: packagesFor(state.outDir, ids),
             };

@@ -62,6 +62,11 @@ type PromisifyContext = {
     lengthSources: Map<number, number>;
 };
 
+type AdaptedPromisifyContext = PromisifyContext & {
+    cancellableIndex: number;
+    inputIndices: Set<number>;
+};
+
 type WriteMethodBodyOptions = {
     bindingExpression: string;
     returnTypeOverride?: string | undefined;
@@ -303,6 +308,10 @@ const renderPromisifiedBody = (
     finishTarget: { fn: GirFunction; expression: string },
     bindingExpression: string,
 ): string => {
+    if (hasSideCallback(context, asyncFn)) {
+        return renderAdaptedPromisifiedBody(context, asyncFn, finishTarget, bindingExpression);
+    }
+
     context.addRuntimeImport("promisify");
     const finish = promisifiedFinishExpression(context, finishTarget.fn, finishTarget.expression);
     const cancellableIndex = findCancellableIndex(context, asyncFn.parameters);
@@ -328,15 +337,123 @@ const renderPromisifiedBody = (
     return `return promisify(${bindingExpression}, ${finish}, ${cancellableExpression}${leadingArguments});`;
 };
 
+const hasSideCallback = (context: ModuleContext, fn: GirFunction): boolean =>
+    fn.parameters.some((parameter) => isSideCallbackParameter(context, parameter));
+
+const adaptedArgument = (
+    promisify: AdaptedPromisifyContext,
+    parameter: GirParameter,
+    index: number,
+    hasSeenOptional: boolean,
+): string | undefined => {
+    if (parameter.isVarargs || promisify.closureIndices.has(index) ||
+        (isOutParameter(parameter) && !isCallerAllocatedOut(parameter))) {
+        return undefined;
+    }
+
+    if (isAsyncReadyCallback(promisify.context, parameter)) {
+        return "__callback";
+    }
+
+    if (index === promisify.cancellableIndex) {
+        return "__cancellable";
+    }
+
+    return promisifiedArgument(promisify, parameter, index, hasSeenOptional);
+};
+
+const shouldMakeFollowingParametersOptional = (
+    promisify: AdaptedPromisifyContext,
+    parameter: GirParameter,
+    index: number,
+): boolean =>
+    promisify.inputIndices.has(index) &&
+    !isAsyncReadyCallback(promisify.context, parameter) &&
+    (index === promisify.cancellableIndex ||
+        parameter.optional ||
+        isSideCallbackParameter(promisify.context, parameter));
+
+const classifyAdaptedParameter = (
+    promisify: AdaptedPromisifyContext,
+    parameter: GirParameter,
+    index: number,
+    hasSeenOptional: boolean,
+): PromisifiedStep => {
+    const isOptional = hasSeenOptional || shouldMakeFollowingParametersOptional(promisify, parameter, index);
+
+    return { hasSeenOptional: isOptional, expression: adaptedArgument(promisify, parameter, index, isOptional) };
+};
+
+const collectAdaptedArguments = (promisify: AdaptedPromisifyContext): string[] => {
+    const expressions: string[] = [];
+    let hasSeenOptional = false;
+
+    for (const [index, parameter] of promisify.asyncFn.parameters.entries()) {
+        const step = classifyAdaptedParameter(promisify, parameter, index, hasSeenOptional);
+        hasSeenOptional = step.hasSeenOptional;
+
+        if (step.expression !== undefined) {
+            expressions.push(step.expression);
+        }
+    }
+
+    return expressions;
+};
+
+const adaptedArguments = (
+    context: ModuleContext,
+    asyncFn: GirFunction,
+    cancellableIndex: number,
+): string[] => {
+    const promisify: AdaptedPromisifyContext = {
+        context,
+        asyncFn,
+        cancellableIndex,
+        closureIndices: closureAndDestroyIndices(asyncFn),
+        inputIndices: new Set(inputParameters(context.library, asyncFn).map(({ index }) => index)),
+        lengthSources: arrayLengthSources(context.library, asyncFn),
+    };
+    const expressions = collectAdaptedArguments(promisify);
+
+    if (asyncFn.instance !== undefined) {
+        context.addRuntimeImport("getHandle");
+        expressions.unshift("getHandle(this)");
+    }
+
+    return expressions;
+};
+
+const renderAdaptedPromisifiedBody = (
+    context: ModuleContext,
+    asyncFn: GirFunction,
+    finishTarget: { fn: GirFunction; expression: string },
+    bindingExpression: string,
+): string => {
+    context.addRuntimeImport("promisify");
+    const finish = promisifiedFinishExpression(context, finishTarget.fn, finishTarget.expression);
+    const cancellableIndex = findCancellableIndex(context, asyncFn.parameters);
+    const cancellableExpression = renderCancellableExpression(asyncFn.parameters, cancellableIndex);
+    const callArguments = adaptedArguments(context, asyncFn, cancellableIndex).join(", ");
+    const adapter = `(__cancellable, __callback) => ${bindingExpression}(${callArguments})`;
+
+    return `return promisify(${adapter}, ${finish}, ${cancellableExpression});`;
+};
+
 const finishCallExpression = (asyncFn: GirFunction, finishFn: GirFunction, ownerName: string): string =>
     asyncFn.instance !== undefined && finishFn.instance === undefined
         ? `${ownerName}.${methodExportName(finishFn)}.bind(${ownerName})`
         : `this.${methodExportName(finishFn)}.bind(this)`;
 
 const shouldSkipPromisifiedParameter = (promisify: PromisifyContext, parameter: GirParameter, index: number): boolean =>
-    isCallbackParameter(promisify.context, parameter) ||
+    isAsyncReadyCallback(promisify.context, parameter) ||
     promisify.closureIndices.has(index) ||
     (isOutParameter(parameter) && !isCallerAllocatedOut(parameter));
+
+const sideCallbackArgument = (parameter: GirParameter, index: number): string => {
+    const name = parameterIdentifier(parameter, index);
+
+    return `${name} ?? (() => {})`;
+};
 
 const promisifiedArgument = (
     promisify: PromisifyContext,
@@ -352,6 +469,10 @@ const promisifiedArgument = (
         return arrayLengthArgument(source, sourceIndex);
     }
 
+    if (isSideCallbackParameter(context, parameter)) {
+        return sideCallbackArgument(parameter, index);
+    }
+
     return parameterCallExpression(context, parameter, index, { fn: asyncFn, isForcedNullable: hasSeenOptional });
 };
 
@@ -364,8 +485,9 @@ const renderPromisifiedSignature = (
     finishFn: GirFunction,
 ): { signature: string; returnType: string } => {
     const signature = renderInputParameters(context, asyncFn, {
-        shouldSkip: (parameter) => isCallbackParameter(context, parameter),
-        isOptionalExtra: (parameter) => isCancellable(context, parameter),
+        shouldSkip: (parameter) => isAsyncReadyCallback(context, parameter),
+        isOptionalExtra: (parameter) =>
+            isCancellable(context, parameter) || isSideCallbackParameter(context, parameter),
     });
 
     const finishReturn = shouldTrimFinishBoolean(context, finishFn)
@@ -389,6 +511,19 @@ const isCallbackParameter = (context: ModuleContext, parameter: GirParameter): b
     }
 
     return context.library.typeFor(ref)?.kind === "callback";
+};
+
+const isSideCallbackParameter = (context: ModuleContext, parameter: GirParameter): boolean =>
+    isCallbackParameter(context, parameter) && !isAsyncReadyCallback(context, parameter);
+
+const isAsyncReadyCallback = (context: ModuleContext, parameter: GirParameter): boolean => {
+    const ref = parameter.type;
+    const name = ref === undefined ? undefined : context.library.nameFor(ref);
+
+    return ref !== undefined &&
+        context.library.typeFor(ref)?.kind === "callback" &&
+        name?.namespaceName === "Gio" &&
+        name.typeName === "AsyncReadyCallback";
 };
 
 const renderMethodBody = (context: ModuleContext, fn: GirFunction, options: WriteMethodBodyOptions): string => {

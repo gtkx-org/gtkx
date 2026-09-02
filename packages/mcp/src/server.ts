@@ -12,7 +12,6 @@ import { type AppRegisteredEvent, AppRouter, type AppUnregisteredEvent } from ".
 import { ConnectionRegistry } from "./connection-registry.js";
 import {
     type AppInfo,
-    DEFAULT_SOCKET_PATH,
     DEFAULT_SUBTREE_DEPTH,
     fireEventParams,
     MAX_SUBTREE_WIDGETS,
@@ -29,6 +28,7 @@ import {
     type ReferenceProvider,
     registerReferenceResources,
 } from "./reference.js";
+import { resolveMcpSocketAddress } from "./socket-path.js";
 import { SocketServer } from "./socket-server.js";
 import { selectTools } from "./tool-filter.js";
 import { defineTool, imageContent, registerTool, textContent, textError, type Tool } from "./tool.js";
@@ -53,9 +53,11 @@ type McpServerHandle = {
 type ServerLifecycle = {
     socketServer: SocketServer;
     mcpServer: McpServer;
+    appRouter: AppRouter;
     socketPath: string;
-    isStopped: boolean;
-    isStarted: boolean;
+    isStopRequested: boolean;
+    startup: Promise<void> | null;
+    shutdown: Promise<void> | null;
 };
 
 type AppWindow = { id: string; title: string | null };
@@ -68,21 +70,29 @@ const DEFAULT_SETTINGS: McpSettings = { tools: [], isReadOnly: false };
 const INSTRUCTIONS =
     "The widget tools drive a GTKX app running under `gtkx dev`: they read " +
     "its live widget tree, query it by accessible role and name, click and type, and capture screenshots. " +
-    "They fail until an app is running, so start `gtkx dev` first. The reference tools answer from the " +
+    "They wait briefly for a starting app, so start `gtkx dev` before or alongside a widget request. " +
+    "The reference tools answer from the " +
     "bindings generated for a specific project, so they describe that project's GIR libraries rather than " +
     "GTK in general; prefer them over recalled GTK knowledge, which is usually C, PyGObject or GJS and " +
     "does not apply here.\n\n" +
     "Widget IDs are valid only while the widget is mounted. After a dialog closes, a list re-renders, or " +
     "fast refresh patches a component, re-read the tree or re-run the query instead of reusing an ID.";
 
-const APPLICATION_ID_DESCRIPTION = "Application ID to query. If not specified, uses the first connected app.";
+const APPLICATION_ID_DESCRIPTION =
+    "Application ID to query. If not specified, uses the first connected app. The tool waits briefly for the " +
+    "requested app to register.";
+
+const APP_TIMEOUT_DESCRIPTION = "Milliseconds to wait for the requested app to register (default: 10000).";
 
 const WIDGET_ID_DESCRIPTION =
     "Widget ID obtained from `gtkx_get_widget_tree`, `gtkx_query_widgets`, or `gtkx_get_widget_props`. " +
     "IDs are scoped to a single app. An ID stays valid for as long as its widget is mounted and stops " +
     "resolving once the widget is unmounted.";
 
-const applicationIdShape = { applicationId: z.string().optional().describe(APPLICATION_ID_DESCRIPTION) };
+const applicationIdShape = {
+    applicationId: z.string().optional().describe(APPLICATION_ID_DESCRIPTION),
+    appTimeout: z.number().int().nonnegative().optional().describe(APP_TIMEOUT_DESCRIPTION),
+};
 
 const widgetIdShape = {
     ...applicationIdShape,
@@ -224,7 +234,7 @@ const listAppsTool = (appRouter: AppRouter): Tool =>
         inputSchema: listAppsShape,
         handler: async ({ waitForApps, timeout }) => {
             if (waitForApps && !appRouter.hasConnectedApps()) {
-                await appRouter.waitForApp(timeout);
+                await appRouter.waitForApp(undefined, timeout);
             }
 
             const apps = appRouter.getApps();
@@ -266,11 +276,12 @@ const screenshotTool = (appRouter: AppRouter): Tool =>
             "the PNG to `path` on the app's machine. You can't target widgets from a screenshot; use " +
             "`gtkx_get_widget_tree` to find widget IDs for interaction.",
         inputSchema: screenshotShape,
-        handler: async ({ applicationId, returnImage, ...params }) => {
+        handler: async ({ applicationId, appTimeout, returnImage, ...params }) => {
             const result = await appRouter.sendToApp<{ data: string; mimeType: string; savedPath?: string }>(
                 applicationId,
                 "widget.screenshot",
                 params,
+                appTimeout,
             );
 
             return screenshotResult(result, returnImage !== false);
@@ -296,8 +307,8 @@ const widgetPropsTool = (appRouter: AppRouter): Tool =>
             "a property the widget does not have fails; a value that cannot be marshalled carries a `note` " +
             "instead.",
         inputSchema: widgetPropsShape,
-        handler: async ({ applicationId, ...params }) => {
-            const result = await appRouter.sendToApp(applicationId, "widget.getProps", params);
+        handler: async ({ applicationId, appTimeout, ...params }) => {
+            const result = await appRouter.sendToApp(applicationId, "widget.getProps", params, appTimeout);
 
             return textContent(JSON.stringify(result, null, 2));
         },
@@ -315,11 +326,11 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
                 "types, roles, and properties. For large apps, pass `maxDepth` for a shallow overview and/or " +
                 "`rootId` to render just one subtree instead of the whole (possibly truncated) tree.",
             inputSchema: treeShape,
-            handler: async ({ applicationId, rootId, maxDepth }) => {
+            handler: async ({ applicationId, appTimeout, rootId, maxDepth }) => {
                 const result = await appRouter.sendToApp<{ tree: string }>(applicationId, "widget.getTree", {
                     rootId,
                     maxDepth,
-                });
+                }, appTimeout);
 
                 return textContent(result.tree);
             },
@@ -334,8 +345,8 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
                 "children carries `hiddenChildren`, the count of its direct children left out. Read a " +
                 "match's subtree with `gtkx_get_widget_props` or `gtkx_get_widget_tree`.",
             inputSchema: queryWidgetsShape,
-            handler: async ({ applicationId, ...params }) => {
-                const result = await appRouter.sendToApp(applicationId, "widget.query", params);
+            handler: async ({ applicationId, appTimeout, ...params }) => {
+                const result = await appRouter.sendToApp(applicationId, "widget.query", params, appTimeout);
 
                 return textContent(JSON.stringify(result, null, 2));
             },
@@ -356,8 +367,8 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
                 "buttons, checkboxes, switches, list and grid rows, tree expanders, and column headers: a " +
                 "row is selected, an expander toggles its row's expansion, and a header sorts its column.",
             inputSchema: widgetIdShape,
-            handler: async ({ applicationId, ...params }) => {
-                await appRouter.sendToApp(applicationId, "widget.click", params);
+            handler: async ({ applicationId, appTimeout, ...params }) => {
+                await appRouter.sendToApp(applicationId, "widget.click", params, appTimeout);
 
                 return textContent("Clicked");
             },
@@ -368,8 +379,8 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             kind: "action",
             description: "Type text into an editable widget like Entry or TextView",
             inputSchema: typeShape,
-            handler: async ({ applicationId, ...params }) => {
-                await appRouter.sendToApp(applicationId, "widget.type", params);
+            handler: async ({ applicationId, appTimeout, ...params }) => {
+                await appRouter.sendToApp(applicationId, "widget.type", params, appTimeout);
 
                 return textContent("Typed text");
             },
@@ -380,8 +391,8 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             kind: "action",
             description: "Emit a GTK4 signal on a widget. Use this for custom interactions.",
             inputSchema: fireEventShape,
-            handler: async ({ applicationId, ...params }) => {
-                const result = await appRouter.sendToApp(applicationId, "widget.fireEvent", params);
+            handler: async ({ applicationId, appTimeout, ...params }) => {
+                const result = await appRouter.sendToApp(applicationId, "widget.fireEvent", params, appTimeout);
 
                 return textContent(JSON.stringify(result, null, 2));
             },
@@ -410,42 +421,97 @@ const registerTools = (
     }
 };
 
-async function stopServer(state: ServerLifecycle): Promise<void> {
-    if (state.isStopped) {
-        return;
+const stoppedServerError = (): Error => new Error("createMcpServer: a stopped server cannot be started again");
+
+const wasStopRequested = (state: ServerLifecycle): boolean => state.isStopRequested;
+
+function stopServer(state: ServerLifecycle): Promise<void> {
+    if (state.shutdown !== null) {
+        return state.shutdown;
     }
 
-    state.isStopped = true;
-    await state.socketServer.stop();
-    await state.mcpServer.close();
+    state.isStopRequested = true;
+    state.appRouter.dispose();
+    const startup = state.startup;
+    const shutdown = (async (): Promise<void> => {
+        if (startup !== null) {
+            await Promise.allSettled([startup]);
+        }
+
+        await state.socketServer.stop();
+        await state.mcpServer.close();
+    })();
+
+    state.shutdown = shutdown;
+
+    return shutdown;
 }
 
-async function startServer(state: ServerLifecycle): Promise<void> {
-    if (state.isStopped) {
-        throw new Error("createMcpServer: a stopped server cannot be started again");
+function startServer(state: ServerLifecycle): Promise<void> {
+    if (wasStopRequested(state)) {
+        return Promise.reject(stoppedServerError());
     }
 
-    await state.socketServer.start();
-
-    if (state.isStarted) {
-        return;
+    if (state.startup !== null) {
+        return state.startup;
     }
 
-    state.isStarted = true;
-    log.info(`socket server listening on ${state.socketPath}`);
-    await connectStdio(state.mcpServer, () => stopServer(state));
+    const startup = (async (): Promise<void> => {
+        try {
+            await state.socketServer.start();
+
+            if (wasStopRequested(state)) {
+                return;
+            }
+
+            log.info(`socket server listening on ${state.socketPath}`);
+            await connectStdio(state.mcpServer, () => stopServer(state));
+        } catch (error) {
+            if (!wasStopRequested(state)) {
+                state.isStopRequested = true;
+                state.appRouter.dispose();
+                await state.socketServer.stop();
+                await state.mcpServer.close();
+            }
+
+            throw error;
+        }
+    })();
+
+    state.startup = startup;
+
+    return startup;
 }
 
-const createServerHandle = (socketServer: SocketServer, mcpServer: McpServer, socketPath: string): McpServerHandle => {
-    const state: ServerLifecycle = { socketServer, mcpServer, socketPath, isStopped: false, isStarted: false };
+const createServerHandle = (
+    socketServer: SocketServer,
+    mcpServer: McpServer,
+    appRouter: AppRouter,
+    socketPath: string,
+): McpServerHandle => {
+    const state: ServerLifecycle = {
+        socketServer,
+        mcpServer,
+        appRouter,
+        socketPath,
+        isStopRequested: false,
+        startup: null,
+        shutdown: null,
+    };
 
     return { start: () => startServer(state), stop: () => stopServer(state) };
 };
 
 const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
-    const socketPath = options.socketPath ?? DEFAULT_SOCKET_PATH;
+    const socketAddress = resolveMcpSocketAddress(options.socketPath);
+    const socketPath = socketAddress.path;
+
+    if (socketAddress.fallbackDirectory !== null) {
+        log.warn(`MCP socket path exceeds the safe Unix byte budget; using private fallback ${socketPath}`);
+    }
+
     const registry = new ConnectionRegistry();
-    const socketServer = new SocketServer(registry, socketPath);
+    const socketServer = new SocketServer(registry, socketAddress);
     const appRouter = new AppRouter(registry);
     registry.addEventListener("error", logSocketError);
 
@@ -463,7 +529,7 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     registerTools(mcpServer, appRouter, referenceProvider, options.settings ?? DEFAULT_SETTINGS);
     registerReferenceResources(mcpServer, referenceProvider);
 
-    return createServerHandle(socketServer, mcpServer, socketPath);
+    return createServerHandle(socketServer, mcpServer, appRouter, socketPath);
 };
 
 const configuredSettings = async (cwd: string): Promise<McpSettings> => {

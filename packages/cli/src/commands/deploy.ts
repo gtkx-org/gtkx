@@ -1,7 +1,7 @@
 import { defineCommand } from "citty";
 import { KNOWN_NAMES } from "../deploy/registry.js";
 import { runDeploy } from "../deploy/run-deploy.js";
-import { entryArg } from "../internal/entry-arg.js";
+import { configArg, entryArg } from "../internal/entry-arg.js";
 import { resolveProject } from "../internal/prepare-project.js";
 
 const DEPLOY_MODE = "production";
@@ -13,6 +13,7 @@ const deploy = defineCommand({
     },
     args: {
         ...entryArg,
+        ...configArg,
         target: {
             type: "string",
             description: `Comma-separated package formats to build (${KNOWN_NAMES})`,
@@ -31,11 +32,12 @@ const deploy = defineCommand({
         },
     },
     async run({ args }) {
-        const { cwd, entry } = await resolveProject(args, DEPLOY_MODE);
+        const { cwd, entry, configFile } = await resolveProject(args, DEPLOY_MODE);
 
         await runDeploy({
             entry,
             cwd,
+            configFile,
             targets: args.target,
             outDir: args.out,
             shouldPrintManifests: args["print-manifests"] === true,

@@ -87,7 +87,7 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     staleExportName,
     readFileRevision,
     plugins: (entryPath) => [
-        ...gtkxVitePlugins(DEV_MODE, entryPath),
+        ...gtkxVitePlugins({ mode: DEV_MODE, entryPath }),
         ...gtkxFastRefresh(),
         gtkxReactDomPrebundle(),
     ],

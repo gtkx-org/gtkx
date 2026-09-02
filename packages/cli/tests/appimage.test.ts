@@ -55,6 +55,7 @@ const deploySettings = (root: string): DeploySettings => {
         binaryName: BINARY_NAME,
         branding: null,
         categories: [],
+        configFile: join(root, "gtkx.config.ts"),
         contentRating: {},
         copyright: "",
         deploy: {

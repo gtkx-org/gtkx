@@ -1,4 +1,4 @@
-import { readFileSync, rmSync } from "node:fs";
+import { chmodSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCli } from "./cli-project.js";
@@ -33,6 +33,7 @@ import {
     PLATFORM_LIBRARY,
     PLATFORM_SECTION,
     PLATFORM_SOURCE,
+    RUNTIME_BINARY,
     STAGE_PREFIX,
     stanzaFor,
     strangeRuntimeFiles,
@@ -46,6 +47,7 @@ describe("gtkx deploy (third-party notices)", () => {
         config: config(NOTICES_BLOCK),
         files: noticesFiles(),
         args: ["deploy", "--print-manifests", "--target", TARGETS],
+        executables: [RUNTIME_BINARY],
     });
 
     it("writes a machine-readable copyright with a stanza for everything the package carries", () => {
@@ -100,6 +102,7 @@ describe("gtkx deploy (a runtime with a license of its own)", () => {
         config: config(NOTICES_BLOCK),
         files: strangeRuntimeFiles(),
         args: ["deploy", "--print-manifests", "--target", "rpm"],
+        executables: [RUNTIME_BINARY],
     });
 
     it("publishes no license beside the runtime that is not the runtime's", () => {
@@ -139,6 +142,7 @@ describe("gtkx deploy (a build whose packages have moved)", () => {
         });
 
         expect(runCli(project, ["build"]).status).toBe(0);
+        chmodSync(join(project.root, RUNTIME_BINARY), 0o755);
         rmSync(join(project.root, "node_modules", DEPENDENCY_NAME), { recursive: true, force: true });
         const args = ["deploy", "--print-manifests", "--skip-build", "--target", "rpm"];
         expect(runCli(project, args).status).toBe(0);

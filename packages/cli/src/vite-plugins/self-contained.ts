@@ -1,18 +1,13 @@
-import type { ESTree, Plugin, VisitorObject } from "vite";
+import type { Plugin } from "vite";
+import { type NodePath, parseSync, type Scope, traverse } from "@babel/core";
 import { isBuiltin } from "node:module";
 import { posix } from "node:path";
-import { parseSync, Visitor } from "vite";
 
-type Bindings = {
-    declarations: Map<string, number>;
-    factories: Set<string>;
-    requires: Set<string>;
-    urls: Set<string>;
-};
+type BindingKind = "factory" | "module" | "require" | "url";
+
+type ResolvedBinding = NonNullable<ReturnType<Scope["getBinding"]>>;
 
 type Scan = {
-    bindings: Bindings;
-    calls: ESTree.CallExpression[];
     sources: string[];
 };
 
@@ -21,199 +16,208 @@ type Chunk = {
     code: string;
 };
 
-type PatternItem =
-    | ESTree.BindingPattern |
-    ESTree.BindingProperty |
-    ESTree.BindingRestElement |
-    ESTree.FormalParameterRest |
-    ESTree.TSParameterProperty |
-    null;
-
 const REQUIRE_FACTORY = "createRequire";
 const REQUIRE_BINDING = "require";
 const RESOLVE_PROPERTY = "resolve";
-const MODULE_BUILTIN = "node:module";
+const URL_PROPERTY = "url";
+const MODULE_BUILTINS = new Set(["module", "node:module"]);
 const OUTPUT_DIRECTORY = ".";
 const RELATIVE_SPECIFIER = /^\.\.?(?:\/|$)/;
 
-const exportName = (name: ESTree.ModuleExportName): string | null => (name.type === "Identifier" ? name.name : null);
-const referenceName = (node: ESTree.Argument): string | null => (node.type === "Identifier" ? node.name : null);
-
-const countName = (declarations: Map<string, number>, name: string | null): void => {
-    if (name !== null) {
-        declarations.set(name, (declarations.get(name) ?? 0) + 1);
-    }
-};
-
-const boundPattern = (item: PatternItem): ESTree.BindingPattern | null => {
-    if (item === null) {
+const importedName = (path: NodePath): string | null => {
+    if (!path.isImportSpecifier()) {
         return null;
     }
 
-    if (item.type === "Property") {
-        return item.value;
-    }
+    const { imported } = path.node;
 
-    if (item.type === "RestElement") {
-        return item.argument;
-    }
-
-    return item.type === "TSParameterProperty" ? item.parameter : item;
+    return imported.type === "Identifier" ? imported.name : imported.value;
 };
 
-const countPatterns = (declarations: Map<string, number>, items: PatternItem[]): void => {
-    for (const item of items) {
-        countPattern(declarations, boundPattern(item));
+const importKind = (path: NodePath): BindingKind | null => {
+    const declaration = path.parentPath;
+
+    if (!declaration.isImportDeclaration() || !MODULE_BUILTINS.has(declaration.node.source.value)) {
+        return null;
     }
+
+    if (importedName(path) === REQUIRE_FACTORY) {
+        return "factory";
+    }
+
+    return path.isImportNamespaceSpecifier() || path.isImportDefaultSpecifier() ? "module" : null;
 };
 
-const countPattern = (declarations: Map<string, number>, pattern: ESTree.BindingPattern | null): void => {
-    if (pattern === null) {
-        return;
+const memberName = (path: NodePath): string | null => {
+    if (!path.isMemberExpression()) {
+        return null;
     }
 
-    if (pattern.type === "Identifier") {
-        countName(declarations, pattern.name);
+    const property = path.get("property");
 
-        return;
+    if (path.node.computed) {
+        return property.isStringLiteral() ? property.node.value : null;
     }
 
-    if (pattern.type === "AssignmentPattern") {
-        countPattern(declarations, pattern.left);
-
-        return;
-    }
-
-    countPatterns(declarations, pattern.type === "ObjectPattern" ? pattern.properties : pattern.elements);
+    return property.isIdentifier() ? property.node.name : null;
 };
 
-const countFunction = (
-    declarations: Map<string, number>,
-    node: ESTree.ArrowFunctionExpression | ESTree.Function,
-): void => {
-    countPattern(declarations, node.id);
-    countPatterns(declarations, node.params);
+const isImportMeta = (path: NodePath): boolean =>
+    path.isMetaProperty() && path.node.meta.name === "import" && path.node.property.name === "meta";
+
+const isDirectMetaUrl = (path: NodePath): boolean => {
+    if (!path.isMemberExpression() || memberName(path) !== URL_PROPERTY) {
+        return false;
+    }
+
+    const object = path.get("object");
+
+    return isImportMeta(object);
 };
 
-const declarationVisitor = (declarations: Map<string, number>): VisitorObject => ({
-    ArrowFunctionExpression: (node) => {
-        countFunction(declarations, node);
-    },
-    CatchClause: (node) => {
-        countPattern(declarations, node.param);
-    },
-    ClassDeclaration: (node) => {
-        countPattern(declarations, node.id);
-    },
-    ClassExpression: (node) => {
-        countPattern(declarations, node.id);
-    },
-    ExportSpecifier: (node) => {
-        countName(declarations, exportName(node.local));
-    },
-    FunctionDeclaration: (node) => {
-        countFunction(declarations, node);
-    },
-    FunctionExpression: (node) => {
-        countFunction(declarations, node);
-    },
-    ImportDefaultSpecifier: (node) => {
-        countPattern(declarations, node.local);
-    },
-    ImportNamespaceSpecifier: (node) => {
-        countPattern(declarations, node.local);
-    },
-    ImportSpecifier: (node) => {
-        countPattern(declarations, node.local);
-    },
-    VariableDeclarator: (node) => {
-        countPattern(declarations, node.id);
-    },
-});
+const bindingKind = (binding: ResolvedBinding, seen: Set<ResolvedBinding>): BindingKind | null => {
+    if (seen.has(binding)) {
+        return null;
+    }
 
-const isUnshadowed = (name: string, bindings: Bindings): boolean => (bindings.declarations.get(name) ?? 0) <= 1;
+    const next = new Set(seen).add(binding);
+    const imported = importKind(binding.path);
 
-const templateString = (node: ESTree.TemplateLiteral): string | null => {
-    const [quasi] = node.quasis;
+    if (imported !== null) {
+        return imported;
+    }
 
-    return quasi === undefined || node.expressions.length > 0 ? null : quasi.value.cooked;
+    if (!binding.path.isVariableDeclarator()) {
+        return null;
+    }
+
+    const initializer = binding.path.get("init");
+
+    return initializer.node === null ? null : expressionKind(initializer, next);
 };
 
-const literalString = (node: ESTree.Argument | null): string | null => {
-    if (node?.type === "TemplateLiteral") {
-        return templateString(node);
+const nameKind = (scope: Scope, name: string, seen: Set<ResolvedBinding>): BindingKind | null => {
+    const binding = scope.getBinding(name);
+
+    if (binding !== undefined) {
+        return bindingKind(binding, seen);
     }
 
-    return node?.type === "Literal" && typeof node.value === "string" ? node.value : null;
+    if (name === REQUIRE_FACTORY) {
+        return "factory";
+    }
+
+    return name === REQUIRE_BINDING ? "require" : null;
 };
 
-const isMetaUrl = (node: ESTree.Argument, bindings: Bindings): boolean => {
-    if (node.type === "MemberExpression") {
-        return node.object.type === "MetaProperty";
+const isModuleExpression = (path: NodePath, seen: Set<ResolvedBinding>): boolean => {
+    if (path.isIdentifier()) {
+        return nameKind(path.scope, path.node.name, seen) === "module";
     }
 
-    const name = referenceName(node);
+    if (!path.isCallExpression()) {
+        return false;
+    }
 
-    return name !== null && bindings.urls.has(name) && isUnshadowed(name, bindings);
+    const [source] = path.get("arguments");
+    const callee = path.get("callee");
+    const sourceName = source === undefined ? null : literalString(source);
+
+    return (
+        sourceName !== null &&
+        MODULE_BUILTINS.has(sourceName) &&
+        isRequireExpression(callee, seen)
+    );
 };
 
-const hasMetaUrl = (node: ESTree.CallExpression, bindings: Bindings): boolean =>
-    node.arguments.some((argument) => isMetaUrl(argument, bindings));
-
-const isRequireName = (name: string | null, bindings: Bindings): boolean =>
-    name !== null && (name === REQUIRE_BINDING || bindings.requires.has(name)) && isUnshadowed(name, bindings);
-
-const isFactoryName = (name: string | null, bindings: Bindings): boolean =>
-    name !== null && (name === REQUIRE_FACTORY || bindings.factories.has(name)) && isUnshadowed(name, bindings);
-
-const isRequireFactory = (node: ESTree.Argument, bindings: Bindings): boolean =>
-    node.type === "CallExpression" &&
-    (isFactoryName(referenceName(node.callee), bindings) || hasMetaUrl(node, bindings));
-
-const isResolveTarget = (object: ESTree.Expression, bindings: Bindings): boolean =>
-    object.type === "MetaProperty" ||
-    isRequireName(referenceName(object), bindings) ||
-    isRequireFactory(object, bindings);
-
-const isResolveMember = (callee: ESTree.Expression, bindings: Bindings): boolean =>
-    callee.type === "MemberExpression" &&
-    !callee.computed &&
-    callee.property.type === "Identifier" &&
-    callee.property.name === RESOLVE_PROPERTY &&
-    isResolveTarget(callee.object, bindings);
-
-const isResolvingCall = (call: ESTree.CallExpression, bindings: Bindings): boolean =>
-    hasMetaUrl(call, bindings) ||
-    isRequireName(referenceName(call.callee), bindings) ||
-    isRequireFactory(call.callee, bindings) ||
-    isResolveMember(call.callee, bindings);
-
-const collectFactories = (node: ESTree.ImportDeclaration, bindings: Bindings): void => {
-    if (node.source.value !== MODULE_BUILTIN) {
-        return;
+const isFactoryExpression = (path: NodePath, seen: Set<ResolvedBinding>): boolean => {
+    if (path.isIdentifier()) {
+        return nameKind(path.scope, path.node.name, seen) === "factory";
     }
 
-    for (const specifier of node.specifiers) {
-        if (specifier.type === "ImportSpecifier" && exportName(specifier.imported) === REQUIRE_FACTORY) {
-            bindings.factories.add(specifier.local.name);
-        }
+    if (!path.isMemberExpression() || memberName(path) !== REQUIRE_FACTORY) {
+        return false;
     }
+
+    return isModuleExpression(path.get("object"), seen);
 };
 
-const collectBinding = (node: ESTree.VariableDeclarator, bindings: Bindings): void => {
-    const { id, init } = node;
-
-    if (init === null || id.type !== "Identifier") {
-        return;
+const isRequireFactoryCall = (path: NodePath, seen: Set<ResolvedBinding>): boolean => {
+    if (!path.isCallExpression()) {
+        return false;
     }
 
-    if (isMetaUrl(init, bindings)) {
-        bindings.urls.add(id.name);
+    const callee = path.get("callee");
+
+    return isFactoryExpression(callee, seen);
+};
+
+const expressionKind = (path: NodePath, seen: Set<ResolvedBinding>): BindingKind | null => {
+    if (isDirectMetaUrl(path)) {
+        return "url";
     }
 
-    if (isRequireFactory(init, bindings)) {
-        bindings.requires.add(id.name);
+    if (path.isIdentifier()) {
+        return nameKind(path.scope, path.node.name, seen);
     }
+
+    if (isFactoryExpression(path, seen)) {
+        return "factory";
+    }
+
+    if (isModuleExpression(path, seen)) {
+        return "module";
+    }
+
+    return isRequireFactoryCall(path, seen) ? "require" : null;
+};
+
+const isMetaUrl = (path: NodePath): boolean =>
+    isDirectMetaUrl(path) ||
+    (path.isIdentifier() && nameKind(path.scope, path.node.name, new Set()) === "url");
+
+const isRequireExpression = (path: NodePath, seen: Set<ResolvedBinding> = new Set()): boolean =>
+    isRequireFactoryCall(path, seen) ||
+    (path.isIdentifier() && nameKind(path.scope, path.node.name, seen) === "require");
+
+const hasMetaUrlArgument = (path: NodePath): boolean => {
+    if (!path.isCallExpression()) {
+        return false;
+    }
+
+    return path.get("arguments").some((argument) => isMetaUrl(argument));
+};
+
+const isResolveMember = (path: NodePath): boolean => {
+    if (!path.isMemberExpression() || memberName(path) !== RESOLVE_PROPERTY) {
+        return false;
+    }
+
+    const object = path.get("object");
+
+    return isImportMeta(object) || isRequireExpression(object);
+};
+
+const isResolvingCall = (path: NodePath): boolean => {
+    if (!path.isCallExpression()) {
+        return false;
+    }
+
+    const callee = path.get("callee");
+
+    return hasMetaUrlArgument(path) || isRequireExpression(callee) || isResolveMember(callee);
+};
+
+const literalString = (path: NodePath): string | null => {
+    if (path.isStringLiteral()) {
+        return path.node.value;
+    }
+
+    if (!path.isTemplateLiteral() || path.node.expressions.length > 0) {
+        return null;
+    }
+
+    return path.node.quasis[0]?.value.cooked ?? null;
 };
 
 const collectSource = (scan: Scan, source: string | null): void => {
@@ -222,54 +226,50 @@ const collectSource = (scan: Scan, source: string | null): void => {
     }
 };
 
-const collectCall = (scan: Scan, node: ESTree.CallExpression): void => {
-    if (node.arguments.some((argument) => literalString(argument) !== null)) {
-        scan.calls.push(node);
+const collectCallSources = (scan: Scan, path: NodePath): void => {
+    if (!isResolvingCall(path) || !path.isCallExpression()) {
+        return;
+    }
+
+    for (const argument of path.get("arguments")) {
+        collectSource(scan, literalString(argument));
     }
 };
 
-const scanVisitor = (scan: Scan): VisitorObject => ({
-    CallExpression: (node) => {
-        collectCall(scan, node);
-    },
-    ExportAllDeclaration: (node) => {
-        collectSource(scan, node.source.value);
-    },
-    ExportNamedDeclaration: (node) => {
-        collectSource(scan, node.source?.value ?? null);
-    },
-    ImportDeclaration: (node) => {
-        collectFactories(node, scan.bindings);
-        collectSource(scan, node.source.value);
-    },
-    ImportExpression: (node) => {
-        collectSource(scan, literalString(node.source));
-    },
-    VariableDeclarator: (node) => {
-        collectBinding(node, scan.bindings);
-    },
-});
-
 const scanChunk = (chunk: Chunk): Scan => {
-    const scan: Scan = {
-        bindings: { declarations: new Map(), factories: new Set(), requires: new Set(), urls: new Set() },
-        calls: [],
-        sources: [],
-    };
+    const scan: Scan = { sources: [] };
+    const ast = parseSync(chunk.code, {
+        ast: true,
+        babelrc: false,
+        configFile: false,
+        filename: chunk.fileName,
+        sourceType: "module",
+    });
 
-    const { program } = parseSync(chunk.fileName, chunk.code);
-    new Visitor(declarationVisitor(scan.bindings.declarations)).visit(program);
-    new Visitor(scanVisitor(scan)).visit(program);
+    if (ast === null) {
+        throw new Error(`Cannot inspect ${chunk.fileName}`);
+    }
+
+    traverse(ast, {
+        CallExpression: (path) => {
+            collectCallSources(scan, path);
+        },
+        ExportAllDeclaration: (path) => {
+            collectSource(scan, path.node.source.value);
+        },
+        ExportNamedDeclaration: (path) => {
+            collectSource(scan, path.node.source?.value ?? null);
+        },
+        ImportDeclaration: (path) => {
+            collectSource(scan, path.node.source.value);
+        },
+        ImportExpression: (path) => {
+            collectSource(scan, literalString(path.get("source")));
+        },
+    });
 
     return scan;
 };
-
-const callSpecifiers = (scan: Scan): string[] =>
-    scan.calls
-        .filter((call) => isResolvingCall(call, scan.bindings))
-        .flatMap((call) => call.arguments)
-        .map((argument) => literalString(argument))
-        .filter((specifier) => specifier !== null);
 
 const isReachable = (specifier: string, directory: string, emitted: Set<string>): boolean => {
     if (isBuiltin(specifier)) {
@@ -286,10 +286,9 @@ const isReachable = (specifier: string, directory: string, emitted: Set<string>)
 };
 
 const unreachableSpecifiers = (chunk: Chunk, emitted: Set<string>): string[] => {
-    const scan = scanChunk(chunk);
     const directory = posix.dirname(chunk.fileName);
 
-    return new Set([...scan.sources, ...callSpecifiers(scan)])
+    return new Set(scanChunk(chunk).sources)
         .values()
         .filter((specifier) => !isReachable(specifier, directory, emitted))
         .toArray()

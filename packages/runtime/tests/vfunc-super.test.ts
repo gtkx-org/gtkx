@@ -1,7 +1,13 @@
 import * as Gio from "@gtkx/gi/gio";
 import { Object as GObject, TYPE_OBJECT } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getInstanceType, registerClass, registerWrapperClass } from "@gtkx/runtime";
+import {
+    getClassType,
+    getInstanceType,
+    newObjectWithProperties,
+    registerClass,
+    registerWrapperClass,
+} from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import { createTypeNameFactory } from "./helpers/unique-name.js";
 
@@ -21,6 +27,13 @@ const storeWith = <T extends Gio.ListStore>(store: T, items: number): T => {
 
     return store;
 };
+
+const uninitializedSocket = (family: Gio.SocketFamily): Gio.Socket =>
+    newObjectWithProperties(
+        getClassType(Gio.Socket),
+        { family, type: Gio.SocketType.STREAM, protocol: 0 },
+        Object.create(Gio.Socket.prototype) as Gio.Socket,
+    );
 
 describe("super.vfunc — class vtable slots", () => {
     it("chains up through a class that declares no vtable of its own", () => {
@@ -256,21 +269,13 @@ describe("super vfunc — a derived class registered as a wrapper", () => {
 
 describe("vfunc — slots that take a GError", () => {
     it("throws what the slot writes into the trailing GError", () => {
-        const socket = new Gio.Socket({
-            family: Gio.SocketFamily.INVALID,
-            type: Gio.SocketType.STREAM,
-            protocol: 0,
-        });
+        const socket = uninitializedSocket(Gio.SocketFamily.INVALID);
 
         expect(() => socket.vfuncInit(null)).toThrow();
     });
 
     it("returns normally out of a slot that writes no error", () => {
-        const socket = new Gio.Socket({
-            family: Gio.SocketFamily.IPV4,
-            type: Gio.SocketType.STREAM,
-            protocol: 0,
-        });
+        const socket = uninitializedSocket(Gio.SocketFamily.IPV4);
 
         expect(socket.vfuncInit(null)).toBe(true);
     });

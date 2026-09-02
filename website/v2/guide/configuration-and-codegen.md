@@ -21,13 +21,31 @@ export default defineConfig({
 
 `mergeConfig(base, override)` layers a project config over a shared base. A `$development` or `$production` block layers over the top level, per mode.
 
+### Selecting another configuration
+
+`gtkx codegen`, `gtkx build`, and `gtkx deploy` all accept the same project-relative `--config` option:
+
+```bash
+gtkx codegen --config gtkx.enterprise.config.ts
+gtkx build --config gtkx.enterprise.config.ts
+gtkx deploy --config gtkx.enterprise.config.ts
+```
+
+The path is relative to the project root selected by `--cwd` and must remain inside that root. Build and deploy
+also pass the selected file through their implicit codegen and every build-time config consumer, so generated
+bindings, `virtual:gtkx-config`, the bundle, and deployment metadata all use one configuration.
+
+Every production build records both the project-relative config path and a digest of the production-mode
+configuration in its build manifest. `gtkx deploy --skip-build --config ...` compares both identities before it
+packages `dist/`, and rejects a bundle built with another config file or with different config values.
+
 ### Every option
 
 `applicationId` is the only required key; the rest have defaults.
 
 - **`applicationId`**: the GApplication identifier the app registers under, in reverse-DNS form (`com.example.Tasks`).
 - **`libraries`**: additional GIR libraries to bind, as `Name-Version`. GTKX always binds `Gtk-4.0` and `Adw-1`, so list only what the project needs beyond them — `["WebKit-6.0"]` rather than `["Gtk-4.0", "Adw-1", "WebKit-6.0"]`. Explicitly listing either default or using the removed `"*"` wildcard is rejected. A different version of the Gtk or Adwaita namespace replaces its default version.
-- **`girPath`**: directories searched for `.gir` files ahead of the standard locations.
+- **`girPath`**: directories searched for `.gir` files ahead of the standard locations. This can generate bindings from a newer GIR, for example libadwaita 1.10 declarations on a codegen host whose standard path has 1.9. It changes declarations only: it does not install or upgrade the shared library, and every machine that runs the result still needs a runtime providing those APIs.
 - **`reactCompiler`**: the React Compiler, on by default. `false` disables it; an object forwards `compilationMode` and `panicThreshold`.
 - **`codegen: false`**: skips generation, so the project imports whatever binding store is already installed.
 - **`applicationIcon`**: a project-relative icon-theme directory, or one SVG, PNG, or XPM file to install as the
@@ -51,6 +69,31 @@ value. GApplication can derive the same value from its application ID, but GTKX 
 application and its generated resources stay aligned. Consequently, overriding an element's `applicationId`
 prop alone does not move those resources; also pass `resourceBasePath` when intentionally using a different
 resource tree.
+
+## Production build output
+
+`gtkx build` writes to `dist/` by default. Use a separate project-relative output for another independently
+runnable build, such as a helper or a second entry point:
+
+```bash
+gtkx build src/helper.ts --out build/helper
+gtkx build src/index.ts --out build/application
+```
+
+An `--out` path must be below the project root, cannot pass through a symbolic link, and must be absent, empty,
+or contain the manifest from an earlier GTKX build. GTKX can safely replace that earlier build, but rejects the
+project root and directories containing unrelated files. Each selected directory receives its own
+`bundle.mjs`, build manifest, and emitted assets. `gtkx deploy --skip-build` still packages `dist/`; its own
+`--out` option selects the deployment work and artifact directory instead.
+
+### Self-contained module resolution
+
+Production builds inspect every emitted JavaScript chunk for literal module resolution that would escape the
+artifact. Node.js builtins and relative files emitted with the build are allowed; a bare package or missing
+relative file that would have to resolve from the installed machine fails the build. The inspection follows
+the actual lexical bindings of `require`, imported `createRequire` aliases, and aliases derived from
+`import.meta.url`, so a resolver hidden behind a constant alias is still checked while an unrelated local
+function that merely shares one of those names is not.
 
 ## What codegen emits
 

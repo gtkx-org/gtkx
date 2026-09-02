@@ -15,6 +15,8 @@ type GeneratedLibraries = {
     versions: Record<string, string>;
 };
 
+type GeneratedLibraryInventory = GeneratedLibraries & { girVersions: Record<string, string> };
+
 const LIBRARIES_FILENAME = "libraries.json";
 const MAJOR_CONSTANT = "MAJOR_VERSION";
 const MINOR_CONSTANT = "MINOR_VERSION";
@@ -39,11 +41,18 @@ const getNamespaceName = (library: string): string => {
     return separator === -1 ? library : library.slice(0, separator);
 };
 
+const getGirVersion = (library: string): string => {
+    const separator = library.indexOf("-");
+
+    return separator === -1 ? "" : library.slice(separator + 1);
+};
+
 const collectGeneratedLibraries = (
     namespaces: Map<string, GirNamespace>,
     libraries: string[],
-): GeneratedLibraries => {
+): GeneratedLibraryInventory => {
     const sorted = sortStrings(libraries);
+    const girVersions = Object.fromEntries(sorted.map((library) => [library, getGirVersion(library)]));
     const versions: Record<string, string> = {};
 
     for (const library of sorted) {
@@ -55,15 +64,16 @@ const collectGeneratedLibraries = (
         }
     }
 
-    return { libraries: sorted, versions };
+    return { libraries: sorted, girVersions, versions };
 };
 
-const renderGeneratedLibraries = (generated: GeneratedLibraries): string =>
+const renderGeneratedLibraries = (generated: GeneratedLibraryInventory): string =>
     `${JSON.stringify(generated, null, 2)}\n`;
 
-const isGeneratedLibraries = (value: unknown): value is GeneratedLibraries =>
-    hasFields<GeneratedLibraries>(value, {
+const isGeneratedLibraries = (value: unknown): value is GeneratedLibraryInventory =>
+    hasFields<GeneratedLibraryInventory>(value, {
         libraries: arrayGuard(isString),
+        girVersions: recordGuard(isString),
         versions: recordGuard(isString),
     });
 
@@ -85,6 +95,7 @@ const readGeneratedLibraries = (giStoreDir: string): GeneratedLibraries | null =
 export {
     LIBRARIES_FILENAME,
     collectGeneratedLibraries,
+    type GeneratedLibraryInventory,
     type GeneratedLibraries,
     readGeneratedLibraries,
     renderGeneratedLibraries,

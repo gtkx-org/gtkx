@@ -4,11 +4,17 @@ import { type CArrayType, LIST_FLAVOR_BY_NAME, type ListFlavor, type ParseContex
 
 const LIST_FLAVOR_BY_NAME_LOOKUP: Map<string, ListFlavor> = new Map(Object.entries(LIST_FLAVOR_BY_NAME));
 
-const getElementRef = (node: RawNode, context: ParseContext): TypeId => {
+function getElementRef(node: RawNode, context: ParseContext): TypeId {
+    const arrayNode = getChild(node, "array");
+
+    if (arrayNode !== undefined) {
+        return arrayTypeRefFromNode(arrayNode, context);
+    }
+
     const elementNode = getChild(node, "type");
 
     return elementNode === undefined ? pointerFallback(context) : typeRefFromTypeNode(elementNode, context);
-};
+}
 
 const typeRefFromNode = (parent: RawNode | undefined, context: ParseContext): TypeId | undefined => {
     if (parent === undefined) {
@@ -73,7 +79,7 @@ const typeRefFromTypeNode = (typeNode: RawNode, context: ParseContext): TypeId =
     return context.findType(name);
 };
 
-const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId => {
+function arrayTypeRefFromNode(arrayNode: RawNode, context: ParseContext): TypeId {
     const element = getElementRef(arrayNode, context);
     const arrayName = attr(arrayNode, "name");
     const listFlavor = arrayName === undefined ? undefined : LIST_FLAVOR_BY_NAME_LOOKUP.get(arrayName);
@@ -95,7 +101,7 @@ const arrayTypeRefFromNode = (arrayNode: RawNode, context: ParseContext): TypeId
     };
 
     return context.addContainer(carray);
-};
+}
 
 const pointerFallback = (context: ParseContext): TypeId => context.addPrimitive("pointer");
 

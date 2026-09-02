@@ -86,7 +86,7 @@ const TYPE_VARIANT: bigint = typeFromName("GVariant");
 /** GType tag for a Unicode character stored as `guint`. */
 const TYPE_UNICHAR: bigint = typeFromName("guint");
 const getErrorType: () => bigint = lazyType("GError");
-const getStrvType: () => bigint = lazyType("GStrv");
+const getStrvType = (): bigint => resolveType(LIB, "g_strv_get_type");
 
 const PLAIN_DESCRIPTOR_TYPES: Partial<Record<Descriptor["kind"], bigint>> = {
     boolean: TYPE_BOOLEAN,
