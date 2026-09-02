@@ -165,6 +165,8 @@ jobs:
       - name: Download the per-arch digests
         if: &manifest-missing steps.existing.outputs.result == 'missing' && env.CAN_PUSH == 'true'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        env:
+          NODE_OPTIONS: --disable-warning=DEP0005
         with:
           pattern: ci-image-digest-*
           merge-multiple: true
