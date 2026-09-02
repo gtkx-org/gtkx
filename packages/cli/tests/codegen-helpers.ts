@@ -18,13 +18,21 @@ const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
 const CAIRO_PACKAGE = "@gtkx/cairo";
 
 const GI_MODULES = [
+    join("gobject", "index.d.ts"),
     join("gtk", "gtk.js"),
     join("gtk", "index.js"),
     join("gtk", "index.d.ts"),
     "package.json",
 ];
 
-const JSX_MODULES = ["metadata.js", join("gtk", "gtk.js"), join("gtk", "index.js"), "package.json"];
+const JSX_MODULES = [
+    join("adw", "adw.js"),
+    join("adw", "index.js"),
+    "metadata.js",
+    join("gtk", "gtk.js"),
+    join("gtk", "index.js"),
+    "package.json",
+];
 const HEAD = `export default { applicationId: "${APPLICATION_ID}"`;
 
 const BROKEN_CASES: BrokenCase[] = [

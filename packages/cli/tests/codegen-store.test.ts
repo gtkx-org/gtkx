@@ -68,10 +68,14 @@ describe("gtkx codegen", () => {
         expect(isStoreMarked(state.project)).toBe(true);
     });
 
-    it("regenerates a store that lacks a jsx namespace entrypoint", () => {
-        rmSync(storePath(state.project, "jsx", "gtk", "index.js"), { force: true });
+    it("regenerates stores whose exported namespace files are missing", () => {
+        rmSync(storePath(state.project, "jsx", "adw", "adw.js"), { force: true });
         expect(runCli(state.project, ["codegen"]).status).toBe(0);
         expectModules(storePath(state.project, "jsx"), JSX_MODULES);
+
+        rmSync(storePath(state.project, "gi", "gobject", "index.d.ts"), { force: true });
+        expect(runCli(state.project, ["codegen"]).status).toBe(0);
+        expectModules(storePath(state.project, "gi"), GI_MODULES);
     });
 
     it("rebuilds the store from scratch when it is forced", () => {

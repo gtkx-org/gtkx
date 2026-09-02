@@ -1,8 +1,11 @@
 import type { Config } from "@gtkx/config";
 import { resolveGirPath, resolveLibraries } from "@gtkx/codegen";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
+
+type ExportTarget = string | { [condition: string]: ExportTarget };
+type StoreExports = Record<string, ExportTarget>;
 
 type CodegenInputs = {
     girPath: string[];
@@ -10,7 +13,8 @@ type CodegenInputs = {
     store: CodegenStore;
 };
 
-const REACT_GENERATED_MODULES: string[] = ["metadata.js", join("gtk", "gtk.js"), join("gtk", "index.js")];
+const PACKAGE_EXPORT = "./package.json";
+const JSX_REQUIRED_EXPORTS = [PACKAGE_EXPORT, "./metadata", "./gtk", "./adw"];
 
 const resolveCodegenInputs = (cwd: string, config: Config): CodegenInputs => {
     const girPath = resolveGirPath(config.girPath);
@@ -20,21 +24,71 @@ const resolveCodegenInputs = (cwd: string, config: Config): CodegenInputs => {
     return { girPath, libraries, store };
 };
 
-const namespaceBarrelPath = (giStoreDir: string, library: string): string => {
+const namespaceExport = (library: string): string => {
     const separator = library.indexOf("-");
     const namespace = (separator === -1 ? library : library.slice(0, separator)).toLowerCase();
 
-    return join(giStoreDir, namespace, "index.js");
+    return `./${namespace}`;
 };
 
-const hasManifest = (storeDir: string): boolean => existsSync(join(storeDir, "package.json"));
+const targetFiles = (target: ExportTarget): string[] =>
+    typeof target === "string" ? [target] : Object.values(target).flatMap((nested) => targetFiles(nested));
 
-const isGiStoreStale = (store: CodegenStore, libraries: string[]): boolean => {
-    if (!hasManifest(store.giStoreDir)) {
-        return true;
+const indexExtension = (target: string): string | undefined => {
+    if (target.endsWith("/index.d.ts")) {
+        return ".d.ts";
     }
 
-    return libraries.some((library) => !existsSync(namespaceBarrelPath(store.giStoreDir, library)));
+    return target.endsWith("/index.js") ? ".js" : undefined;
+};
+
+const implementationFile = (target: string): string | undefined => {
+    const extension = indexExtension(target);
+
+    if (extension === undefined) {
+        return undefined;
+    }
+
+    const directory = dirname(target);
+
+    return join(directory, `${basename(directory)}${extension}`);
+};
+
+const generatedFiles = (exports: StoreExports): string[] =>
+    Object.values(exports)
+        .flatMap((target) => targetFiles(target))
+        .flatMap((target) => {
+            const implementation = implementationFile(target);
+
+            return implementation === undefined ? [target] : [target, implementation];
+        });
+
+const hasStoreExports = (storeDir: string, required: string[], forbidden: string[] = []): boolean => {
+    const manifestPath = join(storeDir, "package.json");
+
+    if (!existsSync(manifestPath)) {
+        return false;
+    }
+
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+        exports?: StoreExports;
+    };
+    const exports = manifest.exports;
+
+    if (exports === undefined || required.some((key) => !Object.hasOwn(exports, key)) ||
+        forbidden.some((key) => Object.hasOwn(exports, key))) {
+        return false;
+    }
+
+    const files = generatedFiles(exports);
+
+    return files.length > 0 && files.every((file) => existsSync(join(storeDir, file)));
+};
+
+const isGiStoreStale = (store: CodegenStore, libraries: string[]): boolean => {
+    const required = [PACKAGE_EXPORT, ...libraries.map((library) => namespaceExport(library))];
+
+    return !hasStoreExports(store.giStoreDir, required);
 };
 
 const isReactStoreStale = (store: CodegenStore): boolean => {
@@ -42,11 +96,7 @@ const isReactStoreStale = (store: CodegenStore): boolean => {
         return false;
     }
 
-    if (!hasManifest(store.jsxStoreDir)) {
-        return true;
-    }
-
-    return REACT_GENERATED_MODULES.some((module) => !existsSync(join(store.jsxStoreDir, module)));
+    return !hasStoreExports(store.jsxStoreDir, JSX_REQUIRED_EXPORTS, ["."]);
 };
 
 const isCodegenStale = (inputs: CodegenInputs): boolean => {
