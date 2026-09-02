@@ -107,6 +107,7 @@ const generateStable = () => {
         requireSidebar(generated);
         rmSync(output, { force: true, recursive: true });
         cpSync(generated, output, { recursive: true });
+        prepareReferenceSearch(output);
         requireSidebar(output);
     } finally {
         rmSync(temporary, { force: true, recursive: true });
@@ -115,8 +116,9 @@ const generateStable = () => {
 
 const generateCurrent = () => {
     run(pnpm, ["exec", "typedoc"], website);
-    prepareReferenceSearch();
-    requireSidebar(join(website, "v2", "reference"));
+    const output = join(website, "v2", "reference");
+    prepareReferenceSearch(output, true);
+    requireSidebar(output);
 };
 
 const mode = process.argv[2] ?? "all";

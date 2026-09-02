@@ -110,7 +110,8 @@
             "reference-stable": {
                 "cache": true,
                 "inputs": [
-                    "{projectRoot}/scripts/references.mjs"
+                    "{projectRoot}/scripts/references.mjs",
+                    "{projectRoot}/scripts/reference-search-exclude.mjs"
                 ],
                 "outputs": [
                     "{projectRoot}/reference/**"

@@ -1,9 +1,6 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
-const referenceDir = join(dirname(fileURLToPath(import.meta.url)), "..", "v2", "reference");
-const overviewFile = join(referenceDir, "index.md");
 const frontmatter = /^---\n[\s\S]*?\n---\n+/;
 const domAnimationExample = /```jsx\n(?:(?!```)[\s\S])*?animated\.[A-Za-z](?:(?!```)[\s\S])*?```\n*/gu;
 
@@ -17,10 +14,16 @@ const walkEntry = (dir, entry) => {
 
 const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((entry) => walkEntry(dir, entry));
 
-const prepareReferenceSearch = () => {
+const prepareReferenceSearch = (referenceDir, shouldRemoveDomAnimationExamples = false) => {
+    const overviewFile = join(referenceDir, "index.md");
+
     for (const file of walk(referenceDir)) {
-        const body = readFileSync(file, "utf8").replace(frontmatter, "").replaceAll(domAnimationExample, "");
-        const fields = file === overviewFile ? ["editLink: false"] : ["search: false", "editLink: false"];
+        const source = readFileSync(file, "utf8").replace(frontmatter, "");
+        const body = shouldRemoveDomAnimationExamples ? source.replaceAll(domAnimationExample, "") : source;
+        const fields =
+            file === overviewFile
+                ? ["editLink: false", "lastUpdated: false"]
+                : ["search: false", "editLink: false", "lastUpdated: false"];
         writeFileSync(file, `---\n${fields.join("\n")}\n---\n\n${body}`);
     }
 };
