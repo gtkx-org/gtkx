@@ -118,7 +118,8 @@ deploy: {
         { file: "assets/screenshot.png", caption: "Browsing task lists in the sidebar", isDefault: true },
         { file: "assets/screenshot-editor.png", caption: "Editing a task" },
     ],
-    screenshotBaseUrl: "https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial",
+    screenshotBaseUrl:
+        "https://raw.githubusercontent.com/gtkx-org/gtkx/4dc804639dd3f6fb0fdb9f0297300cc1da8efe2d/examples/tutorial",
     releases: [{ version: "1.0.0", date: "2026-07-13", notes: ["Initial release."] }],
     branding: { light: "#3584e4", dark: "#1a5fb4" },
     contentRating: {},
