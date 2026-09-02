@@ -254,7 +254,12 @@ describe("listviewSettingsDemo value editing", () => {
             setValueSpy.mockClear();
 
             await act(() => {
-                target.setText(flipped);
+                target.startEditing();
+            });
+            await userEvent.clear(target);
+            await userEvent.type(target, flipped);
+            await act(() => {
+                target.stopEditing(true);
             });
 
             await waitFor(() => {
@@ -283,7 +288,14 @@ describe("listviewSettingsDemo value editing", () => {
 
             const errorBellSpy = vi.spyOn(target, "errorBell");
             setValueSpy.mockClear();
-            target.setText("!!not-a-valid-variant!!");
+            await act(() => {
+                target.startEditing();
+            });
+            await userEvent.clear(target);
+            await userEvent.type(target, "!!not-a-valid-variant!!");
+            await act(() => {
+                target.stopEditing(true);
+            });
 
             await waitFor(() => {
                 expect(errorBellSpy).toHaveBeenCalled();

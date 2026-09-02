@@ -21,11 +21,14 @@ type GatedSplitProps = {
     onStateChange: (state: NavigationState | undefined) => void;
 };
 
+const ListsContent = (): ReactNode => <GtkLabel>Lists Content</GtkLabel>;
+const TasksContent = (): ReactNode => <GtkLabel>Tasks Content</GtkLabel>;
+
 const GatedSplit = ({ hasLists, onStateChange }: GatedSplitProps): ReactNode => (
     <NavigationContainer onStateChange={onStateChange}>
         <Split.Navigator>
-            {hasLists ? <Split.Screen name="Lists" component={() => <GtkLabel>Lists Content</GtkLabel>} /> : null}
-            <Split.Screen name="Tasks" component={() => <GtkLabel>Tasks Content</GtkLabel>} />
+            {hasLists ? <Split.Screen name="Lists" component={ListsContent} /> : null}
+            <Split.Screen name="Tasks" component={TasksContent} />
         </Split.Navigator>
     </NavigationContainer>
 );

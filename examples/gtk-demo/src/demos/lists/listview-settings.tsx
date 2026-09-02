@@ -424,8 +424,10 @@ function renderSettingsColumns({ columnVisibility, onValueEdit }: SettingsColumn
             renderCell: ({ item }: { item: KeyInfo }) => (
                 <GtkEditableLabel
                     text={item.value}
-                    onChanged={(label: Gtk.EditableLabel) => {
-                        onValueEdit(item, label.getText(), label);
+                    onNotifyEditing={(isEditing, label) => {
+                        if (isEditing === false) {
+                            onValueEdit(item, label.getText(), label);
+                        }
                     }}
                 />
             ),

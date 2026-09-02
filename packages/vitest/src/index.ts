@@ -46,7 +46,7 @@ const gtkx = (options: PluginOptions = {}): Plugin =>
             return {
                 test: {
                     globals: true,
-                    execArgv: ["--import", headlessPreloadSpecifier(options)],
+                    execArgv: ["--disable-sigusr1", "--import", headlessPreloadSpecifier(options)],
                     testTimeout: config.test?.testTimeout ?? DEFAULT_TIMEOUT,
                     hookTimeout: config.test?.hookTimeout ?? DEFAULT_TIMEOUT,
                     pool: "forks",

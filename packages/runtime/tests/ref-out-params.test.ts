@@ -53,7 +53,7 @@ describe("64-bit out and inout parameters", () => {
         const directory = directoryWithOneFile(4096);
 
         const [measured, diskUsage, directoryCount, fileCount] = Gio.File.newForPath(directory).measureDiskUsage(
-            Gio.FileMeasureFlags.NONE,
+            Gio.FileMeasureFlags.APPARENT_SIZE,
             null,
             null,
         );
