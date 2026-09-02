@@ -41,9 +41,8 @@ type AnimatedComponent<T extends Exclude<ElementType, string>> = FunctionCompone
 >;
 
 /**
- * The widget components of the generated `@gtkx/jsx` store, keyed by element name, each wrapped as
- * an {@link AnimatedComponent}. Only components whose `ref` exposes a `Gtk.Widget` subclass are
- * included.
+ * The generated JSX intrinsic elements, keyed by element name, as components accepting animated props.
+ * Only elements whose `ref` exposes a `Gtk.Widget` subclass are included.
  */
 type AnimatedElementMap = {
     readonly [K in keyof JSX.IntrinsicElements as JSX.IntrinsicElements[K] extends {
