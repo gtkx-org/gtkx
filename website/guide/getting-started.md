@@ -11,7 +11,7 @@ The GTKX CLI scaffolds a new app, installs its dependencies, and gives you a dev
 
 GTKX is Linux-only. You need:
 
-- Node.js 26.7 or later
+- Node.js 24 or later
 - The GTK4 (4.20 or later) and GLib development packages
 - The Adwaita (1.8 or later) development package, which a scaffolded project binds from the start
 
@@ -60,7 +60,7 @@ The key belongs at the top level of the file, alongside `packages:` and `allowBu
 
 `npm run dev` runs `gtkx dev`. Leave it running while you work: saving a component patches it into the window that is already open, and a change Fast Refresh cannot patch restarts the app.
 
-`npm run build` bundles the app to `dist/bundle.mjs`, and `npm start` runs that bundle with `node` on a machine carrying the GTK4, Adwaita, and GLib runtime libraries. `npm run deploy` goes further and packages the app as a Flatpak, a `.deb`, an `.rpm`, or an AppImage, with the desktop entry and AppStream metadata generated for you: see [Deploying](/guide/deploying).
+`npm run build` bundles the app to `dist/bundle.mjs`, and `npm start` runs that bundle with `node` on any machine carrying the GTK4 runtime libraries, plus Adwaita once you bind it. `npm run deploy` goes further and packages the app as a Flatpak, a `.deb`, an `.rpm`, or an AppImage, with the desktop entry and AppStream metadata generated for you: see [Deploying](/guide/deploying).
 
 ## Project structure
 
@@ -95,5 +95,5 @@ Shutting down is the mirror image. `quit()` from `@gtkx/react` unmounts every ro
 
 ## Next
 
-- [Configuration and Codegen](/guide/configuration-and-codegen): configure the project and understand what codegen produces.
+- [Configuration and Codegen](/guide/configuration-and-codegen): how codegen works, and what [every config option](/guide/configuration-and-codegen#every-option) does.
 - [Tutorial](/tutorial/): build Tasks, a complete GNOME task manager, end to end.

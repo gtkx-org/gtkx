@@ -97,6 +97,12 @@ if (status !== Status.SUCCESS) throw new Error(statusToString(status));
 
 `surface.getData()` returns a copy of the raw pixel buffer as a `Uint8Array` for inspection, and `ImageSurface.createFromPng(path)` loads one back, throwing if the file is missing or not a PNG. `Surface.mapToImage` and `Surface.unmapImage` are intentionally omitted: cairo requires explicit unmapping of the exact borrowed image, which does not fit the binding's independently owned wrapper model. Modify a surface by drawing through its `Context` instead.
 
+## The deprecated `@gtkx/gi/cairo` alias
+
+Before GTKX 1.3, the cairo binding was generated into the binding store as `@gtkx/gi/cairo`. That subpath remains for all of 1.x as a re-export of `@gtkx/cairo`, so existing imports keep working unchanged, but it is deprecated and removed in 2.0.
+
+New projects scaffolded by `create-gtkx` already depend on `@gtkx/cairo`. An existing project should add it to its dependencies; until it does, codegen links the copy `@gtkx/codegen` ships into the generated store and prints a one-line warning on every run.
+
 ## Next
 
 Continue with [OpenGL](/guide/opengl) to draw with the GPU inside a widget.

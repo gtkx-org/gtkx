@@ -9,7 +9,7 @@ description: "Localize a GTKX application and its desktop metadata with react-i1
 
 There is no GTKX translation format or locale list in `gtkx.config.ts`. The application ID is the gettext domain, and `po/` is the catalog source of truth.
 
-GTKX 2 requires Node.js 26.7 or newer, GNU gettext 0.25 or newer, and ESM application code. Install the package and the gettext command-line tools:
+Install the package and the gettext command-line tools:
 
 ```bash
 npm install @gtkx/i18n
@@ -33,11 +33,7 @@ Write source messages with `t`, then run codegen:
 import { t } from "@gtkx/i18n";
 
 const title = t("Tasks");
-const countLabel = t("{{count}} task", {
-    count,
-    defaultValue_one: "{{count}} task",
-    defaultValue_other: "{{count}} tasks",
-});
+const countLabel = t("{{count}} task", "{{count}} tasks", { count });
 ```
 
 ```bash
@@ -70,10 +66,18 @@ import { t } from "@gtkx/i18n";
 <GtkLabel label={t("Hello, {{name}}!", { name: profile.name })} />;
 ```
 
-Use i18next's one/other defaults for cardinal plurals. GNU gettext chooses the plural form using the catalog's `Plural-Forms` expression:
+Pass a singular and plural source string using i18next's positional `defaultValue` overload. GNU gettext chooses the plural form using the catalog's `Plural-Forms` expression:
 
 ```tsx
-const label = t("{{count}} file", {
+<GtkLabel
+    label={t("{{count}} file", "{{count}} files", { count: files.length })}
+/>;
+```
+
+The standard i18next one/other defaults are supported when the application uses a stable key:
+
+```tsx
+const files = t("files", {
     count: files.length,
     defaultValue_one: "{{count}} file",
     defaultValue_other: "{{count}} files",
@@ -86,11 +90,9 @@ Use i18next's `context` option when identical source text needs different transl
 
 ```tsx
 const command = t("Open", { context: "menu command" });
-const fruit = t("{{count}} apple", {
+const fruit = t("{{count}} apple", "{{count}} apples", {
     context: "fruit",
     count,
-    defaultValue_one: "{{count}} apple",
-    defaultValue_other: "{{count}} apples",
 });
 ```
 
@@ -110,7 +112,7 @@ function Greeting({ name }: { name: string }) {
         <GtkBox>
             <GtkLabel label={t("Hello, {{name}}!", { name })} />
             <GtkLabel>
-                <Trans i18nKey="welcome">Welcome</Trans>
+                <Trans>Welcome</Trans>
             </GtkLabel>
         </GtkBox>
     );
@@ -119,15 +121,17 @@ function Greeting({ name }: { name: string }) {
 
 The named `t` and `init` exports are the bound functions from the same default i18next singleton registered with `initReactI18next`. GTKX installs a real i18next backend for catalog loading. A companion i18next format adapter performs each GLib lookup so GNU plural rules receive the original `count` and context before upstream interpolation runs.
 
-`IcuTrans` and `IcuTransWithoutContext` are also the upstream components, but they are not catalog extraction forms. The gettext adapter occupies i18next's single custom-format slot, so catalog messages use ordinary i18next `{{name}}` interpolation and explicit one/other defaults instead of ICU MessageFormat.
+`IcuTrans` and `IcuTransWithoutContext` are also the upstream components. The gettext adapter occupies i18next's single custom-format slot, so codegen rejects ICU single-brace MessageFormat expressions and count-based ICU messages. Ordinary i18next `{{name}}` interpolation works; use `t` or `Trans` with an explicit one/other source pair for plurals.
 
 Gettext uses one process-wide application domain. Passing a namespace to a react-i18next API does not create a second JSON resource store or gettext domain.
 
-## Generated types and static extraction
+## Generated types
 
-GTKX delegates source scanning to `i18next-cli`. Catalog-owning ESM code must use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext` with statically recoverable keys and defaults. Imported aliases, member calls such as `i18n.t`, dynamic keys or prefixes, and CommonJS are not extraction forms.
+Codegen also writes `node_modules/.gtkx/i18n.d.ts` and references it from the usual generated GTKX environment declarations. The generated registry narrows every literal key and carries the interpolation variables required by its singular and plural source strings.
 
-Codegen writes standard i18next resources under `node_modules/.gtkx` and augments the `I18nResources` interface exported by `@gtkx/i18n`. That interface supplies i18next's `CustomTypeOptions`, so the upstream `t`, hook, and component types reject unknown literal keys, missing interpolation values, plurals without a numeric `count`, and contextual calls without their literal context. GTKX does not maintain a separate message registry.
+The strict `t` type flows through the direct export, `useTranslation`, `withTranslation`, and the `Translation` render callback. After codegen, TypeScript rejects unknown keys, missing interpolation values, plural calls without a numeric `count`, and contextual calls without their literal context.
+
+Extraction follows bindings from the upstream imports through aliases, hooks, fixed translation functions, HOCs, render callbacks, ESM, and CommonJS. Keys, namespaces, prefixes, contexts, and source defaults must resolve statically. Codegen fails when a dynamic value could make the catalog disagree with runtime behavior; use ordinary `t("message")` calls instead of the tagged-template shorthand.
 
 Run codegen after adding or changing a source message so the catalog template, every listed PO file, and the TypeScript declarations stay in sync.
 

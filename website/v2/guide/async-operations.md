@@ -1,0 +1,86 @@
+---
+title: "Async Operations"
+description: "Awaiting promisified GIO calls, canceling them, and keeping long work off the main thread."
+---
+
+# Async Operations
+
+GIO async methods return promises, so you `await` them like any other promise.
+
+A promisified method resolves to the finish function's useful results, as a tuple when there is more than one:
+
+```ts
+loadContentsAsync(cancellable?: Cancellable | null): Promise<[Uint8Array, string | null]>;
+```
+
+A failed call rejects, so a leading success boolean is omitted when it would always be `true`. A call left with one result, such as `replaceContentsAsync`, resolves to that value directly. Explicit finish methods such as `loadContentsFinish` keep their native return shape.
+
+## Awaiting async operations
+
+GTK4 reports a dismissed dialog as an error rather than as a return value, so a `catch` matching `Gtk.DialogError.DISMISSED` returns quietly:
+
+```tsx
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
+import { GtkButton } from "@gtkx/jsx/gtk";
+import { useParentWindow } from "@gtkx/react";
+
+const OpenButton = ({ onFile }: { onFile: (file: Gio.File) => void }) => {
+    const parentWindow = useParentWindow();
+
+    const handleOpen = async () => {
+        try {
+            onFile(await new Gtk.FileDialog().open(parentWindow, null));
+        } catch (error) {
+            if (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.DISMISSED) return;
+            throw error;
+        }
+    };
+
+    return <GtkButton iconName="document-open-symbolic" onClicked={() => void handleOpen()} />;
+};
+```
+
+Outside production, the rejection's `cause` carries the stack captured where the operation started.
+
+## Cancellation with Gio.Cancellable
+
+Every promisified call accepts an optional `Gio.Cancellable` as its last argument. Canceling rejects the pending promise rather than leaving it hanging: GIO operations reject with code `CANCELLED` in the `Gio.IOErrorEnum` domain, GTK4 dialogs with `CANCELLED` in their own `Gtk.DialogError` domain.
+
+```ts
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
+
+const openWithTimeout = async (parent: Gtk.Window | null) => {
+    const cancellable = new Gio.Cancellable();
+    const timeoutId = setTimeout(() => cancellable.cancel(), 20_000);
+
+    try {
+        return await new Gtk.FileDialog().open(parent, cancellable);
+    } catch (error) {
+        if (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.CANCELLED) return null;
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+    }
+};
+```
+
+## Moving work to a worker
+
+CPU-bound JavaScript on the main thread freezes the window, so it belongs in a [Node worker thread](https://nodejs.org/api/worker_threads.html):
+
+```ts
+import { Worker } from "node:worker_threads";
+
+const worker = new Worker(new URL("./indexer.ts", import.meta.url));
+worker.on("message", (rows) => setRows(rows));
+```
+
+The specifier has to be relative and has to name the worker source file as it exists on disk, and the `new URL(...)` has to sit directly inside the `new Worker(...)` call, otherwise `gtkx build` fails.
+
+A worker runs no GTK code: it computes and posts results back for the main thread to render.
+
+## Next
+
+Continue with [Error Handling](/v2/guide/error-handling) for matching GLib error domains and codes.

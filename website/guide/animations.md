@@ -30,7 +30,7 @@ export const FadeIn = () => {
 
 This works for every element in `@gtkx/jsx`, whichever library it comes from, and for components of your own. The wrapper of a given component is created once and reused, so wrapping the same component again returns the same wrapper. Wrap at module scope all the same: the React Hooks lint rule flags a component created during render, and a component *defined* during render gets a fresh wrapper each time, which remounts it on every render.
 
-The call form also works for elements that are not widgets, such as `GtkAdjustment`, and components of your own, while letting a production bundle retain only the components it reaches.
+Property access such as `animated.GtkLabel` remains available in GTKX 1.6 for compatibility, but is deprecated and removed in 2.0. Import the component and use the call form above. It works for elements that are not widgets, such as `GtkAdjustment`, and components of your own, while letting a production bundle retain only the components it reaches.
 
 Each frame, the current values are written straight onto the widget through its `ref`, so the component does not re-render while the spring runs. Every GObject property a widget exposes as a prop can be animated this way: `opacity`, the margins, `widthRequest` and `heightRequest`, `spacing`, a `Gtk.Adjustment`'s `value`, a progress bar's `fraction`, and so on. So can the `style` prop, which is not a GObject property at all. A `label` or a text child can be an interpolation too:
 

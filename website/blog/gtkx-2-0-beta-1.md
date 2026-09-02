@@ -8,7 +8,7 @@ image: /og.png
 
 <p class="post-date">September 2, 2026</p>
 
-GTKX 2.0.0-beta.1 is ready to test. This is the release GTKX 1.6 prepared applications for: the seven future behaviors are now the only behaviors, deprecated compatibility APIs are gone, and the framework has one smaller contract to carry forward. The beta also moves the project onto a current Node.js and ESM baseline, delegates source-message analysis to the standard i18next toolchain, and puts more of the native boundary behind end-to-end tests. Read the [full changelog](https://github.com/gtkx-org/gtkx/releases/tag/v2.0.0-beta.1) and the [upgrade guide](/guide/upgrading-to-2) before moving an existing application.
+GTKX 2.0.0-beta.1 is ready to test. This is the release GTKX 1.6 prepared applications for: the seven future behaviors are now the only behaviors, deprecated compatibility APIs are gone, and the framework has one smaller contract to carry forward. The beta also moves the project onto a current Node.js and ESM baseline, delegates source-message analysis to the standard i18next toolchain, and puts more of the native boundary behind end-to-end tests. Read the [full changelog](https://github.com/gtkx-org/gtkx/releases/tag/v2.0.0-beta.1) and the [upgrade guide](/v2/guide/upgrading-to-2) before moving an existing application.
 
 This starts a three-month beta period. The final GTKX 2.0 release is scheduled for December 1, 2026. Until then, the focus is migration feedback, correctness, and release hardening; feature work remains scheduled for 2.1.
 
@@ -83,6 +83,6 @@ For an existing project, update every installed GTKX package together:
 npm install @gtkx/cli@beta @gtkx/react@beta
 ```
 
-Add the other `@gtkx/*` packages your application uses to that command. Then remove the graduated configuration, run `gtkx codegen --force`, run `tsc --noEmit` and `gtkx build`, and inspect the running application. The [upgrade guide](/guide/upgrading-to-2) covers the return shapes, resource imports, internationalization changes, and removed names in one checklist.
+Add the other `@gtkx/*` packages your application uses to that command. Then remove the graduated configuration, run `gtkx codegen --force`, run `tsc --noEmit` and `gtkx build`, and inspect the running application. The [upgrade guide](/v2/guide/upgrading-to-2) covers the return shapes, resource imports, internationalization changes, and removed names in one checklist.
 
 Please use the beta window to report migration failures and native behavior that differs from 1.6 with its future flags enabled. The intended 2.0 contract is now visible: the work between this beta and December 1 is to make that contract dependable.

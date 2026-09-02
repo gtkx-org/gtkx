@@ -19,6 +19,7 @@ packages/**/README.md
 packages/gl/src/generated/
 packages/native/npm/*/package.json
 website/reference/
+website/v2/reference/
 
 .local-registry/
 .agent.lock

@@ -5,7 +5,9 @@
     "type": "module",
     "description": "Marketing site for GTKX: The React framework for Linux.",
     "scripts": {
-        "reference": "typedoc && node scripts/reference-search-exclude.mjs",
+        "reference": "nx run @gtkx/website:reference",
+        "reference-current": "node scripts/references.mjs current",
+        "reference-stable": "node scripts/references.mjs stable",
         "dev": "vitepress dev",
         "build": "vitepress build",
         "preview": "vitepress preview"
@@ -57,6 +59,14 @@
                 ]
             },
             "reference": {
+                "executor": "nx:noop",
+                "cache": false,
+                "dependsOn": [
+                    "reference-current",
+                    "reference-stable"
+                ]
+            },
+            "reference-current": {
                 "cache": true,
                 "dependsOn": [
                     "gtkx:codegen",
@@ -92,6 +102,15 @@
                             "typedoc-vitepress-theme"
                         ]
                     }
+                ],
+                "outputs": [
+                    "{projectRoot}/v2/reference/**"
+                ]
+            },
+            "reference-stable": {
+                "cache": true,
+                "inputs": [
+                    "{projectRoot}/scripts/references.mjs"
                 ],
                 "outputs": [
                     "{projectRoot}/reference/**"

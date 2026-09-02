@@ -7,13 +7,15 @@ description: "Awaiting promisified GIO calls, canceling them, and keeping long w
 
 GIO async methods return promises, so you `await` them like any other promise.
 
-A promisified method resolves to the finish function's useful results, as a tuple when there is more than one:
+A promisified method resolves to the C function's return value first, then its out-parameters, as a tuple:
 
 ```ts
-loadContentsAsync(cancellable?: Cancellable | null): Promise<[Uint8Array, string | null]>;
+loadContentsAsync(cancellable?: Cancellable | null): Promise<[boolean, number[], string | null]>;
 ```
 
-A failed call rejects, so a leading success boolean is omitted when it would always be `true`. A call left with one result, such as `replaceContentsAsync`, resolves to that value directly. Explicit finish methods such as `loadContentsFinish` keep their native return shape.
+A failed call rejects, so the leading success boolean can be skipped with `const [, contents] = await file.loadContentsAsync(null);`. A call whose C return is void and that has a single out-parameter resolves to that value directly instead of a tuple.
+
+Under the [`v2FinishResults` future flag](/guide/configuration-and-codegen#future-flags) the boolean is dropped from the promise entirely: `loadContentsAsync` resolves to `[Uint8Array, string | null]`, and a call left with a single out-parameter, such as `replaceContentsAsync`, resolves to that value directly. The finish methods themselves, like `loadContentsFinish`, keep the boolean.
 
 ## Awaiting async operations
 

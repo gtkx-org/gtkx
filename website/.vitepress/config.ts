@@ -1,61 +1,75 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { defineConfig, type HeadConfig } from "vitepress";
-import typedocSidebar from "../reference/typedoc-sidebar.json" with { type: "json" };
+import { type DefaultTheme, defineConfig, type HeadConfig } from "vitepress";
+import stableTypedocSidebar from "../reference/typedoc-sidebar.json" with { type: "json" };
+import betaTypedocSidebar from "../v2/reference/typedoc-sidebar.json" with { type: "json" };
 import { highlightPlugin } from "./highlight.js";
+import {
+    type DocumentationItem,
+    documentationLink,
+    type DocumentationVersion,
+    guideItems,
+    tutorialItems,
+    versionPrefix,
+} from "./versioning.js";
 
 const title = "GTKX";
 const description = "Write declarative JSX. GTKX renders it to GObject instances, powered by a native Rust core.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 
-const tutorialItems = [
-    { text: "Introduction", link: "/tutorial/" },
-    { text: "Your First Window", link: "/tutorial/your-first-window" },
-    { text: "A List of Tasks", link: "/tutorial/a-list-of-tasks" },
-    { text: "The Task Store", link: "/tutorial/the-task-store" },
-    { text: "Interactive Rows", link: "/tutorial/completing-and-deleting" },
-    { text: "Saving to Disk", link: "/tutorial/saving-to-disk" },
-    { text: "Lists and the Sidebar", link: "/tutorial/lists-and-the-sidebar" },
-    { text: "Adaptive Layout", link: "/tutorial/an-adaptive-layout" },
-    { text: "Smart Views and Search", link: "/tutorial/smart-views-and-search" },
-    { text: "The Task Editor", link: "/tutorial/the-task-editor" },
-    { text: "Actions and Menus", link: "/tutorial/actions-menus-shortcuts" },
-    { text: "Trash and Toasts", link: "/tutorial/trash-and-toasts" },
-    { text: "Preferences and Theming", link: "/tutorial/preferences-and-theming" },
-    { text: "Drag to Reorder", link: "/tutorial/drag-to-reorder" },
-    { text: "Reminders", link: "/tutorial/reminders" },
-    { text: "Appendix A: Testing", link: "/tutorial/testing" },
-    { text: "Appendix B: Packaging", link: "/tutorial/packaging" },
-    { text: "Internationalization", link: "/tutorial/internationalization" },
-    { text: "Appendix C: Flathub", link: "/tutorial/flatpak" },
-];
+type LinkedDocumentationItem = {
+    text: string;
+    link: string;
+};
 
-const guideSidebar = [
-    { text: "Why GTKX", link: "/guide/why-gtkx" },
-    { text: "Getting Started", link: "/guide/getting-started" },
-    { text: "Configuration and Codegen", link: "/guide/configuration-and-codegen" },
-    { text: "Async Operations", link: "/guide/async-operations" },
-    { text: "Error Handling", link: "/guide/error-handling" },
-    { text: "Subclassing GObject", link: "/guide/subclassing" },
-    { text: "Components", link: "/guide/components" },
-    { text: "Forms", link: "/guide/forms" },
-    { text: "Modals and Portals", link: "/guide/modals-and-portals" },
-    { text: "Navigation", link: "/guide/navigation" },
-    { text: "CSS", link: "/guide/css" },
-    { text: "Animations", link: "/guide/animations" },
-    { text: "Cairo", link: "/guide/cairo" },
-    { text: "OpenGL", link: "/guide/opengl" },
-    { text: "Internationalization", link: "/guide/internationalization" },
-    { text: "Testing", link: "/guide/testing" },
-    { text: "MCP", link: "/guide/mcp" },
-    { text: "Deploying", link: "/guide/deploying" },
-    { text: "Upgrading to 2.0", link: "/guide/upgrading-to-2" },
-    { text: "API Reference", link: "/reference/" },
-];
+const sidebarItems = (version: DocumentationVersion, items: DocumentationItem[]): LinkedDocumentationItem[] =>
+    items.map((item) => ({ text: item.text, link: documentationLink(version, item.path) }));
 
-const tutorialSidebar = [{ text: "Tutorial", items: tutorialItems }];
-const docItems = [...guideSidebar.filter((item) => !item.link.startsWith("/reference")), ...tutorialItems];
+const referenceLink = (version: DocumentationVersion, link: string): string => {
+    const stableLink = link.replace(/^\/v2\/reference/, "/reference");
+
+    return stableLink.startsWith("/reference") ? `${versionPrefix(version)}${stableLink}` : stableLink;
+};
+
+const referenceSidebar = (
+    version: DocumentationVersion,
+    items: DefaultTheme.SidebarItem[],
+): DefaultTheme.SidebarItem[] =>
+    items.map((item) => ({
+        ...item,
+        ...(item.link && { link: referenceLink(version, item.link) }),
+        ...(item.items && { items: referenceSidebar(version, item.items) }),
+    }));
+
+const stableGuideSidebar = [
+    ...sidebarItems("stable", guideItems),
+    { text: "API Reference", link: documentationLink("stable", "reference/") },
+];
+const betaGuideSidebar = [
+    ...sidebarItems("beta", guideItems),
+    { text: "API Reference", link: documentationLink("beta", "reference/") },
+];
+const stableTutorialSidebar = [{ text: "Tutorial", items: sidebarItems("stable", tutorialItems) }];
+const betaTutorialSidebar = [{ text: "Tutorial", items: sidebarItems("beta", tutorialItems) }];
+const stableReferenceSidebar = referenceSidebar("stable", stableTypedocSidebar);
+const betaReferenceSidebar = referenceSidebar("beta", betaTypedocSidebar);
+const stableDocItems = [...sidebarItems("stable", guideItems), ...sidebarItems("stable", tutorialItems)];
+const betaDocItems = [...sidebarItems("beta", guideItems), ...sidebarItems("beta", tutorialItems)];
+const documentationGroups = [
+    {
+        label: "GTKX 1.6 stable",
+        items: stableDocItems,
+        referenceLink: documentationLink("stable", "reference/"),
+        referenceSidebar: stableReferenceSidebar,
+    },
+    {
+        label: "GTKX 2.0 beta 1",
+        items: betaDocItems,
+        referenceLink: documentationLink("beta", "reference/"),
+        referenceSidebar: betaReferenceSidebar,
+    },
+];
 const isProdBuild = process.argv.includes("build");
 
 const fontPreloads: HeadConfig[] = isProdBuild
@@ -87,14 +101,115 @@ const getPageImage = (frontmatter: Record<string, unknown>): string =>
 const getOgType = (relativePath: string): string =>
     relativePath !== "blog/index.md" && relativePath.startsWith("blog/") ? "article" : "website";
 
+const navigation = (version: DocumentationVersion): DefaultTheme.NavItem[] => [
+    { text: "Guide", link: documentationLink(version, "guide/why-gtkx") },
+    { text: "Tutorial", link: documentationLink(version, "tutorial/") },
+    { text: "Reference", link: documentationLink(version, "reference/") },
+    { text: "Blog", link: "/blog/" },
+    {
+        text: "Examples",
+        link: `https://github.com/gtkx-org/gtkx/tree/${version === "beta" ? "main" : "v1.6.0"}/examples`,
+    },
+    { component: "VersionSelect" },
+];
+
+const blogSidebar: DefaultTheme.SidebarItem[] = [
+    {
+        text: "Blog",
+        items: [
+            { text: "GTKX 2.0 beta 1", link: "/blog/gtkx-2-0-beta-1" },
+            { text: "GTKX 1.6", link: "/blog/gtkx-1-6" },
+            { text: "GTKX 1.5", link: "/blog/gtkx-1-5" },
+            { text: "GTKX 1.4", link: "/blog/gtkx-1-4" },
+            { text: "GTKX 1.3", link: "/blog/gtkx-1-3" },
+            { text: "GTKX 1.1", link: "/blog/gtkx-1-1" },
+            { text: "GTKX 1.0", link: "/blog/gtkx-1-0" },
+        ],
+    },
+];
+
+const documentationTitle = (relativePath: string): string => {
+    if (/^v2\/(guide|tutorial|reference)\//.test(relativePath)) {
+        return "GTKX 2.0 beta 1";
+    }
+
+    if (/^(guide|tutorial|reference)\//.test(relativePath)) {
+        return "GTKX 1.6 stable";
+    }
+
+    return title;
+};
+
+const loadDocumentationGroup = async (
+    sourceDirectory: string,
+    outputDirectory: string,
+    group: (typeof documentationGroups)[number],
+) => ({
+    ...group,
+    sources: await Promise.all(
+        group.items.map(async (item) => {
+            const file = docFile(item.link);
+            const source = await readFile(join(sourceDirectory, file), "utf8");
+            const target = join(outputDirectory, file);
+            await mkdir(dirname(target), { recursive: true });
+            await writeFile(target, source);
+
+            return { ...item, file, source };
+        }),
+    ),
+});
+
+type LoadedDocumentationGroup = Awaited<ReturnType<typeof loadDocumentationGroup>>;
+
+const llmsIndex = (versions: LoadedDocumentationGroup[]): string =>
+    versions
+        .map((version) => {
+            const pages = version.sources.map((source) => `- [${source.text}](${url}/${source.file})`).join("\n");
+            const references = version.referenceSidebar
+                .flatMap((entry) => (entry.link ? [`- [${entry.text ?? "API"}](${url}${entry.link})`] : []))
+                .join("\n");
+            const referenceIndex = `- [API Reference](${url}${version.referenceLink})\n${references}`;
+
+            return [
+                `## ${version.label} documentation`,
+                pages,
+                `### ${version.label} API reference`,
+                referenceIndex,
+            ].join("\n\n");
+        })
+        .join("\n\n");
+
+const llmsFull = (versions: LoadedDocumentationGroup[]): string =>
+    versions
+        .map((version) => {
+            const sources = version.sources.map((source) => source.source).join("\n\n---\n\n");
+
+            return `## ${version.label} documentation\n\n${sources}`;
+        })
+        .join("\n\n---\n\n");
+
 export default defineConfig({
     title,
     description,
     lang: "en",
+    locales: {
+        root: { label: "Documentation", lang: "en" },
+        v2: {
+            label: "Documentation",
+            lang: "en",
+            link: "/v2/guide/why-gtkx",
+            themeConfig: {
+                nav: navigation("beta"),
+            },
+        },
+    },
     appearance: "dark",
     cleanUrls: true,
     lastUpdated: true,
-    sitemap: { hostname: url },
+    sitemap: {
+        hostname: url,
+        transformItems: (items) => items.map(({ url: itemUrl, lastmod }) => ({ url: itemUrl, lastmod })),
+    },
     vite: {
         plugins: [highlightPlugin()],
         server: {
@@ -120,9 +235,14 @@ export default defineConfig({
         const isHome = pageData.relativePath === "index.md";
         const route = pageData.relativePath.replace(/(^|\/)index\.md$/, "$1").replace(/\.md$/, "");
         const pageUrl = route ? `${url}/${route}` : `${url}/`;
-        const pageTitle = isHome ? pageData.title : `${pageData.title} | ${title}`;
+        const titleSuffix = documentationTitle(pageData.relativePath);
+        const pageTitle = isHome ? pageData.title : `${pageData.title} | ${titleSuffix}`;
         const pageDescription = pageData.description || description;
         const pageImage = getPageImage(pageData.frontmatter);
+
+        if (titleSuffix !== title) {
+            pageData.titleTemplate = `:title | ${titleSuffix}`;
+        }
 
         const head: HeadConfig[] = [
             ["link", { rel: "canonical", href: pageUrl }],
@@ -140,68 +260,32 @@ export default defineConfig({
     },
 
     async buildEnd(siteConfig) {
-        const sources = await Promise.all(
-            docItems.map(async (item) => {
-                const file = docFile(item.link);
-                const source = await readFile(join(siteConfig.srcDir, file), "utf8");
-                const target = join(siteConfig.outDir, file);
-                await mkdir(dirname(target), { recursive: true });
-                await writeFile(target, source);
-
-                return { ...item, file, source };
-            }),
+        const versions = await Promise.all(
+            documentationGroups.map((group) => loadDocumentationGroup(siteConfig.srcDir, siteConfig.outDir, group)),
         );
-
-        const index = sources.map((s) => `- [${s.text}](${url}/${s.file})`).join("\n");
         const header = `# ${title}\n\n> ${description}\n`;
-
-        const optional = [
-            `- [API Reference](${url}/reference/): generated TypeScript API for every published package`,
-            ...typedocSidebar.map((entry) => `- [${entry.text}](${url}${entry.link})`),
-            `- [Blog](${url}/blog/)`,
-        ].join("\n");
 
         await writeFile(
             join(siteConfig.outDir, "llms.txt"),
-            `${header}\n## Documentation\n\n${index}\n\n## Optional\n\n${optional}\n`,
+            `${header}\n${llmsIndex(versions)}\n\n## Unversioned content\n\n- [Blog](${url}/blog/)\n`,
         );
 
-        await writeFile(
-            join(siteConfig.outDir, "llms-full.txt"),
-            `${header}\n${sources.map((s) => s.source).join("\n\n---\n\n")}\n`,
-        );
+        await writeFile(join(siteConfig.outDir, "llms-full.txt"), `${header}\n${llmsFull(versions)}\n`);
     },
 
     themeConfig: {
         siteTitle: title,
         logo: "/gtkx-mark.svg",
         search: { provider: "local" },
-        nav: [
-            { text: "Guide", link: "/guide/why-gtkx" },
-            { text: "Tutorial", link: "/tutorial/" },
-            { text: "Reference", link: "/reference/" },
-            { text: "Blog", link: "/blog/" },
-            { text: "Examples", link: "https://github.com/gtkx-org/gtkx/tree/main/examples" },
-            { text: "2.0 beta 1", link: "/blog/gtkx-2-0-beta-1" },
-        ],
+        nav: navigation("stable"),
         sidebar: {
-            "/guide/": guideSidebar,
-            "/tutorial/": tutorialSidebar,
-            "/reference/": [{ text: "Overview", link: "/reference/" }, ...typedocSidebar],
-            "/blog/": [
-                {
-                    text: "Blog",
-                    items: [
-                        { text: "GTKX 2.0 beta 1", link: "/blog/gtkx-2-0-beta-1" },
-                        { text: "GTKX 1.6", link: "/blog/gtkx-1-6" },
-                        { text: "GTKX 1.5", link: "/blog/gtkx-1-5" },
-                        { text: "GTKX 1.4", link: "/blog/gtkx-1-4" },
-                        { text: "GTKX 1.3", link: "/blog/gtkx-1-3" },
-                        { text: "GTKX 1.1", link: "/blog/gtkx-1-1" },
-                        { text: "GTKX 1.0", link: "/blog/gtkx-1-0" },
-                    ],
-                },
-            ],
+            "/guide/": stableGuideSidebar,
+            "/tutorial/": stableTutorialSidebar,
+            "/reference/": [{ text: "Overview", link: "/reference/" }, ...stableReferenceSidebar],
+            "/v2/guide/": betaGuideSidebar,
+            "/v2/tutorial/": betaTutorialSidebar,
+            "/v2/reference/": [{ text: "Overview", link: "/v2/reference/" }, ...betaReferenceSidebar],
+            "/blog/": blogSidebar,
         },
         socialLinks: [{ icon: "github", link: "https://github.com/gtkx-org/gtkx" }],
         editLink: {

@@ -72,7 +72,7 @@ export default {
         unusedMergeModuleWith: true,
     },
     sanitizeComments: true,
-    out: "reference",
+    out: "v2/reference",
     docsRoot: ".",
     readme: "./.vitepress/reference-intro.md",
     mergeReadme: true,
@@ -80,8 +80,8 @@ export default {
     githubPages: false,
     externalSymbolLinkMappings: {
         "@gtkx/testing": {
-            tab: "/reference/@gtkx/testing/type-aliases/UserEvent#tab",
-            type: "/reference/@gtkx/testing/type-aliases/UserEvent#type",
+            tab: "/v2/reference/@gtkx/testing/type-aliases/UserEvent#tab",
+            type: "/v2/reference/@gtkx/testing/type-aliases/UserEvent#type",
         },
     },
 };

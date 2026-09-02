@@ -35,10 +35,19 @@ import { defineConfig } from "@gtkx/config";
 export default defineConfig({
     applicationId: "com.gtkx.tutorial",
     applicationIcon: "data/icons",
+    future: {
+        v2ByteArrays: true,
+        v2ValueReturns: true,
+        v2FinishResults: true,
+        v2InoutReturns: true,
+        v2ResourceImports: true,
+        v2DefaultLibraries: true,
+        v2TreeShaking: true,
+    },
 });
 ```
 
-Everything on this page comes from Adwaita rather than plain GTK4. GTKX binds `Gtk-4.0` and `Adw-1` by default, so `libraries` lists only what you need on top of them. A project that needed WebKit would name it there and nothing else.
+Everything on this page comes from Adwaita rather than plain GTK4, and there is nothing to add for it: `v2DefaultLibraries` binds `Gtk-4.0` and `Adw-1` together, so `libraries` is only for what you want on top of them. A project that needed WebKit would name it there and nothing else.
 
 If your application ID reads something else, change it to `com.gtkx.tutorial` now: the schema file, the notification identity, and the Flatpak all key off this string.
 
