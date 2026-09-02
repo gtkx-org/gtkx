@@ -24,7 +24,7 @@ const GI_MODULES = [
     "package.json",
 ];
 
-const JSX_MODULES = ["index.js", "metadata.js", join("gtk", "gtk.js"), "package.json"];
+const JSX_MODULES = ["metadata.js", join("gtk", "gtk.js"), join("gtk", "index.js"), "package.json"];
 const HEAD = `export default { applicationId: "${APPLICATION_ID}"`;
 
 const BROKEN_CASES: BrokenCase[] = [

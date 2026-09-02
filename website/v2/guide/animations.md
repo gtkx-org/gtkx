@@ -28,7 +28,7 @@ export const FadeIn = () => {
 };
 ```
 
-This works for every element in `@gtkx/jsx`, whichever library it comes from, and for components of your own. The wrapper of a given component is created once and reused, so wrapping the same component again returns the same wrapper. Wrap at module scope all the same: the React Hooks lint rule flags a component created during render, and a component *defined* during render gets a fresh wrapper each time, which remounts it on every render.
+This works for every generated JSX element, whichever library it comes from, and for components of your own. The wrapper of a given component is created once and reused, so wrapping the same component again returns the same wrapper. Wrap at module scope all the same: the React Hooks lint rule flags a component created during render, and a component *defined* during render gets a fresh wrapper each time, which remounts it on every render.
 
 The call form also works for elements that are not widgets, such as `GtkAdjustment`, and components of your own, while letting a production bundle retain only the components it reaches.
 

@@ -5,9 +5,9 @@ description: "What GTKX 2.0 removes, how the 1.6 deprecation warnings tell you w
 
 # Upgrading to 2.0
 
-GTKX 2.0 removes what 1.x deprecated and adds nothing. It is the last 1.x release minus the deprecated paths, so there is no new API to learn and no behavior to discover — every change it makes was already available behind a flag or already marked `@deprecated` in your editor. New work resumes at 2.1.
+GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes the compatibility APIs deprecated during 1.x. The beta also removes the bare `@gtkx/jsx` entry point, a packaging change made after 1.6; split those imports by namespace before upgrading. New feature work resumes at 2.1.
 
-That gives the upgrade a single property worth planning around: **clear every deprecation on 1.6 and moving to 2.0 changes nothing.** The lists to clear are found in different ways: the future flags, which the CLI prints on every run, and the deprecated symbols, which your editor strikes through. Clear both on 1.6 and 2.0 is a version bump.
+Clear the future-flag warnings and deprecated symbols on 1.6 first, then migrate any bare JSX imports. The lists to clear are found in different ways: the future flags, which the CLI prints on every run, and the deprecated symbols, which your editor strikes through.
 
 ## Deprecated symbols and future flags
 
@@ -137,6 +137,18 @@ that under `v2DefaultLibraries` GTK and Adwaita are already bound:
 Codegen names the wildcard on each run while it still works, and `gtkx codegen --force` prints the resolved
 list, which is the set to copy from.
 
+## Split JSX imports by namespace
+
+The bare `@gtkx/jsx` entry point works in 1.6 but is removed in 2.0. Import each element from the namespace that declares it:
+
+```diff
+-import { AdwHeaderBar, GtkBox, GtkButton } from "@gtkx/jsx";
++import { AdwHeaderBar } from "@gtkx/jsx/adw";
++import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+```
+
+Namespace subpaths remain public and prevent an import from evaluating unrelated generated libraries.
+
 ## Clear the deprecated symbols
 
 These carry a `@deprecated` tag, so your editor strikes them through on hover. TypeScript has no compiler
@@ -178,7 +190,7 @@ Silencing is an acknowledgement, not a migration. The behavior still changes in 
 
 ## What 2.0 does not do
 
-2.0 ships no new features, no new bindings, and no new configuration. It removes the deprecated paths listed above, deletes the `future` block, and makes the opted-in behavior the only behavior. Anything held back during the freeze ships in 2.1.
+2.0 ships no new features, no new bindings, and no new configuration. It removes the deprecated paths listed above and the bare JSX entry point, deletes the `future` block, and makes the opted-in behavior the only behavior. Anything held back during the freeze ships in 2.1.
 
 The `deprecations` block stays: it is the mechanism, not one of the corrections. Its `silence` list only accepts ids the CLI currently reports, so an entry naming a flag 2.0 removed becomes a configuration error, and the fix is to delete the line.
 

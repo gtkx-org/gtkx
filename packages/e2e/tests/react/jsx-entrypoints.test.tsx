@@ -1,5 +1,4 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import * as jsx from "@gtkx/jsx";
 import * as adw from "@gtkx/jsx/adw";
 import * as gdk from "@gtkx/jsx/gdk";
 import * as gdkpixbuf from "@gtkx/jsx/gdkpixbuf";
@@ -17,8 +16,7 @@ import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-const IndexLabel = jsx.GtkLabel;
-const index: Record<string, unknown> = jsx;
+const ROOT_SPECIFIER = "@gtkx/jsx";
 
 const NAMESPACES: Record<string, Record<string, unknown>> = {
     adw,
@@ -35,40 +33,37 @@ const NAMESPACES: Record<string, Record<string, unknown>> = {
     webkit,
 };
 
-describe("@gtkx/jsx index entrypoint", () => {
-    it("renders a widget imported from the package index", async () => {
-        await render(<IndexLabel>Hello from the index</IndexLabel>);
-        expect(screen.getByText("Hello from the index")).toBeRooted();
+describe("@gtkx/jsx namespace entrypoints", () => {
+    it("renders an augmented widget imported from its namespace", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        await render(
+            <gtk.GtkBox ref={boxRef} namespaceAugmented>
+                <gtk.GtkLabel>Hello from the namespace</gtk.GtkLabel>
+            </gtk.GtkBox>,
+        );
+        expect(screen.getByText("Hello from the namespace")).toBeRooted();
+        expect(boxRef.current).toHaveClass("namespace-augmented");
     });
 
-    it("covers every namespace the store publishes", () => {
+    it("publishes every namespace without a package root", () => {
         const published = Object.keys(manifest.exports)
-            .filter((key) => ![".", "./metadata", "./package.json"].includes(key))
+            .filter((key) => !["./metadata", "./package.json"].includes(key))
             .map((key) => key.slice(2))
             .toSorted((left, right) => left.localeCompare(right));
 
+        expect(Object.hasOwn(manifest.exports, ".")).toBe(false);
         expect(Object.keys(NAMESPACES).toSorted((left, right) => left.localeCompare(right))).toEqual(published);
     });
 
-    it("re-exports every export of every namespace unchanged", () => {
-        for (const [directory, namespace] of Object.entries(NAMESPACES)) {
-            for (const [name, value] of Object.entries(namespace)) {
-                expect(index[name], `${directory} export ${name}`).toBe(value);
-            }
-        }
-    });
-
-    it("merges an augmentation of the index into the namespace that declares the props", async () => {
-        const boxRef = createRef<Gtk.Box>();
-        await render(<gtk.GtkBox ref={boxRef} indexAugmented />);
-        expect(boxRef.current).toHaveClass("index-augmented");
+    it("rejects the package root", async () => {
+        await expect(import(ROOT_SPECIFIER)).rejects.toThrow();
     });
 });
 
-declare module "@gtkx/jsx" {
+declare module "@gtkx/jsx/gtk" {
     /* eslint-disable @typescript-eslint/consistent-type-definitions -- declaration merging requires interfaces */
     interface GtkBoxProps {
-        indexAugmented?: boolean;
+        namespaceAugmented?: boolean;
     }
     /* eslint-enable @typescript-eslint/consistent-type-definitions */
 }

@@ -15,7 +15,7 @@ type PluginState = {
 type GeneratedModule = {
     source: string;
     kind: string;
-    namespace: string | null;
+    namespace: string;
     importer: string;
 };
 
@@ -36,10 +36,6 @@ const findGirIdentifier = (girPath: string[], namespace: string): string | undef
     discoverGirNamespaces(girPath).find((identifier) => getNamespace(identifier) === namespace);
 
 const parseGeneratedModule = (source: string, importer: string | undefined): GeneratedModule | null => {
-    if (source === "@gtkx/jsx") {
-        return { source, kind: "jsx", namespace: null, importer: importer ?? "the project's sources" };
-    }
-
     const matched = GENERATED_MODULE_PATTERN.exec(source);
     const kind = matched?.[1];
     const namespace = matched?.[2];
@@ -74,21 +70,13 @@ const hasStoreModule = (storeDir: string, exportKey: string): boolean => {
 };
 
 const unreachableStoreError = (generated: GeneratedModule, options: StoreOptions): Error => {
-    const provided = generated.namespace === null ? "its index module" : `"${generated.namespace}"`;
-
     return new Error(
         `Cannot resolve "${generated.source}": the generated store in ${options.storeDir} does provide ` +
-        `${provided}, but its link at ${options.linkDir} is not on the module resolution path of ` +
+        `"${generated.namespace}", but its link at ${options.linkDir} is not on the module resolution path of ` +
         `${generated.importer}. Codegen writes the store into the node_modules the installed @gtkx packages ` +
         "resolve from; install them where the importing file reaches them, then run gtkx codegen again.",
     );
 };
-
-const missingIndexError = (generated: GeneratedModule): Error =>
-    new Error(
-        `Cannot resolve "${generated.source}": the binding store has no index module. ` +
-        "Run gtkx codegen to regenerate the store.",
-    );
 
 const undeclaredLibraryError = (source: string, namespace: string, girPath: string[]): Error => {
     const identifier = findGirIdentifier(girPath, namespace);
@@ -110,14 +98,10 @@ const undeclaredLibraryError = (source: string, namespace: string, girPath: stri
 
 const unresolvedModuleError = async (state: PluginState, generated: GeneratedModule): Promise<Error> => {
     const options = getStoreOptions(state.root, generated.kind);
-    const exportKey = generated.namespace === null ? "." : `./${generated.namespace}`;
+    const exportKey = `./${generated.namespace}`;
 
     if (options !== null && hasStoreModule(options.storeDir, exportKey)) {
         return unreachableStoreError(generated, options);
-    }
-
-    if (generated.namespace === null) {
-        return missingIndexError(generated);
     }
 
     return undeclaredLibraryError(generated.source, generated.namespace, await girSearchPaths(state));

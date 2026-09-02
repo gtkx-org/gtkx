@@ -57,7 +57,7 @@ resource tree.
 Codegen writes packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx`, so imports resolve without either appearing in your `package.json`:
 
 - **`@gtkx/gi`** is the introspected API, one subpath per namespace (`@gtkx/gi/gtk`, `@gtkx/gi/adw`): the classes, enums, and functions you call imperatively, for refs and values such as `Gtk.Orientation.VERTICAL`.
-- **`@gtkx/jsx`** is the React layer, likewise per namespace (`@gtkx/jsx/gtk`, `@gtkx/jsx/adw`): a PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a `React.JSX.IntrinsicElements` augmentation.
+- **`@gtkx/jsx/<namespace>`** is the React layer (`@gtkx/jsx/gtk`, `@gtkx/jsx/adw`): a PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a `React.JSX.IntrinsicElements` augmentation.
 
 The `cairo` namespace is provided by the [`@gtkx/cairo`](/v2/guide/cairo) package rather than generated.
 
@@ -65,15 +65,16 @@ Record fields appear as accessors: a getter wherever the read lands on the right
 
 A few bindings take a NUL-terminated C string that GIR describes as a byte array (`GLib.Variant.newBytestring`), so the value silently stops at the first zero byte. Binary payloads go through `GLib.Bytes` and `GLib.Variant.newFromBytes`.
 
-### One import for every element
+### Import elements by namespace
 
-`@gtkx/jsx` itself exports everything its per-namespace subpaths do, so a file that mixes namespaces can name a single specifier:
+Each JSX element is exported from its generated namespace subpath:
 
 ```tsx
-import { AdwHeaderBar, GtkBox, GtkButton } from "@gtkx/jsx";
+import { AdwHeaderBar } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 ```
 
-Nothing collides, however many libraries you bind: every jsx export is keyed by its GLib type name, so `GtkBox` and `AdwActionRow` cannot claim the same name. The root is a barrel over the same per-namespace modules rather than a second copy of them, so importing it evaluates every namespace the store carries, and each of those evaluates its `@gtkx/gi` counterpart. Prefer a subpath in a file that touches one namespace while the store also carries libraries that file has no use for.
+There is no bare `@gtkx/jsx` entry point. Splitting imports prevents one file from evaluating every generated namespace and its matching GI module.
 
 `@gtkx/gi` has no equivalent root. Its symbols are imported namespaced, as `import * as Gtk from "@gtkx/gi/gtk"`, so `Gtk.Orientation` and `Adw.ResponseAppearance` stay apart.
 
@@ -267,7 +268,7 @@ declare module "@gtkx/jsx/gtk" {
 
 The leading `import` is what makes this an augmentation. Without a top-level import or export, `declare module` becomes an ambient module declaration that shadows the generated one, and `@gtkx/jsx/gtk` stops exporting elements.
 
-Either specifier works. `GtkWidgetProps` is declared once, in the namespace module both `@gtkx/jsx/gtk` and the flat `@gtkx/jsx` re-export, so an augmentation written against either one merges into that single declaration and is visible through both.
+Augment the namespace module that declares the props. `GtkWidgetProps` belongs to `@gtkx/jsx/gtk`, so the import and declaration above target that subpath.
 
 A behavior on a type covers every element descending from it, and your behaviors run before the built-in ones, so they override existing prop and slot handling. `isLazy: true` in the same map marks a type whose GObject its parent container creates.
 

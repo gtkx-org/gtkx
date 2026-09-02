@@ -37,6 +37,17 @@ The `"*"` wildcard is gone. Explicit libraries keep generated bindings stable ac
 
 Run `tsc --noEmit` after these changes. The typechecker catches the value and tuple changes; `gtkx build` catches stale resource imports.
 
+## Split JSX imports by namespace
+
+The bare `@gtkx/jsx` entry point is removed. Import each element from the subpath for the namespace that declares it:
+
+```tsx
+import { AdwHeaderBar } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+```
+
+Namespace subpaths are the public JSX surface and keep unrelated generated libraries out of the module graph.
+
 ## Update internationalization
 
 GTKX now delegates extraction and resource typing to `i18next-cli`. Keep catalog declarations in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`; replace imported aliases, `i18n.t` member calls, dynamic keys, and CommonJS declarations with those static forms.

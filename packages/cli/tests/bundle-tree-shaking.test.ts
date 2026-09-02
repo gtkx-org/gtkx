@@ -35,7 +35,7 @@ process.stdout.write("${DROPPED_TYPE_PREFIX}" + String(typeFromName("GtkVideo") 
 const USED_SIGNAL_HANDLER = "onClicked";
 const UNUSED_SIGNAL_HANDLER = "onActivateLink";
 
-const REACT_APP_ENTRY = String.raw`import { GtkButton } from "@gtkx/jsx";
+const REACT_APP_ENTRY = String.raw`import { GtkButton } from "@gtkx/jsx/gtk";
 
 process.stdout.write("used-component=" + typeof GtkButton + "\n");
 `;
