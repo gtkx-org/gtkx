@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/utils",
-    "version": "2.0.0-beta.1",
+    "version": "2.0.0-beta.2",
     "description": "Shared utilities for the GTK toolchain: logging, errors, strings.",
     "keywords": [
         "gtkx",
