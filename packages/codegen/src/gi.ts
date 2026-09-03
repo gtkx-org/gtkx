@@ -1,6 +1,5 @@
 import type { Library } from "./gir/library.js";
-import type { StoreOptions } from "./store/store-fs.js";
-import type { PreparedStore } from "./store/store-fs.js";
+import type { PreparedStore, StoreOptions } from "./store/store-fs.js";
 import { computeGiFingerprint } from "./fingerprint.js";
 import { externalPackageFor } from "./gir/external-namespaces.js";
 import { namespaceDirectory } from "./gir/namespace.js";

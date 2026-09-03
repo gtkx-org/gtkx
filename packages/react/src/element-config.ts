@@ -33,8 +33,14 @@ const SINGLE_CHILD_TYPES: string[] = [
 
 const CONTENT_SETTER_TYPES: string[] = ["AdwBottomSheet", "AdwOverlaySplitView"];
 
-const acceptedChildren = (acceptedChildTypes: string[], config: ElementConfig): ElementConfig =>
-    Object.assign({}, config, { acceptedChildTypes });
+const acceptedChildren = (
+    acceptedChildTypes: string[],
+    config: ElementConfig,
+): ElementConfig => {
+    const result = { ...config, acceptedChildTypes };
+
+    return result;
+};
 
 /**
  * The framework's own element configuration for the GTK and Adwaita types it customizes: the base props interface each
