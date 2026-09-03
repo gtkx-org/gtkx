@@ -6,6 +6,7 @@ import {
     GtkApplicationWindow,
     GtkBox,
     GtkButton,
+    GtkEntry,
     GtkHeaderBar,
     GtkLabel,
     GtkListBox,
@@ -212,6 +213,28 @@ function TitledPortal({ title }: { title: string }) {
 }
 
 describe("render - Slot", () => {
+    it("unparents a popover when its widget subtree unmounts", async () => {
+        const entryRef = createRef<Gtk.Entry>();
+        const popoverRef = createRef<Gtk.Popover>();
+        const { unmount } = await render(
+            <GtkBox>
+                <GtkEntry ref={entryRef}>
+                    <GtkPopover ref={popoverRef} />
+                </GtkEntry>
+            </GtkBox>,
+        );
+        const entry = entryRef.current;
+        const popover = popoverRef.current;
+
+        if (entry === null || popover === null) {
+            throw new Error("expected the entry and popover to be mounted");
+        }
+
+        expect(popover.getParent()).toBe(entry);
+        await unmount();
+        expect(popover.getParent()).toBeNull();
+    });
+
     it("sets slot child via ReactNode prop", async () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
         const titleRef = createRef<Gtk.Label>();

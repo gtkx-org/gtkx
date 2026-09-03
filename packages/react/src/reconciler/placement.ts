@@ -272,4 +272,35 @@ const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): v
     markFlush(parent);
 };
 
-export { placeChild, unplaceChild };
+const isAttachedWidget = (parent: ElementNode, entry: PlacedChild): boolean =>
+    parent.object instanceof Gtk.Widget &&
+    entry.object instanceof Gtk.Widget &&
+    entry.object.getParent() === parent.object;
+
+const teardownEntry = (parent: ElementNode, entry: PlacedChild): void => {
+    const child = leafElement(entry.node);
+
+    if (child !== null) {
+        teardownPlacements(child);
+    }
+
+    if (isAttachedWidget(parent, entry)) {
+        detachEntry(parent, entry);
+    }
+};
+
+const teardownEntries = (parent: ElementNode, entries: PlacedChild[]): void => {
+    for (const entry of entries) {
+        teardownEntry(parent, entry);
+    }
+};
+
+function teardownPlacements(parent: ElementNode): void {
+    for (const entries of parent.placements.values()) {
+        teardownEntries(parent, entries);
+    }
+
+    parent.placements.clear();
+}
+
+export { placeChild, teardownPlacements, unplaceChild };

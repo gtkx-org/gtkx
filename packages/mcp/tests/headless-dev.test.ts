@@ -40,6 +40,28 @@ const processParent = (pid: number): number | undefined => {
     }
 };
 
+const isDescendantFor = (pid: number, ancestorId: number): boolean => {
+    const visited: Set<number> = new Set();
+    let current = pid;
+
+    while (!visited.has(current)) {
+        visited.add(current);
+        const parent = processParent(current);
+
+        if (parent === ancestorId) {
+            return true;
+        }
+
+        if (parent === undefined || parent <= 1) {
+            return false;
+        }
+
+        current = parent;
+    }
+
+    return false;
+};
+
 const readSwayDisplay = (entry: string, pid: number): SwayDisplay | undefined => {
     try {
         const args = readFileSync(`/proc/${entry}/cmdline`)
@@ -59,9 +81,9 @@ const readSwayDisplay = (entry: string, pid: number): SwayDisplay | undefined =>
 const swayDisplayFor = (parentId: number): SwayDisplay | undefined =>
     readdirSync("/proc")
         .map((entry) => ({ entry, pid: Number(entry) }))
-        .filter(({ pid }) => Number.isSafeInteger(pid) && processParent(pid) === parentId)
+        .filter(({ pid }) => Number.isSafeInteger(pid))
         .map(({ entry, pid }) => readSwayDisplay(entry, pid))
-        .find((display) => display !== undefined);
+        .find((display) => display !== undefined && isDescendantFor(display.pid, parentId));
 
 const waitForSwayDisplay = async (parentId: number): Promise<SwayDisplay> => {
     const deadline = Date.now() + DISPLAY_TIMEOUT_MS;

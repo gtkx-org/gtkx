@@ -29,6 +29,7 @@ import {
     lazyTarget,
     type TextNode,
 } from "./node.js";
+import { teardownPlacements } from "./placement.js";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { disconnectAllHandlers } from "./signals.js";
 import { flushStyles, releaseStyle } from "./style.js";
@@ -191,6 +192,7 @@ function createPriorityTracker(): PriorityTracker {
 
 const detachElement = (instance: ElementNode): void => {
     disconnectAllHandlers(instance);
+    teardownPlacements(instance);
     teardownBehaviors(instance);
 
     if (instance.object instanceof Gtk.Widget) {

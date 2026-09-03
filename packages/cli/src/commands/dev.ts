@@ -5,7 +5,7 @@ import { startHeadlessDevDisplay } from "../dev/headless.js";
 import { type DevWatch, runDevSupervisor } from "../dev/supervisor.js";
 import { splitApplicationArgs } from "../internal/application-args.js";
 import { configArg, entryArg } from "../internal/entry-arg.js";
-import { initialParentId } from "../internal/parent-process.js";
+import { getInitialProcessGroupOwner, initialParentId } from "../internal/parent-process.js";
 import { prepareProject } from "../internal/prepare-project.js";
 
 const DEV_MODE = "development";
@@ -28,7 +28,15 @@ const dev = defineCommand({
         },
     },
     async run({ args }) {
-        if (process.platform === "linux" && !armParentDeath(initialParentId)) {
+        const initialProcessGroupOwner = getInitialProcessGroupOwner();
+
+        if (
+            !armParentDeath(
+                initialParentId,
+                initialProcessGroupOwner?.pid,
+                initialProcessGroupOwner?.startTime,
+            )
+        ) {
             throw new Error("The process that launched gtkx dev exited during startup");
         }
 
