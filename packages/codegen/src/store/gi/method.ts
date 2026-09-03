@@ -40,6 +40,7 @@ type PromisifiedStep = { hasSeenOptional: boolean; expression: string | undefine
 type InputParameterOptions = {
     shouldSkip: (parameter: GirParameter) => boolean;
     isOptionalExtra: (parameter: GirParameter) => boolean;
+    isNullableExtra: (parameter: GirParameter) => boolean;
 };
 
 type CallExpressionOptions = {
@@ -118,6 +119,7 @@ const renderMethodSignature = (context: ModuleContext, fn: GirFunction): string 
     renderInputParameters(context, fn, {
         shouldSkip: () => false,
         isOptionalExtra: () => false,
+        isNullableExtra: () => false,
     });
 
 const closureAnnotation = (context: ModuleContext, base: string): string => {
@@ -135,14 +137,24 @@ const requiresClosureAnnotation = (context: ModuleContext, fn: GirFunction, para
 const isValueRead = (parameter: GirParameter): boolean =>
     !isInoutParameter(parameter) && parameter.cType?.includes("const ") === true;
 
-const parameterAnnotation = (context: ModuleContext, fn: GirFunction, parameter: GirParameter): string => {
+const parameterAnnotation = (
+    context: ModuleContext,
+    fn: GirFunction,
+    parameter: GirParameter,
+    isForcedNullable = false,
+): string => {
     const comparator = itemComparatorTsType(context, fn, parameter);
 
     if (comparator !== undefined) {
         return comparator;
     }
 
-    const base = renderParameterTsType(context, parameter.type, parameter.nullable, isValueRead(parameter));
+    const base = renderParameterTsType(
+        context,
+        parameter.type,
+        parameter.nullable || isForcedNullable,
+        isValueRead(parameter),
+    );
 
     return requiresClosureAnnotation(context, fn, parameter) ? closureAnnotation(context, base) : base;
 };
@@ -168,7 +180,7 @@ const renderInputParameters = (context: ModuleContext, fn: GirFunction, options:
             hasSeenOptional = true;
         }
 
-        const annotation = parameterAnnotation(context, fn, parameter);
+        const annotation = parameterAnnotation(context, fn, parameter, options.isNullableExtra(parameter));
         parts.push(formatParameterPart(name, annotation, hasSeenOptional));
     }
 
@@ -488,6 +500,7 @@ const renderPromisifiedSignature = (
         shouldSkip: (parameter) => isAsyncReadyCallback(context, parameter),
         isOptionalExtra: (parameter) =>
             isCancellable(context, parameter) || isSideCallbackParameter(context, parameter),
+        isNullableExtra: (parameter) => isSideCallbackParameter(context, parameter),
     });
 
     const finishReturn = shouldTrimFinishBoolean(context, finishFn)

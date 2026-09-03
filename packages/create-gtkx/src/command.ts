@@ -1,4 +1,5 @@
 import * as p from "@clack/prompts";
+import { assertSupportedNodeVersion } from "@gtkx/config/internal";
 import { errorMessage } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
@@ -15,6 +16,7 @@ type CreateCommandArgs = {
     yes?: boolean | undefined;
     "no-interactive"?: boolean | undefined;
     overwrite?: boolean | undefined;
+    "skip-install"?: boolean | undefined;
 };
 
 const scaffoldCommand = defineCommand({
@@ -66,6 +68,10 @@ const scaffoldCommand = defineCommand({
             alias: "f",
             description: "Replace scaffold files in a non-empty target directory when running without prompts",
         },
+        "skip-install": {
+            type: "boolean",
+            description: "Create the project without installing dependencies",
+        },
     },
     run: ({ args }) => runCreate(args),
 });
@@ -86,6 +92,7 @@ const runCreate = async (args: CreateCommandArgs): Promise<void> => {
     const isInteractive = args["no-interactive"] || args.yes ? false : process.stdin.isTTY;
 
     try {
+        assertSupportedNodeVersion();
         await scaffold({
             name: args.name,
             applicationId: args["application-id"],
@@ -95,6 +102,7 @@ const runCreate = async (args: CreateCommandArgs): Promise<void> => {
             shouldIncludeTesting: args.vitest,
             isInteractive,
             shouldOverwrite: args.overwrite,
+            shouldInstallDependencies: args["skip-install"] !== true,
         });
     } catch (error) {
         settleScaffoldFailure(error);

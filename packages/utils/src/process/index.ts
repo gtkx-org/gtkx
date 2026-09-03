@@ -6,4 +6,7 @@ export {
     processGroupIdentity,
 } from "./kill-process-group.ts";
 export { resolveExecutable, tryResolveExecutable } from "./resolve-executable.ts";
-export { spawnWithParentDeathSignal } from "./spawn-with-parent-death-signal.ts";
+export {
+    spawnWithParentDeathSignal,
+    spawnWithParentDeathSupervisor,
+} from "./spawn-with-parent-death-signal.ts";

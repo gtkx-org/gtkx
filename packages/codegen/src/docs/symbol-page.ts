@@ -60,8 +60,8 @@ import {
     signalTags,
     signatureBlock,
     type SignatureEntry,
-    signatureEntryBlock,
     sortedMetaBlocks,
+    staticSectionBlocks,
     tagNotes,
 } from "./render.js";
 
@@ -129,15 +129,6 @@ type SymbolPageOptions = {
     library: Library;
     /** Looks up the JSX element a class is also available as, undefined when it has none. */
     elementNameFor: (namespaceName: string, className: string) => string | undefined;
-};
-
-type StaticSectionOptions = {
-    title: string;
-    intro: string;
-    context: ModuleContext;
-    callables: GirFunction[];
-    siblings: GirFunction[];
-    returnTypeOverride?: string;
 };
 
 type MemberOwner = {
@@ -304,46 +295,6 @@ const implementingSection = (entry: ClassPageSymbol, library: Library): string[]
     return ["## Implementing", implementingIntro(entry), ...blocks];
 };
 
-const staticEntry = (options: StaticSectionOptions, callable: GirFunction): SignatureEntry | undefined => {
-    const signature = renderStaticSignature(options.context, callable, {
-        returnTypeOverride: options.returnTypeOverride,
-        siblings: options.siblings,
-    });
-
-    if (signature === undefined) {
-        return undefined;
-    }
-
-    const finishFn = matchStaticFinishFunction(options.context, callable, options.siblings);
-
-    return {
-        name: signature.name,
-        signature: signature.signature,
-        doc: docMarkdown(callable.doc),
-        tags: callableSpec(options.context, callable, { finishFn }),
-    };
-};
-
-const staticSection = (options: StaticSectionOptions): string[] => {
-    const entries: SignatureEntry[] = [];
-
-    for (const callable of dedupeCallables(options.callables)) {
-        const entry = staticEntry(options, callable);
-
-        if (entry !== undefined) {
-            entries.push(entry);
-        }
-    }
-
-    if (entries.length === 0) {
-        return [];
-    }
-
-    const blocks = sortStringsBy(entries, (item) => item.name).map((item) => signatureEntryBlock(item));
-
-    return [options.title, options.intro, ...blocks];
-};
-
 const memberOwners = (entry: ClassSymbol, library: Library): MemberOwner[] => [
     { klass: entry.klass, namespace: entry.namespace, origin: undefined },
     ...newlyImplementedInterfaces(entry.klass, entry.namespace, library).map((iface) => ({
@@ -416,10 +367,10 @@ const documentedAccessorType = (accessor: ResolvedAccessor): string =>
 const hiddenPropertyAccessNotes = (accessor: ResolvedAccessor): string[] => [
     ...getAccessNotes(accessor),
     ...(accessor.hasGetter && accessor.supportsDescriptorFreeAccess
-        ? ["read with `GObject.getObjectProperty`"]
+        ? ["read with `GObject.getProperty`"]
         : []),
     ...(accessor.isWritable && accessor.supportsDescriptorFreeAccess
-        ? ["write with `GObject.setObjectProperty`"]
+        ? ["write with `GObject.setProperty`"]
         : []),
 ];
 
@@ -475,7 +426,7 @@ const propertiesSection = (entry: ClassPageSymbol, library: Library): string[] =
 
     const intro =
         "Properties are normally read and written as instance fields. Collision exceptions are marked with " +
-        "their `GObject.getObjectProperty` or `GObject.setObjectProperty` escape hatch. Changes can be observed " +
+        "their `GObject.getProperty` or `GObject.setProperty` escape hatch. Changes can be observed " +
         "with `GObject.signalConnect(instance, \"notify::<property-name>\", handler)`. Properties inherited " +
         "from ancestors are documented on their own pages.";
 
@@ -541,7 +492,7 @@ const classPage = (entry: ClassPageSymbol, options: SymbolPageOptions): string =
         ...pageHeader(entry, entry.kind),
         ...elementNote(entry, options),
         ...(entry.kind === "interface" ? prerequisitesLine(entry, library) : hierarchySection(entry, library)),
-        ...staticSection({
+        ...staticSectionBlocks({
             title: "## Constructors",
             intro: constructorsIntro,
             context: docsContext,
@@ -549,7 +500,7 @@ const classPage = (entry: ClassPageSymbol, options: SymbolPageOptions): string =
             siblings: staticSiblings,
             returnTypeOverride: qualified,
         }),
-        ...staticSection({
+        ...staticSectionBlocks({
             title: "## Static methods",
             intro: staticIntro,
             context: docsContext,
@@ -622,7 +573,7 @@ const recordPage = (entry: GiSymbolBase & { kind: "record"; record: GirRecord },
 
     return joinSections([
         ...pageHeader(entry, entry.record.isUnion ? "union" : "record"),
-        ...staticSection({
+        ...staticSectionBlocks({
             title: "## Constructors",
             intro: constructorsIntro,
             context: docsContext,
@@ -630,7 +581,7 @@ const recordPage = (entry: GiSymbolBase & { kind: "record"; record: GirRecord },
             siblings: staticSiblings,
             returnTypeOverride: qualified,
         }),
-        ...staticSection({
+        ...staticSectionBlocks({
             title: "## Static methods",
             intro: staticIntro,
             context: docsContext,

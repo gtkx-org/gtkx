@@ -12,6 +12,7 @@ type MetainfoResult = {
     status: number;
     errors: string[];
     warnings: string[];
+    rules: string[];
     areWarningsFatal: boolean;
 };
 
@@ -25,6 +26,7 @@ const DIAGNOSTIC = /^(?<severity>[EIPW]): \S+ (?<rule>[\w-]+)/;
 const ERROR_SEVERITY = "E";
 const WARNING_SEVERITY = "W";
 const INFO_SEVERITY = "I";
+const FATAL_WARNING_RULES: Set<string> = new Set(["unknown-tag"]);
 
 const REMEDY_FOR_RULE: Record<string, string> = {
     "component-summary-missing": "set `deploy.summary`",
@@ -64,8 +66,12 @@ const remedyLines = (rules: string[]): string[] => {
 const invalid = (subject: string, output: string, rules: string[]): Error =>
     new Error([`${subject} is not valid:`, output.length > 0 ? output : "no output", ...remedyLines(rules)].join("\n"));
 
-const isFatalResult = ({ status, errors, warnings, areWarningsFatal }: MetainfoResult): boolean => {
+const isFatalResult = ({ status, errors, warnings, rules, areWarningsFatal }: MetainfoResult): boolean => {
     if (errors.length > 0) {
+        return true;
+    }
+
+    if (rules.some((rule) => FATAL_WARNING_RULES.has(rule))) {
         return true;
     }
 
@@ -78,7 +84,7 @@ const isFatalResult = ({ status, errors, warnings, areWarningsFatal }: MetainfoR
 
 const assertNotFatal = (result: MetainfoResult): void => {
     if (isFatalResult(result)) {
-        throw invalid(result.subject, result.output, [...result.errors, ...result.warnings]);
+        throw invalid(result.subject, result.output, result.rules);
     }
 };
 
@@ -117,8 +123,10 @@ const validateMetainfo = (path: string, areWarningsFatal: boolean): void => {
 
     const errors = rulesIn(output, [ERROR_SEVERITY]);
     const warnings = rulesIn(output, [WARNING_SEVERITY]);
-    assertNotFatal({ subject, output, status, errors, warnings, areWarningsFatal });
-    reportDiagnostics(subject, [...warnings, ...rulesIn(output, [INFO_SEVERITY])]);
+    const infos = rulesIn(output, [INFO_SEVERITY]);
+    const rules = [...errors, ...warnings, ...infos];
+    assertNotFatal({ subject, output, status, errors, warnings, rules, areWarningsFatal });
+    reportDiagnostics(subject, [...warnings, ...infos]);
 };
 
 export { validateDesktopEntry, validateMetainfo };

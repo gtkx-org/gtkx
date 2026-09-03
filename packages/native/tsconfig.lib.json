@@ -1,6 +1,6 @@
 {
     "extends": "../../tsconfig.lib.json",
-    "include": [],
+    "include": ["internal.d.ts"],
     "references": [
       {
         "path": "../vitest/tsconfig.lib.json"

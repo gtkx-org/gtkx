@@ -1,9 +1,11 @@
+import { armParentDeath } from "@gtkx/native/internal";
 import { defineCommand } from "citty";
 import { resolveConfigWatch } from "../codegen/run-codegen.js";
 import { startHeadlessDevDisplay } from "../dev/headless.js";
 import { type DevWatch, runDevSupervisor } from "../dev/supervisor.js";
 import { splitApplicationArgs } from "../internal/application-args.js";
-import { entryArg } from "../internal/entry-arg.js";
+import { configArg, entryArg } from "../internal/entry-arg.js";
+import { initialParentId } from "../internal/parent-process.js";
 import { prepareProject } from "../internal/prepare-project.js";
 
 const DEV_MODE = "development";
@@ -15,6 +17,7 @@ const dev = defineCommand({
     },
     args: {
         ...entryArg,
+        ...configArg,
         headless: {
             type: "boolean",
             description: "Run on an isolated headless Wayland display",
@@ -25,17 +28,21 @@ const dev = defineCommand({
         },
     },
     async run({ args }) {
+        if (process.platform === "linux" && !armParentDeath(initialParentId)) {
+            throw new Error("The process that launched gtkx dev exited during startup");
+        }
+
         if (args.size !== undefined && !args.headless) {
             throw new Error("--size requires --headless");
         }
 
-        const { cwd, entry: entryPath } = await prepareProject(args, DEV_MODE);
-        const watch: DevWatch | undefined = await resolveConfigWatch(cwd, DEV_MODE);
+        const { cwd, entry: entryPath, configFile } = await prepareProject(args, DEV_MODE);
+        const watch: DevWatch | undefined = await resolveConfigWatch(cwd, DEV_MODE, configFile);
         const { applicationArgs } = splitApplicationArgs(process.argv.slice(2));
         const stopHeadless = args.headless ? await startHeadlessDevDisplay(args.size) : undefined;
 
         try {
-            await runDevSupervisor({ entryPath, cwd, args: applicationArgs, watch });
+            await runDevSupervisor({ entryPath, cwd, configFile, args: applicationArgs, watch });
         } finally {
             stopHeadless?.();
         }

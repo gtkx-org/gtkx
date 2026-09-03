@@ -86,6 +86,7 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
         version: store.runtimeVersion,
+        owner: store.owner,
     },
     jsx:
         store.react === null
@@ -94,6 +95,7 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
                     storeDir: store.jsxStoreDir,
                     linkDir: store.jsxLinkDir,
                     version: store.react.version,
+                    owner: store.owner,
                 },
     userComponents: resolveElementComponents(elements),
     userProps: resolveElementProps(elements),
@@ -110,14 +112,6 @@ const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
     configFile,
     libraries: [],
 });
-
-const clearGeneratedStores = (store: CodegenStore): void => {
-    removeStores(
-        store.react === null
-            ? [store.giStoreDir, store.giLinkDir]
-            : [store.giStoreDir, store.giLinkDir, store.jsxStoreDir, store.jsxLinkDir],
-    );
-};
 
 const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config): PreparedCodegen => {
     const { girPath, libraries, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
@@ -147,10 +141,6 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     }
 
     const { girPath, libraries, store, isForced } = prepareCodegen(options, cwd, config);
-
-    if (options.isForced) {
-        clearGeneratedStores(store);
-    }
 
     const result = await runCodegenCore({
         ...codegenOptions({ store, libraries, girPath, elements: config.elements }),

@@ -68,6 +68,7 @@ const docs = defineCommand({
             outDir,
             basePath: args["base-path"],
             props: builtin.props,
+            acceptedChildTypes: builtin.acceptedChildTypes,
             omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
             isForced: args.force,
         });

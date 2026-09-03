@@ -328,6 +328,9 @@ importers:
       '@gtkx/mcp':
         specifier: workspace:*
         version: link:../mcp
+      '@gtkx/native':
+        specifier: workspace:*
+        version: link:../native
       '@gtkx/runtime':
         specifier: workspace:*
         version: link:../runtime

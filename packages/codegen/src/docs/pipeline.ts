@@ -12,6 +12,7 @@ import { Library } from "../gir/library.js";
 import { namespaceDirectory } from "../gir/namespace.js";
 import { arrayGuard, hasFields, isString } from "../guards.js";
 import { readJsonFile } from "../json.js";
+import { setAcceptedChildTypes } from "../store/jsx/accepted-child-types.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
@@ -40,6 +41,7 @@ type DocsOptions = {
     linkStyle?: DocsLinkStyle;
     props?: ElementProps;
     omittedProps?: OmittedProps;
+    acceptedChildTypes?: Record<string, string[]>;
     isForced?: boolean;
 };
 
@@ -114,7 +116,8 @@ const fileIndexPage = (namespaces: DocsNamespace[], libraries: string[]): string
         "`adw/header-bar.md`. Read a page directly by that path rather than searching for it.",
         "",
         "Each page lists the element's props (GObject properties plus what GTKX adds, with types and defaults), " +
-        "its signals as `on<Signal>` handler props with exact signatures, and the methods reachable through `ref`.",
+        "its signals as `on<Signal>` handler props with exact signatures, static methods on the matching GI class, " +
+        "and the instance methods reachable through `ref`.",
         "",
         "| Namespace | Import | Elements | Index |",
         "| --- | --- | --- | --- |",
@@ -151,6 +154,7 @@ const rootIndexPage = (namespaces: DocsNamespace[], libraries: string[], linkSty
         "- **Props** derived from GObject properties, plus the element props GTKX adds (such as `children` " +
         "and named slots), with types, defaults, and upstream documentation.",
         "- **Signals** as `on<Signal>` handler props with their exact handler signatures.",
+        "- **Static methods** available on the matching class from `@gtkx/gi/<namespace>`.",
         "- **Methods** available on the underlying instance through the `ref` prop.",
         "",
         "## Namespaces",
@@ -255,7 +259,10 @@ const generatePages = (
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const byNamespace = groupElementsByNamespace(intrinsicElements);
     const linkByGlibName = buildElementLinks(intrinsicElements, basePath, linkStyle);
-    const pageContext: ElementPageContext = { library, linkFor: (glibName) => linkByGlibName.get(glibName) };
+    const pageContext: ElementPageContext = {
+        library,
+        linkFor: (glibName) => linkByGlibName.get(glibName),
+    };
     const pages: Page[] = [];
     const namespaces: DocsNamespace[] = [];
     const orderedNames = sortStringsBy(byNamespace.keys(), namespaceOrder);
@@ -375,6 +382,7 @@ const docsFingerprintInput = (options: DocsOptions): DocsFingerprintInput => ({
     linkStyle: options.linkStyle ?? "url",
     props: options.props ?? {},
     omittedProps: options.omittedProps ?? {},
+    acceptedChildTypes: options.acceptedChildTypes ?? {},
 });
 
 const writeDocs = (options: DocsOptions): DocsResult => {
@@ -382,6 +390,7 @@ const writeDocs = (options: DocsOptions): DocsResult => {
     const input = docsFingerprintInput(options);
     setElementProps(input.props);
     setOmittedProps(input.omittedProps);
+    setAcceptedChildTypes(input.acceptedChildTypes);
     const manifestPath = join(options.outDir, MANIFEST_FILENAME);
     const previous = readDocsManifest(manifestPath);
     const cached = cachedDocsResult(options, previous, input);

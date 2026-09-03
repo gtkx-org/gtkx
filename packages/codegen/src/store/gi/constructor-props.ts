@@ -84,7 +84,10 @@ const constructionHint = (context: ModuleContext, klass: GirClass, callables: Ca
     const candidates = staticMembers(context, callables).filter(({ callable }) =>
         isSelfReturning(context, klass, callable));
 
-    const candidate = candidates.find(({ name }) => name === "new") ?? candidates[0];
+    const candidate =
+        candidates.find(({ name }) => name === "newFull") ??
+        candidates.find(({ name }) => name === "new") ??
+        candidates[0];
 
     if (candidate === undefined) {
         return undefined;
@@ -106,8 +109,8 @@ const fundamentalMessage = (qualified: string, hint: string | undefined): string
 
 const INITIALIZATION_INTERFACES: Set<string> = new Set(["AsyncInitable", "Initable"]);
 
-const requiresFactoryInitialization = (context: ModuleContext, spec: ClassConstructorSpec): boolean => {
-    for (const ancestor of ancestorChain(context.library, spec.klass, context.namespace.name)) {
+const requiresFactoryInitialization = (context: ModuleContext, klass: GirClass): boolean => {
+    for (const ancestor of ancestorChain(context.library, klass, context.namespace.name)) {
         const interfaces = resolveInterfaces(
             context.library,
             ancestor.namespaceName,
@@ -154,7 +157,7 @@ const renderClassConstructor = (context: ModuleContext, spec: ClassConstructorSp
         return renderFundamentalGuard(context, spec);
     }
 
-    if (requiresFactoryInitialization(context, spec)) {
+    if (requiresFactoryInitialization(context, klass)) {
         return renderInitializationGuard(context, spec);
     }
 
@@ -201,4 +204,9 @@ const renderTranslatingConstructor = (context: ModuleContext, props: GirProperty
     return renderBlock(`constructor(props: ${className}ConstructorProps = {})`, "super(props);");
 };
 
-export { isFundamentalClass, renderConstructorPropsInterface, renderClassConstructor };
+export {
+    isFundamentalClass,
+    renderConstructorPropsInterface,
+    renderClassConstructor,
+    requiresFactoryInitialization,
+};

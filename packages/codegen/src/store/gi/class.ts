@@ -36,7 +36,12 @@ import {
     renderStaticHead,
     staticMembers,
 } from "./callables.js";
-import { isFundamentalClass, renderClassConstructor, renderConstructorPropsInterface } from "./constructor-props.js";
+import {
+    isFundamentalClass,
+    renderClassConstructor,
+    renderConstructorPropsInterface,
+    requiresFactoryInitialization,
+} from "./constructor-props.js";
 import { getDoc } from "./doc-spec.js";
 import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
@@ -146,7 +151,9 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
 };
 
 const classModifier = (context: ModuleContext, klass: GirClass): string =>
-    klass.isAbstract || isFundamentalClass(context, klass) ? "abstract " : "";
+    klass.isAbstract || isFundamentalClass(context, klass) || requiresFactoryInitialization(context, klass)
+        ? "abstract "
+        : "";
 
 const renderImplementsClause = (implemented: ImplementedRef[]): string => {
     const typeRefs = implemented.map((ref) => omittedTypeRef(ref.typeRef, ref.conflicts));

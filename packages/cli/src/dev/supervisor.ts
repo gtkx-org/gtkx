@@ -3,7 +3,7 @@ import { fork as nodeFork } from "node:child_process";
 import { type FSWatcher, watch as watchFs } from "node:fs";
 import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEV_ENTRY_ENV } from "./entry-env.js";
+import { DEV_CONFIG_ENV, DEV_ENTRY_ENV } from "./entry-env.js";
 
 type SupervisedChild = {
     killed: boolean;
@@ -24,6 +24,7 @@ type DevWatch = {
 type SupervisorState = {
     runnerPath: string;
     entryPath: string;
+    configFile: string;
     cwd: string;
     args: string[];
     watch: DevWatch | undefined;
@@ -37,6 +38,7 @@ type SupervisorState = {
 
 type DevSupervisorOptions = {
     entryPath: string;
+    configFile: string;
     cwd: string;
     args?: string[] | undefined;
     watch?: DevWatch | undefined;
@@ -128,7 +130,7 @@ const launch = (state: SupervisorState): void => {
     const child = state.fork(
         state.runnerPath,
         state.args,
-        { ...process.env, [DEV_ENTRY_ENV]: state.entryPath },
+        { ...process.env, [DEV_CONFIG_ENV]: state.configFile, [DEV_ENTRY_ENV]: state.entryPath },
         state.cwd,
     );
 
@@ -286,11 +288,12 @@ const installShutdown = (state: SupervisorState): void => {
 };
 
 const runDevSupervisor = async (options: DevSupervisorOptions): Promise<never> => {
-    const { entryPath, cwd, args = [], watch, fork = defaultForkRunner } = options;
+    const { entryPath, configFile, cwd, args = [], watch, fork = defaultForkRunner } = options;
 
     const state: SupervisorState = {
         runnerPath: fileURLToPath(DEV_RUNNER_URL),
         entryPath,
+        configFile,
         cwd,
         args,
         watch,

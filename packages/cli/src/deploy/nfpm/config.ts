@@ -114,6 +114,9 @@ const stagedFilesFor = (payload: DeployPayload, packager: NfpmPackager): StagedF
     ...payload.overlays[packager],
 ];
 
+const glibcMinimumForPackage = (payload: DeployPayload, packager: NfpmPackager): string | null =>
+    glibcMinimumForFiles(stagedFilesFor(payload, packager).map((file) => file.abs));
+
 const packagerSettings = (settings: DeploySettings, packager: NfpmPackager): NfpmConfig =>
     packager === "rpm" ? rpmSettings(settings) : debSettings(settings);
 
@@ -123,11 +126,14 @@ const releaseFor = (settings: DeploySettings, packager: NfpmPackager): string =>
 const descriptionFor = (settings: DeploySettings, packager: NfpmPackager): string =>
     packager === "rpm" ? rpmDescription(settings) : debDescription(settings);
 
-const renderNfpmConfig = (payload: DeployPayload, packager: NfpmPackager): NfpmConfig => {
+const renderNfpmConfig = (
+    payload: DeployPayload,
+    packager: NfpmPackager,
+    glibcMinimum: string | null,
+): NfpmConfig => {
     const settings = payload.settings;
     const isRpm = packager === "rpm";
     const staged = stagedFilesFor(payload, packager);
-    const glibcMinimum = glibcMinimumForFiles(staged.map((file) => file.abs));
     const depends = resolveDepends(settings, glibcMinimum);
 
     return {
@@ -153,4 +159,4 @@ const renderNfpmConfig = (payload: DeployPayload, packager: NfpmPackager): NfpmC
     };
 };
 
-export { type NfpmPackager, packageNameFor, renderNfpmConfig };
+export { glibcMinimumForPackage, type NfpmPackager, packageNameFor, renderNfpmConfig };

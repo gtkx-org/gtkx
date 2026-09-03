@@ -78,6 +78,7 @@
         "@gtkx/codegen": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/mcp": "workspace:*",
+        "@gtkx/native": "workspace:*",
         "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",

@@ -127,7 +127,7 @@ impl ArrayCodec {
             return None;
         };
         if ptr.is_null() {
-            return Some(self.decode_empty_sequence(env));
+            return Some(self.decode_null(env));
         }
         Some(self.decode_sized_array(env, *ptr, length))
     }

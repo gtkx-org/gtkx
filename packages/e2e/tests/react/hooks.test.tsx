@@ -211,7 +211,7 @@ describe("useProperty", () => {
         expect(result.current).toBeNull();
 
         await act(() => {
-            GObject.setObjectProperty(button, "actionName", "app.inspect");
+            GObject.setProperty(button, "actionName", "app.inspect");
         });
 
         expect(result.current).toBe("app.inspect");

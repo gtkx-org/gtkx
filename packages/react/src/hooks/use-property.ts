@@ -28,7 +28,7 @@ function useProperty<T extends GObject.Object, P extends PropertyName<T>>(
     const name = (resolved === null ? undefined : getPropertyName(resolved, propertyName)) ?? kebabCase(propertyName);
 
     return useObjectValue(object, `notify::${name}`, (obj) =>
-        obj === null ? undefined : GObject.getObjectProperty(obj, propertyName),
+        obj === null ? undefined : GObject.getProperty(obj, propertyName),
     );
 }
 

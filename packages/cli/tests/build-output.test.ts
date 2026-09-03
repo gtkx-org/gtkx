@@ -54,6 +54,31 @@ describe("gtkx build (separate output directories)", () => {
         expect(runBundle(project.root, APP_OUTPUT)).toBe("application");
     });
 
+    it("keeps a nested-first output protected by its unowned parent", () => {
+        using project = createCliProject({
+            prefix: "gtkx-build-output-nested-first-",
+            config: CONFIG,
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        runCliOrThrow(project, ["build", "src/helper.ts", "--out", join("dist", "helper")]);
+        expect(() => runCliOrThrow(project, ["build"])).toThrow();
+    });
+
+    it("refuses a nested output below an earlier GTKX build", () => {
+        using project = createCliProject({
+            prefix: "gtkx-build-output-managed-parent-",
+            config: CONFIG,
+            files: projectFiles(),
+            hasStore: true,
+        });
+
+        runCliOrThrow(project, ["build"]);
+        expect(() => runCliOrThrow(project, ["build", "src/helper.ts", "--out", join("dist", "helper")]))
+            .toThrow();
+    });
+
     it("rebuilds inside public without leaking transaction files", () => {
         using project = createCliProject({
             prefix: "gtkx-build-output-rebuild-",

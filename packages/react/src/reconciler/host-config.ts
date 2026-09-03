@@ -31,7 +31,7 @@ import {
 } from "./node.js";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { disconnectAllHandlers } from "./signals.js";
-import { releaseStyle } from "./style.js";
+import { flushStyles, releaseStyle } from "./style.js";
 import {
     didUpdateTextSurgically,
     enclosingHost,
@@ -92,6 +92,7 @@ const hostConfig = {
         flushTextHosts();
         flushBehaviors();
         flushAccessible();
+        flushStyles();
     },
     preparePortalMount: (): void => undefined,
     clearContainer: (): void => undefined,

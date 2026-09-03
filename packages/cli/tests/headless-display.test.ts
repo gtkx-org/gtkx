@@ -11,8 +11,21 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCliOrThrow } from "./cli-project.js";
 
-type ProcessEntry = { pid: number; processGroup: ProcessGroupIdentity; args: string[] };
-type DisplayProbe = { child: ChildProcess; runtimeDir: string; processes: ProcessEntry[] };
+type ProcessIdentity = {
+    parentId: number;
+    processGroupId: number;
+    sessionId: number;
+    startTime: string;
+    state: string;
+};
+type ProcessEntry = ProcessIdentity & { pid: number; args: string[] };
+type DisplayProbe = {
+    child: ChildProcess;
+    runtimeDir: string;
+    processes: ProcessEntry[];
+    processGroups: ProcessGroupIdentity[];
+    guard: ProcessGroupIdentity;
+};
 
 const PROCESS_TIMEOUT_MS = 30_000;
 const POLL_MS = 50;
@@ -28,16 +41,22 @@ const GUARDED_PROCESS_PROBE =
     "process.stdin.resume();";
 const DECOY_PROCESS_PROBE = "setInterval(() => {}, 1000);";
 
-const processIdentity = (pid: number): { parentId: number; processGroupId: number; state: string } | undefined => {
+const processIdentity = (pid: number): ProcessIdentity | undefined => {
     try {
         const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
         const fields = stat.slice(stat.lastIndexOf(") ") + 2).split(" ");
         const state = fields[0];
         const parentId = Number(fields[1]);
         const processGroupId = Number(fields[2]);
+        const sessionId = Number(fields[3]);
+        const startTime = fields[19];
 
-        return state !== undefined && Number.isSafeInteger(parentId) && Number.isSafeInteger(processGroupId)
-            ? { parentId, processGroupId, state }
+        return state !== undefined &&
+            startTime !== undefined &&
+            Number.isSafeInteger(parentId) &&
+            Number.isSafeInteger(processGroupId) &&
+            Number.isSafeInteger(sessionId)
+            ? { parentId, processGroupId, sessionId, startTime, state }
             : undefined;
     } catch {
         return undefined;
@@ -60,15 +79,23 @@ const childProcesses = (parentId: number): ProcessEntry[] =>
                     .toString()
                     .split("\0")
                     .filter((argument) => argument.length > 0);
-                const processGroup = processGroupIdentity(pid);
 
-                return processGroup === undefined ? [] : [{ pid, processGroup, args }];
+                return [{ pid, ...identity, args }];
             } catch {
                 return [];
             }
         });
 
-const isRunning = (pid: number): boolean => {
+const isRunning = (entry: Pick<ProcessEntry, "pid" | "startTime">): boolean => {
+    const current = processIdentity(entry.pid);
+
+    return current?.startTime === entry.startTime &&
+        current.state !== "Z" &&
+        current.state !== "X" &&
+        current.state !== "x";
+};
+
+const isPidRunning = (pid: number): boolean => {
     const state = processIdentity(pid)?.state;
 
     return state !== undefined && state !== "Z" && state !== "X" && state !== "x";
@@ -129,10 +156,64 @@ const firstOutputLine = (child: ChildProcess): Promise<string> =>
         child.once("error", onError);
     });
 
-const ownedDisplayProcesses = (parentId: number, runtimeDir: string): ProcessEntry[] =>
-    childProcesses(parentId).filter((entry) =>
-        entry.args.some((argument) => argument.includes(runtimeDir)),
+const hasProcessMarker = (pid: number): boolean => {
+    try {
+        return readFileSync(`/proc/${String(pid)}/environ`, "utf8")
+            .split("\0")
+            .some((entry) => entry.startsWith("GTKX_PROCESS_GUARD="));
+    } catch {
+        return false;
+    }
+};
+
+const processEntries = (): ProcessEntry[] =>
+    readdirSync("/proc")
+        .map(Number)
+        .filter((pid) => Number.isSafeInteger(pid) && pid > 1)
+        .flatMap((pid): ProcessEntry[] => {
+            const identity = processIdentity(pid);
+
+            if (identity === undefined) {
+                return [];
+            }
+
+            try {
+                const args = readFileSync(`/proc/${String(pid)}/cmdline`)
+                    .toString()
+                    .split("\0")
+                    .filter((argument) => argument.length > 0);
+
+                return [{ pid, ...identity, args }];
+            } catch {
+                return [];
+            }
+        });
+
+const ownedDisplayProcesses = (runtimeDir: string): ProcessEntry[] => {
+    const entries = processEntries();
+    const groups = new Set(
+        entries
+            .filter((entry) =>
+                entry.pid === entry.processGroupId &&
+                hasProcessMarker(entry.pid) &&
+                entry.args.some((argument) => argument.includes(runtimeDir)),
+            )
+            .map((entry) => entry.processGroupId),
     );
+
+    return entries.filter((entry) => groups.has(entry.processGroupId));
+};
+
+const ownedProcessGroups = (processes: ProcessEntry[]): ProcessGroupIdentity[] =>
+    processes.flatMap((entry): ProcessGroupIdentity[] => {
+        if (entry.pid !== entry.processGroupId || entry.pid !== entry.sessionId) {
+            return [];
+        }
+
+        const group = processGroupIdentity(entry.pid);
+
+        return group === undefined ? [] : [group];
+    });
 
 const startDisplayProbe = async (): Promise<DisplayProbe> => {
     const child = spawn(process.execPath, [...NODE_TYPESCRIPT_ARGS, HEADLESS_PROBE], {
@@ -148,13 +229,18 @@ const startDisplayProbe = async (): Promise<DisplayProbe> => {
         throw new Error("Headless display probe returned no runtime identity");
     }
 
-    const processes = ownedDisplayProcesses(parentId, runtimeDir);
+    const processes = ownedDisplayProcesses(runtimeDir);
+    const guardProcess = childProcesses(parentId).find((entry) =>
+        entry.args.some((argument) => argument.includes("process-guard")),
+    );
+    const guard = guardProcess === undefined ? undefined : processGroupIdentity(guardProcess.pid);
+    const processGroups = ownedProcessGroups(processes);
 
-    if (processes.length < 2) {
+    if (guard === undefined || processes.length < 3 || processGroups.length < 2) {
         throw new Error("Headless display probe returned no owned processes");
     }
 
-    return { child, runtimeDir, processes };
+    return { child, runtimeDir, processes, processGroups, guard };
 };
 
 const killOwnedProcessGroups = (groups: ProcessGroupIdentity[]): void => {
@@ -168,7 +254,8 @@ const stopProbe = (probe: DisplayProbe): void => {
         probe.child.kill("SIGKILL");
     }
 
-    killOwnedProcessGroups(probe.processes.map((entry) => entry.processGroup));
+    killProcessGroup(probe.guard);
+    killOwnedProcessGroups(probe.processGroups);
     rmSync(probe.runtimeDir, { recursive: true, force: true });
 };
 
@@ -179,10 +266,26 @@ describe("headless display process ownership", () => {
         try {
             probe.child.kill("SIGKILL");
             await waitUntil(() =>
-                probe.processes.every((entry) => !isRunning(entry.pid)) && !existsSync(probe.runtimeDir),
+                probe.processes.every((entry) => !isRunning(entry)) && !existsSync(probe.runtimeDir),
             );
             expect(probe.processes.some((entry) => entry.args[0]?.endsWith("/sway") === true)).toBe(true);
             expect(probe.processes.some((entry) => entry.args[0]?.endsWith("/dbus-daemon") === true)).toBe(true);
+            expect(existsSync(probe.runtimeDir)).toBe(false);
+        } finally {
+            stopProbe(probe);
+        }
+    });
+
+    it("cleans up when its Node guard and parent are hard-killed", async () => {
+        const probe = await startDisplayProbe();
+
+        try {
+            killProcessGroup(probe.guard);
+            probe.child.kill("SIGKILL");
+            await waitUntil(() =>
+                probe.processes.every((entry) => !isRunning(entry)) && !existsSync(probe.runtimeDir),
+            );
+            expect(probe.processes.some((entry) => entry.args[0]?.endsWith("/sway") === true)).toBe(true);
             expect(existsSync(probe.runtimeDir)).toBe(false);
         } finally {
             stopProbe(probe);
@@ -209,14 +312,14 @@ describe("headless display process ownership", () => {
             });
             guarded.stdin?.end();
             await guardedExit;
-            expect(decoy.pid === undefined ? false : isRunning(decoy.pid)).toBe(true);
+            expect(decoy.pid === undefined ? false : isPidRunning(decoy.pid)).toBe(true);
         } finally {
             guarded.kill("SIGKILL");
             decoy.kill("SIGKILL");
         }
     });
 
-    it("throws after rolling back a spawn with an unidentified cleanup directory", () => {
+    it("throws for an unidentified cleanup directory", () => {
         const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-guard-rollback-"));
 
         try {

@@ -86,7 +86,7 @@ impl ArrayContainer for CursorArrayCodec {
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr(self.name())? else {
-            return codec.decode_empty_sequence(env);
+            return codec.decode_null(env);
         };
         let length = self.remaining_items(codec, ptr, ffi_args, arg_codecs)?;
 

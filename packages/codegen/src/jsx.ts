@@ -1,5 +1,6 @@
 import type { Library } from "./gir/library.js";
 import type { StoreOptions } from "./store/store-fs.js";
+import type { PreparedStore } from "./store/store-fs.js";
 import {
     computeJsxFingerprint,
     FINGERPRINT_FILENAME,
@@ -22,11 +23,13 @@ type RunJsxCodegenOptions = {
     userOmittedProps: OmittedProps;
     isGiRegenerated: boolean;
     isForced: boolean;
+    giStoreDir: string;
 };
 
 type RunJsxCodegenResult = {
     isRegenerated: boolean;
     intrinsicElementCount: number;
+    store?: PreparedStore;
 };
 
 const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodegenResult> => {
@@ -61,7 +64,7 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
         omittedProps,
     });
 
-    writeJsxStore({
+    const store = writeJsxStore({
         options: options.jsx,
         namespaces,
         metadata,
@@ -74,9 +77,10 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
             },
             { relativePath: ELEMENTS_FILENAME, content: renderGeneratedElements(elements) },
         ],
+        giStoreDir: options.giStoreDir,
     });
 
-    return { isRegenerated: true, intrinsicElementCount };
+    return { isRegenerated: true, intrinsicElementCount, store };
 };
 
 const storeExternalPackages = (library: Library): string[] => {

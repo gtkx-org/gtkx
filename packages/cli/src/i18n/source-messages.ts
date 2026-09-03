@@ -71,8 +71,9 @@ type TranslationReferences = {
     calls: Set<number>;
     elements: Set<number>;
     entryLocations: Map<string, SourcePoint[]>;
-    locations: Set<string>;
+    locations: Map<string, SourcePoint>;
     masks: SourceMask[];
+    sourcePoints: Map<number, SourcePoint>;
 };
 type SourceMask = { end: number; start: number };
 type SourcePoint = { column: number; line: number };
@@ -86,6 +87,7 @@ type ImportedBinding = {
 type TranslationHookBinding = { call: types.CallExpression; isCanonical: boolean };
 type TranslationMemberExpression = types.MemberExpression | types.OptionalMemberExpression;
 type ResolvedBinding = NonNullable<ReturnType<Scope["getBinding"]>>;
+type LocatableNode = { loc?: { start: SourcePoint } | null | undefined };
 
 const CONTEXT_SEPARATOR = "\u{4}";
 const DEFAULT_NAMESPACE = "translation";
@@ -111,6 +113,98 @@ const STATIC_KEY_WRAPPER_TYPES: ReadonlySet<string> = new Set([
     "TSTypeAssertion",
     "TSNonNullExpression",
 ]);
+
+class SourceExtractionError extends Error {}
+
+const sourceErrorMessage = (error: unknown): string =>
+    error instanceof Error ? error.message : String(error);
+
+const projectSourcePath = (root: string, path: string): string => {
+    const absolute = isAbsolute(path) ? resolve(path) : resolve(root, path);
+
+    return toPosixPath(isPathInside(root, absolute) ? relative(root, absolute) : path);
+};
+
+const sourceExtractionError = (
+    root: string,
+    path: string,
+    point: SourcePoint | null,
+    error: unknown,
+): SourceExtractionError => {
+    if (error instanceof SourceExtractionError) {
+        return error;
+    }
+
+    const file = projectSourcePath(root, path);
+    const location = point === null
+        ? file
+        : `${file}:${String(point.line)}:${String(point.column + 1)}`;
+
+    return new SourceExtractionError(`${location}: ${sourceErrorMessage(error)}`, { cause: error });
+};
+
+const locatablePoint = (node: LocatableNode): SourcePoint | null => {
+    const location = node.loc?.start;
+
+    return location === undefined ? null : { column: location.column, line: location.line };
+};
+
+const isSourcePoint = (value: unknown): value is SourcePoint =>
+    typeof value === "object" &&
+    value !== null &&
+    "column" in value &&
+    typeof value.column === "number" &&
+    "line" in value &&
+    typeof value.line === "number";
+
+const errorSourcePoint = (error: unknown): SourcePoint | null => {
+    if (typeof error !== "object" || error === null) {
+        return null;
+    }
+
+    if ("loc" in error && isSourcePoint(error.loc)) {
+        return error.loc;
+    }
+
+    return "location" in error && isSourcePoint(error.location) ? error.location : null;
+};
+
+const atSourceNode = <T>(
+    root: string,
+    path: string,
+    node: LocatableNode,
+    operation: () => T,
+): T => {
+    try {
+        return operation();
+    } catch (error) {
+        throw sourceExtractionError(root, path, locatablePoint(node), error);
+    }
+};
+
+const atExtractedLocation = <T>(
+    root: string,
+    locations: SourceLocation[],
+    operation: () => T,
+): T => {
+    const location = locations.find((candidate) =>
+        candidate.line !== undefined && candidate.column !== undefined);
+
+    if (location?.line === undefined || location.column === undefined) {
+        return operation();
+    }
+
+    try {
+        return operation();
+    } catch (error) {
+        throw sourceExtractionError(
+            root,
+            location.file,
+            { column: location.column, line: location.line },
+            error,
+        );
+    }
+};
 
 const quietLogger = (): { logger: Logger; reports: string[] } => {
     const reports: string[] = [];
@@ -223,11 +317,15 @@ const expandedPlural = (entry: ExtractedKey): { baseKey: string; variant: Plural
     };
 };
 
-const groupedPlurals = (entries: ExtractedKey[]): PluralGroup[] => {
+const groupedPlurals = (root: string, entries: ExtractedKey[]): PluralGroup[] => {
     const groups: Map<string, PluralGroup> = new Map();
 
     for (const entry of entries) {
-        const { baseKey, variant } = expandedPlural(entry);
+        const { baseKey, variant } = atExtractedLocation(
+            root,
+            entry.locations ?? [],
+            () => expandedPlural(entry),
+        );
         const namespace = namespaceFor(entry);
         const key = `${namespace}\0${baseKey}`;
         const group = groups.get(key) ?? { baseKey, namespace, variants: [] };
@@ -276,8 +374,13 @@ const pluralMessage = ({ baseKey, namespace, variants }: PluralGroup): SourceMes
     };
 };
 
-const pluralMessages = (entries: ExtractedKey[]): SourceMessage[] =>
-    groupedPlurals(entries).map((group) => pluralMessage(group));
+const pluralMessages = (root: string, entries: ExtractedKey[]): SourceMessage[] =>
+    groupedPlurals(root, entries).map((group) =>
+        atExtractedLocation(
+            root,
+            group.variants.flatMap((variant) => variant.locations),
+            () => pluralMessage(group),
+        ));
 
 const assertCardinal = (entry: ExtractedKey): void => {
     if (entry.isOrdinal === true) {
@@ -285,12 +388,14 @@ const assertCardinal = (entry: ExtractedKey): void => {
     }
 };
 
-const sourceMessages = (entries: ExtractedKey[]): SourceMessage[] => {
+const sourceMessages = (root: string, entries: ExtractedKey[]): SourceMessage[] => {
     const points: ExtractedKey[] = [];
     const plurals: ExtractedKey[] = [];
 
     for (const entry of entries) {
-        assertCardinal(entry);
+        atExtractedLocation(root, entry.locations ?? [], () => {
+            assertCardinal(entry);
+        });
 
         if (entry.isExpandedPlural === true) {
             plurals.push(entry);
@@ -304,7 +409,11 @@ const sourceMessages = (entries: ExtractedKey[]): SourceMessage[] => {
         points.push(entry);
     }
 
-    return [...points.map((entry) => pointMessage(entry)), ...pluralMessages(plurals)];
+    return [
+        ...points.map((entry) =>
+            atExtractedLocation(root, entry.locations ?? [], () => pointMessage(entry))),
+        ...pluralMessages(root, plurals),
+    ];
 };
 
 const compareMessages = (left: SourceMessage, right: SourceMessage): number =>
@@ -745,16 +854,14 @@ const registerSourceMask = (node: types.Node, references: TranslationReferences)
 const sourceLocationKey = (line: number, column: number): string => `${String(line)}:${String(column)}`;
 
 const sourcePoint = (node: types.Node): SourcePoint | null => {
-    const location = node.loc?.start;
-
-    return location === undefined ? null : { column: location.column, line: location.line };
+    return locatablePoint(node);
 };
 
 const registerSourceLocation = (node: types.Node, references: TranslationReferences): SourcePoint | null => {
     const point = sourcePoint(node);
 
     if (point !== null) {
-        references.locations.add(sourceLocationKey(point.line, point.column));
+        references.locations.set(sourceLocationKey(point.line, point.column), point);
     }
 
     return point;
@@ -901,6 +1008,11 @@ const registerCallReference = (
     references.calls.add(nodeStart(callPath));
     const firstArgument = callPath.node.arguments[0];
     const point = registerSourceLocation(firstArgument ?? callPath.node, references);
+
+    if (point !== null) {
+        references.sourcePoints.set(nodeStart(callPath), point);
+    }
+
     registerEntryLocation(extractedEntryKey(callPath.node, keyPrefix), point, references);
 };
 
@@ -909,6 +1021,26 @@ const parserPlugins = (lang: ReturnType<typeof sourceLanguage>): ("decorators" |
     ...(lang === "ts" || lang === "tsx" ? ["typescript" as const] : []),
     ...(lang === "jsx" || lang === "tsx" ? ["jsx" as const] : []),
 ];
+
+const parseTranslationReferences = (
+    root: string,
+    path: string,
+    source: string,
+    lang: ReturnType<typeof sourceLanguage>,
+) => {
+    try {
+        return parseBabelSync(source, {
+            ast: true,
+            babelrc: false,
+            configFile: false,
+            filename: projectSourcePath(root, path),
+            parserOpts: { createParenthesizedExpressions: true, plugins: parserPlugins(lang) },
+            sourceType: "module",
+        });
+    } catch (error) {
+        throw sourceExtractionError(root, path, errorSourcePoint(error), error);
+    }
+};
 
 const registerIdentifierTranslationCall = (
     callPath: NodePath<types.CallExpression>,
@@ -1010,6 +1142,19 @@ const registerUnrecognizedElementMasks = (
     }
 };
 
+const registerElementReference = (
+    elementPath: NodePath,
+    references: TranslationReferences,
+): void => {
+    const start = nodeStart(elementPath);
+    const point = registerSourceLocation(elementPath.node, references);
+    references.elements.add(start);
+
+    if (point !== null) {
+        references.sourcePoints.set(start, point);
+    }
+};
+
 const registerTranslationElement = (elementPath: NodePath, references: TranslationReferences): void => {
     const name = elementPath.get("name");
 
@@ -1024,8 +1169,7 @@ const registerTranslationElement = (elementPath: NodePath, references: Translati
     }
 
     if (kind === "canonical") {
-        references.elements.add(nodeStart(elementPath));
-        registerSourceLocation(elementPath.node, references);
+        registerElementReference(elementPath, references);
     } else if (TRANS_ELEMENTS.has(name.node.name)) {
         registerUnrecognizedElementMasks(elementPath, name, references);
     }
@@ -1043,18 +1187,12 @@ const maskUnrecognizedTranslations = (source: string, references: TranslationRef
 };
 
 const translationReferences = (
+    root: string,
     path: string,
     source: string,
     lang: ReturnType<typeof sourceLanguage>,
 ): TranslationReferences => {
-    const parsed = parseBabelSync(source, {
-        ast: true,
-        babelrc: false,
-        configFile: false,
-        filename: path,
-        parserOpts: { createParenthesizedExpressions: true, plugins: parserPlugins(lang) },
-        sourceType: "module",
-    });
+    const parsed = parseTranslationReferences(root, path, source, lang);
 
     if (parsed === null) {
         throw new Error(`Translation extraction could not parse ${path}`);
@@ -1064,22 +1202,31 @@ const translationReferences = (
         calls: new Set(),
         elements: new Set(),
         entryLocations: new Map(),
-        locations: new Set(),
+        locations: new Map(),
         masks: [],
+        sourcePoints: new Map(),
     };
 
     traverse(parsed, {
         CallExpression(callPath) {
-            registerTranslationCall(callPath, references);
+            atSourceNode(root, path, callPath.node, () => {
+                registerTranslationCall(callPath, references);
+            });
         },
         JSXOpeningElement(elementPath) {
-            registerTranslationElement(elementPath, references);
+            atSourceNode(root, path, elementPath.node, () => {
+                registerTranslationElement(elementPath, references);
+            });
         },
         OptionalCallExpression(callPath) {
-            assertSupportedOptionalCall(callPath);
+            atSourceNode(root, path, callPath.node, () => {
+                assertSupportedOptionalCall(callPath);
+            });
         },
         TaggedTemplateExpression(tagPath) {
-            assertUnsupportedTranslationTag(tagPath);
+            atSourceNode(root, path, tagPath.node, () => {
+                assertUnsupportedTranslationTag(tagPath);
+            });
         },
     });
 
@@ -1165,22 +1312,44 @@ const assertSupportedTransElement = (node: ESTree.JSXOpeningElement, references:
     }
 };
 
-const assertSupportedTranslationSyntax = (path: string, source: string): TranslationReferences => {
+const assertSupportedTranslationSyntax = (root: string, path: string, source: string): TranslationReferences => {
     const lang = sourceLanguage(path);
 
     if (lang === undefined) {
-        return { calls: new Set(), elements: new Set(), entryLocations: new Map(), locations: new Set(), masks: [] };
+        return {
+            calls: new Set(),
+            elements: new Set(),
+            entryLocations: new Map(),
+            locations: new Map(),
+            masks: [],
+            sourcePoints: new Map(),
+        };
     }
 
-    const parsed = parseSync(path, source, { lang });
-    const references = translationReferences(path, source, lang);
+    let parsed: ReturnType<typeof parseSync>;
+
+    try {
+        parsed = parseSync(projectSourcePath(root, path), source, { lang });
+    } catch (error) {
+        throw sourceExtractionError(root, path, errorSourcePoint(error), error);
+    }
+
+    const references = translationReferences(root, path, source, lang);
 
     new Visitor({
         CallExpression(node) {
-            assertSupportedTranslationCall(node, references);
+            try {
+                assertSupportedTranslationCall(node, references);
+            } catch (error) {
+                throw sourceExtractionError(root, path, references.sourcePoints.get(node.start) ?? null, error);
+            }
         },
         JSXOpeningElement(node) {
-            assertSupportedTransElement(node, references);
+            try {
+                assertSupportedTransElement(node, references);
+            } catch (error) {
+                throw sourceExtractionError(root, path, references.sourcePoints.get(node.start) ?? null, error);
+            }
         },
     }).visit(parsed.program);
 
@@ -1476,12 +1645,19 @@ const extractedSourcePoints = (root: string, entries: ExtractedKeysMap): Set<str
     return points;
 };
 
-const hasMissingSourcePoint = (
+const missingSourcePoint = (
     file: string,
     references: TranslationReferences,
     extracted: Set<string>,
-): boolean =>
-    references.locations.values().some((location) => !extracted.has(`${file}\0${location}`));
+): SourcePoint | null => {
+    for (const [location, point] of references.locations) {
+        if (!extracted.has(`${file}\0${location}`)) {
+            return point;
+        }
+    }
+
+    return null;
+};
 
 const assertAllReferencesExtracted = (
     root: string,
@@ -1491,8 +1667,15 @@ const assertAllReferencesExtracted = (
     const extracted = extractedSourcePoints(root, entries);
 
     for (const [file, sourceReferences] of references) {
-        if (hasMissingSourcePoint(file, sourceReferences, extracted)) {
-            throw new Error("A translation expression could not be extracted safely");
+        const point = missingSourcePoint(file, sourceReferences, extracted);
+
+        if (point !== null) {
+            throw sourceExtractionError(
+                root,
+                file,
+                point,
+                new Error("A translation expression could not be extracted safely"),
+            );
         }
     }
 };
@@ -1508,7 +1691,7 @@ const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<
     const references: Map<string, TranslationReferences> = new Map();
 
     for (const [file, source] of sources) {
-        references.set(file, assertSupportedTranslationSyntax(file, source));
+        references.set(file, assertSupportedTranslationSyntax(root, file, source));
     }
 
     let extracted: ExtractedKeysMap | undefined;
@@ -1542,7 +1725,7 @@ const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<
         throw new Error(reports.join("\n") || "i18next extraction failed");
     }
 
-    return sourceMessages(extracted.values().toArray())
+    return sourceMessages(root, extracted.values().toArray())
         .map((message) => inferLocations(message, sources))
         .toSorted(compareMessages);
 };

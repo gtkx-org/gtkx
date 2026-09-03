@@ -18,7 +18,7 @@ const BASE_ARGS = ["--no-interactive", "--application-id", APPLICATION_ID, "--pa
 const ICON_PATH = `data/icons/hicolor/scalable/apps/${APPLICATION_ID}.svg`;
 const STALE_FILE = "stale.txt";
 const CUSTOM_SOURCE = "src/custom.ts";
-const MISE_PIN = '[tools]\nnode = "26"\n';
+const MISE_PIN = '[tools]\nnode = "26.7.0"\n';
 
 const create = (args: string[] = []): CreateRun => runCreate({ args: [...BASE_ARGS, ...args] });
 const getScripts = (run: CreateRun): Scripts => readManifest(run).scripts as Scripts;
@@ -150,6 +150,52 @@ describe("create-gtkx and the package manager it scaffolds for", () => {
         } finally {
             removeRun(npmRun);
             removeRun(yarnRun);
+        }
+    });
+
+    it("can leave dependency installation to the user", () => {
+        const run = create(["--skip-install"]);
+
+        try {
+            expect(run.status).toBe(0);
+            expect(run.installs).toEqual([]);
+            expectGeneratedConfig(run);
+            expect(readManifest(run).dependencies).toEqual({
+                "@gtkx/cairo": "^2.0.0-beta.2",
+                "@gtkx/css": "^2.0.0-beta.2",
+                "@gtkx/react": "^2.0.0-beta.2",
+                "@gtkx/runtime": "^2.0.0-beta.2",
+                react: "latest",
+            });
+            expect(readManifest(run).devDependencies).toEqual({
+                "@gtkx/cli": "^2.0.0-beta.2",
+                "@gtkx/config": "^2.0.0-beta.2",
+                "@gtkx/mcp": "^2.0.0-beta.2",
+                "@gtkx/testing": "^2.0.0-beta.2",
+                "@types/node": "latest",
+                "@types/react": "latest",
+                typescript: "latest",
+                vite: "latest",
+                vitest: "latest",
+            });
+        } finally {
+            removeRun(run);
+        }
+    });
+});
+
+describe("create-gtkx runtime requirements", () => {
+    it("rejects runtimes below the supported Node.js version before scaffolding", () => {
+        const run = runCreate({ args: [...BASE_ARGS, "--skip-install"], nodeVersion: "26.6.0" });
+
+        try {
+            expect(() => {
+                if (run.status !== 0) {
+                    throw new Error(run.output);
+                }
+            }).toThrow();
+        } finally {
+            removeRun(run);
         }
     });
 });

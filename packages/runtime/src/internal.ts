@@ -19,6 +19,7 @@ type SignalMethodReceiver<T, K extends PropertyKey> = T extends {
         : unknown
     : unknown;
 
+export { preserveArrayNull } from "./descriptors.js";
 /** @internal */
 export { registerElementMetadata } from "./element-metadata.js";
 export {
@@ -27,29 +28,29 @@ export {
     registeredElementSignals,
 } from "./element-metadata.js";
 export { createErrorDomain } from "./error.js";
-export { type ApplicationInstance, getApplicationInstance } from "./lifecycle.js";
 export { markSyntheticSignalMembers };
+export { type ApplicationInstance, getApplicationInstance } from "./lifecycle.js";
 export {
     descriptorFreePropertySpec,
     propertyMapOverride,
     writablePropertyMapOverride,
 } from "./property-brand.js";
 export { getExactWrapperClass, resolveWrapperClass } from "./registry.js";
+export type { SignalMethodReceiver };
 export {
     classSignalMember,
     naturalSignalMember,
     signalEmitMapOverride,
     signalMapOverride,
 } from "./signal-brand.js";
-export type { SignalMethodReceiver };
 export { hasSignalListener } from "./signal.js";
+export { emitSignalByName, signalConnect, signalEmit };
 export {
     canonicalDetailedSignalName,
     canonicalSignalName,
     connectSignalByName,
     installSignalDispatch,
 } from "./signal.js";
-export { emitSignalByName, signalConnect, signalEmit };
 export { resolveType } from "./type.js";
 export {
     fromValue,

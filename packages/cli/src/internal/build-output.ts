@@ -1,6 +1,6 @@
 import { isPathInside, isRecord } from "@gtkx/utils";
 import { lstatSync, readdirSync } from "node:fs";
-import { join, relative, resolve, sep } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import {
     BUILD_MANIFEST_FILENAME,
     BUILD_MANIFEST_GENERATOR,
@@ -56,8 +56,22 @@ const isReusableBuildDirectory = (path: string): boolean => {
 const buildOutputError = (root: string): Error =>
     new Error(`Build output must be an empty directory or an earlier GTKX build below the project root ${root}`);
 
+const hasGtkxBuildAncestor = (root: string, outDir: string): boolean => {
+    let ancestor = dirname(outDir);
+
+    while (isPathInside(root, ancestor)) {
+        if (isGtkxBuildDirectory(ancestor)) {
+            return true;
+        }
+
+        ancestor = dirname(ancestor);
+    }
+
+    return false;
+};
+
 const assertSafeBuildLocation = (root: string, outDir: string): void => {
-    if (!isPathInside(root, outDir) || hasSymlinkComponent(root, outDir)) {
+    if (!isPathInside(root, outDir) || hasSymlinkComponent(root, outDir) || hasGtkxBuildAncestor(root, outDir)) {
         throw buildOutputError(root);
     }
 };

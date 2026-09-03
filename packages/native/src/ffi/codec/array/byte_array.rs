@@ -70,7 +70,7 @@ impl ArrayContainer for GByteArrayCodec {
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GByteArray")? else {
-            return codec.decode_empty_sequence(env);
+            return codec.decode_null(env);
         };
 
         let byte_array = ptr.cast::<glib::ffi::GByteArray>();

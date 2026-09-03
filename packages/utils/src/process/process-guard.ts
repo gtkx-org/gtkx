@@ -12,6 +12,7 @@ type GuardJob = {
     marker: string;
     processGroup: ProcessGroupIdentity;
     cleanupDirectories: CleanupDirectoryIdentity[];
+    signal: NodeJS.Signals;
 };
 
 const state: { bufferedCommands: string; isSweeping: boolean; jobs: Map<string, GuardJob> } = {
@@ -43,7 +44,8 @@ const isGuardJob = (value: unknown): value is GuardJob =>
     typeof value.marker === "string" &&
     isProcessGroupIdentity(value.processGroup) &&
     Array.isArray(value.cleanupDirectories) &&
-    value.cleanupDirectories.every(isCleanupDirectoryIdentity);
+    value.cleanupDirectories.every(isCleanupDirectoryIdentity) &&
+    (value.signal === "SIGKILL" || value.signal === "SIGCONT");
 
 const applyCommand = (command: string): void => {
     const operation = command[0];
@@ -78,8 +80,11 @@ const receiveCommands = (chunk: Buffer | string): void => {
 
 const killJobs = (): void => {
     for (const job of state.jobs.values()) {
-        killProcessGroup(job.processGroup);
-        killMarkedProcesses(job.marker);
+        killProcessGroup(job.processGroup, job.signal);
+
+        if (job.signal === "SIGKILL") {
+            killMarkedProcesses(job.marker);
+        }
     }
 };
 
@@ -105,12 +110,11 @@ const sweep = (): void => {
     state.isSweeping = true;
     applyCommand(state.bufferedCommands);
     killJobs();
+    removeCleanupDirectories();
 
     if (GUARD_PREFIX.length > 0) {
         killMarkedProcessRun(GUARD_PREFIX);
     }
-
-    removeCleanupDirectories();
     process.exit(0);
 };
 

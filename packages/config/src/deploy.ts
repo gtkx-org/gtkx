@@ -132,7 +132,7 @@ const extraFileEntrySchema = z.union([text(SOURCE_PATH_ERROR), extraFileSchema],
 const launcherEnvSchema = z.record(
     z.string({ error: LAUNCHER_ENV_NAME_ERROR }).regex(LAUNCHER_ENV_NAME_PATTERN, { error: LAUNCHER_ENV_NAME_ERROR }),
     z.string({ error: LAUNCHER_ENV_ERROR }).refine((value) => !value.includes("\0"), { error: LAUNCHER_ENV_ERROR }),
-    { error: LAUNCHER_ENV_ERROR },
+    { error: (issue) => issue.code === "invalid_key" ? LAUNCHER_ENV_NAME_ERROR : LAUNCHER_ENV_ERROR },
 );
 
 const nodeFlagsSchema = z.array(

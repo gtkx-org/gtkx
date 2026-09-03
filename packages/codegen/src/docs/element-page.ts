@@ -13,6 +13,7 @@ import {
     type ResolvedAccessor,
     resolvePropertyMetadata,
 } from "../store/gi/property-accessor.js";
+import { acceptedChildTypesFor } from "../store/jsx/accepted-child-types.js";
 import { elementPropTypeFor } from "../store/jsx/element-prop-imports.js";
 import {
     getGlibName,
@@ -42,6 +43,7 @@ import {
     renderDocsType,
     signalTags,
     sortedMetaBlocks,
+    staticSectionBlocks,
 } from "./render.js";
 
 /** Shared state an element's reference page renders from. */
@@ -147,10 +149,10 @@ const propertyEntry = (options: PropertyEntryOptions): MetaDocEntry => {
             ? []
             : [`read-only, observe with \`onNotify${upperFirst(jsName)}\``]),
         ...(hasDescriptorFreeGetter(hiddenAccessor)
-            ? ["instance read with `GObject.getObjectProperty`"]
+            ? ["instance read with `GObject.getProperty`"]
             : []),
         ...(hasDescriptorFreeSetter(hiddenAccessor)
-            ? ["instance write with `GObject.setObjectProperty`"]
+            ? ["instance write with `GObject.setProperty`"]
             : []),
     ];
 
@@ -195,7 +197,44 @@ const hiddenPropertyAccessor = (
 const handwrittenPropMeta = (prop: HandwrittenProp, owner: MemberOwner): string =>
     [`\`${prop.type}\``, ...(owner.origin === undefined ? [] : [`from \`${owner.origin}\``])].join(" · ");
 
-const handwrittenPropEntries = (owner: MemberOwner, seen: Set<string>): MetaDocEntry[] => {
+const acceptedChildTypesDoc = (context: ElementPageContext, owner: MemberOwner): string => {
+    if (owner.glibName === undefined) {
+        return "";
+    }
+
+    const accepted = acceptedChildTypesFor(owner.glibName);
+
+    if (accepted.length === 0) {
+        return "";
+    }
+
+    const labels = accepted.map((name) => glibLabel(context, name));
+    const typeList = labels.length === 1
+        ? labels[0] ?? ""
+        : `${labels.slice(0, -1).join(", ")} or ${labels.at(-1) ?? ""}`;
+
+    return (
+        "This remains a React `ReactNode` slot, so fragments, arrays, conditionals, and nullish values work " +
+        `normally. Each GTKX element rendered into it must create ${typeList} or a subtype.`
+    );
+};
+
+const handwrittenPropEntry = (
+    context: ElementPageContext,
+    owner: MemberOwner,
+    prop: HandwrittenProp,
+): MetaDocEntry => {
+    const childTypesDoc = prop.name === "children" ? acceptedChildTypesDoc(context, owner) : "";
+    const doc = [prop.doc, childTypesDoc].filter((part) => part.length > 0).join("\n\n");
+
+    return { name: prop.name, meta: handwrittenPropMeta(prop, owner), doc };
+};
+
+const handwrittenPropEntries = (
+    context: ElementPageContext,
+    owner: MemberOwner,
+    seen: Set<string>,
+): MetaDocEntry[] => {
     const declared = owner.glibName === undefined ? undefined : elementPropTypeFor(owner.glibName);
 
     if (declared === undefined) {
@@ -210,7 +249,7 @@ const handwrittenPropEntries = (owner: MemberOwner, seen: Set<string>): MetaDocE
         }
 
         seen.add(prop.name);
-        entries.push({ name: prop.name, meta: handwrittenPropMeta(prop, owner), doc: prop.doc });
+        entries.push(handwrittenPropEntry(context, owner, prop));
     }
 
     return entries;
@@ -233,7 +272,7 @@ const propJsName = (property: GirProperty, owner: MemberOwner, seen: Set<string>
 };
 
 const ownerPropEntries = (context: ElementPageContext, owner: MemberOwner, seen: Set<string>): MetaDocEntry[] => {
-    const entries: MetaDocEntry[] = [...handwrittenPropEntries(owner, seen)];
+    const entries: MetaDocEntry[] = [...handwrittenPropEntries(context, owner, seen)];
     const setup = propertyAccessorSetup(context, owner);
 
     for (const property of owner.klass.properties) {
@@ -336,6 +375,31 @@ const methodsSection = (entry: GlibNamedClass, context: ElementPageContext, self
     return methodsSectionBlocks(entries, intro);
 };
 
+const staticMethodsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
+    const importPath = `@gtkx/gi/${namespaceDirectory(entry.namespace)}`;
+
+    return staticSectionBlocks({
+        title: "## Static methods",
+        intro: `Static methods are called on \`${selfType}\`, imported from \`${importPath}\`.`,
+        context: docsSignatureContext(entry.namespace, context.library),
+        callables: entry.klass.functions,
+        siblings: [...entry.klass.constructors, ...entry.klass.functions],
+    });
+};
+
+const gtkxNotes = (entry: GlibNamedClass): string[] => {
+    if (entry.glibName !== "AdwApplication") {
+        return [];
+    }
+
+    return [
+        "> **GTKX JSX:** The automatic `shortcuts-dialog.ui` behavior described above does not apply to " +
+        "GTKX applications because JSX is the interface definition and GTKX does not load `.ui` " +
+        "definitions. Define the action, accelerator, and `AdwShortcutsDialog` in JSX as shown in " +
+        "[Menus, Accelerators, and Shortcuts](https://gtkx.dev/v2/tutorial/actions-menus-shortcuts).",
+    ];
+};
+
 const renderElementPage = (entry: GlibNamedClass, context: ElementPageContext): string => {
     const selfType = qualifiedClassName(entry.namespace.name, entry.klass.name);
 
@@ -343,9 +407,11 @@ const renderElementPage = (entry: GlibNamedClass, context: ElementPageContext): 
         frontmatter(entry),
         `# ${entry.glibName}`,
         docMarkdown(entry.klass.doc),
+        ...gtkxNotes(entry),
         ...annotationNotes(entry.klass.annotations),
         importBlock(entry),
         ...hierarchySection(entry, context),
+        ...staticMethodsSection(entry, context, selfType),
         ...propsSection(entry, context, selfType),
         ...signalsSection(entry, context, selfType),
         ...methodsSection(entry, context, selfType),

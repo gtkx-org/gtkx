@@ -43,11 +43,11 @@ const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => 
 
 const readFileRevision = (path: string): Promise<string> => readFile(path, "utf8");
 
-const defaultDevRunnerDeps = (): DevRunnerDeps => ({
+const defaultDevRunnerDeps = (configFile: string): DevRunnerDeps => ({
     createServer,
     waitForApplicationId,
     getConfiguredApplicationId: async (root: string) => {
-        const loaded = await loadConfig(root, { mode: DEV_MODE });
+        const loaded = await loadConfig(root, { mode: DEV_MODE, configFile });
 
         return loaded.config.applicationId;
     },
@@ -87,7 +87,7 @@ const defaultDevRunnerDeps = (): DevRunnerDeps => ({
     staleExportName,
     readFileRevision,
     plugins: (entryPath) => [
-        ...gtkxVitePlugins({ mode: DEV_MODE, entryPath }),
+        ...gtkxVitePlugins({ mode: DEV_MODE, entryPath, configFile }),
         ...gtkxFastRefresh(),
         gtkxReactDomPrebundle(),
     ],

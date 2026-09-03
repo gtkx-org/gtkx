@@ -4,26 +4,66 @@ import { STYLE_PROVIDER_PRIORITY_APPLICATION } from "@gtkx/gi/gtk";
 import { createLogger, type Logger } from "@gtkx/utils";
 import { applyWrite } from "./signals.js";
 
-type StyleSlot = { provider: Gtk.CssProvider; className: string; css: string };
+type StyleSlot = { className: string; css: string };
 
 const CLASS_PREFIX = "gtkx-s";
 const CSS_CLASSES_PROP = "cssClasses";
 const STYLE_PRIORITY = STYLE_PROVIDER_PRIORITY_APPLICATION + 1;
 const log: Logger = createLogger("react");
 const styles: WeakMap<Gtk.Widget, StyleSlot> = new WeakMap();
+const rules: Map<string, string> = new Map();
 const pool: StyleSlot[] = [];
 const counter: { next: number } = { next: 0 };
+const sheet: { provider: Gtk.CssProvider | null; isDirty: boolean; isFlushScheduled: boolean } = {
+    provider: null,
+    isDirty: false,
+    isFlushScheduled: false,
+};
+
+const ensureProvider = (): Gtk.CssProvider => {
+    if (sheet.provider !== null) {
+        return sheet.provider;
+    }
+
+    sheet.provider = registerProviderForDefaultDisplay({ priority: STYLE_PRIORITY, followsPreferences: false });
+    attachParsingErrorLogger(sheet.provider, log, "a style prop");
+
+    return sheet.provider;
+};
+
+const flushStyles = (): void => {
+    if (!sheet.isDirty) {
+        return;
+    }
+
+    ensureProvider().loadFromString(rules.values().toArray().join("\n"));
+    sheet.isDirty = false;
+};
+
+const scheduleStylesFlush = (): void => {
+    if (sheet.isFlushScheduled) {
+        return;
+    }
+
+    sheet.isFlushScheduled = true;
+    queueMicrotask(() => {
+        sheet.isFlushScheduled = false;
+        flushStyles();
+    });
+};
 
 const reclaimed: FinalizationRegistry<StyleSlot> = new FinalizationRegistry((slot) => {
+    rules.delete(slot.className);
+    slot.css = "";
     pool.push(slot);
+    sheet.isDirty = true;
+    scheduleStylesFlush();
 });
 
 const createSlot = (): StyleSlot => {
     counter.next += 1;
-    const provider = registerProviderForDefaultDisplay({ priority: STYLE_PRIORITY, followsPreferences: false });
-    attachParsingErrorLogger(provider, log, "a style prop");
 
-    return { provider, className: `${CLASS_PREFIX}${counter.next.toString()}`, css: "" };
+    return { className: `${CLASS_PREFIX}${counter.next.toString()}`, css: "" };
 };
 
 const styleClass = (widget: Gtk.Widget): string | null => styles.get(widget)?.className ?? null;
@@ -37,6 +77,10 @@ const releaseStyle = (widget: Gtk.Widget): void => {
 
     styles.delete(widget);
     reclaimed.unregister(widget);
+    rules.delete(slot.className);
+    slot.css = "";
+    sheet.isDirty = true;
+    scheduleStylesFlush();
 
     applyWrite(CSS_CLASSES_PROP, () => {
         widget.removeCssClass(slot.className);
@@ -75,10 +119,12 @@ const applyStyle = (widget: Gtk.Widget, style: unknown): string | null => {
 
     if (css !== slot.css) {
         slot.css = css;
-        slot.provider.loadFromString(css);
+        rules.set(slot.className, css);
+        sheet.isDirty = true;
+        scheduleStylesFlush();
     }
 
     return slot.className;
 };
 
-export { applyStyle, CSS_CLASSES_PROP, releaseStyle, styleClass };
+export { applyStyle, CSS_CLASSES_PROP, flushStyles, releaseStyle, styleClass };

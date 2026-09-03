@@ -1,4 +1,4 @@
-import { resolveExecutable, spawnWithParentDeathSignal } from "@gtkx/utils";
+import { resolveExecutable, spawnWithParentDeathSignal, spawnWithParentDeathSupervisor } from "@gtkx/utils";
 import { type ChildProcess, spawnSync } from "node:child_process";
 import { chmodSync, closeSync, existsSync, mkdtempSync, openSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { Socket } from "node:net";
@@ -106,9 +106,9 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
                 ].join("\n"),
             );
 
-            return spawnWithParentDeathSignal("sway", ["-c", configPath], {
+            return spawnWithParentDeathSupervisor("sway", ["-c", configPath], {
                 stdio: ["ignore", "ignore", "pipe"],
-                cleanupDirectories: [runtimeDir],
+                cleanupDirectory: runtimeDir,
             });
         },
     },

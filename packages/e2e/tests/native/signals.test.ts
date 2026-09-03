@@ -153,13 +153,13 @@ test("natural connect and collision-safe signal and property helpers remain inde
 
     const states: boolean[] = [];
     const handlerId = GObject.signalConnect(socket, "notify::blocking", () => {
-        states.push(GObject.getObjectProperty(socket, "blocking"));
+        states.push(GObject.getProperty(socket, "blocking"));
     });
 
-    GObject.setObjectProperty(socket, "blocking", false);
+    GObject.setProperty(socket, "blocking", false);
     expect(states).toEqual([false]);
     GObject.signalDisconnect(socket, handlerId);
-    GObject.setObjectProperty(socket, "blocking", true);
+    GObject.setProperty(socket, "blocking", true);
     expect(states).toEqual([false]);
     expect(socket.close()).toBe(true);
 });

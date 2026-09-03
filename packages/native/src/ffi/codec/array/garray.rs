@@ -75,7 +75,7 @@ impl ArrayContainer for GArrayCodec {
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GArray")? else {
-            return codec.decode_empty_sequence(env);
+            return codec.decode_null(env);
         };
 
         let g_array = ptr as *const glib::ffi::GArray;

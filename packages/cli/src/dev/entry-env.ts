@@ -1,3 +1,4 @@
 const DEV_ENTRY_ENV = "GTKX_DEV_ENTRY";
+const DEV_CONFIG_ENV = "GTKX_DEV_CONFIG";
 
-export { DEV_ENTRY_ENV };
+export { DEV_CONFIG_ENV, DEV_ENTRY_ENV };

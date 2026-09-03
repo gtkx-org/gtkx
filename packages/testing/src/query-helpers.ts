@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { getObjectProperty } from "@gtkx/gi/gobject";
+import { getProperty } from "@gtkx/gi/gobject";
 import type { Matcher, MatcherOptions } from "./types.js";
 import { buildQueries } from "./build-queries.js";
 import { getElementError } from "./errors.js";
@@ -30,7 +30,7 @@ const readObjectProperty = (widget: Gtk.Widget, property: string): string | null
     let value: unknown;
 
     try {
-        value = Reflect.apply(getObjectProperty, undefined, [widget, property]);
+        value = Reflect.apply(getProperty, undefined, [widget, property]);
     } catch {
         return null;
     }

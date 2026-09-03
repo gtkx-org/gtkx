@@ -8,6 +8,7 @@ import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
 import { namespaceFunctionExportName } from "../store/gi/function.js";
+import { setAcceptedChildTypes } from "../store/jsx/accepted-child-types.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
@@ -380,6 +381,7 @@ class ApiReference {
     private applyElementConfig(): void {
         setElementProps(this.props);
         setOmittedProps(this.omittedProps);
+        setAcceptedChildTypes({});
     }
 
     private add(entry: SymbolEntry): void {

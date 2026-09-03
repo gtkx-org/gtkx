@@ -17,6 +17,7 @@ import {
     int32T,
     type ObjectDescriptor,
     objectT,
+    preserveArrayNull,
     stringT,
     uint8T,
     uint32T,
@@ -133,11 +134,25 @@ const objectValueFundamentals: Set<bigint> = new Set([TYPE_OBJECT, TYPE_INTERFAC
 const paramValueType = bindValueType("param", PARAM_T);
 const variantValueType = bindValueType("variant", VARIANT_T);
 const pointerValueType = bindValueType("pointer", uint64T);
-const setStrvBoxed = bind(LIB, "g_value_set_boxed", [VALUE_T, arrayT(stringT("borrowed"))], voidT);
+const strvDescriptor = arrayT(stringT("borrowed"));
+const nullableStrvDescriptor = preserveArrayNull(arrayT(stringT("borrowed")));
+const setStrvBoxed = bind(LIB, "g_value_set_boxed", [VALUE_T, strvDescriptor], voidT);
+const getStrvBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], strvDescriptor);
+const getNullableStrvBoxed = bind(
+    LIB,
+    "g_value_get_boxed",
+    [VALUE_T],
+    nullableStrvDescriptor,
+);
 
 const strvValueType: ValueType = {
     set: setStrvValue,
-    get: bind(LIB, "g_value_get_boxed", [VALUE_T], arrayT(stringT("borrowed"))),
+    get: getStrvBoxed,
+};
+
+const nullableStrvValueType: ValueType = {
+    set: setStrvValue,
+    get: getNullableStrvBoxed,
 };
 
 const setByteArrayBoxed = bind(LIB, "g_value_set_boxed", [VALUE_T, byteArrayT()], voidT);
@@ -412,7 +427,7 @@ function setWrappedBoxedValue(value: ExternalObject<Handle>, type: bigint, boxed
 
 const arrayValueType = (descriptor: ArrayDescriptor): ValueType => {
     if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") {
-        return strvValueType;
+        return descriptor.preserveNull === true ? nullableStrvValueType : strvValueType;
     }
 
     if (descriptor.arrayKind === "gbytearray") {
@@ -728,6 +743,9 @@ function fromValue(value: ExternalObject<Handle>): unknown {
     return get(value);
 }
 
+const fromObjectPropertyValue = (value: ExternalObject<Handle>): unknown =>
+    getValueType(value) === getStrvType() ? nullableStrvValueType.get(value) : fromValue(value);
+
 const objectValueWithFallback = (
     descriptor: ObjectDescriptor,
     value: ExternalObject<Handle>,
@@ -739,9 +757,25 @@ const objectValueWithFallback = (
     return { wrapped: wrapObject(objectValueType.get(value), descriptor.fallbackClass) };
 };
 
+const arrayValueGetterForDescriptor = (descriptor: ArrayDescriptor): ValueGetter | undefined => {
+    if (descriptor.arrayKind === "gbytearray") {
+        return byteArrayValueGetterFor(descriptor.isBytes === true);
+    }
+
+    return descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array"
+        ? arrayValueType(descriptor).get
+        : undefined;
+};
+
+const fromArrayValueForDescriptor = (descriptor: ArrayDescriptor, value: ExternalObject<Handle>): unknown => {
+    const get = arrayValueGetterForDescriptor(descriptor);
+
+    return get === undefined ? fromValue(value) : get(value);
+};
+
 const fromValueForDescriptor = (descriptor: Descriptor, value: ExternalObject<Handle>): unknown => {
-    if (descriptor.kind === "array" && descriptor.arrayKind === "gbytearray") {
-        return byteArrayValueGetterFor(descriptor.isBytes === true)(value);
+    if (descriptor.kind === "array") {
+        return fromArrayValueForDescriptor(descriptor, value);
     }
 
     if (descriptor.kind === "object") {
@@ -815,6 +849,7 @@ export {
     tryToValueHandle,
     ValueMarshalError,
     fromValue,
+    fromObjectPropertyValue,
     fromValueForDescriptor,
     valueGuardOverrideFor,
     newValueForDescriptor,

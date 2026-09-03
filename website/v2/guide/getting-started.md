@@ -35,14 +35,18 @@ yarn create gtkx@beta
 
 :::
 
-It prompts for the project directory, an application ID in reverse-DNS form, your package manager, and whether to include TypeScript and a Vitest testing setup. Answer them, then start the app:
+It prompts for the project directory, an application ID in reverse-DNS form, a display name, your package manager, and whether to include TypeScript and a Vitest testing setup. Answer them, then start the app:
 
 ```bash
 cd my-app
 npm run dev
 ```
 
-The starter is a counter: a window with a label and a button wired to React state. `npm create gtkx@beta -- my-app --yes --application-id com.example.myapp` skips the prompts instead.
+The starter is a counter: a window with a label and a button wired to React state. `npm create gtkx@beta -- my-app --yes --application-id com.example.myapp --display-name "My App"` skips the prompts instead. Without `--display-name`, noninteractive scaffolding derives one from a hyphenated project directory such as `my-app`. Pass `--skip-install` when another tool will install the generated project's dependencies later.
+
+If the destination already exists, `--overwrite` replaces only files owned by the scaffold and leaves unrelated
+files in place. It refuses a destination reached through a symbolic link. Without `--overwrite`, an existing
+scaffold-owned file stops the command before anything is changed.
 
 ### If the install stops on a fresh release
 

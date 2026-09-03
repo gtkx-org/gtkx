@@ -1,7 +1,7 @@
 import { loadConfig } from "@gtkx/config";
 import { error } from "@gtkx/utils";
 import { resolve } from "node:path";
-import { DEV_ENTRY_ENV } from "./entry-env.js";
+import { DEV_CONFIG_ENV, DEV_ENTRY_ENV } from "./entry-env.js";
 import { prepareDevIconDir } from "./icon-dir.js";
 import { prepareDevLocaleDir } from "./locale-dir.js";
 import { createDevRunner } from "./runner.js";
@@ -22,13 +22,20 @@ const main = async (): Promise<void> => {
         process.exit(1);
     }
 
-    const { config, root } = await loadConfig(cwd, { mode: "development" });
+    const configFile = process.env[DEV_CONFIG_ENV];
+
+    if (!configFile) {
+        error(`Missing ${DEV_CONFIG_ENV}`);
+        process.exit(1);
+    }
+
+    const { config, root } = await loadConfig(cwd, { mode: "development", configFile });
     prepareDevLocaleDir(root, config.applicationId);
     prepareDevSchemaDir(root);
     prepareDevIconDir(root, config.applicationId, config.applicationIcon);
     const entryPath = resolve(cwd, entryArg);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");
-    const runner = createDevRunner(defaultDevRunnerDeps());
+    const runner = createDevRunner(defaultDevRunnerDeps(configFile));
     await runner.run(entryPath);
 };
 

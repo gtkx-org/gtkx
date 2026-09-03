@@ -12,7 +12,7 @@ import {
 } from "./properties.js";
 import { propertyMapOverride, writablePropertyMapOverride } from "./property-brand.js";
 import { getHandle, registerWrapper } from "./registry.js";
-import { fromValue, fromValueForDescriptor, newValueForDescriptor, toValue } from "./value.js";
+import { fromObjectPropertyValue, fromValueForDescriptor, newValueForDescriptor, toValue } from "./value.js";
 
 /**
  * One construct property a wrapper class accepts: the canonical `GObject` name it is set under,
@@ -179,7 +179,7 @@ function newObjectWithProperties<T extends object>(gtype: bigint, props: object,
  * @param propertyName The property name.
  * @param descriptor Describes the property's type.
  */
-function getObjectProperty<
+function getProperty<
     TObject extends { __properties__: object },
     TPropertyMap extends object = TObject extends { [propertyMapOverride]?: infer TResolver }
         ? TResolver extends () => infer TMap
@@ -188,17 +188,17 @@ function getObjectProperty<
         : TObject["__properties__"],
     TName extends Extract<keyof NoInfer<TPropertyMap>, string> = Extract<keyof NoInfer<TPropertyMap>, string>,
 >(obj: TObject, propertyName: TName): NoInfer<TPropertyMap>[TName];
-function getObjectProperty(obj: object, propertyName: string, descriptor: Descriptor): unknown;
-function getObjectProperty(obj: object, propertyName: string, descriptor?: Descriptor): unknown {
+function getProperty(obj: object, propertyName: string, descriptor: Descriptor): unknown;
+function getProperty(obj: object, propertyName: string, descriptor?: Descriptor): unknown {
     if (arguments.length === 2) {
         const property = readableObjectPropertyFor(obj, propertyName);
         gObjectGetProperty(getHandle(obj), property.name, property.value);
 
-        return fromValue(property.value);
+        return fromObjectPropertyValue(property.value);
     }
 
     if (descriptor === undefined) {
-        throw new TypeError("getObjectProperty requires a property descriptor when called with three arguments");
+        throw new TypeError("getProperty requires a property descriptor when called with three arguments");
     }
 
     const value = newValueForDescriptor(descriptor);
@@ -220,7 +220,7 @@ function getObjectProperty(obj: object, propertyName: string, descriptor?: Descr
  * @param descriptor Describes the property's type.
  * @param jsValue The value to set.
  */
-function setObjectProperty<
+function setProperty<
     TObject extends { __writableProperties__: object },
     TPropertyMap extends object = TObject extends { [writablePropertyMapOverride]?: infer TResolver }
         ? TResolver extends () => infer TMap
@@ -229,8 +229,8 @@ function setObjectProperty<
         : TObject["__writableProperties__"],
     TName extends Extract<keyof NoInfer<TPropertyMap>, string> = Extract<keyof NoInfer<TPropertyMap>, string>,
 >(obj: TObject, propertyName: TName, jsValue: NoInfer<TPropertyMap>[TName]): void;
-function setObjectProperty(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown): void;
-function setObjectProperty(
+function setProperty(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown): void;
+function setProperty(
     obj: object,
     propertyName: string,
     descriptorOrValue: unknown,
@@ -248,9 +248,9 @@ function setObjectProperty(
 
 export {
     newObjectWithProperties,
-    getObjectProperty,
+    getProperty,
     registerConstructProperties,
-    setObjectProperty,
+    setProperty,
     type ConstructBinding,
     type ConstructBindings,
 };

@@ -586,7 +586,7 @@ function readErrorMessageText(widget: Gtk.Widget): string | null {
 }
 
 function readObjectProperty(object: GObject.Object, name: string): unknown {
-    const value: unknown = Reflect.apply(GObject.getObjectProperty, undefined, [object, name]);
+    const value: unknown = Reflect.apply(GObject.getProperty, undefined, [object, name]);
 
     return value;
 }

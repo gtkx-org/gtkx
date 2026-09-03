@@ -37,8 +37,8 @@ const RegisteredRail = registerClass(Rail, {
     },
 });
 const rail = new RegisteredRail({});
-const orientation: Gtk.Orientation = GObject.getObjectProperty(rail, "orientation");
-GObject.setObjectProperty(rail, "orientation", Gtk.Orientation.HORIZONTAL);
+const orientation: Gtk.Orientation = GObject.getProperty(rail, "orientation");
+GObject.setProperty(rail, "orientation", Gtk.Orientation.HORIZONTAL);
 `;
 const PROPERTY_OVERRIDE_SPELLING_PROBE = `import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -53,13 +53,13 @@ const PROPERTY_TYPE_ERRORS = {
 import * as GObject from "@gtkx/gi/gobject";
 
 declare const builder: Gdk.GLTextureBuilder;
-GObject.getObjectProperty(builder, "sync");
+GObject.getProperty(builder, "sync");
 `,
     "pointer-property-write.ts": `import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 
 declare const builder: Gdk.GLTextureBuilder;
-GObject.setObjectProperty(builder, "sync", 1n);
+GObject.setProperty(builder, "sync", 1n);
 `,
     "union-override-source.ts": `import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -77,7 +77,7 @@ const RegisteredVisibility = registerClass(Visibility, {
         visible: GObject.paramSpecOverride("visible", source),
     },
 });
-GObject.getObjectProperty(new RegisteredVisibility({}), "visible");
+GObject.getProperty(new RegisteredVisibility({}), "visible");
 `,
 };
 const GIO_TYPE_PROBE = `import type * as Gio from "@gtkx/gi/gio";
@@ -88,9 +88,9 @@ type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ?
 type Expect<T extends true> = T;
 
 declare const socket: Gio.Socket;
-const blocking: boolean = GObject.getObjectProperty(socket, "blocking");
-const localAddress: Gio.SocketAddress | null = GObject.getObjectProperty(socket, "localAddress");
-GObject.setObjectProperty(socket, "listenBacklog", 12);
+const blocking: boolean = GObject.getProperty(socket, "blocking");
+const localAddress: Gio.SocketAddress | null = GObject.getProperty(socket, "localAddress");
+GObject.setProperty(socket, "listenBacklog", 12);
 
 class Mutable extends GObject.Object {
     declare count: number;
@@ -103,8 +103,8 @@ const RegisteredMutable = registerClass(Mutable, {
     },
 });
 const mutable = new RegisteredMutable({});
-GObject.setObjectProperty(mutable, "count", 7);
-const count: number = GObject.getObjectProperty(mutable, "count");
+GObject.setProperty(mutable, "count", 7);
+const count: number = GObject.getProperty(mutable, "count");
 
 class InheritedMutable extends GObject.Object {
     get level(): number {
@@ -136,7 +136,7 @@ const RegisteredInheritedReadOnly = registerClass(InheritedReadOnly, {
     },
 });
 const inheritedReadOnly = new RegisteredInheritedReadOnly({});
-const level: number = GObject.getObjectProperty(inheritedReadOnly, "level");
+const level: number = GObject.getProperty(inheritedReadOnly, "level");
 
 class InheritedReadWrite extends RegisteredInheritedMutable {}
 
@@ -147,8 +147,8 @@ const RegisteredInheritedReadWrite = registerClass(InheritedReadWrite, {
     },
 });
 const inheritedReadWrite = new RegisteredInheritedReadWrite({});
-GObject.setObjectProperty(inheritedReadWrite, "level", 4);
-const inheritedLevel: number = GObject.getObjectProperty(inheritedReadWrite, "level");
+GObject.setProperty(inheritedReadWrite, "level", 4);
+const inheritedLevel: number = GObject.getProperty(inheritedReadWrite, "level");
 
 class Wide extends GObject.Object {
     declare serial: bigint;
@@ -161,8 +161,8 @@ const RegisteredWide = registerClass(Wide, {
     },
 });
 const wide = new RegisteredWide({});
-GObject.setObjectProperty(wide, "serial", 42n);
-const serial: bigint = GObject.getObjectProperty(wide, "serial");
+GObject.setProperty(wide, "serial", 42n);
+const serial: bigint = GObject.getProperty(wide, "serial");
 
 const signatures: [
     Expect<
@@ -200,17 +200,17 @@ GObject.signalEmit(socket, "not-real", 123);
     "unknown-property.ts": `import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 declare const socket: Gio.Socket;
-GObject.getObjectProperty(socket, "notReal");
+GObject.getProperty(socket, "notReal");
 `,
     "readonly-property.ts": `import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 declare const socket: Gio.Socket;
-GObject.setObjectProperty(socket, "family", Gio.SocketFamily.IPV4);
+GObject.setProperty(socket, "family", Gio.SocketFamily.IPV4);
 `,
     "wrong-property-value.ts": `import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 declare const socket: Gio.Socket;
-GObject.setObjectProperty(socket, "blocking", "false");
+GObject.setProperty(socket, "blocking", "false");
 `,
     "dynamic-readonly-property.ts": `import * as GObject from "@gtkx/gi/gobject";
 import { registerClass } from "@gtkx/runtime";
@@ -225,7 +225,7 @@ const RegisteredReadOnly = registerClass(ReadOnly, {
         count: GObject.paramSpecInt("count", null, null, 0, 10, 0, GObject.ParamFlags.READABLE),
     },
 });
-GObject.setObjectProperty(new RegisteredReadOnly({}), "count", 1);
+GObject.setProperty(new RegisteredReadOnly({}), "count", 1);
 `,
     "dynamic-method-property-read.ts": `import * as GObject from "@gtkx/gi/gobject";
 import { registerClass } from "@gtkx/runtime";
@@ -242,7 +242,7 @@ const RegisteredCollision = registerClass(Collision, {
         score: GObject.paramSpecInt("score", null, null, 0, 10, 0, GObject.ParamFlags.READWRITE),
     },
 });
-GObject.getObjectProperty(new RegisteredCollision({}), "score");
+GObject.getProperty(new RegisteredCollision({}), "score");
 `,
     "dynamic-method-property-write.ts": `import * as GObject from "@gtkx/gi/gobject";
 import { registerClass } from "@gtkx/runtime";
@@ -259,7 +259,7 @@ const RegisteredCollision = registerClass(Collision, {
         score: GObject.paramSpecInt("score", null, null, 0, 10, 0, GObject.ParamFlags.READWRITE),
     },
 });
-GObject.setObjectProperty(new RegisteredCollision({}), "score", 1);
+GObject.setProperty(new RegisteredCollision({}), "score", 1);
 `,
     "dynamic-inherited-readonly-property.ts": `import * as GObject from "@gtkx/gi/gobject";
 import { registerClass } from "@gtkx/runtime";
@@ -293,7 +293,7 @@ const RegisteredReadOnly = registerClass(ReadOnly, {
         level: GObject.paramSpecInt("level", null, null, 0, 10, 0, GObject.ParamFlags.READABLE),
     },
 });
-GObject.setObjectProperty(new RegisteredReadOnly({}), "level", 1);
+GObject.setProperty(new RegisteredReadOnly({}), "level", 1);
 `,
     "dynamic-pointer-property-read.ts": `import * as GObject from "@gtkx/gi/gobject";
 import { registerClass } from "@gtkx/runtime";
@@ -308,7 +308,7 @@ const RegisteredPointerValue = registerClass(PointerValue, {
         pointer: GObject.paramSpecPointer("pointer", null, null, GObject.ParamFlags.READWRITE),
     },
 });
-GObject.getObjectProperty(new RegisteredPointerValue({}), "pointer");
+GObject.getProperty(new RegisteredPointerValue({}), "pointer");
 `,
     "dynamic-pointer-property-write.ts": `import * as GObject from "@gtkx/gi/gobject";
 import { registerClass } from "@gtkx/runtime";
@@ -323,7 +323,7 @@ const RegisteredPointerValue = registerClass(PointerValue, {
         pointer: GObject.paramSpecPointer("pointer", null, null, GObject.ParamFlags.READWRITE),
     },
 });
-GObject.setObjectProperty(new RegisteredPointerValue({}), "pointer", 1n);
+GObject.setProperty(new RegisteredPointerValue({}), "pointer", 1n);
 `,
     "dynamic-widened-property-read.ts": `import * as GObject from "@gtkx/gi/gobject";
 import { registerClass } from "@gtkx/runtime";
@@ -345,7 +345,7 @@ const RegisteredWide = registerClass(Wide, {
     typeName: "GtkxPropertyHelperWidened",
     properties: { serial: spec },
 });
-GObject.getObjectProperty(new RegisteredWide({}), "serial");
+GObject.getProperty(new RegisteredWide({}), "serial");
 `,
 };
 const NATURAL_PROPERTY_METHOD_PROBE = `import type { Station } from "@gtkx/gi/hookslots";
@@ -358,6 +358,7 @@ const SIDE_CALLBACK_PROBE = `import type { Job, ProgressCallback } from "@gtkx/g
 export const load = (job: Job, progress: ProgressCallback): Promise<boolean>[] => [
     job.loadAsync(),
     job.loadAsync(null, progress),
+    job.loadAsync(null, null),
 ];
 
 export const transform = (job: Job): void => {
@@ -577,9 +578,16 @@ process.stdout.write(typeof DBusProxy.newForBusSync);`;
         using project = createCliProject({
             prefix: "gtkx-cli-codegen-initable-guard-",
             config: fixtureConfig("InitableOnly-1.0"),
+            files: {
+                "probe.ts": `import { Client } from "@gtkx/gi/initable-only";
+new Client();`,
+            },
         });
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
+        expect(() => {
+            typecheckProject(project);
+        }).toThrow();
         const source = `import { DBusProxy } from "@gtkx/gi/gio";
 new DBusProxy();`;
         expect(() => evaluateProject(project, source)).toThrow();

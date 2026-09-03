@@ -28,6 +28,7 @@ type DocsFingerprintInput = {
     linkStyle: string;
     props: Record<string, ModuleExport>;
     omittedProps: Record<string, string[]>;
+    acceptedChildTypes: Record<string, string[]>;
 };
 
 type DocsFingerprint = {
@@ -247,7 +248,8 @@ const hashDocs = (giValue: string, input: DocsFingerprintInput): string =>
                 input.basePath,
                 input.linkStyle,
                 serializeModuleExports(input.props),
-                serializeOmittedProps(input.omittedProps),
+                serializeStringLists(input.omittedProps),
+                serializeStringLists(input.acceptedChildTypes),
             ]),
         )
         .digest("hex");
@@ -273,7 +275,7 @@ const isDocsOutputFresh = (outDir: string, inputs: GiInputs, input: DocsFingerpr
 const serializeModuleExports = (map: Record<string, ModuleExport>): [string, string, string][] =>
     sortOrdinal(Object.keys(map)).map((type) => [type, map[type]?.module ?? "", map[type]?.export ?? ""]);
 
-const serializeOmittedProps = (map: Record<string, string[]>): [string, string][] =>
+const serializeStringLists = (map: Record<string, string[]>): [string, string][] =>
     sortOrdinal(Object.keys(map)).map((type) => [type, sortAlpha(map[type] ?? [])]);
 
 const hashJsx = (input: JsxFingerprintInput): string =>
@@ -285,7 +287,7 @@ const hashJsx = (input: JsxFingerprintInput): string =>
                 serializeModuleExports(input.components),
                 sortOrdinal(input.lazyElements),
                 serializeModuleExports(input.props),
-                serializeOmittedProps(input.omittedProps),
+                serializeStringLists(input.omittedProps),
             ]),
         )
         .digest("hex");

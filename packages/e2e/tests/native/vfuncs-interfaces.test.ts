@@ -563,12 +563,12 @@ test("registerClass installs declared properties with generated and custom acces
     expect(instance.label).toBe("hi");
     expect(instance.doubled).toBe(0);
 
-    GObject.setObjectProperty(instance, "plain", 9);
-    GObject.setObjectProperty(instance, "label", "there");
-    GObject.setObjectProperty(instance, "doubled", 4);
-    expect(GObject.getObjectProperty(instance, "plain")).toBe(9);
-    expect(GObject.getObjectProperty(instance, "label")).toBe("there");
-    expect(GObject.getObjectProperty(instance, "doubled")).toBe(8);
+    GObject.setProperty(instance, "plain", 9);
+    GObject.setProperty(instance, "label", "there");
+    GObject.setProperty(instance, "doubled", 4);
+    expect(GObject.getProperty(instance, "plain")).toBe(9);
+    expect(GObject.getProperty(instance, "label")).toBe("there");
+    expect(GObject.getProperty(instance, "doubled")).toBe(8);
 
     const constructed = new Registered({ plain: 11, label: "bye", doubled: 3 });
     expect(constructed.plain).toBe(11);
@@ -608,9 +608,9 @@ test("a registered property hidden by an own method keeps separate storage", () 
 
     const instance = new Registered({});
     expect(instance.score()).toBe("own method");
-    expect(Reflect.apply(GObject.getObjectProperty, undefined, [instance, "score"])).toBe(7);
-    Reflect.apply(GObject.setObjectProperty, undefined, [instance, "score", 9]);
-    expect(Reflect.apply(GObject.getObjectProperty, undefined, [instance, "score"])).toBe(9);
+    expect(Reflect.apply(GObject.getProperty, undefined, [instance, "score"])).toBe(7);
+    Reflect.apply(GObject.setProperty, undefined, [instance, "score", 9]);
+    expect(Reflect.apply(GObject.getProperty, undefined, [instance, "score"])).toBe(9);
     expect(instance.score()).toBe("own method");
 });
 
@@ -635,14 +635,14 @@ test("a registered property hidden by an inherited method keeps separate storage
 
     const instance = new Registered({});
     expect(instance.rank()).toBe("field method");
-    expect(Reflect.apply(GObject.getObjectProperty, undefined, [instance, "rank"])).toBe(5);
-    Reflect.apply(GObject.setObjectProperty, undefined, [instance, "rank", 6]);
-    expect(Reflect.apply(GObject.getObjectProperty, undefined, [instance, "rank"])).toBe(6);
+    expect(Reflect.apply(GObject.getProperty, undefined, [instance, "rank"])).toBe(5);
+    Reflect.apply(GObject.setProperty, undefined, [instance, "rank", 6]);
+    expect(Reflect.apply(GObject.getProperty, undefined, [instance, "rank"])).toBe(6);
     expect(instance.rank()).toBe("field method");
     expect(instance.score()).toBe("inherited method");
-    expect(Reflect.apply(GObject.getObjectProperty, undefined, [instance, "score"])).toBe(7);
-    Reflect.apply(GObject.setObjectProperty, undefined, [instance, "score", 9]);
-    expect(Reflect.apply(GObject.getObjectProperty, undefined, [instance, "score"])).toBe(9);
+    expect(Reflect.apply(GObject.getProperty, undefined, [instance, "score"])).toBe(7);
+    Reflect.apply(GObject.setProperty, undefined, [instance, "score", 9]);
+    expect(Reflect.apply(GObject.getProperty, undefined, [instance, "score"])).toBe(9);
     expect(instance.score()).toBe("inherited method");
 });
 
@@ -660,7 +660,7 @@ test("a registered property hidden by a method rejects an invalid value", () => 
 
     const instance = new Registered({});
     expect(() => {
-        Reflect.apply(GObject.setObjectProperty, undefined, [instance, "score", "invalid"]);
+        Reflect.apply(GObject.setProperty, undefined, [instance, "score", "invalid"]);
     }).toThrow();
 });
 

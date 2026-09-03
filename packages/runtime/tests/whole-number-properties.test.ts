@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { setObjectProperty, t } from "@gtkx/runtime";
+import { setProperty, t } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 type TruncatedCase = { written: number; held: number; described: string };
@@ -19,13 +19,13 @@ describe("whole-number properties", () => {
 
     it("truncates a fraction written to an enum property", () => {
         const label = new Gtk.Label();
-        setObjectProperty(label, "halign", t.enum("libgtk-4.so.1", "gtk_align_get_type", false), 1.9);
+        setProperty(label, "halign", t.enum("libgtk-4.so.1", "gtk_align_get_type", false), 1.9);
         expect(label.halign).toBe(Gtk.Align.START);
     });
 
-    it("truncates a fraction written through setObjectProperty", () => {
+    it("truncates a fraction written through setProperty", () => {
         const label = new Gtk.Label();
-        setObjectProperty(label, "width-request", t.int32, 99.99);
+        setProperty(label, "width-request", t.int32, 99.99);
         expect(label.widthRequest).toBe(99);
     });
 

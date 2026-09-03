@@ -12,10 +12,10 @@ export { fromNative, toHashTableEntries, toNative } from "./native-value.js";
 export {
     type ConstructBinding,
     type ConstructBindings,
-    getObjectProperty,
+    getProperty,
     newObjectWithProperties,
     registerConstructProperties,
-    setObjectProperty,
+    setProperty,
 } from "./object.js";
 export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "./param-spec.js";
 export { promisify, trimFinish } from "./promisify.js";

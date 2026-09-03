@@ -7,8 +7,15 @@ import { isGiStoreFresh } from "./fingerprint.js";
 import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
-import { sweepStagingDirs } from "./staging.js";
-import { ensureStoreLink, type StoreOptions } from "./store/store-fs.js";
+import { acquireStoreLocks, sweepStagingDirs } from "./staging.js";
+import {
+    discardPreparedStore,
+    ensureStoreLink,
+    type PreparedStore,
+    publishPreparedStore,
+    publishStorePair,
+    type StoreOptions,
+} from "./store/store-fs.js";
 
 type GlCodegenOptions = {
     registryPath: string;
@@ -57,6 +64,9 @@ type StoreResult = {
     intrinsicElements: number;
 };
 
+type JsxStoreResult = StoreResult & { store: PreparedStore | undefined };
+type GiStoreResult = { isRegenerated: boolean; namespaces: number; store: PreparedStore | undefined };
+
 /**
  * Writes and links a project's `@gtkx/gi` and `@gtkx/jsx` stores from the given GObject-Introspection
  * libraries. The gi store is rewritten only when its GIR inputs changed, and the jsx store only when the gi
@@ -73,14 +83,26 @@ type StoreResult = {
  */
 const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerResult> => {
     const start = Date.now();
-    const store = await emitStores(options);
+    const stores = [options.gi.storeDir];
 
-    return {
-        isRegenerated: store.isRegenerated,
-        namespaces: store.namespaces,
-        intrinsicElements: store.intrinsicElements,
-        duration: Date.now() - start,
-    };
+    if (options.jsx !== undefined) {
+        stores.push(options.jsx.storeDir);
+    }
+
+    const release = await acquireStoreLocks(stores);
+
+    try {
+        const store = await emitStores(options);
+
+        return {
+            isRegenerated: store.isRegenerated,
+            namespaces: store.namespaces,
+            intrinsicElements: store.intrinsicElements,
+            duration: Date.now() - start,
+        };
+    } finally {
+        release();
+    }
 };
 
 const runGlCodegen = (options: GlCodegenOptions): GlGenerationReport => {
@@ -116,9 +138,10 @@ const emitJsxStore = async (input: {
     jsx: StoreOptions;
     loadLibrary: () => Library;
     isGiRegenerated: boolean;
+    giStoreDir: string;
     namespaces: number;
-}): Promise<StoreResult> => {
-    const { options, jsx, loadLibrary, isGiRegenerated, namespaces } = input;
+}): Promise<JsxStoreResult> => {
+    const { options, jsx, loadLibrary, isGiRegenerated, giStoreDir, namespaces } = input;
     const { runJsxCodegen } = await import("./jsx.js");
 
     const jsxResult = await runJsxCodegen({
@@ -127,12 +150,14 @@ const emitJsxStore = async (input: {
         ...jsxUserOptions(options),
         isGiRegenerated,
         isForced: options.isForced === true,
+        giStoreDir,
     });
 
     return {
         isRegenerated: isGiRegenerated || jsxResult.isRegenerated,
         namespaces,
         intrinsicElements: jsxResult.intrinsicElementCount,
+        store: jsxResult.store,
     };
 };
 
@@ -147,6 +172,59 @@ const prepareStores = (stores: (StoreOptions | undefined)[]): void => {
     }
 };
 
+const emitGiStore = (options: CodegenRunnerOptions, loadLibrary: () => Library): GiStoreResult => {
+    const { gi, libraries, girPath } = options;
+    const giInputs = { girFiles: [] as string[], libraries, girPath, storeVersion: gi.version };
+    const isRegenerated = options.isForced === true || !isGiStoreFresh(gi.storeDir, giInputs);
+
+    if (!isRegenerated) {
+        return { isRegenerated, namespaces: 0, store: undefined };
+    }
+
+    const result = runGiCodegen(loadLibrary(), { gi, libraries, girPath });
+
+    return { isRegenerated, namespaces: result.namespaces, store: result.store };
+};
+
+const publishGiStore = (gi: GiStoreResult): StoreResult => {
+    if (gi.store !== undefined) {
+        publishPreparedStore(gi.store);
+    }
+
+    return { isRegenerated: gi.isRegenerated, namespaces: gi.namespaces, intrinsicElements: 0 };
+};
+
+const emitStorePair = async (input: {
+    gi: GiStoreResult;
+    jsx: StoreOptions;
+    loadLibrary: () => Library;
+    options: CodegenRunnerOptions;
+}): Promise<StoreResult> => {
+    const { gi, jsx, loadLibrary, options } = input;
+    let jsxResult: JsxStoreResult | undefined;
+
+    try {
+        jsxResult = await emitJsxStore({
+            options,
+            jsx,
+            loadLibrary,
+            isGiRegenerated: gi.isRegenerated,
+            giStoreDir: gi.store?.dir ?? options.gi.storeDir,
+            namespaces: gi.namespaces,
+        });
+
+        if (gi.store !== undefined || jsxResult.store !== undefined) {
+            publishStorePair({ gi: gi.store, giLink: options.gi, jsx: jsxResult.store, jsxLink: jsx });
+        }
+
+        return jsxResult;
+    } catch (error) {
+        discardPreparedStore(gi.store);
+        discardPreparedStore(jsxResult?.store);
+        throw error;
+    }
+};
+
 const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> => {
     const { gi, jsx, libraries, girPath } = options;
 
@@ -157,18 +235,13 @@ const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> =
     prepareStores([gi, jsx]);
     let library: Library | undefined;
     const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath));
-    const giInputs = { girFiles: [] as string[], libraries, girPath, storeVersion: gi.version };
-    const isGiRegenerated = options.isForced === true || !isGiStoreFresh(gi.storeDir, giInputs);
-
-    const namespaces = isGiRegenerated
-        ? runGiCodegen(loadLibrary(), { gi, libraries, girPath })
-        : 0;
+    const giResult = emitGiStore(options, loadLibrary);
 
     if (jsx === undefined) {
-        return { isRegenerated: isGiRegenerated, namespaces, intrinsicElements: 0 };
+        return publishGiStore(giResult);
     }
 
-    return emitJsxStore({ options, jsx, loadLibrary, isGiRegenerated, namespaces });
+    return emitStorePair({ gi: giResult, jsx, loadLibrary, options });
 };
 
 export { runCodegen, runGlCodegen, type CodegenRunnerOptions, type CodegenRunnerResult };

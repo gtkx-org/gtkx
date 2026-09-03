@@ -3,8 +3,8 @@ import type { Plugin } from "vitest/config";
 import { createConfigLoader } from "@gtkx/config/internal";
 import { prependSchemaDir, stageAndCompileProjectSchemas } from "../settings/schema.js";
 
-function gtkxSettingsWorkerEnv(): Plugin {
-    const loadConfig = createConfigLoader();
+function gtkxSettingsWorkerEnv(configFile?: string): Plugin {
+    const loadConfig = createConfigLoader({ configFile });
 
     return {
         name: "gtkx:settings-worker-env",

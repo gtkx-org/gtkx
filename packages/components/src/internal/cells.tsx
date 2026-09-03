@@ -3,7 +3,7 @@ import type { ReactElement, ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkSignalListItemFactory, GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal, useProperty } from "@gtkx/react";
-import { setObjectProperty, t } from "@gtkx/runtime";
+import { setProperty, t } from "@gtkx/runtime";
 import { memo, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import type {
     ExpanderDescriptions,
@@ -402,7 +402,7 @@ function rowPropsFor(slot: ItemSlot | null, rowProps: ListRowPropsResolver<never
 }
 
 function setRowText(host: Gtk.ColumnViewRow, name: string, value: string | null): void {
-    setObjectProperty(host, name, ROW_TEXT_DESCRIPTOR, value);
+    setProperty(host, name, ROW_TEXT_DESCRIPTOR, value);
 }
 
 function applyRowProps(host: Gtk.ColumnViewRow, props: ResolvedRowProps): void {

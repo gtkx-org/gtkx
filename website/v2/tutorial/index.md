@@ -58,6 +58,9 @@ Answer the prompts like this:
 ◇  Application ID
 │  com.gtkx.tutorial
 │
+◇  Display name
+│  Tasks
+│
 ◇  Package manager
 │  npm
 │

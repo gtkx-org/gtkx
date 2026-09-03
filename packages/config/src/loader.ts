@@ -98,12 +98,12 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
     const configFile = result.configFile;
 
     if (configFile === undefined || !existsSync(resolve(searched, configFile))) {
-        throw missingConfigFileError(searched);
+        throw missingConfigFileError(searched, requestedConfigFile);
     }
 
     const config = result.config;
     const root = result.cwd ?? searched;
-    validateConfig(config);
+    validateConfig(config, configFile);
     warnGraduatedFuture(config, root);
 
     return {

@@ -16,6 +16,7 @@ libloading = "0.9.0"
 libffi = "5.2.0"
 anyhow = "1.0.104"
 enum_dispatch = "0.3"
+libc = "0.2.189"
 
 [build-dependencies]
 napi-build = "2"

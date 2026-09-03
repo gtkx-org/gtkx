@@ -14,7 +14,7 @@ gtkx deploy
 [gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to flatpak
 [gtkx] Validated the desktop entry and the metainfo
 [gtkx] Building ~/tasks/src/index.tsx
-[gtkx] Bundled Node.js v26.7.0 (109.4 MiB, glibc >= 2.28)
+[gtkx] Bundled Node.js v26.7.0 (109.4 MiB, runtime glibc >= 2.28)
 [gtkx] Staged 12 files into build/stage
 [gtkx] Wrote build/targets/flatpak/com.gtkx.tutorial.yml
 [gtkx] flatpak: running flatpak-builder, this can take several minutes

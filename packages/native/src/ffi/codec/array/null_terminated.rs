@@ -156,7 +156,7 @@ impl ArrayCodec {
             anyhow::bail!("A {name} can only be decoded from a raw pointer")
         };
         if ptr.is_null() {
-            return self.decode_empty_sequence(env);
+            return self.decode_null(env);
         }
         if self.is_bytes {
             return Self::decode_zero_terminated_bytes(env, *ptr, transfer);

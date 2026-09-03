@@ -24,6 +24,7 @@ type CreateOptions = {
     hasParentGit?: boolean | undefined;
     isInstallFailing?: boolean | undefined;
     name?: string | undefined;
+    nodeVersion?: string | undefined;
 };
 
 type Workspace = { root: string; binDir: string; logPath: string };
@@ -37,6 +38,12 @@ const APPLICATION_ID = "com.example.myapp";
 const COVERAGE_SLOWDOWN = 3;
 const CREATE_TIMEOUT_MS = 120_000 * (process.env.GTKX_COVERAGE_DIR === undefined ? 1 : COVERAGE_SLOWDOWN);
 const LOG_NAME = "package-manager.log";
+
+const versionPreload = (version: string): string => {
+    const source = `Object.defineProperty(process.versions, "node", { value: ${JSON.stringify(version)} });`;
+
+    return `data:text/javascript,${encodeURIComponent(source)}`;
+};
 
 const shimSource = (exitCode: number): string =>
     ["#!/bin/sh", "echo \"$0 $@\" >> \"$GTKX_PACKAGE_MANAGER_LOG\"", `exit ${String(exitCode)}`, ""].join("\n");
@@ -109,7 +116,8 @@ const runCreate = (options: CreateOptions): CreateRun => {
     seedFiles(target, seeded);
     seedLinks(target, links);
 
-    const result = spawnSync(process.execPath, [...CLI_ARGV, target, ...options.args], {
+    const versionArgs = options.nodeVersion === undefined ? [] : ["--import", versionPreload(options.nodeVersion)];
+    const result = spawnSync(process.execPath, [...versionArgs, ...CLI_ARGV, target, ...options.args], {
         cwd: workspace.root,
         encoding: "utf8",
         env: createEnvironment(workspace),

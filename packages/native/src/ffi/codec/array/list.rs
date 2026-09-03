@@ -36,7 +36,7 @@ impl ArrayContainer for ListArrayCodec {
     ) -> anyhow::Result<Unknown<'e>> {
         let ops = self.ops;
         let Some(ptr) = stash.as_non_null_ptr(ops.label)? else {
-            return codec.decode_empty_sequence(env);
+            return codec.decode_null(env);
         };
 
         let mut current = ptr;

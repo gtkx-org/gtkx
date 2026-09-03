@@ -170,10 +170,14 @@ describe("gtkx deploy (metadata and packaging safety)", () => {
 });
 
 describe("gtkx deploy (invalid metadata and extra files)", () => {
-    it("rejects malformed AppStream fragments", () => {
+    it("rejects malformed or unsupported AppStream fragments", () => {
         expectDeployRejected(
             "gtkx-cli-deploy-malformed-metainfo-extra-",
             projectConfig('        metainfoExtra: ["<custom>"],\n'),
+        );
+        expectDeployRejected(
+            "gtkx-cli-deploy-unknown-metainfo-extra-",
+            projectConfig('        metainfoExtra: ["<bogus_tag/>"],\n'),
         );
     });
 

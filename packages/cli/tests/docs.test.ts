@@ -18,10 +18,14 @@ const NAMESPACE_PREFIX = "gtk/";
 const ELEMENT_PAGE = `${NAMESPACE_PREFIX}button.md`;
 const COLLIDING_PROPERTY_PAGE = `${NAMESPACE_PREFIX}map-list-model.md`;
 const NAMESPACE_INDEX = `${NAMESPACE_PREFIX}index.md`;
+const STATIC_ELEMENT_PAGE = "giounix/desktop-app-info.md";
+const SIDEBAR_PAGE = "adw/sidebar.md";
+const APPLICATION_PAGE = "adw/application.md";
+const REFERENCE_LIBRARIES = [...STORE_LIBRARIES, "GioUnix-2.0"];
 const REJECTED_OUT_DIRS = ["", ".", "..", "../sibling", "docs/../..", "/elsewhere/docs"];
 
-const config = (body = ""): string =>
-    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)}` +
+const config = (body = "", libraries = STORE_LIBRARIES): string =>
+    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(libraries)}` +
     `${body} };\n`;
 
 const docsDir = (project: CliProject): string => join(project.root, OUT_DIR);
@@ -39,7 +43,11 @@ describe("gtkx docs", () => {
     };
 
     beforeAll(() => {
-        state.project = createCliProject({ prefix: "gtkx-cli-docs-", config: config(), hasStore: true });
+        state.project = createCliProject({
+            prefix: "gtkx-cli-docs-",
+            config: config("", REFERENCE_LIBRARIES),
+            hasStore: true,
+        });
         state.status = runDocs(state.project);
     });
 
@@ -56,9 +64,29 @@ describe("gtkx docs", () => {
         expect(written).toContain(NAMESPACE_INDEX);
         expect(written).toContain(ELEMENT_PAGE);
         expect(written).toContain(COLLIDING_PROPERTY_PAGE);
+        expect(written).toContain(STATIC_ELEMENT_PAGE);
         expect(readPage(state.project, ELEMENT_PAGE)).toContain("GtkButton");
+        expect(readPage(state.project, ELEMENT_PAGE)).not.toContain(
+            "Each GTKX element rendered into it must create",
+        );
         expect(readPage(state.project, COLLIDING_PROPERTY_PAGE)).toContain(
-            "read with `GObject.getObjectProperty`",
+            "read with `GObject.getProperty`",
+        );
+        const staticElement = readPage(state.project, STATIC_ELEMENT_PAGE);
+        expect(staticElement).toContain("## Static methods");
+        expect(staticElement).toContain(
+            "Static methods are called on `GioUnix.DesktopAppInfo`, imported from `@gtkx/gi/giounix`.",
+        );
+        expect(staticElement).toContain(
+            "search(searchString: string): string[][]",
+        );
+        const sidebar = readPage(state.project, SIDEBAR_PAGE);
+        expect(sidebar).toContain("This remains a React `ReactNode` slot");
+        expect(sidebar).toContain(
+            `[AdwSidebarSection](${BASE_PATH}/adw/sidebar-section)`,
+        );
+        expect(readPage(state.project, APPLICATION_PAGE)).toContain(
+            "https://gtkx.dev/v2/tutorial/actions-menus-shortcuts",
         );
         expect(index).toContain(BASE_PATH);
     });

@@ -1,7 +1,7 @@
 import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, ResolvedConfig } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
-import { isPathWithin, toPosixPath } from "@gtkx/utils";
+import { isPathWithin, logger, toPosixPath } from "@gtkx/utils";
 import { existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, posix, relative, resolve } from "node:path";
@@ -23,6 +23,7 @@ type I18nState = {
     outDir: string;
     project: CatalogProject | null;
     extraction: Promise<void>;
+    hotUpdateTimestamp: number | null;
 };
 
 const BOOTSTRAP_SPECIFIER = "@gtkx/i18n/bootstrap";
@@ -159,12 +160,11 @@ const isProjectSource = (state: I18nState, path: string): boolean => {
 const refreshProjectMessages = async (
     state: I18nState,
     shouldPreserveMetadataMessages: boolean,
-    reportError: (message: string) => void,
 ): Promise<void> => {
     try {
         await queueExtraction(state, shouldPreserveMetadataMessages, false);
     } catch (error) {
-        reportError(error instanceof Error ? error.message : String(error));
+        logger.error(error instanceof Error ? error.message : String(error));
     }
 };
 
@@ -176,6 +176,7 @@ const gtkxI18n = (
     const state: I18nState = {
         entryPath,
         extraction: Promise.resolve(),
+        hotUpdateTimestamp: null,
         i18nRoot: "",
         outDir: "",
         project: null,
@@ -190,17 +191,13 @@ const gtkxI18n = (
         buildStart: () => queueExtraction(state, shouldPreserveMetadataMessages, true),
 
         hotUpdate(options) {
-            if (!isProjectSource(state, options.file)) {
+            if (!isProjectSource(state, options.file) || state.hotUpdateTimestamp === options.timestamp) {
                 return;
             }
 
-            return refreshProjectMessages(
-                state,
-                shouldPreserveMetadataMessages,
-                (message) => {
-                    options.server.config.logger.error(message);
-                },
-            );
+            state.hotUpdateTimestamp = options.timestamp;
+
+            return refreshProjectMessages(state, shouldPreserveMetadataMessages);
         },
 
         transform(code, id) {

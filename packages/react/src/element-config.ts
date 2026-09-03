@@ -33,6 +33,9 @@ const SINGLE_CHILD_TYPES: string[] = [
 
 const CONTENT_SETTER_TYPES: string[] = ["AdwBottomSheet", "AdwOverlaySplitView"];
 
+const acceptedChildren = (acceptedChildTypes: string[], config: ElementConfig): ElementConfig =>
+    Object.assign({}, config, { acceptedChildTypes });
+
 /**
  * The framework's own element configuration for the GTK and Adwaita types it customizes: the base props interface each
  * generated element extends, the component that wraps it, the GObject properties left out of its generated
@@ -104,18 +107,18 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     GtkShortcutController: {
         props: internal("GtkShortcutControllerProps"),
     },
-    GtkTextView: {
+    GtkTextView: acceptedChildren(["GtkTextBuffer"], {
         props: internal("ChildrenProps"),
-    },
+    }),
     GActionMap: {
         props: internal("ActionMapProps"),
     },
     GMenu: {
         props: internal("MenuProps"),
     },
-    GtkColumnView: {
+    GtkColumnView: acceptedChildren(["GtkColumnViewColumn"], {
         props: internal("ChildrenProps"),
-    },
+    }),
     GtkGrid: {
         props: internal("ChildrenProps"),
     },
@@ -135,10 +138,10 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     GtkNotebook: {
         props: internal("ChildrenProps"),
     },
-    GtkApplication: {
+    GtkApplication: acceptedChildren(["GtkWindow"], {
         props: internal("GtkApplicationProps"),
         component: internal("createApplicationComponent"),
-    },
+    }),
     GtkAboutDialog: {
         props: internal("GtkAboutDialogProps"),
     },
@@ -177,12 +180,12 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     AdwLayout: {
         isLazy: true,
     },
-    AdwSidebar: {
+    AdwSidebar: acceptedChildren(["AdwSidebarSection"], {
         props: internal("ChildrenProps"),
-    },
-    AdwSidebarSection: {
+    }),
+    AdwSidebarSection: acceptedChildren(["AdwSidebarItem"], {
         props: internal("ChildrenProps"),
-    },
+    }),
     AdwMultiLayoutView: {
         props: internal("AdwMultiLayoutViewProps"),
     },
@@ -215,31 +218,31 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     AdwExpanderRow: {
         props: internal("AdwExpanderRowProps"),
     },
-    AdwNavigationSplitView: {
+    AdwNavigationSplitView: acceptedChildren(["AdwNavigationPage"], {
         props: internal("ChildrenProps"),
         omittedProps: ["content"],
-    },
+    }),
     AdwWrapBox: {
         props: internal("ChildrenProps"),
     },
     AdwCarousel: {
         props: internal("ChildrenProps"),
     },
-    AdwPreferencesPage: {
+    AdwPreferencesPage: acceptedChildren(["AdwPreferencesGroup"], {
         props: internal("ChildrenProps"),
-    },
-    AdwPreferencesDialog: {
+    }),
+    AdwPreferencesDialog: acceptedChildren(["AdwPreferencesPage"], {
         props: internal("ChildrenProps"),
-    },
+    }),
     AdwPreferencesGroup: {
         props: internal("ChildrenProps"),
     },
     AdwTabView: {
         props: internal("ChildrenProps"),
     },
-    AdwNavigationView: {
+    AdwNavigationView: acceptedChildren(["AdwNavigationPage"], {
         props: internal("ChildrenProps"),
-    },
+    }),
     AdwViewStack: {
         props: internal("ChildrenProps"),
     },
@@ -250,15 +253,15 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     AdwHeaderBar: {
         props: internal("GtkHeaderBarProps"),
     },
-    AdwShortcutsDialog: {
+    AdwShortcutsDialog: acceptedChildren(["AdwShortcutsSection"], {
         props: internal("ChildrenProps"),
-    },
-    AdwShortcutsSection: {
+    }),
+    AdwShortcutsSection: acceptedChildren(["AdwShortcutsItem"], {
         props: internal("ChildrenProps"),
-    },
-    AdwToggleGroup: {
+    }),
+    AdwToggleGroup: acceptedChildren(["AdwToggle"], {
         props: internal("ChildrenProps"),
-    },
+    }),
     AdwAlertDialog: {
         props: internal("AdwAlertDialogProps"),
         omittedProps: ["extraChild"],

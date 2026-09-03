@@ -217,23 +217,33 @@ const renderAccessorPairSignature = (accessor: ResolvedAccessor): string => {
 const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): string | undefined =>
     withAccessor(args, (accessor) => `${propertyDoc(args.property)}${renderAccessorPairSignature(accessor)}`);
 
-const renderPropertyDescriptor = (context: ModuleContext, property: GirProperty): string =>
-    renderDescriptor(context, property.type, property.transferOwnership, { isReceived: true });
+const renderPropertyDescriptor = (context: ModuleContext, property: GirProperty): string => {
+    const descriptor = renderDescriptor(context, property.type, property.transferOwnership, { isReceived: true });
+    const type = property.type === undefined ? undefined : underlyingType(context, property.type);
+
+    if (type?.kind !== "carray" && type?.kind !== "list") {
+        return descriptor;
+    }
+
+    context.addRuntimeInternalImport("preserveArrayNull");
+
+    return `preserveArrayNull(${descriptor})`;
+};
 
 const renderGenericGetBody = (context: ModuleContext, property: GirProperty, tsType: string): string => {
-    context.addRuntimeImport("getObjectProperty");
+    context.addRuntimeImport("getProperty");
     context.addRuntimeImport("t");
     const descriptor = renderPropertyDescriptor(context, property);
 
-    return `return getObjectProperty(this, ${sourceStringLiteral(property.name)}, ${descriptor}) as ${tsType};`;
+    return `return getProperty(this, ${sourceStringLiteral(property.name)}, ${descriptor}) as ${tsType};`;
 };
 
 const renderGenericSetBody = (context: ModuleContext, property: GirProperty): string => {
-    context.addRuntimeImport("setObjectProperty");
+    context.addRuntimeImport("setProperty");
     context.addRuntimeImport("t");
     const descriptor = renderPropertyDescriptor(context, property);
 
-    return `setObjectProperty(this, ${sourceStringLiteral(property.name)}, ${descriptor}, value);`;
+    return `setProperty(this, ${sourceStringLiteral(property.name)}, ${descriptor}, value);`;
 };
 
 export {

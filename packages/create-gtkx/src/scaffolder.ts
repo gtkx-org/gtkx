@@ -29,6 +29,7 @@ type CreateOptions = {
     shouldIncludeTesting?: boolean | undefined;
     isInteractive?: boolean | undefined;
     shouldOverwrite?: boolean | undefined;
+    shouldInstallDependencies?: boolean | undefined;
 };
 
 type ResolvedOptions = {
@@ -42,6 +43,7 @@ type ResolvedOptions = {
     isTypescript: boolean;
     shouldIncludeTesting: boolean;
     shouldInitializeGit: boolean;
+    shouldInstallDependencies: boolean;
 };
 
 type ScaffoldFile = { destination: string; contents: string };
@@ -90,6 +92,10 @@ const DEV_COMMAND: Record<PackageManager, string> = Object.fromEntries(
 
 const ADD_COMMAND: Record<PackageManager, string> = Object.fromEntries(
     PACKAGE_MANAGERS.map((manager) => [manager.value, manager.addCommand]),
+) as Record<PackageManager, string>;
+
+const INSTALL_COMMAND: Record<PackageManager, string> = Object.fromEntries(
+    PACKAGE_MANAGERS.map((manager) => [manager.value, manager.installCommand]),
 ) as Record<PackageManager, string>;
 
 const INHERITED_SCRIPT_POLICY_VARS = ["npm_config_allow_scripts", "npm_config_allow-scripts"];
@@ -440,6 +446,7 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
         isTypescript,
         shouldIncludeTesting,
         shouldInitializeGit: shouldInitialize,
+        shouldInstallDependencies: options.shouldInstallDependencies !== false,
     };
 };
 
@@ -621,6 +628,17 @@ const installDependencies = async (options: InstallDependenciesOptions): Promise
 const pin = (names: string[]): string[] =>
     names.map((dependency) => dependency.startsWith("@gtkx/") ? `${dependency}@^${selfVersion}` : dependency);
 
+const dependencyVersions = (names: string[]): Record<string, string> => Object.fromEntries(
+    names.map((dependency) => [dependency, dependency.startsWith("@gtkx/") ? `^${selfVersion}` : "latest"]),
+);
+
+const writeDependencies = (root: string, devDependencies: string[]): void => {
+    updateManifest(root, (manifest) => {
+        manifest.dependencies = dependencyVersions(DEPENDENCIES);
+        manifest.devDependencies = dependencyVersions(devDependencies);
+    });
+};
+
 const formatRecovery = ({ resolved, devDependencies }: InstallFailureOptions): string => {
     const add = ADD_COMMAND[resolved.packageManager];
 
@@ -722,8 +740,9 @@ const initializeGitRepo = async (root: string, shouldInitialize: boolean): Promi
 const printNextSteps = (resolved: ResolvedOptions): void => {
     const devCmd = DEV_COMMAND[resolved.packageManager];
     const cdStep = resolved.isCurrentDirectory ? "" : `cd ${resolved.target}\n`;
+    const installStep = resolved.shouldInstallDependencies ? "" : `${INSTALL_COMMAND[resolved.packageManager]}\n`;
     const testingNote = resolved.shouldIncludeTesting ? HEADLESS_COMPOSITOR_NOTE : "";
-    p.note(`${cdStep}${devCmd}${testingNote}`, "Next steps");
+    p.note(`${cdStep}${installStep}${devCmd}${testingNote}`, "Next steps");
 };
 
 const createProjectStructure = async (root: string, resolved: ResolvedOptions): Promise<void> => {
@@ -749,7 +768,12 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     const { root } = resolved;
     const devDeps = getDevDependencies(resolved);
     await createProjectStructure(root, resolved);
-    await installAllDependencies({ resolved, devDependencies: devDeps });
+
+    if (resolved.shouldInstallDependencies) {
+        await installAllDependencies({ resolved, devDependencies: devDeps });
+    } else {
+        writeDependencies(root, devDeps);
+    }
 
     await initializeGitRepo(root, resolved.shouldInitializeGit);
     printNextSteps(resolved);

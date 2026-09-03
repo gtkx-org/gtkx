@@ -169,6 +169,7 @@ pub enum Descriptor {
         is_bytes: Option<bool>,
         is_caller_allocated: Option<bool>,
         is_zero_terminated: Option<bool>,
+        preserve_null: Option<bool>,
     },
     Hashtable {
         #[napi(ts_type = "Descriptor")]
@@ -342,6 +343,7 @@ impl Descriptor {
                 is_bytes,
                 is_caller_allocated,
                 is_zero_terminated,
+                preserve_null,
             } => {
                 let mut codec = ArrayCodec::new(
                     item_descriptor.into_codec()?,
@@ -354,6 +356,7 @@ impl Descriptor {
                     },
                     element_size.map(|n| n as usize),
                     is_bytes.unwrap_or(false),
+                    preserve_null.unwrap_or(false),
                 )
                 .map_err(|error| Error::from_reason(error.to_string()))?;
                 if is_zero_terminated.unwrap_or(false) {

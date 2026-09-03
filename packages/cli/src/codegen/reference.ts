@@ -38,6 +38,7 @@ const writeReference = async (options: WriteReferenceOptions): Promise<Reference
         basePath: REFERENCE_PATH,
         linkStyle: "file",
         props: builtin.props,
+        acceptedChildTypes: builtin.acceptedChildTypes,
         omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
         isForced: options.isForced === true,
     });

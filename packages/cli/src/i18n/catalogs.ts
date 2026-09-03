@@ -133,6 +133,7 @@ const initializeCatalog = (catalog: Catalog, template: string, output: string): 
             `--input=${template}`,
             `--output-file=${output}`,
         ],
+        options: { stdio: "pipe" },
         target: catalog.path,
     });
 };

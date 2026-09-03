@@ -1,5 +1,5 @@
 import type { Plugin } from "vite";
-import gtkxVitest from "@gtkx/vitest";
+import gtkxVitest, { type PluginOptions } from "@gtkx/vitest";
 import { gtkxEnsureStore } from "./vite-plugins/ensure-store.js";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
 import { gtkxSettingsWorkerEnv } from "./vite-plugins/settings-worker-env.js";
@@ -11,11 +11,11 @@ import { gtkxSettingsWorkerEnv } from "./vite-plugins/settings-worker-env.js";
  *
  * @returns The plugins to spread into a Vitest config.
  */
-const gtkx = (): Plugin[] => [
-    gtkxEnsureStore(),
-    ...gtkxVitePlugins(),
-    gtkxSettingsWorkerEnv(),
-    gtkxVitest(),
+const gtkx = (options: PluginOptions = {}): Plugin[] => [
+    gtkxEnsureStore(options.configFile),
+    ...gtkxVitePlugins({ configFile: options.configFile }),
+    gtkxSettingsWorkerEnv(options.configFile),
+    gtkxVitest(options),
 ];
 
 export default gtkx;

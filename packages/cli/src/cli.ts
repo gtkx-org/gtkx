@@ -2,9 +2,14 @@ import { assertSupportedNodeVersion } from "@gtkx/config/internal";
 import { defineCommand, runMain } from "citty";
 import packageManifest from "../package.json" with { type: "json" };
 import { splitApplicationArgs } from "./internal/application-args.js";
-import { withErrorBoundary } from "./internal/errors.js";
+import { printError, withErrorBoundary } from "./internal/errors.js";
+import "./internal/parent-process.js";
 
-assertSupportedNodeVersion();
+try {
+    assertSupportedNodeVersion();
+} catch (error) {
+    printError(error);
+}
 
 const version = packageManifest.version;
 const { cliArgs } = splitApplicationArgs(process.argv.slice(2));

@@ -1,5 +1,5 @@
 import type { Plugin } from "vitest/config";
-import { assertSupportedNodeVersion } from "@gtkx/config/internal";
+import { assertSupportedNodeVersion, createConfigLoader } from "@gtkx/config/internal";
 import createConfigPlugin from "@gtkx/config/vite-plugin";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -10,7 +10,7 @@ import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.ts
  * Options accepted by the GTKX Vitest plugin. Every headless display
  * setting is optional and falls back to a built-in default when omitted.
  */
-type PluginOptions = Partial<HeadlessOptions>;
+type PluginOptions = Partial<HeadlessOptions> & Partial<Record<"configFile", string | undefined>>;
 
 const GTKX_INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
 const DEFAULT_TIMEOUT = 30_000;
@@ -22,7 +22,7 @@ const workerPreloadUrl = (): URL => {
     return pathToFileURL(path);
 };
 
-const headlessPreloadSpecifier = (options: PluginOptions): string => {
+const headlessPreloadSpecifier = (options: Partial<HeadlessOptions>): string => {
     const url = workerPreloadUrl();
 
     for (const [key, value] of Object.entries(options)) {
@@ -42,14 +42,17 @@ const headlessPreloadSpecifier = (options: PluginOptions): string => {
  */
 const gtkx = (options: PluginOptions = {}): Plugin => {
     assertSupportedNodeVersion();
+    const { configFile, ...headlessOptions } = options;
+    const loadConfig = createConfigLoader({ configFile });
 
     return createConfigPlugin({
         name: "gtkx:vitest",
+        loadConfig,
         config(config) {
             return {
                 test: {
                     globals: true,
-                    execArgv: ["--disable-sigusr1", "--import", headlessPreloadSpecifier(options)],
+                    execArgv: ["--disable-sigusr1", "--import", headlessPreloadSpecifier(headlessOptions)],
                     testTimeout: config.test?.testTimeout ?? DEFAULT_TIMEOUT,
                     hookTimeout: config.test?.hookTimeout ?? DEFAULT_TIMEOUT,
                     pool: "forks",

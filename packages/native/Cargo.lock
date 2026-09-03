@@ -362,6 +362,7 @@ dependencies = [
  "anyhow",
  "enum_dispatch",
  "glib",
+ "libc",
  "libffi",
  "libloading",
  "napi",

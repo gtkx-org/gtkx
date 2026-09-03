@@ -26,6 +26,7 @@ const GREEN = [0, 1, 0];
 const BLUE = [0, 0, 1];
 const RED_CSS = "rgb(255, 0, 0)";
 const GREEN_CSS = "rgb(0, 255, 0)";
+const BLUE_CSS = "rgb(0, 0, 255)";
 const NAMED_ALPHA = 0.4;
 const WIDE = 200;
 const NUL = "\u{0}";
@@ -210,7 +211,7 @@ describe("style prop edge cases", () => {
         const first = createRef<Gtk.Label>();
         const second = createRef<Gtk.Label>();
 
-        await render(
+        const { rerender } = await render(
             <GtkBox>
                 <GtkLabel ref={first} style={{ color: RED_CSS }}>
                     first
@@ -223,6 +224,20 @@ describe("style prop edge cases", () => {
 
         expect(getColor(first.current)).toEqual(RED);
         expect(getColor(second.current)).toEqual(GREEN);
+
+        await rerender(
+            <GtkBox>
+                <GtkLabel ref={first} style={{ color: BLUE_CSS }}>
+                    first
+                </GtkLabel>
+                <GtkLabel ref={second} style={{ color: RED_CSS }}>
+                    second
+                </GtkLabel>
+            </GtkBox>,
+        );
+
+        expect(getColor(first.current)).toEqual(BLUE);
+        expect(getColor(second.current)).toEqual(RED);
     });
 
     it("keeps both classes when cssClasses goes away and the style stays", async () => {

@@ -30,6 +30,10 @@
         ".": {
             "types": "./main.d.ts",
             "default": "./main.js"
+        },
+        "./internal": {
+            "types": "./internal.d.ts",
+            "default": "./internal.js"
         }
     },
     "sideEffects": [
@@ -40,6 +44,8 @@
         "bootstrap.js",
         "index.js",
         "index.d.ts",
+        "internal.js",
+        "internal.d.ts",
         "main.js",
         "main.d.ts"
     ],

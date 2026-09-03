@@ -77,11 +77,14 @@ const resolvePackage = (projectRoot: string, packageName: string): ResolvedPacka
 const canImport = (fromNodeModules: string, targetNodeModules: string): boolean =>
     isPathWithin(dirname(targetNodeModules), dirname(fromNodeModules));
 
-const storeOptions = (nodeModules: string, name: string, version: string): StoreOptions => ({
-    storeDir: join(nodeModules, STORE_DIR, name),
-    linkDir: join(nodeModules, SCOPE, name),
-    version,
-});
+const storeOptions = (nodeModules: string, name: string, version: string, owner: string): StoreOptions => {
+    return {
+        storeDir: join(nodeModules, STORE_DIR, name),
+        linkDir: join(nodeModules, SCOPE, name),
+        version,
+        owner,
+    };
+};
 
 const resolveRuntime = (projectRoot: string): ResolvedPackage => {
     const runtime = resolvePackage(projectRoot, "@gtkx/runtime");
@@ -187,14 +190,15 @@ const sweepProjectStaging = (projectRoot: string): void => {
  * bindings is installed above the `node_modules` the stores would go in, since it could not reach them.
  */
 const resolveStore = (projectRoot: string): ResolvedStore => {
+    const owner = realpathSync(projectRoot);
     const runtime = resolveRuntime(projectRoot);
     const react = resolvePackage(projectRoot, "@gtkx/react");
     const nodeModules = storeNodeModules(runtime, react);
     checkConsumers(projectRoot, nodeModules);
 
     return {
-        gi: storeOptions(nodeModules, "gi", runtime.version),
-        jsx: react === null ? null : storeOptions(nodeModules, "jsx", react.version),
+        gi: storeOptions(nodeModules, "gi", runtime.version, owner),
+        jsx: react === null ? null : storeOptions(nodeModules, "jsx", react.version, owner),
     };
 };
 

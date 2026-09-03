@@ -9,7 +9,14 @@ import {
     LIBRARIES_FILENAME,
     renderGeneratedLibraries,
 } from "./gi/generated-libraries.js";
-import { buildManifest, namespaceBarrel, type StoreOptions, subpathExport, writeStore } from "./store-fs.js";
+import {
+    buildManifest,
+    namespaceBarrel,
+    type PreparedStore,
+    prepareStore,
+    type StoreOptions,
+    subpathExport,
+} from "./store-fs.js";
 
 type GiNamespaceInput = {
     directory: string;
@@ -85,12 +92,13 @@ const writeGiStore = (
     namespaces: GiNamespaceInput[],
     externalPackages: string[],
     records: GiStoreRecords,
-): void => {
+): PreparedStore => {
     const { collected, exportsMap } = collectStoreSources(namespaces);
 
-    writeStore({
+    return prepareStore({
         storeDir: options.storeDir,
         linkDir: options.linkDir,
+        owner: options.owner,
         files: collected,
         manifest: buildManifest({
             name: "@gtkx/gi",

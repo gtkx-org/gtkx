@@ -1,6 +1,6 @@
 ---
 title: "Animations"
-description: "Animate native widgets with @gtkx/animated, the React Spring target for GTKX: animated(Component), springs, interpolations, transitions, the GTK frame clock, and reduced motion."
+description: "Animate native widgets with @gtkx/animated, the React Spring target for GTKX: animated(Component), springs, interpolations, animated styles, transitions, the GTK frame clock, and reduced motion."
 ---
 
 # Animations
@@ -44,13 +44,42 @@ A value the property cannot hold as written is fitted to it: a spring headed for
 
 The wrapper passes a `ref` through. A component of your own that forwards it to the widget it renders gets the same per-frame writes, while one that keeps the `ref` re-renders with the current values instead.
 
-Props that are not GObject properties, such as the `accessible*` props, still animate by re-rendering the component with the current value on each frame. Reserve that path for values that genuinely need it. `style` accepts animated values too, but it is not suitable for per-frame updates.
+Props that are not GObject properties, such as the `accessible*` props, still animate by re-rendering the component with the current value on each frame. Reserve that path for values that genuinely need it. `style` is handled specially: animated declarations update the shared stylesheet imperatively, without re-rendering the component.
 
-## Avoid per-frame style changes
+## Animated styles
 
-GTK4 has no inline styles, so the [`style` prop](/v2/guide/css) serializes its object into a rule in a `Gtk.CssProvider`. Every animated `style` update reparses and reloads that rule, and GTK invalidates styling across the display. The provider belongs to one widget, but the invalidation cost does not. Feeding it a spring every frame scales poorly with the size of the visible tree.
+GTK4 has no inline styles, so the [`style` prop](/v2/guide/css) serializes its object into a rule in GTKX's shared `Gtk.CssProvider`. A spring can drive the whole object or one declaration, and updates made during the same animation turn are applied with one provider reload:
 
-Animate a native GObject property whenever one represents the effect. For CSS-only state changes, switch a class once and let GTK run a CSS `transition` or `@keyframes` animation internally. For continuously changing custom pixels, draw them in a `GtkDrawingArea` and call `queueDraw()` as the value changes. Keep `style` for state changes at React-render frequency, not the frame loop.
+```tsx
+import { animated, useSpring } from "@gtkx/animated";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+
+const AnimatedLabel = animated(GtkLabel);
+
+export const Deadline = ({ isOverdue }: { isOverdue: boolean }) => {
+    const { level } = useSpring({ level: isOverdue ? 1 : 0 });
+
+    return (
+        <AnimatedLabel
+            label="Due today"
+            style={level.to((value) => ({ color: `mix(var(--window-fg-color), var(--error-color), ${value})` }))}
+        />
+    );
+};
+```
+
+The spring carries a number and the interpolation builds the declaration around it. A spring returned by `useSpring` can also be passed directly as the style object or placed on one declaration:
+
+```tsx
+const styles = useSpring({ from: { color: "red" }, to: { color: "blue" } });
+
+<AnimatedLabel style={styles} label="Due today" />;
+<AnimatedLabel style={{ color: styles.color, paddingTop: 4 }} label="Due today" />;
+```
+
+Nested blocks work too, so <span v-pre>`style={{ "&:hover": { color: styles.color } }}`</span> is animated without a React render. Only `style` is read this way; a spring nested inside another object-valued prop is not tracked.
+
+Animated styles are supported, but a provider reload still makes GTK invalidate styling across the display. Animate a native GObject property when one represents the effect, and prefer a class with a CSS `transition` or `@keyframes` for a fixed CSS state change. Use animated `style` when the value is composed dynamically or the effect exists only in CSS, and profile it when many widgets move at once in a large tree. For continuously changing custom pixels, draw them in a `GtkDrawingArea` and call `queueDraw()` as the value changes.
 
 ## Moving widgets
 
@@ -79,7 +108,7 @@ export const Slide = ({ isOpen }: { isOpen: boolean }) => {
 };
 ```
 
-Elsewhere, animate the margins, the size requests, or a `Gtk.Paned`'s `position`. When an effect exists only in CSS, use a CSS transition or keyframes rather than feeding a `transform` through `style` each frame.
+Elsewhere, animate the margins, the size requests, a `Gtk.Paned`'s `position`, or a CSS `transform` through `style`, which moves what the widget paints without disturbing the layout around it.
 
 ## Transitions and the rest of React Spring
 

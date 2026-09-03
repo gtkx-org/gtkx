@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { createCliProject, runCliOrThrow } from "./cli-project.js";
+import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
 import {
     PINNED_SOURCE,
     PNPM_PIN,
@@ -14,9 +15,17 @@ import {
 const DEFAULT_ID = "com.gtkx.configdefault";
 const EDITION_ID = "com.gtkx.configedition";
 const EDITION_CONFIG = "gtkx.edition.config.ts";
+const VITEST_CONFIG = "vitest.config.ts";
+const VITEST_TEST = join("tests", "config-selection.test.ts");
+const VITEST_ENTRY = fileURLToPath(new URL("../../../node_modules/vitest/vitest.mjs", import.meta.url));
+const CLI_PACKAGE = fileURLToPath(new URL("..", import.meta.url));
+const PROCESS_TIMEOUT = 120_000;
 const ENTRY = `import { applicationId } from "virtual:gtkx-config";
 
 process.stdout.write(applicationId);
+`;
+const DEV_ENTRY = `${ENTRY}
+process.exit(0);
 `;
 
 const baseConfig = `export default {
@@ -49,6 +58,42 @@ const projectFiles = (): Record<string, string> => ({
     "application.svg": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"/>\n',
     [join("src", "index.ts")]: ENTRY,
 });
+
+const selectedConfig = `export default {
+    applicationId: "${EDITION_ID}",
+    codegen: false,
+};
+`;
+
+const vitestConfig = `import gtkx from "@gtkx/cli/vitest-plugin";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+    plugins: [gtkx({ configFile: "${EDITION_CONFIG}" })],
+    test: { include: [${JSON.stringify(VITEST_TEST)}] },
+});
+`;
+
+const vitestTest = `import { applicationId } from "virtual:gtkx-config";
+
+it("uses the selected GTKX configuration", () => {
+    expect(applicationId).toBe("${EDITION_ID}");
+});
+`;
+
+const runVitestOrThrow = (project: CliProject): void => {
+    symlinkSync(dirname(VITEST_ENTRY), join(project.nodeModules, "vitest"), "dir");
+    symlinkSync(CLI_PACKAGE, join(project.nodeModules, "@gtkx", "cli"), "dir");
+    const result = spawnSync(process.execPath, [VITEST_ENTRY, "run", "--config", VITEST_CONFIG], {
+        cwd: project.root,
+        encoding: "utf8",
+        timeout: PROCESS_TIMEOUT,
+    });
+
+    if (result.status !== 0) {
+        throw new Error(`${result.stdout}${result.stderr}`);
+    }
+};
 
 describe("GTKX configuration selection", () => {
     it("uses one selected configuration through build and deploy", () => {
@@ -88,7 +133,26 @@ describe("GTKX configuration selection", () => {
         });
 
         expect(() => runCliOrThrow(project, ["codegen"])).toThrow();
+        expect(() => runCliOrThrow(project, ["codegen", "--config", "missing.config.ts"])).toThrow();
         runCliOrThrow(project, ["codegen", "--config", "gtkx.codegen.config.ts"]);
+    });
+
+    it("uses one selected configuration through dev and Vitest", () => {
+        using project = createCliProject({
+            prefix: "gtkx-config-development-",
+            config: "export default {};\n",
+            files: {
+                [EDITION_CONFIG]: selectedConfig,
+                [join("src", "index.ts")]: DEV_ENTRY,
+                [VITEST_CONFIG]: vitestConfig,
+                [VITEST_TEST]: vitestTest,
+            },
+            hasStore: true,
+        });
+
+        const dev = runCliOrThrow(project, ["dev", "--config", EDITION_CONFIG]);
+        expect(dev.output).toContain(EDITION_ID);
+        runVitestOrThrow(project);
     });
 
     it("keeps the selected configuration in a Flatpak source build", () => {

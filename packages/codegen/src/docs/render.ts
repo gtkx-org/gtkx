@@ -1,6 +1,7 @@
 import { sanitizeTypeIdentifier, sortStringsBy } from "@gtkx/utils";
 import type { GirAnnotations } from "../gir/annotations.js";
 import type { GirClass } from "../gir/class.js";
+import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirCallable } from "../gir/parameter.js";
@@ -9,11 +10,14 @@ import type { TypeId } from "../gir/type-id.js";
 import type { JsDocDeprecation, JsDocParam, JsDocSpec } from "../writer/doc-tags.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../analysis/param-structure.js";
 import { recordTypeTarget, renderBaseType, type TsTypeTarget } from "../analysis/ts-type.js";
+import { callableSpec } from "../store/gi/callable-doc.js";
 import {
     dedupeCallables,
     instanceMemberSpec,
     instanceScope,
+    matchStaticFinishFunction,
     renderInstanceMethodSignature,
+    renderStaticSignature,
 } from "../store/gi/callables.js";
 import { annotationSpec, handlerSpec, selfHandlerSpec } from "../store/gi/doc-spec.js";
 import { methodExportName } from "../store/gi/method.js";
@@ -42,6 +46,15 @@ type PropertyMetaOptions = {
     property: GirProperty;
     accessNotes: string[];
     origin: string | undefined;
+};
+
+type StaticSectionOptions = {
+    title: string;
+    intro: string;
+    context: ModuleContext;
+    callables: GirFunction[];
+    siblings: GirFunction[];
+    returnTypeOverride?: string;
 };
 
 const DOCS_DEFAULT_VALUES: Record<string, string> = { TRUE: "true", FALSE: "false", NULL: "null" };
@@ -270,6 +283,46 @@ const signatureBlock = (name: string, signature: string, notes: string[]): strin
 const signatureEntryBlock = (entry: SignatureEntry, leadingNotes: string[] = []): string =>
     signatureBlock(entry.name, entry.signature, [...leadingNotes, entry.doc, ...tagNotes(entry.tags)]);
 
+const staticEntry = (options: StaticSectionOptions, callable: GirFunction): SignatureEntry | undefined => {
+    const signature = renderStaticSignature(options.context, callable, {
+        returnTypeOverride: options.returnTypeOverride,
+        siblings: options.siblings,
+    });
+
+    if (signature === undefined) {
+        return undefined;
+    }
+
+    const finishFn = matchStaticFinishFunction(options.context, callable, options.siblings);
+
+    return {
+        name: signature.name,
+        signature: signature.signature,
+        doc: docMarkdown(callable.doc),
+        tags: callableSpec(options.context, callable, { finishFn }),
+    };
+};
+
+const staticSectionBlocks = (options: StaticSectionOptions): string[] => {
+    const entries: SignatureEntry[] = [];
+
+    for (const callable of dedupeCallables(options.callables)) {
+        const entry = staticEntry(options, callable);
+
+        if (entry !== undefined) {
+            entries.push(entry);
+        }
+    }
+
+    if (entries.length === 0) {
+        return [];
+    }
+
+    const blocks = sortStringsBy(entries, (item) => item.name).map((item) => signatureEntryBlock(item));
+
+    return [options.title, options.intro, ...blocks];
+};
+
 const namespaceOrder = (name: string): string => {
     const index = LEADING_NAMESPACES.indexOf(name);
 
@@ -349,7 +402,7 @@ export {
     propertyMetaLine,
     signalTags,
     signatureBlock,
-    signatureEntryBlock,
+    staticSectionBlocks,
     sortedMetaBlocks,
     namespaceOrder,
     docsSignatureContext,

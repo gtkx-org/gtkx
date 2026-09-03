@@ -41,13 +41,13 @@ const isCurrentProcessGroup = (identity: ProcessGroupIdentity): boolean => {
     return current?.leaderStartTime === identity.leaderStartTime;
 };
 
-const killProcessGroup = (identity: ProcessGroupIdentity): void => {
+const killProcessGroup = (identity: ProcessGroupIdentity, signal: NodeJS.Signals = "SIGKILL"): void => {
     if (!isCurrentProcessGroup(identity)) {
         return;
     }
 
     try {
-        process.kill(-identity.processGroupId, "SIGKILL");
+        process.kill(-identity.processGroupId, signal);
     } catch {
         return;
     }

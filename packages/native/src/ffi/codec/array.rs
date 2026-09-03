@@ -27,9 +27,16 @@ pub struct ArrayCodec {
     pub ownership: Ownership,
     pub element_size: Option<usize>,
     pub(crate) is_bytes: bool,
+    pub(crate) null_decoding: NullArrayDecoding,
     pub(crate) caller_allocated: bool,
     pub(crate) zero_terminated: bool,
     pub(crate) container: ArrayContainerCodec,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum NullArrayDecoding {
+    Empty,
+    Null,
 }
 
 impl ArrayCodec {
@@ -40,6 +47,7 @@ impl ArrayCodec {
         bounds: ArrayBounds,
         element_size: Option<usize>,
         is_bytes: bool,
+        preserve_null: bool,
     ) -> anyhow::Result<Self> {
         anyhow::ensure!(
             !is_bytes || ItemCodec::from_codec(&item_codec).is_some_and(ItemCodec::is_byte),
@@ -51,6 +59,11 @@ impl ArrayCodec {
             ownership,
             element_size,
             is_bytes,
+            null_decoding: if preserve_null {
+                NullArrayDecoding::Null
+            } else {
+                NullArrayDecoding::Empty
+            },
             caller_allocated: false,
             zero_terminated: false,
             container: ArrayContainerCodec::from_kind(kind, bounds)?,
@@ -167,7 +180,7 @@ impl Decoder for ArrayCodec {
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
         if ptr.is_null() {
-            return self.decode_empty_sequence(env);
+            return self.decode_null(env);
         }
         self.container
             .decode(self, env, &ffi::Stash::Ptr(ptr), transfer)
@@ -406,6 +419,14 @@ impl ArrayCodec {
         }
 
         build_js_array(env, Vec::new())
+    }
+
+    pub(crate) fn decode_null<'e>(&self, env: &'e Env) -> anyhow::Result<Unknown<'e>> {
+        if matches!(self.null_decoding, NullArrayDecoding::Null) {
+            return Ok(value::js_null(env)?);
+        }
+
+        self.decode_empty_sequence(env)
     }
 
     pub(crate) fn decode_bytes_or_items<'e>(

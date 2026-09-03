@@ -217,13 +217,13 @@ const remedySuffix = (input: XmlFileInput, xml: string, error: unknown): string 
     return remedy === undefined ? "" : `${offendingLine(xml, error)}\n${remedy}`;
 };
 
-const assertWellFormed = (input: XmlFileInput, xml: string): void => {
+const assertWellFormed = (input: XmlFileInput, xml: string, displayedXml: string): void => {
     try {
         SyntaxValidator.validate(xml);
     } catch (error) {
         throw new Error(
             `The ${input.label} at ${input.path} is not well-formed XML: ` +
-            `${errorMessage(error)}${positionSuffix(error)}${remedySuffix(input, xml, error)}`,
+            `${errorMessage(error)}${positionSuffix(error)}${remedySuffix(input, displayedXml, error)}`,
             { cause: error },
         );
     }
@@ -234,7 +234,7 @@ const parseXmlFile = (input: XmlFileInput): unknown => {
     const sanitized = input.preserveIllegalControls === true
         ? sanitizeControlCodes(xml)
         : { source: xml, replacements: new Map<string, string>() };
-    assertWellFormed(input, sanitized.source);
+    assertWellFormed(input, sanitized.source, xml);
 
     try {
         return restoreControlCodes(input.parser.parse(sanitized.source), sanitized.replacements);

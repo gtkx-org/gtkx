@@ -5,7 +5,6 @@ import { arch, platform } from "node:os";
 import { dirname, join } from "node:path";
 import { stripQuery } from "./strip-query.js";
 
-const EMITTED_BINDING_SPECIFIER = "./gtkx.node";
 const BINDING_FILENAME = "gtkx.node";
 
 function resolveBinaryPath(projectRequire: ReturnType<typeof createRequire>, currentArch: string): string {
@@ -95,10 +94,6 @@ function gtkxNative(root: string): Plugin {
                 fileName: BINDING_FILENAME,
                 source: resolvePlatformBinary(projectRequire),
             });
-        },
-
-        resolveId(id) {
-            return id === EMITTED_BINDING_SPECIFIER ? { id, external: true } : null;
         },
 
         transform(code, id) {

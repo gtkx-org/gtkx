@@ -201,11 +201,11 @@ const resolveReactCompilerOptions = (setting: Config["reactCompiler"]): Resolved
     };
 };
 
-const validateConfig = (config: unknown): void => {
+const validateConfig = (config: unknown, configFile?: string): void => {
     const result = validationSchema.safeParse(config);
 
     if (!result.success) {
-        throw configError(result.error);
+        throw configError(result.error, configFile);
     }
 };
 

@@ -1,7 +1,13 @@
 import type { ModuleExport } from "@gtkx/react/config";
 import type { OmittedProps } from "../store/jsx/omitted-props.js";
 
-type BuiltinElement = { component?: ModuleExport; isLazy?: boolean; props?: ModuleExport; omittedProps?: string[] };
+type BuiltinElement = {
+    component?: ModuleExport;
+    isLazy?: boolean;
+    props?: ModuleExport;
+    omittedProps?: string[];
+    acceptedChildTypes?: string[];
+};
 
 /** The framework's built-in element config, split into the maps codegen consumes. */
 type BuiltinElements = {
@@ -14,6 +20,8 @@ type BuiltinElements = {
     /** Props left out of the generated element props, keyed by GLib type name. */
     omittedProps: OmittedProps;
 };
+
+type DocsBuiltinElements = BuiltinElements & { acceptedChildTypes: Record<string, string[]> };
 
 const CONFIG_SPECIFIER = "@gtkx/react/config";
 
@@ -55,11 +63,37 @@ const collectBuiltinElements = (target: BuiltinElements, elements: Record<string
  * `virtual:gtkx-config`, which means this must run only after the gi store has been written and linked.
  */
 const readBuiltinElements = async (): Promise<BuiltinElements> => {
-    const result: BuiltinElements = { components: {}, lazyElements: [], props: {}, omittedProps: {} };
+    const result: BuiltinElements = {
+        components: {},
+        lazyElements: [],
+        props: {},
+        omittedProps: {},
+    };
     collectBuiltinElements(result, await importBuiltinElements());
 
     return result;
 };
 
+const readBuiltinElementsForDocs = async (): Promise<DocsBuiltinElements> => {
+    const elements = await importBuiltinElements();
+    const result: DocsBuiltinElements = {
+        components: {},
+        lazyElements: [],
+        props: {},
+        omittedProps: {},
+        acceptedChildTypes: {},
+    };
+
+    collectBuiltinElements(result, elements);
+
+    for (const [type, config] of Object.entries(elements)) {
+        if (config.acceptedChildTypes !== undefined) {
+            result.acceptedChildTypes[type] = [...config.acceptedChildTypes];
+        }
+    }
+
+    return result;
+};
+
 export type { ModuleExport } from "@gtkx/react/config";
-export { readBuiltinElements, type BuiltinElements };
+export { readBuiltinElements, readBuiltinElementsForDocs, type BuiltinElements };

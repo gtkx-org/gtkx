@@ -23,9 +23,10 @@ export default defineConfig({
 
 ### Selecting another configuration
 
-`gtkx codegen`, `gtkx build`, and `gtkx deploy` all accept the same project-relative `--config` option:
+`gtkx dev`, `gtkx codegen`, `gtkx build`, and `gtkx deploy` all accept the same project-relative `--config` option:
 
 ```bash
+gtkx dev --config gtkx.enterprise.config.ts
 gtkx codegen --config gtkx.enterprise.config.ts
 gtkx build --config gtkx.enterprise.config.ts
 gtkx deploy --config gtkx.enterprise.config.ts
@@ -34,6 +35,8 @@ gtkx deploy --config gtkx.enterprise.config.ts
 The path is relative to the project root selected by `--cwd` and must remain inside that root. Build and deploy
 also pass the selected file through their implicit codegen and every build-time config consumer, so generated
 bindings, `virtual:gtkx-config`, the bundle, and deployment metadata all use one configuration.
+
+Use the same file in Vitest with `gtkx({ configFile: "gtkx.enterprise.config.ts" })` in `vitest.config.ts`.
 
 Every production build records both the project-relative config path and a digest of the production-mode
 configuration in its build manifest. `gtkx deploy --skip-build --config ...` compares both identities before it
@@ -82,7 +85,8 @@ gtkx build src/index.ts --out build/application
 
 An `--out` path must be below the project root, cannot pass through a symbolic link, and must be absent, empty,
 or contain the manifest from an earlier GTKX build. GTKX can safely replace that earlier build, but rejects the
-project root and directories containing unrelated files. Each selected directory receives its own
+project root, directories containing unrelated files, and a path nested inside another managed build. Each
+selected directory receives its own
 `bundle.mjs`, build manifest, and emitted assets. `gtkx deploy --skip-build` still packages `dist/`; its own
 `--out` option selects the deployment work and artifact directory instead.
 
@@ -101,6 +105,11 @@ Codegen writes packages into `node_modules/.gtkx` and links them into `node_modu
 
 - **`@gtkx/gi`** is the introspected API, one subpath per namespace (`@gtkx/gi/gtk`, `@gtkx/gi/adw`): the classes, enums, and functions you call imperatively, for refs and values such as `Gtk.Orientation.VERTICAL`.
 - **`@gtkx/jsx/<namespace>`** is the React layer (`@gtkx/jsx/gtk`, `@gtkx/jsx/adw`): a PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a `React.JSX.IntrinsicElements` augmentation.
+
+The generated store must sit in the same project dependency tree as its installed `@gtkx/*` packages. Codegen
+rejects packages resolved from a `node_modules` directory above the project, naming both locations, because a
+hoisted copy could otherwise share and overwrite another project's generated bindings. Scaffold and run the
+project outside an ancestor dependency tree, or install its dependencies locally.
 
 The `cairo` namespace is provided by the [`@gtkx/cairo`](/v2/guide/cairo) package rather than generated.
 
@@ -142,8 +151,8 @@ const connectSocket = (socket: Gio.Socket, address: Gio.SocketAddress): void => 
 `GObject.signalEmit(instance, signal, ...args)` is the corresponding emission escape hatch. Properties have matching collision-safe helpers:
 
 ```ts
-const blocking = GObject.getObjectProperty(socket, "blocking");
-GObject.setObjectProperty(socket, "blocking", !blocking);
+const blocking = GObject.getProperty(socket, "blocking");
+GObject.setProperty(socket, "blocking", !blocking);
 ```
 
 Property names use their generated camelCase spelling. The getter accepts readable properties and infers their result, while the setter accepts mutable properties and checks the value type. Both resolve the installed `GObject.ParamSpec`, so they still reach a property when a more-specific method owns the same JavaScript name. Read-only and construct-only properties are excluded from the setter. Other inherited GIR implementations remain reachable explicitly through their prototype when both versions are useful.

@@ -497,6 +497,12 @@ const arrayT = (
     return result;
 };
 
+const preserveArrayNull = (descriptor: ArrayDescriptor): ArrayDescriptor => {
+    Reflect.set(descriptor, "preserveNull", true);
+
+    return descriptor;
+};
+
 /** Builds a descriptor for a `GList` of items. */
 const listT = (
     itemDescriptor: Descriptor,
@@ -630,6 +636,7 @@ export {
     fundamentalLifecycleFor,
     fundamentalT,
     arrayT,
+    preserveArrayNull,
     listT,
     slistT,
     ptrArrayT,

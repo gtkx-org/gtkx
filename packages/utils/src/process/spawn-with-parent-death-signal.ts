@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn, type StdioOptions } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { Socket } from "node:net";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,10 +21,19 @@ type ParentDeathSpawnOptions = {
     cleanupDirectories?: string[];
 };
 
+type ParentDeathSupervisorOptions = Omit<ParentDeathSpawnOptions, "cleanupDirectories"> & {
+    cleanupDirectory: string;
+};
+
+type GuardSignal = "SIGKILL" | "SIGCONT";
+
+type LaunchArguments = (executable: string, cleanupDirectories: CleanupDirectoryIdentity[]) => string[];
+
 type GuardJob = {
     marker: string;
     processGroup: ProcessGroupIdentity;
     cleanupDirectories: CleanupDirectoryIdentity[];
+    signal: GuardSignal;
 };
 
 type GuardState = {
@@ -34,8 +44,8 @@ type GuardState = {
 type SpawnRollback = {
     child: ChildProcess;
     marker: string;
-    processGroup?: ProcessGroupIdentity | undefined;
-    cleanupDirectories?: CleanupDirectoryIdentity[] | undefined;
+    processGroup?: ProcessGroupIdentity;
+    cleanupDirectories?: CleanupDirectoryIdentity[];
 };
 
 const MODULE_PATH = fileURLToPath(import.meta.url);
@@ -43,6 +53,49 @@ const GUARD_PATH = join(dirname(MODULE_PATH), `process-guard${extname(MODULE_PAT
 const RUN_ID = randomBytes(8).toString("hex");
 const RUN_PREFIX = `${PROCESS_MARKER}=${RUN_ID}/`;
 const guard: GuardState = { jobs: new Map() };
+const SUPERVISOR_NAME = "gtkx-process-supervisor";
+const SUPERVISOR_SCRIPT = [
+    "runtime=$1",
+    "identity=$2",
+    "expected_parent=$3",
+    "expected_parent_start=$4",
+    "stat_command=$5",
+    "rm_command=$6",
+    "shift 6",
+    "matches_directory() {",
+    '    [ "$("$stat_command" -c "%d:%i:%u" -- "$runtime" 2>/dev/null)" = "$identity" ]',
+    "}",
+    "matches_parent() {",
+    "    parent_stat=",
+    '    IFS= read -r parent_stat < "/proc/$expected_parent/stat" || return 1',
+    "    parent_tail=${parent_stat##*) }",
+    "    set -- $parent_tail",
+    '    [ "${20}" = "$expected_parent_start" ]',
+    "}",
+    "terminate() {",
+    '    trap "" CONT TERM INT HUP',
+    '    if matches_directory; then "$rm_command" -rf -- "$runtime"; fi',
+    '    kill -KILL "-$$" 2>/dev/null',
+    "    exit 1",
+    "}",
+    "trap terminate CONT TERM INT HUP",
+    "if ! matches_parent; then terminate; fi",
+    '"$@" &',
+    "child=$!",
+    'wait "$child"',
+    "exit $?",
+].join("\n");
+
+const processStartTime = (pid: number): string => {
+    const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
+    const start = stat.slice(stat.lastIndexOf(") ") + 2).split(" ", 20)[19];
+
+    if (start === undefined) {
+        throw new Error(`Failed to identify process ${String(pid)}`);
+    }
+
+    return start;
+};
 
 const writeGuardCommand = (child: ChildProcess, operation: "+" | "-", job: GuardJob): void => {
     child.stdin?.write(`${operation}${JSON.stringify(job)}\n`);
@@ -124,18 +177,30 @@ const rollbackSpawn = ({ child, marker, processGroup, cleanupDirectories = [] }:
     }
 };
 
-function spawnWithParentDeathSignal(
+const captureCleanupDirectories = (command: string, paths: string[]): CleanupDirectoryIdentity[] => {
+    const identities = paths.map((path) => cleanupDirectoryIdentity(path));
+
+    if (identities.includes(undefined)) {
+        throw new Error(`Failed to identify a cleanup directory for ${command}`);
+    }
+
+    return identities.filter((identity): identity is CleanupDirectoryIdentity => identity !== undefined);
+};
+
+const spawnGuarded = (
     command: string,
-    args: string[],
-    options: ParentDeathSpawnOptions = {},
-): ChildProcess {
+    options: ParentDeathSpawnOptions,
+    signal: GuardSignal,
+    launchArguments: LaunchArguments,
+): ChildProcess => {
     const executable = resolveExecutable(command);
     const setpriv = resolveExecutable("setpriv");
     const jobValue = `${RUN_ID}/${randomBytes(4).toString("hex")}`;
     const marker = `${PROCESS_MARKER}=${jobValue}`;
+    const cleanupDirectories = captureCleanupDirectories(command, options.cleanupDirectories ?? []);
     startGuard();
 
-    const child = spawn(setpriv, ["--pdeathsig", "SIGKILL", executable, ...args], {
+    const child = spawn(setpriv, launchArguments(executable, cleanupDirectories), {
         detached: true,
         stdio: options.stdio ?? "ignore",
         env: { ...(options.env ?? process.env), [PROCESS_MARKER]: jobValue },
@@ -145,25 +210,11 @@ function spawnWithParentDeathSignal(
     const group = processGroupId === undefined ? undefined : processGroupIdentity(processGroupId);
 
     if (group === undefined) {
-        rollbackSpawn({ child, marker });
+        rollbackSpawn({ child, marker, cleanupDirectories });
         throw new Error(`Failed to identify process group for ${command}`);
     }
 
-    const cleanupDirectories = (options.cleanupDirectories ?? []).map((path) => cleanupDirectoryIdentity(path));
-
-    if (cleanupDirectories.includes(undefined)) {
-        const captured = cleanupDirectories.filter(
-            (identity): identity is CleanupDirectoryIdentity => identity !== undefined,
-        );
-        rollbackSpawn({ child, marker, processGroup: group, cleanupDirectories: captured });
-        throw new Error(`Failed to identify a cleanup directory for ${command}`);
-    }
-
-    const job: GuardJob = {
-        marker,
-        processGroup: group,
-        cleanupDirectories: cleanupDirectories.filter((identity) => identity !== undefined),
-    };
+    const job: GuardJob = { marker, processGroup: group, cleanupDirectories, signal };
     registerJob(job);
 
     child.on("exit", () => {
@@ -172,6 +223,59 @@ function spawnWithParentDeathSignal(
     });
 
     return child;
+};
+
+function spawnWithParentDeathSignal(
+    command: string,
+    args: string[],
+    options: ParentDeathSpawnOptions = {},
+): ChildProcess {
+    return spawnGuarded(
+        command,
+        options,
+        "SIGKILL",
+        (executable) => ["--pdeathsig", "SIGKILL", executable, ...args],
+    );
 }
 
-export { spawnWithParentDeathSignal };
+const spawnWithParentDeathSupervisor = (
+    command: string,
+    args: string[],
+    options: ParentDeathSupervisorOptions,
+): ChildProcess => {
+    const shell = resolveExecutable("sh");
+    const stat = resolveExecutable("stat");
+    const rm = resolveExecutable("rm");
+
+    return spawnGuarded(
+        command,
+        { ...options, cleanupDirectories: [options.cleanupDirectory] },
+        "SIGCONT",
+        (executable, cleanupDirectories) => {
+            const identity = cleanupDirectories[0];
+
+            if (identity === undefined) {
+                throw new Error(`Failed to identify a cleanup directory for ${command}`);
+            }
+
+            return [
+                "--pdeathsig",
+                "SIGCONT",
+                shell,
+                "-c",
+                SUPERVISOR_SCRIPT,
+                SUPERVISOR_NAME,
+                identity.path,
+                `${identity.device}:${identity.inode}:${identity.userId}`,
+                String(process.pid),
+                processStartTime(process.pid),
+                stat,
+                rm,
+                executable,
+                ...args,
+            ];
+        },
+    );
+};
+
+export { spawnWithParentDeathSignal, spawnWithParentDeathSupervisor };
