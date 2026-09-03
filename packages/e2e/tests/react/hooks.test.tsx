@@ -198,6 +198,25 @@ describe("useProperty", () => {
         expect(result.current).toBe(true);
     });
 
+    it("reads a property hidden by a method of the same name", async () => {
+        const model = Gtk.MapListModel.new(null, null);
+        const { result } = await renderHook(() => useProperty(model, "hasMap"));
+        expect(model.hasMap()).toBe(false);
+        expect(result.current).toBe(false);
+    });
+
+    it("reads and writes a property contributed by an implemented interface", async () => {
+        const button = new Gtk.Button({});
+        const { result } = await renderHook(() => useProperty(button, "actionName"));
+        expect(result.current).toBeNull();
+
+        await act(() => {
+            GObject.setObjectProperty(button, "actionName", "app.inspect");
+        });
+
+        expect(result.current).toBe("app.inspect");
+    });
+
     it("derives the notify detail from a multi-word property name", async () => {
         const label = await renderMountedLabel({ label: "Test" });
         const { result } = await renderHook(() => useProperty(label, "maxWidthChars"));

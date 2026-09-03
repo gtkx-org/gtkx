@@ -29,6 +29,27 @@ type NamespaceFunctionOptions = {
     bindingName: string;
 };
 
+const DESCRIPTOR_FREE_PROPERTY_SPEC_FACTORIES: Set<string> = new Set([
+    "g_param_spec_boolean",
+    "g_param_spec_char",
+    "g_param_spec_double",
+    "g_param_spec_enum",
+    "g_param_spec_flags",
+    "g_param_spec_float",
+    "g_param_spec_gtype",
+    "g_param_spec_int",
+    "g_param_spec_int64",
+    "g_param_spec_long",
+    "g_param_spec_object",
+    "g_param_spec_param",
+    "g_param_spec_string",
+    "g_param_spec_uchar",
+    "g_param_spec_uint",
+    "g_param_spec_uint64",
+    "g_param_spec_ulong",
+    "g_param_spec_variant",
+]);
+
 const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | undefined => {
     if (fn.cIdentifier === undefined) {
         return undefined;
@@ -146,8 +167,14 @@ const renderNamespaceFunctionDeclaration = (options: NamespaceFunctionOptions): 
     }
 
     const signature = renderMethodSignature(context, fn);
-    const returnType = renderMethodReturnType(context, fn);
-    const body = renderMethodBody(context, fn, { bindingExpression: bindingName });
+    const renderedReturnType = renderMethodReturnType(context, fn);
+    const descriptorFreeBrand = DESCRIPTOR_FREE_PROPERTY_SPEC_FACTORIES.has(fn.cIdentifier ?? "")
+        ? context.addRuntimeInternalTypeImport("descriptorFreePropertySpec")
+        : undefined;
+    const returnType = descriptorFreeBrand === undefined
+        ? renderedReturnType
+        : `${renderedReturnType} & { readonly [${descriptorFreeBrand}]: true }`;
+    const body = renderMethodBody(context, fn, { bindingExpression: bindingName, returnTypeOverride: returnType });
 
     return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
 };

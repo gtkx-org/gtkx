@@ -525,9 +525,6 @@ const isAppearingBefore = (first: Gtk.Widget, second: Gtk.Widget): boolean => {
     return isSeparateWidget(first, second) && root === getTreeRoot(second) && isPrecedingWidget(root, first, second);
 };
 
-const camelCase = (name: string): string =>
-    name.replaceAll(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase());
-
 const isAsymmetricMatcher = (value: unknown): boolean =>
     typeof value === "object" && value !== null && typeof Reflect.get(value, "asymmetricMatch") === "function";
 
@@ -588,26 +585,8 @@ function readErrorMessageText(widget: Gtk.Widget): string | null {
     return texts.length > 0 ? texts.join(" ") : null;
 }
 
-function assertReadableProperty(object: GObject.Object, name: string, property: string, value: unknown): void {
-    if (typeof value === "function") {
-        throw new TypeError(
-            `toHaveObjectProperty: "${name}" is shadowed by a method of the same name; ` +
-            `call ${property}() and assert on its result instead`,
-        );
-    }
-
-    if (value === undefined && !Reflect.has(object, property)) {
-        throw new TypeError(
-            `toHaveObjectProperty: no readable property "${name}" on ${describeObject(object)}; ` +
-            "construct-only and write-only properties cannot be read back",
-        );
-    }
-}
-
 function readObjectProperty(object: GObject.Object, name: string): unknown {
-    const property = camelCase(name);
-    const value: unknown = Reflect.get(object, property);
-    assertReadableProperty(object, name, property, value);
+    const value: unknown = Reflect.apply(GObject.getObjectProperty, undefined, [object, name]);
 
     return value;
 }

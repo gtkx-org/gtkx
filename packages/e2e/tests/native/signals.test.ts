@@ -1,7 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
-import { getInstanceType, registerClass, t } from "@gtkx/runtime";
+import { getInstanceType, registerClass } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 import { drainAfterEachTest } from "./helpers/memory.js";
 
@@ -153,17 +153,13 @@ test("natural connect and collision-safe signal and property helpers remain inde
 
     const states: boolean[] = [];
     const handlerId = GObject.signalConnect(socket, "notify::blocking", () => {
-        const state = GObject.getObjectProperty(socket, "blocking", t.boolean);
-
-        if (typeof state === "boolean") {
-            states.push(state);
-        }
+        states.push(GObject.getObjectProperty(socket, "blocking"));
     });
 
-    GObject.setObjectProperty(socket, "blocking", t.boolean, false);
+    GObject.setObjectProperty(socket, "blocking", false);
     expect(states).toEqual([false]);
     GObject.signalDisconnect(socket, handlerId);
-    GObject.setObjectProperty(socket, "blocking", t.boolean, true);
+    GObject.setObjectProperty(socket, "blocking", true);
     expect(states).toEqual([false]);
     expect(socket.close()).toBe(true);
 });

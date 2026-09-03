@@ -8,6 +8,11 @@ export {
 export { createErrorDomain } from "./error.js";
 export { type ApplicationInstance, getApplicationInstance } from "./lifecycle.js";
 export { markSyntheticSignalMembers } from "./mixin.js";
+export {
+    descriptorFreePropertySpec,
+    propertyMapOverride,
+    writablePropertyMapOverride,
+} from "./property-brand.js";
 export { getExactWrapperClass, resolveWrapperClass } from "./registry.js";
 export {
     classSignalMember,

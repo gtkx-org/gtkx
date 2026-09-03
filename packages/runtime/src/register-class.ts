@@ -20,6 +20,11 @@ import {
     toNativeProperties,
 } from "./properties.js";
 import {
+    descriptorFreePropertySpec,
+    propertyMapOverride,
+    writablePropertyMapOverride,
+} from "./property-brand.js";
+import {
     getClassStructClass,
     getClassType,
     getInterfaceMixin,
@@ -134,9 +139,24 @@ type RegisteredInstance<
         : TInstance extends { __signalEmit__?: infer TMap }
             ? NonNullable<TMap>
             : object,
-    TPropertySurface = TInstance extends { __properties__?: infer TMap }
-        ? NonNullable<TMap>
-        : object,
+    TPropertySurface = TInstance extends { [propertyMapOverride]?: infer TResolver }
+        ? TResolver extends () => infer TMap
+            ? NonNullable<TMap>
+            : TInstance extends { __properties__?: infer TMap }
+                ? NonNullable<TMap>
+                : object
+        : TInstance extends { __properties__?: infer TMap }
+            ? NonNullable<TMap>
+            : object,
+    TWritablePropertySurface = TInstance extends { [writablePropertyMapOverride]?: infer TResolver }
+        ? TResolver extends () => infer TMap
+            ? NonNullable<TMap>
+            : TInstance extends { __writableProperties__?: infer TMap }
+                ? NonNullable<TMap>
+                : object
+        : TInstance extends { __writableProperties__?: infer TMap }
+            ? NonNullable<TMap>
+            : object,
     TNaturalInstanceMembers extends PropertyKey = TInstance extends {
         [naturalSignalMember]?: infer TMembers;
     }
@@ -148,6 +168,51 @@ type RegisteredInstance<
         ? keyof NonNullable<TMembers>
         : never,
     TLegacySignalMembers extends PropertyKey = "connect" | "disconnect" | "emit" | "off" | "on" | "once",
+    TInstalledPropertyCandidate = TInstance & TMemberSurface,
+    TRegisteredPropertySurface = Omit<TPropertySurface, InstalledNames<TProperties>> &
+        Pick<
+            TInstalledPropertyCandidate,
+            (string extends keyof TProperties
+                ? never
+                : {
+                        [K in keyof TProperties & string]: TProperties[K] extends {
+                            readonly [descriptorFreePropertySpec]: true;
+                        }
+                            ? Camelized<Dashed<K>>
+                            : never;
+                    }[keyof TProperties & string]) & {
+                        [K in keyof TInstalledPropertyCandidate]-?: Extract<
+                            TInstalledPropertyCandidate[K],
+                            (...args: never[]) => unknown
+                        > extends never
+                            ? K
+                            : never;
+                    }[keyof TInstalledPropertyCandidate]
+        >,
+    TRegisteredWritablePropertySurface = Omit<TWritablePropertySurface, InstalledNames<TProperties>> &
+        Pick<
+            TInstalledPropertyCandidate,
+            (string extends keyof TProperties
+                ? never
+                : {
+                        [K in keyof TProperties & string]: TProperties[K] extends {
+                            readonly [descriptorFreePropertySpec]: true;
+                        }
+                            ? Camelized<Dashed<K>>
+                            : never;
+                    }[keyof TProperties & string]) & {
+                        [K in keyof TInstalledPropertyCandidate]-?: Extract<
+                            TInstalledPropertyCandidate[K],
+                            (...args: never[]) => unknown
+                        > extends never
+                            ? (<U>(probe: U) => U extends { [P in K]: TInstalledPropertyCandidate[P] } ? 1 : 2) extends
+                                (<U>(probe: U) =>
+                                U extends { -readonly [P in K]: TInstalledPropertyCandidate[P] } ? 1 : 2)
+                                    ? K
+                                    : never
+                            : never;
+                    }[keyof TInstalledPropertyCandidate]
+        >,
 > = TRemainingInterfaces extends readonly [
     infer TInterface extends Interface<TInstance>,
     ...infer TRest extends readonly Interface<TInstance>[],
@@ -165,6 +230,7 @@ type RegisteredInstance<
                     | keyof TInstance |
                     keyof TMemberSurface |
                     "__properties__" |
+                    "__writableProperties__" |
                     "__signalEmit__" |
                     "__signals__" |
                     TLegacySignalMembers
@@ -222,10 +288,29 @@ type RegisteredInstance<
                     : TSignalEmitSurface,
                     TPropertySurface &
                     Omit<
-                        TInterfaceInstance extends { __properties__?: infer TMap }
-                            ? NonNullable<TMap>
-                            : object,
+                        TInterfaceInstance extends { [propertyMapOverride]?: infer TResolver }
+                            ? TResolver extends () => infer TMap
+                                ? NonNullable<TMap>
+                                : TInterfaceInstance extends { __properties__?: infer TMap }
+                                    ? NonNullable<TMap>
+                                    : object
+                            : TInterfaceInstance extends { __properties__?: infer TMap }
+                                ? NonNullable<TMap>
+                                : object,
                         keyof TPropertySurface
+                    >,
+                    TWritablePropertySurface &
+                    Omit<
+                        TInterfaceInstance extends { [writablePropertyMapOverride]?: infer TResolver }
+                            ? TResolver extends () => infer TMap
+                                ? NonNullable<TMap>
+                                : TInterfaceInstance extends { __writableProperties__?: infer TMap }
+                                    ? NonNullable<TMap>
+                                    : object
+                            : TInterfaceInstance extends { __writableProperties__?: infer TMap }
+                                ? NonNullable<TMap>
+                                : object,
+                        keyof TWritablePropertySurface
                     >,
                     TNaturalInstanceMembers,
                     TClassInstanceSignals,
@@ -249,8 +334,10 @@ type RegisteredInstance<
                         Record<DeclaredSignalName<TSignals>, (...args: never[]) => unknown>;
                     [signalEmitMapOverride]?: () => Omit<TSignalEmitSurface, DeclaredSignalName<TSignals>> &
                         Record<DeclaredSignalName<TSignals>, { args: unknown[]; result: unknown }>;
-                    __properties__: TPropertySurface &
-                        Pick<TInstance, InstalledNames<TProperties> & keyof TInstance>;
+                    [propertyMapOverride]?: () => TRegisteredPropertySurface;
+                    [writablePropertyMapOverride]?: () => TRegisteredWritablePropertySurface;
+                    __properties__: TRegisteredPropertySurface;
+                    __writableProperties__: TRegisteredWritablePropertySurface;
                 };
 
 /** A registered class's construct signature and prototype. */

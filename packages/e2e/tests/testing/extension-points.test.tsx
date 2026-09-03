@@ -103,6 +103,7 @@ describe("queryHelpers", () => {
         expect(queryByObjectProperty("tooltip-text", container, "Missing")).toBeNull();
         expect(queryAllByObjectProperty("label", container, "Quit")).toHaveLength(2);
         expect(queryAllByObjectProperty("label", container, "Quit", { as: Gtk.Button })).toHaveLength(1);
+        expect(queryAllByObjectProperty("hasFocus", container, /^(?:true|false)$/, { as: Gtk.Button })).toHaveLength(2);
     });
 
     it("throws when more than one widget carries the value", async () => {

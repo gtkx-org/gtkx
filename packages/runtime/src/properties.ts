@@ -55,7 +55,7 @@ type AccessorBase = PropertyCheck & {
 type DeclaredAccessor = AccessorBase & {
     isInterfaceProperty?: false;
     memberName: string;
-    hasGeneratedMember: boolean;
+    hasMemberAccessor: boolean;
 };
 
 type InterfaceAccessor = AccessorBase & { isInterfaceProperty: true };
@@ -100,7 +100,7 @@ const paramSpecDefaultValue = bind(LIB, "g_param_spec_get_default_value", [PARAM
 const paramSpecName = bind(LIB, "g_param_spec_get_name", [PARAM_T], stringT("borrowed"));
 const typeClassRef = bind(LIB, "g_type_class_ref", [biguint64T], CLASS_T);
 const typeClassUnref = bind(LIB, "g_type_class_unref", [CLASS_T], voidT);
-const coercionChecks: Map<bigint, Map<string, PropertyCheck | null>> = new Map();
+const propertyChecks: Map<bigint, Map<string, PropertyCheck | null>> = new Map();
 const classFindProperty = bind(LIB, "g_object_class_find_property", [CLASS_T, stringT("borrowed")], PARAM_T);
 
 const classListProperties = bind(
@@ -214,8 +214,11 @@ const findSourceSpec = (source: bigint | AnyClass, name: string): ExternalObject
  * @param source The GType, wrapper class or interface declaring the property.
  * @returns Handle of the override spec.
  */
-const newParamSpecOverride = (name: string, source: bigint | AnyClass): ExternalObject<Handle> =>
-    paramSpecOverrideNew(name, findSourceSpec(source, name)) as ExternalObject<Handle>;
+const newParamSpecOverride = (name: string, source: bigint | AnyClass): ExternalObject<Handle> => {
+    const canonicalName = canonicalCase(name);
+
+    return paramSpecOverrideNew(canonicalName, findSourceSpec(source, canonicalName)) as ExternalObject<Handle>;
+};
 
 function describeValue(value: unknown): string {
     if (typeof value === "string") {
@@ -283,6 +286,24 @@ function assertWritable(instance: object, check: PropertyCheck, value: unknown):
     throw new TypeError(propertyMessage(instance, check, refusalTail(check, value, READ_ONLY_REASON)));
 }
 
+function assertReadable(instance: object, check: PropertyCheck): void {
+    if (isParamReadable(check.flags)) {
+        return;
+    }
+
+    throw new TypeError(
+        propertyMessage(instance, check, `cannot read property '${check.propertyName}'; the property is write-only`),
+    );
+}
+
+function assertMutable(instance: object, check: PropertyCheck, value: unknown): void {
+    assertWritable(instance, check, value);
+
+    if (isParamConstructOnly(check.flags)) {
+        throw new TypeError(propertyMessage(instance, check, refusalTail(check, value, CONSTRUCT_ONLY_REASON)));
+    }
+}
+
 function writeHeld(check: PropertyCheck, gValue: ExternalObject<Handle>, value: unknown): void {
     check.write ??= valueWriterFor(check.valueType);
     check.write(gValue, check.narrowValue(value));
@@ -333,7 +354,7 @@ function isReadableProperty(gtype: bigint, propertyName: string): boolean {
     }
 }
 
-function lookupCoercionCheck(gtype: bigint, name: string): PropertyCheck | null {
+function lookupPropertyCheck(gtype: bigint, name: string): PropertyCheck | null {
     const klass = typeClassRef(gtype) as ExternalObject<Handle>;
 
     try {
@@ -345,10 +366,35 @@ function lookupCoercionCheck(gtype: bigint, name: string): PropertyCheck | null 
     }
 }
 
-function coercionCheckFor(gtype: bigint, name: string): PropertyCheck | null {
-    const checks = coercionChecks.getOrInsertComputed(gtype, () => new Map<string, PropertyCheck | null>());
+function propertyCheckFor(gtype: bigint, name: string): PropertyCheck | null {
+    const checks = propertyChecks.getOrInsertComputed(gtype, () => new Map<string, PropertyCheck | null>());
 
-    return checks.getOrInsertComputed(name, () => lookupCoercionCheck(gtype, name));
+    return checks.getOrInsertComputed(name, () => lookupPropertyCheck(gtype, name));
+}
+
+function objectPropertyCheckFor(instance: object, name: string): PropertyCheck {
+    const gtype = getInstanceType(instance);
+    const check = typeIsA(gtype, TYPE_OBJECT) ? propertyCheckFor(gtype, name) : null;
+
+    if (check === null) {
+        throw new TypeError(`${instanceClassName(instance)} has no GObject property named '${name}'`);
+    }
+
+    return check;
+}
+
+function readableObjectPropertyFor(instance: object, name: string): ConstructProperty {
+    const check = objectPropertyCheckFor(instance, name);
+    assertReadable(instance, check);
+
+    return { name: check.propertyName, value: newValueForType(check.valueType) };
+}
+
+function writableObjectPropertyFor(instance: object, name: string, value: unknown): ConstructProperty {
+    const check = objectPropertyCheckFor(instance, name);
+    assertMutable(instance, check, value);
+
+    return { name: check.propertyName, value: checkedValueFor(instance, check, value) };
 }
 
 function truncateToWhole(check: PropertyCheck, value: number): number {
@@ -384,7 +430,7 @@ function coercePropertyValue(gtype: bigint, propertyName: string, value: unknown
         return value;
     }
 
-    const check = coercionCheckFor(gtype, propertyName);
+    const check = propertyCheckFor(gtype, propertyName);
 
     return check === null ? value : coerceNumber(check, value);
 }
@@ -499,12 +545,35 @@ function checkedSetter(accessor: DeclaredAccessor): (this: object, value: unknow
     };
 }
 
-function hasOwnMember(prototype: object, alias: string): boolean {
-    return Object.getOwnPropertyDescriptor(prototype, alias) !== undefined;
+function memberDescriptorFor(prototype: object, name: string): PropertyDescriptor | undefined {
+    let current: object | null = prototype;
+
+    while (current !== null) {
+        const descriptor = Object.getOwnPropertyDescriptor(current, name);
+
+        if (descriptor !== undefined) {
+            return descriptor;
+        }
+
+        current = Reflect.getPrototypeOf(current);
+    }
+
+    return undefined;
+}
+
+function isMemberAccessor(descriptor: PropertyDescriptor | undefined): boolean {
+    return descriptor !== undefined && ("get" in descriptor || "set" in descriptor);
 }
 
 function defineAccessor(prototype: object, descriptor: PropertyDescriptor, alias: string): void {
-    if (hasOwnMember(prototype, alias)) {
+    if (Object.getOwnPropertyDescriptor(prototype, alias) !== undefined) {
+        return;
+    }
+
+    const parent = Reflect.getPrototypeOf(prototype);
+    const inherited = parent === null ? undefined : memberDescriptorFor(parent, alias);
+
+    if (inherited !== undefined && !isMemberAccessor(inherited)) {
         return;
     }
 
@@ -513,13 +582,13 @@ function defineAccessor(prototype: object, descriptor: PropertyDescriptor, alias
 
 function installAccessors(klass: AnyClass, accessor: DeclaredAccessor): void {
     const prototype = (klass as { prototype: object }).prototype;
-    accessor.hasGeneratedMember = !hasOwnMember(prototype, accessor.memberName);
+    accessor.hasMemberAccessor = isMemberAccessor(Object.getOwnPropertyDescriptor(prototype, accessor.memberName));
 
     const descriptor: PropertyDescriptor = {
         configurable: true,
         enumerable: true,
-        get: accessor.hasGeneratedMember ? storedGetter(accessor) : memberGetter(accessor),
-        set: accessor.hasGeneratedMember ? checkedSetter(accessor) : memberSetter(accessor),
+        get: accessor.hasMemberAccessor ? memberGetter(accessor) : storedGetter(accessor),
+        set: accessor.hasMemberAccessor ? memberSetter(accessor) : checkedSetter(accessor),
     };
 
     for (const alias of accessorNames(accessor.name)) {
@@ -586,7 +655,13 @@ function callMember(instance: object, member: string, args: unknown[]): unknown 
 }
 
 function backingMemberFor(instance: object, accessor: DeclaredAccessor): string | undefined {
-    if (accessor.hasGeneratedMember && !Object.hasOwn(instance, accessor.memberName)) {
+    if (accessor.hasMemberAccessor) {
+        return accessor.memberName;
+    }
+
+    const descriptor = Object.getOwnPropertyDescriptor(instance, accessor.memberName);
+
+    if (descriptor === undefined || ("value" in descriptor && typeof descriptor.value === "function")) {
         return undefined;
     }
 
@@ -686,7 +761,7 @@ function buildAccessor(klass: AnyClass, name: string, pspec: PropertySpec): Decl
         ...checkFor(getHandle(pspec), name),
         memberName: camelCase(name),
         storage: Symbol(`gtkx:property:${name}`),
-        hasGeneratedMember: false,
+        hasMemberAccessor: false,
     };
 
     installAccessors(klass, accessor);
@@ -770,8 +845,10 @@ export {
     makeGetProperty,
     makeSetProperty,
     newParamSpecOverride,
+    readableObjectPropertyFor,
     SET_PROPERTY_VFUNC,
     toNativeProperties,
+    writableObjectPropertyFor,
     type ConstructProperty,
     type PropertyDispatch,
     type PropertySpec,

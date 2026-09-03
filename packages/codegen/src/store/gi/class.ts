@@ -42,7 +42,7 @@ import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
 import { memberName, methodExportName } from "./method.js";
 import { renderPropertyDeclarations } from "./properties.js";
-import { renderResolvedPropertyAccessor, resolveAccessor, type ResolvedAccessor } from "./property-accessor.js";
+import { renderResolvedPropertyAccessor, resolveAccessor } from "./property-accessor.js";
 import { appendWrapperClassRegistration } from "./registration.js";
 import { renderSignalDeclarations, renderSignalMembers, renderSignalRegistration } from "./signal.js";
 import { renderVfuncMembers, renderVfuncMetadata } from "./vtable.js";
@@ -60,11 +60,10 @@ type MemberDeclarationsOptions = {
     context: ModuleContext;
     klass: GirClass;
     className: string;
-    accessors: ResolvedAccessor[];
     implemented: ImplementedRef[];
 };
 
-type ClassMembers = { members: string[]; accessors: ResolvedAccessor[] };
+type ClassMembers = { members: string[] };
 
 type ImplementedRefOptions = {
     context: ModuleContext;
@@ -133,7 +132,7 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
     const implemented = resolveImplementedRefs(context, klass);
     const extendsClause = renderExtendsClause({ context, parentExpression, klass, callables });
     const implementsClause = renderImplementsClause(implemented);
-    const { members, accessors } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
+    const { members } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
     const heritage = `${extendsClause}${implementsClause}`;
     declareClass(context, { klass, className, heritage, body, implemented });
@@ -143,7 +142,7 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
         code: renderConstructorPropsInterface(context, klass, className),
     });
 
-    appendMemberDeclarations({ context, klass, className, accessors, implemented });
+    appendMemberDeclarations({ context, klass, className, implemented });
 };
 
 const classModifier = (context: ModuleContext, klass: GirClass): string =>
@@ -180,9 +179,9 @@ const declareClass = (context: ModuleContext, options: ClassDeclarationOptions):
 };
 
 const appendMemberDeclarations = (options: MemberDeclarationsOptions): void => {
-    const { context, klass, className, accessors, implemented } = options;
+    const { context, klass, className, implemented } = options;
 
-    for (const declaration of renderPropertyDeclarations(context, klass, className, accessors)) {
+    for (const declaration of renderPropertyDeclarations(context, klass, className)) {
         context.declare(declaration);
     }
 
@@ -256,8 +255,6 @@ const renderClassMembers = (
     members.push(...renderVfuncMembers({ context, klass, mode: "implementation" }));
     const inheritedPropertyTypes = collectInheritedPropertyTypes(context, klass);
     const inheritedNames = ancestorClassMethodNames(context, klass);
-    const accessors: ResolvedAccessor[] = [];
-
     for (const property of klass.properties) {
         const inheritedTypes = inheritedPropertyTypes.get(toCamelIdentifier(property.name));
 
@@ -273,13 +270,12 @@ const renderClassMembers = (
             continue;
         }
 
-        accessors.push(accessor);
         members.push(renderResolvedPropertyAccessor(context, property, accessor));
     }
 
     members.push(...renderSignalMembers(context, klass));
 
-    return { members, accessors };
+    return { members };
 };
 
 const renderInstanceMethodBlock = (options: RenderInstanceMethodOptions): string | undefined => {

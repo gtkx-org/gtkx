@@ -257,9 +257,12 @@ describe("toHaveObjectProperty", () => {
         const button = await renderButton("Named");
         expect(button).toHaveObjectProperty("label");
         expect(button).toHaveObjectProperty("label", expect.any(String));
+        const model = Gtk.MapListModel.new(null, null);
+        expect(model.hasMap()).toBe(false);
+        expect(model).toHaveObjectProperty("hasMap", false);
     });
 
-    it("throws for a shadowed name, an unknown name and a non-GObject", async () => {
+    it("throws for a method without a property, an unknown name and a non-GObject", async () => {
         const button = await renderButton("Named");
 
         expect(() => {

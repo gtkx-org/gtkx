@@ -3,9 +3,16 @@ import { type AnyClass, getParentClass } from "@gtkx/utils";
 import { bind } from "./bind.js";
 import { objectT, stringT, voidT } from "./descriptors.js";
 import { LIB, VALUE_T } from "./library.js";
-import { coercePropertyValue, type ConstructProperty, constructPropertyFor } from "./properties.js";
+import {
+    coercePropertyValue,
+    type ConstructProperty,
+    constructPropertyFor,
+    readableObjectPropertyFor,
+    writableObjectPropertyFor,
+} from "./properties.js";
+import { propertyMapOverride, writablePropertyMapOverride } from "./property-brand.js";
 import { getHandle, registerWrapper } from "./registry.js";
-import { fromValueForDescriptor, newValueForDescriptor, toValue } from "./value.js";
+import { fromValue, fromValueForDescriptor, newValueForDescriptor, toValue } from "./value.js";
 
 /**
  * One construct property a wrapper class accepts: the canonical `GObject` name it is set under,
@@ -172,7 +179,28 @@ function newObjectWithProperties<T extends object>(gtype: bigint, props: object,
  * @param propertyName The property name.
  * @param descriptor Describes the property's type.
  */
-function getObjectProperty(obj: object, propertyName: string, descriptor: Descriptor): unknown {
+function getObjectProperty<
+    TObject extends { __properties__: object },
+    TPropertyMap extends object = TObject extends { [propertyMapOverride]?: infer TResolver }
+        ? TResolver extends () => infer TMap
+            ? Extract<NonNullable<TMap>, object>
+            : TObject["__properties__"]
+        : TObject["__properties__"],
+    TName extends Extract<keyof NoInfer<TPropertyMap>, string> = Extract<keyof NoInfer<TPropertyMap>, string>,
+>(obj: TObject, propertyName: TName): NoInfer<TPropertyMap>[TName];
+function getObjectProperty(obj: object, propertyName: string, descriptor: Descriptor): unknown;
+function getObjectProperty(obj: object, propertyName: string, descriptor?: Descriptor): unknown {
+    if (arguments.length === 2) {
+        const property = readableObjectPropertyFor(obj, propertyName);
+        gObjectGetProperty(getHandle(obj), property.name, property.value);
+
+        return fromValue(property.value);
+    }
+
+    if (descriptor === undefined) {
+        throw new TypeError("getObjectProperty requires a property descriptor when called with three arguments");
+    }
+
     const value = newValueForDescriptor(descriptor);
     gObjectGetProperty(getHandle(obj), propertyName, value);
 
@@ -192,8 +220,30 @@ function getObjectProperty(obj: object, propertyName: string, descriptor: Descri
  * @param descriptor Describes the property's type.
  * @param jsValue The value to set.
  */
-function setObjectProperty(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown): void {
-    gObjectSetProperty(getHandle(obj), propertyName, toValue(descriptor, jsValue));
+function setObjectProperty<
+    TObject extends { __writableProperties__: object },
+    TPropertyMap extends object = TObject extends { [writablePropertyMapOverride]?: infer TResolver }
+        ? TResolver extends () => infer TMap
+            ? Extract<NonNullable<TMap>, object>
+            : TObject["__writableProperties__"]
+        : TObject["__writableProperties__"],
+    TName extends Extract<keyof NoInfer<TPropertyMap>, string> = Extract<keyof NoInfer<TPropertyMap>, string>,
+>(obj: TObject, propertyName: TName, jsValue: NoInfer<TPropertyMap>[TName]): void;
+function setObjectProperty(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown): void;
+function setObjectProperty(
+    obj: object,
+    propertyName: string,
+    descriptorOrValue: unknown,
+    jsValue?: unknown,
+): void {
+    if (arguments.length === 3) {
+        const property = writableObjectPropertyFor(obj, propertyName, descriptorOrValue);
+        gObjectSetProperty(getHandle(obj), property.name, property.value);
+
+        return;
+    }
+
+    gObjectSetProperty(getHandle(obj), propertyName, toValue(descriptorOrValue as Descriptor, jsValue));
 }
 
 export {

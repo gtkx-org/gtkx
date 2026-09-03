@@ -16,6 +16,7 @@ const INDEX_PAGE = "index.md";
 const MANIFEST = "manifest.json";
 const NAMESPACE_PREFIX = "gtk/";
 const ELEMENT_PAGE = `${NAMESPACE_PREFIX}button.md`;
+const COLLIDING_PROPERTY_PAGE = `${NAMESPACE_PREFIX}map-list-model.md`;
 const NAMESPACE_INDEX = `${NAMESPACE_PREFIX}index.md`;
 const REJECTED_OUT_DIRS = ["", ".", "..", "../sibling", "docs/../..", "/elsewhere/docs"];
 
@@ -54,7 +55,11 @@ describe("gtkx docs", () => {
         expect(written).toContain(MANIFEST);
         expect(written).toContain(NAMESPACE_INDEX);
         expect(written).toContain(ELEMENT_PAGE);
+        expect(written).toContain(COLLIDING_PROPERTY_PAGE);
         expect(readPage(state.project, ELEMENT_PAGE)).toContain("GtkButton");
+        expect(readPage(state.project, COLLIDING_PROPERTY_PAGE)).toContain(
+            "read with `GObject.getObjectProperty`",
+        );
         expect(index).toContain(BASE_PATH);
     });
 

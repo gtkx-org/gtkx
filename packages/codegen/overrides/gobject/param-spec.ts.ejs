@@ -1,5 +1,66 @@
 import { type AnyClass, newParamSpecOverride, wrapHandle } from "@gtkx/runtime";
+import {
+    type descriptorFreePropertySpec,
+    type propertyMapOverride,
+    type writablePropertyMapOverride,
+} from "@gtkx/runtime/internal";
 import { ParamSpec, type Type } from "../gobject.js";
+
+type Dashed<TName extends string> =
+    TName extends `${infer THead}_${infer TTail}`
+        ? Dashed<`${THead}-${TTail}`>
+        : TName;
+
+type Camelized<TName extends string> =
+    TName extends `${infer THead}-${infer TTail}`
+        ? `${THead}${Capitalize<Camelized<TTail>>}`
+        : TName;
+
+type SourceInstance<TSource> = [TSource] extends [AnyClass]
+    ? TSource extends {
+          __impl__: (...args: infer TArgs) => infer TInstance;
+      }
+        ? TInstance
+        : TSource extends AnyClass<infer TInstance>
+          ? TInstance
+          : never
+    : never;
+
+type ReadableProperties<TInstance> = TInstance extends {
+    [propertyMapOverride]?: infer TResolver;
+}
+    ? TResolver extends () => infer TMap
+        ? NonNullable<TMap>
+        : TInstance extends { __properties__: infer TMap }
+          ? NonNullable<TMap>
+          : object
+    : TInstance extends { __properties__: infer TMap }
+      ? NonNullable<TMap>
+      : object;
+
+type WritableProperties<TInstance> = TInstance extends {
+    [writablePropertyMapOverride]?: infer TResolver;
+}
+    ? TResolver extends () => infer TMap
+        ? NonNullable<TMap>
+        : TInstance extends { __writableProperties__: infer TMap }
+          ? NonNullable<TMap>
+          : object
+    : TInstance extends { __writableProperties__: infer TMap }
+      ? NonNullable<TMap>
+      : object;
+
+type OverridePropertySpec<TName extends string, TSource> = [TSource] extends [
+    AnyClass,
+]
+    ? [SourceInstance<TSource>] extends [never]
+        ? ParamSpec
+        : Camelized<Dashed<TName>> extends
+                | keyof ReadableProperties<SourceInstance<TSource>>
+                | keyof WritableProperties<SourceInstance<TSource>>
+          ? ParamSpec & { readonly [descriptorFreePropertySpec]: true }
+          : ParamSpec
+    : ParamSpec;
 
 /**
  * Creates a `ParamSpec` that redirects to the property `source` declares under `name`, for
@@ -17,5 +78,12 @@ import { ParamSpec, type Type } from "../gobject.js";
  * @param source The GType, wrapper class or interface declaring the property.
  * @returns The override spec, ready to install on a subclass.
  */
-export const paramSpecOverride = (name: string, source: Type | AnyClass): ParamSpec =>
-    wrapHandle(newParamSpecOverride(name, source), ParamSpec);
+export function paramSpecOverride<
+    const TName extends string,
+    const TSource extends Type | AnyClass,
+>(name: TName, source: TSource): OverridePropertySpec<TName, TSource> {
+    return wrapHandle(
+        newParamSpecOverride(name, source),
+        ParamSpec,
+    ) as OverridePropertySpec<TName, TSource>;
+}

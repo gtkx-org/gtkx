@@ -7,6 +7,7 @@ import type { Library } from "../gir/library.js";
 import type { GirRecord } from "../gir/record.js";
 import type { ModuleContext } from "../writer/context.js";
 import type { JsDocSpec } from "../writer/doc.js";
+import { ancestorClassMethodNames } from "../analysis/inheritance.js";
 import { renderTsType } from "../analysis/ts-type.js";
 import { ancestorChain } from "../gir/ancestry.js";
 import { callbackAsFunction, type GirCallback } from "../gir/callback.js";
@@ -29,7 +30,11 @@ import {
     renderMethodSignature,
     renderPromisifiedSignature,
 } from "../store/gi/method.js";
-import { resolveAccessor, type ResolvedAccessor } from "../store/gi/property-accessor.js";
+import {
+    resolveAccessor,
+    type ResolvedAccessor,
+    resolvePropertyMetadata,
+} from "../store/gi/property-accessor.js";
 import { resolveRecordFieldEntry } from "../store/gi/record-field-accessor.js";
 import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
 import { vfuncEntries } from "../store/gi/vtable.js";
@@ -144,6 +149,7 @@ type MemberOwner = {
 type PropertyAccessorSetup = {
     context: ModuleContext;
     claimedNames: Set<string>;
+    inheritedNames: Set<string> | undefined;
 };
 
 type ResolvedRecordField = NonNullable<ReturnType<typeof resolveRecordFieldEntry>>;
@@ -378,6 +384,7 @@ const propertyAccessorSetup = (
     library: Library,
     isUseClassRenames: boolean,
 ): PropertyAccessorSetup => {
+    const context = docsSignatureContext(owner.namespace, library);
     const claimedNames = new Set(
         isUseClassRenames
             ? classMethodEntries(library, owner.namespace, owner.klass).map((item) => item.name)
@@ -385,8 +392,9 @@ const propertyAccessorSetup = (
     );
 
     return {
-        context: docsSignatureContext(owner.namespace, library),
+        context,
         claimedNames,
+        inheritedNames: isUseClassRenames ? ancestorClassMethodNames(context, owner.klass) : undefined,
     };
 };
 
@@ -405,15 +413,27 @@ const getAccessNotes = (accessor: ResolvedAccessor): string[] => {
 const documentedAccessorType = (accessor: ResolvedAccessor): string =>
     accessor.hasGetter ? accessor.readType : accessor.writeType;
 
+const hiddenPropertyAccessNotes = (accessor: ResolvedAccessor): string[] => [
+    ...getAccessNotes(accessor),
+    ...(accessor.hasGetter && accessor.supportsDescriptorFreeAccess
+        ? ["read with `GObject.getObjectProperty`"]
+        : []),
+    ...(accessor.isWritable && accessor.supportsDescriptorFreeAccess
+        ? ["write with `GObject.setObjectProperty`"]
+        : []),
+];
+
 const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, seen: Set<string>): MetaDocEntry[] => {
     const entries: MetaDocEntry[] = [];
 
     for (const property of owner.klass.properties) {
-        const accessor = resolveAccessor({
+        const fieldAccessor = resolveAccessor({
             context: setup.context,
             property,
             claimedNames: setup.claimedNames,
+            inheritedNames: setup.inheritedNames,
         });
+        const accessor = fieldAccessor ?? resolvePropertyMetadata(setup.context, property);
 
         if (accessor === undefined || seen.has(accessor.jsName)) {
             continue;
@@ -426,7 +446,9 @@ const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, 
             meta: propertyMetaLine({
                 type: documentedAccessorType(accessor),
                 property,
-                accessNotes: getAccessNotes(accessor),
+                accessNotes: fieldAccessor === undefined
+                    ? hiddenPropertyAccessNotes(accessor)
+                    : getAccessNotes(accessor),
                 origin: owner.origin,
             }),
             doc: docMarkdown(property.doc),
@@ -452,9 +474,10 @@ const propertiesSection = (entry: ClassPageSymbol, library: Library): string[] =
     }
 
     const intro =
-        "Properties are read and written as instance fields; changes can be observed with " +
-        "`connect(\"notify::<property-name>\", handler)`. Properties inherited from ancestors are " +
-        "documented on their own pages.";
+        "Properties are normally read and written as instance fields. Collision exceptions are marked with " +
+        "their `GObject.getObjectProperty` or `GObject.setObjectProperty` escape hatch. Changes can be observed " +
+        "with `GObject.signalConnect(instance, \"notify::<property-name>\", handler)`. Properties inherited " +
+        "from ancestors are documented on their own pages.";
 
     return ["## Properties", intro, ...sortedMetaBlocks(entries)];
 };

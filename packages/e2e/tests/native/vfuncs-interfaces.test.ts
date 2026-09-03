@@ -563,12 +563,12 @@ test("registerClass installs declared properties with generated and custom acces
     expect(instance.label).toBe("hi");
     expect(instance.doubled).toBe(0);
 
-    instance.plain = 9;
-    instance.label = "there";
-    instance.doubled = 4;
-    expect(instance.plain).toBe(9);
-    expect(instance.label).toBe("there");
-    expect(instance.doubled).toBe(8);
+    GObject.setObjectProperty(instance, "plain", 9);
+    GObject.setObjectProperty(instance, "label", "there");
+    GObject.setObjectProperty(instance, "doubled", 4);
+    expect(GObject.getObjectProperty(instance, "plain")).toBe(9);
+    expect(GObject.getObjectProperty(instance, "label")).toBe("there");
+    expect(GObject.getObjectProperty(instance, "doubled")).toBe(8);
 
     const constructed = new Registered({ plain: 11, label: "bye", doubled: 3 });
     expect(constructed.plain).toBe(11);
@@ -592,6 +592,76 @@ test("registerClass installs declared properties with generated and custom acces
     expect(instance.plain).toBe(12);
     expect(notified).toEqual(["plain"]);
     GObject.signalHandlerDisconnect(instance, BigInt(id));
+});
+
+test("a registered property hidden by an own method keeps separate storage", () => {
+    class Ranked extends GObject.Object {
+        score(): string {
+            return "own method";
+        }
+    }
+
+    const Registered = registerClass(Ranked, {
+        typeName: uniqueName("GtkxOwnMethodProperty"),
+        properties: { score: GObject.paramSpecInt("score", null, null, 0, 100, 7, READWRITE) },
+    });
+
+    const instance = new Registered({});
+    expect(instance.score()).toBe("own method");
+    expect(Reflect.apply(GObject.getObjectProperty, undefined, [instance, "score"])).toBe(7);
+    Reflect.apply(GObject.setObjectProperty, undefined, [instance, "score", 9]);
+    expect(Reflect.apply(GObject.getObjectProperty, undefined, [instance, "score"])).toBe(9);
+    expect(instance.score()).toBe("own method");
+});
+
+test("a registered property hidden by an inherited method keeps separate storage", () => {
+    class RankedBase extends GObject.Object {
+        score(): string {
+            return "inherited method";
+        }
+    }
+
+    class Ranked extends RankedBase {
+        rank = (): string => "field method";
+    }
+
+    const Registered = registerClass(Ranked, {
+        typeName: uniqueName("GtkxInheritedMethodProperty"),
+        properties: {
+            rank: GObject.paramSpecInt("rank", null, null, 0, 100, 5, READWRITE),
+            score: GObject.paramSpecInt("score", null, null, 0, 100, 7, READWRITE),
+        },
+    });
+
+    const instance = new Registered({});
+    expect(instance.rank()).toBe("field method");
+    expect(Reflect.apply(GObject.getObjectProperty, undefined, [instance, "rank"])).toBe(5);
+    Reflect.apply(GObject.setObjectProperty, undefined, [instance, "rank", 6]);
+    expect(Reflect.apply(GObject.getObjectProperty, undefined, [instance, "rank"])).toBe(6);
+    expect(instance.rank()).toBe("field method");
+    expect(instance.score()).toBe("inherited method");
+    expect(Reflect.apply(GObject.getObjectProperty, undefined, [instance, "score"])).toBe(7);
+    Reflect.apply(GObject.setObjectProperty, undefined, [instance, "score", 9]);
+    expect(Reflect.apply(GObject.getObjectProperty, undefined, [instance, "score"])).toBe(9);
+    expect(instance.score()).toBe("inherited method");
+});
+
+test("a registered property hidden by a method rejects an invalid value", () => {
+    class Ranked extends GObject.Object {
+        score(): string {
+            return "method";
+        }
+    }
+
+    const Registered = registerClass(Ranked, {
+        typeName: uniqueName("GtkxInvalidMethodProperty"),
+        properties: { score: GObject.paramSpecInt("score", null, null, 0, 100, 7, READWRITE) },
+    });
+
+    const instance = new Registered({});
+    expect(() => {
+        Reflect.apply(GObject.setObjectProperty, undefined, [instance, "score", "invalid"]);
+    }).toThrow();
 });
 
 test("registerClass creates declared signals that connect emit and run their default handler", () => {

@@ -228,9 +228,13 @@ test("notify fires for the changed property and disconnect stops it", () => {
 test("readonly property reads its value and writes throw", () => {
     const po = new GIMarshallingTests.PropertiesObject({});
     expect(po.someReadonly).toBe(42);
+    expect(GObject.getObjectProperty(po, "someReadonly")).toBe(42);
     expect(() => {
         // @ts-expect-error someReadonly is read-only
         po.someReadonly = 5;
+    }).toThrow();
+    expect(() => {
+        Reflect.apply(GObject.setObjectProperty, undefined, [po, "someReadonly", 5]);
     }).toThrow();
     expect(po.someReadonly).toBe(42);
     const ao = GIMarshallingTests.PropertiesAccessorsObject.new();
@@ -243,16 +247,25 @@ test("readonly property reads its value and writes throw", () => {
 
 test("construct-only property is set at construct and rejected afterwards", () => {
     const action = new Gio.SimpleAction({ name: "probe" });
-    expect(action.name).toBe("probe");
+    expect(GObject.getObjectProperty(action, "name")).toBe("probe");
     expect(() => {
         // @ts-expect-error name is construct-only
         action.name = "other";
+    }).toThrow();
+    expect(() => {
+        Reflect.apply(GObject.setObjectProperty, undefined, [action, "name", "other"]);
     }).toThrow();
     expect(action.name).toBe("probe");
 });
 
 test("property writes reject wrong types", () => {
     const po = new GIMarshallingTests.PropertiesObject({});
+    expect(() => {
+        Reflect.apply(GObject.setObjectProperty, undefined, [po, "someInt", "42"]);
+    }).toThrow();
+    expect(() => {
+        Reflect.apply(GObject.getObjectProperty, undefined, [po, "missing"]);
+    }).toThrow();
     expect(() => {
         // @ts-expect-error a string is not an int property value
         po.someInt = "42";
@@ -481,21 +494,21 @@ test("TestObj write-only property resets int and reads as undefined", () => {
     const obj = new Regress.TestObj({ int: 47 });
     expect(obj.int).toBe(47);
     expect(obj.writeOnly).toBeUndefined();
-    obj.writeOnly = true;
+    GObject.setObjectProperty(obj, "writeOnly", true);
     expect(obj.int).toBe(0);
+    expect(() => {
+        Reflect.apply(GObject.getObjectProperty, undefined, [obj, "writeOnly"]);
+    }).toThrow();
 });
 
-test("TestObj name-conflict construct property is readable through getProperty", () => {
+test("TestObj name-conflict property remains available through the property helpers", () => {
     const obj = new Regress.TestObj({ nameConflict: 7 });
-    const value = new GObject.Value();
-    value.init(GObject.typeFromName("gint"));
-    obj.getProperty("name-conflict", value);
-    expect(value.getInt()).toBe(7);
+    obj.nameConflict();
+    expect(GObject.getObjectProperty(obj, "nameConflict")).toBe(7);
+    GObject.setObjectProperty(obj, "nameConflict", 9);
+    expect(GObject.getObjectProperty(obj, "nameConflict")).toBe(9);
     const defaulted = new Regress.TestObj({});
-    const defaultValue = new GObject.Value();
-    defaultValue.init(GObject.typeFromName("gint"));
-    defaulted.getProperty("name-conflict", defaultValue);
-    expect(defaultValue.getInt()).toBe(42);
+    expect(GObject.getObjectProperty(defaulted, "nameConflict")).toBe(42);
 });
 
 test("TestObj string property notifies and matches its accessor methods", () => {

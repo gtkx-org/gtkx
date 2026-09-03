@@ -11,7 +11,9 @@ import {
 
 type ExpectedOutput = { bindings: string[]; declarations: string[] };
 
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
+const TYPESCRIPT_CLI = fileURLToPath(
+    new URL("../../../node_modules/typescript/bin/tsc", import.meta.url),
+);
 const GUDEV_CONFIG = `export default {
     applicationId: "com.gtkx.gudevprobe",
     libraries: ["GUdev-1.0"],
@@ -22,10 +24,150 @@ const GIO_CONFIG = `export default {
     libraries: ["Gio-2.0"],
 };
 `;
+const ORIENTABLE_CONFIG = `export default {
+    applicationId: "com.gtkx.gtkprobe",
+};
+`;
+const INTERFACE_PROPERTY_PROBE = `import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
+
+class Rail extends GObject.Object {}
+
+const RegisteredRail = registerClass(Rail, {
+    typeName: "GtkxPropertyHelperRail",
+    implements: [Gtk.Orientable],
+    properties: {
+        orientation: GObject.paramSpecOverride("orientation", Gtk.Orientable),
+    },
+});
+const rail = new RegisteredRail({});
+const orientation: Gtk.Orientation = GObject.getObjectProperty(rail, "orientation");
+GObject.setObjectProperty(rail, "orientation", Gtk.Orientation.HORIZONTAL);
+`;
+const PROPERTY_OVERRIDE_SPELLING_PROBE = `import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+
+const names = ["margin-top", "margin_top", "marginTop"].map(
+    (name) => GObject.paramSpecOverride(name, Gtk.Widget).name,
+);
+process.stdout.write(names.join(","));
+`;
+const PROPERTY_TYPE_ERRORS = {
+    "pointer-property-read.ts": `import * as Gdk from "@gtkx/gi/gdk";
+import * as GObject from "@gtkx/gi/gobject";
+
+declare const builder: Gdk.GLTextureBuilder;
+GObject.getObjectProperty(builder, "sync");
+`,
+    "pointer-property-write.ts": `import * as Gdk from "@gtkx/gi/gdk";
+import * as GObject from "@gtkx/gi/gobject";
+
+declare const builder: Gdk.GLTextureBuilder;
+GObject.setObjectProperty(builder, "sync", 1n);
+`,
+    "union-override-source.ts": `import * as GObject from "@gtkx/gi/gobject";
+import * as Gtk from "@gtkx/gi/gtk";
+import { registerClass } from "@gtkx/runtime";
+
+declare const source: GObject.Type | typeof Gtk.Widget;
+
+class Visibility extends GObject.Object {
+    declare visible: boolean;
+}
+
+const RegisteredVisibility = registerClass(Visibility, {
+    typeName: "GtkxPropertyHelperUnionOverride",
+    properties: {
+        visible: GObject.paramSpecOverride("visible", source),
+    },
+});
+GObject.getObjectProperty(new RegisteredVisibility({}), "visible");
+`,
+};
 const GIO_TYPE_PROBE = `import type * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+import { registerClass } from "@gtkx/runtime";
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type Expect<T extends true> = T;
+
+declare const socket: Gio.Socket;
+const blocking: boolean = GObject.getObjectProperty(socket, "blocking");
+const localAddress: Gio.SocketAddress | null = GObject.getObjectProperty(socket, "localAddress");
+GObject.setObjectProperty(socket, "listenBacklog", 12);
+
+class Mutable extends GObject.Object {
+    declare count: number;
+}
+
+const RegisteredMutable = registerClass(Mutable, {
+    typeName: "GtkxPropertyHelperMutable",
+    properties: {
+        count: GObject.paramSpecInt("count", null, null, 0, 10, 0, GObject.ParamFlags.READWRITE),
+    },
+});
+const mutable = new RegisteredMutable({});
+GObject.setObjectProperty(mutable, "count", 7);
+const count: number = GObject.getObjectProperty(mutable, "count");
+
+class InheritedMutable extends GObject.Object {
+    get level(): number {
+        return 0;
+    }
+
+    set level(value: number) {
+        void value;
+    }
+}
+
+const RegisteredInheritedMutable = registerClass(InheritedMutable, {
+    typeName: "GtkxPropertyHelperInheritedMutable",
+    properties: {
+        level: GObject.paramSpecInt("level", null, null, 0, 10, 0, GObject.ParamFlags.READWRITE),
+    },
+});
+
+class InheritedReadOnly extends RegisteredInheritedMutable {
+    override get level(): number {
+        return 0;
+    }
+}
+
+const RegisteredInheritedReadOnly = registerClass(InheritedReadOnly, {
+    typeName: "GtkxPropertyHelperInheritedReadOnly",
+    properties: {
+        level: GObject.paramSpecInt("level", null, null, 0, 10, 0, GObject.ParamFlags.READABLE),
+    },
+});
+const inheritedReadOnly = new RegisteredInheritedReadOnly({});
+const level: number = GObject.getObjectProperty(inheritedReadOnly, "level");
+
+class InheritedReadWrite extends RegisteredInheritedMutable {}
+
+const RegisteredInheritedReadWrite = registerClass(InheritedReadWrite, {
+    typeName: "GtkxPropertyHelperInheritedReadWrite",
+    properties: {
+        level: GObject.paramSpecInt("level", null, null, 0, 10, 0, GObject.ParamFlags.READWRITE),
+    },
+});
+const inheritedReadWrite = new RegisteredInheritedReadWrite({});
+GObject.setObjectProperty(inheritedReadWrite, "level", 4);
+const inheritedLevel: number = GObject.getObjectProperty(inheritedReadWrite, "level");
+
+class Wide extends GObject.Object {
+    declare serial: bigint;
+}
+
+const RegisteredWide = registerClass(Wide, {
+    typeName: "GtkxPropertyHelperWide",
+    properties: {
+        serial: GObject.paramSpecInt64("serial", null, null, 0n, 100n, 0n, GObject.ParamFlags.READWRITE),
+    },
+});
+const wide = new RegisteredWide({});
+GObject.setObjectProperty(wide, "serial", 42n);
+const serial: bigint = GObject.getObjectProperty(wide, "serial");
 
 const signatures: [
     Expect<
@@ -60,6 +202,156 @@ import * as GObject from "@gtkx/gi/gobject";
 declare const socket: Gio.Socket;
 GObject.signalEmit(socket, "not-real", 123);
 `,
+    "unknown-property.ts": `import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+declare const socket: Gio.Socket;
+GObject.getObjectProperty(socket, "notReal");
+`,
+    "readonly-property.ts": `import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+declare const socket: Gio.Socket;
+GObject.setObjectProperty(socket, "family", Gio.SocketFamily.IPV4);
+`,
+    "wrong-property-value.ts": `import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+declare const socket: Gio.Socket;
+GObject.setObjectProperty(socket, "blocking", "false");
+`,
+    "dynamic-readonly-property.ts": `import * as GObject from "@gtkx/gi/gobject";
+import { registerClass } from "@gtkx/runtime";
+
+class ReadOnly extends GObject.Object {
+    declare readonly count: number;
+}
+
+const RegisteredReadOnly = registerClass(ReadOnly, {
+    typeName: "GtkxPropertyHelperReadOnly",
+    properties: {
+        count: GObject.paramSpecInt("count", null, null, 0, 10, 0, GObject.ParamFlags.READABLE),
+    },
+});
+GObject.setObjectProperty(new RegisteredReadOnly({}), "count", 1);
+`,
+    "dynamic-method-property-read.ts": `import * as GObject from "@gtkx/gi/gobject";
+import { registerClass } from "@gtkx/runtime";
+
+class Collision extends GObject.Object {
+    score(): string {
+        return "method";
+    }
+}
+
+const RegisteredCollision = registerClass(Collision, {
+    typeName: "GtkxPropertyHelperReadCollision",
+    properties: {
+        score: GObject.paramSpecInt("score", null, null, 0, 10, 0, GObject.ParamFlags.READWRITE),
+    },
+});
+GObject.getObjectProperty(new RegisteredCollision({}), "score");
+`,
+    "dynamic-method-property-write.ts": `import * as GObject from "@gtkx/gi/gobject";
+import { registerClass } from "@gtkx/runtime";
+
+class Collision extends GObject.Object {
+    score(): string {
+        return "method";
+    }
+}
+
+const RegisteredCollision = registerClass(Collision, {
+    typeName: "GtkxPropertyHelperWriteCollision",
+    properties: {
+        score: GObject.paramSpecInt("score", null, null, 0, 10, 0, GObject.ParamFlags.READWRITE),
+    },
+});
+GObject.setObjectProperty(new RegisteredCollision({}), "score", 1);
+`,
+    "dynamic-inherited-readonly-property.ts": `import * as GObject from "@gtkx/gi/gobject";
+import { registerClass } from "@gtkx/runtime";
+
+class Mutable extends GObject.Object {
+    get level(): number {
+        return 0;
+    }
+
+    set level(value: number) {
+        void value;
+    }
+}
+
+const RegisteredMutable = registerClass(Mutable, {
+    typeName: "GtkxPropertyHelperInheritedErrorMutable",
+    properties: {
+        level: GObject.paramSpecInt("level", null, null, 0, 10, 0, GObject.ParamFlags.READWRITE),
+    },
+});
+
+class ReadOnly extends RegisteredMutable {
+    override get level(): number {
+        return 0;
+    }
+}
+
+const RegisteredReadOnly = registerClass(ReadOnly, {
+    typeName: "GtkxPropertyHelperInheritedErrorReadOnly",
+    properties: {
+        level: GObject.paramSpecInt("level", null, null, 0, 10, 0, GObject.ParamFlags.READABLE),
+    },
+});
+GObject.setObjectProperty(new RegisteredReadOnly({}), "level", 1);
+`,
+    "dynamic-pointer-property-read.ts": `import * as GObject from "@gtkx/gi/gobject";
+import { registerClass } from "@gtkx/runtime";
+
+class PointerValue extends GObject.Object {
+    declare pointer: bigint | null;
+}
+
+const RegisteredPointerValue = registerClass(PointerValue, {
+    typeName: "GtkxPropertyHelperPointerRead",
+    properties: {
+        pointer: GObject.paramSpecPointer("pointer", null, null, GObject.ParamFlags.READWRITE),
+    },
+});
+GObject.getObjectProperty(new RegisteredPointerValue({}), "pointer");
+`,
+    "dynamic-pointer-property-write.ts": `import * as GObject from "@gtkx/gi/gobject";
+import { registerClass } from "@gtkx/runtime";
+
+class PointerValue extends GObject.Object {
+    declare pointer: bigint | null;
+}
+
+const RegisteredPointerValue = registerClass(PointerValue, {
+    typeName: "GtkxPropertyHelperPointerWrite",
+    properties: {
+        pointer: GObject.paramSpecPointer("pointer", null, null, GObject.ParamFlags.READWRITE),
+    },
+});
+GObject.setObjectProperty(new RegisteredPointerValue({}), "pointer", 1n);
+`,
+    "dynamic-widened-property-read.ts": `import * as GObject from "@gtkx/gi/gobject";
+import { registerClass } from "@gtkx/runtime";
+
+class Wide extends GObject.Object {
+    declare serial: bigint;
+}
+
+const spec: GObject.ParamSpec = GObject.paramSpecInt64(
+    "serial",
+    null,
+    null,
+    0n,
+    100n,
+    0n,
+    GObject.ParamFlags.READWRITE,
+);
+const RegisteredWide = registerClass(Wide, {
+    typeName: "GtkxPropertyHelperWidened",
+    properties: { serial: spec },
+});
+GObject.getObjectProperty(new RegisteredWide({}), "serial");
+`,
 };
 const GUDEV_PROPERTY_PROBE = `import * as GUdev from "@gtkx/gi/gudev";
 
@@ -88,7 +380,10 @@ export const transform = (job: Job): void => {
 };
 `;
 
-const typecheckProject = (project: { root: string }, file = "probe.ts"): void => {
+const typecheckProject = (
+    project: { root: string },
+    file = "probe.ts",
+): void => {
     execFileSync(
         process.execPath,
         [
@@ -111,21 +406,49 @@ const typecheckProject = (project: { root: string }, file = "probe.ts"): void =>
 const evaluateProject = (project: { root: string }, source: string): string =>
     execFileSync(
         process.execPath,
-        ["--conditions=source", "--import=tsx", "--input-type=module", "--eval", source],
-        { cwd: project.root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+        [
+            "--conditions=source",
+            "--import=tsx",
+            "--input-type=module",
+            "--eval",
+            source,
+        ],
+        {
+            cwd: project.root,
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"],
+        },
     );
 
-const expectGenerated = (library: string, namespace: string, expected: ExpectedOutput): void => {
+const expectGenerated = (
+    library: string,
+    namespace: string,
+    expected: ExpectedOutput,
+): void => {
     using project = createCliProject({
         prefix: `gtkx-cli-codegen-${namespace}-`,
         config: fixtureConfig(library),
     });
 
     expect(runCli(project, ["codegen"]).status).toBe(0);
-    const declarations = generatedModule(project, "gi", namespace, `${namespace}.d.ts`);
-    const bindings = generatedModule(project, "gi", namespace, `${namespace}.js`);
-    expect(expected.declarations.filter((text) => !declarations.includes(text))).toEqual([]);
-    expect(expected.bindings.filter((text) => !bindings.includes(text))).toEqual([]);
+    const declarations = generatedModule(
+        project,
+        "gi",
+        namespace,
+        `${namespace}.d.ts`,
+    );
+    const bindings = generatedModule(
+        project,
+        "gi",
+        namespace,
+        `${namespace}.js`,
+    );
+    expect(
+        expected.declarations.filter((text) => !declarations.includes(text)),
+    ).toEqual([]);
+    expect(
+        expected.bindings.filter((text) => !bindings.includes(text)),
+    ).toEqual([]);
 };
 
 describe("gtkx codegen marshalling", () => {
@@ -148,7 +471,11 @@ describe("gtkx codegen marshalling", () => {
                 "peek(): unknown",
                 "fill(): [boolean, unknown]",
             ],
-            bindings: [...VALUE_PARAMETER_BINDINGS, "isReturnUnpacked: true", "isUnpacked: true"],
+            bindings: [
+                ...VALUE_PARAMETER_BINDINGS,
+                "isReturnUnpacked: true",
+                "isUnpacked: true",
+            ],
         });
     });
 
@@ -158,7 +485,9 @@ describe("gtkx codegen marshalling", () => {
                 "runAsync(): Promise<[string, number]>",
                 "probeAsync(): Promise<boolean>",
             ],
-            bindings: ["promisify(asyncPairJobRunAsync, trimFinish(this.runFinish.bind(this))"],
+            bindings: [
+                "promisify(asyncPairJobRunAsync, trimFinish(this.runFinish.bind(this))",
+            ],
         });
     });
 
@@ -216,7 +545,32 @@ process.stdout.write(typeof DBusProxy.newForBusSync);`;
         expect(evaluateProject(project, GUDEV_PROPERTY_PROBE)).toBe("");
     });
 
-    it("rejects shadowed factories and invalid collision-safe signal emissions", () => {
+    it("retains marshalable interface properties and rejects unsafe property helpers", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-interface-property-",
+            config: ORIENTABLE_CONFIG,
+            files: {
+                "probe.ts": INTERFACE_PROPERTY_PROBE,
+                ...PROPERTY_TYPE_ERRORS,
+            },
+        });
+
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        expect(() => {
+            typecheckProject(project);
+        }).not.toThrow();
+        expect(evaluateProject(project, PROPERTY_OVERRIDE_SPELLING_PROBE)).toBe(
+            "margin-top,margin-top,margin-top",
+        );
+
+        for (const file of Object.keys(PROPERTY_TYPE_ERRORS)) {
+            expect(() => {
+                typecheckProject(project, file);
+            }).toThrow();
+        }
+    });
+
+    it("rejects shadowed factories and invalid collision-safe operations", () => {
         using project = createCliProject({
             prefix: "gtkx-cli-codegen-shadow-errors-",
             config: GIO_CONFIG,

@@ -1,14 +1,13 @@
 import { sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
-import type { GirFunction } from "../../gir/function.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { renderTsType } from "../../analysis/ts-type.js";
+import { isUnboundedArray, primitiveCategoryFor } from "../../analysis/type-shape.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderBlock } from "../../writer/emit.js";
-import { isEmittableCallable } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
-import { methodExportName } from "./method.js";
+import { underlyingType } from "./param-marshal.js";
 
 type InheritedAccessorTypes = {
     readType: string | undefined;
@@ -22,6 +21,7 @@ type ResolvedAccessor = {
     writeType: string;
     hasGetter: boolean;
     isWritable: boolean;
+    supportsDescriptorFreeAccess: boolean;
 };
 
 type PropertyAccessorArgs = {
@@ -59,6 +59,44 @@ const declaredPropertyType = (context: ModuleContext, property: GirProperty): st
         property.defaultValue === "NULL" || isNullablePropertyType(context, property.type),
     );
 
+const canAccessPropertyWithoutDescriptor = (context: ModuleContext, ref: TypeId | undefined): boolean => {
+    if (ref === undefined) {
+        return false;
+    }
+
+    const type = underlyingType(context, ref);
+
+    if (type === undefined) {
+        return false;
+    }
+
+    switch (type.kind) {
+        case "primitive": {
+            return type.category !== "pointer" && type.category !== "unichar" && type.category !== "void";
+        }
+        case "enum": {
+            return true;
+        }
+        case "class":
+        case "interface":
+        case "record": {
+            return type.value.glibGetType !== undefined;
+        }
+        case "carray": {
+            return isUnboundedArray(type) && primitiveCategoryFor(context.library, type.element) === "string";
+        }
+        case "list": {
+            return type.flavor === "gbytearray";
+        }
+        case "alias":
+        case "callback":
+        case "hashtable":
+        case "varargs": {
+            return false;
+        }
+    }
+};
+
 const isSkippedAccessor = (args: PropertyAccessorArgs, jsName: string): boolean =>
     !args.property.introspectable ||
     args.claimedNames.has(jsName) ||
@@ -68,52 +106,47 @@ const isSkippedAccessor = (args: PropertyAccessorArgs, jsName: string): boolean 
 const isAccessorEmittable = (args: PropertyAccessorArgs, jsName: string, isWritable: boolean): boolean =>
     !isSkippedAccessor(args, jsName) && (args.property.readable || isWritable);
 
-const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefined => {
-    const { property } = args;
+const resolvePropertyMetadata = (
+    context: ModuleContext,
+    property: GirProperty,
+    inheritedTypes?: InheritedAccessorTypes,
+): ResolvedAccessor | undefined => {
     const jsName = toCamelIdentifier(property.name);
     const isWritable = isConstructableProperty(property) && !property.constructOnly;
 
-    if (!isAccessorEmittable(args, jsName, isWritable)) {
+    if (!property.introspectable || (!isWritable && !property.readable)) {
         return undefined;
     }
 
-    const declared = declaredPropertyType(args.context, property);
+    const declared = declaredPropertyType(context, property);
     const hasGetter = property.readable;
 
     return {
         property,
         jsName,
-        readType: args.inheritedTypes?.readType ?? declared,
-        writeType: args.inheritedTypes?.writeType ?? declared,
+        readType: inheritedTypes?.readType ?? declared,
+        writeType: inheritedTypes?.writeType ?? declared,
         hasGetter,
         isWritable,
+        supportsDescriptorFreeAccess: canAccessPropertyWithoutDescriptor(context, property.type),
     };
 };
 
-const resolveOwnerAccessor = (
-    context: ModuleContext,
-    property: GirProperty,
-    methods: GirFunction[],
-): ResolvedAccessor | undefined => {
-    const claimedNames: Set<string> = new Set();
+const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefined => {
+    const accessor = resolvePropertyMetadata(args.context, args.property, args.inheritedTypes);
 
-    for (const method of methods) {
-        if (!isEmittableCallable(context, method)) {
-            continue;
-        }
-
-        claimedNames.add(methodExportName(method));
+    if (accessor === undefined || !isAccessorEmittable(args, accessor.jsName, accessor.isWritable)) {
+        return undefined;
     }
 
-    return resolveAccessor({ context, property, claimedNames });
+    return accessor;
 };
 
 const resolveAccessorTypes = (
     context: ModuleContext,
     property: GirProperty,
-    methods: GirFunction[],
 ): InheritedAccessorTypes | undefined => {
-    const accessor = resolveOwnerAccessor(context, property, methods);
+    const accessor = resolvePropertyMetadata(context, property);
 
     if (accessor === undefined) {
         return undefined;
@@ -206,7 +239,7 @@ const renderGenericSetBody = (context: ModuleContext, property: GirProperty): st
 export {
     propertyDoc,
     resolveAccessor,
-    resolveOwnerAccessor,
+    resolvePropertyMetadata,
     resolveAccessorTypes,
     renderResolvedPropertyAccessor,
     renderPropertyAccessor,

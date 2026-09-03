@@ -6,6 +6,8 @@ Generated bindings now follow GIR and JavaScript member precedence. GIR `shadows
 
 When one of those methods owns a usual signal-helper name, use `GObject.signalConnect`, `GObject.signalDisconnect`, or `GObject.signalEmit` to work with signals on that object.
 
+`GObject.getObjectProperty` and `GObject.setObjectProperty` now provide the same collision-safe access for properties. Their descriptor-free forms infer readable and mutable property names and values from the generated type.
+
 ### Migrating from older GTKX releases
 
 An interrupted headless run from an older GTKX release may have left a private Sway compositor and D-Bus daemon running. Inspect processes owned by your user before removing anything:

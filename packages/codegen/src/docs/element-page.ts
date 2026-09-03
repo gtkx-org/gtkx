@@ -1,11 +1,18 @@
 import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import type { GirClass } from "../gir/class.js";
 import type { Library } from "../gir/library.js";
+import type { ModuleContext } from "../writer/context.js";
 import type { HandwrittenProp } from "./handwritten-props.js";
+import { ancestorClassMethodNames } from "../analysis/inheritance.js";
 import { ancestorChain } from "../gir/ancestry.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import { annotationSpec } from "../store/gi/doc-spec.js";
+import {
+    resolveAccessor,
+    type ResolvedAccessor,
+    resolvePropertyMetadata,
+} from "../store/gi/property-accessor.js";
 import { elementPropTypeFor } from "../store/jsx/element-prop-imports.js";
 import {
     getGlibName,
@@ -21,6 +28,7 @@ import {
     annotationNotes,
     classMethodEntries,
     docMarkdown,
+    docsSignatureContext,
     firstSentence,
     implementsLine,
     joinSections,
@@ -49,6 +57,20 @@ type MemberOwner = {
     namespace: GirNamespace;
     origin: string | undefined;
     glibName: string | undefined;
+};
+
+type PropertyAccessorSetup = {
+    context: ModuleContext;
+    claimedNames: Set<string>;
+    inheritedNames: Set<string> | undefined;
+};
+
+type PropertyEntryOptions = {
+    context: ElementPageContext;
+    owner: MemberOwner;
+    property: GirProperty;
+    jsName: string;
+    hiddenAccessor: ResolvedAccessor | undefined;
 };
 
 const frontmatter = (entry: GlibNamedClass): string => {
@@ -94,6 +116,12 @@ const hierarchySection = (entry: GlibNamedClass, context: ElementPageContext): s
     return lines;
 };
 
+const hasDescriptorFreeGetter = (accessor: ResolvedAccessor | undefined): boolean =>
+    accessor?.supportsDescriptorFreeAccess === true && accessor.hasGetter;
+
+const hasDescriptorFreeSetter = (accessor: ResolvedAccessor | undefined): boolean =>
+    accessor?.supportsDescriptorFreeAccess === true && accessor.isWritable;
+
 const memberOwners = (entry: GlibNamedClass, context: ElementPageContext): MemberOwner[] => [
     { klass: entry.klass, namespace: entry.namespace, origin: undefined, glibName: entry.glibName },
     ...newlyImplementedInterfaces(
@@ -108,19 +136,23 @@ const memberOwners = (entry: GlibNamedClass, context: ElementPageContext): Membe
     }),
 ];
 
-const propertyEntry = (
-    context: ElementPageContext,
-    owner: MemberOwner,
-    property: GirProperty,
-    jsName: string,
-): MetaDocEntry => {
+const propertyEntry = (options: PropertyEntryOptions): MetaDocEntry => {
+    const { context, owner, property, jsName, hiddenAccessor } = options;
     const isObject = isObjectProp(context.library, property);
     const baseType = renderDocsType(context.library, property.type, false);
     const type = isObject ? `${baseType} | ReactElement` : baseType;
 
-    const accessNotes = isConstructableProperty(property)
-        ? []
-        : [`read-only, observe with \`onNotify${upperFirst(jsName)}\``];
+    const accessNotes = [
+        ...(isConstructableProperty(property)
+            ? []
+            : [`read-only, observe with \`onNotify${upperFirst(jsName)}\``]),
+        ...(hasDescriptorFreeGetter(hiddenAccessor)
+            ? ["instance read with `GObject.getObjectProperty`"]
+            : []),
+        ...(hasDescriptorFreeSetter(hiddenAccessor)
+            ? ["instance write with `GObject.setObjectProperty`"]
+            : []),
+    ];
 
     return {
         name: jsName,
@@ -128,6 +160,36 @@ const propertyEntry = (
         doc: docMarkdown(property.doc),
         tags: annotationSpec(property.annotations),
     };
+};
+
+const propertyAccessorSetup = (context: ElementPageContext, owner: MemberOwner): PropertyAccessorSetup => {
+    const signatureContext = docsSignatureContext(owner.namespace, context.library);
+    const claimedNames = new Set(
+        classMethodEntries(context.library, owner.namespace, owner.klass).map((entry) => entry.name),
+    );
+
+    return {
+        context: signatureContext,
+        claimedNames,
+        inheritedNames: owner.origin === undefined
+            ? ancestorClassMethodNames(signatureContext, owner.klass)
+            : undefined,
+    };
+};
+
+const hiddenPropertyAccessor = (
+    setup: PropertyAccessorSetup,
+    property: GirProperty,
+): ResolvedAccessor | undefined => {
+    const metadata = resolvePropertyMetadata(setup.context, property);
+    const field = resolveAccessor({
+        context: setup.context,
+        property,
+        claimedNames: setup.claimedNames,
+        inheritedNames: setup.inheritedNames,
+    });
+
+    return metadata !== undefined && field === undefined ? metadata : undefined;
 };
 
 const handwrittenPropMeta = (prop: HandwrittenProp, owner: MemberOwner): string =>
@@ -172,12 +234,19 @@ const propJsName = (property: GirProperty, owner: MemberOwner, seen: Set<string>
 
 const ownerPropEntries = (context: ElementPageContext, owner: MemberOwner, seen: Set<string>): MetaDocEntry[] => {
     const entries: MetaDocEntry[] = [...handwrittenPropEntries(owner, seen)];
+    const setup = propertyAccessorSetup(context, owner);
 
     for (const property of owner.klass.properties) {
         const jsName = propJsName(property, owner, seen);
 
         if (jsName !== undefined) {
-            entries.push(propertyEntry(context, owner, property, jsName));
+            entries.push(propertyEntry({
+                context,
+                owner,
+                property,
+                jsName,
+                hiddenAccessor: hiddenPropertyAccessor(setup, property),
+            }));
         }
     }
 

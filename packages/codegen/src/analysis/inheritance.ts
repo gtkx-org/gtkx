@@ -22,6 +22,7 @@ type AncestryContext = {
 };
 
 type OwnedProperty = { owner: GirClass; property: GirProperty };
+type PropertyFilter = (owner: GirClass, property: GirProperty) => boolean;
 type DeclaredAccessorType = { type: string; owner: string };
 type DeclaredAccessorTypes = { read: DeclaredAccessorType | undefined; write: DeclaredAccessorType | undefined };
 type MethodSignature = { returnType: string; arity: number };
@@ -147,13 +148,17 @@ const collectSeenPropertyNames = (context: ModuleContext, klass: GirClass): Set<
     return seen;
 };
 
-const collectNewInterfaceProperties = (iface: ResolvedAncestor, seen: Set<string>): OwnedProperty[] => {
+const collectNewInterfaceProperties = (
+    iface: ResolvedAncestor,
+    seen: Set<string>,
+    shouldInclude: PropertyFilter,
+): OwnedProperty[] => {
     const result: OwnedProperty[] = [];
 
     for (const property of iface.klass.properties) {
         const name = toCamelIdentifier(property.name);
 
-        if (seen.has(name)) {
+        if (!shouldInclude(iface.klass, property) || seen.has(name)) {
             continue;
         }
 
@@ -164,12 +169,16 @@ const collectNewInterfaceProperties = (iface: ResolvedAncestor, seen: Set<string
     return result;
 };
 
-const collectInterfaceProperties = (context: ModuleContext, klass: GirClass): OwnedProperty[] => {
+const collectInterfaceProperties = (
+    context: ModuleContext,
+    klass: GirClass,
+    shouldInclude: PropertyFilter = () => true,
+): OwnedProperty[] => {
     const seen = collectSeenPropertyNames(context, klass);
     const result: OwnedProperty[] = [];
 
     for (const iface of resolveDirectInterfaces(context, klass, context.namespace.name)) {
-        result.push(...collectNewInterfaceProperties(iface, seen));
+        result.push(...collectNewInterfaceProperties(iface, seen, shouldInclude));
     }
 
     return result;
@@ -298,7 +307,7 @@ const recordInheritedPropertyType = (
     owner: GirClass,
     property: GirProperty,
 ): void => {
-    const accessorTypes = resolveAccessorTypes(context, property, owner.methods);
+    const accessorTypes = resolveAccessorTypes(context, property);
 
     if (accessorTypes === undefined) {
         return;

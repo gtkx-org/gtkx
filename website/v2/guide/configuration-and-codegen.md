@@ -139,7 +139,14 @@ const connectSocket = (socket: Gio.Socket, address: Gio.SocketAddress): void => 
 };
 ```
 
-`GObject.signalEmit(instance, signal, ...args)` is the corresponding emission escape hatch. For a generic GObject property hidden by a more-specific method, use `GObject.getObjectProperty` or `GObject.setObjectProperty`. Any other inherited GIR implementation remains reachable explicitly through its prototype when both versions are useful.
+`GObject.signalEmit(instance, signal, ...args)` is the corresponding emission escape hatch. Properties have matching collision-safe helpers:
+
+```ts
+const blocking = GObject.getObjectProperty(socket, "blocking");
+GObject.setObjectProperty(socket, "blocking", !blocking);
+```
+
+Property names use their generated camelCase spelling. The getter accepts readable properties and infers their result, while the setter accepts mutable properties and checks the value type. Both resolve the installed `GObject.ParamSpec`, so they still reach a property when a more-specific method owns the same JavaScript name. Read-only and construct-only properties are excluded from the setter. Other inherited GIR implementations remain reachable explicitly through their prototype when both versions are useful.
 
 ## Passing a GType
 

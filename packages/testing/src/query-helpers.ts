@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { camelCase } from "@gtkx/utils";
+import { getObjectProperty } from "@gtkx/gi/gobject";
 import type { Matcher, MatcherOptions } from "./types.js";
 import { buildQueries } from "./build-queries.js";
 import { getElementError } from "./errors.js";
@@ -27,7 +27,13 @@ const queryHelpers: QueryHelpers = {
 };
 
 const readObjectProperty = (widget: Gtk.Widget, property: string): string | null => {
-    const value: unknown = Reflect.get(widget, camelCase(property));
+    let value: unknown;
+
+    try {
+        value = Reflect.apply(getObjectProperty, undefined, [widget, property]);
+    } catch {
+        return null;
+    }
 
     if (typeof value === "string") {
         return value;
