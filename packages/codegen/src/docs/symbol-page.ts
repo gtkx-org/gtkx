@@ -7,7 +7,6 @@ import type { Library } from "../gir/library.js";
 import type { GirRecord } from "../gir/record.js";
 import type { ModuleContext } from "../writer/context.js";
 import type { JsDocSpec } from "../writer/doc.js";
-import { reservedSignalMemberRename } from "../analysis/inheritance.js";
 import { renderTsType } from "../analysis/ts-type.js";
 import { ancestorChain } from "../gir/ancestry.js";
 import { callbackAsFunction, type GirCallback } from "../gir/callback.js";
@@ -362,14 +361,13 @@ const interfaceMethodNames = (library: Library, owner: MemberOwner): string[] =>
     const names: string[] = [];
 
     for (const callable of methods) {
-        const rename = reservedSignalMemberRename(className, callable);
-        const rendered = renderInstanceMethodSignature(context, { ...callable, doc: undefined }, scope, rename);
+        const rendered = renderInstanceMethodSignature(context, { ...callable, doc: undefined }, scope);
 
         if (rendered === undefined) {
             continue;
         }
 
-        names.push(rename ?? methodExportName(callable));
+        names.push(methodExportName(callable));
     }
 
     return names;
@@ -496,7 +494,7 @@ const signalsSection = (entry: ClassSymbol, library: Library): string[] => {
     }
 
     const intro =
-        "Connect with `instance.connect(\"<signal>\", handler)` or `instance.on(\"<signal>\", handler)`. " +
+        "Connect with `GObject.signalConnect(instance, \"<signal>\", handler)`. " +
         "Signals inherited from ancestors are documented on their own pages.";
 
     return ["## Signals", intro, ...originSignatureBlocks(entries)];

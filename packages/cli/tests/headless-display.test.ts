@@ -2,26 +2,10 @@ import {
     killProcessGroup,
     type ProcessGroupIdentity,
     processGroupIdentity,
-    resolveExecutable,
     spawnWithParentDeathSignal,
 } from "@gtkx/utils";
-import {
-    findLegacyHeadlessDisplays,
-    type LegacyHeadlessDisplay,
-    reapLegacyHeadlessDisplays,
-} from "@gtkx/vitest/headless";
 import { type ChildProcess, spawn } from "node:child_process";
-import {
-    chmodSync,
-    existsSync,
-    mkdirSync,
-    mkdtempSync,
-    readdirSync,
-    readFileSync,
-    renameSync,
-    rmSync,
-    writeFileSync,
-} from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -29,12 +13,6 @@ import { createCliProject, runCliOrThrow } from "./cli-project.js";
 
 type ProcessEntry = { pid: number; processGroup: ProcessGroupIdentity; args: string[] };
 type DisplayProbe = { child: ChildProcess; runtimeDir: string; processes: ProcessEntry[] };
-type LegacyProbe = {
-    swayPid: number;
-    busPid: number;
-    swayGroup: ProcessGroupIdentity;
-    busGroup: ProcessGroupIdentity;
-};
 
 const PROCESS_TIMEOUT_MS = 30_000;
 const POLL_MS = 50;
@@ -195,108 +173,6 @@ const stopProbe = (probe: DisplayProbe): void => {
     rmSync(probe.runtimeDir, { recursive: true, force: true });
 };
 
-const legacyConfig = (size: string): string =>
-    [
-        "xwayland disable",
-        "default_border none",
-        "default_floating_border none",
-        `output HEADLESS-1 resolution ${size}`,
-        "output HEADLESS-1 bg #000000 solid_color",
-        'for_window [app_id=".*"] floating enable, border none',
-        'for_window [title=".*"] floating enable, border none',
-        "",
-    ].join("\n");
-
-const legacyBusConfig = (runtimeDir: string): string =>
-    [
-        '<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN" ' +
-        '"https://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">',
-        "<busconfig>",
-        "  <type>session</type>",
-        `  <listen>unix:path=${join(runtimeDir, "bus")}</listen>`,
-        "  <auth>EXTERNAL</auth>",
-        '  <policy context="default">',
-        '    <allow send_destination="*" eavesdrop="true"/>',
-        '    <allow eavesdrop="true"/>',
-        '    <allow own="*"/>',
-        "  </policy>",
-        "</busconfig>",
-    ].join("\n");
-
-const LEGACY_PROBE =
-    'const { spawn } = await import("node:child_process");' +
-    'const { join } = await import("node:path");' +
-    "const runtimeDir = process.argv[1];" +
-    "const sway = process.argv[2];" +
-    "const dbus = process.argv[3];" +
-    'const busChild = spawn(dbus, [`--config-file=${join(runtimeDir, "session.conf")}`], {' +
-    "detached: true, stdio: \"ignore\" });" +
-    'const swayChild = spawn(sway, ["-c", join(runtimeDir, "sway.conf")], {' +
-    "detached: true, stdio: \"ignore\", env: { ...process.env, XDG_RUNTIME_DIR: runtimeDir, " +
-    "WLR_BACKENDS: \"headless\", WLR_RENDERER: \"pixman\", WLR_RENDERER_ALLOW_SOFTWARE: \"1\", " +
-    "WLR_LIBINPUT_NO_DEVICES: \"1\", WLR_HEADLESS_OUTPUTS: \"1\" } });" +
-    "const spawned = child => new Promise((resolve, reject) => { child.once(\"spawn\", resolve); " +
-    "child.once(\"error\", reject); });" +
-    "await Promise.all([spawned(busChild), spawned(swayChild)]);" +
-    "busChild.unref(); swayChild.unref();" +
-    String.raw`process.stdout.write(JSON.stringify({ swayPid: swayChild.pid, busPid: busChild.pid }) + "\n");`;
-
-const startLegacyProbe = async (runtimeDir: string): Promise<LegacyProbe> => {
-    const parent = spawn(
-        process.execPath,
-        [
-            ...NODE_TYPESCRIPT_ARGS,
-            LEGACY_PROBE,
-            runtimeDir,
-            resolveExecutable("sway"),
-            resolveExecutable("dbus-daemon"),
-        ],
-        { stdio: ["ignore", "pipe", "pipe"] },
-    );
-    const result = JSON.parse(await firstOutputLine(parent)) as Partial<{ swayPid: number; busPid: number }>;
-    const swayPid = result.swayPid;
-    const busPid = result.busPid;
-
-    if (
-        swayPid === undefined ||
-        busPid === undefined ||
-        !Number.isSafeInteger(swayPid) ||
-        !Number.isSafeInteger(busPid) ||
-        swayPid < 2 ||
-        busPid < 2
-    ) {
-        throw new Error("Legacy display probe returned no process ID");
-    }
-
-    await waitUntil(() =>
-        processIdentity(swayPid)?.parentId !== parent.pid && processIdentity(busPid)?.parentId !== parent.pid,
-    );
-    const swayGroup = processGroupIdentity(swayPid);
-    const busGroup = processGroupIdentity(busPid);
-
-    if (swayGroup === undefined || busGroup === undefined) {
-        throw new Error("Legacy display probe returned no stable process group identity");
-    }
-
-    return { swayPid, busPid, swayGroup, busGroup };
-};
-
-const findLegacyProbe = async (pid: number): Promise<LegacyHeadlessDisplay> => {
-    let match = findLegacyHeadlessDisplays().find((entry) => entry.pid === pid);
-
-    await waitUntil(() => {
-        match = findLegacyHeadlessDisplays().find((entry) => entry.pid === pid);
-
-        return match !== undefined;
-    });
-
-    if (match === undefined) {
-        throw new Error("Legacy display probe was not identified");
-    }
-
-    return match;
-};
-
 describe("headless display process ownership", () => {
     it("kills its exact display process groups when its parent is hard-killed", async () => {
         const probe = await startDisplayProbe();
@@ -311,64 +187,6 @@ describe("headless display process ownership", () => {
             expect(existsSync(probe.runtimeDir)).toBe(false);
         } finally {
             stopProbe(probe);
-        }
-    });
-
-    it("reaps only an explicitly selected legacy display", async () => {
-        const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
-        chmodSync(runtimeDir, 0o700);
-        writeFileSync(join(runtimeDir, "sway.conf"), legacyConfig("731x487"));
-        writeFileSync(join(runtimeDir, "session.conf"), legacyBusConfig(runtimeDir));
-        let probe: LegacyProbe | undefined;
-
-        try {
-            probe = await startLegacyProbe(runtimeDir);
-            const { swayPid, busPid } = probe;
-            const candidate = await findLegacyProbe(swayPid);
-            using project = createCliProject({ prefix: "gtkx-headless-cleanup-" });
-            runCliOrThrow(project, ["cleanup", "--pid", String(candidate.pid), "--dry-run"]);
-            expect(isRunning(swayPid)).toBe(true);
-            expect(isRunning(busPid)).toBe(true);
-            runCliOrThrow(project, ["cleanup", "--pid", String(candidate.pid)]);
-            await waitUntil(() => !isRunning(candidate.pid) && !isRunning(busPid));
-            expect(existsSync(runtimeDir)).toBe(false);
-        } finally {
-            if (probe !== undefined) {
-                killOwnedProcessGroups([probe.swayGroup, probe.busGroup]);
-            }
-
-            rmSync(runtimeDir, { recursive: true, force: true });
-        }
-    });
-
-    it("keeps a replacement directory while reaping a captured legacy display", async () => {
-        const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
-        const originalDir = `${runtimeDir}-original`;
-        chmodSync(runtimeDir, 0o700);
-        writeFileSync(join(runtimeDir, "sway.conf"), legacyConfig("731x487"));
-        writeFileSync(join(runtimeDir, "session.conf"), legacyBusConfig(runtimeDir));
-        let probe: LegacyProbe | undefined;
-
-        try {
-            const startedProbe = await startLegacyProbe(runtimeDir);
-            probe = startedProbe;
-            const candidate = await findLegacyProbe(startedProbe.swayPid);
-            renameSync(runtimeDir, originalDir);
-            mkdirSync(runtimeDir, { mode: 0o700 });
-            writeFileSync(join(runtimeDir, "sway.conf"), legacyConfig("731x487"));
-            writeFileSync(join(runtimeDir, "session.conf"), legacyBusConfig(runtimeDir));
-            writeFileSync(join(runtimeDir, "keep.txt"), "keep");
-
-            reapLegacyHeadlessDisplays([candidate]);
-            await waitUntil(() => !isRunning(startedProbe.swayPid) && !isRunning(startedProbe.busPid));
-            expect(readFileSync(join(runtimeDir, "keep.txt"), "utf8")).toBe("keep");
-        } finally {
-            if (probe !== undefined) {
-                killOwnedProcessGroups([probe.swayGroup, probe.busGroup]);
-            }
-
-            rmSync(runtimeDir, { recursive: true, force: true });
-            rmSync(originalDir, { recursive: true, force: true });
         }
     });
 
@@ -419,11 +237,5 @@ describe("gtkx dev headless arguments", () => {
         using project = createCliProject({ prefix: "gtkx-headless-args-" });
 
         expect(() => runCliOrThrow(project, ["dev", "--size", "800x600"])).toThrow();
-    });
-
-    it("rejects an invalid cleanup process ID", () => {
-        using project = createCliProject({ prefix: "gtkx-headless-cleanup-error-" });
-
-        expect(() => runCliOrThrow(project, ["cleanup", "--pid", "not-a-pid"])).toThrow();
     });
 });

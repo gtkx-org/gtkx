@@ -1,5 +1,6 @@
 import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
-import { toCamelIdentifier, upperFirst } from "@gtkx/utils";
+import { type AnyClass, toCamelIdentifier, upperFirst } from "@gtkx/utils";
+import type { ResolvedSignalEmitMap, ResolvedSignalMap } from "./signal-brand.js";
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind } from "./bind.js";
 import { wrapCallback } from "./callback.js";
@@ -19,7 +20,7 @@ import {
     voidT,
 } from "./descriptors.js";
 import { LIB, VALUE_SIZE, VALUE_T } from "./library.js";
-import { getHandle } from "./registry.js";
+import { getClassType, getHandle, getInstanceType } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
 import { TYPE_INVALID, type TypedClass, typeInterfaces, typeParent } from "./type.js";
 import {
@@ -36,6 +37,55 @@ import {
 
 /** Function invoked when a connected GObject signal is emitted. */
 type SignalHandler = (...args: unknown[]) => unknown;
+
+const isSignalHandler = (value: unknown): value is SignalHandler => typeof value === "function";
+
+type DeclaredSignalMap<T> = T extends { __signals__?: infer TSignals } ? NonNullable<TSignals> : never;
+type SignalMap<T> = ResolvedSignalMap<T, DeclaredSignalMap<T>>;
+type SignalName<T> = Extract<keyof SignalMap<T>, string>;
+type DeclaredSignalEmitMap<T> = T extends { __signalEmit__?: infer TSignals }
+    ? NonNullable<TSignals>
+    : T extends { __signals__?: infer TSignals }
+        ? {
+                [K in keyof NonNullable<TSignals>]: NonNullable<TSignals>[K] extends (
+                    ...args: infer TArgs
+                ) => infer TResult
+                    ? { args: TArgs; result: TResult }
+                    : never;
+            }
+        : never;
+type SignalEmitMap<T> = ResolvedSignalEmitMap<T, DeclaredSignalEmitMap<T>>;
+type SignalEmitName<T> = Extract<keyof SignalEmitMap<T>, string>;
+type SignalEmitArguments<T, K extends SignalEmitName<T>> = SignalEmitMap<T>[K] extends {
+    args: infer TArgs extends unknown[];
+}
+    ? TArgs
+    : never;
+type SignalEmitResult<T, K extends SignalEmitName<T>> = SignalEmitMap<T>[K] extends {
+    result: infer TResult;
+}
+    ? TResult
+    : never;
+
+type SignalConnector = (
+    instance: object,
+    signal: string,
+    handler: SignalHandler,
+    isAfter?: boolean,
+) => number;
+type SignalEmitter = (instance: object, signal: string, args: unknown[]) => unknown;
+type SignalDispatch = {
+    connect: SignalConnector;
+    emit: SignalEmitter;
+};
+type SignalDispatchSpec = {
+    connect: SignalConnector;
+    emit: SignalEmitter;
+};
+type PendingSignalDispatch = {
+    ownerType: bigint;
+    spec: SignalDispatchSpec;
+};
 
 type DeclaredSignalTypes = {
     paramTypes: bigint[];
@@ -70,6 +120,8 @@ type EmitArg = Arg & {
 };
 
 const connectionTable: WeakMap<object, Map<string, Set<number>>> = new WeakMap();
+const signalDispatchTable: Map<number, SignalDispatch> = new Map();
+const pendingSignalDispatches: Map<string, PendingSignalDispatch[]> = new Map();
 const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T);
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
 const gSignalName = bind(LIB, "g_signal_name", [uint32T], stringT("borrowed"));
@@ -112,6 +164,15 @@ const getSignalBaseName = (signal: string): string => {
     const detailIndex = signal.indexOf("::");
 
     return detailIndex === -1 ? signal : signal.slice(0, detailIndex);
+};
+
+const canonicalSignalName = (signal: string): string => getSignalBaseName(signal).replaceAll("_", "-");
+
+const canonicalDetailedSignalName = (signal: string): string => {
+    const detailIndex = signal.indexOf("::");
+    const base = canonicalSignalName(signal);
+
+    return detailIndex === -1 ? base : `${base}${signal.slice(detailIndex)}`;
 };
 
 function getSignalDetailQuark(signal: string): number {
@@ -180,7 +241,7 @@ function hasSignalListener(instance: object, signals?: string[]): boolean {
     }
 
     const names =
-        signals === undefined ? bySignal.keys().toArray() : signals.map((signal) => getSignalBaseName(signal));
+        signals === undefined ? bySignal.keys().toArray() : signals.map((signal) => canonicalSignalName(signal));
 
     return names.some((name) => {
         const handlerIds = bySignal.get(name);
@@ -242,7 +303,7 @@ function connectSignal(instance: object, signal: string, spec: SignalConnectSpec
     const key = `${String(type)}\0${getSignalBaseName(signal)}`;
     const closure = newCCallbackClosure(key, callback, wrapped);
     const handlerId = gSignalConnectClosure(getHandle(instance), signal, closure, isAfter) as number;
-    trackConnection(instance, getSignalBaseName(signal), handlerId);
+    trackConnection(instance, canonicalSignalName(signal), handlerId);
 
     return handlerId;
 }
@@ -254,7 +315,7 @@ function overrideSignalClassClosure(type: bigint, signalId: number, handler: Sig
 function connectClosureSignal(instance: object, signal: string, handler: SignalHandler, isAfter: boolean): number {
     const closure = toClosure((...args: unknown[]) => Reflect.apply(handler, null, args.slice(1)));
     const handlerId = gSignalConnectClosure(getHandle(instance), signal, closure, isAfter) as number;
-    trackConnection(instance, getSignalBaseName(signal), handlerId);
+    trackConnection(instance, canonicalSignalName(signal), handlerId);
 
     return handlerId;
 }
@@ -350,19 +411,130 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returns?:
     return packTupleResult(readEmitOutputs(reads), fromValue(returnValue), true);
 }
 
+function installSignalDispatch(
+    klass: AnyClass,
+    names: readonly string[],
+    spec: SignalDispatchSpec,
+): void {
+    const ownerType = getClassType(klass);
+
+    for (const rawName of names) {
+        const name = canonicalSignalName(rawName);
+        pendingSignalDispatches.getOrInsertComputed(name, () => []).push({ ownerType, spec });
+    }
+}
+
+const resolvePendingSignalDispatch = (signalId: number, name: string): SignalDispatch | undefined => {
+    const pending = pendingSignalDispatches.get(name) ?? [];
+
+    for (let index = pending.length - 1; index >= 0; index -= 1) {
+        const entry = pending[index];
+
+        if (
+            entry !== undefined &&
+            entry.ownerType !== TYPE_INVALID &&
+            signalIdFor(entry.ownerType, name) === signalId
+        ) {
+            signalDispatchTable.set(signalId, entry.spec);
+
+            return entry.spec;
+        }
+    }
+
+    return undefined;
+};
+
+const signalDispatchFor = (instance: object, signal: string): SignalDispatch | undefined => {
+    const name = canonicalSignalName(signal);
+    const instanceType = getInstanceType(instance);
+
+    if (instanceType === TYPE_INVALID) {
+        return undefined;
+    }
+
+    const signalId = signalIdFor(instanceType, name);
+
+    if (signalId === 0) {
+        return undefined;
+    }
+
+    return signalDispatchTable.get(signalId) ?? resolvePendingSignalDispatch(signalId, name);
+};
+
+const connectDispatcherFor = (instance: object, signal: string): SignalConnector => {
+    const dispatch = signalDispatchFor(instance, signal);
+
+    if (dispatch === undefined) {
+        throw new TypeError("connectSignal: unknown signal");
+    }
+
+    return dispatch.connect;
+};
+
+const emitDispatcherFor = (instance: object, signal: string): SignalEmitter => {
+    const dispatch = signalDispatchFor(instance, signal);
+
+    if (dispatch === undefined) {
+        throw new TypeError("emitSignal: unknown signal");
+    }
+
+    return dispatch.emit;
+};
+
+function signalConnect<T extends object, K extends SignalName<NoInfer<T>>>(
+    instance: T,
+    signal: K,
+    handler: SignalMap<NoInfer<T>>[K],
+    isAfter?: boolean,
+): number {
+    return connectSignalByName(instance, signal, handler, isAfter);
+}
+
+function connectSignalByName(
+    instance: object,
+    signal: string,
+    handler: unknown,
+    isAfter?: boolean,
+): number {
+    if (!isSignalHandler(handler)) {
+        throw new TypeError("connectSignal: handler must be a function");
+    }
+
+    return connectDispatcherFor(instance, signal)(instance, signal, handler, isAfter);
+}
+
+function emitSignalByName(instance: object, signal: string, args: unknown[]): unknown {
+    return emitDispatcherFor(instance, signal)(instance, signal, args);
+}
+
+function signalEmit<T extends object, K extends SignalEmitName<NoInfer<T>>>(
+    instance: T,
+    signal: K,
+    ...args: SignalEmitArguments<NoInfer<T>, K>
+): SignalEmitResult<NoInfer<T>, K> {
+    return emitSignalByName(instance, signal, args) as SignalEmitResult<NoInfer<T>, K>;
+}
+
 export {
+    canonicalDetailedSignalName,
+    canonicalSignalName,
     signalForHandlerName,
     getSignalBaseName,
     signalIdFor,
     connectClosureSignal,
     connectSignal,
+    connectSignalByName,
     type DeclaredSignalTypes,
     disconnectSignal,
     emitDeclaredSignal,
     emitSignal,
+    emitSignalByName,
     hasSignalListener,
     isSignalHandlerConnected,
+    installSignalDispatch,
     overrideSignalClassClosure,
+    signalConnect,
+    signalEmit,
     untrackConnection,
     type SignalHandler,
 };

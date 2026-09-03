@@ -30,13 +30,19 @@ import {
     wrapHandle,
 } from "./registry.js";
 import {
+    classSignalMember,
+    naturalSignalMember,
+    signalEmitMapOverride,
+    signalMapOverride,
+} from "./signal-brand.js";
+import {
+    canonicalSignalName,
     connectClosureSignal,
     type DeclaredSignalTypes,
     emitDeclaredSignal,
-    getSignalBaseName,
+    installSignalDispatch,
     overrideSignalClassClosure,
     signalForHandlerName,
-    type SignalHandler,
     signalIdFor,
 } from "./signal.js";
 import {
@@ -53,9 +59,9 @@ import {
 import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor } from "./vfunc.js";
 
 /** A generated interface value, such as `Gio.ListModel`, accepted by {@link registerClass}. */
-type Interface<TImpl> = AnyClass & {
+type Interface<TImpl, TInstance = object> = AnyClass & {
     /** Type-level slot holding the interface's `Impl` type; no value ever carries it. */
-    __impl__: (impl: Partial<TImpl> & object) => void;
+    __impl__: (impl: Partial<TImpl> & object) => TInstance;
 };
 
 /** Converts underscores in a property name to canonical dashes. */
@@ -79,31 +85,173 @@ type DeclaredSignalBase<TSignals> = (keyof TSignals & string) | Dashed<keyof TSi
 type DeclaredSignalName<TSignals> = DeclaredSignalBase<TSignals> | `${DeclaredSignalBase<TSignals>}::${string}`;
 
 /** Signal methods added for declared names. */
-type DeclaredSignalMethods<TSignals> = {
+type DeclaredSignalMethods<TSignals, TBlockedMembers extends PropertyKey> = {
     /** Type-level map used by signal hooks. */
-    __signals__?: Record<DeclaredSignalBase<TSignals>, (...args: never[]) => unknown>;
-    /** Connects a handler. */
-    connect(
-        signal: DeclaredSignalName<TSignals>,
-        handler: (...args: never[]) => unknown,
-        isAfter?: boolean,
-    ): number;
-    /** Emits a signal. */
-    emit(sigName: DeclaredSignalName<TSignals>, ...args: unknown[]): unknown;
-    /** Connects a removable handler. */
-    on(sigName: DeclaredSignalName<TSignals>, callback: (...args: unknown[]) => unknown, isAfter?: boolean): unknown;
-    /** Connects a one-shot handler. */
-    once(sigName: DeclaredSignalName<TSignals>, callback: (...args: unknown[]) => unknown, isAfter?: boolean): unknown;
-    /** Disconnects a handler. */
-    off(sigName: DeclaredSignalName<TSignals>, callback: (...args: unknown[]) => unknown): unknown;
-};
+    __signals__?: Record<DeclaredSignalName<TSignals>, (...args: never[]) => unknown>;
+} &
+Pick<
+    {
+        connect(
+            signal: DeclaredSignalName<TSignals>,
+            handler: (...args: never[]) => unknown,
+            isAfter?: boolean,
+        ): number;
+        emit(sigName: DeclaredSignalName<TSignals>, ...args: unknown[]): unknown;
+        on(sigName: DeclaredSignalName<TSignals>, callback: (...args: never[]) => unknown, isAfter?: boolean): unknown;
+        once(
+            sigName: DeclaredSignalName<TSignals>,
+            callback: (...args: never[]) => unknown,
+            isAfter?: boolean,
+        ): unknown;
+        off(sigName: DeclaredSignalName<TSignals>, callback: (...args: never[]) => unknown): unknown;
+    },
+    Exclude<"connect" | "emit" | "off" | "on" | "once", TBlockedMembers>
+>;
 
 /** A registered instance with declared signal methods and property metadata. */
-type RegisteredInstance<TInstance, TProperties, TSignals> = TInstance &
-    DeclaredSignalMethods<TSignals> & {
-        /** Type-level map from installed property name to value type; no value ever carries it. */
-        __properties__: Pick<TInstance, InstalledNames<TProperties> & keyof TInstance>;
-    };
+type RegisteredInstance<
+    TInstance,
+    TProperties,
+    TSignals,
+    TInterfaces extends readonly Interface<TInstance>[],
+    TRemainingInterfaces extends readonly Interface<TInstance>[] = TInterfaces,
+    TMemberSurface = object,
+    TSignalSurface = TInstance extends { [signalMapOverride]?: infer TResolver }
+        ? TResolver extends () => infer TMap
+            ? NonNullable<TMap>
+            : TInstance extends { __signals__?: infer TMap }
+                ? NonNullable<TMap>
+                : object
+        : TInstance extends { __signals__?: infer TMap }
+            ? NonNullable<TMap>
+            : object,
+    TSignalEmitSurface = TInstance extends { [signalEmitMapOverride]?: infer TResolver }
+        ? TResolver extends () => infer TMap
+            ? NonNullable<TMap>
+            : TInstance extends { __signalEmit__?: infer TMap }
+                ? NonNullable<TMap>
+                : object
+        : TInstance extends { __signalEmit__?: infer TMap }
+            ? NonNullable<TMap>
+            : object,
+    TPropertySurface = TInstance extends { __properties__?: infer TMap }
+        ? NonNullable<TMap>
+        : object,
+    TNaturalInstanceMembers extends PropertyKey = TInstance extends {
+        [naturalSignalMember]?: infer TMembers;
+    }
+        ? keyof NonNullable<TMembers>
+        : never,
+    TClassInstanceSignals extends PropertyKey = TInstance extends {
+        [classSignalMember]?: infer TMembers;
+    }
+        ? keyof NonNullable<TMembers>
+        : never,
+    TLegacySignalMembers extends PropertyKey = "connect" | "disconnect" | "emit" | "off" | "on" | "once",
+> = TRemainingInterfaces extends readonly [
+    infer TInterface extends Interface<TInstance>,
+    ...infer TRest extends readonly Interface<TInstance>[],
+]
+    ? (ReturnType<TInterface["__impl__"]> extends infer TInterfaceInstance extends object
+            ? RegisteredInstance<
+                TInstance,
+                TProperties,
+                TSignals,
+                TInterfaces,
+                TRest,
+                TMemberSurface &
+                Omit<
+                    TInterfaceInstance,
+                    | keyof TInstance |
+                    keyof TMemberSurface |
+                    "__properties__" |
+                    "__signalEmit__" |
+                    "__signals__" |
+                    TLegacySignalMembers
+                > & {
+                    [K in Extract<
+                        TInterfaceInstance extends { [naturalSignalMember]?: infer TMembers }
+                            ? keyof NonNullable<TMembers>
+                            : never,
+                        TLegacySignalMembers
+                    > as K extends TNaturalInstanceMembers | keyof TMemberSurface
+                        ? never
+                        : K]: K extends keyof TInterfaceInstance ? TInterfaceInstance[K] : never;
+                },
+                TInterfaceInstance extends { __signals__?: infer TNextSignalMap } ? Omit<
+                    TSignalSurface,
+                    keyof {
+                        [K in keyof NonNullable<TNextSignalMap> as K extends string
+                            ? Dashed<
+                                K extends `${infer TBase}::${string}` ? TBase : K
+                            > extends TClassInstanceSignals | Dashed<keyof TSignals & string>
+                                ? never
+                                : K
+                            : K]: NonNullable<TNextSignalMap>[K];
+                    }
+                > & {
+                    [K in keyof NonNullable<TNextSignalMap> as K extends string
+                        ? Dashed<
+                            K extends `${infer TBase}::${string}` ? TBase : K
+                        > extends TClassInstanceSignals | Dashed<keyof TSignals & string>
+                            ? never
+                            : K
+                        : K]: NonNullable<TNextSignalMap>[K];
+                }
+                    : TSignalSurface,
+                TInterfaceInstance extends { __signalEmit__?: infer TNextSignalEmitMap } ? Omit<
+                    TSignalEmitSurface,
+                    keyof {
+                        [K in keyof NonNullable<TNextSignalEmitMap> as K extends string
+                            ? Dashed<
+                                K extends `${infer TBase}::${string}` ? TBase : K
+                            > extends TClassInstanceSignals | Dashed<keyof TSignals & string>
+                                ? never
+                                : K
+                            : K]: NonNullable<TNextSignalEmitMap>[K];
+                    }
+                > & {
+                    [K in keyof NonNullable<TNextSignalEmitMap> as K extends string
+                        ? Dashed<
+                            K extends `${infer TBase}::${string}` ? TBase : K
+                        > extends TClassInstanceSignals | Dashed<keyof TSignals & string>
+                            ? never
+                            : K
+                        : K]: NonNullable<TNextSignalEmitMap>[K];
+                }
+                    : TSignalEmitSurface,
+                    TPropertySurface &
+                    Omit<
+                        TInterfaceInstance extends { __properties__?: infer TMap }
+                            ? NonNullable<TMap>
+                            : object,
+                        keyof TPropertySurface
+                    >,
+                    TNaturalInstanceMembers,
+                    TClassInstanceSignals,
+                    TLegacySignalMembers
+            >
+            : never) : TInstance &
+                TMemberSurface &
+                DeclaredSignalMethods<
+                    TSignals,
+              TNaturalInstanceMembers | Extract<keyof TMemberSurface, TLegacySignalMembers>
+                > & {
+                    [naturalSignalMember]?: Record<
+                    TNaturalInstanceMembers | Extract<keyof TMemberSurface, TLegacySignalMembers>,
+                    true
+                    >;
+                    [classSignalMember]?: Record<
+                    TClassInstanceSignals | Dashed<keyof TSignals & string>,
+                    true
+                    >;
+                    [signalMapOverride]?: () => Omit<TSignalSurface, DeclaredSignalName<TSignals>> &
+                        Record<DeclaredSignalName<TSignals>, (...args: never[]) => unknown>;
+                    [signalEmitMapOverride]?: () => Omit<TSignalEmitSurface, DeclaredSignalName<TSignals>> &
+                        Record<DeclaredSignalName<TSignals>, { args: unknown[]; result: unknown }>;
+                    __properties__: TPropertySurface &
+                        Pick<TInstance, InstalledNames<TProperties> & keyof TInstance>;
+                };
 
 /** A registered class's construct signature and prototype. */
 type RegisteredConstructor<TClass, TArgs extends unknown[], TInstance> = {
@@ -118,9 +266,14 @@ type RegisteredParts<TClass, TArgs extends unknown[], TInstance> = Omit<TClass, 
     RegisteredConstructor<TClass, TArgs, TInstance>;
 
 /** The registered class with its declared properties and signals. */
-type RegisteredClass<TClass extends AnyClass, TProperties, TSignals> =
+type RegisteredClass<
+    TClass extends AnyClass,
+    TProperties,
+    TSignals,
+    TInterfaces extends readonly Interface<TClass["prototype"]>[],
+> =
     TClass extends abstract new (...args: infer TArgs) => infer TInstance
-        ? RegisteredParts<TClass, TArgs, RegisteredInstance<TInstance, TProperties, TSignals>>
+        ? RegisteredParts<TClass, TArgs, RegisteredInstance<TInstance, TProperties, TSignals, TInterfaces>>
         : never;
 
 /** A numeric GType or a generated or registered wrapper class. */
@@ -143,6 +296,7 @@ type RegisterClassOptions<
     TInstance extends object,
     TProperties extends Record<string, PropertySpec>,
     TSignals extends Record<string, SignalSpec>,
+    TInterfaces extends readonly Interface<TInstance>[],
 > = {
     /** Registered GType name, defaulting to the class name. */
     typeName?: string;
@@ -156,7 +310,7 @@ type RegisterClassOptions<
      */
     classInit?(typeStruct: object): void;
     /** Interfaces implemented through matching `vfunc` methods. */
-    implements?: Interface<TInstance>[];
+    implements?: TInterfaces;
     /**
      * ParamSpecs keyed by their JavaScript property names. Keys and ParamSpec names must canonicalize
      * to the same member. Writes validate flags, types, and ranges and notify only on changes.
@@ -172,7 +326,12 @@ type RegisterClassOptions<
 };
 
 /** {@link RegisterClassOptions} with the widest instance and property types {@link registerClass} accepts. */
-type AnyRegisterClassOptions = RegisterClassOptions<object, Record<string, PropertySpec>, Record<string, SignalSpec>>;
+type AnyRegisterClassOptions = RegisterClassOptions<
+    object,
+    Record<string, PropertySpec>,
+    Record<string, SignalSpec>,
+    Interface<object>[]
+>;
 type VfuncFn = NativeRegisterClassVfunc["fn"];
 type DiscoveredVfunc = VfuncDescriptor & { methodName: string; fn: VfuncFn };
 type MethodTable = Map<string, VfuncFn>;
@@ -198,11 +357,6 @@ type PropertyVfuncSpec = {
 
 type ArgPatch = { isCallerAllocated: true } | { isCallScoped: true };
 type DeclaredSignals = { native: NativeRegisterClassSignal[]; table: Map<string, DeclaredSignalTypes> };
-
-type SignalMethodHost = {
-    connect?: (signal: string, handler: SignalHandler, isAfter?: boolean) => number;
-    emit?: (sigName: string, ...args: unknown[]) => unknown;
-};
 
 const INSTANCE_ARG_INDEX = 0;
 const VALUE_ARG_INDEX = 2;
@@ -240,10 +394,11 @@ function registerClass<
     T extends AnyClass,
     TProperties extends Record<string, PropertySpec> = Record<never, PropertySpec>,
     TSignals extends Record<string, SignalSpec> = Record<never, SignalSpec>,
+    const TInterfaces extends readonly Interface<T["prototype"]>[] = readonly Interface<T["prototype"]>[],
 >(
     klass: T,
-    options?: RegisterClassOptions<T["prototype"], TProperties, TSignals>,
-): RegisteredClass<T, TProperties, TSignals>;
+    options?: RegisterClassOptions<T["prototype"], TProperties, TSignals, TInterfaces>,
+): RegisteredClass<T, TProperties, TSignals, TInterfaces>;
 
 function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): AnyClass {
     const parentType = resolveParentType(klass);
@@ -282,7 +437,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     markDerivedClass(klass);
     installSignalOverrides(newType, methods);
     applyInterfaceMixins(klass, adoptedTypes, inheritedNames);
-    installDeclaredSignalMethods(klass, signals.table, members.names);
+    installDeclaredSignalMethods(klass, signals.table);
     invokeClassInit(options, newType);
 
     return klass;
@@ -632,8 +787,6 @@ function buildPropertyVfunc(
     };
 }
 
-const canonicalSignalName = (name: string): string => name.replaceAll("_", "-");
-
 function assertLowerCaseSignalName(klass: AnyClass, name: string): void {
     if (!UPPER_CASE_PATTERN.test(name)) {
         return;
@@ -742,72 +895,33 @@ function resolveDeclaredSignals(klass: AnyClass, signals: Record<string, SignalS
     return { native, table };
 }
 
-function inheritedSignalMethod<T>(inherited: T | undefined, signal: string): T {
-    if (inherited === undefined) {
-        throw new Error(`Unknown signal '${signal}'`);
-    }
-
-    return inherited;
-}
-
-function installDeclaredConnect(
-    proto: SignalMethodHost,
-    findDeclared: (signal: string) => DeclaredSignalTypes | undefined,
-): void {
-    const inheritedConnect = proto.connect;
-
-    proto.connect = function connect(
-        this: object,
-        signal: string,
-        handler: SignalHandler,
-        isAfter?: boolean,
-    ): number {
-        if (findDeclared(signal) === undefined) {
-            return inheritedSignalMethod(inheritedConnect, signal).call(this, signal, handler, isAfter);
-        }
-
-        return connectClosureSignal(this, signal, handler, isAfter ?? false);
-    };
-}
-
-function installDeclaredEmit(
-    proto: SignalMethodHost,
-    findDeclared: (signal: string) => DeclaredSignalTypes | undefined,
-): void {
-    const inheritedEmit = proto.emit;
-
-    proto.emit = function emit(this: object, sigName: string, ...args: unknown[]): unknown {
-        const declared = findDeclared(sigName);
-
-        if (declared === undefined) {
-            return inheritedSignalMethod(inheritedEmit, sigName).call(this, sigName, ...args);
-        }
-
-        return emitDeclaredSignal(this, sigName, declared, args);
-    };
-}
-
 function installDeclaredSignalMethods(
     klass: AnyClass,
     table: Map<string, DeclaredSignalTypes>,
-    definedNames: Set<string>,
 ): void {
     if (table.size === 0) {
         return;
     }
 
-    const proto = klass.prototype as SignalMethodHost;
-
     const findDeclared = (signal: string): DeclaredSignalTypes | undefined =>
-        table.get(canonicalSignalName(getSignalBaseName(signal)));
+        table.get(canonicalSignalName(signal));
 
-    if (!definedNames.has("connect")) {
-        installDeclaredConnect(proto, findDeclared);
-    }
+    installSignalDispatch(klass, table.keys().toArray(), {
+        connect(instance, signal, handler, isAfter): number {
+            findDeclared(signal);
 
-    if (!definedNames.has("emit")) {
-        installDeclaredEmit(proto, findDeclared);
-    }
+            return connectClosureSignal(instance, signal, handler, isAfter ?? false);
+        },
+        emit(instance, signal, args): unknown {
+            const declared = findDeclared(signal);
+
+            if (declared === undefined) {
+                throw new Error(`Unknown signal '${signal}'`);
+            }
+
+            return emitDeclaredSignal(instance, signal, declared, args);
+        },
+    });
 }
 
 function toNativeInterface(binding: InterfaceVfuncBinding): NativeRegisterClassInterface {

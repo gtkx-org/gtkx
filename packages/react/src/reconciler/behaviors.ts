@@ -6,6 +6,8 @@ import {
     createApplication,
     getClassType,
     getInstanceType,
+    offSignal,
+    onSignal,
     TYPE_INVALID,
     typeIsA,
 } from "@gtkx/runtime";
@@ -254,10 +256,10 @@ const watchDrift = <P extends GObject.Object, V>(
         scheduleSettle(object, state, prop, ops);
     };
 
-    object.on(signal, handler);
+    onSignal(object, signal, handler);
 
     state.disconnect = (): void => {
-        object.off(signal, handler);
+        offSignal(object, signal, handler);
     };
 };
 

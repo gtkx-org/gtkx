@@ -1,5 +1,5 @@
 import * as GObject from "@gtkx/gi/gobject";
-import { getSignalBaseName, type SignalHandler } from "@gtkx/runtime";
+import { getSignalBaseName, offSignal, onSignal, type SignalHandler } from "@gtkx/runtime";
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { HandlerRecord, SignalTarget } from "./node.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
@@ -98,13 +98,13 @@ const connectHandler = (target: SignalTarget, prop: string, signal: string, hand
     }
 
     if (existing !== undefined) {
-        target.object.off(existing.signal, existing.wrapped);
+        offSignal(target.object, existing.signal, existing.wrapped);
     }
 
     const isBlockable = isBlockableSignal(typeInfoFor(target.typeName), signal);
     const record: HandlerRecord = { signal, handler, wrapped: (): undefined => undefined, isBlockable };
     record.wrapped = wrapHandler(target, record, notifyBindingFor(signal));
-    target.object.on(signal, record.wrapped);
+    onSignal(target.object, signal, record.wrapped);
     target.handlers.set(prop, record);
 };
 
@@ -115,13 +115,13 @@ const disconnectHandler = (target: SignalTarget, prop: string): void => {
         return;
     }
 
-    target.object.off(record.signal, record.wrapped);
+    offSignal(target.object, record.signal, record.wrapped);
     target.handlers.delete(prop);
 };
 
 const disconnectAllHandlers = (target: SignalTarget): void => {
     for (const record of target.handlers.values()) {
-        target.object.off(record.signal, record.wrapped);
+        offSignal(target.object, record.signal, record.wrapped);
     }
 
     target.handlers.clear();

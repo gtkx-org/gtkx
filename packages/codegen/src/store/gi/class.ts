@@ -7,8 +7,9 @@ import {
     collectInheritedMethods,
     collectInheritedPropertyTypes,
     collectInterfaceMergeOmissions,
-    conflictRename,
-    type InheritedMethods,
+    hasNaturalClassChainMember,
+    naturalSignalMemberNames,
+    shadowedInstanceMemberName,
 } from "../../analysis/inheritance.js";
 import {
     areCallablesAssignable,
@@ -21,14 +22,17 @@ import {
 } from "../../analysis/interface-conflicts.js";
 import { ancestorChain, getParentRef, type ResolvedAncestor } from "../../gir/ancestry.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
+import { declaredFunctionName } from "../../gir/function.js";
 import { indentMembers } from "../../writer/emit.js";
 import {
     type Callables,
+    constructorMemberName,
     dedupeCallables,
     generateBindings,
     type InstanceScope,
     instanceScope,
     renderClassInstanceMember,
+    renderInstanceMethodOverload,
     renderStaticHead,
     staticMembers,
 } from "./callables.js";
@@ -36,11 +40,11 @@ import { isFundamentalClass, renderClassConstructor, renderConstructorPropsInter
 import { getDoc } from "./doc-spec.js";
 import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
-import { methodExportName } from "./method.js";
+import { memberName, methodExportName } from "./method.js";
 import { renderPropertyDeclarations } from "./properties.js";
 import { renderResolvedPropertyAccessor, resolveAccessor, type ResolvedAccessor } from "./property-accessor.js";
 import { appendWrapperClassRegistration } from "./registration.js";
-import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
+import { renderSignalDeclarations, renderSignalMembers, renderSignalRegistration } from "./signal.js";
 import { renderVfuncMembers, renderVfuncMetadata } from "./vtable.js";
 
 type ImplementedRef = {
@@ -49,6 +53,7 @@ type ImplementedRef = {
     interfaceKlass: GirClass;
     interfaceNamespace: string;
     conflicts: string[];
+    signalMembers: string[];
 };
 
 type MemberDeclarationsOptions = {
@@ -73,10 +78,16 @@ type AppendInstanceMethodsOptions = {
     context: ModuleContext;
     methods: GirFunction[];
     scope: InstanceScope;
-    inherited: InheritedMethods;
     members: string[];
     claimedNames: Set<string>;
-    className: string;
+    collisions: Set<string>;
+};
+
+type RenderInstanceMethodOptions = {
+    context: ModuleContext;
+    callable: GirFunction;
+    scope: InstanceScope;
+    collisions: Set<string>;
 };
 
 type ClassDeclarationOptions = {
@@ -85,6 +96,23 @@ type ClassDeclarationOptions = {
     heritage: string;
     body: string;
     implemented: ImplementedRef[];
+};
+
+type MixinRegistrationOptions = {
+    context: ModuleContext;
+    targetName: string;
+    runtimeName: "installInterfaces" | "installMixins";
+    refs: string[];
+    overrides: string[];
+};
+
+const SIGNAL_MEMBER_NAMES = ["connect", "disconnect", "emit", "off", "on", "once"];
+
+type ExtendsClauseOptions = {
+    context: ModuleContext;
+    parentExpression: string | undefined;
+    klass: GirClass;
+    callables: Callables;
 };
 
 const generateClass = (context: ModuleContext, klass: GirClass): void => {
@@ -102,8 +130,8 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
 
     generateBindings(context, callables);
     const parentExpression = resolveParent(context, klass);
-    const extendsClause = renderExtendsClause(context, parentExpression, klass, callables);
     const implemented = resolveImplementedRefs(context, klass);
+    const extendsClause = renderExtendsClause({ context, parentExpression, klass, callables });
     const implementsClause = renderImplementsClause(implemented);
     const { members, accessors } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
@@ -132,6 +160,12 @@ const declareClass = (context: ModuleContext, options: ClassDeclarationOptions):
     const localName = localClassName(className);
     appendInstallMixins(context, localName, implemented);
     appendClassRegistrations(context, klass, localName);
+    const signalRegistration = renderSignalRegistration(context, klass, localName);
+
+    if (signalRegistration !== undefined) {
+        context.collectRegistration(signalRegistration);
+    }
+
     const registrations = context.takeRegistrations();
 
     declareFoldedClass({
@@ -177,6 +211,20 @@ const appendInterfaceMerge = (
     });
 };
 
+const instanceMethodCollisions = (
+    context: ModuleContext,
+    klass: GirClass,
+    methods: GirFunction[],
+): Set<string> => {
+    const inheritedMethods = collectInheritedMethods(context, klass);
+
+    return new Set(
+        methods
+            .map((callable) => shadowedInstanceMemberName(context, callable, inheritedMethods))
+            .filter((name): name is string => name !== undefined),
+    );
+};
+
 const renderClassMembers = (
     context: ModuleContext,
     klass: GirClass,
@@ -193,17 +241,16 @@ const renderClassMembers = (
 
     const claimedNames: Set<string> = new Set();
     members.push(...renderStaticHead(context, callables, className));
-    const inherited = collectInheritedMethods(context, klass);
     const scope = instanceScope(className, callables);
+    const collisions = instanceMethodCollisions(context, klass, callables.methods);
 
     appendInstanceMethods({
         context,
         methods: callables.methods,
         scope,
-        inherited,
         members,
         claimedNames,
-        className,
+        collisions,
     });
 
     members.push(...renderVfuncMembers({ context, klass, mode: "implementation" }));
@@ -235,41 +282,68 @@ const renderClassMembers = (
     return { members, accessors };
 };
 
+const renderInstanceMethodBlock = (options: RenderInstanceMethodOptions): string | undefined => {
+    const { context, callable, scope, collisions } = options;
+    const block = renderClassInstanceMember(context, callable, scope);
+
+    if (block === undefined || !collisions.has(methodExportName(callable))) {
+        return block;
+    }
+
+    const name = methodExportName(callable);
+    const overload = renderInstanceMethodOverload(context, callable, scope);
+
+    return overload === undefined ? block : `${name}(this: never, ...args: never[]): any;\n${overload}\n${block}`;
+};
+
 const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
-    const { context, methods, scope, inherited, members, claimedNames, className } = options;
+    const { context, methods, scope, members, claimedNames, collisions } = options;
 
     for (const callable of methods) {
-        const rename = conflictRename(context, callable, inherited, className);
-        const block = renderClassInstanceMember(context, callable, scope, rename);
+        const block = renderInstanceMethodBlock({ context, callable, scope, collisions });
 
         if (block === undefined) {
             continue;
         }
 
+        const name = methodExportName(callable);
         members.push(block);
-        claimedNames.add(rename ?? methodExportName(callable));
+        claimedNames.add(name);
     }
 };
 
-const appendInstallMixins = (context: ModuleContext, targetName: string, implemented: ImplementedRef[]): void => {
-    if (implemented.length === 0) {
+const appendMixinRegistration = (options: MixinRegistrationOptions): void => {
+    const { context, targetName, runtimeName, refs, overrides } = options;
+
+    if (refs.length === 0) {
         return;
     }
 
+    context.addRuntimeImport(runtimeName);
+    const overrideArg = overrides.length === 0
+        ? ""
+        : `, [${overrides.map((name) => JSON.stringify(name)).join(", ")}]`;
+    context.collectRegistration(`${runtimeName}(${targetName}, [${refs.join(", ")}]${overrideArg});`);
+};
+
+const appendInstallMixins = (context: ModuleContext, targetName: string, implemented: ImplementedRef[]): void => {
     const registered = implemented.filter((ref) => ref.interfaceKlass.glibGetType !== undefined);
     const unregistered = implemented.filter((ref) => ref.interfaceKlass.glibGetType === undefined);
 
-    if (registered.length > 0) {
-        context.addRuntimeImport("installInterfaces");
-        const refs = registered.map((ref) => ref.typeRef);
-        context.collectRegistration(`installInterfaces(${targetName}, [${refs.join(", ")}]);`);
-    }
-
-    if (unregistered.length > 0) {
-        context.addRuntimeImport("installMixins");
-        const refs = unregistered.map((ref) => ref.makerRef);
-        context.collectRegistration(`installMixins(${targetName}, [${refs.join(", ")}]);`);
-    }
+    appendMixinRegistration({
+        context,
+        targetName,
+        runtimeName: "installInterfaces",
+        refs: registered.map((ref) => ref.typeRef),
+        overrides: [...new Set(registered.flatMap((ref) => ref.signalMembers))],
+    });
+    appendMixinRegistration({
+        context,
+        targetName,
+        runtimeName: "installMixins",
+        refs: unregistered.map((ref) => ref.makerRef),
+        overrides: [...new Set(unregistered.flatMap((ref) => ref.signalMembers))],
+    });
 };
 
 const appendClassRegistrations = (context: ModuleContext, klass: GirClass, targetName: string): void => {
@@ -367,7 +441,10 @@ const implementedRefFor = (options: ImplementedRefOptions): ImplementedRef | und
         ifaceNamespace: resolved.namespace.name,
     };
 
-    const conflicts = interfaceConflicts(conflictOptions, options.claimed);
+    const classSignalMembers = SIGNAL_MEMBER_NAMES.filter((member) =>
+        hasNaturalClassChainMember(context, klass, member),
+    );
+    const conflicts = [...new Set([...interfaceConflicts(conflictOptions, options.claimed), ...classSignalMembers])];
     claimInterfaceMembers(conflictOptions, options.claimed);
 
     return {
@@ -376,6 +453,9 @@ const implementedRefFor = (options: ImplementedRefOptions): ImplementedRef | und
         interfaceKlass: resolved.value,
         interfaceNamespace: resolved.namespace.name,
         conflicts,
+        signalMembers: naturalSignalMemberNames(context, resolved.value).filter(
+            (member) => !hasNaturalClassChainMember(context, klass, member),
+        ),
     };
 };
 
@@ -443,21 +523,29 @@ const inheritedStatics = (context: ModuleContext, klass: GirClass): Map<string, 
 const shadowedStaticNames = (context: ModuleContext, klass: GirClass, callables: Callables): string[] => {
     const inherited = inheritedStatics(context, klass);
 
-    return staticMembers(context, callables)
+    const conflicts = staticMembers(context, callables)
         .filter((member) => {
             const shadowed = inherited.get(member.name);
 
             return shadowed !== undefined && !areCallablesAssignable(context.library, member.callable, shadowed);
         })
         .map((member) => member.name);
+
+    const constructorAliases = callables.constructors
+        .filter((callable) => declaredFunctionName(callable) !== callable.name)
+        .map((callable) => constructorMemberName(declaredFunctionName(callable)))
+        .filter((name): name is string => name !== undefined);
+
+    const functionAliases = callables.functions
+        .filter((callable) => declaredFunctionName(callable) !== callable.name)
+        .map((callable) => memberName(declaredFunctionName(callable)));
+
+    return [...new Set([...conflicts, ...constructorAliases, ...functionAliases])];
 };
 
-const renderExtendsClause = (
-    context: ModuleContext,
-    parentExpression: string | undefined,
-    klass: GirClass,
-    callables: Callables,
-): string => {
+const renderExtendsClause = (options: ExtendsClauseOptions): string => {
+    const { context, parentExpression, klass, callables } = options;
+
     if (parentExpression === undefined) {
         return "";
     }
@@ -468,9 +556,12 @@ const renderExtendsClause = (
         return ` extends ${parentExpression}`;
     }
 
-    context.addRuntimeTypeImport("StaticBase");
+    let baseType = `typeof ${parentExpression}`;
 
-    return ` extends (${parentExpression} as StaticBase<typeof ${parentExpression}, ${omittedKeys(staticNames)}>)`;
+    context.addRuntimeTypeImport("StaticBase");
+    baseType = `StaticBase<${baseType}, ${omittedKeys(staticNames)}>`;
+
+    return ` extends (${parentExpression} as ${baseType})`;
 };
 
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {

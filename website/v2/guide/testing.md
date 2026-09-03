@@ -32,8 +32,6 @@ export default defineConfig({
 
 Each Vitest worker runs in its own headless environment, started before any test code loads and torn down with the worker. Headless runs need the compositor binary, `dbus-daemon`, and `setpriv` on the host; plugin options are in the [@gtkx/vitest reference](/v2/reference/@gtkx/vitest/).
 
-If a machine was interrupted while running an older GTKX release, inspect verified orphaned displays with `gtkx cleanup --dry-run`. Reap one with `gtkx cleanup --pid PID`, or all verified matches with the explicit `gtkx cleanup --all` option.
-
 The development server can use the same isolated display when no graphical session is available:
 
 ```bash

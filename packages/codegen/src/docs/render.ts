@@ -1,14 +1,12 @@
 import { sanitizeTypeIdentifier, sortStringsBy } from "@gtkx/utils";
 import type { GirAnnotations } from "../gir/annotations.js";
 import type { GirClass } from "../gir/class.js";
-import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
 import type { GirCallable } from "../gir/parameter.js";
 import type { GirProperty } from "../gir/property.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { JsDocDeprecation, JsDocParam, JsDocSpec } from "../writer/doc-tags.js";
-import { collectInheritedMethods, conflictRename } from "../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../analysis/param-structure.js";
 import { recordTypeTarget, renderBaseType, type TsTypeTarget } from "../analysis/ts-type.js";
 import {
@@ -290,14 +288,9 @@ const qualifiedClassName = (namespaceName: string, className: string): string =>
     `${namespaceName}.${sanitizeTypeIdentifier(className)}`;
 
 const classMethodEntries = (library: Library, namespace: GirNamespace, klass: GirClass): SignatureEntry[] => {
-    const realContext = new ModuleContext(namespace, library);
     const signatureContext = docsSignatureContext(namespace, library);
-    const className = sanitizeTypeIdentifier(klass.name);
-    const inherited = collectInheritedMethods(realContext, klass);
 
-    return instanceMethodEntries(signatureContext, klass, (method) =>
-        conflictRename(realContext, method, inherited, className),
-    );
+    return instanceMethodEntries(signatureContext, klass);
 };
 
 const methodsSectionBlocks = (entries: SignatureEntry[], intro: string): string[] =>
@@ -306,7 +299,6 @@ const methodsSectionBlocks = (entries: SignatureEntry[], intro: string): string[
 const instanceMethodEntries = (
     signatureContext: ModuleContext,
     klass: GirClass,
-    rename: (fn: GirFunction) => string | undefined,
 ): SignatureEntry[] => {
     const deduped = dedupeCallables(klass.methods);
 
@@ -319,15 +311,14 @@ const instanceMethodEntries = (
     const entries: SignatureEntry[] = [];
 
     for (const method of deduped) {
-        const nameOverride = rename(method);
-        const rendered = renderInstanceMethodSignature(signatureContext, method, scope, nameOverride);
+        const rendered = renderInstanceMethodSignature(signatureContext, method, scope);
 
         if (rendered === undefined) {
             continue;
         }
 
         entries.push({
-            name: nameOverride ?? methodExportName(method),
+            name: methodExportName(method),
             signature: signatureText(rendered),
             doc: docMarkdown(method.doc),
             tags: instanceMemberSpec(signatureContext, method, scope),

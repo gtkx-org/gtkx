@@ -608,25 +608,92 @@ test("registerClass creates declared signals that connect emit and run their def
     const Registered = registerClass(Pinger, { typeName: uniqueName("GtkxPinger"), signals: PINGER_SIGNALS });
     const instance = new Registered({});
     const handled: string[] = [];
-    instance.connect("pinged", (text) => {
-        handled.push(text);
+    GObject.signalConnect(instance, "pinged", (text) => {
+        if (typeof text === "string") {
+            handled.push(text);
+        }
 
         return 99;
     });
 
-    expect(instance.emit("pinged", "abc")).toBe(3);
+    expect(GObject.signalEmit(instance, "pinged", "abc")).toBe(3);
     expect(handled).toEqual(["abc"]);
     expect(defaults).toEqual(["abc"]);
 
     expect(instance.emit("quiet")).toBeUndefined();
 
     const dashed: number[] = [];
-    instance.connect("data-changed", (count) => {
-        dashed.push(count);
+    GObject.signalConnect(instance, DATA_CHANGED, (count) => {
+        if (typeof count === "number") {
+            dashed.push(count);
+        }
     });
-    instance.emit("data_changed", 7);
-    instance.emit("data-changed", 8);
+    GObject.signalEmit(instance, DATA_CHANGED, 7);
+    GObject.signalEmit(instance, "data-changed", 8);
     expect(dashed).toEqual([7, 8]);
+});
+
+test("class signals keep precedence over a newly adopted interface signal", () => {
+    class Parent extends GObject.Object {}
+
+    const RegisteredParent = registerClass(Parent, {
+        typeName: uniqueName("GtkxSignalParent"),
+        signals: { "items-changed": {} },
+    });
+
+    class Child extends RegisteredParent {}
+
+    const RegisteredChild = registerClass(Child, {
+        typeName: uniqueName("GtkxSignalChild"),
+        implements: [Gio.ListModel],
+    });
+    const instance = new RegisteredChild({});
+    const arities: number[] = [];
+    GObject.signalConnect(instance, "items-changed", (...args) => {
+        arities.push(args.length);
+    });
+
+    GObject.signalEmit(instance, "items-changed");
+    expect(arities).toEqual([0]);
+});
+
+test("the later native interface owns a colliding signal shape", () => {
+    class InterfacePayload extends Gio.DBusInterfaceSkeleton {}
+
+    const RegisteredPayload = registerClass(InterfacePayload, {
+        typeName: uniqueName("GtkxInterfacePayload"),
+    });
+    const payload = new RegisteredPayload({});
+    const object = Gio.DBusObjectSkeleton.new("/com/gtkx/SignalOwner");
+
+    class ObjectThenManager extends GObject.Object {}
+
+    const RegisteredObjectThenManager = registerClass(ObjectThenManager, {
+        typeName: uniqueName("GtkxObjectThenManager"),
+        implements: [Gio.DBusObject, Gio.DBusObjectManager],
+    });
+    const managerLast = new RegisteredObjectThenManager({});
+    const managerArgs: unknown[][] = [];
+    GObject.signalConnect(managerLast, "interface-added", (...args) => {
+        managerArgs.push(args);
+    });
+    GObject.signalEmit(managerLast, "interface-added", object, payload);
+
+    class ManagerThenObject extends GObject.Object {}
+
+    const RegisteredManagerThenObject = registerClass(ManagerThenObject, {
+        typeName: uniqueName("GtkxManagerThenObject"),
+        implements: [Gio.DBusObjectManager, Gio.DBusObject],
+    });
+    const objectLast = new RegisteredManagerThenObject({});
+    const objectArgs: unknown[][] = [];
+    GObject.signalConnect(objectLast, "interface-added", (...args) => {
+        objectArgs.push(args);
+    });
+    GObject.signalEmit(objectLast, "interface-added", payload);
+
+    expect(managerArgs).toEqual([[object, payload]]);
+    expect(objectArgs).toEqual([[payload]]);
 });
 
 test("declared signals reject emissions their parameter types cannot hold", () => {
@@ -644,7 +711,10 @@ test("declared signals reject emissions their parameter types cannot hold", () =
     expect(() => new Registered({}).emit("tagged", "nope")).toThrow();
     expect(() => new Registered({}).emit("tagged")).toThrow();
     expect(() => new Registered({}).emit("tagged", 1, 2)).toThrow();
-    expect(() => new Registered({}).emit("missing", 1)).toThrow();
+    const instance = new Registered({});
+    expect(() => {
+        Reflect.apply(instance.emit.bind(instance), instance, ["missing", 1]);
+    }).toThrow();
     expect(() => {
         new Registered({}).count = 99;
     }).toThrow();

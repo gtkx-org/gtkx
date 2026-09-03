@@ -159,15 +159,15 @@ test("a list store hands back the identical wrapper it was given", () => {
     expect((store.getItem(0) as Regress.TestObj).int).toBe(5);
 });
 
-test("a subprocess constructs through its GIR-declared newv factory", () => {
-    const subprocess = Gio.Subprocess.newv(["/usr/bin/true"], Gio.SubprocessFlags.NONE);
+test("a subprocess constructs through its GIR shadow name", () => {
+    const subprocess = Gio.Subprocess.new(["/usr/bin/true"], Gio.SubprocessFlags.NONE);
 
     expect(subprocess.wait(null)).toBe(true);
     expect(subprocess.getSuccessful()).toBe(true);
 });
 
-test("a subprocess newv argument vector preserves spaces", () => {
-    const subprocess = Gio.Subprocess.newv(
+test("a subprocess argument vector preserves spaces", () => {
+    const subprocess = Gio.Subprocess.new(
         ["/usr/bin/test", "a b", "=", "a b"],
         Gio.SubprocessFlags.NONE,
     );
@@ -176,8 +176,8 @@ test("a subprocess newv argument vector preserves spaces", () => {
     expect(subprocess.getSuccessful()).toBe(true);
 });
 
-test("a subprocess newv factory surfaces launch failures", () => {
-    expect(() => Gio.Subprocess.newv(["/gtkx/missing-executable"], Gio.SubprocessFlags.NONE)).toThrow();
+test("a subprocess shadow-named factory surfaces launch failures", () => {
+    expect(() => Gio.Subprocess.new(["/gtkx/missing-executable"], Gio.SubprocessFlags.NONE)).toThrow();
 });
 
 test("object arguments reject values of the wrong type", () => {

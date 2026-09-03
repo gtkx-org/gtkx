@@ -283,7 +283,9 @@ describe("registerClass — signals on subclasses", () => {
         child.emit("ping");
         child.emit("pong");
         expect(calls).toEqual(["ping", "pong"]);
-        expect(() => parent.emit("pong")).toThrow();
+        expect(() => {
+            Reflect.apply(parent.emit.bind(parent), parent, ["pong"]);
+        }).toThrow();
     });
 });
 

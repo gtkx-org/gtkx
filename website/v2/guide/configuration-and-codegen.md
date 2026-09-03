@@ -121,6 +121,26 @@ There is no bare `@gtkx/jsx` entry point. Splitting imports prevents one file fr
 
 `@gtkx/gi` has no equivalent root. Its symbols are imported namespaced, as `import * as Gtk from "@gtkx/gi/gtk"`, so `Gtk.Orientation` and `Adw.ResponseAppearance` stay apart.
 
+### Member precedence
+
+Generated wrappers follow JavaScript prototype precedence. A callable on the class chain wins over implemented interfaces, and the first implemented interface wins between interfaces. An interface callable replaces an inherited member only when that member is GTKX's synthetic signal helper. The winning callable keeps its natural camelCase name. GIR `shadows` metadata also chooses the canonical public name, so create a subprocess with `Gio.Subprocess.new(argv, flags)`, not `newv`.
+
+Most GObjects still use `connect`, `disconnect`, `emit`, `on`, `once`, and `off` for signals. When a GIR callable owns one of those names, use the signal functions exported by `@gtkx/gi/gobject` instead:
+
+```ts
+import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+
+const connectSocket = (socket: Gio.Socket, address: Gio.SocketAddress): void => {
+    const handlerId = GObject.signalConnect(socket, "notify::blocking", () => {});
+
+    socket.connect(address, null);
+    GObject.signalDisconnect(socket, handlerId);
+};
+```
+
+`GObject.signalEmit(instance, signal, ...args)` is the corresponding emission escape hatch. For a generic GObject property hidden by a more-specific method, use `GObject.getObjectProperty` or `GObject.setObjectProperty`. Any other inherited GIR implementation remains reachable explicitly through its prototype when both versions are useful.
+
 ## Passing a GType
 
 Every parameter that takes a GType accepts the class registered under one alongside the numeric `bigint`: a generated wrapper class, a generated interface, or a class `registerClass` registered — the same classes whose GType `SomeClass.prototype.__type__` reads. Signal arguments declared as GTypes take a class the same way. The GType is the class's own registration, so a plain `class extends Gtk.Label {}` that never went through `registerClass` is rejected rather than resolving to its parent's type, as is any other class, object, or string:

@@ -2,7 +2,7 @@ import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { reservedSignalMemberRename, resolvePrerequisiteReference } from "../../analysis/inheritance.js";
+import { resolvePrerequisiteReference } from "../../analysis/inheritance.js";
 import { omittedTypeRef, prerequisiteConflicts } from "../../analysis/interface-conflicts.js";
 import { resolveClassOrInterface, resolveInterfaces } from "../../gir/ancestry.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
@@ -25,13 +25,14 @@ import { annotationSpec, getDoc } from "./doc-spec.js";
 import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
+import { renderInterfacePropertyDeclarations } from "./properties.js";
 import {
     type PropertyAccessorArgs,
     renderPropertyAccessor,
     renderPropertyAccessorSignature,
 } from "./property-accessor.js";
 import { appendInterfaceRegistration } from "./registration.js";
-import { renderSignalDeclarations, renderSignalMembers } from "./signal.js";
+import { renderSignalDeclarations, renderSignalMembers, renderSignalRegistration } from "./signal.js";
 import {
     hasCallableVfuncSlots,
     renderVfuncMembers,
@@ -46,7 +47,6 @@ type InterfaceMemberRenderers = {
 
 type MethodMemberOptions = {
     context: ModuleContext;
-    className: string;
     scope: InstanceScope;
     callables: Callables;
     renderers: InterfaceMemberRenderers;
@@ -91,6 +91,10 @@ const generateInterface = (context: ModuleContext, iface: GirClass): void => {
     generateBindings(context, callables);
     const gtypeExpr = renderSourceGtype(context, iface);
     const implRef = appendInterfaceTypes(context, iface, className, callables) ?? "unknown";
+
+    for (const declaration of renderInterfacePropertyDeclarations(context, iface, className)) {
+        context.declare(declaration);
+    }
 
     if (gtypeExpr !== undefined) {
         declareInterface(context, { iface, className, callables, gtypeExpr, implRef });
@@ -143,6 +147,12 @@ const generateFoldedInterface = (
         layout: renderInterfaceLayout(context, iface, callables),
     });
 
+    const signalRegistration = renderSignalRegistration(context, iface, localName);
+
+    if (signalRegistration !== undefined) {
+        context.collectRegistration(signalRegistration);
+    }
+
     const registrations = context.takeRegistrations();
     const classCode = renderInterfaceClass(context, { iface, className, callables, gtypeExpr, implRef }, localName);
 
@@ -185,8 +195,6 @@ const renderInterfaceLayout = (
 };
 
 const invokerMembers = (context: ModuleContext, iface: GirClass, callables: Callables): Map<string, string> => {
-    const className = sanitizeTypeIdentifier(iface.name);
-
     const invokers: Set<string> = new Set(
         iface.vfuncs.map((vfunc) => vfunc.invoker).filter((invoker) => invoker !== undefined),
     );
@@ -195,7 +203,7 @@ const invokerMembers = (context: ModuleContext, iface: GirClass, callables: Call
 
     for (const callable of callables.methods) {
         if (invokers.has(callable.name) && isEmittableCallable(context, callable)) {
-            members.set(callable.name, reservedSignalMemberRename(className, callable) ?? methodExportName(callable));
+            members.set(callable.name, methodExportName(callable));
         }
     }
 
@@ -379,19 +387,18 @@ const renderInterfaceImplType = (
 };
 
 const collectMethodMembers = (options: MethodMemberOptions): string[] => {
-    const { context, className, scope, callables, renderers, claimedNames } = options;
+    const { context, scope, callables, renderers, claimedNames } = options;
     const members: string[] = [];
 
     for (const callable of callables.methods) {
-        const rename = reservedSignalMemberRename(className, callable);
-        const block = renderers.renderMethod(context, callable, scope, rename);
+        const block = renderers.renderMethod(context, callable, scope);
 
         if (block === undefined) {
             continue;
         }
 
         members.push(block);
-        claimedNames.add(rename ?? methodExportName(callable));
+        claimedNames.add(methodExportName(callable));
     }
 
     return members;
@@ -421,7 +428,7 @@ const renderInterfaceMembers = (
     const className = sanitizeTypeIdentifier(iface.name);
     const scope = instanceScope(className, callables);
     const claimedNames: Set<string> = new Set();
-    const methodMembers = collectMethodMembers({ context, className, scope, callables, renderers, claimedNames });
+    const methodMembers = collectMethodMembers({ context, scope, callables, renderers, claimedNames });
     const propertyMembers = collectPropertyMembers({ context, iface, scope, renderers, claimedNames });
 
     return [...methodMembers, ...propertyMembers];
@@ -450,7 +457,7 @@ const renderInterfaceClass = (
     members.push(
         renderInterfaceGuard(context, className),
         ...renderStaticHead(context, callables, className),
-        renderInterfaceBrand(context, implRef),
+        renderInterfaceBrand(context, className, implRef),
     );
     const head = localName === undefined ? `export abstract class ${className}` : `abstract class ${localName}`;
 
@@ -467,10 +474,13 @@ const renderInterfaceGuard = (context: ModuleContext, className: string): string
     return renderBlock("constructor()", `throw new globalThis.Error(${sourceStringLiteral(message)});`);
 };
 
-const renderInterfaceBrand = (context: ModuleContext, implRef: string): string => {
+const renderInterfaceBrand = (context: ModuleContext, className: string, implRef: string): string => {
     const local = context.addRuntimeTypeImport("Interface");
 
-    return `${renderJsDoc(undefined, BRAND_NOTE)}declare static __impl__: ${local}<${implRef}>["__impl__"];`;
+    return (
+        `${renderJsDoc(undefined, BRAND_NOTE)}declare static __impl__: ` +
+        `${local}<${implRef}, ${className}>["__impl__"];`
+    );
 };
 
 const renderInterfaceHasInstance = (context: ModuleContext, className: string, gtypeExpr: string): string => {

@@ -12,6 +12,70 @@ import {
 type ExpectedOutput = { bindings: string[]; declarations: string[] };
 
 const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
+const GUDEV_CONFIG = `export default {
+    applicationId: "com.gtkx.gudevprobe",
+    libraries: ["GUdev-1.0"],
+};
+`;
+const GIO_CONFIG = `export default {
+    applicationId: "com.gtkx.gioprobe",
+    libraries: ["Gio-2.0"],
+};
+`;
+const GIO_TYPE_PROBE = `import type * as Gio from "@gtkx/gi/gio";
+
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+type Expect<T extends true> = T;
+
+const signatures: [
+    Expect<
+        Equal<
+            Parameters<Gio.Socket["connect"]>,
+            [address: Gio.SocketAddress, cancellable: Gio.Cancellable | null]
+        >
+    >,
+    Expect<Equal<ReturnType<Gio.Socket["connect"]>, boolean>>,
+] = [true, true];
+`;
+const GIO_TYPE_ERRORS = {
+    "subprocess.ts": `import * as Gio from "@gtkx/gi/gio";
+Gio.Subprocess.newv(["/usr/bin/true"], Gio.SubprocessFlags.NONE);
+`,
+    "zero-argument-collision.ts": `import * as Gio from "@gtkx/gi/gio";
+declare const socket: Gio.Socket;
+socket.connect();
+`,
+    "missing-signal-argument.ts": `import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+declare const socket: Gio.Socket;
+GObject.signalEmit(socket, "notify::blocking");
+`,
+    "wrong-signal-argument.ts": `import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+declare const socket: Gio.Socket;
+GObject.signalEmit(socket, "notify::blocking", "wrong");
+`,
+    "unknown-signal.ts": `import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+declare const socket: Gio.Socket;
+GObject.signalEmit(socket, "not-real", 123);
+`,
+};
+const GUDEV_PROPERTY_PROBE = `import * as GUdev from "@gtkx/gi/gudev";
+
+const client = GUdev.Client.new(null);
+const device = client.queryBySysfsPath("/sys/devices/virtual/net/lo");
+
+if (device === null) {
+    throw new Error("loopback device is unavailable");
+}
+
+const value = device.getProperty("INTERFACE");
+
+if (value !== "lo") {
+    throw new Error("loopback device has no interface property");
+}
+`;
 const SIDE_CALLBACK_PROBE = `import type { Job, ProgressCallback } from "@gtkx/gi/asyncpair";
 
 export const load = (job: Job, progress: ProgressCallback): Promise<boolean>[] => [
@@ -24,7 +88,7 @@ export const transform = (job: Job): void => {
 };
 `;
 
-const typecheckProject = (project: { root: string }): void => {
+const typecheckProject = (project: { root: string }, file = "probe.ts"): void => {
     execFileSync(
         process.execPath,
         [
@@ -38,7 +102,7 @@ const typecheckProject = (project: { root: string }): void => {
             "--strict",
             "--target",
             "ESNext",
-            "probe.ts",
+            file,
         ],
         { cwd: project.root, stdio: "pipe" },
     );
@@ -136,6 +200,39 @@ describe("gtkx codegen marshalling", () => {
         const source = `import { DBusProxy } from "@gtkx/gi/gio";
 process.stdout.write(typeof DBusProxy.newForBusSync);`;
         expect(evaluateProject(project, source)).toBe("function");
+    });
+
+    it("preserves natural subclass method names from system GIR libraries", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-gudev-property-",
+            config: GUDEV_CONFIG,
+            files: { "probe.ts": GUDEV_PROPERTY_PROBE },
+        });
+
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        expect(() => {
+            typecheckProject(project);
+        }).not.toThrow();
+        expect(evaluateProject(project, GUDEV_PROPERTY_PROBE)).toBe("");
+    });
+
+    it("rejects shadowed factories and invalid collision-safe signal emissions", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-shadow-errors-",
+            config: GIO_CONFIG,
+            files: { "signatures.ts": GIO_TYPE_PROBE, ...GIO_TYPE_ERRORS },
+        });
+
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        expect(() => {
+            typecheckProject(project, "signatures.ts");
+        }).not.toThrow();
+
+        for (const file of Object.keys(GIO_TYPE_ERRORS)) {
+            expect(() => {
+                typecheckProject(project, file);
+            }).toThrow();
+        }
     });
 
     it("rejects direct construction for objects that require initialization", () => {

@@ -1,5 +1,5 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import type { SignalHandler } from "@gtkx/runtime";
+import { offSignal, onSignal, type SignalHandler } from "@gtkx/runtime";
 import { useLayoutEffect } from "react";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 import { useLatestRef } from "./use-latest-ref.js";
@@ -54,14 +54,14 @@ function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
         }
 
         const emit: SignalHandler = (...args) => handlerRef.current(...args);
-        resolved.on(signal, emit, isAfter);
+        onSignal(resolved, signal, emit, isAfter);
 
         if (isImmediate) {
             emit();
         }
 
         return () => {
-            resolved.off(signal, emit);
+            offSignal(resolved, signal, emit);
         };
     }, [handlerRef, object, signal, isAfter, isImmediate]);
 }

@@ -1,7 +1,13 @@
 import { disconnectSignal, offSignal, onceSignal, onSignal } from "@gtkx/runtime";
-import { Object as GObject, type Type } from "../gobject.js";
+import { signalMapOverride, type SignalMethodReceiver } from "@gtkx/runtime/internal";
+import { Object as GObject, type ObjectSignals, type Type } from "../gobject.js";
 
 type Listener = (...args: unknown[]) => unknown;
+type Signals<T> = T extends { [signalMapOverride]?: infer TResolver }
+    ? TResolver extends () => infer TMap
+        ? NonNullable<TMap>
+        : ObjectSignals
+    : ObjectSignals;
 
 declare module "../gobject.js" {
     interface Object {
@@ -13,7 +19,7 @@ declare module "../gobject.js" {
          *
          * @param handlerId Id of the handler to disconnect.
          */
-        disconnect(handlerId: number): void;
+        disconnect<TThis>(this: TThis & SignalMethodReceiver<TThis, "disconnect">, handlerId: number): void;
 
         /**
          * Connects a handler that runs on every emission of `sigName`, remembering it so `off` can
@@ -24,7 +30,12 @@ declare module "../gobject.js" {
          * @param isAfter Run the handler after the default handler rather than before it.
          * @returns The same object, so calls chain.
          */
-        on(sigName: string, callback: (...args: unknown[]) => unknown, isAfter?: boolean): Object;
+        on<TThis, K extends keyof Signals<TThis>>(
+            this: TThis & SignalMethodReceiver<TThis, "on">,
+            sigName: K,
+            callback: Signals<TThis>[K],
+            isAfter?: boolean,
+        ): TThis;
 
         /**
          * Connects a handler that runs at most once and disconnects itself after the first emission.
@@ -34,7 +45,12 @@ declare module "../gobject.js" {
          * @param isAfter Run the handler after the default handler rather than before it.
          * @returns The same object, so calls chain.
          */
-        once(sigName: string, callback: (...args: unknown[]) => unknown, isAfter?: boolean): Object;
+        once<TThis, K extends keyof Signals<TThis>>(
+            this: TThis & SignalMethodReceiver<TThis, "once">,
+            sigName: K,
+            callback: Signals<TThis>[K],
+            isAfter?: boolean,
+        ): TThis;
 
         /**
          * Disconnects a handler previously connected with `on` or `once`, given the same callback.
@@ -43,7 +59,11 @@ declare module "../gobject.js" {
          * @param callback The handler that was connected.
          * @returns The same object, so calls chain.
          */
-        off(sigName: string, callback: (...args: unknown[]) => unknown): Object;
+        off<TThis, K extends keyof Signals<TThis>>(
+            this: TThis & SignalMethodReceiver<TThis, "off">,
+            sigName: K,
+            callback: Signals<TThis>[K],
+        ): TThis;
 
     }
 }

@@ -17,6 +17,12 @@ type MixinReceiver = {
  */
 type Mixin = (base: AnyClass<MixinReceiver>) => AnyClass;
 
+const syntheticSignalMembers: WeakMap<object, ReadonlySet<string>> = new WeakMap();
+
+function markSyntheticSignalMembers(klass: AnyClass, names: readonly string[]): void {
+    syntheticSignalMembers.set(klass.prototype, new Set(names));
+}
+
 function isDefinedInClassChain(prototype: object, key: string): boolean {
     let current: object | null = prototype;
 
@@ -31,12 +37,28 @@ function isDefinedInClassChain(prototype: object, key: string): boolean {
     return false;
 }
 
-function copyLayerMember(target: AnyClass, layer: object, key: string): void {
+function isNaturalInClassChain(prototype: object, key: string): boolean {
+    let current: object | null = prototype;
+
+    while (current !== null && current !== Object.prototype) {
+        if (Object.hasOwn(current, key)) {
+            return syntheticSignalMembers.get(current)?.has(key) !== true;
+        }
+
+        current = Reflect.getPrototypeOf(current);
+    }
+
+    return false;
+}
+
+function copyLayerMember(target: AnyClass, layer: object, key: string, inheritedOverrides: Set<string>): void {
     if (key === "constructor") {
         return;
     }
 
-    if (isDefinedInClassChain(target.prototype, key)) {
+    const isProtectedInherited = !inheritedOverrides.has(key) && isDefinedInClassChain(target.prototype, key);
+
+    if (isProtectedInherited || Object.hasOwn(target.prototype, key)) {
         return;
     }
 
@@ -47,9 +69,9 @@ function copyLayerMember(target: AnyClass, layer: object, key: string): void {
     }
 }
 
-function copyLayerMembers(target: AnyClass, layer: object): void {
+function copyLayerMembers(target: AnyClass, layer: object, inheritedOverrides: Set<string> = new Set()): void {
     for (const key of Object.getOwnPropertyNames(layer)) {
-        copyLayerMember(target, layer, key);
+        copyLayerMember(target, layer, key, inheritedOverrides);
     }
 }
 
@@ -60,7 +82,8 @@ function copyLayerMembers(target: AnyClass, layer: object): void {
  * @param target The class whose prototype receives the mixin members.
  * @param mixins The mixins to apply, in order.
  */
-function installMixins(target: AnyClass, mixins: Mixin[]): void {
+function installMixins(target: AnyClass, mixins: Mixin[], inheritedOverrideNames: Iterable<string> = []): void {
+    const inheritedOverrides = new Set(inheritedOverrideNames);
     const empty: AnyClass<MixinReceiver> = class {
         connect(): number {
             return 0;
@@ -72,7 +95,7 @@ function installMixins(target: AnyClass, mixins: Mixin[]): void {
     };
 
     for (const mixin of mixins) {
-        copyLayerMembers(target, mixin(empty).prototype);
+        copyLayerMembers(target, mixin(empty).prototype, inheritedOverrides);
     }
 }
 
@@ -82,11 +105,34 @@ function dropLayerMembers(layer: AnyClass, names: Set<string>): void {
     }
 }
 
+function createMixinLayer(parent: AnyClass<MixinReceiver>, mixin: Mixin, inheritedNames: Set<string>): AnyClass {
+    const layer = mixin(parent);
+    const protectedNames = new Set(inheritedNames);
+
+    for (const key of Object.getOwnPropertyNames(layer.prototype)) {
+        if (key !== "constructor" && isNaturalInClassChain(parent.prototype, key)) {
+            protectedNames.add(key);
+        }
+    }
+
+    dropLayerMembers(layer, protectedNames);
+
+    return layer;
+}
+
 function insertMixinLayer(target: AnyClass, mixin: Mixin, inheritedNames: Set<string>): void {
-    const layer = mixin(getParentClass(target) as AnyClass<MixinReceiver>);
-    dropLayerMembers(layer, inheritedNames);
+    const parent = getParentClass(target) as AnyClass<MixinReceiver>;
+    const layer = createMixinLayer(parent, mixin, inheritedNames);
     Object.setPrototypeOf(target.prototype, layer.prototype);
     Object.setPrototypeOf(target, layer);
 }
 
-export { copyLayerMembers, insertMixinLayer, installMixins, type MixinReceiver, type Mixin };
+export {
+    copyLayerMembers,
+    createMixinLayer,
+    insertMixinLayer,
+    installMixins,
+    markSyntheticSignalMembers,
+    type MixinReceiver,
+    type Mixin,
+};

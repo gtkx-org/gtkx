@@ -3,7 +3,6 @@ import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
 import type { JsDocSpec } from "../../writer/doc.js";
 import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
-import { declaredFunctionName } from "../../gir/function.js";
 import { renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
 import { callableDoc, callableSpec } from "./callable-doc.js";
@@ -80,6 +79,11 @@ const RUNTIME_OWNED_LIFETIME_METHODS: Set<string> = new Set([
 ]);
 
 const renderInstanceMethodSignature: InstanceMemberRenderer = instanceMemberRenderer(
+    (context, callable, { name, finishFn }) =>
+        `${memberDoc(context, callable, finishFn)}${memberSignatureText(context, callable, name, { finishFn })};`,
+);
+
+const renderInstanceMethodOverload: InstanceMemberRenderer = instanceMemberRenderer(
     (context, callable, { name, finishFn }) =>
         `${memberDoc(context, callable, finishFn)}${memberSignatureText(context, callable, name, { finishFn })};`,
 );
@@ -477,18 +481,10 @@ const collectStaticEntries = (
 
 const renderStaticHead = (context: ModuleContext, callables: Callables, ownerClassName: string): string[] => {
     const siblings = [...callables.constructors, ...callables.functions];
-    const aliasedConstructors = callables.constructors.filter(
-        (callable) => declaredFunctionName(callable) !== callable.name,
-    );
 
     return [
         ...collectStaticEntries(context, callables.constructors, siblings, {
             resolveName: (member) => constructorMemberName(member.name),
-            ownerName: ownerClassName,
-            returnTypeOverride: ownerClassName,
-        }),
-        ...collectStaticEntries(context, aliasedConstructors, siblings, {
-            resolveName: (member) => constructorMemberName(declaredFunctionName(member)),
             ownerName: ownerClassName,
             returnTypeOverride: ownerClassName,
         }),
@@ -537,6 +533,7 @@ const renderPlainTypeMembers = (
 
 export {
     renderInstanceMethodSignature,
+    renderInstanceMethodOverload,
     renderClassInstanceMember,
     instanceMemberSpec,
     instanceScope,
@@ -549,6 +546,7 @@ export {
     renderPlainTypeMembers,
     staticMembers,
     type Callables,
+    constructorMemberName,
     type InstanceMemberRenderer,
     type InstanceScope,
 };

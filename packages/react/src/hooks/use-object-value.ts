@@ -1,5 +1,5 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import type { SignalHandler } from "@gtkx/runtime";
+import { offSignal, onSignal, type SignalHandler } from "@gtkx/runtime";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 
@@ -28,9 +28,11 @@ function useObjectValue<T extends GObject.Object, V>(
                 onStoreChange();
             };
 
-            resolved.on(signal, handler);
+            onSignal(resolved, signal, handler);
 
-            return () => resolved.off(signal, handler);
+            return () => {
+                offSignal(resolved, signal, handler);
+            };
         },
         [resolved, signal],
     );

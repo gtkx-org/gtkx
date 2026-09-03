@@ -42,6 +42,16 @@ class ModuleContext {
         this.module.imports.addNamed("@gtkx/runtime", name);
     }
 
+    addRuntimeInternalImport(name: string): void {
+        this.module.imports.addNamed("@gtkx/runtime/internal", name);
+    }
+
+    addRuntimeInternalTypeImport(name: string): string {
+        this.module.imports.addNamed("@gtkx/runtime/internal", name, true);
+
+        return name;
+    }
+
     addRuntimeTypeImport(name: string): string {
         const local = declaredTypeNames(this.namespace).has(name) ? `Runtime${name}` : name;
         this.module.imports.addNamed("@gtkx/runtime", name, true, local === name ? undefined : local);

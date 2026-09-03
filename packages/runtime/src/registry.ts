@@ -10,7 +10,7 @@ import {
     setWrapper,
 } from "@gtkx/native";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
-import { copyLayerMembers, installMixins, type Mixin, type MixinReceiver } from "./mixin.js";
+import { copyLayerMembers, createMixinLayer, installMixins, type Mixin, type MixinReceiver } from "./mixin.js";
 import {
     TYPE_INVALID,
     TYPE_OBJECT,
@@ -402,7 +402,7 @@ function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, layout?: I
  * @param interfaces Registered interface classes to adopt, in order.
  * @throws If an entry is not a registered interface.
  */
-function installInterfaces(cls: AnyClass, interfaces: AnyClass[]): void {
+function installInterfaces(cls: AnyClass, interfaces: AnyClass[], inheritedOverrides: string[] = []): void {
     const mixins = interfaces.map((iface) => {
         const mixin = getInterfaceMixin(getClassType(iface));
 
@@ -413,7 +413,7 @@ function installInterfaces(cls: AnyClass, interfaces: AnyClass[]): void {
         return mixin;
     });
 
-    installMixins(cls, mixins);
+    installMixins(cls, mixins, inheritedOverrides);
 }
 
 /**
@@ -535,7 +535,7 @@ function applyInterfaceMixin(cls: AnyClass, type: bigint, baseType: bigint, appl
 
     applied.add(type);
 
-    return mixin(cls as AnyClass<MixinReceiver>);
+    return createMixinLayer(cls as AnyClass<MixinReceiver>, mixin, new Set());
 }
 
 function createComposedClass(base: AnyClass, runtimeType: bigint): AnyClass {

@@ -35,6 +35,7 @@ type CallableKeyPair = {
 };
 
 const CHAINABLE_SIGNAL_MEMBERS = ["off", "on", "once"];
+const SYNTHETIC_SIGNAL_MEMBERS = new Set(["connect", "disconnect", "emit", ...CHAINABLE_SIGNAL_MEMBERS]);
 
 const callableKeys = (library: Library, fn: GirFunction): CallableKeys => ({
     inputs: inputParameters(library, fn).map((entry) => typeKey(library, entry.parameter.type)),
@@ -86,6 +87,7 @@ const collectMethods = (klass: GirClass, members: MemberTable): void => {
 
 const inheritedMembers = (context: ModuleContext, klass: GirClass): ClaimedMembers => {
     const inherited: MemberTable = new Map();
+    collectMethods(klass, inherited);
 
     forEachAncestor(context, klass, (ancestor) => {
         collectMethods(ancestor.klass, inherited);
@@ -200,21 +202,26 @@ const supertypeMembers = (library: Library, base: ResolvedAncestor): MemberTable
     return members;
 };
 
+const isPrerequisiteConflict = (
+    library: Library,
+    inherited: MemberTable,
+    entry: [string, GirFunction],
+): boolean => {
+    const [name, method] = entry;
+    const owned = inherited.get(name);
+
+    return SYNTHETIC_SIGNAL_MEMBERS.has(name) ||
+        (owned !== undefined && !areCallablesAssignable(library, method, owned));
+};
+
 const prerequisiteConflicts = (library: Library, iface: GirClass, base: ResolvedAncestor): string[] => {
     const members: MemberTable = new Map();
     collectMethods(iface, members);
     const inherited = supertypeMembers(library, base);
-    const names: string[] = [];
 
-    for (const [name, method] of members) {
-        const owned = inherited.get(name);
-
-        if (owned !== undefined && !areCallablesAssignable(library, method, owned)) {
-            names.push(name);
-        }
-    }
-
-    return names;
+    return [...members]
+        .filter((entry) => isPrerequisiteConflict(library, inherited, entry))
+        .map(([name]) => name);
 };
 
 const omittedKeys = (omissions: string[]): string =>

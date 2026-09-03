@@ -50,7 +50,10 @@ describe("emitSignal — inheritance and errors", () => {
     it("throws on an unknown signal at the GObject root", () => {
         const button = new Gtk.Button();
 
-        expect(() => (button as GObject.Object).emit("not-a-real-signal")).toThrow();
+        const object = button as GObject.Object;
+        expect(() => {
+            Reflect.apply(object.emit.bind(object), object, ["not-a-real-signal"]);
+        }).toThrow();
     });
 });
 

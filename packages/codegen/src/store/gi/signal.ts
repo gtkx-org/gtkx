@@ -13,7 +13,9 @@ import {
 import { tCallback, tObject, tVoid } from "../../analysis/descriptor.js";
 import {
     collectInterfaceProperties,
+    effectiveNaturalSignalMemberNames,
     forEachAncestor,
+    hasNaturalMember,
     resolvePrerequisiteReference,
 } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
@@ -42,6 +44,14 @@ type EmitArgOptions = {
     argIndex: number;
 };
 
+type SignalMemberMetadataOptions = {
+    context: ModuleContext;
+    klass: GirClass;
+    map: string;
+    emitMap: string;
+    lines: string[];
+};
+
 type NamedMember = { name: string };
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
@@ -49,43 +59,98 @@ const SIGNALS_SUFFIX = "Signals";
 const SIGNAL_EMIT_SUFFIX = "SignalEmit";
 
 const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] => {
-    if (klass.glibGetType === undefined) {
+    if (context.namespace.name !== "GObject" || klass.name !== "Object") {
         return [];
     }
 
-    const signals = collectClassSignals(context, klass);
-
-    if (signals.length === 0) {
-        return [];
-    }
-
-    const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
-    context.addRuntimeImport("connectSignal");
-    context.addRuntimeImport("getSignalBaseName");
-    context.addRuntimeImport("t");
-    const connectCases = signals.map((signal) => renderConnectCase(context, signal));
-    const emitCases = signals.map((signal) => renderEmitCase(context, signal));
-
-    const connectDefault = isRootObject
-        ? "default:\n    throw new globalThis.Error(\"Unknown signal '\" + signal + \"'\");"
-        : "default:\n    return super.connect(signal as never, handler as never, isAfter);";
-
-    const emitDefault = isRootObject
-        ? "default:\n    throw new globalThis.Error(\"Unknown signal '\" + sigName + \"'\");"
-        : "default:\n    return super.emit(sigName, ...args);";
-
-    const connectBody = indent([...connectCases, connectDefault].join("\n"), 1);
-    const connectSwitch = `switch (getSignalBaseName(signal)) {\n${connectBody}\n}`;
-    const emitBody = indent([...emitCases, emitDefault].join("\n"), 1);
-    const emitSwitch = `switch (getSignalBaseName(sigName)) {\n${emitBody}\n}`;
+    context.addRuntimeInternalImport("connectSignalByName");
+    context.addRuntimeInternalImport("emitSignalByName");
+    context.addRuntimeInternalImport("signalEmitMapOverride");
+    context.addRuntimeInternalImport("signalMapOverride");
+    const receiver = context.addRuntimeInternalTypeImport("SignalMethodReceiver");
+    const effectiveEmissionMap =
+        "(TThis extends { [signalEmitMapOverride]?: infer TResolver } " +
+        `? TResolver extends () => infer TMap ? NonNullable<TMap> : Object${SIGNAL_EMIT_SUFFIX} ` +
+        `: Object${SIGNAL_EMIT_SUFFIX})`;
+    const effectiveHandlerMap =
+        "(TThis extends { [signalMapOverride]?: infer TResolver } " +
+        `? TResolver extends () => infer TMap ? NonNullable<TMap> : Object${SIGNALS_SUFFIX} ` +
+        `: Object${SIGNALS_SUFFIX})`;
 
     return [
         renderBlock(
-            `connect(signal: string, handler: ${SIGNAL_HANDLER_TYPE}, isAfter?: boolean): number`,
+            `connect<TThis, K extends keyof ${effectiveHandlerMap}>(` +
+            `this: TThis & ${receiver}<TThis, "connect">, ` +
+            `signal: K, handler: ${effectiveHandlerMap}[K], isAfter?: boolean): number`,
+            "return connectSignalByName(this, signal, handler, isAfter);",
+        ),
+        renderBlock(
+            `emit<TThis, K extends keyof ${effectiveEmissionMap}>(` +
+            `this: TThis & ${receiver}<TThis, "emit">, ` +
+            `sigName: K, ...args: ${effectiveEmissionMap}[K]["args"]): ` +
+            `${effectiveEmissionMap}[K]["result"]`,
+            "return emitSignalByName(this, sigName, args);",
+        ),
+    ];
+};
+
+const renderSyntheticSignalMarker = (
+    context: ModuleContext,
+    klass: GirClass,
+    targetName: string,
+): string | undefined => {
+    if (context.namespace.name !== "GObject" || klass.name !== "Object") {
+        return undefined;
+    }
+
+    context.addRuntimeInternalImport("markSyntheticSignalMembers");
+
+    return `markSyntheticSignalMembers(${targetName}, ["connect", "disconnect", "emit", "off", "on", "once"]);`;
+};
+
+const renderSignalRegistration = (
+    context: ModuleContext,
+    klass: GirClass,
+    targetName: string,
+): string | undefined => {
+    if (klass.glibGetType === undefined) {
+        return undefined;
+    }
+
+    const signals = klass.signals.filter((signal) => signal.introspectable);
+    const marker = renderSyntheticSignalMarker(context, klass, targetName);
+
+    if (signals.length === 0) {
+        return marker;
+    }
+
+    context.addRuntimeImport("connectSignal");
+    context.addRuntimeImport("emitSignal");
+    context.addRuntimeInternalImport("canonicalSignalName");
+    context.addRuntimeInternalImport("installSignalDispatch");
+    context.addRuntimeImport("t");
+    const connectCases = signals.map((signal) => renderConnectCase(context, signal));
+    const emitCases = signals.map((signal) => renderEmitCase(context, signal));
+    const connectDefault = "default:\n    throw new globalThis.Error(\"Unknown signal '\" + signal + \"'\");";
+    const emitDefault = "default:\n    throw new globalThis.Error(\"Unknown signal '\" + sigName + \"'\");";
+    const connectBody = indent([...connectCases, connectDefault].join("\n"), 1);
+    const connectSwitch = `switch (canonicalSignalName(signal)) {\n${connectBody}\n}`;
+    const emitBody = indent([...emitCases, emitDefault].join("\n"), 1);
+    const emitSwitch = `switch (canonicalSignalName(sigName)) {\n${emitBody}\n}`;
+    const members = [
+        renderBlock(
+            `connect(instance: object, signal: string, handler: ${SIGNAL_HANDLER_TYPE}, isAfter?: boolean): number`,
             connectSwitch,
         ),
-        renderBlock("emit(sigName: string, ...args: unknown[]): unknown", emitSwitch),
+        renderBlock("emit(instance: object, sigName: string, args: unknown[]): unknown", emitSwitch),
     ];
+    const names = signals.map((signal) => sourceStringLiteral(signal.name.replaceAll("_", "-"))).join(", ");
+
+    const registration =
+        `installSignalDispatch(${targetName}, [${names}], {\n` +
+        `${indent(members.join(",\n\n"), 1)}\n});`;
+
+    return marker === undefined ? registration : `${marker}\n${registration}`;
 };
 
 const renderSignalDeclarations = (
@@ -111,10 +176,13 @@ const renderSignalDeclarations = (
         klass.glibGetType !== undefined &&
         (collectClassSignals(context, klass).length > 0 ||
             collectNotifyDetails(context, klass).length > 0 ||
-            klass.implements.length > 0)
+            klass.implements.length > 0 ||
+            effectiveNaturalSignalMemberNames(context, klass).length > 0)
     ) {
-        const isRootObject = context.namespace.name === "GObject" && klass.name === "Object";
-        declarations.push({ name: className, code: renderSignalConnectInterface(className, isRootObject) });
+        declarations.push({
+            name: className,
+            code: renderSignalConnectInterface(context, klass, className),
+        });
     }
 
     return declarations;
@@ -192,30 +260,99 @@ const gobjectObjectMapRef = (context: ModuleContext, suffix: string): string => 
     return `${context.addCrossNamespaceImport("GObject")}.Object${suffix}`;
 };
 
-const renderSignalConnectInterface = (className: string, isRootObject: boolean): string => {
+const renderSignalConnectInterface = (
+    context: ModuleContext,
+    klass: GirClass,
+    className: string,
+): string => {
     const map = `${className}${SIGNALS_SUFFIX}`;
     const emitMap = `${className}${SIGNAL_EMIT_SUFFIX}`;
 
     const lines = [
         `__signals__?: ${map};`,
-        `connect<K extends keyof ${map}>(signal: K, handler: ${map}[K], isAfter?: boolean): number;`,
-        `emit<K extends keyof ${emitMap}>(sigName: K, ...args: ${emitMap}[K]["args"]): ${emitMap}[K]["result"];`,
+        `__signalEmit__?: ${emitMap};`,
     ];
+    appendSignalMemberMetadata({ context, klass, map, emitMap, lines });
+    const receiver = context.addRuntimeInternalTypeImport("SignalMethodReceiver");
 
-    if (isRootObject) {
-        lines.push("emit(sigName: string, ...args: unknown[]): unknown;");
-    } else {
-        const chainable = (methods: string[], trailing: string): void => {
-            for (const method of methods) {
-                lines.push(`${method}<K extends keyof ${map}>(signal: K, handler: ${map}[K]${trailing}): this;`);
-            }
-        };
-
-        chainable(["on", "once"], ", isAfter?: boolean");
-        chainable(["off"], "");
+    if (!hasNaturalMember(context, klass, "connect")) {
+        lines.push(
+            `connect<TThis, K extends keyof ${map}>(this: TThis & ${receiver}<TThis, "connect">, ` +
+            `signal: K, handler: ${map}[K], isAfter?: boolean): number;`,
+        );
     }
 
+    if (!hasNaturalMember(context, klass, "emit")) {
+        lines.push(
+            `emit<K extends keyof ${emitMap}, TThis = this>(this: TThis & ${receiver}<TThis, "emit">, ` +
+            `sigName: K, ...args: ${emitMap}[K]["args"]): ${emitMap}[K]["result"];`,
+        );
+    }
+
+    const chainable = (methods: string[], trailing: string): void => {
+        for (const method of methods) {
+            if (!hasNaturalMember(context, klass, method)) {
+                lines.push(
+                    `${method}<TThis, K extends keyof ${map}>(` +
+                    `this: TThis & ${receiver}<TThis, ${sourceStringLiteral(method)}>, ` +
+                    `signal: K, handler: ${map}[K]${trailing}): TThis;`,
+                );
+            }
+        }
+    };
+
+    chainable(["on", "once"], ", isAfter?: boolean");
+    chainable(["off"], "");
+
     return renderBracedOrEmpty(`export interface ${className}`, lines.join("\n"));
+};
+
+const classSignalMemberNames = (context: ModuleContext, klass: GirClass): string[] => {
+    if (klass.isInterface) {
+        return [];
+    }
+
+    const names: Set<string> = new Set();
+    const addSignals = (owner: GirClass): void => {
+        for (const signal of owner.signals) {
+            if (signal.introspectable) {
+                names.add(signal.name.replaceAll("_", "-"));
+            }
+        }
+    };
+
+    addSignals(klass);
+    forEachAncestor(context, klass, (ancestor) => {
+        addSignals(ancestor.klass);
+    });
+
+    return [...names];
+};
+
+const renderMemberRecord = (names: string[]): string =>
+    `Record<${names.map((name) => sourceStringLiteral(name)).join(" | ")}, true>`;
+
+const appendSignalMemberMetadata = (options: SignalMemberMetadataOptions): void => {
+    const { context, klass, map, emitMap, lines } = options;
+    context.addRuntimeInternalImport("signalEmitMapOverride");
+    context.addRuntimeInternalImport("signalMapOverride");
+    lines.push(`[signalMapOverride]?: () => ${map};`, `[signalEmitMapOverride]?: () => ${emitMap};`);
+    const naturalMembers = effectiveNaturalSignalMemberNames(context, klass);
+
+    if (naturalMembers.length > 0) {
+        context.addRuntimeInternalImport("naturalSignalMember");
+        lines.push(`[naturalSignalMember]?: ${renderMemberRecord(naturalMembers)};`);
+    }
+
+    const classSignals = classSignalMemberNames(context, klass);
+
+    if (classSignals.length > 0) {
+        context.addRuntimeInternalImport("classSignalMember");
+        lines.push(
+            `[classSignalMember]?: Pick<${map}, ` +
+            `${classSignals.map((name) => sourceStringLiteral(name)).join(" | ")}>;`,
+        );
+    }
 };
 
 const renderSignalHandlerType = (context: ModuleContext, signal: GirCallable): string => {
@@ -255,7 +392,9 @@ const nonVarargParameters = (signal: GirCallable): GirParameter[] =>
 
 const renderConnectCase = (context: ModuleContext, signal: GirCallable): string => {
     const callback = renderCallback(context, signal);
-    const body = `return connectSignal(this, signal, { callback: ${callback}, handler, isAfter: isAfter ?? false });`;
+    const body =
+        "return connectSignal(instance, signal, " +
+        `{ callback: ${callback}, handler, isAfter: isAfter ?? false });`;
 
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
 };
@@ -310,7 +449,6 @@ const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => 
         return renderUnsupportedEmitCase(signal);
     }
 
-    context.addRuntimeImport("emitSignal");
     let argIndex = 0;
 
     const argLiterals = params.map((parameter) => {
@@ -325,7 +463,7 @@ const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => 
     });
 
     const returnArg = renderEmitReturnArg(context, signal.returnValue);
-    const body = `return emitSignal(this, sigName, [${argLiterals.join(", ")}]${returnArg});`;
+    const body = `return emitSignal(instance, sigName, [${argLiterals.join(", ")}]${returnArg});`;
 
     return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
 };
@@ -463,4 +601,4 @@ const collectNotifyDetails = (context: ModuleContext, klass: GirClass): GirPrope
     return result;
 };
 
-export { renderSignalMembers, renderSignalDeclarations };
+export { renderSignalDeclarations, renderSignalMembers, renderSignalRegistration };

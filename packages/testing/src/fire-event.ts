@@ -31,7 +31,7 @@ const createEvent = (target: GObject.Object, signalName: string, ...args: unknow
 
 const dispatchEvent = async (event: WidgetEvent): Promise<void> => {
     await runInAct(() => {
-        event.target.emit(event.signalName, ...event.args);
+        Reflect.apply(GObject.signalEmit, undefined, [event.target, event.signalName, ...event.args]);
     });
 };
 

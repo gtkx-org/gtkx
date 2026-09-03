@@ -24,6 +24,12 @@ export {
     TYPE_UNICHAR,
     TYPE_VARIANT,
 } from "@gtkx/runtime";
+export {
+    disconnectSignal as signalDisconnect,
+    getObjectProperty,
+    setObjectProperty,
+} from "@gtkx/runtime";
+export { signalConnect, signalEmit } from "@gtkx/runtime/internal";
 export * from "./gobject.js";
 export * from "./overrides/object.js";
 export { ObjectClass } from "./overrides/object-class.js";
