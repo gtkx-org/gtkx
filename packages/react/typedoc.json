@@ -5,6 +5,7 @@
     ],
     "intentionallyNotExported": [
         "Container",
+        "Properties",
         "SettingValue",
         "SettingsSchema",
         "SettingsSchemaKeys",

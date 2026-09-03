@@ -22,7 +22,7 @@ import {
     synchronizeCatalogs,
 } from "../i18n/catalogs.js";
 import { extractSourceCatalogTo } from "../i18n/source-messages.js";
-import { resolveBuildOutDir } from "../internal/build-output.js";
+import { prepareBuildOutDir, resolveBuildOutDir } from "../internal/build-output.js";
 import { discoverSourceFiles } from "../internal/source-imports.js";
 import { renderDesktopEntry } from "./freedesktop/desktop-entry.js";
 import { extractMetadataMessages, localizeMetadata } from "./freedesktop/localize.js";
@@ -359,13 +359,15 @@ const buildPayload = async ({
 
     if (buildOutDir !== null) {
         info(`Building ${options.entry}`);
+        using preparedOutput = prepareBuildOutDir(settings.paths.root, buildOutDir);
 
         await buildApp({
             entry: options.entry,
             configFile: options.configFile,
-            vite: { root: options.cwd, build: { outDir: buildOutDir } },
+            vite: { root: options.cwd, build: { outDir: preparedOutput.path, emptyOutDir: false } },
         });
 
+        preparedOutput.commit();
         await synchronizeMetadataCatalogs(settings, templates, project);
     } else if (project !== null) {
         compileCatalogs(project, join(settings.paths.dist, LOCALE_DIRNAME));

@@ -3,14 +3,6 @@ const classSignalMember: unique symbol = Symbol("gtkx.classSignalMember");
 const signalMapOverride: unique symbol = Symbol("gtkx.signalMapOverride");
 const signalEmitMapOverride: unique symbol = Symbol("gtkx.signalEmitMapOverride");
 
-type SignalMethodReceiver<T, K extends PropertyKey> = T extends {
-    [naturalSignalMember]?: infer TMembers;
-}
-    ? K extends keyof NonNullable<TMembers>
-        ? never
-        : unknown
-    : unknown;
-
 type ResolvedSignalMap<T, TFallback> = T extends {
     [signalMapOverride]?: infer TResolver;
 }
@@ -34,5 +26,4 @@ export {
     type ResolvedSignalEmitMap,
     type ResolvedSignalMap,
     signalMapOverride,
-    type SignalMethodReceiver,
 };

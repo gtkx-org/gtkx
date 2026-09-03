@@ -28,15 +28,16 @@ const GUARDED_PROCESS_PROBE =
     "process.stdin.resume();";
 const DECOY_PROCESS_PROBE = "setInterval(() => {}, 1000);";
 
-const processIdentity = (pid: number): { parentId: number; processGroupId: number } | undefined => {
+const processIdentity = (pid: number): { parentId: number; processGroupId: number; state: string } | undefined => {
     try {
         const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
         const fields = stat.slice(stat.lastIndexOf(") ") + 2).split(" ");
+        const state = fields[0];
         const parentId = Number(fields[1]);
         const processGroupId = Number(fields[2]);
 
-        return Number.isSafeInteger(parentId) && Number.isSafeInteger(processGroupId)
-            ? { parentId, processGroupId }
+        return state !== undefined && Number.isSafeInteger(parentId) && Number.isSafeInteger(processGroupId)
+            ? { parentId, processGroupId, state }
             : undefined;
     } catch {
         return undefined;
@@ -68,11 +69,9 @@ const childProcesses = (parentId: number): ProcessEntry[] =>
         });
 
 const isRunning = (pid: number): boolean => {
-    try {
-        return process.kill(pid, 0);
-    } catch {
-        return false;
-    }
+    const state = processIdentity(pid)?.state;
+
+    return state !== undefined && state !== "Z" && state !== "X" && state !== "x";
 };
 
 const waitUntil = async (isReady: () => boolean): Promise<void> => {

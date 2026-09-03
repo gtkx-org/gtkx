@@ -1,9 +1,10 @@
 import type { Config } from "@gtkx/config";
 import { isPathInside } from "@gtkx/utils";
-import { lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { lstatSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import type { DeployConfig, DeployPaths } from "../types.js";
 import { resolveApplicationIcon } from "../../internal/icon-path.js";
+import { prepareOutputDirectory, readRegularFile } from "../../internal/output-directory.js";
 
 type PathsRequest = {
     root: string;
@@ -34,11 +35,7 @@ const hasSymlinkComponent = (root: string, target: string): boolean => {
 };
 
 const isDeployMarker = (path: string): boolean => {
-    try {
-        return lstatSync(path).isFile() && readFileSync(path, "utf8") === DEPLOY_MARKER;
-    } catch {
-        return false;
-    }
+    return readRegularFile(path) === DEPLOY_MARKER;
 };
 
 const isReusableDeployDirectory = (path: string): boolean => {
@@ -52,6 +49,12 @@ const isReusableDeployDirectory = (path: string): boolean => {
         (readdirSync(path).length === 0 || isDeployMarker(join(path, DEPLOY_MARKER_FILENAME)));
 };
 
+const deployOutputError = (root: string, configured: string): Error =>
+    new Error(
+        `Cannot use "${configured}" as the deploy output directory: choose an empty directory or an ` +
+        `earlier GTKX deploy directory below ${root}`,
+    );
+
 const assertSafeDeployOutDir = (root: string, outDir: string, configured: string): void => {
     const dist = join(root, DIST_DIR);
 
@@ -59,13 +62,9 @@ const assertSafeDeployOutDir = (root: string, outDir: string, configured: string
         outDir === dist ||
         !isPathInside(root, outDir) ||
         isPathInside(dist, outDir) ||
-        hasSymlinkComponent(root, outDir) ||
-        !isReusableDeployDirectory(outDir)
+        hasSymlinkComponent(root, outDir)
     ) {
-        throw new Error(
-            `Cannot use "${configured}" as the deploy output directory: choose an empty directory or an ` +
-            `earlier GTKX deploy directory below ${root}`,
-        );
+        throw deployOutputError(root, configured);
     }
 };
 
@@ -74,19 +73,24 @@ const resolveOutDir = ({ root, deploy, outDirOverride }: PathsRequest): string =
     const outDir = resolve(root, configured);
     assertSafeDeployOutDir(root, outDir, configured);
 
+    if (!isReusableDeployDirectory(outDir)) {
+        throw deployOutputError(root, configured);
+    }
+
     return outDir;
 };
 
 const prepareDeployOutDir = (root: string, outDir: string): void => {
     assertSafeDeployOutDir(root, outDir, outDir);
-    rmSync(outDir, { recursive: true, force: true, maxRetries: 5 });
-    mkdirSync(outDir, { recursive: true });
-    assertSafeDeployOutDir(root, outDir, outDir);
-    const marker = join(outDir, DEPLOY_MARKER_FILENAME);
+    const prepared = prepareOutputDirectory(root, outDir, isReusableDeployDirectory);
 
-    if (!isDeployMarker(marker)) {
-        writeFileSync(marker, DEPLOY_MARKER, { flag: "wx" });
+    if (prepared.status === "unsafe") {
+        throw deployOutputError(root, outDir);
     }
+
+    using transaction = prepared.transaction;
+    transaction.commit();
+    writeFileSync(join(outDir, DEPLOY_MARKER_FILENAME), DEPLOY_MARKER, { flag: "wx" });
 };
 
 const existingFile = (path: string): string | null =>

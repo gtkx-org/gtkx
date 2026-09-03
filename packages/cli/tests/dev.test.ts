@@ -269,6 +269,23 @@ const waitForOccurrences = async (
     return session.output();
 };
 
+const waitForFileContent = async (path: string, needle: string, timeout: number): Promise<string> => {
+    const deadline = Date.now() + timeout;
+    let content = "";
+
+    while (Date.now() < deadline) {
+        content = readFileSync(path, "utf8");
+
+        if (content.includes(needle)) {
+            return content;
+        }
+
+        await delay(POLL_INTERVAL);
+    }
+
+    return content;
+};
+
 const expectCatalogRestarts = async (state: DevState): Promise<void> => {
     expect(state.session.output()).toContain("translation-one");
     writeFileSync(join(state.project.root, IT_CATALOG), italianCatalog("translation-two"));
@@ -364,10 +381,20 @@ describe("gtkx dev", () => {
         expect(await waitForOutput(state.session, `${READY_MARKER} two`, RELOAD_TIMEOUT)).toContain(
             `${READY_MARKER} two`,
         );
-        expect(readFileSync(join(state.project.root, POT), "utf8")).toContain('msgid "Source refresh"');
-        expect(readFileSync(join(state.project.root, GENERATED_I18N_RESOURCES), "utf8")).toContain(
-            "Source refresh",
-        );
+        expect(
+            await waitForFileContent(
+                join(state.project.root, POT),
+                'msgid "Source refresh"',
+                RELOAD_TIMEOUT,
+            ),
+        ).toContain('msgid "Source refresh"');
+        expect(
+            await waitForFileContent(
+                join(state.project.root, GENERATED_I18N_RESOURCES),
+                "Source refresh",
+                RELOAD_TIMEOUT,
+            ),
+        ).toContain("Source refresh");
 
         writeApp(state.project, appSource("two-restored"));
         expect(

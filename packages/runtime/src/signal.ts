@@ -535,6 +535,5 @@ export {
     overrideSignalClassClosure,
     signalConnect,
     signalEmit,
-    untrackConnection,
     type SignalHandler,
 };

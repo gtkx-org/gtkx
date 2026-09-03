@@ -1,7 +1,7 @@
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { build as buildApp } from "../builder.js";
-import { resolveBuildOutDir } from "../internal/build-output.js";
+import { prepareBuildOutDir, resolveBuildOutDir } from "../internal/build-output.js";
 import { configArg, entryArg } from "../internal/entry-arg.js";
 import { prepareProject } from "../internal/prepare-project.js";
 
@@ -23,6 +23,7 @@ const build = defineCommand({
     async run({ args }) {
         const { cwd, entry, configFile } = await prepareProject(args, BUILD_MODE);
         const outDir = resolveBuildOutDir(cwd, args.out);
+        using preparedOutput = prepareBuildOutDir(cwd, outDir);
         info(`Building ${entry}`);
 
         const bundlePath = await buildApp({
@@ -30,10 +31,11 @@ const build = defineCommand({
             configFile,
             vite: {
                 root: cwd,
-                build: { outDir },
+                build: { outDir: preparedOutput.path, emptyOutDir: false },
             },
         });
 
+        preparedOutput.commit();
         info(`Build complete: ${bundlePath}`);
     },
 });

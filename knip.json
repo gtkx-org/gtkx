@@ -23,6 +23,10 @@
         "packages/react/src/prop-types.ts": [
             "types"
         ],
+        "packages/runtime/src/internal.ts": [
+            "exports",
+            "types"
+        ],
         "packages/cli/src/refresh-runtime.ts": [
             "exports"
         ]

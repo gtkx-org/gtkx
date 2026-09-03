@@ -205,7 +205,7 @@ const applyContainerOutcome = (target: ClickTarget, nPress: number): void => {
     }
 
     if (isActivatedByClick(container, nPress)) {
-        widget.activate();
+        Gtk.Widget.prototype.activate.call(widget);
     }
 
     if (isSelectionReplacedByClick(container, nPress)) {
@@ -246,7 +246,7 @@ const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
     let isActivated = false;
 
     await wrapEvent(widget, () => {
-        isActivated = widget.activate();
+        isActivated = Gtk.Widget.prototype.activate.call(widget);
     });
 
     return isActivated;

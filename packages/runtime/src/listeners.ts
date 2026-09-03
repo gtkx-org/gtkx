@@ -6,12 +6,6 @@ import {
     type SignalHandler,
 } from "./signal.js";
 
-/**
- * The connect and disconnect surface {@link onSignal}, {@link onceSignal} and {@link offSignal}
- * drive on an emitter.
- */
-type SignalConnectable = object;
-
 const listenerTable: WeakMap<object, Map<string, Map<SignalHandler, number[]>>> = new WeakMap();
 
 const findListenerHandlerId = (instance: object, signal: string, handler: SignalHandler): number | undefined =>
@@ -82,7 +76,7 @@ const untrackHandlerId = (instance: object, signal: string, handlerId: number): 
  * @param handler The callback invoked on each emission.
  * @param isAfter When true, run the handler after the default handler.
  */
-function onSignal(instance: SignalConnectable, signal: string, handler: SignalHandler, isAfter?: boolean): void {
+function onSignal(instance: object, signal: string, handler: SignalHandler, isAfter?: boolean): void {
     const handlerId = connectSignalByName(instance, signal, handler, isAfter);
     trackListener(instance, signal, handler, handlerId);
 }
@@ -96,7 +90,7 @@ function onSignal(instance: SignalConnectable, signal: string, handler: SignalHa
  * @param handler The callback invoked on the first emission.
  * @param isAfter When true, run the handler after the default handler.
  */
-function onceSignal(instance: SignalConnectable, signal: string, handler: SignalHandler, isAfter?: boolean): void {
+function onceSignal(instance: object, signal: string, handler: SignalHandler, isAfter?: boolean): void {
     let handlerId = 0;
 
     const wrapped: SignalHandler = (...args) => {
@@ -119,7 +113,7 @@ function onceSignal(instance: SignalConnectable, signal: string, handler: Signal
  * @param signal The signal name the handler was connected to.
  * @param handler The handler to disconnect.
  */
-function offSignal(instance: SignalConnectable, signal: string, handler: SignalHandler): void {
+function offSignal(instance: object, signal: string, handler: SignalHandler): void {
     const handlerId = findListenerHandlerId(instance, signal, handler);
 
     if (handlerId === undefined) {

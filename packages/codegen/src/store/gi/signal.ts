@@ -348,10 +348,7 @@ const appendSignalMemberMetadata = (options: SignalMemberMetadataOptions): void 
 
     if (classSignals.length > 0) {
         context.addRuntimeInternalImport("classSignalMember");
-        lines.push(
-            `[classSignalMember]?: Pick<${map}, ` +
-            `${classSignals.map((name) => sourceStringLiteral(name)).join(" | ")}>;`,
-        );
+        lines.push(`[classSignalMember]?: ${renderMemberRecord(classSignals)};`);
     }
 };
 

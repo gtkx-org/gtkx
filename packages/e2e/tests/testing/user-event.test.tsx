@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwActionRow } from "@gtkx/jsx/adw";
 import {
     GtkBox,
     GtkButton,
@@ -358,6 +359,24 @@ describe("userEvent.click", () => {
         expect(handleClick).toHaveBeenCalledTimes(2);
         await userEvent.tripleClick(button);
         expect(handleClick).toHaveBeenCalledTimes(5);
+    });
+
+    it("selects a list row whose class defines activate", async () => {
+        const selections: (Gtk.ListBoxRow | null)[] = [];
+        const { findByRole } = await renderScoped(
+            <GtkListBox
+                onRowSelected={(row) => {
+                    selections.push(row);
+                }}
+            >
+                <AdwActionRow title="Work" />
+            </GtkListBox>,
+        );
+        const list = await findByRole(Gtk.AccessibleRole.LIST, { as: Gtk.ListBox });
+        const row = await findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Work" });
+        await userEvent.click(row);
+        expect(list.getSelectedRow()).toBe(row);
+        expect(selections).toEqual([row]);
     });
 });
 

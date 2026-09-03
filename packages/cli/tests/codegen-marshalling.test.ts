@@ -14,11 +14,6 @@ type ExpectedOutput = { bindings: string[]; declarations: string[] };
 const TYPESCRIPT_CLI = fileURLToPath(
     new URL("../../../node_modules/typescript/bin/tsc", import.meta.url),
 );
-const GUDEV_CONFIG = `export default {
-    applicationId: "com.gtkx.gudevprobe",
-    libraries: ["GUdev-1.0"],
-};
-`;
 const GIO_CONFIG = `export default {
     applicationId: "com.gtkx.gioprobe",
     libraries: ["Gio-2.0"],
@@ -353,20 +348,10 @@ const RegisteredWide = registerClass(Wide, {
 GObject.getObjectProperty(new RegisteredWide({}), "serial");
 `,
 };
-const GUDEV_PROPERTY_PROBE = `import * as GUdev from "@gtkx/gi/gudev";
+const NATURAL_PROPERTY_METHOD_PROBE = `import type { Station } from "@gtkx/gi/hookslots";
 
-const client = GUdev.Client.new(null);
-const device = client.queryBySysfsPath("/sys/devices/virtual/net/lo");
-
-if (device === null) {
-    throw new Error("loopback device is unavailable");
-}
-
-const value = device.getProperty("INTERFACE");
-
-if (value !== "lo") {
-    throw new Error("loopback device has no interface property");
-}
+declare const station: Station;
+const value: string | null = station.getProperty("key");
 `;
 const SIDE_CALLBACK_PROBE = `import type { Job, ProgressCallback } from "@gtkx/gi/asyncpair";
 
@@ -531,18 +516,17 @@ process.stdout.write(typeof DBusProxy.newForBusSync);`;
         expect(evaluateProject(project, source)).toBe("function");
     });
 
-    it("preserves natural subclass method names from system GIR libraries", () => {
+    it("preserves natural subclass method names from configured GIR libraries", () => {
         using project = createCliProject({
-            prefix: "gtkx-cli-codegen-gudev-property-",
-            config: GUDEV_CONFIG,
-            files: { "probe.ts": GUDEV_PROPERTY_PROBE },
+            prefix: "gtkx-cli-codegen-natural-property-",
+            config: fixtureConfig("HookSlots-1.0"),
+            files: { "probe.ts": NATURAL_PROPERTY_METHOD_PROBE },
         });
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
         expect(() => {
             typecheckProject(project);
         }).not.toThrow();
-        expect(evaluateProject(project, GUDEV_PROPERTY_PROBE)).toBe("");
     });
 
     it("retains marshalable interface properties and rejects unsafe property helpers", () => {

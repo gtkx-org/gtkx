@@ -1,5 +1,5 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import * as GLib from "@gtkx/gi/glib";
+import * as Gtk from "@gtkx/gi/gtk";
 import { ancestors } from "../traversal.js";
 import { callBooleanGetter, hasWidgetMethod } from "../widget-getters.js";
 
@@ -41,7 +41,7 @@ const applyRowPress = (row: Gtk.Widget, press: number): void => {
     selectRow(row);
 
     if (isRowActivatedByPress(row, press)) {
-        row.activate();
+        Gtk.Widget.prototype.activate.call(row);
     }
 };
 

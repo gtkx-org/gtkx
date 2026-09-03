@@ -33,7 +33,7 @@ const discoverSourceFiles = (dir: string): string[] =>
     sortStringsBy(
         globSync("**/{*,.*}", {
             cwd: dir,
-            exclude: ["**/{build,coverage,dist,node_modules,out-tsc}/**"],
+            exclude: ["**/{build,coverage,dist,node_modules,out-tsc}/**", "**/.gtkx-output-*/**"],
             withFileTypes: true,
         })
             .filter((entry) => entry.isFile())

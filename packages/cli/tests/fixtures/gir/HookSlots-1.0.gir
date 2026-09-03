@@ -30,7 +30,21 @@
            parent="GObject.Object"
            glib:type-name="HookSlotsStation"
            glib:get-type="hook_slots_station_get_type"
-           glib:type-struct="StationClass"/>
+           glib:type-struct="StationClass">
+      <method name="get_property" c:identifier="hook_slots_station_get_property">
+        <return-value transfer-ownership="none" nullable="1">
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="station" transfer-ownership="none">
+            <type name="Station" c:type="HookSlotsStation*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
     <record name="StationClass"
             c:type="HookSlotsStationClass"
             glib:is-gtype-struct-for="Station">
