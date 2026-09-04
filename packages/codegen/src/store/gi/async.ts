@@ -1,5 +1,6 @@
 import type { GirFunction } from "../../gir/function.js";
 import type { Library } from "../../gir/library.js";
+import type { GirNamespace } from "../../gir/namespace.js";
 import type { TypeId } from "../../gir/type-id.js";
 import { inputParameters } from "../../analysis/param-structure.js";
 import { primitiveCategoryFor } from "../../analysis/type-shape.js";
@@ -78,4 +79,41 @@ const isPromisifiableFinish = (library: Library, finishFn: GirFunction): boolean
     return only?.parameter.type !== undefined && library.nameFor(only.parameter.type)?.typeName === "AsyncResult";
 };
 
-export { matchAsyncFinish };
+type ExternalFinishOwner = { member: GirFunction; namespaceName: string; typeName: string };
+
+const externalFinishOwnerIn = (namespace: GirNamespace, finishFunc: string): ExternalFinishOwner | undefined => {
+    const types = [...namespace.classes, ...namespace.interfaces, ...namespace.records];
+
+    for (const type of types) {
+        const member = [...type.methods, ...type.functions].find((candidate) => candidate.cIdentifier === finishFunc);
+
+        if (member !== undefined) {
+            return { member, namespaceName: namespace.name, typeName: type.name };
+        }
+    }
+
+    return undefined;
+};
+
+const externalFinishOwner = (
+    library: Library,
+    fn: GirFunction,
+): ExternalFinishOwner | undefined => {
+    const finishFunc = fn.finishFunc;
+
+    if (finishFunc === undefined) {
+        return undefined;
+    }
+
+    for (const namespace of library.namespaces.values()) {
+        const owner = externalFinishOwnerIn(namespace, finishFunc);
+
+        if (owner !== undefined) {
+            return owner;
+        }
+    }
+
+    return undefined;
+};
+
+export { externalFinishOwner, matchAsyncFinish };

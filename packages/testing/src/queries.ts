@@ -39,7 +39,7 @@ type BuiltinQueries = QueryFamilies<[container: Container]>;
 const roleQueries = nameQueryFamily(
     "Role",
     queryAllByRole,
-    buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions]>(
+    buildQueries<[role: Gtk.AccessibleRole, options?: ByRoleOptions<Gtk.Widget>], Gtk.Widget>(
         queryAllByRole,
         (container, matches, role, options) =>
             multipleFoundError(container, { queryType: "role", role, options }, matches),
@@ -50,7 +50,7 @@ const roleQueries = nameQueryFamily(
 const labelTextQueries = nameQueryFamily(
     "LabelText",
     queryAllByLabelText,
-    buildQueries<[text: Matcher, options?: MatcherOptions]>(
+    buildQueries<[text: Matcher, options?: MatcherOptions<Gtk.Widget>], Gtk.Widget>(
         queryAllByLabelText,
         (container, matches, text) => multipleFoundError(container, { queryType: "labelText", text }, matches),
         (container, text) => notFoundError(container, { queryType: "labelText", text }),
@@ -60,7 +60,7 @@ const labelTextQueries = nameQueryFamily(
 const textQueries = nameQueryFamily(
     "Text",
     queryAllByText,
-    buildQueries<[text: Matcher, options?: MatcherOptions]>(
+    buildQueries<[text: Matcher, options?: MatcherOptions<Gtk.Widget>], Gtk.Widget>(
         queryAllByText,
         (container, matches, text) => multipleFoundError(container, { queryType: "text", text }, matches),
         (container, text) => notFoundError(container, { queryType: "text", text }),
@@ -70,7 +70,7 @@ const textQueries = nameQueryFamily(
 const nameQueries = nameQueryFamily(
     "Name",
     queryAllByName,
-    buildQueries<[name: Matcher, options?: MatcherOptions]>(
+    buildQueries<[name: Matcher, options?: MatcherOptions<Gtk.Widget>], Gtk.Widget>(
         queryAllByName,
         (container, matches, name) => multipleFoundError(container, { queryType: "name", name }, matches),
         (container, name) => notFoundError(container, { queryType: "name", name }),
@@ -80,7 +80,7 @@ const nameQueries = nameQueryFamily(
 const placeholderTextQueries = nameQueryFamily(
     "PlaceholderText",
     queryAllByPlaceholderText,
-    buildQueries<[text: Matcher, options?: MatcherOptions]>(
+    buildQueries<[text: Matcher, options?: MatcherOptions<Gtk.Widget>], Gtk.Widget>(
         queryAllByPlaceholderText,
         (container, matches, text) => multipleFoundError(container, { queryType: "placeholderText", text }, matches),
         (container, text) => notFoundError(container, { queryType: "placeholderText", text }),
@@ -90,7 +90,7 @@ const placeholderTextQueries = nameQueryFamily(
 const displayValueQueries = nameQueryFamily(
     "DisplayValue",
     queryAllByDisplayValue,
-    buildQueries<[value: Matcher, options?: MatcherOptions]>(
+    buildQueries<[value: Matcher, options?: MatcherOptions<Gtk.Widget>], Gtk.Widget>(
         queryAllByDisplayValue,
         (container, matches, value) => multipleFoundError(container, { queryType: "displayValue", value }, matches),
         (container, value) => notFoundError(container, { queryType: "displayValue", value }),
@@ -284,25 +284,27 @@ const hasMatchingAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions)
     hasMatchingDescriptionState(widget, options) &&
     hasMatchingValueState(widget, options);
 
-const isMatchingWidgetType = (widget: Gtk.Widget, options?: MatcherOptions): boolean =>
+const isMatchingWidgetType = <T extends Gtk.Accessible>(
+    widget: Gtk.Widget,
+    options?: MatcherOptions<T>,
+): widget is Gtk.Widget & T =>
     options?.as === undefined || widget instanceof options.as;
 
-const hasMatchingByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {
+const hasMatchingAccessibleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {
     if (!options) {
         return true;
     }
 
     return (
-        isMatchingWidgetType(widget, options) &&
         hasMatchingAccessibleName(widget, options) &&
         hasMatchingAccessibleStates(widget, options)
     );
 };
 
-function nameQueryFamily<Args extends unknown[]>(
+function nameQueryFamily<Args extends unknown[], Element extends Gtk.Accessible>(
     suffix: string,
-    queryAllBy: QueryAllBy<Args>,
-    built: BuiltQueries<Args>,
+    queryAllBy: QueryAllBy<Args, Element>,
+    built: BuiltQueries<Args, Element>,
 ): Record<string, unknown> {
     const [queryBy, getAllBy, getBy, findAllBy, findBy] = built;
 
@@ -325,12 +327,12 @@ function nameQueryFamily<Args extends unknown[]>(
  * @param options Additional accessible name, state, and value constraints.
  * @returns Every matching widget, or an empty array when none match.
  */
-function queryAllByRole(
+function queryAllByRole<T extends Gtk.Accessible = Gtk.Widget>(
     container: Container,
     role: Gtk.AccessibleRole,
-    options?: ByRoleOptions,
-): Gtk.Widget[] {
-    return findAll(container, (widget) => {
+    options?: ByRoleOptions<T>,
+): T[] {
+    const matches = findAll(container, (widget) => {
         if (widget.getAccessibleRole() !== role) {
             return false;
         }
@@ -339,8 +341,14 @@ function queryAllByRole(
             return false;
         }
 
-        return hasMatchingByRoleOptions(widget, options);
+        if (!isMatchingWidgetType(widget, options)) {
+            return false;
+        }
+
+        return hasMatchingAccessibleOptions(widget, options);
     });
+
+    return matches.filter((widget): widget is Gtk.Widget & T => isMatchingWidgetType(widget, options));
 }
 
 const collectMnemonicMatch = (
@@ -394,14 +402,18 @@ const collectLabelMatches = (
  * @param options Text matching options.
  * @returns Every matching widget, or an empty array when none match.
  */
-function queryAllByLabelText(container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] {
+function queryAllByLabelText<T extends Gtk.Accessible = Gtk.Widget>(
+    container: Container,
+    text: Matcher,
+    options?: MatcherOptions<T>,
+): T[] {
     const results: Set<Gtk.Widget> = new Set();
 
     for (const widget of traverse(container)) {
         collectLabelMatches(results, widget, text, options);
     }
 
-    return [...results].filter((widget) => isMatchingWidgetType(widget, options));
+    return [...results].filter((widget): widget is Gtk.Widget & T => isMatchingWidgetType(widget, options));
 }
 
 /**
@@ -411,12 +423,18 @@ function queryAllByLabelText(container: Container, text: Matcher, options?: Matc
  * @param options Text matching options.
  * @returns Every matching widget, or an empty array when none match.
  */
-function queryAllByText(container: Container, text: Matcher, options?: MatcherOptions): Gtk.Widget[] {
-    return findAll(
+function queryAllByText<T extends Gtk.Accessible = Gtk.Widget>(
+    container: Container,
+    text: Matcher,
+    options?: MatcherOptions<T>,
+): T[] {
+    const matches = findAll(
         container,
         (widget) =>
             isMatchingWidgetType(widget, options) && isTextMatch(getWidgetLabelText(widget), text, widget, options),
     );
+
+    return matches.filter((widget): widget is Gtk.Widget & T => isMatchingWidgetType(widget, options));
 }
 
 /**
@@ -426,11 +444,17 @@ function queryAllByText(container: Container, text: Matcher, options?: MatcherOp
  * @param options Text matching options.
  * @returns Every matching widget, or an empty array when none match.
  */
-function queryAllByName(container: Container, name: Matcher, options?: MatcherOptions): Gtk.Widget[] {
-    return findAll(
+function queryAllByName<T extends Gtk.Accessible = Gtk.Widget>(
+    container: Container,
+    name: Matcher,
+    options?: MatcherOptions<T>,
+): T[] {
+    const matches = findAll(
         container,
         (widget) => isMatchingWidgetType(widget, options) && isTextMatch(getWidgetName(widget), name, widget, options),
     );
+
+    return matches.filter((widget): widget is Gtk.Widget & T => isMatchingWidgetType(widget, options));
 }
 
 /**
@@ -440,17 +464,19 @@ function queryAllByName(container: Container, name: Matcher, options?: MatcherOp
  * @param options Text matching options.
  * @returns Every matching widget, or an empty array when none match.
  */
-function queryAllByPlaceholderText(
+function queryAllByPlaceholderText<T extends Gtk.Accessible = Gtk.Widget>(
     container: Container,
     text: Matcher,
-    options?: MatcherOptions,
-): Gtk.Widget[] {
-    return findAll(
+    options?: MatcherOptions<T>,
+): T[] {
+    const matches = findAll(
         container,
         (widget) =>
             isMatchingWidgetType(widget, options) &&
             isTextMatch(getWidgetPlaceholderText(widget), text, widget, options),
     );
+
+    return matches.filter((widget): widget is Gtk.Widget & T => isMatchingWidgetType(widget, options));
 }
 
 /**
@@ -460,13 +486,19 @@ function queryAllByPlaceholderText(
  * @param options Text matching options.
  * @returns Every matching widget, or an empty array when none match.
  */
-function queryAllByDisplayValue(container: Container, value: Matcher, options?: MatcherOptions): Gtk.Widget[] {
-    return findAll(
+function queryAllByDisplayValue<T extends Gtk.Accessible = Gtk.Widget>(
+    container: Container,
+    value: Matcher,
+    options?: MatcherOptions<T>,
+): T[] {
+    const matches = findAll(
         container,
         (widget) =>
             isMatchingWidgetType(widget, options) &&
             isTextMatch(getWidgetDisplayValue(widget), value, widget, options),
     );
+
+    return matches.filter((widget): widget is Gtk.Widget & T => isMatchingWidgetType(widget, options));
 }
 
 export {

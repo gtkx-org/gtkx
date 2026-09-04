@@ -1,7 +1,7 @@
 import { error, exitCodeForSignal, info, installGracefulShutdown } from "@gtkx/utils";
 import { fork as nodeFork } from "node:child_process";
-import { type FSWatcher, watch as watchFs } from "node:fs";
-import { basename, dirname } from "node:path";
+import { type FSWatcher, statSync, watch as watchFs } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEV_CONFIG_ENV, DEV_ENTRY_ENV } from "./entry-env.js";
 
@@ -18,7 +18,8 @@ type ForkRunner = (modulePath: string, args: string[], env: NodeJS.ProcessEnv, c
 
 type DevWatch = {
     paths: string[];
-    regenerate: () => Promise<void>;
+    resolvePaths: () => string[];
+    regenerate: () => Promise<string[]>;
 };
 
 type SupervisorState = {
@@ -29,10 +30,12 @@ type SupervisorState = {
     args: string[];
     watch: DevWatch | undefined;
     watchers: FSWatcher[];
+    restartTimer: DebounceTimer;
     fork: ForkRunner;
     child: SupervisedChild | null;
     isShuttingDown: boolean;
     isRestarting: boolean;
+    isRestartPending: boolean;
     capturedChildExit: number | undefined;
 };
 
@@ -141,39 +144,87 @@ const launch = (state: SupervisorState): void => {
     });
 };
 
-const isRestartBlocked = (state: SupervisorState): boolean => state.isRestarting || state.isShuttingDown;
-
-const relaunchAfterExit = (state: SupervisorState): void => {
+const runPendingRestart = (state: SupervisorState): void => {
     state.isRestarting = false;
 
-    if (state.isShuttingDown) {
+    if (!state.isRestartPending || state.isShuttingDown) {
         return;
     }
 
-    info("Restarting dev runner...");
-    launch(state);
+    state.isRestartPending = false;
+    void restart(state);
 };
 
-const restart = async (state: SupervisorState): Promise<void> => {
-    const watch = state.watch;
-
-    if (watch === undefined || isRestartBlocked(state)) {
-        return;
-    }
-
-    state.isRestarting = true;
-    info("gtkx.config.ts changed; regenerating bindings...");
-
-    try {
-        await watch.regenerate();
-    } catch (error_) {
-        error("Codegen failed; keeping the current dev runner. Fix the error and save again.", error_);
+const relaunchAfterExit = (state: SupervisorState): void => {
+    if (state.isShuttingDown) {
         state.isRestarting = false;
 
         return;
     }
 
+    info("Restarting dev runner...");
+    launch(state);
+    runPendingRestart(state);
+};
+
+const isSupervisorShuttingDown = (state: SupervisorState): boolean => state.isShuttingDown;
+
+const reconcileConfigWatchers = (
+    state: SupervisorState,
+    paths: string[],
+    previous: ReadonlyMap<string, string | null>,
+): void => {
+    const didChange = didWatchPathsChange(previous, paths);
+
+    closeWatchers(state);
+
+    if (state.watch !== undefined) {
+        state.watch.paths = paths;
+    }
+
     if (state.isShuttingDown) {
+        return;
+    }
+
+    installConfigWatchers(state);
+
+    if (didChange && !state.isRestartPending) {
+        scheduleRestart(state);
+    }
+};
+
+const restart = async (state: SupervisorState): Promise<void> => {
+    const watch = state.watch;
+
+    if (watch === undefined || state.isShuttingDown) {
+        return;
+    }
+
+    if (state.isRestarting) {
+        state.isRestartPending = true;
+
+        return;
+    }
+
+    state.isRestarting = true;
+    info(`${basename(state.configFile)} changed; regenerating bindings...`);
+    closeWatchers(state);
+    watch.paths = watch.resolvePaths();
+    const previous = snapshotWatchPaths(watch.paths);
+    installConfigWatchers(state);
+
+    try {
+        const paths = await watch.regenerate();
+        reconcileConfigWatchers(state, paths, previous);
+    } catch (error_) {
+        reconcileConfigWatchers(state, watch.resolvePaths(), previous);
+        error("Codegen failed; keeping the current dev runner. Fix the error and save again.", error_);
+        runPendingRestart(state);
+
+        return;
+    }
+
+    if (isSupervisorShuttingDown(state)) {
         state.isRestarting = false;
 
         return;
@@ -182,8 +233,8 @@ const restart = async (state: SupervisorState): Promise<void> => {
     const current = state.child;
 
     if (current === null) {
-        state.isRestarting = false;
         launch(state);
+        runPendingRestart(state);
 
         return;
     }
@@ -195,12 +246,17 @@ const restart = async (state: SupervisorState): Promise<void> => {
     forwardSignal(current, "SIGTERM");
 };
 
-const scheduleRestart = (state: SupervisorState, timer: DebounceTimer): void => {
+const scheduleRestart = (state: SupervisorState): void => {
+    const timer = state.restartTimer;
+
     if (timer.handle !== null) {
         clearTimeout(timer.handle);
     }
 
-    timer.handle = setTimeout(() => void restart(state), CONFIG_DEBOUNCE_MS);
+    timer.handle = setTimeout(() => {
+        timer.handle = null;
+        void restart(state);
+    }, CONFIG_DEBOUNCE_MS);
 };
 
 const isWatchedChange = (state: SupervisorState, names: Set<string>, filename: string | Buffer | null): boolean => {
@@ -211,13 +267,76 @@ const isWatchedChange = (state: SupervisorState, names: Set<string>, filename: s
     return names.has(basename(filename.toString()));
 };
 
+const isDirectory = (path: string): boolean => {
+    try {
+        return statSync(path, { throwIfNoEntry: false })?.isDirectory() === true;
+    } catch {
+        return false;
+    }
+};
+
+const nearestWatchTarget = (path: string): { directory: string; name: string } => {
+    let directory = dirname(path);
+    let name = basename(path);
+
+    while (!isDirectory(directory)) {
+        const parent = dirname(directory);
+
+        if (parent === directory) {
+            break;
+        }
+
+        name = basename(directory);
+        directory = parent;
+    }
+
+    return { directory, name };
+};
+
+const watchTargets = (paths: string[]): Set<string> =>
+    new Set(paths.flatMap((path) => {
+        const { directory, name } = nearestWatchTarget(path);
+
+        return [path, join(directory, name)];
+    }));
+
+const watchPathState = (path: string): string | null => {
+    try {
+        const stat = statSync(path, { bigint: true, throwIfNoEntry: false });
+
+        return stat === undefined
+            ? null
+            : [stat.dev, stat.ino, stat.mode, stat.size, stat.mtimeNs, stat.ctimeNs].join(":");
+    } catch {
+        return null;
+    }
+};
+
+const snapshotWatchPaths = (paths: string[]): Map<string, string | null> =>
+    new Map([...watchTargets(paths)].map((path) => [path, watchPathState(path)]));
+
+const didWatchPathsChange = (
+    previous: ReadonlyMap<string, string | null>,
+    paths: string[],
+): boolean => {
+    for (const path of watchTargets(paths)) {
+        const current = watchPathState(path);
+
+        if (previous.has(path) ? previous.get(path) !== current : current !== null) {
+            return true;
+        }
+    }
+
+    return false;
+};
+
 const groupWatchNamesByDirectory = (paths: string[]): Map<string, Set<string>> => {
     const namesByDirectory: Map<string, Set<string>> = new Map();
 
     for (const path of paths) {
-        const directory = dirname(path);
+        const { directory, name } = nearestWatchTarget(path);
         const names = namesByDirectory.get(directory) ?? new Set<string>();
-        names.add(basename(path));
+        names.add(name);
         namesByDirectory.set(directory, names);
     }
 
@@ -228,16 +347,21 @@ const watchConfigDirectory = (
     state: SupervisorState,
     directory: string,
     names: Set<string>,
-    timer: DebounceTimer,
 ): void => {
-    const watcher = watchFs(directory, (_event, filename) => {
-        if (isWatchedChange(state, names, filename)) {
-            scheduleRestart(state, timer);
-        }
-    });
+    try {
+        const watcher = watchFs(directory, (_event, filename) => {
+            if (isWatchedChange(state, names, filename)) {
+                scheduleRestart(state);
+            }
+        });
 
-    watcher.on("error", (): void => undefined);
-    state.watchers.push(watcher);
+        watcher.on("error", (cause) => {
+            error(`Configuration watch failed for ${directory}`, cause);
+        });
+        state.watchers.push(watcher);
+    } catch (error_) {
+        error(`Configuration watch failed for ${directory}`, error_);
+    }
 };
 
 const installConfigWatchers = (state: SupervisorState): void => {
@@ -247,10 +371,8 @@ const installConfigWatchers = (state: SupervisorState): void => {
         return;
     }
 
-    const timer: DebounceTimer = { handle: null };
-
     for (const [directory, names] of groupWatchNamesByDirectory(watch.paths)) {
-        watchConfigDirectory(state, directory, names, timer);
+        watchConfigDirectory(state, directory, names);
     }
 };
 
@@ -258,12 +380,19 @@ const closeWatchers = (state: SupervisorState): void => {
     for (const watcher of state.watchers) {
         watcher.close();
     }
+
+    state.watchers = [];
 };
 
 const shutdownOnSignal = (state: SupervisorState, signal: NodeJS.Signals): Promise<void> =>
     new Promise<void>((resolve) => {
         state.isShuttingDown = true;
         closeWatchers(state);
+
+        if (state.restartTimer.handle !== null) {
+            clearTimeout(state.restartTimer.handle);
+            state.restartTimer.handle = null;
+        }
 
         if (!state.child) {
             resolve();
@@ -298,10 +427,12 @@ const runDevSupervisor = async (options: DevSupervisorOptions): Promise<never> =
         args,
         watch,
         watchers: [],
+        restartTimer: { handle: null },
         fork,
         child: null,
         isShuttingDown: false,
         isRestarting: false,
+        isRestartPending: false,
         capturedChildExit: undefined,
     };
 

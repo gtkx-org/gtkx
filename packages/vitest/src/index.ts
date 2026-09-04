@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.ts";
+import { reapStaleHeadlessDisplays } from "./reap-headless-displays.ts";
 
 /**
  * Options accepted by the GTKX Vitest plugin. Every headless display
@@ -42,6 +43,7 @@ const headlessPreloadSpecifier = (options: Partial<HeadlessOptions>): string => 
  */
 const gtkx = (options: PluginOptions = {}): Plugin => {
     assertSupportedNodeVersion();
+    reapStaleHeadlessDisplays();
     const { configFile, ...headlessOptions } = options;
     const loadConfig = createConfigLoader({ configFile });
 

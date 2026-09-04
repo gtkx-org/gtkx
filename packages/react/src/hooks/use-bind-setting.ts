@@ -14,7 +14,7 @@ type UseBindSettingOptions<K extends SettingsSchemaKeys> = {
     /** Key of that schema to bind. */
     key: keyof K & string;
     /** Object holding the property, given directly or as a ref; nothing is bound while it is absent. */
-    object: RefProp<GObject.Object>;
+    object: RefProp<Pick<GObject.Object, "__properties__" | "__type__">>;
     /** camelCase name of the property to keep in sync with the key. */
     property: string;
     /** Direction and conversion behavior of the bind; defaults to `Gio.SettingsBindFlags.DEFAULT`. */
@@ -42,10 +42,11 @@ function useBindSetting<K extends SettingsSchemaKeys>({
         }
 
         const propertyName = getPropertyName(resolved, property) ?? kebabCase(property);
-        settings.bind(key, resolved, propertyName, flags);
+        const target = resolved as GObject.Object;
+        settings.bind(key, target, propertyName, flags);
 
         return () => {
-            Gio.Settings.unbind(resolved, propertyName);
+            Gio.Settings.unbind(target, propertyName);
         };
     }, [settings, key, object, property, flags]);
 }

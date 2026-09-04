@@ -44,6 +44,21 @@
           </parameter>
         </parameters>
       </method>
+      <method name="search" c:identifier="documented_note_search">
+        <doc xml:space="preserve">Searches the notes for a value.</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Note" c:type="DocumentedNote*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <doc xml:space="preserve">free text to search for, for instance, "power"</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
       <method name="shout" c:identifier="documented_note_shout" deprecated="1" deprecated-version="1.0">
         <doc xml:space="preserve">Reads the note back as loudly as possible.</doc>
         <doc-deprecated xml:space="preserve">Use read() with Tone.LOUD instead.</doc-deprecated>

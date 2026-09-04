@@ -58,7 +58,7 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): GiCodegenRes
 
     const store = writeGiStore(gi, namespaces, externalPackages, {
         fingerprint,
-        libraries: collectGeneratedLibraries(library.namespaces, libraries),
+        libraries: collectGeneratedLibraries(libraries),
     });
 
     return { namespaces: library.namespaces.size, store };

@@ -1,5 +1,5 @@
 import { statSync } from "node:fs";
-import { resolve } from "node:path";
+import { normalize, resolve } from "node:path";
 import type { DeployConfig, DeployExtraFile } from "../types.js";
 
 type ExtraFiles = NonNullable<DeployConfig["extraFiles"]>;
@@ -22,13 +22,15 @@ const assertSourceFile = (root: string, file: DeployExtraFile): void => {
 };
 
 const resolveExtraFile = (destination: string, entry: ExtraFileEntry): DeployExtraFile => {
+    const normalizedDestination = normalize(destination);
+
     if (typeof entry === "string") {
-        return { destination, source: entry, mode: null };
+        return { destination: normalizedDestination, source: entry, mode: null };
     }
 
     const mode = entry.mode === undefined ? null : Number.parseInt(entry.mode, OCTAL_RADIX);
 
-    return { destination, source: entry.source, mode };
+    return { destination: normalizedDestination, source: entry.source, mode };
 };
 
 const resolveExtraFiles = (root: string, deploy: DeployConfig): DeployExtraFile[] => {

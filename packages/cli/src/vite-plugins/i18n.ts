@@ -12,7 +12,7 @@ import {
     resolveCatalogProject,
     synchronizeCatalogs,
 } from "../i18n/catalogs.js";
-import { extractSourceCatalog } from "../i18n/source-messages.js";
+import { extractSourceCatalog, SourceExtractionError } from "../i18n/source-messages.js";
 import { emitI18nTypes } from "../i18n/types.js";
 import { discoverSourceFiles, sourceLanguage } from "../internal/source-imports.js";
 import { stripQuery } from "./strip-query.js";
@@ -160,11 +160,27 @@ const isProjectSource = (state: I18nState, path: string): boolean => {
 const refreshProjectMessages = async (
     state: I18nState,
     shouldPreserveMetadataMessages: boolean,
+    shouldSynchronizeCatalogs = false,
 ): Promise<void> => {
     try {
-        await queueExtraction(state, shouldPreserveMetadataMessages, false);
+        await queueExtraction(state, shouldPreserveMetadataMessages, shouldSynchronizeCatalogs);
     } catch (error) {
         logger.error(error instanceof Error ? error.message : String(error));
+    }
+};
+
+const recoverInitialSourceExtraction = async (
+    state: I18nState,
+    shouldPreserveMetadataMessages: boolean,
+): Promise<void> => {
+    try {
+        await queueExtraction(state, shouldPreserveMetadataMessages, true);
+    } catch (error) {
+        if (!(error instanceof SourceExtractionError)) {
+            throw error;
+        }
+
+        logger.error(error.message);
     }
 };
 
@@ -172,6 +188,7 @@ const gtkxI18n = (
     entryPath: string,
     loadConfig: ConfigLoader = createConfigLoader(),
     shouldPreserveMetadataMessages = true,
+    shouldRecoverExtractionErrors = false,
 ): Plugin => {
     const state: I18nState = {
         entryPath,
@@ -188,7 +205,9 @@ const gtkxI18n = (
 
         configResolved: (config) => applyResolvedConfig(state, config, loadConfig),
 
-        buildStart: () => queueExtraction(state, shouldPreserveMetadataMessages, true),
+        buildStart: () => shouldRecoverExtractionErrors
+            ? recoverInitialSourceExtraction(state, shouldPreserveMetadataMessages)
+            : queueExtraction(state, shouldPreserveMetadataMessages, true),
 
         hotUpdate(options) {
             if (!isProjectSource(state, options.file) || state.hotUpdateTimestamp === options.timestamp) {

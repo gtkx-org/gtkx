@@ -4,6 +4,12 @@ import { chmodSync, closeSync, existsSync, mkdtempSync, openSync, rmSync, writeF
 import { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+    createBusConfig,
+    createHeadlessRuntimeMarker,
+    createSwayConfig,
+    HEADLESS_RUNTIME_MARKER,
+} from "./headless-config.ts";
 import { startNotificationService } from "./notification-service.ts";
 import { startVirtualSeat } from "./virtual-seat.ts";
 
@@ -72,10 +78,6 @@ const DEFAULT_HEADLESS_SIZE = "1024x768";
 const DEFAULT_HEADLESS_COMPOSITOR: CompositorId = "sway";
 const HEADLESS_SIZE_PATTERN = /^[1-9]\d*x[1-9]\d*$/;
 
-const BUS_CONFIG_DOCTYPE =
-    '<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN" ' +
-    '"https://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">';
-
 const hasWestonFakeSeat = createWestonFakeSeatProbe();
 
 const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
@@ -94,16 +96,7 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
 
             writeFileSync(
                 configPath,
-                [
-                    "xwayland disable",
-                    "default_border none",
-                    "default_floating_border none",
-                    `output HEADLESS-1 resolution ${width}x${height}`,
-                    "output HEADLESS-1 bg #000000 solid_color",
-                    'for_window [app_id=".*"] floating enable, border none',
-                    'for_window [title=".*"] floating enable, border none',
-                    "",
-                ].join("\n"),
+                createSwayConfig(width, height),
             );
 
             return spawnWithParentDeathSupervisor("sway", ["-c", configPath], {
@@ -228,22 +221,7 @@ const attachVirtualSeat = (compositor: SpawnedCompositor, socketPath: string): P
     compositor.requiresVirtualSeat ? startVirtualSeat(socketPath) : Promise.resolve(noVirtualSeat);
 
 const writeBusConfig = (busConfigPath: string, busSocketPath: string): void => {
-    writeFileSync(
-        busConfigPath,
-        [
-            BUS_CONFIG_DOCTYPE,
-            "<busconfig>",
-            "  <type>session</type>",
-            `  <listen>unix:path=${busSocketPath}</listen>`,
-            "  <auth>EXTERNAL</auth>",
-            '  <policy context="default">',
-            '    <allow send_destination="*" eavesdrop="true"/>',
-            '    <allow eavesdrop="true"/>',
-            '    <allow own="*"/>',
-            "  </policy>",
-            "</busconfig>",
-        ].join("\n"),
-    );
+    writeFileSync(busConfigPath, createBusConfig(busSocketPath));
 };
 
 const exitedMessage = (label: string, path: string, code: number | null, signal: NodeJS.Signals | null): string =>
@@ -457,10 +435,25 @@ const makeTeardown = (stops: (() => void)[]): (() => void) => {
     };
 };
 
+const createHeadlessRuntimeDirectory = (): string => {
+    const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
+
+    try {
+        chmodSync(runtimeDir, 0o700);
+        const markerPath = join(runtimeDir, HEADLESS_RUNTIME_MARKER);
+        writeFileSync(markerPath, createHeadlessRuntimeMarker(runtimeDir), { flag: "wx", mode: 0o600 });
+        chmodSync(markerPath, 0o600);
+
+        return runtimeDir;
+    } catch (error) {
+        rmSync(runtimeDir, { recursive: true, force: true });
+        throw error;
+    }
+};
+
 const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => void> => {
     const env: EnvSnapshot = {};
-    const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
-    chmodSync(runtimeDir, 0o700);
+    const runtimeDir = createHeadlessRuntimeDirectory();
     const spawned: ChildProcess[] = [];
 
     const removeRuntime = (): void => {

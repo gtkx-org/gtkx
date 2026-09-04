@@ -5,15 +5,19 @@ import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 import { useLatestRef } from "./use-latest-ref.js";
 
 /** The signal map `T` declares, from signal name to handler signature. */
-type Signals<T extends GObject.Object> = NonNullable<T["__signals__"]>;
+type Signals<T extends Pick<GObject.Object, "__signals__" | "__type__">> = NonNullable<T["__signals__"]>;
 /** Every signal name `T` declares, on its own or narrowed by a `::detail` suffix. */
-type SignalName<T extends GObject.Object> = keyof Signals<T> | `${keyof Signals<T> & string}::${string}`;
+type SignalName<T extends Pick<GObject.Object, "__signals__" | "__type__">> =
+    keyof Signals<T> | `${keyof Signals<T> & string}::${string}`;
 
 /**
  * The handler signature `T` declares for signal `S`, looked up through any `::detail` suffix and
  * falling back to an untyped `SignalHandler` when the object declares no such signal.
  */
-type TypedSignalHandler<T extends GObject.Object, S extends string> = S extends keyof Signals<T>
+type TypedSignalHandler<
+    T extends Pick<GObject.Object, "__signals__" | "__type__">,
+    S extends string,
+> = S extends keyof Signals<T>
     ? Signals<T>[S]
     : S extends `${infer TBase}::${string}`
         ? TBase extends keyof Signals<T>
@@ -38,7 +42,7 @@ type UseSignalOptions = {
  * @param signal The signal name, optionally with a `::detail` suffix.
  * @param options `isAfter` runs the handler after the default handler; `isImmediate` also invokes it on connect.
  */
-function useSignal<T extends GObject.Object, S extends SignalName<T> & string>(
+function useSignal<T extends Pick<GObject.Object, "__signals__" | "__type__">, S extends SignalName<T> & string>(
     object: RefProp<T>,
     signal: S,
     handler: TypedSignalHandler<T, S>,

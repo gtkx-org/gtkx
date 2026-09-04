@@ -1,4 +1,5 @@
-import { type ChildProcess, spawnSync } from "node:child_process";
+import { resolveExecutable } from "@gtkx/utils";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import {
     cpSync,
     existsSync,
@@ -9,6 +10,7 @@ import {
     renameSync,
     rmSync,
     symlinkSync,
+    utimesSync,
     writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
@@ -58,6 +60,15 @@ const next = ["@gtkx/gi/hookslots", "@gtkx/jsx/hookslots"].every(canResolve);
 if (previous === next) process.exitCode = 1;
 `;
 const LOCK_TIMEOUT_ENV = { GTKX_CODEGEN_LOCK_TIMEOUT_MS: "250" };
+const REUSED_PID_IDENTITY = "0".repeat(64);
+const ZOMBIE_OWNER_SCRIPT = String.raw`"$1" 0.2 & printf '%s\n' "$!"; "$1" 120`;
+
+const abandonedGenerationName = (prefix: string, index: number): string => {
+    const timestamp = String(Date.now());
+    const pid = String(process.pid);
+
+    return `${prefix}-${timestamp}-${pid}-${REUSED_PID_IDENTITY}-${String(index)}`;
+};
 const INTERLEAVED_OWNER_PROBE = `import {
     resolveGirPath,
     resolveStore,
@@ -75,6 +86,56 @@ await runCodegen({
 `;
 
 const delay = async (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 10));
+
+const processState = (pid: number): string | undefined => {
+    try {
+        const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
+
+        return stat.slice(stat.lastIndexOf(") ") + 2).split(" ", 1)[0];
+    } catch {
+        return undefined;
+    }
+};
+
+const waitForZombie = async (pid: number): Promise<void> => {
+    const deadline = Date.now() + LOCK_WAIT_MS;
+
+    while (Date.now() < deadline && processState(pid) !== "Z") {
+        await delay();
+    }
+
+    if (processState(pid) !== "Z") {
+        throw new Error("process did not become a zombie");
+    }
+};
+
+const startZombieOwner = async (): Promise<{ parent: ChildProcess; pid: number }> => {
+    const parent = spawn(
+        resolveExecutable("sh"),
+        ["-c", ZOMBIE_OWNER_SCRIPT, "gtkx-zombie-owner", resolveExecutable("sleep")],
+        { stdio: ["ignore", "pipe", "ignore"] },
+    );
+    const stdout = parent.stdout;
+
+    const pid = await new Promise<number>((resolve, reject) => {
+        let value = "";
+
+        stdout.on("data", (chunk: Buffer) => {
+            value += chunk.toString();
+
+            if (value.includes("\n")) {
+                resolve(Number(value.trim()));
+            }
+        });
+        parent.once("error", reject);
+        parent.once("exit", () => {
+            reject(new Error("zombie owner exited before reporting its child pid"));
+        });
+    });
+    await waitForZombie(pid);
+
+    return { parent, pid };
+};
 
 const exited = (child: ChildProcess): Promise<number | null> =>
     new Promise((resolve, reject) => {
@@ -145,15 +206,54 @@ const pairGenerationCount = (project: CliProject): number =>
 
 const detachedGenerationCount = (project: CliProject, store: string): number =>
     readdirSync(join(project.nodeModules, ".gtkx"), { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && entry.name.startsWith(`.${store}-generation-`))
+        .filter((entry) =>
+            entry.isDirectory() &&
+            (entry.name.startsWith(`.${store}-generation-`) || entry.name.startsWith(`.${store}-legacy-`)))
         .length;
+
+const seedStoreArtifacts = (project: CliProject, store: string): void => {
+    for (const kind of ["generation", "legacy"]) {
+        for (let index = 0; index < 6; index += 1) {
+            const name = abandonedGenerationName(`.${store}-${kind}`, index);
+            mkdirSync(join(project.nodeModules, ".gtkx", name));
+        }
+    }
+};
 
 const seedDetachedGenerations = (project: CliProject): void => {
     for (const store of ["gi", "jsx"]) {
-        for (let index = 0; index < 6; index += 1) {
-            mkdirSync(join(project.nodeModules, ".gtkx", `.${store}-generation-seeded-${String(index)}`));
-        }
+        seedStoreArtifacts(project, store);
     }
+
+    for (let index = 0; index < 6; index += 1) {
+        const name = abandonedGenerationName(".pair-generation", index);
+        mkdirSync(join(project.nodeModules, ".gtkx", name));
+    }
+};
+
+const seedZombieGenerations = (project: CliProject, pid: number): void => {
+    for (let index = 0; index < 6; index += 1) {
+        const name = `.pair-generation-${String(Date.now())}-${String(pid)}-unknown-${String(index)}`;
+        mkdirSync(join(project.nodeModules, ".gtkx", name));
+    }
+};
+
+const seedLiveGiOnlyArtifacts = (project: CliProject): string[] => {
+    const root = join(project.nodeModules, ".gtkx");
+    const timestamp = String(Date.now());
+    const owner = `${String(process.pid)}-unknown-live`;
+    const paths = [
+        join(root, `.pair-generation-${timestamp}-${owner}`),
+        join(root, `.jsx-generation-${timestamp}-${owner}`),
+    ];
+    const old = new Date(0);
+
+    for (const path of paths) {
+        mkdirSync(path);
+        utimesSync(path, old, old);
+    }
+
+    return paths;
 };
 
 const pairDirectories = (project: CliProject): string[] => {
@@ -213,7 +313,21 @@ describe("gtkx codegen store publication", () => {
         });
         runCliOrThrow(project, ["codegen"]);
         expect(runTransitionImport(project)).toBe(0);
-        seedDetachedGenerations(project);
+        const zombie = await startZombieOwner();
+
+        try {
+            seedDetachedGenerations(project);
+            seedZombieGenerations(project, zombie.pid);
+            runCliOrThrow(project, ["codegen"]);
+            expect(pairGenerationCount(project)).toBeLessThanOrEqual(3);
+            expect(detachedGenerationCount(project, "gi")).toBeLessThanOrEqual(3);
+            expect(detachedGenerationCount(project, "jsx")).toBeLessThanOrEqual(3);
+        } finally {
+            const zombieExit = exited(zombie.parent);
+            zombie.parent.kill("SIGKILL");
+            await zombieExit;
+        }
+
         writeConfig(project, fixtureLibrariesConfig(["HookSlots-1.0"]));
         const children = Array.from({ length: 4 }, () => startCli(project, ["codegen", "--force"]));
         const exits = children.map((child) => exited(child));
@@ -241,17 +355,46 @@ describe("gtkx codegen store publication", () => {
             files: { "probe.ts": COMMON_PROBE, "tsconfig.json": TSCONFIG },
         });
         runCliOrThrow(project, ["codegen"]);
+        expect(readStoreLock(project)).toBeNull();
         const previous = readStoreLock(project);
         const child = startCli(project, ["codegen", "--force"]);
         const exit = exited(child);
         await waitForLock(project, previous);
         child.kill("SIGKILL");
         await exit;
+        expect(readStoreLock(project)).not.toBeNull();
         const lock = storeLock(project);
         const expiredLiveOwner = { createdAt: 0, identity: null, pid: process.pid, token: "reused" };
         writeFileSync(lock, JSON.stringify(expiredLiveOwner));
 
         runCliOrThrow(project, ["codegen", "--force"]);
+        expect(readStoreLock(project)).toBeNull();
+        expect(runTypecheck(project)).toBe(0);
+        expect(runImport(project)).toBe(0);
+    });
+
+    it("reclaims stale pair and JSX artifacts after switching to GI-only codegen", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-gi-only-",
+            config: fixtureLibrariesConfig(["Documented-1.0"]),
+            files: { "probe.ts": COMMON_PROBE, "tsconfig.json": TSCONFIG },
+        });
+        runCliOrThrow(project, ["codegen"]);
+        const liveArtifacts = seedLiveGiOnlyArtifacts(project);
+
+        for (let index = 0; index < 6; index += 1) {
+            const pair = abandonedGenerationName(".pair-generation", index);
+            const jsx = abandonedGenerationName(".jsx-generation", index);
+            mkdirSync(join(project.nodeModules, ".gtkx", pair));
+            mkdirSync(join(project.nodeModules, ".gtkx", jsx));
+        }
+
+        rmSync(join(project.nodeModules, "@gtkx", "react"), { recursive: true, force: true });
+        runCliOrThrow(project, ["codegen", "--force"]);
+
+        expect(liveArtifacts.every((path) => existsSync(path))).toBe(true);
+        expect(pairGenerationCount(project)).toBeLessThanOrEqual(4);
+        expect(detachedGenerationCount(project, "jsx")).toBeLessThanOrEqual(4);
         expect(runTypecheck(project)).toBe(0);
         expect(runImport(project)).toBe(0);
     });

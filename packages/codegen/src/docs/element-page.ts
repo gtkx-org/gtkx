@@ -377,13 +377,14 @@ const methodsSection = (entry: GlibNamedClass, context: ElementPageContext, self
 
 const staticMethodsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
     const importPath = `@gtkx/gi/${namespaceDirectory(entry.namespace)}`;
+    const callables = [...entry.klass.constructors, ...entry.klass.functions];
 
     return staticSectionBlocks({
         title: "## Static methods",
         intro: `Static methods are called on \`${selfType}\`, imported from \`${importPath}\`.`,
         context: docsSignatureContext(entry.namespace, context.library),
-        callables: entry.klass.functions,
-        siblings: [...entry.klass.constructors, ...entry.klass.functions],
+        callables,
+        siblings: callables,
     });
 };
 

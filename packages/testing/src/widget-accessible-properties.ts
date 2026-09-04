@@ -13,6 +13,7 @@ import { EDITABLE_ROLES, isEditable, readEditableText } from "./editable.js";
 import { isNameFromAuthor, isNameProhibited } from "./role-naming.js";
 import { children, descendants, relationCandidates } from "./traversal.js";
 import { callBooleanGetter, callStringGetter, getCallableMethod } from "./widget-getters.js";
+import { requireWidget } from "./widget-target.js";
 
 type WidgetValueField = "now" | "min" | "max";
 type CheckedState = "checked" | "unchecked" | "mixed";
@@ -64,12 +65,12 @@ const getLabelText = (widget: Gtk.Widget): string | null => {
 };
 
 const stripMnemonic = (text: string): string => text.replaceAll(/_(.)/g, "$1");
-const isUnderlineUsed = (widget: Gtk.Widget): boolean => callBooleanGetter(widget, "getUseUnderline") ?? false;
+const isUnderlineUsed = (widget: object): boolean => callBooleanGetter(widget, "getUseUnderline") ?? false;
 
-const readNamingText = (widget: Gtk.Widget, getter: string, value: string): string =>
+const readNamingText = (widget: object, getter: string, value: string): string =>
     getter !== EDITABLE_TEXT_GETTER && isUnderlineUsed(widget) ? stripMnemonic(value) : value;
 
-const readFirstText = (widget: Gtk.Widget, getters: string[]): string | null => {
+const readFirstText = (widget: object, getters: string[]): string | null => {
     for (const getter of getters) {
         const value = callStringGetter(widget, getter);
 
@@ -87,7 +88,7 @@ const readFirstText = (widget: Gtk.Widget, getters: string[]): string | null => 
  *
  * @param widget The widget to read text from.
  */
-const getWidgetText = (widget: Gtk.Widget): string | null => readFirstText(widget, DEFAULT_TEXT_GETTERS);
+const getWidgetText = (widget: Gtk.Accessible): string | null => readFirstText(widget, DEFAULT_TEXT_GETTERS);
 
 const namingLabelText = (widget: Gtk.Widget): string | null => {
     const text = getLabelText(widget);
@@ -446,7 +447,8 @@ const getWidgetDescribedByText = (widget: Gtk.Widget): string | null => {
  *
  * @param widget The widget to test.
  */
-const isInaccessible = (widget: Gtk.Widget): boolean => {
+const isInaccessible = (target: Gtk.Accessible): boolean => {
+    const widget = requireWidget(target);
     let current: Gtk.Widget | null = widget;
 
     while (current) {

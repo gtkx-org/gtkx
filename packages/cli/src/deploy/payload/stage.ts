@@ -1,4 +1,4 @@
-import { sortStringsBy } from "@gtkx/utils";
+import { sortStringsBy, warn } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { DeploySettings, DeployTargetName, NodeRuntime, NoticeSection, StagedFile } from "../types.js";
@@ -82,9 +82,48 @@ const stageMetadata = (settings: DeploySettings, root: string, metadata: StagedM
         : [writeInto(root, join(SHARE_MIME_PACKAGES, `${settings.applicationId}.xml`), metadata.mimePackage)]),
 ];
 
-const stageExtraFiles = (settings: DeploySettings, root: string): StagedFile[] =>
+const generatedMetadataKind = (
+    settings: DeploySettings,
+    metadata: StagedMetadata,
+    destination: string,
+): string | null => {
+    if (destination === join(SHARE_APPLICATIONS, `${settings.applicationId}.desktop`)) {
+        return "desktop entry";
+    }
+
+    if (destination === join(SHARE_METAINFO, `${settings.applicationId}.metainfo.xml`)) {
+        return "metainfo";
+    }
+
+    if (
+        metadata.mimePackage !== null &&
+        destination === join(SHARE_MIME_PACKAGES, `${settings.applicationId}.xml`)
+    ) {
+        return "MIME package";
+    }
+
+    return null;
+};
+
+const warnMetadataCollision = (
+    settings: DeploySettings,
+    metadata: StagedMetadata,
+    file: DeploySettings["extraFiles"][number],
+): void => {
+    const kind = generatedMetadataKind(settings, metadata, file.destination);
+
+    if (kind !== null) {
+        warn(
+            `extraFiles source "${file.source}" targeting "${file.destination}" is overridden by the ` +
+            `GTKX-generated ${kind}`,
+        );
+    }
+};
+
+const stageExtraFiles = (settings: DeploySettings, root: string, metadata: StagedMetadata): StagedFile[] =>
     settings.extraFiles.map((file) => {
         const source = resolve(settings.paths.root, file.source);
+        warnMetadataCollision(settings, metadata, file);
 
         return copyInto(root, file.destination, source, file.mode ?? executableModeFor(source));
     });
@@ -108,7 +147,7 @@ const stagePayload = ({ settings, node, metadata }: StageRequest): StagedFile[] 
         ...stageNodeBinary(settings, root, node),
         ...stageRuntimeFiles(settings, root),
         ...stageCatalogs(settings, root),
-        ...stageExtraFiles(settings, root),
+        ...stageExtraFiles(settings, root, metadata),
         ...stageMetadata(settings, root, metadata),
         ...stageIcons(settings, root),
         ...stageSchemas(settings, root),

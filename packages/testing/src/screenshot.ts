@@ -9,6 +9,7 @@ import { getConfig } from "./config.js";
 import { now } from "./timers.js";
 import { descendants } from "./traversal.js";
 import { waitFor } from "./wait-for.js";
+import { requireWidget } from "./widget-target.js";
 import { activeToplevel, mappedToplevels } from "./window-state.js";
 
 type FrameProbe = {
@@ -301,7 +302,8 @@ const captureUntilPaintable = (
  * @param options Optional scale, timeout, retry interval, and output path.
  * @returns The base64-encoded PNG data along with its mime type and dimensions.
  */
-const screenshot = async (widget: Gtk.Widget, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
+const screenshot = async (target: Gtk.Accessible, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
+    const widget = requireWidget(target);
     const scale = options?.scale ?? 1;
 
     if (!Number.isFinite(scale) || scale <= 0) {

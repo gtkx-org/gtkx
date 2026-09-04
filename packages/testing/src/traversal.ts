@@ -4,14 +4,14 @@ import * as Gtk from "@gtkx/gi/gtk";
  * A scope that resolves to a single root widget: the widget itself, the widget a controller or
  * layout manager is attached to, or a list item's or header's child.
  */
-type QueryContainer = Gtk.Widget | Gtk.EventController | Gtk.LayoutManager | Gtk.ListItem | Gtk.ListHeader;
+type QueryContainer = Gtk.Accessible | Gtk.EventController | Gtk.LayoutManager | Gtk.ListItem | Gtk.ListHeader;
 /**
  * A scope that queries and traversal can run against: a widget, an event
  * controller, a layout manager, a list item or header, an application, or the
  * sentinel representing all current toplevel windows.
  */
 type Container = QueryContainer | Gtk.Application | typeof TOPLEVELS;
-type WidgetClass<T extends Gtk.Widget> = abstract new (...args: never[]) => T;
+type WidgetClass<T extends object> = abstract new (...args: never[]) => T;
 
 /** Container sentinel that widens a query to every toplevel window currently open. */
 const TOPLEVELS: unique symbol = Symbol("gtkx.toplevels");
@@ -60,7 +60,7 @@ const ancestors = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
     }
 };
 
-const ancestorFor = <T extends Gtk.Widget>(widget: Gtk.Widget, type: WidgetClass<T>): T | null => {
+const ancestorFor = <T extends object>(widget: Gtk.Widget, type: WidgetClass<T>): T | null => {
     for (const ancestor of ancestors(widget)) {
         if (ancestor instanceof type) {
             return ancestor;
@@ -98,7 +98,7 @@ const resolveRoot = (container: QueryContainer): Gtk.Widget | null => {
         return container.getChild();
     }
 
-    return null;
+    throw new TypeError("Query container must resolve to a Gtk.Widget");
 };
 
 const roots = function* (container: Container): Generator<Gtk.Widget> {

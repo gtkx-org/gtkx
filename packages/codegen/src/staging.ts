@@ -1,12 +1,13 @@
 import { errorCode, resolveExecutable, sortStrings } from "@gtkx/utils";
 import { type ChildProcess, spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
     closeSync,
     constants,
     fstatSync,
     fsyncSync,
     ftruncateSync,
+    lstatSync,
     mkdirSync,
     mkdtempSync,
     openSync,
@@ -14,21 +15,23 @@ import {
     readFileSync,
     realpathSync,
     rmSync,
+    unlinkSync,
     writeSync,
 } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 const STAGING_SUFFIX = ".tmp-";
-const OWNER_PATTERN = /^(?<pid>\d+)-/;
+const OWNER_PATTERN = /^(?<pid>\d+)(?:-(?<identity>[a-f\d]{64}|unknown))?-/u;
 const LOCK_FILENAME = ".codegen.lock";
 const DEFAULT_LOCK_WAIT_TIMEOUT_MS = 600_000;
 const LOCK_WAIT_TIMEOUT_ENV = "GTKX_CODEGEN_LOCK_TIMEOUT_MS";
 const PROCESS_START_FIELD = 19;
 const BOOT_ID_PATH = "/proc/sys/kernel/random/boot_id";
 const LOCK_CHILD_FD = 3;
+const STOPPED_PROCESS_STATES: ReadonlySet<string> = new Set(["Z", "X", "x"]);
 
 type LockOwner = { createdAt: number; identity: string | null; pid: number; token: string };
-type StoreLock = LockOwner & { fd: number; path: string };
+type StoreLock = LockOwner & { lockFd: number; ownerFd: number; path: string };
 
 const readBootId = (): string | null => {
     try {
@@ -40,11 +43,7 @@ const readBootId = (): string | null => {
 
 const BOOT_ID = readBootId();
 
-const processIdentity = (pid: number): string | null => {
-    if (BOOT_ID === null) {
-        return null;
-    }
-
+const readProcessStat = (pid: number): { startTime: string; state: string } | null => {
     try {
         const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
         const commandEnd = stat.lastIndexOf(")");
@@ -54,17 +53,44 @@ const processIdentity = (pid: number): string | null => {
         }
 
         const fields = stat.slice(commandEnd + 2).trim().split(/\s+/u);
-        const startedAt = fields[PROCESS_START_FIELD];
+        const state = fields[0];
+        const startTime = fields[PROCESS_START_FIELD];
 
-        return startedAt === undefined ? null : `${BOOT_ID}:${startedAt}`;
+        return state === undefined || startTime === undefined ? null : { startTime, state };
     } catch {
         return null;
     }
 };
 
-const isOwnerRunning = (pid: number): boolean => {
+const processIdentity = (pid: number): string | null => {
+    if (BOOT_ID === null) {
+        return null;
+    }
+
+    const stat = readProcessStat(pid);
+
+    if (stat === null || STOPPED_PROCESS_STATES.has(stat.state)) {
+        return null;
+    }
+
+    return `${BOOT_ID}:${stat.startTime}`;
+};
+
+const processIdentityToken = (pid: number): string | null => {
+    const identity = processIdentity(pid);
+
+    return identity === null ? null : createHash("sha256").update(identity).digest("hex");
+};
+
+const isProcessRunning = (pid: number): boolean => {
     if (!Number.isSafeInteger(pid) || pid <= 0) {
         return false;
+    }
+
+    const stat = readProcessStat(pid);
+
+    if (stat !== null) {
+        return !STOPPED_PROCESS_STATES.has(stat.state);
     }
 
     try {
@@ -81,9 +107,15 @@ const isStranded = (entry: string, prefix: string): boolean => {
         return false;
     }
 
-    const owner = OWNER_PATTERN.exec(entry.slice(prefix.length))?.groups?.pid;
+    const owner = OWNER_PATTERN.exec(entry.slice(prefix.length))?.groups;
 
-    return owner === undefined || !isOwnerRunning(Number(owner));
+    if (owner?.pid === undefined || !isProcessRunning(Number(owner.pid))) {
+        return true;
+    }
+
+    return owner.identity !== undefined &&
+        owner.identity !== "unknown" &&
+        processIdentityToken(Number(owner.pid)) !== owner.identity;
 };
 
 const readEntries = (parentDir: string): string[] => {
@@ -118,7 +150,9 @@ const createStagingDir = (target: string): string => {
     mkdirSync(dirname(target), { recursive: true });
     sweepStagingDirs(target);
 
-    return mkdtempSync(`${target}${STAGING_SUFFIX}${String(process.pid)}-`);
+    const identity = processIdentityToken(process.pid) ?? "unknown";
+
+    return mkdtempSync(`${target}${STAGING_SUFFIX}${String(process.pid)}-${identity}-`);
 };
 
 const lockOwner = (): LockOwner => ({
@@ -168,7 +202,14 @@ const waitForLockHolder = (child: ChildProcess, root: string): Promise<void> => 
 };
 
 const openLockFile = (path: string): number => {
-    const fd = openSync(path, constants.O_CREAT | constants.O_RDWR | constants.O_NOFOLLOW, 0o600);
+    let fd: number;
+
+    try {
+        fd = openSync(path, constants.O_CREAT | constants.O_RDWR | constants.O_NOFOLLOW, 0o600);
+    } catch {
+        throw new Error(`Cannot use ${path} as a generated-store lock`);
+    }
+
     const stat = fstatSync(fd);
 
     if (stat.isFile() && stat.nlink === 1) {
@@ -188,25 +229,46 @@ const writeLockOwner = (fd: number, owner: LockOwner): void => {
 const acquireLock = async (root: string): Promise<StoreLock> => {
     const path = join(root, LOCK_FILENAME);
     const executable = resolveExecutable("flock");
-    const fd = openLockFile(path);
+    const lockFd = openSync(root, constants.O_RDONLY | constants.O_DIRECTORY);
+    let ownerFd: number | undefined;
 
     try {
         const child = spawn(executable, lockHolderArgs(), {
-            stdio: ["ignore", "ignore", "ignore", fd],
+            stdio: ["ignore", "ignore", "ignore", lockFd],
         });
         await waitForLockHolder(child, root);
+        ownerFd = openLockFile(path);
         const owner = lockOwner();
-        writeLockOwner(fd, owner);
+        writeLockOwner(ownerFd, owner);
 
-        return { ...owner, fd, path };
+        return { ...owner, lockFd, ownerFd, path };
     } catch (error) {
-        closeSync(fd);
+        if (ownerFd !== undefined) {
+            closeSync(ownerFd);
+        }
+
+        closeSync(lockFd);
         throw error;
     }
 };
 
+const removeOwnedLockFile = (lock: StoreLock): void => {
+    try {
+        const owner = fstatSync(lock.ownerFd);
+        const path = lstatSync(lock.path, { throwIfNoEntry: false });
+
+        if (path?.isFile() === true && path.dev === owner.dev && path.ino === owner.ino) {
+            unlinkSync(lock.path);
+        }
+    } catch {
+        return;
+    }
+};
+
 const releaseLock = (lock: StoreLock): void => {
-    closeSync(lock.fd);
+    removeOwnedLockFile(lock);
+    closeSync(lock.ownerFd);
+    closeSync(lock.lockFd);
 };
 
 const storeRoots = (targets: string[]): string[] => {
@@ -244,4 +306,4 @@ const acquireStoreLocks = async (targets: string[]): Promise<() => void> => {
     };
 };
 
-export { acquireStoreLocks, createStagingDir, sweepStagingDirs };
+export { acquireStoreLocks, createStagingDir, isProcessRunning, processIdentityToken, sweepStagingDirs };

@@ -153,9 +153,17 @@ const runSelectionEvent = (
         byRole(widget, valueArray);
     });
 
+const requireWidget = (target: Gtk.Accessible): Gtk.Widget => {
+    if (!(target instanceof Gtk.Widget)) {
+        throw new TypeError("Cannot select options on a non-widget accessible");
+    }
+
+    return target;
+};
+
 /** Selects positions without activating them. */
-const selectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
-    runSelectionEvent(widget, values, selectInListView, selectByRole);
+const selectOptions = (widget: Gtk.Accessible, values: number | number[]): Promise<void> =>
+    runSelectionEvent(requireWidget(widget), values, selectInListView, selectByRole);
 
 const deselectInListView = (widget: Gtk.ListView | Gtk.GridView | Gtk.ColumnView, valueArray: number[]): void => {
     const selectionModel = requireSelectionModel(widget, "deselect");
@@ -176,7 +184,7 @@ const deselectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
 };
 
 /** Unselects positions without activating them. */
-const deselectOptions = (widget: Gtk.Widget, values: number | number[]): Promise<void> =>
-    runSelectionEvent(widget, values, deselectInListView, deselectByRole);
+const deselectOptions = (widget: Gtk.Accessible, values: number | number[]): Promise<void> =>
+    runSelectionEvent(requireWidget(widget), values, deselectInListView, deselectByRole);
 
 export { selectOptions, deselectOptions };

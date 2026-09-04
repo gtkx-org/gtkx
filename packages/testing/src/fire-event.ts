@@ -7,11 +7,19 @@ import { runInAct } from "./act.js";
  */
 type WidgetEvent = {
     /** The GObject instance the signal is emitted on. */
-    target: GObject.Object;
+    target: Pick<GObject.Object, "__type__">;
     /** Name of the signal to emit. */
     signalName: string;
     /** Arguments passed to the signal handlers. */
     args: unknown[];
+};
+
+const requireObject = (target: object): GObject.Object => {
+    if (!(target instanceof GObject.Object)) {
+        throw new TypeError("Expected a GObject instance");
+    }
+
+    return target;
 };
 
 /**
@@ -23,17 +31,27 @@ type WidgetEvent = {
  * @param args Arguments to pass to the signal handlers.
  * @returns The recorded emission.
  */
-const createEvent = (target: GObject.Object, signalName: string, ...args: unknown[]): WidgetEvent => ({
-    target,
+const createEvent = (
+    target: Pick<GObject.Object, "__type__">,
+    signalName: string,
+    ...args: unknown[]
+): WidgetEvent => ({
+    target: requireObject(target),
     signalName,
     args,
 });
 
 const dispatchEvent = async (event: WidgetEvent): Promise<void> => {
+    const target = requireObject(event.target);
+
     await runInAct(() => {
-        Reflect.apply(GObject.signalEmit, undefined, [event.target, event.signalName, ...event.args]);
+        Reflect.apply(GObject.signalEmit, undefined, [target, event.signalName, ...event.args]);
     });
 };
+
+const isWidgetEvent = (value: object): value is WidgetEvent =>
+    "target" in value && "signalName" in value && "args" in value &&
+    typeof value.signalName === "string" && Array.isArray(value.args);
 
 /**
  * Emits a recorded signal emission inside React's act environment, so any resulting state updates are
@@ -50,14 +68,18 @@ function fireEvent(event: WidgetEvent): Promise<void>;
  * @param signalName Name of the signal to emit.
  * @param args Arguments passed to the signal handlers.
  */
-function fireEvent(target: GObject.Object, signalName: string, ...args: unknown[]): Promise<void>;
+function fireEvent(
+    target: Pick<GObject.Object, "__type__">,
+    signalName: string,
+    ...args: unknown[]
+): Promise<void>;
 
 function fireEvent(
-    eventOrTarget: WidgetEvent | GObject.Object,
+    eventOrTarget: WidgetEvent | Pick<GObject.Object, "__type__">,
     signalName?: string,
     ...args: unknown[]
 ): Promise<void> {
-    if (!(eventOrTarget instanceof GObject.Object)) {
+    if (signalName === undefined && isWidgetEvent(eventOrTarget)) {
         return dispatchEvent(eventOrTarget);
     }
 
@@ -65,7 +87,9 @@ function fireEvent(
         throw new Error("Unable to fire an event: pass a signal name, or an event built by createEvent.");
     }
 
-    return dispatchEvent(createEvent(eventOrTarget, signalName, ...args));
+    const target = requireObject(eventOrTarget);
+
+    return dispatchEvent({ target, signalName, args });
 }
 
 export { createEvent, fireEvent, type WidgetEvent };

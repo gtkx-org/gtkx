@@ -35,6 +35,7 @@ const REMEDY_FOR_RULE: Record<string, string> = {
     "metainfo-legacy-path": "this file is generated; report it as a gtkx bug",
     "summary-has-dot-suffix": "drop the trailing period from `deploy.summary`",
     "summary-too-long": "shorten `deploy.summary`",
+    "unknown-tag": "remove the unsupported `deploy.metainfoExtra` element or use a `<custom>` value",
     "url-homepage-missing": "set `deploy.homepage`, or `homepage` in package.json",
 };
 

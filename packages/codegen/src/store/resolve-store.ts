@@ -119,7 +119,8 @@ const findUnreachableConsumer = (projectRoot: string, nodeModules: string): Stor
 const unreachableConsumerMessage = (consumer: StoreConsumer, nodeModules: string): string =>
     `Cannot write the generated store to ${nodeModules}: ${consumer.name} is installed in ` +
     `${consumer.nodeModules}, above it, so that copy can never import the generated @gtkx/gi. Install every ` +
-    "@gtkx package in one node_modules, then run gtkx codegen again.";
+    "@gtkx package locally in one node_modules, or move the project outside the ancestor dependency tree, " +
+    "then run gtkx codegen again.";
 
 const checkConsumers = (projectRoot: string, nodeModules: string): void => {
     const consumer = findUnreachableConsumer(projectRoot, nodeModules);

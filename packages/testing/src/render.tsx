@@ -21,6 +21,7 @@ import { clearScreen, setScreen } from "./screen.js";
 import { captureScreen } from "./screenshot.js";
 import { type Container, roots, TOPLEVELS } from "./traversal.js";
 import { resetClipboard } from "./user-event/index.js";
+import { requireWidget } from "./widget-target.js";
 import { findPresentedWindowFailure, findRenderedWindowFailure, mappedToplevels } from "./window-state.js";
 import { within } from "./within.js";
 
@@ -123,6 +124,10 @@ const resolveContainer = (container: RenderOptions["container"]): ResolvedContai
 
     if (container instanceof Gtk.Widget) {
         return { containerInfo: container, window: null };
+    }
+
+    if (container !== undefined) {
+        requireWidget(container);
     }
 
     const window = createHarnessWindow();

@@ -1,4 +1,3 @@
-import type * as GObject from "@gtkx/gi/gobject";
 import {
     type AnyClass,
     getClassType,
@@ -172,7 +171,7 @@ const typeInfoFor = (name: string): TypeInfo => {
     return typeInfoCache.getOrInsertComputed(name, buildTypeInfo);
 };
 
-const getTypeInfo = (object: GObject.Object): TypeInfo | undefined => {
+const getTypeInfo = (object: object): TypeInfo | undefined => {
     const name = typeName(getClassType(object.constructor as AnyClass));
 
     return name === null ? undefined : typeInfoFor(name);
@@ -183,7 +182,7 @@ const hasProperty = (info: TypeInfo, accessor: string): boolean => Object.hasOwn
 const propertyNameFor = (info: TypeInfo, accessor: string): string | undefined =>
     info.properties[accessor]?.[NAME];
 
-const getPropertyName = (object: GObject.Object, accessor: string): string | undefined => {
+const getPropertyName = (object: object, accessor: string): string | undefined => {
     const info = getTypeInfo(object);
 
     return (info === undefined ? undefined : propertyNameFor(info, accessor)) ??

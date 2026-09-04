@@ -1,15 +1,14 @@
-import type * as GObject from "@gtkx/gi/gobject";
 import { offSignal, onSignal, type SignalHandler } from "@gtkx/runtime";
 import { useCallback, useRef, useSyncExternalStore } from "react";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 
-type ObjectValueCache<T extends GObject.Object, V> = {
+type ObjectValueCache<T extends object, V> = {
     object: T | null;
     signal: string;
     value: V;
 };
 
-function useObjectValue<T extends GObject.Object, V>(
+function useObjectValue<T extends object, V>(
     object: RefProp<T>,
     signal: string,
     read: (object: T | null) => V,

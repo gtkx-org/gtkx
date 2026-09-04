@@ -1,8 +1,19 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { delay } from "../timers.js";
+import { requireWidget } from "../widget-target.js";
 import { scroll, slide } from "./adjustment.js";
 import { click, dblClick, tripleClick } from "./click.js";
-import { drag, dragAndDrop, drop, hover, longPress, rotate, swipe, unhover, zoom } from "./gesture.js";
+import {
+    drag,
+    dragAndDrop,
+    drop,
+    hover,
+    longPress,
+    rotate,
+    swipe,
+    unhover,
+    zoom,
+} from "./gesture.js";
 import { keyboard, tab } from "./keyboard.js";
 import { pointer, type PointerInput } from "./pointer.js";
 import { deselectOptions, selectOptions } from "./selection.js";
@@ -20,54 +31,125 @@ type UserEvent = {
     /** Creates an instance with shared keyboard and pointer state. */
     setup: (options?: UserEventOptions) => UserEvent;
     /** Activates or presses and releases a widget. */
-    click: typeof click;
+    click: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof click> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Delivers a double-click gesture. */
-    dblClick: typeof dblClick;
+    dblClick: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof dblClick> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Delivers a triple-click gesture. */
-    tripleClick: typeof tripleClick;
+    tripleClick: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof tripleClick> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Moves focus forward or backward within the root. */
-    tab: typeof tab;
+    tab: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof tab> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Types into an editable widget. */
-    type: typeof type;
+    type: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof type> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Deletes all text from an editable widget. */
-    clear: typeof clear;
+    clear: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof clear> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Copies the current selection. */
-    copy: typeof copy;
+    copy: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof copy> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Cuts the current selection. */
-    cut: typeof cut;
+    cut: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof cut> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Pastes text or clipboard contents. */
-    paste: typeof paste;
+    paste: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof paste> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Selects positions without activating them. */
     selectOptions: typeof selectOptions;
     /** Unselects positions without activating them. */
     deselectOptions: typeof deselectOptions;
     /** Emits a motion `enter` on the widget, adding a motion controller when it has none. */
-    hover: typeof hover;
+    hover: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof hover> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Emits a motion `leave` on the widget, adding a motion controller when it has none. */
-    unhover: typeof unhover;
+    unhover: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof unhover> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Emits `angle-changed` on the widget's rotate gestures. */
-    rotate: typeof rotate;
+    rotate: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof rotate> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Emits `scale-changed` on the widget's zoom gestures. */
-    zoom: typeof zoom;
+    zoom: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof zoom> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Emits `swipe` with the given velocity on the widget's swipe gestures. */
-    swipe: typeof swipe;
+    swipe: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof swipe> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Emits `pressed` at the given point on the widget's long-press gestures. */
-    longPress: typeof longPress;
+    longPress: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof longPress> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Runs a begin, update, and end sequence on the widget's drag gestures, ending at the given offset. */
-    drag: typeof drag;
+    drag: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof drag> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Emits `drop` with the given content on the widget's drop targets. */
-    drop: typeof drop;
+    drop: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof drop> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Requires a drag source on the source widget, then emits `drop` with the content on the target's drop targets. */
-    dragAndDrop: typeof dragAndDrop;
+    dragAndDrop: (
+        source: Gtk.Accessible,
+        target: Gtk.Accessible,
+        ...args: Parameters<typeof dragAndDrop> extends [Gtk.Widget, Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Emits a jump `change-value` on a Gtk.Range so it moves to the given value. */
-    slide: typeof slide;
+    slide: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof slide> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Adds the delta to the adjustments of the widget itself, or of its nearest scrollable ancestor. */
-    scroll: typeof scroll;
+    scroll: (
+        widget: Gtk.Accessible,
+        ...args: Parameters<typeof scroll> extends [Gtk.Widget, ...infer Args] ? Args : never
+    ) => Promise<void>;
     /** Sends a key sequence through GTK's propagation chain. */
-    keyboard: (widget: Gtk.Widget, input: string) => Promise<void>;
+    keyboard: (widget: Gtk.Accessible, input: string) => Promise<void>;
     /** Applies a pointer token while preserving held-button state. */
-    pointer: (widget: Gtk.Widget, input: PointerInput) => Promise<void>;
+    pointer: (widget: Gtk.Accessible, input: PointerInput) => Promise<void>;
 };
+
+const onWidget =
+    <Args extends unknown[]>(helper: (widget: Gtk.Widget, ...args: Args) => Promise<void>) =>
+        (target: Gtk.Accessible, ...args: Args): Promise<void> =>
+            helper(requireWidget(target), ...args);
+
+const onWidgetPair =
+    <Args extends unknown[]>(helper: (source: Gtk.Widget, target: Gtk.Widget, ...args: Args) => Promise<void>) =>
+        (source: Gtk.Accessible, target: Gtk.Accessible, ...args: Args): Promise<void> =>
+            helper(requireWidget(source), requireWidget(target), ...args);
 
 /** User interactions that dispatch GTK events and gestures. */
 const userEvent: UserEvent = {
@@ -93,30 +175,34 @@ function createInstance(state: UserEventState, options: UserEventOptions): UserE
 
     return {
         setup: (overrides?: UserEventOptions): UserEvent => createInstance(state, { ...options, ...overrides }),
-        click: after(click),
-        dblClick: after(dblClick),
-        tripleClick: after(tripleClick),
-        tab: after(tab),
-        type: after(type),
-        clear: after(clear),
-        copy: after(copy),
-        cut: after(cut),
-        paste: after(paste),
-        selectOptions: after(selectOptions),
-        deselectOptions: after(deselectOptions),
-        hover: after(hover),
-        unhover: after(unhover),
-        rotate: after(rotate),
-        zoom: after(zoom),
-        swipe: after(swipe),
-        longPress: after(longPress),
-        drag: after(drag),
-        drop: after(drop),
-        dragAndDrop: after(dragAndDrop),
-        slide: after(slide),
-        scroll: after(scroll),
-        keyboard: after((widget: Gtk.Widget, input: string): Promise<void> => keyboard(state, widget, input)),
-        pointer: after((widget: Gtk.Widget, input: PointerInput): Promise<void> => pointer(state, widget, input)),
+        click: after(onWidget(click)),
+        dblClick: after(onWidget(dblClick)),
+        tripleClick: after(onWidget(tripleClick)),
+        tab: after(onWidget(tab)),
+        type: after(onWidget(type)),
+        clear: after(onWidget(clear)),
+        copy: after(onWidget(copy)),
+        cut: after(onWidget(cut)),
+        paste: after(onWidget(paste)),
+        selectOptions: after(onWidget(selectOptions)),
+        deselectOptions: after(onWidget(deselectOptions)),
+        hover: after(onWidget(hover)),
+        unhover: after(onWidget(unhover)),
+        rotate: after(onWidget(rotate)),
+        zoom: after(onWidget(zoom)),
+        swipe: after(onWidget(swipe)),
+        longPress: after(onWidget(longPress)),
+        drag: after(onWidget(drag)),
+        drop: after(onWidget(drop)),
+        dragAndDrop: after(onWidgetPair(dragAndDrop)),
+        slide: after(onWidget(slide)),
+        scroll: after(onWidget(scroll)),
+        keyboard: after(
+            onWidget((widget: Gtk.Widget, input: string): Promise<void> => keyboard(state, widget, input)),
+        ),
+        pointer: after(
+            onWidget((widget: Gtk.Widget, input: PointerInput): Promise<void> => pointer(state, widget, input)),
+        ),
     };
 }
 

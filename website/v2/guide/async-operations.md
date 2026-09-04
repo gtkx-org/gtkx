@@ -17,6 +17,53 @@ A failed call rejects, so a leading success boolean is omitted when it would alw
 
 The conversion depends on what the library marks as introspectable, not only on an `Async` suffix. In the current GIO GIR, `Gio.File.measureDiskUsageAsync` is not introspectable and is therefore absent, while `copyAsync` and `moveAsync` remain closure-style methods that return `void`. Their synchronous counterparts can block the GTK thread for an unbounded time. Check the generated signature before putting file work on the UI path; use Node filesystem work in a worker or a child process when GIO offers no promise form.
 
+### Callback-only methods and external finish owners
+
+An async method also stays callback-based when its GIR metadata points at a finish function on another class.
+GTKX cannot supply that other instance as the finish function's `this`, so the generated declaration names the
+external owner and completion method instead of inventing a promise with the wrong receiver. Wrap the callback
+at the application boundary and bind the finish function to the instance that owns it:
+
+```ts
+import type * as Gio from "@gtkx/gi/gio";
+
+const finishAsPromise = <T>(
+    start: (callback: Gio.AsyncReadyCallback) => void,
+    finish: (result: Gio.AsyncResult) => T,
+): Promise<T> =>
+    new Promise((resolve, reject) => {
+        start((_source, result) => {
+            try {
+                resolve(finish(result));
+            } catch (error) {
+                reject(error);
+            }
+        });
+    });
+```
+
+For example, `Pk.PackageSack.getDetailsAsync`, `getUpdateDetailAsync`, and `resolveAsync` are callback-only.
+PackageKit exposes `mergeGenericFinish` on the sack for the result of those merge operations:
+
+```ts
+import type * as Gio from "@gtkx/gi/gio";
+import type * as Pk from "@gtkx/gi/packagekitglib";
+
+const getDetails = (
+    sack: Pk.PackageSack,
+    cancellable: Gio.Cancellable | null,
+    progress: Pk.ProgressCallback,
+): Promise<boolean> =>
+    finishAsPromise(
+        (callback) => sack.getDetailsAsync(cancellable, progress, callback),
+        (result) => sack.mergeGenericFinish(result),
+    );
+```
+
+When the generated note names an external method such as `Pk.Client.genericFinish`, pass a bound call such as
+`(result) => client.genericFinish(result)` as `finish`. Keep the callback form when the API gives you no
+instance of the named owner; constructing an unrelated receiver does not make it the owner of that result.
+
 ## Awaiting async operations
 
 GTK4 reports a dismissed dialog as an error rather than as a return value, so a `catch` matching `Gtk.DialogError.DISMISSED` returns quietly:

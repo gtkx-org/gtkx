@@ -12,7 +12,6 @@ import {
     shadowedInstanceMemberName,
 } from "../../analysis/inheritance.js";
 import {
-    areCallablesAssignable,
     type ClaimedMembers,
     claimInterfaceMembers,
     inheritedMembers,
@@ -32,7 +31,6 @@ import {
     type InstanceScope,
     instanceScope,
     renderClassInstanceMember,
-    renderInstanceMethodOverload,
     renderStaticHead,
     staticMembers,
 } from "./callables.js";
@@ -84,14 +82,6 @@ type AppendInstanceMethodsOptions = {
     scope: InstanceScope;
     members: string[];
     claimedNames: Set<string>;
-    collisions: Set<string>;
-};
-
-type RenderInstanceMethodOptions = {
-    context: ModuleContext;
-    callable: GirFunction;
-    scope: InstanceScope;
-    collisions: Set<string>;
 };
 
 type ClassDeclarationOptions = {
@@ -248,15 +238,12 @@ const renderClassMembers = (
     const claimedNames: Set<string> = new Set();
     members.push(...renderStaticHead(context, callables, className));
     const scope = instanceScope(className, callables);
-    const collisions = instanceMethodCollisions(context, klass, callables.methods);
-
     appendInstanceMethods({
         context,
         methods: callables.methods,
         scope,
         members,
         claimedNames,
-        collisions,
     });
 
     members.push(...renderVfuncMembers({ context, klass, mode: "implementation" }));
@@ -285,25 +272,11 @@ const renderClassMembers = (
     return { members };
 };
 
-const renderInstanceMethodBlock = (options: RenderInstanceMethodOptions): string | undefined => {
-    const { context, callable, scope, collisions } = options;
-    const block = renderClassInstanceMember(context, callable, scope);
-
-    if (block === undefined || !collisions.has(methodExportName(callable))) {
-        return block;
-    }
-
-    const name = methodExportName(callable);
-    const overload = renderInstanceMethodOverload(context, callable, scope);
-
-    return overload === undefined ? block : `${name}(this: never, ...args: never[]): any;\n${overload}\n${block}`;
-};
-
 const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
-    const { context, methods, scope, members, claimedNames, collisions } = options;
+    const { context, methods, scope, members, claimedNames } = options;
 
     for (const callable of methods) {
-        const block = renderInstanceMethodBlock({ context, callable, scope, collisions });
+        const block = renderClassInstanceMember(context, callable, scope);
 
         if (block === undefined) {
             continue;
@@ -526,12 +499,8 @@ const inheritedStatics = (context: ModuleContext, klass: GirClass): Map<string, 
 const shadowedStaticNames = (context: ModuleContext, klass: GirClass, callables: Callables): string[] => {
     const inherited = inheritedStatics(context, klass);
 
-    const conflicts = staticMembers(context, callables)
-        .filter((member) => {
-            const shadowed = inherited.get(member.name);
-
-            return shadowed !== undefined && !areCallablesAssignable(context.library, member.callable, shadowed);
-        })
+    const shadowed = staticMembers(context, callables)
+        .filter((member) => inherited.has(member.name))
         .map((member) => member.name);
 
     const constructorAliases = callables.constructors
@@ -543,7 +512,7 @@ const shadowedStaticNames = (context: ModuleContext, klass: GirClass, callables:
         .filter((callable) => declaredFunctionName(callable) !== callable.name)
         .map((callable) => memberName(declaredFunctionName(callable)));
 
-    return [...new Set([...conflicts, ...constructorAliases, ...functionAliases])];
+    return [...new Set([...shadowed, ...constructorAliases, ...functionAliases])];
 };
 
 const renderExtendsClause = (options: ExtendsClauseOptions): string => {
@@ -554,17 +523,32 @@ const renderExtendsClause = (options: ExtendsClauseOptions): string => {
     }
 
     const staticNames = shadowedStaticNames(context, klass, callables);
+    const instanceNames = [...instanceMethodCollisions(context, klass, callables.methods)];
 
-    if (staticNames.length === 0) {
+    if (staticNames.length === 0 && instanceNames.length === 0) {
         return ` extends ${parentExpression}`;
     }
 
-    let baseType = `typeof ${parentExpression}`;
+    const parentBase = staticNames.length === 0
+        ? parentExpression
+        : `(${parentExpression} as ${context.addRuntimeTypeImport("StaticBase")}<` +
+            `typeof ${parentExpression}, ${omittedKeys(staticNames)}>)`;
 
-    context.addRuntimeTypeImport("StaticBase");
-    baseType = `StaticBase<${baseType}, ${omittedKeys(staticNames)}>`;
+    if (instanceNames.length === 0) {
+        return ` extends ${parentBase}`;
+    }
 
-    return ` extends (${parentExpression} as ${baseType})`;
+    const className = sanitizeTypeIdentifier(klass.name);
+    const bridgeName = `${localClassName(className)}$InstanceBase`;
+    const bridgeMembers = instanceNames.map((name) => `${name}(this: never, ...args: never[]): any;`);
+
+    context.module.appendDeclaration({
+        name: bridgeName,
+        code: `declare abstract class ${bridgeName} extends ${parentBase} {\n${indentMembers(bridgeMembers)}\n}`,
+        isLocal: true,
+    });
+
+    return ` extends (${parentExpression} as typeof ${bridgeName})`;
 };
 
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {

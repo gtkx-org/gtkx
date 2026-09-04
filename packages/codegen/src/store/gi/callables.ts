@@ -83,11 +83,6 @@ const renderInstanceMethodSignature: InstanceMemberRenderer = instanceMemberRend
         `${memberDoc(context, callable, finishFn)}${memberSignatureText(context, callable, name, { finishFn })};`,
 );
 
-const renderInstanceMethodOverload: InstanceMemberRenderer = instanceMemberRenderer(
-    (context, callable, { name, finishFn }) =>
-        `${memberDoc(context, callable, finishFn)}${memberSignatureText(context, callable, name, { finishFn })};`,
-);
-
 const renderClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer(
     (context, callable, { name, finishFn }, scope) =>
         finishFn === undefined
@@ -211,10 +206,15 @@ const renderCallableMember = (
     const signature = renderMethodSignature(context, callable);
     const returnType = options.returnTypeOverride ?? renderMethodReturnType(context, callable);
 
-    const body = renderMethodBody(context, callable, {
+    const methodBody = renderMethodBody(context, callable, {
         bindingExpression: toCamelIdentifier(cIdentifier),
         returnTypeOverride: options.returnTypeOverride,
     });
+    const body = cIdentifier === "g_object_newv"
+        ? "if (!Array.isArray(parameters)) {\n" +
+        "    throw new TypeError(`Use ${this.name}.new(...)`);\n" +
+        `}\n${methodBody}`
+        : methodBody;
 
     const prefix = options.isStatic ? "static " : "";
     const header = `${prefix}${name}(${signature}): ${returnType}`;
@@ -533,7 +533,6 @@ const renderPlainTypeMembers = (
 
 export {
     renderInstanceMethodSignature,
-    renderInstanceMethodOverload,
     renderClassInstanceMember,
     instanceMemberSpec,
     instanceScope,

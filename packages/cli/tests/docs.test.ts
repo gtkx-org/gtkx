@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
     type CliProject,
@@ -19,10 +20,28 @@ const ELEMENT_PAGE = `${NAMESPACE_PREFIX}button.md`;
 const COLLIDING_PROPERTY_PAGE = `${NAMESPACE_PREFIX}map-list-model.md`;
 const NAMESPACE_INDEX = `${NAMESPACE_PREFIX}index.md`;
 const STATIC_ELEMENT_PAGE = "giounix/desktop-app-info.md";
+const OWNERSHIP_PAGE = "soup/message.md";
+const AUTH_PAGE = "soup/auth.md";
+const SOCKET_LISTENER_PAGE = "gio/socket-listener.md";
+const RESOLVER_PAGE = "gio/resolver.md";
+const COOKIE_JAR_PAGE = "soup/cookie-jar.md";
+const SOCKET_PAGE = "gio/socket.md";
+const PANGO_LAYOUT_PAGE = "pango/layout.md";
+const GOBJECT_PAGE = "gobject/object.md";
+const ICON_VIEW_PAGE = "gtk/icon-view.md";
+const TREE_SELECTION_PAGE = "gtk/tree-selection.md";
+const DBUS_INVOCATION_PAGE = "gio/d-bus-method-invocation.md";
+const FILE_ENUMERATOR_PAGE = "gio/file-enumerator.md";
+const WINDOW_PAGE = "gtk/window.md";
+const DBUS_CONNECTION_PAGE = "gio/d-bus-connection.md";
+const PIXBUF_PAGE = "gdkpixbuf/pixbuf.md";
 const SIDEBAR_PAGE = "adw/sidebar.md";
 const APPLICATION_PAGE = "adw/application.md";
+const DOCUMENTED_PAGE = "documented/note.md";
 const REFERENCE_LIBRARIES = [...STORE_LIBRARIES, "GioUnix-2.0"];
 const REJECTED_OUT_DIRS = ["", ".", "..", "../sibling", "docs/../..", "/elsewhere/docs"];
+const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
+const PACKAGEKIT_SEARCH_TEXT = 'free text to search for, for instance, "power"';
 
 const config = (body = "", libraries = STORE_LIBRARIES): string =>
     `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(libraries)}` +
@@ -80,6 +99,88 @@ describe("gtkx docs", () => {
         expect(staticElement).toContain(
             "search(searchString: string): string[][]",
         );
+        expect(staticElement).toContain(
+            "new(desktopId: string): GioUnix.DesktopAppInfo | null",
+        );
+        expect(staticElement).toContain(
+            "newFromFilename(filename: string): GioUnix.DesktopAppInfo | null",
+        );
+        expect(staticElement).toContain(
+            "newFromKeyfile(keyFile: GLib.KeyFile): GioUnix.DesktopAppInfo | null",
+        );
+        expect(staticElement).toContain("list of strvs.");
+        expect(staticElement).not.toContain("GLib.strfreev()");
+        expect(staticElement).not.toContain("GLib.free()");
+        const ownershipPage = readPage(state.project, OWNERSHIP_PAGE);
+        expect(ownershipPage).not.toContain("GLib.free()");
+        expect(ownershipPage).toContain("See also `formEncode()`");
+        const authPage = readPage(state.project, AUTH_PAGE);
+        expect(authPage).toContain('the "Authorization" header.');
+        expect(authPage).not.toContain("which must be freed");
+        const socketListenerPage = readPage(state.project, SOCKET_LISTENER_PAGE);
+        expect(socketListenerPage).toContain('requesting a binding to port 0 (ie: "any port").');
+        expect(socketListenerPage).toContain("stop listening");
+        expect(socketListenerPage).not.toContain("belongs to the caller and must be freed");
+        const resolverPage = readPage(state.project, RESOLVER_PAGE);
+        expect(resolverPage).toContain("many threads it should allocate for concurrent DNS resolutions");
+        expect(resolverPage).toContain("a non-empty `GList` of");
+        expect(resolverPage).not.toContain("You should unref");
+        expect(resolverPage).not.toContain("You must free");
+        expect(resolverPage).not.toContain("g_resolver_free_addresses");
+        expect(resolverPage).not.toContain("g_resolver_free_targets");
+        const cookieJarPage = readPage(state.project, COOKIE_JAR_PAGE);
+        expect(cookieJarPage).toContain("The cookies in the list are a copy of the original.");
+        expect(cookieJarPage).toContain("For historical reasons this list is in reverse order.");
+        expect(cookieJarPage).not.toContain("have to free");
+        const socketPage = readPage(state.project, SOCKET_PAGE);
+        expect(socketPage).toContain("source address of the received packet");
+        expect(socketPage).toContain("Pass `-1` to `timeout_us` to block indefinitely");
+        expect(socketPage).not.toContain("owned by the caller");
+        const pangoLayoutPage = readPage(state.project, PANGO_LAYOUT_PAGE);
+        expect(pangoLayoutPage).toContain("`tabs` is copied into the layout.");
+        expect(pangoLayoutPage).toContain("tabs and justification conflict with each other");
+        expect(pangoLayoutPage).not.toContain("you must free your copy");
+        const gobjectPage = readPage(state.project, GOBJECT_PAGE);
+        expect(gobjectPage).toContain("a copy is made of the property contents");
+        expect(gobjectPage).not.toContain("responsible for freeing the memory");
+        const iconViewPage = readPage(state.project, ICON_VIEW_PAGE);
+        expect(iconViewPage).toContain("convert the returned list into a list of `GtkTreeRowReferences`");
+        expect(iconViewPage).not.toContain("g_list_free_full");
+        const treeSelectionPage = readPage(state.project, TREE_SELECTION_PAGE);
+        expect(treeSelectionPage).toContain("convert the returned list into a list of `GtkTreeRowReference`s");
+        expect(treeSelectionPage).not.toContain("g_list_free_full");
+        const dbusInvocationPage = readPage(state.project, DBUS_INVOCATION_PAGE);
+        expect(dbusInvocationPage).toContain("g_dbus_method_invocation_return_value");
+        expect(dbusInvocationPage).not.toContain("Do not free @invocation");
+        const fileEnumeratorPage = readPage(state.project, FILE_ENUMERATOR_PAGE);
+        expect(fileEnumeratorPage).toContain(
+            'a `false` return from\n`g_file_enumerator_iterate()` *always* means\n"error"',
+        );
+        expect(fileEnumeratorPage).not.toContain("do not unref it");
+        expect(fileEnumeratorPage).not.toContain("g_object_unref (direnum)");
+        const windowPage = readPage(state.project, WINDOW_PAGE);
+        expect(windowPage).toContain("The widgets in the list are not individually referenced.");
+        expect(windowPage).not.toContain(
+            [
+                "If you want to iterate through the list and perform actions",
+                "involving callbacks that might destroy the widgets.",
+            ].join("\n"),
+        );
+        expect(windowPage).not.toContain("g_list_foreach");
+        expect(windowPage).not.toContain("To delete a `GtkWindow`.");
+        const dbusConnectionPage = readPage(state.project, DBUS_CONNECTION_PAGE);
+        expect(dbusConnectionPage).toContain(
+            "race\ncondition where it is possible that the filter will be running even\nafter calling",
+        );
+        expect(dbusConnectionPage).not.toContain("user_data_free_func");
+        expect(dbusConnectionPage).not.toContain("`GDestroyNotify`");
+        expect(dbusConnectionPage).not.toContain("free data that the filter might be using");
+        expect(dbusConnectionPage).not.toContain("\n".repeat(3));
+        const pixbufPage = readPage(state.project, PIXBUF_PAGE);
+        expect(pixbufPage).toContain(
+            "Since you are providing a pre-allocated pixel buffer, you must also\nspecify a way to free that data.",
+        );
+        expect(pixbufPage).toContain("your destroy notification function will be called");
         const sidebar = readPage(state.project, SIDEBAR_PAGE);
         expect(sidebar).toContain("This remains a React `ReactNode` slot");
         expect(sidebar).toContain(
@@ -114,6 +215,18 @@ describe("gtkx docs (directories it refuses to write to)", () => {
     it.each(REJECTED_OUT_DIRS)("fails over an out directory of %j", (out) => {
         expect(runCli(state.project, ["docs", "--out", out]).status).not.toBe(0);
         expect(existsSync(join(state.project.root, "docs"))).toBe(false);
+    });
+});
+
+describe("gtkx docs (ordinary prose that starts with free)", () => {
+    it("preserves the PackageKit search parameter description", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-docs-free-text-",
+            config: config(`, girPath: [${JSON.stringify(FIXTURE_GIR)}]`, ["Documented-1.0"]),
+        });
+
+        expect(runDocs(project)).toBe(0);
+        expect(readPage(project, DOCUMENTED_PAGE)).toContain(PACKAGEKIT_SEARCH_TEXT);
     });
 });
 

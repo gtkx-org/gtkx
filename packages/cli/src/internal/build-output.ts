@@ -53,27 +53,85 @@ const isReusableBuildDirectory = (path: string): boolean => {
     return stats.isDirectory() && (readdirSync(path).length === 0 || isGtkxBuildDirectory(path));
 };
 
-const buildOutputError = (root: string): Error =>
-    new Error(`Build output must be an empty directory or an earlier GTKX build below the project root ${root}`);
+const outputName = (root: string, path: string): string => relative(root, path) || ".";
 
-const hasGtkxBuildAncestor = (root: string, outDir: string): boolean => {
+const gtkxBuildAncestor = (root: string, outDir: string): string | null => {
     let ancestor = dirname(outDir);
 
     while (isPathInside(root, ancestor)) {
         if (isGtkxBuildDirectory(ancestor)) {
-            return true;
+            return ancestor;
         }
 
         ancestor = dirname(ancestor);
     }
 
-    return false;
+    return null;
+};
+
+const childDirectories = (parent: string): string[] =>
+    readdirSync(parent, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => join(parent, entry.name));
+
+const gtkxBuildDescendant = (root: string): string | null => {
+    const pending = childDirectories(root);
+
+    while (pending.length > 0) {
+        const path = pending.pop();
+
+        if (path === undefined) {
+            return null;
+        }
+
+        if (isGtkxBuildDirectory(path)) {
+            return path;
+        }
+
+        pending.push(...childDirectories(path));
+    }
+
+    return null;
 };
 
 const assertSafeBuildLocation = (root: string, outDir: string): void => {
-    if (!isPathInside(root, outDir) || hasSymlinkComponent(root, outDir) || hasGtkxBuildAncestor(root, outDir)) {
-        throw buildOutputError(root);
+    if (!isPathInside(root, outDir)) {
+        throw new Error(`Build output ${outDir} must be below the project root ${root}`);
     }
+
+    if (hasSymlinkComponent(root, outDir)) {
+        throw new Error(`Build output ${outputName(root, outDir)} passes through a symbolic link`);
+    }
+
+    const ancestor = gtkxBuildAncestor(root, outDir);
+
+    if (ancestor !== null) {
+        throw new Error(
+            `Build output ${outputName(root, outDir)} is nested inside the earlier GTKX build ` +
+            outputName(root, ancestor),
+        );
+    }
+};
+
+const nonReusableBuildOutputError = (root: string, outDir: string): Error => {
+    const stats = lstatSync(outDir, { throwIfNoEntry: false });
+
+    if (stats?.isDirectory() !== true) {
+        return new Error(`Build output ${outputName(root, outDir)} exists and is not a directory`);
+    }
+
+    const descendant = gtkxBuildDescendant(outDir);
+
+    if (descendant !== null) {
+        return new Error(
+            `Build output ${outputName(root, outDir)} contains the earlier GTKX build ` +
+            outputName(root, descendant),
+        );
+    }
+
+    return new Error(
+        `Build output ${outputName(root, outDir)} is nonempty and is not an earlier GTKX build`,
+    );
 };
 
 const resolveBuildOutDir = (root: string, configured?: string): string => {
@@ -83,7 +141,7 @@ const resolveBuildOutDir = (root: string, configured?: string): string => {
     assertSafeBuildLocation(root, outDir);
 
     if (!isReusableBuildDirectory(outDir)) {
-        throw buildOutputError(root);
+        throw nonReusableBuildOutputError(root, outDir);
     }
 
     return outDir;
@@ -94,7 +152,7 @@ const prepareBuildOutDir = (root: string, outDir: string): PreparedBuildOutDir =
     const prepared = prepareOutputDirectory(root, outDir, isReusableBuildDirectory);
 
     if (prepared.status === "unsafe") {
-        throw buildOutputError(root);
+        throw new Error(`Build output ${outputName(root, outDir)} became unsafe while preparing it`);
     }
 
     const transaction: OutputDirectoryTransaction = prepared.transaction;

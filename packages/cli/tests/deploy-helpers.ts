@@ -186,7 +186,7 @@ const BAD_MODE = `        extraFiles: {
 const MINIMUM_OVERRIDES = `        minimumLibraryVersions: { "Gtk-4.0": "4.14" },
 `;
 
-const FOREIGN_INVENTORY = `${JSON.stringify({ libraries: ["Adw-1"], versions: [] }, null, 2)}\n`;
+const FOREIGN_INVENTORY = `${JSON.stringify({ libraries: ["Adw-1", 1] }, null, 2)}\n`;
 const DEPLOY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${EXTRA_FILES}${PERMISSIONS}    },\n`;
 const LOCALIZED_DEPLOY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${LOCALIZATION_PAYLOAD}    },\n`;
 const MINIMUMS_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${MINIMUM_OVERRIDES}    },\n`;

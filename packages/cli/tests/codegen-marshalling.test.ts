@@ -470,6 +470,8 @@ describe("gtkx codegen marshalling", () => {
             declarations: [
                 "runAsync(): Promise<[string, number]>",
                 "probeAsync(): Promise<boolean>",
+                "Callback-based: the finish function belongs to `AsyncPair.Client`; complete it with " +
+                "`AsyncPair.Client.genericFinish`.",
             ],
             bindings: [
                 "promisify(asyncPairJobRunAsync, trimFinish(this.runFinish.bind(this))",
@@ -572,6 +574,10 @@ process.stdout.write(typeof DBusProxy.newForBusSync);`;
                 typecheckProject(project, file);
             }).toThrow();
         }
+
+        const source = `import * as Gio from "@gtkx/gi/gio";
+Gio.Subprocess.newv(["/usr/bin/true"], Gio.SubprocessFlags.NONE);`;
+        expect(() => evaluateProject(project, source)).toThrow();
     });
 
     it("rejects direct construction for objects that require initialization", () => {

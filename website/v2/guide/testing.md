@@ -48,7 +48,6 @@ Every worker gets a private session bus, not a bridge to the user's desktop bus.
 
 ```ts
 import * as Gio from "@gtkx/gi/gio";
-import * as GLib from "@gtkx/gi/glib";
 import { fromVariant, toVariant } from "@gtkx/runtime";
 import { expect, it } from "vitest";
 
@@ -68,9 +67,17 @@ it("calls the fake service on the private bus", async () => {
 
     if (uniqueName === null || info === null) throw new Error("D-Bus setup failed");
 
-    const handleCall = (...args: unknown[]): void => {
-        const [input] = fromVariant("(s)", args[5] as GLib.Variant);
-        (args[6] as Gio.DBusMethodInvocation).returnValue(toVariant("(s)", [`reply:${input}`]));
+    const handleCall: Gio.DBusInterfaceMethodCallFunc = (
+        _connection,
+        _sender,
+        _objectPath,
+        _calledInterface,
+        _methodName,
+        parameters,
+        invocation,
+    ) => {
+        const [input] = fromVariant("(s)", parameters);
+        invocation.returnValue(toVariant("(s)", [`reply:${input}`]));
     };
     const registrationId = connection.registerObjectWithClosures2(path, info, handleCall, null, null);
 
@@ -118,6 +125,8 @@ import { rootElement } from "@gtkx/react";
 
 await render(<App />, { container: rootElement });
 ```
+
+`rootElement` does not create a harness or parent loose widgets. Use it only when the rendered tree creates a top-level window, normally through an application component. Omit `container` for ordinary widgets and fragments; a fragment of bare widgets rendered into `rootElement` has no root widget and `render` throws.
 
 Queries search every open toplevel, so dialogs and popovers are findable, and animations are disabled unless `areAnimationsEnabled: true` is passed. `wrapper` mounts a context provider around the element; the remaining options are in the [`render` reference](/v2/reference/@gtkx/testing/).
 

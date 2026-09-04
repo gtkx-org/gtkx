@@ -57,18 +57,20 @@ const readObjectProperty = (widget: Gtk.Widget, property: string): string | null
  * @param options Text matching options.
  * @returns Every matching widget, or an empty array when none match.
  */
-function queryAllByObjectProperty(
+function queryAllByObjectProperty<T extends Gtk.Accessible = Gtk.Widget>(
     property: string,
     container: Container,
     text: Matcher,
-    options?: MatcherOptions,
-): Gtk.Widget[] {
-    return findAll(
+    options?: MatcherOptions<T>,
+): T[] {
+    const matches = findAll(
         container,
         (widget) =>
             isMatchingWidgetType(widget, options) &&
             isTextMatch(readObjectProperty(widget, property), text, widget, options),
     );
+
+    return matches.filter((widget): widget is Gtk.Widget & T => isMatchingWidgetType(widget, options));
 }
 
 /**
@@ -82,12 +84,12 @@ function queryAllByObjectProperty(
  * @returns The matching widget, or null when none match.
  * @throws When more than one widget matches.
  */
-function queryByObjectProperty(
+function queryByObjectProperty<T extends Gtk.Accessible = Gtk.Widget>(
     property: string,
     container: Container,
     text: Matcher,
-    options?: MatcherOptions,
-): Gtk.Widget | null {
+    options?: MatcherOptions<T>,
+): T | null {
     const matches = queryAllByObjectProperty(property, container, text, options);
 
     if (matches.length > 1) {

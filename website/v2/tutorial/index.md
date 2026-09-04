@@ -55,11 +55,11 @@ Answer the prompts like this:
 ◇  Project directory
 │  tasks
 │
-◇  Application ID
-│  com.gtkx.tutorial
-│
 ◇  Display name
 │  Tasks
+│
+◇  Application ID
+│  com.gtkx.tutorial
 │
 ◇  Package manager
 │  npm

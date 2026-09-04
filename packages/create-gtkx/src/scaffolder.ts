@@ -48,6 +48,19 @@ type ResolvedOptions = {
 
 type ScaffoldFile = { destination: string; contents: string };
 
+type ScaffoldChanges = string[];
+
+type ScaffoldPlan = {
+    files: ScaffoldFile[];
+    replaceDestinations: string[];
+    changes: ScaffoldChanges;
+};
+
+type ScaffoldChange = {
+    destination: string;
+    relativePath: string;
+};
+
 type InstallDependenciesOptions = {
     cwd: string;
     packageManager: PackageManager;
@@ -70,7 +83,7 @@ type SpinnerStep = {
     pending: string;
     done: string;
     failed: string;
-    run: () => Promise<void>;
+    run: () => Promise<void> | void;
     explain?: ((error: unknown) => void) | undefined;
 };
 
@@ -351,20 +364,50 @@ const shouldOverwriteDirectory = async (target: string, options: CreateOptions):
     );
 };
 
-const validateTargetAvailability = async (root: string, target: string, options: CreateOptions): Promise<void> => {
+const formatFileList = (heading: string, files: string[]): string => {
+    const indentedFiles = files.map((file) => `  ${file}`).join("\n");
+
+    return `${heading}:\n${indentedFiles}`;
+};
+
+const reportPlannedChanges = (changes: ScaffoldChanges): void => {
+    if (changes.length > 0) {
+        p.log.info(formatFileList("Scaffold files to replace", changes));
+    }
+};
+
+const reportCompletedChanges = (changes: ScaffoldChanges): void => {
+    if (changes.length > 0) {
+        p.log.success(formatFileList("Replaced scaffold files", changes));
+    }
+};
+
+const assertTargetIsDirectory = (root: string, target: string): void => {
     const stats = statSync(root, { throwIfNoEntry: false });
+
+    if (stats !== undefined && !stats.isDirectory()) {
+        fail(`Target "${target}" is not a directory`);
+    }
+};
+
+const validateTargetAvailability = async (
+    root: string,
+    target: string,
+    options: CreateOptions,
+    changes: ScaffoldChanges,
+): Promise<void> => {
+    const stats = statSync(root, { throwIfNoEntry: false });
+    assertTargetIsDirectory(root, target);
 
     if (stats === undefined) {
         return;
     }
 
-    if (!stats.isDirectory()) {
-        return fail(`Target "${target}" is not a directory`);
-    }
-
     if (isDirEmpty(root)) {
         return;
     }
+
+    reportPlannedChanges(changes);
 
     if (await shouldOverwriteDirectory(target, options)) {
         return;
@@ -425,7 +468,6 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
     const root = resolve(process.cwd(), target);
     const isCurrentDirectory = root === process.cwd();
     const shouldInitialize = shouldInitializeGit(root);
-    await validateTargetAvailability(root, target, options);
     const packageManager = await resolvePackageManager(requested, options);
     const isTypescript = await isOptionEnabled(options.isTypescript, options.isInteractive, "Use TypeScript?");
 
@@ -575,7 +617,29 @@ const auxiliaryDestinations = (root: string, resolved: ResolvedOptions): string[
     ...(resolved.isTypescript ? [join(root, "node_modules", ".gtkx", "env.d.ts")] : []),
 ];
 
-const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise<void> => {
+const classifyScaffoldChange = (
+    root: string,
+    destination: string,
+): ScaffoldChange | undefined => {
+    const entry = lstatSync(destination, { throwIfNoEntry: false });
+
+    if (entry === undefined) {
+        return undefined;
+    }
+
+    return { destination, relativePath: projectRelativeDestination(root, destination) };
+};
+
+const addScaffoldChange = (plan: ScaffoldPlan, change: ScaffoldChange | undefined): void => {
+    if (change === undefined) {
+        return;
+    }
+
+    plan.replaceDestinations.push(change.destination);
+    plan.changes.push(change.relativePath);
+};
+
+const planScaffoldProject = async (root: string, resolved: ResolvedOptions): Promise<ScaffoldPlan> => {
     const files = await plannedScaffoldFiles(root, resolved);
     const destinations = [...files.map((file) => file.destination), ...auxiliaryDestinations(root, resolved)];
 
@@ -583,11 +647,25 @@ const scaffoldProject = async (root: string, resolved: ResolvedOptions): Promise
         assertSafeDestination(root, destination);
     }
 
+    const plan: ScaffoldPlan = {
+        files,
+        replaceDestinations: [],
+        changes: [],
+    };
+
     for (const destination of destinations) {
+        addScaffoldChange(plan, classifyScaffoldChange(root, destination));
+    }
+
+    return plan;
+};
+
+const scaffoldProject = (root: string, resolved: ResolvedOptions, plan: ScaffoldPlan): void => {
+    for (const destination of plan.replaceDestinations) {
         replaceTemplateDestination(destination);
     }
 
-    for (const file of files) {
+    for (const file of plan.files) {
         mkdirSync(dirname(file.destination), { recursive: true });
         writeFileSync(file.destination, file.contents);
     }
@@ -745,14 +823,18 @@ const printNextSteps = (resolved: ResolvedOptions): void => {
     p.note(`${cdStep}${installStep}${devCmd}${testingNote}`, "Next steps");
 };
 
-const createProjectStructure = async (root: string, resolved: ResolvedOptions): Promise<void> => {
+const createProjectStructure = async (
+    root: string,
+    resolved: ResolvedOptions,
+    plan: ScaffoldPlan,
+): Promise<void> => {
     await runWithSpinner({
         pending: "Creating project structure...",
         done: "Project structure created",
         failed: "Failed to create the project structure",
-        run: async () => {
+        run: () => {
             mkdirSync(root, { recursive: true });
-            await scaffoldProject(root, resolved);
+            scaffoldProject(root, resolved, plan);
             writeBuildAllowance(root, resolved.packageManager);
 
             if (resolved.isTypescript) {
@@ -767,7 +849,11 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     const resolved = await resolveOptions(options);
     const { root } = resolved;
     const devDeps = getDevDependencies(resolved);
-    await createProjectStructure(root, resolved);
+    assertTargetIsDirectory(root, resolved.target);
+    const plan = await planScaffoldProject(root, resolved);
+    await validateTargetAvailability(root, resolved.target, options, plan.changes);
+    await createProjectStructure(root, resolved, plan);
+    reportCompletedChanges(plan.changes);
 
     if (resolved.shouldInstallDependencies) {
         await installAllDependencies({ resolved, devDependencies: devDeps });

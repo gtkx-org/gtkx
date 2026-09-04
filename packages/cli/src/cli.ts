@@ -56,6 +56,11 @@ const main = defineCommand({
 
             return withErrorBoundary(scaffoldCommand);
         },
+        cleanup: async () => {
+            const { cleanup } = await import("./commands/cleanup.js");
+
+            return withErrorBoundary(cleanup);
+        },
     },
 });
 

@@ -3,21 +3,27 @@ import { type CodegenContext, resolveCodegenContext } from "../codegen/store-res
 import { resolveCwd, resolveEntry } from "./entry-arg.js";
 
 type ProjectArgs = { entry?: string; cwd?: string; config?: string };
-type PreparedProject = { cwd: string; entry: string; configFile: string };
+type PreparedProject = { cwd: string; entry: string; configFile: string; configDependencies: string[] };
 type ResolvedProject = PreparedProject & { context: CodegenContext };
 
 const resolveProject = async (args: ProjectArgs, mode: string): Promise<ResolvedProject> => {
     const cwd = resolveCwd(args);
     const context = await resolveCodegenContext(cwd, mode, args.config);
 
-    return { cwd, entry: resolveEntry(cwd, args.entry), configFile: context.configFile, context };
+    return {
+        cwd,
+        entry: resolveEntry(cwd, args.entry),
+        configFile: context.configFile,
+        configDependencies: context.configDependencies,
+        context,
+    };
 };
 
 const prepareProject = async (args: ProjectArgs, mode: string): Promise<PreparedProject> => {
     const { cwd, entry, context } = await resolveProject(args, mode);
     await ensureGeneratedIn(context, { shouldAnnounce: true, mode });
 
-    return { cwd, entry, configFile: context.configFile };
+    return { cwd, entry, configFile: context.configFile, configDependencies: context.configDependencies };
 };
 
 export { prepareProject, resolveProject };

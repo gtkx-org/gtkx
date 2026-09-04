@@ -1,6 +1,5 @@
-import type * as Gtk from "@gtkx/gi/gtk";
 import type { FluidValue } from "@react-spring/shared";
-import type { ComponentPropsWithRef, ElementType, FunctionComponent, JSX, Ref } from "react";
+import type { ComponentPropsWithRef, ElementType, FunctionComponent, JSX } from "react";
 
 /** An array-valued prop whose items may each be a spring or an interpolation, such as mixed text children. */
 type AnimatedItems<T> = [Exclude<Extract<T, Iterable<unknown>>, string>] extends [never]
@@ -45,14 +44,8 @@ type AnimatedComponent<T extends Exclude<ElementType, string>> = FunctionCompone
  * Only elements whose `ref` exposes a `Gtk.Widget` subclass are included.
  */
 type AnimatedElementMap = {
-    readonly [K in keyof JSX.IntrinsicElements as JSX.IntrinsicElements[K] extends {
-        ref?: Ref<infer Instance> | undefined;
-    }
-        ? [NonNullable<Instance>] extends [never]
-                ? never
-                : NonNullable<Instance> extends Gtk.Widget
-                    ? K
-                    : never
+    readonly [K in keyof JSX.IntrinsicElements as "cssClasses" extends keyof JSX.IntrinsicElements[K]
+        ? K
         : never]: JSX.IntrinsicElements[K] extends object
         ? FunctionComponent<AnimatedProps<JSX.IntrinsicElements[K]>>
         : never;

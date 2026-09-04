@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { AdwActionRow } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import {
     act,
     findByText,
@@ -56,8 +58,6 @@ const createDynamicComponent = (removableContent: ReactNode) => () => {
 };
 
 const customTimeout = (): Error => new Error("custom");
-const attachedWidget = (widget: Gtk.Widget): Gtk.Widget | null => (widget.getParent() === null ? null : widget);
-
 const renderRemovable = async (removableContent: ReactNode): Promise<Gtk.Widget> => {
     const DynamicComponent = createDynamicComponent(removableContent);
     await render(<DynamicComponent />);
@@ -198,16 +198,16 @@ describe("waitFor", () => {
 describe("waitForElementToBeRemoved", () => {
     it("resolves once the widget, the widgets of an array or a callback target leave the tree", async () => {
         const removalButton = await renderRemovable(
-            <>
-                <GtkButton label="First" />
-                <GtkButton label="Second" name="removable" />
-            </>,
+            <GtkListBox>
+                <AdwActionRow title="First" />
+                <AdwActionRow title="Second" name="removable" />
+            </GtkListBox>,
         );
 
-        const first = await screen.findByText("First");
-        const second = await screen.findByName("removable");
+        const first = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "First", as: Adw.ActionRow });
+        const second = await screen.findByName("removable", { as: Adw.ActionRow });
         const arrayRemoval = waitForElementToBeRemoved([first, second]);
-        const callbackRemoval = waitForElementToBeRemoved(() => attachedWidget(second));
+        const callbackRemoval = waitForElementToBeRemoved(() => (second.getParent() === null ? null : second));
         await userEvent.click(removalButton);
         await expect(arrayRemoval).resolves.toBeUndefined();
         await expect(callbackRemoval).resolves.toBeUndefined();

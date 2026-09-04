@@ -30,7 +30,14 @@ const gtkxVitePlugins = (options: GtkxVitePluginOptions = {}): Plugin[] => {
 
     return [
         createConfigPlugin({ name: "gtkx:config", loadConfig }),
-        ...(entryPath === undefined ? [] : [gtkxI18n(entryPath, loadConfig, shouldPreserveI18nMetadata)]),
+        ...(entryPath === undefined
+            ? []
+            : [gtkxI18n(
+                    entryPath,
+                    loadConfig,
+                    shouldPreserveI18nMetadata,
+                    mode === "development",
+                )]),
         gtkxStoreLinks(),
         gtkxUndeclaredLibrary(loadConfig),
         gtkxSettings(buildManifest),

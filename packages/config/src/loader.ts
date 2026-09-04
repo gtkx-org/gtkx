@@ -1,7 +1,12 @@
 import { isPathInside, warn } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { basename, extname, isAbsolute, relative, resolve } from "node:path";
+import {
+    captureConfigDependencies,
+    setConfigDependencies,
+    transformConfigModule,
+} from "./config-dependencies.ts";
 import { missingConfigFileError } from "./config-error.ts";
 import {
     type Config,
@@ -42,6 +47,48 @@ type ConfigLoader = {
 const GRADUATED_FUTURE_ENV = "GTKX_GRADUATED_FUTURE_SHOWN";
 const graduatedFutureWarnings: Map<string, string> = new Map();
 
+type ConfigResolutionOptions = { configFile?: string | undefined; cwd?: string | undefined };
+
+const isLocalConfigSource = (source: string): boolean => source.startsWith(".") || isAbsolute(source);
+
+const isDirectoryConfigSource = (source: string): boolean => {
+    const extension = extname(source);
+
+    return extension.length === 0 || extension === basename(source);
+};
+
+const localConfigSourcePath = (source: string, options: ConfigResolutionOptions): string | undefined => {
+    if (source === "." || !isLocalConfigSource(source)) {
+        return undefined;
+    }
+
+    const cwd = options.cwd ?? process.cwd();
+
+    return isDirectoryConfigSource(source)
+        ? resolve(cwd, source, options.configFile ?? "gtkx.config")
+        : resolve(cwd, source);
+};
+
+const rejectMissingLocalConfig = (source: string, options: ConfigResolutionOptions): undefined => {
+    const path = localConfigSourcePath(source, options);
+
+    if (path !== undefined && !existsSync(path)) {
+        throw new Error(`Extended configuration does not exist at ${path}`);
+    }
+};
+
+const withConfigDependencies = <T>(dependencies: string[], operation: () => T): T => {
+    try {
+        return operation();
+    } catch (error) {
+        if (typeof error === "object" && error !== null) {
+            setConfigDependencies(error, dependencies);
+        }
+
+        throw error;
+    }
+};
+
 const selectedConfigFile = (root: string, configured: string | undefined): string | undefined => {
     if (configured === undefined) {
         return undefined;
@@ -53,7 +100,7 @@ const selectedConfigFile = (root: string, configured: string | undefined): strin
         throw new Error(`Configuration file ${configured} must be inside the project root ${root}`);
     }
 
-    return path;
+    return relative(root, path);
 };
 
 const warnGraduatedFuture = (config: unknown, root: string): void => {
@@ -84,33 +131,51 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
     const searched = resolve(cwd);
     const requestedConfigFile = selectedConfigFile(searched, options.configFile);
 
-    const result = await loadConfigFile<Config>({
-        name: "gtkx",
-        cwd: searched,
-        rcFile: false,
-        globalRc: false,
-        packageJson: false,
-        context: { mode: options.mode },
-        ...(requestedConfigFile !== undefined && { configFile: requestedConfigFile }),
-        ...((options.mode !== undefined) && { envName: options.mode }),
-    });
+    const captured = await captureConfigDependencies(() =>
+        loadConfigFile<Config>({
+            name: "gtkx",
+            cwd: searched,
+            rcFile: false,
+            globalRc: false,
+            packageJson: false,
+            context: { mode: options.mode },
+            jitiOptions: { fsCache: false, transform: transformConfigModule },
+            resolve: rejectMissingLocalConfig,
+            ...(requestedConfigFile !== undefined && { configFile: requestedConfigFile }),
+            ...((options.mode !== undefined) && { envName: options.mode }),
+        }));
+    const result = captured.value;
 
     const configFile = result.configFile;
-
-    if (configFile === undefined || !existsSync(resolve(searched, configFile))) {
-        throw missingConfigFileError(searched, requestedConfigFile);
-    }
-
-    const config = result.config;
     const root = result.cwd ?? searched;
-    validateConfig(config, configFile);
-    warnGraduatedFuture(config, root);
+    const layerFiles = (result.layers ?? [])
+        .flatMap((layer) => layer.configFile === undefined
+            ? []
+            : [resolve(layer.cwd ?? root, layer.configFile)]);
+    const dependencies = [
+        ...(configFile === undefined ? [] : [configFile]),
+        ...layerFiles,
+        ...captured.dependencies,
+    ];
 
-    return {
-        config,
-        configFile,
-        root,
-    };
+    return withConfigDependencies(dependencies, () => {
+        if (configFile === undefined || !existsSync(resolve(searched, configFile))) {
+            throw missingConfigFileError(searched, requestedConfigFile);
+        }
+
+        const config = result.config;
+        validateConfig(config, configFile);
+        warnGraduatedFuture(config, root);
+
+        const loaded = {
+            config,
+            configFile,
+            root,
+        };
+        setConfigDependencies(loaded, dependencies);
+
+        return loaded;
+    });
 };
 
 const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {

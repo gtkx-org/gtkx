@@ -206,7 +206,7 @@ gtkx deploy --print-manifests
 
 writes the desktop entry, the AppStream metainfo, and each target's manifest, validates them, and stops without packaging.
 
-Validation always fails on an AppStream error. A *warning*, such as a missing homepage, fails only when a target that publishes to a software center is selected, which today means `flatpak`; for `deb`, `rpm`, and `appimage` it is reported and the build continues. Either way the message names the config key that fixes it:
+Validation always fails on an AppStream error. An unsupported element reported as `unknown-tag` is also fatal for every target. Other *warnings*, such as a missing homepage, fail only when a target that publishes to a software center is selected, which today means `flatpak`; for `deb`, `rpm`, and `appimage` they are reported and the build continues. Either way the message names the config key that fixes it:
 
 ```
 The AppStream metainfo is not valid:

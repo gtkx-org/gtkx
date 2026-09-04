@@ -116,7 +116,12 @@ const brandingSchema = z.strictObject({
     dark: hexColorSchema,
 });
 
-const extraFileSchema = z.strictObject({
+/** Deployment extra-file options, including its safe file mode. */
+type DeployExtraFileOptions = Record<"source", string> & {
+    /** Octal file mode. Setuid and setgid bits are rejected. */
+    mode?: string | undefined;
+};
+const extraFileSchema: z.ZodType<DeployExtraFileOptions> = z.strictObject({
     source: text(SOURCE_PATH_ERROR),
     mode: z
         .string({ error: FILE_MODE_ERROR })
@@ -142,7 +147,16 @@ const nodeFlagsSchema = z.array(
     { error: "must be an array of Node.js flags" },
 );
 
-const nodeRuntimeSchema = z.strictObject({
+/** Deployment Node.js runtime options, including its version default. */
+type DeployNodeOptions = Partial<
+    Record<"source", "download" | "host" | "path" | undefined> &
+    Record<"path", string | undefined> &
+    Record<"shouldStrip" | "shouldUseCompileCache", boolean | undefined>
+> & {
+    /** Expected Node.js version. Downloaded runtimes default to exactly 26.7.0 when omitted. */
+    version?: string | undefined;
+};
+const nodeRuntimeSchema: z.ZodType<DeployNodeOptions> = z.strictObject({
     source: z.enum(NODE_SOURCES, { error: "must be one of download, host, path" }).optional(),
     version: text("must be a Node.js version such as 26.7.0").optional(),
     path: text("must be a path to a node binary").optional(),
@@ -317,4 +331,4 @@ const deploySchema = z.strictObject({
     rpm: rpmSchema.optional(),
 });
 
-export { deploySchema };
+export { deploySchema, type DeployExtraFileOptions, type DeployNodeOptions };

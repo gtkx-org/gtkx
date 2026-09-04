@@ -1,4 +1,6 @@
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCli } from "./cli-project.js";
 import {
@@ -27,15 +29,56 @@ import {
     RECORD_FIELD_ACCESSORS,
 } from "./codegen-helpers.js";
 
+const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
+const STATIC_NARROW_PROBE = `import { Base, Derived } from "./node_modules/.gtkx/gi/staticnarrow/staticnarrow.js";
+
+const base: Base = Base.new();
+const derived: Derived = Derived.new();
+
+export const values = [base.lookup("value"), derived.lookup(1)];
+`;
+
+const typecheckGenerated = (project: CliProject): void => {
+    const result = spawnSync(
+        process.execPath,
+        [
+            TYPESCRIPT_CLI,
+            "--noEmit",
+            "--module",
+            "ESNext",
+            "--moduleResolution",
+            "Bundler",
+            "--skipLibCheck",
+            "false",
+            "--strict",
+            "--target",
+            "ESNext",
+            "--types",
+            "node",
+            "probe.ts",
+        ],
+        { cwd: project.root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+
+    if (result.status !== 0) {
+        throw new Error(`${result.stdout}${result.stderr}`);
+    }
+};
+
 describe("gtkx codegen (libraries the generated types have to escape)", () => {
-    it("binds a class whose static narrows the one it inherits", () => {
+    it("binds a class whose factory return and instance method narrow the ones it inherits", () => {
         using project = createCliProject({
             prefix: "gtkx-cli-codegen-statics-",
             config: fixtureConfig("StaticNarrow-1.0"),
+            files: { "probe.ts": STATIC_NARROW_PROBE },
         });
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
-        expect(generatedModule(project, "gi", "staticnarrow", "staticnarrow.d.ts")).toContain("StaticBase<");
+        const declarations = generatedModule(project, "gi", "staticnarrow", "staticnarrow.d.ts");
+        expect(declarations).toContain("StaticBase<");
+        expect(classBody(declarations, "Derived")).toContain("lookup(value: number): number;");
+        expect(classBody(declarations, "Derived")).not.toContain("this: never");
+        typecheckGenerated(project);
     });
 
     it("binds a type whose GIR name starts with a digit", () => {

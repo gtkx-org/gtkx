@@ -3,7 +3,6 @@
             xmlns="http://www.gtk.org/introspection/core/1.0"
             xmlns:c="http://www.gtk.org/introspection/c/1.0"
             xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
-  <include name="GObject" version="2.0"/>
   <package name="staticnarrow-1.0"/>
   <namespace name="StaticNarrow"
              version="1.0"
@@ -13,22 +12,26 @@
     <class name="Base"
            c:symbol-prefix="base"
            c:type="StaticNarrowBase"
-           parent="GObject.Object"
            glib:type-name="StaticNarrowBase"
            glib:get-type="static_narrow_base_get_type">
-      <function name="new" c:identifier="static_narrow_base_new">
+      <constructor name="new" c:identifier="static_narrow_base_new">
         <return-value transfer-ownership="full">
           <type name="Base" c:type="StaticNarrowBase*"/>
         </return-value>
+      </constructor>
+      <method name="lookup" c:identifier="static_narrow_base_lookup">
+        <return-value transfer-ownership="none">
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
         <parameters>
-          <parameter name="count" transfer-ownership="none">
-            <type name="gint" c:type="gint"/>
-          </parameter>
-          <parameter name="label" transfer-ownership="none">
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Base" c:type="StaticNarrowBase*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
             <type name="utf8" c:type="const gchar*"/>
           </parameter>
         </parameters>
-      </function>
+      </method>
     </class>
     <class name="Derived"
            c:symbol-prefix="derived"
@@ -36,16 +39,24 @@
            parent="Base"
            glib:type-name="StaticNarrowDerived"
            glib:get-type="static_narrow_derived_get_type">
-      <function name="new" c:identifier="static_narrow_derived_new">
+      <constructor name="new" c:identifier="static_narrow_derived_new">
         <return-value transfer-ownership="full">
           <type name="Derived" c:type="StaticNarrowDerived*"/>
         </return-value>
+      </constructor>
+      <method name="lookup" c:identifier="static_narrow_derived_lookup">
+        <return-value transfer-ownership="none">
+          <type name="gint" c:type="gint"/>
+        </return-value>
         <parameters>
-          <parameter name="label" transfer-ownership="none">
-            <type name="utf8" c:type="const gchar*"/>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Derived" c:type="StaticNarrowDerived*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <type name="gint" c:type="gint"/>
           </parameter>
         </parameters>
-      </function>
+      </method>
     </class>
   </namespace>
 </repository>

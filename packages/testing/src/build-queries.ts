@@ -5,18 +5,28 @@ import { getConfig } from "./config.js";
 import { runWithExpensiveErrorDiagnosticsDisabled, suggestionError } from "./errors.js";
 import { getSuggestedQuery, type Variant } from "./suggestions.js";
 import { waitFor } from "./wait-for.js";
+import { requireWidget } from "./widget-target.js";
 
 /**
  * The `queryAllBy` function a query family is built from, taking the scope to search followed by the
  * family's own matcher arguments. Its name determines the family name, so `queryAllByTestId` builds
  * a `TestId` family.
  */
-type QueryAllBy<Args extends unknown[]> = (container: Container, ...args: Args) => Gtk.Widget[];
+type QueryAllBy<
+    Args extends unknown[],
+    Element extends Gtk.Accessible = Gtk.Accessible,
+> = (
+    container: Container,
+    ...args: Args
+) => Element[];
 
 /** Builds the error thrown when a single-match query finds more than one widget. */
-type MultipleErrorBuilder<Args extends unknown[]> = (
+type MultipleErrorBuilder<
+    Args extends unknown[],
+    Element extends Gtk.Accessible = Gtk.Accessible,
+> = (
     container: Container,
-    matches: Gtk.Widget[],
+    matches: Element[],
     ...args: Args
 ) => Error;
 
@@ -24,16 +34,22 @@ type MultipleErrorBuilder<Args extends unknown[]> = (
 type MissingErrorBuilder<Args extends unknown[]> = (container: Container, ...args: Args) => Error;
 
 /** The variants derived from one `queryAllBy` function, in the order DOM Testing Library returns them. */
-type BuiltQueries<Args extends unknown[]> = [
-    queryBy: (container: Container, ...args: Args) => Gtk.Widget | null,
-    getAllBy: QueryAllBy<Args>,
-    getBy: (container: Container, ...args: Args) => Gtk.Widget,
-    findAllBy: (container: Container, ...args: Args) => Promise<Gtk.Widget[]>,
-    findBy: (container: Container, ...args: Args) => Promise<Gtk.Widget>,
+type BuiltQueries<
+    Args extends unknown[],
+    Element extends Gtk.Accessible = Gtk.Accessible,
+> = [
+    queryBy: (container: Container, ...args: Args) => Element | null,
+    getAllBy: QueryAllBy<Args, Element>,
+    getBy: (container: Container, ...args: Args) => Element,
+    findAllBy: (container: Container, ...args: Args) => Promise<Element[]>,
+    findBy: (container: Container, ...args: Args) => Promise<Element>,
 ];
 
 type FindQuery<Args extends unknown[]> = (container: Container, ...args: Args) => unknown;
-type SingleQuery<Args extends unknown[]> = (container: Container, ...args: Args) => Gtk.Widget | null;
+type SingleQuery<Args extends unknown[], Element extends Gtk.Accessible> = (
+    container: Container,
+    ...args: Args
+) => Element | null;
 
 const getTrailingOptions = (args: unknown[]): MatcherOptions | undefined => {
     const last = args.at(-1);
@@ -50,7 +66,7 @@ const getQueryFamily = (queryAllBy: { name: string }): string => queryAllBy.name
 
 const maybeThrowSuggestion = (options: {
     container: Container;
-    match: Gtk.Widget;
+    match: object;
     queryName: string;
     variant: Variant;
     shouldSuggest: boolean | undefined;
@@ -61,7 +77,7 @@ const maybeThrowSuggestion = (options: {
         return;
     }
 
-    const suggestion = getSuggestedQuery(match, variant);
+    const suggestion = getSuggestedQuery(requireWidget(match), variant);
 
     if (suggestion && suggestion.queryName !== queryName) {
         throw suggestionError(suggestion.toString(), container);
@@ -101,10 +117,10 @@ const findOptions = <Args extends unknown[]>(
 };
 
 const singleFrom =
-    <Args extends unknown[]>(
-        allQuery: QueryAllBy<Args>,
-        getMultipleError: MultipleErrorBuilder<Args>,
-    ): SingleQuery<Args> =>
+    <Args extends unknown[], Element extends Gtk.Accessible>(
+        allQuery: QueryAllBy<Args, Element>,
+        getMultipleError: MultipleErrorBuilder<Args, Element>,
+    ): SingleQuery<Args, Element> =>
         (container, ...args) => {
             const matches = allQuery(container, ...args);
 
@@ -116,10 +132,10 @@ const singleFrom =
         };
 
 const allOrThrow =
-    <Args extends unknown[]>(
-        allQuery: QueryAllBy<Args>,
+    <Args extends unknown[], Element extends Gtk.Accessible>(
+        allQuery: QueryAllBy<Args, Element>,
         getMissingError: MissingErrorBuilder<Args>,
-    ): QueryAllBy<Args> =>
+    ): QueryAllBy<Args, Element> =>
         (container, ...args) => {
             const matches = allQuery(container, ...args);
 
@@ -131,7 +147,11 @@ const allOrThrow =
         };
 
 const wrapSingleWithSuggestion =
-    <Args extends unknown[]>(query: SingleQuery<Args>, queryName: string, variant: Variant): SingleQuery<Args> =>
+    <Args extends unknown[], Element extends Gtk.Accessible>(
+        query: SingleQuery<Args, Element>,
+        queryName: string,
+        variant: Variant,
+    ): SingleQuery<Args, Element> =>
         (container, ...args) => {
             const match = query(container, ...args);
 
@@ -149,7 +169,11 @@ const wrapSingleWithSuggestion =
         };
 
 const wrapAllWithSuggestion =
-    <Args extends unknown[]>(query: QueryAllBy<Args>, queryName: string, variant: Variant): QueryAllBy<Args> =>
+    <Args extends unknown[], Element extends Gtk.Accessible>(
+        query: QueryAllBy<Args, Element>,
+        queryName: string,
+        variant: Variant,
+    ): QueryAllBy<Args, Element> =>
         (container, ...args) => {
             const matches = query(container, ...args);
             const [first] = matches;
@@ -168,8 +192,11 @@ const wrapAllWithSuggestion =
         };
 
 const requireSingle =
-    <Args extends unknown[]>(query: SingleQuery<Args>, getMissingError: MissingErrorBuilder<Args>) =>
-        (container: Container, ...args: Args): Gtk.Widget => {
+    <Args extends unknown[], Element extends Gtk.Accessible>(
+        query: SingleQuery<Args, Element>,
+        getMissingError: MissingErrorBuilder<Args>,
+    ) =>
+        (container: Container, ...args: Args): Element => {
             const match = query(container, ...args);
 
             if (match === null) {
@@ -189,11 +216,14 @@ const requireSingle =
  * @param getMissingError Builds the error thrown when a required match is missing.
  * @returns The variants, in the order `[queryBy, getAllBy, getBy, findAllBy, findBy]`.
  */
-const buildQueries = <Args extends unknown[]>(
-    queryAllBy: QueryAllBy<Args>,
-    getMultipleError: MultipleErrorBuilder<Args>,
+const buildQueries = <
+    Args extends unknown[],
+    Element extends Gtk.Accessible = Gtk.Accessible,
+>(
+    queryAllBy: QueryAllBy<Args, Element>,
+    getMultipleError: MultipleErrorBuilder<Args, Element>,
     getMissingError: MissingErrorBuilder<Args>,
-): BuiltQueries<Args> => {
+): BuiltQueries<Args, Element> => {
     const queryName = getQueryFamily(queryAllBy);
     const getAllBy = allOrThrow(queryAllBy, getMissingError);
     const getBy = requireSingle(singleFrom(getAllBy, getMultipleError), getMissingError);
@@ -206,7 +236,7 @@ const buildQueries = <Args extends unknown[]>(
 
     const getAllByWithSuggestion = wrapAllWithSuggestion(getAllBy, queryName, "getAll");
 
-    const getByWithSuggestion: (container: Container, ...args: Args) => Gtk.Widget = (container, ...args) => {
+    const getByWithSuggestion: (container: Container, ...args: Args) => Element = (container, ...args) => {
         const match = getBy(container, ...args);
 
         maybeThrowSuggestion({
@@ -220,13 +250,13 @@ const buildQueries = <Args extends unknown[]>(
         return match;
     };
 
-    const findAllBy = (container: Container, ...args: Args): Promise<Gtk.Widget[]> =>
+    const findAllBy = (container: Container, ...args: Args): Promise<Element[]> =>
         waitFor(
             () => runWithExpensiveErrorDiagnosticsDisabled(() => getAllByWithSuggestion(container, ...args)),
             findOptions(getAllByWithSuggestion, container, args),
         );
 
-    const findBy = (container: Container, ...args: Args): Promise<Gtk.Widget> =>
+    const findBy = (container: Container, ...args: Args): Promise<Element> =>
         waitFor(
             () => runWithExpensiveErrorDiagnosticsDisabled(() => getByWithSuggestion(container, ...args)),
             findOptions(getByWithSuggestion, container, args),

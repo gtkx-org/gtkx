@@ -230,7 +230,9 @@ const listAppsTool = (appRouter: AppRouter): Tool =>
         name: "gtkx_list_apps",
         title: "List apps",
         kind: "readOnly",
-        description: "List all connected GTKX applications and their open windows.",
+        description:
+            "List connected GTKX applications and their open windows. " +
+            "Returns the current snapshot immediately unless waitForApps is true.",
         inputSchema: listAppsShape,
         handler: async ({ waitForApps, timeout }) => {
             if (waitForApps && !appRouter.hasConnectedApps()) {

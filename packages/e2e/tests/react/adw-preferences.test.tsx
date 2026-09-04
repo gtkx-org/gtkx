@@ -146,6 +146,17 @@ describe("render - PreferencesPage", () => {
             </AdwPreferencesPage>,
         );
 
+        const darkMode = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, {
+            name: "Dark Mode",
+            as: Adw.ActionRow,
+        });
+        const autosave = screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, {
+            name: "Autosave",
+            as: Adw.ActionRow,
+        });
+        expect(darkMode).toContainElement(darkMode);
+        expect(darkMode).toAppearBefore(autosave);
+        expect(autosave).toAppearAfter(darkMode);
         expect(await screen.findByText("Appearance")).toAppearBefore(screen.getByText("Dark Mode"));
         expect(screen.getByText("Dark Mode")).toAppearBefore(screen.getByText("Autosave"));
     });
@@ -169,7 +180,8 @@ describe("render - SpinRow", () => {
             </AdwPreferencesGroup>,
         );
 
-        expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON)).toHaveValue(5);
+        const row = screen.getByRole(Gtk.AccessibleRole.PRESENTATION, { as: Adw.SpinRow });
+        expect(row.getValue()).toBe(5);
     });
 
     it("invokes onValueChanged when the value is updated programmatically", async () => {

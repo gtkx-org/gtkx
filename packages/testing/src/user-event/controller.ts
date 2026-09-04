@@ -1,4 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
+import { requireWidget } from "../widget-target.js";
 
 /** An event controller class that can be constructed without arguments, such as `Gtk.GestureClick`. */
 type ControllerConstructor<T extends Gtk.EventController> = new () => T;
@@ -11,9 +12,10 @@ type ControllerConstructor<T extends Gtk.EventController> = new () => T;
  * @returns The matching controllers, or an empty array when the widget has none.
  */
 const queryAllControllers = <T extends Gtk.EventController>(
-    widget: Gtk.Widget,
+    target: Gtk.Accessible,
     controllerType: ControllerConstructor<T>,
 ): T[] => {
+    const widget = requireWidget(target);
     const controllers = widget.observeControllers();
     const nItems = controllers.getNItems();
     const matches: T[] = [];
@@ -37,7 +39,7 @@ const queryAllControllers = <T extends Gtk.EventController>(
  * @returns The first matching controller, or null when the widget has none.
  */
 const queryController = <T extends Gtk.EventController>(
-    widget: Gtk.Widget,
+    widget: Gtk.Accessible,
     controllerType: ControllerConstructor<T>,
 ): T | null => queryAllControllers(widget, controllerType)[0] ?? null;
 
@@ -49,7 +51,7 @@ const queryController = <T extends Gtk.EventController>(
  * @throws When the widget has no controller of that type.
  */
 const getAllControllers = <T extends Gtk.EventController>(
-    widget: Gtk.Widget,
+    widget: Gtk.Accessible,
     controllerType: ControllerConstructor<T>,
 ): T[] => {
     const controllers = queryAllControllers(widget, controllerType);
@@ -69,7 +71,7 @@ const getAllControllers = <T extends Gtk.EventController>(
  * @throws When the widget has no controller of that type.
  */
 const getController = <T extends Gtk.EventController>(
-    widget: Gtk.Widget,
+    widget: Gtk.Accessible,
     controllerType: ControllerConstructor<T>,
 ): T => {
     const [controller] = getAllControllers(widget, controllerType);
@@ -82,9 +84,10 @@ const getController = <T extends Gtk.EventController>(
 };
 
 const getOrCreateControllers = <T extends Gtk.EventController>(
-    widget: Gtk.Widget,
+    target: Gtk.Accessible,
     controllerType: ControllerConstructor<T>,
 ): T[] => {
+    const widget = requireWidget(target);
     const existing = queryAllControllers(widget, controllerType);
 
     if (existing.length > 0) {

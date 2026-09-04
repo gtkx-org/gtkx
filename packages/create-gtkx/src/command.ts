@@ -2,6 +2,7 @@ import * as p from "@clack/prompts";
 import { assertSupportedNodeVersion } from "@gtkx/config/internal";
 import { errorMessage } from "@gtkx/utils";
 import { defineCommand } from "citty";
+import { parseArgs, type ParseArgsOptionsConfig } from "node:util";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
 import { PACKAGE_MANAGER_FLAG_DESCRIPTION } from "./package-managers.js";
 import { scaffold } from "./scaffolder.js";
@@ -17,6 +18,56 @@ type CreateCommandArgs = {
     "no-interactive"?: boolean | undefined;
     overwrite?: boolean | undefined;
     "skip-install"?: boolean | undefined;
+};
+
+const STRICT_OPTIONS: ParseArgsOptionsConfig = {
+    "application-id": { type: "string" },
+    applicationId: { type: "string" },
+    "display-name": { type: "string" },
+    displayName: { type: "string" },
+    "package-manager": { type: "string", short: "p" },
+    packageManager: { type: "string" },
+    typescript: { type: "boolean" },
+    vitest: { type: "boolean" },
+    yes: { type: "boolean", short: "y" },
+    "no-interactive": { type: "boolean" },
+    noInteractive: { type: "boolean" },
+    overwrite: { type: "boolean", short: "f" },
+    "skip-install": { type: "boolean" },
+    skipInstall: { type: "boolean" },
+};
+
+const BOOLEAN_OPTIONS: ReadonlySet<string> = new Set([
+    "--typescript",
+    "--vitest",
+    "--yes",
+    "--overwrite",
+    "--skip-install",
+    "--skipInstall",
+]);
+
+const normalizeBooleanArgument = (argument: string): string => {
+    const [option, value, ...rest] = argument.split("=");
+
+    if (option === undefined || rest.length > 0 || !BOOLEAN_OPTIONS.has(option)) {
+        return argument;
+    }
+
+    if (value === "true") {
+        return option;
+    }
+
+    return value === "false" ? `--no-${option.slice(2)}` : argument;
+};
+
+const assertKnownArguments = (rawArgs: string[]): void => {
+    parseArgs({
+        args: rawArgs.map((argument) => normalizeBooleanArgument(argument)),
+        options: STRICT_OPTIONS,
+        allowPositionals: true,
+        allowNegative: true,
+        strict: true,
+    });
 };
 
 const scaffoldCommand = defineCommand({
@@ -73,7 +124,7 @@ const scaffoldCommand = defineCommand({
             description: "Create the project without installing dependencies",
         },
     },
-    run: ({ args }) => runCreate(args),
+    run: ({ args, rawArgs }) => runCreate(args, rawArgs),
 });
 
 const settleScaffoldFailure = (error: unknown): void => {
@@ -88,10 +139,11 @@ const settleScaffoldFailure = (error: unknown): void => {
     process.exitCode = 1;
 };
 
-const runCreate = async (args: CreateCommandArgs): Promise<void> => {
+const runCreate = async (args: CreateCommandArgs, rawArgs: string[]): Promise<void> => {
     const isInteractive = args["no-interactive"] || args.yes ? false : process.stdin.isTTY;
 
     try {
+        assertKnownArguments(rawArgs);
         assertSupportedNodeVersion();
         await scaffold({
             name: args.name,

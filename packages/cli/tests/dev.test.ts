@@ -25,6 +25,7 @@ const RELOAD_TIMEOUT = 120_000;
 const STOP_TIMEOUT = 15_000;
 const APP_MODULE = join("src", "app.tsx");
 const ENTRY_MODULE = join("src", "index.tsx");
+const MESSAGES_MODULE = join("src", "messages.ts");
 const RESOURCE_ICON_MODULE = join("src", "resource-icon.ts");
 const FIRST_ASSET = join("data", "first.data");
 const SECOND_ASSET = join("data", "second.data");
@@ -69,6 +70,16 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 `;
 
+const MESSAGES_SOURCE = `import { t } from "@gtkx/i18n";
+
+export const translatedMessage = (): string => t("Plain module message");
+`;
+
+const INVALID_MESSAGES_SOURCE = `import { t } from "@gtkx/i18n";
+
+export const translatedMessage = (key = "Plain module message"): string => t(key);
+`;
+
 const BROKEN_SOURCE = `import { Absent } from "./absent.js";
 
 const App = () => <Absent />;
@@ -85,6 +96,7 @@ import { readFileSync } from "node:fs";
 import { useEffect } from "react";
 import firstResourcePath from "../data/first.data?resource";
 import firstFile from "../data/first.data?url";
+import { translatedMessage } from "./messages.js";
 import secondResourcePath from "../data/second.data?resource";
 `;
 
@@ -111,7 +123,7 @@ const App = () => {
             "${READY_MARKER} " + REVISION + " " + firstResourcePath + " " + resourceText(firstResourcePath) +
             " " + resourceText(secondResourcePath) + " " + readFileSync(firstFile, "utf8").trim() + " " +
             String(hasIcon) + " " + resourceIconName + " " + String(hasResourceIcon) + " " +
-            resourceIconRevision + " " + t(${JSON.stringify(translationKey)}) + "\n",
+            resourceIconRevision + " " + t(${JSON.stringify(translationKey)}) + " " + translatedMessage() + "\n",
         );
     });
 
@@ -341,6 +353,7 @@ const createDevProject = (): CliProject =>
         files: {
             [ENTRY_MODULE]: ENTRY_SOURCE,
             [APP_MODULE]: appSource("one"),
+            [MESSAGES_MODULE]: MESSAGES_SOURCE,
             [RESOURCE_ICON_MODULE]: RESOURCE_ICON_MODULE_SOURCE,
             [FIRST_ASSET]: "asset-one\n",
             [SECOND_ASSET]: "asset-two\n",
@@ -430,6 +443,21 @@ describe("gtkx dev", () => {
             `true ${RESOURCE_ICON_NAME} true icon-one`;
 
         expect(await waitForOutput(state.session, recovered, RELOAD_TIMEOUT)).toContain(recovered);
+
+        const priorRuns = occurrences(state.session.output(), READY_MARKER);
+        const priorPot = readFileSync(join(state.project.root, POT), "utf8");
+        const priorTypes = readFileSync(join(state.project.root, GENERATED_I18N_RESOURCES), "utf8");
+        writeFileSync(join(state.project.root, MESSAGES_MODULE), INVALID_MESSAGES_SOURCE);
+        expect(await waitForOccurrences(state.session, READY_MARKER, priorRuns + 1, RELOAD_TIMEOUT)).toContain(
+            READY_MARKER,
+        );
+        expect(state.session.isRunning()).toBe(true);
+        expect(readFileSync(join(state.project.root, POT), "utf8")).toBe(priorPot);
+        expect(readFileSync(join(state.project.root, GENERATED_I18N_RESOURCES), "utf8")).toBe(priorTypes);
+        writeFileSync(join(state.project.root, MESSAGES_MODULE), MESSAGES_SOURCE);
+        expect(await waitForOccurrences(state.session, READY_MARKER, priorRuns + 2, RELOAD_TIMEOUT)).toContain(
+            READY_MARKER,
+        );
     });
 
     it("stops the application when it is asked to stop", async () => {

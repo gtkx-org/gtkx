@@ -3,6 +3,7 @@ import { sortStringsBy } from "@gtkx/utils";
 import { type Container, traverse } from "./traversal.js";
 import { getWidgetAccessibleName, getWidgetLevel } from "./widget-accessible-properties.js";
 import { getTypeTag } from "./widget-getters.js";
+import { requireWidget } from "./widget-target.js";
 
 const ROLE_NAMES_BY_VALUE = enumNamesByValue(Gtk.AccessibleRole);
 
@@ -125,6 +126,7 @@ const logRoles = (container: Container): void => {
  *
  * @param widget The widget to read the level from.
  */
-const computeHeadingLevel = (widget: Gtk.Widget): number | undefined => getWidgetLevel(widget) ?? undefined;
+const computeHeadingLevel = (widget: Gtk.Accessible): number | undefined =>
+    getWidgetLevel(requireWidget(widget)) ?? undefined;
 
 export { computeHeadingLevel, formatRole, formatRoleList, getRoles, prettyRoles, logRoles };

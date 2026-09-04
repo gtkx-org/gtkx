@@ -77,7 +77,7 @@ type TextQueryArgs = [text: Matcher, options?: MatcherOptions];
 type ContainmentMatcher<Args extends unknown[]> = (received: unknown, ...args: Args) => MatcherResult;
 type TextMatcherContext = { matcherName: string; widget: Gtk.Widget; actual: string | null };
 type ClassArguments = { expected: ClassExpectation[]; isExact: boolean };
-type QueryAll<Args extends unknown[]> = (container: Container, ...args: Args) => Gtk.Widget[];
+type QueryAll<Args extends unknown[]> = (container: Container, ...args: Args) => object[];
 
 type BooleanAccessibleState =
     Gtk.AccessibleState.BUSY |
@@ -195,11 +195,11 @@ type MatcherImplementations = {
     /** Asserts the widget's accessible role. */
     toHaveRole: (received: unknown, expected: Gtk.AccessibleRole) => MatcherResult;
     /** Asserts the widget is, or is an ancestor of, the given widget. */
-    toContainElement: (received: unknown, descendant: Gtk.Widget | null) => MatcherResult;
+    toContainElement: (received: unknown, descendant: Gtk.Accessible | null) => MatcherResult;
     /** Asserts the widget comes before the given widget in the widget tree, neither containing the other. */
-    toAppearBefore: (received: unknown, other: Gtk.Widget) => MatcherResult;
+    toAppearBefore: (received: unknown, other: Gtk.Accessible) => MatcherResult;
     /** Asserts the widget comes after the given widget in the widget tree, neither containing the other. */
-    toAppearAfter: (received: unknown, other: Gtk.Widget) => MatcherResult;
+    toAppearAfter: (received: unknown, other: Gtk.Accessible) => MatcherResult;
     /** Asserts at least one widget under the received one matches the `ByRole` query. */
     toContainAnyByRole: ContainmentMatcher<RoleQueryArgs>;
     /** Asserts exactly one widget under the received one matches the `ByRole` query. */
@@ -783,14 +783,14 @@ function toBePartiallyPressed(received: unknown): MatcherResult {
     return stateResult(widget, "partially pressed", state === MIXED_TRISTATE);
 }
 
-function toAppearBefore(received: unknown, other: Gtk.Widget): MatcherResult {
+function toAppearBefore(received: unknown, other: Gtk.Accessible): MatcherResult {
     const widget = asWidget(received, "toAppearBefore");
     const target = asWidget(other, "toAppearBefore");
 
     return orderResult(widget, target, "before", isAppearingBefore(widget, target));
 }
 
-function toAppearAfter(received: unknown, other: Gtk.Widget): MatcherResult {
+function toAppearAfter(received: unknown, other: Gtk.Accessible): MatcherResult {
     const widget = asWidget(received, "toAppearAfter");
     const target = asWidget(other, "toAppearAfter");
 
@@ -922,15 +922,16 @@ function toHaveRole(received: unknown, expected: Gtk.AccessibleRole): MatcherRes
     };
 }
 
-function toContainElement(received: unknown, descendant: Gtk.Widget | null): MatcherResult {
+function toContainElement(received: unknown, descendant: Gtk.Accessible | null): MatcherResult {
     const widget = asWidget(received, "toContainElement");
-    const isPass = descendant !== null && (descendant === widget || descendant.isAncestor(widget));
+    const target = descendant === null ? null : asWidget(descendant, "toContainElement");
+    const isPass = target !== null && (target === widget || target.isAncestor(widget));
 
     return {
         pass: isPass,
         message: () =>
             `expected widget ${negationPrefix(isPass)}to contain ` +
-            `${descendant === null ? "null" : describeWidget(descendant)}\n${describeWidget(widget)}`,
+            `${target === null ? "null" : describeWidget(target)}\n${describeWidget(widget)}`,
     };
 }
 
@@ -1037,9 +1038,9 @@ declare module "@vitest/expect" {
         toHaveFocus(): void;
         toHaveValue(expected?: number | string): void;
         toHaveRole(expected: Gtk.AccessibleRole): void;
-        toContainElement(descendant: Gtk.Widget | null): void;
-        toAppearBefore(other: Gtk.Widget): void;
-        toAppearAfter(other: Gtk.Widget): void;
+        toContainElement(descendant: Gtk.Accessible | null): void;
+        toAppearBefore(other: Gtk.Accessible): void;
+        toAppearAfter(other: Gtk.Accessible): void;
         toContainAnyByRole(...args: RoleQueryArgs): void;
         toContainOneByRole(...args: RoleQueryArgs): void;
         toContainAnyByText(...args: TextQueryArgs): void;

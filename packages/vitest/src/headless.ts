@@ -6,3 +6,8 @@ export {
     type CompositorId,
     type HeadlessOptions,
 } from "./headless-display.js";
+export {
+    findStaleHeadlessDisplays,
+    reapStaleHeadlessDisplays,
+    type StaleHeadlessDisplay,
+} from "./reap-headless-displays.js";

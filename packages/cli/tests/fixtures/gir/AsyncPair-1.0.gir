@@ -202,6 +202,49 @@
           </parameter>
         </parameters>
       </method>
+      <method name="external_async"
+              c:identifier="async_pair_job_external_async"
+              glib:finish-func="async_pair_client_generic_finish">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Job" c:type="AsyncPairJob*"/>
+          </instance-parameter>
+          <parameter name="callback"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1"
+                     scope="async"
+                     closure="1">
+            <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+          </parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1">
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="Client"
+           c:symbol-prefix="client"
+           c:type="AsyncPairClient"
+           parent="GObject.Object"
+           glib:type-name="AsyncPairClient"
+           glib:get-type="async_pair_client_get_type">
+      <method name="generic_finish" c:identifier="async_pair_client_generic_finish">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Client" c:type="AsyncPairClient*"/>
+          </instance-parameter>
+          <parameter name="res" transfer-ownership="none">
+            <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+          </parameter>
+        </parameters>
+      </method>
     </class>
   </namespace>
 </repository>

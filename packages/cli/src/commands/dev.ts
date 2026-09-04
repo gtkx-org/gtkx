@@ -1,4 +1,5 @@
 import { armParentDeath } from "@gtkx/native/internal";
+import { reapStaleHeadlessDisplays } from "@gtkx/vitest/headless";
 import { defineCommand } from "citty";
 import { resolveConfigWatch } from "../codegen/run-codegen.js";
 import { startHeadlessDevDisplay } from "../dev/headless.js";
@@ -28,6 +29,7 @@ const dev = defineCommand({
         },
     },
     async run({ args }) {
+        reapStaleHeadlessDisplays();
         const initialProcessGroupOwner = getInitialProcessGroupOwner();
 
         if (
@@ -44,8 +46,13 @@ const dev = defineCommand({
             throw new Error("--size requires --headless");
         }
 
-        const { cwd, entry: entryPath, configFile } = await prepareProject(args, DEV_MODE);
-        const watch: DevWatch | undefined = await resolveConfigWatch(cwd, DEV_MODE, configFile);
+        const { cwd, entry: entryPath, configFile, configDependencies } = await prepareProject(args, DEV_MODE);
+        const watch: DevWatch | undefined = await resolveConfigWatch(
+            cwd,
+            DEV_MODE,
+            configFile,
+            configDependencies,
+        );
         const { applicationArgs } = splitApplicationArgs(process.argv.slice(2));
         const stopHeadless = args.headless ? await startHeadlessDevDisplay(args.size) : undefined;
 

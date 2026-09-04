@@ -111,6 +111,27 @@ rejects packages resolved from a `node_modules` directory above the project, nam
 hoisted copy could otherwise share and overwrite another project's generated bindings. Scaffold and run the
 project outside an ancestor dependency tree, or install its dependencies locally.
 
+### Store publication and recovery
+
+GTKX publishes the GI and JSX stores as one matched pair. `node_modules/.gtkx/current` points to the active
+`.pair-generation-*` directory, while `.gtkx/gi` and `.gtkx/jsx` lead to that pair's two packages. The public
+`node_modules/@gtkx/gi` and `node_modules/@gtkx/jsx` links remain stable while `current` switches atomically, so
+readers cannot observe a new JSX store with an older GI store.
+
+Codegen retains at most three complete generations, including the active pair. Each enabled codegen run identifies
+staging, legacy, detached, and pair-generation directories by the writer process recorded in their names;
+once the retained allowance is exceeded, artifacts whose writer is no longer alive are removed. Live writers
+and every generation still reached by `current` or a store link remain protected.
+
+Writers serialize through `node_modules/.gtkx/.codegen.lock`. A normal exit removes that lock-owner file; a
+forced exit can leave it behind, but the operating-system lock is released with the process and the next run
+can recover. Waiting for an active writer defaults to 10 minutes. Set `GTKX_CODEGEN_LOCK_TIMEOUT_MS` to a
+positive millisecond value to choose a different timeout, for example:
+
+```bash
+GTKX_CODEGEN_LOCK_TIMEOUT_MS=30000 gtkx codegen
+```
+
 The `cairo` namespace is provided by the [`@gtkx/cairo`](/v2/guide/cairo) package rather than generated.
 
 Record fields appear as accessors: a getter wherever the read lands on the right memory, and a setter only where a field slot can hold what it stores. `null`-terminated pointer arrays read, so `Gio.DBusNodeInfo.interfaces` hands back its array, but they are read-only and absent from the record's constructor props, since the slot cannot keep an array alive. Fields whose element count lives in a sibling field, and `GList` or `GSList` links, carry no accessor and are absent from the class.

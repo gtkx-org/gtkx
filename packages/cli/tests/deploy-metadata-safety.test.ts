@@ -58,7 +58,7 @@ const EXTRA_FILES = {
     [`share/polkit-1/actions/${APPLICATION_ID}.policy`]: NOTES_SOURCE,
     [`share/dbus-1/system.d/${APPLICATION_ID}.conf`]: NOTES_SOURCE,
     [`share/dbus-1/system-services/${APPLICATION_ID}.service`]: NOTES_SOURCE,
-    [`share/metainfo/${APPLICATION_ID}.metainfo.xml`]: NOTES_SOURCE,
+    [`share/metainfo/./${APPLICATION_ID}.metainfo.xml`]: NOTES_SOURCE,
 };
 
 const deployBlock = (extra: string): string => `    deploy: {
@@ -123,6 +123,7 @@ const expectDeployRejected = (prefix: string, projectConfiguration: string): voi
 
 describe("gtkx deploy (metadata and packaging safety)", () => {
     let project: CliProject;
+    let deployOutput = "";
 
     beforeAll(() => {
         project = createCliProject({
@@ -132,7 +133,7 @@ describe("gtkx deploy (metadata and packaging safety)", () => {
             hasStore: true,
         });
         writeFileSync(join(project.root, EXTRA_ELF), highFloorElf());
-        runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb,rpm"]);
+        deployOutput = runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb,rpm"]).output;
     });
 
     afterAll(() => {
@@ -153,6 +154,9 @@ describe("gtkx deploy (metadata and packaging safety)", () => {
         for (const fragment of EXPECTED_METAINFO) {
             expect(metainfo).toContain(fragment);
         }
+
+        expect(deployOutput).toContain(NOTES_SOURCE);
+        expect(deployOutput).toContain(`share/metainfo/${APPLICATION_ID}.metainfo.xml`);
     });
 
     it("accepts a safe four-digit mode without preserving privileged bits", () => {

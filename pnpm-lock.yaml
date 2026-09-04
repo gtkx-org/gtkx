@@ -349,6 +349,9 @@ importers:
       citty:
         specifier: ^0.2.2
         version: 0.2.2
+      confbox:
+        specifier: ^0.2.4
+        version: 0.2.4
       create-gtkx:
         specifier: workspace:*
         version: link:../create-gtkx
@@ -364,6 +367,9 @@ importers:
       i18next-cli:
         specifier: 1.72.1
         version: 1.72.1(@types/node@26.4.0)(typescript@6.0.3)
+      jiti:
+        specifier: ^2.7.0
+        version: 2.7.0
       react:
         specifier: ^19
         version: 19.2.8
@@ -453,6 +459,9 @@ importers:
       defu:
         specifier: ^6.1.7
         version: 6.1.7
+      jiti:
+        specifier: ^2.7.0
+        version: 2.7.0
       vite:
         specifier: ^8.2.2
         version: 8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0)

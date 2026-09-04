@@ -9,6 +9,7 @@ import {
     getWidgetOwnLabel,
     getWidgetPlaceholderText,
 } from "./widget-accessible-properties.js";
+import { requireWidget } from "./widget-target.js";
 
 /** The query variant a suggestion targets. */
 type Variant = "get" | "getAll" | "query" | "queryAll" | "find" | "findAll";
@@ -75,10 +76,11 @@ const textSuggestion = (queryName: Method, variant: Variant, value: string | nul
  * @returns The best available suggestion, or undefined when no query applies.
  */
 const getSuggestedQuery = (
-    widget: Gtk.Widget,
+    target: Gtk.Accessible,
     variant: Variant = "get",
     method?: Method,
 ): Suggestion | undefined => {
+    const widget = requireWidget(target);
     const builders: Record<Method, () => Suggestion | undefined> = {
         Role: () => roleSuggestion(widget, variant),
         LabelText: () =>

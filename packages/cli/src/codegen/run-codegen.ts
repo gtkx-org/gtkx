@@ -2,6 +2,7 @@ import { runCodegen as runCodegenCore } from "@gtkx/codegen";
 import { getShadowingStorePaths, sweepProjectStaging } from "@gtkx/codegen/internal";
 import { type Config, loadConfig } from "@gtkx/config";
 import {
+    configDependenciesFor,
     isAgentRulesEnabled,
     resolveElementComponents,
     resolveElementProps,
@@ -10,13 +11,14 @@ import {
 } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { resolveCatalogProject, synchronizeCatalogs } from "../i18n/catalogs.js";
 import { extractSourceCatalog } from "../i18n/source-messages.js";
 import { clearI18nTypes, emitI18nTypes } from "../i18n/types.js";
 import { upsertAgentRules } from "../internal/agent-rules.js";
 import { discoverSourceFiles } from "../internal/source-imports.js";
 import { emitSchemaEnv } from "../settings/schema.js";
+import { resolveConfigDependencies } from "./config-dependencies.js";
 import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
 import { type ReferenceResult, writeReference } from "./reference.js";
 import { type CodegenContext, type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
@@ -260,13 +262,43 @@ const resolveConfigWatch = async (
     cwd: string,
     mode?: string,
     configFile?: string,
-): Promise<{ paths: string[]; regenerate: () => Promise<void> }> => {
-    const loaded = await loadConfig(cwd, { mode, configFile });
+    initialDependencies: string[] = [],
+): Promise<{ paths: string[]; resolvePaths: () => string[]; regenerate: () => Promise<string[]> }> => {
+    let selectedConfigFile: string;
+
+    if (configFile === undefined) {
+        const loaded = await loadConfig(cwd, { mode });
+        selectedConfigFile = loaded.configFile;
+    } else {
+        selectedConfigFile = resolve(cwd, configFile);
+    }
+
+    let knownDependencies = initialDependencies;
+    const selectedConfigName = relative(cwd, selectedConfigFile);
+    const resolvePaths = (): string[] => [
+        ...new Set(
+            [selectedConfigFile, ...knownDependencies]
+                .flatMap((path) => resolveConfigDependencies(path, selectedConfigName, cwd)),
+        ),
+    ];
 
     return {
-        paths: [resolve(loaded.root, loaded.configFile)],
+        paths: resolvePaths(),
+        resolvePaths,
         regenerate: async () => {
-            await runCodegen({ cwd: loaded.root, mode, configFile: loaded.configFile });
+            let loaded: Awaited<ReturnType<typeof loadConfig>>;
+
+            try {
+                loaded = await loadConfig(cwd, { mode, configFile: selectedConfigFile });
+            } catch (error) {
+                knownDependencies = [...new Set([...knownDependencies, ...configDependenciesFor(error)])];
+                throw error;
+            }
+
+            knownDependencies = configDependenciesFor(loaded);
+            await runCodegen({ cwd, mode, resolved: loaded });
+
+            return resolvePaths();
         },
     };
 };

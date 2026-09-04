@@ -27,6 +27,16 @@ type ParentDeathSupervisorOptions = Omit<ParentDeathSpawnOptions, "cleanupDirect
 
 type GuardSignal = "SIGKILL" | "SIGCONT";
 
+type ProcessIdentity = {
+    pid: number;
+    startTime: string;
+};
+
+type ProcessWatch = {
+    owner: ProcessIdentity;
+    target: ProcessIdentity;
+};
+
 type LaunchArguments = (executable: string, cleanupDirectories: CleanupDirectoryIdentity[]) => string[];
 
 type GuardJob = {
@@ -39,6 +49,7 @@ type GuardJob = {
 type GuardState = {
     child?: ChildProcess | undefined;
     jobs: Map<string, GuardJob>;
+    watch?: ProcessWatch;
 };
 
 type SpawnRollback = {
@@ -54,6 +65,24 @@ const RUN_ID = randomBytes(8).toString("hex");
 const RUN_PREFIX = `${PROCESS_MARKER}=${RUN_ID}/`;
 const guard: GuardState = { jobs: new Map() };
 const SUPERVISOR_NAME = "gtkx-process-supervisor";
+const SUPERVISOR_CLEANUP_NAME = "gtkx-process-cleanup";
+const SUPERVISOR_CLEANUP_SCRIPT = [
+    "runtime=$1",
+    "identity=$2",
+    "group=$3",
+    "stat_command=$4",
+    "rm_command=$5",
+    "sleep_command=$6",
+    'kill -KILL "-$group" 2>/dev/null',
+    "remaining=40",
+    'while kill -0 "-$group" 2>/dev/null && [ "$remaining" -gt 0 ]; do',
+    '    "$sleep_command" 0.025',
+    "    remaining=$((remaining - 1))",
+    "done",
+    'if [ "$("$stat_command" -c "%d:%i:%u" -- "$runtime" 2>/dev/null)" = "$identity" ]; then',
+    '    "$rm_command" -rf -- "$runtime"',
+    "fi",
+].join("\n");
 const SUPERVISOR_SCRIPT = [
     "runtime=$1",
     "identity=$2",
@@ -61,40 +90,57 @@ const SUPERVISOR_SCRIPT = [
     "expected_parent_start=$4",
     "stat_command=$5",
     "rm_command=$6",
-    "shift 6",
-    "matches_directory() {",
-    '    [ "$("$stat_command" -c "%d:%i:%u" -- "$runtime" 2>/dev/null)" = "$identity" ]',
-    "}",
+    "shell_command=$7",
+    "setsid_command=$8",
+    "sleep_command=$9",
+    "shift 9",
+    "cleanup_name=$1",
+    "cleanup_script=$2",
+    "shift 2",
     "matches_parent() {",
     "    parent_stat=",
     '    IFS= read -r parent_stat < "/proc/$expected_parent/stat" || return 1',
     "    parent_tail=${parent_stat##*) }",
     "    set -- $parent_tail",
+    '    case "$1" in Z|X|x) return 1 ;; esac',
     '    [ "${20}" = "$expected_parent_start" ]',
     "}",
     "terminate() {",
     '    trap "" CONT TERM INT HUP',
-    '    if matches_directory; then "$rm_command" -rf -- "$runtime"; fi',
+    '    "$setsid_command" "$shell_command" -c "$cleanup_script" "$cleanup_name" "$runtime" "$identity" "$$" ' +
+    '"$stat_command" "$rm_command" "$sleep_command" </dev/null >/dev/null 2>&1 &',
+    '    wait "$!"',
     '    kill -KILL "-$$" 2>/dev/null',
     "    exit 1",
     "}",
-    "trap terminate CONT TERM INT HUP",
+    "continue_or_terminate() {",
+    "    if ! matches_parent; then terminate; fi",
+    "}",
+    "trap continue_or_terminate CONT",
+    "trap terminate TERM INT HUP",
+    "child=",
     "if ! matches_parent; then terminate; fi",
     '"$@" &',
     "child=$!",
-    'wait "$child"',
-    "exit $?",
+    "while :; do",
+    '    wait "$child"',
+    "    status=$?",
+    '    if kill -0 "$child" 2>/dev/null; then continue; fi',
+    '    exit "$status"',
+    "done",
 ].join("\n");
 
-const processStartTime = (pid: number): string => {
+const processIdentity = (pid: number): ProcessIdentity => {
     const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
-    const start = stat.slice(stat.lastIndexOf(") ") + 2).split(" ", 20)[19];
+    const fields = stat.slice(stat.lastIndexOf(") ") + 2).split(" ", 20);
+    const state = fields[0];
+    const startTime = fields[19];
 
-    if (start === undefined) {
+    if (startTime === undefined || state === undefined || ["Z", "X", "x"].includes(state)) {
         throw new Error(`Failed to identify process ${String(pid)}`);
     }
 
-    return start;
+    return { pid, startTime };
 };
 
 const writeGuardCommand = (child: ChildProcess, operation: "+" | "-", job: GuardJob): void => {
@@ -110,12 +156,41 @@ const releaseGuard = (child: ChildProcess): void => {
     }
 };
 
-const startGuard = (): void => {
+const isSameProcessWatch = (left: ProcessWatch, right: ProcessWatch): boolean =>
+    left.owner.pid === right.owner.pid &&
+    left.owner.startTime === right.owner.startTime &&
+    left.target.pid === right.target.pid &&
+    left.target.startTime === right.target.startTime;
+
+const configureProcessWatch = (watch?: ProcessWatch): void => {
+    if (watch === undefined) {
+        return;
+    }
+
+    if (guard.watch !== undefined && !isSameProcessWatch(guard.watch, watch)) {
+        throw new Error("The process guard is already watching another owner");
+    }
+
+    if (guard.child !== undefined && guard.watch === undefined) {
+        throw new Error("The process guard was started before its owner was registered");
+    }
+
+    guard.watch = watch;
+};
+
+const guardArguments = (): string[] =>
+    guard.watch === undefined
+        ? [GUARD_PATH, RUN_PREFIX]
+        : [GUARD_PATH, RUN_PREFIX, JSON.stringify(guard.watch)];
+
+const startGuard = (watch?: ProcessWatch): void => {
+    configureProcessWatch(watch);
+
     if (guard.child) {
         return;
     }
 
-    const child = spawn(process.execPath, [GUARD_PATH, RUN_PREFIX], {
+    const child = spawn(process.execPath, guardArguments(), {
         detached: true,
         stdio: ["pipe", "ignore", "ignore"],
     });
@@ -145,6 +220,20 @@ const startGuard = (): void => {
     }
 
     releaseGuard(child);
+};
+
+const watchParentProcess = (): void => {
+    const parentId = process.ppid;
+    const watch = {
+        owner: processIdentity(parentId),
+        target: processIdentity(process.pid),
+    };
+
+    if (process.ppid !== parentId) {
+        throw new Error("The parent process exited while its guard was starting");
+    }
+
+    startGuard(watch);
 };
 
 const registerJob = (job: GuardJob): void => {
@@ -246,6 +335,8 @@ const spawnWithParentDeathSupervisor = (
     const shell = resolveExecutable("sh");
     const stat = resolveExecutable("stat");
     const rm = resolveExecutable("rm");
+    const setsid = resolveExecutable("setsid");
+    const sleep = resolveExecutable("sleep");
 
     return spawnGuarded(
         command,
@@ -268,9 +359,14 @@ const spawnWithParentDeathSupervisor = (
                 identity.path,
                 `${identity.device}:${identity.inode}:${identity.userId}`,
                 String(process.pid),
-                processStartTime(process.pid),
+                processIdentity(process.pid).startTime,
                 stat,
                 rm,
+                shell,
+                setsid,
+                sleep,
+                SUPERVISOR_CLEANUP_NAME,
+                SUPERVISOR_CLEANUP_SCRIPT,
                 executable,
                 ...args,
             ];
@@ -278,4 +374,4 @@ const spawnWithParentDeathSupervisor = (
     );
 };
 
-export { spawnWithParentDeathSignal, spawnWithParentDeathSupervisor };
+export { spawnWithParentDeathSignal, spawnWithParentDeathSupervisor, watchParentProcess };

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkEntry, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
@@ -146,6 +148,14 @@ describe("render", () => {
         expect(container).toBe(box);
         expect(box).toContainElement(await findInBox(Gtk.AccessibleRole.BUTTON, { name: "Into Box" }));
         host.destroy();
+
+        const page = new Adw.PreferencesPage();
+        const pageRender = await render(<AdwPreferencesGroup title="Into Page" />, {
+            container: page,
+            baseElement: page,
+        });
+        expect(pageRender.container).toBe(page);
+        expect(page.getFirstChild()).not.toBeNull();
     });
 
     it("applies the wrapper on the first render and on every rerender", async () => {

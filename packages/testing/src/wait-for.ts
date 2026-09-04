@@ -4,12 +4,13 @@ import { runWithActEnvironment } from "./act.js";
 import { getConfig } from "./config.js";
 import { timeoutError } from "./errors.js";
 import { advanceFakeClock, delay, now } from "./timers.js";
+import { requireWidget } from "./widget-target.js";
 
 type PollResult<T> = { status: "resolved"; value: T } | { status: "timedout"; lastError: Error | null };
 /** Widgets watched for removal; null counts as already removed. */
-type RemovalTarget = Gtk.Widget | Gtk.Widget[] | null;
+type RemovalTarget = Gtk.Accessible | Gtk.Accessible[] | null;
 /** The widgets to watch for removal, or a function re-read on every poll to locate them. */
-type ElementOrCallback = Gtk.Widget | Gtk.Widget[] | (() => RemovalTarget);
+type ElementOrCallback = Gtk.Accessible | Gtk.Accessible[] | (() => RemovalTarget);
 
 const DEFAULT_INTERVAL = 50;
 const ELEMENT_NOT_REMOVED = new Error("Element not yet removed");
@@ -102,10 +103,8 @@ const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): P
 const getTarget = (elementOrCallback: ElementOrCallback): RemovalTarget =>
     typeof elementOrCallback === "function" ? elementOrCallback() : elementOrCallback;
 
-const isWidgetRemoved = (widget: Gtk.Widget | null): boolean => {
-    if (widget === null) {
-        return true;
-    }
+const isWidgetRemoved = (target: Gtk.Accessible): boolean => {
+    const widget = requireWidget(target);
 
     try {
         return widget.getRoot() === null;
@@ -115,6 +114,10 @@ const isWidgetRemoved = (widget: Gtk.Widget | null): boolean => {
 };
 
 const isTargetRemoved = (target: RemovalTarget): boolean => {
+    if (target === null) {
+        return true;
+    }
+
     if (Array.isArray(target)) {
         return target.every((widget) => isWidgetRemoved(widget));
     }

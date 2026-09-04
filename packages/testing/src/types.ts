@@ -15,9 +15,11 @@ type Matcher = string | number | RegExp | MatcherFunction;
 type NormalizerFn = (text: string) => string;
 /**
  * A widget class usable as a query's `as` constraint, such as `Gtk.Button`. Abstract classes and
- * generated GInterface pseudo-classes are accepted.
+ * generated GInterface pseudo-classes that extend `Gtk.Accessible` are accepted.
  */
-type WidgetType<T extends Gtk.Widget = Gtk.Widget> = abstract new (...args: never[]) => T;
+type WidgetType<T extends Gtk.Accessible = Gtk.Accessible> = abstract new (
+    ...args: never[]
+) => T;
 
 /** Options controlling the default text normalizer. */
 type NormalizerOptions = {
@@ -40,7 +42,7 @@ type WaitForOptions = {
 };
 
 /** Options controlling text matching and, for asynchronous queries, polling behavior. */
-type MatcherOptions<T extends Gtk.Widget = Gtk.Widget> = {
+type MatcherOptions<T extends Gtk.Accessible = Gtk.Accessible> = {
     /** When true (the default), require an exact match; when false, match case-insensitively as a substring. */
     exact?: boolean | undefined;
     /** Custom normalizer replacing the default; cannot be combined with `trim` or `collapseWhitespace`. */
@@ -74,7 +76,7 @@ type ByRoleValue = {
 };
 
 /** Options for role queries: an accessible name matcher plus accessible state and value constraints. */
-type ByRoleOptions<T extends Gtk.Widget = Gtk.Widget> = MatcherOptions<T> & {
+type ByRoleOptions<T extends Gtk.Accessible = Gtk.Accessible> = MatcherOptions<T> & {
     /** Matcher for the widget's accessible name. */
     name?: Matcher | undefined;
     /** Required checked state; a mixed check button reads as neither, so it matches neither value. */
@@ -116,7 +118,7 @@ type BoundQuery<Q extends Query> = Q extends (container: Container, ...args: inf
 type BoundCustomQueries<Q extends QueryMap> = { [K in keyof Q]: BoundQuery<Q[K]> };
 
 /** What each variant of a query family yields for the widget type it matched. */
-type QueryFamilyReturns<T extends Gtk.Widget> = {
+type QueryFamilyReturns<T extends Gtk.Accessible> = {
     /** The single match, or null when nothing matched; throws when more than one matched. */
     queryBy: T | null;
     /** Every match, empty when nothing matched. */
@@ -135,7 +137,7 @@ type QueryFamilyReturns<T extends Gtk.Widget> = {
 type QueryKind = "role" | "text" | "name" | "value";
 
 /** The arguments a query of the given kind takes after the family's leading ones. */
-type QueryArgs<Kind extends QueryKind, T extends Gtk.Widget> = Kind extends "role"
+type QueryArgs<Kind extends QueryKind, T extends Gtk.Accessible> = Kind extends "role"
     ? [role: Gtk.AccessibleRole, options?: ByRoleOptions<T>]
     : Kind extends "name"
         ? [name: Matcher, options?: MatcherOptions<T>]
@@ -148,7 +150,9 @@ type QueryArgs<Kind extends QueryKind, T extends Gtk.Widget> = Kind extends "rol
  * ahead of the family's own arguments.
  */
 type QueryFamily<Suffix extends string, Kind extends QueryKind, Head extends unknown[]> = {
-    [K in keyof QueryFamilyReturns<Gtk.Widget> as `${K & string}${Suffix}`]: <T extends Gtk.Widget = Gtk.Widget>(
+    [K in keyof QueryFamilyReturns<Gtk.Widget> as `${K & string}${Suffix}`]: <
+        T extends Gtk.Accessible = Gtk.Widget,
+    >(
         ...args: [...Head, ...QueryArgs<Kind, T>]
     ) => QueryFamilyReturns<T>[K];
 };
@@ -175,7 +179,7 @@ type RenderOptions<Q extends QueryMap = Record<never, never>> = {
      * out of reach of a pointer and a keyboard, so every `userEvent` helper aimed at it rejects
      * after `actionabilityTimeout`; `fireEvent` drives such a tree instead.
      */
-    container?: Gtk.Widget | RootElement | undefined;
+    container?: Gtk.Accessible | RootElement | undefined;
     /** Root of the subtree that bound queries search. */
     baseElement?: Container | undefined;
     /** Component wrapped around the rendered element, such as a context provider. */

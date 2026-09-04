@@ -116,8 +116,24 @@ const STATIC_KEY_WRAPPER_TYPES: ReadonlySet<string> = new Set([
 
 class SourceExtractionError extends Error {}
 
-const sourceErrorMessage = (error: unknown): string =>
-    error instanceof Error ? error.message : String(error);
+const sourceErrorMessage = (error: unknown): string => {
+    if (!(error instanceof Error)) {
+        return String(error);
+    }
+
+    if (
+        "code" in error &&
+        error.code === "BABEL_PARSE_ERROR"
+    ) {
+        const separator = error.message.indexOf(": ");
+
+        if (separator !== -1) {
+            return error.message.slice(separator + 2);
+        }
+    }
+
+    return error.message;
+};
 
 const projectSourcePath = (root: string, path: string): string => {
     const absolute = isAbsolute(path) ? resolve(path) : resolve(root, path);
@@ -1968,4 +1984,4 @@ const extractSourceCatalog = async (
     extractCatalogTemplate({ project, messages, shouldPreserveMetadataMessages });
 };
 
-export { extractSourceCatalog, extractSourceCatalogTo };
+export { extractSourceCatalog, extractSourceCatalogTo, SourceExtractionError };

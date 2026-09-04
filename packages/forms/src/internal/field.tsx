@@ -13,7 +13,7 @@ type FormFieldPropName =
     "rules" |
     "shouldUnregister";
 
-type FieldWidget = Gtk.Widget & {
+type FieldWidget = {
     grabFocus: () => boolean;
 };
 

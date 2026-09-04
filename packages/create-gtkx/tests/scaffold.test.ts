@@ -18,7 +18,7 @@ const BASE_ARGS = ["--no-interactive", "--application-id", APPLICATION_ID, "--pa
 const ICON_PATH = `data/icons/hicolor/scalable/apps/${APPLICATION_ID}.svg`;
 const STALE_FILE = "stale.txt";
 const CUSTOM_SOURCE = "src/custom.ts";
-const MISE_PIN = '[tools]\nnode = "26.7.0"\n';
+const EXISTING_MISE = '[tools]\nnode = "24.19.0"\npython = "3.13"\n\n[env]\nAPP_MODE = "dev"\n';
 
 const create = (args: string[] = []): CreateRun => runCreate({ args: [...BASE_ARGS, ...args] });
 const getScripts = (run: CreateRun): Scripts => readManifest(run).scripts as Scripts;
@@ -57,9 +57,9 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
             "tests/app.test.tsx",
             ".mcp.json",
             ".claude/settings.json",
-            "mise.toml",
             ICON_PATH,
         ]));
+        expect(files).not.toContain("mise.toml");
 
         expect(hasProjectPath(typescriptState.run, ".git")).toBe(true);
         expectGeneratedConfig(typescriptState.run);
@@ -107,8 +107,6 @@ describe("create-gtkx scaffolding for coding agents", () => {
             "Bash(npx gtkx codegen:*)",
             "Bash(npx vitest run:*)",
         ]));
-
-        expect(readProject(typescriptState.run, "mise.toml")).toBe(MISE_PIN);
     });
 
     it("keeps the generated reference out of git and the agent files in it", () => {
@@ -131,7 +129,6 @@ describe("create-gtkx scaffolding without TypeScript or testing", () => {
             expect(files).not.toContain("tests/app.test.tsx");
             expect(getScripts(run).test).toBeUndefined();
             expect(getScripts(run).typecheck).toBeUndefined();
-            expect(readProject(run, "mise.toml")).toBe(MISE_PIN);
         } finally {
             removeRun(run);
         }
@@ -201,16 +198,26 @@ describe("create-gtkx runtime requirements", () => {
 });
 
 describe("create-gtkx and a directory that already holds files", () => {
-    it("preserves unrelated files and replaces scaffold files when told to overwrite", () => {
+    it("preserves unrelated files and lists the scaffold files it replaces", () => {
         const run = runCreate({
             args: [...BASE_ARGS, "--overwrite"],
-            files: { [CUSTOM_SOURCE]: "custom source", "gtkx.config.ts": "stale config" },
+            files: {
+                [CUSTOM_SOURCE]: "custom source",
+                "gtkx.config.ts": "stale config",
+                "mise.toml": EXISTING_MISE,
+            },
         });
 
         try {
             expect(run.status).toBe(0);
             expect(readProject(run, CUSTOM_SOURCE)).toBe("custom source");
             expect(readProject(run, "gtkx.config.ts")).not.toBe("stale config");
+            expect(readProject(run, "mise.toml")).toBe(EXISTING_MISE);
+            expect(run.output).toContain("Scaffold files to replace");
+            expect(run.output).toContain("Replaced scaffold files");
+            expect(run.output.match(/gtkx\.config\.ts/g)).toHaveLength(2);
+            expect(run.output).not.toContain("mise.toml");
+            expect(run.output).not.toContain(CUSTOM_SOURCE);
             expect(hasProjectPath(run, ".git")).toBe(false);
         } finally {
             removeRun(run);
@@ -332,6 +339,20 @@ describe("create-gtkx refusing to scaffold", () => {
 
         try {
             expect(run.status).not.toBe(0);
+        } finally {
+            removeRun(run);
+        }
+    });
+
+    it("fails on an unknown flag", () => {
+        const run = runCreate({ args: [...BASE_ARGS, "--no-install"] });
+
+        try {
+            expect(() => {
+                if (run.status !== 0) {
+                    throw new Error(run.output);
+                }
+            }).toThrow();
         } finally {
             removeRun(run);
         }

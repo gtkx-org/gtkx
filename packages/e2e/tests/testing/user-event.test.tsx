@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from "react";
+import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -373,7 +374,8 @@ describe("userEvent.click", () => {
             </GtkListBox>,
         );
         const list = await findByRole(Gtk.AccessibleRole.LIST, { as: Gtk.ListBox });
-        const row = await findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Work" });
+        const row = await findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Work", as: Adw.ActionRow });
+        expect(within(row).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Work", as: Adw.ActionRow })).toBe(row);
         await userEvent.click(row);
         expect(list.getSelectedRow()).toBe(row);
         expect(selections).toEqual([row]);

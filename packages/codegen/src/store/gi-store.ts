@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { SourceModule } from "../compile.js";
 import { FINGERPRINT_FILENAME, type GiFingerprint } from "../fingerprint.js";
 import {
-    type GeneratedLibraryInventory,
+    type GeneratedLibraries,
     LIBRARIES_FILENAME,
     renderGeneratedLibraries,
 } from "./gi/generated-libraries.js";
@@ -27,7 +27,7 @@ type GiNamespaceInput = {
 
 type GiStoreRecords = {
     fingerprint: GiFingerprint;
-    libraries: GeneratedLibraryInventory;
+    libraries: GeneratedLibraries;
 };
 
 const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "overrides");

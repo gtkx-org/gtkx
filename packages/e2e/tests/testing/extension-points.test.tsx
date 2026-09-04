@@ -1,4 +1,6 @@
-import type { Container } from "@gtkx/testing";
+import type * as Adw from "@gtkx/gi/adw";
+import type * as Gio from "@gtkx/gi/gio";
+import type { Container, MatcherOptions } from "@gtkx/testing";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import {
@@ -21,6 +23,13 @@ import {
 } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { VBox } from "./widget-fixtures.js";
+
+type QueryWidgetType = NonNullable<MatcherOptions["as"]>;
+type ObjectOnlyConstructor = abstract new (...args: never[]) => { __type__: bigint };
+
+const acceptsActionRow: typeof Adw.ActionRow extends QueryWidgetType ? true : false = true;
+const rejectsFileIcon: typeof Gio.FileIcon extends QueryWidgetType ? false : true = true;
+const rejectsObjectShape: ObjectOnlyConstructor extends QueryWidgetType ? false : true = true;
 
 const queryAllByTooltip = (container: Container, text: string): Gtk.Widget[] =>
     queryAllByObjectProperty("tooltip-text", container, text);
@@ -62,6 +71,10 @@ describe("createEvent", () => {
 });
 
 describe("buildQueries", () => {
+    it("limits narrowed results to accessible classes", () => {
+        expect([acceptsActionRow, rejectsFileIcon, rejectsObjectShape]).toEqual([true, true, true]);
+    });
+
     it("derives the five variants from a queryAllBy function", async () => {
         const [queryByTooltip, getAllByTooltip, getByTooltip, findAllByTooltip, findByTooltip] = buildQueries(
             queryAllByTooltip,

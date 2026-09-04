@@ -1,3 +1,4 @@
+import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { GirCallable } from "../../gir/parameter.js";
 import type { ModuleContext } from "../../writer/context.js";
@@ -11,6 +12,7 @@ import {
     renamesWithInstance,
 } from "../../analysis/param-structure.js";
 import { renderJsDoc } from "../../writer/doc.js";
+import { externalFinishOwner } from "./async.js";
 import { annotationSpec, THROWS_TEXT } from "./doc-spec.js";
 import { isCallbackParameter, returnedOutParameters, shouldTrimFinishBoolean } from "./method.js";
 
@@ -20,6 +22,38 @@ type CallableDocOptions = {
 };
 
 const WHITESPACE_RUN_PATTERN = /\s+/g;
+
+const callbackFinishNote = (
+    context: ModuleContext,
+    callable: GirFunction,
+    finishFn: GirFunction | undefined,
+): string | undefined => {
+    if (finishFn !== undefined) {
+        return undefined;
+    }
+
+    const owner = externalFinishOwner(context.library, callable);
+
+    if (owner === undefined) {
+        return undefined;
+    }
+
+    return `Callback-based: the finish function belongs to \`${owner.namespaceName}.${owner.typeName}\`; ` +
+        `complete it with \`${owner.namespaceName}.${owner.typeName}.${toCamelIdentifier(owner.member.name)}\`.`;
+};
+
+const callableNote = (
+    context: ModuleContext,
+    callable: GirFunction,
+    finishFn: GirFunction | undefined,
+): string | undefined => {
+    const notes = [
+        nulTerminatedNote(context, callable),
+        callbackFinishNote(context, callable, finishFn),
+    ].filter((note): note is string => note !== undefined);
+
+    return notes.length === 0 ? undefined : notes.join("\n\n");
+};
 
 const nulTerminatedNote = (context: ModuleContext, callable: GirCallable): string | undefined => {
     const parameters = nulTerminatedByteParams(context.library, callable);
@@ -101,6 +135,10 @@ const callableSpec = (context: ModuleContext, callable: GirFunction, options: Ca
 });
 
 const callableDoc = (context: ModuleContext, callable: GirFunction, options: CallableDocOptions = {}): string =>
-    renderJsDoc(callable.doc, nulTerminatedNote(context, callable), callableSpec(context, callable, options));
+    renderJsDoc(
+        callable.doc,
+        callableNote(context, callable, options.finishFn),
+        callableSpec(context, callable, options),
+    );
 
 export { callableDoc, callableSpec };

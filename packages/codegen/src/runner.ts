@@ -14,6 +14,7 @@ import {
     type PreparedStore,
     publishPreparedStore,
     publishStorePair,
+    reclaimStoreArtifacts,
     type StoreOptions,
 } from "./store/store-fs.js";
 
@@ -162,12 +163,15 @@ const emitJsxStore = async (input: {
 };
 
 const prepareStores = (stores: (StoreOptions | undefined)[]): void => {
-    for (const store of stores) {
-        if (store === undefined) {
-            continue;
-        }
+    const resolved = stores.filter((store): store is StoreOptions => store !== undefined);
 
+    for (const store of resolved) {
         sweepStagingDirs(store.storeDir);
+    }
+
+    reclaimStoreArtifacts(resolved);
+
+    for (const store of resolved) {
         ensureStoreLink(store);
     }
 };

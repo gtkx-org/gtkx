@@ -59,13 +59,13 @@ describe("gtkx codegen", () => {
         expect(realpathSync(resolveCairoFrom(state.project))).toBe(installed);
     });
 
-    it("records an ABI version for every GIR library", () => {
+    it("records only the GIR library identifiers", () => {
         const inventory = JSON.parse(
             readFileSync(storePath(state.project, "gi", "libraries.json"), "utf8"),
-        ) as { libraries: string[]; girVersions: Record<string, string> };
+        ) as Record<string, unknown>;
 
-        expect(new Set(Object.keys(inventory.girVersions))).toEqual(new Set(inventory.libraries));
-        expect(Object.values(inventory.girVersions).every((version) => version.length > 0)).toBe(true);
+        expect(Object.keys(inventory)).toEqual(["libraries"]);
+        expect(inventory.libraries).toEqual(expect.arrayContaining(["Adw-1", "Gtk-4.0"]));
     });
 
     it("leaves a fresh store alone, and restores a link an install pruned", () => {

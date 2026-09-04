@@ -1,5 +1,6 @@
 import { resolveStore } from "@gtkx/codegen";
 import { type Config, loadConfig } from "@gtkx/config";
+import { configDependenciesFor } from "@gtkx/config/internal";
 import { existsSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -23,6 +24,7 @@ type CodegenContext = {
     root: string;
     config: Config;
     configFile: string;
+    configDependencies: string[];
 };
 
 const hasPackage = (require: NodeJS.Require, dir: string, packageName: string): boolean => {
@@ -64,9 +66,10 @@ const resolveCodegenStore = (dir: string): CodegenStore => {
 };
 
 const resolveCodegenContext = async (cwd: string, mode?: string, selectedConfig?: string): Promise<CodegenContext> => {
-    const { config, configFile } = await loadConfig(cwd, { mode, configFile: selectedConfig });
+    const loaded = await loadConfig(cwd, { mode, configFile: selectedConfig });
+    const { config, configFile } = loaded;
 
-    return { root: cwd, config, configFile };
+    return { root: cwd, config, configFile, configDependencies: configDependenciesFor(loaded) };
 };
 
 export { resolveCodegenStore, resolveCodegenContext, type CodegenContext, type CodegenStore };
