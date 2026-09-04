@@ -30,6 +30,7 @@ import {
     generateBindings,
     type InstanceScope,
     instanceScope,
+    isEmittableCallable,
     renderClassInstanceMember,
     renderStaticHead,
     staticMembers,
@@ -216,6 +217,7 @@ const instanceMethodCollisions = (
 
     return new Set(
         methods
+            .filter((callable) => isEmittableCallable(context, callable))
             .map((callable) => shadowedInstanceMemberName(context, callable, inheritedMethods))
             .filter((name): name is string => name !== undefined),
     );

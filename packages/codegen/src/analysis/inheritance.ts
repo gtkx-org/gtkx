@@ -405,10 +405,8 @@ const areParametersComparable = (context: ModuleContext, pair: ParameterPair): b
     }
 
     const scratch = comparisonContextFor(context);
-    const own = renderTsType(scratch, pair.own.type, pair.own.nullable);
-    const inherited = renderTsType(scratch, pair.inherited.type, pair.inherited.nullable);
 
-    return own === inherited;
+    return renderTsType(scratch, pair.own.type) === renderTsType(scratch, pair.inherited.type);
 };
 
 const inputParameterPairs = (context: ModuleContext, own: GirFunction, inherited: GirFunction): ParameterPair[] => {
@@ -443,10 +441,26 @@ const hasEnumConflict = (
     return ownEnum !== undefined && inheritedEnum !== undefined && ownEnum !== inheritedEnum;
 };
 
+const hasDroppedCallbackParameter = (
+    context: ModuleContext,
+    own: GirFunction,
+    inherited: GirFunction,
+): boolean => {
+    const ownCount = inputParameters(context.library, own).length;
+
+    return inputParameters(context.library, inherited)
+        .slice(ownCount)
+        .some((entry) => isCallbackType(context, entry.parameter.type));
+};
+
 const hasParameterConflict = (context: ModuleContext, own: GirFunction, inherited: GirFunction): boolean => {
     const ownCount = inputParameters(context.library, own).length;
 
-    if (ownCount !== inputParameters(context.library, inherited).length) {
+    if (ownCount > inputParameters(context.library, inherited).length) {
+        return true;
+    }
+
+    if (hasDroppedCallbackParameter(context, own, inherited)) {
         return true;
     }
 

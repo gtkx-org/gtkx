@@ -17,6 +17,7 @@ import { isRefreshBoundary, performRefresh, staleExportName } from "../refresh-r
 import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/swc-refresh.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
+import { type CatalogWrites, createCatalogWrites } from "./catalog-writes.js";
 
 const DEV_MODE = "development";
 const APPLICATION_POLL_INTERVAL_MS = 50;
@@ -43,7 +44,14 @@ const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => 
 
 const readFileRevision = (path: string): Promise<string> => readFile(path, "utf8");
 
-const defaultDevRunnerDeps = (configFile: string): DevRunnerDeps => ({
+const devPlugins = (configFile: string, catalogWrites: CatalogWrites): DevRunnerDeps["plugins"] =>
+    (entryPath) => [
+        ...gtkxVitePlugins({ mode: DEV_MODE, entryPath, configFile, onCatalogsWritten: catalogWrites.record }),
+        ...gtkxFastRefresh(),
+        gtkxReactDomPrebundle(),
+    ];
+
+const createDevRunnerDeps = (configFile: string, catalogWrites: CatalogWrites): DevRunnerDeps => ({
     createServer,
     waitForApplicationId,
     getConfiguredApplicationId: async (root: string) => {
@@ -86,13 +94,13 @@ const defaultDevRunnerDeps = (configFile: string): DevRunnerDeps => ({
     isRefreshBoundary,
     staleExportName,
     readFileRevision,
-    plugins: (entryPath) => [
-        ...gtkxVitePlugins({ mode: DEV_MODE, entryPath, configFile }),
-        ...gtkxFastRefresh(),
-        gtkxReactDomPrebundle(),
-    ],
+    hasWrittenCatalog: catalogWrites.hasWritten,
+    plugins: devPlugins(configFile, catalogWrites),
     log: info,
     exit: (code: number): never => process.exit(code),
 });
+
+const defaultDevRunnerDeps = (configFile: string): DevRunnerDeps =>
+    createDevRunnerDeps(configFile, createCatalogWrites());
 
 export { defaultDevRunnerDeps };

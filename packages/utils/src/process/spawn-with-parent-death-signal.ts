@@ -67,12 +67,14 @@ const guard: GuardState = { jobs: new Map() };
 const SUPERVISOR_NAME = "gtkx-process-supervisor";
 const SUPERVISOR_CLEANUP_NAME = "gtkx-process-cleanup";
 const SUPERVISOR_WATCH_NAME = "gtkx-process-watch";
-const SUPERVISOR_CLEANUP_BODY = [
+const SUPERVISOR_KILL_GROUP_BODY = [
     "remaining=40",
     'while [ "$remaining" -gt 0 ] && kill -KILL "-$group" 2>/dev/null; do',
     '    "$sleep_command" 0.025',
     "    remaining=$((remaining - 1))",
     "done",
+];
+const SUPERVISOR_REMOVE_RUNTIME_BODY = [
     "remaining=40",
     'while [ "$remaining" -gt 0 ] && ' +
     '[ "$("$stat_command" -c "%d:%i:%u" -- "$runtime" 2>/dev/null)" = "$identity" ]; do',
@@ -81,6 +83,7 @@ const SUPERVISOR_CLEANUP_BODY = [
     "    remaining=$((remaining - 1))",
     "done",
 ];
+const SUPERVISOR_CLEANUP_BODY = [...SUPERVISOR_KILL_GROUP_BODY, ...SUPERVISOR_REMOVE_RUNTIME_BODY];
 const SUPERVISOR_CLEANUP_SCRIPT = [
     "runtime=$1",
     "identity=$2",
@@ -110,14 +113,24 @@ const SUPERVISOR_WATCH_SCRIPT = [
     '    case "$1" in Z|X|x) return 1 ;; esac',
     '    [ "${20}" = "$expected_start" ]',
     "}",
+    "matches_parent() {",
+    '    matches_process "$expected_parent" "$expected_parent_start"',
+    "}",
+    "kill_group() {",
+    ...SUPERVISOR_KILL_GROUP_BODY.map((line) => `    ${line}`),
+    "}",
     "cleanup() {",
     '    trap "" TERM INT HUP',
-    ...SUPERVISOR_CLEANUP_BODY.map((line) => `    ${line}`),
+    "    kill_group",
+    ...SUPERVISOR_REMOVE_RUNTIME_BODY.map((line) => `    ${line}`),
     "    exit 0",
     "}",
     "trap cleanup TERM INT HUP",
-    'while matches_process "$group" "$group_start" && ' +
-    'matches_process "$expected_parent" "$expected_parent_start"; do',
+    'while matches_process "$group" "$group_start" && matches_parent; do',
+    '    "$sleep_command" 0.1',
+    "done",
+    "kill_group",
+    "while matches_parent; do",
     '    "$sleep_command" 0.1',
     "done",
     "cleanup",

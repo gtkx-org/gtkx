@@ -351,19 +351,6 @@ const isOptionEnabled = async (
         ? guardCancellation(await p.confirm({ message, initialValue: true }))
         : true);
 
-const shouldOverwriteDirectory = async (target: string, options: CreateOptions): Promise<boolean> => {
-    if (!options.isInteractive) {
-        return options.shouldOverwrite === true;
-    }
-
-    return guardCancellation(
-        await p.confirm({
-            message: `Directory "${target}" is not empty. Replace scaffold files?`,
-            initialValue: false,
-        }),
-    );
-};
-
 const formatFileList = (heading: string, files: string[]): string => {
     const indentedFiles = files.map((file) => `  ${file}`).join("\n");
 
@@ -380,6 +367,51 @@ const reportCompletedChanges = (changes: ScaffoldChanges): void => {
     if (changes.length > 0) {
         p.log.success(formatFileList("Replaced scaffold files", changes));
     }
+};
+
+const confirmOverwrite = async (target: string, changes: ScaffoldChanges): Promise<void> => {
+    reportPlannedChanges(changes);
+
+    const shouldReplace = guardCancellation(
+        await p.confirm({
+            message: `Directory "${target}" is not empty. Replace scaffold files?`,
+            initialValue: false,
+        }),
+    );
+
+    if (!shouldReplace) {
+        fail(`Directory "${target}" is not empty`);
+    }
+};
+
+const refuseNonEmptyDirectory = (target: string, changes: ScaffoldChanges): never => {
+    const heading = `Directory "${target}" is not empty. Pass --overwrite to`;
+
+    return fail(
+        changes.length === 0
+            ? `${heading} scaffold into it`
+            : formatFileList(`${heading} replace these scaffold files`, changes),
+    );
+};
+
+const acceptNonEmptyDirectory = async (
+    target: string,
+    options: CreateOptions,
+    changes: ScaffoldChanges,
+): Promise<void> => {
+    if (options.isInteractive) {
+        await confirmOverwrite(target, changes);
+
+        return;
+    }
+
+    if (options.shouldOverwrite === true) {
+        reportPlannedChanges(changes);
+
+        return;
+    }
+
+    refuseNonEmptyDirectory(target, changes);
 };
 
 const assertTargetIsDirectory = (root: string, target: string): void => {
@@ -399,21 +431,11 @@ const validateTargetAvailability = async (
     const stats = statSync(root, { throwIfNoEntry: false });
     assertTargetIsDirectory(root, target);
 
-    if (stats === undefined) {
+    if (stats === undefined || isDirEmpty(root)) {
         return;
     }
 
-    if (isDirEmpty(root)) {
-        return;
-    }
-
-    reportPlannedChanges(changes);
-
-    if (await shouldOverwriteDirectory(target, options)) {
-        return;
-    }
-
-    fail(`Directory "${target}" is not empty`);
+    await acceptNonEmptyDirectory(target, options, changes);
 };
 
 const resolveTarget = async (options: CreateOptions): Promise<string> => {
@@ -612,10 +634,18 @@ const plannedScaffoldFiles = async (root: string, resolved: ResolvedOptions): Pr
     return files;
 };
 
-const auxiliaryDestinations = (root: string, resolved: ResolvedOptions): string[] => [
-    ...(resolved.packageManager === "pnpm" ? [join(root, "pnpm-workspace.yaml")] : []),
-    ...(resolved.isTypescript ? [join(root, "node_modules", ".gtkx", "env.d.ts")] : []),
-];
+const auxiliaryDestinations = (root: string, resolved: ResolvedOptions): string[] =>
+    resolved.packageManager === "pnpm" ? [join(root, "pnpm-workspace.yaml")] : [];
+
+const envModulePath = (root: string): string => join(root, "node_modules", ".gtkx", "env.d.ts");
+
+const shouldWriteEnvModule = (resolved: ResolvedOptions): boolean =>
+    resolved.isTypescript && resolved.shouldInstallDependencies;
+
+const generatedDestinations = (root: string, resolved: ResolvedOptions): string[] =>
+    shouldWriteEnvModule(resolved) ? [envModulePath(root)] : [];
+
+const isPresent = (path: string): boolean => lstatSync(path, { throwIfNoEntry: false }) !== undefined;
 
 const classifyScaffoldChange = (
     root: string,
@@ -641,19 +671,20 @@ const addScaffoldChange = (plan: ScaffoldPlan, change: ScaffoldChange | undefine
 
 const planScaffoldProject = async (root: string, resolved: ResolvedOptions): Promise<ScaffoldPlan> => {
     const files = await plannedScaffoldFiles(root, resolved);
-    const destinations = [...files.map((file) => file.destination), ...auxiliaryDestinations(root, resolved)];
+    const reported = [...files.map((file) => file.destination), ...auxiliaryDestinations(root, resolved)];
+    const generated = generatedDestinations(root, resolved);
 
-    for (const destination of destinations) {
+    for (const destination of [...reported, ...generated]) {
         assertSafeDestination(root, destination);
     }
 
     const plan: ScaffoldPlan = {
         files,
-        replaceDestinations: [],
+        replaceDestinations: generated.filter((destination) => isPresent(destination)),
         changes: [],
     };
 
-    for (const destination of destinations) {
+    for (const destination of reported) {
         addScaffoldChange(plan, classifyScaffoldChange(root, destination));
     }
 
@@ -775,9 +806,9 @@ const installAllDependencies = async (options: InstallAllOptions): Promise<void>
 };
 
 const writeInitialEnvModule = (root: string): void => {
-    const storeDir = join(root, "node_modules", ".gtkx");
-    mkdirSync(storeDir, { recursive: true });
-    writeFileSync(join(storeDir, "env.d.ts"), `${GTKX_ENV_MODULE_HEADER}\n`);
+    const path = envModulePath(root);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `${GTKX_ENV_MODULE_HEADER}\n`);
 };
 
 const isInsideGitRepository = (root: string): boolean => {
@@ -837,7 +868,7 @@ const createProjectStructure = async (
             scaffoldProject(root, resolved, plan);
             writeBuildAllowance(root, resolved.packageManager);
 
-            if (resolved.isTypescript) {
+            if (shouldWriteEnvModule(resolved)) {
                 writeInitialEnvModule(root);
             }
         },

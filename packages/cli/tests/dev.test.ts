@@ -5,11 +5,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
     type CliProject,
     createCliProject,
+    type DisposableCliProject,
     removeCliProject,
     runCli,
     startCli,
     STORE_LIBRARIES,
 } from "./cli-project.js";
+import { isRunning, processEntries, type ProcessEntry, waitUntil } from "./process-probe.js";
 
 type DevSession = { output: () => string; isRunning: () => boolean; stop: () => Promise<boolean> };
 type DevState = { project: CliProject; session: DevSession };
@@ -19,10 +21,16 @@ type ResourceIconSource = string | null | false | InactiveResourceIcon;
 const INACTIVE_RESOURCE_ICON: InactiveResourceIcon = { mode: "inactive" };
 const APPLICATION_ID = "com.gtkx.clidev";
 const READY_MARKER = "dev-ready";
+const HEADLESS_MARKER = "dev-headless-runtime";
+const HEADLESS_APPLICATION_ID = "com.gtkx.clidev.headless";
 const POLL_INTERVAL = 200;
 const START_TIMEOUT = 120_000;
 const RELOAD_TIMEOUT = 120_000;
 const STOP_TIMEOUT = 15_000;
+const SETTLE_DELAY = POLL_INTERVAL * 10;
+const FULL_RESTART = "Full restart (process restart)";
+const CATALOG_CHANGED = "Translation catalog changed";
+const APPLICATION_ERROR = "Application error";
 const APP_MODULE = join("src", "app.tsx");
 const ENTRY_MODULE = join("src", "index.tsx");
 const MESSAGES_MODULE = join("src", "messages.ts");
@@ -70,6 +78,11 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 `;
 
+const HEADLESS_ENTRY_SOURCE = String.raw`const runtimeDir = process.env.XDG_RUNTIME_DIR;
+process.stdout.write("${HEADLESS_MARKER} " + runtimeDir + "\n");
+setInterval(() => {}, 1000);
+`;
+
 const MESSAGES_SOURCE = `import { t } from "@gtkx/i18n";
 
 export const translatedMessage = (): string => t("Plain module message");
@@ -79,6 +92,13 @@ const INVALID_MESSAGES_SOURCE = `import { t } from "@gtkx/i18n";
 
 export const translatedMessage = (key = "Plain module message"): string => t(key);
 `;
+
+const SECOND_MESSAGES_SOURCE = `import { t } from "@gtkx/i18n";
+
+export const translatedMessage = (): string => t("Second module message");
+`;
+
+const MALFORMED_CATALOG = 'msgid "translation"\nmsgstr "translation-broken"\nmsgstr "twice"\n';
 
 const BROKEN_SOURCE = `import { Absent } from "./absent.js";
 
@@ -217,13 +237,8 @@ const exited = (child: ChildProcess): Promise<void> =>
         });
     });
 
-const startDev = (project: CliProject): DevSession => {
-    const child = startCli(project, ["dev"], {
-        LANG: "it_IT.UTF-8",
-        LANGUAGE: "it",
-        LC_ALL: "it_IT.UTF-8",
-    });
-
+const startSession = (project: CliProject, args: string[], overrides: NodeJS.ProcessEnv = {}): DevSession => {
+    const child = startCli(project, args, overrides);
     let buffer = "";
 
     collect(child, (chunk) => {
@@ -245,6 +260,47 @@ const startDev = (project: CliProject): DevSession => {
         },
     };
 };
+
+const startDev = (project: CliProject): DevSession =>
+    startSession(project, ["dev"], {
+        LANG: "it_IT.UTF-8",
+        LANGUAGE: "it",
+        LC_ALL: "it_IT.UTF-8",
+    });
+
+const headlessRuntimeDir = (session: DevSession): string => {
+    const prefix = `${HEADLESS_MARKER} `;
+    const line = session.output().split("\n").find((candidate) => candidate.startsWith(prefix));
+
+    if (line === undefined) {
+        throw new Error("The headless dev session reported no runtime directory");
+    }
+
+    return line.slice(prefix.length).trim();
+};
+
+const headlessCompositor = (runtimeDir: string): ProcessEntry => {
+    const compositor = processEntries().find((entry) =>
+        entry.args[0]?.endsWith("/sway") === true && entry.args.includes(join(runtimeDir, "sway.conf")),
+    );
+
+    if (compositor === undefined) {
+        throw new Error("The headless dev session has no compositor");
+    }
+
+    return compositor;
+};
+
+const isRuntimeReferenced = (runtimeDir: string): boolean =>
+    processEntries().some((entry) => entry.args.some((argument) => argument.includes(runtimeDir)));
+
+const createHeadlessDevProject = (): DisposableCliProject =>
+    createCliProject({
+        prefix: "gtkx-cli-dev-headless-",
+        config: `export default { applicationId: "${HEADLESS_APPLICATION_ID}", codegen: false };\n`,
+        files: { "src/index.ts": HEADLESS_ENTRY_SOURCE },
+        hasStore: true,
+    });
 
 const waitForOutput = async (session: DevSession, needle: string, timeout: number): Promise<string> => {
     const deadline = Date.now() + timeout;
@@ -298,21 +354,35 @@ const waitForFileContent = async (path: string, needle: string, timeout: number)
     return content;
 };
 
+const expectSingleRestart = async (state: DevState, change: () => void): Promise<string> => {
+    const priorOutput = state.session.output();
+    const priorRuns = occurrences(priorOutput, READY_MARKER);
+    change();
+    await waitForOccurrences(state.session, READY_MARKER, priorRuns + 1, RELOAD_TIMEOUT);
+    await delay(SETTLE_DELAY);
+    const output = state.session.output().slice(priorOutput.length);
+    expect(occurrences(output, READY_MARKER)).toBe(1);
+    expect(occurrences(output, FULL_RESTART)).toBe(1);
+    expect(output).not.toContain(APPLICATION_ERROR);
+
+    return output;
+};
+
 const expectCatalogRestarts = async (state: DevState): Promise<void> => {
     expect(state.session.output()).toContain("translation-one");
-    writeFileSync(join(state.project.root, IT_CATALOG), italianCatalog("translation-two"));
-    expect(await waitForOutput(state.session, "translation-two", RELOAD_TIMEOUT)).toContain("translation-two");
-    const priorTranslations = occurrences(state.session.output(), "translation-two");
-    writeFileSync(join(state.project.root, LINGUAS), "it fr # refreshed\n");
 
-    const restarted = await waitForOccurrences(
-        state.session,
-        "translation-two",
-        priorTranslations + 1,
-        RELOAD_TIMEOUT,
-    );
+    const translated = await expectSingleRestart(state, () => {
+        writeFileSync(join(state.project.root, IT_CATALOG), italianCatalog("translation-two"));
+    });
 
-    expect(restarted).toContain("Full restart (process restart)");
+    expect(translated).toContain(CATALOG_CHANGED);
+    expect(translated).toContain("translation-two");
+
+    const refreshed = await expectSingleRestart(state, () => {
+        writeFileSync(join(state.project.root, LINGUAS), "it fr # refreshed\n");
+    });
+
+    expect(refreshed).toContain("translation-two");
     const frenchPath = join(state.project.root, FR_CATALOG);
     expect(existsSync(frenchPath)).toBe(true);
     expect(readFileSync(frenchPath, "utf8")).toContain(String.raw`"Language: fr\n"`);
@@ -346,25 +416,22 @@ const expectInactiveIconRecovery = async (state: DevState): Promise<void> => {
     await expectResourceIconReload(state, "icon-restored", null, "true icon-one");
 };
 
+const devProjectFiles = (): Record<string, string> => ({
+    [ENTRY_MODULE]: ENTRY_SOURCE,
+    [APP_MODULE]: appSource("one"),
+    [MESSAGES_MODULE]: MESSAGES_SOURCE,
+    [RESOURCE_ICON_MODULE]: RESOURCE_ICON_MODULE_SOURCE,
+    [FIRST_ASSET]: "asset-one\n",
+    [SECOND_ASSET]: "asset-two\n",
+    [ICON_ASSET]: "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"/>\n",
+    [FIRST_RESOURCE_ICON_ASSET]: FIRST_RESOURCE_ICON_SOURCE,
+    [SECOND_RESOURCE_ICON_ASSET]: SECOND_RESOURCE_ICON_SOURCE,
+    [LINGUAS]: "it\n",
+    [IT_CATALOG]: italianCatalog("translation-one"),
+});
+
 const createDevProject = (): CliProject =>
-    createCliProject({
-        prefix: "gtkx-cli-dev-",
-        config: config(),
-        files: {
-            [ENTRY_MODULE]: ENTRY_SOURCE,
-            [APP_MODULE]: appSource("one"),
-            [MESSAGES_MODULE]: MESSAGES_SOURCE,
-            [RESOURCE_ICON_MODULE]: RESOURCE_ICON_MODULE_SOURCE,
-            [FIRST_ASSET]: "asset-one\n",
-            [SECOND_ASSET]: "asset-two\n",
-            [ICON_ASSET]: "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"/>\n",
-            [FIRST_RESOURCE_ICON_ASSET]: FIRST_RESOURCE_ICON_SOURCE,
-            [SECOND_RESOURCE_ICON_ASSET]: SECOND_RESOURCE_ICON_SOURCE,
-            [LINGUAS]: "it\n",
-            [IT_CATALOG]: italianCatalog("translation-one"),
-        },
-        hasStore: true,
-    });
+    createCliProject({ prefix: "gtkx-cli-dev-", config: config(), files: devProjectFiles(), hasStore: true });
 
 const createDevState = (): DevState => ({
     project: { root: "", nodeModules: "" },
@@ -415,6 +482,16 @@ describe("gtkx dev", () => {
         ).toContain(`${READY_MARKER} two-restored`);
     });
 
+    it("restarts once when a source change rewrites a translation catalog", async () => {
+        const output = await expectSingleRestart(state, () => {
+            writeFileSync(join(state.project.root, MESSAGES_MODULE), SECOND_MESSAGES_SOURCE);
+        });
+
+        expect(output).toContain("Second module message");
+        expect(output).not.toContain(CATALOG_CHANGED);
+        expect(readFileSync(join(state.project.root, IT_CATALOG), "utf8")).toMatch(/^msgid "Second module message"$/m);
+    });
+
     it("compiles translations, initializes locales, and restarts for catalog changes", async () => {
         await expectCatalogRestarts(state);
     });
@@ -444,7 +521,6 @@ describe("gtkx dev", () => {
 
         expect(await waitForOutput(state.session, recovered, RELOAD_TIMEOUT)).toContain(recovered);
 
-        const priorRuns = occurrences(state.session.output(), READY_MARKER);
         const priorPot = await waitForFileContent(
             join(state.project.root, POT),
             'msgid "translation"',
@@ -455,17 +531,20 @@ describe("gtkx dev", () => {
             '"translation": "translation"',
             RELOAD_TIMEOUT,
         );
-        writeFileSync(join(state.project.root, MESSAGES_MODULE), INVALID_MESSAGES_SOURCE);
-        expect(await waitForOccurrences(state.session, READY_MARKER, priorRuns + 1, RELOAD_TIMEOUT)).toContain(
-            READY_MARKER,
-        );
+        await expectSingleRestart(state, () => {
+            writeFileSync(join(state.project.root, MESSAGES_MODULE), INVALID_MESSAGES_SOURCE);
+        });
+
         expect(state.session.isRunning()).toBe(true);
         expect(readFileSync(join(state.project.root, POT), "utf8")).toBe(priorPot);
         expect(readFileSync(join(state.project.root, GENERATED_I18N_RESOURCES), "utf8")).toBe(priorTypes);
-        writeFileSync(join(state.project.root, MESSAGES_MODULE), MESSAGES_SOURCE);
-        expect(await waitForOccurrences(state.session, READY_MARKER, priorRuns + 2, RELOAD_TIMEOUT)).toContain(
-            READY_MARKER,
-        );
+
+        const restored = await expectSingleRestart(state, () => {
+            writeFileSync(join(state.project.root, MESSAGES_MODULE), MESSAGES_SOURCE);
+        });
+
+        expect(restored).not.toContain(CATALOG_CHANGED);
+        expect(readFileSync(join(state.project.root, IT_CATALOG), "utf8")).toMatch(/^msgid "Plain module message"$/m);
     });
 
     it("stops the application when it is asked to stop", async () => {
@@ -473,9 +552,42 @@ describe("gtkx dev", () => {
     });
 });
 
+describe("gtkx dev --headless", () => {
+    it("exits and releases its runtime directory when the compositor crashes", async () => {
+        using project = createHeadlessDevProject();
+        const session = startSession(project, ["dev", "--headless"]);
+
+        try {
+            await waitForOutput(session, HEADLESS_MARKER, START_TIMEOUT);
+            const runtimeDir = headlessRuntimeDir(session);
+            expect(existsSync(join(runtimeDir, "compositor.stderr.log"))).toBe(true);
+            const compositor = headlessCompositor(runtimeDir);
+            process.kill(compositor.pid, "SIGKILL");
+            await waitUntil(() => !isRunning(compositor) && !session.isRunning());
+            await waitUntil(() => !existsSync(runtimeDir) && !isRuntimeReferenced(runtimeDir));
+            expect(session.isRunning()).toBe(false);
+            expect(existsSync(runtimeDir)).toBe(false);
+            expect(isRuntimeReferenced(runtimeDir)).toBe(false);
+        } finally {
+            await session.stop();
+        }
+    });
+});
+
 describe("gtkx dev (projects it refuses to start)", () => {
     it("fails when the project has no entry file", () => {
         using project = createCliProject({ prefix: "gtkx-cli-dev-broken-", config: config(), hasStore: true });
+
+        expect(runCli(project, ["dev"]).status).not.toBe(0);
+    });
+
+    it("fails when a translation catalog cannot be merged", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-dev-catalog-",
+            config: config(),
+            files: { ...devProjectFiles(), [IT_CATALOG]: MALFORMED_CATALOG },
+            hasStore: true,
+        });
 
         expect(runCli(project, ["dev"]).status).not.toBe(0);
     });

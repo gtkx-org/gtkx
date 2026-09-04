@@ -40,6 +40,15 @@ gtkx dev --headless --size 1280x720
 
 `--size` is optional and defaults to `1024x768`. The app remains connected to the same MCP server after the private Wayland runtime starts, so widget inspection and screenshots work in a display-less development session too.
 
+Teardown does not rely on Vitest exiting cleanly. A guard process watches both the worker and the Vitest process that launched it, so killing either with `SIGKILL` still stops the worker's compositor and session bus, ends the guard, and removes the private runtime directory, a `gtkx-xdg-*` directory under the temporary directory. A directory that survives anyway, for example after a power loss, is reaped the next time `gtkx dev` or the Vitest plugin starts, and `gtkx cleanup` removes such directories on demand:
+
+```bash
+gtkx cleanup --dry-run
+gtkx cleanup
+```
+
+`--dry-run` lists the candidates without removing them. Only directories GTKX recognizes as its own qualify: owned by the current user, mode `0700`, holding the configuration GTKX wrote into them, at least five seconds old, and referenced by none of the current user's running processes.
+
 Importing `@gtkx/testing` is the entire setup: cleanup, GTK4 loop teardown, and the `expect` matchers all come with the import. There is no setup file to write.
 
 ## Faking session services

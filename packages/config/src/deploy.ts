@@ -116,7 +116,10 @@ const brandingSchema = z.strictObject({
     dark: hexColorSchema,
 });
 
-/** Deployment extra-file options, including its safe file mode. */
+/**
+ * A `deploy.extraFiles` entry in object form: the source file, resolved against the project root, that is
+ * installed at the entry's prefix-relative destination, and the octal mode it is installed with.
+ */
 type DeployExtraFileOptions = Record<"source", string> & {
     /** Octal file mode. Setuid and setgid bits are rejected. */
     mode?: string | undefined;
@@ -147,7 +150,10 @@ const nodeFlagsSchema = z.array(
     { error: "must be an array of Node.js flags" },
 );
 
-/** Deployment Node.js runtime options, including its version default. */
+/**
+ * The `deploy.node` options: where the Node.js runtime bundled with the application comes from, the version it
+ * is expected to be, whether its binary is stripped, and whether the launcher enables the compile cache.
+ */
 type DeployNodeOptions = Partial<
     Record<"source", "download" | "host" | "path" | undefined> &
     Record<"path", string | undefined> &

@@ -38,8 +38,11 @@ const callbackFinishNote = (
         return undefined;
     }
 
-    return `Callback-based: the finish function belongs to \`${owner.namespaceName}.${owner.typeName}\`; ` +
-        `complete it with \`${owner.namespaceName}.${owner.typeName}.${toCamelIdentifier(owner.member.name)}\`.`;
+    const declared = `${owner.namespaceName}.${owner.typeName}.${toCamelIdentifier(owner.member.name)}`;
+
+    return `Callback-based: the GIR declares \`${declared}\` as its finish function, on another class, ` +
+        "and no finish method of this class pairs with it. Call it only on the instance that owns the result " +
+        "(`Gio.Task.isValid(result, owner)`); an unrelated instance is not a valid receiver.";
 };
 
 const callableNote = (
@@ -141,4 +144,4 @@ const callableDoc = (context: ModuleContext, callable: GirFunction, options: Cal
         callableSpec(context, callable, options),
     );
 
-export { callableDoc, callableSpec };
+export { callableDoc, callableNote, callableSpec };

@@ -1,3 +1,4 @@
+import { sortStrings } from "@gtkx/utils";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -19,6 +20,8 @@ const ICON_PATH = `data/icons/hicolor/scalable/apps/${APPLICATION_ID}.svg`;
 const STALE_FILE = "stale.txt";
 const CUSTOM_SOURCE = "src/custom.ts";
 const EXISTING_MISE = '[tools]\nnode = "24.19.0"\npython = "3.13"\n\n[env]\nAPP_MODE = "dev"\n';
+const ENV_MODULE = "node_modules/.gtkx/env.d.ts";
+const UNKNOWN_FLAGS = [["--no-install"], ["-x"], ["--bogus=1"]];
 
 const create = (args: string[] = []): CreateRun => runCreate({ args: [...BASE_ARGS, ...args] });
 const getScripts = (run: CreateRun): Scripts => readManifest(run).scripts as Scripts;
@@ -63,7 +66,7 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
 
         expect(hasProjectPath(typescriptState.run, ".git")).toBe(true);
         expectGeneratedConfig(typescriptState.run);
-        expect(readProject(typescriptState.run, "node_modules/.gtkx/env.d.ts")).toContain("gtkx codegen");
+        expect(readProject(typescriptState.run, ENV_MODULE)).toContain("gtkx codegen");
     });
 
     it("names the project after its directory and scripts every gtkx command", () => {
@@ -156,19 +159,20 @@ describe("create-gtkx and the package manager it scaffolds for", () => {
         try {
             expect(run.status).toBe(0);
             expect(run.installs).toEqual([]);
+            expect(hasProjectPath(run, "node_modules")).toBe(false);
             expectGeneratedConfig(run);
             expect(readManifest(run).dependencies).toEqual({
-                "@gtkx/cairo": "^2.0.0-beta.4",
-                "@gtkx/css": "^2.0.0-beta.4",
-                "@gtkx/react": "^2.0.0-beta.4",
-                "@gtkx/runtime": "^2.0.0-beta.4",
+                "@gtkx/cairo": "^2.0.0-beta.5",
+                "@gtkx/css": "^2.0.0-beta.5",
+                "@gtkx/react": "^2.0.0-beta.5",
+                "@gtkx/runtime": "^2.0.0-beta.5",
                 react: "latest",
             });
             expect(readManifest(run).devDependencies).toEqual({
-                "@gtkx/cli": "^2.0.0-beta.4",
-                "@gtkx/config": "^2.0.0-beta.4",
-                "@gtkx/mcp": "^2.0.0-beta.4",
-                "@gtkx/testing": "^2.0.0-beta.4",
+                "@gtkx/cli": "^2.0.0-beta.5",
+                "@gtkx/config": "^2.0.0-beta.5",
+                "@gtkx/mcp": "^2.0.0-beta.5",
+                "@gtkx/testing": "^2.0.0-beta.5",
                 "@types/node": "latest",
                 "@types/react": "latest",
                 typescript: "latest",
@@ -203,6 +207,7 @@ describe("create-gtkx and a directory that already holds files", () => {
             args: [...BASE_ARGS, "--overwrite"],
             files: {
                 [CUSTOM_SOURCE]: "custom source",
+                [ENV_MODULE]: "stale env module",
                 "gtkx.config.ts": "stale config",
                 "mise.toml": EXISTING_MISE,
             },
@@ -212,11 +217,13 @@ describe("create-gtkx and a directory that already holds files", () => {
             expect(run.status).toBe(0);
             expect(readProject(run, CUSTOM_SOURCE)).toBe("custom source");
             expect(readProject(run, "gtkx.config.ts")).not.toBe("stale config");
+            expect(readProject(run, ENV_MODULE)).toContain("gtkx codegen");
             expect(readProject(run, "mise.toml")).toBe(EXISTING_MISE);
             expect(run.output).toContain("Scaffold files to replace");
             expect(run.output).toContain("Replaced scaffold files");
             expect(run.output.match(/gtkx\.config\.ts/g)).toHaveLength(2);
             expect(run.output).not.toContain("mise.toml");
+            expect(run.output).not.toContain("node_modules");
             expect(run.output).not.toContain(CUSTOM_SOURCE);
             expect(hasProjectPath(run, ".git")).toBe(false);
         } finally {
@@ -236,13 +243,18 @@ describe("create-gtkx and a directory that already holds files", () => {
     });
 
     it("refuses to scaffold over it otherwise", () => {
-        const run = runCreate({ args: BASE_ARGS, files: { [STALE_FILE]: "old" } });
+        const run = runCreate({ args: BASE_ARGS, files: { [STALE_FILE]: "old", "gtkx.config.ts": "stale config" } });
+        const userFilesRun = runCreate({ args: BASE_ARGS, files: { [STALE_FILE]: "old" } });
 
         try {
             expect(run.status).not.toBe(0);
-            expect(listProject(run)).toContain(STALE_FILE);
+            expect(sortStrings(listProject(run))).toEqual(["gtkx.config.ts", STALE_FILE]);
+            expect(readProject(run, "gtkx.config.ts")).toBe("stale config");
+            expect(userFilesRun.status).not.toBe(0);
+            expect(listProject(userFilesRun)).toEqual([STALE_FILE]);
         } finally {
             removeRun(run);
+            removeRun(userFilesRun);
         }
     });
 
@@ -345,16 +357,19 @@ describe("create-gtkx refusing to scaffold", () => {
     });
 
     it("fails on an unknown flag", () => {
-        const run = runCreate({ args: [...BASE_ARGS, "--no-install"] });
+        for (const flags of UNKNOWN_FLAGS) {
+            const run = runCreate({ args: [...BASE_ARGS, ...flags] });
 
-        try {
-            expect(() => {
-                if (run.status !== 0) {
-                    throw new Error(run.output);
-                }
-            }).toThrow();
-        } finally {
-            removeRun(run);
+            try {
+                expect(() => {
+                    if (run.status !== 0) {
+                        throw new Error(run.output);
+                    }
+                }).toThrow();
+                expect(hasProjectPath(run, "package.json")).toBe(false);
+            } finally {
+                removeRun(run);
+            }
         }
     });
 

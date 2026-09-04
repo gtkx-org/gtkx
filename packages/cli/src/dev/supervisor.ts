@@ -1,7 +1,7 @@
 import { error, exitCodeForSignal, info, installGracefulShutdown } from "@gtkx/utils";
 import { fork as nodeFork } from "node:child_process";
 import { type FSWatcher, statSync, watch as watchFs } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEV_CONFIG_ENV, DEV_ENTRY_ENV } from "./entry-env.js";
 
@@ -30,6 +30,7 @@ type SupervisorState = {
     args: string[];
     watch: DevWatch | undefined;
     watchers: FSWatcher[];
+    changedPaths: Set<string>;
     restartTimer: DebounceTimer;
     fork: ForkRunner;
     child: SupervisedChild | null;
@@ -174,7 +175,7 @@ const reconcileConfigWatchers = (
     paths: string[],
     previous: ReadonlyMap<string, string | null>,
 ): void => {
-    const didChange = didWatchPathsChange(previous, paths);
+    const changed = changedWatchPaths(previous, paths);
 
     closeWatchers(state);
 
@@ -188,9 +189,16 @@ const reconcileConfigWatchers = (
 
     installConfigWatchers(state);
 
-    if (didChange && !state.isRestartPending) {
-        scheduleRestart(state);
+    if (changed.length > 0 && !state.isRestartPending) {
+        scheduleRestart(state, changed);
     }
+};
+
+const consumeChangedPaths = (state: SupervisorState): string => {
+    const changed = [...state.changedPaths].map((path) => relative(state.cwd, path));
+    state.changedPaths.clear();
+
+    return changed.length === 0 ? basename(state.configFile) : changed.join(", ");
 };
 
 const restart = async (state: SupervisorState): Promise<void> => {
@@ -207,7 +215,7 @@ const restart = async (state: SupervisorState): Promise<void> => {
     }
 
     state.isRestarting = true;
-    info(`${basename(state.configFile)} changed; regenerating bindings...`);
+    info(`${consumeChangedPaths(state)} changed; regenerating bindings...`);
     closeWatchers(state);
     watch.paths = watch.resolvePaths();
     const previous = snapshotWatchPaths(watch.paths);
@@ -246,8 +254,12 @@ const restart = async (state: SupervisorState): Promise<void> => {
     forwardSignal(current, "SIGTERM");
 };
 
-const scheduleRestart = (state: SupervisorState): void => {
+const scheduleRestart = (state: SupervisorState, changedPaths: string[] = []): void => {
     const timer = state.restartTimer;
+
+    for (const path of changedPaths) {
+        state.changedPaths.add(path);
+    }
 
     if (timer.handle !== null) {
         clearTimeout(timer.handle);
@@ -259,12 +271,19 @@ const scheduleRestart = (state: SupervisorState): void => {
     }, CONFIG_DEBOUNCE_MS);
 };
 
-const isWatchedChange = (state: SupervisorState, names: Set<string>, filename: string | Buffer | null): boolean => {
+const watchedChangePath = (
+    state: SupervisorState,
+    directory: string,
+    names: Set<string>,
+    filename: string | Buffer | null,
+): string | undefined => {
     if (filename === null || state.isShuttingDown) {
-        return false;
+        return undefined;
     }
 
-    return names.has(basename(filename.toString()));
+    const name = basename(filename.toString());
+
+    return names.has(name) ? join(directory, name) : undefined;
 };
 
 const isDirectory = (path: string): boolean => {
@@ -315,20 +334,15 @@ const watchPathState = (path: string): string | null => {
 const snapshotWatchPaths = (paths: string[]): Map<string, string | null> =>
     new Map([...watchTargets(paths)].map((path) => [path, watchPathState(path)]));
 
-const didWatchPathsChange = (
+const changedWatchPaths = (
     previous: ReadonlyMap<string, string | null>,
     paths: string[],
-): boolean => {
-    for (const path of watchTargets(paths)) {
+): string[] =>
+    [...watchTargets(paths)].filter((path) => {
         const current = watchPathState(path);
 
-        if (previous.has(path) ? previous.get(path) !== current : current !== null) {
-            return true;
-        }
-    }
-
-    return false;
-};
+        return previous.has(path) ? previous.get(path) !== current : current !== null;
+    });
 
 const groupWatchNamesByDirectory = (paths: string[]): Map<string, Set<string>> => {
     const namesByDirectory: Map<string, Set<string>> = new Map();
@@ -350,8 +364,10 @@ const watchConfigDirectory = (
 ): void => {
     try {
         const watcher = watchFs(directory, (_event, filename) => {
-            if (isWatchedChange(state, names, filename)) {
-                scheduleRestart(state);
+            const changed = watchedChangePath(state, directory, names, filename);
+
+            if (changed !== undefined) {
+                scheduleRestart(state, [changed]);
             }
         });
 
@@ -427,6 +443,7 @@ const runDevSupervisor = async (options: DevSupervisorOptions): Promise<never> =
         args,
         watch,
         watchers: [],
+        changedPaths: new Set(),
         restartTimer: { handle: null },
         fork,
         child: null,

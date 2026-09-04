@@ -1,5 +1,8 @@
+import { sortStrings } from "@gtkx/utils";
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import {
+    chmodSync,
     cpSync,
     existsSync,
     mkdirSync,
@@ -13,7 +16,7 @@ import {
     writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow, startCli } from "./cli-project.js";
@@ -60,6 +63,9 @@ if (previous === next) process.exitCode = 1;
 `;
 const LOCK_TIMEOUT_ENV = { GTKX_CODEGEN_LOCK_TIMEOUT_MS: "250" };
 const REUSED_PID_IDENTITY = "0".repeat(64);
+const LIVE_OWNER = `${String(process.pid)}-unknown`;
+const ABANDONED_OWNER = `${String(process.pid)}-${REUSED_PID_IDENTITY}`;
+const PUBLISHED_STORE_PATHS = [join("current", "gi"), join("current", "jsx"), "gi", "jsx"];
 const ZOMBIE_OWNER_SCRIPT = `import { spawn } from "node:child_process";
 import { writeSync } from "node:fs";
 const child = spawn(process.execPath, ["--eval", ""], { stdio: "ignore" });
@@ -260,6 +266,39 @@ const seedLiveGiOnlyArtifacts = (project: CliProject): string[] => {
     return paths;
 };
 
+const storeRoot = (project: CliProject): string => join(project.nodeModules, ".gtkx");
+
+const leftoverDirectories = (project: CliProject): string[] =>
+    sortStrings(
+        readdirSync(storeRoot(project), { withFileTypes: true })
+            .filter((entry) => entry.isDirectory() && !entry.name.startsWith(".pair-generation-"))
+            .map((entry) => entry.name),
+    );
+
+const missingStorePaths = (project: CliProject): string[] =>
+    PUBLISHED_STORE_PATHS.filter((path) => !existsSync(join(storeRoot(project), path, "package.json")));
+
+const seedStoreLeftover = (project: CliProject, prefix: string, owner: string): string => {
+    const path = join(storeRoot(project), `${prefix}-${String(Date.now())}-${owner}-${randomUUID()}`);
+    mkdirSync(path);
+    writeFileSync(join(path, "package.json"), "{}\n");
+
+    return path;
+};
+
+const seedStoreLeftovers = (project: CliProject, owner: string): string[] =>
+    ["gi", "jsx"].flatMap((store) =>
+        ["generation", "legacy"].map((kind) => basename(seedStoreLeftover(project, `.${store}-${kind}`, owner))),
+    );
+
+const seedIncompletePair = (project: CliProject, owner: string): string => {
+    const pair = join(storeRoot(project), `.pair-generation-${String(Date.now())}-${owner}-${randomUUID()}`);
+    mkdirSync(join(pair, "gi"), { recursive: true });
+    writeFileSync(join(pair, "gi", "package.json"), "{}\n");
+
+    return pair;
+};
+
 const pairDirectories = (project: CliProject): string[] => {
     const root = join(project.nodeModules, ".gtkx");
 
@@ -431,6 +470,76 @@ describe("gtkx codegen store publication", () => {
         const oldJsx = join(retainedPairDirectory(project), "jsx", "documented", "index.js");
         const oldGi = createRequire(oldJsx).resolve("@gtkx/gi/documented");
         expect(existsSync(oldGi)).toBe(true);
+    });
+
+    it("publishes a migrated pre-pair layout and reclaims what it left behind", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-pre-pair-",
+            config: fixtureLibrariesConfig(["Documented-1.0"]),
+            files: { "probe.ts": COMMON_PROBE, "tsconfig.json": TSCONFIG },
+        });
+        runCliOrThrow(project, ["codegen"]);
+        convertToDirectStoreLayout(project);
+
+        runCliOrThrow(project, ["codegen", "--force"]);
+
+        expect(leftoverDirectories(project)).toEqual([]);
+        expect(pairGenerationCount(project)).toBeLessThanOrEqual(3);
+        expect(missingStorePaths(project)).toEqual([]);
+        expect(runTypecheck(project)).toBe(0);
+        expect(runImport(project)).toBe(0);
+    });
+
+    it("removes dead-writer leftovers of earlier layouts and leaves a running writer's alone", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-leftovers-",
+            config: fixtureLibrariesConfig(["Documented-1.0"]),
+            files: { "probe.ts": COMMON_PROBE, "tsconfig.json": TSCONFIG },
+        });
+        runCliOrThrow(project, ["codegen"]);
+        const live = sortStrings(seedStoreLeftovers(project, LIVE_OWNER));
+        seedStoreLeftovers(project, ABANDONED_OWNER);
+
+        runCliOrThrow(project, ["codegen"]);
+        expect(leftoverDirectories(project)).toEqual(live);
+
+        seedStoreLeftovers(project, ABANDONED_OWNER);
+        runCliOrThrow(project, ["codegen", "--force"]);
+        expect(leftoverDirectories(project)).toEqual(live);
+        expect(missingStorePaths(project)).toEqual([]);
+        expect(runImport(project)).toBe(0);
+    });
+
+    it("keeps an incomplete pair a running writer owns when forced", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-live-pair-",
+            config: fixtureLibrariesConfig(["Documented-1.0"]),
+        });
+        runCliOrThrow(project, ["codegen"]);
+        const live = seedIncompletePair(project, LIVE_OWNER);
+        const abandoned = seedIncompletePair(project, ABANDONED_OWNER);
+
+        runCliOrThrow(project, ["codegen", "--force"]);
+
+        expect(existsSync(live)).toBe(true);
+        expect(existsSync(abandoned)).toBe(false);
+        expect(missingStorePaths(project)).toEqual([]);
+    });
+
+    it("fails when a dead-writer leftover cannot be removed", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-sealed-leftover-",
+            config: fixtureLibrariesConfig(["Documented-1.0"]),
+        });
+        runCliOrThrow(project, ["codegen"]);
+        const sealed = seedStoreLeftover(project, ".gi-legacy", ABANDONED_OWNER);
+        chmodSync(sealed, 0o555);
+
+        try {
+            expect(() => runCliOrThrow(project, ["codegen"])).toThrow();
+        } finally {
+            chmodSync(sealed, 0o755);
+        }
     });
 
     it("stops waiting after the active-writer timeout", async () => {

@@ -65,6 +65,7 @@ type DisplaySockets = {
 
 type CapturedStderr = {
     chunks: string[];
+    logPath: string;
     stop: () => void;
 };
 
@@ -361,7 +362,7 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): Captured
     const stderr = child.stderr;
 
     if (stderr === null) {
-        return { chunks: captured, stop: noVirtualSeat };
+        return { chunks: captured, logPath, stop: noVirtualSeat };
     }
 
     stderr.setEncoding("utf8");
@@ -382,6 +383,7 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): Captured
 
     return {
         chunks: captured,
+        logPath,
         stop: () => {
             stderr.removeListener("data", onData);
 
@@ -396,14 +398,15 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): Captured
 const compositorExitMessage = (
     code: number | null,
     signal: NodeJS.Signals | null,
-    capturedStderr: string[],
+    captured: CapturedStderr,
 ): string =>
     `[gtkx] the headless compositor exited (code ${String(code)}, signal ${signal ?? "null"}); ` +
-    `every Wayland client in this worker has been severed.\n${capturedStderr.join("")}`;
+    "every Wayland client in this worker has been severed. " +
+    `Its stderr log is kept at ${captured.logPath} until this worker exits.\n${captured.chunks.join("")}`;
 
-const watchCompositorExit = (child: ChildProcess, capturedStderr: string[]): (() => void) => {
+const watchCompositorExit = (child: ChildProcess, captured: CapturedStderr): (() => void) => {
     const report = (code: number | null, signal: NodeJS.Signals | null): void => {
-        process.stderr.write(compositorExitMessage(code, signal, capturedStderr));
+        process.stderr.write(compositorExitMessage(code, signal, captured));
     };
 
     child.on("exit", report);
@@ -487,7 +490,7 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
         const stopVirtualSeat = await attachVirtualSeat(compositor, compositorSocketPath);
         const stopNotifications = await startNotificationService(`unix:path=${busSocketPath}`);
         const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "compositor.stderr.log"));
-        const stopExitWatch = watchCompositorExit(compositor.child, capturedStderr.chunks);
+        const stopExitWatch = watchCompositorExit(compositor.child, capturedStderr);
 
         return makeTeardown([
             stopExitWatch,

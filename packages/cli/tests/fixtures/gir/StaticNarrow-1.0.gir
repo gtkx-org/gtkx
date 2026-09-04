@@ -32,6 +32,29 @@
           </parameter>
         </parameters>
       </method>
+      <method name="measure" c:identifier="static_narrow_base_measure">
+        <return-value transfer-ownership="none">
+          <type name="gint" c:type="gint"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Base" c:type="StaticNarrowBase*"/>
+          </instance-parameter>
+          <parameter name="orientation" transfer-ownership="none">
+            <type name="gint" c:type="gint"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="ref" c:identifier="static_narrow_base_ref">
+        <return-value transfer-ownership="full">
+          <type name="Base" c:type="StaticNarrowBase*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Base" c:type="StaticNarrowBase*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
     </class>
     <class name="Derived"
            c:symbol-prefix="derived"
@@ -57,6 +80,50 @@
           </parameter>
         </parameters>
       </method>
+      <method name="ref" c:identifier="static_narrow_derived_ref">
+        <return-value transfer-ownership="full">
+          <type name="Derived" c:type="StaticNarrowDerived*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Derived" c:type="StaticNarrowDerived*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="Compact"
+           c:symbol-prefix="compact"
+           c:type="StaticNarrowCompact"
+           parent="Base"
+           glib:type-name="StaticNarrowCompact"
+           glib:get-type="static_narrow_compact_get_type">
+      <constructor name="new" c:identifier="static_narrow_compact_new">
+        <return-value transfer-ownership="full">
+          <type name="Compact" c:type="StaticNarrowCompact*"/>
+        </return-value>
+      </constructor>
+      <method name="measure" c:identifier="static_narrow_compact_measure">
+        <return-value transfer-ownership="none">
+          <type name="gint" c:type="gint"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Compact" c:type="StaticNarrowCompact*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="Leaf"
+           c:symbol-prefix="leaf"
+           c:type="StaticNarrowLeaf"
+           parent="Derived"
+           glib:type-name="StaticNarrowLeaf"
+           glib:get-type="static_narrow_leaf_get_type">
+      <constructor name="new" c:identifier="static_narrow_leaf_new">
+        <return-value transfer-ownership="full">
+          <type name="Leaf" c:type="StaticNarrowLeaf*"/>
+        </return-value>
+      </constructor>
     </class>
   </namespace>
 </repository>

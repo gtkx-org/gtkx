@@ -353,6 +353,43 @@ const NATURAL_PROPERTY_METHOD_PROBE = `import type { Station } from "@gtkx/gi/ho
 declare const station: Station;
 const value: string | null = station.getProperty("key");
 `;
+const EXTERNAL_FINISH_NOTE =
+    "Callback-based: the GIR declares `AsyncPair.Client.genericFinish` as its finish function, on another " +
+    "class, and no finish method of this class pairs with it. Call it only on the instance that owns the " +
+    "result (`Gio.Task.isValid(result, owner)`); an unrelated instance is not a valid receiver.";
+
+const NEWV_GUARD_PROBE = String.raw`import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+
+const factories = (message) => [...message.matchAll(/\b(\w+)\.new\(/g)].map(([, name]) => name);
+const declares = (name) =>
+    [Gio, GObject].some((namespace) => globalThis.Object.hasOwn(namespace[name] ?? {}, "new"));
+const attempt = (run) => {
+    try {
+        run();
+        return "returned";
+    } catch (error) {
+        return {
+            type: error.constructor.name,
+            factories: factories(error.message),
+            resolvable: factories(error.message).every(declares),
+            namesNewv: error.message.includes("newv"),
+        };
+    }
+};
+const unbound = Gio.Subprocess.newv;
+const launcher = GObject.Object.newv(Gio.SubprocessLauncher, []);
+process.stdout.write(JSON.stringify({
+    constructed: launcher instanceof Gio.SubprocessLauncher,
+    subclass: attempt(() => Gio.Subprocess.newv(["/usr/bin/true"], Gio.SubprocessFlags.NONE)),
+    base: attempt(() => GObject.Object.newv(Gio.Subprocess, "x")),
+    unbound: attempt(() => unbound(["/usr/bin/true"])),
+}));
+`;
+const UNBOUND_NEWV_PROBE = `import * as Gio from "@gtkx/gi/gio";
+const unbound = Gio.Subprocess.newv;
+unbound(["/usr/bin/true"]);
+`;
 const SIDE_CALLBACK_PROBE = `import type { Job, ProgressCallback } from "@gtkx/gi/asyncpair";
 
 export const load = (job: Job, progress: ProgressCallback): Promise<boolean>[] => [
@@ -470,12 +507,34 @@ describe("gtkx codegen marshalling", () => {
             declarations: [
                 "runAsync(): Promise<[string, number]>",
                 "probeAsync(): Promise<boolean>",
-                "Callback-based: the finish function belongs to `AsyncPair.Client`; complete it with " +
-                "`AsyncPair.Client.genericFinish`.",
             ],
             bindings: [
                 "promisify(asyncPairJobRunAsync, trimFinish(this.runFinish.bind(this))",
             ],
+        });
+    });
+
+    it("pairs an externally annotated async method with its class's only generic finish", () => {
+        expectGenerated("AsyncPair-1.0", "asyncpair", {
+            declarations: [
+                "fetchAsync(cancellable?: Gio.Cancellable | null): Promise<boolean>",
+                "refreshAsync(cancellable?: Gio.Cancellable | null): Promise<boolean>",
+            ],
+            bindings: [
+                "promisify(asyncPairSackFetchAsync, this.mergeGenericFinish.bind(this)",
+                "promisify(asyncPairSackRefreshAsync, this.mergeGenericFinish.bind(this)",
+            ],
+        });
+    });
+
+    it("keeps the callback form when no finish method of the class can be paired", () => {
+        expectGenerated("AsyncPair-1.0", "asyncpair", {
+            declarations: [
+                "externalAsync(callback: Gio.AsyncReadyCallback | null): void",
+                "drainAsync(cancellable: Gio.Cancellable | null, callback: Gio.AsyncReadyCallback | null): void",
+                EXTERNAL_FINISH_NOTE,
+            ],
+            bindings: [],
         });
     });
 
@@ -578,6 +637,31 @@ process.stdout.write(typeof DBusProxy.newForBusSync);`;
         const source = `import * as Gio from "@gtkx/gi/gio";
 Gio.Subprocess.newv(["/usr/bin/true"], Gio.SubprocessFlags.NONE);`;
         expect(() => evaluateProject(project, source)).toThrow();
+    });
+
+    it("guards GObject.Object.newv with guidance that names only factories that exist", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-newv-guard-",
+            config: GIO_CONFIG,
+        });
+
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        const report = JSON.parse(evaluateProject(project, NEWV_GUARD_PROBE)) as {
+            constructed: boolean;
+            subclass: { type: string; factories: string[]; resolvable: boolean };
+            base: { type: string; factories: string[]; namesNewv: boolean };
+            unbound: { type: string; namesNewv: boolean };
+        };
+        expect(report.constructed).toBe(true);
+        expect(report.subclass.type).toBe("TypeError");
+        expect(report.subclass.factories).toEqual(["Subprocess"]);
+        expect(report.subclass.resolvable).toBe(true);
+        expect(report.base.type).toBe("TypeError");
+        expect(report.base.factories).toEqual([]);
+        expect(report.base.namesNewv).toBe(true);
+        expect(report.unbound.type).toBe("TypeError");
+        expect(report.unbound.namesNewv).toBe(true);
+        expect(() => evaluateProject(project, UNBOUND_NEWV_PROBE)).toThrow();
     });
 
     it("rejects direct construction for objects that require initialization", () => {

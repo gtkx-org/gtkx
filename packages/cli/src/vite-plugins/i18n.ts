@@ -11,11 +11,22 @@ import {
     LOCALE_DIRNAME,
     resolveCatalogProject,
     synchronizeCatalogs,
+    type WrittenCatalog,
 } from "../i18n/catalogs.js";
 import { extractSourceCatalog, SourceExtractionError } from "../i18n/source-messages.js";
 import { emitI18nTypes } from "../i18n/types.js";
 import { discoverSourceFiles, sourceLanguage } from "../internal/source-imports.js";
 import { stripQuery } from "./strip-query.js";
+
+type CatalogWriteListener = (catalogs: WrittenCatalog[]) => void;
+
+type I18nPluginOptions = {
+    entryPath: string;
+    loadConfig?: ConfigLoader | undefined;
+    onCatalogsWritten?: CatalogWriteListener | undefined;
+    shouldPreserveMetadataMessages?: boolean | undefined;
+    shouldRecoverExtractionErrors?: boolean | undefined;
+};
 
 type I18nState = {
     entryPath: string;
@@ -24,6 +35,7 @@ type I18nState = {
     project: CatalogProject | null;
     extraction: Promise<void>;
     hotUpdateTimestamp: number | null;
+    onCatalogsWritten: CatalogWriteListener;
 };
 
 const BOOTSTRAP_SPECIFIER = "@gtkx/i18n/bootstrap";
@@ -110,7 +122,7 @@ const extractProjectMessages = async (
     await extractSourceCatalog(project, sourceFiles, shouldPreserveMetadataMessages);
 
     if (shouldSynchronizeCatalogs) {
-        synchronizeCatalogs(project);
+        state.onCatalogsWritten(synchronizeCatalogs(project));
     }
 
     await emitI18nTypes(project.root);
@@ -184,12 +196,13 @@ const recoverInitialSourceExtraction = async (
     }
 };
 
-const gtkxI18n = (
-    entryPath: string,
-    loadConfig: ConfigLoader = createConfigLoader(),
+const gtkxI18n = ({
+    entryPath,
+    loadConfig = createConfigLoader(),
+    onCatalogsWritten = (): void => undefined,
     shouldPreserveMetadataMessages = true,
     shouldRecoverExtractionErrors = false,
-): Plugin => {
+}: I18nPluginOptions): Plugin => {
     const state: I18nState = {
         entryPath,
         extraction: Promise.resolve(),
@@ -197,6 +210,7 @@ const gtkxI18n = (
         i18nRoot: "",
         outDir: "",
         project: null,
+        onCatalogsWritten,
     };
 
     return {
@@ -241,4 +255,4 @@ const gtkxI18n = (
     };
 };
 
-export { gtkxI18n };
+export { type CatalogWriteListener, gtkxI18n };

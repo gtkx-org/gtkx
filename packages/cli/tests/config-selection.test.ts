@@ -179,6 +179,8 @@ export default async () => {
 };
 `;
 
+const reloadMessage = (changedFile: string): string => `[gtkx] ${changedFile} changed; regenerating bindings`;
+
 const stopCli = async (child: ChildProcess): Promise<void> => {
     if (child.exitCode !== null || child.signalCode !== null) {
         return;
@@ -232,6 +234,7 @@ describe("GTKX configuration selection", () => {
 
         expect(() => runCliOrThrow(project, ["codegen"])).toThrow();
         expect(() => runCliOrThrow(project, ["codegen", "--config", "missing.config.ts"])).toThrow();
+        expect(() => runCliOrThrow(project, ["dev", "--config", "missing.config.ts"])).toThrow();
         runCliOrThrow(project, ["codegen", "--config", "gtkx.codegen.config.ts"]);
 
         using dataProject = createCliProject({
@@ -279,24 +282,30 @@ describe("GTKX configuration selection", () => {
             );
             const refreshed = await waitForOutput(output, REFRESHED_ID);
             expect(refreshed).toContain(REFRESHED_ID);
-            expect(refreshed).toContain(`${EDITION_CONFIG} changed; regenerating bindings`);
+            expect(refreshed).toContain(reloadMessage("gtkx.config.ts"));
             writeFileSync(
                 join(project.root, EDITION_CONFIG),
                 editionConfig.replace("./gtkx.config.ts", () => `./${SWITCHED_CONFIG}`),
             );
-            expect(await waitForOutput(output, SWITCHED_ID)).toContain(SWITCHED_ID);
+            const switched = await waitForOutput(output, SWITCHED_ID);
+            expect(switched).toContain(SWITCHED_ID);
+            expect(switched).toContain(reloadMessage(EDITION_CONFIG));
             writeFileSync(
                 join(project.root, SWITCHED_CONFIG),
                 baseConfig.replace('configRevision = "edition"', 'configRevision = "rewatched"'),
             );
-            expect(await waitForOutput(output, REWATCHED_ID)).toContain(REWATCHED_ID);
+            const rewatched = await waitForOutput(output, REWATCHED_ID);
+            expect(rewatched).toContain(REWATCHED_ID);
+            expect(rewatched).toContain(reloadMessage(SWITCHED_CONFIG));
             writeFileSync(join(project.root, EDITION_CONFIG), blockedMissingConfig);
             await waitForPath(join(project.root, RELOAD_MARKER));
             writeFileSync(
                 join(project.root, MISSING_CONFIG),
                 `export default { applicationId: "${RECOVERED_ID}", codegen: false };\n`,
             );
-            expect(await waitForOutput(output, RECOVERED_ID)).toContain(RECOVERED_ID);
+            const recovered = await waitForOutput(output, RECOVERED_ID);
+            expect(recovered).toContain(RECOVERED_ID);
+            expect(recovered).toContain(reloadMessage(MISSING_CONFIG));
         } finally {
             await stopCli(child);
         }
@@ -323,7 +332,9 @@ describe("GTKX configuration selection", () => {
                 join(project.root, LAYER_BASE_CONFIG),
                 `applicationId: ${REFRESHED_LAYER_ID}\n`,
             );
-            expect(await waitForOutput(output, REFRESHED_LAYER_ID)).toContain(REFRESHED_LAYER_ID);
+            const refreshed = await waitForOutput(output, REFRESHED_LAYER_ID);
+            expect(refreshed).toContain(REFRESHED_LAYER_ID);
+            expect(refreshed).toContain(reloadMessage(LAYER_BASE_CONFIG));
             writeFileSync(
                 join(project.root, LAYER_CONFIG),
                 `extends: ./${MISSING_LAYER_DIRECTORY}\ncodegen: false\n`,
@@ -333,7 +344,9 @@ describe("GTKX configuration selection", () => {
                 join(project.root, MISSING_LAYER_CONFIG),
                 `applicationId: ${RECOVERED_LAYER_ID}\n`,
             );
-            expect(await waitForOutput(output, RECOVERED_LAYER_ID)).toContain(RECOVERED_LAYER_ID);
+            const recovered = await waitForOutput(output, RECOVERED_LAYER_ID);
+            expect(recovered).toContain(RECOVERED_LAYER_ID);
+            expect(recovered).toContain(reloadMessage(MISSING_LAYER_CONFIG));
         } finally {
             await stopCli(child);
         }
@@ -360,7 +373,9 @@ describe("GTKX configuration selection", () => {
                 join(project.root, NATIVE_BASE_CONFIG),
                 `module.exports = { applicationId: "${REFRESHED_NATIVE_ID}", codegen: false };\n`,
             );
-            expect(await waitForOutput(output, REFRESHED_NATIVE_ID)).toContain(REFRESHED_NATIVE_ID);
+            const refreshed = await waitForOutput(output, REFRESHED_NATIVE_ID);
+            expect(refreshed).toContain(REFRESHED_NATIVE_ID);
+            expect(refreshed).toContain(reloadMessage(NATIVE_BASE_CONFIG));
             writeFileSync(
                 join(project.root, NATIVE_CONFIG),
                 `import base from "./${NATIVE_JSON_CONFIG}" with { type: "json" };\nexport default base;\n`,
@@ -370,7 +385,9 @@ describe("GTKX configuration selection", () => {
                 join(project.root, NATIVE_JSON_CONFIG),
                 `{"applicationId":"${REFRESHED_JSON_NATIVE_ID}","codegen":false}\n`,
             );
-            expect(await waitForOutput(output, REFRESHED_JSON_NATIVE_ID)).toContain(REFRESHED_JSON_NATIVE_ID);
+            const refreshedJson = await waitForOutput(output, REFRESHED_JSON_NATIVE_ID);
+            expect(refreshedJson).toContain(REFRESHED_JSON_NATIVE_ID);
+            expect(refreshedJson).toContain(reloadMessage(NATIVE_JSON_CONFIG));
             writeFileSync(
                 join(project.root, NATIVE_CONFIG),
                 `export default { applicationId: "${DIRECT_NATIVE_ID}", codegen: false };\n`,

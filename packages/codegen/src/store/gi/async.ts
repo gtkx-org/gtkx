@@ -5,6 +5,9 @@ import type { TypeId } from "../../gir/type-id.js";
 import { inputParameters } from "../../analysis/param-structure.js";
 import { primitiveCategoryFor } from "../../analysis/type-shape.js";
 
+const ASYNC_SUFFIX = "_async";
+const FINISH_SUFFIX = "_finish";
+
 const matchAsyncFinish = (
     library: Library,
     fn: GirFunction,
@@ -14,7 +17,7 @@ const matchAsyncFinish = (
         return undefined;
     }
 
-    const finishFn = findFinishSibling(fn, siblings);
+    const finishFn = findFinishSibling(library, fn, siblings);
 
     if (finishFn === undefined || !isPromisifiableFinish(library, finishFn)) {
         return undefined;
@@ -23,21 +26,62 @@ const matchAsyncFinish = (
     return finishFn;
 };
 
-const findFinishSibling = (fn: GirFunction, siblings: GirFunction[]): GirFunction | undefined => {
-    const annotated = fn.finishFunc;
-
-    if (annotated !== undefined) {
-        return siblings.find((sibling) => sibling.name === annotated || sibling.cIdentifier === annotated);
+const findFinishSibling = (library: Library, fn: GirFunction, siblings: GirFunction[]): GirFunction | undefined => {
+    if (fn.finishFunc === undefined) {
+        return derivedFinishSibling(fn, siblings);
     }
 
-    if (fn.name.endsWith("_finish")) {
+    const annotated = annotatedFinishSibling(fn, siblings);
+
+    if (annotated !== undefined || externalFinishOwner(library, fn) === undefined) {
+        return annotated;
+    }
+
+    return derivedFinishSibling(fn, siblings) ?? genericFinishSibling(library, fn, siblings);
+};
+
+const annotatedFinishSibling = (fn: GirFunction, siblings: GirFunction[]): GirFunction | undefined => {
+    const annotated = fn.finishFunc;
+
+    return annotated === undefined
+        ? undefined
+        : siblings.find((sibling) => sibling.name === annotated || sibling.cIdentifier === annotated);
+};
+
+const derivedFinishSibling = (fn: GirFunction, siblings: GirFunction[]): GirFunction | undefined => {
+    if (fn.name.endsWith(FINISH_SUFFIX)) {
         return undefined;
     }
 
-    const root = fn.name.endsWith("_async") ? fn.name.slice(0, -"_async".length) : fn.name;
-    const finishName = `${root}_finish`;
+    const root = fn.name.endsWith(ASYNC_SUFFIX) ? fn.name.slice(0, -ASYNC_SUFFIX.length) : fn.name;
+    const finishName = `${root}${FINISH_SUFFIX}`;
 
     return siblings.find((sibling) => sibling.name === finishName);
+};
+
+const claimedFinishSiblings = (fn: GirFunction, siblings: GirFunction[]): Set<GirFunction> => {
+    const claimed: Set<GirFunction> = new Set();
+
+    for (const sibling of siblings) {
+        const finishFn = sibling === fn
+            ? undefined
+            : annotatedFinishSibling(sibling, siblings) ?? derivedFinishSibling(sibling, siblings);
+
+        if (finishFn !== undefined) {
+            claimed.add(finishFn);
+        }
+    }
+
+    return claimed;
+};
+
+const genericFinishSibling = (library: Library, fn: GirFunction, siblings: GirFunction[]): GirFunction | undefined => {
+    const claimed = claimedFinishSiblings(fn, siblings);
+
+    const candidates = siblings.filter((sibling) =>
+        sibling.name.endsWith(FINISH_SUFFIX) && !claimed.has(sibling) && isPromisifiableFinish(library, sibling));
+
+    return candidates.length === 1 ? candidates[0] : undefined;
 };
 
 const isCallbackParameter = (library: Library, ref: TypeId | undefined): boolean =>

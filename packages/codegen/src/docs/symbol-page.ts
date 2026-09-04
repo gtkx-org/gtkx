@@ -13,7 +13,7 @@ import { ancestorChain } from "../gir/ancestry.js";
 import { callbackAsFunction, type GirCallback } from "../gir/callback.js";
 import { type GirAlias, type GirConstant, type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../gir/primitives.js";
-import { callableSpec } from "../store/gi/callable-doc.js";
+import { callableNote, callableSpec } from "../store/gi/callable-doc.js";
 import {
     dedupeCallables,
     instanceScope,
@@ -41,6 +41,7 @@ import { vfuncEntries } from "../store/gi/vtable.js";
 import { implementedInterfaces, newlyImplementedInterfaces } from "../store/jsx/intrinsic-elements.js";
 import {
     annotationNotes,
+    callableDocMarkdown,
     classMethodEntries,
     deprecationMeta,
     docMarkdown,
@@ -554,7 +555,7 @@ const recordInstanceEntries = (context: ModuleContext, record: GirRecord): Signa
         entries.push({
             name: rendered.name,
             signature: rendered.signature,
-            doc: docMarkdown(callable.doc),
+            doc: callableDocMarkdown(callable.doc, callableNote(context, callable, undefined)),
             tags: callableSpec(context, callable, {}),
         });
     }
@@ -695,8 +696,14 @@ const functionPage = (entry: GiSymbolBase & { kind: "function"; fn: GirFunction 
     const signature = functionSignature(docsContext, entry.name, entry.fn, siblings);
     const finishFn = matchStaticFinishFunction(docsContext, entry.fn, siblings);
     const spec = callableSpec(docsContext, entry.fn, { finishFn });
+    const note = callableNote(docsContext, entry.fn, finishFn) ?? "";
 
-    return joinSections([...pageHeader(entry, "function"), `\`\`\`ts\n${signature}\n\`\`\``, ...pageTagNotes(spec)]);
+    return joinSections([
+        ...pageHeader(entry, "function"),
+        `\`\`\`ts\n${signature}\n\`\`\``,
+        note,
+        ...pageTagNotes(spec),
+    ]);
 };
 
 const constantPage = (entry: GiSymbolBase & { kind: "constant"; constant: GirConstant }, library: Library): string => {

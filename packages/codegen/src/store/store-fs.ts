@@ -414,21 +414,34 @@ const realpathOrNull = (path: string): string | null => {
 const isGenerationWriterRunning = (generation: StoreGeneration): boolean => {
     const owner = GENERATION_OWNER_PATTERN.exec(basename(generation.path))?.groups;
 
-    if (owner?.pid === undefined || !isProcessRunning(Number(owner.pid))) {
+    if (owner?.pid === undefined) {
+        return false;
+    }
+
+    const pid = Number(owner.pid);
+
+    if (pid === process.pid || !isProcessRunning(pid)) {
         return false;
     }
 
     return owner.identity === undefined ||
         owner.identity === "unknown" ||
-        processIdentityToken(Number(owner.pid)) === owner.identity;
+        processIdentityToken(pid) === owner.identity;
 };
 
-const removeGenerations = (generations: StoreGeneration[], shouldOnlyRemoveAbandoned: boolean): void => {
-    for (const generation of generations) {
-        if (!shouldOnlyRemoveAbandoned || !isGenerationWriterRunning(generation)) {
-            rmSync(generation.path, { recursive: true, force: true });
+const removeAbandonedGenerations = (removable: StoreGeneration[]): Set<StoreGeneration> => {
+    const removed: Set<StoreGeneration> = new Set();
+
+    for (const generation of removable) {
+        if (isGenerationWriterRunning(generation)) {
+            continue;
         }
+
+        rmSync(generation.path, { recursive: true, force: true });
+        removed.add(generation);
     }
+
+    return removed;
 };
 
 const listGenerations = (storeDir: string): StoreGeneration[] => {
@@ -441,14 +454,14 @@ const listGenerations = (storeDir: string): StoreGeneration[] => {
         .filter((generation): generation is StoreGeneration => generation !== null);
 };
 
-const reclaimGenerations = (storeDir: string, shouldOnlyRemoveAbandoned = false): void => {
+const reclaimGenerations = (storeDir: string): void => {
     const current = realpathOrNull(storeDir);
     const previous = listGenerations(storeDir)
         .filter((generation) => generation.path !== current)
         .toSorted((left, right) => right.modifiedAt - left.modifiedAt);
     const retainedPrevious = current === null ? RETAINED_GENERATIONS : RETAINED_GENERATIONS - 1;
 
-    removeGenerations(previous.slice(retainedPrevious), shouldOnlyRemoveAbandoned);
+    removeAbandonedGenerations(previous.slice(retainedPrevious));
 };
 
 const listPairGenerations = (root: string): StoreGeneration[] =>
@@ -481,25 +494,18 @@ const activePairPaths = (root: string, links: StoreLink[]): Set<string> =>
             .filter((path): path is string => path !== null),
     );
 
-const retainedPairGenerations = (
-    root: string,
-    links: StoreLink[],
-    shouldOnlyRemoveAbandoned: boolean,
-): StoreGeneration[] => {
+const retainedPairGenerations = (root: string, links: StoreLink[]): StoreGeneration[] => {
     const protectedPaths = activePairPaths(root, links);
     const generations = listPairGenerations(root).toSorted((left, right) => right.modifiedAt - left.modifiedAt);
-    const protectedGenerations = generations.filter((generation) => protectedPaths.has(generation.path));
     const unprotected = generations.filter((generation) => !protectedPaths.has(generation.path));
     const complete = unprotected.filter((generation) =>
         links.every((link) => existsSync(join(pairStorePath(generation.path, link), "package.json"))),
     );
     const incomplete = unprotected.filter((generation) => !complete.includes(generation));
-    const retainedCount = Math.max(0, RETAINED_GENERATIONS - protectedGenerations.length);
-    const retained = complete.slice(0, retainedCount);
+    const retainedCount = Math.max(0, RETAINED_GENERATIONS - (generations.length - unprotected.length));
+    const removed = removeAbandonedGenerations([...incomplete, ...complete.slice(retainedCount)]);
 
-    removeGenerations([...incomplete, ...complete.slice(retainedCount)], shouldOnlyRemoveAbandoned);
-
-    return [...protectedGenerations, ...retained];
+    return generations.filter((generation) => !removed.has(generation));
 };
 
 const referencedStoreGeneration = (pair: StoreGeneration, link: StoreLink): string | null => {
@@ -523,23 +529,25 @@ const activeStoreGenerations = (links: StoreLink[]): string[] =>
         .flatMap((link) => [realpathOrNull(link.storeDir), realpathOrNull(link.linkDir)])
         .filter((path): path is string => path !== null);
 
-const reclaimDetachedGenerations = (
-    storeDir: string,
-    referenced: Set<string>,
-    shouldOnlyRemoveAbandoned: boolean,
-): void => {
-    const generations = listGenerations(storeDir).toSorted((left, right) => right.modifiedAt - left.modifiedAt);
-    const isReferenced = (generation: StoreGeneration): boolean => referenced.has(generation.path);
-    const protectedCount = generations.filter((generation) => isReferenced(generation)).length;
-    const retainedUnreferenced = Math.max(0, RETAINED_GENERATIONS - protectedCount);
-    const unreferenced = generations.filter((generation) => !isReferenced(generation));
-    const removable = unreferenced.slice(retainedUnreferenced);
+const isServedFromGeneration = (storeDir: string, generations: StoreGeneration[]): boolean => {
+    const active = realpathOrNull(storeDir);
 
-    removeGenerations(removable, shouldOnlyRemoveAbandoned);
+    return active !== null && generations.some((generation) => generation.path === active);
 };
 
-const reclaimPairGenerations = (root: string, links: StoreLink[], shouldOnlyRemoveAbandoned = false): void => {
-    const pairs = retainedPairGenerations(root, links, shouldOnlyRemoveAbandoned);
+const reclaimDetachedGenerations = (storeDir: string, referenced: Set<string>): void => {
+    const generations = listGenerations(storeDir).toSorted((left, right) => right.modifiedAt - left.modifiedAt);
+    const unreferenced = generations.filter((generation) => !referenced.has(generation.path));
+    const referencedCount = generations.length - unreferenced.length;
+    const retainedCount = isServedFromGeneration(storeDir, generations)
+        ? Math.max(0, RETAINED_GENERATIONS - referencedCount)
+        : 0;
+
+    removeAbandonedGenerations(unreferenced.slice(retainedCount));
+};
+
+const reclaimPairGenerations = (root: string, links: StoreLink[]): void => {
+    const pairs = retainedPairGenerations(root, links);
     const referenced = referencedStoreGenerations(pairs, links);
 
     for (const path of activeStoreGenerations(links)) {
@@ -547,13 +555,13 @@ const reclaimPairGenerations = (root: string, links: StoreLink[], shouldOnlyRemo
     }
 
     for (const link of links) {
-        reclaimDetachedGenerations(link.storeDir, referenced, shouldOnlyRemoveAbandoned);
+        reclaimDetachedGenerations(link.storeDir, referenced);
     }
 };
 
 const reclaimIndependentStores = (links: StoreLink[]): void => {
     for (const link of links) {
-        reclaimGenerations(link.storeDir, true);
+        reclaimGenerations(link.storeDir);
     }
 };
 
@@ -593,7 +601,7 @@ const reclaimStoreArtifacts = (links: StoreLink[]): void => {
     const root = roots.values().next().value;
 
     if (root !== undefined) {
-        reclaimPairGenerations(root, completeLinks, true);
+        reclaimPairGenerations(root, completeLinks);
     }
 };
 

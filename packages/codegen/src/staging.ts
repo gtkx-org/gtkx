@@ -28,6 +28,7 @@ const LOCK_WAIT_TIMEOUT_ENV = "GTKX_CODEGEN_LOCK_TIMEOUT_MS";
 const PROCESS_START_FIELD = 19;
 const BOOT_ID_PATH = "/proc/sys/kernel/random/boot_id";
 const LOCK_CHILD_FD = 3;
+const LOCK_CONFLICT_EXIT_CODE = 75;
 const STOPPED_PROCESS_STATES: ReadonlySet<string> = new Set(["Z", "X", "x"]);
 
 type LockOwner = { createdAt: number; identity: string | null; pid: number; token: string };
@@ -174,21 +175,33 @@ const lockWaitTimeout = (): number => {
     return Number.isFinite(requested) && requested > 0 ? requested : DEFAULT_LOCK_WAIT_TIMEOUT_MS;
 };
 
-const lockHolderArgs = (): string[] => [
+const lockHolderArgs = (timeout: number): string[] => [
     "--exclusive",
     "--timeout",
-    String(lockWaitTimeout() / 1000),
+    String(timeout / 1000),
     "--conflict-exit-code",
-    "75",
+    String(LOCK_CONFLICT_EXIT_CODE),
     String(LOCK_CHILD_FD),
 ];
 
-const waitForLockHolder = (child: ChildProcess, root: string): Promise<void> => {
+const lockTimeoutMessage = (root: string, timeout: number, elapsed: number): string =>
+    `Timed out after ${String(elapsed)}ms waiting to generate stores in ${root}; another codegen process still ` +
+    `holds the store lock. Wait for it to finish, or raise the ${String(timeout)}ms limit with ` +
+    `${LOCK_WAIT_TIMEOUT_ENV}=<milliseconds>.`;
+
+const lockFailureMessage = (root: string, code: number | null): string => {
+    const exit = code === null ? "a signal" : `code ${String(code)}`;
+
+    return `Cannot lock ${root} to generate stores: flock exited with ${exit}.`;
+};
+
+const waitForLockHolder = (child: ChildProcess, root: string, timeout: number): Promise<void> => {
+    const startedAt = Date.now();
+
     return new Promise((resolve, reject) => {
-        const fail = (): void => {
-            reject(new Error(`Timed out waiting to generate stores in ${root}`));
-        };
-        child.once("error", fail);
+        child.once("error", (error) => {
+            reject(new Error(`Cannot lock ${root} to generate stores`, { cause: error }));
+        });
         child.once("exit", (code) => {
             if (code === 0) {
                 resolve();
@@ -196,7 +209,11 @@ const waitForLockHolder = (child: ChildProcess, root: string): Promise<void> => 
                 return;
             }
 
-            fail();
+            const message =
+                code === LOCK_CONFLICT_EXIT_CODE
+                    ? lockTimeoutMessage(root, timeout, Date.now() - startedAt)
+                    : lockFailureMessage(root, code);
+            reject(new Error(message));
         });
     });
 };
@@ -230,13 +247,14 @@ const acquireLock = async (root: string): Promise<StoreLock> => {
     const path = join(root, LOCK_FILENAME);
     const executable = resolveExecutable("flock");
     const lockFd = openSync(root, constants.O_RDONLY | constants.O_DIRECTORY);
+    const timeout = lockWaitTimeout();
     let ownerFd: number | undefined;
 
     try {
-        const child = spawn(executable, lockHolderArgs(), {
+        const child = spawn(executable, lockHolderArgs(timeout), {
             stdio: ["ignore", "ignore", "ignore", lockFd],
         });
-        await waitForLockHolder(child, root);
+        await waitForLockHolder(child, root, timeout);
         ownerFd = openLockFile(path);
         const owner = lockOwner();
         writeLockOwner(ownerFd, owner);

@@ -29,6 +29,38 @@
            glib:type-name="DocumentedNote"
            glib:get-type="documented_note_get_type">
       <doc xml:space="preserve">Holds a short piece of text the user jotted down.</doc>
+      <method name="copy" c:identifier="documented_note_copy">
+        <doc xml:space="preserve">Copies the note text.
+
+You must free the copy with g_free() when done.</doc>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve">a copy of the note. Free it with g_free() when done.</doc>
+          <type name="utf8" c:type="gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Note" c:type="DocumentedNote*"/>
+          </instance-parameter>
+          <parameter name="buffer" transfer-ownership="none">
+            <doc xml:space="preserve">the buffer to copy into, which the caller must free with g_free()</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="list" c:identifier="documented_note_list">
+        <doc xml:space="preserve">Lists the notes.</doc>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve">a list of strvs. Free each item with g_strfreev() and free the outer list with g_free().</doc>
+          <array zero-terminated="1" c:type="gchar**">
+            <type name="utf8" c:type="gchar*"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Note" c:type="DocumentedNote*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
       <method name="read" c:identifier="documented_note_read">
         <doc xml:space="preserve">Reads the note back in the given tone.</doc>
         <return-value transfer-ownership="none">

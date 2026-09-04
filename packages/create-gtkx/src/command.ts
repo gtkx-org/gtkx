@@ -60,14 +60,32 @@ const normalizeBooleanArgument = (argument: string): string => {
     return value === "false" ? `--no-${option.slice(2)}` : argument;
 };
 
-const assertKnownArguments = (rawArgs: string[]): void => {
-    parseArgs({
-        args: rawArgs.map((argument) => normalizeBooleanArgument(argument)),
+const isKnownOption = (name: string, rawName: string): boolean =>
+    Object.hasOwn(STRICT_OPTIONS, name) || Object.hasOwn(STRICT_OPTIONS, rawName.replace(/^--/, ""));
+
+const unknownOptions = (args: string[]): string[] => {
+    const { tokens } = parseArgs({
+        args,
         options: STRICT_OPTIONS,
         allowPositionals: true,
         allowNegative: true,
-        strict: true,
+        strict: false,
+        tokens: true,
     });
+
+    return tokens.flatMap((token) =>
+        token.kind === "option" && !isKnownOption(token.name, token.rawName) ? [token.rawName] : []);
+};
+
+const assertKnownArguments = (rawArgs: string[]): void => {
+    const args = rawArgs.map((argument) => normalizeBooleanArgument(argument));
+    const [unknown] = unknownOptions(args);
+
+    if (unknown !== undefined) {
+        throw new Error(`Unknown option "${unknown}". Pass --help to list the supported options`);
+    }
+
+    parseArgs({ args, options: STRICT_OPTIONS, allowPositionals: true, allowNegative: true, strict: true });
 };
 
 const scaffoldCommand = defineCommand({

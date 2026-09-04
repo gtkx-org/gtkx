@@ -38,6 +38,8 @@ const PIXBUF_PAGE = "gdkpixbuf/pixbuf.md";
 const SIDEBAR_PAGE = "adw/sidebar.md";
 const APPLICATION_PAGE = "adw/application.md";
 const DOCUMENTED_PAGE = "documented/note.md";
+const ASYNC_SACK_PAGE = "asyncpair/sack.md";
+const ASYNC_JOB_PAGE = "asyncpair/job.md";
 const REFERENCE_LIBRARIES = [...STORE_LIBRARIES, "GioUnix-2.0"];
 const REJECTED_OUT_DIRS = ["", ".", "..", "../sibling", "docs/../..", "/elsewhere/docs"];
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
@@ -219,14 +221,43 @@ describe("gtkx docs (directories it refuses to write to)", () => {
 });
 
 describe("gtkx docs (ordinary prose that starts with free)", () => {
-    it("preserves the PackageKit search parameter description", () => {
+    it("preserves the PackageKit search parameter description and strips C memory management", () => {
         using project = createCliProject({
             prefix: "gtkx-cli-docs-free-text-",
             config: config(`, girPath: [${JSON.stringify(FIXTURE_GIR)}]`, ["Documented-1.0"]),
         });
 
         expect(runDocs(project)).toBe(0);
-        expect(readPage(project, DOCUMENTED_PAGE)).toContain(PACKAGEKIT_SEARCH_TEXT);
+        const page = readPage(project, DOCUMENTED_PAGE);
+        expect(page).toContain(PACKAGEKIT_SEARCH_TEXT);
+        expect(page).toContain("Copies the note text.");
+        expect(page).toContain("**Returns** a copy of the note.");
+        expect(page).toContain("**Returns** a list of strvs.");
+        expect(page).toContain("- `buffer`: the buffer to copy into");
+        expect(page).not.toContain("must free");
+        expect(page).not.toContain("strfreev");
+        expect(page).not.toContain("GLib.free()");
+    });
+});
+
+describe("gtkx docs (async finish pairing)", () => {
+    it("documents the paired generic finish and the remaining callback-only methods", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-docs-async-pair-",
+            config: config(`, girPath: [${JSON.stringify(FIXTURE_GIR)}]`, ["AsyncPair-1.0"]),
+        });
+
+        expect(runDocs(project)).toBe(0);
+        expect(readPage(project, ASYNC_SACK_PAGE)).toContain(
+            "fetchAsync(cancellable?: Gio.Cancellable | null): Promise<boolean>",
+        );
+        expect(readPage(project, ASYNC_SACK_PAGE)).not.toContain("Callback-based:");
+        expect(readPage(project, ASYNC_JOB_PAGE)).toContain(
+            "externalAsync(callback: Gio.AsyncReadyCallback | null): void",
+        );
+        expect(readPage(project, ASYNC_JOB_PAGE)).toContain(
+            "Callback-based: the GIR declares `AsyncPair.Client.genericFinish` as its finish function",
+        );
     });
 });
 

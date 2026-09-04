@@ -195,7 +195,9 @@ const startCli = (project: CliProject, args: string[], overrides: NodeJS.Process
 
 export {
     type CliProject,
+    type CliProjectOptions,
     createCliProject,
+    type DisposableCliProject,
     initGitRepo,
     listProjectFiles,
     removeCliProject,

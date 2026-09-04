@@ -38,6 +38,19 @@ bindings, `virtual:gtkx-config`, the bundle, and deployment metadata all use one
 
 Use the same file in Vitest with `gtkx({ configFile: "gtkx.enterprise.config.ts" })` in `vitest.config.ts`.
 
+`gtkx dev` watches the selected file together with every local file it reaches: `import` and `require`
+sources, `package.json` `imports` aliases such as `#base`, c12 `extends` layers, and imported data files such
+as `.json` or `.yaml`. A dependency the configuration fails to load because it is missing is watched too, so
+creating it reloads the configuration, and a dependency a reload introduces joins the watch. Files under
+`node_modules` are left out. Each reload names the file that changed, regenerates bindings, and restarts the
+app, so saving the shared base of `gtkx.enterprise.config.ts` reports:
+
+```
+gtkx.config.ts changed; regenerating bindings...
+```
+
+When the reload fails, the running app is kept and the error is reported; fix the file and save again.
+
 Every production build records both the project-relative config path and a digest of the production-mode
 configuration in its build manifest. `gtkx deploy --skip-build --config ...` compares both identities before it
 packages `dist/`, and rejects a bundle built with another config file or with different config values.
@@ -118,15 +131,20 @@ GTKX publishes the GI and JSX stores as one matched pair. `node_modules/.gtkx/cu
 `node_modules/@gtkx/gi` and `node_modules/@gtkx/jsx` links remain stable while `current` switches atomically, so
 readers cannot observe a new JSX store with an older GI store.
 
-Codegen retains at most three complete generations, including the active pair. Each enabled codegen run identifies
-staging, legacy, detached, and pair-generation directories by the writer process recorded in their names;
-once the retained allowance is exceeded, artifacts whose writer is no longer alive are removed. Live writers
-and every generation still reached by `current` or a store link remain protected.
+Codegen retains at most three complete pair generations, including the active one, so a process that is still
+importing from an earlier pair keeps a consistent store while newer pairs are published. Every enabled codegen run,
+whether it regenerates or finds the bindings up to date, reclaims everything else under `node_modules/.gtkx`: pair
+generations beyond that allowance, incomplete pairs, staging directories, and the root-level `.gi-*` and `.jsx-*`
+directories that earlier layouts wrote and no retained pair reaches. Each directory records its writer process in
+its name; one whose writer is another process that is still running is left for that process to finish, and
+whatever `current` or a store link reaches is never removed. After a run, `node_modules/.gtkx` holds the retained
+pairs, the `current`, `gi`, and `jsx` links, and `env.d.ts`.
 
 Writers serialize through `node_modules/.gtkx/.codegen.lock`. A normal exit removes that lock-owner file; a
 forced exit can leave it behind, but the operating-system lock is released with the process and the next run
-can recover. Waiting for an active writer defaults to 10 minutes. Set `GTKX_CODEGEN_LOCK_TIMEOUT_MS` to a
-positive millisecond value to choose a different timeout, for example:
+can recover. Waiting for an active writer defaults to 10 minutes; when that wait runs out, the error reports how
+long it waited and names the variable that raises the limit. Set `GTKX_CODEGEN_LOCK_TIMEOUT_MS` to a positive
+millisecond value to choose a different timeout, for example:
 
 ```bash
 GTKX_CODEGEN_LOCK_TIMEOUT_MS=30000 gtkx codegen

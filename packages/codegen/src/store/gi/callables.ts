@@ -5,7 +5,7 @@ import type { JsDocSpec } from "../../writer/doc.js";
 import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
 import { renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
-import { callableDoc, callableSpec } from "./callable-doc.js";
+import { callableDoc, callableNote, callableSpec } from "./callable-doc.js";
 import { renderFnExpression } from "./function.js";
 import { gtypeMemberDeclaration } from "./gtype-binding.js";
 import {
@@ -69,6 +69,21 @@ type PlainTypeMembersOptions = {
     hasGtype: boolean;
 };
 
+const NEWV_GUARD = [
+    "if (!Array.isArray(parameters)) {",
+    '    if (typeof this !== "function") {',
+    '        throw new TypeError("GObject.Object.newv must be called on a class, " +',
+    '            "as GObject.Object.newv(objectType, parameters)");',
+    "    }",
+    "    throw new TypeError(",
+    '        globalThis.Object.hasOwn(this, "new")',
+    "            ? `Use ${this.name}.new(...)`",
+    "            : `${this.name}.newv(objectType, parameters) takes an array of GObject.Parameter; ` +",
+    "                `construct with new ${this.name}(...) or the factory of the class you need instead`,",
+    "    );",
+    "}",
+].join("\n");
+
 const RUNTIME_OWNED_LIFETIME_METHODS: Set<string> = new Set([
     "force_floating",
     "free",
@@ -99,6 +114,9 @@ const memberDoc = (context: ModuleContext, callable: GirFunction, finishFn: GirF
 
 const instanceMemberSpec = (context: ModuleContext, callable: GirFunction, scope: InstanceScope): JsDocSpec =>
     callableSpec(context, callable, { finishFn: matchFinishFunction(context, callable, scope) });
+
+const instanceMemberNote = (context: ModuleContext, callable: GirFunction, scope: InstanceScope): string | undefined =>
+    callableNote(context, callable, matchFinishFunction(context, callable, scope));
 
 const instanceScope = (ownerName: string, callables: Callables): InstanceScope => ({
     ownerName,
@@ -210,11 +228,7 @@ const renderCallableMember = (
         bindingExpression: toCamelIdentifier(cIdentifier),
         returnTypeOverride: options.returnTypeOverride,
     });
-    const body = cIdentifier === "g_object_newv"
-        ? "if (!Array.isArray(parameters)) {\n" +
-        "    throw new TypeError(`Use ${this.name}.new(...)`);\n" +
-        `}\n${methodBody}`
-        : methodBody;
+    const body = cIdentifier === "g_object_newv" ? `${NEWV_GUARD}\n${methodBody}` : methodBody;
 
     const prefix = options.isStatic ? "static " : "";
     const header = `${prefix}${name}(${signature}): ${returnType}`;
@@ -535,6 +549,7 @@ export {
     renderInstanceMethodSignature,
     renderClassInstanceMember,
     instanceMemberSpec,
+    instanceMemberNote,
     instanceScope,
     dedupeCallables,
     generateBindings,

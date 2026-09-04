@@ -33,6 +33,7 @@ type DevRunnerDeps = {
     isRefreshBoundary(module: Record<string, unknown>): boolean;
     staleExportName(previous: Record<string, unknown>, current: Record<string, unknown>): string | null;
     readFileRevision(path: string): Promise<string>;
+    hasWrittenCatalog(path: string): boolean;
     plugins(entryPath: string): Plugin[];
     log(message: string): void;
     exit(code: number): never;
@@ -370,14 +371,22 @@ const restartForServerConfig = async (session: DevSession, changedPath: string):
     await requestRestart(session);
 };
 
+const restartForCatalog = async (session: DevSession, changedPath: string): Promise<void> => {
+    if (session.deps.hasWrittenCatalog(changedPath)) {
+        return;
+    }
+
+    session.deps.log(`Translation catalog changed: ${changedPath}`);
+    await requestRestart(session);
+};
+
 const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {
     if (session.controller.isShuttingDown()) {
         return;
     }
 
     if (isCatalogSource(session.server.config.root, change.path)) {
-        session.deps.log(`Translation catalog changed: ${change.path}`);
-        await requestRestart(session);
+        await restartForCatalog(session, change.path);
 
         return;
     }

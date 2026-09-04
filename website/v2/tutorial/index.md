@@ -87,7 +87,7 @@ npm run dev
 
 This opens a small window with a counter in it, which the next chapter replaces.
 
-Keep this `npm run dev` running for the whole tutorial. Saving a `.ts` or `.tsx` file patches the running widget tree through Fast Refresh, so a `## Run it` section means save and look at the open window. Saving `gtkx.config.ts` regenerates bindings and relaunches the app for you.
+Keep this `npm run dev` running for the whole tutorial. Saving a `.ts` or `.tsx` file patches the running widget tree through Fast Refresh, so a `## Run it` section means save and look at the open window. Saving `gtkx.config.ts`, or any local file it imports, regenerates bindings and relaunches the app for you.
 
 ## How this tutorial works
 

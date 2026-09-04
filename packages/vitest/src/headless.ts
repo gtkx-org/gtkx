@@ -9,5 +9,6 @@ export {
 export {
     findStaleHeadlessDisplays,
     reapStaleHeadlessDisplays,
+    reapStaleHeadlessDisplaysAtStartup,
     type StaleHeadlessDisplay,
 } from "./reap-headless-displays.js";

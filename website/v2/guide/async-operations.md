@@ -19,10 +19,18 @@ The conversion depends on what the library marks as introspectable, not only on 
 
 ### Callback-only methods and external finish owners
 
-An async method also stays callback-based when its GIR metadata points at a finish function on another class.
-GTKX cannot supply that other instance as the finish function's `this`, so the generated declaration names the
-external owner and completion method instead of inventing a promise with the wrong receiver. Wrap the callback
-at the application boundary and bind the finish function to the instance that owns it:
+Some GIR metadata names a finish function on another class. `Pk.PackageSack.getDetailsAsync`,
+`getUpdateDetailAsync` and `resolveAsync` are annotated with `pk_client_generic_finish`, a `Pk.Client` method,
+although the task they start belongs to the sack. GTKX cannot supply that other instance as the finish
+function's `this`, so it looks for a finish method on the declaring class instead: the `<name>_finish` sibling
+when one exists, otherwise the class's single generic finish method. The sack methods are therefore completed
+with `Pk.PackageSack.mergeGenericFinish` and return `Promise<boolean>` like any other async method.
+
+An async method stays callback-based only when no finish method of its own class can be paired with it, for
+example when the class declares several generic finish methods. The generated declaration then carries a note
+naming the finish function the GIR declares and its owner. Complete such a result on the instance that owns it,
+which `Gio.Task.isValid(result, owner)` confirms; an unrelated instance is not a valid receiver, and calling a
+finish function on one can crash the process. Wrap the callback at the application boundary:
 
 ```ts
 import type * as Gio from "@gtkx/gi/gio";
@@ -42,27 +50,9 @@ const finishAsPromise = <T>(
     });
 ```
 
-For example, `Pk.PackageSack.getDetailsAsync`, `getUpdateDetailAsync`, and `resolveAsync` are callback-only.
-PackageKit exposes `mergeGenericFinish` on the sack for the result of those merge operations:
-
-```ts
-import type * as Gio from "@gtkx/gi/gio";
-import type * as Pk from "@gtkx/gi/packagekitglib";
-
-const getDetails = (
-    sack: Pk.PackageSack,
-    cancellable: Gio.Cancellable | null,
-    progress: Pk.ProgressCallback,
-): Promise<boolean> =>
-    finishAsPromise(
-        (callback) => sack.getDetailsAsync(cancellable, progress, callback),
-        (result) => sack.mergeGenericFinish(result),
-    );
-```
-
-When the generated note names an external method such as `Pk.Client.genericFinish`, pass a bound call such as
-`(result) => client.genericFinish(result)` as `finish`. Keep the callback form when the API gives you no
-instance of the named owner; constructing an unrelated receiver does not make it the owner of that result.
+Pass a bound call on the owning instance as `finish`, such as `(result) => owner.someFinish(result)`. Keep the
+callback form when the API gives you no instance of the named owner; constructing an unrelated receiver does
+not make it the owner of that result.
 
 ## Awaiting async operations
 

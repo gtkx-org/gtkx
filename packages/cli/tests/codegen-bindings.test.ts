@@ -30,15 +30,32 @@ import {
 } from "./codegen-helpers.js";
 
 const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
-const STATIC_NARROW_PROBE = `import { Base, Derived } from "./node_modules/.gtkx/gi/staticnarrow/staticnarrow.js";
+const STATIC_NARROW_MODULE = "./node_modules/.gtkx/gi/staticnarrow/staticnarrow.js";
+const STATIC_NARROW_PROBE = `import { Base, Compact, Derived, Leaf } from "${STATIC_NARROW_MODULE}";
 
 const base: Base = Base.new();
 const derived: Derived = Derived.new();
+const compact: Compact = Compact.new();
+const leaf: Leaf = Leaf.new();
 
-export const values = [base.lookup("value"), derived.lookup(1)];
+export const values = [base.lookup("value"), derived.lookup(1), leaf.lookup(1), compact.measure(), base.measure(1)];
 `;
+const STATIC_NARROW_REJECTED: Record<string, string> = {
+    "inherited-signature.ts": `import { Derived } from "${STATIC_NARROW_MODULE}";
+export const value = Derived.new().lookup("value");
+`,
+    "inherited-signature-below.ts": `import { Leaf } from "${STATIC_NARROW_MODULE}";
+export const value = Leaf.new().lookup("value");
+`,
+    "dropped-parameter.ts": `import { Compact } from "${STATIC_NARROW_MODULE}";
+export const value = Compact.new().measure(1);
+`,
+};
+const MISSING_GIR_CONFIG =
+    `export default { applicationId: "com.gtkx.clicodegen", libraries: ${JSON.stringify(["Documented-1.0"])}, ` +
+    `girPath: ${JSON.stringify(["/nonexistent"])} };\n`;
 
-const typecheckGenerated = (project: CliProject): void => {
+const typecheckGenerated = (project: CliProject, file = "probe.ts"): void => {
     const result = spawnSync(
         process.execPath,
         [
@@ -55,7 +72,7 @@ const typecheckGenerated = (project: CliProject): void => {
             "ESNext",
             "--types",
             "node",
-            "probe.ts",
+            file,
         ],
         { cwd: project.root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
@@ -66,19 +83,52 @@ const typecheckGenerated = (project: CliProject): void => {
 };
 
 describe("gtkx codegen (libraries the generated types have to escape)", () => {
-    it("binds a class whose factory return and instance method narrow the ones it inherits", () => {
-        using project = createCliProject({
+    const state: { project: CliProject; status: number | null } = {
+        project: { root: "", nodeModules: "" },
+        status: null,
+    };
+
+    const declarations = (): string => generatedModule(state.project, "gi", "staticnarrow", "staticnarrow.d.ts");
+
+    beforeAll(() => {
+        state.project = createCliProject({
             prefix: "gtkx-cli-codegen-statics-",
             config: fixtureConfig("StaticNarrow-1.0"),
-            files: { "probe.ts": STATIC_NARROW_PROBE },
+            files: { "probe.ts": STATIC_NARROW_PROBE, ...STATIC_NARROW_REJECTED },
         });
 
-        expect(runCli(project, ["codegen"]).status).toBe(0);
-        const declarations = generatedModule(project, "gi", "staticnarrow", "staticnarrow.d.ts");
-        expect(declarations).toContain("StaticBase<");
-        expect(classBody(declarations, "Derived")).toContain("lookup(value: number): number;");
-        expect(classBody(declarations, "Derived")).not.toContain("this: never");
-        typecheckGenerated(project);
+        state.status = runCli(state.project, ["codegen"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(state.project);
+    });
+
+    it("binds a class whose factory return and instance method narrow the ones it inherits", () => {
+        expect(state.status).toBe(0);
+        expect(declarations()).toContain("StaticBase<");
+        expect(classBody(declarations(), "Derived")).toContain("lookup(value: number): number;");
+        expect(classBody(declarations(), "Derived")).not.toContain("this: never");
+        typecheckGenerated(state.project);
+    });
+
+    it("declares a narrowing that stays assignable to the inherited method directly on the class", () => {
+        expect(state.status).toBe(0);
+        expect(classBody(declarations(), "Compact")).toContain("measure(): number;");
+        expect(declarations()).not.toContain("_Compact$InstanceBase");
+        expect(declarations()).not.toContain("_Leaf$InstanceBase");
+    });
+
+    it("bridges no method the class leaves to the runtime", () => {
+        expect(state.status).toBe(0);
+        expect(declarations()).not.toContain("ref(");
+    });
+
+    it.each(Object.keys(STATIC_NARROW_REJECTED))("rejects the inherited signature in %s", (file) => {
+        expect(state.status).toBe(0);
+        expect(() => {
+            typecheckGenerated(state.project, file);
+        }).toThrow();
     });
 
     it("binds a type whose GIR name starts with a digit", () => {
@@ -116,17 +166,32 @@ describe("gtkx codegen (where the documentation goes)", () => {
         removeCliProject(state.project);
     });
 
-    it.each(DOCUMENTED_MODULE_CASES)("documents $title in its declaration alone", ({ store, stem, docs }) => {
+    it.each(DOCUMENTED_MODULE_CASES)(
+        "documents $title in its declaration alone",
+        ({ store, stem, docs, stripped }) => {
+            expect(state.status).toBe(0);
+            const declared = generatedModule(state.project, store, `${stem}.d.ts`);
+            expect(docs.filter((text) => !declared.includes(text))).toEqual([]);
+            expect(stripped.filter((text) => declared.includes(text))).toEqual([]);
+            const emitted = generatedModule(state.project, store, `${stem}.js`).split(PURE).join("");
+            expect(emitted).not.toMatch(COMMENT);
+        },
+    );
+
+    it.each(HOVER_CASES)("surfaces the documentation of $title on hover", ({ text, doc, omits }) => {
         expect(state.status).toBe(0);
-        const declared = generatedModule(state.project, store, `${stem}.d.ts`);
-        expect(docs.filter((text) => !declared.includes(text))).toEqual([]);
-        const emitted = generatedModule(state.project, store, `${stem}.js`).split(PURE).join("");
-        expect(emitted).not.toMatch(COMMENT);
+        const hover = hoverDoc(state.project, join("src", "probe.tsx"), text);
+        expect(hover).toContain(doc);
+        expect(omits.filter((entry) => hover.includes(entry))).toEqual([]);
     });
 
-    it.each(HOVER_CASES)("surfaces the documentation of $title on hover", ({ text, doc }) => {
-        expect(state.status).toBe(0);
-        expect(hoverDoc(state.project, join("src", "probe.tsx"), text)).toContain(doc);
+    it("fails when the documented library has no GIR file on the search path", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-docs-missing-",
+            config: MISSING_GIR_CONFIG,
+        });
+
+        expect(runCli(project, ["codegen"]).status).not.toBe(0);
     });
 });
 

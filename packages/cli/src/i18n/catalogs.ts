@@ -28,9 +28,15 @@ type CatalogProject = {
 };
 
 type PreparedCatalog = {
+    content: Buffer;
     isChanged: boolean;
     output: string;
     target: string;
+};
+
+type WrittenCatalog = {
+    content: Buffer;
+    path: string;
 };
 
 const PO_DIRNAME = "po";
@@ -165,16 +171,25 @@ const prepareCatalog = (
         initializeCatalog(catalog, template, output);
     }
 
+    const content = readFileSync(output);
+
     return {
-        isChanged: !isExisting || !readFileSync(output).equals(readFileSync(catalog.path)),
+        content,
+        isChanged: !isExisting || !content.equals(readFileSync(catalog.path)),
         output,
         target: catalog.path,
     };
 };
 
-const synchronizeCatalogs = (project: CatalogProject): void => {
+const replaceCatalog = (catalog: PreparedCatalog): WrittenCatalog => {
+    renameSync(catalog.output, catalog.target);
+
+    return { content: catalog.content, path: catalog.target };
+};
+
+const synchronizeCatalogs = (project: CatalogProject): WrittenCatalog[] => {
     if (project.catalogs.length === 0) {
-        return;
+        return [];
     }
 
     const template = join(project.poDir, `${project.domain}.pot`);
@@ -185,11 +200,7 @@ const synchronizeCatalogs = (project: CatalogProject): void => {
         const merged = project.catalogs.map((catalog, index) =>
             prepareCatalog(catalog, index, template, stagingDir));
 
-        for (const catalog of merged) {
-            if (catalog.isChanged) {
-                renameSync(catalog.output, catalog.target);
-            }
-        }
+        return merged.filter((catalog) => catalog.isChanged).map((catalog) => replaceCatalog(catalog));
     } finally {
         rmSync(stagingDir, { recursive: true, force: true });
     }
@@ -215,4 +226,5 @@ export {
     requiresCatalogInitialization,
     resolveCatalogProject,
     synchronizeCatalogs,
+    type WrittenCatalog,
 };

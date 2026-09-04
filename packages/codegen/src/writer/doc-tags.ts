@@ -12,6 +12,11 @@ type JsDocSpec = {
 
 type DocConverter = (text: string) => string;
 
+type DocConverters = {
+    description: DocConverter;
+    value: DocConverter;
+};
+
 const WHITESPACE_RUN_PATTERN = /\s+/g;
 const PICTURE_PATTERN = /<picture[\s\S]*?<\/picture>/g;
 const VIDEO_PATTERN = /<video[\s\S]*?(?:<\/video>|\/>)/g;
@@ -59,12 +64,19 @@ const deprecatedLine = (deprecation: JsDocDeprecation | undefined, convert: DocC
     return [text.length === 0 ? "@deprecated" : `@deprecated ${text}`];
 };
 
-const renderDocTagLines = (spec: JsDocSpec, convert: DocConverter): string[] => [
-    ...paramLines(spec.params, convert),
-    ...returnsLines(spec.returns, convert),
-    ...simpleTagLine("@throws", spec.throws, convert),
-    ...deprecatedLine(spec.deprecated, convert),
-    ...simpleTagLine("@since", spec.since, convert),
+const renderDocTagLines = (spec: JsDocSpec, converters: DocConverters): string[] => [
+    ...paramLines(spec.params, converters.value),
+    ...returnsLines(spec.returns, converters.value),
+    ...simpleTagLine("@throws", spec.throws, converters.description),
+    ...deprecatedLine(spec.deprecated, converters.description),
+    ...simpleTagLine("@since", spec.since, converters.description),
 ];
 
-export { renderDocTagLines, stripDocMedia, type JsDocDeprecation, type JsDocParam, type JsDocSpec };
+export {
+    type DocConverters,
+    renderDocTagLines,
+    stripDocMedia,
+    type JsDocDeprecation,
+    type JsDocParam,
+    type JsDocSpec,
+};

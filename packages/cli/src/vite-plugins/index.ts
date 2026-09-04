@@ -5,7 +5,7 @@ import type { BuildManifestCollector } from "../internal/build-manifest.js";
 import { gtkxAssetImports } from "./asset-imports.js";
 import { gtkxBuiltUrl } from "./built-url.js";
 import { gtkxCss } from "./css.js";
-import { gtkxI18n } from "./i18n.js";
+import { type CatalogWriteListener, gtkxI18n } from "./i18n.js";
 import { gtkxIcons } from "./icons.js";
 import { gtkxReactCompiler } from "./react-compiler.js";
 import { gtkxResources } from "./resources.js";
@@ -18,11 +18,19 @@ type GtkxVitePluginOptions = {
     configFile?: string | undefined;
     entryPath?: string | undefined;
     mode?: string | undefined;
+    onCatalogsWritten?: CatalogWriteListener | undefined;
     shouldPreserveI18nMetadata?: boolean | undefined;
 };
 
 const gtkxVitePlugins = (options: GtkxVitePluginOptions = {}): Plugin[] => {
-    const { buildManifest, configFile, entryPath, mode, shouldPreserveI18nMetadata = true } = options;
+    const {
+        buildManifest,
+        configFile,
+        entryPath,
+        mode,
+        onCatalogsWritten,
+        shouldPreserveI18nMetadata = true,
+    } = options;
     const loadConfig = createConfigLoader({
         ...(mode !== undefined && { mode }),
         ...(configFile !== undefined && { configFile }),
@@ -32,12 +40,13 @@ const gtkxVitePlugins = (options: GtkxVitePluginOptions = {}): Plugin[] => {
         createConfigPlugin({ name: "gtkx:config", loadConfig }),
         ...(entryPath === undefined
             ? []
-            : [gtkxI18n(
+            : [gtkxI18n({
                     entryPath,
                     loadConfig,
-                    shouldPreserveI18nMetadata,
-                    mode === "development",
-                )]),
+                    onCatalogsWritten,
+                    shouldPreserveMetadataMessages: shouldPreserveI18nMetadata,
+                    shouldRecoverExtractionErrors: mode === "development",
+                })]),
         gtkxStoreLinks(),
         gtkxUndeclaredLibrary(loadConfig),
         gtkxSettings(buildManifest),

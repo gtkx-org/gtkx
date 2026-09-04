@@ -1,6 +1,7 @@
 import {
     type CleanupDirectoryIdentity,
     cleanupDirectoryIdentity,
+    info,
     removeCleanupDirectory,
 } from "@gtkx/utils";
 import { constants, lstatSync, readdirSync, readFileSync } from "node:fs";
@@ -81,13 +82,29 @@ const readOwnedFile = (
     }
 };
 
+const hasOnlyBusConfig = (runtimeDir: string): boolean => {
+    try {
+        const entries = readdirSync(runtimeDir);
+
+        return entries.length === 1 && entries[0] === "session.conf";
+    } catch {
+        return false;
+    }
+};
+
 const hasGeneratedRuntimeFiles = (runtimeDir: string, userId: number): boolean => {
-    const sway = readOwnedFile(join(runtimeDir, "sway.conf"), runtimeDir, userId);
     const bus = readOwnedFile(join(runtimeDir, "session.conf"), runtimeDir, userId);
+
+    if (bus !== createBusConfig(join(runtimeDir, "bus"))) {
+        return false;
+    }
+
+    const sway = readOwnedFile(join(runtimeDir, "sway.conf"), runtimeDir, userId);
     const marker = readOwnedFile(join(runtimeDir, HEADLESS_RUNTIME_MARKER), runtimeDir, userId, 0o600);
 
-    return bus === createBusConfig(join(runtimeDir, "bus")) &&
-        (marker === createHeadlessRuntimeMarker(runtimeDir) || (sway !== undefined && isSwayConfig(sway)));
+    return marker === createHeadlessRuntimeMarker(runtimeDir) ||
+        (sway !== undefined && isSwayConfig(sway)) ||
+        hasOnlyBusConfig(runtimeDir);
 };
 
 const readProcessArguments = (pid: number): string[] | undefined => {
@@ -273,8 +290,20 @@ const reapStaleHeadlessDisplays = (
     return removed;
 };
 
+const reapStaleHeadlessDisplaysAtStartup = (): void => {
+    const removed = reapStaleHeadlessDisplays();
+
+    if (removed.length === 0) {
+        return;
+    }
+
+    const noun = removed.length === 1 ? "directory" : "directories";
+    info(`removed stale headless runtime ${noun}: ${removed.join(", ")}`);
+};
+
 export {
     findStaleHeadlessDisplays,
     reapStaleHeadlessDisplays,
+    reapStaleHeadlessDisplaysAtStartup,
     type StaleHeadlessDisplay,
 };

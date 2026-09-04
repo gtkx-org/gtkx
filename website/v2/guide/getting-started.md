@@ -54,15 +54,15 @@ pnpm holds back packages published in the last 24 hours, so scaffolding on the d
 
 ```yaml
 minimumReleaseAgeExclude:
-  - '@gtkx/react@2.0.0-beta.4'
-  - '@gtkx/runtime@2.0.0-beta.4'
+  - '@gtkx/react@2.0.0-beta.5'
+  - '@gtkx/runtime@2.0.0-beta.5'
 ```
 
 The key belongs at the top level of the file, alongside `packages:` and `allowBuilds:`, never nested inside either. pnpm names only the versions the command it stopped on had to resolve, so a later run can name more; add each one to the same list.
 
 ## The dev loop
 
-`npm run dev` runs `gtkx dev`. Leave it running while you work: saving a component patches it into the window that is already open, and a change Fast Refresh cannot patch restarts the app.
+`npm run dev` runs `gtkx dev`. Leave it running while you work: saving a component patches it into the window that is already open, and a change Fast Refresh cannot patch restarts the app. Saving `gtkx.config.ts`, or a local file it imports, regenerates bindings and restarts the app; the log names the file that changed.
 
 `npm run build` bundles the app to `dist/bundle.mjs`, and `npm start` runs that bundle with `node` on a machine carrying the GTK4, Adwaita, and GLib runtime libraries. `npm run deploy` goes further and packages the app as a Flatpak, a `.deb`, an `.rpm`, or an AppImage, with the desktop entry and AppStream metadata generated for you: see [Deploying](/v2/guide/deploying).
 

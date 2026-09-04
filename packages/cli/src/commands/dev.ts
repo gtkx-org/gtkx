@@ -1,5 +1,5 @@
 import { armParentDeath } from "@gtkx/native/internal";
-import { reapStaleHeadlessDisplays } from "@gtkx/vitest/headless";
+import { reapStaleHeadlessDisplaysAtStartup } from "@gtkx/vitest/headless";
 import { defineCommand } from "citty";
 import { resolveConfigWatch } from "../codegen/run-codegen.js";
 import { startHeadlessDevDisplay } from "../dev/headless.js";
@@ -29,7 +29,7 @@ const dev = defineCommand({
         },
     },
     async run({ args }) {
-        reapStaleHeadlessDisplays();
+        reapStaleHeadlessDisplaysAtStartup();
         const initialProcessGroupOwner = getInitialProcessGroupOwner();
 
         if (

@@ -9,8 +9,8 @@ import { type CliProject, createCliProject, removeCliProject, runCli } from "./c
 type BrokenCase = { title: string; config: string | undefined };
 type OmittedFieldCase = { title: string; jsName: string };
 type CodegenRunState = { project: CliProject; status: number | null };
-type DocumentedModuleCase = { title: string; store: string; stem: string; docs: string[] };
-type HoverCase = { title: string; text: string; doc: string };
+type DocumentedModuleCase = { title: string; store: string; stem: string; docs: string[]; stripped: string[] };
+type HoverCase = { title: string; text: string; doc: string; omits: string[] };
 
 const APPLICATION_ID = "com.gtkx.clicodegen";
 const MARKER = "probe-marker.txt";
@@ -104,6 +104,8 @@ const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
 
 const NOTE_DOC = "Holds a short piece of text the user jotted down.";
 const READ_DOC = "Reads the note back in the given tone.";
+const COPY_DOC = "Copies the note text.";
+const STRIPPED_CLEANUP_TEXT = ["must free", "strfreev", "GLib.free()", "g_free()"];
 const COMMENT = /\/\*|\/\//u;
 const PURE = "/* @__PURE__ */";
 
@@ -118,19 +120,27 @@ const DOCUMENTED_MODULE_CASES: DocumentedModuleCase[] = [
             `* ${READ_DOC}`,
             "* @param tone How loudly to read it.",
             "* @deprecated Since 1.0. Use `read()` with Tone.LOUD instead.",
+            `* ${COPY_DOC}`,
+            "* @param buffer the buffer to copy into",
+            "* @returns a copy of the note.",
+            "* @returns a list of strvs.",
+            '* @param value free text to search for, for instance, "power"',
         ],
+        stripped: STRIPPED_CLEANUP_TEXT,
     },
     {
         title: "a namespace the elements come from",
         store: "jsx",
         stem: join("documented", "documented"),
         docs: [`/** ${NOTE_DOC} */`],
+        stripped: STRIPPED_CLEANUP_TEXT,
     },
     {
         title: "a hand-written override",
         store: "gi",
         stem: join("gobject", "overrides", "object"),
         docs: ["* @param handlerId Id of the handler to disconnect."],
+        stripped: [],
     },
 ];
 
@@ -140,13 +150,15 @@ const HOVER_PROBE = [
     "",
     "export const note = new Note();",
     "note.read(Tone.LOUD);",
+    'export const copied = note.copy("draft");',
     "export const element = <DocumentedNote />;",
     "",
 ].join("\n");
 
 const HOVER_CASES: HoverCase[] = [
-    { title: "a method", text: "read(", doc: READ_DOC },
-    { title: "an element", text: "DocumentedNote />", doc: NOTE_DOC },
+    { title: "a method", text: "read(", doc: READ_DOC, omits: [] },
+    { title: "an element", text: "DocumentedNote />", doc: NOTE_DOC, omits: [] },
+    { title: "a method documented with C memory management", text: "copy(", doc: COPY_DOC, omits: ["must free"] },
 ];
 
 const HOVER_OPTIONS: ts.CompilerOptions = {

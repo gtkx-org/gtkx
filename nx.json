@@ -140,7 +140,8 @@
             "cache": false,
             "parallelism": false,
             "dependsOn": [
-                "build"
+                "build",
+                "^release"
             ]
         },
         "coverage": {

@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.ts";
-import { reapStaleHeadlessDisplays } from "./reap-headless-displays.ts";
+import { reapStaleHeadlessDisplaysAtStartup } from "./reap-headless-displays.ts";
 
 /**
  * Options accepted by the GTKX Vitest plugin. Every headless display
@@ -38,12 +38,18 @@ const headlessPreloadSpecifier = (options: Partial<HeadlessOptions>): string => 
  * Wayland display. It configures the forks pool, injects the worker preload and
  * setup files, and sets the environment needed for headless GTK4 rendering.
  *
+ * Each worker's compositor, session bus, and private runtime directory are torn
+ * down when the worker exits, and a guard process tears them down as well when
+ * the worker or the Vitest process that launched it is killed with `SIGKILL`.
+ * Creating the plugin reaps stale `gtkx-xdg-*` runtime directories left behind
+ * by earlier runs, which `gtkx cleanup` also does on demand.
+ *
  * @param options Headless display settings (size, compositor) forwarded to each worker.
  * @returns A Vitest config plugin.
  */
 const gtkx = (options: PluginOptions = {}): Plugin => {
     assertSupportedNodeVersion();
-    reapStaleHeadlessDisplays();
+    reapStaleHeadlessDisplaysAtStartup();
     const { configFile, ...headlessOptions } = options;
     const loadConfig = createConfigLoader({ configFile });
 
