@@ -445,8 +445,16 @@ describe("gtkx dev", () => {
         expect(await waitForOutput(state.session, recovered, RELOAD_TIMEOUT)).toContain(recovered);
 
         const priorRuns = occurrences(state.session.output(), READY_MARKER);
-        const priorPot = readFileSync(join(state.project.root, POT), "utf8");
-        const priorTypes = readFileSync(join(state.project.root, GENERATED_I18N_RESOURCES), "utf8");
+        const priorPot = await waitForFileContent(
+            join(state.project.root, POT),
+            'msgid "translation"',
+            RELOAD_TIMEOUT,
+        );
+        const priorTypes = await waitForFileContent(
+            join(state.project.root, GENERATED_I18N_RESOURCES),
+            '"translation": "translation"',
+            RELOAD_TIMEOUT,
+        );
         writeFileSync(join(state.project.root, MESSAGES_MODULE), INVALID_MESSAGES_SOURCE);
         expect(await waitForOccurrences(state.session, READY_MARKER, priorRuns + 1, RELOAD_TIMEOUT)).toContain(
             READY_MARKER,
