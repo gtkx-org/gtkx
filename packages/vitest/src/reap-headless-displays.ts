@@ -3,7 +3,7 @@ import {
     cleanupDirectoryIdentity,
     removeCleanupDirectory,
 } from "@gtkx/utils";
-import { lstatSync, readdirSync, readFileSync } from "node:fs";
+import { closeSync, constants, fstatSync, lstatSync, openSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
@@ -60,15 +60,24 @@ const readOwnedFile = (
     requiredMode?: number,
 ): string | undefined => {
     try {
-        const stat = lstatSync(path);
+        if (dirname(path) !== runtimeDir) {
+            return undefined;
+        }
 
-        return stat.isFile() &&
-            stat.uid === userId &&
-            stat.size < CONFIG_SIZE_LIMIT &&
-            (requiredMode === undefined || (stat.mode & 0o777) === requiredMode) &&
-            dirname(path) === runtimeDir
-            ? readFileSync(path, "utf8")
-            : undefined;
+        const file = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+
+        try {
+            const stat = fstatSync(file);
+
+            return stat.isFile() &&
+                stat.uid === userId &&
+                stat.size < CONFIG_SIZE_LIMIT &&
+                (requiredMode === undefined || (stat.mode & 0o777) === requiredMode)
+                ? readFileSync(file, "utf8")
+                : undefined;
+        } finally {
+            closeSync(file);
+        }
     } catch {
         return undefined;
     }
