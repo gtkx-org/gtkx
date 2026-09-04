@@ -3,7 +3,7 @@ import {
     cleanupDirectoryIdentity,
     removeCleanupDirectory,
 } from "@gtkx/utils";
-import { closeSync, fstatSync, lstatSync, openSync, readdirSync, readFileSync } from "node:fs";
+import { constants, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
@@ -64,23 +64,18 @@ const readOwnedFile = (
             return undefined;
         }
 
-        const file = openSync(path, "r");
+        const contents = readFileSync(path, {
+            encoding: "utf8",
+            flag: constants.O_RDONLY | constants.O_NOFOLLOW,
+        });
+        const stat = lstatSync(path);
 
-        try {
-            const stat = fstatSync(file);
-            const pathStat = lstatSync(path);
-
-            return pathStat.isFile() &&
-                stat.dev === pathStat.dev &&
-                stat.ino === pathStat.ino &&
-                stat.uid === userId &&
-                stat.size < CONFIG_SIZE_LIMIT &&
-                (requiredMode === undefined || (stat.mode & 0o777) === requiredMode)
-                ? readFileSync(file, "utf8")
-                : undefined;
-        } finally {
-            closeSync(file);
-        }
+        return stat.isFile() &&
+            stat.uid === userId &&
+            stat.size < CONFIG_SIZE_LIMIT &&
+            (requiredMode === undefined || (stat.mode & 0o777) === requiredMode)
+            ? contents
+            : undefined;
     } catch {
         return undefined;
     }
