@@ -60,7 +60,11 @@ function launchApp(app: AppItem, parentWindow: Gtk.Window | null) {
         return;
     }
 
-    const context = display.getAppLaunchContext();
+    const context: object = display.getAppLaunchContext();
+
+    if (!(context instanceof Gio.AppLaunchContext)) {
+        return;
+    }
 
     try {
         app.appInfo.launch(null, context);
