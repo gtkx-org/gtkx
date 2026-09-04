@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/vitest",
-    "version": "2.0.0-beta.3",
+    "version": "2.0.0-beta.4",
     "description": "Vitest plugin for GTK apps with headless Wayland isolation.",
     "keywords": [
         "gtkx",
