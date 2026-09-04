@@ -1,4 +1,3 @@
-import { resolveExecutable } from "@gtkx/utils";
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import {
     cpSync,
@@ -61,7 +60,12 @@ if (previous === next) process.exitCode = 1;
 `;
 const LOCK_TIMEOUT_ENV = { GTKX_CODEGEN_LOCK_TIMEOUT_MS: "250" };
 const REUSED_PID_IDENTITY = "0".repeat(64);
-const ZOMBIE_OWNER_SCRIPT = String.raw`"$1" 0.2 & printf '%s\n' "$!"; "$1" 120`;
+const ZOMBIE_OWNER_SCRIPT = `import { spawn } from "node:child_process";
+import { writeSync } from "node:fs";
+const child = spawn(process.execPath, ["--eval", ""], { stdio: "ignore" });
+writeSync(1, String(child.pid) + String.fromCharCode(10));
+Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 120_000);
+`;
 
 const abandonedGenerationName = (prefix: string, index: number): string => {
     const timestamp = String(Date.now());
@@ -111,8 +115,8 @@ const waitForZombie = async (pid: number): Promise<void> => {
 
 const startZombieOwner = async (): Promise<{ parent: ChildProcess; pid: number }> => {
     const parent = spawn(
-        resolveExecutable("sh"),
-        ["-c", ZOMBIE_OWNER_SCRIPT, "gtkx-zombie-owner", resolveExecutable("sleep")],
+        process.execPath,
+        ["--input-type=module", "--eval", ZOMBIE_OWNER_SCRIPT],
         { stdio: ["ignore", "pipe", "ignore"] },
     );
     const stdout = parent.stdout;

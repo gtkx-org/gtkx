@@ -231,7 +231,6 @@ const omittedTypeRef = (typeRef: string, omissions: string[]): string =>
     omissions.length === 0 ? typeRef : `Omit<${typeRef}, ${omittedKeys(omissions)}>`;
 
 export {
-    areCallablesAssignable,
     type ClaimedMembers,
     claimInterfaceMembers,
     inheritedMembers,
