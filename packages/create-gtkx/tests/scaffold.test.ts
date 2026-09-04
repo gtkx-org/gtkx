@@ -161,17 +161,17 @@ describe("create-gtkx and the package manager it scaffolds for", () => {
             expect(run.installs).toEqual([]);
             expectGeneratedConfig(run);
             expect(readManifest(run).dependencies).toEqual({
-                "@gtkx/cairo": "^2.0.0-beta.2",
-                "@gtkx/css": "^2.0.0-beta.2",
-                "@gtkx/react": "^2.0.0-beta.2",
-                "@gtkx/runtime": "^2.0.0-beta.2",
+                "@gtkx/cairo": "^2.0.0-beta.3",
+                "@gtkx/css": "^2.0.0-beta.3",
+                "@gtkx/react": "^2.0.0-beta.3",
+                "@gtkx/runtime": "^2.0.0-beta.3",
                 react: "latest",
             });
             expect(readManifest(run).devDependencies).toEqual({
-                "@gtkx/cli": "^2.0.0-beta.2",
-                "@gtkx/config": "^2.0.0-beta.2",
-                "@gtkx/mcp": "^2.0.0-beta.2",
-                "@gtkx/testing": "^2.0.0-beta.2",
+                "@gtkx/cli": "^2.0.0-beta.3",
+                "@gtkx/config": "^2.0.0-beta.3",
+                "@gtkx/mcp": "^2.0.0-beta.3",
+                "@gtkx/testing": "^2.0.0-beta.3",
                 "@types/node": "latest",
                 "@types/react": "latest",
                 typescript: "latest",

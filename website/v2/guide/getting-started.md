@@ -54,8 +54,8 @@ pnpm holds back packages published in the last 24 hours, so scaffolding on the d
 
 ```yaml
 minimumReleaseAgeExclude:
-  - '@gtkx/react@2.0.0-beta.2'
-  - '@gtkx/runtime@2.0.0-beta.2'
+  - '@gtkx/react@2.0.0-beta.3'
+  - '@gtkx/runtime@2.0.0-beta.3'
 ```
 
 The key belongs at the top level of the file, alongside `packages:` and `allowBuilds:`, never nested inside either. pnpm names only the versions the command it stopped on had to resolve, so a later run can name more; add each one to the same list.
