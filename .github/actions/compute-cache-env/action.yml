@@ -8,7 +8,13 @@ runs:
       shell: bash
       run: |
         read_versions() {
-          docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace gtkx-ci:local bash -c '
+          podman run \
+            --rm \
+            --userns=keep-id \
+            --cap-drop=ALL \
+            --security-opt no-new-privileges \
+            localhost/gtkx-ci:local \
+            bash -c '
             printf "NODE_VERSION=%s\n" "$(node -v)"
             printf "GTK4_VERSION=%s\n" "$(pkg-config --modversion gtk4)"
           '

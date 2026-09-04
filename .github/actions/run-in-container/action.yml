@@ -1,5 +1,5 @@
 name: Run in Container
-description: Run a command in the prebuilt CI Docker container (gtkx-ci:local). Caching, env-var computation, and image pulls are the responsibility of separate composite actions.
+description: Run a command in the prebuilt rootless Podman container (localhost/gtkx-ci:local). Caching, env-var computation, and image pulls are the responsibility of separate composite actions.
 
 inputs:
   command:
@@ -36,17 +36,18 @@ runs:
         CONTAINER_HOME="$RUNNER_TEMP/container-home"
         mkdir -p "$CONTAINER_HOME"
 
-        DOCKER_ARGS=(--rm --user "$(id -u):$(id -g)" -e HOME=/ci-home)
-        DOCKER_ARGS+=(-v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro)
-        DOCKER_ARGS+=(-v "$CONTAINER_HOME:/ci-home" -v "$WORKSPACE:/workspace" -w /workspace)
+        PODMAN_ARGS=(--rm --userns=keep-id --cap-drop=ALL --security-opt no-new-privileges)
+        PODMAN_ARGS+=(-e HOME=/ci-home)
+        PODMAN_ARGS+=(-v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro)
+        PODMAN_ARGS+=(-v "$CONTAINER_HOME:/ci-home" -v "$WORKSPACE:/workspace" -w /workspace)
 
         if [ "$INPUT_MOUNT_CARGO_CACHE" = "true" ]; then
-          DOCKER_ARGS+=(-v "$HOME/.cargo/registry:/usr/local/cargo/registry")
-          DOCKER_ARGS+=(-v "$HOME/.cargo/git:/usr/local/cargo/git")
+          PODMAN_ARGS+=(-v "$HOME/.cargo/registry:/usr/local/cargo/registry")
+          PODMAN_ARGS+=(-v "$HOME/.cargo/git:/usr/local/cargo/git")
         fi
 
         if [ "$INPUT_MOUNT_PNPM_STORE" = "true" ]; then
-          DOCKER_ARGS+=(-v "$HOME/.local/share/pnpm/store:/ci-home/.local/share/pnpm/store")
+          PODMAN_ARGS+=(-v "$HOME/.local/share/pnpm/store:/ci-home/.local/share/pnpm/store")
         fi
 
         for var in NODE_VERSION GTK4_VERSION VERSION NX_CLOUD_ACCESS_TOKEN \
@@ -55,13 +56,13 @@ runs:
           GITHUB_RUN_ID GITHUB_RUN_NUMBER GITHUB_RUN_ATTEMPT GITHUB_WORKFLOW \
           GITHUB_JOB GITHUB_SERVER_URL; do
           if [ -n "${!var:-}" ]; then
-            DOCKER_ARGS+=(-e "$var")
+            PODMAN_ARGS+=(-e "$var")
           fi
         done
 
         if [ -n "$INPUT_EXTRA_ENV" ]; then
           for name in $INPUT_EXTRA_ENV; do
-            DOCKER_ARGS+=(-e "$name")
+            PODMAN_ARGS+=(-e "$name")
           done
         fi
 
@@ -73,4 +74,4 @@ runs:
           FULL_COMMAND="$TRUST_WORKSPACE && $INPUT_COMMAND"
         fi
 
-        docker run "${DOCKER_ARGS[@]}" gtkx-ci:local bash -c "$FULL_COMMAND"
+        podman run "${PODMAN_ARGS[@]}" localhost/gtkx-ci:local bash -c "$FULL_COMMAND"
