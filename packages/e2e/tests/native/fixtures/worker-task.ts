@@ -20,6 +20,7 @@ const report = {
 };
 
 if (workerData === "linger") {
+    setInterval(Date.now, 60_000);
     port.on("message", () => {
         quit();
         port.postMessage("torn down");

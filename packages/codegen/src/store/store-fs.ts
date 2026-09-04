@@ -490,10 +490,14 @@ const retainedPairGenerations = (
     const generations = listPairGenerations(root).toSorted((left, right) => right.modifiedAt - left.modifiedAt);
     const protectedGenerations = generations.filter((generation) => protectedPaths.has(generation.path));
     const unprotected = generations.filter((generation) => !protectedPaths.has(generation.path));
+    const complete = unprotected.filter((generation) =>
+        links.every((link) => existsSync(join(pairStorePath(generation.path, link), "package.json"))),
+    );
+    const incomplete = unprotected.filter((generation) => !complete.includes(generation));
     const retainedCount = Math.max(0, RETAINED_GENERATIONS - protectedGenerations.length);
-    const retained = unprotected.slice(0, retainedCount);
+    const retained = complete.slice(0, retainedCount);
 
-    removeGenerations(unprotected.slice(retainedCount), shouldOnlyRemoveAbandoned);
+    removeGenerations([...incomplete, ...complete.slice(retainedCount)], shouldOnlyRemoveAbandoned);
 
     return [...protectedGenerations, ...retained];
 };
