@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "private": true,
     "license": "MPL-2.0",
-    "description": "Tasks app from the GTKX tutorial",
+    "description": "Adwaita task manager from the GTKX tutorial",
     "type": "module",
     "engines": {
         "node": ">=26.7.0"

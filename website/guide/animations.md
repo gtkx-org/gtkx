@@ -1,11 +1,11 @@
 ---
 title: "Animations"
-description: "Animate native widgets with @gtkx/animated, the React Spring target for GTKX: animated(Component), springs, interpolations, animated styles, transitions, the GTK frame clock, and reduced motion."
+description: "Animate Adwaita and GTK4 widgets in a GNOME app with GTKX's React Spring target."
 ---
 
 # Animations
 
-`@gtkx/animated` brings [React Spring](https://www.react-spring.dev) to GTKX. It is React Spring's engine with a GTK target: the hooks and components are the ones the React Spring docs describe, and the `animated` components are GTKX widgets whose props accept springs. It installs separately:
+`@gtkx/animated` brings [React Spring](https://www.react-spring.dev) to GTKX's native GNOME applications. It uses React Spring's engine with a GTK target, which lets the same primitives animate both libadwaita application surfaces and their underlying GTK4 widgets. The hooks and components are the ones the React Spring docs describe, and the `animated` components are GTKX widgets whose props accept springs. It installs separately:
 
 ```bash
 npm install @gtkx/animated

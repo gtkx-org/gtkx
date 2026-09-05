@@ -91,7 +91,7 @@ const assertKnownArguments = (rawArgs: string[]): void => {
 const scaffoldCommand = defineCommand({
     meta: {
         name: "create",
-        description: "Create a new GTKX application",
+        description: "Create a new Adwaita-first GNOME application with GTKX",
     },
     args: {
         name: {

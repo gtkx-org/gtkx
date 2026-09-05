@@ -38,7 +38,7 @@ describe("App", () => {
 
         const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, {
             name: "GTKX Navigation",
-            as: Gtk.ApplicationWindow,
+            as: Adw.ApplicationWindow,
         });
 
         expect(window).toBeRooted();

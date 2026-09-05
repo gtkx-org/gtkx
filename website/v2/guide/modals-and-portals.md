@@ -9,13 +9,13 @@ Portals let a component render children into a container other than its JSX pare
 
 ## createPortal
 
-`createPortal` from `@gtkx/react` has the same signature as its React DOM namesake, with GTK4 containers in place of DOM nodes:
+`createPortal` from `@gtkx/react` has the same signature as its React DOM namesake, with native GObject containers in place of DOM nodes:
 
 ```ts
 createPortal(children: ReactNode, container: GObject.Object | RootElement, key?: string): ReactPortal
 ```
 
-The container is any live `GObject.Object`, or `rootElement` (also exported from `@gtkx/react`), the marker that mounts children at the top level with no GTK4 parent.
+The container is any live `GObject.Object`, or `rootElement` (also exported from `@gtkx/react`), the marker that mounts children at the top level with no widget parent.
 
 The container has to exist before the portal can target it, so capture it in state rather than a plain ref, which makes the portal render as soon as the widget is created:
 
@@ -43,13 +43,17 @@ Portal children stay in the *React* tree of the component that rendered them, so
 Windows portal themselves. A window element mounts at the top level wherever it sits in the JSX, so opening one is a conditional render:
 
 ```tsx
-import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
+import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 
 const MirrorWindow = ({ open }: { open: boolean }) =>
-    open ? <GtkApplicationWindow title="Mirror" defaultWidth={400} defaultHeight={300} /> : null;
+    open ? (
+        <AdwApplicationWindow title="Mirror" defaultWidth={400} defaultHeight={300}>
+            <AdwToolbarView topBar={<AdwHeaderBar />} />
+        </AdwApplicationWindow>
+    ) : null;
 ```
 
-A window element presents itself on mount and destroys the window on unmount. `GtkApplicationWindow` registers with the `GtkApplication` ancestor it finds in the React tree, and throws when there is none. Relationships between top-level windows are expressed with `transientFor`, which `GtkWindow` defaults to the nearest window ancestor in the React tree; pass it explicitly to point at another window, or pass `null` for a fully independent one.
+A window element presents itself on mount and destroys the window on unmount. `AdwApplicationWindow` registers with the application ancestor it finds in the React tree, normally `AdwApplication`, and throws when there is none. `AdwToolbarView` and `AdwHeaderBar` give the secondary window the same GNOME window structure as the main one. Relationships between top-level windows are expressed with `transientFor`, which the underlying `GtkWindow` defaults to the nearest window ancestor in the React tree; pass it explicitly to point at another window, or pass `null` for a fully independent one.
 
 Wire `onCloseRequest` to clear the state that mounted a secondary window, so React stays in charge of when it goes away.
 

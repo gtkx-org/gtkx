@@ -28,6 +28,7 @@ What actually happened.
 
 - GTKX version:
 - Node.js version:
+- Adwaita version:
 - GTK4 version:
 - OS:
 

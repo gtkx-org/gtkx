@@ -1,5 +1,5 @@
 name: Compute Cache Env
-description: Inspect the CI container for NODE_VERSION and GTK4_VERSION; export them to $GITHUB_ENV so they participate in Nx cache keys.
+description: Inspect the CI container for Node.js, Adwaita, and GTK4 versions; export them to $GITHUB_ENV for Nx cache keys.
 
 runs:
   using: composite
@@ -16,6 +16,7 @@ runs:
             localhost/gtkx-ci:local \
             bash -c '
             printf "NODE_VERSION=%s\n" "$(node -v)"
+            printf "ADWAITA_VERSION=%s\n" "$(pkg-config --modversion libadwaita-1)"
             printf "GTK4_VERSION=%s\n" "$(pkg-config --modversion gtk4)"
           '
         }

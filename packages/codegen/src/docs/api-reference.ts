@@ -18,7 +18,7 @@ import { type GiSymbolEntry, renderSymbolPage, type SymbolPageOptions } from "./
 
 /** What to index and the element config the rendered pages reflect. */
 type ApiReferenceOptions = {
-    /** GIR library identifiers to load, such as `"Gtk-4.0"`; their dependencies are pulled in too. */
+    /** GIR library identifiers to load, such as `"Adw-1"`; their dependencies are pulled in too. */
     libraries: string[];
     /** Directories to search for `.gir` files. */
     girPath: string[];
@@ -50,7 +50,7 @@ type ApiSymbolKind =
 
 /** An indexed symbol, without its reference page. */
 type ApiSymbol = {
-    /** GIR namespace declaring the symbol, such as `"Gtk"`. */
+    /** GIR namespace declaring the symbol, such as `"Adw"`. */
     namespace: string;
     /** Name within the namespace, which for an element is its GLib type name. */
     name: string;
@@ -62,7 +62,7 @@ type ApiSymbol = {
 
 /** How much of one namespace the reference indexes. */
 type ApiNamespaceSummary = {
-    /** GIR namespace name, such as `"Gtk"`. */
+    /** GIR namespace name, such as `"Adw"`. */
     name: string;
     /** The `@gtkx/gi` subpath the namespace's symbols are imported from. */
     importPath: string;
@@ -524,8 +524,8 @@ class ApiReference {
     }
 
     /**
-     * Resolves a name to a single symbol and renders its reference page. The name may be bare (`Button`) or
-     * qualified (`Gtk.Button`), and is matched case-insensitively; a name several symbols answer to is
+     * Resolves a name to a single symbol and renders its reference page. The name may be bare (`Toast`) or
+     * qualified (`Adw.Toast`), and is matched case-insensitively; a name several symbols answer to is
      * reported as ambiguous rather than picked between.
      *
      * @param kind Restricts the match to one kind, which is how a class and its JSX element are told apart.
@@ -551,7 +551,7 @@ class ApiReference {
         return { outcome: "page", symbol: this.toApiSymbol(entry), markdown: this.renderPage(entry) };
     }
 
-    /** Every indexed symbol the query keeps, ordered by namespace (Gtk, then Adw, then alphabetically) and name. */
+    /** Every indexed symbol the query keeps, ordered by namespace (Adw, then Gtk, then alphabetically) and name. */
     symbols(query: ApiSymbolQuery = {}): ApiSymbol[] {
         const namespaceFilter = query.namespace?.toLowerCase();
         const kinds = symbolKindSet(query.kinds);
@@ -581,7 +581,7 @@ class ApiReference {
         return scored.slice(0, limit).map((item) => this.toApiSymbol(item.entry));
     }
 
-    /** A summary of every indexed namespace, ordered Gtk, Adw, then alphabetically. */
+    /** A summary of every indexed namespace, ordered Adw, Gtk, then alphabetically. */
     namespaces(): ApiNamespaceSummary[] {
         const summaries = [...this.byNamespace].map(([name, entries]) => ({
             name,
@@ -626,9 +626,9 @@ class ApiReference {
             "records, enums, callbacks, aliases, functions, and constants are imported from " +
             "`@gtkx/gi/<namespace>`; JSX elements are imported from `@gtkx/jsx/<namespace>`.",
             "",
-            "Every symbol has a reference page addressed by its qualified name (for example `Gtk.Button`, " +
+            "Every symbol has a reference page addressed by its qualified name (for example `Adw.Toast`, " +
             "`Gtk.Orientation`, `GLib.idleAdd`) and every JSX element by its element name " +
-            "(for example `GtkButton`).",
+            "(for example `AdwToast`).",
             "",
             "| Namespace | Import | Symbols | JSX elements |",
             "| --- | --- | --- | --- |",

@@ -1,11 +1,11 @@
 ---
 title: "Testing"
-description: "Testing GTKX components headlessly: the render, query, and userEvent model, with a simple example."
+description: "Test GTKX's Adwaita and GTK4 components headlessly with user-facing queries and interactions."
 ---
 
 # Testing
 
-GTKX ships a React Testing Library-inspired testing package: the same API, adapted to GTK4.
+GTKX ships a React Testing Library-inspired testing package: the same API, adapted to native Adwaita and GTK4 widgets.
 
 ## Setup
 

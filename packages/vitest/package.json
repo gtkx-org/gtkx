@@ -1,11 +1,13 @@
 {
     "name": "@gtkx/vitest",
     "version": "2.0.0-beta.6",
-    "description": "Vitest plugin for GTK apps with headless Wayland isolation.",
+    "description": "Vitest plugin for GTKX GNOME apps with headless Wayland isolation.",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
+        "adwaita",
+        "gnome",
         "vitest",
         "testing",
         "plugin",

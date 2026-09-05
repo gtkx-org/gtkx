@@ -175,7 +175,7 @@ const SOURCE_RULES: Linter.RulesRecord = {
             paths: [
                 {
                     name: "@gtkx/jsx",
-                    message: "Import JSX elements from generated namespace subpaths such as @gtkx/jsx/gtk.",
+                    message: "Import JSX elements from generated namespace subpaths such as @gtkx/jsx/adw.",
                 },
             ],
         },

@@ -2,6 +2,7 @@ import type { Library } from "./gir/library.js";
 import type { PreparedStore, StoreOptions } from "./store/store-fs.js";
 import { computeGiFingerprint } from "./fingerprint.js";
 import { externalPackageFor } from "./gir/external-namespaces.js";
+import { resolveBoundLibraries } from "./gir/libraries.js";
 import { namespaceDirectory } from "./gir/namespace.js";
 import { type GiNamespaceInput, writeGiStore } from "./store/gi-store.js";
 import { collectGeneratedLibraries } from "./store/gi/generated-libraries.js";
@@ -58,7 +59,7 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): GiCodegenRes
 
     const store = writeGiStore(gi, namespaces, externalPackages, {
         fingerprint,
-        libraries: collectGeneratedLibraries(libraries),
+        libraries: collectGeneratedLibraries(resolveBoundLibraries(libraries)),
     });
 
     return { namespaces: library.namespaces.size, store };

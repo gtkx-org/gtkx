@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gtkx-tutorial 1.0.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-29 21:28+0200\n"
+"POT-Creation-Date: 2026-09-05 19:21+0200\n"
 "PO-Revision-Date: 2026-08-26 23:34+0200\n"
 "Last-Translator: GTKX contributors\n"
 "Language-Team: French\n"
@@ -31,8 +31,8 @@ msgid "GTKX Contributors"
 msgstr "Contributeurs GTKX"
 
 #: src/components/about.tsx:18
-msgid "A task manager built with GTKX to showcase React, GTK4, and Adwaita."
-msgstr "Un gestionnaire de tâches construit avec GTKX pour présenter React, GTK4 et Adwaita."
+msgid "A GNOME task manager built with GTKX to showcase React and Adwaita."
+msgstr "Un gestionnaire de tâches GNOME construit avec GTKX pour présenter React et Adwaita."
 
 #: src/components/delete-confirmation.tsx:16
 msgid "Delete Task?"
@@ -390,8 +390,8 @@ msgid "GTKX"
 msgstr "GTKX"
 
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:12
-msgid "A task manager built with GTKX, demonstrating how to build React-based GTK4 and Adwaita desktop applications."
-msgstr "Un gestionnaire de tâches construit avec GTKX, qui montre comment créer des applications de bureau avec React, GTK4 et Adwaita."
+msgid "A GNOME task manager built with GTKX, demonstrating how to build React-based Adwaita applications."
+msgstr "Un gestionnaire de tâches GNOME construit avec GTKX, qui montre comment créer des applications Adwaita avec React."
 
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:13
 msgid "It shows an adaptive sidebar layout, boxed lists, a task editor, GSettings-backed preferences, undo toasts, drag-to-reorder, desktop notifications, and local JSON persistence."

@@ -6,15 +6,15 @@ import CodeBlock from "../components/CodeBlock.vue";
 <template>
   <section id="how" class="how">
     <div class="how__head section-head">
-      <h2 class="section-title">Written in JSX, rendered as GObjects</h2>
+      <h2 class="section-title">GNOME apps in JSX, rendered as GObjects</h2>
     </div>
 
     <div class="how__step">
       <div class="how__text">
-        <h3 class="how__name">Declare your libraries</h3>
+        <h3 class="how__name">Start with the GNOME platform</h3>
         <p class="how__body">
-          Name the GIRs you want and codegen reads them off your
-          system, emitting typed bindings for exactly those namespaces.
+          libadwaita over GTK4 is the foundation. Name any additional GIRs and codegen reads them off your
+          system, emitting typed bindings for exactly those namespaces too.
         </p>
       </div>
       <CodeBlock title="gtkx.config.ts" :snippet="snippets.config" />

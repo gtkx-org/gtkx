@@ -90,9 +90,10 @@ type. The build takes over instead: it fails on every specifier that still needs
 
 ### `v2DefaultLibraries`
 
-`Adw-1` is bound alongside `Gtk-4.0` whether or not `libraries` names it, so the list becomes the libraries
-you want *on top of* GTK and Adwaita. Drop `Gtk-4.0` and `Adw-1` from it; in 2.0 naming either is a
-configuration error.
+With this stable flag, `Adw-1` is bound alongside `Gtk-4.0` whether or not `libraries` names it, so the list
+becomes the libraries you want *on top of* Adwaita and GTK. In 2.0, `Adw-1` becomes the sole default root and
+its GIR include supplies `Gtk-4.0`. Drop both identifiers from `libraries`; naming either is a configuration
+error.
 
 This is the flag nothing reports. Elsewhere the compiler catches the change, or the build does; here both
 stay silent, so the check is yours to make.
@@ -124,7 +125,7 @@ The [configuration guide](/guide/configuration-and-codegen#future-flags) documen
 `libraries: "*"` is deprecated and 2.0 removes it. What it resolves to depends on which introspection
 packages the build host happens to have installed, so the generated store — and every type your code compiles
 against — changes with the machine. Replace it with the libraries the project actually needs, remembering
-that under `v2DefaultLibraries` GTK and Adwaita are already bound:
+that under `v2DefaultLibraries` Adwaita and GTK are already bound:
 
 ```diff
  export default defineConfig({

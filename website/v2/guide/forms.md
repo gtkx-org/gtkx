@@ -5,7 +5,7 @@ description: "Build typed Adwaita forms with @gtkx/forms and React Hook Form: co
 
 # Forms
 
-`@gtkx/forms` connects [React Hook Form](https://react-hook-form.com) to Adwaita's form rows. The form state, validation rules, nested field names, and submission flow come from React Hook Form; `EntryRow`, `PasswordEntryRow`, `SwitchRow`, `SpinRow`, and `ComboRow` bind that state to native Adwaita controls.
+GTKX applications use Adwaita for their application surfaces, and `@gtkx/forms` carries that foundation into forms by connecting [React Hook Form](https://react-hook-form.com) to Adwaita's form rows. The form state, validation rules, nested field names, and submission flow come from React Hook Form; `EntryRow`, `PasswordEntryRow`, `SwitchRow`, `SpinRow`, and `ComboRow` bind that state to native Adwaita controls.
 
 Install it separately:
 
@@ -13,7 +13,7 @@ Install it separately:
 npm install @gtkx/forms@beta
 ```
 
-The controls use the generated `@gtkx/jsx/adw` bindings, which every GTKX 2 project receives because GTK4 and Adwaita are bound by default. The package also re-exports `useForm`, `FormProvider`, `Controller`, `useController`, `useFieldArray`, `useFormContext`, `useFormState`, and `useWatch`, plus the common types used with them. Importing the provider and hooks from `@gtkx/forms` keeps them on the same React Hook Form context as the rows. Full signatures are in the [@gtkx/forms reference](/v2/reference/@gtkx/forms/).
+The controls use the generated `@gtkx/jsx/adw` bindings, which every GTKX 2 project receives because `Adw-1` is the sole default GIR root. Its GIR include brings in GTK4 as part of the same generated foundation. The package also re-exports `useForm`, `FormProvider`, `Controller`, `useController`, `useFieldArray`, `useFormContext`, `useFormState`, and `useWatch`, plus the common types used with them. Importing the provider and hooks from `@gtkx/forms` keeps them on the same React Hook Form context as the rows. Full signatures are in the [@gtkx/forms reference](/v2/reference/@gtkx/forms/).
 
 ## A complete typed form
 

@@ -4,8 +4,8 @@ import Card from "../components/Card.vue";
 const features = [
     {
         icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
-        title: "Native objects",
-        body: "Every GObject-derived class is available as a JSX element. Properties are mapped to JSX elements, so you can compose your entire object graph declaratively."
+        title: "GNOME in JSX",
+        body: "libadwaita, GTK4, and every GObject-derived class are available through typed JSX. Compose the whole native object graph declaratively."
     },
     {
         icon: "M13 2 3 14h7l-1 8 10-12h-7z",
@@ -19,8 +19,8 @@ const features = [
     },
     {
         icon: "M9 11l3 3 8-8M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
-        title: "A React Testing Library for GTK4",
-        body: "Query and drive your app in Vitest, with a virtual display running on a headless Wayland compositor."
+        title: "Test native GNOME apps",
+        body: "Query and drive real Adwaita and GTK4 widgets in Vitest, with a virtual display running on a headless Wayland compositor."
     },
     {
         icon: "M12 8V4M9 4h6M5 8h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2M9 14h.01M15 14h.01",

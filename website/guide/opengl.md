@@ -1,11 +1,11 @@
 ---
 title: "OpenGL"
-description: "Draw with OpenGL in a GTKX app using @gtkx/gl: generated OpenGL 4.6 core bindings, override helpers, and the GtkGLArea realize, resize, render, and unrealize flow."
+description: "Draw with OpenGL inside a GNOME app using GTKX's generated bindings and GtkGLArea integration."
 ---
 
 # OpenGL
 
-`@gtkx/gl` draws OpenGL from TypeScript against a `Gtk.GLArea` that mounts like any other widget. It installs separately:
+Inside GTKX's Adwaita application surfaces, `@gtkx/gl` draws OpenGL from TypeScript against a `Gtk.GLArea` that mounts like any other widget. It installs separately:
 
 ```bash
 npm install @gtkx/gl

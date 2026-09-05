@@ -33,8 +33,11 @@ afterAll(async () => {
 describe("gtkx_list_api", () => {
     it("lists the namespaces the project's bindings expose", async () => {
         const overview = await listApi();
+        expect(overview).toContain("Adw");
+        expect(overview).toContain("@gtkx/gi/adw");
         expect(overview).toContain("Gtk");
         expect(overview).toContain("@gtkx/gi/gtk");
+        expect(overview.indexOf("| Adw |")).toBeLessThan(overview.indexOf("| Gtk |"));
     });
 
     it("lists the symbols of one namespace", async () => {
@@ -67,11 +70,11 @@ describe("gtkx_search_api", () => {
 
 describe("gtkx_get_api_docs", () => {
     it("documents a symbol by qualified name and by JSX element name", async () => {
-        const qualified = await apiDocs({ symbol: "Gtk.Button" });
-        const element = await apiDocs({ symbol: "GtkButton" });
-        expect(qualified).toContain("Gtk.Button");
-        expect(qualified).toContain("@gtkx/gi/gtk");
-        expect(element).toContain("GtkButton");
+        const qualified = await apiDocs({ symbol: "Adw.Toast" });
+        const element = await apiDocs({ symbol: "AdwToast" });
+        expect(qualified).toContain("Adw.Toast");
+        expect(qualified).toContain("@gtkx/gi/adw");
+        expect(element).toContain("AdwToast");
     });
 
     it("lists the candidates behind an ambiguous name", async () => {

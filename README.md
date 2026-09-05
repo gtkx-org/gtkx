@@ -5,9 +5,9 @@
 <h1 align="center">GTKX</h1>
 
 <p align="center">
-  The React framework for Linux, built on GTK.<br />
-  Write native GTK4 desktop applications with React and TypeScript.
-  Real GTK widgets, the GNOME stack, and standard web tooling.
+  The Adwaita-first React framework for GNOME.<br />
+  Write native GNOME applications with React and TypeScript.
+  Real Adwaita and GTK4 widgets with standard web tooling.
 </p>
 
 <p align="center">
@@ -38,11 +38,12 @@
 
 ## Demo
 
-The intrinsic elements in this snippet render GTK4 widgets, and ordinary React hooks and events drive them:
+This app starts with an Adwaita application shell, renders native GTK4 widgets inside it, and uses ordinary React hooks and events:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, quit } from "@gtkx/react";
 import { useState } from "react";
 
@@ -50,38 +51,40 @@ const Counter = () => {
   const [count, setCount] = useState(0);
 
   return (
-    <GtkApplicationWindow
+    <AdwApplicationWindow
       title="Hello GTKX"
       defaultWidth={400}
       defaultHeight={300}
       onCloseRequest={quit}
     >
-      <GtkBox
-        orientation={Gtk.Orientation.VERTICAL}
-        spacing={20}
-        marginTop={40}
-        marginBottom={40}
-        marginStart={40}
-        marginEnd={40}
-        valign={Gtk.Align.CENTER}
-        halign={Gtk.Align.CENTER}
-      >
-        <GtkLabel cssClasses={["title-1"]}>Welcome to GTKX!</GtkLabel>
-        <GtkLabel cssClasses={["title-2"]}>{`Count: ${count}`}</GtkLabel>
-        <GtkButton
-          label="Increment"
-          onClicked={() => setCount((c) => c + 1)}
-          cssClasses={["suggested-action", "pill"]}
-        />
-      </GtkBox>
-    </GtkApplicationWindow>
+      <AdwToolbarView topBar={<AdwHeaderBar />}>
+        <GtkBox
+          orientation={Gtk.Orientation.VERTICAL}
+          spacing={20}
+          marginTop={40}
+          marginBottom={40}
+          marginStart={40}
+          marginEnd={40}
+          valign={Gtk.Align.CENTER}
+          halign={Gtk.Align.CENTER}
+        >
+          <GtkLabel cssClasses={["title-1"]}>Welcome to GTKX!</GtkLabel>
+          <GtkLabel cssClasses={["title-2"]}>{`Count: ${String(count)}`}</GtkLabel>
+          <GtkButton
+            label="Increment"
+            onClicked={() => setCount((c) => c + 1)}
+            cssClasses={["suggested-action", "pill"]}
+          />
+        </GtkBox>
+      </AdwToolbarView>
+    </AdwApplicationWindow>
   );
 };
 
 const App = () => (
-  <GtkApplication>
+  <AdwApplication>
     <Counter />
-  </GtkApplication>
+  </AdwApplication>
 );
 
 createRoot().render(<App />);
@@ -91,9 +94,9 @@ This is the [`hello-world`](https://github.com/gtkx-org/gtkx/tree/main/examples/
 
 ## Why GTKX
 
-### A declarative layer for the GNOME stack
+### Adwaita-first application development
 
-GTK4 is mature, and GtkBuilder XML can lay out a static interface, but nothing re-renders that interface when your application state changes, and nothing hot-reloads it as you work. GTKX adds that missing layer, and the tooling around it, on top of the stack you already know:
+GTKX uses Adwaita as the foundation for applications, windows, navigation, dialogs, and adaptive layouts, with the complete GTK4 toolkit underneath. It adds a declarative React layer and an integrated TypeScript toolchain to the GNOME platform:
 
 - a React reconciler that exposes every GObject as a JSX element,
 - a CLI for scaffolding, development, and production builds,
@@ -102,17 +105,17 @@ GTK4 is mature, and GtkBuilder XML can lay out a static interface, but nothing r
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
-### The full GNOME API surface
+### Native GNOME widgets, without a compatibility layer
 
-React Native and similar frameworks hide the native toolkit so one API can run everywhere. GTKX exposes it: GTK4, Adwaita, and any other GObject-Introspection library on your system. Linux-only by design.
+React Native and similar frameworks hide the native toolkit so one API can run everywhere. GTKX renders real Adwaita and GTK4 widgets and exposes any other GObject-Introspection library on your system. It is GNOME-native and Linux-only by design.
 
 ### Why Node.js, and why generated bindings
 
 GTKX runs on Node.js, which puts native modules, the npm ecosystem, and the tooling built for Node.js APIs within reach. GJS is GNOME's own runtime, built on SpiderMonkey rather than V8; node-gtk runs on Node.js but is lightly maintained, on the older nan/V8 ABI rather than N-API, and still centered on GTK3. The [Why GTKX guide](https://gtkx.dev/guide/why-gtkx) covers what running on Node.js means day to day.
 
-GTKX generates the TypeScript types and the native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back. Codegen covers the whole GTK4 and Adwaita surface.
+GTKX generates the TypeScript types and native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back. `Adw-1` is the sole default GIR root; its GIR include pulls in `Gtk-4.0`, so codegen covers both complete API surfaces. Neither belongs in a GTKX 2 `libraries` list.
 
-At runtime, the native Rust core calls straight into the system GTK4, Adwaita, and GLib libraries through libffi, without loading libgirepository at all.
+At runtime, the native Rust core calls straight into the system Adwaita, GTK4, and GLib libraries through libffi, without loading libgirepository at all.
 
 ## Quick start
 
@@ -121,10 +124,10 @@ GTKX is Linux-only and needs Node.js 26.7 or later. See [Requirements](#requirem
 Scaffold a new app with the `create-gtkx` initializer:
 
 ```sh
-npm create gtkx
+npm create gtkx@beta
 ```
 
-The same command works with other package managers: `pnpm create gtkx` or `yarn create gtkx`.
+The same command works with other package managers: `pnpm create gtkx@beta` or `yarn create gtkx@beta`.
 
 Then run your new app:
 
@@ -145,7 +148,7 @@ The documentation at **[gtkx.dev](https://gtkx.dev)** includes a step-by-step tu
 
 GTKX is Linux-only. You need:
 
-- Linux with the GTK4 (4.20 or later), Adwaita (1.8 or later), and GLib development libraries
+- Linux with the Adwaita (1.8 or later), GTK4 (4.20 or later), and GLib development libraries
 - Node.js 26.7 or later
 
 The `@gtkx/native` addon ships prebuilt for x64 and arm64 glibc Linux; other targets need to build it from the GTKX repository, which requires a Rust toolchain.
@@ -154,10 +157,10 @@ The `@gtkx/native` addon ships prebuilt for x64 and arm64 glibc Linux; other tar
 
 Explore the [example apps](https://github.com/gtkx-org/gtkx/tree/main/examples):
 
-- [`hello-world`](https://github.com/gtkx-org/gtkx/tree/main/examples/hello-world): the counter above.
-- [`gtk-demo`](https://github.com/gtkx-org/gtkx/tree/main/examples/gtk-demo): a React port of the official GTK4 widget showcase, covering lists, dialogs, gestures, CSS, and OpenGL.
-- [`browser`](https://github.com/gtkx-org/gtkx/tree/main/examples/browser): a WebKitWebView-based web browser.
-- [`animations`](https://github.com/gtkx-org/gtkx/tree/main/examples/animations): a tour of `@gtkx/animated`, React Spring animations driven by the GTK frame clock.
+- [`hello-world`](https://github.com/gtkx-org/gtkx/tree/main/examples/hello-world): the Adwaita counter above.
+- [`gtk-demo`](https://github.com/gtkx-org/gtkx/tree/main/examples/gtk-demo): the official GTK4 widget showcase in an Adwaita application shell, covering lists, dialogs, gestures, CSS, and OpenGL.
+- [`browser`](https://github.com/gtkx-org/gtkx/tree/main/examples/browser): an Adwaita browser built around `WebKitWebView`.
+- [`animations`](https://github.com/gtkx-org/gtkx/tree/main/examples/animations): an Adwaita showcase for `@gtkx/animated`, with React Spring animations driven by the GTK frame clock.
 - [`navigation`](https://github.com/gtkx-org/gtkx/tree/main/examples/navigation): a tour of `@gtkx/navigation`, React Navigation's stack, tab, and drawer navigators rendered with libadwaita.
 - [`tutorial`](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial): the Tasks app the documentation builds.
 

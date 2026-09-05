@@ -66,6 +66,10 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
 
         expect(hasProjectPath(typescriptState.run, ".git")).toBe(true);
         expectGeneratedConfig(typescriptState.run);
+        expect(readProject(typescriptState.run, "src/app.tsx")).toContain("<AdwApplication>");
+        expect(readProject(typescriptState.run, "src/app.tsx")).toContain("<AdwApplicationWindow");
+        expect(readProject(typescriptState.run, "src/app.tsx")).toContain("<AdwToolbarView");
+        expect(readProject(typescriptState.run, "src/app.tsx")).toContain("<AdwHeaderBar");
         expect(readProject(typescriptState.run, ENV_MODULE)).toContain("gtkx codegen");
     });
 

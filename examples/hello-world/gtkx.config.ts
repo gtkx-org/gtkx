@@ -6,9 +6,9 @@ export default defineConfig({
     applicationIcon: "data/icons",
     deploy: {
         name: "Hello World",
-        summary: "Count things with a native GTK4 window",
+        summary: "Count things with a native Adwaita window",
         description: [
-            "A tiny counter application that demonstrates how a GTKX project builds and packages itself.",
+            "A tiny GNOME application that demonstrates how an Adwaita-first GTKX project builds and packages itself.",
         ],
         categories: ["Utility"],
         developer: { name: "GTKX", email: "hello@gtkx.dev" },

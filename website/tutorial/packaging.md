@@ -64,7 +64,7 @@ and the settings schema goes missing on the first `useSetting` call.
 records both the schema sources and JavaScript packages reached by the bundle; deploy consumes it without placing
 it in the installed application.
 
-`node dist/bundle.mjs` runs the app on any machine with GTK4, Adwaita, and Node.js 24 installed. That works, but it is not yet something a user can double-click.
+`node dist/bundle.mjs` runs the app on any machine with Adwaita, GTK4, and Node.js 24 installed. That works, but it is not yet something a user can double-click.
 
 ## Icons
 
@@ -101,8 +101,7 @@ deploy: {
     binaryName: "gtkx-tutorial",
     summary: "Manage your tasks and to-dos",
     description: [
-        "A task manager built with GTKX, demonstrating how to build React-based GTK4 and Adwaita "
-        + "desktop applications.",
+        "A GNOME task manager built with GTKX, demonstrating how to build React-based Adwaita applications.",
         "It shows an adaptive sidebar layout, boxed lists, a task editor, GSettings-backed preferences, "
         + "undo toasts, drag-to-reorder, desktop notifications, and local JSON persistence.",
     ],

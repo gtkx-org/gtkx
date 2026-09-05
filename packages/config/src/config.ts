@@ -58,15 +58,15 @@ type ResolvedConfig = {
 
 const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
 const APPLICATION_ID_MAX_LENGTH = 255;
-const DEFAULT_LIBRARIES: Set<string> = new Set(["Gtk-4.0", "Adw-1"]);
+const IMPLICIT_LIBRARIES: Set<string> = new Set(["Adw-1", "Gtk-4.0"]);
 /** Compilation modes `babel-plugin-react-compiler` accepts. */
 const COMPILATION_MODES = ["infer", "syntax", "annotation", "all"] as const;
 /** Panic thresholds `babel-plugin-react-compiler` accepts. */
 const PANIC_THRESHOLDS = ["none", "critical_errors", "all_errors"] as const;
 const REACT_COMPILER_TARGET = "19";
 
-const librarySchema = girLibrary('must be of the form "Name-Version", such as "Gtk-4.0"')
-    .refine((library) => !DEFAULT_LIBRARIES.has(library), { error: "is bound by default; remove it" });
+const librarySchema = girLibrary('must be of the form "Name-Version", such as "Adw-1"')
+    .refine((library) => !IMPLICIT_LIBRARIES.has(library), { error: "is bound implicitly; remove it" });
 
 const librariesSchema = z
     .array(librarySchema, { error: "must be a non-empty string array or omitted" })

@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "private": true,
     "license": "MPL-2.0",
-    "description": "Simple counter app demonstrating GTKX basics",
+    "description": "Simple GNOME counter app demonstrating GTKX and Adwaita basics",
     "type": "module",
     "scripts": {
         "build": "gtkx build",

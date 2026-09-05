@@ -1,11 +1,11 @@
 ---
 title: "Configuration and Codegen"
-description: "Configuring GTKX with gtkx.config.ts, what codegen generates into node_modules/.gtkx, and how GIR becomes the typed JSX prop model."
+description: "Configure GTKX's Adwaita-first GNOME foundation, additional GIR libraries, and generated typed JSX bindings."
 ---
 
 # Configuration and Codegen
 
-Codegen is driven from `gtkx.config.ts`, which declares your application ID and any GIR libraries to bind beyond GTK4 and Adwaita.
+Codegen is driven from `gtkx.config.ts`, which declares your application ID and any additional GIR roots. GTKX starts from `Adw-1` as its sole default root, and Adwaita's GIR include pulls in `Gtk-4.0` to complete the always-present GNOME application foundation.
 
 ## The config file
 
@@ -60,7 +60,7 @@ packages `dist/`, and rejects a bundle built with another config file or with di
 `applicationId` is the only required key; the rest have defaults.
 
 - **`applicationId`**: the GApplication identifier the app registers under, in reverse-DNS form (`com.example.Tasks`).
-- **`libraries`**: additional GIR libraries to bind, as `Name-Version`. GTKX always binds `Gtk-4.0` and `Adw-1`, so list only what the project needs beyond them — `["WebKit-6.0"]` rather than `["Gtk-4.0", "Adw-1", "WebKit-6.0"]`. Explicitly listing either default or using the removed `"*"` wildcard is rejected. A different version of the Gtk or Adwaita namespace replaces its default version.
+- **`libraries`**: additional GIR roots to bind, as `Name-Version`. `Adw-1` is the sole default root, and its GIR include generates `Gtk-4.0` transitively. List only what the project needs beyond that foundation — `["WebKit-6.0"]` rather than `["Adw-1", "Gtk-4.0", "WebKit-6.0"]`. Listing `Adw-1`, listing its transitive `Gtk-4.0`, or using the removed `"*"` wildcard is rejected. A different version of either namespace replaces the version GTKX would otherwise select.
 - **`girPath`**: directories searched for `.gir` files ahead of the standard locations. This can generate bindings from a newer GIR, for example libadwaita 1.10 declarations on a codegen host whose standard path has 1.9. It changes declarations only: it does not install or upgrade the shared library, and every machine that runs the result still needs a runtime providing those APIs.
 - **`reactCompiler`**: the React Compiler, on by default. `false` disables it; an object forwards `compilationMode` and `panicThreshold`.
 - **`codegen: false`**: skips generation, so the project imports whatever binding store is already installed.
@@ -80,7 +80,7 @@ GTKX derives a resource base from `applicationId` by prefixing `/` and replacing
 `virtual:gtkx-config` and uses the same prefix for derived `?resource` paths and `?icon` assets. An explicit
 absolute `?resource=/path` remains exactly the path you supply.
 
-`GtkApplication` and `AdwApplication` elements default their `resourceBasePath` prop to that config-derived
+`AdwApplication` and `GtkApplication` elements default their `resourceBasePath` prop to that config-derived
 value. GApplication can derive the same value from its application ID, but GTKX supplies it explicitly so the
 application and its generated resources stay aligned. Consequently, overriding an element's `applicationId`
 prop alone does not move those resources; also pass `resourceBasePath` when intentionally using a different

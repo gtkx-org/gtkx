@@ -18,7 +18,7 @@ const main = defineCommand({
     meta: {
         name: "gtkx",
         version,
-        description: "CLI for GTKX: create and develop GTK4 React applications",
+        description: "CLI for GTKX: create and develop Adwaita-first GNOME applications",
     },
     subCommands: {
         dev: async () => {

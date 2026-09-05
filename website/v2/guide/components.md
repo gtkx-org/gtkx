@@ -1,11 +1,11 @@
 ---
 title: "Components"
-description: "A map of the high-level components in @gtkx/components."
+description: "GTK4 collection views, dropdowns, an Adwaita combo row, and toast helpers for GNOME apps."
 ---
 
 # Components
 
-GTK4's collection widgets take a model plus factories. The components in `@gtkx/components` drop those `model`, `factory`, and `headerFactory` props and take data plus renderers instead.
+GTKX applications establish their top-level structure with libadwaita, then use GTK4 widgets for lower-level controls such as model-backed collections. The components in `@gtkx/components` drop those collections' `model`, `factory`, and `headerFactory` props and take data plus renderers instead; the package also exposes an Adwaita `ComboRow` and toast helpers.
 
 `@gtkx/components` is a separate install:
 

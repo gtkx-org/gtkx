@@ -2,7 +2,8 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
+import { AdwApplication } from "@gtkx/jsx/adw";
+import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { render, type RenderResult, screen, userEvent, waitFor, type WidgetType } from "@gtkx/testing";
 import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";
@@ -159,7 +160,7 @@ const DemoShell = ({ windowRef, onClose, Provider, Titlebar, demo, children }: D
     );
 
     return (
-        <GtkApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
+        <AdwApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
             <Provider window={windowRef} onClose={onClose}>
                 <GtkApplicationWindow
                     ref={handleWindowRef}
@@ -175,7 +176,7 @@ const DemoShell = ({ windowRef, onClose, Provider, Titlebar, demo, children }: D
                     {windowReady ? children : null}
                 </GtkApplicationWindow>
             </Provider>
-        </GtkApplication>
+        </AdwApplication>
     );
 };
 

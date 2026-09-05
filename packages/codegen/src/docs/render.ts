@@ -65,7 +65,7 @@ type StaticSectionOptions = {
 
 const DOCS_DEFAULT_VALUES: Record<string, string> = { TRUE: "true", FALSE: "false", NULL: "null" };
 const HEADING_LINE = /^#{1,5}\s/;
-const LEADING_NAMESPACES = ["Gtk", "Adw"];
+const LEADING_NAMESPACES = ["Adw", "Gtk"];
 const DOCS_SIGNATURE_NAMESPACE = "$docs";
 const WHITESPACE_RUN = /\s+/g;
 

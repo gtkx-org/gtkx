@@ -79,8 +79,8 @@ const SYMBOL_KIND = z.enum([
 ]);
 
 const SYMBOL_DESCRIPTION =
-    "Qualified symbol name (`Gtk.Button`, `Gtk.Orientation`, `GLib.idleAdd`), JSX element name (`GtkButton`), " +
-    "or bare symbol name when unambiguous (`Button`).";
+    "Qualified symbol name (`Adw.Toast`, `Gtk.Orientation`, `GLib.idleAdd`), JSX element name (`AdwToast`), " +
+    "or bare symbol name when unambiguous (`Toast`).";
 
 const PROJECT_ROOT_DESCRIPTION =
     "Directory of the GTKX project whose bindings to document, absolute or relative to the working directory. " +
@@ -96,13 +96,13 @@ const listApiShape = {
     namespace: z
         .string()
         .optional()
-        .describe("Namespace to list (e.g. `Gtk`, `Adw`, `Gio`). Omit for an overview of all namespaces."),
+        .describe("Namespace to list (e.g. `Adw`, `Gtk`, `Gio`). Omit for an overview of all namespaces."),
 };
 
 const searchApiShape = {
     ...projectRootShape,
     query: z.string().describe("Case-insensitive substring of a symbol name, e.g. `headerbar` or `orientation`."),
-    namespace: z.string().optional().describe("Restrict matches to one namespace (e.g. `Gtk`)."),
+    namespace: z.string().optional().describe("Restrict matches to one namespace (e.g. `Adw`)."),
     kind: SYMBOL_KIND.optional().describe("Restrict matches to one symbol kind."),
     limit: z.number().int().min(1).optional().describe("Maximum number of results (default: 20)."),
 };
@@ -354,8 +354,9 @@ const listApiTool = (provider: ReferenceProvider): Tool =>
         title: "List API reference",
         kind: "readOnly",
         description:
-            "List the project's generated GTK4 bindings API (`@gtkx/gi` and `@gtkx/jsx`). Without a namespace, " +
-            "returns every namespace with symbol counts; with a namespace, lists all of its symbols grouped by kind.",
+            "List the project's generated bindings API (`@gtkx/gi` and `@gtkx/jsx`), including Adwaita, " +
+            "GTK4, and its declared GIR libraries. Without a namespace, returns every namespace with symbol counts; " +
+            "with a namespace, lists all of its symbols grouped by kind.",
         inputSchema: listApiShape,
         handler: ({ namespace, projectRoot }) =>
             scopedResult(provider, projectRoot, (reference) => listApiResult(reference, namespace)),
@@ -367,7 +368,7 @@ const searchApiTool = (provider: ReferenceProvider): Tool =>
         title: "Search API reference",
         kind: "readOnly",
         description:
-            "Search the project's generated GTK4 bindings API by symbol name. Returns matching symbols with " +
+            "Search the project's generated bindings API by symbol name. Returns matching symbols with " +
             "their namespace, kind, and a one-line summary; fetch full pages with `gtkx_get_api_docs`.",
         inputSchema: searchApiShape,
         handler: (args) => scopedResult(provider, args.projectRoot, (reference) => searchApiResult(reference, args)),
@@ -379,7 +380,7 @@ const getApiDocsTool = (provider: ReferenceProvider): Tool =>
         title: "Get API docs",
         kind: "readOnly",
         description:
-            "Get the full reference page for one symbol of the project's generated GTK4 bindings: JSX elements " +
+            "Get the full reference page for one symbol of the project's generated bindings: JSX elements " +
             "(props, signals, methods) or `@gtkx/gi` classes, interfaces, records, enums, callbacks, aliases, " +
             "functions, and constants.",
         inputSchema: apiDocsShape,
@@ -461,7 +462,7 @@ const registerIndexResource = (server: ResourceServer, provider: ReferenceProvid
         "gtkx://reference/index",
         {
             title: "GTKX API reference index",
-            description: "Namespaces of the project's generated GTK4 bindings, with symbol and JSX element counts.",
+            description: "Namespaces of the project's generated bindings, with symbol and JSX element counts.",
             mimeType: "text/markdown",
         },
         async (uri) => {
@@ -497,7 +498,7 @@ const registerNamespaceResource = (server: ResourceServer, provider: ReferencePr
         }),
         {
             title: "GTKX namespace reference",
-            description: "All symbols of one namespace of the project's generated GTK4 bindings, grouped by kind.",
+            description: "All symbols of one namespace of the project's generated bindings, grouped by kind.",
             mimeType: "text/markdown",
         },
         async (uri, variables) => {
@@ -528,7 +529,7 @@ const registerSymbolResource = (server: ResourceServer, provider: ReferenceProvi
         {
             title: "GTKX symbol reference",
             description:
-                "Reference page for one symbol of the project's generated GTK4 bindings: a JSX element or a " +
+                "Reference page for one symbol of the project's generated bindings: a JSX element or a " +
                 "class, interface, record, enum, callback, alias, function, or constant.",
             mimeType: "text/markdown",
         },

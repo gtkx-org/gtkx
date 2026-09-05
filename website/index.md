@@ -1,7 +1,7 @@
 ---
-title: "GTKX: The React framework for Linux"
+title: "GTKX: The React framework for GNOME"
 titleTemplate: false
-description: Write declarative JSX. GTKX renders it to GObject instances, powered by a native Rust core.
+description: Build native GNOME apps with React and TypeScript on an Adwaita-first foundation.
 pageClass: landing-page
 aside: false
 outline: false

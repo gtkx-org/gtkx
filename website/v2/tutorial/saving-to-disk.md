@@ -43,7 +43,7 @@ export const fileStorage = {
 };
 ```
 
-This uses the Node standard library only. A GTKX app is a Node.js process that drives GTK4, so reach for Node wherever it covers the job and save GLib and Gio for what is unique to the platform: settings, notifications, D-Bus, and the widget toolkit itself.
+This uses the Node standard library only. A GTKX app is a Node.js process that drives the GNOME application platform through libadwaita and GTK4, so reach for Node wherever it covers the job and save GLib and Gio for what is unique to the platform: settings, notifications, D-Bus, and the widget toolkit itself.
 
 **The path.** `$XDG_DATA_HOME` names the per-user data directory, falling back to `~/.local/share` when unset, namespaced with the application ID you chose when scaffolding.
 

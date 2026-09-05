@@ -46,6 +46,8 @@ describe("gtkx codegen writing agent-facing files", () => {
         const rules = read(state.project, AGENTS);
         expect(rules).toContain(BEGIN_MARKER);
         expect(rules).toContain(END_MARKER);
+        expect(rules).toContain("GTKX applications are Adwaita-first");
+        expect(rules).toContain("AdwApplicationWindow");
         expect(rules).toContain(".gtkx/reference/index.md");
         expect(rules).toContain("| `gtkx cleanup` | Remove stale headless runtime directories |");
         expect(read(state.project, CLAUDE).trim()).toBe(`@${AGENTS}`);

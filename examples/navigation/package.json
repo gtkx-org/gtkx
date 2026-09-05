@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "license": "MPL-2.0",
-    "description": "Showcase of @gtkx/navigation: React Navigation stack, tab and drawer navigators rendered with libadwaita",
+    "description": "Adwaita showcase of typed React Navigation stack, tab and drawer navigators",
     "type": "module",
     "scripts": {
         "build": "gtkx build",

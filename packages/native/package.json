@@ -1,11 +1,13 @@
 {
     "name": "@gtkx/native",
     "version": "2.0.0-beta.6",
-    "description": "Rust addon for GTK: loads libraries, marshals values, tracks GObjects.",
+    "description": "Rust FFI addon for the GTKX GNOME stack and GObject libraries.",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
+        "adwaita",
+        "gnome",
         "native",
         "ffi",
         "rust",

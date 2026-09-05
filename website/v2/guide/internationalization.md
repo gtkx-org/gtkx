@@ -1,6 +1,6 @@
 ---
 title: "Internationalization"
-description: "Localize a GTKX application and its desktop metadata with react-i18next and GNU gettext catalogs."
+description: "Localize a GNOME application built with GTKX and its desktop metadata using react-i18next and gettext."
 ---
 
 # Internationalization

@@ -8,7 +8,7 @@ The app is finished: [Reminders That Reach the Desktop](/tutorial/reminders) add
 
 ## Wiring the runner
 
-Tests run under Vitest with the GTKX plugin. For each worker process, it boots a private runtime directory, session bus, and headless compositor before any test code loads. Your widgets are real GTK4 widgets, laid out and rendered off-screen.
+Tests run under Vitest with the GTKX plugin. For each worker process, it boots a private runtime directory, session bus, and headless compositor before any test code loads. Your Adwaita and GTK4 widgets are real native widgets, laid out and rendered off-screen.
 
 The scaffold already put the plugin in place. Add a setup file.
 
@@ -375,7 +375,7 @@ Leave the dev server where it is. Each Vitest worker starts its own headless com
 npm test
 ```
 
-Every test passes against real GTK4 widgets with no display attached:
+Every test passes against real Adwaita and GTK4 widgets with no display attached:
 
 ```
  RUN  v4.1.10 ~/tasks

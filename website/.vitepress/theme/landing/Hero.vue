@@ -13,13 +13,13 @@ const cmd = "npm create gtkx";
     <span class="glow" />
     <div class="hero__grid stack-md">
       <div class="hero__col">
-        <p class="overline hero__eyebrow">// React · Node · TypeScript · GNOME · Linux</p>
+        <p class="overline hero__eyebrow">// React · Node · TypeScript · libadwaita · GTK4</p>
         <h1 class="hero__title">
-          The React framework for <span class="gtkx-gradient-text">Linux</span>
+          The React framework for <span class="gtkx-gradient-text">GNOME</span>
         </h1>
         <p class="hero__lede">
-          Write native Linux applications with React and TypeScript.
-          Built on the GNOME stack and standard web tooling.
+          Build native GNOME applications with React and TypeScript.
+          GTKX puts libadwaita first and brings the whole platform to standard web tooling.
         </p>
         <div class="hero__actions">
           <div id="install" class="hero__install">

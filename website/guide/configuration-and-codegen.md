@@ -1,11 +1,11 @@
 ---
 title: "Configuration and Codegen"
-description: "Configuring GTKX with gtkx.config.ts, what codegen generates into node_modules/.gtkx, and how GIR becomes the typed JSX prop model."
+description: "Configure GTKX's Adwaita-first GNOME foundation, additional GIR libraries, and generated typed JSX bindings."
 ---
 
 # Configuration and Codegen
 
-Codegen is driven from `gtkx.config.ts`, which declares which libraries to generate bindings for, and your application ID.
+Codegen is driven from `gtkx.config.ts`, which declares your application ID and the libraries behind the app. libadwaita over GTK4 forms the GNOME foundation. The stable release adds `Adw-1` alongside its default `Gtk-4.0` root through `v2DefaultLibraries`; GTKX 2 instead starts from `Adw-1` alone and discovers `Gtk-4.0` through Adwaita's GIR include.
 
 ## The config file
 
@@ -27,7 +27,7 @@ export default defineConfig({
 `applicationId` is the only required key; the rest have defaults.
 
 - **`applicationId`**: the GApplication identifier the app registers under, in reverse-DNS form (`com.example.Tasks`).
-- **`libraries`**: the GIR libraries to bind, as `Name-Version`. `Gtk-4.0` is the default, and joins any list that does not already name a Gtk version. Under [`v2DefaultLibraries`](#future-flags) `Adw-1` joins on the same terms, so the list becomes the libraries you want *on top of* GTK and Adwaita — `["WebKit-6.0"]` rather than `["Gtk-4.0", "Adw-1", "WebKit-6.0"]`. Each default is mandatory by namespace rather than by version, so a list that pins `Gtk-4.2` or a later Adwaita keeps its pin.
+- **`libraries`**: the GIR libraries to bind, as `Name-Version`. `Gtk-4.0` is the default, and joins any list that does not already name a Gtk version. Under [`v2DefaultLibraries`](#future-flags) `Adw-1` joins on the same terms, so the list becomes the libraries you want *on top of* Adwaita and GTK — `["WebKit-6.0"]` rather than `["Adw-1", "Gtk-4.0", "WebKit-6.0"]`. Each default is mandatory by namespace rather than by version, so a list that pins `Gtk-4.2` or a later Adwaita keeps its pin.
 
   The bare string `"*"` (never an array entry) binds everything on the GIR path. **Deprecated: the wildcard is removed in GTKX 2.0.** What it resolves to depends on which introspection packages the build host happens to have installed, so the generated store — and every type your code compiles against — changes with the machine. List the libraries the project needs instead. Codegen names the wildcard on each run while it still works.
 - **`girPath`**: directories searched for `.gir` files ahead of the standard locations.
@@ -50,7 +50,7 @@ GTKX derives a resource base from `applicationId` by prefixing `/` and replacing
 `virtual:gtkx-config` and uses the same prefix for derived `?resource` paths and `?icon` assets. An explicit
 absolute `?resource=/path` remains exactly the path you supply.
 
-`GtkApplication` and `AdwApplication` elements default their `resourceBasePath` prop to that config-derived
+`AdwApplication` and `GtkApplication` elements default their `resourceBasePath` prop to that config-derived
 value. GApplication can derive the same value from its application ID, but GTKX supplies it explicitly so the
 application and its generated resources stay aligned. Consequently, overriding an element's `applicationId`
 prop alone does not move those resources; also pass `resourceBasePath` when intentionally using a different
@@ -211,8 +211,8 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
   the packages built on them — [`@gtkx/components/adw`](/guide/components), [`@gtkx/forms`](/guide/forms),
   [`@gtkx/navigation`](/guide/navigation) — need no opt-in. Each joins by namespace, so a list that pins
   another version of Gtk or Adwaita keeps its pin. Naming `Gtk-4.0` or `Adw-1` outright then changes nothing,
-  and codegen says so on its next run; in 2.0, once the behavior is unconditional, naming either becomes a
-  configuration error asking you to delete the line.
+  and codegen says so on its next run. In 2.0, `Adw-1` is the sole default root and its GIR include supplies
+  `Gtk-4.0`, so naming either becomes a configuration error asking you to delete the line.
 
   Nothing reports this flag for you: it is not a type error, and unlike `v2ResourceImports` there is no build
   failure either. What it changes on its own is the build: codegen fails on a host without the Adwaita

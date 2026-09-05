@@ -1,11 +1,13 @@
 {
     "name": "@gtkx/i18n",
     "version": "2.0.0-beta.6",
-    "description": "A react-i18next backend for GTKX applications using GNU gettext catalogs.",
+    "description": "GNU gettext localization for GTKX GNOME apps via react-i18next.",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
+        "adwaita",
+        "gnome",
         "react",
         "i18n",
         "gettext",

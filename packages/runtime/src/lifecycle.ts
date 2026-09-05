@@ -146,7 +146,7 @@ const runApplication = (application: ApplicationLike, argv: string[]): RunApplic
     if (!isDerivedApplication(application)) {
         throw new Error(
             "runApplication: this application was not built by GTKX, so its command line cannot be " +
-            "parsed and it cannot be shut down safely; render <GtkApplication> or <AdwApplication>, " +
+            "parsed and it cannot be shut down safely; render <AdwApplication> or <GtkApplication>, " +
             "or construct it with createApplication from @gtkx/runtime",
         );
     }

@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "license": "MPL-2.0",
-    "description": "Showcase of @gtkx/animated: React Spring animations driven by the GTK frame clock",
+    "description": "Adwaita showcase of @gtkx/animated driven by the GTK frame clock",
     "type": "module",
     "scripts": {
         "build": "gtkx build",

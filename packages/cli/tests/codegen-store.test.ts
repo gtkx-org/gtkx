@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -65,7 +65,7 @@ describe("gtkx codegen", () => {
         ) as Record<string, unknown>;
 
         expect(Object.keys(inventory)).toEqual(["libraries"]);
-        expect(inventory.libraries).toEqual(expect.arrayContaining(["Adw-1", "Gtk-4.0"]));
+        expect(inventory.libraries).toEqual(["Adw-1", "Gtk-4.0"]);
     });
 
     it("leaves a fresh store alone, and restores a link an install pruned", () => {
@@ -86,6 +86,19 @@ describe("gtkx codegen", () => {
         rmSync(storePath(state.project, "gi", "gobject", "index.d.ts"), { force: true });
         expect(runCli(state.project, ["codegen"]).status).toBe(0);
         expectModules(storePath(state.project, "gi"), GI_MODULES);
+
+        const manifestPath = storePath(state.project, "gi", "package.json");
+        const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { exports?: Record<string, unknown> };
+
+        if (manifest.exports === undefined) {
+            throw new Error("generated GI store has no exports");
+        }
+
+        delete manifest.exports["./gtk"];
+        writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 4)}\n`);
+        expect(runCli(state.project, ["codegen"]).status).toBe(0);
+        const restored = JSON.parse(readFileSync(manifestPath, "utf8")) as { exports?: Record<string, unknown> };
+        expect(restored.exports).toHaveProperty("./gtk");
     });
 
     it("rebuilds the store from scratch when it is forced", () => {
@@ -149,11 +162,11 @@ describe("gtkx codegen (a project that generates no store)", () => {
 });
 
 describe("gtkx codegen (the libraries a project binds without naming them)", () => {
-    it("binds Adwaita alongside Gtk", () => {
+    it("binds Adwaita and its transitive GTK dependency by default", () => {
         withProject("default-libraries", fixtureLibrariesConfig(undefined), (project) => {
             expect(runCli(project, ["codegen"]).status).toBe(0);
-            expectModules(storePath(project, "gi"), [join("gtk", "gtk.js"), join("adw", "adw.js")]);
-            expectModules(storePath(project, "jsx"), [join("gtk", "gtk.js"), join("adw", "adw.js")]);
+            expectModules(storePath(project, "gi"), [join("adw", "adw.js"), join("gtk", "gtk.js")]);
+            expectModules(storePath(project, "jsx"), [join("adw", "adw.js"), join("gtk", "gtk.js")]);
         });
     });
 

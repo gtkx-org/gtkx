@@ -1,11 +1,13 @@
 {
     "name": "@gtkx/cairo",
     "version": "2.0.0-beta.6",
-    "description": "Cairo drawing bindings for GTK: contexts, surfaces, patterns, fonts.",
+    "description": "Cairo drawing for GTKX GNOME apps: contexts, surfaces, patterns, fonts.",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
+        "adwaita",
+        "gnome",
         "cairo",
         "drawing",
         "graphics",

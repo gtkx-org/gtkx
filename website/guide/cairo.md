@@ -1,11 +1,11 @@
 ---
 title: "Cairo"
-description: "Draw 2D graphics in a GTKX app using @gtkx/cairo: contexts, surfaces, patterns, and fonts behind the GtkDrawingArea draw callback, plus offscreen rendering to PNG."
+description: "Draw 2D graphics inside a GNOME app with GTKX, Cairo, and GtkDrawingArea, or render off-screen to PNG."
 ---
 
 # Cairo
 
-`@gtkx/cairo` draws 2D graphics from TypeScript: paths, gradients, text, and offscreen surfaces, against the `cairo.Context` that GTK hands every draw callback. It installs separately:
+Inside GTKX's Adwaita application surfaces, `@gtkx/cairo` draws 2D graphics from TypeScript: paths, gradients, text, and offscreen surfaces, against the `cairo.Context` that GTK hands every draw callback. It installs separately:
 
 ```bash
 npm install @gtkx/cairo

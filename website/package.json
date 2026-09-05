@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "type": "module",
-    "description": "Marketing site for GTKX: The React framework for Linux.",
+    "description": "Marketing site for GTKX: The React framework for GNOME.",
     "scripts": {
         "reference": "nx run @gtkx/website:reference",
         "reference-current": "node scripts/references.mjs current",

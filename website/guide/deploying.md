@@ -1,5 +1,5 @@
 ---
-description: "Turn a GTKX project into a Flatpak, a .deb, an .rpm, or an AppImage with one command."
+description: "Package a native GNOME app built with GTKX as a Flatpak, a .deb, an .rpm, or an AppImage."
 ---
 
 # Deploying
@@ -45,7 +45,7 @@ With neither, `gtkx deploy` builds a Flatpak.
 import { defineConfig } from "@gtkx/config";
 
 export default defineConfig({
-    libraries: ["Gtk-4.0"],
+    libraries: ["Gtk-4.0", "Adw-1"],
     applicationId: "com.example.Tasks",
     applicationIcon: "data/icons",
     deploy: {

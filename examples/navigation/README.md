@@ -1,6 +1,6 @@
 # navigation
 
-A mail-style app demonstrating typed, nested drawer, stack, and tab navigators rendered with libadwaita. It also covers native Back behavior, prevented navigation, themes, and integration tests.
+A GNOME mail-style app built with Adwaita, demonstrating typed, nested drawer, stack, and tab navigators. It also covers native Back behavior, prevented navigation, themes, and integration tests.
 
 ```bash
 pnpm --filter navigation dev

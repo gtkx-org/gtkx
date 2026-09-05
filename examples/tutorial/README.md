@@ -1,6 +1,6 @@
 # tutorial
 
-Tasks is the complete application built by the [GTKX tutorial](https://gtkx.dev/tutorial/). It combines adaptive navigation, forms, settings, actions, dialogs, notifications, localization, persistence, testing, and Linux packaging.
+Tasks is the complete GNOME application built by the [GTKX tutorial](https://gtkx.dev/tutorial/). Its Adwaita foundation combines adaptive navigation, forms, settings, actions, dialogs, notifications, localization, persistence, testing, and Linux packaging.
 
 ![Tasks in an adaptive Adwaita window](assets/screenshot.png)
 

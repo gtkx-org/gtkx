@@ -13,7 +13,7 @@ Upgrade to Node.js 26.7 or newer and set `"type": "module"` in `package.json`; G
 
 Delete the `future` block and any retired ids under `deprecations.silence`. A graduated flag left at `true` is temporarily accepted with a warning; `false` is rejected because the old behavior no longer exists.
 
-`Gtk-4.0` and `Adw-1` are always bound. List only additional libraries:
+`Adw-1` is the sole default GIR root, and its GIR include generates `Gtk-4.0` transitively. Both namespaces are always present, but neither identifier belongs in `libraries`. List only additional roots:
 
 ```ts
 import { defineConfig } from "@gtkx/config";
@@ -24,7 +24,7 @@ export default defineConfig({
 });
 ```
 
-The `"*"` wildcard is gone. Explicit libraries keep generated bindings stable across machines.
+The `"*"` wildcard is gone, and explicitly listing `Adw-1` or `Gtk-4.0` is rejected. Explicit additional roots keep generated bindings stable across machines.
 
 ## Check the behavior changes
 

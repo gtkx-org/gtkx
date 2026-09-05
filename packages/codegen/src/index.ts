@@ -11,7 +11,11 @@ export {
     loadApiReference,
 } from "./docs/api-reference.js";
 export { resolveGirPath } from "./gir/gir-path.js";
-export { discoverGirNamespaces, type LibrarySelection, resolveLibraries } from "./gir/libraries.js";
+export {
+    discoverGirNamespaces,
+    type LibrarySelection,
+    resolveLibraries,
+} from "./gir/libraries.js";
 export { type BuiltinElements, type ModuleExport, readBuiltinElements } from "./react/element-config.js";
 export { type CodegenRunnerOptions, type CodegenRunnerResult, runCodegen } from "./runner.js";
 export { type GeneratedLibraries, readGeneratedLibraries } from "./store/gi/generated-libraries.js";

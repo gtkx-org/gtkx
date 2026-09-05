@@ -1,5 +1,6 @@
 import type { Config } from "@gtkx/config";
 import { resolveGirPath, resolveLibraries } from "@gtkx/codegen";
+import { resolveBoundLibraries } from "@gtkx/codegen/internal";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
@@ -86,7 +87,10 @@ const hasStoreExports = (storeDir: string, required: string[], forbidden: string
 };
 
 const isGiStoreStale = (store: CodegenStore, libraries: string[]): boolean => {
-    const required = [PACKAGE_EXPORT, ...libraries.map((library) => namespaceExport(library))];
+    const required = [
+        PACKAGE_EXPORT,
+        ...resolveBoundLibraries(libraries).map((library) => namespaceExport(library)),
+    ];
 
     return !hasStoreExports(store.giStoreDir, required);
 };

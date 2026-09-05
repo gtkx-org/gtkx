@@ -14,7 +14,7 @@ import {
 } from "./versioning.js";
 
 const title = "GTKX";
-const description = "Write declarative JSX. GTKX renders it to GObject instances, powered by a native Rust core.";
+const description = "Build native GNOME apps with React and TypeScript on an Adwaita-first foundation.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 

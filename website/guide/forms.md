@@ -5,7 +5,7 @@ description: "Build typed Adwaita forms with @gtkx/forms and React Hook Form: co
 
 # Forms
 
-`@gtkx/forms` connects [React Hook Form](https://react-hook-form.com) to Adwaita's form rows. The form state, validation rules, nested field names, and submission flow come from React Hook Form; `EntryRow`, `PasswordEntryRow`, `SwitchRow`, `SpinRow`, and `ComboRow` bind that state to native Adwaita controls.
+GTKX applications use Adwaita for their application surfaces, and `@gtkx/forms` carries that foundation into forms by connecting [React Hook Form](https://react-hook-form.com) to Adwaita's form rows. The form state, validation rules, nested field names, and submission flow come from React Hook Form; `EntryRow`, `PasswordEntryRow`, `SwitchRow`, `SpinRow`, and `ComboRow` bind that state to native Adwaita controls.
 
 Install it separately:
 
@@ -13,7 +13,7 @@ Install it separately:
 npm install @gtkx/forms
 ```
 
-The controls need the generated `@gtkx/jsx/adw` bindings. A project scaffolded by `npm create gtkx` already has them, through [`v2DefaultLibraries`](/guide/configuration-and-codegen#future-flags). An older project that binds GTK alone adds `Adw-1` in `gtkx.config.ts`:
+The controls need the generated `@gtkx/jsx/adw` bindings. A project scaffolded by `npm create gtkx` already has them, through [`v2DefaultLibraries`](/guide/configuration-and-codegen#future-flags). A legacy GTK-only project adds `Adw-1` in `gtkx.config.ts` before adopting the same foundation:
 
 ```diff
  export default defineConfig({

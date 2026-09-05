@@ -15,7 +15,7 @@ export const About = ({ onClose }: { onClose: () => void }) => {
             copyright="© 2026 GTKX Contributors"
             licenseType={Gtk.License.MPL_2_0}
             developers={[t("GTKX Contributors")]}
-            comments={t("A task manager built with GTKX to showcase React, GTK4, and Adwaita.")}
+            comments={t("A GNOME task manager built with GTKX to showcase React and Adwaita.")}
         />
     );
 };

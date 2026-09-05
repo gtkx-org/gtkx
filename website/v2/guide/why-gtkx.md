@@ -1,13 +1,15 @@
 ---
 title: "Why GTKX"
-description: "What GTKX is, why it exists, and why it runs on Node.js."
+description: "Why GTKX is an Adwaita-first React framework for GNOME, and why it runs on Node.js."
 ---
 
 # Why GTKX
 
-GTK4 and Adwaita are mature, and GtkBuilder XML can lay out an interface and bind properties into it. The widget tree it builds is still fixed: keeping that structure in sync with your application state is left to imperative code you write yourself, and nothing refreshes the interface as you work. GTKX adds that missing layer, and the tooling around it, on top of the stack you already know:
+The GNOME application platform pairs GTK4 with libadwaita: GTK supplies the widget toolkit, rendering, and accessibility, while Adwaita supplies adaptive application surfaces and GNOME design patterns. GTKX treats that complete stack as its foundation. New projects start from `Adw-1` as the sole codegen root and use `AdwApplication` and `AdwApplicationWindow`; Adwaita's GIR include brings in GTK4, so every underlying GTK widget remains available when it is the right building block.
 
-- a React reconciler that exposes every GObject as a JSX element,
+libadwaita and GTK4 are mature, and GtkBuilder XML can lay out an interface and bind properties into it. The widget tree it builds is still fixed: keeping that structure in sync with your application state is left to imperative code you write yourself, and nothing refreshes the interface as you work. GTKX adds that missing declarative layer and the tooling around it:
+
+- a React reconciler that exposes the GNOME object graph as JSX elements,
 - a CLI for scaffolding, development, and production builds,
 - a dev server with Fast Refresh that patches your running UI in place,
 - CSS-in-JS styling, React Spring animations, React Navigation stack, tab, drawer, and split view navigators, high-level list and grid components, and dialogs that present on mount,
@@ -20,7 +22,7 @@ GJS is GNOME's own JavaScript runtime, separate from Node.js, so native modules,
 
 A GTKX app is an ordinary Node.js process, so you do everyday work with the Node standard library and npm. Use `node:fs` for files, `fetch` for HTTP, `setTimeout` and `setInterval` for timers, and any package on the registry for the rest. The generated GLib and Gio bindings come in only where the GNOME platform itself is the point: GSettings, desktop notifications, actions, and the `Gio.File` objects a file dialog hands back.
 
-GTK and JavaScript share a single thread, so keep widget work on it.
+The GNOME UI stack and JavaScript share a single thread, so keep widget work on it.
 
 ## Next
 

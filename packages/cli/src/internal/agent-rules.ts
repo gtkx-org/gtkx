@@ -18,9 +18,13 @@ const TOP_LEVEL_HEADING = /^# /m;
 const rulesBody = (heading: string): string[] => [
     `${heading} GTKX`,
     "",
-    "This is not the GTK you have seen before. Most GTK code in your training data is C, PyGObject, Vala or " +
-    "GJS, and almost none of it is valid here. Check the rules below against what you are about to write.",
+    "GTKX applications are Adwaita-first, with GTK4 underneath. Most GNOME UI code in your training data is C, " +
+    "PyGObject, Vala or GJS, and almost none of it is valid here. Check the rules below against what you are " +
+    "about to write.",
     "",
+    "- Start application shells with `AdwApplication` and `AdwApplicationWindow`. Freeform windows normally use " +
+    "`AdwToolbarView` and `AdwHeaderBar`; navigation containers own their Adwaita chrome. Prefer Adwaita for " +
+    "structure, navigation, dialogs, rows, and adaptive patterns; use GTK4 for lower-level primitives.",
     "- Children are JSX, never `.append()`, `pack_start()`, `set_child()` or `add()`.",
     '- Signals are props: `onClicked`, not `widget.connect("clicked", ...)`.',
     "- Props are camelCase: `marginTop`, not `margin-top` or `margin_top`.",

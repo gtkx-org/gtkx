@@ -1,11 +1,13 @@
 {
     "name": "@gtkx/gl",
     "version": "2.0.0-beta.6",
-    "description": "OpenGL 4.6 core bindings and helpers for GTK GLArea rendering.",
+    "description": "OpenGL 4.6 bindings and GtkGLArea helpers for GTKX GNOME apps.",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
+        "adwaita",
+        "gnome",
         "opengl",
         "gl",
         "glarea",

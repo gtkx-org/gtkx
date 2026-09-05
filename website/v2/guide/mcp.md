@@ -1,11 +1,11 @@
 ---
 title: "MCP"
-description: "Give AI coding agents eyes and hands on your running app: the @gtkx/mcp server exposes the widget tree, queries, clicks, typing, screenshots, and a searchable API reference for your generated bindings over the Model Context Protocol."
+description: "Give AI coding agents eyes, hands, and project-matched API docs for a running GTKX GNOME application."
 ---
 
 # MCP
 
-`@gtkx/mcp` is a stdio MCP (Model Context Protocol) server that connects any MCP client, Claude Code or otherwise, to a running GTKX app. Through it an agent inspects and drives the live window, and looks up the exact props, signals, and method signatures of the project's generated bindings instead of guessing. Combined with the Fast Refresh loop of `gtkx dev`, that gives an agent the same edit, look, verify cycle you have.
+`@gtkx/mcp` is a stdio MCP (Model Context Protocol) server that connects any MCP client, Claude Code or otherwise, to a running GTKX GNOME app. Through it an agent inspects and drives the live Adwaita window, and looks up the exact props, signals, and method signatures of the project's generated libadwaita and GTK4 bindings instead of guessing. Combined with the Fast Refresh loop of `gtkx dev`, that gives an agent the same edit, look, verify cycle you have.
 
 `gtkx dev` starts the app side automatically as soon as the entry module mounts an application, and the two halves find each other whenever both are up, so start order does not matter. Several apps can register with one server: every tool that targets a running app takes an optional `applicationId` and defaults to the first connected app, while the reference tools take `projectRoot` instead. A widget tool waits up to ten seconds for that specific app to register; `appTimeout` changes the wait in milliseconds. All of this is development tooling, so `gtkx build` bundles none of it and a production app has nothing listening.
 
@@ -91,7 +91,7 @@ Every tool is annotated for clients that gate on annotations: the inspection and
 | `gtkx_take_screenshot` | Inspection | Capture a window as a PNG |
 | `gtkx_click` | Interaction | Click a widget |
 | `gtkx_type` | Interaction | Type into an editable widget |
-| `gtkx_fire_event` | Interaction | Emit an arbitrary GTK4 signal |
+| `gtkx_fire_event` | Interaction | Emit an arbitrary GObject signal |
 | `gtkx_list_api` | Reference | List the bindings' namespaces, or one namespace's symbols |
 | `gtkx_search_api` | Reference | Search the bindings' symbols by name |
 | `gtkx_get_api_docs` | Reference | Get the full reference page for one symbol |
@@ -103,7 +103,7 @@ Every tool is annotated for clients that gate on annotations: the inspection and
 **`gtkx_get_widget_tree`** returns an app's widget hierarchy as an indented, HTML-like tree. `rootId` renders only the subtree under one widget ID and `maxDepth` caps how deep the tree goes (`0` renders the root on its own), summarizing each cut-off widget's children as a count with the ID to pass as `rootId`. The output is truncated at 7000 characters; raise that by starting the app with `DEBUG_PRINT_LIMIT=50000 gtkx dev`.
 
 ```html
-<Window id="0" name="GtkWindow" role="window">
+<ApplicationWindow id="0" name="AdwApplicationWindow" role="window">
   <Box id="1" name="GtkBox" role="generic">
     <Label id="2" name="GtkLabel" role="label">
       Groceries
@@ -115,7 +115,7 @@ Every tool is annotated for clients that gate on annotations: the inspection and
       New List
     </Button>
   </Box>
-</Window>
+</ApplicationWindow>
 ```
 
 **`gtkx_query_widgets`** finds widgets without dumping the whole tree. It takes `by` (one of `"role"`, `"text"`, `"name"`, `"labelText"`), a `value` to match, and an `options` object with `exact`, `timeout`, and `name` (an accessible-name filter, honored only for role queries). Role values are `Gtk.AccessibleRole` member names:
@@ -144,7 +144,7 @@ Every widget tool call is routed to the app with a 30 second timeout, so a hung 
 
 **`gtkx_type`** types `text` into an editable widget such as a `GtkEntry` or `GtkTextView`. Pass `clear: true` to empty the widget first.
 
-**`gtkx_fire_event`** emits an arbitrary GTK4 `signal` on a widget, with an optional `args` array, for interactions the others do not cover: `close-request` on a window, or a custom signal the code connects to.
+**`gtkx_fire_event`** emits an arbitrary GObject `signal` on a widget, with an optional `args` array, for interactions the others do not cover: `close-request` on a window, or a custom signal the code connects to.
 
 ### API reference
 

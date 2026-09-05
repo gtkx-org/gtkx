@@ -21,6 +21,9 @@
             "{workspaceRoot}/gtkx.config.base.ts",
             "{workspaceRoot}/vitest.config.base.ts",
             {
+                "env": "ADWAITA_VERSION"
+            },
+            {
                 "env": "GTK4_VERSION"
             },
             {

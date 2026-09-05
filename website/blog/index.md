@@ -1,6 +1,6 @@
 ---
 title: Blog
-description: Announcements and release notes from the GTKX project.
+description: Announcements and release notes from GTKX, the Adwaita-first React framework for GNOME.
 ---
 
 # Blog

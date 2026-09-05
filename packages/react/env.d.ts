@@ -5,7 +5,7 @@ declare module "virtual:gtkx-config" {
     export type PropertyEntry = [name: string, flags: number, defaultValue?: unknown];
     /** Every property a GLib type declares itself, keyed by GLib type name and then by accessor. */
     export const properties: Record<string, Record<string, PropertyEntry>>;
-    /** The application id from `gtkx.config.ts`, used as the default for `<GtkApplication>`. */
+    /** The application id from `gtkx.config.ts`, used as the default for application elements. */
     export const applicationId: import("@gtkx/config").ResolvedConfig["applicationId"];
     /** The resource base derived from `gtkx.config.ts`, used by application elements. */
     export const resourceBasePath: string;

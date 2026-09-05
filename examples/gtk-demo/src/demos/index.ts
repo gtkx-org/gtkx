@@ -74,7 +74,7 @@ const introDemo: Demo = {
     title: "GTK Demo",
     description:
         "GTK Demo is a collection of useful examples to demonstrate GTK4 widgets and features using GTKX, " +
-        "a framework for building native Linux desktop applications with React and TypeScript.\n\n" +
+        "an Adwaita-first framework for building native GNOME applications with React and TypeScript.\n\n" +
         "You can select examples in the sidebar or search for them by typing a search term. " +
         'Double-clicking or hitting the "Run" button will run the demo. ' +
         "The source code used in the demo is shown in the Source tab.\n\n" +

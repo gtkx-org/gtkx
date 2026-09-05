@@ -1,5 +1,5 @@
 ---
-description: "Turn a GTKX project into a Flatpak, a .deb, an .rpm, or an AppImage with one command."
+description: "Package a native GNOME app built with GTKX as a Flatpak, a .deb, an .rpm, or an AppImage."
 ---
 
 # Deploying

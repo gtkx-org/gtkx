@@ -108,4 +108,4 @@ RUN if [ -d /usr/share/vulkan/icd.d ]; then \
 ENV CARGO_INCREMENTAL=0
 
 LABEL org.opencontainers.image.source="https://github.com/gtkx-org/gtkx"
-LABEL org.opencontainers.image.description="GTKX CI Base Image with GTK4, Node.js, Rust, and testing dependencies"
+LABEL org.opencontainers.image.description="GTKX CI Base Image with Adwaita, GTK4, Node.js, Rust, and testing dependencies"

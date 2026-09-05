@@ -38,7 +38,7 @@ export default defineConfig({
 });
 ```
 
-Everything on this page comes from Adwaita rather than plain GTK4. GTKX binds `Gtk-4.0` and `Adw-1` by default, so `libraries` lists only what you need on top of them. A project that needed WebKit would name it there and nothing else.
+The application, window, and high-level surfaces on this page come from Adwaita rather than plain GTK4, establishing the foundation used throughout the tutorial. GTKX starts codegen from its sole default root, `Adw-1`, whose GIR include pulls in `Gtk-4.0`. Neither belongs in `libraries`; that list names only additional roots, so a project that needed WebKit would name it there and nothing else.
 
 If your application ID reads something else, change it to `com.gtkx.tutorial` now: the schema file, the notification identity, and the Flatpak all key off this string.
 

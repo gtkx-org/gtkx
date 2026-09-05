@@ -73,8 +73,8 @@ const INSTRUCTIONS =
     "They wait briefly for a starting app, so start `gtkx dev` before or alongside a widget request. " +
     "The reference tools answer from the " +
     "bindings generated for a specific project, so they describe that project's GIR libraries rather than " +
-    "GTK in general; prefer them over recalled GTK knowledge, which is usually C, PyGObject or GJS and " +
-    "does not apply here.\n\n" +
+    "the GNOME platform in general; prefer them over recalled Adwaita or GTK knowledge, which is usually C, " +
+    "PyGObject or GJS and does not apply here.\n\n" +
     "Widget IDs are valid only while the widget is mounted. After a dialog closes, a list re-renders, or " +
     "fast refresh patches a component, re-read the tree or re-run the query instead of reusing an ID.";
 
@@ -158,7 +158,7 @@ const fireEventShape = {
     ...applicationIdShape,
     ...describeParams(fireEventParams.shape, {
         widgetId: WIDGET_ID_DESCRIPTION,
-        signal: "GTK4 signal name to emit",
+        signal: "GObject signal name to emit",
         args: "Arguments to pass to the signal",
     }),
 };
@@ -391,7 +391,7 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             name: "gtkx_fire_event",
             title: "Fire event",
             kind: "action",
-            description: "Emit a GTK4 signal on a widget. Use this for custom interactions.",
+            description: "Emit a GObject signal on a widget. Use this for custom interactions.",
             inputSchema: fireEventShape,
             handler: async ({ applicationId, appTimeout, ...params }) => {
                 const result = await appRouter.sendToApp(applicationId, "widget.fireEvent", params, appTimeout);

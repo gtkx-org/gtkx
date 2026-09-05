@@ -43,7 +43,7 @@ const acceptedChildren = (
 };
 
 /**
- * The framework's own element configuration for the GTK and Adwaita types it customizes: the base props interface each
+ * The framework's own element configuration for the Adwaita and GTK types it customizes: the base props interface each
  * generated element extends, the component that wraps it, the GObject properties left out of its generated
  * props, and whether its GObject is created by its parent. Carries no behaviors, so importing it never
  * reaches the GObject bindings.

@@ -1,11 +1,11 @@
 ---
 title: "CSS"
-description: "Style native widgets with GTK4's own CSS engine: the style prop, the @gtkx/css tagged template, generated class names, cx, global styles, and dark style."
+description: "Style libadwaita and GTK4 widgets with the GNOME platform's CSS engine and GTKX's style APIs."
 ---
 
 # CSS
 
-GTK4 resolves its own CSS, and GTKX gives you the `style` prop and `@gtkx/css` to write it. Every widget element takes a `style` prop for the declarations that belong to that one widget, and `@gtkx/css` is Emotion-style CSS-in-JS for the ones worth naming: you write styles next to your components, and it hands back class names that GTK4 resolves.
+libadwaita supplies the GNOME design language and its theme variables and style classes; GTK4 resolves the CSS beneath it. GTKX gives you the `style` prop and `@gtkx/css` for the application-specific styling left over. Every widget element takes a `style` prop for declarations that belong to that one widget, and `@gtkx/css` is Emotion-style CSS-in-JS for the ones worth naming: you write styles next to your components, and it hands back class names that GTK4 resolves.
 
 ## The `style` prop
 

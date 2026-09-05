@@ -137,7 +137,7 @@ The literal type string types both the JavaScript input and output. Arrays unpac
 
 ## Keeping a helper process alive
 
-An active `GtkApplication` keeps GTKX's GLib integration referenced automatically. A plain Node helper or CLI has no application lifecycle, so pending GIO work alone does not keep the process alive. Add `@gtkx/native` as a direct dependency and hold the integration around the whole operation:
+An active application element, normally `AdwApplication`, keeps GTKX's GLib integration referenced automatically. A plain Node helper or CLI has no application lifecycle, so pending GIO work alone does not keep the process alive. Add `@gtkx/native` as a direct dependency and hold the integration around the whole operation:
 
 ```ts
 import { keepAlive } from "@gtkx/native";

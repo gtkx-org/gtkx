@@ -13,7 +13,7 @@ That is **Tasks**, a GNOME task manager. In this tutorial you build it from an e
 
 You build it one running step at a time: after every chapter you have an app you can launch.
 
-You need working familiarity with [React](https://react.dev/learn) and [TypeScript](https://www.typescriptlang.org/docs/handbook/2/basic-types.html), which this tutorial does not teach: it spends its words on GTK4 and Adwaita instead. You also need Linux with the GTK4 development libraries and Node.js 24 or later. [Getting Started](/guide/getting-started) covers what to install.
+You need working familiarity with [React](https://react.dev/learn) and [TypeScript](https://www.typescriptlang.org/docs/handbook/2/basic-types.html), which this tutorial does not teach: it spends its words on the GNOME application platform, with libadwaita over GTK4, instead. You also need Linux with the libadwaita and GTK4 development libraries and Node.js 24 or later. [Getting Started](/guide/getting-started) covers what to install.
 
 ## Check your setup
 
@@ -82,7 +82,7 @@ cd tasks
 npm run dev
 ```
 
-This opens a small window with a counter in it, which the next chapter replaces.
+This opens the stable initializer's small GTK counter. The next chapter enables Adwaita and replaces it with the standard Adwaita application shell used for the rest of the tutorial.
 
 Keep this `npm run dev` running for the whole tutorial. Saving a `.ts` or `.tsx` file patches the running widget tree through Fast Refresh, so a `## Run it` section means save and look at the open window. Saving `gtkx.config.ts` regenerates bindings and relaunches the app for you.
 
@@ -94,7 +94,7 @@ Every code block carries its file path in the sentence directly above it. Edits 
 
 ## Scope
 
-GNOME To Do is a mature application, and Tasks is smaller. What they share is the platform: the same GTK4 widgets, the same Adwaita patterns, the same settings, actions, and notifications. Finishing this tutorial leaves you able to open the To Do source and recognize what you see.
+GNOME To Do is a mature application, and Tasks is smaller. What they share is the platform: the same libadwaita application surfaces over GTK4, the same GNOME patterns, and the same settings, actions, and notifications. Finishing this tutorial leaves you able to open the To Do source and recognize what you see.
 
 ## Next
 

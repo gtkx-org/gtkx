@@ -1,6 +1,6 @@
 # animations
 
-An interactive tour of `@gtkx/animated`: springs, interpolations, trails, transitions, chains, imperative controls, layout transforms, and reduced motion on GTK's frame clock.
+An Adwaita application offering an interactive tour of `@gtkx/animated`: springs, interpolations, trails, transitions, chains, imperative controls, layout transforms, and reduced motion on GTK's frame clock.
 
 ```bash
 pnpm --filter animations dev

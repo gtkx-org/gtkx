@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "license": "MPL-2.0",
-    "description": "Simple browser using WebKitWebView",
+    "description": "Compact GNOME browser built with Adwaita and WebKitGTK",
     "type": "module",
     "scripts": {
         "build": "gtkx build",

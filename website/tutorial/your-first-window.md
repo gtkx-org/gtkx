@@ -47,7 +47,7 @@ export default defineConfig({
 });
 ```
 
-Everything on this page comes from Adwaita rather than plain GTK4, and there is nothing to add for it: `v2DefaultLibraries` binds `Gtk-4.0` and `Adw-1` together, so `libraries` is only for what you want on top of them. A project that needed WebKit would name it there and nothing else.
+The application, window, and high-level surfaces on this page come from Adwaita rather than plain GTK4, establishing the foundation used throughout the tutorial. There is nothing to add for it: `v2DefaultLibraries` binds `Gtk-4.0` and `Adw-1` together, so `libraries` is only for what you want on top of them. A project that needed WebKit would name it there and nothing else.
 
 If your application ID reads something else, change it to `com.gtkx.tutorial` now: the schema file, the notification identity, and the Flatpak all key off this string.
 

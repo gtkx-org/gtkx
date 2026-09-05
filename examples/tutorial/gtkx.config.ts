@@ -9,8 +9,7 @@ export default defineConfig({
         binaryName: "gtkx-tutorial",
         summary: "Manage your tasks and to-dos",
         description: [
-            "A task manager built with GTKX, demonstrating how to build React-based GTK4 and Adwaita "
-            + "desktop applications.",
+            "A GNOME task manager built with GTKX, demonstrating how to build React-based Adwaita applications.",
             "It shows an adaptive sidebar layout, boxed lists, a task editor, GSettings-backed preferences, "
             + "undo toasts, drag-to-reorder, desktop notifications, and local JSON persistence.",
         ],

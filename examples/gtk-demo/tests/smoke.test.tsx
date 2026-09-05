@@ -1,3 +1,4 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { configure, fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { afterEach, beforeAll, describe, expect, it, type MockInstance, vi } from "vitest";
@@ -286,7 +287,7 @@ describe("gtk-demo end-to-end", () => {
     it("opens every demo, exercises the search bar, and invokes each main menu action", async () => {
         const hooks: DialogHooks = { printRun: stubPrintOperationRun(), pageSetup: stubPageSetupDialog() };
         await renderApp();
-        const mainWindow = await screen.findByName("main-window", { as: Gtk.ApplicationWindow });
+        const mainWindow = await screen.findByName("main-window", { as: Adw.ApplicationWindow });
         const sidebar = await screen.findByName("sidebar-list", { as: Gtk.ListView });
         const model = sidebar.getModel() as Gtk.SelectionModel;
         await exerciseSearchBar(model);

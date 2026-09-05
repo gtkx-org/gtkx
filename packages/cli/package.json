@@ -1,11 +1,13 @@
 {
     "name": "@gtkx/cli",
     "version": "2.0.0-beta.6",
-    "description": "GTK app toolchain for React: scaffold, dev server, build, docs.",
+    "description": "Adwaita-first GNOME app toolchain for React and TypeScript.",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
+        "adwaita",
+        "gnome",
         "react",
         "typescript",
         "native",

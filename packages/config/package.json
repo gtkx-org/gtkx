@@ -1,11 +1,13 @@
 {
     "name": "@gtkx/config",
     "version": "2.0.0-beta.6",
-    "description": "Config schema, loader, and element-prop mapping for the GTK toolchain.",
+    "description": "Configuration and element-prop mapping for Adwaita-first GTKX apps.",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
+        "adwaita",
+        "gnome",
         "react",
         "typescript",
         "config",

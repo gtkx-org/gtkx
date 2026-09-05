@@ -1,14 +1,20 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwAboutDialog, AdwShortcutsDialog, AdwShortcutsItem, AdwShortcutsSection } from "@gtkx/jsx/adw";
+import {
+    AdwAboutDialog,
+    AdwApplication,
+    AdwApplicationWindow,
+    AdwHeaderBar,
+    AdwShortcutsDialog,
+    AdwShortcutsItem,
+    AdwShortcutsSection,
+    AdwToolbarView,
+} from "@gtkx/jsx/adw";
 import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
 import {
-    GtkApplication,
-    GtkApplicationWindow,
     GtkBox,
     GtkButton,
-    GtkHeaderBar,
     GtkLabel,
     GtkMenuButton,
     GtkNotebook,
@@ -219,7 +225,7 @@ const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
 );
 
 const AppHeaderBar = ({ hasDemo, isSearchActive, onRun, onSearchToggle }: AppHeaderBarProps) => (
-    <GtkHeaderBar
+    <AdwHeaderBar
         start={(
             <>
                 <GtkButton
@@ -322,7 +328,7 @@ const AboutDialog = ({ onClose }: AboutDialogProps) => (
         version="0.14.0"
         copyright="© 2026 The GTKX Team"
         website="https://gtkx.dev"
-        comments="Program to demonstrate GTKX widgets"
+        comments="An Adwaita application demonstrating GTKX widgets"
         developerName="The GTKX Team"
         developers={["The GTKX Team"]}
         licenseType={Gtk.License.MPL_2_0}
@@ -459,32 +465,35 @@ const MainWindow = () => {
     };
 
     return (
-        <GtkApplicationWindow
+        <AdwApplicationWindow
             name="main-window"
             title={windowTitle}
             defaultWidth={800}
             defaultHeight={600}
-            titlebar={(
-                <AppHeaderBar
-                    hasDemo={!!currentDemo?.component}
-                    isSearchActive={chrome.isSearchActive}
-                    onRun={handleRun}
-                    onSearchToggle={chrome.setIsSearchActive}
-                />
-            )}
             onCloseRequest={quit}
             actions={renderMainWindowActions({
                 onKeyboardShortcuts: chrome.openShortcuts,
                 onShowAbout: chrome.openAbout,
             })}
         >
-            <MainWindowContent
-                chrome={chrome}
-                demoWindows={demoWindows}
-                onCloseWindow={closeWindow}
-                onSearchChanged={setSearchQuery}
-            />
-        </GtkApplicationWindow>
+            <AdwToolbarView
+                topBar={(
+                    <AppHeaderBar
+                        hasDemo={!!currentDemo?.component}
+                        isSearchActive={chrome.isSearchActive}
+                        onRun={handleRun}
+                        onSearchToggle={chrome.setIsSearchActive}
+                    />
+                )}
+            >
+                <MainWindowContent
+                    chrome={chrome}
+                    demoWindows={demoWindows}
+                    onCloseWindow={closeWindow}
+                    onSearchChanged={setSearchQuery}
+                />
+            </AdwToolbarView>
+        </AdwApplicationWindow>
     );
 };
 
@@ -499,7 +508,7 @@ const Demo = () => {
 };
 
 const App = ({ applicationId }: AppProps) => (
-    <GtkApplication
+    <AdwApplication
         applicationId={applicationId}
         flags={Gio.ApplicationFlags.NON_UNIQUE}
         actionAccels={[
@@ -508,7 +517,7 @@ const App = ({ applicationId }: AppProps) => (
         ]}
     >
         <Demo />
-    </GtkApplication>
+    </AdwApplication>
 );
 
 export { App };

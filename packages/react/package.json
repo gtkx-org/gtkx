@@ -1,11 +1,13 @@
 {
     "name": "@gtkx/react",
     "version": "2.0.0-beta.6",
-    "description": "React reconciler for GTK. Renders real GTK4 widget trees.",
+    "description": "React reconciler for native Adwaita and GTK4 GNOME apps.",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
+        "adwaita",
+        "gnome",
         "react",
         "typescript",
         "linux",

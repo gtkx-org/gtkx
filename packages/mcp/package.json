@@ -1,11 +1,13 @@
 {
     "name": "@gtkx/mcp",
     "version": "2.0.0-beta.6",
-    "description": "MCP server exposing the GTK API reference and a running GTK4 app.",
+    "description": "MCP server for GTKX GNOME references and live Adwaita apps.",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
+        "adwaita",
+        "gnome",
         "mcp",
         "model-context-protocol",
         "ai",

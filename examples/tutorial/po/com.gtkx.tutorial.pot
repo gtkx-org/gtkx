@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-29 21:28+0200\n"
+"POT-Creation-Date: 2026-09-05 19:21+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -32,7 +32,7 @@ msgid "GTKX Contributors"
 msgstr ""
 
 #: src/components/about.tsx:18
-msgid "A task manager built with GTKX to showcase React, GTK4, and Adwaita."
+msgid "A GNOME task manager built with GTKX to showcase React and Adwaita."
 msgstr ""
 
 #: src/components/delete-confirmation.tsx:16
@@ -394,8 +394,8 @@ msgstr ""
 
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:12
 msgid ""
-"A task manager built with GTKX, demonstrating how to build React-based GTK4 "
-"and Adwaita desktop applications."
+"A GNOME task manager built with GTKX, demonstrating how to build React-based "
+"Adwaita applications."
 msgstr ""
 
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:13

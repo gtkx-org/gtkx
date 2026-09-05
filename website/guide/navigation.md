@@ -5,13 +5,13 @@ description: "Stack, tab, drawer, and split view navigation with @gtkx/navigatio
 
 # Navigation
 
-`@gtkx/navigation` brings [React Navigation](https://reactnavigation.org) to GTKX. It is React Navigation 7's core, `@react-navigation/core` and `@react-navigation/routers`, with navigators drawn by libadwaita: a stack is an `AdwNavigationView`, tabs are an `AdwViewStack` behind an `AdwViewSwitcher`, a drawer is an `AdwOverlaySplitView`, and a split view is an `AdwNavigationSplitView`. There is no React Native in it. The hooks, actions, and types are the ones the React Navigation docs describe, and the package re-exports all of `@react-navigation/core`, so one import covers everything. It installs separately:
+GTKX is Adwaita-first, so `@gtkx/navigation` brings [React Navigation](https://reactnavigation.org) to the native navigation surfaces of the GNOME platform. It uses React Navigation 7's core, `@react-navigation/core` and `@react-navigation/routers`, with navigators drawn by libadwaita: a stack is an `AdwNavigationView`, tabs are an `AdwViewStack` behind an `AdwViewSwitcher`, a drawer is an `AdwOverlaySplitView`, and a split view is an `AdwNavigationSplitView`. There is no React Native in it. The hooks, actions, and types are the ones the React Navigation docs describe, and the package re-exports all of `@react-navigation/core`, so one import covers everything. It installs separately:
 
 ```bash
 npm install @gtkx/navigation
 ```
 
-Every navigator draws itself with libadwaita widgets, so the package needs `@gtkx/jsx/adw`, which exists once `Adw-1` is bound. A project scaffolded by `npm create gtkx` already has it, through [`v2DefaultLibraries`](/guide/configuration-and-codegen#future-flags). An older project that binds GTK alone adds it in `gtkx.config.ts`:
+Every navigator draws itself with libadwaita widgets, so the package needs `@gtkx/jsx/adw`, which exists once `Adw-1` is bound. A project scaffolded by `npm create gtkx` already has it, through [`v2DefaultLibraries`](/guide/configuration-and-codegen#future-flags). A legacy GTK-only project adds it in `gtkx.config.ts` before adopting the same foundation:
 
 ```diff
  export default defineConfig({

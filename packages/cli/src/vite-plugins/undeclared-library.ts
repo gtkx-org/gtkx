@@ -20,7 +20,7 @@ type GeneratedModule = {
 };
 
 const GENERATED_MODULE_PATTERN = /^@gtkx\/(gi|jsx)\/([a-z0-9]+)$/;
-const DEFAULT_LIBRARY_NAMESPACES: Set<string> = new Set(["gtk", "adw"]);
+const DEFAULT_LIBRARY_NAMESPACES: Set<string> = new Set(["adw", "gtk"]);
 
 const girSearchPaths = async (state: PluginState): Promise<string[]> => {
     if (state.girPath === null) {
@@ -88,7 +88,7 @@ const undeclaredLibraryError = (source: string, namespace: string, girPath: stri
         return new Error(
             `Cannot resolve "${source}": the binding store has no "${namespace}" module, and no ` +
             `GIR data for it was found in [${girPath.join(", ")}]. If "${namespace}" is a library, install ` +
-            "its gobject-introspection data package. Gtk-4.0 and Adw-1 are bound by default; add only other " +
+            "its gobject-introspection data package. Adw-1 is bound by default and pulls in Gtk-4.0; add only other " +
             "GIR identifiers to `libraries` in gtkx.config.ts. Otherwise run gtkx codegen to regenerate the store.",
         );
     }
@@ -96,7 +96,7 @@ const undeclaredLibraryError = (source: string, namespace: string, girPath: stri
     if (DEFAULT_LIBRARY_NAMESPACES.has(namespace)) {
         return new Error(
             `Cannot resolve "${source}": the "${identifier}" bindings have not been generated. ` +
-            "The Gtk and Adwaita namespaces are bound by default; run gtkx dev or gtkx build again.",
+            "The Adwaita and GTK namespaces are generated implicitly; run gtkx dev or gtkx build again.",
         );
     }
 

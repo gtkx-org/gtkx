@@ -15,12 +15,13 @@ type GirNamespace = {
 type LibrarySelection = string[] | undefined;
 
 const GIR_LIBRARY_PATTERN = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
-const DEFAULT_LIBRARIES: string[] = ["Gtk-4.0", "Adw-1"];
+const DEFAULT_LIBRARIES: string[] = ["Adw-1"];
+const TRANSITIVE_GTK_LIBRARY = "Gtk-4.0";
 const GIR_FILE_SUFFIX = ".gir";
 
 /**
- * Expands a `libraries` config value into the GIR identifiers to generate from, adding the default Gtk
- * and Adwaita namespaces when the selection does not already name another version of either.
+ * Expands a `libraries` config value into the GIR identifiers to generate from, adding Adwaita when the
+ * selection does not already name another version. Adwaita's GIR pulls in GTK and its dependencies.
  */
 const resolveLibraries = (libraries: LibrarySelection): string[] => {
     const selected = libraries ?? [];
@@ -28,6 +29,14 @@ const resolveLibraries = (libraries: LibrarySelection): string[] => {
     const missing = DEFAULT_LIBRARIES.filter((library) => !named.has(getNamespace(library)));
 
     return [...new Set([...missing, ...selected])];
+};
+
+const resolveBoundLibraries = (libraries: string[]): string[] => {
+    const namespaces = new Set(libraries.map((library) => getNamespace(library)));
+
+    return namespaces.has("Adw") && !namespaces.has("Gtk")
+        ? libraries.flatMap((library) => getNamespace(library) === "Adw" ? [library, TRANSITIVE_GTK_LIBRARY] : library)
+        : libraries;
 };
 
 const getNamespace = (library: string): string => {
@@ -108,4 +117,4 @@ const compareVersions = (a: string, b: string): number => {
     return 0;
 };
 
-export { resolveLibraries, discoverGirNamespaces, type LibrarySelection };
+export { resolveBoundLibraries, resolveLibraries, discoverGirNamespaces, type LibrarySelection };

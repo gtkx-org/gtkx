@@ -3,16 +3,20 @@ import type { BundledLanguage } from "shiki";
 type Snippet = { lang: BundledLanguage; code: string };
 
 const HERO = `import {
-  GtkApplication, GtkApplicationWindow, GtkLabel,
-} from "@gtkx/jsx/gtk";
-import { createRoot } from "@gtkx/react";
+  AdwApplication, AdwApplicationWindow,
+  AdwHeaderBar, AdwToolbarView,
+} from "@gtkx/jsx/adw";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+import { createRoot, quit } from "@gtkx/react";
 
 const App = () => (
-  <GtkApplication>
-    <GtkApplicationWindow title="My App">
-      <GtkLabel>Hello from GTKX 👋</GtkLabel>
-    </GtkApplicationWindow>
-  </GtkApplication>
+  <AdwApplication>
+    <AdwApplicationWindow title="My App" onCloseRequest={() => quit()}>
+      <AdwToolbarView topBar={<AdwHeaderBar />}>
+        <GtkLabel>Hello from GNOME 👋</GtkLabel>
+      </AdwToolbarView>
+    </AdwApplicationWindow>
+  </AdwApplication>
 );
 
 createRoot().render(<App />);
@@ -21,8 +25,9 @@ createRoot().render(<App />);
 const CONFIG = `import { defineConfig } from "@gtkx/config";
 
 export default defineConfig({
-  libraries: ["Gtk-4.0", "Adw-1", "WebKit-6.0"],
   applicationId: "com.example.myapp",
+  libraries: ["WebKit-6.0"],
+  future: { v2DefaultLibraries: true },
 });
 `;
 

@@ -1,4 +1,4 @@
-import { resolveExecutable } from "@gtkx/utils";
+import { resolveExecutable, tryResolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -45,7 +45,32 @@ function findArtifact(extension: string): string {
 }
 
 async function extractDeb(env: NodeJS.ProcessEnv, prefix: string): Promise<void> {
-    await runAsync("dpkg-deb", ["-x", findArtifact(".deb"), prefix], { cwd: TUTORIAL_DIR, env });
+    const artifact = findArtifact(".deb");
+    const dpkgDeb = tryResolveExecutable("dpkg-deb");
+
+    if (dpkgDeb !== undefined) {
+        await runAsync(dpkgDeb, ["-x", artifact, prefix], { cwd: TUTORIAL_DIR, env });
+
+        return;
+    }
+
+    const extraction = mkdtempSync(join(tmpdir(), "gtkx-tutorial-deb-"));
+
+    try {
+        await runAsync(resolveExecutable("ar"), ["x", artifact], { cwd: extraction, env });
+        const payload = readdirSync(extraction).find((name) => /^data\.tar(?:\..+)?$/u.test(name));
+
+        if (payload === undefined) {
+            throw new Error(`tutorial: ${artifact} contains no data archive`);
+        }
+
+        await runAsync(resolveExecutable("tar"), ["-xf", join(extraction, payload), "-C", prefix], {
+            cwd: TUTORIAL_DIR,
+            env,
+        });
+    } finally {
+        rmSync(extraction, { recursive: true, force: true });
+    }
 }
 
 function verifyLocalizedStage(): void {
@@ -66,8 +91,8 @@ function verifyLocalizedStage(): void {
     for (const expected of [
         '<name xml:lang="fr">Tâches</name>',
         '<summary xml:lang="fr">Gérez vos tâches et listes de choses à faire</summary>',
-        '<p xml:lang="fr">Un gestionnaire de tâches construit avec GTKX, qui montre comment créer ' +
-        "des applications de bureau avec React, GTK4 et Adwaita.</p>",
+        '<p xml:lang="fr">Un gestionnaire de tâches GNOME construit avec GTKX, qui montre comment créer ' +
+        "des applications Adwaita avec React.</p>",
         '<keyword xml:lang="fr">Tâche</keyword>',
         '<caption xml:lang="fr">Parcours des listes de tâches dans la barre latérale</caption>',
         '<caption xml:lang="fr">Modification d’une tâche</caption>',

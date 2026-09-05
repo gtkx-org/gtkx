@@ -5,13 +5,13 @@ description: "Stack, tab, drawer, and split view navigation with @gtkx/navigatio
 
 # Navigation
 
-`@gtkx/navigation` brings [React Navigation](https://reactnavigation.org) to GTKX. It is React Navigation 7's core, `@react-navigation/core` and `@react-navigation/routers`, with navigators drawn by libadwaita: a stack is an `AdwNavigationView`, tabs are an `AdwViewStack` behind an `AdwViewSwitcher`, a drawer is an `AdwOverlaySplitView`, and a split view is an `AdwNavigationSplitView`. There is no React Native in it. The hooks, actions, and types are the ones the React Navigation docs describe, and the package re-exports all of `@react-navigation/core`, so one import covers everything. It installs separately:
+GTKX is Adwaita-first, so `@gtkx/navigation` brings [React Navigation](https://reactnavigation.org) to the native navigation surfaces of the GNOME platform. It uses React Navigation 7's core, `@react-navigation/core` and `@react-navigation/routers`, with navigators drawn by libadwaita: a stack is an `AdwNavigationView`, tabs are an `AdwViewStack` behind an `AdwViewSwitcher`, a drawer is an `AdwOverlaySplitView`, and a split view is an `AdwNavigationSplitView`. There is no React Native in it. The hooks, actions, and types are the ones the React Navigation docs describe, and the package re-exports all of `@react-navigation/core`, so one import covers everything. It installs separately:
 
 ```bash
 npm install @gtkx/navigation@beta
 ```
 
-Every navigator draws itself with libadwaita widgets. GTKX 2 binds Adwaita alongside GTK4 by default, so every generated store includes the `@gtkx/jsx/adw` bindings the package needs.
+Every navigator draws itself with libadwaita widgets. GTKX 2 uses `Adw-1` as its sole default GIR root, so every generated store includes the `@gtkx/jsx/adw` bindings the package needs; Adwaita's GIR include brings GTK4 along transitively.
 
 The navigators, their options, and the re-exported core API are in the [@gtkx/navigation reference](/v2/reference/@gtkx/navigation/).
 

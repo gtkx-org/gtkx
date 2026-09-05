@@ -44,8 +44,8 @@ const REJECTED_CONFIGS: RejectedConfig[] = [
         title: "a retired deprecation id",
         config: `${HEAD}, deprecations: { silence: ["gtkx-v2-byte-arrays"] } };\n`,
     },
-    { title: "the default Gtk version", config: `${HEAD}, libraries: ["Gtk-4.0"] };\n` },
-    { title: "the default Adwaita version", config: `${HEAD}, libraries: ["Adw-1"] };\n` },
+    { title: "the implicit Adwaita version", config: `${HEAD}, libraries: ["Adw-1"] };\n` },
+    { title: "the transitive GTK version", config: `${HEAD}, libraries: ["Gtk-4.0"] };\n` },
     { title: "an icon path under deploy", config: `${HEAD}, deploy: { icons: "data/icons" } };\n` },
     {
         title: "a minimum library version that is not a version",

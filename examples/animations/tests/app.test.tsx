@@ -1,3 +1,4 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { rootElement } from "@gtkx/react";
 import { render, type RenderResult, screen, userEvent, waitFor, within } from "@gtkx/testing";
@@ -24,7 +25,7 @@ describe("App", () => {
 
         const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, {
             name: "GTKX Animations",
-            as: Gtk.ApplicationWindow,
+            as: Adw.ApplicationWindow,
         });
 
         expect(window).toBeRooted();

@@ -1,12 +1,13 @@
 {
     "name": "@gtkx/components",
     "version": "2.0.0-beta.6",
-    "description": "High-level GTK components: collection views, menus, containers.",
+    "description": "Adwaita and GTK collection views, dropdowns, combo rows, and toasts.",
     "keywords": [
         "gtkx",
         "gtk",
         "gtk4",
         "adwaita",
+        "gnome",
         "react",
         "components",
         "linux",

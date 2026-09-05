@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "license": "MPL-2.0",
-    "description": "GTK4 widget showcase - React port of official gtk-demo",
+    "description": "Adwaita application showcasing GTK4 widgets through React",
     "type": "module",
     "scripts": {
         "build": "gtkx build",

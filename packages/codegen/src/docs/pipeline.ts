@@ -112,8 +112,8 @@ const fileIndexPage = (namespaces: DocsNamespace[], libraries: string[]): string
         "Every path here is from the project root, ready to read as-is.",
         "",
         "One page per element, at `<namespace>/<element>.md`, where the element file name is its class name in " +
-        "kebab-case without the namespace prefix: `GtkButton` is `gtk/button.md`, `AdwHeaderBar` is " +
-        "`adw/header-bar.md`. Read a page directly by that path rather than searching for it.",
+        "kebab-case without the namespace prefix: `AdwHeaderBar` is `adw/header-bar.md`, `GtkButton` is " +
+        "`gtk/button.md`. Read a page directly by that path rather than searching for it.",
         "",
         "Each page lists the element's props (GObject properties plus what GTKX adds, with types and defaults), " +
         "its signals as `on<Signal>` handler props with exact signatures, static methods on the matching GI class, " +

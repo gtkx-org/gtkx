@@ -1,6 +1,6 @@
-import type * as Gtk from "@gtkx/gi/gtk";
+import type * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
-import { GtkApplication, GtkApplicationWindow } from "@gtkx/jsx/gtk";
+import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
@@ -15,12 +15,12 @@ it("exposes the application identity declared in gtkx.config.ts through virtual:
 });
 
 it("applies the applicationId passed explicitly", async () => {
-    const ref = createRef<Gtk.Application>();
+    const ref = createRef<Adw.Application>();
 
     await render(
-        <GtkApplication ref={ref} applicationId="org.gtkx.explicit" flags={APP_FLAGS}>
-            <GtkApplicationWindow defaultWidth={400} defaultHeight={300} />
-        </GtkApplication>,
+        <AdwApplication ref={ref} applicationId="org.gtkx.explicit" flags={APP_FLAGS}>
+            <AdwApplicationWindow defaultWidth={400} defaultHeight={300} />
+        </AdwApplication>,
         { container: rootElement },
     );
 
@@ -29,12 +29,12 @@ it("applies the applicationId passed explicitly", async () => {
 });
 
 it("honors an explicit resourceBasePath", async () => {
-    const ref = createRef<Gtk.Application>();
+    const ref = createRef<Adw.Application>();
 
     await render(
-        <GtkApplication ref={ref} flags={APP_FLAGS} resourceBasePath="/org/gtkx/custom">
-            <GtkApplicationWindow defaultWidth={400} defaultHeight={300} />
-        </GtkApplication>,
+        <AdwApplication ref={ref} flags={APP_FLAGS} resourceBasePath="/org/gtkx/custom">
+            <AdwApplicationWindow defaultWidth={400} defaultHeight={300} />
+        </AdwApplication>,
         { container: rootElement },
     );
 
@@ -42,12 +42,12 @@ it("honors an explicit resourceBasePath", async () => {
 });
 
 it("defaults the applicationId to the config one when none is passed", async () => {
-    const ref = createRef<Gtk.Application>();
+    const ref = createRef<Adw.Application>();
 
     await render(
-        <GtkApplication ref={ref} flags={APP_FLAGS}>
-            <GtkApplicationWindow defaultWidth={400} defaultHeight={300} />
-        </GtkApplication>,
+        <AdwApplication ref={ref} flags={APP_FLAGS}>
+            <AdwApplicationWindow defaultWidth={400} defaultHeight={300} />
+        </AdwApplication>,
         { container: rootElement },
     );
 

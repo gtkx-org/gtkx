@@ -1,6 +1,6 @@
 # browser
 
-A compact Adwaita browser demonstrating generated WebKitGTK bindings, native navigation controls, signals, refs, controlled entries, and CSS-in-JS.
+A compact GNOME browser built with Adwaita, demonstrating generated WebKitGTK bindings, native navigation controls, signals, refs, controlled entries, and CSS-in-JS.
 
 Install the WebKitGTK 6 development package, then run from the repository root:
 

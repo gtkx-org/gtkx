@@ -194,7 +194,7 @@ Clicking the button while the app is closed takes a different path. The desktop 
 
 ## You built an app
 
-Tasks is finished. The GTK4 and Adwaita documentation is your component reference, because a component is the widget: same type name, same properties in camelCase. Everything else you used, container slots as JSX props, controlled value plus change signal, a store outside the tree, persistence as configuration, and named actions, is the vocabulary you now use to write your own app.
+Tasks is finished. The Adwaita and GTK4 documentation is your component reference, because a component is the widget: same type name, same properties in camelCase. Everything else you used, container slots as JSX props, controlled value plus change signal, a store outside the tree, persistence as configuration, and named actions, is the vocabulary you now use to write your own app.
 
 ### Challenges
 
