@@ -33,7 +33,12 @@ describe("gtkx codegen writing agent-facing files", () => {
     };
 
     beforeAll(() => {
-        state.project = createCliProject({ prefix: "gtkx-cli-agents-", config: config(), hasStore: true });
+        state.project = createCliProject({
+            prefix: "gtkx-cli-agents-",
+            config: config(),
+            hasStore: true,
+            hasAgentReference: true,
+        });
         state.status = runCodegen(state.project);
     });
 

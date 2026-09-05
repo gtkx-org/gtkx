@@ -7,7 +7,6 @@
     "type": "module",
     "scripts": {
         "build": "gtkx build",
-        "coverage": "vitest run --coverage",
         "dev": "gtkx dev",
         "start": "node dist/bundle.mjs"
     },
@@ -86,38 +85,6 @@
                 ]
             },
             "test": {
-                "command": "vitest run",
-                "options": {
-                    "cwd": "{projectRoot}"
-                },
-                "cache": true,
-                "inputs": [
-                    "default",
-                    "^production",
-                    {
-                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
-                        "transitive": true
-                    }
-                ],
-                "outputs": [],
-                "dependsOn": [
-                    "...",
-                    "codegen",
-                    "@gtkx/testing:build"
-                ]
-            },
-            "lint": {
-                "dependsOn": [
-                    "gtkx:codegen",
-                    "@gtkx/gl:codegen",
-                    "codegen"
-                ],
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint examples/gtk-demo"
-                }
-            },
-            "coverage": {
                 "command": "vitest run --coverage",
                 "options": {
                     "cwd": "{projectRoot}"
@@ -139,6 +106,17 @@
                     "codegen",
                     "@gtkx/testing:build"
                 ]
+            },
+            "lint": {
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/gl:codegen",
+                    "codegen"
+                ],
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint examples/gtk-demo"
+                }
             }
         }
     }

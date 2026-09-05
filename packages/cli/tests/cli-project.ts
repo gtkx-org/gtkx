@@ -15,6 +15,7 @@ type CliProjectOptions = {
     config?: string | undefined;
     files?: Record<string, string> | undefined;
     hasStore?: boolean | undefined;
+    hasAgentReference?: boolean | undefined;
     omitPackages?: string[] | undefined;
 };
 
@@ -44,7 +45,13 @@ const WORKSPACE_PACKAGES = [
 const REGISTRY_PACKAGES = ["@types", "csstype", "react", "tsx"];
 const STORE_LIBRARIES = workspaceConfig.libraries;
 const MANIFEST = { name: "gtkx-cli-project", version: "1.0.0", type: "module" };
+const DEFAULT_EXPORT = "export default {";
+const AGENTS_KEY = "agents:";
+const REFERENCE_OFF = `${DEFAULT_EXPORT} agents: { reference: false },`;
 const GIT_IDENTITY = ["-c", "user.email=probe@gtkx.dev", "-c", "user.name=Probe", "-c", "commit.gpgsign=false"];
+
+const projectConfig = (source: string, hasAgentReference: boolean): string =>
+    hasAgentReference || source.includes(AGENTS_KEY) ? source : source.replace(DEFAULT_EXPORT, () => REFERENCE_OFF);
 
 const writeProjectFiles = (root: string, files: Record<string, string>): void => {
     for (const [name, contents] of Object.entries(files)) {
@@ -110,7 +117,7 @@ const createCliProject = (options: CliProjectOptions): DisposableCliProject => {
     writeProjectFiles(root, options.files ?? {});
 
     if (options.config !== undefined) {
-        writeFileSync(join(root, "gtkx.config.ts"), options.config);
+        writeFileSync(join(root, "gtkx.config.ts"), projectConfig(options.config, options.hasAgentReference === true));
     }
 
     return { root, nodeModules, [Symbol.dispose]: () => {
