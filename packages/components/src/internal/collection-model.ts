@@ -11,7 +11,7 @@ import { adoptIndex, createTreeExpansion, pruneSlots } from "./tree-expansion.js
 type LevelStore = Gio.ListModel & LazyLevelStore;
 
 type SlotRef = {
-    store: LevelStore;
+    store: LazyLevelStore;
     slot: number;
 };
 
@@ -93,28 +93,23 @@ function slotRefFor(value: GObject.Object | null): SlotRef | null {
     return ref === undefined || ref.slot === -1 ? null : ref;
 }
 
-function slotPathAt(store: LevelStore, slot: number): string {
+function slotPathAt(store: LazyLevelStore, slot: number): string {
     return store.level.path + encodePart(String(slot));
-}
-
-function growStore(store: LevelStore): void {
-    for (let slot = store.refs.length; slot < store.level.items.length; slot++) {
-        store.refs.push({ store, slot });
-        store.objects.push(null);
-        store.childStores.push(null);
-    }
 }
 
 function newLevelStore(level: Level): LevelStore {
     const store = new (registeredStoreClass())() as LevelStore;
     store.level = level;
-    growStore(store);
 
     return store;
 }
 
 function collectFlips(previous: Level, next: Level, overlap: number): Set<number> {
     const flipped: Set<number> = new Set();
+
+    if (previous.expandableFlags.length === 0 && next.expandableFlags.length === 0) {
+        return flipped;
+    }
 
     for (let slot = 0; slot < overlap; slot++) {
         if ((previous.expandableFlags[slot] ?? false) !== (next.expandableFlags[slot] ?? false)) {
@@ -133,30 +128,30 @@ function pruneFlips(context: SyncContext, store: LevelStore, flipped: Set<number
     pruneSlots(context.expansion, store.level.path, (slot) => flipped.has(slot));
 
     for (const slot of flipped) {
-        store.childStores[slot] = null;
+        store.childStores.delete(slot);
     }
 }
 
 function detachRefs(store: LevelStore, nextLength: number): void {
-    for (let slot = nextLength; slot < store.refs.length; slot++) {
-        const ref = store.refs[slot];
-
-        if (ref !== undefined) {
-            ref.slot = -1;
+    for (const [slot, ref] of store.refs) {
+        if (slot < nextLength) {
+            continue;
         }
+
+        ref.slot = -1;
+        store.refs.delete(slot);
+        store.objects.delete(slot);
+        store.childStores.delete(slot);
     }
 }
 
-function shrinkStore(context: SyncContext, store: LevelStore, nextLength: number): void {
-    if (store.refs.length <= nextLength) {
+function shrinkStore(context: SyncContext, store: LevelStore, previousLength: number, nextLength: number): void {
+    if (previousLength <= nextLength) {
         return;
     }
 
     detachRefs(store, nextLength);
     pruneSlots(context.expansion, store.level.path, (slot) => slot >= nextLength);
-    store.refs.length = nextLength;
-    store.objects.length = nextLength;
-    store.childStores.length = nextLength;
 }
 
 function emitTailSplice(store: LevelStore, previousLength: number, nextLength: number): void {
@@ -205,7 +200,7 @@ function childSync(
     slot: number,
     flipped: Set<number>,
 ): LevelSync | undefined {
-    const child = store.childStores[slot] ?? null;
+    const child = store.childStores.get(slot) ?? null;
 
     if (child === null || flipped.has(slot)) {
         return undefined;
@@ -218,8 +213,13 @@ function childSync(
 
 function childSyncs(context: SyncContext, store: LevelStore, overlap: number, flipped: Set<number>): LevelSync[] {
     const syncs: LevelSync[] = [];
+    const slots = store.childStores.keys().toArray().toSorted((left, right) => left - right);
 
-    for (let slot = 0; slot < overlap; slot++) {
+    for (const slot of slots) {
+        if (slot >= overlap) {
+            continue;
+        }
+
         const sync = childSync(context, store, slot, flipped);
 
         if (sync !== undefined) {
@@ -232,13 +232,13 @@ function childSyncs(context: SyncContext, store: LevelStore, overlap: number, fl
 
 function syncEntry(context: SyncContext, entry: LevelSync): LevelSync[] {
     const { store, level } = entry;
-    const previousLength = store.refs.length;
+    const previous = store.level;
+    const previousLength = previous.items.length;
     const overlap = Math.min(previousLength, level.items.length);
-    const flipped = collectFlips(store.level, level, overlap);
+    const flipped = collectFlips(previous, level, overlap);
     store.level = level;
     pruneFlips(context, store, flipped);
-    shrinkStore(context, store, level.items.length);
-    growStore(store);
+    shrinkStore(context, store, previousLength, level.items.length);
     emitTailSplice(store, previousLength, level.items.length);
     emitFlips(store, flipped);
 
@@ -257,8 +257,8 @@ function syncLevel(context: SyncContext, store: LevelStore, level: Level): void 
     }
 }
 
-function ensureChildStore(index: CollectionIndex, store: LevelStore, slot: number): LevelStore | null {
-    const existing = store.childStores[slot] ?? null;
+function ensureChildStore(index: CollectionIndex, store: LazyLevelStore, slot: number): LevelStore | null {
+    const existing = store.childStores.get(slot) ?? null;
 
     if (existing !== null || !(store.level.expandableFlags[slot] ?? false)) {
         return existing;
@@ -271,7 +271,7 @@ function ensureChildStore(index: CollectionIndex, store: LevelStore, slot: numbe
     }
 
     const created = newLevelStore(level);
-    store.childStores[slot] = created;
+    store.childStores.set(slot, created);
 
     return created;
 }
@@ -418,13 +418,15 @@ function createCollectionModel(): CollectionModel {
 class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
     declare itemsChanged: Gio.ListModel["itemsChanged"];
     level: Level = { path: "", items: [], expandableFlags: [] };
-    refs: SlotRef[] = [];
-    objects: (Gtk.StringObject | null)[] = [];
-    childStores: (LevelStore | null)[] = [];
+    refs: Map<number, SlotRef> = new Map();
+    objects: Map<number, Gtk.StringObject> = new Map();
+    childStores: Map<number, LevelStore> = new Map();
 
-    private createItem(position: number, ref: SlotRef): Gtk.StringObject {
+    private createItem(position: number): Gtk.StringObject {
+        const ref = { store: this, slot: position };
         const created = Gtk.StringObject.new("");
-        this.objects[position] = created;
+        this.refs.set(position, ref);
+        this.objects.set(position, created);
         SLOTS.set(created, ref);
 
         return created;
@@ -435,17 +437,15 @@ class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
     }
 
     vfuncGetNItems(): number {
-        return this.refs.length;
+        return this.level.items.length;
     }
 
     vfuncGetItem(position: number): GObject.Object | null {
-        const ref = this.refs[position];
-
-        if (ref === undefined) {
+        if (position < 0 || position >= this.level.items.length) {
             return null;
         }
 
-        return this.objects[position] ?? this.createItem(position, ref);
+        return this.objects.get(position) ?? this.createItem(position);
     }
 }
 

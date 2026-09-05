@@ -230,6 +230,14 @@ describe("render - Window", () => {
             expect(ref.current?.getApplication()).not.toBeNull();
         });
 
+        it("preserves Adwaita classes when cssClasses is set", async () => {
+            const ref = createRef<Adw.ApplicationWindow>();
+            await renderAdw(<AdwApplicationWindow ref={ref} cssClasses={["devel"]} />);
+            expect(ref.current).toHaveClass("background");
+            expect(ref.current).toHaveClass("csd");
+            expect(ref.current).toHaveClass("devel");
+        });
+
         it("creates Gtk.ApplicationWindow through intermediate elements", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
 

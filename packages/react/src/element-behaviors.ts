@@ -57,10 +57,14 @@ type AdwChildSetter =
 type AdwContentSetter = Adw.ApplicationWindow | Adw.BottomSheet | Adw.OverlaySplitView | Adw.Window;
 type BreakpointHost = Adw.ApplicationWindow | Adw.Window | Adw.Dialog;
 type PrefixSuffixRow = Adw.ActionRow | Adw.EntryRow | Adw.ExpanderRow;
+type SidebarModeState = { view: WeakRef<Gtk.Widget> | null; onModeChanged: () => void };
+type SidebarViewParts = { groups: Adw.PreferencesGroup[]; lists: Gtk.ListBox[]; rows: Gtk.ListBoxRow[] };
+type StyleState = { ownedClasses: Set<string> };
 
 const SELECTED_INDEX_PROP = "selectedIndex";
 const SELECTION_SIGNAL = "selected-rows-changed";
 const NO_SELECTION = -1;
+const NO_CONSUMED_PROPS: readonly string[] = [];
 const SLOT_SUFFIX = "Slot";
 const childSetter = childSetterSlot<AdwChildSetter>();
 const contentSetter = contentSetterSlot<AdwContentSetter>(Gtk.Widget);
@@ -79,6 +83,104 @@ const alertDialogExtraChild = setterSlot<Adw.AlertDialog, Gtk.Widget>("children"
 const sidebarSections = indexedSlot<Adw.Sidebar, Adw.SidebarSection>("children", Adw.SidebarSection);
 const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children", Adw.SidebarItem);
 const isWidget = childMatcher(Gtk.Widget);
+
+const collectSidebarViewPart = (parts: SidebarViewParts, widget: Gtk.Widget): void => {
+    if (widget instanceof Adw.PreferencesGroup) {
+        parts.groups.push(widget);
+    }
+
+    if (widget instanceof Gtk.ListBox) {
+        parts.lists.push(widget);
+    }
+
+    if (widget instanceof Gtk.ListBoxRow) {
+        parts.rows.push(widget);
+    }
+};
+
+const collectWidgetChildren = (pending: Gtk.Widget[], widget: Gtk.Widget): void => {
+    for (let child = widget.getFirstChild(); child !== null; child = child.getNextSibling()) {
+        pending.push(child);
+    }
+};
+
+const sidebarViewParts = (view: Gtk.Widget): SidebarViewParts => {
+    const parts: SidebarViewParts = { groups: [], lists: [], rows: [] };
+    const pending: Gtk.Widget[] = [view];
+
+    while (pending.length > 0) {
+        const widget = pending.pop();
+
+        if (widget === undefined) {
+            continue;
+        }
+
+        collectSidebarViewPart(parts, widget);
+        collectWidgetChildren(pending, widget);
+    }
+
+    return parts;
+};
+
+const weakWidget = (widget: Gtk.Widget | null): WeakRef<Gtk.Widget> | null =>
+    widget === null ? null : new WeakRef(widget);
+
+const unbindSidebarViewModels = (parts: SidebarViewParts): void => {
+    for (const group of parts.groups) {
+        group.bindModel(null, null);
+    }
+
+    for (const list of parts.lists) {
+        list.bindModel(null, null);
+    }
+};
+
+const disposeUnboundSidebarRows = (rows: Gtk.ListBoxRow[]): void => {
+    for (const row of rows) {
+        if (row.getParent() === null) {
+            row.runDispose();
+        }
+    }
+};
+
+const disposeDetachedSidebarView = (view: Gtk.Widget | null): void => {
+    if (view === null) {
+        return;
+    }
+
+    if (view.getParent() !== null) {
+        return;
+    }
+
+    const parts = sidebarViewParts(view);
+    unbindSidebarViewModels(parts);
+    disposeUnboundSidebarRows(parts.rows);
+};
+
+const sidebarModeBehavior: ElementBehavior<Adw.Sidebar> = {
+    initialize: (sidebar): SidebarModeState => {
+        const state: SidebarModeState = { view: weakWidget(sidebar.getFirstChild()), onModeChanged: () => null };
+
+        state.onModeChanged = () => {
+            const previous = state.view?.deref() ?? null;
+            const current = sidebar.getFirstChild();
+            state.view = weakWidget(current);
+
+            if (previous !== current) {
+                disposeDetachedSidebarView(previous);
+            }
+        };
+
+        sidebar.on("notify::mode", state.onModeChanged);
+
+        return state;
+    },
+    update: () => NO_CONSUMED_PROPS,
+    teardown: (sidebar, context) => {
+        const state = context as SidebarModeState;
+        sidebar.off("notify::mode", state.onModeChanged);
+    },
+};
 
 const scrollableWidget = {
     [Symbol.hasInstance]: (value: unknown): value is Gtk.Scrollable & Gtk.Widget =>
@@ -420,7 +522,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [applicationCreator(Adw.Application)],
     },
     AdwSidebar: {
-        behaviors: [sidebarSections],
+        behaviors: [sidebarSections, sidebarModeBehavior],
     },
     AdwSidebarSection: {
         behaviors: [sidebarItems],
@@ -591,32 +693,103 @@ function layoutChild(parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | nu
 }
 
 const isNullish = (value: unknown): boolean => value === undefined || value === null;
-const isInitialNull = (prevValue: unknown, value: unknown): boolean => value === null && prevValue === undefined;
 
-const withStyleClass = (classes: unknown, className: string): string[] =>
-    Array.isArray(classes) ? [...(classes as string[]), className] : [className];
+const cssClassNames = (value: unknown): Set<string> => {
+    const names: Set<string> = new Set();
 
-const hasCssClassesChange = (prev: Props, next: Props): boolean => {
-    const classes = next.cssClasses;
-
-    if (classes === undefined || Object.is(prev.cssClasses, classes)) {
-        return false;
+    if (!Array.isArray(value)) {
+        return names;
     }
 
-    return !isInitialNull(prev.cssClasses, classes);
+    for (const name of value) {
+        if (typeof name === "string") {
+            names.add(name);
+        }
+    }
+
+    return names;
 };
 
-const didWriteCssClasses = (widget: Gtk.Widget, prev: Props, next: Props, className: string | null): boolean => {
-    if (className === null || !hasCssClassesChange(prev, next)) {
-        return false;
+const keepOwnedCssClass = (widget: Gtk.Widget, name: string): void => {
+    if (!widget.hasCssClass(name)) {
+        widget.addCssClass(name);
     }
+};
+
+const removeOwnedCssClass = (widget: Gtk.Widget, state: StyleState, name: string, styleName: string | null): void => {
+    if (name !== styleName) {
+        widget.removeCssClass(name);
+    }
+
+    state.ownedClasses.delete(name);
+};
+
+const reconcileOwnedCssClasses = (
+    widget: Gtk.Widget,
+    state: StyleState,
+    desired: Set<string>,
+    styleName: string | null,
+): void => {
+    for (const name of state.ownedClasses) {
+        if (desired.has(name)) {
+            keepOwnedCssClass(widget, name);
+
+            continue;
+        }
+
+        removeOwnedCssClass(widget, state, name, styleName);
+    }
+};
+
+const addDesiredCssClasses = (widget: Gtk.Widget, state: StyleState, desired: Set<string>): void => {
+    for (const name of desired) {
+        if (widget.hasCssClass(name)) {
+            continue;
+        }
+
+        widget.addCssClass(name);
+        state.ownedClasses.add(name);
+    }
+};
+
+const applyCssClassDiff = (
+    widget: Gtk.Widget,
+    state: StyleState,
+    desired: Set<string>,
+    styleName: string | null,
+): void => {
+    reconcileOwnedCssClasses(widget, state, desired, styleName);
+    addDesiredCssClasses(widget, state, desired);
+};
+
+const reconcileCssClasses = (
+    widget: Gtk.Widget,
+    state: StyleState,
+    value: unknown,
+    styleName: string | null,
+): void => {
+    const desired = cssClassNames(value);
 
     applyWrite(CSS_CLASSES_PROP, () => {
-        Reflect.set(widget, CSS_CLASSES_PROP, withStyleClass(next.cssClasses, className));
+        applyCssClassDiff(widget, state, desired, styleName);
+    });
+};
+
+function releaseCssClasses(widget: Gtk.Widget, state: StyleState): void {
+    const styleName = styleClass(widget);
+
+    applyWrite(CSS_CLASSES_PROP, () => {
+        for (const name of state.ownedClasses) {
+            if (name === styleName) {
+                continue;
+            }
+
+            widget.removeCssClass(name);
+        }
     });
 
-    return true;
-};
+    state.ownedClasses.clear();
+}
 
 const isRestyled = (prev: Props, next: Props): boolean => {
     if (isNullish(prev.style) && isNullish(next.style)) {
@@ -626,19 +799,25 @@ const isRestyled = (prev: Props, next: Props): boolean => {
     return !Object.is(prev.style, next.style);
 };
 
-function updateStyle(widget: Gtk.Widget, prev: Props, next: Props): Iterable<string> | undefined {
+function updateStyle(widget: Gtk.Widget, prev: Props, next: Props, context: unknown): Iterable<string> {
+    const state = context as StyleState;
     const isChanged = isRestyled(prev, next);
     const className = isChanged ? applyStyle(widget, next.style) : styleClass(widget);
 
-    if (!isChanged && className === null) {
-        return;
-    }
+    reconcileCssClasses(widget, state, next.cssClasses, className);
 
-    return didWriteCssClasses(widget, prev, next, className) ? ["style", "cssClasses"] : ["style"];
+    return ["style", CSS_CLASSES_PROP];
 }
 
 function styleBehavior(): ElementBehavior<Gtk.Widget> {
-    return { update: updateStyle };
+    return {
+        initialize: (): StyleState => ({ ownedClasses: new Set() }),
+        update: updateStyle,
+        teardown: (widget, context) => {
+            releaseCssClasses(widget, context as StyleState);
+        },
+        deferred: [CSS_CLASSES_PROP],
+    };
 }
 
 function selectedRowIndex(box: Gtk.ListBox): number {

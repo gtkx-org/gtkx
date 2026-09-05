@@ -86,6 +86,18 @@ icon. Sizes can be `scalable`, `symbolic`, a square pixel size, or a scaled pixe
 preserves the whole theme tree and its variants. You can omit the option when exactly one `<applicationId>.svg`,
 `.png`, or `.xpm` file is in the project root; deploying without any icon still fails.
 
+An icon-theme directory is copied verbatim; packaging does not filter files by application ID. Keep a development-only `.Devel` icon in a separate tree and select it through the mode overlay so it cannot enter a production package:
+
+```ts
+export default defineConfig({
+    applicationId: "com.example.Tasks",
+    applicationIcon: "data/icons",
+    $development: {
+        applicationIcon: "data/icons-devel",
+    },
+});
+```
+
 ## What gets installed
 
 Every target installs the same tree, under `/usr` for deb, rpm, and AppImage, and under `/app` for Flatpak:

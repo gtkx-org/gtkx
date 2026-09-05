@@ -38,6 +38,8 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 
 Nesting `ListItem.children` turns the same component into a tree, with `expandedIds` and `onExpandedChange` driving expansion.
 
+When every item is known to be a leaf, pass `isFlat` to `ListView` or `ColumnView`. This skips tree discovery when synchronizing large collections; do not use it when any item has children.
+
 To group rows under headers, pass `sections` in place of `items`: each `ListSection` carries its own `data` array of items, and `renderHeader` draws the header above each group. `ColumnView` and `DropDown` accept the same pair.
 
 ### GridView

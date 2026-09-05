@@ -173,6 +173,8 @@ There is no bare `@gtkx/jsx` entry point. Splitting imports prevents one file fr
 
 Generated wrappers follow JavaScript prototype precedence. A callable on the class chain wins over implemented interfaces, and the first implemented interface wins between interfaces. An interface callable replaces an inherited member only when that member is GTKX's synthetic signal helper. The winning callable keeps its natural camelCase name. GIR `shadows` metadata also chooses the canonical public name, so create a subprocess with `Gio.Subprocess.new(argv, flags)`, not `newv`.
 
+When GIR narrows an inherited callable incompatibly, the generated store may contain a `(this: never, ...args: never[]): any` overload inside a local, non-exported `_Class$InstanceBase` declaration. This tombstone prevents TypeScript from accepting the invalid inherited call while keeping the public class's valid member visible. The same mechanism resolves natural `connect` or `disconnect` methods and conflicting async members. These declarations are deliberate compiler scaffolding and do not become public hover or completion entries.
+
 Most GObjects still use `connect`, `disconnect`, `emit`, `on`, `once`, and `off` for signals. When a GIR callable owns one of those names, use the signal functions exported by `@gtkx/gi/gobject` instead:
 
 ```ts

@@ -8,6 +8,7 @@ import { useCollection } from "./internal/use-collection.js";
 const LIST_VIEW_PROPS = [
     "items",
     "sections",
+    "isFlat",
     "renderItem",
     "renderHeader",
     "selectedIds",

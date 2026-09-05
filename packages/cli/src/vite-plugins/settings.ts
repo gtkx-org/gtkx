@@ -1,10 +1,10 @@
-import type { ModuleNode, Plugin, ResolvedConfig, ViteDevServer } from "vite";
+import type { ModuleNode, Plugin, ResolvedConfig, Rollup, ViteDevServer } from "vite";
 import { error, errorMessage, info, sortStrings } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { BuildManifestCollector } from "../internal/build-manifest.js";
 import type { AssetEmitter } from "./asset-emitter.js";
-import { prependBanner } from "../internal/banner.js";
+import { outputRootUrlExpression, prependBanner } from "../internal/banner.js";
 import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
 import { compileSchemas } from "../settings/compile.js";
 import { parseSchemaXml, SchemaParseError } from "../settings/parser.js";
@@ -38,10 +38,10 @@ const SOURCE_MODULE_RE = /\.[cm]?[jt]sx?$/;
 const SCHEMA_ENV_DEBOUNCE_MS = 50;
 const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
-const SCHEMA_ENV_BANNER = [
-    "process.env.GSETTINGS_SCHEMA_DIR = [",
-    "    decodeURIComponent(new URL(\".\", import.meta.url).pathname),",
-    "    process.env.GSETTINGS_SCHEMA_DIR,",
+const schemaEnvBanner = (chunk: Rollup.RenderedChunk): string => [
+    "globalThis.process.env.GSETTINGS_SCHEMA_DIR = [",
+    `    ${outputRootUrlExpression(chunk)},`,
+    "    globalThis.process.env.GSETTINGS_SCHEMA_DIR,",
     "]",
     "    .filter(Boolean)",
     "    .join(\":\");",
@@ -284,7 +284,7 @@ function gtkxSettings(buildManifest?: BuildManifestCollector): Plugin {
                 return;
             }
 
-            return prependBanner(options, SCHEMA_ENV_BANNER);
+            return prependBanner(options, schemaEnvBanner);
         },
 
         async resolveId(source, importer, options) {

@@ -234,9 +234,20 @@ describe("gtkx docs (ordinary prose that starts with free)", () => {
         expect(page).toContain("**Returns** a copy of the note.");
         expect(page).toContain("**Returns** a list of strvs.");
         expect(page).toContain("- `buffer`: the buffer to copy into");
+        expect(page).toContain("Describes copied values.");
+        expect(page).toContain("The memory of the input has to be dynamically allocated.");
+        expect(page).toContain("Describes allocator behavior.");
+        expect(page).toContain("automatically via `g_free()`");
+        expect(page).toContain("using `g_realloc()` and `g_free()` for memory allocation");
         expect(page).not.toContain("must free");
+        expect(page).not.toContain("must be freed");
+        expect(page).not.toContain("should be freed");
+        expect(page).not.toContain("needs to be freed");
+        expect(page).not.toContain("eventually be freed");
+        expect(page).not.toContain("responsible for freeing");
+        expect(page).not.toContain("Free it with");
+        expect(page).not.toContain("Free each item");
         expect(page).not.toContain("strfreev");
-        expect(page).not.toContain("GLib.free()");
     });
 });
 

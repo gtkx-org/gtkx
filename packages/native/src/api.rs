@@ -12,6 +12,7 @@ pub mod get_type;
 pub mod get_wrapper;
 pub mod init;
 pub mod keep_alive;
+pub mod log_listener;
 pub mod new_object;
 pub mod parent_death;
 pub mod quit;

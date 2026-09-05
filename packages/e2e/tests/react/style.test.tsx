@@ -121,6 +121,31 @@ describe("style prop alongside cssClasses", () => {
         expect(getColor(styled)).toEqual(RED);
     });
 
+    it("updates and removes only the classes declared through React", async () => {
+        const { styled, restyle } = await renderPair(undefined, ["heading", "dim-label"]);
+
+        await restyle(undefined, ["title-1"]);
+        expect(styled).not.toHaveClass("heading");
+        expect(styled).not.toHaveClass("dim-label");
+        expect(styled).toHaveClass("title-1");
+
+        await restyle(undefined, []);
+        expect(styled).not.toHaveClass("title-1");
+    });
+
+    it("preserves a preexisting class that also appears in cssClasses", async () => {
+        const { styled, restyle } = await renderPair(undefined);
+        styled.addCssClass("toolkit-owned");
+
+        await restyle(undefined, ["toolkit-owned", "react-owned"]);
+        expect(styled).toHaveClass("toolkit-owned");
+        expect(styled).toHaveClass("react-owned");
+
+        await restyle(undefined, []);
+        expect(styled).toHaveClass("toolkit-owned");
+        expect(styled).not.toHaveClass("react-owned");
+    });
+
     it("keeps painting after cssClasses is set to null", async () => {
         const { styled, restyle } = await renderPair({ color: RED_CSS }, ["heading"]);
         await restyle({ color: RED_CSS }, null);
@@ -167,7 +192,7 @@ describe("style prop removal", () => {
         expect(getColor(detached)).toEqual(RED);
         expect(generatedClasses(detached)).toHaveLength(1);
         await rerender(<GtkBox />);
-        expect(detached.getCssClasses()).toEqual(["heading"]);
+        expect(detached.getCssClasses()).toEqual([]);
     });
 
     it("paints the next styled widget on its own after one is removed", async () => {
@@ -240,10 +265,10 @@ describe("style prop edge cases", () => {
         expect(getColor(second.current)).toEqual(RED);
     });
 
-    it("keeps both classes when cssClasses goes away and the style stays", async () => {
+    it("removes the declarative class when cssClasses goes away and the style stays", async () => {
         const { styled, restyle } = await renderPair({ color: RED_CSS }, ["heading"]);
         await restyle({ color: RED_CSS });
-        expect(styled).toHaveClass("heading");
+        expect(styled).not.toHaveClass("heading");
         expect(generatedClasses(styled)).toHaveLength(1);
         expect(getColor(styled)).toEqual(RED);
     });

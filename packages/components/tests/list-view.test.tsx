@@ -26,6 +26,9 @@ import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 type NamedItem = ListItem<{ name: string }>;
 type Splice = [number, number, number];
 
+const LARGE_FLAT_COUNT = 200_000;
+const LARGE_MOUNT_BUDGET_MS = 1000;
+const LARGE_UPDATE_BUDGET_MS = 250;
 const hundredItems: ListItem<{ name: string }>[] = Array.from({ length: 100 }, (_, index) => ({
     id: `item-${String(index)}`,
     value: { name: `Item ${String(index)}` },
@@ -89,6 +92,17 @@ const countedItems = (offset: number): ListItem<{ count: number }>[] => [
     { id: "1", value: { count: offset } },
     { id: "2", value: { count: offset * 2 } },
 ];
+
+const knownFlatItems = (onChildrenRead: () => void): NamedItem[] =>
+    Array.from({ length: LARGE_FLAT_COUNT }, (_, index) => ({
+        id: String(index),
+        value: { name: `Item ${String(index)}` },
+        get children(): [] {
+            onChildrenRead();
+
+            return [];
+        },
+    }));
 
 describe("ListView", () => {
     it("draws a row per item and follows insertions, removals and value changes", async () => {
@@ -155,6 +169,71 @@ describe("ListView rendering", () => {
     it("renders the row content as the cell's direct child", async () => {
         const { ref } = await renderListView(["First"]);
         expectNoBoxBetween(screen.getByText("First"), ref.current);
+    });
+
+    it("updates a large known-flat source without scanning or redrawing stable rows", async () => {
+        let childrenReads = 0;
+        const items = knownFlatItems(() => {
+            childrenReads += 1;
+        });
+
+        let renderCount = 0;
+        const renderItem: ListItemRenderer<{ name: string }> = ({ item }) => {
+            renderCount += 1;
+
+            return <GtkLabel>{item.name}</GtkLabel>;
+        };
+        const options = {
+            renderItem,
+            isFlat: true,
+            estimatedItemHeight: 40,
+            maxContentHeight: 200,
+        };
+
+        const mountStartedAt = performance.now();
+        const { ref, rerender } = await renderListView(items, options);
+        const mountDuration = performance.now() - mountStartedAt;
+        const initialRenderCount = renderCount;
+
+        expect(collectionModelFor(ref).getNItems()).toBe(LARGE_FLAT_COUNT);
+        expect(childrenReads).toBe(0);
+        expect(initialRenderCount).toBeGreaterThan(0);
+        expect(initialRenderCount).toBeLessThan(500);
+        expect(mountDuration).toBeLessThan(LARGE_MOUNT_BUDGET_MS);
+
+        const appendedItems = [...items, { id: "appended", value: { name: "Appended" } }];
+        const appendStartedAt = performance.now();
+        await rerender(appendedItems, options);
+        const appendDuration = performance.now() - appendStartedAt;
+
+        expect(collectionModelFor(ref).getNItems()).toBe(LARGE_FLAT_COUNT + 1);
+        expect(renderCount).toBe(initialRenderCount);
+        expect(appendDuration).toBeLessThan(LARGE_UPDATE_BUDGET_MS);
+
+        const renderCountBeforeReplace = renderCount;
+
+        const replacement = { id: "replacement", value: { name: "Replacement" } };
+        const replacedItems = appendedItems.with(0, replacement);
+        const replaceStartedAt = performance.now();
+        await rerender(replacedItems, options);
+        const replaceDuration = performance.now() - replaceStartedAt;
+
+        expect(collectionModelFor(ref).getNItems()).toBe(LARGE_FLAT_COUNT + 1);
+        expect(renderCount).toBe(renderCountBeforeReplace + 1);
+        expect(screen.getByText("Replacement")).toBeVisible();
+        expect(childrenReads).toBe(0);
+        expect(replaceDuration).toBeLessThan(LARGE_UPDATE_BUDGET_MS);
+
+        await act(() => {
+            ref.current.scrollTo(LARGE_FLAT_COUNT, Gtk.ListScrollFlags.NONE, null);
+        });
+        await waitFor(() => {
+            expect(screen.getByText("Appended")).toBeVisible();
+        });
+
+        const renderCountAfterScroll = renderCount;
+        await rerender([...replacedItems], options);
+        expect(renderCount).toBe(renderCountAfterScroll);
     });
 });
 

@@ -11,6 +11,7 @@ type PressPoint = { x: number; y: number };
 type ClickPhase = "pressed" | "released";
 type ClickSite = { gestures: Gtk.GestureClick[]; point: PressPoint };
 type ClickScope = { isClicked: boolean; isInternalAllowed: boolean };
+type DirectClick = { gestures: Gtk.GestureClick[]; outcome: NativeClick | null };
 
 type ClickTarget = {
     widget: Gtk.Widget;
@@ -97,14 +98,23 @@ const clickGestures = (widget: Gtk.Widget): Gtk.GestureClick[] =>
 const getAuthoredClickGestures = (widget: Gtk.Widget): Gtk.GestureClick[] =>
     clickGestures(widget).filter((gesture) => hasClickHandlers(gesture));
 
-const isClaimingTarget = (widget: Gtk.Widget): boolean =>
-    widget instanceof Gtk.Button || containerFor(widget) !== null;
-
 const gestureTargetFor = (widget: Gtk.Widget, isInternalAllowed: boolean): ClickTarget | null => {
     const gestures = clickGestures(widget);
 
-    if (isClaimingTarget(widget)) {
-        return { widget, container: containerFor(widget), gestures, isClaiming: true, native: null };
+    if (widget instanceof Gtk.Button) {
+        return { widget, container: null, gestures, isClaiming: true, native: null };
+    }
+
+    const container = containerFor(widget);
+
+    if (container !== null) {
+        return {
+            widget,
+            container,
+            gestures: gestures.filter((gesture) => hasClickHandlers(gesture)),
+            isClaiming: true,
+            native: null,
+        };
     }
 
     const authored = gestures.filter((gesture) => hasClickHandlers(gesture));
@@ -223,6 +233,23 @@ const applyClickOutcome = (target: ClickTarget, nPress: number): void => {
     target.native(target.widget, nPress);
 };
 
+const applyContainerClick: NativeClick = (widget, nPress) => {
+    const container = containerFor(widget);
+
+    if (container !== null) {
+        applyContainerOutcome({ widget, container, gestures: [], isClaiming: true, native: null }, nPress);
+    }
+};
+
+const directClickFor = (widget: Gtk.Widget): DirectClick => {
+    const native = nativeClickFor(widget, true);
+    const container = containerFor(widget);
+    const gestures =
+        native !== null || container !== null ? getAuthoredClickGestures(widget) : clickGestures(widget);
+
+    return { gestures, outcome: native ?? (container === null ? null : applyContainerClick) };
+};
+
 const applyClickOutcomes = (targets: ClickTarget[], nPress: number): void => {
     for (const target of targets) {
         applyClickOutcome(target, nPress);
@@ -266,4 +293,5 @@ const dblClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, 2);
 /** Delivers a triple-click gesture. */
 const tripleClick = (widget: Gtk.Widget): Promise<void> => deliverClick(widget, 3);
 
-export { clickGestures, emitClickPhase, getAuthoredClickGestures, click, dblClick, tripleClick };
+export { directClickFor, emitClickPhase, click, dblClick, tripleClick };
+export type { DirectClick };

@@ -29,15 +29,10 @@ const buildDefaults: InlineConfig = {
         minify: true,
         cssMinify: false,
     },
-    define: {
-        "process.env.NODE_ENV": JSON.stringify(BUILD_MODE),
-    },
 };
 
-const build = async (options: BuildOptions): Promise<string> => {
-    const { entry, shouldPreserveI18nMetadata = true, vite: viteConfig } = options;
-    const root = resolve(viteConfig?.root ?? process.cwd());
-    const assetsDir = viteConfig?.build?.assetsDir ?? DEFAULT_ASSETS_DIR;
+const forcedConfig = async (options: BuildOptions, root: string, assetsDir: string): Promise<InlineConfig> => {
+    const { entry, shouldPreserveI18nMetadata = true } = options;
     const buildManifest = createBuildManifestCollector();
     const loadedConfig = await loadConfig(root, { mode: BUILD_MODE, configFile: options.configFile });
     const buildConfigIdentity = {
@@ -45,7 +40,11 @@ const build = async (options: BuildOptions): Promise<string> => {
         configDigest: configDigest(loadedConfig.config),
     };
 
-    const forced: InlineConfig = {
+    return {
+        mode: BUILD_MODE,
+        define: {
+            "process.env.NODE_ENV": JSON.stringify(BUILD_MODE),
+        },
         plugins: [
             ...gtkxVitePlugins({
                 mode: BUILD_MODE,
@@ -71,11 +70,32 @@ const build = async (options: BuildOptions): Promise<string> => {
             },
         },
     };
+};
 
+const buildProduction = async (options: BuildOptions): Promise<string> => {
+    const viteConfig = options.vite;
+    const root = resolve(viteConfig?.root ?? process.cwd());
+    const assetsDir = viteConfig?.build?.assetsDir ?? DEFAULT_ASSETS_DIR;
+    const forced = await forcedConfig(options, root, assetsDir);
     const merged: InlineConfig = mergeConfig(mergeConfig(buildDefaults, viteConfig ?? {}), forced);
     await viteBuild({ ...merged, ssr: { ...merged.ssr, noExternal: true } });
 
     return join(merged.build?.outDir ?? DEFAULT_OUT_DIR, ENTRY_FILE_NAMES);
+};
+
+const build = async (options: BuildOptions): Promise<string> => {
+    const callerNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = BUILD_MODE;
+
+    try {
+        return await buildProduction(options);
+    } finally {
+        if (callerNodeEnv === undefined) {
+            delete process.env.NODE_ENV;
+        } else {
+            process.env.NODE_ENV = callerNodeEnv;
+        }
+    }
 };
 
 export { build };

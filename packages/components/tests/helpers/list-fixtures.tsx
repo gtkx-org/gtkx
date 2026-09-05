@@ -4,6 +4,7 @@ import {
     GridView,
     type ListItem,
     type ListItemRenderer,
+    type ListRowPropsResolver,
     ListView,
 } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -21,6 +22,7 @@ type NamedValue = {
 type FixtureInput<T> = string[] | ListItem<T>[];
 
 type ListViewFixtureOptions = {
+    isFlat?: boolean;
     selected?: string[];
     selectionMode?: Gtk.SelectionMode;
     onSelectionChanged?: (ids: string[]) => void;
@@ -60,6 +62,7 @@ type ContentSizing = {
 
 type RenderColumnViewOptions<T> = {
     columns?: ColumnViewColumn<T>[];
+    isFlat?: boolean;
     selected?: string[];
     selectionMode?: Gtk.SelectionMode;
     onSelectionChanged?: (ids: string[]) => void;
@@ -69,7 +72,10 @@ type RenderColumnViewOptions<T> = {
     sortColumn?: string | null;
     sortOrder?: Gtk.SortType;
     onSortChanged?: (column: string | null, order: Gtk.SortType) => void;
+    rowProps?: ListRowPropsResolver<T>;
+    estimatedItemHeight?: number;
     minContentHeight?: number;
+    maxContentHeight?: number;
     minContentWidth?: number;
 };
 
@@ -178,6 +184,7 @@ function StatefulListView<T>({ listRef, items, options }: StatefulListViewProps<
                 <ListView
                     ref={listRef}
                     items={items}
+                    isFlat={options.isFlat}
                     renderItem={renderItem}
                     expandedIds={expandedIds}
                     onExpandedChange={(ids) => {
@@ -222,6 +229,7 @@ const drawListView: ListViewDraw = (ref, data, opts) => {
         <ListView
             ref={ref}
             items={toListItems(data)}
+            isFlat={opts.isFlat}
             renderItem={renderItem}
             expandedIds={expandedIds}
             onExpandedChange={opts.onExpandedChange}
@@ -281,11 +289,17 @@ const renderColumnView = async <T = NamedValue>(
         const expandedIds = opts.shouldExpandAll ? allExpandableIds(toListItems(data)) : opts.expandedIds;
 
         return withScrollWrapper(
-            { minContentHeight: opts.minContentHeight ?? 500, minContentWidth: opts.minContentWidth },
+            {
+                minContentHeight: opts.minContentHeight ?? 500,
+                maxContentHeight: opts.maxContentHeight,
+                minContentWidth: opts.minContentWidth,
+            },
             <ColumnView
                 ref={ref}
                 items={toListItems(data)}
+                isFlat={opts.isFlat}
                 columns={columns.map((column) => ({ expand: true, ...column }))}
+                rowProps={opts.rowProps}
                 selectedIds={opts.selected}
                 selectionMode={opts.selectionMode}
                 onSelectionChanged={opts.onSelectionChanged}
@@ -294,6 +308,7 @@ const renderColumnView = async <T = NamedValue>(
                 sortColumn={opts.sortColumn}
                 sortOrder={opts.sortOrder}
                 onSortChanged={opts.onSortChanged}
+                estimatedItemHeight={opts.estimatedItemHeight}
             />,
         );
     };

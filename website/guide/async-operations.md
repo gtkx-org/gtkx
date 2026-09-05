@@ -81,6 +81,8 @@ worker.on("message", (rows) => setRows(rows));
 
 The specifier has to be relative and has to name the worker source file as it exists on disk, and the `new URL(...)` has to sit directly inside the `new Worker(...)` call, otherwise `gtkx build` fails.
 
+During `gtkx dev` and Vitest, Node loads the worker and its imports directly rather than from a bundle. Relative imports in that graph must therefore name their `.ts` source files and use syntax supported by Node's type stripping; enums and parameter properties are not available. `gtkx build` bundles the graph and can accept code that native dev or test loading cannot, so exercise each worker in Vitest as well as building it.
+
 A worker runs no GTK code: it computes and posts results back for the main thread to render.
 
 ## Next

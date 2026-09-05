@@ -8,9 +8,10 @@ import {
     AdwSidebar,
     AdwSidebarItem,
     AdwSidebarSection,
+    AdwSpinner,
 } from "@gtkx/jsx/adw";
 import { GtkLabel, GtkNotebook, GtkNotebookPage, GtkStack, GtkStackPage } from "@gtkx/jsx/gtk";
-import { render, screen } from "@gtkx/testing";
+import { act, render, screen } from "@gtkx/testing";
 import { renderChildren } from "@gtkx/testing/internal";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -351,5 +352,108 @@ describe("render - AdwSidebar", () => {
         const { rerender } = await renderChildren(["Home", "Trash"], buildSidebar(ref));
         await rerender(["Home", "Documents", "Trash"]);
         expect(getItemTitles(ref.current)).toEqual(["Home", "Documents", "Trash"]);
+    });
+
+    it("adds a suffix after changing to page mode", async () => {
+        const sidebarRef = createRef<Adw.Sidebar>();
+        const itemRef = createRef<Adw.SidebarItem>();
+        const spinnerRef = createRef<Adw.Spinner>();
+
+        function App({ isLoading }: { isLoading: boolean }) {
+            return (
+                <AdwSidebar ref={sidebarRef}>
+                    <AdwSidebarSection>
+                        <AdwSidebarItem
+                            ref={itemRef}
+                            title="Files"
+                            suffix={isLoading ? <AdwSpinner ref={spinnerRef} /> : null}
+                        />
+                    </AdwSidebarSection>
+                </AdwSidebar>
+            );
+        }
+
+        const { rerender } = await render(<App isLoading={false} />);
+
+        await act(() => {
+            sidebarRef.current?.setMode(Adw.SidebarMode.PAGE);
+        });
+
+        await rerender(<App isLoading />);
+
+        expect(itemRef.current?.getSuffix()).toBe(spinnerRef.current);
+        expect(spinnerRef.current).toBeRooted();
+
+        const spinner = spinnerRef.current;
+
+        if (spinner === null) {
+            throw new Error("expected the suffix spinner to be mounted");
+        }
+
+        await act(() => {
+            sidebarRef.current?.setMode(Adw.SidebarMode.SIDEBAR);
+        });
+
+        await rerender(<App isLoading />);
+        expect(itemRef.current?.getSuffix()).toBe(spinner);
+        expect(spinner).toBeRooted();
+
+        await rerender(<App isLoading={false} />);
+        expect(itemRef.current?.getSuffix()).toBeNull();
+        expect(spinner.getParent()).toBeNull();
+    });
+
+    it("keeps items and suffixes stable through repeated mode changes", async () => {
+        const sidebarRef = createRef<Adw.Sidebar>();
+        const itemRef = createRef<Adw.SidebarItem>();
+
+        function App({ mode, titles, suffix }: { mode: Adw.SidebarMode; titles: string[]; suffix: string | null }) {
+            return (
+                <AdwSidebar ref={sidebarRef} mode={mode}>
+                    <AdwSidebarSection>
+                        {titles.map((title) => (
+                            <AdwSidebarItem
+                                key={title}
+                                ref={title === "Files" ? itemRef : undefined}
+                                title={title}
+                                suffix={title === "Files" && suffix !== null
+                                    ? <GtkLabel key={suffix}>{suffix}</GtkLabel>
+                                    : null}
+                            />
+                        ))}
+                    </AdwSidebarSection>
+                </AdwSidebar>
+            );
+        }
+
+        const { rerender, unmount } = await render(
+            <App mode={Adw.SidebarMode.SIDEBAR} titles={["Files", "Trash"]} suffix={null} />,
+        );
+
+        for (const mode of [Adw.SidebarMode.PAGE, Adw.SidebarMode.SIDEBAR, Adw.SidebarMode.PAGE]) {
+            await rerender(<App mode={mode} titles={["Files", "Trash"]} suffix={null} />);
+        }
+
+        await rerender(<App mode={Adw.SidebarMode.PAGE} titles={["Files", "Trash"]} suffix="Scanning" />);
+        expect(itemRef.current?.getSuffix()).toHaveTextContent("Scanning");
+
+        await rerender(<App mode={Adw.SidebarMode.PAGE} titles={["Files"]} suffix="Done" />);
+        expect(getItemTitles(sidebarRef.current)).toEqual(["Files"]);
+        expect(itemRef.current?.getSuffix()).toHaveTextContent("Done");
+
+        await rerender(<App mode={Adw.SidebarMode.SIDEBAR} titles={["Files", "Archive"]} suffix="Done" />);
+        expect(getItemTitles(sidebarRef.current)).toEqual(["Files", "Archive"]);
+        expect(itemRef.current?.getSuffix()).toHaveTextContent("Done");
+
+        const suffix = itemRef.current?.getSuffix();
+
+        if (suffix === null || suffix === undefined) {
+            throw new Error("expected the updated suffix to be mounted");
+        }
+
+        await unmount();
+        expect(sidebarRef.current).toBeNull();
+        expect(itemRef.current).toBeNull();
+        expect(suffix).not.toBeRooted();
     });
 });

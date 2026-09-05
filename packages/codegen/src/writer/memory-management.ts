@@ -32,9 +32,14 @@ const SECOND_PERSON_CLEANUP_START = /^you\s+(?:should|must|need\s+to|have\s+to)\
 const RETURNED_CLEANUP_START = /^(?:(?:the|a|an)\s+)?returned\b/i;
 const RETURN_VALUE_CLEANUP_START = /^(?:the\s+)?return(?:ed)?\s+(?:value|result)\b/i;
 const VALUE_CLEANUP_START =
-    /^(?:(?:the|this|a|an|both)\s+)?(?:value|array|list|result|string|object|path|paths|reference)\b/i;
+    /^(?:(?:the|this|that|a|an|both)\s+)?`?(?:value|array|list|result|string|object|path|paths|reference)\b`?/i;
+const MEMORY_VALUE_CLEANUP_START =
+    /^(?:(?:the|this|that|a|an|both)\s+)?`?(?:copy|contents?|pointer|memory)\b`?/i;
 const CALLER_OWNERSHIP = /\bbelongs?\s+to\s+(?:the\s+)?caller\b/i;
 const OWNED_BY_CALLER = /\bowned\s+by\s+(?:the\s+)?caller\b/i;
+const CALLER_RESPONSIBILITY =
+    /\b(?:caller|calling\s+code)\s+(?:is|becomes|remains)\s+responsible\s+for\b/i;
+const CLEANUP_RESPONSIBILITY = /\bresponsible\s+for\s+(?:freeing|unreferencing|releasing|destroying)\b/i;
 const OBJECT_OWNERSHIP = /\bobjects?\s+(?:are|is)\s+(?:referenced|owned)\b/i;
 const TAKES_OWNERSHIP = /\btakes?\s+(?:the\s+)?ownership\b/i;
 const TRAILING_CLEANUP_CLAUSE =
@@ -43,6 +48,7 @@ const CLEANUP_CLAUSE_BOUNDARIES = [
     /[,;:]\s*/g,
     /(?:,\s*)?\b(?:which|that)\s+(?=(?:should|must|needs?|is|are|can)\b)/gi,
     /(?:,\s*)?\band\s+(?=(?:then\s+)?(?:free|unref|use|call|do not|don't)\b)/gi,
+    /(?:,\s*)?\band\s+(?=will\s+(?:eventually\s+)?be\s+freed\b)/gi,
     /(?:,\s*)?\band\s+(?=(?:the\s+)?caller\b)/gi,
     /(?:,\s*)?\band\s+(?=(?:must|should)\s+(?:not\s+)?(?:free|unref)\b)/gi,
 ];
@@ -207,9 +213,13 @@ const hasMemoryAction = (text: string): boolean =>
     QUOTED_UNREF_ACTION.test(text) ||
     OTHER_CLEANUP_ACTION.test(text);
 
+const isCallerCleanupResponsibility = (text: string): boolean =>
+    CALLER_RESPONSIBILITY.test(text) && CLEANUP_RESPONSIBILITY.test(text);
+
 const hasOwnershipCleanupStart = (text: string): boolean =>
     CALLER_OWNERSHIP.test(text) ||
     OWNED_BY_CALLER.test(text) ||
+    isCallerCleanupResponsibility(text) ||
     OBJECT_OWNERSHIP.test(text) ||
     TAKES_OWNERSHIP.test(text);
 
@@ -237,6 +247,7 @@ const hasCleanupInstruction = (text: string): boolean =>
     hasActiveCleanupInstruction(text) ||
     CALLER_OWNERSHIP.test(text) ||
     OWNED_BY_CALLER.test(text) ||
+    isCallerCleanupResponsibility(text) ||
     DIRECT_MEMORY_CLEANUP.test(text.trimStart()) ||
     HIDDEN_CLEANUP_ALTERNATIVE.test(text.trimStart()) ||
     ((text.includes(CLEANUP_TOKEN) || isCleanupCall(text)) &&
@@ -327,6 +338,10 @@ const stripStandaloneCleanupSentence = (sentence: string): string => {
         return sentence;
     }
 
+    if (TRAILING_CLEANUP_CLAUSE.test(trimmed) || cleanupClauseStarts(trimmed).length > 0) {
+        return stripCleanupSentence(sentence);
+    }
+
     const isInstructionStart =
         DIRECT_MEMORY_CLEANUP.test(trimmed) ||
         DIRECT_CLEANUP_START.test(trimmed) ||
@@ -334,15 +349,14 @@ const stripStandaloneCleanupSentence = (sentence: string): string => {
         RETURNED_CLEANUP_START.test(trimmed) ||
         RETURN_VALUE_CLEANUP_START.test(trimmed) ||
         VALUE_CLEANUP_START.test(trimmed) ||
+        MEMORY_VALUE_CLEANUP_START.test(trimmed) ||
         hasOwnershipCleanupStart(trimmed);
 
     if (isInstructionStart) {
         return "";
     }
 
-    return TRAILING_CLEANUP_CLAUSE.test(trimmed) || cleanupClauseStarts(trimmed).length > 0
-        ? stripCleanupSentence(sentence)
-        : sentence;
+    return sentence;
 };
 
 const stripStandaloneParagraph = (markdown: string): string =>

@@ -32,6 +32,8 @@ export default defineConfig({
 
 Each Vitest worker runs in its own headless environment, started before any test code loads and torn down with the worker. Headless runs need the compositor binary, `dbus-daemon`, and `setpriv` on the host; plugin options are in the [@gtkx/vitest reference](/v2/reference/@gtkx/vitest/).
 
+The GTKX preload remains in `process.execArgv`, which Node workers inherit unless their `execArgv` option says otherwise. The preload returns immediately outside the main thread, so an inherited worker keeps the existing runtime and exits normally instead of starting another compositor and session bus. Pass `execArgv: []`, or an explicit list, when a worker should inherit none of the test runner's flags.
+
 The development server can use the same isolated display when no graphical session is available:
 
 ```bash
@@ -39,6 +41,8 @@ gtkx dev --headless --size 1280x720
 ```
 
 `--size` is optional and defaults to `1024x768`. The app remains connected to the same MCP server after the private Wayland runtime starts, so widget inspection and screenshots work in a display-less development session too.
+
+A headless development runtime remains owned by the process that launched it. Keep that parent alive for the whole MCP session: if the launching shell or supervisor exits, GTKX shuts the app down even when it was started through `nohup` or `setsid`.
 
 Teardown does not rely on Vitest exiting cleanly. A guard process watches both the worker and the Vitest process that launched it, so killing either with `SIGKILL` still stops the worker's compositor and session bus, ends the guard, and removes the private runtime directory, a `gtkx-xdg-*` directory under the temporary directory. A directory that survives anyway, for example after a power loss, is reaped the next time `gtkx dev` or the Vitest plugin starts, and `gtkx cleanup` removes such directories on demand:
 
@@ -158,6 +162,8 @@ Every query kind is available as `getBy`, `getAllBy`, `queryBy`, `queryAllBy`, `
 
 Roles are always `Gtk.AccessibleRole` enum values, never strings: a `GtkCheckButton` reports `CHECKBOX`, an `AdwActionRow` reports `LIST_ITEM`. `ByRole` narrows further by `name` and by accessible state; see [`ByRoleOptions`](/v2/reference/@gtkx/testing/type-aliases/ByRoleOptions). Text matchers take a `string` or number, a `RegExp`, or a predicate function.
 
+A `GtkButton` with a text `label` is labelled by its child label, and that GTK relation takes precedence over an `accessibleLabel` prop. Query it by the visible label and, when several buttons share that text, scope the query through a distinguishing parent.
+
 ```ts
 import * as Gtk from "@gtkx/gi/gtk";
 
@@ -208,7 +214,7 @@ expect(grid).toHaveAccessibleProperty(Gtk.AccessibleProperty.SORT, Gtk.Accessibl
 
 ## Debugging
 
-`screen.debug()` prints the widget tree the way the queries see it, with roles, names, and accessibility attributes. `screen.logRoles()` groups every widget by role, the fastest way to answer which role a widget reports. `screenshot(widget)` returns the base64 PNG data, and `{ path }` also writes the image to a file; `screen.screenshot()` takes the same options and captures the active toplevel window instead of one render's subtree. For a live dev session rather than a test, the [MCP server](/v2/guide/mcp) exposes the same dumps, queries, and screenshots.
+`screen.debug()` prints the widget tree the way the queries see it, with roles, names, and accessibility attributes. `screen.logRoles()` groups every widget by role, the fastest way to answer which role a widget reports. `screenshot(widget)` returns the base64 PNG data, and `{ path }` also writes the image to a file; a toplevel capture includes its resolved window background, while pixels outside a captured subtree remain transparent. `screen.screenshot()` takes the same options and captures the active toplevel window instead of one render's subtree. For a live dev session rather than a test, the [MCP server](/v2/guide/mcp) exposes the same dumps, queries, and screenshots.
 
 ::: tip
 Tests written this way double as a basic accessibility audit: a widget `getByRole` cannot find by name is usually one that is missing an accessible label.

@@ -18,6 +18,7 @@ type KeyAction = { keyval: number; isPress: boolean };
 type ParseStep = { actions: KeyAction[]; next: number };
 type KeyStopController = Gtk.EventControllerKey | Gtk.ShortcutController;
 type KeyStop = { widget: Gtk.Widget; controller: KeyStopController };
+type KeyTarget = { root: Gtk.Root | null; focus: Gtk.Widget | null };
 
 const KEY_MAP: Record<string, number> = {
     Enter: Gdk.KEY_Return,
@@ -366,9 +367,37 @@ const didStopHandlePress = (stop: KeyStop, keyval: number, modifiers: Gdk.Modifi
     return controller.emit("key-pressed", keyval, 0, modifiers);
 };
 
-const didHandlePress = (widget: Gtk.Widget, keyval: number, modifiers: Gdk.ModifierType): boolean =>
-    didDispatchApplicationAccels(widget, keyval, modifiers) ||
-    keyPropagationChain(widget).some((stop) => didStopHandlePress(stop, keyval, modifiers));
+const keyTargetFor = (widget: Gtk.Widget): KeyTarget => {
+    const root = widget.getRoot();
+
+    return { root, focus: root instanceof Gtk.Window ? root.getFocus() : null };
+};
+
+const isKeyTargetInvalidated = (widget: Gtk.Widget, target: KeyTarget): boolean => {
+    const current = keyTargetFor(widget);
+
+    return current.root !== target.root || current.focus !== target.focus || !widget.getMapped();
+};
+
+const didHandlePress = (widget: Gtk.Widget, keyval: number, modifiers: Gdk.ModifierType): boolean => {
+    const target = keyTargetFor(widget);
+
+    if (didDispatchApplicationAccels(widget, keyval, modifiers)) {
+        return true;
+    }
+
+    if (isKeyTargetInvalidated(widget, target)) {
+        return true;
+    }
+
+    for (const stop of keyPropagationChain(widget)) {
+        if (didStopHandlePress(stop, keyval, modifiers) || isKeyTargetInvalidated(widget, target)) {
+            return true;
+        }
+    }
+
+    return false;
+};
 
 const emitKeyReleased = (widget: Gtk.Widget, keyval: number, modifiers: Gdk.ModifierType): void => {
     for (const stop of keyPropagationChain(widget)) {

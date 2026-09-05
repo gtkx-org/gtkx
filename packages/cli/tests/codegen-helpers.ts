@@ -105,7 +105,17 @@ const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
 const NOTE_DOC = "Holds a short piece of text the user jotted down.";
 const READ_DOC = "Reads the note back in the given tone.";
 const COPY_DOC = "Copies the note text.";
-const STRIPPED_CLEANUP_TEXT = ["must free", "strfreev", "GLib.free()", "g_free()"];
+const STRIPPED_CLEANUP_TEXT = [
+    "must free",
+    "strfreev",
+    "responsible for freeing",
+    "should be freed",
+    "must be freed",
+    "needs to be freed",
+    "eventually be freed",
+    "Free it with",
+    "Free each item",
+];
 const COMMENT = /\/\*|\/\//u;
 const PURE = "/* @__PURE__ */";
 
@@ -125,6 +135,11 @@ const DOCUMENTED_MODULE_CASES: DocumentedModuleCase[] = [
             "* @returns a copy of the note.",
             "* @returns a list of strvs.",
             '* @param value free text to search for, for instance, "power"',
+            "* Describes copied values.",
+            "* The memory of the input has to be dynamically allocated.",
+            "* Describes allocator behavior.",
+            "automatically via",
+            "for memory allocation.",
         ],
         stripped: STRIPPED_CLEANUP_TEXT,
     },

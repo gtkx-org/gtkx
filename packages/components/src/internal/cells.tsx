@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkSignalListItemFactory, GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal, useProperty } from "@gtkx/react";
 import { setProperty, t } from "@gtkx/runtime";
-import { memo, useLayoutEffect, useState, useSyncExternalStore } from "react";
+import { memo, useInsertionEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type {
     ExpanderDescriptions,
     ListItem,
@@ -34,6 +34,7 @@ type CellHost = FactoryHost & {
 type CellEntry<H extends FactoryHost> = {
     key: string;
     host: H;
+    identity: ItemIdentityStore;
 };
 
 type FactoryHandlers = {
@@ -88,14 +89,34 @@ type ItemSlot = {
     args: ListItemRenderArgs<unknown>;
 };
 
+type CollectionState = {
+    collection: Collection;
+    expandedIds: string[] | null | undefined;
+};
+
+type CollectionStateStore = {
+    read: () => CollectionState;
+    write: (state: CollectionState) => void;
+};
+
+type ItemIdentity = {
+    item: ListItem | undefined;
+    position: number;
+    isExpanded: boolean;
+};
+
+type ItemIdentityStore = {
+    read: () => ItemIdentity | null;
+    write: (identity: ItemIdentity) => void;
+};
+
 type ItemCellProps = {
     entry: CellEntry<Gtk.ListItem>;
     render: ListItemRenderer<never>;
-    collection: Collection;
+    state: CollectionStateStore;
     hasExpander: boolean;
-    expandedIds: string[] | null | undefined;
     expanderDescriptions: ExpanderDescriptions | null | undefined;
-};
+} & ItemIdentity;
 
 type ItemPortalsProps = {
     registry: CellRegistry<Gtk.ListItem>;
@@ -109,9 +130,8 @@ type ItemPortalsProps = {
 type ItemRowProps = {
     entry: CellEntry<Gtk.ColumnViewRow>;
     rowProps: ListRowPropsResolver<never>;
-    collection: Collection;
-    expandedIds: string[] | null | undefined;
-};
+    state: CollectionStateStore;
+} & ItemIdentity;
 
 type RowPortalsProps = {
     registry: CellRegistry<Gtk.ColumnViewRow>;
@@ -142,8 +162,8 @@ type RowSlot = {
     portals: ReactNode;
 };
 
-const ItemCell = memo(ItemCellImpl);
-const ItemRow = memo(ItemRowImpl);
+const ItemCell = memo(ItemCellImpl, isSameItemCell);
+const ItemRow = memo(ItemRowImpl, isSameItemRow);
 const HeaderCell = memo(HeaderCellImpl);
 const CELL_OPTIONS: CellRegistryOptions<Gtk.ListItem> = { isHost: isListItem, prepare: prepareCell };
 const HEADER_OPTIONS: CellRegistryOptions<Gtk.ListHeader> = { isHost: isListHeader, prepare: prepareCell };
@@ -184,7 +204,7 @@ function notifyRegistry<H extends FactoryHost>(state: CellRegistryState<H>): voi
 function createEntry<H extends FactoryHost>(state: CellRegistryState<H>, host: H): CellEntry<H> {
     state.serial += 1;
 
-    return { key: `gtkx-cell-${String(state.serial)}`, host };
+    return { key: `gtkx-cell-${String(state.serial)}`, host, identity: createItemIdentityStore() };
 }
 
 function setupHost<H extends FactoryHost>(state: CellRegistryState<H>, host: H): void {
@@ -283,9 +303,13 @@ function isRowWanted(options: ItemSlotOptions, item: ListItem): boolean {
     return options.expandedIds?.includes(item.id) ?? false;
 }
 
-function itemArgs(item: ListItem, options: ItemSlotOptions): ListItemRenderArgs<unknown> {
-    const args: ListItemRenderArgs<unknown> = { item: item.value, index: options.position ?? 0 };
-    const row = options.row;
+function itemArgs(
+    item: ListItem,
+    position: number | undefined,
+    row: Gtk.TreeListRow | null,
+    isExpanded: boolean,
+): ListItemRenderArgs<unknown> {
+    const args: ListItemRenderArgs<unknown> = { item: item.value, index: position ?? 0 };
 
     if (row === null) {
         return args;
@@ -294,7 +318,7 @@ function itemArgs(item: ListItem, options: ItemSlotOptions): ListItemRenderArgs<
     args.depth = row.getDepth();
 
     if (row.isExpandable()) {
-        args.isExpanded = isRowWanted(options, item);
+        args.isExpanded = isExpanded;
     }
 
     return args;
@@ -308,19 +332,125 @@ function slotFor(options: ItemSlotOptions): ItemSlot | null {
         return null;
     }
 
-    return { item, row: options.row, args: itemArgs(item, options) };
+    return {
+        item,
+        row: options.row,
+        args: itemArgs(item, options.position, options.row, isRowWanted(options, item)),
+    };
 }
 
 function useItemSlot(
     entry: CellEntry<PositionedHost>,
-    collection: Collection,
-    expandedIds: string[] | null | undefined,
+    state: CollectionStateStore,
+    identity: ItemIdentity,
 ): ItemSlot | null {
     const position = useProperty(entry.host, "position");
     const item = useProperty(entry.host, "item") ?? null;
     const row = item instanceof Gtk.TreeListRow ? item : null;
 
+    if (position === identity.position) {
+        return identity.item === undefined
+            ? null
+            : {
+                    item: identity.item,
+                    row,
+                    args: itemArgs(identity.item, position, row, identity.isExpanded),
+                };
+    }
+
+    const { collection, expandedIds } = state.read();
+
     return slotFor({ item, position, row, collection, expandedIds });
+}
+
+function itemIdentity(
+    entry: CellEntry<PositionedHost>,
+    collection: Collection,
+    expandedIds: string[] | null | undefined,
+): ItemIdentity {
+    const ref = slotRefFor(entry.host.getItem());
+    const item = ref === null ? undefined : collection.itemAt(ref);
+
+    return {
+        item,
+        position: entry.host.getPosition(),
+        isExpanded: item === undefined ? false : (expandedIds?.includes(item.id) ?? false),
+    };
+}
+
+function isSameItemIdentity(previous: ItemIdentity, next: ItemIdentity): boolean {
+    return (
+        previous.item === next.item &&
+        previous.position === next.position &&
+        previous.isExpanded === next.isExpanded
+    );
+}
+
+function isSameItemCell(previous: ItemCellProps, next: ItemCellProps): boolean {
+    const identity = previous.entry.identity.read() ?? previous;
+
+    return (
+        previous.entry === next.entry &&
+        previous.render === next.render &&
+        previous.hasExpander === next.hasExpander &&
+        previous.expanderDescriptions === next.expanderDescriptions &&
+        isSameItemIdentity(identity, next)
+    );
+}
+
+function isSameItemRow(previous: ItemRowProps, next: ItemRowProps): boolean {
+    const identity = previous.entry.identity.read() ?? previous;
+
+    return previous.entry === next.entry && previous.rowProps === next.rowProps && isSameItemIdentity(identity, next);
+}
+
+function createItemIdentityStore(): ItemIdentityStore {
+    let current: ItemIdentity | null = null;
+
+    return {
+        read: () => current,
+        write: (identity) => {
+            current = identity;
+        },
+    };
+}
+
+function renderedIdentity(entry: CellEntry<PositionedHost>, slot: ItemSlot | null): ItemIdentity {
+    return {
+        item: slot?.item,
+        position: slot?.args.index ?? entry.host.getPosition(),
+        isExpanded: slot?.args.isExpanded ?? false,
+    };
+}
+
+function useRememberIdentity(entry: CellEntry<PositionedHost>, slot: ItemSlot | null): void {
+    useLayoutEffect(() => {
+        entry.identity.write(renderedIdentity(entry, slot));
+    });
+}
+
+function createCollectionStateStore(initial: CollectionState): CollectionStateStore {
+    let current = initial;
+
+    return {
+        read: () => current,
+        write: (state) => {
+            current = state;
+        },
+    };
+}
+
+function useCollectionState(
+    collection: Collection,
+    expandedIds: string[] | null | undefined,
+): CollectionStateStore {
+    const [state] = useState(() => createCollectionStateStore({ collection, expandedIds }));
+
+    useInsertionEffect(() => {
+        state.write({ collection, expandedIds });
+    }, [state, collection, expandedIds]);
+
+    return state;
 }
 
 function expanderDescriptionFor(
@@ -405,35 +535,57 @@ function setRowText(host: Gtk.ColumnViewRow, name: string, value: string | null)
     setProperty(host, name, ROW_TEXT_DESCRIPTOR, value);
 }
 
-function applyRowProps(host: Gtk.ColumnViewRow, props: ResolvedRowProps): void {
-    setRowText(host, "accessible-label", props.accessibleLabel);
-    setRowText(host, "accessible-description", props.accessibleDescription);
-    host.setActivatable(props.isActivatable);
-    host.setFocusable(props.isFocusable);
-    host.setSelectable(props.isSelectable);
+function applyRowProps(
+    host: Gtk.ColumnViewRow,
+    props: ResolvedRowProps,
+    previous: ResolvedRowProps | null,
+): void {
+    if (previous?.accessibleLabel !== props.accessibleLabel) {
+        setRowText(host, "accessible-label", props.accessibleLabel);
+    }
+
+    if (previous?.accessibleDescription !== props.accessibleDescription) {
+        setRowText(host, "accessible-description", props.accessibleDescription);
+    }
+
+    if (previous?.isActivatable !== props.isActivatable) {
+        host.setActivatable(props.isActivatable);
+    }
+
+    if (previous?.isFocusable !== props.isFocusable) {
+        host.setFocusable(props.isFocusable);
+    }
+
+    if (previous?.isSelectable !== props.isSelectable) {
+        host.setSelectable(props.isSelectable);
+    }
 }
 
 function ItemCellImpl({
     entry,
     render,
-    collection,
+    state,
     hasExpander,
-    expandedIds,
     expanderDescriptions,
+    ...identity
 }: ItemCellProps): ReactNode {
-    const slot = useItemSlot(entry, collection, expandedIds);
+    const slot = useItemSlot(entry, state, identity);
+    useRememberIdentity(entry, slot);
     const body = itemBody(slot, render, hasExpander, expanderDescriptions);
 
     return createPortal(body, entry.host, entry.key);
 }
 
-function ItemRowImpl({ entry, rowProps, collection, expandedIds }: ItemRowProps): ReactNode {
-    const slot = useItemSlot(entry, collection, expandedIds);
+function ItemRowImpl({ entry, rowProps, state, ...identity }: ItemRowProps): ReactNode {
+    const slot = useItemSlot(entry, state, identity);
+    useRememberIdentity(entry, slot);
     const props = rowPropsFor(slot, rowProps);
+    const previous = useRef<ResolvedRowProps | null>(null);
 
     useLayoutEffect(() => {
-        applyRowProps(entry.host, props);
-    });
+        applyRowProps(entry.host, props, previous.current);
+        previous.current = props;
+    }, [entry.host, props]);
 
     return null;
 }
@@ -458,29 +610,37 @@ const ItemPortals = ({
     hasExpander,
     expandedIds,
     expanderDescriptions,
-}: ItemPortalsProps): ReactNode =>
-    usePortalEntries(registry).map((entry) => (
+}: ItemPortalsProps): ReactNode => {
+    const entries = usePortalEntries(registry);
+    const state = useCollectionState(collection, expandedIds);
+
+    return entries.map((entry) => (
         <ItemCell
             key={entry.key}
             entry={entry}
             render={render}
-            collection={collection}
+            state={state}
             hasExpander={hasExpander ?? true}
-            expandedIds={expandedIds}
             expanderDescriptions={expanderDescriptions}
+            {...itemIdentity(entry, collection, expandedIds)}
         />
     ));
+};
 
-const RowPortals = ({ registry, rowProps, collection, expandedIds }: RowPortalsProps): ReactNode =>
-    usePortalEntries(registry).map((entry) => (
+const RowPortals = ({ registry, rowProps, collection, expandedIds }: RowPortalsProps): ReactNode => {
+    const entries = usePortalEntries(registry);
+    const state = useCollectionState(collection, expandedIds);
+
+    return entries.map((entry) => (
         <ItemRow
             key={entry.key}
             entry={entry}
             rowProps={rowProps}
-            collection={collection}
-            expandedIds={expandedIds}
+            state={state}
+            {...itemIdentity(entry, collection, expandedIds)}
         />
     ));
+};
 
 const HeaderPortals = ({ registry, render, collection }: HeaderPortalsProps): ReactNode =>
     usePortalEntries(registry).map((entry) => (

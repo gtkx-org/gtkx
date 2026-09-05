@@ -37,6 +37,7 @@ const rulesBody = (heading: string): string[] => [
     "| --- | --- |",
     "| `gtkx dev` | Run the app with fast refresh |",
     "| `gtkx codegen` | Regenerate bindings and this reference |",
+    "| `gtkx cleanup` | Remove stale headless runtime directories |",
     "| `tsc --noEmit` | Typecheck |",
     "| `vitest run` | Run the tests |",
     "",

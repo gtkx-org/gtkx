@@ -23,6 +23,9 @@ type Named = { name: string };
 type Person = { name: string; salary: number };
 
 const ESTIMATED_HEIGHT = 48;
+const LARGE_COLUMN_COUNT = 200_000;
+const LARGE_COLUMN_MOUNT_BUDGET_MS = 1000;
+const LARGE_COLUMN_UPDATE_BUDGET_MS = 250;
 const VISIBLE_ROWS = 10;
 
 const sizedItems: ListItem<Named>[] = Array.from({ length: 20 }, (_, index) => ({
@@ -206,6 +209,75 @@ describe("ColumnView cells", () => {
         for (const cell of cells) {
             expectCellHoldsLabel(cell, ref.current);
         }
+    });
+
+    it("redraws and re-resolves only a realized row whose item changes", async () => {
+        let childrenReads = 0;
+        const items: ListItem<Named>[] = Array.from({ length: LARGE_COLUMN_COUNT }, (_, index) => ({
+            id: String(index),
+            value: { name: `Item ${String(index)}` },
+            get children(): [] {
+                childrenReads += 1;
+
+                return [];
+            },
+        }));
+
+        let cellRenders = 0;
+        let rowResolutions = 0;
+        const renderCell = (args: ListItemRenderArgs<Named>): ReactNode => {
+            cellRenders += 1;
+
+            return renderNamed(args);
+        };
+        const rowProps = ({ item }: ListItemRenderArgs<Named>): { accessibleLabel: string } => {
+            rowResolutions += 1;
+
+            return { accessibleLabel: `Row: ${item.name}` };
+        };
+        const options = {
+            columns: Array.from({ length: 5 }, (_, index) => ({
+                id: `column-${String(index)}`,
+                title: `Column ${String(index)}`,
+                renderCell,
+            })),
+            rowProps,
+            isFlat: true,
+            estimatedItemHeight: 40,
+            minContentHeight: 200,
+            maxContentHeight: 200,
+        };
+
+        const mountStartedAt = performance.now();
+        const { ref, rerender } = await renderColumnView(items, options);
+        const mountDuration = performance.now() - mountStartedAt;
+        const initialCellRenders = cellRenders;
+        const initialRowResolutions = rowResolutions;
+
+        expect(initialCellRenders).toBeGreaterThan(0);
+        expect(initialCellRenders).toBeLessThan(2500);
+        expect(initialRowResolutions).toBeGreaterThan(0);
+        expect(initialRowResolutions).toBeLessThan(500);
+        expect(childrenReads).toBe(0);
+        expect(mountDuration).toBeLessThan(LARGE_COLUMN_MOUNT_BUDGET_MS);
+
+        const appendStartedAt = performance.now();
+        await rerender([...items, { id: "appended", value: { name: "Appended" } }], options);
+        const appendDuration = performance.now() - appendStartedAt;
+        expect(cellRenders).toBe(initialCellRenders);
+        expect(rowResolutions).toBe(initialRowResolutions);
+        expect(appendDuration).toBeLessThan(LARGE_COLUMN_UPDATE_BUDGET_MS);
+
+        const replacement = { id: "replacement", value: { name: "Replacement" } };
+        const replaceStartedAt = performance.now();
+        await rerender(items.with(0, replacement), options);
+        const replaceDuration = performance.now() - replaceStartedAt;
+        expect(cellRenders).toBe(initialCellRenders + options.columns.length);
+        expect(rowResolutions).toBe(initialRowResolutions + 1);
+        expect(screen.getAllByText("Replacement")).toHaveLength(options.columns.length);
+        expect(dataRows(ref.current)[0]).toHaveAccessibleName("Row: Replacement");
+        expect(childrenReads).toBe(0);
+        expect(replaceDuration).toBeLessThan(LARGE_COLUMN_UPDATE_BUDGET_MS);
     });
 });
 

@@ -86,7 +86,7 @@ describe("create-gtkx scaffolding a TypeScript project", () => {
         expect(installs).toContain("@gtkx/cairo");
         expect(installs).toContain("@gtkx/cli");
         expect(installs).toContain("@gtkx/testing");
-        expect(installs).toContain("typescript");
+        expect(installs).toContain("typescript@^6.0.3");
     });
 
     it("records the build allowance pnpm understands", () => {
@@ -175,7 +175,7 @@ describe("create-gtkx and the package manager it scaffolds for", () => {
                 "@gtkx/testing": "^2.0.0-beta.5",
                 "@types/node": "latest",
                 "@types/react": "latest",
-                typescript: "latest",
+                typescript: "^6.0.3",
                 vite: "latest",
                 vitest: "latest",
             });

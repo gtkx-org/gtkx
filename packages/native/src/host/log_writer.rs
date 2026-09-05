@@ -1,11 +1,29 @@
 use std::cell::RefCell;
-use std::sync::OnceLock;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{LazyLock, Mutex, MutexGuard, OnceLock};
 
 use glib::{LogField, LogLevel, LogWriterOutput};
+use napi::Status;
+use napi::bindgen_prelude::FnArgs;
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 
 use super::error_reporter;
 
 static INSTALLED: OnceLock<()> = OnceLock::new();
+static LISTENERS: LazyLock<Mutex<HashMap<u64, LogListener>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static NEXT_LISTENER_ID: AtomicU64 = AtomicU64::new(1);
+
+#[derive(Clone)]
+pub(crate) struct LogRecord {
+    pub(crate) level: String,
+    pub(crate) domain: String,
+    pub(crate) message: String,
+}
+
+pub(crate) type LogListener =
+    ThreadsafeFunction<LogRecord, (), FnArgs<(String, String, String)>, Status, false, true>;
 
 /// State of the trap on one thread: `armed` for as long as a native call is on that thread's
 /// stack, `caught` holding the first `G_LOG_LEVEL_CRITICAL` the callee logged while it was.
@@ -69,6 +87,8 @@ pub(crate) fn install() {
 }
 
 fn write_log(level: LogLevel, fields: &[LogField<'_>]) -> LogWriterOutput {
+    notify_listeners(level, fields);
+
     if let Some(severity) = fatal_severity(level) {
         let domain = field_value(fields, "GLIB_DOMAIN").unwrap_or("unknown");
         let message = field_value(fields, "MESSAGE").unwrap_or("(no message)");
@@ -82,6 +102,47 @@ fn write_log(level: LogLevel, fields: &[LogField<'_>]) -> LogWriterOutput {
         error_reporter::report_str(&report);
     }
     glib::log_writer_default(level, fields)
+}
+
+pub(crate) fn add_listener(listener: LogListener) -> u64 {
+    let id = NEXT_LISTENER_ID.fetch_add(1, Ordering::Relaxed);
+    listeners().insert(id, listener);
+    id
+}
+
+pub(crate) fn remove_listener(id: u64) {
+    listeners().remove(&id);
+}
+
+fn listeners() -> MutexGuard<'static, HashMap<u64, LogListener>> {
+    LISTENERS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+fn notify_listeners(level: LogLevel, fields: &[LogField<'_>]) {
+    let record = LogRecord {
+        level: level_name(level).to_owned(),
+        domain: field_value(fields, "GLIB_DOMAIN").unwrap_or("").to_owned(),
+        message: field_value(fields, "MESSAGE")
+            .unwrap_or("(no message)")
+            .to_owned(),
+    };
+
+    listeners().retain(|_, listener| {
+        listener.call(record.clone(), ThreadsafeFunctionCallMode::NonBlocking) == Status::Ok
+    });
+}
+
+fn level_name(level: LogLevel) -> &'static str {
+    match level {
+        LogLevel::Error => "error",
+        LogLevel::Critical => "critical",
+        LogLevel::Warning => "warning",
+        LogLevel::Message => "message",
+        LogLevel::Info => "info",
+        LogLevel::Debug => "debug",
+    }
 }
 
 fn trap(message: &str) -> bool {

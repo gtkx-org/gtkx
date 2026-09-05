@@ -233,7 +233,7 @@ describe("toHaveClass", () => {
         expect(button).toHaveClass("pill");
         expect(button).toHaveClass("pill suggested-action");
         expect(button).toHaveClass(/^suggested/);
-        expect(button).toHaveClass("pill", "suggested-action", { exact: true });
+        expect(button).toHaveClass("text-button", "pill", "suggested-action", { exact: true });
         expect(button).not.toHaveClass("pill", { exact: true });
     });
 

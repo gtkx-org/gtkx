@@ -29,6 +29,7 @@ type ColumnListProps = Omit<ColumnCellsProps, "column" | "hasExpander"> & {
 const COLUMN_VIEW_PROPS = [
     "items",
     "sections",
+    "isFlat",
     "renderHeader",
     "rowProps",
     "columns",

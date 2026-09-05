@@ -32,6 +32,8 @@ export default defineConfig({
 
 Each Vitest worker runs in its own headless environment, started before any test code loads and torn down with the worker. Headless runs need the compositor binary, `dbus-daemon`, and `setpriv` on the host; plugin options are in the [@gtkx/vitest reference](/reference/@gtkx/vitest/).
 
+The GTKX preload remains in `process.execArgv`, which Node workers inherit unless their `execArgv` option says otherwise. The preload returns immediately outside the main thread, so an inherited worker keeps the existing runtime and exits normally instead of starting another compositor and session bus. Pass `execArgv: []`, or an explicit list, when a worker should inherit none of the test runner's flags.
+
 Importing `@gtkx/testing` is the entire setup: cleanup, GTK4 loop teardown, and the `expect` matchers all come with the import. There is no setup file to write.
 
 ## Rendering and cleanup
@@ -72,6 +74,8 @@ Every query kind is available as `getBy`, `getAllBy`, `queryBy`, `queryAllBy`, `
 `getBy*` throws when nothing, or more than one thing, matches; `queryBy*` returns `null` when nothing matches; and `findBy*` polls until a match appears (1000 ms by default), which makes it the right choice after any interaction that triggers a re-render.
 
 Roles are always `Gtk.AccessibleRole` enum values, never strings: a `GtkCheckButton` reports `CHECKBOX`, an `AdwActionRow` reports `LIST_ITEM`. `ByRole` narrows further by `name` and by accessible state; see [`ByRoleOptions`](/reference/@gtkx/testing/type-aliases/ByRoleOptions). Text matchers take a `string` or number, a `RegExp`, or a predicate function.
+
+A `GtkButton` with a text `label` is labelled by its child label, and that GTK relation takes precedence over an `accessibleLabel` prop. Query it by the visible label and, when several buttons share that text, scope the query through a distinguishing parent.
 
 ```ts
 import * as Gtk from "@gtkx/gi/gtk";
@@ -123,7 +127,7 @@ expect(grid).toHaveAccessibleProperty(Gtk.AccessibleProperty.SORT, Gtk.Accessibl
 
 ## Debugging
 
-`screen.debug()` prints the widget tree the way the queries see it, with roles, names, and accessibility attributes. `screen.logRoles()` groups every widget by role, the fastest way to answer which role a widget reports. `screenshot(widget)` returns the base64 PNG data, and `{ path }` also writes the image to a file; `screen.screenshot()` takes the same options and captures the active toplevel window instead of one render's subtree. For a live dev session rather than a test, the [MCP server](/guide/mcp) exposes the same dumps, queries, and screenshots.
+`screen.debug()` prints the widget tree the way the queries see it, with roles, names, and accessibility attributes. `screen.logRoles()` groups every widget by role, the fastest way to answer which role a widget reports. `screenshot(widget)` returns the base64 PNG data, and `{ path }` also writes the image to a file; a toplevel capture includes its resolved window background, while pixels outside a captured subtree remain transparent. `screen.screenshot()` takes the same options and captures the active toplevel window instead of one render's subtree. For a live dev session rather than a test, the [MCP server](/guide/mcp) exposes the same dumps, queries, and screenshots.
 
 ::: tip
 Tests written this way double as a basic accessibility audit: a widget `getByRole` cannot find by name is usually one that is missing an accessible label.

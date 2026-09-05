@@ -172,6 +172,7 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
     ExpansionProps &
     SortProps &
     SourceProps<T, S> &
+    Partial<Record<"isFlat", boolean | undefined>> &
     Omit<ItemSizeProps, "estimatedItemWidth"> & {
         /** Columns to render, in order; each carries its own cell renderer. */
         columns: ColumnViewColumn<T>[];
@@ -242,7 +243,8 @@ type GridViewProps<T = unknown> = Omit<GtkGridViewProps, "model" | "factory" | k
 type ListViewOwnProps<T, S> = ItemSizeProps &
     SelectionProps &
     ExpansionProps &
-    SourceProps<T, S> & {
+    SourceProps<T, S> &
+    Partial<Record<"isFlat", boolean | undefined>> & {
         /** Renders the contents of one row. */
         renderItem: ListItemRenderer<T>;
         /** Renders the header shown above each section. */

@@ -61,6 +61,48 @@ You must free the copy with g_free() when done.</doc>
           </instance-parameter>
         </parameters>
       </method>
+      <method name="ownership_details" c:identifier="documented_note_ownership_details">
+        <doc xml:space="preserve">Describes copied values.
+
+The caller is responsible for freeing the list with g_strfreev() when it is no longer required.
+
+Calling code is responsible for freeing the pointer with g_free() when it is no longer required.
+
+The copy should be freed with documented_copy_free().
+
+The contents should be freed with g_free() when no longer needed.
+
+The returned contents must be freed with g_free().
+
+The pointer must be freed with g_free().
+
+That string needs to be freed by the callee using g_free().
+
+The memory of the input has to be dynamically allocated and will eventually be freed with g_free().</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Note" c:type="DocumentedNote*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="allocator_details" c:identifier="documented_note_allocator_details">
+        <doc xml:space="preserve">Describes allocator behavior.
+
+In case a GCC compatible compiler is used, this function may be used automatically via g_free() if the allocated size is known at compile time.
+
+Creates a new memory output stream, using g_realloc() and g_free() for memory allocation.</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Note" c:type="DocumentedNote*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
       <method name="read" c:identifier="documented_note_read">
         <doc xml:space="preserve">Reads the note back in the given tone.</doc>
         <return-value transfer-ownership="none">

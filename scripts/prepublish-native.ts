@@ -53,7 +53,7 @@ for (const platform of readdirSync(npmDir)) {
     }
 
     writeFileSync(platformManifestPath, `${JSON.stringify(platformManifest, null, 2)}\n`);
-    publishPackage(platformDir, tag);
+    await publishPackage(platformDir, tag);
 }
 
 manifest.optionalDependencies = optionalDependencies;

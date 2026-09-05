@@ -1,11 +1,11 @@
 import type { ConfigLoader } from "@gtkx/config";
-import type { Plugin, UserConfig } from "vite";
+import type { Plugin, Rollup, UserConfig } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AssetEmitter } from "./asset-emitter.js";
-import { prependBanner } from "../internal/banner.js";
+import { outputRootUrlExpression, prependBanner } from "../internal/banner.js";
 import {
     relativeIconPath,
     resolveApplicationIcon,
@@ -20,10 +20,10 @@ type PluginState = {
 
 const ICONS_DIR = "icons";
 
-const XDG_ENV_BANNER = [
-    "process.env.XDG_DATA_DIRS = [",
-    "    decodeURIComponent(new URL(\".\", import.meta.url).pathname),",
-    "    process.env.XDG_DATA_DIRS || \"/usr/local/share:/usr/share\",",
+const xdgEnvBanner = (chunk: Rollup.RenderedChunk): string => [
+    "globalThis.process.env.XDG_DATA_DIRS = [",
+    `    ${outputRootUrlExpression(chunk)},`,
+    "    globalThis.process.env.XDG_DATA_DIRS || \"/usr/local/share:/usr/share\",",
     "].join(\":\");",
 ].join("\n");
 
@@ -78,7 +78,7 @@ function gtkxIcons(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
                 return;
             }
 
-            return prependBanner(options, XDG_ENV_BANNER);
+            return prependBanner(options, xdgEnvBanner);
         },
 
         buildEnd() {

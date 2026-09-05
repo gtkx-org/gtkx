@@ -47,6 +47,7 @@ describe("gtkx codegen writing agent-facing files", () => {
         expect(rules).toContain(BEGIN_MARKER);
         expect(rules).toContain(END_MARKER);
         expect(rules).toContain(".gtkx/reference/index.md");
+        expect(rules).toContain("| `gtkx cleanup` | Remove stale headless runtime directories |");
         expect(read(state.project, CLAUDE).trim()).toBe(`@${AGENTS}`);
         expect(read(state.project, REFERENCE_INDEX)).toContain("Element reference");
         expect(read(state.project, BUTTON_PAGE)).toContain("GtkButton");

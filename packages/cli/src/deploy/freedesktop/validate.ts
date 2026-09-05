@@ -35,6 +35,7 @@ const ERROR_SEVERITY = "E";
 const WARNING_SEVERITY = "W";
 const INFO_SEVERITY = "I";
 const FATAL_WARNING_RULES: Set<string> = new Set(["unknown-tag"]);
+const DESKTOP_ERROR = /(?:^|:\s)error:/iu;
 
 const FATAL_RULE_NOTES: Record<string, (detail: string) => string> = {
     "unknown-tag": (element) =>
@@ -146,8 +147,14 @@ const validateDesktopEntry = (path: string): void => {
         subject: "The desktop entry",
     });
 
-    if (status !== 0 || output.length > 0) {
+    const diagnostics = output.split("\n").filter((line) => line.length > 0);
+
+    if (status !== 0 || diagnostics.some((line) => DESKTOP_ERROR.test(line))) {
         throw invalid("The desktop entry", output, [], []);
+    }
+
+    for (const diagnostic of diagnostics) {
+        warn(diagnostic);
     }
 };
 

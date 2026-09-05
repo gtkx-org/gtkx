@@ -19,7 +19,7 @@ const findRepoRoot = (start: string): string => {
     return dir;
 };
 
-const releasePackage = (): void => {
+const releasePackage = async (): Promise<void> => {
     const packageDir = process.cwd();
     const root = findRepoRoot(packageDir);
     copyFileSync(join(root, "README.md"), join(packageDir, "README.md"));
@@ -30,10 +30,10 @@ const releasePackage = (): void => {
     const tag = distTagForVersion(manifest.version ?? "");
 
     try {
-        publishPackage(packageDir, tag);
+        await publishPackage(packageDir, tag);
     } finally {
         writeFileSync(manifestPath, original);
     }
 };
 
-releasePackage();
+await releasePackage();

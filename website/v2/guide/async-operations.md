@@ -165,6 +165,8 @@ worker.on("message", (rows) => setRows(rows));
 
 The specifier has to be relative and has to name the worker source file as it exists on disk, and the `new URL(...)` has to sit directly inside the `new Worker(...)` call, otherwise `gtkx build` fails.
 
+During `gtkx dev` and Vitest, Node loads the worker and its imports directly rather than from a bundle. Relative imports in that graph must therefore name their `.ts` source files and use syntax supported by Node's type stripping; enums and parameter properties are not available. `gtkx build` bundles the graph and can accept code that native dev or test loading cannot, so exercise each worker in Vitest as well as building it.
+
 Only one thread in a process may own GTKX's GLib integration. In an application, the main thread initializes that process-wide default context, so its workers must not import generated `@gtkx/gi/*` modules or run GTKX native calls. A standalone worker can initialize GTKX only when no other thread in the process has done so. Keep application GI work on the owning main thread; workers compute with Node and post plain data back for that thread to render. A conflicting import fails at bootstrap with an error explaining the ownership rule.
 
 ## Desktop trash in headless sessions

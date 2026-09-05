@@ -12,6 +12,7 @@ import {
     deployProbe,
     EXPECTED_MANIFESTS,
     EXPECTED_STAGED,
+    expectSuccessfulDeploy,
     expectUnlocalizedMetadata,
     flatpakManifest,
     HELPER_DESTINATION,
@@ -83,6 +84,35 @@ describe("gtkx deploy (manifests only)", () => {
 
     it("leaves metadata untranslated when the project has no po directory", () => {
         expectUnlocalizedMetadata(state.project);
+    });
+});
+
+describe("gtkx deploy (desktop entry hints)", () => {
+    const state = deployProbe({
+        prefix: "gtkx-cli-deploy-desktop-hint-",
+        config: config(
+            DEPLOY_BLOCK.replace('categories: ["Utility"]', 'categories: ["Utility", "System", "FileTools"]'),
+        ),
+        files: projectFiles(),
+        args: ["deploy", "--print-manifests", "--target", "deb"],
+    });
+
+    it("reports a validator hint without rejecting valid metadata", () => {
+        expectSuccessfulDeploy(state);
+        expect(state.output).toContain("contains more than one main category");
+    });
+});
+
+describe("gtkx deploy (desktop entry errors)", () => {
+    const state = deployProbe({
+        prefix: "gtkx-cli-deploy-desktop-error-",
+        config: config(DEPLOY_BLOCK.replace('categories: ["Utility"]', 'categories: ["InvalidCategory"]')),
+        files: projectFiles(),
+        args: ["deploy", "--print-manifests", "--target", "deb"],
+    });
+
+    it("rejects invalid desktop metadata", () => {
+        expect(state.status).not.toBe(0);
     });
 });
 
