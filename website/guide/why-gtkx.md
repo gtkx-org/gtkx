@@ -1,6 +1,6 @@
 ---
 title: "Why GTKX"
-description: "Why GTKX is an Adwaita-first React framework for GNOME, and why it runs on Node.js."
+description: "Why GTKX is the React framework for Linux, why it is Adwaita-first, and why it runs on Node.js."
 ---
 
 # Why GTKX

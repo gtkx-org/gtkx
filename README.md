@@ -5,7 +5,7 @@
 <h1 align="center">GTKX</h1>
 
 <p align="center">
-  The Adwaita-first React framework for GNOME.<br />
+  The React framework for Linux.<br />
   Write native GNOME applications with React and TypeScript.
   Real Adwaita and GTK4 widgets with standard web tooling.
 </p>

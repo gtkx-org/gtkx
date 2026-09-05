@@ -15,7 +15,7 @@ const cmd = "npm create gtkx";
       <div class="hero__col">
         <p class="overline hero__eyebrow">// React · Node · TypeScript · libadwaita · GTK4</p>
         <h1 class="hero__title">
-          The React framework for <span class="gtkx-gradient-text">GNOME</span>
+          The React framework for <span class="gtkx-gradient-text">Linux</span>
         </h1>
         <p class="hero__lede">
           Build native GNOME applications with React and TypeScript.

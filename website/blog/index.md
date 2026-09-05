@@ -1,6 +1,6 @@
 ---
 title: Blog
-description: Announcements and release notes from GTKX, the Adwaita-first React framework for GNOME.
+description: Announcements and release notes from GTKX, the React framework for Linux, built on Adwaita.
 ---
 
 # Blog
