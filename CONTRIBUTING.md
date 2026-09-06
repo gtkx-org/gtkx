@@ -44,9 +44,20 @@ Breaking removals require a warning in an earlier minor release. Renamed symbols
 
 ## Publish a release
 
-Merge the release pull request through the GitHub web UI using the repository's protected merge path. Confirm that the resulting commit on `main` is marked Verified before tagging it. Never merge a release pull request with `gh pr merge --rebase --admin`; that path rewrote the release commit in PR #619 without a signature.
+A release commit has to reach `main` carrying your own signature. Open the release pull request as usual and wait for its checks to finish, then advance `main` to the signed commit yourself instead of merging in the web UI:
 
-Fetch the verified commit, create a signed tag for the package version, and push that exact tag:
+```bash
+gh pr checks <number>
+git fetch origin main
+git log -1 --show-signature release/vX.Y.Z
+git push origin release/vX.Y.Z:main
+```
+
+`commit.gpgsign` signs the release commit when you make it, so the push is a fast-forward of a commit you signed. That satisfies the `required_signatures` and `required_linear_history` rules on `main` on their own merits, and the pull request closes as merged once its commit is reachable. Merging in the web UI instead replaces your signature with GitHub's, and `gh pr merge --rebase --admin` replays the commit without any signature at all, which is how PR #619 reached `main` unsigned.
+
+The push bypasses two rules, because an organization admin bypasses the ruleset: the required status checks, and the approving review. Nothing else re-checks them, so read `gh pr checks` yourself and push only when every check has passed. Confirm the commit on `main` is still marked Verified before tagging it.
+
+Create a signed tag for the package version and push that exact tag:
 
 ```bash
 git fetch origin main --tags
@@ -55,11 +66,14 @@ git tag -s vX.Y.Z origin/main -m "vX.Y.Z"
 git push origin refs/tags/vX.Y.Z
 ```
 
-In GitHub Releases, create a release for the existing tag, write the complete curated release notes, and save it as a draft. Dispatch the Publish workflow explicitly from that tag:
+Write the complete curated release notes, then create a draft release for the existing tag and dispatch the Publish workflow explicitly from that tag:
 
 ```bash
+gh release create vX.Y.Z --draft --prerelease --title vX.Y.Z --notes-file notes.md
 gh workflow run publish.yml --ref vX.Y.Z
 ```
+
+Drop `--prerelease` for a stable release. The draft has to exist before the workflow runs, and the notes are final once it does.
 
 The workflow takes no inputs; the ref it is dispatched from is the whole request. Its `validate-release` job rejects a branch ref, a tag that is not `v` followed by the `version` in `packages/create-gtkx/package.json`, and a release that is not a draft. It then builds and publishes from `refs/tags/vX.Y.Z`, waits until every exact package version and dist-tag is visible on the registry, and only then publishes the draft without changing its notes and dispatches the Website workflow for the same tag, because a release published by the workflow's own token does not trigger it.
 
