@@ -36,6 +36,15 @@ const FONT_FAMILY = "Red Hat Mono";
 const FONT_ASSET = join("data", "probe.woff2");
 const ADDED_FONT_FAMILY = "Red Hat Text";
 const ADDED_FONT_ASSET = join("data", "probe.otf");
+const PACKAGE_FONT_FAMILY = "Red Hat Display";
+const PACKAGE_FONT_DIR = join("node_modules", "probe-fonts");
+const PACKAGE_FONT_IMPORT = 'import packageFontFamily from "probe-fonts/probe.woff?font";';
+
+const PACKAGE_FONT_MANIFEST = `${JSON.stringify({
+    name: "probe-fonts",
+    version: "1.0.0",
+    exports: { "./probe.woff": "./probe.woff" },
+}, null, 4)}\n`;
 const FONT_IMPORT_ADDED = "Font import added";
 
 const fontFixture = (name: string): Buffer =>
@@ -129,6 +138,7 @@ import firstFile from "../data/first.data?url";
 import { translatedMessage } from "./messages.js";
 import secondResourcePath from "../data/second.data?resource";
 import fontFamily from "../data/probe.woff2?font";
+import packageFontFamily from "probe-fonts/probe.woff?font";
 `;
 
 const appBody = (translationKey: string): string => String.raw`;
@@ -138,7 +148,7 @@ const stagedFontCount = (process.env.XDG_DATA_DIRS ?? "")
     .map((directory) => join(directory, "fonts"))
     .filter((directory) => existsSync(directory))
     .flatMap((directory) => readdirSync(directory))
-    .filter((name) => name.startsWith("probe-") && name.endsWith(".woff2")).length;
+    .filter((name) => name.startsWith("probe-")).length;
 
 const resourceText = (path: string) => Buffer.from(
     Gio.resourcesLookupData(path, Gio.ResourceLookupFlags.NONE).getData() ?? [],
@@ -163,7 +173,7 @@ const App = () => {
             " " + resourceText(secondResourcePath) + " " + readFileSync(firstFile, "utf8").trim() + " " +
             String(hasIcon) + " " + resourceIconName + " " + String(hasResourceIcon) + " " +
             resourceIconRevision + " " + t(${JSON.stringify(translationKey)}) + " " + translatedMessage() +
-            " " + fontFamily + " " + String(stagedFontCount) + "\n",
+            " " + fontFamily + " " + packageFontFamily + " " + String(stagedFontCount) + "\n",
         );
     });
 
@@ -391,9 +401,9 @@ const expectSingleRestart = async (state: DevState, change: () => void): Promise
 const expectAddedFontRestart = async (state: DevState): Promise<void> => {
     const restarted = await expectSingleRestart(state, () => {
         writeApp(state.project, appSource("font-added").replace(
-            'import fontFamily from "../data/probe.woff2?font";',
-            'import fontFamily from "../data/probe.woff2?font";\nimport addedFamily from "../data/probe.otf?font";',
-        ).replace('" " + fontFamily + " "', '" " + fontFamily + " " + addedFamily + " "'));
+            PACKAGE_FONT_IMPORT,
+            () => `${PACKAGE_FONT_IMPORT}\nimport addedFamily from "../data/probe.otf?font";`,
+        ).replace('" " + packageFontFamily + " "', '" " + packageFontFamily + " " + addedFamily + " "'));
     });
 
     expect(restarted).toContain(FONT_IMPORT_ADDED);
@@ -455,6 +465,8 @@ const devProjectFiles = (): Record<string, string | Buffer> => ({
     [RESOURCE_ICON_MODULE]: RESOURCE_ICON_MODULE_SOURCE,
     [FONT_ASSET]: fontFixture("probe.woff2"),
     [ADDED_FONT_ASSET]: fontFixture("probe.otf"),
+    [join(PACKAGE_FONT_DIR, "package.json")]: PACKAGE_FONT_MANIFEST,
+    [join(PACKAGE_FONT_DIR, "probe.woff")]: fontFixture("probe.woff"),
     [FIRST_ASSET]: "asset-one\n",
     [SECOND_ASSET]: "asset-two\n",
     [ICON_ASSET]: "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"/>\n",
@@ -490,7 +502,7 @@ describe("gtkx dev", () => {
             `${READY_MARKER} one`,
         );
 
-        expect(state.session.output()).toContain(`${FONT_FAMILY} 1`);
+        expect(state.session.output()).toContain(`${FONT_FAMILY} ${PACKAGE_FONT_FAMILY} 2`);
 
         writeApp(state.project, appSource("two", null, "Source refresh"));
 
