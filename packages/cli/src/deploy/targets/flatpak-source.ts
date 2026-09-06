@@ -3,6 +3,7 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { posix, relative, resolve } from "node:path";
 import type { DeployPayload, DeploySettings } from "../types.js";
 import { LOCALE_DIRNAME } from "../../i18n/catalogs.js";
+import { FONTS_DIR } from "../../internal/font-path.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
@@ -68,6 +69,7 @@ const runtimeInstallCommands = (settings: DeploySettings, nodeExtensionPath: str
         "test ! -f dist/gschemas.compiled || " +
         installCommand("dist/gschemas.compiled", `${lib}/gschemas.compiled`, "m644"),
         `test ! -d dist/assets || cp -a dist/assets ${lib}/assets`,
+        `test ! -d dist/${FONTS_DIR} || cp -a dist/${FONTS_DIR} ${lib}/${FONTS_DIR}`,
         `test ! -d dist/${LOCALE_DIRNAME} || { mkdir -p ${locale} && cp -a dist/${LOCALE_DIRNAME}/. ${locale}/; }`,
         installCommand(LAUNCHER_FILENAME, `${DESTINATION}/bin/${settings.binaryName}`, "m755"),
     ];

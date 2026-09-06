@@ -134,6 +134,11 @@ const staged = (globalThis.process.env.XDG_DATA_DIRS ?? "")
 globalThis.process.stdout.write(JSON.stringify({ family: fontFamily, staged: staged.length }));
 `;
 
+const NO_FONT_ENTRY = `globalThis.process.stdout.write(
+    JSON.stringify({ xdg: globalThis.process.env.XDG_DATA_DIRS ?? null }),
+);
+`;
+
 const buildWithNodeEnv = async (project: AppProject, nodeEnv: string): Promise<string> => {
     const previous = process.env.NODE_ENV;
     process.env.NODE_ENV = nodeEnv;
@@ -198,6 +203,24 @@ describe("gtkx build (bundled fonts)", () => {
             const run = runWithoutDataEnvironment(join(project.root, bundle));
             expect(run.stderr).toBe("");
             expect(JSON.parse(run.stdout)).toEqual({ family: FONT_FAMILY, staged: 1 });
+            expect(run.status).toBe(0);
+        } finally {
+            removeAppProject(project);
+        }
+    }, BUILD_TIMEOUT);
+
+    it("leaves the data directories alone when the project bundles no font", async () => {
+        const project = createAppProject({
+            applicationId: FONT_APPLICATION_ID,
+            entry: NO_FONT_ENTRY,
+            prefix: "gtkx-build-no-font-environment-",
+        });
+
+        try {
+            const bundle = await buildAppProject({ project, outDir: FONT_OUT_DIR });
+            const run = runWithoutDataEnvironment(join(project.root, bundle));
+            expect(run.stderr).toBe("");
+            expect(JSON.parse(run.stdout)).toEqual({ xdg: null });
             expect(run.status).toBe(0);
         } finally {
             removeAppProject(project);

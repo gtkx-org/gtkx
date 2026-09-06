@@ -1,4 +1,4 @@
-import type { Plugin } from "vite";
+import type { Plugin, Rollup } from "vite";
 import { readFileSync } from "node:fs";
 import { parseSync } from "vite";
 import type { AssetEmitter } from "./asset-emitter.js";
@@ -108,6 +108,9 @@ const retainSideEffectFontImport = (
         ? { code, moduleSideEffects: true }
         : null;
 
+const fontBanner = (state: PluginState) => (chunk: Rollup.RenderedChunk): string =>
+    state.emitted.size === 0 ? "" : xdgDataDirsBanner(chunk);
+
 function gtkxFont(): Plugin {
     const state: PluginState = { isBuild: false, emitted: new Set() };
 
@@ -136,7 +139,7 @@ function gtkxFont(): Plugin {
                 return;
             }
 
-            return prependBanner(options, xdgDataDirsBanner);
+            return prependBanner(options, fontBanner(state));
         },
     };
 }

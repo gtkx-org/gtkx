@@ -11,6 +11,7 @@ import {
     findInlineSource,
     findSource,
     flatpakModule,
+    FONTS_INSTALL,
     GENERATED_SOURCES,
     HELPER_DESTINATION,
     HELPER_INSTALL,
@@ -111,6 +112,7 @@ describe("gtkx deploy (flatpak source mode payload)", () => {
             expect(appModule["build-commands"]).toContain(HELPER_INSTALL);
             expect(appModule["build-commands"]).toContain(LICENSE_INSTALL);
             expect(appModule["build-commands"]).toContain(SCHEMA_INSTALL);
+            expect(appModule["build-commands"]).toContain(FONTS_INSTALL);
             expect(appModule["build-commands"]).toContain(NOTICES_INSTALL);
             expect(findInlineSource(appModule, NOTICES_FILENAME)?.contents).toContain(NOTICES_HEADING);
         } finally {
