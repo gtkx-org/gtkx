@@ -18,6 +18,10 @@ const FONT_ASSET = join("data", "probe.woff2");
 const NESTED_FONT_ASSET = join("data", "probe.otf");
 const PACKAGE_DIR = join("node_modules", "probe-fonts");
 const NESTED_MODULE = join("src", "nested-font.ts");
+const OUTSIDE_MODULE = join("outside", "fonts.ts");
+const OUTSIDE_FONT_ASSET = join("outside", "probe.ttc");
+const DUPLICATE_FONT_ASSET = join("extra", "probe.otf");
+const DUPLICATE_MODULE = join("src", "duplicate-font.ts");
 
 const fontFixture = (name: string): Buffer =>
     readFileSync(fileURLToPath(new URL(`fixtures/${name}`, import.meta.url)));
@@ -30,6 +34,12 @@ const PACKAGE_MANIFEST = `${JSON.stringify({
 
 const NESTED_SOURCE =
     'export { default as nestedFontFamily } from "../data/probe.otf?font";\n';
+
+const DUPLICATE_SOURCE =
+    'export { default as duplicateFontFamily } from "../extra/probe.otf?font";\n';
+
+const OUTSIDE_SOURCE =
+    'export { default as outsideFontFamily } from "./probe.ttc?font";\n';
 
 const CONFIG =
     `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)} };\n`;
@@ -46,6 +56,7 @@ import { expect, it } from "vitest";
 import fontFamily from "./data/probe.woff2?font";
 import packageFontFamily from "probe-fonts/probe.woff?font";
 import { nestedFontFamily } from "./src/nested-font.js";
+import { duplicateFontFamily } from "./src/duplicate-font.js";
 
 const stagedFonts = (process.env.XDG_DATA_DIRS ?? "")
     .split(":")
@@ -63,7 +74,12 @@ it("reads a bundled font family and stages the file where fontconfig looks", () 
     expect(fontFamily).toBe(${JSON.stringify(FONT_FAMILY)});
     expect(nestedFontFamily).toBe(${JSON.stringify(NESTED_FONT_FAMILY)});
     expect(packageFontFamily).toBe(${JSON.stringify(PACKAGE_FONT_FAMILY)});
+    expect(duplicateFontFamily).toBe(${JSON.stringify(NESTED_FONT_FAMILY)});
     expect(stagedFonts).toHaveLength(3);
+});
+
+it("rejects a font import the staging scan cannot reach", async () => {
+    await expect(import("../outside/fonts.js")).rejects.toThrow();
 });
 `;
 
@@ -79,6 +95,10 @@ describe("gtkx vitest plugin (a root given relative to the working directory)", 
                 [join(APP_DIR, FONT_ASSET)]: fontFixture("probe.woff2"),
                 [join(APP_DIR, NESTED_FONT_ASSET)]: fontFixture("probe.otf"),
                 [join(APP_DIR, NESTED_MODULE)]: NESTED_SOURCE,
+                [join(APP_DIR, DUPLICATE_FONT_ASSET)]: fontFixture("probe.otf"),
+                [join(APP_DIR, DUPLICATE_MODULE)]: DUPLICATE_SOURCE,
+                [OUTSIDE_FONT_ASSET]: fontFixture("probe.ttc"),
+                [OUTSIDE_MODULE]: OUTSIDE_SOURCE,
                 [join(PACKAGE_DIR, "package.json")]: PACKAGE_MANIFEST,
                 [join(PACKAGE_DIR, "probe.woff")]: fontFixture("probe.woff"),
                 [join(APP_DIR, TEST_FILE)]: TEST_SOURCE,
