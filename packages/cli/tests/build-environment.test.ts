@@ -29,6 +29,14 @@ const FONT_PATH = join("data", FONT_FILE);
 const FONT_APPLICATION_ID = "com.gtkx.clibuildfont";
 const FONT_OUT_DIR = "dist";
 const FONT_FIXTURE = readFileSync(fileURLToPath(new URL("fixtures/probe.woff2", import.meta.url)));
+const OUTSIDE_FONT_FAMILY = "Red Hat Text";
+const OUTSIDE_FONT_FILE = "probe.otf";
+const OUTSIDE_FONT_PATH = join("data", OUTSIDE_FONT_FILE);
+const OUTSIDE_MODULE_PATH = join("extra", "fonts.mjs");
+const OUTSIDE_FONT_FIXTURE = readFileSync(fileURLToPath(new URL("fixtures/probe.otf", import.meta.url)));
+
+const OUTSIDE_FONT_SOURCE =
+    `export { default as outsideFamily } from "../data/${OUTSIDE_FONT_FILE}?font";\n`;
 
 const JSX_ENTRY = `import value from "./view.tsx";
 
@@ -122,6 +130,7 @@ worker.on("error", (error) => {
 const FONT_ONLY_ENTRY = `import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import fontFamily from "../data/${FONT_FILE}?font";
+import { outsideFamily } from "../extra/fonts.mjs";
 
 const staged = (globalThis.process.env.XDG_DATA_DIRS ?? "")
     .split(":")
@@ -129,9 +138,9 @@ const staged = (globalThis.process.env.XDG_DATA_DIRS ?? "")
     .map((directory) => join(directory, "fonts"))
     .filter((directory) => existsSync(directory))
     .flatMap((directory) => readdirSync(directory))
-    .filter((name) => name.startsWith("probe-") && name.endsWith(".woff2"));
+    .filter((name) => name.startsWith("probe-"));
 
-globalThis.process.stdout.write(JSON.stringify({ family: fontFamily, staged: staged.length }));
+globalThis.process.stdout.write(JSON.stringify({ families: [fontFamily, outsideFamily], staged: staged.length }));
 `;
 
 const NO_FONT_ENTRY = `globalThis.process.stdout.write(
@@ -194,7 +203,11 @@ describe("gtkx build (bundled fonts)", () => {
         const project = createAppProject({
             applicationId: FONT_APPLICATION_ID,
             entry: FONT_ONLY_ENTRY,
-            files: { [FONT_PATH]: FONT_FIXTURE },
+            files: {
+                [FONT_PATH]: FONT_FIXTURE,
+                [OUTSIDE_FONT_PATH]: OUTSIDE_FONT_FIXTURE,
+                [OUTSIDE_MODULE_PATH]: OUTSIDE_FONT_SOURCE,
+            },
             prefix: "gtkx-build-font-environment-",
         });
 
@@ -202,7 +215,7 @@ describe("gtkx build (bundled fonts)", () => {
             const bundle = await buildAppProject({ project, outDir: FONT_OUT_DIR });
             const run = runWithoutDataEnvironment(join(project.root, bundle));
             expect(run.stderr).toBe("");
-            expect(JSON.parse(run.stdout)).toEqual({ family: FONT_FAMILY, staged: 1 });
+            expect(JSON.parse(run.stdout)).toEqual({ families: [FONT_FAMILY, OUTSIDE_FONT_FAMILY], staged: 2 });
             expect(run.status).toBe(0);
         } finally {
             removeAppProject(project);
