@@ -12,7 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { I18N_TYPES_FILENAME, i18nTypesPath } from "../i18n/types.js";
-import { discoverSourceImports, type SourceImport } from "../internal/source-imports.js";
+import { discoverSourceImports, sourceDirFor, type SourceImport } from "../internal/source-imports.js";
 import { removeTempDir } from "../internal/staging-dir.js";
 import {
     isBareRelativeAsset,
@@ -30,7 +30,6 @@ type SchemaEnvResult = {
 
 const SCHEMA_SUFFIX = ".gschema.xml";
 const STAGED_NAME_LENGTH = 16;
-const SOURCE_DIR = "src";
 const RESOURCE_QUERY = "?resource=";
 const ICON_QUERY = "?icon=";
 
@@ -68,12 +67,6 @@ const projectRelativeSchemaPath = (root: string, filePath: string): string | nul
 };
 
 const getRelativeModuleSpecifier = (filePath: string): string => `*/${basename(filePath)}`;
-
-const sourceDirFor = (root: string): string => {
-    const sourceDir = join(root, SOURCE_DIR);
-
-    return existsSync(sourceDir) ? sourceDir : root;
-};
 
 const isRelativeImport = (source: string): boolean => source.startsWith("./") || source.startsWith("../");
 

@@ -5,6 +5,7 @@ import type { BuildManifestCollector } from "../internal/build-manifest.js";
 import { gtkxAssetImports } from "./asset-imports.js";
 import { gtkxBuiltUrl } from "./built-url.js";
 import { gtkxCss } from "./css.js";
+import { gtkxFont } from "./font.js";
 import { type CatalogWriteListener, gtkxI18n } from "./i18n.js";
 import { gtkxIcons } from "./icons.js";
 import { gtkxReactCompiler } from "./react-compiler.js";
@@ -53,6 +54,7 @@ const gtkxVitePlugins = (options: GtkxVitePluginOptions = {}): Plugin[] => {
         gtkxIcons(loadConfig),
         gtkxAssetImports(),
         gtkxBuiltUrl(),
+        gtkxFont(),
         gtkxResources(loadConfig, entryPath),
         gtkxCss(),
         gtkxReactCompiler(loadConfig),

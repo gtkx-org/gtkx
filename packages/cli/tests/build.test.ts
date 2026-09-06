@@ -15,7 +15,7 @@ import {
 
 type AppRun = { status: number | null; stdout: string; stderr: string };
 type BrokenEntry = { title: string; args: string[] };
-type BrokenBuild = { config?: string | undefined; files: Record<string, string>; prefix: string };
+type BrokenBuild = { config?: string | undefined; files: Record<string, string | Buffer>; prefix: string };
 
 type BuildMetadata = {
     generator: string;
@@ -34,6 +34,17 @@ const BUNDLE = "bundle.mjs";
 const BUILD_METADATA = "gtkx-schemas.json";
 const SCHEMA_FILE = `${APPLICATION_ID}.gschema.xml`;
 const ICON_PATH = join("icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
+const FONT_FILE = "probe.woff2";
+const FONT_FAMILY = "Red Hat Mono";
+const OPENTYPE_FONT_FILE = "probe.otf";
+const OPENTYPE_FONT_FAMILY = "Red Hat Text";
+const WOFF_FONT_FILE = "probe.woff";
+const WOFF_FONT_FAMILY = "Red Hat Display";
+const COLLECTION_FONT_FILE = "probe.ttc";
+const COLLECTION_FONT_FAMILY = "Red Hat Display";
+
+const fontFixture = (name: string): Buffer =>
+    readFileSync(fileURLToPath(new URL(`fixtures/${name}`, import.meta.url)));
 
 const EMITTED = [
     "bundle.mjs",
@@ -123,6 +134,10 @@ import localIconName from "../data/assets/icons/hicolor/scalable/actions/${LOCAL
 import directIconName from "../data/direct.svg?icon=${DIRECT_ICON_NAME}";
 import fixedVariant from "../data/variants/icons/16x16/actions/fixed.png?icon=${VARIANT_ICON_NAME}";
 import scalableVariant from "../data/variants/icons/scalable/actions/scalable.svg?icon=${VARIANT_ICON_NAME}";
+import fontFamily from "../data/${FONT_FILE}?font";
+import openTypeFontFamily from "../data/${OPENTYPE_FONT_FILE}?font";
+import woffFontFamily from "../data/${WOFF_FONT_FILE}?font";
+import collectionFontFamily from "../data/${COLLECTION_FONT_FILE}?font";
 
 const heading = css({ fontWeight: "bold" });
 
@@ -163,7 +178,8 @@ const App = () => {
             packageIconName + " " + String(iconTheme?.hasIcon(localIconName) === true) + " " +
             String(iconTheme?.hasIcon(directIconName) === true) + " " +
             String(iconTheme?.hasIcon(packageIconName) === true) + " " + String(iconResourcesLoaded) + " " +
-            String(fixedVariant === scalableVariant) + " " + packageIconUri + "\n",
+            String(fixedVariant === scalableVariant) + " " + packageIconUri + " " + fontFamily + " " +
+            openTypeFontFamily + " " + woffFontFamily + " " + collectionFontFamily + "\n",
         );
         quit();
     }, [counter, children]);
@@ -266,6 +282,11 @@ const App = () => {
 createRoot().render(<App />);
 `;
 
+const NON_FONT_SOURCE = `import fontFamily from "../data/logo.png?font";
+
+process.stdout.write(fontFamily);
+`;
+
 const URL_NAMED_EXPORT_SOURCE = `import { path } from "../data/logo.png?url";
 
 process.stdout.write(path);
@@ -287,7 +308,7 @@ const config = (libraries: string[], body = "", applicationIcon: string | null =
     (applicationIcon === null ? "" : `, applicationIcon: ${JSON.stringify(applicationIcon)}`) +
     `${body} };\n`;
 
-const appFiles = (entry: string): Record<string, string> => ({
+const appFiles = (entry: string): Record<string, string | Buffer> => ({
     "package.json": `${JSON.stringify(MANIFEST, null, 4)}\n`,
     [join("data", SCHEMA_FILE)]: SCHEMA,
     [join("data", ICON_PATH)]: "<svg/>\n",
@@ -297,6 +318,10 @@ const appFiles = (entry: string): Record<string, string> => ({
     [join("data", "direct.svg")]: SVG,
     [join("data", "variants", "icons", "16x16", "actions", "fixed.png")]: "png-probe\n",
     [join("data", "variants", "icons", "scalable", "actions", "scalable.svg")]: SVG,
+    [join("data", FONT_FILE)]: fontFixture(FONT_FILE),
+    [join("data", OPENTYPE_FONT_FILE)]: fontFixture(OPENTYPE_FONT_FILE),
+    [join("data", WOFF_FONT_FILE)]: fontFixture(WOFF_FONT_FILE),
+    [join("data", COLLECTION_FONT_FILE)]: fontFixture(COLLECTION_FONT_FILE),
     [join("src", entry)]: APP_SOURCE,
 });
 
@@ -470,6 +495,7 @@ describe("gtkx build", () => {
         const emitted = emittedNames(state.project);
         expect(state.status).toBe(0);
         expect(EMITTED.filter((name) => !emitted.includes(name))).toEqual([]);
+        expect(emitted.filter((name) => name.startsWith("fonts/"))).toHaveLength(4);
     });
 
     it("declares the schemas the project's sources can read", () => {
@@ -496,7 +522,8 @@ describe("gtkx build", () => {
 
         expect(run.stdout).toContain(
             `${LOCAL_ICON_NAME} ${DIRECT_ICON_NAME} ${PACKAGE_ICON_NAME} true true true true true ` +
-            `resource://${PACKAGE_ICON_RESOURCE_PATH}`,
+            `resource://${PACKAGE_ICON_RESOURCE_PATH} ${FONT_FAMILY} ${OPENTYPE_FONT_FAMILY} ` +
+            `${WOFF_FONT_FAMILY} ${COLLECTION_FONT_FAMILY}`,
         );
 
         expect(run.status).toBe(0);
@@ -778,6 +805,15 @@ describe("gtkx build (invalid resources and packaging inputs)", () => {
 
     it("fails when an imported schema is outside the project", () => {
         expectOutsideSchemaBuildFailure();
+    });
+});
+
+describe("gtkx build (invalid fonts)", () => {
+    it("fails when a font import points at a file that is not a font", () => {
+        expectBuildFailure({
+            prefix: "gtkx-cli-build-invalid-font-",
+            files: { ...appFiles("index.tsx"), [join("src", "index.tsx")]: NON_FONT_SOURCE },
+        });
     });
 });
 

@@ -14,6 +14,15 @@ declare module "*?icon" {
     export default iconName;
 }
 
+declare module "*?font" {
+    /**
+     * Font family name of the bundled font. Importing the module bundles the font file with the application and
+     * puts it where fontconfig finds it, so the family is available to Pango without any runtime registration.
+     */
+    const fontFamily: string;
+    export default fontFamily;
+}
+
 declare module "*.css?url" {
     /**
      * Absolute filesystem path of the source stylesheet under `gtkx dev` or the emitted stylesheet once built,

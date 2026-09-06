@@ -10,4 +10,4 @@ const prependXdgDataDir = (dir: string, existing: string | undefined): string =>
     return `${dir}:${base}`;
 };
 
-export { prependXdgDataDir };
+export { prependXdgDataDir, XDG_DATA_DIRS_DEFAULT };

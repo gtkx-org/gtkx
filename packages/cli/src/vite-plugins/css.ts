@@ -4,6 +4,7 @@ import { createVirtualNamespace } from "./virtual-module.js";
 
 type CssResolveContext = Parameters<typeof resolveToVirtual>[0];
 type CssResolveRequest = Parameters<typeof resolveToVirtual>[1];
+type CssLoadContext = { addWatchFile: (file: string) => void };
 
 const CSS_RE = /\.css$/i;
 const INJECT_SUFFIX = "?inject";
@@ -24,13 +25,14 @@ const resolveCssId = async (ctx: CssResolveContext, request: CssResolveRequest):
     return virtualId + INJECT_SUFFIX;
 };
 
-const loadInjectedCss = (id: string): string | undefined => {
+const loadInjectedCss = (ctx: CssLoadContext, id: string): string | undefined => {
     if (!isVirtual(id) || !id.endsWith(INJECT_SUFFIX)) {
         return;
     }
 
     const filePath = fromVirtualId(id.slice(0, -INJECT_SUFFIX.length));
     const content = readFileSync(filePath, "utf8");
+    ctx.addWatchFile(filePath);
 
     return ["import { injectGlobal } from \"@gtkx/css\";", `injectGlobal(${JSON.stringify(content)});`].join("\n");
 };
@@ -45,7 +47,7 @@ function gtkxCss(): Plugin {
         },
 
         load(id) {
-            return loadInjectedCss(id);
+            return loadInjectedCss(this, id);
         },
     };
 }

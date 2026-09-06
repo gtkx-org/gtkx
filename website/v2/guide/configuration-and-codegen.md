@@ -269,12 +269,15 @@ Use relative imports so GTKX can follow project files from source to the product
 import logoPath from "../data/logo.png?resource";
 import saveIcon from "../data/icons/scalable/actions/save.svg?icon=example-save-symbolic";
 import sourcePath from "../data/template.txt?url";
+import bodyFont from "../data/fonts/Inter-Regular.otf?font";
 import settings from "../data/com.example.Tasks.gschema.xml";
 ```
 
 `?resource` bundles an asset and returns its GResource path; `?resource=/org/example/exact.png` chooses an exact path. Use `?url` when an API needs a real file. Settings schemas stay query-free and receive generated types. Build a URI only where an API requires one: `` `resource://${logoPath}` ``.
 
 `?icon` bundles an SVG, PNG, or XPM as a private icon-theme resource and returns its extensionless icon name. An import below an `icons/hicolor/<size>/<context>/` or `icons/<size>/<context>/` tree keeps that layout. Files outside those trees become unthemed fallbacks. A query value such as `?icon=example-confirm-symbolic` overrides the name.
+
+`?font` bundles a TrueType, OpenType, TrueType Collection, WOFF, or WOFF2 font and returns the family name read out of the file, so nothing has to repeat that name as a literal. The font is emitted into `fonts/` beside `bundle.mjs` and the bundle points `XDG_DATA_DIRS` at that directory, which is where fontconfig looks, so Pango resolves the family with no registration call at startup. Import for the name when you select the family yourself, or import for the side effect alone when the font is only there to cover codepoints the system fonts lack.
 
 Production builds place bundled assets in `gtkx.gresource` beside `bundle.mjs`. Generated resource modules load and register it automatically.
 

@@ -113,6 +113,9 @@ const LICENSE_INSTALL = `install -Dm644 LICENSE ${FLATPAK_DEST}/share/licenses/$
 const SCHEMA_INSTALL =
     `install -Dm644 data/${SCHEMA_FILE} ${FLATPAK_DEST}/share/glib-2.0/schemas/${SCHEMA_FILE}`;
 
+const FONTS_INSTALL =
+    `test ! -d dist/fonts || cp -a dist/fonts ${FLATPAK_DEST}/lib/${BINARY_NAME}/fonts`;
+
 const DEFAULT_FINISH_ARGS = ["--share=ipc", "--socket=wayland", "--socket=fallback-x11", "--device=dri"];
 const DEFAULT_CLEANUP = ["/include", "/share/pkgconfig", "*.la", "*.a"];
 const MERGED_NEGATIONS = ["--share=ipc", "--device=dri", "--nosocket=wayland", "--nosocket=fallback-x11"];
@@ -844,6 +847,7 @@ export {
     RPM_NFPM_PATH,
     RUNTIME_BINARY,
     SCHEMA,
+    FONTS_INSTALL,
     SCHEMA_INSTALL,
     SECRET_DESTINATION,
     SOURCE_ARGS,

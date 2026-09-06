@@ -108,6 +108,7 @@ lib/<binaryName>/bundle.mjs                      the app
 lib/<binaryName>/gtkx.node                       the native addon
 lib/<binaryName>/gtkx.gresource                  bundled GResource assets, when present
 lib/<binaryName>/gschemas.compiled               compiled settings schemas
+lib/<binaryName>/fonts/**                        fonts from ?font imports, when present
 share/applications/<id>.desktop                  generated
 share/metainfo/<id>.metainfo.xml                 generated
 share/icons/hicolor/**/apps/<id>.svg             copied from applicationIcon

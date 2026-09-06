@@ -11,9 +11,14 @@ type IconSpecifier = {
     iconName: string | null;
 };
 
+type FontSpecifier = {
+    assetSource: string;
+};
+
 const RELATIVE_PREFIX_RE = /^\.\.?(?:\/|$)/;
 const RESOURCE_QUERY_RE = /^resource(?:=([^&#]+))?$/;
 const ICON_QUERY_RE = /^icon(?:=([^&#]+))?$/;
+const FONT_QUERY_RE = /^font$/;
 const URL_QUERY_RE = /(?:^|&)url(?:&|$)/;
 
 const getQuery = (source: string): string | null => {
@@ -61,6 +66,17 @@ const parseIconSpecifier = (source: string): IconSpecifier | null => {
     return { assetSource, iconName: match[1] ?? null };
 };
 
+const parseFontSpecifier = (source: string): FontSpecifier | null => {
+    const query = getQuery(source);
+    const assetSource = stripQuery(source);
+
+    if (query === null || !ASSET_RE.test(assetSource) || !FONT_QUERY_RE.test(query)) {
+        return null;
+    }
+
+    return { assetSource };
+};
+
 const isUrlSpecifier = (source: string): boolean => {
     const query = getQuery(source);
 
@@ -71,6 +87,7 @@ export {
     isAssetSpecifier,
     isBareRelativeAsset,
     isUrlSpecifier,
+    parseFontSpecifier,
     parseIconSpecifier,
     parseResourceSpecifier,
 };

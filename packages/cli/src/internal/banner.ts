@@ -15,6 +15,10 @@ const prependBanner = (options: Rollup.OutputOptions, banner: Banner): Rollup.Ou
             const prefix = await renderBanner(banner, chunk);
             const suffix = existing === undefined ? "" : await renderBanner(existing, chunk);
 
+            if (prefix.length === 0) {
+                return suffix;
+            }
+
             return suffix.length === 0 ? prefix : `${prefix}\n${suffix}`;
         },
     };
