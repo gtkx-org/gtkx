@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/cairo",
-    "version": "2.0.0-beta.6",
+    "version": "2.0.0-beta.7",
     "description": "Cairo drawing for GTKX GNOME apps: contexts, surfaces, patterns, fonts.",
     "keywords": [
         "gtkx",

@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/config",
-    "version": "2.0.0-beta.6",
+    "version": "2.0.0-beta.7",
     "description": "Configuration and element-prop mapping for Adwaita-first GTKX apps.",
     "keywords": [
         "gtkx",

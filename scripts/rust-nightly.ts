@@ -1,3 +1,3 @@
-const RUST_NIGHTLY = "nightly-2026-09-01";
+const RUST_NIGHTLY = "nightly-2026-09-06";
 
 export { RUST_NIGHTLY };

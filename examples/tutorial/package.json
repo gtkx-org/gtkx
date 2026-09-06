@@ -19,21 +19,21 @@
         "deploy": "gtkx deploy"
     },
     "dependencies": {
-        "@gtkx/cairo": "^2.0.0-beta.6",
-        "@gtkx/components": "^2.0.0-beta.6",
-        "@gtkx/css": "^2.0.0-beta.6",
-        "@gtkx/forms": "^2.0.0-beta.6",
-        "@gtkx/i18n": "^2.0.0-beta.6",
-        "@gtkx/navigation": "^2.0.0-beta.6",
-        "@gtkx/react": "^2.0.0-beta.6",
+        "@gtkx/cairo": "^2.0.0-beta.7",
+        "@gtkx/components": "^2.0.0-beta.7",
+        "@gtkx/css": "^2.0.0-beta.7",
+        "@gtkx/forms": "^2.0.0-beta.7",
+        "@gtkx/i18n": "^2.0.0-beta.7",
+        "@gtkx/navigation": "^2.0.0-beta.7",
+        "@gtkx/react": "^2.0.0-beta.7",
         "react": "^19.2.8",
         "zustand": "^5.0.15"
     },
     "devDependencies": {
-        "@gtkx/cli": "^2.0.0-beta.6",
-        "@gtkx/config": "^2.0.0-beta.6",
-        "@gtkx/testing": "^2.0.0-beta.6",
-        "@types/node": "^26.4.0",
+        "@gtkx/cli": "^2.0.0-beta.7",
+        "@gtkx/config": "^2.0.0-beta.7",
+        "@gtkx/testing": "^2.0.0-beta.7",
+        "@types/node": "^26.4.1",
         "@types/react": "^19.2.18",
         "typescript": "^6.0.3",
         "vitest": "^4.1.11"

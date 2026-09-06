@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/i18n",
-    "version": "2.0.0-beta.6",
+    "version": "2.0.0-beta.7",
     "description": "GNU gettext localization for GTKX GNOME apps via react-i18next.",
     "keywords": [
         "gtkx",
@@ -76,7 +76,7 @@
     },
     "dependencies": {
         "@gtkx/runtime": "workspace:*",
-        "i18next": "^26.4.1",
+        "i18next": "^26.4.2",
         "react-i18next": "^17.0.13"
     },
     "peerDependencies": {

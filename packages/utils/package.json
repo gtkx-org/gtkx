@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/utils",
-    "version": "2.0.0-beta.6",
+    "version": "2.0.0-beta.7",
     "description": "Shared utilities for the GTKX GNOME app toolchain.",
     "keywords": [
         "gtkx",

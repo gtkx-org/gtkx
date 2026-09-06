@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/animated",
-    "version": "2.0.0-beta.6",
+    "version": "2.0.0-beta.7",
     "description": "Spring animations for Adwaita and GTK widgets on the GTK4 frame clock.",
     "keywords": [
         "gtkx",

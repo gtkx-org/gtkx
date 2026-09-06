@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/native",
-    "version": "2.0.0-beta.6",
+    "version": "2.0.0-beta.7",
     "description": "Rust FFI addon for the GTKX GNOME stack and GObject libraries.",
     "keywords": [
         "gtkx",
@@ -147,6 +147,6 @@
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",
-        "@napi-rs/cli": "^3.8.6"
+        "@napi-rs/cli": "^3.9.0"
     }
 }
