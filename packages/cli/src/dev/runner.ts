@@ -2,6 +2,7 @@ import type { ApplicationInstance } from "@gtkx/runtime/internal";
 import type { InlineConfig, Plugin } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { isCatalogSource } from "../i18n/catalogs.js";
+import { hasUnstagedFontImport } from "../internal/font-staging.js";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
@@ -371,6 +372,11 @@ const restartForServerConfig = async (session: DevSession, changedPath: string):
     await requestRestart(session);
 };
 
+const restartForFont = async (session: DevSession, changedPath: string): Promise<void> => {
+    session.deps.log(`Font import added: ${changedPath}`);
+    await requestRestart(session);
+};
+
 const restartForCatalog = async (session: DevSession, changedPath: string): Promise<void> => {
     if (session.deps.hasWrittenCatalog(changedPath)) {
         return;
@@ -380,20 +386,32 @@ const restartForCatalog = async (session: DevSession, changedPath: string): Prom
     await requestRestart(session);
 };
 
-const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {
-    if (session.controller.isShuttingDown()) {
-        return;
-    }
+const didRestartForChange = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
+    const { root } = session.server.config;
 
-    if (isCatalogSource(session.server.config.root, change.path)) {
+    if (isCatalogSource(root, change.path)) {
         await restartForCatalog(session, change.path);
 
-        return;
+        return true;
     }
 
     if (isServerConfigFile(session.server.config, change.path)) {
         await restartForServerConfig(session, change.path);
 
+        return true;
+    }
+
+    if (change.event !== "unlink" && hasUnstagedFontImport(root, change.path)) {
+        await restartForFont(session, change.path);
+
+        return true;
+    }
+
+    return false;
+};
+
+const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {
+    if (session.controller.isShuttingDown() || await didRestartForChange(session, change)) {
         return;
     }
 

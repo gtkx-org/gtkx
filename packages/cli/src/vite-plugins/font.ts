@@ -4,6 +4,7 @@ import { parseSync } from "vite";
 import type { AssetEmitter } from "./asset-emitter.js";
 import { prependBanner } from "../internal/banner.js";
 import { fontFileName, FONTS_DIR } from "../internal/font-path.js";
+import { stagedFontStatus } from "../internal/font-staging.js";
 import { sourceLanguage } from "../internal/source-imports.js";
 import { xdgDataDirsBanner } from "../internal/xdg-banner.js";
 import { parseFontSpecifier } from "./asset-specifier.js";
@@ -13,7 +14,9 @@ import { createVirtualNamespace } from "./virtual-module.js";
 
 type PluginState = {
     isBuild: boolean;
+    root: string;
     emitted: Set<string>;
+    importers: Map<string, string>;
 };
 
 type ResolveContext = Parameters<typeof resolveToVirtual>[0];
@@ -36,8 +39,14 @@ const unreadableFontError = (filePath: string): string =>
     `Cannot read a font family name from ${filePath}; ?font expects a TrueType, OpenType, ` +
     "TrueType Collection, WOFF, or WOFF2 font";
 
+const unstagedFontError = (filePath: string, importer: string): string =>
+    `${filePath} was not staged before the toolkit started, so ${importer} would resolve its family to a ` +
+    "fallback font. Fonts are staged from ?font imports found in source files under the project root; move " +
+    "the import there, or restart to pick it up.";
+
 const resolveFontId = async (
     ctx: ResolveContext,
+    state: PluginState,
     request: ResolveRequest,
 ): Promise<RetainedFontModuleId | undefined> => {
     if (parseFontSpecifier(request.source) === null) {
@@ -46,7 +55,13 @@ const resolveFontId = async (
 
     const virtualId = await resolveToVirtual(ctx, request);
 
-    return virtualId === undefined ? undefined : { id: virtualId, moduleSideEffects: true };
+    if (virtualId === undefined) {
+        return undefined;
+    }
+
+    state.importers.set(virtualId, request.importer ?? state.root);
+
+    return { id: virtualId, moduleSideEffects: true };
 };
 
 const emitFont = (ctx: LoadContext, state: PluginState, filePath: string, content: Buffer): void => {
@@ -77,6 +92,8 @@ const loadFontModule = (ctx: LoadContext, state: PluginState, id: string): strin
 
     if (state.isBuild) {
         emitFont(ctx, state, filePath, content);
+    } else if (stagedFontStatus(filePath, content) === "absent") {
+        return ctx.error(unstagedFontError(filePath, state.importers.get(id) ?? state.root));
     }
 
     return `export default ${JSON.stringify(family)};`;
@@ -112,7 +129,7 @@ const fontBanner = (state: PluginState) => (chunk: Rollup.RenderedChunk): string
     state.emitted.size === 0 ? "" : xdgDataDirsBanner(chunk);
 
 function gtkxFont(): Plugin {
-    const state: PluginState = { isBuild: false, emitted: new Set() };
+    const state: PluginState = { isBuild: false, root: "", emitted: new Set(), importers: new Map() };
 
     return {
         name: "gtkx:font",
@@ -120,10 +137,11 @@ function gtkxFont(): Plugin {
 
         configResolved(config) {
             state.isBuild = config.command === "build";
+            state.root = config.root;
         },
 
         resolveId(source, importer, options) {
-            return resolveFontId(this, { source, importer, options });
+            return resolveFontId(this, state, { source, importer, options });
         },
 
         load(id) {
