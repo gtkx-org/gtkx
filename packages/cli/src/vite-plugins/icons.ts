@@ -1,17 +1,18 @@
 import type { ConfigLoader } from "@gtkx/config";
-import type { Plugin, Rollup, UserConfig } from "vite";
+import type { Plugin, UserConfig } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AssetEmitter } from "./asset-emitter.js";
-import { outputRootUrlExpression, prependBanner } from "../internal/banner.js";
+import { prependBanner } from "../internal/banner.js";
 import {
     relativeIconPath,
     resolveApplicationIcon,
     type ResolvedApplicationIcon,
 } from "../internal/icon-path.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
+import { xdgDataDirsBanner } from "../internal/xdg-banner.js";
 
 type PluginState = {
     applicationId: string;
@@ -19,13 +20,6 @@ type PluginState = {
 };
 
 const ICONS_DIR = "icons";
-
-const xdgEnvBanner = (chunk: Rollup.RenderedChunk): string => [
-    "globalThis.process.env.XDG_DATA_DIRS = [",
-    `    ${outputRootUrlExpression(chunk)},`,
-    "    globalThis.process.env.XDG_DATA_DIRS || \"/usr/local/share:/usr/share\",",
-    "].join(\":\");",
-].join("\n");
 
 const findIconFiles = (state: PluginState): ListedFile[] => {
     if (state.source.kind === "theme") {
@@ -78,7 +72,7 @@ function gtkxIcons(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
                 return;
             }
 
-            return prependBanner(options, xdgEnvBanner);
+            return prependBanner(options, xdgDataDirsBanner);
         },
 
         buildEnd() {

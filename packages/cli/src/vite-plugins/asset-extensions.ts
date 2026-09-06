@@ -18,6 +18,8 @@ const ASSET_EXTENSIONS = [
     "eot",
     "ttf",
     "otf",
+    "ttc",
+    "otc",
     "ico",
     "avif",
     "data",

@@ -13,7 +13,7 @@ type AppProject = { root: string; entry: string };
 type AppProjectOptions = {
     applicationId: string;
     entry: string;
-    files?: Record<string, string> | undefined;
+    files?: Record<string, string | Buffer> | undefined;
     prefix: string;
 };
 
@@ -35,7 +35,7 @@ const appConfig = (applicationId: string): string =>
         "",
     ].join("\n");
 
-const writeFiles = (root: string, files: Record<string, string>): void => {
+const writeFiles = (root: string, files: Record<string, string | Buffer>): void => {
     for (const [name, source] of Object.entries(files)) {
         const target = join(root, name);
         mkdirSync(dirname(target), { recursive: true });

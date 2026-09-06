@@ -2,6 +2,7 @@ import { loadConfig } from "@gtkx/config";
 import { error } from "@gtkx/utils";
 import { resolve } from "node:path";
 import { DEV_CONFIG_ENV, DEV_ENTRY_ENV } from "./entry-env.js";
+import { prepareDevFontDir } from "./font-dir.js";
 import { prepareDevIconDir } from "./icon-dir.js";
 import { prepareDevLocaleDir } from "./locale-dir.js";
 import { createDevRunner } from "./runner.js";
@@ -33,6 +34,7 @@ const main = async (): Promise<void> => {
     prepareDevLocaleDir(root, config.applicationId);
     prepareDevSchemaDir(root);
     prepareDevIconDir(root, config.applicationId, config.applicationIcon);
+    prepareDevFontDir(root);
     const entryPath = resolve(cwd, entryArg);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");
     const runner = createDevRunner(defaultDevRunnerDeps(configFile));

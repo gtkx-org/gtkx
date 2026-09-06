@@ -32,7 +32,7 @@ The `"*"` wildcard is gone, and explicitly listing `Adw-1` or `Gtk-4.0` is rejec
 - A returned `GObject.Value` is unwrapped and typed `unknown`; narrow it at the call site.
 - Promisified finish methods omit a leading success boolean when failure already rejects. `loadContentsAsync` resolves to `[Uint8Array, string | null]`.
 - Inout records and boxed values mutate the object passed in instead of repeating it in the return value.
-- Assets use relative `?resource`, `?icon`, or `?url` imports. Settings schemas use query-free relative imports.
+- Assets use relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports.
 - Generated classes register with their own definitions, so production builds retain only reached bindings. Import a class if `GObject.typeFromName` must find it.
 
 Run `tsc --noEmit` after these changes. The typechecker catches the value and tuple changes; `gtkx build` catches stale resource imports.

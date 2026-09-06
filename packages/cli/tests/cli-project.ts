@@ -13,7 +13,7 @@ type CliRun = { status: number | null; output: string; stdout: string; stderr: s
 type CliProjectOptions = {
     prefix: string;
     config?: string | undefined;
-    files?: Record<string, string> | undefined;
+    files?: Record<string, string | Buffer> | undefined;
     hasStore?: boolean | undefined;
     hasAgentReference?: boolean | undefined;
     omitPackages?: string[] | undefined;
@@ -53,7 +53,7 @@ const GIT_IDENTITY = ["-c", "user.email=probe@gtkx.dev", "-c", "user.name=Probe"
 const projectConfig = (source: string, hasAgentReference: boolean): string =>
     hasAgentReference || source.includes(AGENTS_KEY) ? source : source.replace(DEFAULT_EXPORT, () => REFERENCE_OFF);
 
-const writeProjectFiles = (root: string, files: Record<string, string>): void => {
+const writeProjectFiles = (root: string, files: Record<string, string | Buffer>): void => {
     for (const [name, contents] of Object.entries(files)) {
         const target = join(root, name);
         mkdirSync(dirname(target), { recursive: true });

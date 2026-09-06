@@ -1,6 +1,7 @@
 import type { ChildProcess } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
     type CliProject,
@@ -31,6 +32,9 @@ const SETTLE_DELAY = POLL_INTERVAL * 10;
 const FULL_RESTART = "Full restart (process restart)";
 const CATALOG_CHANGED = "Translation catalog changed";
 const APPLICATION_ERROR = "Application error";
+const FONT_FAMILY = "Red Hat Mono";
+const FONT_ASSET = join("data", "probe.woff2");
+const FONT_FIXTURE = readFileSync(fileURLToPath(new URL("fixtures/probe.woff2", import.meta.url)));
 const APP_MODULE = join("src", "app.tsx");
 const ENTRY_MODULE = join("src", "index.tsx");
 const MESSAGES_MODULE = join("src", "messages.ts");
@@ -112,15 +116,25 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { t } from "@gtkx/i18n";
 import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { useEffect } from "react";
 import firstResourcePath from "../data/first.data?resource";
 import firstFile from "../data/first.data?url";
 import { translatedMessage } from "./messages.js";
 import secondResourcePath from "../data/second.data?resource";
+import fontFamily from "../data/probe.woff2?font";
 `;
 
 const appBody = (translationKey: string): string => String.raw`;
+const stagedFontCount = (process.env.XDG_DATA_DIRS ?? "")
+    .split(":")
+    .filter(Boolean)
+    .map((directory) => join(directory, "fonts"))
+    .filter((directory) => existsSync(directory))
+    .flatMap((directory) => readdirSync(directory))
+    .filter((name) => name.startsWith("probe-") && name.endsWith(".woff2")).length;
+
 const resourceText = (path: string) => Buffer.from(
     Gio.resourcesLookupData(path, Gio.ResourceLookupFlags.NONE).getData() ?? [],
 ).toString("utf8").trim();
@@ -143,7 +157,8 @@ const App = () => {
             "${READY_MARKER} " + REVISION + " " + firstResourcePath + " " + resourceText(firstResourcePath) +
             " " + resourceText(secondResourcePath) + " " + readFileSync(firstFile, "utf8").trim() + " " +
             String(hasIcon) + " " + resourceIconName + " " + String(hasResourceIcon) + " " +
-            resourceIconRevision + " " + t(${JSON.stringify(translationKey)}) + " " + translatedMessage() + "\n",
+            resourceIconRevision + " " + t(${JSON.stringify(translationKey)}) + " " + translatedMessage() +
+            " " + fontFamily + " " + String(stagedFontCount) + "\n",
         );
     });
 
@@ -416,11 +431,12 @@ const expectInactiveIconRecovery = async (state: DevState): Promise<void> => {
     await expectResourceIconReload(state, "icon-restored", null, "true icon-one");
 };
 
-const devProjectFiles = (): Record<string, string> => ({
+const devProjectFiles = (): Record<string, string | Buffer> => ({
     [ENTRY_MODULE]: ENTRY_SOURCE,
     [APP_MODULE]: appSource("one"),
     [MESSAGES_MODULE]: MESSAGES_SOURCE,
     [RESOURCE_ICON_MODULE]: RESOURCE_ICON_MODULE_SOURCE,
+    [FONT_ASSET]: FONT_FIXTURE,
     [FIRST_ASSET]: "asset-one\n",
     [SECOND_ASSET]: "asset-two\n",
     [ICON_ASSET]: "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"/>\n",
@@ -455,6 +471,8 @@ describe("gtkx dev", () => {
         expect(await waitForOutput(state.session, `${READY_MARKER} one`, START_TIMEOUT)).toContain(
             `${READY_MARKER} one`,
         );
+
+        expect(state.session.output()).toContain(`${FONT_FAMILY} 1`);
 
         writeApp(state.project, appSource("two", null, "Source refresh"));
 

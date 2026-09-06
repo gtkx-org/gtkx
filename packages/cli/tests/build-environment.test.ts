@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
     type AppProject,
@@ -22,6 +23,12 @@ const APPLICATION_ID = "com.gtkx.clibuildenvironment";
 const SCHEMA_NAME = `${APPLICATION_ID}.gschema.xml`;
 const SCHEMA_PATH = join("data", SCHEMA_NAME);
 const ICON_PATH = join("icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
+const FONT_FILE = "probe.woff2";
+const FONT_FAMILY = "Red Hat Mono";
+const FONT_PATH = join("data", FONT_FILE);
+const FONT_APPLICATION_ID = "com.gtkx.clibuildfont";
+const FONT_OUT_DIR = "dist";
+const FONT_FIXTURE = readFileSync(fileURLToPath(new URL("fixtures/probe.woff2", import.meta.url)));
 
 const JSX_ENTRY = `import value from "./view.tsx";
 
@@ -53,6 +60,7 @@ const ENVIRONMENT_SCHEMA = `<?xml version="1.0" encoding="UTF-8"?>
 const SHARED_SOURCE = `import { existsSync } from "node:fs";
 import { join } from "node:path";
 import schema from "../data/${SCHEMA_NAME}";
+import fontFamily from "../data/${FONT_FILE}?font";
 
 function process(value) {
     return value;
@@ -66,8 +74,10 @@ const hasFile = (variable, relativePath) =>
 
 const environmentReady = () => process(
     schema.id === "${APPLICATION_ID}" &&
+    fontFamily === ${JSON.stringify(FONT_FAMILY)} &&
     hasFile("GSETTINGS_SCHEMA_DIR", "gschemas.compiled") &&
-    hasFile("XDG_DATA_DIRS", ${JSON.stringify(ICON_PATH)}),
+    hasFile("XDG_DATA_DIRS", ${JSON.stringify(ICON_PATH)}) &&
+    hasFile("XDG_DATA_DIRS", "fonts"),
 );
 
 const readyDuringDependencyEvaluation = environmentReady();
@@ -107,6 +117,21 @@ worker.on("error", (error) => {
     process.stderr.write(error.message);
     process.exitCode = 1;
 });
+`;
+
+const FONT_ONLY_ENTRY = `import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import fontFamily from "../data/${FONT_FILE}?font";
+
+const staged = (globalThis.process.env.XDG_DATA_DIRS ?? "")
+    .split(":")
+    .filter(Boolean)
+    .map((directory) => join(directory, "fonts"))
+    .filter((directory) => existsSync(directory))
+    .flatMap((directory) => readdirSync(directory))
+    .filter((name) => name.startsWith("probe-") && name.endsWith(".woff2"));
+
+globalThis.process.stdout.write(JSON.stringify({ family: fontFamily, staged: staged.length }));
 `;
 
 const buildWithNodeEnv = async (project: AppProject, nodeEnv: string): Promise<string> => {
@@ -159,6 +184,27 @@ describe("gtkx build (production environment)", () => {
     }, BUILD_TIMEOUT);
 });
 
+describe("gtkx build (bundled fonts)", () => {
+    it("reaches a bundled font from the output root when the project has no icon", async () => {
+        const project = createAppProject({
+            applicationId: FONT_APPLICATION_ID,
+            entry: FONT_ONLY_ENTRY,
+            files: { [FONT_PATH]: FONT_FIXTURE },
+            prefix: "gtkx-build-font-environment-",
+        });
+
+        try {
+            const bundle = await buildAppProject({ project, outDir: FONT_OUT_DIR });
+            const run = runWithoutDataEnvironment(join(project.root, bundle));
+            expect(run.stderr).toBe("");
+            expect(JSON.parse(run.stdout)).toEqual({ family: FONT_FAMILY, staged: 1 });
+            expect(run.status).toBe(0);
+        } finally {
+            removeAppProject(project);
+        }
+    }, BUILD_TIMEOUT);
+});
+
 describe("gtkx build (data environment across chunks)", () => {
     it("initializes shared, application, and worker modules from the output root", async () => {
         const project = createAppProject({
@@ -167,6 +213,7 @@ describe("gtkx build (data environment across chunks)", () => {
             files: {
                 "application.svg": "<svg/>\n",
                 "gtkx.config.mjs": ENVIRONMENT_CONFIG,
+                [FONT_PATH]: FONT_FIXTURE,
                 [SCHEMA_PATH]: ENVIRONMENT_SCHEMA,
                 [SHARED_PATH]: SHARED_SOURCE,
                 [WORKER_PATH]: WORKER_SOURCE,

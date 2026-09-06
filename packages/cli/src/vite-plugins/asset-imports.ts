@@ -5,6 +5,7 @@ import { ASSET_MENTION_RE } from "./asset-extensions.js";
 import {
     isAssetSpecifier,
     isUrlSpecifier,
+    parseFontSpecifier,
     parseIconSpecifier,
     parseResourceSpecifier,
 } from "./asset-specifier.js";
@@ -31,8 +32,11 @@ const RESOURCE_ADVICE =
 
 const ICON_ADVICE = "An icon asset exports only its default icon-theme name, and nothing else.";
 
+const FONT_ADVICE = "A font asset exports only its default font family name, and nothing else.";
+
 const RELATIVE_ADVICE =
-    "Add ?resource for a GResource, ?icon for a themed icon, or ?url for an emitted file.";
+    "Add ?resource for a GResource, ?icon for a themed icon, ?font for a bundled font, or ?url for an " +
+    "emitted file.";
 
 const boundName = (entry: BindingEntry): string | null => {
     const { name } = entry.importName;
@@ -85,6 +89,10 @@ const adviceFor = (source: string): string => {
 
     if (parseIconSpecifier(source) !== null) {
         return ICON_ADVICE;
+    }
+
+    if (parseFontSpecifier(source) !== null) {
+        return FONT_ADVICE;
     }
 
     if (isUrlSpecifier(source)) {

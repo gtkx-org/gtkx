@@ -1,6 +1,6 @@
 import type { ESTree, ParseResult, ParserOptions } from "vite";
 import { sortStringsBy } from "@gtkx/utils";
-import { globSync, readFileSync } from "node:fs";
+import { existsSync, globSync, readFileSync } from "node:fs";
 import { extname, join } from "node:path";
 import { parseSync, Visitor } from "vite";
 
@@ -27,6 +27,14 @@ const sourceLanguage = (path: string): SourceLanguage | undefined => {
     }
 
     return SOURCE_LANGUAGES.get(extname(path).toLowerCase());
+};
+
+const SOURCE_DIR = "src";
+
+const sourceDirFor = (root: string): string => {
+    const sourceDir = join(root, SOURCE_DIR);
+
+    return existsSync(sourceDir) ? sourceDir : root;
 };
 
 const discoverSourceFiles = (dir: string): string[] =>
@@ -132,4 +140,11 @@ const discoverSourceImports = (dir: string): SourceImport[] => {
     return sortStringsBy(imports, importKey);
 };
 
-export { discoverSourceFiles, discoverSourceImports, parseRuntimeImportsIn, type SourceImport, sourceLanguage };
+export {
+    discoverSourceFiles,
+    discoverSourceImports,
+    parseRuntimeImportsIn,
+    sourceDirFor,
+    sourceLanguage,
+    type SourceImport,
+};

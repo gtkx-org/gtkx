@@ -1,6 +1,7 @@
 import type { Plugin } from "vite";
 import gtkxVitest, { type PluginOptions } from "@gtkx/vitest";
 import { gtkxEnsureStore } from "./vite-plugins/ensure-store.js";
+import { gtkxFontWorkerEnv } from "./vite-plugins/font-worker-env.js";
 import { gtkxVitePlugins } from "./vite-plugins/index.js";
 import { gtkxSettingsWorkerEnv } from "./vite-plugins/settings-worker-env.js";
 
@@ -15,6 +16,7 @@ const gtkx = (options: PluginOptions = {}): Plugin[] => [
     gtkxEnsureStore(options.configFile),
     ...gtkxVitePlugins({ configFile: options.configFile }),
     gtkxSettingsWorkerEnv(options.configFile),
+    gtkxFontWorkerEnv(options.configFile),
     gtkxVitest(options),
 ];
 

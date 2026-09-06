@@ -136,6 +136,22 @@ injectGlobal`
 
 Importing a plain `.css` file works too: the GTKX CLI compiles the import into an `injectGlobal` call with the file's content.
 
+## Using a bundled font
+
+A `?font` import bundles the font file and returns its family name, which is the string `fontFamily` expects:
+
+```tsx
+import bodyFont from "../data/fonts/Inter-Regular.otf?font";
+
+const body = css({ fontFamily: bodyFont, fontSize: 16 });
+
+<GtkLabel label="Bundled" cssClasses={[body]} />;
+```
+
+Pass the family through the `fontFamily` field rather than building a font description string by hand. `Pango.FontDescription.fromString` reads trailing words such as `Light`, `Medium`, or `Condensed` as weight and stretch, so a family like `Inter Display Medium` would be truncated to `Inter Display` and select a different file.
+
+A font imported only to widen glyph coverage needs no binding at all. `import "../data/fonts/NotoSansKR.otf?font";` bundles the file and makes the family available for fallback. See [Import project data](/v2/guide/configuration-and-codegen#import-project-data) for the other asset flavors.
+
 ## Dark style and theming
 
 Light or dark cannot be forced from CSS. Set the color scheme through `Adw.StyleManager` instead:

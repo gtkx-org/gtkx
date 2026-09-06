@@ -1383,7 +1383,7 @@ const rejectInvalidSpecifier = (source: string): void => {
     if (isBareRelativeAsset(source)) {
         throw new Error(
             `${JSON.stringify(source)} must choose ?resource for a GResource, ?icon for a themed icon, ` +
-            "or ?url for an emitted file",
+            "?font for a bundled font, or ?url for an emitted file",
         );
     }
 };
