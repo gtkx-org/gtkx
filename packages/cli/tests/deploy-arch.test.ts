@@ -1,3 +1,4 @@
+import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -84,12 +85,13 @@ const packAddon = (arch: string, addon: Buffer): { dir: string; archive: string 
     mkdirSync(packageDir, { recursive: true });
     writeFileSync(join(packageDir, `native.linux-${arch}-gnu.node`), addon);
     const archive = join(dir, "addon.tgz");
-    execFileSync("tar", ["-czf", archive, "-C", dir, join("package", `native.linux-${arch}-gnu.node`)]);
+    const tar = resolveExecutable("tar");
+    execFileSync(tar, ["-czf", archive, "-C", dir, join("package", `native.linux-${arch}-gnu.node`)]);
 
     return { dir, archive };
 };
 
-const REGISTRY_SERVER = `
+const REGISTRY_SERVER = String.raw`
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 
@@ -112,7 +114,7 @@ const server = createServer((request, response) => {
 
 server.listen(0, "127.0.0.1", () => {
     origin = "http://127.0.0.1:" + String(server.address().port);
-    process.stdout.write(origin + "\\n");
+    process.stdout.write(origin + "\n");
 });
 `;
 
@@ -280,7 +282,9 @@ describe("gtkx deploy --arch (registry)", () => {
         try {
             const args = ["deploy", "--print-manifests", "--target", "deb", "--arch", FOREIGN_ARCH];
             const run = runCli(project, args, { npm_config_registry: registry.url, XDG_CACHE_HOME: cache });
-            if (run.status !== 0) { throw new Error(run.output); }
+            if (run.status !== 0) {
+                throw new Error(run.output);
+            }
             expect(stagedMachine(project.root, FOREIGN_ARCH)).toBe(MACHINE_FOR[FOREIGN_ARCH]);
         } finally {
             removeCliProject(project);
