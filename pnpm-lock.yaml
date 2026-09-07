@@ -350,8 +350,8 @@ importers:
         specifier: ^0.2.2
         version: 0.2.2
       confbox:
-        specifier: ^0.2.4
-        version: 0.2.4
+        specifier: ^0.3.1
+        version: 0.3.1
       create-gtkx:
         specifier: workspace:*
         version: link:../create-gtkx
@@ -4048,6 +4048,9 @@ packages:
 
   confbox@0.2.4:
     resolution: {integrity: sha512-ysOGlgTFbN2/Y6Cg3Iye8YKulHw+R2fNXHrgSmXISQdMnomY6eNDprVdW9R5xBguEqI954+S6709UyiO7B+6OQ==}
+
+  confbox@0.3.1:
+    resolution: {integrity: sha512-cKUSoKa8YxFZZSmraVi7onONx3amu77ngK3kGpsYHDH7drPwCRkQE1RYMPlLRrMtnciRj274XNRxcHxnKmDSnA==}
 
   confusing-browser-globals@1.0.11:
     resolution: {integrity: sha512-JsPKdmh8ZkmnHxDk55FZ1TqVLvEQTvoByJZRN9jzI0UjxK/QgAmsphz7PGtqgPieQZ/CQcHWXCR7ATDNhGe+YA==}
@@ -10081,6 +10084,8 @@ snapshots:
       - supports-color
 
   confbox@0.2.4: {}
+
+  confbox@0.3.1: {}
 
   confusing-browser-globals@1.0.11: {}
 
