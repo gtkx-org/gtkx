@@ -39,7 +39,7 @@ const resolveAppimageTooling = async (arch: string): Promise<AppimageTooling> =>
         url: `${APPIMAGETOOL_URL}/appimagetool-${arch}.AppImage`,
         dest: join(dir, `appimagetool-${arch}`),
         label: `appimagetool ${APPIMAGETOOL_VERSION}`,
-        sha256: digestFor(APPIMAGETOOL_DIGESTS, arch, "appimagetool"),
+        digest: digestFor(APPIMAGETOOL_DIGESTS, arch, "appimagetool"),
         mode: EXECUTABLE_MODE,
     });
 
@@ -47,7 +47,7 @@ const resolveAppimageTooling = async (arch: string): Promise<AppimageTooling> =>
         url: `${RUNTIME_URL}/runtime-${arch}`,
         dest: join(dir, `runtime-${arch}`),
         label: `the AppImage runtime ${RUNTIME_VERSION}`,
-        sha256: digestFor(RUNTIME_DIGESTS, arch, "the AppImage runtime"),
+        digest: digestFor(RUNTIME_DIGESTS, arch, "the AppImage runtime"),
         mode: EXECUTABLE_MODE,
     });
 

@@ -1,6 +1,7 @@
 import { defineCommand } from "citty";
 import { KNOWN_NAMES } from "../deploy/registry.js";
 import { runDeploy } from "../deploy/run-deploy.js";
+import { KNOWN_ARCH_NAMES } from "../deploy/settings/arch.js";
 import { configArg, entryArg } from "../internal/entry-arg.js";
 import { resolveProject } from "../internal/prepare-project.js";
 
@@ -17,6 +18,10 @@ const deploy = defineCommand({
         target: {
             type: "string",
             description: `Comma-separated package formats to build (${KNOWN_NAMES})`,
+        },
+        arch: {
+            type: "string",
+            description: `Comma-separated architectures to build (${KNOWN_ARCH_NAMES}; default: the host)`,
         },
         out: {
             type: "string",
@@ -39,6 +44,7 @@ const deploy = defineCommand({
             cwd,
             configFile,
             targets: args.target,
+            arches: args.arch,
             outDir: args.out,
             shouldPrintManifests: args["print-manifests"] === true,
             shouldSkipBuild: args["skip-build"] === true,

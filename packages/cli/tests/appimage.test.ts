@@ -31,20 +31,21 @@ const STATE: { root: string; settings: DeploySettings | null } = { root: "", set
 
 const deployPaths = (root: string): DeploySettings["paths"] => {
     const outDir = join(root, "build");
+    const archDir = join(outDir, "x64");
 
     return {
         applicationIcon: { kind: "none" },
         dist: join(root, "dist"),
         licenseFile: null,
-        metadata: join(outDir, "metadata"),
+        metadata: join(archDir, "metadata"),
         outDir,
         output: join(outDir, "out"),
-        overlay: join(outDir, "overlay"),
+        overlay: join(archDir, "overlay"),
         root,
-        runtime: join(outDir, "runtime"),
+        runtime: join(archDir, "runtime"),
         schemaFiles: [],
-        stage: join(outDir, "stage"),
-        targets: join(outDir, "targets"),
+        stage: join(archDir, "stage"),
+        targets: join(archDir, "targets"),
     };
 };
 

@@ -29,6 +29,7 @@ const EXTRACT_AND_RUN = "APPIMAGE_EXTRACT_AND_RUN";
 const appimageTarget: DeployTarget = {
     name: "appimage",
     prefix: PREFIX,
+    isHostOnly: true,
     tools: [FILE_TOOL],
     render: (payload) => renderManifests(payload),
     pack: (payload) => packAppImage(payload),

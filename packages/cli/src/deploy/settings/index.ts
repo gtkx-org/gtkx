@@ -1,5 +1,6 @@
 import type { Config } from "@gtkx/config";
 import type {
+    DeployArchName,
     DeployConfig,
     DeployDesktopAction,
     DeployDeveloper,
@@ -32,6 +33,7 @@ type SettingsRequest = {
     root: string;
     config: Config;
     configFile: string;
+    arch: DeployArchName;
     outDirOverride?: string | undefined;
     now?: Date | undefined;
 };
@@ -181,13 +183,14 @@ const resolveDeploySettings = (request: SettingsRequest): DeploySettings => {
         ...desktopSlice(deploy),
         extraFiles: resolveExtraFiles(request.root, deploy),
         versions: core.versions,
-        arch: resolveArch(),
+        arch: resolveArch(request.arch),
         paths: resolvePaths({
             root: request.root,
             deploy,
             applicationIcon: request.config.applicationIcon,
             applicationId: request.config.applicationId,
             outDirOverride: request.outDirOverride,
+            arch: request.arch,
         }),
         ...resolveLibraries(request.root, request.config),
         deploy,

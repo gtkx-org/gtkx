@@ -74,7 +74,7 @@ async function extractDeb(env: NodeJS.ProcessEnv, prefix: string): Promise<void>
 }
 
 function verifyLocalizedStage(): void {
-    const stage = join(TUTORIAL_DIR, "build", "stage");
+    const stage = join(TUTORIAL_DIR, "build", process.arch, "stage");
     const desktop = join(stage, "share", "applications", `${APPLICATION_ID}.desktop`);
     const metainfo = join(stage, "share", "metainfo", `${APPLICATION_ID}.metainfo.xml`);
     requireFile(join(stage, LOCALE_PATH));
@@ -105,10 +105,10 @@ function verifyLocalizedStage(): void {
 }
 
 function verifyManifests(): void {
-    requireFile(join(TUTORIAL_DIR, "build", "targets", "appimage", "AppRun"));
-    requireFile(join(TUTORIAL_DIR, "build", "targets", "deb", "nfpm.yaml"));
-    requireFile(join(TUTORIAL_DIR, "build", "targets", "rpm", "nfpm.yaml"));
-    const flatpak = join(TUTORIAL_DIR, "build", "targets", "flatpak", `${APPLICATION_ID}.yml`);
+    requireFile(join(TUTORIAL_DIR, "build", process.arch, "targets", "appimage", "AppRun"));
+    requireFile(join(TUTORIAL_DIR, "build", process.arch, "targets", "deb", "nfpm.yaml"));
+    requireFile(join(TUTORIAL_DIR, "build", process.arch, "targets", "rpm", "nfpm.yaml"));
+    const flatpak = join(TUTORIAL_DIR, "build", process.arch, "targets", "flatpak", `${APPLICATION_ID}.yml`);
     requireText(flatpak, "path: ../../stage");
     requireText(flatpak, "cp -a stage/. ${FLATPAK_DEST}/");
 }

@@ -3,7 +3,9 @@ import { info, warn } from "@gtkx/utils";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import type {
+    DeployArchName,
     DeployArtifact,
+    DeployConfig,
     DeployManifest,
     DeployPayload,
     DeploySettings,
@@ -29,10 +31,12 @@ import { extractMetadataMessages, localizeMetadata } from "./freedesktop/localiz
 import { renderMetainfo } from "./freedesktop/metainfo.js";
 import { renderMimePackage } from "./freedesktop/mime-package.js";
 import { validateDesktopEntry, validateMetainfo } from "./freedesktop/validate.js";
+import { resolveStagedAddon } from "./native-addon.js";
 import { resolveNodeRuntime } from "./node-runtime/index.js";
 import { collectNotices } from "./notices/collect.js";
 import { type StagedMetadata, stageOverlays, stagePayload } from "./payload/stage.js";
 import { DEFAULT_TARGETS, parseTargetList, targetsFor } from "./registry.js";
+import { archesFor, hostArchName, isHostArch, parseArchList } from "./settings/arch.js";
 import { readBuildManifest } from "./settings/build-manifest.js";
 import { resolveDeploySettings } from "./settings/index.js";
 import { readPackageManifest } from "./settings/package-manifest.js";
@@ -62,31 +66,52 @@ type DeployOptions = {
     cwd: string;
     configFile?: string | undefined;
     targets?: string | undefined;
+    arches?: string | undefined;
     outDir?: string | undefined;
     shouldPrintManifests: boolean;
     shouldSkipBuild: boolean;
 };
 
-type PreflightRequest = {
+type LoadedDeployConfig = {
+    config: Config;
+    configFile: string;
+    root: string;
+    deploy: DeployConfig;
+};
+
+type DeployPlan = {
+    loaded: LoadedDeployConfig;
     targets: DeployTarget[];
-    settings: DeploySettings;
+    arches: [DeployArchName, ...DeployArchName[]];
     project: CatalogProject | null;
+};
+
+type PreflightRequest = {
+    plan: DeployPlan;
+    settings: DeploySettings;
     shouldPrintManifests: boolean;
     shouldSkipBuild: boolean;
 };
 
-type LoadedDeploySettings = {
-    config: Config;
-    configFile: string;
+type BuildApplicationRequest = {
+    options: DeployOptions;
+    plan: DeployPlan;
     settings: DeploySettings;
+    buildOutDir: string | null;
 };
 
 type BuildPayloadRequest = {
     options: DeployOptions;
-    loaded: LoadedDeploySettings;
-    targets: DeployTarget[];
-    project: CatalogProject | null;
-    buildOutDir: string | null;
+    plan: DeployPlan;
+    settings: DeploySettings;
+    metadata: StagedMetadata;
+};
+
+type ArchRunRequest = {
+    options: DeployOptions;
+    plan: DeployPlan;
+    arch: DeployArchName;
+    metadata: StagedMetadata;
 };
 
 const BUILD_MODE = "production";
@@ -229,16 +254,27 @@ const sourceModeTools = (targets: DeployTarget[], settings: DeploySettings): Dep
 const isNodeRequired = (targets: DeployTarget[], settings: DeploySettings): boolean =>
     !(settings.deploy.flatpak?.mode === "source" && targets.every((target) => target.name === FLATPAK_TARGET));
 
-const runtimeToolsFor = (targets: DeployTarget[], settings: DeploySettings): DeployTool[] => {
+const archiveToolsFor = (settings: DeploySettings): DeployTool[] =>
+    (settings.deploy.node?.source ?? "download") === "download" ? [TAR] : [];
+
+const stripToolsFor = (settings: DeploySettings, arches: DeployArchName[]): DeployTool[] => {
+    if (settings.deploy.node?.shouldStrip === false) {
+        return [];
+    }
+
+    return arches.some((arch) => isHostArch(arch)) ? [STRIP] : [];
+};
+
+const runtimeToolsFor = (targets: DeployTarget[], settings: DeploySettings, arches: DeployArchName[]): DeployTool[] => {
     if (!isNodeRequired(targets, settings)) {
         return [];
     }
 
-    const node = settings.deploy.node ?? {};
-    const archiveTools = (node.source ?? "download") === "download" ? [TAR] : [];
-
-    return node.shouldStrip === false ? archiveTools : [...archiveTools, STRIP];
+    return [...archiveToolsFor(settings), ...stripToolsFor(settings, arches)];
 };
+
+const crossBuildToolsFor = (arches: DeployArchName[]): DeployTool[] =>
+    arches.every((arch) => isHostArch(arch)) ? [] : [TAR];
 
 const mutableCatalogTools = (project: CatalogProject): DeployTool[] => {
     if (project.catalogs.length === 0) {
@@ -266,20 +302,17 @@ const catalogTools = (project: CatalogProject | null, shouldSkipBuild: boolean):
     return project.catalogs.length === 0 ? [] : [MSGFMT];
 };
 
-const preflight = ({
-    targets,
-    settings,
-    project,
-    shouldPrintManifests,
-    shouldSkipBuild,
-}: PreflightRequest): void => {
+const preflight = ({ plan, settings, shouldPrintManifests, shouldSkipBuild }: PreflightRequest): void => {
+    const { targets, arches, project } = plan;
+
     const packagerTools = shouldPrintManifests
         ? []
-        : [...runtimeToolsFor(targets, settings), ...targets.flatMap((target) => target.tools)];
+        : [...runtimeToolsFor(targets, settings, arches), ...targets.flatMap((target) => target.tools)];
 
     const required = [
         DESKTOP_FILE_VALIDATE,
         APPSTREAMCLI,
+        ...crossBuildToolsFor(arches),
         ...catalogTools(project, shouldSkipBuild),
         ...sourceModeTools(targets, settings),
     ];
@@ -291,15 +324,50 @@ const preflight = ({
     warnLibraryMinimums(targets, settings);
 };
 
-const resolveTargetNames = (options: DeployOptions, settings: DeploySettings): string[] => {
+const hostOnlyNames = (targets: DeployTarget[]): string[] =>
+    targets.filter((target) => target.isHostOnly).map((target) => target.name);
+
+const assertCrossBuild = (plan: DeployPlan): void => {
+    const foreign = plan.arches.filter((arch) => !isHostArch(arch));
+
+    if (foreign.length === 0) {
+        return;
+    }
+
+    const hostOnly = hostOnlyNames(plan.targets);
+
+    if (hostOnly.length > 0) {
+        throw new Error(
+            `Cannot build ${hostOnly.join(" and ")} for ${foreign.join(" and ")}: those targets package with ` +
+            `tooling that only runs on ${hostArchName()}. Deploy them in a separate run without --arch.`,
+        );
+    }
+
+    if ((plan.loaded.deploy.node?.source ?? "download") !== "download") {
+        throw new Error(
+            'Cannot deploy for another architecture with a `deploy.node.source` other than "download": ' +
+            `a host or path runtime is always ${hostArchName()}.`,
+        );
+    }
+};
+
+const resolveTargetNames = (options: DeployOptions, deploy: DeployConfig): string[] => {
     if (options.targets !== undefined) {
         return parseTargetList(options.targets);
     }
 
-    return settings.deploy.targets ?? DEFAULT_TARGETS;
+    return deploy.targets ?? DEFAULT_TARGETS;
 };
 
-const loadSettings = async (options: DeployOptions): Promise<LoadedDeploySettings> => {
+const resolveArchNames = (options: DeployOptions, deploy: DeployConfig): string[] => {
+    if (options.arches !== undefined) {
+        return parseArchList(options.arches);
+    }
+
+    return deploy.architectures ?? [hostArchName()];
+};
+
+const loadDeployConfig = async (options: DeployOptions): Promise<LoadedDeployConfig> => {
     const { config, configFile, root } = await loadConfig(options.cwd, {
         mode: BUILD_MODE,
         configFile: options.configFile,
@@ -309,15 +377,26 @@ const loadSettings = async (options: DeployOptions): Promise<LoadedDeploySetting
         throw missingDeployError(config.applicationId, readPackageManifest(root));
     }
 
+    return { config, configFile, root, deploy: config.deploy };
+};
+
+const settingsFor = (plan: DeployPlan, options: DeployOptions, arch: DeployArchName): DeploySettings =>
+    resolveDeploySettings({
+        root: plan.loaded.root,
+        config: plan.loaded.config,
+        configFile: plan.loaded.configFile,
+        outDirOverride: options.outDir,
+        arch,
+    });
+
+const planDeploy = async (options: DeployOptions): Promise<DeployPlan> => {
+    const loaded = await loadDeployConfig(options);
+
     return {
-        config,
-        configFile,
-        settings: resolveDeploySettings({
-            root,
-            config,
-            configFile,
-            outDirOverride: options.outDir,
-        }),
+        loaded,
+        targets: targetsFor(resolveTargetNames(options, loaded.deploy)),
+        arches: archesFor(resolveArchNames(options, loaded.deploy)),
+        project: resolveCatalogProject(loaded.root, loaded.config.applicationId),
     };
 };
 
@@ -347,46 +426,57 @@ const synchronizeMetadataCatalogs = async (
     }
 };
 
-const buildPayload = async ({
+const buildApplication = async ({
     options,
-    loaded,
-    targets,
-    project,
+    plan,
+    settings,
     buildOutDir,
-}: BuildPayloadRequest): Promise<DeployPayload> => {
-    const settings = loaded.settings;
+}: BuildApplicationRequest): Promise<StagedMetadata> => {
     const templates = renderMetadata(settings);
 
-    if (buildOutDir !== null) {
-        info(`Building ${options.entry}`);
-        using preparedOutput = prepareBuildOutDir(settings.paths.root, buildOutDir);
+    if (buildOutDir === null) {
+        if (plan.project !== null) {
+            compileCatalogs(plan.project, join(settings.paths.dist, LOCALE_DIRNAME));
+        }
 
-        await buildApp({
-            entry: options.entry,
-            configFile: options.configFile,
-            vite: { root: options.cwd, build: { outDir: preparedOutput.path, emptyOutDir: false } },
-        });
-
-        preparedOutput.commit();
-        await synchronizeMetadataCatalogs(settings, templates, project);
-    } else if (project !== null) {
-        compileCatalogs(project, join(settings.paths.dist, LOCALE_DIRNAME));
+        return localizeMetadata(templates, plan.project);
     }
 
-    const metadata = localizeMetadata(templates, project);
-    validateMetadata(settings, metadata, isFlathubSubmission(settings, targets));
-    const buildManifest = readBuildManifest(settings, loaded);
+    info(`Building ${options.entry}`);
+    using preparedOutput = prepareBuildOutDir(settings.paths.root, buildOutDir);
+
+    await buildApp({
+        entry: options.entry,
+        configFile: options.configFile,
+        vite: { root: options.cwd, build: { outDir: preparedOutput.path, emptyOutDir: false } },
+    });
+
+    preparedOutput.commit();
+    await synchronizeMetadataCatalogs(settings, templates, plan.project);
+
+    return localizeMetadata(templates, plan.project);
+};
+
+const buildArchPayload = async ({
+    options,
+    plan,
+    settings,
+    metadata,
+}: BuildPayloadRequest): Promise<DeployPayload> => {
+    validateMetadata(settings, metadata, isFlathubSubmission(settings, plan.targets));
+    const buildManifest = readBuildManifest(settings, plan.loaded);
 
     const builtSettings: DeploySettings = {
         ...settings,
         paths: { ...settings.paths, schemaFiles: buildManifest.schemaFiles },
     };
 
-    const node = options.shouldPrintManifests || !isNodeRequired(targets, builtSettings)
+    const node = options.shouldPrintManifests || !isNodeRequired(plan.targets, builtSettings)
         ? null
         : await resolveNodeRuntime(builtSettings);
 
-    const stage = stagePayload({ settings: builtSettings, node, metadata });
+    const addon = await resolveStagedAddon(builtSettings, !options.shouldPrintManifests);
+    const stage = stagePayload({ settings: builtSettings, node, addon, metadata });
     info(`Staged ${String(stage.length)} files into ${displayPath(builtSettings, builtSettings.paths.stage)}`);
     const notices = collectNotices({ settings: builtSettings, node, packages: buildManifest.packages });
 
@@ -438,56 +528,76 @@ const packTargets = async (
     return artifacts;
 };
 
-const announce = (settings: DeploySettings, targets: DeployTarget[]): void => {
-    const names = targets.map((target) => target.name).join(", ");
+const announce = (settings: DeploySettings, plan: DeployPlan): void => {
+    const names = plan.targets.map((target) => target.name).join(", ");
     const version = `${settings.versions.packageVersion}-${settings.versions.debRevision}`;
-    info(`Deploying ${settings.name} ${version} as ${settings.binaryName} (${settings.arch.rpm}) to ${names}`);
+    const arches = plan.arches.join(", ");
+    info(`Deploying ${settings.name} ${version} as ${settings.binaryName} (${arches}) to ${names}`);
+};
+
+const deployArch = async (request: ArchRunRequest): Promise<DeployArtifact[]> => {
+    const { options, plan, arch, metadata } = request;
+    const settings = settingsFor(plan, options, arch);
+    const payload = await buildArchPayload({ options, plan, settings, metadata });
+    const rendered = renderTargetManifests(plan.targets, payload);
+
+    if (options.shouldPrintManifests) {
+        const count = rendered.values().toArray().flat().length;
+        info(`Wrote ${String(count)} manifests for ${arch}, 0 packages built`);
+
+        return [];
+    }
+
+    return await packTargets(rendered, payload);
+};
+
+const regenerate = async (options: DeployOptions, plan: DeployPlan): Promise<DeployPlan> => {
+    if (options.shouldSkipBuild) {
+        return plan;
+    }
+
+    await ensureGenerated(options.cwd, {
+        shouldAnnounce: true,
+        mode: BUILD_MODE,
+        configFile: options.configFile,
+    });
+
+    return await planDeploy(options);
+};
+
+const finish = (options: DeployOptions, settings: DeploySettings, artifacts: DeployArtifact[]): void => {
+    if (options.shouldPrintManifests) {
+        return;
+    }
+
+    const output = displayPath(settings, settings.paths.output);
+    info(`Deploy complete: ${String(artifacts.length)} artifacts in ${output}`);
 };
 
 const runDeploy = async (options: DeployOptions): Promise<void> => {
-    let loaded = await loadSettings(options);
-    let settings = loaded.settings;
-    let project = resolveCatalogProject(settings.paths.root, settings.applicationId);
-    let targets = targetsFor(resolveTargetNames(options, settings));
-    let buildOutDir = options.shouldSkipBuild ? null : resolveBuildOutDir(settings.paths.root, settings.paths.dist);
-    announce(settings, targets);
+    const planned = await planDeploy(options);
+    assertCrossBuild(planned);
+    announce(settingsFor(planned, options, planned.arches[0]), planned);
 
     preflight({
-        targets,
-        settings,
-        project,
+        plan: planned,
+        settings: settingsFor(planned, options, planned.arches[0]),
         shouldPrintManifests: options.shouldPrintManifests,
         shouldSkipBuild: options.shouldSkipBuild,
     });
 
-    if (!options.shouldSkipBuild) {
-        await ensureGenerated(options.cwd, {
-            shouldAnnounce: true,
-            mode: BUILD_MODE,
-            configFile: options.configFile,
-        });
-
-        loaded = await loadSettings(options);
-        settings = loaded.settings;
-        project = resolveCatalogProject(settings.paths.root, settings.applicationId);
-        targets = targetsFor(resolveTargetNames(options, settings));
-        buildOutDir = resolveBuildOutDir(settings.paths.root, settings.paths.dist);
-    }
-
+    const plan = await regenerate(options, planned);
+    const settings = settingsFor(plan, options, plan.arches[0]);
+    const buildOutDir = options.shouldSkipBuild ? null : resolveBuildOutDir(settings.paths.root, settings.paths.dist);
     prepareDeployOutDir(settings.paths.root, settings.paths.outDir);
-    const payload = await buildPayload({ options, loaded, targets, project, buildOutDir });
-    const rendered = renderTargetManifests(targets, payload);
+    const metadata = await buildApplication({ options, plan, settings, buildOutDir });
+    const artifacts: DeployArtifact[] = [];
 
-    if (options.shouldPrintManifests) {
-        const count = rendered.values().toArray().flat().length;
-        info(`Wrote ${String(count)} manifests, 0 packages built`);
-
-        return;
+    for (const arch of plan.arches) {
+        artifacts.push(...await deployArch({ options, plan, arch, metadata }));
     }
 
-    const artifacts = await packTargets(rendered, payload);
-    const output = displayPath(settings, settings.paths.output);
-    info(`Deploy complete: ${String(artifacts.length)} artifacts in ${output}`);
+    finish(options, settings, artifacts);
 };
 
 export { runDeploy };

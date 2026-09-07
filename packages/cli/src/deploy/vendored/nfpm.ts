@@ -56,7 +56,7 @@ const downloadNfpm = async (dir: string, binary: string): Promise<string> => {
         url: `${NFPM_BASE_URL}/${assetName}`,
         dest: join(dir, assetName),
         label: `nfpm ${NFPM_VERSION}`,
-        sha256: digestFor(process.arch),
+        digest: digestFor(process.arch),
     });
 
     extractNfpm(archive, binary);

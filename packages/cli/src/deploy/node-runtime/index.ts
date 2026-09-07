@@ -1,12 +1,13 @@
 import { MINIMUM_NODE_VERSION } from "@gtkx/config/internal";
-import { info, tryResolveExecutable } from "@gtkx/utils";
+import { info, tryResolveExecutable, warn } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { chmodSync, copyFileSync, mkdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { DeploySettings, NodeRuntime } from "../types.js";
+import type { DeployConfig, DeploySettings, NodeRuntime } from "../types.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
+import { elfMachineFor, hostArchName } from "../settings/arch.js";
 import { downloadNode } from "./download.js";
-import { readElfInfo } from "./elf.js";
+import { type ElfInfo, readElfInfo } from "./elf.js";
 import { assertPortableNode } from "./guard.js";
 import { licenseBesideNode } from "./license.js";
 
@@ -171,13 +172,32 @@ const stageFromSource = async (
     return { path: stageNode(settings, sourcePath), licenseFile: licenseBesideNode(sourcePath) };
 };
 
+type DeployNodeConfig = NonNullable<DeployConfig["node"]>;
+
+const shouldStripRuntime = (settings: DeploySettings, node: DeployNodeConfig, elf: ElfInfo): boolean => {
+    if (node.shouldStrip === false) {
+        return false;
+    }
+
+    if (elf.machine === elfMachineFor(hostArchName())) {
+        return true;
+    }
+
+    warn(
+        `Skipping \`strip\` on the bundled Node.js: it was built for ${settings.arch.node} and \`strip\` reads ` +
+        `only ${hostArchName()}. The ${settings.arch.node} packages carry an unstripped runtime.`,
+    );
+
+    return false;
+};
+
 const resolveNodeRuntime = async (settings: DeploySettings): Promise<NodeRuntime> => {
     const node = settings.deploy.node ?? {};
     const source = nodeSourceFor(settings);
     const version = resolveNodeVersion(settings);
     const staged = await stageFromSource(settings, version, source);
-    const isStripped = node.shouldStrip === false ? false : didStripBinary(staged.path);
     const elf = readElfInfo(staged.path);
+    const isStripped = shouldStripRuntime(settings, node, elf) && didStripBinary(staged.path);
     const glibcMinimum = elf.glibcMinimum ?? "unknown";
     info(`Bundled Node.js v${version} (${megabytes(staged.path)} MiB, runtime glibc >= ${glibcMinimum})`);
 

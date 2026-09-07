@@ -14,6 +14,7 @@ const APPIMAGE_COMPRESSIONS = ["gzip", "xz", "zstd"] as const;
 const DEB_COMPRESSIONS = ["gzip", "none", "xz", "zstd"] as const;
 const DEB_SIGN_METHODS = ["debsign", "dpkg-sig"] as const;
 const DEB_SIGN_TYPES = ["archive", "maint", "origin"] as const;
+const DEPLOY_ARCH_NAMES = ["arm64", "x64"] as const;
 const DEPLOY_TARGET_NAMES = ["appimage", "deb", "flatpak", "rpm"] as const;
 const FLATPAK_MODES = ["prebuilt", "source"] as const;
 const NODE_SOURCES = ["download", "host", "path"] as const;
@@ -272,6 +273,11 @@ const deploySchema = z.strictObject({
     targets: z
         .array(z.enum(DEPLOY_TARGET_NAMES, { error: "must be one of appimage, deb, flatpak, rpm" }), {
             error: "must be an array of deploy targets",
+        })
+        .optional(),
+    architectures: z
+        .array(z.enum(DEPLOY_ARCH_NAMES, { error: "must be one of arm64, x64" }), {
+            error: "must be an array of deploy architectures",
         })
         .optional(),
     outDir: text("must be a directory path relative to the project root").optional(),

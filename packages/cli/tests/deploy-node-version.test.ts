@@ -49,7 +49,7 @@ const deploy = (node: string, runtimeSource?: string): string => {
     runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"]);
 
     return readFileSync(
-        join(project.root, "build", "overlay", "deb", "share", "doc", BINARY_NAME, "copyright"),
+        join(project.root, "build", process.arch, "overlay", "deb", "share", "doc", BINARY_NAME, "copyright"),
         "utf8",
     );
 };

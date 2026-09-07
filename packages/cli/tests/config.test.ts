@@ -55,6 +55,10 @@ const REJECTED_CONFIGS: RejectedConfig[] = [
         title: "a minimum library version keyed by something that is not a library",
         config: `${HEAD}, deploy: { minimumLibraryVersions: { "Gtk-4.o": "4.18" } } };\n`,
     },
+    {
+        title: "an architecture GTKX cannot package for",
+        config: `${HEAD}, deploy: { architectures: ["riscv64"] } };\n`,
+    },
 ];
 
 const buildWith = (config: string): ReturnType<typeof createCliProject> => {

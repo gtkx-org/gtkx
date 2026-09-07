@@ -11,12 +11,12 @@ gtkx deploy
 ```
 
 ```
-[gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to flatpak
+[gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x64) to flatpak
 [gtkx] Validated the desktop entry and the metainfo
 [gtkx] Building ~/tasks/src/index.tsx
 [gtkx] Bundled Node.js v26.7.0 (109.4 MiB, runtime glibc >= 2.28)
-[gtkx] Staged 12 files into build/stage
-[gtkx] Wrote build/targets/flatpak/com.gtkx.tutorial.yml
+[gtkx] Staged 12 files into build/x64/stage
+[gtkx] Wrote build/x64/targets/flatpak/com.gtkx.tutorial.yml
 [gtkx] flatpak: running flatpak-builder, this can take several minutes
 [gtkx] Built build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (31.2 MiB)
 [gtkx] Deploy complete: 1 artifacts in build/out
@@ -38,6 +38,26 @@ gtkx deploy --target deb,rpm
 ```
 
 With neither, `gtkx deploy` builds a Flatpak.
+
+## Architectures
+
+`gtkx deploy` builds for the machine it runs on. `--arch` asks for others, and one run can emit several:
+
+```bash
+gtkx deploy --target deb,rpm --arch x64,arm64
+```
+
+`deploy.architectures` sets the default list the same way `deploy.targets` does, and `--arch` overrides it. The supported names are `x64` and `arm64`, the same spellings Node.js uses; each package is named for its own convention, so `arm64` produces `nalmada_1.0.0-1_arm64.deb` and `nalmada-1.0.0-1.aarch64.rpm`.
+
+Only `deb` and `rpm` cross-build. `nfpm` assembles an archive and never runs what is inside it, so the host architecture does not matter. `appimage` and `flatpak` package by running the target's own tooling — `appimagetool` for that architecture, and `flatpak-builder` inside a runtime — so neither can build for anything but the host. Asking for one of them together with a foreign architecture fails before any work starts, rather than quietly building three packages when you asked for four. Deploy them in a separate run.
+
+Everything else follows the requested architecture on its own. The bundled Node.js is downloaded for it, the native addon comes from `@gtkx/native-linux-<arch>-gnu`, and the generated dependencies are derived from those binaries rather than the host's. `deploy.node.source` must stay `"download"`: a host or path runtime is always the host architecture, so a cross-build refuses it.
+
+npm never installs a platform package for another architecture, so `gtkx deploy` fetches the addon itself, verifies it against the integrity hash npm publishes, and caches it under `~/.cache/gtkx/native/`. Installing it yourself skips the download — pnpm's `supportedArchitectures: { cpu: ["x64", "arm64"] }` is the usual way, and it is what an offline or private-registry build needs.
+
+One cost is worth knowing: `strip` only reads the architecture it was built for, so a cross-built package carries an unstripped Node.js and runs roughly 15% larger. `gtkx deploy` warns when it skips the step.
+
+The work directories are per architecture — `build/<arch>/stage`, `build/<arch>/targets`, and so on — while every package lands together in `build/out`, since the artifact names already carry the architecture.
 
 ## The minimum configuration
 
@@ -205,7 +225,7 @@ selected configuration. A tree built with an older manifest format has to be bui
 | `deb`, `rpm` | | `nfpm` |
 | `appimage` | `file` | `appimagetool` and the AppImage runtime |
 
-`nfpm` and `appimagetool` are downloaded, checksum-verified, and cached under `~/.cache/gtkx/`, so building a `.deb` on Fedora and an `.rpm` on Debian both work without installing anything distribution-specific. Only the archives are cached, and each is re-verified against its published checksum before it is reused, so a corrupted cache is discarded and re-fetched rather than packaged.
+A cross-architecture run also needs `tar` to unpack the native addon it fetches. `nfpm` and `appimagetool` are downloaded, checksum-verified, and cached under `~/.cache/gtkx/`, so building a `.deb` on Fedora and an `.rpm` on Debian both work without installing anything distribution-specific. Only the archives are cached, and each is re-verified against its published checksum before it is reused, so a corrupted cache is discarded and re-fetched rather than packaged.
 
 A pnpm project needs a `flatpak-node-generator` that supports `--pnpm-store-version`, the option that picks the layout of the vendored pnpm store. `gtkx deploy` checks the copy on your `PATH` for that option and treats one without it as missing. The option is newer than the generator's last tagged release, so for now it means installing from the project's default branch. npm and yarn projects work with any release.
 
@@ -229,7 +249,7 @@ Fix it in gtkx.config.ts:
   url-homepage-missing: set `deploy.homepage`, or `homepage` in package.json
 ```
 
-`--skip-build` packages what is already in `dist/` instead of rebuilding. `gtkx deploy --out` changes the deployment work and artifact directory, which defaults to `build`; it is separate from `gtkx build --out`, which selects where a production bundle is written. A skip-build deploy always reads `dist/`.
+`--skip-build` packages what is already in `dist/` instead of rebuilding, and works for any architecture: only the native addon differs between them, and deploy substitutes it while staging rather than at build time, which is also why `dist/` is always left holding a build you can run. `gtkx deploy --out` changes the deployment work and artifact directory, which defaults to `build`; it is separate from `gtkx build --out`, which selects where a production bundle is written. A skip-build deploy always reads `dist/`.
 
 Both commands refuse to replace a nonempty directory they do not recognize as their own, and refuse output
 paths reached through a symlink. Move existing files elsewhere or select another output rather than letting a

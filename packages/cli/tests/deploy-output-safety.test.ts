@@ -131,8 +131,8 @@ describe("gtkx deploy output ownership", () => {
             });
             const args = ["deploy", "--print-manifests", "--target", "deb"];
             runCliOrThrow(project, args);
-            rmSync(join(project.root, "build", "metadata"), { recursive: true });
-            symlinkSync(outside, join(project.root, "build", "metadata"), "dir");
+            rmSync(join(project.root, "build", process.arch, "metadata"), { recursive: true });
+            symlinkSync(outside, join(project.root, "build", process.arch, "metadata"), "dir");
             writeFileSync(join(outside, "keep.txt"), "keep");
 
             runCliOrThrow(project, args);

@@ -8,7 +8,10 @@ import { listFilesRecursive } from "../../internal/list-files.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderCopyright } from "../freedesktop/copyright.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
+import { BINDING_FILENAME } from "../native-addon.js";
+import { readOptionalElfInfo } from "../node-runtime/elf.js";
 import { renderNotices } from "../notices/render.js";
+import { elfMachineFor } from "../settings/arch.js";
 import { copyInto, EXECUTABLE_MODE, executableModeFor, writeInto } from "./copy-tree.js";
 import { stageIcons } from "./icons.js";
 import { NODE_FILENAME, renderLauncher } from "./launcher.js";
@@ -17,6 +20,7 @@ import { stageSchemas } from "./schemas.js";
 type StageRequest = {
     settings: DeploySettings;
     node: NodeRuntime | null;
+    addon: string | null;
     metadata: StagedMetadata;
 };
 
@@ -65,6 +69,29 @@ const stageRuntimeFiles = (settings: DeploySettings, root: string): StagedFile[]
         .filter((file) =>
             !isIconAsset(file.rel) && file.rel !== BUILD_MANIFEST_FILENAME && !isLocaleAsset(file.rel))
         .map((file) => copyInto(root, join(libDirFor(settings), file.rel), file.absPath));
+};
+
+const stageAddon = (settings: DeploySettings, root: string, addon: string | null): StagedFile[] =>
+    addon === null ? [] : [copyInto(root, join(libDirFor(settings), BINDING_FILENAME), addon)];
+
+const architectureMismatch = (settings: DeploySettings, file: StagedFile): Error =>
+    new Error(
+        `Cannot deploy ${file.rel} for ${settings.arch.node}: it was built for another architecture. ` +
+        "Run `gtkx build` again, or drop --skip-build.",
+    );
+
+const assertStagedArchitecture = (settings: DeploySettings, staged: StagedFile[]): void => {
+    const expected = elfMachineFor(settings.arch.node);
+    const lib = libDirFor(settings);
+    const checked = new Set([join(lib, BINDING_FILENAME), join(lib, NODE_FILENAME)]);
+
+    const binaries = staged.filter((entry) => checked.has(entry.rel));
+
+    for (const file of binaries) {
+        if (readOptionalElfInfo(file.abs)?.machine !== expected) {
+            throw architectureMismatch(settings, file);
+        }
+    }
 };
 
 const stageCatalogs = (settings: DeploySettings, root: string): StagedFile[] =>
@@ -138,20 +165,25 @@ const byRelativePath = (files: StagedFile[]): StagedFile[] => {
     return sortStringsBy(latest.values(), (file) => file.rel);
 };
 
-const stagePayload = ({ settings, node, metadata }: StageRequest): StagedFile[] => {
+const stagePayload = ({ settings, node, addon, metadata }: StageRequest): StagedFile[] => {
     const root = settings.paths.stage;
     rmSync(root, { recursive: true, force: true, maxRetries: 5 });
 
-    return byRelativePath([
+    const staged = byRelativePath([
         writeInto(root, join("bin", settings.binaryName), renderLauncher(settings), EXECUTABLE_MODE),
         ...stageNodeBinary(settings, root, node),
         ...stageRuntimeFiles(settings, root),
+        ...stageAddon(settings, root, addon),
         ...stageCatalogs(settings, root),
         ...stageExtraFiles(settings, root, metadata),
         ...stageMetadata(settings, root, metadata),
         ...stageIcons(settings, root),
         ...stageSchemas(settings, root),
     ]);
+
+    assertStagedArchitecture(settings, staged);
+
+    return staged;
 };
 
 const withoutDbusActivation = (desktopEntry: string): string =>
