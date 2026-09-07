@@ -42,7 +42,7 @@ jobs:
       - name: Generate coverage
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run gtkx:coverage
+          command: "{ ./scripts/sample-tasks.sh 15 & } && pnpm exec nx run gtkx:coverage"
           image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
           extra-env: GTKX_MAX_WORKERS
 
