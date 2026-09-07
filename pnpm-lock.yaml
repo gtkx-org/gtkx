@@ -365,8 +365,8 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       i18next-cli:
-        specifier: 1.72.1
-        version: 1.72.1(@types/node@26.4.1)(typescript@6.0.3)
+        specifier: 1.73.0
+        version: 1.73.0(@types/node@26.4.1)(typescript@6.0.3)
       jiti:
         specifier: ^2.7.0
         version: 2.7.0
@@ -4828,22 +4828,14 @@ packages:
     resolution: {integrity: sha512-eKCa6bwnJhvxj14kZk5NCPc6Hb6BdsU9DZcOnmQKSnO1VKrfV0zCvtttPZUsBvjmNDn8rpcJfpwSYnHBjc95MQ==}
     engines: {node: '>=18.18.0'}
 
-  i18next-cli@1.72.1:
-    resolution: {integrity: sha512-4ryXcgNas4HGIh4aztnfichnbcbfI268T6KGHBgotSQ+DHYa1ULMN7QMOYbPwMtkxda2wqBHzjFY3DhD6Pm8AA==}
+  i18next-cli@1.73.0:
+    resolution: {integrity: sha512-OgadHzbVLEnn85ROub8IUFwgC0+Q+wZriNxG2HNiycigJm+OIkypIfiBJXktb1GFNW9QKEjOwpO9NqOj5k4YwQ==}
     engines: {node: '>=22'}
     hasBin: true
 
   i18next-resources-for-ts@2.1.0:
     resolution: {integrity: sha512-n5UexwEVt0OoIAhG2MWpSnAVJW1U8mQrQTmXyxc5DMAx+NLhcLZhSMJo/FnUsA5JQ3obTYqTgB7YIuZKWpDgow==}
     hasBin: true
-
-  i18next@26.4.0:
-    resolution: {integrity: sha512-rsmK5bFqsD1AetSFSIa43wtNR4WpvvH4p0tLEsTxkC7QTrfdFm06nbQ95bh8Og4wwaCnUEcm9DVYL2cgxitiQg==}
-    peerDependencies:
-      typescript: ^5 || ^6 || ^7
-    peerDependenciesMeta:
-      typescript:
-        optional: true
 
   i18next@26.4.2:
     resolution: {integrity: sha512-RX+R0VLg13IbvRuJSxnqykUFS9vQZTl8wYpWPCIUDWVrSGjsQywB5Y+pjzrkboxGAuYfJZVH1InFTdgBdxq6ug==}
@@ -5818,22 +5810,6 @@ packages:
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
-
-  react-i18next@17.0.12:
-    resolution: {integrity: sha512-lFWPEGkxQ6RhusdUkysFBD58VHfSSzvHBzqMgN0SvfVpdQGfwtNkStTqdy08/sJd7s807qqutgx93fRpD0DJ3Q==}
-    peerDependencies:
-      i18next: '>= 26.2.0'
-      react: '>= 16.8.0'
-      react-dom: '*'
-      react-native: '*'
-      typescript: ^5 || ^6 || ^7
-    peerDependenciesMeta:
-      react-dom:
-        optional: true
-      react-native:
-        optional: true
-      typescript:
-        optional: true
 
   react-i18next@17.0.13:
     resolution: {integrity: sha512-Cc1PscmblIHA1kljTqDwrcVMI21ydgmUzw0UAeQBe7pAOgfuRLfzXze4EUBQoeDiICzFIXXhHFoZxuetNg5D0Q==}
@@ -10987,7 +10963,7 @@ snapshots:
 
   human-signals@8.0.1: {}
 
-  i18next-cli@1.72.1(@types/node@26.4.1)(typescript@6.0.3):
+  i18next-cli@1.73.0(@types/node@26.4.1)(typescript@6.0.3):
     dependencies:
       '@croct/json5-parser': 0.2.2
       '@swc/core': 1.16.2
@@ -10995,7 +10971,7 @@ snapshots:
       commander: 15.0.0
       execa: 10.0.1
       glob: 13.0.6
-      i18next: 26.4.0(typescript@6.0.3)
+      i18next: 26.4.2(typescript@6.0.3)
       i18next-resources-for-ts: 2.1.0
       inquirer: 14.1.0(@types/node@26.4.1)
       jiti: 2.7.0
@@ -11004,7 +10980,7 @@ snapshots:
       minimatch: 10.2.6
       ora: 9.4.1
       react: 19.2.8
-      react-i18next: 17.0.12(i18next@26.4.0(typescript@6.0.3))(react@19.2.8)(typescript@6.0.3)
+      react-i18next: 17.0.13(i18next@26.4.2(typescript@6.0.3))(react@19.2.8)(typescript@6.0.3)
       yaml: 2.9.0
     transitivePeerDependencies:
       - '@swc/helpers'
@@ -11021,10 +10997,6 @@ snapshots:
       yaml: 2.9.0
     transitivePeerDependencies:
       - '@swc/helpers'
-
-  i18next@26.4.0(typescript@6.0.3):
-    optionalDependencies:
-      typescript: 6.0.3
 
   i18next@26.4.2(typescript@6.0.3):
     optionalDependencies:
@@ -12039,16 +12011,6 @@ snapshots:
   react-hook-form@7.87.0(react@19.2.8):
     dependencies:
       react: 19.2.8
-
-  react-i18next@17.0.12(i18next@26.4.0(typescript@6.0.3))(react@19.2.8)(typescript@6.0.3):
-    dependencies:
-      '@babel/runtime': 7.29.7
-      html-parse-stringify: 4.0.1
-      i18next: 26.4.0(typescript@6.0.3)
-      react: 19.2.8
-      use-sync-external-store: 1.6.0(react@19.2.8)
-    optionalDependencies:
-      typescript: 6.0.3
 
   react-i18next@17.0.13(i18next@26.4.2(typescript@6.0.3))(react@19.2.8)(typescript@6.0.3):
     dependencies:
