@@ -7,6 +7,31 @@ count_state() {
     awk -F':[[:space:]]*' '/^State:/ { print substr($2, 1, 1); exit }' "$1/status" 2>/dev/null
 }
 
+parent_of() {
+    awk -F':[[:space:]]*' '/^PPid:/ { print $2; exit }' "$1/status" 2>/dev/null
+}
+
+report_zombie_parents() {
+    local dir state ppid
+    local -A owners=()
+
+    for dir in /proc/[0-9]*; do
+        state=$(count_state "$dir")
+
+        if [ "$state" = "Z" ]; then
+            ppid=$(parent_of "$dir")
+            owners["${ppid:-0}"]=$(( ${owners["${ppid:-0}"]:-0} + 1 ))
+        fi
+    done
+
+    for ppid in "${!owners[@]}"; do
+        printf '%s %s %s\n' "${owners[$ppid]}" "$ppid" "$(cat "/proc/$ppid/comm" 2>/dev/null || echo gone)"
+    done | sort -rn | head -5 | while read -r count pid comm; do
+        printf 'ZOMBIEPARENT ppid=%s comm=%s state=%s children=%s\n' \
+            "$pid" "$comm" "$(count_state "/proc/$pid" || echo gone)" "$count"
+    done
+}
+
 sample() {
     local guard=0 sway=0 dbus=0 swaybg=0 shells=0 sleepers=0 node=0 vitest=0 zombie=0 tasks=0 procs=0
     local dir comm state count cmdline
@@ -48,5 +73,6 @@ sample() {
 
 while true; do
     sample
+    report_zombie_parents
     sleep "$INTERVAL"
 done
