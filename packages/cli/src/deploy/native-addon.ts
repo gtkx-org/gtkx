@@ -16,6 +16,7 @@ const PACKAGE_ROOT = "package";
 const REQUEST_TIMEOUT = 30_000;
 const SRI_PREFIX = "sha512-";
 const STRIP_COMPONENTS = "1";
+const VERSION_PATTERN = /^[\w.+-]+$/;
 
 const binaryFilename = (arch: DeployArchName): string => `native.linux-${arch}-gnu.node`;
 const platformStem = (arch: DeployArchName): string => `native-linux-${arch}-gnu`;
@@ -59,7 +60,9 @@ const manifestVersion = (manifest: unknown): string | null => {
         return null;
     }
 
-    return typeof manifest.version === "string" ? manifest.version : null;
+    const version = manifest.version;
+
+    return typeof version === "string" && VERSION_PATTERN.test(version) ? version : null;
 };
 
 const nativeVersion = (projectRequire: ProjectRequire): string => {
@@ -67,7 +70,7 @@ const nativeVersion = (projectRequire: ProjectRequire): string => {
     const version = manifestVersion(parsed);
 
     if (version === null) {
-        throw new Error("Cannot read the version of @gtkx/native; is it installed?");
+        throw new Error("Cannot read a usable version from @gtkx/native; is it installed?");
     }
 
     return version;
