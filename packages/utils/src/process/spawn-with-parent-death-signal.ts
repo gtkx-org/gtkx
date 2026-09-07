@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { Socket } from "node:net";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { warn } from "../log/default-logger.ts";
 import { killMarkedProcesses, PROCESS_MARKER } from "./kill-marked-processes.ts";
 import {
     type CleanupDirectoryIdentity,
@@ -349,6 +350,20 @@ const captureCleanupDirectories = (command: string, paths: string[]): CleanupDir
     return identities.filter((identity): identity is CleanupDirectoryIdentity => identity !== undefined);
 };
 
+const spawnedProcessGroup = (child: ChildProcess, command: string): ProcessGroupIdentity | undefined => {
+    const processGroupId = child.pid;
+
+    if (processGroupId !== undefined) {
+        return processGroupIdentity(processGroupId);
+    }
+
+    child.on("error", (cause: NodeJS.ErrnoException) => {
+        warn(`Cannot spawn ${command}: ${cause.code ?? cause.message}`);
+    });
+
+    return undefined;
+};
+
 const spawnGuarded = (
     command: string,
     options: ParentDeathSpawnOptions,
@@ -368,12 +383,11 @@ const spawnGuarded = (
         env: { ...(options.env ?? process.env), [PROCESS_MARKER]: jobValue },
     });
 
-    const processGroupId = child.pid;
-    const group = processGroupId === undefined ? undefined : processGroupIdentity(processGroupId);
+    const group = spawnedProcessGroup(child, command);
 
     if (group === undefined) {
         rollbackSpawn({ child, marker, cleanupDirectories });
-        throw new Error(`Failed to identify process group for ${command}`);
+        throw new Error(`Failed to spawn ${command} or identify its process group`);
     }
 
     const job: GuardJob = { marker, processGroup: group, cleanupDirectories, signal };

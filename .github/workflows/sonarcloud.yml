@@ -32,7 +32,7 @@ jobs:
     runs-on: linux-8-core
     timeout-minutes: 45
     env:
-      GTKX_MAX_WORKERS: "6"
+      GTKX_MAX_WORKERS: "2"
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
