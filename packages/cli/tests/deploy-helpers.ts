@@ -830,7 +830,6 @@ export {
     NOTICE_TARGETS,
     NPM_INSTALL,
     npmSourceFiles,
-    ARCH_DIR,
     OUT_DIR,
     outputFile,
     outputNames,

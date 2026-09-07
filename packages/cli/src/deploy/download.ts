@@ -156,7 +156,6 @@ const digestFromChecksums = (checksums: string, assetName: string, subject: stri
 export {
     cacheDir,
     cachedDigest,
-    type DigestAlgorithm,
     type DigestRequest,
     downloadFile,
     publishedDigest,
