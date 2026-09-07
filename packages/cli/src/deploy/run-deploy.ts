@@ -475,7 +475,7 @@ const buildArchPayload = async ({
         ? null
         : await resolveNodeRuntime(builtSettings);
 
-    const addon = await resolveStagedAddon(builtSettings, !options.shouldPrintManifests);
+    const addon = await resolveStagedAddon(builtSettings);
     const stage = stagePayload({ settings: builtSettings, node, addon, metadata });
     info(`Staged ${String(stage.length)} files into ${displayPath(builtSettings, builtSettings.paths.stage)}`);
     const notices = collectNotices({ settings: builtSettings, node, packages: buildManifest.packages });

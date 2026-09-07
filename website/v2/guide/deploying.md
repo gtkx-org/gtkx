@@ -210,7 +210,7 @@ package-manager store.
 The separate `gschemas.compiled` is runtime data and does reach the package. `--skip-build` reads the metadata
 out of the `dist/` it packages and rejects it when either recorded config identity differs from the currently
 selected configuration. A tree built with an older manifest format has to be built once more.
-`--print-manifests` downloads nothing, so a preview carries the link to the Node.js license rather than its text.
+`--print-manifests` downloads no packaging tool and no Node.js runtime, so a preview carries the link to the Node.js license rather than its text. It does fetch the native addon for a non-host `--arch`, because the staged payload is built either way.
 
 `deploy.flatpak.mode: "source"` builds in the sandbox instead of packaging a staged tree, so the notices ride along as an inline source and install exactly where the prebuilt mode installs them. That build takes its runtime from the Node SDK extension rather than from an archive. It installs the license file that extension ships as `share/licenses/<binaryName>/node/LICENSE` when the extension ships one, and installs nothing when it does not, which is what the notices say: they name the license and the address it is published at rather than claiming a file is there.
 

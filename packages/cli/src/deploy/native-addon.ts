@@ -167,7 +167,7 @@ const downloadedBinary = async (arch: DeployArchName, version: string): Promise<
     return join(dir, binaryFilename(arch));
 };
 
-const resolveStagedAddon = async (settings: DeploySettings, canDownload: boolean): Promise<string | null> => {
+const resolveStagedAddon = async (settings: DeploySettings): Promise<string | null> => {
     const arch = settings.arch.node;
 
     if (isHostArch(arch)) {
@@ -177,11 +177,7 @@ const resolveStagedAddon = async (settings: DeploySettings, canDownload: boolean
     const projectRequire = projectRequireFor(settings.paths.root);
     const resolved = localBinary(projectRequire, arch) ?? installedBinary(projectRequire, arch);
 
-    if (resolved !== null || !canDownload) {
-        return resolved;
-    }
-
-    return await downloadedBinary(arch, nativeVersion(projectRequire));
+    return resolved ?? await downloadedBinary(arch, nativeVersion(projectRequire));
 };
 
 export { BINDING_FILENAME, resolveStagedAddon };

@@ -1,4 +1,7 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -72,6 +75,78 @@ const archDirNames = (root: string): string[] =>
 
 const archConfig = (architectures: string[]): string =>
     config(`    deploy: {\n${DEPLOY_FIELDS}\n        architectures: ${JSON.stringify(architectures)},\n    },\n`);
+
+type Registry = { url: string; close: () => Promise<void>; addon: Buffer };
+
+const packAddon = (arch: string, addon: Buffer): { dir: string; archive: string } => {
+    const dir = mkdtempSync(join(tmpdir(), "gtkx-registry-"));
+    const packageDir = join(dir, "package");
+    mkdirSync(packageDir, { recursive: true });
+    writeFileSync(join(packageDir, `native.linux-${arch}-gnu.node`), addon);
+    const archive = join(dir, "addon.tgz");
+    execFileSync("tar", ["-czf", archive, "-C", dir, join("package", `native.linux-${arch}-gnu.node`)]);
+
+    return { dir, archive };
+};
+
+const REGISTRY_SERVER = `
+import { createServer } from "node:http";
+import { readFileSync } from "node:fs";
+
+const tarball = readFileSync(process.argv[2]);
+const integrity = process.argv[3];
+const shouldCorrupt = process.argv[4] === "corrupt";
+let origin = "";
+
+const server = createServer((request, response) => {
+    if (request.url.endsWith(".tgz")) {
+        response.writeHead(200, { "content-type": "application/octet-stream" });
+        response.end(shouldCorrupt ? Buffer.from("not a tarball at all") : tarball);
+
+        return;
+    }
+
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ dist: { integrity, tarball: origin + "/addon.tgz" } }));
+});
+
+server.listen(0, "127.0.0.1", () => {
+    origin = "http://127.0.0.1:" + String(server.address().port);
+    process.stdout.write(origin + "\\n");
+});
+`;
+
+const startRegistry = async (arch: string, shouldCorrupt = false): Promise<Registry> => {
+    const addon = addonBuiltFor(arch);
+    const { dir, archive } = packAddon(arch, addon);
+    const integrity = `sha512-${createHash("sha512").update(readFileSync(archive)).digest("base64")}`;
+    const serverPath = join(dir, "registry.mjs");
+    writeFileSync(serverPath, REGISTRY_SERVER);
+
+    const child = spawn(process.execPath, [serverPath, archive, integrity, shouldCorrupt ? "corrupt" : "plain"], {
+        stdio: ["ignore", "pipe", "ignore"],
+    });
+
+    const url = await new Promise<string>((resolve) => {
+        child.stdout.once("data", (chunk: Buffer) => {
+            resolve(chunk.toString("utf8").trim());
+        });
+    });
+
+    return {
+        url,
+        addon,
+        close: async () => {
+            child.kill("SIGKILL");
+            await new Promise<void>((resolve) => {
+                child.once("exit", () => {
+                    resolve();
+                });
+            });
+            rmSync(dir, { recursive: true, force: true });
+        },
+    };
+};
 
 const runDeploy = (args: string[], files: Record<string, string | Buffer> = projectFiles()): number | null => {
     const project = createCliProject({ prefix: "gtkx-cli-arch-", config: config(DEPLOY_BLOCK), files, hasStore: true });
@@ -188,6 +263,51 @@ describe("gtkx deploy --arch (rejections)", () => {
     it("refuses a staged addon built for another architecture", () => {
         const files = { ...projectFiles(), ...addonPackage(FOREIGN_ARCH, HOST_ARCH) };
         expect(runDeploy(["--target", "deb", "--arch", FOREIGN_ARCH], files)).not.toBe(0);
+    });
+});
+
+describe("gtkx deploy --arch (registry)", () => {
+    it("fetches the native addon for an architecture npm refuses to install", async () => {
+        const registry = await startRegistry(FOREIGN_ARCH);
+        const project = createCliProject({
+            prefix: "gtkx-cli-arch-registry-",
+            config: config(DEPLOY_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+        const cache = mkdtempSync(join(tmpdir(), "gtkx-arch-cache-"));
+
+        try {
+            const args = ["deploy", "--print-manifests", "--target", "deb", "--arch", FOREIGN_ARCH];
+            const run = runCli(project, args, { npm_config_registry: registry.url, XDG_CACHE_HOME: cache });
+            if (run.status !== 0) { throw new Error(run.output); }
+            expect(stagedMachine(project.root, FOREIGN_ARCH)).toBe(MACHINE_FOR[FOREIGN_ARCH]);
+        } finally {
+            removeCliProject(project);
+            rmSync(cache, { recursive: true, force: true });
+            await registry.close();
+        }
+    });
+
+    it("refuses a tarball whose integrity does not match", async () => {
+        const registry = await startRegistry(FOREIGN_ARCH, true);
+        const project = createCliProject({
+            prefix: "gtkx-cli-arch-corrupt-",
+            config: config(DEPLOY_BLOCK),
+            files: projectFiles(),
+            hasStore: true,
+        });
+        const cache = mkdtempSync(join(tmpdir(), "gtkx-arch-cache-"));
+
+        try {
+            const args = ["deploy", "--print-manifests", "--target", "deb", "--arch", FOREIGN_ARCH];
+            const run = runCli(project, args, { npm_config_registry: registry.url, XDG_CACHE_HOME: cache });
+            expect(run.status).not.toBe(0);
+        } finally {
+            removeCliProject(project);
+            rmSync(cache, { recursive: true, force: true });
+            await registry.close();
+        }
     });
 });
 
