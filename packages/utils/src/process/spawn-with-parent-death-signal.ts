@@ -1,6 +1,6 @@
 import { type ChildProcess, spawn, type StdioOptions } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { Socket } from "node:net";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -350,6 +350,26 @@ const captureCleanupDirectories = (command: string, paths: string[]): CleanupDir
     return identities.filter((identity): identity is CleanupDirectoryIdentity => identity !== undefined);
 };
 
+const readResource = (path: string): string => {
+    try {
+        return readFileSync(path, "utf8").trim();
+    } catch {
+        return "unknown";
+    }
+};
+
+const openDescriptors = (): string => {
+    try {
+        return String(readdirSync("/proc/self/fd").length);
+    } catch {
+        return "unknown";
+    }
+};
+
+const resourceSummary = (): string =>
+    `open descriptors ${openDescriptors()}, ` +
+    `cgroup pids ${readResource("/sys/fs/cgroup/pids.current")}/${readResource("/sys/fs/cgroup/pids.max")}`;
+
 const spawnedProcessGroup = (child: ChildProcess, command: string): ProcessGroupIdentity | undefined => {
     const processGroupId = child.pid;
 
@@ -387,7 +407,7 @@ const spawnGuarded = (
 
     if (group === undefined) {
         rollbackSpawn({ child, marker, cleanupDirectories });
-        throw new Error(`Failed to spawn ${command} or identify its process group`);
+        throw new Error(`Failed to spawn ${command} or identify its process group (${resourceSummary()})`);
     }
 
     const job: GuardJob = { marker, processGroup: group, cleanupDirectories, signal };
