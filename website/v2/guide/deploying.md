@@ -47,7 +47,7 @@ With neither, `gtkx deploy` builds a Flatpak.
 gtkx deploy --target deb,rpm --arch x64,arm64
 ```
 
-`deploy.architectures` sets the default list the same way `deploy.targets` does, and `--arch` overrides it. The supported names are `x64` and `arm64`, the same spellings Node.js uses; each package is named for its own convention, so `arm64` produces `nalmada_1.0.0-1_arm64.deb` and `nalmada-1.0.0-1.aarch64.rpm`.
+`deploy.architectures` sets the default list the same way `deploy.targets` does, and `--arch` overrides it. The supported names are `x64` and `arm64`, the same spellings Node.js uses; each package is named for its own convention, so `arm64` produces `gtkx-tutorial_1.0.0-1_arm64.deb` and `gtkx-tutorial-1.0.0-1.aarch64.rpm`.
 
 Only `deb` and `rpm` cross-build. `nfpm` assembles an archive and never runs what is inside it, so the host architecture does not matter. `appimage` and `flatpak` package by running the target's own tooling — `appimagetool` for that architecture, and `flatpak-builder` inside a runtime — so neither can build for anything but the host. Asking for one of them together with a foreign architecture fails before any work starts, rather than quietly building three packages when you asked for four. Deploy them in a separate run.
 
