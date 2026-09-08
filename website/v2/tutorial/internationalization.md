@@ -246,17 +246,17 @@ npm run deploy
 The release is still one command, and the localization work is visible in the shared stage before the packagers consume it:
 
 ```
-[gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to appimage, deb, flatpak, rpm
+[gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x64) to appimage, deb, flatpak, rpm
 [gtkx] Building ~/tasks/src/index.tsx
 [gtkx] Validated the desktop entry and the metainfo
 [gtkx] Bundled Node.js v26.7.0 (109.4 MiB, runtime glibc >= 2.28)
-[gtkx] Staged 11 files into build/stage
-[gtkx] Wrote build/targets/appimage/AppRun
+[gtkx] Staged 11 files into build/x64/stage
+[gtkx] Wrote build/x64/targets/appimage/AppRun
 [gtkx] deb package requires glibc >= 2.38
-[gtkx] Wrote build/targets/deb/nfpm.yaml
-[gtkx] Wrote build/targets/flatpak/com.gtkx.tutorial.yml
+[gtkx] Wrote build/x64/targets/deb/nfpm.yaml
+[gtkx] Wrote build/x64/targets/flatpak/com.gtkx.tutorial.yml
 [gtkx] rpm package requires glibc >= 2.38
-[gtkx] Wrote build/targets/rpm/nfpm.yaml
+[gtkx] Wrote build/x64/targets/rpm/nfpm.yaml
 [gtkx] Built build/out/Tasks-1.0.0-x86_64.AppImage (36.9 MiB)
 [gtkx] Built build/out/gtkx-tutorial_1.0.0-1_amd64.deb (40.6 MiB)
 [gtkx] Built build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (26.4 MiB)

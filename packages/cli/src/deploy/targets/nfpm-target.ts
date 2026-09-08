@@ -32,6 +32,7 @@ const packPackage = async (payload: DeployPayload, packager: NfpmPackager): Prom
 const nfpmTarget = (packager: NfpmPackager): DeployTarget => ({
     name: packager,
     prefix: PREFIX,
+    isHostOnly: false,
     tools: [TAR],
     render: (payload) => renderManifests(payload, packager),
     pack: (payload) => packPackage(payload, packager),

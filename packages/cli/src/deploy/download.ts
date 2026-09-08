@@ -11,17 +11,23 @@ type DigestRequest = {
     subject: string;
 };
 
+type DigestAlgorithm = "sha256" | "sha512";
+
 type DownloadRequest = {
     url: string;
     dest: string;
     label: string;
-    sha256: string;
-    freshSha256?: (() => Promise<string>) | undefined;
+    digest: string;
+    algorithm?: DigestAlgorithm | undefined;
+    freshDigest?: (() => Promise<string>) | undefined;
     mode?: number | undefined;
 };
 
 const CACHE_NAMESPACE = "gtkx";
-const DIGEST_PATTERN = /^[\da-f]{64}$/;
+const DIGEST_PATTERN: Record<DigestAlgorithm, RegExp> = {
+    sha256: /^[\da-f]{64}$/,
+    sha512: /^[\da-f]{128}$/,
+};
 
 const cacheRoot = (): string => {
     const base = process.env.XDG_CACHE_HOME;
@@ -36,10 +42,11 @@ const cacheDir = (segments: string[]): string => {
     return dir;
 };
 
-const getDigest = (contents: Buffer): string => createHash("sha256").update(contents).digest("hex");
+const getDigest = (contents: Buffer, algorithm: DigestAlgorithm): string =>
+    createHash(algorithm).update(contents).digest("hex");
 
-const assertDigest = (url: string, contents: Buffer, expected: string): void => {
-    const actual = getDigest(contents);
+const assertDigest = (url: string, contents: Buffer, expected: string, algorithm: DigestAlgorithm): void => {
+    const actual = getDigest(contents, algorithm);
 
     if (actual !== expected) {
         throw new Error(`Checksum mismatch for ${url}\n  expected ${expected}\n  received ${actual}`);
@@ -62,11 +69,11 @@ const fetchText = async (url: string): Promise<string> => {
     return bytes.toString("utf8");
 };
 
-const readCachedDigest = (dest: string): string | undefined => {
+const readCachedDigest = (dest: string, algorithm: DigestAlgorithm): string | undefined => {
     try {
         const cached = readFileSync(dest, "utf8").trim();
 
-        return DIGEST_PATTERN.test(cached) ? cached : undefined;
+        return DIGEST_PATTERN[algorithm].test(cached) ? cached : undefined;
     } catch {
         return undefined;
     }
@@ -82,7 +89,7 @@ const publishedDigest = async (request: DigestRequest): Promise<string> => {
     const checksums = await fetchText(request.url);
     const digest = digestFromChecksums(checksums, request.assetName, request.subject);
 
-    if (!DIGEST_PATTERN.test(digest)) {
+    if (!DIGEST_PATTERN.sha256.test(digest)) {
         throw new Error(`${request.subject} published a malformed checksum for ${request.assetName}: "${digest}"`);
     }
 
@@ -92,17 +99,17 @@ const publishedDigest = async (request: DigestRequest): Promise<string> => {
 };
 
 const cachedDigest = async (request: DigestRequest): Promise<string> => {
-    const cached = readCachedDigest(request.dest);
+    const cached = readCachedDigest(request.dest, "sha256");
 
     return cached ?? publishedDigest(request);
 };
 
-const isCacheUsable = (dest: string, sha256: string): boolean => {
+const isCacheUsable = (dest: string, digest: string, algorithm: DigestAlgorithm): boolean => {
     if (!existsSync(dest)) {
         return false;
     }
 
-    if (getDigest(readFileSync(dest)) === sha256) {
+    if (getDigest(readFileSync(dest), algorithm) === digest) {
         return true;
     }
 
@@ -112,16 +119,17 @@ const isCacheUsable = (dest: string, sha256: string): boolean => {
 };
 
 const downloadFile = async (request: DownloadRequest): Promise<string> => {
-    const { url, dest, label, sha256, mode } = request;
+    const { url, dest, label, digest, mode } = request;
+    const algorithm = request.algorithm ?? "sha256";
 
-    if (isCacheUsable(dest, sha256)) {
+    if (isCacheUsable(dest, digest, algorithm)) {
         return dest;
     }
 
     info(`Downloading ${label}`);
-    const expected = request.freshSha256 === undefined ? sha256 : await request.freshSha256();
+    const expected = request.freshDigest === undefined ? digest : await request.freshDigest();
     const contents = await fetchBytes(url);
-    assertDigest(url, contents, expected);
+    assertDigest(url, contents, expected, algorithm);
     const staging = `${dest}.partial`;
     writeFileSync(staging, contents);
 
@@ -145,4 +153,12 @@ const digestFromChecksums = (checksums: string, assetName: string, subject: stri
     return digest;
 };
 
-export { cacheDir, cachedDigest, type DigestRequest, downloadFile, publishedDigest };
+export {
+    cacheDir,
+    cachedDigest,
+    type DigestRequest,
+    downloadFile,
+    publishedDigest,
+    readCachedDigest,
+    writeAtomically,
+};

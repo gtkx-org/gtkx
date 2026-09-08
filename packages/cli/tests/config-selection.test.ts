@@ -219,7 +219,8 @@ describe("GTKX configuration selection", () => {
             "--config",
             EDITION_CONFIG,
         ]);
-        expect(existsSync(join(project.root, "build", "metadata", `${EDITION_ID}.metainfo.xml`))).toBe(true);
+        expect(existsSync(join(project.root, "build", process.arch, "metadata", `${EDITION_ID}.metainfo.xml`)))
+            .toBe(true);
     });
 
     it("lets codegen and dev select project-relative configuration files", () => {
@@ -411,7 +412,7 @@ describe("GTKX configuration selection", () => {
 
         runCliOrThrow(project, [...SOURCE_ARGS, "--config", EDITION_CONFIG]);
         const manifest = readFileSync(
-            join(project.root, "build", "targets", "flatpak", "com.gtkx.clideploy.yml"),
+            join(project.root, "build", process.arch, "targets", "flatpak", "com.gtkx.clideploy.yml"),
             "utf8",
         );
         expect(manifest).toContain(`npx gtkx build --config ${EDITION_CONFIG}`);

@@ -2,7 +2,7 @@ import type { Config } from "@gtkx/config";
 import { isPathInside } from "@gtkx/utils";
 import { lstatSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
-import type { DeployConfig, DeployPaths } from "../types.js";
+import type { DeployArchName, DeployConfig, DeployPaths } from "../types.js";
 import { resolveApplicationIcon } from "../../internal/icon-path.js";
 import { prepareOutputDirectory, readRegularFile } from "../../internal/output-directory.js";
 
@@ -12,6 +12,7 @@ type PathsRequest = {
     applicationIcon: Config["applicationIcon"];
     applicationId: Config["applicationId"];
     outDirOverride: string | undefined;
+    arch: DeployArchName;
 };
 
 const DEFAULT_OUT_DIR = "build";
@@ -113,16 +114,17 @@ const resolveLicenseFile = (root: string, configured: string | undefined): strin
 const resolvePaths = (request: PathsRequest): DeployPaths => {
     const { root, deploy } = request;
     const outDir = resolveOutDir(request);
+    const archDir = join(outDir, request.arch);
 
     return {
         root,
         dist: join(root, DIST_DIR),
         outDir,
-        metadata: join(outDir, "metadata"),
-        runtime: join(outDir, "runtime"),
-        stage: join(outDir, "stage"),
-        overlay: join(outDir, "overlay"),
-        targets: join(outDir, "targets"),
+        metadata: join(archDir, "metadata"),
+        runtime: join(archDir, "runtime"),
+        stage: join(archDir, "stage"),
+        overlay: join(archDir, "overlay"),
+        targets: join(archDir, "targets"),
         output: join(outDir, "out"),
         applicationIcon: resolveApplicationIcon(root, request.applicationId, request.applicationIcon),
         licenseFile: resolveLicenseFile(root, deploy.licenseFile),

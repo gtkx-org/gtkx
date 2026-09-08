@@ -44,8 +44,8 @@ const downloadNode = async (version: string, arch: string, destDir: string): Pro
         url: `${DIST_BASE_URL}/v${version}/${assetName}`,
         dest: join(dir, assetName),
         label: `Node.js ${version} for linux-${arch}`,
-        sha256: await cachedDigest(request),
-        freshSha256: () => publishedDigest(request),
+        digest: await cachedDigest(request),
+        freshDigest: () => publishedDigest(request),
     });
 
     mkdirSync(destDir, { recursive: true });

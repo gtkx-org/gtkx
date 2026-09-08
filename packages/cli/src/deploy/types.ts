@@ -2,6 +2,7 @@ import type { Config } from "@gtkx/config";
 import type { ResolvedApplicationIcon } from "../internal/icon-path.js";
 
 type DeployConfig = NonNullable<Config["deploy"]>;
+type DeployArchName = NonNullable<DeployConfig["architectures"]>[number];
 type DeployTargetName = NonNullable<DeployConfig["targets"]>[number];
 type PackageFamily = "arch" | "debian" | "fedora" | "suse" | "unknown";
 
@@ -94,7 +95,7 @@ type DeployArch = {
     rpm: string;
     flatpak: string;
     appimage: string;
-    node: string;
+    node: DeployArchName;
 };
 
 type DeployPaths = {
@@ -170,6 +171,7 @@ type DeployArtifact = {
 type DeployTarget = {
     name: DeployTargetName;
     prefix: string;
+    isHostOnly: boolean;
     tools: DeployTool[];
     render: (payload: DeployPayload) => DeployManifest[];
     pack: (payload: DeployPayload, manifests: DeployManifest[]) => Promise<DeployArtifact[]>;
@@ -177,6 +179,7 @@ type DeployTarget = {
 
 export type {
     DeployArch,
+    DeployArchName,
     DeployArtifact,
     DeployConfig,
     DeployDesktopAction,

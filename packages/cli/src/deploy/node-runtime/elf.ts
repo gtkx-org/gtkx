@@ -7,6 +7,7 @@ type ElfSection = {
 };
 
 type ElfInfo = {
+    machine: number;
     needed: string[];
     glibcMinimum: string | null;
 };
@@ -22,6 +23,7 @@ const CLASS_64 = 2;
 const LITTLE_ENDIAN = 1;
 const OFFSET_CLASS = 4;
 const OFFSET_DATA = 5;
+const OFFSET_MACHINE = 0x12;
 const OFFSET_SECTION_HEADERS = 0x28;
 const OFFSET_SECTION_ENTRY_SIZE = 0x3A;
 const OFFSET_SECTION_COUNT = 0x3C;
@@ -140,6 +142,7 @@ const readElfBuffer = (buffer: Buffer, path: string): ElfInfo => {
     const strings = stringTable(buffer, sectionFor(sections, ".dynstr"));
 
     return {
+        machine: buffer.readUInt16LE(OFFSET_MACHINE),
         needed: readNeeded(buffer, sectionFor(sections, ".dynamic"), strings),
         glibcMinimum: readGlibcMinimum(strings),
     };
@@ -180,4 +183,4 @@ const glibcMinimumForFiles = (paths: Iterable<string>): string | null => {
     return formatVersion(highestVersion(versions));
 };
 
-export { type ElfInfo, glibcMinimumForFiles, readElfInfo };
+export { type ElfInfo, glibcMinimumForFiles, readElfInfo, readOptionalElfInfo };

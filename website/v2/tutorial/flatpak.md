@@ -15,12 +15,12 @@ npm run deploy -- --target flatpak
 ```
 
 ```
-[gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x86_64) to flatpak
+[gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x64) to flatpak
 [gtkx] Building ~/tasks/src/index.tsx
 [gtkx] Validated the desktop entry and the metainfo
 [gtkx] Bundled Node.js v26.7.0 (109.4 MiB, runtime glibc >= 2.28)
-[gtkx] Staged 11 files into build/stage
-[gtkx] Wrote build/targets/flatpak/com.gtkx.tutorial.yml
+[gtkx] Staged 11 files into build/x64/stage
+[gtkx] Wrote build/x64/targets/flatpak/com.gtkx.tutorial.yml
 [gtkx] flatpak: running flatpak-builder, this can take several minutes
 [gtkx] Built build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak (26.4 MiB)
 ```
@@ -104,7 +104,7 @@ Then produce the manifest without building the Flatpak package:
 npm run deploy -- --target flatpak --print-manifests
 ```
 
-That writes `build/targets/flatpak/com.gtkx.tutorial.yml` and `generated-sources.json`, which are the files a submission needs.
+That writes `build/x64/targets/flatpak/com.gtkx.tutorial.yml` and `generated-sources.json`, which are the files a submission needs.
 
 ## Submitting
 
@@ -126,7 +126,7 @@ The pull request goes to [flathub/flathub](https://github.com/flathub/flathub), 
 ```bash
 flatpak install --user -y flathub org.flatpak.Builder
 flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest \
-    build/targets/flatpak/com.gtkx.tutorial.yml
+    build/x64/targets/flatpak/com.gtkx.tutorial.yml
 ```
 
 A reviewer reads your `finish-args` first. Rerun `--print-manifests` on every dependency change: a stale `generated-sources.json` only fails inside the sandbox.

@@ -37,6 +37,7 @@ runs:
         mkdir -p "$CONTAINER_HOME"
 
         PODMAN_ARGS=(--rm --userns=keep-id --cap-drop=ALL --security-opt no-new-privileges)
+        PODMAN_ARGS+=(--init --pids-limit 8192)
         PODMAN_ARGS+=(-e HOME=/ci-home)
         PODMAN_ARGS+=(-v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro)
         PODMAN_ARGS+=(-v "$CONTAINER_HOME:/ci-home" -v "$WORKSPACE:/workspace" -w /workspace)

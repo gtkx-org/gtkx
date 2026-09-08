@@ -47,7 +47,7 @@ describe("gtkx deploy (generated launcher)", () => {
         ));
 
         runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"]);
-        const stage = join(project.root, "build", "stage");
+        const stage = join(project.root, "build", process.arch, "stage");
         const node = join(stage, "lib", BINARY_NAME, "node");
         const launcher = join(stage, "bin", BINARY_NAME);
         writeFileSync(
@@ -74,7 +74,7 @@ describe("gtkx deploy (generated launcher)", () => {
         expect(run.stdout).toContain("arg=from user\n");
         expect(
             readFileSync(
-                join(project.root, "build", "overlay", "deb", "share", "doc", BINARY_NAME, "copyright"),
+                join(project.root, "build", process.arch, "overlay", "deb", "share", "doc", BINARY_NAME, "copyright"),
                 "utf8",
             ),
         ).toContain("Node.js 26.7.0");

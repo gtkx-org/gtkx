@@ -54,13 +54,14 @@ type BuildMetadata = {
 type DeploySetup = {
     prefix: string;
     config: string;
-    files: Record<string, string>;
+    files: Record<string, string | Buffer>;
     args: string[];
     executables?: string[] | undefined;
 };
 
 const APPLICATION_ID = "com.gtkx.clideploy";
 const OUT_DIR = "build";
+const ARCH_DIR = join(OUT_DIR, process.arch);
 const TARGETS = "appimage,deb,flatpak,rpm";
 const ICON_PATH = join("icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
 const SCHEMA_FILE = `${APPLICATION_ID}.gschema.xml`;
@@ -456,10 +457,10 @@ const npmSourceFiles = (): Record<string, string> => ({
     [NPM_LOCKFILE_NAME]: NPM_LOCKFILE,
 });
 
-const outputNames = (project: CliProject): string[] => listProjectFiles(project, OUT_DIR);
+const outputNames = (project: CliProject): string[] => listProjectFiles(project, ARCH_DIR);
 
 const outputFile = (project: CliProject, ...segments: string[]): string =>
-    readFileSync(join(project.root, OUT_DIR, ...segments), "utf8");
+    readFileSync(join(project.root, ARCH_DIR, ...segments), "utf8");
 
 const expectUnlocalizedMetadata = (project: CliProject): void => {
     const desktop = outputFile(project, join("stage", "share", "applications", `${APPLICATION_ID}.desktop`));
@@ -658,7 +659,7 @@ const stanzaFor = (copyright: string, files: string): string =>
     copyright.split("\nFiles: ").find((stanza) => stanza.startsWith(`${files}\n`)) ?? "";
 
 const flatpakManifest = (project: CliProject): FlatpakManifest => {
-    const contents = readFileSync(join(project.root, OUT_DIR, MANIFEST_PATH), "utf8");
+    const contents = readFileSync(join(project.root, ARCH_DIR, MANIFEST_PATH), "utf8");
 
     return parse(contents) as FlatpakManifest;
 };
@@ -674,17 +675,17 @@ const flatpakModule = (project: CliProject): FlatpakModule => {
 };
 
 const stagedMode = (project: CliProject, destination: string): number =>
-    statSync(join(project.root, OUT_DIR, "stage", destination)).mode & MODE_MASK;
+    statSync(join(project.root, ARCH_DIR, "stage", destination)).mode & MODE_MASK;
 
 const packagedMode = (project: CliProject, destination: string): number | undefined => {
-    const contents = readFileSync(join(project.root, OUT_DIR, NFPM_PATH), "utf8");
+    const contents = readFileSync(join(project.root, ARCH_DIR, NFPM_PATH), "utf8");
     const nfpm = parse(contents) as NfpmConfig;
 
     return nfpm.contents.find((entry) => entry.dst === destination)?.file_info?.mode;
 };
 
 const packagedDepends = (project: CliProject, path: string): string[] => {
-    const contents = readFileSync(join(project.root, OUT_DIR, path), "utf8");
+    const contents = readFileSync(join(project.root, ARCH_DIR, path), "utf8");
 
     return (parse(contents) as NfpmConfig).depends;
 };
@@ -773,6 +774,7 @@ export {
     DEPENDENCY_SECTION,
     DEPENDENCY_VERSION,
     DEPLOY_BLOCK,
+    DEPLOY_FIELDS,
     deployProbe,
     EXPECTED_MANIFESTS,
     EXPECTED_STAGED,

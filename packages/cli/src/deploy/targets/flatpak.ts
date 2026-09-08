@@ -21,6 +21,7 @@ const BUILDER_REF = "org.flatpak.Builder";
 const flatpakTarget: DeployTarget = {
     name: "flatpak",
     prefix: PREFIX,
+    isHostOnly: true,
     tools: [FLATPAK, FLATPAK_BUILDER, DESKTOP_FILE_VALIDATE, APPSTREAMCLI],
     render: (payload) => renderManifests(payload),
     pack: (payload) => Promise.try(() => packFlatpak(payload)),
