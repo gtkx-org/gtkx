@@ -25,8 +25,8 @@
         "@eslint/js": "^10.0.1",
         "@nx/eslint-plugin": "^23.2.0",
         "@stylistic/eslint-plugin": "^5.10.0",
-        "@typescript-eslint/eslint-plugin": "^8.69.0",
-        "@typescript-eslint/utils": "^8.69.0",
+        "@typescript-eslint/eslint-plugin": "^8.70.0",
+        "@typescript-eslint/utils": "^8.70.0",
         "@vitest/eslint-plugin": "^1.6.27",
         "eslint": "^10.10.0",
         "eslint-plugin-perfectionist": "^5.11.0",
@@ -36,10 +36,10 @@
         "eslint-plugin-unicorn": "^74.0.0",
         "jsonc-eslint-parser": "^3.3.0",
         "typescript": "catalog:",
-        "typescript-eslint": "^8.69.0"
+        "typescript-eslint": "^8.70.0"
     },
     "devDependencies": {
-        "@typescript-eslint/rule-tester": "^8.69.0",
+        "@typescript-eslint/rule-tester": "^8.70.0",
         "vitest": "catalog:"
     }
 }

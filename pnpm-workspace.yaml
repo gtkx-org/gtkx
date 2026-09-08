@@ -20,14 +20,14 @@ trustPolicyExclude:
 
 catalog:
   '@types/ejs': ^3.1.5
-  '@types/node': ^26.4.1
+  '@types/node': ^26.5.0
   '@types/react': ^19.2.18
-  '@vitest/coverage-v8': ^4.1.11
+  '@vitest/coverage-v8': ^5.0.0
   ejs: ^6.0.1
   react: ^19.2.8
   typescript: ^6.0.3
   vite: ^8.2.2
-  vitest: ^4.1.11
+  vitest: ^5.0.0
   yaml: ^2.9.0
   zod: ^4.5.4
 
@@ -44,6 +44,7 @@ packageExtensions:
 peerDependencyRules:
   allowedVersions:
     '@napi-rs/cli>@emnapi/runtime': '*'
+    '@nx/vitest>vitest': '*'
 
 overrides:
   vite: ^8.2.2

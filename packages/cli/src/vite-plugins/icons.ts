@@ -1,6 +1,6 @@
 import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, UserConfig } from "vite";
-import { createConfigLoader } from "@gtkx/config/internal";
+import { createConfigLoader, viteProjectRoot } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -37,7 +37,7 @@ const findIconFiles = (state: PluginState): ListedFile[] => {
 };
 
 const applyUserConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader): Promise<void> => {
-    const { config: gtkxConfig, root } = await loadConfig.load(config.root ?? process.cwd());
+    const { config: gtkxConfig, root } = await loadConfig.load(viteProjectRoot(config));
     state.applicationId = gtkxConfig.applicationId;
     state.source = resolveApplicationIcon(root, gtkxConfig.applicationId, gtkxConfig.applicationIcon);
 };

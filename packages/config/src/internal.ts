@@ -14,3 +14,4 @@ export {
 export { createConfigLoader } from "./loader.ts";
 export { assertSupportedNodeVersion, MINIMUM_NODE_VERSION } from "./node-version.ts";
 export { resourceBasePath } from "./resource-base-path.ts";
+export { viteProjectRoot } from "./vite-root.ts";

@@ -1,5 +1,6 @@
 import type { Plugin, UserConfig } from "vite";
 import { ensureStoreLinks } from "@gtkx/codegen/internal";
+import { viteProjectRoot } from "@gtkx/config/internal";
 
 const GENERATED_MODULE_PREFIX = /^@gtkx\/(?:gi\/|jsx(?:\/|$))/;
 
@@ -11,7 +12,7 @@ function gtkxStoreLinks(): Plugin {
         enforce: "pre",
 
         config(config: UserConfig) {
-            state.root = config.root ?? process.cwd();
+            state.root = viteProjectRoot(config);
         },
 
         resolveId(source) {

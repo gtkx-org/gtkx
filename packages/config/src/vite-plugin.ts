@@ -1,11 +1,12 @@
 import type { Plugin, UserConfig } from "vite";
 import { type ConfigLoader, createConfigLoader } from "./loader.ts";
 import { GTKX_CONFIG_VIRTUAL_ID, renderConfigModule, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "./virtual.ts";
+import { viteProjectRoot } from "./vite-root.ts";
 
 /** State the plugin carries from Vite's `config` hook to the virtual module it serves. */
 type PluginState = {
-    /** Project root taken from Vite's `config` hook, undefined when the user config leaves it unset. */
-    root: string | undefined;
+    /** Project root taken from Vite's `config` hook, falling back to the working directory. */
+    root: string;
 };
 
 const resolveVirtualId = (id: string): string | null =>
@@ -20,7 +21,7 @@ const loadVirtualModule = async (
         return undefined;
     }
 
-    return renderConfigModule(await loadConfig.resolve(state.root ?? process.cwd()));
+    return renderConfigModule(await loadConfig.resolve(state.root));
 };
 
 /**
@@ -36,12 +37,12 @@ const createConfigPlugin = (options: {
     config?: (config: UserConfig) => Omit<UserConfig, "plugins">;
 }): Plugin => {
     const loadConfig = options.loadConfig ?? createConfigLoader();
-    const state: PluginState = { root: undefined };
+    const state: PluginState = { root: process.cwd() };
 
     return {
         name: options.name,
         config(config: UserConfig) {
-            state.root = config.root ?? state.root;
+            state.root = viteProjectRoot(config);
 
             return options.config?.(config);
         },

@@ -71,11 +71,11 @@ const MODULE_DIR = `/run/build/${BINARY_NAME}`;
 const NODE_EXTENSION_DIR = "/usr/lib/sdk/node26";
 const NODE_EXTENSION_PATH = `${NODE_EXTENSION_DIR}/bin`;
 const APPEND_PATH = `${MODULE_DIR}/flatpak-pnpm:${NODE_EXTENSION_PATH}`;
-const PNPM_VERSION = "11.25.0";
+const PNPM_VERSION = "11.26.0";
 const PNPM_TARBALL = `pnpm-${PNPM_VERSION}.tgz`;
 
-const PNPM_SHA512 = "5cde925b4f075f725eb71fbae18a42ffe784524789f19b61c731cb8721ec28aaee160e01a" +
-    "8d5af4fedb2a42cdbf300efe23db356b0d4a17b4d63e11f8ab7c956";
+const PNPM_SHA512 = "fc0e2bf890b9f983611f1ab68c0637bce914390653699f83c1a78b005ed25f2c81e77920c8" +
+    "fd8eee2ecf0b58b28cdcb00a84d97f69bcf7c56b2f344710238664";
 
 const PNPM_PIN = `pnpm@${PNPM_VERSION}+sha512.${PNPM_SHA512}`;
 const PNPM_INSTALL = "pnpm install --offline --frozen-lockfile --trust-lockfile";

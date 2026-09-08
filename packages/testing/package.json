@@ -72,15 +72,16 @@
         "@gtkx/runtime": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "@vitest/expect": "^4.1.11",
         "@vitest/pretty-format": "^5.0.0"
     },
     "peerDependencies": {
         "@types/react": "^19.2",
-        "react": "^19.2"
+        "react": "^19.2",
+        "vitest": ">=5"
     },
     "devDependencies": {
         "@gtkx/config": "workspace:*",
-        "@types/react": "catalog:"
+        "@types/react": "catalog:",
+        "vitest": "catalog:"
     }
 }

@@ -201,8 +201,10 @@ const getDevDependencies = ({
     return devDeps;
 };
 
+const isCancellation = (value: unknown): value is symbol => p.isCancel(value);
+
 const guardCancellation = <T>(value: T | symbol): T => {
-    if (p.isCancel(value)) {
+    if (isCancellation(value)) {
         p.cancel("Operation canceled");
         throw new OperationCanceledError();
     }

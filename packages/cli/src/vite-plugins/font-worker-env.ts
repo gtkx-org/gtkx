@@ -1,6 +1,6 @@
 import type { UserConfig } from "vite";
 import type { Plugin } from "vitest/config";
-import { createConfigLoader } from "@gtkx/config/internal";
+import { createConfigLoader, viteProjectRoot } from "@gtkx/config/internal";
 import { stageProjectFonts } from "../internal/font-staging.js";
 import { prependXdgDataDir } from "../internal/xdg-data-dirs.js";
 
@@ -12,7 +12,7 @@ function gtkxFontWorkerEnv(configFile?: string): Plugin {
         enforce: "pre",
 
         async config(config: UserConfig) {
-            const loaded = await loadConfig.load(config.root ?? process.cwd());
+            const loaded = await loadConfig.load(viteProjectRoot(config));
             const shareDir = stageProjectFonts(loaded.root);
 
             return {

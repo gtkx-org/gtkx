@@ -1,4 +1,4 @@
-import type { SyncExpectationResult } from "@vitest/expect";
+import type { SyncMatcherResult } from "vitest";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { ByRoleOptions, Matcher, MatcherOptions } from "./types.js";
@@ -57,7 +57,7 @@ type TextContentOptions = {
 /** The expected value for a style class: an exact class name or a regular expression. */
 type ClassExpectation = string | RegExp;
 /** The outcome of a matcher: whether it passed, and the failure text built on demand. */
-type MatcherResult = Pick<SyncExpectationResult, "message" | "pass">;
+type MatcherResult = Pick<SyncMatcherResult, "message" | "pass">;
 
 /** The matcher state bound as `this`, supplying the test runner's deep equality check. */
 type MatcherContext = {
@@ -1000,64 +1000,62 @@ const registerMatchers = (): void => {
     registration.isRegistered = true;
 };
 
-declare module "@vitest/expect" {
-    /* eslint-disable @typescript-eslint/consistent-type-definitions -- declaration merging requires interfaces */
-    interface WidgetMatchers {
-        toHaveDisplayValue(expected?: TextExpectation): void;
-        toHaveTextContent(expected?: TextExpectation, options?: TextContentOptions): void;
-        toHaveAccessibleName(expected?: TextExpectation): void;
-        toHaveAccessibleDescription(expected?: TextExpectation): void;
-        toHaveAccessibleErrorMessage(expected?: TextExpectation): void;
-        toHaveSelection(expected?: TextExpectation): void;
+declare module "vitest" {
+    /* eslint-disable @typescript-eslint/consistent-type-definitions, @typescript-eslint/no-unused-vars --
+       declaration merging requires an interface with vitest's exact type parameters */
+    interface Matchers<R extends void | Promise<void> = void | Promise<void>, T = unknown> {
+        toHaveDisplayValue(expected?: TextExpectation): R;
+        toHaveTextContent(expected?: TextExpectation, options?: TextContentOptions): R;
+        toHaveAccessibleName(expected?: TextExpectation): R;
+        toHaveAccessibleDescription(expected?: TextExpectation): R;
+        toHaveAccessibleErrorMessage(expected?: TextExpectation): R;
+        toHaveSelection(expected?: TextExpectation): R;
         /* eslint-disable-next-line unicorn/consistent-boolean-name -- expected is the jest-dom matcher argument name */
-        toHaveAccessibleState(state: BooleanAccessibleState, expected?: boolean): void;
-        toHaveAccessibleState(state: TristateAccessibleState, expected?: Gtk.AccessibleTristate): void;
-        toHaveAccessibleState(state: Gtk.AccessibleState.INVALID, expected?: Gtk.AccessibleInvalidState): void;
-        toHaveAccessibleProperty(property: StringAccessibleProperty, expected?: string): void;
+        toHaveAccessibleState(state: BooleanAccessibleState, expected?: boolean): R;
+        toHaveAccessibleState(state: TristateAccessibleState, expected?: Gtk.AccessibleTristate): R;
+        toHaveAccessibleState(state: Gtk.AccessibleState.INVALID, expected?: Gtk.AccessibleInvalidState): R;
+        toHaveAccessibleProperty(property: StringAccessibleProperty, expected?: string): R;
         /* eslint-disable-next-line unicorn/consistent-boolean-name -- expected is the jest-dom matcher argument name */
-        toHaveAccessibleProperty(property: BooleanAccessibleProperty, expected?: boolean): void;
-        toHaveAccessibleProperty(property: NumberAccessibleProperty, expected?: number): void;
+        toHaveAccessibleProperty(property: BooleanAccessibleProperty, expected?: boolean): R;
+        toHaveAccessibleProperty(property: NumberAccessibleProperty, expected?: number): R;
         toHaveAccessibleProperty(
             property: Gtk.AccessibleProperty.AUTOCOMPLETE,
             expected?: Gtk.AccessibleAutocomplete,
-        ): void;
-        toHaveAccessibleProperty(property: Gtk.AccessibleProperty.ORIENTATION, expected?: Gtk.Orientation): void;
-        toHaveAccessibleProperty(property: Gtk.AccessibleProperty.SORT, expected?: Gtk.AccessibleSort): void;
-        toBeChecked(): void;
-        toBePartiallyChecked(): void;
-        toBePressed(): void;
-        toBePartiallyPressed(): void;
-        toBeDisabled(): void;
-        toBeEnabled(): void;
-        toBeVisible(): void;
-        toBeRooted(): void;
-        toBeEmptyWidget(): void;
-        toBeInvalid(): void;
-        toBeValid(): void;
-        toBeRequired(): void;
-        toHaveFocus(): void;
-        toHaveValue(expected?: number | string): void;
-        toHaveRole(expected: Gtk.AccessibleRole): void;
-        toContainElement(descendant: Gtk.Accessible | null): void;
-        toAppearBefore(other: Gtk.Accessible): void;
-        toAppearAfter(other: Gtk.Accessible): void;
-        toContainAnyByRole(...args: RoleQueryArgs): void;
-        toContainOneByRole(...args: RoleQueryArgs): void;
-        toContainAnyByText(...args: TextQueryArgs): void;
-        toContainOneByText(...args: TextQueryArgs): void;
-        toContainAnyByLabelText(...args: TextQueryArgs): void;
-        toContainOneByLabelText(...args: TextQueryArgs): void;
-        toContainAnyByPlaceholderText(...args: TextQueryArgs): void;
-        toContainOneByPlaceholderText(...args: TextQueryArgs): void;
-        toContainAnyByDisplayValue(...args: TextQueryArgs): void;
-        toContainOneByDisplayValue(...args: TextQueryArgs): void;
-        toHaveClass(...args: (ClassExpectation | { exact: boolean })[]): void;
-        toHaveObjectProperty(name: string, expected?: unknown): void;
+        ): R;
+        toHaveAccessibleProperty(property: Gtk.AccessibleProperty.ORIENTATION, expected?: Gtk.Orientation): R;
+        toHaveAccessibleProperty(property: Gtk.AccessibleProperty.SORT, expected?: Gtk.AccessibleSort): R;
+        toBeChecked(): R;
+        toBePartiallyChecked(): R;
+        toBePressed(): R;
+        toBePartiallyPressed(): R;
+        toBeDisabled(): R;
+        toBeEnabled(): R;
+        toBeVisible(): R;
+        toBeRooted(): R;
+        toBeEmptyWidget(): R;
+        toBeInvalid(): R;
+        toBeValid(): R;
+        toBeRequired(): R;
+        toHaveFocus(): R;
+        toHaveValue(expected?: number | string): R;
+        toHaveRole(expected: Gtk.AccessibleRole): R;
+        toContainElement(descendant: Gtk.Accessible | null): R;
+        toAppearBefore(other: Gtk.Accessible): R;
+        toAppearAfter(other: Gtk.Accessible): R;
+        toContainAnyByRole(...args: RoleQueryArgs): R;
+        toContainOneByRole(...args: RoleQueryArgs): R;
+        toContainAnyByText(...args: TextQueryArgs): R;
+        toContainOneByText(...args: TextQueryArgs): R;
+        toContainAnyByLabelText(...args: TextQueryArgs): R;
+        toContainOneByLabelText(...args: TextQueryArgs): R;
+        toContainAnyByPlaceholderText(...args: TextQueryArgs): R;
+        toContainOneByPlaceholderText(...args: TextQueryArgs): R;
+        toContainAnyByDisplayValue(...args: TextQueryArgs): R;
+        toContainOneByDisplayValue(...args: TextQueryArgs): R;
+        toHaveClass(...args: (ClassExpectation | { exact: boolean })[]): R;
+        toHaveObjectProperty(name: string, expected?: unknown): R;
     }
-
-    interface Assertion extends WidgetMatchers {}
-    interface AsymmetricMatchersContaining extends WidgetMatchers {}
-    /* eslint-enable @typescript-eslint/consistent-type-definitions */
+    /* eslint-enable @typescript-eslint/consistent-type-definitions, @typescript-eslint/no-unused-vars */
 }
 
 export { matchers, registerMatchers, type ClassExpectation, type TextContentOptions, type TextExpectation };

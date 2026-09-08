@@ -2,7 +2,7 @@ import type { StoreOptions } from "@gtkx/codegen";
 import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, UserConfig } from "vite";
 import { discoverGirNamespaces, resolveGirPath, resolveStore } from "@gtkx/codegen";
-import { createConfigLoader } from "@gtkx/config/internal";
+import { createConfigLoader, viteProjectRoot } from "@gtkx/config/internal";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -129,7 +129,7 @@ function gtkxUndeclaredLibrary(loadConfig: ConfigLoader = createConfigLoader()):
         enforce: "pre",
 
         config(config: UserConfig) {
-            state.root = config.root ?? process.cwd();
+            state.root = viteProjectRoot(config);
         },
 
         async resolveId(source, importer, options) {

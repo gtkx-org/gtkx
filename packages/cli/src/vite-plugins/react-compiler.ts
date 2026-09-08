@@ -3,7 +3,7 @@ import type { ResolvedReactCompilerOptions } from "@gtkx/config/internal";
 import type { Plugin, ResolvedConfig, UserConfig } from "vite";
 import { transformAsync } from "@babel/core";
 import babelPresetTypescriptNs from "@babel/preset-typescript";
-import { createConfigLoader } from "@gtkx/config/internal";
+import { createConfigLoader, viteProjectRoot } from "@gtkx/config/internal";
 import babelPluginReactCompilerNs from "babel-plugin-react-compiler";
 
 type ReactCompilerState = {
@@ -62,7 +62,7 @@ function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader()): Plu
         enforce: "pre",
 
         async config(config: UserConfig) {
-            const resolved = await loadConfig.resolve(config.root ?? process.cwd());
+            const resolved = await loadConfig.resolve(viteProjectRoot(config));
             state.options = resolved.reactCompiler;
         },
 

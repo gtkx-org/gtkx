@@ -1,6 +1,6 @@
 import type { ConfigLoader } from "@gtkx/config";
 import type { ModuleNode, Plugin, ResolvedConfig, Rolldown, UserConfig, ViteDevServer } from "vite";
-import { createConfigLoader, resourceBasePath } from "@gtkx/config/internal";
+import { createConfigLoader, resourceBasePath, viteProjectRoot } from "@gtkx/config/internal";
 import { error, info, isPathInside, isRecord, sortStrings, toPosixPath } from "@gtkx/utils";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, posix, relative, sep } from "node:path";
@@ -1283,7 +1283,7 @@ const reconcileImporter = async (ctx: ResolveContext, state: PluginState, id: st
 };
 
 const resolveResourceConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader) => {
-    const loaded = await loadConfig.load(config.root ?? process.cwd());
+    const loaded = await loadConfig.load(viteProjectRoot(config));
     state.prefix = resourceBasePath(loaded.config.applicationId);
     state.root = loaded.root;
 
