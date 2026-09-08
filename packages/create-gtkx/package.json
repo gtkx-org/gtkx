@@ -55,7 +55,7 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@clack/prompts": "^1.7.0",
+        "@clack/prompts": "^1.8.0",
         "@gtkx/config": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "ejs": "catalog:",

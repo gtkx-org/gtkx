@@ -9,12 +9,12 @@ type PnpmPin = {
     sha512: string;
 };
 
-const PNPM_VERSION = "11.25.0";
+const PNPM_VERSION = "11.26.0";
 const PNPM_MAJOR = 11;
-const PNPM_MINOR = 25;
+const PNPM_MINOR = 26;
 
-const PNPM_SHA512 = "5cde925b4f075f725eb71fbae18a42ffe784524789f19b61c731cb8721ec28aaee160e01a" +
-    "8d5af4fedb2a42cdbf300efe23db356b0d4a17b4d63e11f8ab7c956";
+const PNPM_SHA512 = "fc0e2bf890b9f983611f1ab68c0637bce914390653699f83c1a78b005ed25f2c81e77920c8" +
+    "fd8eee2ecf0b58b28cdcb00a84d97f69bcf7c56b2f344710238664";
 
 const PNPM_DIR = "flatpak-pnpm";
 const PNPM_COMMAND = "pnpm";

@@ -1,6 +1,6 @@
 import type { UserConfig } from "vite";
 import type { Plugin } from "vitest/config";
-import { createConfigLoader } from "@gtkx/config/internal";
+import { createConfigLoader, viteProjectRoot } from "@gtkx/config/internal";
 import { prependSchemaDir, stageAndCompileProjectSchemas } from "../settings/schema.js";
 
 function gtkxSettingsWorkerEnv(configFile?: string): Plugin {
@@ -11,7 +11,7 @@ function gtkxSettingsWorkerEnv(configFile?: string): Plugin {
         enforce: "pre",
 
         async config(config: UserConfig) {
-            const loaded = await loadConfig.load(config.root ?? process.cwd());
+            const loaded = await loadConfig.load(viteProjectRoot(config));
             const dir = stageAndCompileProjectSchemas(loaded.root);
 
             if (dir === null) {
