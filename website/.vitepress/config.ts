@@ -117,7 +117,7 @@ const blogSidebar: DefaultTheme.SidebarItem[] = [
     {
         text: "Blog",
         items: [
-            { text: "GTKX 2.0 beta 1", link: "/blog/gtkx-2-0-beta-1" },
+            { text: "GTKX 2.0 beta", link: "/blog/gtkx-2-0-beta-1" },
             { text: "GTKX 1.6", link: "/blog/gtkx-1-6" },
             { text: "GTKX 1.5", link: "/blog/gtkx-1-5" },
             { text: "GTKX 1.4", link: "/blog/gtkx-1-4" },

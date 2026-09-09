@@ -14,7 +14,7 @@ import Showcase from "./Showcase.vue";
     <a class="skip-link" href="#main">Skip to content</a>
     <a class="ann" href="/blog/gtkx-2-0-beta-1">
       <span class="ann__tag">NEW</span>
-      <span class="ann__txt">GTKX 2.0 beta 1: a smaller, safer foundation</span>
+      <span class="ann__txt">GTKX 2.0 beta: a smaller, safer foundation</span>
       <span class="ann__arrow" aria-hidden="true">→</span>
     </a>
     <Nav />

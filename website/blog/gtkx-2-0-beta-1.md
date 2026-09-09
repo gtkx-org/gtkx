@@ -1,20 +1,20 @@
 ---
-title: "GTKX 2.0 beta 1: a smaller, safer foundation"
-description: "GTKX 2.0 beta 1 makes the migration behaviors previewed in 1.6 unconditional, removes deprecated compatibility APIs, standardizes ESM and internationalization, and hardens the native boundary."
+title: "GTKX 2.0 beta: a smaller, safer foundation"
+description: "GTKX 2.0 beta makes the migration behaviors previewed in 1.6 unconditional, removes deprecated compatibility APIs, standardizes ESM and internationalization, and hardens the native boundary."
 image: /og.png
 ---
 
-# GTKX 2.0 beta 1
+# GTKX 2.0 beta
 
 <p class="post-date">September 2, 2026</p>
 
-GTKX 2.0.0-beta.1 is ready to test. This is the release GTKX 1.6 prepared applications for: the seven future behaviors are now the only behaviors, deprecated compatibility APIs are gone, and the framework has one smaller contract to carry forward. The beta also moves the project onto a current Node.js and ESM baseline, delegates source-message analysis to the standard i18next toolchain, and puts more of the native boundary behind end-to-end tests. Read the [full changelog](https://github.com/gtkx-org/gtkx/releases/tag/v2.0.0-beta.1) and the [upgrade guide](/v2/guide/upgrading-to-2) before moving an existing application.
+The GTKX 2.0 beta is ready to test. This is the release GTKX 1.6 prepared applications for: the future behaviors are now the only behaviors, deprecated compatibility APIs are gone, and the framework has one smaller contract to carry forward. The beta also moves the project onto a current Node.js and ESM baseline, delegates source-message analysis to the standard i18next toolchain, and puts more of the native boundary behind end-to-end tests. Read the [full changelog](https://github.com/gtkx-org/gtkx/releases) and the [upgrade guide](/v2/guide/upgrading-to-2) before moving an existing application.
 
 This starts a three-month beta period. The final GTKX 2.0 release is scheduled for December 1, 2026. Until then, the focus is migration feedback, correctness, and release hardening; feature work remains scheduled for 2.1.
 
 ## The migration switches become the runtime
 
-GTKX 1.6 let applications adopt seven 2.0 behaviors independently. In 2.0 they are unconditional:
+GTKX 1.6 let applications adopt 2.0 behaviors independently. In 2.0 they are unconditional:
 
 - GIR byte sequences are `Uint8Array`.
 - A binding that returns a `GObject.Value` returns the contained value as `unknown`.
@@ -59,7 +59,7 @@ These imports work through ordinary module resolution, and the build reports any
 
 GTKX 2 packages require Node.js 26.7 or newer and publish explicit ESM entry points. Applications need `"type": "module"`; package exports reject CommonJS `require()` rather than letting it select an accidental build artifact. Source-mode Flatpak builds move to the Node 26 SDK extension as part of the same baseline.
 
-Internationalization now uses upstream contracts all the way through. This is a post-1.6 breaking change in the beta, not one of the seven previewed behaviors. `@gtkx/i18n` still connects i18next and react-i18next to GNU gettext, but source scanning is delegated to `i18next-cli`, and generated declarations augment i18next's standard resource types instead of maintaining a parallel GTKX translation registry. The `TranslationRegistry` and GTKX-specific `TFunction` types are removed; use `I18nResources` and the upstream `TFunction` from `i18next`. Plurals use `defaultValue_one` and `defaultValue_other`.
+Internationalization now uses upstream contracts all the way through. This is a post-1.6 breaking change in the beta, not one of the previewed behaviors. `@gtkx/i18n` still connects i18next and react-i18next to GNU gettext, but source scanning is delegated to `i18next-cli`, and generated declarations augment i18next's standard resource types instead of maintaining a parallel GTKX translation registry. The `TranslationRegistry` and GTKX-specific `TFunction` types are removed; use `I18nResources` and the upstream `TFunction` from `i18next`. Plurals use `defaultValue_one` and `defaultValue_other`.
 
 That narrower extractor is deliberate. Catalog-owning code uses statically recoverable calls under the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`. Imported aliases, `i18n.t` member calls, dynamic keys, and CommonJS declarations are no longer treated as catalog sources. Localized projects also require GNU gettext 0.25 or newer.
 
