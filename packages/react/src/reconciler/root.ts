@@ -1,4 +1,4 @@
-import type { ErrorInfo, ReactNode, ReactPortal } from "react";
+import type { Component, ErrorInfo, ReactNode, ReactPortal } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import { createLogger, type Logger } from "@gtkx/utils";
 import { ConcurrentRoot } from "react-reconciler/constants.js";
@@ -8,13 +8,25 @@ import { rootElement } from "./root-element.js";
 
 type OpaqueRoot = { [opaqueRoot]: true };
 
-type RootErrorCallbacks = {
-    onUncaughtError?: (error: unknown, info: ErrorInfo) => void;
-    onCaughtError?: (error: unknown, info: ErrorInfo) => void;
-    onRecoverableError?: (error: unknown, info: ErrorInfo) => void;
+/** Error info handed to a caught-error callback, naming the error boundary that stopped the error. */
+type CaughtErrorInfo = ErrorInfo & {
+    /** The error boundary that caught the error, or `null` when that boundary is not a class component. */
+    errorBoundary?: Component<unknown> | null | undefined;
 };
 
-type ReconcilerRootOptions = RootErrorCallbacks & { containerInfo: Container };
+/** Options for {@link createRoot}, mirroring the options React DOM's own `createRoot` takes. */
+type RootOptions = {
+    /** Called for a render error no error boundary caught; the error is rethrown when this is omitted. */
+    onUncaughtError?: ((error: unknown, errorInfo: ErrorInfo) => void) | undefined;
+    /** Called for a render error an error boundary caught; the error is logged when this is omitted. */
+    onCaughtError?: ((error: unknown, errorInfo: CaughtErrorInfo) => void) | undefined;
+    /** Called for a render error React recovered from by rendering again; the error is logged when this is omitted. */
+    onRecoverableError?: ((error: unknown, errorInfo: ErrorInfo) => void) | undefined;
+    /** Prefix `useId` puts in front of every identifier it generates under this root. */
+    identifierPrefix?: string | undefined;
+};
+
+type ReconcilerRootOptions = RootOptions & { containerInfo: Container };
 
 /** A render root whose updates and teardown the caller drives, with error handling left to it. */
 type ReconcilerRoot = {
@@ -70,7 +82,11 @@ const logCaughtRenderError = (error: unknown): void => {
     log.error("caught render error", error);
 };
 
-const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks): OpaqueRoot => {
+const logRecoverableRenderError = (error: unknown): void => {
+    log.error("recoverable render error", error);
+};
+
+const openContainer = (containerInfo: Container, options: RootOptions): OpaqueRoot => {
     injectIntoDevTools(reconciler);
 
     return reconciler.createContainer(
@@ -79,17 +95,17 @@ const openContainer = (containerInfo: Container, callbacks: RootErrorCallbacks):
         null,
         false,
         null,
-        "",
+        options.identifierPrefix ?? "",
         (error, info) => {
             errorHandlerSlot.get()?.(error);
-            callbacks.onUncaughtError?.(error, info);
+            options.onUncaughtError?.(error, info);
         },
         (error, info) => {
             errorHandlerSlot.get()?.(error);
-            callbacks.onCaughtError?.(error, info);
+            options.onCaughtError?.(error, info);
         },
         (error, info) => {
-            callbacks.onRecoverableError?.(error, info);
+            options.onRecoverableError?.(error, info);
         },
         (): void => undefined,
     ) as OpaqueRoot;
@@ -128,15 +144,18 @@ const createReconcilerRoot = (options: ReconcilerRootOptions): ReconcilerRoot =>
 };
 
 /**
- * Creates a render root for a GTKX application. Uncaught render errors are rethrown and errors caught by an
- * error boundary are logged.
+ * Creates a render root for a GTKX application. Uncaught render errors are rethrown, errors caught by an
+ * error boundary are logged, and errors React recovered from by rendering again are logged.
  *
  * @param container The GObject to render into; defaults to the shared {@link rootElement}, which holds no object.
+ * @param options Error callbacks and the `useId` prefix; each callback left out falls back to the behavior above.
  */
-const createRoot = (container: Container = rootElement): Root => {
+const createRoot = (container: Container = rootElement, options: RootOptions = {}): Root => {
     const opaque = openContainer(container, {
-        onUncaughtError: rethrowUncaughtRenderError,
-        onCaughtError: logCaughtRenderError,
+        ...options,
+        onUncaughtError: options.onUncaughtError ?? rethrowUncaughtRenderError,
+        onCaughtError: options.onCaughtError ?? logCaughtRenderError,
+        onRecoverableError: options.onRecoverableError ?? logRecoverableRenderError,
     });
 
     return {
@@ -179,6 +198,8 @@ export {
     createRoot,
     quit,
     createPortal,
+    type CaughtErrorInfo,
     type ReconcilerRoot,
     type Root,
+    type RootOptions,
 };

@@ -7,6 +7,13 @@ export { useProperty } from "./hooks/use-property.js";
 export { useSetting } from "./hooks/use-setting.js";
 export { useSignal } from "./hooks/use-signal.js";
 export { type RootElement, rootElement } from "./reconciler/root-element.js";
-export { createPortal, createRoot, quit, type Root } from "./reconciler/root.js";
+export {
+    type CaughtErrorInfo,
+    createPortal,
+    createRoot,
+    quit,
+    type Root,
+    type RootOptions,
+} from "./reconciler/root.js";
 export type { AccessibleProps } from "./utils/accessible-props.js";
 export type { RefProp } from "./utils/ref-prop.js";
