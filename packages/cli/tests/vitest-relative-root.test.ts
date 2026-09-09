@@ -14,6 +14,7 @@ const VITEST_PLUGIN_MODULE = new URL("../dist/vitest-plugin.js", import.meta.url
 const FONT_FAMILY = "Red Hat Mono";
 const NESTED_FONT_FAMILY = "Red Hat Text";
 const PACKAGE_FONT_FAMILY = "Red Hat Display";
+const DYNAMIC_FONT_FAMILY = "Red Hat Display";
 const FONT_ASSET = join("data", "probe.woff2");
 const NESTED_FONT_ASSET = join("data", "probe.otf");
 const PACKAGE_DIR = join("node_modules", "probe-fonts");
@@ -22,6 +23,8 @@ const OUTSIDE_MODULE = join("outside", "fonts.ts");
 const OUTSIDE_FONT_ASSET = join("outside", "probe.ttc");
 const DUPLICATE_FONT_ASSET = join("extra", "probe.otf");
 const DUPLICATE_MODULE = join("src", "duplicate-font.ts");
+const DYNAMIC_FONT_ASSET = join("data", "probe-dynamic.ttc");
+const DYNAMIC_MODULE = join("src", "dynamic-font.ts");
 
 const fontFixture = (name: string): Buffer =>
     readFileSync(fileURLToPath(new URL(`fixtures/${name}`, import.meta.url)));
@@ -41,6 +44,11 @@ const DUPLICATE_SOURCE =
 const OUTSIDE_SOURCE =
     'export { default as outsideFontFamily } from "./probe.ttc?font";\n';
 
+const DYNAMIC_SOURCE =
+    "const dynamicFontFamily = async (): Promise<string> =>\n" +
+    '    (await import("../data/probe-dynamic.ttc?font")).default;\n\n' +
+    "export { dynamicFontFamily };\n";
+
 const CONFIG =
     `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)} };\n`;
 
@@ -57,6 +65,7 @@ import fontFamily from "./data/probe.woff2?font";
 import packageFontFamily from "probe-fonts/probe.woff?font";
 import { nestedFontFamily } from "./src/nested-font.js";
 import { duplicateFontFamily } from "./src/duplicate-font.js";
+import { dynamicFontFamily } from "./src/dynamic-font.js";
 
 const stagedFonts = (process.env.XDG_DATA_DIRS ?? "")
     .split(":")
@@ -75,7 +84,11 @@ it("reads a bundled font family and stages the file where fontconfig looks", () 
     expect(nestedFontFamily).toBe(${JSON.stringify(NESTED_FONT_FAMILY)});
     expect(packageFontFamily).toBe(${JSON.stringify(PACKAGE_FONT_FAMILY)});
     expect(duplicateFontFamily).toBe(${JSON.stringify(NESTED_FONT_FAMILY)});
-    expect(stagedFonts).toHaveLength(3);
+    expect(stagedFonts).toHaveLength(4);
+});
+
+it("stages a font a project module reaches only through a dynamic import", async () => {
+    await expect(dynamicFontFamily()).resolves.toBe(${JSON.stringify(DYNAMIC_FONT_FAMILY)});
 });
 
 it("rejects a font import the staging scan cannot reach", async () => {
@@ -97,6 +110,8 @@ describe("gtkx vitest plugin (a root given relative to the working directory)", 
                 [join(APP_DIR, NESTED_MODULE)]: NESTED_SOURCE,
                 [join(APP_DIR, DUPLICATE_FONT_ASSET)]: fontFixture("probe.otf"),
                 [join(APP_DIR, DUPLICATE_MODULE)]: DUPLICATE_SOURCE,
+                [join(APP_DIR, DYNAMIC_FONT_ASSET)]: fontFixture("probe.ttc"),
+                [join(APP_DIR, DYNAMIC_MODULE)]: DYNAMIC_SOURCE,
                 [OUTSIDE_FONT_ASSET]: fontFixture("probe.ttc"),
                 [OUTSIDE_MODULE]: OUTSIDE_SOURCE,
                 [join(PACKAGE_DIR, "package.json")]: PACKAGE_MANIFEST,

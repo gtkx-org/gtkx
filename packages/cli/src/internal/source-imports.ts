@@ -123,7 +123,10 @@ const parseSourceWith = (
     }
 
     const sources = staticSources(parsed.module);
-    collectDynamicImportSources(parsed.program, sources);
+
+    if (parsed.module.dynamicImports.length > 0) {
+        collectDynamicImportSources(parsed.program, sources);
+    }
 
     return [...new Set(sources)].map((source) => ({ importer: path, source }));
 };
