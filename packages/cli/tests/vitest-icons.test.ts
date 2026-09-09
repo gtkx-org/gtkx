@@ -1,9 +1,16 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { type CliProject, createCliProject, STORE_LIBRARIES } from "./cli-project.js";
+import {
+    cliEnvironment,
+    type CliProject,
+    type CliProjectOptions,
+    createCliProject,
+    type DisposableCliProject,
+    STORE_LIBRARIES,
+} from "./cli-project.js";
 
 type VitestRun = { status: number | null; stderr: string; stdout: string };
 type IconExpectation = { name: string; present: boolean };
@@ -16,7 +23,8 @@ const VITEST_CONFIG_FILE = "vitest.config.ts";
 const TEST_FILE = "icons.test.ts";
 const RUN_TIMEOUT = 240_000;
 const VITEST_ENTRY = fileURLToPath(new URL("../../../node_modules/vitest/vitest.mjs", import.meta.url));
-const VITEST_PLUGIN_MODULE = new URL("../dist/vitest-plugin.js", import.meta.url).href;
+const CLI_PACKAGE = fileURLToPath(new URL("..", import.meta.url));
+const VITEST_PLUGIN_MODULE = "@gtkx/cli/vitest-plugin";
 const FONT_ASSET = join("data", "probe.woff2");
 const ICON_ASSET = join("data", "application.svg");
 const UNUSABLE_ICON_ASSET = join("data", "application.txt");
@@ -86,11 +94,18 @@ ${expectations.map((entry) => iconAssertion(entry)).join("\n")}
 });
 `;
 
+const createIconProject = (options: CliProjectOptions): DisposableCliProject => {
+    const project = createCliProject(options);
+    symlinkSync(CLI_PACKAGE, join(project.nodeModules, "@gtkx", "cli"), "dir");
+
+    return project;
+};
+
 const runVitest = (project: CliProject): VitestRun => {
     const result = spawnSync(process.execPath, [VITEST_ENTRY, "run"], {
         cwd: project.root,
         encoding: "utf8",
-        env: process.env,
+        env: cliEnvironment(),
         killSignal: "SIGKILL",
         timeout: RUN_TIMEOUT,
     });
@@ -108,7 +123,7 @@ const expectVitestFailure = (run: VitestRun): void => {
 
 describe("gtkx vitest plugin (application icons)", () => {
     it("stages a configured icon file and a configured icon theme for the test workers", () => {
-        using project = createCliProject({
+        using project = createIconProject({
             prefix: "gtkx-cli-vitest-icons-",
             config: config(APPLICATION_ID, ICON_ASSET),
             hasStore: true,
@@ -139,7 +154,7 @@ describe("gtkx vitest plugin (application icons)", () => {
     });
 
     it("stages the conventional icon and contributes nothing without one", () => {
-        using project = createCliProject({
+        using project = createIconProject({
             prefix: "gtkx-cli-vitest-icons-default-",
             config: config(DEFAULT_APPLICATION_ID, null),
             hasStore: true,
@@ -166,7 +181,7 @@ describe("gtkx vitest plugin (application icons)", () => {
     });
 
     it("fails the run when the configured icon cannot be used", () => {
-        using project = createCliProject({
+        using project = createIconProject({
             prefix: "gtkx-cli-vitest-icons-unusable-",
             config: config(UNUSABLE_APPLICATION_ID, UNUSABLE_ICON_ASSET),
             hasStore: true,
