@@ -143,6 +143,7 @@ const discoverSourceImports = (dir: string): SourceImport[] => {
 export {
     discoverSourceFiles,
     discoverSourceImports,
+    importsIn,
     parseRuntimeImportsIn,
     sourceDirFor,
     sourceLanguage,
