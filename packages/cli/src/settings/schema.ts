@@ -11,8 +11,9 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
+import type { SourceImport } from "../internal/source-imports.js";
 import { I18N_TYPES_FILENAME, i18nTypesPath } from "../i18n/types.js";
-import { discoverSourceImports, sourceDirFor, type SourceImport } from "../internal/source-imports.js";
+import { discoverProjectImports } from "../internal/import-scan.js";
 import { removeTempDir } from "../internal/staging-dir.js";
 import {
     isBareRelativeAsset,
@@ -177,7 +178,7 @@ const assertUniqueSchemaBasenames = (schemaFiles: string[]): void => {
 };
 
 const stageAndCompileProjectSchemas = (root: string): string | null => {
-    const imports = discoverSourceImports(sourceDirFor(root));
+    const imports = discoverProjectImports(root);
     const schemaFiles = findImportedSchemaFiles(imports);
     assertUniqueSchemaBasenames(schemaFiles);
 
@@ -250,7 +251,7 @@ const didWriteChanges = (path: string, content: string): boolean => {
 };
 
 const emitSchemaEnv = (rootDir: string): SchemaEnvResult => {
-    const imports = discoverSourceImports(sourceDirFor(rootDir));
+    const imports = discoverProjectImports(rootDir);
     const importedFiles = findImportedSchemaFiles(imports);
     assertUniqueSchemaBasenames(importedFiles);
     const imported = parseProjectSchemas(importedFiles, getRelativeModuleSpecifier);
