@@ -31,6 +31,10 @@ type ScanResult = {
 const CACHE_FILE = ["node_modules", ".gtkx", "import-scan.json"];
 const PARSER_MANIFEST = "vite/package.json";
 const UNKNOWN_PARSER = "unknown";
+const SCANNER_MODULE = "source-imports";
+const SCANNER_EXTENSIONS = [".js", ".ts"];
+const SCANNER_HASH_LENGTH = 16;
+const UNKNOWN_SCANNER = "unknown";
 const identity: { value: string | undefined } = { value: undefined };
 
 const scanCachePath = (root: string): string => join(root, ...CACHE_FILE);
@@ -51,7 +55,20 @@ const parserVersion = (): string => {
     return isRecord(manifest) && typeof manifest.version === "string" ? manifest.version : UNKNOWN_PARSER;
 };
 
-const cacheVersion = (): string => (identity.value ??= `${packageManifest.version}+${parserVersion()}`);
+const scannerHash = (): string => {
+    for (const extension of SCANNER_EXTENSIONS) {
+        const code = readSource(join(import.meta.dirname, `${SCANNER_MODULE}${extension}`));
+
+        if (code !== null) {
+            return hashSource(code).slice(0, SCANNER_HASH_LENGTH);
+        }
+    }
+
+    return UNKNOWN_SCANNER;
+};
+
+const cacheVersion = (): string =>
+    (identity.value ??= `${packageManifest.version}+${parserVersion()}+${scannerHash()}`);
 
 const isStringArray = (value: unknown): value is string[] =>
     Array.isArray(value) && value.every((entry) => typeof entry === "string");
