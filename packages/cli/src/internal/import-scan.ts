@@ -153,7 +153,13 @@ const scanFile = (path: string, previous: ScanIndex, index: ScanIndex): boolean 
         return false;
     }
 
-    index.set(path, { hash, sources: importSourcesIn(path, code) });
+    const sources = importSourcesIn(path, code);
+
+    if (sources === null) {
+        return previous.has(path);
+    }
+
+    index.set(path, { hash, sources });
 
     return true;
 };

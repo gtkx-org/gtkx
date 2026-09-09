@@ -159,8 +159,8 @@ const parseRuntimeImportsIn = (path: string): SourceImport[] | null =>
 
 const importsIn = (path: string): SourceImport[] => parseImportsIn(path) ?? [];
 
-const importSourcesIn = (path: string, code: string): string[] =>
-    (parseSourceWith(path, code, staticImportSources) ?? []).map((entry) => entry.source);
+const importSourcesIn = (path: string, code: string): string[] | null =>
+    parseSourceWith(path, code, staticImportSources)?.map((entry) => entry.source) ?? null;
 
 const importKey = (entry: SourceImport): string => `${entry.importer}\0${entry.source}`;
 
