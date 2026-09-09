@@ -27,7 +27,9 @@ import {
     REL_SEPARATOR,
     RESOURCE_PATH_EXPORT,
     toVirtualId,
+    VIRTUAL_ID_RE,
     VIRTUAL_INIT,
+    VIRTUAL_INIT_RE,
 } from "./resource-shared.js";
 import { stripQuery } from "./strip-query.js";
 
@@ -1504,8 +1506,12 @@ const createResourcesPlugin = (state: PluginState, loadConfig: ConfigLoader): Pl
         return resolveResourceId(this, state, { source, importer, options });
     },
 
-    load(id) {
-        return loadResourceModule(state, id);
+    load: {
+        filter: { id: { include: [VIRTUAL_INIT_RE, VIRTUAL_ID_RE] } },
+
+        handler(id) {
+            return loadResourceModule(state, id);
+        },
     },
 
     async transform(code, id) {

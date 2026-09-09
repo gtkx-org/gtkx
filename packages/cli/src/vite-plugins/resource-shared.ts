@@ -8,6 +8,8 @@ const ICON_NAME_SEPARATOR = "\0icon=";
 const REFRESH_EXPORT = "__refresh";
 const REGISTER_REFRESH_EXPORT = "__registerRefresh";
 const RESOURCE_PATH_EXPORT = "path";
+const VIRTUAL_ID_RE = new RegExp(`^${VIRTUAL_PREFIX}`);
+const VIRTUAL_INIT_RE = new RegExp(`^${VIRTUAL_INIT}$`);
 const { isVirtual, toVirtualId, fromVirtualId } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const escapeXml = (value: string): string =>
@@ -32,7 +34,9 @@ const escapeXml = (value: string): string =>
     });
 
 export {
+    VIRTUAL_ID_RE,
     VIRTUAL_INIT,
+    VIRTUAL_INIT_RE,
     BUNDLE_FILENAME,
     REL_SEPARATOR,
     ICON_NAME_SEPARATOR,

@@ -1,6 +1,6 @@
 import type { ParseResult, Plugin } from "vite";
 import { parseSync } from "vite";
-import { sourceLanguage } from "../internal/source-imports.js";
+import { SOURCE_ID_RE, sourceLanguage } from "../internal/source-imports.js";
 import { ASSET_MENTION_RE } from "./asset-extensions.js";
 import {
     isAssetSpecifier,
@@ -20,7 +20,10 @@ type BindingEntry = { importName: { name: string | null }; isType: boolean };
 type NamedBinding = { name: string; source: string };
 
 const NODE_MODULES = /(?:^|\/)node_modules\//;
+const NODE_MODULES_ID_RE = /^[^?]*(?:^|\/)node_modules\//;
 const VIRTUAL_PREFIX = "\0";
+const VIRTUAL_ID_RE = /^\0/;
+const URL_QUERY = "?url";
 const DEFAULT_BINDING = "default";
 const RESOURCE_BINDING = JSON.stringify(RESOURCE_PATH_EXPORT);
 
@@ -110,7 +113,7 @@ const unbackedBindingError = (path: string, binding: NamedBinding): Error =>
     );
 
 const isCheckedSource = (path: string): boolean => !path.startsWith(VIRTUAL_PREFIX) && !NODE_MODULES.test(path);
-const hasCheckedAssetMention = (code: string): boolean => ASSET_MENTION_RE.test(code) || code.includes("?url");
+const hasCheckedAssetMention = (code: string): boolean => ASSET_MENTION_RE.test(code) || code.includes(URL_QUERY);
 
 const checkAssetImports = (code: string, id: string): void => {
     const path = stripQuery(id);
@@ -138,8 +141,15 @@ function gtkxAssetImports(): Plugin {
         name: "gtkx:asset-imports",
         enforce: "pre",
 
-        transform(code, id) {
-            checkAssetImports(code, id);
+        transform: {
+            filter: {
+                id: { include: SOURCE_ID_RE, exclude: [VIRTUAL_ID_RE, NODE_MODULES_ID_RE] },
+                code: { include: [ASSET_MENTION_RE, URL_QUERY] },
+            },
+
+            handler(code, id) {
+                checkAssetImports(code, id);
+            },
         },
     };
 }

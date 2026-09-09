@@ -15,10 +15,14 @@ function gtkxStoreLinks(): Plugin {
             state.root = viteProjectRoot(config);
         },
 
-        resolveId(source) {
-            if (GENERATED_MODULE_PREFIX.test(source)) {
-                ensureStoreLinks(state.root);
-            }
+        resolveId: {
+            filter: { id: GENERATED_MODULE_PREFIX },
+
+            handler(source) {
+                if (GENERATED_MODULE_PREFIX.test(source)) {
+                    ensureStoreLinks(state.root);
+                }
+            },
         },
     };
 }

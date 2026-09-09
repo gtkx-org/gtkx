@@ -9,6 +9,9 @@ type PluginState = {
     root: string;
 };
 
+const VIRTUAL_ID_RE = new RegExp(`^${GTKX_CONFIG_VIRTUAL_ID}$`);
+const RESOLVED_VIRTUAL_ID_RE = new RegExp(`^${RESOLVED_GTKX_CONFIG_VIRTUAL_ID}$`);
+
 const resolveVirtualId = (id: string): string | null =>
     id === GTKX_CONFIG_VIRTUAL_ID ? RESOLVED_GTKX_CONFIG_VIRTUAL_ID : null;
 
@@ -46,8 +49,14 @@ const createConfigPlugin = (options: {
 
             return options.config?.(config);
         },
-        resolveId: (id: string) => resolveVirtualId(id),
-        load: (id: string) => loadVirtualModule(id, loadConfig, state),
+        resolveId: {
+            filter: { id: VIRTUAL_ID_RE },
+            handler: (id: string) => resolveVirtualId(id),
+        },
+        load: {
+            filter: { id: RESOLVED_VIRTUAL_ID_RE },
+            handler: (id: string) => loadVirtualModule(id, loadConfig, state),
+        },
     };
 };
 

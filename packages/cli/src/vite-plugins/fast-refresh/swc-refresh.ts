@@ -1,7 +1,14 @@
 import type { Plugin } from "vite";
 import { type Output, type Options as SwcOptions, transform } from "@swc/core";
 import { fileURLToPath } from "node:url";
-import { REFRESH_REG, REFRESH_RUNTIME_SPECIFIER, REFRESH_SIG, shouldTransformForRefresh } from "./refresh-filter.js";
+import {
+    REFRESH_ID_FILTER,
+    REFRESH_REG,
+    REFRESH_RUNTIME_ID_RE,
+    REFRESH_RUNTIME_SPECIFIER,
+    REFRESH_SIG,
+    shouldTransformForRefresh,
+} from "./refresh-filter.js";
 
 const buildSwcOptions = (id: string): SwcOptions => {
     const isTsx = id.endsWith(".tsx");
@@ -55,14 +62,18 @@ function gtkxSwcRefresh(): Plugin {
         enforce: "pre",
         apply: "serve",
 
-        async transform(code, id, transformOptions) {
-            if (!shouldTransformForRefresh(id, transformOptions)) {
-                return;
-            }
+        transform: {
+            filter: { id: REFRESH_ID_FILTER },
 
-            const result = await transform(code, buildSwcOptions(id));
+            async handler(code, id, transformOptions) {
+                if (!shouldTransformForRefresh(id, transformOptions)) {
+                    return;
+                }
 
-            return buildRefreshResult(result);
+                const result = await transform(code, buildSwcOptions(id));
+
+                return buildRefreshResult(result);
+            },
         },
     };
 }
@@ -73,16 +84,24 @@ function gtkxRefreshRuntime(): Plugin {
         enforce: "post",
         apply: "serve",
 
-        resolveId(id) {
-            if (id !== REFRESH_RUNTIME_SPECIFIER) {
-                return;
-            }
+        resolveId: {
+            filter: { id: REFRESH_RUNTIME_ID_RE },
 
-            return fileURLToPath(import.meta.resolve(REFRESH_RUNTIME_SPECIFIER));
+            handler(id) {
+                if (id !== REFRESH_RUNTIME_SPECIFIER) {
+                    return;
+                }
+
+                return fileURLToPath(import.meta.resolve(REFRESH_RUNTIME_SPECIFIER));
+            },
         },
 
-        transform(code, id, transformOptions) {
-            return injectRefreshRegistration(code, id, transformOptions);
+        transform: {
+            filter: { id: REFRESH_ID_FILTER, code: { include: [REFRESH_REG, REFRESH_SIG] } },
+
+            handler(code, id, transformOptions) {
+                return injectRefreshRegistration(code, id, transformOptions);
+            },
         },
     };
 }
