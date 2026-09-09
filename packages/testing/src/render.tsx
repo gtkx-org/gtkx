@@ -1,4 +1,4 @@
-import type { RootElement } from "@gtkx/react";
+import type { CaughtErrorInfo, RootElement } from "@gtkx/react";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     createReconcilerRoot,
@@ -193,7 +193,7 @@ const settleRender = async (
 
 const renderErrorHandlers = <Q extends QueryMap>(options: RenderOptions<Q> | undefined) => ({
     onUncaughtError: handleError,
-    onCaughtError: (error: unknown, errorInfo: ErrorInfo): void => {
+    onCaughtError: (error: unknown, errorInfo: CaughtErrorInfo): void => {
         handleError(error);
         options?.onCaughtError?.(error, errorInfo);
     },

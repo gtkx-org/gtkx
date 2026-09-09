@@ -7,12 +7,17 @@ import { stripQuery } from "./strip-query.js";
 type WorkerReplacement = {
     start: number;
     end: number;
-    fileName: string;
+    referenceId: string;
+};
+
+type WorkerReferences = {
+    byModule: Map<string, string>;
+    claimed: Set<string>;
 };
 
 type EmitContext = {
     context: Rollup.PluginContext;
-    emitted: Map<string, string>;
+    references: WorkerReferences;
 };
 
 type SourceRange = {
@@ -83,10 +88,12 @@ const isWorkerConstruction = (code: string, matchIndex: number): boolean =>
 
 const hasWorkerCandidate = (code: string): boolean => code.includes("import.meta.url") && code.includes("Worker");
 
-const workerUrlExpression = (fileName: string): string => {
-    const specifier = JSON.stringify(`./${fileName}`);
+const workerUrlReference = (referenceId: string): string => `import.meta.ROLLUP_FILE_URL_${referenceId}`;
 
-    return `new URL(${specifier}, import.meta.url)`;
+const workerUrlExpression = (relativePath: string): string => {
+    const specifier = relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
+
+    return `new URL(${JSON.stringify(specifier)}, import.meta.url)`;
 };
 
 const inlineWorkerExample = (specifier: string): string =>
@@ -125,17 +132,22 @@ const suggestionFor = async (emit: EmitContext, scan: ScanContext, specifier: st
 };
 
 const claimWorker = (emit: EmitContext, resolvedId: string): string => {
-    const existing = emit.emitted.get(resolvedId);
+    const existing = emit.references.byModule.get(resolvedId);
 
     if (existing !== undefined) {
         return existing;
     }
 
-    const fileName = workerFileName(resolvedId);
-    emit.emitted.set(resolvedId, fileName);
-    emit.context.emitFile({ type: "chunk", id: resolvedId, fileName });
+    const referenceId = emit.context.emitFile({
+        type: "chunk",
+        id: resolvedId,
+        fileName: workerFileName(resolvedId),
+    });
 
-    return fileName;
+    emit.references.byModule.set(resolvedId, referenceId);
+    emit.references.claimed.add(referenceId);
+
+    return referenceId;
 };
 
 const isRewritableUrl = (scan: ScanContext, match: RegExpExecArray): boolean =>
@@ -158,7 +170,7 @@ const replacementFor = async (
         throw unresolvedWorkerError(scan, specifier, await suggestionFor(emit, scan, specifier));
     }
 
-    return { start: match.index, end: match.index + match[0].length, fileName: claimWorker(emit, resolved.id) };
+    return { start: match.index, end: match.index + match[0].length, referenceId: claimWorker(emit, resolved.id) };
 };
 
 const collectReplacements = async (emit: EmitContext, scan: ScanContext): Promise<WorkerReplacement[]> => {
@@ -196,8 +208,8 @@ const applyReplacements = (code: string, replacements: WorkerReplacement[]): str
     let output = "";
     let cursor = 0;
 
-    for (const { start, end, fileName } of replacements) {
-        output += code.slice(cursor, start) + workerUrlExpression(fileName);
+    for (const { start, end, referenceId } of replacements) {
+        output += code.slice(cursor, start) + workerUrlReference(referenceId);
         cursor = end;
     }
 
@@ -222,14 +234,18 @@ const transformWorkerUrls = async (emit: EmitContext, code: string, id: string):
 };
 
 function gtkxWorker(): Plugin {
-    const emitted: Map<string, string> = new Map();
+    const references: WorkerReferences = { byModule: new Map(), claimed: new Set() };
 
     return {
         name: "gtkx:worker",
         apply: "build",
 
         transform(code, id) {
-            return transformWorkerUrls({ context: this, emitted }, code, id);
+            return transformWorkerUrls({ context: this, references }, code, id);
+        },
+
+        resolveFileUrl({ referenceId, relativePath }) {
+            return references.claimed.has(referenceId) ? workerUrlExpression(relativePath) : null;
         },
     };
 }

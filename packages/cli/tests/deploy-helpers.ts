@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, expect } from "vitest";
 import { parse } from "yaml";
 import {
@@ -60,6 +61,7 @@ type DeploySetup = {
 };
 
 const APPLICATION_ID = "com.gtkx.clideploy";
+const HOST_ARCH = process.arch === "arm64" ? "arm64" : "x64";
 const OUT_DIR = "build";
 const ARCH_DIR = join(OUT_DIR, process.arch);
 const TARGETS = "appimage,deb,flatpak,rpm";
@@ -190,10 +192,16 @@ const BAD_MODE = `        extraFiles: {
 const MINIMUM_OVERRIDES = `        minimumLibraryVersions: { "Gtk-4.0": "4.14" },
 `;
 
+const EXTRA_DEPENDS = `        depends: {
+            deb: ["libatomic1", "python3-apt"],
+            rpm: ["libatomic", "util-linux-core"],
+        },
+`;
+
 const FOREIGN_INVENTORY = `${JSON.stringify({ libraries: ["Adw-1", 1] }, null, 2)}\n`;
 const DEPLOY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${EXTRA_FILES}${PERMISSIONS}    },\n`;
 const LOCALIZED_DEPLOY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${LOCALIZATION_PAYLOAD}    },\n`;
-const MINIMUMS_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${MINIMUM_OVERRIDES}    },\n`;
+const RELATIONS_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${MINIMUM_OVERRIDES}${EXTRA_DEPENDS}    },\n`;
 const NO_DISPLAY_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${NO_DISPLAY}    },\n`;
 const BAD_MODE_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${BAD_MODE}    },\n`;
 
@@ -435,6 +443,9 @@ const noticesFiles = (): Record<string, string> => ({
     [RUNTIME_BINARY]: RUNTIME_SOURCE,
     [RUNTIME_LICENSE]: `${NODE_LICENSE_TEXT}\n`,
 });
+
+const hostAddon = (): Buffer =>
+    readFileSync(fileURLToPath(new URL(`../../native/native.linux-${HOST_ARCH}-gnu.node`, import.meta.url)));
 
 const strangeRuntimeFiles = (): Record<string, string> => ({
     ...noticesFiles(),
@@ -802,6 +813,7 @@ export {
     HELPER_PACKAGE_PATH,
     HELPER_SCRIPT,
     HELPER_SOURCE,
+    hostAddon,
     LIBRARIES_INVENTORY,
     LICENSE_INSTALL,
     LOCALE_INSTALL,
@@ -812,7 +824,6 @@ export {
     MIME_FILENAME,
     MIME_INSTALL,
     MIME_TYPE,
-    MINIMUMS_BLOCK,
     MIT_SENTENCE,
     NATIVE_STANZA,
     NFPM_PATH,
@@ -846,6 +857,7 @@ export {
     PNPM_TARBALL,
     PNPM_VERSION,
     projectFiles,
+    RELATIONS_BLOCK,
     RPM_NFPM_PATH,
     RUNTIME_BINARY,
     SCHEMA,

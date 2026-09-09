@@ -1,13 +1,17 @@
 import type { DeploySettings } from "./types.js";
+import { PACKAGED_SONAMES, type PackagedSoname } from "./node-runtime/sonames.js";
 
 type Relations = {
     deb: string[];
     rpm: string[];
 };
 
-type LibraryPackages = {
+type PackageNames = {
     deb: string;
     rpm: string;
+};
+
+type LibraryPackages = PackageNames & {
     extra: Relations;
 };
 
@@ -23,6 +27,17 @@ const BASE_DEPENDS: Relations = {
 const DEPENDS_BY_LIBRARY: Record<string, LibraryPackages> = {
     "Adw-1": { deb: "libadwaita-1-0", rpm: "libadwaita", extra: NO_EXTRA },
     "Gtk-4.0": { deb: "libgtk-4-1", rpm: "gtk4", extra: { deb: [], rpm: [GLES_SONAME] } },
+};
+
+const RUNTIME_PACKAGES: Record<PackagedSoname, PackageNames> = {
+    "libatomic.so.1": { deb: "libatomic1", rpm: `libatomic.so.1${SONAME_SUFFIX}` },
+    "libgcc_s.so.1": { deb: "libgcc-s1", rpm: `libgcc_s.so.1${SONAME_SUFFIX}` },
+    "libstdc++.so.6": { deb: "libstdc++6", rpm: `libstdc++.so.6${SONAME_SUFFIX}` },
+};
+
+const RUNTIME_DEPENDS: Relations = {
+    deb: PACKAGED_SONAMES.map((soname) => RUNTIME_PACKAGES[soname].deb),
+    rpm: PACKAGED_SONAMES.map((soname) => RUNTIME_PACKAGES[soname].rpm),
 };
 
 const debRelation = (name: string, minimum: string | undefined): string =>
@@ -63,8 +78,20 @@ const resolveDepends = (settings: DeploySettings, glibcMinimum: string | null): 
     const extra = settings.deploy.depends ?? {};
 
     return {
-        deb: dedupe([...fromLibraries.deb, ...BASE_DEPENDS.deb, ...fromGlibc.deb, ...(extra.deb ?? [])]),
-        rpm: dedupe([...fromLibraries.rpm, ...BASE_DEPENDS.rpm, ...fromGlibc.rpm, ...(extra.rpm ?? [])]),
+        deb: dedupe([
+            ...fromLibraries.deb,
+            ...BASE_DEPENDS.deb,
+            ...fromGlibc.deb,
+            ...RUNTIME_DEPENDS.deb,
+            ...(extra.deb ?? []),
+        ]),
+        rpm: dedupe([
+            ...fromLibraries.rpm,
+            ...BASE_DEPENDS.rpm,
+            ...fromGlibc.rpm,
+            ...RUNTIME_DEPENDS.rpm,
+            ...(extra.rpm ?? []),
+        ]),
     };
 };
 
