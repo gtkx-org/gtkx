@@ -5,6 +5,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs"
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import packageManifest from "../../package.json" with { type: "json" };
+import { moduleHash } from "./module-hash.js";
 import { isStagingOwnerRunning, STAGING_SUFFIX, writeAtomically } from "./staging-file.js";
 
 type CompilerOutput = { code: string; map?: string };
@@ -27,6 +28,7 @@ const ENTRY_SUFFIX = ".json";
 const GENERATION_LENGTH = 16;
 const MAX_ENTRIES = 2048;
 const TOOLCHAIN_PACKAGES = ["@babel/core", "@babel/preset-typescript", "babel-plugin-react-compiler"];
+const PLUGIN_MODULE = ["..", "vite-plugins", "react-compiler"];
 const toolchain: { value: string | undefined } = { value: undefined };
 
 const readText = (path: string): string | undefined => {
@@ -205,10 +207,13 @@ const writeEntry = (dir: string, key: string, output: CompilerOutput): void => {
     writeAtomically(join(dir, `${key}${ENTRY_SUFFIX}`), JSON.stringify(output));
 };
 
+const pluginHash = (): string => moduleHash(join(import.meta.dirname, ...PLUGIN_MODULE));
+
 const cacheIdentity = (options: ResolvedReactCompilerOptions, generation: string): string =>
     [
         CACHE_VERSION,
         packageManifest.version,
+        pluginHash(),
         generation,
         JSON.stringify(options),
         String(process.env.NODE_ENV),
