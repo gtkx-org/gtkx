@@ -63,6 +63,11 @@ const headlessProbe = (compositor: "sway" | "weston"): string =>
     `compositor: ${JSON.stringify(compositor)} }));` +
     String.raw`process.stdout.write(JSON.stringify({ runtimeDir: process.env.XDG_RUNTIME_DIR }) + "\n");` +
     "setInterval(() => {}, 1000);";
+const FAILING_BUS_PROBE =
+    `const { resolveHeadlessOptions, startHeadlessDisplay } = await import(${JSON.stringify(HEADLESS_MODULE)});` +
+    "try { await startHeadlessDisplay(resolveHeadlessOptions({ size: \"640x480\", compositor: \"sway\" })); } " +
+    String.raw`catch { process.stdout.write("rejected\n"); process.exit(0); }` +
+    String.raw`process.stdout.write("started\n"); process.exit(0);`;
 const GUARDED_PROCESS_PROBE =
     String.raw`process.stdout.write((process.env.GTKX_PROCESS_GUARD ?? "") + "\n");` +
     "process.stdin.resume();";
@@ -370,6 +375,25 @@ const createStaleRuntime = (layout: StaleRuntimeLayout = "sway"): StaleRuntime =
     }
 };
 
+const busFailureOutcome = async (): Promise<string> => {
+    const root = mkdtempSync(join(tmpdir(), "gtkx-headless-bus-failure-"));
+    const executable = join(root, "dbus-daemon");
+    writeFileSync(executable, "#!/bin/sh\nsleep 0.5\nexit 1\n");
+    chmodSync(executable, 0o755);
+    const child = spawn(process.execPath, [...NODE_TYPESCRIPT_ARGS, FAILING_BUS_PROBE], {
+        cwd: process.cwd(),
+        env: { ...process.env, PATH: `${root}:${process.env.PATH ?? ""}` },
+        stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    try {
+        return await firstOutputLine(child);
+    } finally {
+        child.kill("SIGKILL");
+        rmSync(root, { recursive: true, force: true });
+    }
+};
+
 const devProjectOptions = (prefix: string): CliProjectOptions => ({
     prefix,
     config: 'export default { applicationId: "com.gtkx.cleanup", codegen: false };\n',
@@ -507,6 +531,12 @@ describe("headless display process ownership", () => {
         } finally {
             rmSync(runtimeDir, { recursive: true, force: true });
         }
+    });
+});
+
+describe("headless display startup failures", () => {
+    it("fails when the session bus exits before its socket appears", async () => {
+        expect(await busFailureOutcome()).toBe("rejected");
     });
 });
 
