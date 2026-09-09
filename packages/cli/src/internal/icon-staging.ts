@@ -26,14 +26,14 @@ const resetIconsDir = (shareDir: string): string => {
     return iconsDir;
 };
 
-const stageIconSource = (iconsDir: string, applicationId: string, source: ResolvedApplicationIcon): void => {
+const stageIconSource = (
+    iconsDir: string,
+    applicationId: string,
+    source: Exclude<ResolvedApplicationIcon, { kind: "none" }>,
+): void => {
     if (source.kind === "theme") {
         symlinkSync(source.path, iconsDir, "dir");
 
-        return;
-    }
-
-    if (source.kind === "none") {
         return;
     }
 
