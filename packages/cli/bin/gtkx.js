@@ -1,2 +1,6 @@
 #!/usr/bin/env node
-import "../dist/cli.js";
+import { enableToolchainCompileCache } from "../dist/internal/compile-cache.js";
+
+enableToolchainCompileCache();
+
+await import("../dist/cli.js");
