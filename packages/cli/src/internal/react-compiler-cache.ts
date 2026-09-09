@@ -1,10 +1,11 @@
 import type { ResolvedReactCompilerOptions } from "@gtkx/config/internal";
 import { isRecord } from "@gtkx/utils";
 import { createHash } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import packageManifest from "../../package.json" with { type: "json" };
+import { isStagingOwnerRunning, STAGING_SUFFIX, writeAtomically } from "./staging-file.js";
 
 type CompilerOutput = { code: string; map?: string };
 
@@ -23,12 +24,10 @@ type ToolchainWalk = {
 const CACHE_NAME = "gtkx-react-compiler";
 const CACHE_VERSION = "1";
 const ENTRY_SUFFIX = ".json";
-const STAGING_SUFFIX = ".tmp";
 const GENERATION_LENGTH = 16;
 const MAX_ENTRIES = 2048;
 const TOOLCHAIN_PACKAGES = ["@babel/core", "@babel/preset-typescript", "babel-plugin-react-compiler"];
 const toolchain: { value: string | undefined } = { value: undefined };
-const staging = { count: 0 };
 
 const readText = (path: string): string | undefined => {
     try {
@@ -129,23 +128,6 @@ const computeToolchainKey = (): string => {
 
 const toolchainKey = (): string => (toolchain.value ??= computeToolchainKey());
 
-const stagingPath = (path: string): string => {
-    staging.count += 1;
-
-    return `${path}.${String(process.pid)}.${String(staging.count)}${STAGING_SUFFIX}`;
-};
-
-const writeAtomically = (path: string, contents: string): void => {
-    const temporary = stagingPath(path);
-
-    try {
-        writeFileSync(temporary, contents);
-        renameSync(temporary, path);
-    } catch {
-        rmSync(temporary, { force: true });
-    }
-};
-
 const entryTime = (path: string): number => {
     try {
         return statSync(path).mtimeMs;
@@ -181,11 +163,14 @@ const pruneGenerations = (root: string, generation: string): void => {
     }
 };
 
-const pruneStaging = (dir: string, names: string[]): void => {
-    const stale = names.filter((entry) => entry.endsWith(STAGING_SUFFIX));
+const isRetained = (name: string): boolean =>
+    name.endsWith(ENTRY_SUFFIX) || (name.endsWith(STAGING_SUFFIX) && isStagingOwnerRunning(name));
 
-    for (const name of stale) {
-        rmSync(join(dir, name), { force: true });
+const pruneStaging = (dir: string, names: string[]): void => {
+    for (const name of names) {
+        if (!isRetained(name)) {
+            rmSync(join(dir, name), { force: true });
+        }
     }
 };
 
