@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { RootElement } from "@gtkx/react";
+import type { CaughtErrorInfo, RootElement } from "@gtkx/react";
 import type { ComponentType, ErrorInfo, ReactNode } from "react";
 import type { PrettyWidgetOptions } from "./pretty-widget.js";
 import type { Container } from "./traversal.js";
@@ -189,7 +189,7 @@ type RenderOptions<Q extends QueryMap = Record<never, never>> = {
     /** Enable widget animations during the test. */
     areAnimationsEnabled?: boolean | undefined;
     /** Called for errors caught by React error boundaries. */
-    onCaughtError?: ((error: unknown, errorInfo: ErrorInfo) => void) | undefined;
+    onCaughtError?: ((error: unknown, errorInfo: CaughtErrorInfo) => void) | undefined;
     /** Called for errors React recovered from automatically. */
     onRecoverableError?: ((error: unknown, errorInfo: ErrorInfo) => void) | undefined;
     /** Custom queries to bind to the rendered result. */

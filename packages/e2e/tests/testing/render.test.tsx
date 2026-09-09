@@ -1,3 +1,4 @@
+import type { CaughtErrorInfo } from "@gtkx/react";
 import type { ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
@@ -224,7 +225,7 @@ describe("render", () => {
     });
 
     it("throws when the tree throws, reporting it to onCaughtError", async () => {
-        const onCaughtError = vi.fn();
+        const onCaughtError = vi.fn<(error: unknown, errorInfo: CaughtErrorInfo) => void>();
 
         await expect(
             render(
@@ -236,6 +237,7 @@ describe("render", () => {
         ).rejects.toThrow();
 
         expect(onCaughtError).toHaveBeenCalled();
+        expect(onCaughtError.mock.calls[0]?.[1].errorBoundary).toBeInstanceOf(ErrorBoundary);
     });
 });
 
