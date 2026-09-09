@@ -138,7 +138,8 @@ generations beyond that allowance, incomplete pairs, staging directories, and th
 directories that earlier layouts wrote and no retained pair reaches. Each directory records its writer process in
 its name; one whose writer is another process that is still running is left for that process to finish, and
 whatever `current` or a store link reaches is never removed. After a run, `node_modules/.gtkx` holds the retained
-pairs, the `current`, `gi`, and `jsx` links, and `env.d.ts`.
+pairs, the `current`, `gi`, and `jsx` links, `env.d.ts`, and `import-scan.json`, the cache that lets a run reuse
+the import scan of every source file whose contents are unchanged.
 
 Writers serialize through `node_modules/.gtkx/.codegen.lock`. A normal exit removes that lock-owner file; a
 forced exit can leave it behind, but the operating-system lock is released with the process and the next run
@@ -148,6 +149,19 @@ millisecond value to choose a different timeout, for example:
 
 ```bash
 GTKX_CODEGEN_LOCK_TIMEOUT_MS=30000 gtkx codegen
+```
+
+### The compile cache
+
+The `gtkx` command and the development runner it forks enable Node's V8 compile cache, so the second and later
+starts skip recompiling the CLI, Vite, and codegen modules they load. The cache lives under
+`${XDG_CACHE_HOME:-$HOME/.cache}/gtkx/compile-cache`, in a directory Node names after its own version,
+architecture, and V8 flags, and `gtkx cleanup` removes the directories the running Node can no longer use. Set
+`GTKX_DISABLE_COMPILE_CACHE` to `1` to turn it off for both processes, for example in a throwaway CI container
+that pays the write on every job and never reads it back:
+
+```bash
+GTKX_DISABLE_COMPILE_CACHE=1 gtkx build
 ```
 
 The `cairo` namespace is provided by the [`@gtkx/cairo`](/v2/guide/cairo) package rather than generated.
