@@ -1,14 +1,14 @@
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { build } from "../src/builder.js";
-import { type AppProject, createAppProject, removeAppProject } from "./app-project.js";
+import { type AppProject, buildAppProject, createAppProject, removeAppProject } from "./app-project.js";
 
 const BUILD_TIMEOUT = 300_000;
 const APPLICATION_ID = "com.gtkx.clireactcompiler";
 const COMPONENT_PATH = join("src", "counter.tsx");
 const LABEL_PATH = join("src", "label.ts");
 const CACHE_DIR = "cache";
+const OUT_DIR = "dist";
 const READ_ONLY_CACHE = "read-only-cache";
 const READ_ONLY_MODE = 0o500;
 const COMPILER_RUNTIME = "react-compiler-runtime";
@@ -54,15 +54,7 @@ const createProject = (prefix: string, text: string): AppProject =>
     });
 
 const buildProject = async (project: AppProject, cacheDir: string): Promise<string> => {
-    const reported = await build({
-        entry: project.entry,
-        vite: {
-            root: project.root,
-            logLevel: "warn",
-            cacheDir,
-            build: { outDir: "dist", emptyOutDir: true, minify: false },
-        },
-    });
+    const reported = await buildAppProject({ project, outDir: OUT_DIR, cacheDir, minify: false });
 
     return readFileSync(join(project.root, reported), "utf8");
 };

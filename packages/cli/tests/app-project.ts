@@ -5,7 +5,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "../src/builder.js";
 
-type AppBuildOptions = { project: AppProject; outDir: string };
+type AppBuildOptions = {
+    project: AppProject;
+    outDir: string;
+    cacheDir?: string | undefined;
+    minify?: boolean | undefined;
+};
 type AppProbe = { emitted: string[]; project: AppProject; reported: string; run: AppRun };
 type AppProbeOptions = AppProjectOptions & { outDir: string };
 type AppProject = { root: string; entry: string };
@@ -62,7 +67,8 @@ const buildAppProject = (options: AppBuildOptions): Promise<string> =>
         vite: {
             root: options.project.root,
             logLevel: "warn",
-            build: { outDir: options.outDir, emptyOutDir: true },
+            ...(options.cacheDir !== undefined && { cacheDir: options.cacheDir }),
+            build: { outDir: options.outDir, emptyOutDir: true, minify: options.minify ?? true },
         },
     });
 
