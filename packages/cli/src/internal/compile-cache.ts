@@ -2,7 +2,7 @@ import * as nodeModule from "node:module";
 import { join } from "node:path";
 import { cacheRoot } from "./cache-root.js";
 
-const COMPILE_CACHE_SEGMENT = "node";
+const COMPILE_CACHE_SEGMENT = "compile-cache";
 const DISABLE_COMPILE_CACHE_ENV = "GTKX_DISABLE_COMPILE_CACHE";
 
 const enableToolchainCompileCache = (): void => {

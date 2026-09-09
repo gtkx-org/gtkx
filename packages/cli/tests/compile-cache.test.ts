@@ -20,7 +20,7 @@ const countEntries = (dir: string): number => {
     }
 };
 
-const cachedEntries = (cacheHome: string): number => countEntries(join(cacheHome, "gtkx", "node"));
+const cachedEntries = (cacheHome: string): number => countEntries(join(cacheHome, "gtkx", "compile-cache"));
 
 const runBin = (bin: string, args: string[], overrides: NodeJS.ProcessEnv): SpawnSyncReturns<string> =>
     spawnSync(process.execPath, [bin, ...args], {
