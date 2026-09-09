@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import packageManifest from "../../package.json" with { type: "json" };
 
 type CompilerOutput = { code: string; map?: string };
 
@@ -231,7 +232,13 @@ const writeEntry = (dir: string, key: string, output: CompilerOutput): void => {
 };
 
 const cacheIdentity = (options: ResolvedReactCompilerOptions, generation: string): string =>
-    [CACHE_VERSION, generation, JSON.stringify(options), String(process.env.NODE_ENV)].join("\0");
+    [
+        CACHE_VERSION,
+        packageManifest.version,
+        generation,
+        JSON.stringify(options),
+        String(process.env.NODE_ENV),
+    ].join("\0");
 
 const createReactCompilerCache = (
     cacheDir: string,
