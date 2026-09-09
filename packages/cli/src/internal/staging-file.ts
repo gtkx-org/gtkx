@@ -39,4 +39,4 @@ const writeAtomically = (path: string, contents: string): void => {
     }
 };
 
-export { isStagingOwnerRunning, STAGING_SUFFIX, stagingPath, writeAtomically };
+export { isStagingOwnerRunning, STAGING_SUFFIX, writeAtomically };
