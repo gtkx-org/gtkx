@@ -4,7 +4,6 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { createCliProject, removeCliProject, runCli } from "./cli-project.ts";
@@ -15,6 +14,7 @@ import {
     DEPLOY_FIELDS,
     deployProbe,
     expectSuccessfulDeploy,
+    hostAddon,
     OUT_DIR,
     projectFiles,
 } from "./deploy-helpers.ts";
@@ -29,9 +29,6 @@ const FOREIGN_ARCH = HOST_ARCH === "x64" ? "arm64" : "x64";
 const MACHINE_FOR: Record<string, number> = { arm64: EM_AARCH64, x64: EM_X86_64 };
 const BINDING_FILENAME = "gtkx.node";
 const STAGED_BINDING = join("stage", "lib", BINARY_NAME, BINDING_FILENAME);
-
-const hostAddon = (): Buffer =>
-    readFileSync(fileURLToPath(new URL(`../../native/native.linux-${HOST_ARCH}-gnu.node`, import.meta.url)));
 
 const addonBuiltFor = (arch: string): Buffer => {
     const bytes = hostAddon();

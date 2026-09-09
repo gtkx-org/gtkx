@@ -1,19 +1,16 @@
 import type { ElfInfo } from "./elf.js";
+import { RUNTIME_SONAMES } from "./sonames.js";
 
-const PORTABLE_LIBRARIES = new Set([
-    "ld-linux-aarch64.so.1",
-    "ld-linux-x86-64.so.2",
-    "libc.so.6",
-    "libdl.so.2",
-    "libgcc_s.so.1",
-    "libm.so.6",
-    "libpthread.so.0",
-    "librt.so.1",
-    "libstdc++.so.6",
-]);
+const DOWNLOAD_REMEDY =
+    "The packages GTKX generates declare the libraries an official release links against, and this release " +
+    "links against more. Report it to GTKX, and pin `deploy.node.version` to a release it already packages.";
+
+const SOURCE_REMEDY = 'Use `deploy.node.source: "download"` to fetch an official self-contained build instead.';
+
+const remedyFor = (source: string): string => (source === "download" ? DOWNLOAD_REMEDY : SOURCE_REMEDY);
 
 const assertPortableNode = (info: ElfInfo, source: string): void => {
-    const foreign = info.needed.filter((library) => !PORTABLE_LIBRARIES.has(library));
+    const foreign = info.needed.filter((library) => !RUNTIME_SONAMES.has(library));
 
     if (foreign.length === 0) {
         return;
@@ -21,8 +18,7 @@ const assertPortableNode = (info: ElfInfo, source: string): void => {
 
     throw new Error(
         `Cannot bundle this Node.js binary: \`deploy.node.source: "${source}"\` picked one linked against ` +
-        `${foreign.join(", ")}, which the target machine will not have. ` +
-        'Use `deploy.node.source: "download"` to fetch an official self-contained build instead.',
+        `${foreign.join(", ")}, which the packages GTKX generates do not require. ${remedyFor(source)}`,
     );
 };
 

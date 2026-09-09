@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { chmodSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCli, runCliOrThrow } from "./cli-project.js";
@@ -18,23 +18,44 @@ import {
     HELPER_DESTINATION,
     HELPER_PACKAGE_PATH,
     HELPER_SOURCE,
+    hostAddon,
     MERGED_NEGATIONS,
-    MINIMUMS_BLOCK,
     NFPM_PATH,
     NO_DISPLAY_BLOCK,
     NOTES_DESTINATION,
+    NOTICES_BLOCK,
     OUT_DIR,
     outputNames,
     packagedDepends,
     packagedMode,
     projectFiles,
+    RELATIONS_BLOCK,
     RPM_NFPM_PATH,
+    RUNTIME_BINARY,
     SECRET_DESTINATION,
     SOURCE_ARGS,
     STAGE_PREFIX,
     stagedMode,
     TARGETS,
 } from "./deploy-helpers.js";
+
+const RUNTIME_DEB_DEPENDS = ["libatomic1", "libgcc-s1", "libstdc++6"];
+
+const RUNTIME_RPM_DEPENDS = [
+    "libatomic.so.1()(64bit)",
+    "libgcc_s.so.1()(64bit)",
+    "libstdc++.so.6()(64bit)",
+];
+
+const COVERED_SONAMES = [
+    "ld-linux-aarch64.so.1",
+    "ld-linux-x86-64.so.2",
+    "libc.so.6",
+    "libdl.so.2",
+    "libm.so.6",
+    "libpthread.so.0",
+    "librt.so.1",
+];
 
 describe("gtkx deploy (manifests only)", () => {
     const state = deployProbe({
@@ -80,6 +101,22 @@ describe("gtkx deploy (manifests only)", () => {
     it("leaves the relations that carry no release of their own alone", () => {
         expect(packagedDepends(state.project, NFPM_PATH)).toContain("hicolor-icon-theme");
         expect(packagedDepends(state.project, RPM_NFPM_PATH)).toContain("libGLESv2.so.2()(64bit)");
+    });
+
+    it("requires the shared libraries the bundled runtime links against, in each format's own syntax", () => {
+        expect(packagedDepends(state.project, NFPM_PATH)).toEqual(expect.arrayContaining(RUNTIME_DEB_DEPENDS));
+        expect(packagedDepends(state.project, RPM_NFPM_PATH)).toEqual(expect.arrayContaining(RUNTIME_RPM_DEPENDS));
+    });
+
+    it("leaves the sonames the glibc floor already covers out of both formats", () => {
+        const relations = [
+            ...packagedDepends(state.project, NFPM_PATH),
+            ...packagedDepends(state.project, RPM_NFPM_PATH),
+        ];
+
+        expect(relations.filter((entry) => COVERED_SONAMES.some((soname) => entry.includes(soname)))).toEqual([]);
+        expect(relations.some((entry) => entry.startsWith("glibc >="))).toBe(true);
+        expect(relations.some((entry) => entry.startsWith("libc6 (>="))).toBe(true);
     });
 
     it("leaves metadata untranslated when the project has no po directory", () => {
@@ -183,10 +220,10 @@ describe("gtkx deploy (invalid application icon themes)", () => {
     });
 });
 
-describe("gtkx deploy (minimum library versions the project sets itself)", () => {
+describe("gtkx deploy (relations the project sets itself)", () => {
     const state = deployProbe({
-        prefix: "gtkx-cli-minimums-",
-        config: config(MINIMUMS_BLOCK),
+        prefix: "gtkx-cli-relations-",
+        config: config(RELATIONS_BLOCK),
         files: projectFiles(),
         args: ["deploy", "--print-manifests", "--target", "deb,rpm"],
     });
@@ -195,6 +232,23 @@ describe("gtkx deploy (minimum library versions the project sets itself)", () =>
         expect(state.status).toBe(0);
         expect(packagedDepends(state.project, NFPM_PATH)).toContain("libgtk-4-1 (>= 4.14)");
         expect(packagedDepends(state.project, RPM_NFPM_PATH)).toContain("gtk4 >= 4.14");
+    });
+
+    it("keeps the runtime libraries beside the relations the project adds", () => {
+        expect(state.status).toBe(0);
+
+        expect(packagedDepends(state.project, NFPM_PATH)).toEqual(
+            expect.arrayContaining([...RUNTIME_DEB_DEPENDS, "python3-apt"]),
+        );
+
+        expect(packagedDepends(state.project, RPM_NFPM_PATH)).toEqual(
+            expect.arrayContaining([...RUNTIME_RPM_DEPENDS, "libatomic", "util-linux-core"]),
+        );
+    });
+
+    it("names a relation the project repeats exactly once", () => {
+        expect(state.status).toBe(0);
+        expect(packagedDepends(state.project, NFPM_PATH).filter((entry) => entry === "libatomic1")).toHaveLength(1);
     });
 });
 
@@ -247,6 +301,19 @@ describe("gtkx deploy (projects it refuses to package)", () => {
         });
 
         expect(runCli(project, ["deploy", "--print-manifests", "--target", "snap"]).status).not.toBe(0);
+        expect(existsSync(join(project.root, OUT_DIR))).toBe(false);
+    });
+
+    it("fails over a bundled runtime linked against a library the packages do not require", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-deploy-foreign-runtime-",
+            config: config(NOTICES_BLOCK),
+            files: { ...projectFiles(), [RUNTIME_BINARY]: hostAddon() },
+            hasStore: true,
+        });
+
+        chmodSync(join(project.root, RUNTIME_BINARY), 0o755);
+        expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).not.toBe(0);
         expect(existsSync(join(project.root, OUT_DIR))).toBe(false);
     });
 });

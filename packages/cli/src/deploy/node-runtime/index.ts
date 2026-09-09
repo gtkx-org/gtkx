@@ -1,13 +1,13 @@
 import { MINIMUM_NODE_VERSION } from "@gtkx/config/internal";
 import { info, tryResolveExecutable, warn } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
-import { chmodSync, copyFileSync, mkdirSync, statSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { DeployConfig, DeploySettings, NodeRuntime } from "../types.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
 import { elfMachineFor, hostArchName } from "../settings/arch.js";
 import { downloadNode } from "./download.js";
-import { type ElfInfo, readElfInfo } from "./elf.js";
+import { type ElfInfo, readElfInfo, readOptionalElfInfo } from "./elf.js";
 import { assertPortableNode } from "./guard.js";
 import { licenseBesideNode } from "./license.js";
 
@@ -114,6 +114,21 @@ const sourcePathFor = (settings: DeploySettings): string => {
     return resolve(settings.paths.root, node.path);
 };
 
+const assertPortableRuntimeSource = (settings: DeploySettings): void => {
+    const source = nodeSourceFor(settings);
+
+    if (source === "download") {
+        return;
+    }
+
+    const sourcePath = sourcePathFor(settings);
+    const elf = existsSync(sourcePath) ? readOptionalElfInfo(sourcePath) : null;
+
+    if (elf !== null) {
+        assertPortableNode(elf, source);
+    }
+};
+
 const resolveNodeVersion = (settings: DeploySettings): string => {
     const node = settings.deploy.node ?? {};
     const source = nodeSourceFor(settings);
@@ -167,7 +182,6 @@ const stageFromSource = async (
     }
 
     const sourcePath = sourcePathFor(settings);
-    assertPortableNode(readElfInfo(sourcePath), source);
 
     return { path: stageNode(settings, sourcePath), licenseFile: licenseBesideNode(sourcePath) };
 };
@@ -197,6 +211,7 @@ const resolveNodeRuntime = async (settings: DeploySettings): Promise<NodeRuntime
     const version = resolveNodeVersion(settings);
     const staged = await stageFromSource(settings, version, source);
     const elf = readElfInfo(staged.path);
+    assertPortableNode(elf, source);
     const isStripped = shouldStripRuntime(settings, node, elf) && didStripBinary(staged.path);
     const glibcMinimum = elf.glibcMinimum ?? "unknown";
     info(`Bundled Node.js v${version} (${megabytes(staged.path)} MiB, runtime glibc >= ${glibcMinimum})`);
@@ -204,4 +219,4 @@ const resolveNodeRuntime = async (settings: DeploySettings): Promise<NodeRuntime
     return { ...staged, version, glibcMinimum: elf.glibcMinimum, isStripped };
 };
 
-export { resolveNodeRuntime, resolveNodeVersion, sourcePathFor };
+export { assertPortableRuntimeSource, resolveNodeRuntime, resolveNodeVersion, sourcePathFor };

@@ -32,7 +32,7 @@ import { renderMetainfo } from "./freedesktop/metainfo.js";
 import { renderMimePackage } from "./freedesktop/mime-package.js";
 import { validateDesktopEntry, validateMetainfo } from "./freedesktop/validate.js";
 import { resolveStagedAddon } from "./native-addon.js";
-import { resolveNodeRuntime } from "./node-runtime/index.js";
+import { assertPortableRuntimeSource, resolveNodeRuntime } from "./node-runtime/index.js";
 import { collectNotices } from "./notices/collect.js";
 import { type StagedMetadata, stageOverlays, stagePayload } from "./payload/stage.js";
 import { DEFAULT_TARGETS, parseTargetList, targetsFor } from "./registry.js";
@@ -319,6 +319,11 @@ const preflight = ({ plan, settings, shouldPrintManifests, shouldSkipBuild }: Pr
 
     const report = probeTools([...required, ...packagerTools]);
     assertTools(report);
+
+    if (isNodeRequired(targets, settings)) {
+        assertPortableRuntimeSource(settings);
+    }
+
     warnMissingOptional(report);
     warnFlatpakPermissions(targets, settings);
     warnLibraryMinimums(targets, settings);
