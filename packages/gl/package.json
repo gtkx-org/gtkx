@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/gl",
-    "version": "2.0.0-beta.8",
+    "version": "2.0.0-beta.9",
     "description": "OpenGL 4.6 bindings and GtkGLArea helpers for GTKX GNOME apps.",
     "keywords": [
         "gtkx",
