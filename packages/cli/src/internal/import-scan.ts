@@ -1,7 +1,8 @@
 import { isRecord } from "@gtkx/utils";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { createRequire } from "node:module";
+import { basename, dirname, join } from "node:path";
 import packageManifest from "../../package.json" with { type: "json" };
 import {
     discoverSourceFiles,
@@ -11,6 +12,7 @@ import {
     sourceDirFor,
     type SourceImport,
 } from "./source-imports.js";
+import { isStagingOwnerRunning, STAGING_SUFFIX, writeAtomically } from "./staging-file.js";
 
 type ScannedFile = {
     hash: string;
@@ -19,12 +21,17 @@ type ScannedFile = {
 
 type ScanIndex = Map<string, ScannedFile>;
 
+type ScanCache = Map<string, ScanIndex>;
+
 type ScanResult = {
     index: ScanIndex;
     isChanged: boolean;
 };
 
 const CACHE_FILE = ["node_modules", ".gtkx", "import-scan.json"];
+const PARSER_MANIFEST = "vite/package.json";
+const UNKNOWN_PARSER = "unknown";
+const identity: { value: string | undefined } = { value: undefined };
 
 const scanCachePath = (root: string): string => join(root, ...CACHE_FILE);
 
@@ -37,6 +44,14 @@ const readJson = (path: string): unknown => {
         return undefined;
     }
 };
+
+const parserVersion = (): string => {
+    const manifest = readJson(createRequire(import.meta.url).resolve(PARSER_MANIFEST));
+
+    return isRecord(manifest) && typeof manifest.version === "string" ? manifest.version : UNKNOWN_PARSER;
+};
+
+const cacheVersion = (): string => (identity.value ??= `${packageManifest.version}+${parserVersion()}`);
 
 const isStringArray = (value: unknown): value is string[] =>
     Array.isArray(value) && value.every((entry) => typeof entry === "string");
@@ -51,44 +66,74 @@ const scannedFile = (value: unknown): ScannedFile | null => {
     return typeof hash === "string" && isStringArray(sources) ? { hash, sources } : null;
 };
 
-const cachedFiles = (parsed: unknown, dir: string): unknown => {
-    if (!isRecord(parsed) || parsed.version !== packageManifest.version || parsed.dir !== dir) {
-        return undefined;
-    }
-
-    return parsed.files;
-};
-
-const readIndex = (path: string, dir: string): ScanIndex => {
-    const files = cachedFiles(readJson(path), dir);
+const scanIndexFrom = (value: unknown): ScanIndex => {
     const index: ScanIndex = new Map();
 
-    if (!isRecord(files)) {
+    if (!isRecord(value)) {
         return index;
     }
 
-    for (const [file, value] of Object.entries(files)) {
-        const entry = scannedFile(value);
+    for (const [file, entry] of Object.entries(value)) {
+        const scanned = scannedFile(entry);
 
-        if (entry !== null) {
-            index.set(file, entry);
+        if (scanned !== null) {
+            index.set(file, scanned);
         }
     }
 
     return index;
 };
 
-const writeIndex = (path: string, dir: string, index: ScanIndex): void => {
-    const temporary = `${path}.${String(process.pid)}`;
-    const payload = { version: packageManifest.version, dir, files: Object.fromEntries(index) };
+const readCache = (path: string): ScanCache => {
+    const parsed = readJson(path);
+    const cache: ScanCache = new Map();
+
+    if (!isRecord(parsed) || parsed.version !== cacheVersion() || !isRecord(parsed.dirs)) {
+        return cache;
+    }
+
+    for (const [dir, files] of Object.entries(parsed.dirs)) {
+        if (existsSync(dir)) {
+            cache.set(dir, scanIndexFrom(files));
+        }
+    }
+
+    return cache;
+};
+
+const pruneStaging = (path: string): void => {
+    const dir = dirname(path);
+    const prefix = `${basename(path)}.`;
+
+    let names: string[];
 
     try {
-        mkdirSync(dirname(path), { recursive: true });
-        writeFileSync(temporary, JSON.stringify(payload));
-        renameSync(temporary, path);
+        names = readdirSync(dir);
     } catch {
-        rmSync(temporary, { force: true });
+        return;
     }
+
+    for (const name of names) {
+        if (name.startsWith(prefix) && name.endsWith(STAGING_SUFFIX) && !isStagingOwnerRunning(name)) {
+            rmSync(join(dir, name), { force: true });
+        }
+    }
+};
+
+const cachePayload = (cache: ScanCache): unknown => ({
+    version: cacheVersion(),
+    dirs: Object.fromEntries([...cache].map(([dir, index]) => [dir, Object.fromEntries(index)])),
+});
+
+const writeCache = (path: string, cache: ScanCache): void => {
+    try {
+        mkdirSync(dirname(path), { recursive: true });
+    } catch {
+        return;
+    }
+
+    pruneStaging(path);
+    writeAtomically(path, JSON.stringify(cachePayload(cache)));
 };
 
 /* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether the file was rescanned */
@@ -96,15 +141,21 @@ const scanFile = (path: string, previous: ScanIndex, index: ScanIndex): boolean 
     const code = readSource(path);
 
     if (code === null) {
-        return true;
+        return previous.has(path);
     }
 
     const hash = hashSource(code);
     const cached = previous.get(path);
-    const sources = cached?.hash === hash ? cached.sources : importSourcesIn(path, code);
-    index.set(path, { hash, sources });
 
-    return cached?.hash !== hash;
+    if (cached?.hash === hash) {
+        index.set(path, cached);
+
+        return false;
+    }
+
+    index.set(path, { hash, sources: importSourcesIn(path, code) });
+
+    return true;
 };
 
 const scanSourceDir = (dir: string, previous: ScanIndex): ScanResult => {
@@ -128,11 +179,13 @@ const toSourceImports = (index: ScanIndex): SourceImport[] =>
 const discoverProjectImports = (root: string): SourceImport[] => {
     const dir = sourceDirFor(root);
     const path = scanCachePath(root);
-    const previous = readIndex(path, dir);
+    const cache = readCache(path);
+    const previous = cache.get(dir) ?? new Map<string, ScannedFile>();
     const { index, isChanged } = scanSourceDir(dir, previous);
 
-    if (isChanged) {
-        writeIndex(path, dir, index);
+    if (isChanged || !cache.has(dir)) {
+        cache.set(dir, index);
+        writeCache(path, cache);
     }
 
     return toSourceImports(index);
