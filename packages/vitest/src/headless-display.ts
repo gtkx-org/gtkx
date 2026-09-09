@@ -304,12 +304,14 @@ const firstFailure = (monitors: ChildMonitor[]): string | undefined => {
     return undefined;
 };
 
+const SOCKET_TIMEOUT_MS = 15_000;
+
 const missingMessage = (missing: ChildMonitor[], timeout: number): string =>
     `${missing.map((monitor) => monitor.label).join(", ")} did not become available within ${String(timeout)}ms\n` +
     missing.map((monitor) => monitor.read()).join("");
 
 const watchForSockets = ({ options, resolve, reject }: SocketsWatch): void => {
-    const { monitors, timeout = 15_000 } = options;
+    const { monitors, timeout = monitors.length * SOCKET_TIMEOUT_MS } = options;
     const cleanups: (() => void)[] = monitors.map((monitor) => monitor.stop);
 
     const stop = (): void => {
