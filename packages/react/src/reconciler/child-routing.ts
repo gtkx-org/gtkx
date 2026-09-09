@@ -7,6 +7,22 @@ import { addContent, canAcceptText, removeContent, textRestrictionError } from "
 const asPlaceable = (node: AnyNode | null): PlaceableNode | null =>
     node !== null && (node.kind === ELEMENT_KIND || node.kind === LAZY_KIND) ? node : null;
 
+const insertPlaceable = (list: PlaceableNode[], node: PlaceableNode, before: AnyNode | null): void => {
+    remove(list, node);
+
+    list.splice(
+        indexBeforeOrEnd(list, asPlaceable(before), (item, target) => item === target),
+        0,
+        node,
+    );
+};
+
+const placedSuccessor = (owner: ElementNode, from: number): PlaceableNode | null => {
+    const entries = owner.placements.get(DEFAULT_SLOT) ?? [];
+
+    return owner.children.slice(from).find((sibling) => entries.some((entry) => entry.node === sibling)) ?? null;
+};
+
 const attachPropToElement = (parent: ElementNode, node: PropNode, before: AnyNode | null): void => {
     node.parent = parent;
 
@@ -55,17 +71,8 @@ const attachToElement = (parent: ElementNode, child: AnyNode, before: AnyNode | 
         child.parent = parent;
     }
 
-    placeChild(parent, DEFAULT_SLOT, child, asPlaceable(before));
-};
-
-const insertPlaceable = (list: PlaceableNode[], node: PlaceableNode, before: AnyNode | null): void => {
-    const beforeNode = asPlaceable(before);
-
-    list.splice(
-        indexBeforeOrEnd(list, beforeNode, (item, target) => item === target),
-        0,
-        node,
-    );
+    insertPlaceable(parent.children, child, before);
+    placeChild(parent, DEFAULT_SLOT, child, placedSuccessor(parent, parent.children.indexOf(child) + 1));
 };
 
 const insertChild = (parent: PropNode | LazyNode, child: AnyNode, before: AnyNode | null): PlaceableNode | null => {
@@ -97,8 +104,10 @@ const attachToProp = (parent: PropNode, child: AnyNode, before: AnyNode | null):
 };
 
 const placeLazy = (owner: ElementNode, node: LazyNode, hasObject: boolean): void => {
-    if (hasObject) {
-        placeChild(owner, DEFAULT_SLOT, node, null);
+    const index = owner.children.indexOf(node);
+
+    if (hasObject && index !== -1) {
+        placeChild(owner, DEFAULT_SLOT, node, placedSuccessor(owner, index + 1));
     }
 };
 
@@ -148,6 +157,7 @@ const unplaceChildNode = (parent: ElementNode, child: AnyNode): void => {
     const placeable = asPlaceable(child);
 
     if (placeable !== null) {
+        remove(parent.children, placeable);
         unplaceChild(parent, DEFAULT_SLOT, placeable);
     }
 };

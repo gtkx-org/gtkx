@@ -1,7 +1,7 @@
 import type { GtkNotebookPageElementProps } from "@gtkx/jsx/gtk";
 import type { ReactNode, RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel, GtkListBox, GtkListBoxRow, GtkNotebook, GtkNotebookPage } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkLabel, GtkListBox, GtkListBoxRow, GtkNotebook, GtkNotebookPage } from "@gtkx/jsx/gtk";
 import { getWidgetText, render, screen, userEvent, within } from "@gtkx/testing";
 import { renderChildren } from "@gtkx/testing/internal";
 import { createRef } from "react";
@@ -103,6 +103,37 @@ describe("render - Notebook", () => {
             await rerender(["A", "C"]);
             const labels = getPageLabels(notebookRef.current as Gtk.Notebook);
             expect(labels).toEqual(["A", "C"]);
+        });
+
+        it("keeps the page order when a page's root widget is replaced", async () => {
+            const notebookRef = createRef<Gtk.Notebook>();
+            const firstRef = createRef<Gtk.Label>();
+            const middleRef = createRef<Gtk.Box>();
+            const lastRef = createRef<Gtk.Label>();
+
+            function App({ isBoxed }: { isBoxed: boolean }) {
+                return (
+                    <GtkNotebook ref={notebookRef}>
+                        <GtkNotebookPage tabLabel="A">
+                            <GtkLabel ref={firstRef}>A</GtkLabel>
+                        </GtkNotebookPage>
+                        <GtkNotebookPage tabLabel="B">
+                            {isBoxed ? <GtkBox ref={middleRef} /> : <GtkLabel>B</GtkLabel>}
+                        </GtkNotebookPage>
+                        <GtkNotebookPage tabLabel="C">
+                            <GtkLabel ref={lastRef}>C</GtkLabel>
+                        </GtkNotebookPage>
+                    </GtkNotebook>
+                );
+            }
+
+            const { rerender } = await render(<App isBoxed={false} />);
+            await rerender(<App isBoxed={true} />);
+            const notebook = notebookRef.current as Gtk.Notebook;
+            expect(notebook.getNPages()).toBe(3);
+            expect(notebook.getNthPage(0)).toBe(firstRef.current);
+            expect(notebook.getNthPage(1)).toBe(middleRef.current);
+            expect(notebook.getNthPage(2)).toBe(lastRef.current);
         });
 
         it("updates tab label when prop changes", async () => {

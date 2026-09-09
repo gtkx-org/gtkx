@@ -4,7 +4,13 @@ import type { SignalHandler } from "@gtkx/runtime";
 import type { ElementBehavior, Props } from "./registry.js";
 
 type ContentKind = "label" | "buffer" | "tag" | "anchor";
-type HandlerRecord = { signal: string; handler: SignalHandler; wrapped: SignalHandler; isBlockable: boolean };
+type HandlerRecord = {
+    signal: string;
+    handler: SignalHandler;
+    wrapped: SignalHandler;
+    isBlockable: boolean;
+    object: GObject.Object;
+};
 type Dispatch = (fn: () => unknown) => unknown;
 
 type SignalTarget = {
@@ -26,6 +32,7 @@ type PlacedChild = {
 type ElementNode = SignalTarget & {
     kind: typeof ELEMENT_KIND;
     props: Props;
+    children: PlaceableNode[];
     placements: Map<string, PlacedChild[]>;
     contexts: Map<ElementBehavior, unknown>;
     parent: ParentNode | null;
@@ -98,6 +105,7 @@ const createElementNode = (
     typeName,
     object,
     props: {},
+    children: [],
     handlers: new Map(),
     placements: new Map(),
     contexts: new Map(),
