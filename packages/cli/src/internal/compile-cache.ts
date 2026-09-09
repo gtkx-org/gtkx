@@ -17,4 +17,4 @@ const enableToolchainCompileCache = (): void => {
     nodeModule.enableCompileCache(join(cacheRoot(), COMPILE_CACHE_SEGMENT));
 };
 
-export { enableToolchainCompileCache };
+export { COMPILE_CACHE_SEGMENT, enableToolchainCompileCache };
