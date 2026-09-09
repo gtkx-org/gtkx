@@ -22,8 +22,7 @@ type ToolchainWalk = {
 
 const CACHE_NAME = "gtkx-react-compiler";
 const CACHE_VERSION = "1";
-const CODE_SUFFIX = ".js";
-const MAP_SUFFIX = ".map";
+const ENTRY_SUFFIX = ".json";
 const STAGING_SUFFIX = ".tmp";
 const GENERATION_LENGTH = 16;
 const MAX_ENTRIES = 2048;
@@ -155,25 +154,20 @@ const entryTime = (path: string): number => {
     }
 };
 
-const removeEntry = (dir: string, key: string): void => {
-    rmSync(join(dir, `${key}${CODE_SUFFIX}`), { force: true });
-    rmSync(join(dir, `${key}${MAP_SUFFIX}`), { force: true });
-};
-
 const pruneEntries = (dir: string, names: string[]): void => {
-    const keys = names.filter((name) => name.endsWith(CODE_SUFFIX)).map((name) => name.slice(0, -CODE_SUFFIX.length));
+    const keys = names.filter((name) => name.endsWith(ENTRY_SUFFIX)).map((name) => name.slice(0, -ENTRY_SUFFIX.length));
 
     if (keys.length <= MAX_ENTRIES) {
         return;
     }
 
     const ordered = keys
-        .map((key) => ({ key, time: entryTime(join(dir, `${key}${CODE_SUFFIX}`)) }))
+        .map((key) => ({ key, time: entryTime(join(dir, `${key}${ENTRY_SUFFIX}`)) }))
         .toSorted((left, right) => left.time - right.time);
     const expired = ordered.slice(0, keys.length - MAX_ENTRIES / 2);
 
     for (const entry of expired) {
-        removeEntry(dir, entry.key);
+        rmSync(join(dir, `${entry.key}${ENTRY_SUFFIX}`), { force: true });
     }
 };
 
@@ -211,24 +205,19 @@ const prepareCacheDir = (root: string, generation: string): string | null => {
     }
 };
 
-const readEntry = (dir: string, key: string): CompilerOutput | undefined => {
-    const code = readText(join(dir, `${key}${CODE_SUFFIX}`));
-
-    if (code === undefined) {
+const compilerOutput = (value: unknown): CompilerOutput | undefined => {
+    if (!isRecord(value) || typeof value.code !== "string") {
         return undefined;
     }
 
-    const map = readText(join(dir, `${key}${MAP_SUFFIX}`));
-
-    return map === undefined ? { code } : { code, map };
+    return typeof value.map === "string" ? { code: value.code, map: value.map } : { code: value.code };
 };
 
-const writeEntry = (dir: string, key: string, output: CompilerOutput): void => {
-    if (output.map !== undefined) {
-        writeAtomically(join(dir, `${key}${MAP_SUFFIX}`), output.map);
-    }
+const readEntry = (dir: string, key: string): CompilerOutput | undefined =>
+    compilerOutput(readManifest(join(dir, `${key}${ENTRY_SUFFIX}`)));
 
-    writeAtomically(join(dir, `${key}${CODE_SUFFIX}`), output.code);
+const writeEntry = (dir: string, key: string, output: CompilerOutput): void => {
+    writeAtomically(join(dir, `${key}${ENTRY_SUFFIX}`), JSON.stringify(output));
 };
 
 const cacheIdentity = (options: ResolvedReactCompilerOptions, generation: string): string =>
