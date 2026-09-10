@@ -1,4 +1,9 @@
-import { resolveExecutable, spawnWithParentDeathSignal, spawnWithParentDeathSupervisor } from "@gtkx/utils";
+import {
+    isProcessAlive,
+    resolveExecutable,
+    spawnWithParentDeathSignal,
+    spawnWithParentDeathSupervisor,
+} from "@gtkx/utils";
 import { type ChildProcess, spawnSync } from "node:child_process";
 import { chmodSync, closeSync, existsSync, mkdtempSync, openSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { Socket } from "node:net";
@@ -262,7 +267,7 @@ const monitorChild = (child: ChildProcess, label: string, path: string): ChildMo
         path,
         read: () => log,
         failure: () => failure,
-        isRunning: () => child.exitCode === null && child.signalCode === null,
+        isRunning: () => child.exitCode === null && child.signalCode === null && isProcessAlive(child.pid),
         subscribe: (notify) => {
             subscribers.add(notify);
 
