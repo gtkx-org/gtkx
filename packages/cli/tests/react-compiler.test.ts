@@ -7,6 +7,7 @@ const BUILD_TIMEOUT = 300_000;
 const APPLICATION_ID = "com.gtkx.clireactcompiler";
 const COMPONENT_PATH = join("src", "counter.tsx");
 const LABEL_PATH = join("src", "label.ts");
+const BANNER_PATH = join("src", "banner.ts");
 const CACHE_DIR = "cache";
 const OUT_DIR = "dist";
 const READ_ONLY_CACHE = "read-only-cache";
@@ -15,11 +16,28 @@ const COMPILER_RUNTIME = "react-compiler-runtime";
 const FIRST_LABEL = "first-build";
 const SECOND_LABEL = "second-build";
 const PLAIN_LABEL = "plain-typescript";
+const BANNER_LABEL = "create-element";
 const MEMO_CACHE_SLOT = "$[0]";
 
 const APP_ENTRY = String.raw`import { render } from "./counter.tsx";
 
 process.stdout.write(render() + "\n");
+`;
+
+const BANNER_ENTRY = String.raw`import { Banner } from "./banner.js";
+
+process.stdout.write(Banner({ text: "banner" }).props.children + "\n");
+`;
+
+const BANNER_SOURCE = `import React from "react";
+
+function Banner(props: { text: string }) {
+    const parts = [props.text, ${JSON.stringify(BANNER_LABEL)}];
+
+    return React.createElement("label", null, parts.join("-"));
+}
+
+export { Banner };
 `;
 
 const LABEL_SOURCE = `type Label = { text: string };
@@ -90,6 +108,32 @@ describe("gtkx build (React Compiler)", () => {
         expect(second).toContain(SECOND_LABEL);
         expect(second).not.toContain(FIRST_LABEL);
         expect(second).toContain(MEMO_CACHE_SLOT);
+    });
+});
+
+describe("gtkx build (React Compiler prefilter)", () => {
+    let project: AppProject;
+    let bundle: string;
+
+    beforeAll(async () => {
+        project = createAppProject({
+            applicationId: APPLICATION_ID,
+            entry: BANNER_ENTRY,
+            files: { [BANNER_PATH]: BANNER_SOURCE },
+            prefix: "gtkx-react-compiler-prefilter-",
+        });
+
+        bundle = await buildProject(project, join(project.root, CACHE_DIR));
+    }, BUILD_TIMEOUT);
+
+    afterAll(() => {
+        removeAppProject(project);
+    });
+
+    it("bundles a createElement module the compiler leaves alone", () => {
+        expect(bundle).toContain(BANNER_LABEL);
+        expect(bundle).not.toContain(COMPILER_RUNTIME);
+        expect(bundle).not.toContain(MEMO_CACHE_SLOT);
     });
 });
 
