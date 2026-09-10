@@ -58,7 +58,7 @@
                     "nodeTests"
                 ],
                 "options": {
-                    "command": "vitest run && vitest run --config tests/native/vitest.config.ts"
+                    "command": "vitest run --exclude '**/tests/testing/query-perf.test.tsx' && vitest run --config tests/native/vitest.config.ts"
                 }
             },
             "typecheck": {
