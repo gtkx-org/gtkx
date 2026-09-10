@@ -26,6 +26,8 @@ const startNotificationService = async (busAddress: string): Promise<() => void>
     bus.exportInterface(new NotificationService(), NOTIFICATIONS_PATH, DESCRIPTOR);
 
     await new Promise<void>((resolve, reject) => {
+        bus.connection.on("error", reject);
+
         bus.requestName(NOTIFICATIONS_NAME, 0, (error) => {
             if (error) {
                 reject(error);

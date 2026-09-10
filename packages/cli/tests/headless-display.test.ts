@@ -87,6 +87,34 @@ const EXITING_BUS_SCRIPT = [
     "exit 0",
     "",
 ].join("\n");
+const LISTEN_SOCKET_SCRIPT = [
+    'import { createServer } from "node:net";',
+    "const path = `${process.env.XDG_RUNTIME_DIR}/${process.argv[2]}`;",
+    "createServer((socket) => socket.resume()).listen(path, () => {",
+    "    setInterval(() => {}, 1000);",
+    "});",
+    "",
+].join("\n");
+const NODE_COMMAND = JSON.stringify(process.execPath);
+const LISTENER_COMMAND = `${NODE_COMMAND} "$(dirname "$0")/listen-socket.mjs"`;
+const REFUSING_BUS_SCRIPT = [
+    "#!/bin/sh",
+    `${LISTENER_COMMAND} bus &`,
+    "listener=$!",
+    'while [ ! -S "$XDG_RUNTIME_DIR/bus" ]; do sleep 0.01; done',
+    'kill -9 "$listener"',
+    "sleep 5",
+    "exit 0",
+    "",
+].join("\n");
+const LISTENING_COMPOSITOR_SCRIPT = [
+    "#!/bin/sh",
+    'for argument in "$@"; do',
+    '    if [ "$argument" = "--help" ]; then exit 0; fi',
+    "done",
+    `exec ${LISTENER_COMMAND} wayland-0`,
+    "",
+].join("\n");
 const SETTLED_COMPOSITOR_SCRIPT = [
     "#!/bin/sh",
     'for argument in "$@"; do',
@@ -591,6 +619,16 @@ describe("headless display startup failures", () => {
             await startupOutcome("gtkx-headless-bus-exit-", "weston", {
                 "dbus-daemon": EXITING_BUS_SCRIPT,
                 weston: SETTLED_COMPOSITOR_SCRIPT,
+            }),
+        ).toBe("rejected");
+    });
+
+    it("fails when the session bus socket refuses connections", async () => {
+        expect(
+            await startupOutcome("gtkx-headless-bus-refused-", "weston", {
+                "dbus-daemon": REFUSING_BUS_SCRIPT,
+                weston: LISTENING_COMPOSITOR_SCRIPT,
+                "listen-socket.mjs": LISTEN_SOCKET_SCRIPT,
             }),
         ).toBe("rejected");
     });

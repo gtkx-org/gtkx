@@ -557,6 +557,7 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
         const compositorMonitor = monitorChild(compositor.child, "Compositor", compositorSocketPath);
         applyEnv(env, { WAYLAND_DISPLAY: compositor.socket });
         await waitForDisplaySockets({ compositorMonitor, busMonitor });
+        await waitUntilConnectable(busMonitor);
         const stopVirtualSeat = await attachCompositorClient(compositor, compositorMonitor);
         const stopNotifications = await startNotificationService(`unix:path=${busSocketPath}`);
         const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "compositor.stderr.log"));
