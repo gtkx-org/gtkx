@@ -51,7 +51,11 @@ const devPlugins = (configFile: string, catalogWrites: CatalogWrites): DevRunner
         gtkxReactDomPrebundle(),
     ];
 
-const createDevRunnerDeps = (configFile: string, catalogWrites: CatalogWrites): DevRunnerDeps => ({
+const createDevRunnerDeps = (
+    configFile: string,
+    deployOutDir: string | undefined,
+    catalogWrites: CatalogWrites,
+): DevRunnerDeps => ({
     createServer,
     waitForApplicationId,
     getConfiguredApplicationId: async (root: string) => {
@@ -95,12 +99,13 @@ const createDevRunnerDeps = (configFile: string, catalogWrites: CatalogWrites): 
     staleExportName,
     readFileRevision,
     hasWrittenCatalog: catalogWrites.hasWritten,
+    deployOutDir,
     plugins: devPlugins(configFile, catalogWrites),
     log: info,
     exit: (code: number): never => process.exit(code),
 });
 
-const defaultDevRunnerDeps = (configFile: string): DevRunnerDeps =>
-    createDevRunnerDeps(configFile, createCatalogWrites());
+const defaultDevRunnerDeps = (configFile: string, deployOutDir: string | undefined): DevRunnerDeps =>
+    createDevRunnerDeps(configFile, deployOutDir, createCatalogWrites());
 
 export { defaultDevRunnerDeps };

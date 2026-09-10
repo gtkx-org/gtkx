@@ -1,5 +1,5 @@
 import type { ChildProcess } from "node:child_process";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -61,6 +61,16 @@ const FR_CATALOG = join("po", "fr.po");
 const POT = join("po", `${APPLICATION_ID}.pot`);
 const GENERATED_I18N_RESOURCES = join("node_modules", ".gtkx", "i18n-resources.d.ts");
 const ICON_ASSET = join("data", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
+const UDEV_WATCH_DIR = join("var", "run", "udev", "watch");
+const DEPLOY_WATCH_DIR = join("build", "x64", "targets", "flatpak", "build", UDEV_WATCH_DIR);
+const CUSTOM_OUT_DIR = "artifacts";
+const CUSTOM_WATCH_DIR = join(CUSTOM_OUT_DIR, "x64", "targets", "flatpak", "build", UDEV_WATCH_DIR);
+const WATCHED_LOOP_DIR = join("data", UDEV_WATCH_DIR);
+const LOOPED_LINK = "49";
+const LOOPED_TARGET = "b259:49";
+const WATCH_APPLICATION_ID = "com.gtkx.clidev.watch";
+const WATCH_MARKER = "dev-watch";
+const WATCH_ENTRY_MODULE = join("src", "index.ts");
 const RESOURCE_ICON_NAME = "gtkx-dev-probe-symbolic";
 const RESOURCE_ICON_PATH = `/com/gtkx/clidev/icons/scalable/actions/${RESOURCE_ICON_NAME}.svg`;
 
@@ -479,6 +489,50 @@ const devProjectFiles = (): Record<string, string | Buffer> => ({
 const createDevProject = (): CliProject =>
     createCliProject({ prefix: "gtkx-cli-dev-", config: config(), files: devProjectFiles(), hasStore: true });
 
+const writeLoopedLinks = (root: string, loopDir: string): void => {
+    const directory = join(root, loopDir);
+    mkdirSync(directory, { recursive: true });
+    symlinkSync(LOOPED_TARGET, join(directory, LOOPED_LINK));
+    symlinkSync(LOOPED_LINK, join(directory, LOOPED_TARGET));
+};
+
+const writeSymlinkLoop = (project: CliProject): void => {
+    writeLoopedLinks(project.root, DEPLOY_WATCH_DIR);
+};
+
+const watchEntrySource = (revision: string): string =>
+    String.raw`process.stdout.write("${WATCH_MARKER} ${revision}\n");
+setInterval(() => {}, 1000);
+`;
+
+const watchConfig = (outDir: string | undefined): string => {
+    const deploy = outDir === undefined ? "" : ` deploy: { outDir: "${outDir}" },`;
+
+    return `export default { applicationId: "${WATCH_APPLICATION_ID}", codegen: false,${deploy} };\n`;
+};
+
+const createWatchProject = (outDir: string | undefined, loopDir: string): DisposableCliProject => {
+    const project = createCliProject({
+        prefix: "gtkx-cli-dev-watch-",
+        config: watchConfig(outDir),
+        files: { [WATCH_ENTRY_MODULE]: watchEntrySource("one") },
+        hasStore: true,
+    });
+
+    writeLoopedLinks(project.root, loopDir);
+
+    return project;
+};
+
+const expectWatchReload = async (project: CliProject, session: DevSession): Promise<void> => {
+    await waitForOutput(session, `${WATCH_MARKER} one`, START_TIMEOUT);
+    writeFileSync(join(project.root, WATCH_ENTRY_MODULE), watchEntrySource("two"));
+
+    expect(await waitForOutput(session, `${WATCH_MARKER} two`, RELOAD_TIMEOUT)).toContain(`${WATCH_MARKER} two`);
+    expect(session.isRunning()).toBe(true);
+    expect(session.output()).not.toContain(APPLICATION_ERROR);
+};
+
 const createDevState = (): DevState => ({
     project: { root: "", nodeModules: "" },
     session: { output: () => "", isRunning: () => false, stop: () => Promise.resolve(true) },
@@ -489,12 +543,21 @@ describe("gtkx dev", () => {
 
     beforeAll(() => {
         state.project = createDevProject();
+        writeSymlinkLoop(state.project);
         state.session = startDev(state.project);
     });
 
     afterAll(async () => {
         await state.session.stop();
         removeCliProject(state.project);
+    });
+
+    it("starts the application when the project holds a looping symlink", async () => {
+        expect(await waitForOutput(state.session, `${READY_MARKER} one`, START_TIMEOUT)).toContain(
+            `${READY_MARKER} one`,
+        );
+        expect(state.session.isRunning()).toBe(true);
+        expect(state.session.output()).not.toContain(APPLICATION_ERROR);
     });
 
     it("starts the application, and reloads it when a component changes", async () => {
@@ -620,6 +683,30 @@ describe("gtkx dev --headless", () => {
             expect(session.isRunning()).toBe(false);
             expect(existsSync(runtimeDir)).toBe(false);
             expect(isRuntimeReferenced(runtimeDir)).toBe(false);
+        } finally {
+            await session.stop();
+        }
+    });
+});
+
+describe("gtkx dev (looping symlinks)", () => {
+    it("keeps reloading when a configured deploy output directory loops", async () => {
+        using project = createWatchProject(CUSTOM_OUT_DIR, CUSTOM_WATCH_DIR);
+        const session = startSession(project, ["dev", "--headless"]);
+
+        try {
+            await expectWatchReload(project, session);
+        } finally {
+            await session.stop();
+        }
+    });
+
+    it("keeps reloading when a watched directory loops", async () => {
+        using project = createWatchProject(undefined, WATCHED_LOOP_DIR);
+        const session = startSession(project, ["dev", "--headless"]);
+
+        try {
+            await expectWatchReload(project, session);
         } finally {
             await session.stop();
         }
