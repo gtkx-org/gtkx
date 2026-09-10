@@ -29,6 +29,7 @@ const runBin = (bin: string, args: string[], overrides: NodeJS.ProcessEnv): Spaw
     const inherited: NodeJS.ProcessEnv = { ...process.env };
     delete inherited.NODE_DISABLE_COMPILE_CACHE;
     delete inherited.NODE_COMPILE_CACHE;
+    delete inherited.GTKX_DISABLE_COMPILE_CACHE;
     const env: NodeJS.ProcessEnv = { ...inherited, ...overrides };
 
     return spawnSync(process.execPath, [bin, ...args], {
