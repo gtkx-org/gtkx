@@ -319,7 +319,7 @@ const missingMessage = (pending: ChildMonitor[], timeout: number): string =>
 
 const watchForSockets = ({ options, resolve, reject }: SocketsWatch): void => {
     const { monitors, timeout = SOCKET_TIMEOUT_MS } = options;
-    const cleanups: (() => void)[] = monitors.map((monitor) => monitor.stop);
+    const cleanups: (() => void)[] = [];
 
     const stop = (): void => {
         runCleanups(cleanups);
@@ -508,6 +508,22 @@ const makeTeardown = (stops: (() => void)[]): (() => void) => {
     };
 };
 
+const makeRemoveRuntime = (env: EnvSnapshot, runtimeDir: string): (() => void) =>
+    (): void => {
+        restoreEnv(env);
+        rmSync(runtimeDir, { recursive: true, force: true });
+    };
+
+const startBus = (runtimeDir: string, busSocketPath: string): ChildProcess => {
+    const busConfigPath = join(runtimeDir, "session.conf");
+    writeBusConfig(busConfigPath, busSocketPath);
+
+    return spawnWithParentDeathSignal("dbus-daemon", [`--config-file=${busConfigPath}`], {
+        stdio: ["ignore", "ignore", "pipe"],
+        cleanupDirectories: [runtimeDir],
+    });
+};
+
 const createHeadlessRuntimeDirectory = (): string => {
     const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
 
@@ -528,38 +544,31 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
     const env: EnvSnapshot = {};
     const runtimeDir = createHeadlessRuntimeDirectory();
     const spawned: ChildProcess[] = [];
-
-    const removeRuntime = (): void => {
-        restoreEnv(env);
-        rmSync(runtimeDir, { recursive: true, force: true });
-    };
+    const monitorStops: (() => void)[] = [];
+    const removeRuntime = makeRemoveRuntime(env, runtimeDir);
 
     try {
         applyEnv(env, STATIC_HEADLESS_ENV);
         applyEnv(env, { XDG_RUNTIME_DIR: runtimeDir });
-        const busConfigPath = join(runtimeDir, "session.conf");
         const busSocketPath = join(runtimeDir, "bus");
-        writeBusConfig(busConfigPath, busSocketPath);
-
-        const busChild = spawnWithParentDeathSignal("dbus-daemon", [`--config-file=${busConfigPath}`], {
-            stdio: ["ignore", "ignore", "pipe"],
-            cleanupDirectories: [runtimeDir],
-        });
-
+        const busChild = startBus(runtimeDir, busSocketPath);
         busChild.unref();
         spawned.push(busChild);
         const busMonitor = monitorChild(busChild, "D-Bus session bus", busSocketPath);
+        monitorStops.push(busMonitor.stop);
         applyEnv(env, { DBUS_SESSION_BUS_ADDRESS: `unix:path=${busSocketPath}` });
         const compositor = startCompositor(runtimeDir, options, env);
         compositor.child.unref();
         spawned.push(compositor.child);
         const compositorSocketPath = join(runtimeDir, compositor.socket);
         const compositorMonitor = monitorChild(compositor.child, "Compositor", compositorSocketPath);
+        monitorStops.push(compositorMonitor.stop);
         applyEnv(env, { WAYLAND_DISPLAY: compositor.socket });
         await waitForDisplaySockets({ compositorMonitor, busMonitor });
         await waitUntilConnectable(busMonitor);
         const stopVirtualSeat = await attachCompositorClient(compositor, compositorMonitor);
         const stopNotifications = await startNotificationService(`unix:path=${busSocketPath}`);
+        runCleanups(monitorStops);
         const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "compositor.stderr.log"));
         const stopExitWatch = watchCompositorExit(compositor.child, capturedStderr);
 
@@ -574,6 +583,7 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
             removeRuntime,
         ]);
     } catch (error) {
+        runCleanups(monitorStops);
         killSpawned(spawned);
         removeRuntime();
         throw error;

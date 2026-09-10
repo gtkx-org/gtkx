@@ -8,9 +8,15 @@ declare module "@homebridge/dbus-native" {
         properties?: Record<string, string>;
     };
 
+    export type ReplyError = {
+        name?: string;
+        message?: string;
+        body?: unknown[];
+    };
+
     interface MessageBus {
         exportInterface(implementation: object, path: string, descriptor: InterfaceDescriptor): void;
-        requestName(name: string, flags: number, callback: (error: Error | null, result?: number) => void): void;
+        requestName(name: string, flags: number, callback: (error: ReplyError | null, result?: number) => void): void;
     }
 
     export function sessionBus(options?: { busAddress?: string }): MessageBus;
