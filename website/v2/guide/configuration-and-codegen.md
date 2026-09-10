@@ -156,9 +156,10 @@ GTKX_CODEGEN_LOCK_TIMEOUT_MS=30000 gtkx codegen
 The `gtkx` command and the development runner it forks enable Node's V8 compile cache, so the second and later
 starts skip recompiling the CLI, Vite, and codegen modules they load. The cache lives under
 `${XDG_CACHE_HOME:-$HOME/.cache}/gtkx/compile-cache`, in a directory Node names after its own version,
-architecture, and V8 flags, and `gtkx cleanup` removes the directories the running Node can no longer use. Set
-`GTKX_DISABLE_COMPILE_CACHE` to `1` to turn it off for both processes, for example in a throwaway CI container
-that pays the write on every job and never reads it back:
+architecture, and V8 flags, and `gtkx cleanup` removes the directories the running Node can no longer use.
+With the cache turned off that run cannot know its own V8 flags, so it reaps only the directories built by
+another Node version or architecture. Set `GTKX_DISABLE_COMPILE_CACHE` to `1` to turn it off for both
+processes, for example in a throwaway CI container that pays the write on every job and never reads it back:
 
 ```bash
 GTKX_DISABLE_COMPILE_CACHE=1 gtkx build

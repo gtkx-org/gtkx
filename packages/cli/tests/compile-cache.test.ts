@@ -13,6 +13,7 @@ const CACHE_HOME_PREFIX = "gtkx-compile-cache-";
 const READ_ONLY_MODE = 0o500;
 const STALE_NAMESPACE = "v1.2.3-x64-abcd1234-1000";
 const OTHER_FLAGS_HASH = "00000000";
+const RUNTIME_NAMESPACE = `v${process.versions.node}-${process.arch}-${OTHER_FLAGS_HASH}-1000`;
 
 const countEntries = (dir: string): number => {
     try {
@@ -141,9 +142,10 @@ describe("gtkx cleanup (compile cache)", () => {
         expect(seededNamespaces(cacheHome.path)).toEqual(live);
     });
 
-    it("keeps every namespace when the compile cache is disabled", () => {
+    it("removes only other runtimes' namespaces when the compile cache is disabled", () => {
         using cacheHome = mkdtempDisposableSync(join(tmpdir(), CACHE_HOME_PREFIX));
         const stale = seedNamespace(cacheHome.path, STALE_NAMESPACE);
+        const sameRuntime = seedNamespace(cacheHome.path, RUNTIME_NAMESPACE);
 
         const run = runBin(CLI_BIN, ["cleanup"], {
             GTKX_DISABLE_COMPILE_CACHE: "1",
@@ -151,7 +153,8 @@ describe("gtkx cleanup (compile cache)", () => {
         });
 
         expect(run.status).toBe(0);
-        expect(existsSync(stale)).toBe(true);
+        expect(existsSync(stale)).toBe(false);
+        expect(existsSync(sameRuntime)).toBe(true);
     });
 
     it("keeps every namespace when the run is a dry run", () => {
