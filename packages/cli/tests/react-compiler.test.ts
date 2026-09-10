@@ -7,7 +7,7 @@ const BUILD_TIMEOUT = 300_000;
 const APPLICATION_ID = "com.gtkx.clireactcompiler";
 const COMPONENT_PATH = join("src", "counter.tsx");
 const LABEL_PATH = join("src", "label.ts");
-const BANNER_PATH = join("src", "banner.ts");
+const BANNER_PATH = join("src", "banner.tsx");
 const CACHE_DIR = "cache";
 const OUT_DIR = "dist";
 const READ_ONLY_CACHE = "read-only-cache";
@@ -24,7 +24,7 @@ const APP_ENTRY = String.raw`import { render } from "./counter.tsx";
 process.stdout.write(render() + "\n");
 `;
 
-const BANNER_ENTRY = String.raw`import { Banner } from "./banner.js";
+const BANNER_ENTRY = String.raw`import { Banner } from "./banner.tsx";
 
 process.stdout.write(Banner({ text: "banner" }).props.children + "\n");
 `;
@@ -32,7 +32,7 @@ process.stdout.write(Banner({ text: "banner" }).props.children + "\n");
 const BANNER_SOURCE = `import React from "react";
 
 function Banner(props: { text: string }) {
-    const parts = [props.text, ${JSON.stringify(BANNER_LABEL)}];
+    const parts: Array<string> = [props.text, ${JSON.stringify(BANNER_LABEL)}];
 
     return React.createElement("label", null, parts.join("-"));
 }
@@ -111,7 +111,7 @@ describe("gtkx build (React Compiler)", () => {
     });
 });
 
-describe("gtkx build (React Compiler prefilter)", () => {
+describe("gtkx build (React Compiler inference)", () => {
     let project: AppProject;
     let bundle: string;
 
@@ -120,7 +120,7 @@ describe("gtkx build (React Compiler prefilter)", () => {
             applicationId: APPLICATION_ID,
             entry: BANNER_ENTRY,
             files: { [BANNER_PATH]: BANNER_SOURCE },
-            prefix: "gtkx-react-compiler-prefilter-",
+            prefix: "gtkx-react-compiler-inference-",
         });
 
         bundle = await buildProject(project, join(project.root, CACHE_DIR));
@@ -130,7 +130,7 @@ describe("gtkx build (React Compiler prefilter)", () => {
         removeAppProject(project);
     });
 
-    it("bundles a createElement module the compiler leaves alone", () => {
+    it("leaves a createElement component the compiler does not infer unmemoized", () => {
         expect(bundle).toContain(BANNER_LABEL);
         expect(bundle).not.toContain(COMPILER_RUNTIME);
         expect(bundle).not.toContain(MEMO_CACHE_SLOT);
