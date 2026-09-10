@@ -11,8 +11,8 @@ const CLI_BIN = join(CLI_PACKAGE, "bin", "gtkx.js");
 const DEV_RUNNER_BIN = join(CLI_PACKAGE, "bin", "gtkx-dev-runner.js");
 const CACHE_HOME_PREFIX = "gtkx-compile-cache-";
 const READ_ONLY_MODE = 0o500;
-const CURRENT_NAMESPACE = `v${process.versions.node}-${process.arch}-abcd1234-1000`;
 const STALE_NAMESPACE = "v1.2.3-x64-abcd1234-1000";
+const OTHER_FLAGS_HASH = "00000000";
 
 const countEntries = (dir: string): number => {
     try {
@@ -96,17 +96,62 @@ const seedNamespace = (cacheHome: string, namespace: string): string => {
     return dir;
 };
 
+const seededNamespaces = (cacheHome: string): string[] => {
+    try {
+        return readdirSync(join(cacheHome, "gtkx", "compile-cache"), { withFileTypes: true })
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => entry.name);
+    } catch {
+        return [];
+    }
+};
+
+const withOtherFlags = (namespace: string): string => {
+    const segments = namespace.split("-");
+    const flags = segments.length - 2;
+
+    return segments.map((segment, index) => (index === flags ? OTHER_FLAGS_HASH : segment)).join("-");
+};
+
 describe("gtkx cleanup (compile cache)", () => {
     it("removes namespaces the running runtime cannot use", () => {
         using cacheHome = mkdtempDisposableSync(join(tmpdir(), CACHE_HOME_PREFIX));
         const stale = seedNamespace(cacheHome.path, STALE_NAMESPACE);
-        const current = seedNamespace(cacheHome.path, CURRENT_NAMESPACE);
 
         const run = runBin(CLI_BIN, ["cleanup"], { XDG_CACHE_HOME: cacheHome.path });
 
         expect(run.status).toBe(0);
         expect(existsSync(stale)).toBe(false);
-        expect(existsSync(current)).toBe(true);
+    });
+
+    it("removes namespaces compiled under different V8 flags and keeps the live one", () => {
+        using cacheHome = mkdtempDisposableSync(join(tmpdir(), CACHE_HOME_PREFIX));
+
+        expect(runBin(CLI_BIN, ["--version"], { XDG_CACHE_HOME: cacheHome.path }).status).toBe(0);
+
+        const live = seededNamespaces(cacheHome.path);
+        expect(live).toHaveLength(1);
+
+        for (const namespace of live) {
+            seedNamespace(cacheHome.path, withOtherFlags(namespace));
+        }
+
+        expect(seededNamespaces(cacheHome.path)).toHaveLength(2);
+        expect(runBin(CLI_BIN, ["cleanup"], { XDG_CACHE_HOME: cacheHome.path }).status).toBe(0);
+        expect(seededNamespaces(cacheHome.path)).toEqual(live);
+    });
+
+    it("keeps every namespace when the compile cache is disabled", () => {
+        using cacheHome = mkdtempDisposableSync(join(tmpdir(), CACHE_HOME_PREFIX));
+        const stale = seedNamespace(cacheHome.path, STALE_NAMESPACE);
+
+        const run = runBin(CLI_BIN, ["cleanup"], {
+            GTKX_DISABLE_COMPILE_CACHE: "1",
+            XDG_CACHE_HOME: cacheHome.path,
+        });
+
+        expect(run.status).toBe(0);
+        expect(existsSync(stale)).toBe(true);
     });
 
     it("keeps every namespace when the run is a dry run", () => {
