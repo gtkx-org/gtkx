@@ -80,6 +80,25 @@ const EXITING_COMPOSITOR_SCRIPT = [
     "exit 0",
     "",
 ].join("\n");
+const EXITING_BUS_SCRIPT = [
+    "#!/bin/sh",
+    ': > "$XDG_RUNTIME_DIR/bus"',
+    "env -u GTKX_PROCESS_GUARD sleep 2 &",
+    "exit 0",
+    "",
+].join("\n");
+const SETTLED_COMPOSITOR_SCRIPT = [
+    "#!/bin/sh",
+    'for argument in "$@"; do',
+    '    if [ "$argument" = "--help" ]; then',
+    '        : > "$XDG_RUNTIME_DIR/wayland-0"',
+    "        sleep 0.3",
+    "        exit 0",
+    "    fi",
+    "done",
+    "exec sleep 30",
+    "",
+].join("\n");
 const GUARDED_PROCESS_PROBE =
     String.raw`process.stdout.write((process.env.GTKX_PROCESS_GUARD ?? "") + "\n");` +
     "process.stdin.resume();";
@@ -564,6 +583,15 @@ describe("headless display startup failures", () => {
     it("fails when the compositor exits while its socket is already on disk", async () => {
         expect(
             await startupOutcome("gtkx-headless-compositor-exit-", "weston", { weston: EXITING_COMPOSITOR_SCRIPT }),
+        ).toBe("rejected");
+    });
+
+    it("fails when the session bus exits while its socket is already on disk", async () => {
+        expect(
+            await startupOutcome("gtkx-headless-bus-exit-", "weston", {
+                "dbus-daemon": EXITING_BUS_SCRIPT,
+                weston: SETTLED_COMPOSITOR_SCRIPT,
+            }),
         ).toBe("rejected");
     });
 });

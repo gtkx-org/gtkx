@@ -1,7 +1,12 @@
-import { resolveExecutable, spawnWithParentDeathSignal, spawnWithParentDeathSupervisor } from "@gtkx/utils";
+import {
+    isProcessAlive,
+    resolveExecutable,
+    spawnWithParentDeathSignal,
+    spawnWithParentDeathSupervisor,
+} from "@gtkx/utils";
 import { type ChildProcess, spawnSync } from "node:child_process";
 import { chmodSync, closeSync, existsSync, mkdtempSync, openSync, rmSync, writeFileSync, writeSync } from "node:fs";
-import { Socket } from "node:net";
+import { connect, Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -218,9 +223,6 @@ const startCompositor = (runtimeDir: string, options: HeadlessOptions, env: EnvS
 
 const noVirtualSeat = (): void => undefined;
 
-const attachVirtualSeat = (compositor: SpawnedCompositor, socketPath: string): Promise<() => void> =>
-    compositor.requiresVirtualSeat ? startVirtualSeat(socketPath) : Promise.resolve(noVirtualSeat);
-
 const writeBusConfig = (busConfigPath: string, busSocketPath: string): void => {
     writeFileSync(busConfigPath, createBusConfig(busSocketPath));
 };
@@ -262,7 +264,7 @@ const monitorChild = (child: ChildProcess, label: string, path: string): ChildMo
         path,
         read: () => log,
         failure: () => failure,
-        isRunning: () => child.exitCode === null && child.signalCode === null,
+        isRunning: () => child.exitCode === null && child.signalCode === null && isProcessAlive(child.pid),
         subscribe: (notify) => {
             subscribers.add(notify);
 
@@ -431,6 +433,62 @@ const watchCompositorExit = (child: ChildProcess, captured: CapturedStderr): (()
 const waitForDisplaySockets = ({ compositorMonitor, busMonitor }: DisplaySockets): Promise<void> =>
     waitForSockets({ monitors: [busMonitor, compositorMonitor] });
 
+const CONNECT_RETRY_MS = 10;
+
+const pause = (duration: number): Promise<void> =>
+    new Promise((resolve) => {
+        setTimeout(resolve, duration);
+    });
+
+const connectFailure = (path: string): Promise<Error | undefined> =>
+    new Promise((resolve) => {
+        const socket = connect(path);
+
+        socket.once("connect", () => {
+            socket.destroy();
+            resolve(undefined);
+        });
+
+        socket.once("error", (cause: Error) => {
+            socket.destroy();
+            resolve(cause);
+        });
+    });
+
+const unreachableMessage = (monitor: ChildMonitor, cause: Error): string =>
+    `${monitor.label} did not accept a connection on ${monitor.path}: ${cause.message}\n${monitor.read()}`;
+
+const waitUntilConnectable = async (monitor: ChildMonitor): Promise<void> => {
+    const deadline = Date.now() + SOCKET_TIMEOUT_MS;
+
+    for (;;) {
+        const failure = await connectFailure(monitor.path);
+
+        if (failure === undefined) {
+            return;
+        }
+
+        if (!monitor.isRunning() || Date.now() >= deadline) {
+            throw new Error(unreachableMessage(monitor, failure));
+        }
+
+        await pause(CONNECT_RETRY_MS);
+    }
+};
+
+const attachCompositorClient = async (
+    compositor: SpawnedCompositor,
+    monitor: ChildMonitor,
+): Promise<() => void> => {
+    if (compositor.requiresVirtualSeat) {
+        return startVirtualSeat(monitor.path);
+    }
+
+    await waitUntilConnectable(monitor);
+
+    return noVirtualSeat;
+};
+
 const killSpawned = (children: ChildProcess[]): void => {
     for (const child of children) {
         child.kill("SIGTERM");
@@ -499,7 +557,7 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
         const compositorMonitor = monitorChild(compositor.child, "Compositor", compositorSocketPath);
         applyEnv(env, { WAYLAND_DISPLAY: compositor.socket });
         await waitForDisplaySockets({ compositorMonitor, busMonitor });
-        const stopVirtualSeat = await attachVirtualSeat(compositor, compositorSocketPath);
+        const stopVirtualSeat = await attachCompositorClient(compositor, compositorMonitor);
         const stopNotifications = await startNotificationService(`unix:path=${busSocketPath}`);
         const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "compositor.stderr.log"));
         const stopExitWatch = watchCompositorExit(compositor.child, capturedStderr);
