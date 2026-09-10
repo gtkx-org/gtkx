@@ -32,7 +32,7 @@ type ScanResult = {
 const CACHE_FILE = ["node_modules", ".gtkx", "import-scan.json"];
 const PARSER_MANIFEST = "vite/package.json";
 const UNKNOWN_PARSER = "unknown";
-const SCANNER_MODULE = "source-imports";
+const SCANNER_MODULES = ["source-imports", "import-scan"];
 const identity: { value: string | undefined } = { value: undefined };
 
 const scanCachePath = (root: string): string => join(root, ...CACHE_FILE);
@@ -53,7 +53,8 @@ const parserVersion = (): string => {
     return isRecord(manifest) && typeof manifest.version === "string" ? manifest.version : UNKNOWN_PARSER;
 };
 
-const scannerHash = (): string => moduleHash(join(import.meta.dirname, SCANNER_MODULE));
+const scannerHash = (): string =>
+    SCANNER_MODULES.map((name) => moduleHash(join(import.meta.dirname, name))).join("-");
 
 const cacheVersion = (): string =>
     (identity.value ??= `${packageManifest.version}+${parserVersion()}+${scannerHash()}`);
