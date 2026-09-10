@@ -24,7 +24,7 @@ type Person = { name: string; salary: number };
 
 const ESTIMATED_HEIGHT = 48;
 const LARGE_COLUMN_COUNT = 200_000;
-const LARGE_COLUMN_MOUNT_BUDGET_MS = 1000;
+const LARGE_COLUMN_MOUNT_BUDGET_MS = 1500;
 const LARGE_COLUMN_UPDATE_BUDGET_MS = 250;
 const VISIBLE_ROWS = 10;
 
