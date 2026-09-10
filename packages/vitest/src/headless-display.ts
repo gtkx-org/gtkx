@@ -48,6 +48,7 @@ type ChildMonitor = {
     path: string;
     read: () => string;
     failure: () => string | undefined;
+    isRunning: () => boolean;
     subscribe: (notify: (failure: string) => void) => () => void;
     stop: () => void;
 };
@@ -261,6 +262,7 @@ const monitorChild = (child: ChildProcess, label: string, path: string): ChildMo
         path,
         read: () => log,
         failure: () => failure,
+        isRunning: () => child.exitCode === null && child.signalCode === null,
         subscribe: (notify) => {
             subscribers.add(notify);
 
@@ -287,10 +289,13 @@ const runCleanups = (cleanups: (() => void)[]): void => {
     cleanups.length = 0;
 };
 
-const missingSockets = (monitors: ChildMonitor[]): ChildMonitor[] =>
-    monitors.filter((monitor) => !existsSync(monitor.path));
+const isMonitorReady = (monitor: ChildMonitor): boolean => monitor.isRunning() && existsSync(monitor.path);
 
-const hasEverySocket = (monitors: ChildMonitor[]): boolean => monitors.every((monitor) => existsSync(monitor.path));
+const pendingMonitors = (monitors: ChildMonitor[]): ChildMonitor[] =>
+    monitors.filter((monitor) => !isMonitorReady(monitor));
+
+const isEveryMonitorReady = (monitors: ChildMonitor[]): boolean =>
+    monitors.every((monitor) => isMonitorReady(monitor));
 
 const firstFailure = (monitors: ChildMonitor[]): string | undefined => {
     for (const monitor of monitors) {
@@ -306,12 +311,12 @@ const firstFailure = (monitors: ChildMonitor[]): string | undefined => {
 
 const SOCKET_TIMEOUT_MS = 15_000;
 
-const missingMessage = (missing: ChildMonitor[], timeout: number): string =>
-    `${missing.map((monitor) => monitor.label).join(", ")} did not become available within ${String(timeout)}ms\n` +
-    missing.map((monitor) => monitor.read()).join("");
+const missingMessage = (pending: ChildMonitor[], timeout: number): string =>
+    `${pending.map((monitor) => monitor.label).join(", ")} did not become available within ${String(timeout)}ms\n` +
+    pending.map((monitor) => monitor.read()).join("");
 
 const watchForSockets = ({ options, resolve, reject }: SocketsWatch): void => {
-    const { monitors, timeout = monitors.length * SOCKET_TIMEOUT_MS } = options;
+    const { monitors, timeout = SOCKET_TIMEOUT_MS } = options;
     const cleanups: (() => void)[] = monitors.map((monitor) => monitor.stop);
 
     const stop = (): void => {
@@ -336,20 +341,20 @@ const watchForSockets = ({ options, resolve, reject }: SocketsWatch): void => {
         resolve();
     };
 
-    if (hasEverySocket(monitors)) {
+    if (isEveryMonitorReady(monitors)) {
         settle();
 
         return;
     }
 
     const poll = setInterval(() => {
-        if (hasEverySocket(monitors)) {
+        if (isEveryMonitorReady(monitors)) {
             settle();
         }
     }, 10);
 
     const timer = setTimeout(() => {
-        fail(missingMessage(missingSockets(monitors), timeout));
+        fail(missingMessage(pendingMonitors(monitors), timeout));
     }, timeout);
 
     cleanups.push(

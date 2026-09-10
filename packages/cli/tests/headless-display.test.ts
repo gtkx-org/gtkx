@@ -63,11 +63,23 @@ const headlessProbe = (compositor: "sway" | "weston"): string =>
     `compositor: ${JSON.stringify(compositor)} }));` +
     String.raw`process.stdout.write(JSON.stringify({ runtimeDir: process.env.XDG_RUNTIME_DIR }) + "\n");` +
     "setInterval(() => {}, 1000);";
-const FAILING_BUS_PROBE =
+const startupProbe = (compositor: "sway" | "weston"): string =>
     `const { resolveHeadlessOptions, startHeadlessDisplay } = await import(${JSON.stringify(HEADLESS_MODULE)});` +
-    "try { await startHeadlessDisplay(resolveHeadlessOptions({ size: \"640x480\", compositor: \"sway\" })); } " +
+    "try { await startHeadlessDisplay(resolveHeadlessOptions({ size: \"640x480\", " +
+    `compositor: ${JSON.stringify(compositor)} })); } ` +
     String.raw`catch { process.stdout.write("rejected\n"); process.exit(0); }` +
     String.raw`process.stdout.write("started\n"); process.exit(0);`;
+const FAILING_BUS_SCRIPT = ["#!/bin/sh", "sleep 0.5", "exit 1", ""].join("\n");
+const EXITING_COMPOSITOR_SCRIPT = [
+    "#!/bin/sh",
+    'for argument in "$@"; do',
+    '    if [ "$argument" = "--help" ]; then exit 0; fi',
+    "done",
+    ': > "$XDG_RUNTIME_DIR/wayland-0"',
+    "env -u GTKX_PROCESS_GUARD sleep 2 &",
+    "exit 0",
+    "",
+].join("\n");
 const GUARDED_PROCESS_PROBE =
     String.raw`process.stdout.write((process.env.GTKX_PROCESS_GUARD ?? "") + "\n");` +
     "process.stdin.resume();";
@@ -375,12 +387,20 @@ const createStaleRuntime = (layout: StaleRuntimeLayout = "sway"): StaleRuntime =
     }
 };
 
-const busFailureOutcome = async (): Promise<string> => {
-    const root = mkdtempSync(join(tmpdir(), "gtkx-headless-bus-failure-"));
-    const executable = join(root, "dbus-daemon");
-    writeFileSync(executable, "#!/bin/sh\nsleep 0.5\nexit 1\n");
-    chmodSync(executable, 0o755);
-    const child = spawn(process.execPath, [...NODE_TYPESCRIPT_ARGS, FAILING_BUS_PROBE], {
+const startupOutcome = async (
+    prefix: string,
+    compositor: "sway" | "weston",
+    executables: Record<string, string>,
+): Promise<string> => {
+    const root = mkdtempSync(join(tmpdir(), prefix));
+
+    for (const [name, script] of Object.entries(executables)) {
+        const executable = join(root, name);
+        writeFileSync(executable, script);
+        chmodSync(executable, 0o755);
+    }
+
+    const child = spawn(process.execPath, [...NODE_TYPESCRIPT_ARGS, startupProbe(compositor)], {
         cwd: process.cwd(),
         env: { ...process.env, PATH: `${root}:${process.env.PATH ?? ""}` },
         stdio: ["ignore", "pipe", "pipe"],
@@ -536,7 +556,15 @@ describe("headless display process ownership", () => {
 
 describe("headless display startup failures", () => {
     it("fails when the session bus exits before its socket appears", async () => {
-        expect(await busFailureOutcome()).toBe("rejected");
+        expect(
+            await startupOutcome("gtkx-headless-bus-failure-", "sway", { "dbus-daemon": FAILING_BUS_SCRIPT }),
+        ).toBe("rejected");
+    });
+
+    it("fails when the compositor exits while its socket is already on disk", async () => {
+        expect(
+            await startupOutcome("gtkx-headless-compositor-exit-", "weston", { weston: EXITING_COMPOSITOR_SCRIPT }),
+        ).toBe("rejected");
     });
 });
 
