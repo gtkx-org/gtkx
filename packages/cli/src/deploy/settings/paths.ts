@@ -3,6 +3,7 @@ import { isPathInside } from "@gtkx/utils";
 import { lstatSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import type { DeployArchName, DeployConfig, DeployPaths } from "../types.js";
+import { DEFAULT_DEPLOY_OUT_DIR } from "../../internal/deploy-out-dir.js";
 import { resolveApplicationIcon } from "../../internal/icon-path.js";
 import { prepareOutputDirectory, readRegularFile } from "../../internal/output-directory.js";
 
@@ -15,7 +16,6 @@ type PathsRequest = {
     arch: DeployArchName;
 };
 
-const DEFAULT_OUT_DIR = "build";
 const DIST_DIR = "dist";
 const DEPLOY_MARKER_FILENAME = ".gtkx-deploy.json";
 const DEPLOY_MARKER = `${JSON.stringify({ generator: "gtkx-deploy", formatVersion: 1 })}\n`;
@@ -70,7 +70,7 @@ const assertSafeDeployOutDir = (root: string, outDir: string, configured: string
 };
 
 const resolveOutDir = ({ root, deploy, outDirOverride }: PathsRequest): string => {
-    const configured = outDirOverride ?? deploy.outDir ?? DEFAULT_OUT_DIR;
+    const configured = outDirOverride ?? deploy.outDir ?? DEFAULT_DEPLOY_OUT_DIR;
     const outDir = resolve(root, configured);
     assertSafeDeployOutDir(root, outDir, configured);
 

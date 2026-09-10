@@ -37,7 +37,7 @@ const main = async (): Promise<void> => {
     prepareDevFontDir(root);
     const entryPath = resolve(cwd, entryArg);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");
-    const runner = createDevRunner(defaultDevRunnerDeps(configFile));
+    const runner = createDevRunner(defaultDevRunnerDeps(configFile, config.deploy?.outDir));
     await runner.run(entryPath);
 };
 

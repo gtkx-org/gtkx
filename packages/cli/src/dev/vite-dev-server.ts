@@ -1,5 +1,7 @@
 import type { InlineConfig, Plugin } from "vite";
+import { warn } from "@gtkx/utils";
 import { join } from "node:path";
+import { createWatchIgnore } from "./watch-ignore.js";
 
 type DevServerModule = object;
 type DevServerWatchEvent = "add" | "change" | "unlink";
@@ -59,13 +61,29 @@ const isServerConfigFile = (config: DevServerConfig, changedPath: string): boole
     return envFilesForMode(config).includes(changedPath);
 };
 
-const createDevServerConfig = (root: string, plugins: Plugin[]): InlineConfig => ({
+const watchErrorPlugin = (): Plugin => ({
+    name: "gtkx:watch-errors",
+    enforce: "pre",
+
+    configureServer(server) {
+        server.watcher.on("error", (cause) => {
+            warn("File watch error; the dev server keeps watching.", cause);
+        });
+    },
+});
+
+const createDevServerConfig = (
+    root: string,
+    deployOutDir: string | undefined,
+    plugins: Plugin[],
+): InlineConfig => ({
     root,
     appType: "custom",
-    plugins,
+    plugins: [watchErrorPlugin(), ...plugins],
     server: {
         middlewareMode: true,
         watch: {
+            ignored: createWatchIgnore(root, deployOutDir),
             awaitWriteFinish: {
                 stabilityThreshold: WRITE_STABILITY_THRESHOLD_MS,
                 pollInterval: WRITE_POLL_INTERVAL_MS,

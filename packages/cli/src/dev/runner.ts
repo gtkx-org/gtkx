@@ -35,6 +35,7 @@ type DevRunnerDeps = {
     staleExportName(previous: Record<string, unknown>, current: Record<string, unknown>): string | null;
     readFileRevision(path: string): Promise<string>;
     hasWrittenCatalog(path: string): boolean;
+    deployOutDir: string | undefined;
     plugins(entryPath: string): Plugin[];
     log(message: string): void;
     exit(code: number): never;
@@ -637,7 +638,9 @@ const createSession = (server: DevServer, deps: DevRunnerDeps): DevSession => {
 
 const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
     async run(entryPath: string): Promise<void> {
-        const server = await deps.createServer(createDevServerConfig(process.cwd(), deps.plugins(entryPath)));
+        const server = await deps.createServer(
+            createDevServerConfig(process.cwd(), deps.deployOutDir, deps.plugins(entryPath)),
+        );
         const session = createSession(server, deps);
         deps.installShutdownHandlers(onShutdownSignal(session));
 
