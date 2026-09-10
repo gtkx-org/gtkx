@@ -132,20 +132,24 @@ function gtkxUndeclaredLibrary(loadConfig: ConfigLoader = createConfigLoader()):
             state.root = viteProjectRoot(config);
         },
 
-        async resolveId(source, importer, options) {
-            const generated = parseGeneratedModule(source, importer);
+        resolveId: {
+            filter: { id: GENERATED_MODULE_PATTERN },
 
-            if (generated === null) {
-                return;
-            }
+            async handler(source, importer, options) {
+                const generated = parseGeneratedModule(source, importer);
 
-            const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
+                if (generated === null) {
+                    return;
+                }
 
-            if (resolved !== null) {
-                return;
-            }
+                const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
 
-            throw await unresolvedModuleError(state, generated);
+                if (resolved !== null) {
+                    return;
+                }
+
+                throw await unresolvedModuleError(state, generated);
+            },
         },
     };
 }

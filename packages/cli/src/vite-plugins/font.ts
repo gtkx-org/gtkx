@@ -5,7 +5,7 @@ import type { AssetEmitter } from "./asset-emitter.js";
 import { prependBanner } from "../internal/banner.js";
 import { fontFileName, FONTS_DIR } from "../internal/font-path.js";
 import { stagedFontStatus } from "../internal/font-staging.js";
-import { sourceLanguage } from "../internal/source-imports.js";
+import { SOURCE_ID_RE, sourceLanguage } from "../internal/source-imports.js";
 import { xdgDataDirsBanner } from "../internal/xdg-banner.js";
 import { parseFontSpecifier } from "./asset-specifier.js";
 import { fontFamilyNames } from "./font-name.js";
@@ -32,7 +32,10 @@ type LoadContext = AssetEmitter & {
     error: (message: string) => never;
 };
 
+const FONT_QUERY = "?font";
+const FONT_ID_RE = /\?font$/;
 const VIRTUAL_PREFIX = "\0gtkx-font:";
+const VIRTUAL_ID_RE = new RegExp(`^${VIRTUAL_PREFIX}`);
 const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const unreadableFontError = (filePath: string): string =>
@@ -102,7 +105,7 @@ const loadFontModule = (ctx: LoadContext, state: PluginState, id: string): strin
 const hasSideEffectFontImport = (code: string, id: string): boolean => {
     const lang = sourceLanguage(stripQuery(id));
 
-    if (lang === undefined || !code.includes("?font")) {
+    if (lang === undefined || !code.includes(FONT_QUERY)) {
         return false;
     }
 
@@ -140,16 +143,28 @@ function gtkxFont(): Plugin {
             state.root = config.root;
         },
 
-        resolveId(source, importer, options) {
-            return resolveFontId(this, state, { source, importer, options });
+        resolveId: {
+            filter: { id: FONT_ID_RE },
+
+            handler(source, importer, options) {
+                return resolveFontId(this, state, { source, importer, options });
+            },
         },
 
-        load(id) {
-            return loadFontModule(this, state, id);
+        load: {
+            filter: { id: VIRTUAL_ID_RE },
+
+            handler(id) {
+                return loadFontModule(this, state, id);
+            },
         },
 
-        transform(code, id) {
-            return retainSideEffectFontImport(code, id);
+        transform: {
+            filter: { id: SOURCE_ID_RE, code: FONT_QUERY },
+
+            handler(code, id) {
+                return retainSideEffectFontImport(code, id);
+            },
         },
 
         outputOptions(options) {

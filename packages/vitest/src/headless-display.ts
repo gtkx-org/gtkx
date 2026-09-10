@@ -48,13 +48,13 @@ type ChildMonitor = {
     path: string;
     read: () => string;
     failure: () => string | undefined;
+    isRunning: () => boolean;
     subscribe: (notify: (failure: string) => void) => () => void;
     stop: () => void;
 };
 
-type WaitForSocketOptions = {
-    monitor: ChildMonitor;
-    guards?: ChildMonitor[];
+type WaitForSocketsOptions = {
+    monitors: ChildMonitor[];
     timeout?: number;
 };
 
@@ -69,8 +69,8 @@ type CapturedStderr = {
     stop: () => void;
 };
 
-type SocketWatch = {
-    options: WaitForSocketOptions;
+type SocketsWatch = {
+    options: WaitForSocketsOptions;
     resolve: () => void;
     reject: (error: Error) => void;
 };
@@ -262,6 +262,7 @@ const monitorChild = (child: ChildProcess, label: string, path: string): ChildMo
         path,
         read: () => log,
         failure: () => failure,
+        isRunning: () => child.exitCode === null && child.signalCode === null,
         subscribe: (notify) => {
             subscribers.add(notify);
 
@@ -288,12 +289,13 @@ const runCleanups = (cleanups: (() => void)[]): void => {
     cleanups.length = 0;
 };
 
-const pollForPath = (path: string, onFound: () => void): NodeJS.Timeout =>
-    setInterval(() => {
-        if (existsSync(path)) {
-            onFound();
-        }
-    }, 50);
+const isMonitorReady = (monitor: ChildMonitor): boolean => monitor.isRunning() && existsSync(monitor.path);
+
+const pendingMonitors = (monitors: ChildMonitor[]): ChildMonitor[] =>
+    monitors.filter((monitor) => !isMonitorReady(monitor));
+
+const isEveryMonitorReady = (monitors: ChildMonitor[]): boolean =>
+    monitors.every((monitor) => isMonitorReady(monitor));
 
 const firstFailure = (monitors: ChildMonitor[]): string | undefined => {
     for (const monitor of monitors) {
@@ -307,10 +309,15 @@ const firstFailure = (monitors: ChildMonitor[]): string | undefined => {
     return undefined;
 };
 
-const watchForSocket = ({ options, resolve, reject }: SocketWatch): void => {
-    const { monitor, guards = [], timeout = 15_000 } = options;
-    const watched = [monitor, ...guards];
-    const cleanups: (() => void)[] = [monitor.stop];
+const SOCKET_TIMEOUT_MS = 15_000;
+
+const missingMessage = (pending: ChildMonitor[], timeout: number): string =>
+    `${pending.map((monitor) => monitor.label).join(", ")} did not become available within ${String(timeout)}ms\n` +
+    pending.map((monitor) => monitor.read()).join("");
+
+const watchForSockets = ({ options, resolve, reject }: SocketsWatch): void => {
+    const { monitors, timeout = SOCKET_TIMEOUT_MS } = options;
+    const cleanups: (() => void)[] = monitors.map((monitor) => monitor.stop);
 
     const stop = (): void => {
         runCleanups(cleanups);
@@ -318,15 +325,10 @@ const watchForSocket = ({ options, resolve, reject }: SocketWatch): void => {
 
     const fail = (message: string): void => {
         stop();
-
-        for (const guard of guards) {
-            guard.stop();
-        }
-
         reject(new Error(message));
     };
 
-    const alreadyFailed = firstFailure(watched);
+    const alreadyFailed = firstFailure(monitors);
 
     if (alreadyFailed !== undefined) {
         fail(alreadyFailed);
@@ -334,13 +336,25 @@ const watchForSocket = ({ options, resolve, reject }: SocketWatch): void => {
         return;
     }
 
-    const poll = pollForPath(monitor.path, () => {
+    const settle = (): void => {
         stop();
         resolve();
-    });
+    };
+
+    if (isEveryMonitorReady(monitors)) {
+        settle();
+
+        return;
+    }
+
+    const poll = setInterval(() => {
+        if (isEveryMonitorReady(monitors)) {
+            settle();
+        }
+    }, 10);
 
     const timer = setTimeout(() => {
-        fail(`${monitor.label} did not become available within ${String(timeout)}ms\n${monitor.read()}`);
+        fail(missingMessage(pendingMonitors(monitors), timeout));
     }, timeout);
 
     cleanups.push(
@@ -348,13 +362,13 @@ const watchForSocket = ({ options, resolve, reject }: SocketWatch): void => {
             clearInterval(poll);
             clearTimeout(timer);
         },
-        ...watched.map((entry) => entry.subscribe(fail)),
+        ...monitors.map((monitor) => monitor.subscribe(fail)),
     );
 };
 
-const waitForSocket = (options: WaitForSocketOptions): Promise<void> =>
+const waitForSockets = (options: WaitForSocketsOptions): Promise<void> =>
     new Promise((resolve, reject) => {
-        watchForSocket({ options, resolve, reject });
+        watchForSockets({ options, resolve, reject });
     });
 
 const captureCompositorStderr = (child: ChildProcess, logPath: string): CapturedStderr => {
@@ -414,10 +428,8 @@ const watchCompositorExit = (child: ChildProcess, captured: CapturedStderr): (()
     return () => child.removeListener("exit", report);
 };
 
-const waitForDisplaySockets = async ({ compositorMonitor, busMonitor }: DisplaySockets): Promise<void> => {
-    await waitForSocket({ monitor: busMonitor, guards: [compositorMonitor] });
-    await waitForSocket({ monitor: compositorMonitor });
-};
+const waitForDisplaySockets = ({ compositorMonitor, busMonitor }: DisplaySockets): Promise<void> =>
+    waitForSockets({ monitors: [busMonitor, compositorMonitor] });
 
 const killSpawned = (children: ChildProcess[]): void => {
     for (const child of children) {

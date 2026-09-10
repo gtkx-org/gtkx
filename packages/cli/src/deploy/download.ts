@@ -1,8 +1,8 @@
 import { info, warn } from "@gtkx/utils";
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { cacheRoot } from "../internal/cache-root.js";
 
 type DigestRequest = {
     url: string;
@@ -23,16 +23,9 @@ type DownloadRequest = {
     mode?: number | undefined;
 };
 
-const CACHE_NAMESPACE = "gtkx";
 const DIGEST_PATTERN: Record<DigestAlgorithm, RegExp> = {
     sha256: /^[\da-f]{64}$/,
     sha512: /^[\da-f]{128}$/,
-};
-
-const cacheRoot = (): string => {
-    const base = process.env.XDG_CACHE_HOME;
-
-    return join(base !== undefined && base.length > 0 ? base : join(homedir(), ".cache"), CACHE_NAMESPACE);
 };
 
 const cacheDir = (segments: string[]): string => {

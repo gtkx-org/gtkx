@@ -33,6 +33,7 @@ const OUT_DIR = "dist";
 const BUNDLE = "bundle.mjs";
 const BUILD_METADATA = "gtkx-schemas.json";
 const SCHEMA_FILE = `${APPLICATION_ID}.gschema.xml`;
+const SECOND_SCHEMA_FILE = "second-probe.gschema.xml";
 const ICON_PATH = join("icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`);
 const FONT_FILE = "probe.woff2";
 const FONT_FAMILY = "Red Hat Mono";
@@ -347,6 +348,14 @@ const typecheckFiles = (): Record<string, string> => {
     };
 };
 
+const editableFiles = (entry: string): Record<string, string> => ({
+    [join("src", "index.tsx")]: entry,
+    [join("data", SCHEMA_FILE)]: SCHEMA,
+    [join("data", SECOND_SCHEMA_FILE)]: SCHEMA,
+});
+
+const getDeclarations = (project: CliProject): string => readFileSync(join(project.root, SCHEMA_TYPES), "utf8");
+
 const emittedNames = (project: CliProject): string[] => listProjectFiles(project, OUT_DIR);
 
 const expectUnifiedBuildMetadata = (project: CliProject): void => {
@@ -580,6 +589,59 @@ describe("gtkx codegen (imports under hidden directories)", () => {
         const declarations = readFileSync(join(project.root, SCHEMA_TYPES), "utf8");
         expect(declarations).toContain(`declare module "*/${SCHEMA_FILE}"`);
         expect(declarations).not.toContain(hiddenSchema);
+    });
+});
+
+describe("gtkx codegen (declarations after source edits)", () => {
+    it("follows a source file that changes which schema it imports", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-edited-",
+            config: config(STORE_LIBRARIES, ", codegen: false", null),
+            files: editableFiles(`import "../data/${SCHEMA_FILE}";\n`),
+        });
+
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        expect(getDeclarations(project)).toContain(`declare module "*/${SCHEMA_FILE}"`);
+        writeFileSync(join(project.root, "src", "index.tsx"), `import "../data/${SECOND_SCHEMA_FILE}";\n`);
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        const declarations = getDeclarations(project);
+        expect(declarations).toContain(`declare module "*/${SECOND_SCHEMA_FILE}"`);
+        expect(declarations).not.toContain(`declare module "*/${SCHEMA_FILE}"`);
+    });
+
+    it("follows source files that appear and disappear", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-appearing-",
+            config: config(STORE_LIBRARIES, ", codegen: false", null),
+            files: editableFiles(`import "../data/${SCHEMA_FILE}";\n`),
+        });
+
+        const added = join(project.root, "src", "extra.tsx");
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        writeFileSync(added, `import "../data/${SECOND_SCHEMA_FILE}";\n`);
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        expect(getDeclarations(project)).toContain(`declare module "*/${SECOND_SCHEMA_FILE}"`);
+        rmSync(added);
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        const declarations = getDeclarations(project);
+        expect(declarations).toContain(`declare module "*/${SCHEMA_FILE}"`);
+        expect(declarations).not.toContain(`declare module "*/${SECOND_SCHEMA_FILE}"`);
+    });
+
+    it("fails when a later edit imports two schemas that share a basename", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-basename-",
+            config: config(STORE_LIBRARIES, ", codegen: false", null),
+            files: {
+                [join("src", "index.tsx")]: `import "../data/one/${SCHEMA_FILE}";\n`,
+                [join("data", "one", SCHEMA_FILE)]: SCHEMA,
+                [join("data", "two", SCHEMA_FILE)]: SCHEMA,
+            },
+        });
+
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        writeFileSync(join(project.root, "src", "index.tsx"), DUPLICATE_SCHEMA_SOURCE);
+        expect(runCli(project, ["codegen"]).status).not.toBe(0);
     });
 });
 

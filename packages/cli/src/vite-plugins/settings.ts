@@ -32,10 +32,15 @@ type PluginContext = AssetEmitter & {
     error: (message: string) => never;
 };
 
+type SchemaResolveContext = Parameters<typeof resolveToVirtual>[0];
+type SchemaResolveRequest = Parameters<typeof resolveToVirtual>[1];
+
 const VIRTUAL_PREFIX = "\0gtkx-settings:";
 const SCHEMA_STAGING_PREFIX = "schemas";
 const SOURCE_MODULE_RE = /\.[cm]?[jt]sx?$/;
+const SCHEMA_ID_RE = /\.gschema\.xml$/;
 const SCHEMA_ENV_DEBOUNCE_MS = 50;
+const VIRTUAL_ID_RE = new RegExp(`^${VIRTUAL_PREFIX}`);
 const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const schemaEnvBanner = (chunk: Rollup.RenderedChunk): string => [
@@ -168,6 +173,19 @@ const rejectLegacySchemaSpecifier = (source: string): void => {
     }
 };
 
+const resolveSchemaId = async (
+    ctx: SchemaResolveContext,
+    request: SchemaResolveRequest,
+): Promise<string | undefined> => {
+    if (!request.source.endsWith(SCHEMA_SUFFIX)) {
+        return;
+    }
+
+    rejectLegacySchemaSpecifier(request.source);
+
+    return resolveToVirtual(ctx, request);
+};
+
 const buildSchemaPaths = (rootDir: string, schemaFiles: string[]): string[] =>
     schemaFiles.map((filePath) => {
         const rel = projectRelativeSchemaPath(rootDir, filePath);
@@ -287,18 +305,20 @@ function gtkxSettings(buildManifest?: BuildManifestCollector): Plugin {
             return prependBanner(options, schemaEnvBanner);
         },
 
-        async resolveId(source, importer, options) {
-            if (!source.endsWith(SCHEMA_SUFFIX)) {
-                return;
-            }
+        resolveId: {
+            filter: { id: SCHEMA_ID_RE },
 
-            rejectLegacySchemaSpecifier(source);
-
-            return resolveToVirtual(this, { source, importer, options });
+            handler(source, importer, options) {
+                return resolveSchemaId(this, { source, importer, options });
+            },
         },
 
-        load(id) {
-            return loadSchemaModule(this, state, id);
+        load: {
+            filter: { id: VIRTUAL_ID_RE },
+
+            handler(id) {
+                return loadSchemaModule(this, state, id);
+            },
         },
 
         buildEnd() {

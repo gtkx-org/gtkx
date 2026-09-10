@@ -9,6 +9,7 @@ type CssLoadContext = { addWatchFile: (file: string) => void };
 const CSS_RE = /\.css$/i;
 const INJECT_SUFFIX = "?inject";
 const VIRTUAL_PREFIX = "\0gtkx-css:";
+const VIRTUAL_ID_RE = new RegExp(`^${VIRTUAL_PREFIX}`);
 const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
 const resolveCssId = async (ctx: CssResolveContext, request: CssResolveRequest): Promise<string | undefined> => {
@@ -42,12 +43,20 @@ function gtkxCss(): Plugin {
         name: "gtkx:css",
         enforce: "pre",
 
-        resolveId(source, importer, options) {
-            return resolveCssId(this, { source, importer, options });
+        resolveId: {
+            filter: { id: CSS_RE },
+
+            handler(source, importer, options) {
+                return resolveCssId(this, { source, importer, options });
+            },
         },
 
-        load(id) {
-            return loadInjectedCss(this, id);
+        load: {
+            filter: { id: VIRTUAL_ID_RE },
+
+            handler(id) {
+                return loadInjectedCss(this, id);
+            },
         },
     };
 }

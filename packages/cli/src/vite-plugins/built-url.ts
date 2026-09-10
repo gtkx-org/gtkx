@@ -68,8 +68,12 @@ function gtkxBuiltUrl(): Plugin {
             state.isBuild = config.command === "build";
         },
 
-        load(id) {
-            return loadDevFileUrl(this, state, id);
+        load: {
+            filter: { id: URL_QUERY_RE },
+
+            handler(id) {
+                return loadDevFileUrl(this, state, id);
+            },
         },
     };
 }

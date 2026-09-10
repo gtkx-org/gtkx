@@ -8,11 +8,13 @@ type Entry = { name: string; arguments: string[] };
 const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const CLI_PACKAGE = join(WORKSPACE_ROOT, "packages", "cli");
 const CLI_ENTRY = join(CLI_PACKAGE, "dist", "cli.js");
+const CLI_BIN = join(CLI_PACKAGE, "bin", "gtkx.js");
 const CONFIG_SOURCE = 'const { createConfigLoader } = await import("@gtkx/config/internal"); createConfigLoader();';
 const VITEST_SOURCE = 'const { default: gtkx } = await import("@gtkx/vitest"); gtkx();';
 const ENTRIES: Entry[] = [
     { name: "direct configuration loading", arguments: ["--input-type=module", "--eval", CONFIG_SOURCE] },
     { name: "the CLI", arguments: [CLI_ENTRY, "--help"] },
+    { name: "the CLI binary", arguments: [CLI_BIN, "--help"] },
     { name: "the Vitest plugin", arguments: ["--input-type=module", "--eval", VITEST_SOURCE] },
 ];
 

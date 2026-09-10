@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { parseFontSpecifier } from "../vite-plugins/asset-specifier.js";
 import { fontFileName, FONTS_DIR } from "./font-path.js";
-import { discoverSourceImports, type SourceImport, sourceLanguage } from "./source-imports.js";
+import { discoverSourceFiles, importsIn, type SourceImport, sourceLanguage } from "./source-imports.js";
 import { createRetainedStagingDir } from "./staging-dir.js";
 
 type FontStagingStatus = "absent" | "staged" | "unmanaged";
@@ -50,8 +50,22 @@ const fontFileFor = (root: string, { importer, source }: SourceImport): string |
     return specifier === null ? null : resolveFontImport(root, importer, specifier.assetSource);
 };
 
+const hasFontImportMention = (filePath: string): boolean => {
+    if (sourceLanguage(filePath) === undefined) {
+        return false;
+    }
+
+    try {
+        return readFileSync(filePath, "utf8").includes(FONT_QUERY);
+    } catch {
+        return false;
+    }
+};
+
 const projectFontFiles = (root: string): string[] => {
-    const files = discoverSourceImports(root)
+    const files = discoverSourceFiles(root)
+        .filter((path) => hasFontImportMention(path))
+        .flatMap((path) => importsIn(path))
         .map((entry) => fontFileFor(root, entry))
         .filter((path): path is string => path !== null);
 
@@ -85,18 +99,6 @@ const stagedFontStatus = (sourcePath: string, content: Buffer): FontStagingStatu
     }
 
     return existingPath(stagedPath(fontsDir, sourcePath, content)) === null ? "absent" : "staged";
-};
-
-const hasFontImportMention = (filePath: string): boolean => {
-    if (sourceLanguage(filePath) === undefined) {
-        return false;
-    }
-
-    try {
-        return readFileSync(filePath, "utf8").includes(FONT_QUERY);
-    } catch {
-        return false;
-    }
 };
 
 const isUnstagedFont = (fontsDir: string, sourcePath: string): boolean =>
