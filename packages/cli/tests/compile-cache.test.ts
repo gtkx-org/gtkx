@@ -26,8 +26,10 @@ const countEntries = (dir: string): number => {
 const cachedEntries = (cacheHome: string): number => countEntries(join(cacheHome, "gtkx", "compile-cache"));
 
 const runBin = (bin: string, args: string[], overrides: NodeJS.ProcessEnv): SpawnSyncReturns<string> => {
-    const env: NodeJS.ProcessEnv = { ...process.env, ...overrides };
-    delete env.NODE_DISABLE_COMPILE_CACHE;
+    const inherited: NodeJS.ProcessEnv = { ...process.env };
+    delete inherited.NODE_DISABLE_COMPILE_CACHE;
+    delete inherited.NODE_COMPILE_CACHE;
+    const env: NodeJS.ProcessEnv = { ...inherited, ...overrides };
 
     return spawnSync(process.execPath, [bin, ...args], {
         cwd: CLI_PACKAGE,
