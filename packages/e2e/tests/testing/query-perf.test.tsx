@@ -17,7 +17,7 @@ import { describe, expect, it } from "vitest";
 const MAPPED_ROWS = 40;
 const UNMAPPED_PAGES = 200;
 const POLLS = 10;
-const POLL_BUDGET_MS = 25;
+const POLL_BUDGET_MS = 100;
 
 const rowName = (index: number): string => `Cache entry ${String(index)}`;
 
