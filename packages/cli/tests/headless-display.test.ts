@@ -75,7 +75,8 @@ const EXITING_COMPOSITOR_SCRIPT = [
     'for argument in "$@"; do',
     '    if [ "$argument" = "--help" ]; then exit 0; fi',
     "done",
-    "env -u GTKX_PROCESS_GUARD sh -c 'sleep 0.2; : > \"$XDG_RUNTIME_DIR/wayland-0\"; sleep 2' &",
+    ': > "$XDG_RUNTIME_DIR/wayland-0"',
+    "env -u GTKX_PROCESS_GUARD sleep 2 &",
     "exit 0",
     "",
 ].join("\n");

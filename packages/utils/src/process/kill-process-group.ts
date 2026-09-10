@@ -1,5 +1,6 @@
-import { lstatSync, readFileSync, rmSync } from "node:fs";
+import { lstatSync, rmSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
+import { readProcessStatFields } from "./process-status.ts";
 
 type ProcessGroupIdentity = {
     processGroupId: number;
@@ -20,19 +21,19 @@ const processGroupIdentity = (processGroupId: number): ProcessGroupIdentity | un
         return undefined;
     }
 
-    try {
-        const stat = readFileSync(`/proc/${String(processGroupId)}/stat`, "utf8");
-        const fields = stat.slice(stat.lastIndexOf(") ") + 2).split(" ");
-        const actualProcessGroupId = Number(fields[2]);
-        const sessionId = Number(fields[3]);
-        const leaderStartTime = fields[19];
+    const fields = readProcessStatFields(processGroupId);
 
-        return actualProcessGroupId === processGroupId && sessionId === processGroupId && leaderStartTime !== undefined
-            ? { processGroupId, leaderStartTime }
-            : undefined;
-    } catch {
+    if (fields === undefined) {
         return undefined;
     }
+
+    const actualProcessGroupId = Number(fields[2]);
+    const sessionId = Number(fields[3]);
+    const leaderStartTime = fields[19];
+
+    return actualProcessGroupId === processGroupId && sessionId === processGroupId && leaderStartTime !== undefined
+        ? { processGroupId, leaderStartTime }
+        : undefined;
 };
 
 const isCurrentProcessGroup = (identity: ProcessGroupIdentity): boolean => {

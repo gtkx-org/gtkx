@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
+import { readProcessStatFields } from "./process-status.ts";
 
 type ProcessIdentity = {
     pid: number;
@@ -13,18 +14,13 @@ const MAX_KILL_PASSES = 8;
 const JOB_ID_PATTERN = /^[0-9a-f]{8}$/;
 
 const processIdentity = (pid: number): ProcessIdentity | undefined => {
-    try {
-        const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
-        const fields = stat.slice(stat.lastIndexOf(") ") + 2).split(" ");
-        const sessionId = Number(fields[3]);
-        const startTime = fields[19];
+    const fields = readProcessStatFields(pid);
+    const sessionId = Number(fields?.[3]);
+    const startTime = fields?.[19];
 
-        return startTime !== undefined && Number.isSafeInteger(sessionId)
-            ? { pid, sessionId, startTime }
-            : undefined;
-    } catch {
-        return undefined;
-    }
+    return startTime !== undefined && Number.isSafeInteger(sessionId)
+        ? { pid, sessionId, startTime }
+        : undefined;
 };
 
 const isMarked = (pid: number, isMatch: MarkerMatcher): boolean => {

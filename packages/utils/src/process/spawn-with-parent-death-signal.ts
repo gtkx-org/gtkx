@@ -14,6 +14,7 @@ import {
     processGroupIdentity,
     removeCleanupDirectory,
 } from "./kill-process-group.ts";
+import { isReapedState, readProcessStatFields } from "./process-status.ts";
 import { resolveExecutable } from "./resolve-executable.ts";
 
 type ParentDeathSpawnOptions = {
@@ -205,12 +206,10 @@ const SUPERVISOR_SCRIPT = [
 ].join("\n");
 
 const processIdentity = (pid: number): ProcessIdentity => {
-    const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
-    const fields = stat.slice(stat.lastIndexOf(") ") + 2).split(" ", 20);
-    const state = fields[0];
-    const startTime = fields[19];
+    const fields = readProcessStatFields(pid);
+    const startTime = fields?.[19];
 
-    if (startTime === undefined || state === undefined || ["Z", "X", "x"].includes(state)) {
+    if (startTime === undefined || isReapedState(fields?.[0])) {
         throw new Error(`Failed to identify process ${String(pid)}`);
     }
 
