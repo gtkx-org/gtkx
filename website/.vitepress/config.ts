@@ -64,7 +64,7 @@ const documentationGroups = [
         referenceSidebar: stableReferenceSidebar,
     },
     {
-        label: "GTKX 2.0 beta 9",
+        label: "GTKX 2.0 beta 10",
         items: betaDocItems,
         referenceLink: documentationLink("beta", "reference/"),
         referenceSidebar: betaReferenceSidebar,
@@ -130,7 +130,7 @@ const blogSidebar: DefaultTheme.SidebarItem[] = [
 
 const documentationTitle = (relativePath: string): string => {
     if (/^v2\/(guide|tutorial|reference)\//.test(relativePath)) {
-        return "GTKX 2.0 beta 9";
+        return "GTKX 2.0 beta 10";
     }
 
     if (/^(guide|tutorial|reference)\//.test(relativePath)) {

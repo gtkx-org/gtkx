@@ -32,7 +32,7 @@ const selectedVersion = computed<DocumentationVersion>({
     <span>Version</span>
     <select v-model="selectedVersion">
       <option value="stable">1.6 stable</option>
-      <option value="beta">2.0 beta 9</option>
+      <option value="beta">2.0 beta 10</option>
     </select>
   </label>
 </template>

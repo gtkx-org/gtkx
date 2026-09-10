@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/runtime",
-    "version": "2.0.0-beta.9",
+    "version": "2.0.0-beta.10",
     "description": "FFI runtime for generated Adwaita, GTK, and GObject bindings.",
     "keywords": [
         "gtkx",
