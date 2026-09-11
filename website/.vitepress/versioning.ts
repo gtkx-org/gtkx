@@ -51,6 +51,14 @@ const tutorialItems: DocumentationItem[] = [
 
 const versionPrefix = (version: DocumentationVersion): string => (version === "beta" ? "/v2" : "");
 
+const versionLabel = (version: string): string => {
+    const [core = "", prerelease = ""] = version.split("-", 2);
+    const [major = "0", minor = "0"] = core.split(".", 2);
+    const base = `${major}.${minor}`;
+
+    return prerelease ? `${base} ${prerelease.replaceAll(".", " ")}` : base;
+};
+
 const documentationLink = (version: DocumentationVersion, path: string): string =>
     `${versionPrefix(version)}/${path}`;
 
@@ -106,5 +114,6 @@ export {
     hasVersionCounterpart,
     resolveVersionPath,
     tutorialItems,
+    versionLabel,
     versionPrefix,
 };

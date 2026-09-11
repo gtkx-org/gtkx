@@ -305,6 +305,39 @@ jobs:
           command: *fix-ci-command
           install: "false"
 
+  plan-check:
+    needs: [changes, image-manifest]
+    if: >-
+      github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
+      && github.head_ref != 'release/next' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Drop the version plans the base branch already carries
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git ls-tree -r --name-only "$BASE_SHA" -- .nx/version-plans | while read -r plan; do
+            rm -f "$plan"
+          done
+
+      - name: Check that touched packages have a version plan
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm exec nx release plan:check --verbose
+          extra-env: NX_BASE NX_HEAD
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
+        env:
+          NX_BASE: ${{ github.event.pull_request.base.sha }}
+          NX_HEAD: ${{ github.event.pull_request.head.sha }}
+
   publish-e2e:
     needs: [changes, image-manifest]
     if: *code-changed

@@ -1,0 +1,33 @@
+name: Release notes
+description: Extract one version's entry from CHANGELOG.md into a file
+
+inputs:
+  version:
+    description: The version whose entry to extract
+    required: true
+
+outputs:
+  path:
+    description: Path of the file holding the extracted entry
+    value: ${{ steps.extract.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Extract the entry
+      id: extract
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        notes="${RUNNER_TEMP}/release-notes-${VERSION}.md"
+        awk -v version="$VERSION" '
+          /^##? / { if (found) exit; found = ($2 == version); next }
+          found { print }
+        ' CHANGELOG.md > "$notes"
+        if [ ! -s "$notes" ]; then
+          echo "::error::CHANGELOG.md has no entry for ${VERSION}"
+          exit 1
+        fi
+        echo "path=$notes" >> "$GITHUB_OUTPUT"

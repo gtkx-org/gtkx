@@ -42,40 +42,41 @@ Include a screenshot for visible UI changes and link the issue the change closes
 
 Breaking removals require a warning in an earlier minor release. Renamed symbols use `@deprecated` with their introduction version; behavior changes need a CLI warning and an opt-in migration path. A removal-only major adds no unrelated features, and its migration guide changes with every deprecation.
 
+## Add a version plan
+
+Every pull request that changes a published package adds a version plan, the file `nx release` reads to pick the next version and to write the changelog entry:
+
+```bash
+pnpm plan
+```
+
+The prompt asks for the bump and for a changelog message. The message is what users read in the release notes, so write it for them. All packages share one version, so the bump applies to the whole workspace, and Nx keeps the highest version that any pending plan produces.
+
+While 2.0 is in beta, choose `prerelease`. A `patch`, `minor` or `major` plan computes the stable 2.0.0 instead, and `pnpm prepare-release` refuses to end a prerelease on its own, so the release stops until a maintainer cuts that version deliberately. Nx derives the changelog heading from the bump, which puts every entry of the beta under "Fixes" whatever it describes.
+
+CI fails a pull request that touches a published package and adds no plan. Documentation, tests, and files outside `packages/` never need one, Dependabot is exempt, and the check is advisory rather than required, so a change that genuinely needs no entry can still merge.
+
 ## Publish a release
 
-A release commit has to reach `main` carrying your own signature. Open the release pull request as usual and wait for its checks to finish, then advance `main` to the signed commit yourself instead of merging in the web UI:
+The Release PR workflow cuts a release from the pending version plans and never writes to `main` itself:
+
+1. Run it from the Actions tab or with `gh workflow run release-pr.yml`. It also runs on its own whenever a merged pull request adds a version plan. Leave both inputs empty to derive the version from the plans. Pass `specifier=2.0.0` to cut the stable release whatever the plans say, or `preid=rc` to change the prerelease identifier.
+2. The workflow versions every package, rewrites the tutorial ranges and the documentation pins, prepends the entry to `CHANGELOG.md`, deletes the consumed plans, and opens or refreshes the `release/next` pull request as the release bot, with a commit signed by GitHub. `pnpm prepare-release --dry-run` runs the same steps locally without writing anything.
+3. Read the pull request and its checks, then advance `main` yourself. The ruleset allows only rebase merges, and a rebase merge drops every signature, so the merge button cannot produce a commit `main` accepts:
 
 ```bash
 gh pr checks <number>
-git fetch origin main
-git log -1 --show-signature release/vX.Y.Z
-git push origin release/vX.Y.Z:main
+git fetch origin
+git push origin origin/release/next:main
 ```
 
-`commit.gpgsign` signs the release commit when you make it, so the push is a fast-forward of a commit you signed. That satisfies the `required_signatures` and `required_linear_history` rules on `main` on their own merits, and the pull request closes as merged once its commit is reachable. Merging in the web UI instead replaces your signature with GitHub's, and `gh pr merge --rebase --admin` replays the commit without any signature at all, which is how PR #619 reached `main` unsigned.
+The push is a fast-forward of a commit that is already Verified, so it satisfies the `required_signatures` and `required_linear_history` rules on its own merits, and the pull request closes as merged. It bypasses the required status checks and the approving review because an organization admin bypasses the ruleset, so read `gh pr checks` yourself first. If `main` moved after the pull request was created, rerun the Release PR workflow rather than pressing "Update branch": updating by merge adds a second parent that the linear-history rule rejects, and updating by rebase rewrites the commit without a signature.
 
-The push bypasses two rules, because an organization admin bypasses the ruleset: the required status checks, and the approving review. Nothing else re-checks them, so read `gh pr checks` yourself and push only when every check has passed. Confirm the commit on `main` is still marked Verified before tagging it.
+4. The Tag release workflow runs on that push. It creates the annotated `vX.Y.Z` tag, creates a draft GitHub release from the `CHANGELOG.md` entry, and dispatches the Publish workflow from the tag. It does nothing once that release is published, so an ordinary change to `packages/create-gtkx/package.json` is a no-op and a rerun after a failed publish redispatches the same draft. Curate the notes with `gh release edit vX.Y.Z --notes-file notes.md` when they need it.
 
-Create a signed tag for the package version and push that exact tag:
+The Release PR workflow authenticates as the GTKX release GitHub App, which needs read and write access to contents and pull requests. The repository variable `RELEASE_APP_CLIENT_ID` and the secret `RELEASE_APP_PRIVATE_KEY` hold its credentials.
 
-```bash
-git fetch origin main --tags
-git log -1 --show-signature origin/main
-git tag -s vX.Y.Z origin/main -m "vX.Y.Z"
-git push origin refs/tags/vX.Y.Z
-```
-
-Write the complete curated release notes, then create a draft release for the existing tag and dispatch the Publish workflow explicitly from that tag:
-
-```bash
-gh release create vX.Y.Z --draft --prerelease --title vX.Y.Z --notes-file notes.md
-gh workflow run publish.yml --ref vX.Y.Z
-```
-
-Drop `--prerelease` for a stable release. The draft has to exist before the workflow runs, and the notes are final once it does.
-
-The workflow takes no inputs; the ref it is dispatched from is the whole request. Its `validate-release` job rejects a branch ref, a tag that is not `v` followed by the `version` in `packages/create-gtkx/package.json`, and a release that is not a draft. It then builds and publishes from `refs/tags/vX.Y.Z`, waits until every exact package version and dist-tag is visible on the registry, and only then publishes the draft without changing its notes and dispatches the Website workflow for the same tag, because a release published by the workflow's own token does not trigger it.
+The Publish workflow takes no inputs; the ref it is dispatched from is the whole request. Its `validate-release` job rejects a branch ref, a tag that is not `v` followed by the `version` in `packages/create-gtkx/package.json`, and a release that is not a draft. It then builds and publishes from `refs/tags/vX.Y.Z`, waits until every exact package version and dist-tag is visible on the registry, and only then publishes the draft without changing its notes and dispatches the Website workflow for the same tag, because a release published by the workflow's own token does not trigger it.
 
 The visibility wait gives each package ten minutes by default; the registry took three to four minutes to expose the beta 5 packages. `GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS`, a positive integer number of milliseconds, overrides that limit for a run of `pnpm release` or of the publish scripts, and an invalid value fails the publish before anything is uploaded.
 

@@ -161,5 +161,39 @@
                 "@gtkx/navigation:build"
             ]
         }
+    },
+    "release": {
+        "versionPlans": {
+            "ignorePatternsForPlanCheck": [
+                "**/tests/**",
+                "**/*.test.ts",
+                "**/*.test.tsx",
+                "**/*.md"
+            ]
+        },
+        "version": {
+            "git": {
+                "commit": false,
+                "tag": false,
+                "stageChanges": false,
+                "push": false
+            },
+            "versionActionsOptions": {
+                "skipLockFileUpdate": true
+            }
+        },
+        "changelog": {
+            "git": {
+                "commit": false,
+                "tag": false,
+                "stageChanges": false,
+                "push": false
+            },
+            "workspaceChangelog": {
+                "file": "{workspaceRoot}/CHANGELOG.md",
+                "createRelease": false
+            },
+            "projectChangelogs": false
+        }
     }
 }

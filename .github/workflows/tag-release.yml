@@ -1,0 +1,82 @@
+name: Tag release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - packages/create-gtkx/package.json
+
+permissions: {}
+
+concurrency:
+  group: tag-release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-tags: true
+
+      - name: Resolve the release state
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./packages/create-gtkx/package.json').version")"
+          if release="$(gh release view "v${version}" --repo "$GITHUB_REPOSITORY" --json isDraft 2>/dev/null)"; then
+            if [ "$(jq -r '.isDraft' <<<"${release}")" = "true" ]; then
+              state=draft
+            else
+              state=published
+            fi
+          else
+            state=missing
+          fi
+          {
+            echo "version=$version"
+            echo "state=$state"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Extract the release notes
+        if: steps.release.outputs.state == 'missing'
+        id: notes
+        uses: ./.github/actions/release-notes
+        with:
+          version: ${{ steps.release.outputs.version }}
+
+      - name: Tag, draft the release and dispatch Publish
+        if: steps.release.outputs.state != 'published'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+          STATE: ${{ steps.release.outputs.state }}
+          NOTES: ${{ steps.notes.outputs.path }}
+        run: |
+          set -euo pipefail
+          if ! git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" > /dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag --annotate "v${VERSION}" --message "v${VERSION}" "$GITHUB_SHA"
+            git push origin "refs/tags/v${VERSION}"
+          fi
+          if [ "$STATE" = "missing" ]; then
+            prerelease=()
+            case "$VERSION" in
+              *-*) prerelease=(--prerelease) ;;
+            esac
+            gh release create "v${VERSION}" --draft "${prerelease[@]}" --verify-tag \
+              --title "v${VERSION}" --notes-file "$NOTES"
+          fi
+          gh workflow run publish.yml --ref "v${VERSION}"

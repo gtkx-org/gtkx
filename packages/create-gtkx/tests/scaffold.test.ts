@@ -1,4 +1,5 @@
 import { sortStrings } from "@gtkx/utils";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -16,6 +17,10 @@ import {
 type Scripts = Record<string, string | undefined>;
 
 const BASE_ARGS = ["--no-interactive", "--application-id", APPLICATION_ID, "--package-manager", "pnpm"];
+const SELF_MANIFEST = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+    version: string;
+};
+const SELF_RANGE = `^${SELF_MANIFEST.version}`;
 const ICON_PATH = `data/icons/hicolor/scalable/apps/${APPLICATION_ID}.svg`;
 const STALE_FILE = "stale.txt";
 const CUSTOM_SOURCE = "src/custom.ts";
@@ -166,17 +171,17 @@ describe("create-gtkx and the package manager it scaffolds for", () => {
             expect(hasProjectPath(run, "node_modules")).toBe(false);
             expectGeneratedConfig(run);
             expect(readManifest(run).dependencies).toEqual({
-                "@gtkx/cairo": "^2.0.0-beta.10",
-                "@gtkx/css": "^2.0.0-beta.10",
-                "@gtkx/react": "^2.0.0-beta.10",
-                "@gtkx/runtime": "^2.0.0-beta.10",
+                "@gtkx/cairo": SELF_RANGE,
+                "@gtkx/css": SELF_RANGE,
+                "@gtkx/react": SELF_RANGE,
+                "@gtkx/runtime": SELF_RANGE,
                 react: "latest",
             });
             expect(readManifest(run).devDependencies).toEqual({
-                "@gtkx/cli": "^2.0.0-beta.10",
-                "@gtkx/config": "^2.0.0-beta.10",
-                "@gtkx/mcp": "^2.0.0-beta.10",
-                "@gtkx/testing": "^2.0.0-beta.10",
+                "@gtkx/cli": SELF_RANGE,
+                "@gtkx/config": SELF_RANGE,
+                "@gtkx/mcp": SELF_RANGE,
+                "@gtkx/testing": SELF_RANGE,
                 "@types/node": "latest",
                 "@types/react": "latest",
                 typescript: "^6.0.3",

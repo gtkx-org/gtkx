@@ -1,0 +1,98 @@
+name: Release PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      specifier:
+        description: Exact version or semver keyword; leave empty to derive the version from the pending version plans
+        type: string
+        default: ""
+      preid:
+        description: Prerelease identifier for pre* bumps, such as beta or rc; leave empty to keep the current one
+        type: string
+        default: ""
+  push:
+    branches:
+      - main
+    paths:
+      - ".nx/version-plans/**"
+
+permissions: {}
+
+concurrency:
+  group: release-pr
+  cancel-in-progress: false
+
+env:
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: init.defaultBranch
+  GIT_CONFIG_VALUE_0: main
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_READ_TOKEN }}
+
+jobs:
+  release-pr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Version, sync the version surfaces and write the changelog
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm prepare-release ${SPECIFIER:+--specifier "$SPECIFIER"} ${PREID:+--preid "$PREID"}
+          extra-env: SPECIFIER PREID
+          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+        env:
+          SPECIFIER: ${{ inputs.specifier }}
+          PREID: ${{ inputs.preid }}
+
+      - name: Detect a prepared release
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "prepared=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          version="$(node -p "require('./packages/create-gtkx/package.json').version")"
+          {
+            echo "prepared=true"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Extract the release notes
+        if: steps.release.outputs.prepared == 'true'
+        id: notes
+        uses: ./.github/actions/release-notes
+        with:
+          version: ${{ steps.release.outputs.version }}
+
+      - name: Mint the release bot token
+        if: steps.release.outputs.prepared == 'true'
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Open or refresh the release pull request
+        if: steps.release.outputs.prepared == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.app.outputs.token }}
+          sign-commits: true
+          branch: release/next
+          base: main
+          delete-branch: true
+          commit-message: Prepare GTKX ${{ steps.release.outputs.version }}
+          title: Prepare GTKX ${{ steps.release.outputs.version }}
+          body-path: ${{ steps.notes.outputs.path }}

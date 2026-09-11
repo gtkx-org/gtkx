@@ -17,6 +17,7 @@ Fixes #
 ## Checklist
 
 - [ ] I have tested these changes locally
+- [ ] I have added a version plan (`pnpm plan`) if a published package changed
 - [ ] I have updated documentation if needed
 - [ ] All packages build (`pnpm build`)
 - [ ] All tests pass (`pnpm test`)
