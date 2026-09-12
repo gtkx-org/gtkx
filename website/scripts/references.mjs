@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { assertDeclaredOutputs, syncReferenceOutputs } from "./reference-outputs.mjs";
 import { prepareReferenceSearch } from "./reference-search-exclude.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -149,38 +150,6 @@ const archiveReferenceDirectory = (source) => {
     return found[0];
 };
 
-const PROJECT_ROOT = "{projectRoot}";
-
-const byText = (left, right) => left.localeCompare(right);
-
-const referenceOutput = (prefix) => [PROJECT_ROOT, prefix.replace(/^\//, ""), "reference"].filter(Boolean).join("/");
-
-const neededFor = (source) =>
-    versionsWithSource(source)
-        .map((version) => referenceOutput(version.prefix))
-        .toSorted(byText)
-        .join(", ");
-
-const assertDeclaredOutputs = () => {
-    const targets = readJson(join(website, "package.json")).nx.targets;
-    const declaredFor = (name) => (targets[name].outputs ?? []).toSorted(byText).join(", ");
-
-    for (const [name, source] of [
-        ["reference-current", "worktree"],
-        ["reference-stable", "tag"],
-    ]) {
-        const declared = declaredFor(name);
-        const needed = neededFor(source);
-
-        if (declared !== needed) {
-            throw new Error(
-                `website/package.json declares ${name} outputs [${declared}], ` +
-                `but versions.json needs [${needed}].`,
-            );
-        }
-    }
-};
-
 const generateTagged = (version) => {
     const { commit } = version.reference;
     ensureTagCommit(version.reference);
@@ -230,7 +199,7 @@ const generateFromWorktree = (version) => {
 
 const mode = process.argv[2] ?? "all";
 
-if (mode !== "stable" && mode !== "current" && mode !== "all" && mode !== "pins") {
+if (mode !== "stable" && mode !== "current" && mode !== "all" && mode !== "pins" && mode !== "sync") {
     throw new Error(`Unknown reference generation mode: ${mode}`);
 }
 
@@ -240,8 +209,11 @@ if (mode === "pins") {
     );
 
     console.log(pins.join("\n"));
+} else if (mode === "sync") {
+    syncReferenceOutputs(manifest.versions);
+    console.log("Synchronised the reference output paths in website/package.json.");
 } else {
-    assertDeclaredOutputs();
+    assertDeclaredOutputs(manifest.versions);
 
     if (mode === "stable" || mode === "all") {
         for (const version of versionsWithSource("tag")) {

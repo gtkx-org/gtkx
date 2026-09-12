@@ -3,13 +3,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
+import { syncReferenceOutputs } from "./reference-outputs.mjs";
+
 const here = dirname(fileURLToPath(import.meta.url));
 const website = join(here, "..");
 const manifestPath = join(website, "versions.json");
-const packagePath = join(website, "package.json");
 const staging = join(website, ".promote-version");
 const SECTIONS = ["guide", "tutorial", "reference"];
-const PROJECT_ROOT = "{projectRoot}";
 const LINK_PATTERN = /\]\((\/[^)\s]*)\)/g;
 
 const readManifest = () => JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -113,20 +113,6 @@ const unstageSections = (version, prefix) => {
             renameSync(source, join(to, section));
         }
     }
-};
-
-const referenceOutput = (prefix) => [PROJECT_ROOT, prefix.replace(/^\//, ""), "reference"].filter(Boolean).join("/");
-
-const syncReferenceOutputs = (versions) => {
-    const manifest = JSON.parse(readFileSync(packagePath, "utf8"));
-    const targets = manifest.nx.targets;
-    const tagged = versions.filter((version) => version.reference.source === "tag");
-    const worktree = versions.filter((version) => version.reference.source === "worktree");
-
-    targets["reference-current"].outputs = worktree.map((version) => referenceOutput(version.prefix));
-    targets["reference-stable"].outputs = tagged.map((version) => referenceOutput(version.prefix));
-
-    writeFileSync(packagePath, `${JSON.stringify(manifest, undefined, 4)}\n`);
 };
 
 const pruneEmptyDirectory = (prefix) => {

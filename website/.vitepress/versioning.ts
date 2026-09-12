@@ -114,6 +114,12 @@ const assertExactlyOne = (matches: readonly DocumentationVersion[], description:
     }
 };
 
+const assertAtMostOne = (matches: readonly DocumentationVersion[], description: string): void => {
+    if (matches.length > 1) {
+        throw new Error(`versions.json must declare at most one ${description}, found ${String(matches.length)}.`);
+    }
+};
+
 const readVersions = (): readonly DocumentationVersion[] => {
     const parsed = manifest.versions.map((version) => ({
         id: version.id,
@@ -143,6 +149,14 @@ const readVersions = (): readonly DocumentationVersion[] => {
     assertExactlyOne(
         parsed.filter((version) => version.reference.source === "worktree"),
         "version whose reference is built from the working tree",
+    );
+    assertAtMostOne(
+        parsed.filter((version) => version.status === "prerelease"),
+        "pre-release version",
+    );
+    assertAtMostOne(
+        parsed.filter((version) => version.status === "old"),
+        "superseded version",
     );
 
     return parsed;

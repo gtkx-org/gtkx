@@ -9,6 +9,7 @@
         "reference-current": "node scripts/references.mjs current",
         "reference-stable": "node scripts/references.mjs stable",
         "promote-version": "node scripts/promote-version.mjs",
+        "reference-sync": "node scripts/references.mjs sync",
         "dev": "vitepress dev",
         "build": "vitepress build",
         "preview": "vitepress preview"
