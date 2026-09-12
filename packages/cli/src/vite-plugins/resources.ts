@@ -874,7 +874,10 @@ const resolvedModuleDependency = async (
     const resolved = await ctx.resolve(source, importer, { skipSelf: true });
 
     if (resolved === null) {
-        throw new Error(`${JSON.stringify(source)} could not be resolved from ${importer}`);
+        throw Object.assign(new Error(`${JSON.stringify(source)} could not be resolved from ${importer}`), {
+            code: "GTKX_UNRESOLVED_IMPORT",
+            specifier: source,
+        });
     }
 
     return resolved.external ? null : importerKey(resolved.id);

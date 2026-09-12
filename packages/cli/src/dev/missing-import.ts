@@ -1,3 +1,4 @@
+import { isRecord } from "@gtkx/utils";
 import { basename, dirname, extname } from "node:path";
 
 const LOAD_FAILURE_PATTERN = /Failed to load url (\S+)/;
@@ -6,9 +7,18 @@ const NAMELESS_URLS = new Set(["", ".", ".."]);
 
 const fileName = (path: string): string => basename(path, extname(path));
 
-const missingImportName = (cause: unknown): string | null => {
+const missingImportSource = (cause: unknown): string | undefined => {
+    if (isRecord(cause) && cause.code === "GTKX_UNRESOLVED_IMPORT" && typeof cause.specifier === "string") {
+        return cause.specifier;
+    }
+
     const message = cause instanceof Error ? cause.message : String(cause);
-    const [, url] = LOAD_FAILURE_PATTERN.exec(message) ?? [];
+
+    return LOAD_FAILURE_PATTERN.exec(message)?.[1];
+};
+
+const missingImportName = (cause: unknown): string | null => {
+    const url = missingImportSource(cause);
 
     if (url === undefined) {
         return null;

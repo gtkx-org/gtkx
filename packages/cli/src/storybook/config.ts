@@ -71,7 +71,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
 
 const previewOption = (value: unknown): string | undefined => {
-    if (value !== undefined && (typeof value !== "string" || value.trim().length === 0)) {
+    if (value !== undefined && (typeof value !== "string" || value.trim().length === 0 || isAbsolute(value))) {
         throw new TypeError("Storybook preview must be a project-relative path");
     }
 

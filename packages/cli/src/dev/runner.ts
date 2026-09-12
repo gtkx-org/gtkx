@@ -419,13 +419,15 @@ const applyChange = async (session: DevSession, change: WatchedChange): Promise<
         return;
     }
 
-    if (await session.storybook?.handleChange(change)) {
-        return;
-    }
+    const hasUpdatedStories = await session.storybook?.handleChange(change);
 
     if (change.event === "add") {
         await handleFileCreate(session, change.path);
 
+        return;
+    }
+
+    if (hasUpdatedStories) {
         return;
     }
 

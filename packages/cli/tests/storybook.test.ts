@@ -142,6 +142,34 @@ describe("gtkx storybook", () => {
         expect(() => process.kill(pid, 0)).toThrow();
     });
 
+    it.each(["Missing", "Missing value"])("recovers a component after %s is created", async (missingModule) => {
+        using project = createCliProject({
+            prefix: "gtkx-storybook-component-import-",
+            config: CONFIG,
+            files: { ...projectFiles(), [STORY]: story(1).replace("args: { step: 1 }", "args: {}") },
+            hasStore: true,
+            shouldShareStore: true,
+        });
+        await using session = await startStorybookSession(project);
+        const pid = await session.applicationPid();
+        await session.click("role", "button", { name: "Counter: 0 step 1" });
+        await session.waitForWidget("role", "button", { name: "Counter: 1 step 1" });
+        const specifier = `./${missingModule}`;
+        writeFileSync(join(project.root, COMPONENT),
+            `import { initialStep } from ${JSON.stringify(specifier)};\n` +
+            counter("Recovered").replace("step = 1", "step = initialStep"));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        writeFileSync(join(project.root, `src/${missingModule}.ts`), "export const initialStep = 2;");
+
+        await expect.poll(
+            () => session.query("role", "button", { name: "Recovered: 1 step 2" }),
+            { timeout: 15_000 },
+        ).toHaveLength(1);
+        await session.click("role", "button", { name: "Recovered: 1 step 2" });
+        await session.waitForWidget("role", "button", { name: "Recovered: 3 step 2" });
+        expect(await session.applicationPid()).toBe(pid);
+    });
+
     it("keeps navigation usable through story syntax, import, preview and configuration failures", async () => {
         using project = createCliProject({
             prefix: "gtkx-storybook-recovery-",
@@ -188,27 +216,45 @@ describe("gtkx storybook", () => {
         expect(await session.applicationPid()).toBe(pid);
     });
 
-    it("resolves selected project and story configurations with project-relative patterns and preview", async () => {
+    it.each(["setup/preview.tsx", "setup/../setup/preview.tsx"])(
+        "resolves selected configurations with a project-relative preview at %s",
+        async (previewPath) => {
+            using project = createCliProject({
+                prefix: "gtkx-storybook-config-selection-",
+                files: {
+                    "alternate.gtkx.ts": CONFIG,
+                    "story.config.ts": 'export default { stories: ["stories/*.stories.tsx"], ' +
+                        `preview: ${JSON.stringify(previewPath)} };`,
+                    "setup/preview.tsx": preview("Custom preview"),
+                    "stories/Custom.stories.tsx": otherStory().replace('title: "Other", ', ""),
+                    ".storybook/main.ts": "invalid source",
+                },
+                hasStore: true,
+                shouldShareStore: true,
+            });
+            await using session = await startStorybookSession(project, [
+                "--config", "alternate.gtkx.ts", "--storybook-config", "story.config.ts",
+            ]);
+            await session.waitForWidget("name", "storybook-story-stories-custom--example");
+            await session.waitForWidget("text", "Custom preview");
+            await session.waitForWidget("role", "button", { name: "Another preview" });
+            expect(session.child.exitCode).toBeNull();
+        },
+    );
+
+    it.each(["absolute", "outside"])("rejects %s preview paths", (kind) => {
         using project = createCliProject({
-            prefix: "gtkx-storybook-config-selection-",
-            files: {
-                "alternate.gtkx.ts": CONFIG,
-                "story.config.ts": 'export default { stories: ["stories/*.stories.tsx"], ' +
-                    'preview: "setup/preview.tsx" };',
-                "setup/preview.tsx": preview("Custom preview"),
-                "stories/Custom.stories.tsx": otherStory().replace('title: "Other", ', ""),
-                ".storybook/main.ts": "invalid source",
-            },
+            prefix: "gtkx-storybook-invalid-preview-",
+            config: CONFIG,
+            files: { ...projectFiles(), [PREVIEW]: preview("Shared preview") },
             hasStore: true,
             shouldShareStore: true,
         });
-        await using session = await startStorybookSession(project, [
-            "--config", "alternate.gtkx.ts", "--storybook-config", "story.config.ts",
-        ]);
-        await session.waitForWidget("name", "storybook-story-stories-custom--example");
-        await session.waitForWidget("text", "Custom preview");
-        await session.waitForWidget("role", "button", { name: "Another preview" });
-        expect(session.child.exitCode).toBeNull();
+        const previewPath = kind === "absolute" ? join(project.root, PREVIEW) : "../preview.tsx";
+        writeFileSync(join(project.root, ".storybook/main.ts"),
+            `export default { preview: ${JSON.stringify(previewPath)} };`);
+
+        expect(runCli(project, ["storybook"]).status).not.toBe(0);
     });
 
     it("shows empty discovery and recovers when the first story is created", async () => {
