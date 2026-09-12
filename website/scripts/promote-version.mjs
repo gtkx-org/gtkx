@@ -151,6 +151,10 @@ if (values.to === undefined || !/^\/[A-Za-z0-9][A-Za-z0-9.-]*$/.test(values.to))
     throw new Error("Pass --to with the prefix the outgoing release moves to, for example --to /v1.");
 }
 
+if (values["examples-ref"] === undefined) {
+    throw new Error("Pass --examples-ref with the git ref the promoted release's examples live on.");
+}
+
 const manifest = readManifest();
 const outgoing = requireSingle(manifest.versions, "current");
 
@@ -178,7 +182,7 @@ if (occupied.length > 0) {
 }
 
 if (existsSync(staging)) {
-    throw new Error(`${staging} already exists from an interrupted run; restore its contents before retrying.`);
+    throw new Error(`${staging} is left over from an interrupted run; reset the working tree before retrying.`);
 }
 
 const moves = [
@@ -200,9 +204,7 @@ incoming.prefix = "";
 incoming.status = "current";
 incoming.label = values.label ?? incoming.id;
 
-if (values["examples-ref"] !== undefined) {
-    incoming.examplesRef = values["examples-ref"];
-}
+incoming.examplesRef = values["examples-ref"];
 
 const others = manifest.versions.filter((version) => version !== incoming && version !== outgoing);
 

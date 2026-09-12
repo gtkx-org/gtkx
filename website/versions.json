@@ -1,5 +1,5 @@
 {
-    "retention": "gtkx.dev documents the current release and any pre-release that follows it. Once a pre-release becomes current, the release it replaced stays online under its own prefix until the next major supersedes it, and is then removed.",
+    "retention": "gtkx.dev documents the current release, the release it replaced, and any pre-release in progress. Promoting a pre-release retires the older of the two published releases, so no more than one superseded release is ever online.",
     "versions": [
         {
             "id": "1.6",
