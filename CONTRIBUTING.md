@@ -54,7 +54,7 @@ The prompt asks for the bump and for a changelog message. The message is what us
 
 Choose the bump that describes your change: `major` for a breaking change, `minor` for a feature, `patch` for a fix. It decides which heading the entry lands under, not the next version number. A release keeps the train it is already on, so while 2.0 is in beta every release is the next beta whatever the pending plans say, and a maintainer moves the train by hand. Ignore the `pre*` bumps; they belong to a maintainer cutting a prerelease from a stable version.
 
-CI fails a pull request that touches a published package and adds no plan. Documentation, tests, and files outside `packages/` never need one, Dependabot is exempt, and the check is advisory rather than required, so a change that genuinely needs no entry can still merge.
+CI fails a pull request that touches a published package and adds no plan. Documentation, tests, and files outside `packages/` never need one, pull requests opened by a bot are exempt because a bot cannot author a plan, and the check is advisory rather than required, so a change that genuinely needs no entry can still merge.
 
 ## Publish a release
 

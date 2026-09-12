@@ -309,7 +309,7 @@ jobs:
     needs: [changes, image-manifest]
     if: >-
       github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
-      && github.head_ref != 'release/next' && github.actor != 'dependabot[bot]'
+      && github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
