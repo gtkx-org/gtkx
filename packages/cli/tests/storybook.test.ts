@@ -170,6 +170,27 @@ describe("gtkx storybook", () => {
         expect(await session.applicationPid()).toBe(pid);
     });
 
+    it("shows a source failure once and clears it after the story is repaired", async () => {
+        using project = createCliProject({
+            prefix: "gtkx-storybook-error-count-",
+            config: CONFIG,
+            files: { ...projectFiles(), [STORY]: "export default {" },
+            hasStore: true,
+            shouldShareStore: true,
+        });
+        await using session = await startStorybookSession(project);
+        const errors = await session.waitForWidget("name", "storybook-load-errors");
+        expect(errors.hiddenChildren).toBe(1);
+        await session.click("name", "storybook-story-other--example");
+        await session.waitForWidget("role", "button", { name: "Another preview" });
+
+        writeFileSync(join(project.root, STORY), story(2));
+        await session.waitForAbsent("name", "storybook-load-errors");
+        await session.click("name", "storybook-story-counter--default");
+        await session.click("role", "button", { name: "Counter: 0 step 2" });
+        await session.waitForWidget("role", "button", { name: "Counter: 2 step 2" });
+    });
+
     it("keeps navigation usable through story syntax, import, preview and configuration failures", async () => {
         using project = createCliProject({
             prefix: "gtkx-storybook-recovery-",

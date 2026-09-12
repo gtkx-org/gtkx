@@ -188,7 +188,9 @@ const loadSource = async (
 class StoryCatalog {
     private snapshot: StoryCatalogSnapshot = { stories: [], errors: [], isLoading: false };
     private readonly listeners: Set<() => void> = new Set();
+    private readonly loadFailures: WeakSet<Error> = new WeakSet();
     private cache = createSourceCache();
+    private sessionError: StoryLoadError | undefined;
     private revision = 0;
 
     /** Returns the current snapshot, retaining its identity until the next update. */
@@ -227,20 +229,32 @@ class StoryCatalog {
 
         const { cache, stories, errors } = collectSources(loaded);
         this.cache = cache;
+        this.sessionError = undefined;
         this.publish({ stories, errors, isLoading: false });
 
         if (errors.length > 0) {
-            throw new AggregateError(errors.map(({ error }) => error), "Some stories could not be loaded");
+            const failure = new AggregateError(errors.map(({ error }) => error), "Some stories could not be loaded");
+            this.loadFailures.add(failure);
+            throw failure;
         }
     }
 
-    /** Publishes a session failure while preserving stories and superseding pending loads. */
+    /**
+     * Replaces the current session failure while preserving source errors and superseding pending loads.
+     * Ignores aggregate failures already published by this catalog's load operation.
+     */
     reportError(cause: unknown): void {
+        if (cause instanceof Error && this.loadFailures.has(cause)) {
+            return;
+        }
+
         this.revision++;
+        const errors = this.snapshot.errors.filter((entry) => entry !== this.sessionError);
+        this.sessionError = { source: "Storybook", error: normalizeError(cause) };
         this.publish({
             ...this.snapshot,
             isLoading: false,
-            errors: [...this.snapshot.errors, { source: "Storybook", error: normalizeError(cause) }],
+            errors: [...errors, this.sessionError],
         });
     }
 }

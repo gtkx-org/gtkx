@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { Storybook, StoryCatalog } from "@gtkx/storybook/explorer";
-import { act, render, screen, userEvent } from "@gtkx/testing";
+import { act, render, screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
 const moduleWithLabel = (label: string) => ({
@@ -12,6 +12,47 @@ const moduleWithLabel = (label: string) => ({
 });
 
 describe("native story catalog updates", () => {
+    it("keeps source diagnostics distinct and replaces session failures until a successful load", async () => {
+        const catalog = new StoryCatalog();
+        const healthy = {
+            id: "healthy.stories.tsx",
+            title: "Healthy",
+            load: () => Promise.resolve(moduleWithLabel("Healthy preview")),
+        };
+        const failedLoad = catalog.load([healthy, {
+            id: "Storybook",
+            title: "Broken",
+            load: () => Promise.reject(new Error("Import failed")),
+        }]);
+        await expect(failedLoad).rejects.toThrow();
+        await render(<Storybook catalog={catalog} />, { container: rootElement });
+        const errors = within(screen.getByName("storybook-load-errors"));
+        expect(errors.getAllByRole(Gtk.AccessibleRole.LABEL)).toHaveLength(1);
+
+        await act(async () => {
+            try {
+                await failedLoad;
+            } catch (error) {
+                catalog.reportError(error);
+            }
+        });
+        expect(errors.getAllByRole(Gtk.AccessibleRole.LABEL)).toHaveLength(1);
+        await act(() => {
+            catalog.reportError(new AggregateError([new Error("Configuration failed")], "Configuration failed"));
+        });
+        expect(errors.getAllByRole(Gtk.AccessibleRole.LABEL)).toHaveLength(2);
+        await act(() => {
+            catalog.reportError(new Error("Preview configuration failed"));
+        });
+        expect(errors.getAllByRole(Gtk.AccessibleRole.LABEL)).toHaveLength(2);
+        expect(screen.getByText("Healthy preview")).toBeVisible();
+
+        await act(() => catalog.load([healthy]));
+        expect(screen.queryByName("storybook-load-errors")).toBeNull();
+        await userEvent.click(screen.getByName("storybook-story-healthy--default"));
+        expect(screen.getByText("Healthy preview")).toBeVisible();
+    });
+
     it("displays discovered titles, story names, and control names as literal text", async () => {
         const catalog = new StoryCatalog();
         const title = "Widgets <b>& things</b>";
