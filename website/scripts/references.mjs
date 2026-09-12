@@ -1,5 +1,15 @@
 import { execFileSync } from "node:child_process";
-import { accessSync, cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+    accessSync,
+    cpSync,
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readdirSync,
+    readFileSync,
+    rmSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -112,6 +122,26 @@ const ensureTagCommit = (reference) => {
     }
 };
 
+const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
+
+const archiveTarget = (source) => {
+    const targets = readJson(join(source, "website", "package.json")).nx?.targets ?? {};
+
+    return "reference-current" in targets ? "reference-current" : "reference";
+};
+
+const archiveReferenceDirectory = (source) => {
+    const archiveManifest = join(source, "website", "versions.json");
+
+    if (!existsSync(archiveManifest)) {
+        return join(source, "website", "reference");
+    }
+
+    const worktree = readJson(archiveManifest).versions.find((entry) => entry.reference.source === "worktree");
+
+    return join(source, "website", worktree ? worktree.prefix.replace(/^\//, "") : "", "reference");
+};
+
 const generateTagged = (version) => {
     const { commit } = version.reference;
     ensureTagCommit(version.reference);
@@ -137,9 +167,9 @@ const generateTagged = (version) => {
         run("git", ["update-ref", "refs/heads/main", "FETCH_HEAD"], source, environment);
         run("git", ["remote", "add", "origin", origin], source, environment);
         run(pnpm, ["install", "--frozen-lockfile", "--store-dir", store], source, environment);
-        run(pnpm, ["exec", "nx", "run", "@gtkx/website:reference"], source, environment);
+        run(pnpm, ["exec", "nx", "run", `@gtkx/website:${archiveTarget(source)}`], source, environment);
 
-        const generated = join(source, "website", "reference");
+        const generated = archiveReferenceDirectory(source);
         requireSidebar(generated);
         rmSync(output, { force: true, recursive: true });
         mkdirSync(dirname(output), { recursive: true });

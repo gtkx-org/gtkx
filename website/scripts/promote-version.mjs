@@ -6,6 +6,7 @@ import { parseArgs } from "node:util";
 const here = dirname(fileURLToPath(import.meta.url));
 const website = join(here, "..");
 const manifestPath = join(website, "versions.json");
+const packagePath = join(website, "package.json");
 const staging = join(website, ".promote-version");
 const SECTIONS = ["guide", "tutorial", "reference"];
 const LINK_PATTERN = /\]\((\/[^)\s]*)\)/g;
@@ -113,6 +114,20 @@ const unstageSections = (version, prefix) => {
     }
 };
 
+const referenceOutput = (prefix) => join("{projectRoot}", prefix.replace(/^\//, ""), "reference");
+
+const syncReferenceOutputs = (versions) => {
+    const manifest = JSON.parse(readFileSync(packagePath, "utf8"));
+    const targets = manifest.nx.targets;
+    const tagged = versions.filter((version) => version.reference.source === "tag");
+    const worktree = versions.filter((version) => version.reference.source === "worktree");
+
+    targets["reference-current"].outputs = worktree.map((version) => referenceOutput(version.prefix));
+    targets["reference-stable"].outputs = tagged.map((version) => referenceOutput(version.prefix));
+
+    writeFileSync(packagePath, `${JSON.stringify(manifest, undefined, 4)}\n`);
+};
+
 const occupiedSections = (prefix) =>
     SECTIONS.filter((section) => existsSync(join(versionDirectory(prefix), section)));
 
@@ -144,6 +159,13 @@ if (outgoing.prefix !== "") {
 }
 
 const incoming = requireSingle(manifest.versions, "prerelease");
+const retired = manifest.versions.filter((version) => version.status === "old");
+
+if (retired.length > 0) {
+    const prefixes = retired.map((version) => version.prefix).join(", ");
+
+    throw new Error(`Retire the old version served at ${prefixes} before promoting another release.`);
+}
 
 if (manifest.versions.some((version) => version.prefix === values.to)) {
     throw new Error(`versions.json already declares the prefix ${values.to}.`);
@@ -188,7 +210,8 @@ const others = manifest.versions.filter((version) => version !== incoming && ver
 manifest.versions = [incoming, outgoing, ...others];
 
 writeFileSync(manifestPath, `${JSON.stringify(manifest, undefined, 4)}\n`);
+syncReferenceOutputs(manifest.versions);
 
 console.log(`Promoted GTKX ${incoming.id} to the site root and moved ${outgoing.id} to ${values.to}.`);
 console.log(`Rewrote documentation links in ${changed} files.`);
-console.log("Update the reference output paths in website/package.json, then rebuild the site.");
+console.log("Regenerate the API references, then rebuild the site.");

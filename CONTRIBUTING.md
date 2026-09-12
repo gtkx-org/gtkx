@@ -106,9 +106,11 @@ Promoting a pre-release to current is scripted, because pages link to each other
 pnpm --filter @gtkx/website promote-version -- --to /v1 --label "2.0 stable" --examples-ref v2.0.0
 ```
 
-The script moves each version's `guide`, `tutorial` and `reference` directories to its new prefix, rewrites every documentation link in every markdown file to the prefix its target version now lives at, and rewrites `versions.json` so the outgoing release becomes `old` under the new prefix and the incoming one becomes `current` at the root. Links are rewritten by the version they point at rather than the file they sit in, so a page that deliberately links across versions keeps pointing where it meant to.
+The script moves each version's `guide`, `tutorial` and `reference` directories to its new prefix, rewrites every documentation link in every markdown file to the prefix its target version now lives at, rewrites `versions.json` so the outgoing release becomes `old` under the new prefix and the incoming one becomes `current` at the root, and repoints the reference output paths in `website/package.json` at the new prefixes. Links are rewritten by the version they point at rather than the file they sit in, so a page that deliberately links across versions keeps pointing where it meant to. Regenerate the API references afterwards, since each one bakes its own prefix into its links.
 
-Afterwards, update the `reference-current` and `reference-stable` output paths in `website/package.json` to match the new prefixes, then rebuild. Decide separately whether the outgoing prefix keeps serving: Vite and Vitest keep a numbered alias for the current major, and GitHub Pages cannot redirect, so an alias would need generated pages.
+The script refuses to run while an `old` version is still on the site, which is what keeps the retention policy true: retire that release first by deleting its directories and its manifest entry. Decide separately whether the outgoing prefix keeps serving: Vite and Vitest keep a numbered alias for the current major, and GitHub Pages cannot redirect, so an alias would need generated pages.
+
+The promoted release keeps building its reference from the working tree, so between releases the current version's API pages track `main`. Switch its manifest entry to a `tag` source to pin it to the release instead; exactly one version may build from the working tree.
 
 An old version's pages canonicalise to the current version's page at the same path when that page exists, and to themselves when it does not, so a reference page for a symbol that a major removed keeps its own identity.
 
