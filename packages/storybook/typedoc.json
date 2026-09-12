@@ -1,0 +1,19 @@
+{
+    "entryPoints": [
+        "./dist/index.d.ts",
+        "./dist/config.d.ts",
+        "./dist/explorer.d.ts"
+    ],
+    "intentionallyNotExported": [
+        "Annotations",
+        "ArgsFrom",
+        "ComponentMeta",
+        "ComponentOrProps",
+        "NativeRenderer",
+        "RequiredStoryArgs",
+        "StoryAnnotations",
+        "StorybookProps",
+        "StoryKeys",
+        "StoryModule"
+    ]
+}

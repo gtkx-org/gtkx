@@ -3,7 +3,10 @@ import { warn } from "@gtkx/utils";
 import { join } from "node:path";
 import { createWatchIgnore } from "./watch-ignore.js";
 
-type DevServerModule = object;
+type DevServerModule = {
+    id?: string | null;
+    importers?: Iterable<DevServerModule>;
+};
 type DevServerWatchEvent = "add" | "change" | "unlink";
 
 type DevServerChangedModule = DevServerModule & {
@@ -101,6 +104,7 @@ export {
     createDevServerConfig,
     type DevServer,
     type DevServerChangedModule,
+    type DevServerModule,
     type DevServerWatchEvent,
     isServerConfigFile,
 };

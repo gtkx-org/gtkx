@@ -6,6 +6,7 @@ export default defineConfig({
             "packages/*/vitest.config.ts",
             "packages/e2e/tests/native/vitest.config.ts",
             "examples/gtk-demo/vitest.config.ts",
+            "examples/storybook/vitest.config.ts",
         ],
         coverage: {
             provider: "v8",

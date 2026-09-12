@@ -1,0 +1,24 @@
+{
+    "extends": "../../tsconfig.app.json",
+    "compilerOptions": {
+        "rootDir": "."
+    },
+    "include": [
+        "src/**/*",
+        ".storybook/**/*"
+    ],
+    "files": [
+        "${configDir}/node_modules/.gtkx/env.d.ts"
+    ],
+    "references": [
+        {
+            "path": "../../packages/react/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/storybook/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/config/tsconfig.lib.json"
+        }
+    ]
+}

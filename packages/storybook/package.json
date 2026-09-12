@@ -1,0 +1,86 @@
+{
+    "name": "@gtkx/storybook",
+    "version": "2.0.0-beta.10",
+    "description": "Native story explorer and portable Component Story Format fixtures for GTKX applications.",
+    "keywords": [
+        "gtkx",
+        "gtk",
+        "gtk4",
+        "adwaita",
+        "react",
+        "storybook",
+        "csf",
+        "linux"
+    ],
+    "homepage": "https://gtkx.dev",
+    "bugs": {
+        "url": "https://github.com/gtkx-org/gtkx/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/gtkx-org/gtkx.git",
+        "directory": "packages/storybook"
+    },
+    "license": "MPL-2.0",
+    "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
+    "type": "module",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "source": "./src/index.ts",
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": null,
+            "default": "./dist/index.js"
+        },
+        "./config": {
+            "source": "./src/config.ts",
+            "types": "./dist/config.d.ts",
+            "import": "./dist/config.js",
+            "require": null,
+            "default": "./dist/config.js"
+        },
+        "./explorer": {
+            "source": "./src/explorer.ts",
+            "types": "./dist/explorer.d.ts",
+            "import": "./dist/explorer.js",
+            "require": null,
+            "default": "./dist/explorer.js"
+        }
+    },
+    "sideEffects": false,
+    "files": [
+        "dist",
+        "src"
+    ],
+    "scripts": {
+        "release": "tsx ../../scripts/release-package.ts"
+    },
+    "nx": {
+        "targets": {
+            "lint": {
+                "options": {
+                    "cwd": ".",
+                    "command": "eslint {projectRoot}"
+                }
+            }
+        }
+    },
+    "engines": {
+        "node": ">=26.7.0"
+    },
+    "dependencies": {
+        "@gtkx/components": "workspace:*",
+        "@gtkx/react": "workspace:*",
+        "storybook": "10.6.0"
+    },
+    "peerDependencies": {
+        "react": "^19.2"
+    },
+    "devDependencies": {
+        "@gtkx/config": "workspace:*",
+        "@gtkx/testing": "workspace:*",
+        "@gtkx/vitest": "workspace:*",
+        "vitest": "catalog:"
+    }
+}

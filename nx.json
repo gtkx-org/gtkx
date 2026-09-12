@@ -68,7 +68,8 @@
             "exclude": [
                 "examples/gtk-demo/*",
                 "examples/animations/*",
-                "examples/navigation/*"
+                "examples/navigation/*",
+                "examples/storybook/*"
             ]
         }
     ],
@@ -136,7 +137,8 @@
                 "@gtkx/forms:build",
                 "@gtkx/gl:build",
                 "@gtkx/i18n:build",
-                "@gtkx/navigation:build"
+                "@gtkx/navigation:build",
+                "@gtkx/storybook:build"
             ]
         },
         "release": {
@@ -158,7 +160,8 @@
                 "@gtkx/forms:build",
                 "@gtkx/gl:build",
                 "@gtkx/i18n:build",
-                "@gtkx/navigation:build"
+                "@gtkx/navigation:build",
+                "@gtkx/storybook:build"
             ]
         }
     },

@@ -117,6 +117,10 @@
                 "gtkx.config.ts!"
             ]
         },
+        "packages/storybook": {
+            "includeEntryExports": false,
+            "entry": ["gtkx.config.ts!"]
+        },
         "packages/cli": {
             "entry": [
                 "src/global.d.ts!"
@@ -134,6 +138,15 @@
                 "src/gtkx-env.d.ts!",
                 "src/app.tsx!",
                 "src/index.tsx!"
+            ]
+        },
+        "examples/storybook": {
+            "includeEntryExports": false,
+            "entry": [
+                "gtkx.config.ts!",
+                ".storybook/main.ts!",
+                ".storybook/preview.tsx!",
+                "src/**/*.stories.tsx!"
             ]
         }
     }

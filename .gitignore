@@ -4,7 +4,7 @@
 *.log
 *.tsbuildinfo
 /.claude/worktrees/
-/.gtkx/
+.gtkx/
 /.playwright-mcp
 /.pnpm-store/
 /AGENTS.md

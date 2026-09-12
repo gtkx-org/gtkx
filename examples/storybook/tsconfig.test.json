@@ -1,0 +1,20 @@
+{
+    "extends": "../../tsconfig.test.json",
+    "files": [
+        "${configDir}/node_modules/.gtkx/env.d.ts"
+    ],
+    "references": [
+        {
+            "path": "./tsconfig.app.json"
+        },
+        {
+            "path": "../../packages/react/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/storybook/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/testing/tsconfig.lib.json"
+        }
+    ]
+}

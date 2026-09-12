@@ -16,6 +16,9 @@
         "@gtkx/react",
         "@gtkx/react/config",
         "@gtkx/runtime",
+        "@gtkx/storybook",
+        "@gtkx/storybook/config",
+        "@gtkx/storybook/explorer",
         "@gtkx/testing",
         "@gtkx/vitest"
     ],

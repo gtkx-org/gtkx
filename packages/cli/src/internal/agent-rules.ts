@@ -40,6 +40,7 @@ const rulesBody = (heading: string): string[] => [
     "| Command | What it does |",
     "| --- | --- |",
     "| `gtkx dev` | Run the app with fast refresh |",
+    "| `gtkx storybook` | Explore native component stories with controls and actions |",
     "| `gtkx codegen` | Regenerate bindings and this reference |",
     "| `gtkx cleanup` | Remove stale headless runtime and compile cache directories |",
     "| `tsc --noEmit` | Typecheck |",
