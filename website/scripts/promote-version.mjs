@@ -149,7 +149,7 @@ if (values.to === undefined || !/^\/[A-Za-z0-9][A-Za-z0-9.-]*$/.test(values.to))
     throw new Error("Pass --to with the prefix the outgoing release moves to, for example --to /v1.");
 }
 
-if (values["examples-ref"] === undefined) {
+if (values["examples-ref"] === undefined || values["examples-ref"].trim() === "") {
     throw new Error("Pass --examples-ref with the git ref the promoted release's examples live on.");
 }
 
@@ -160,7 +160,16 @@ if (outgoing.prefix !== "") {
     throw new Error(`The current version must be served without a prefix, found "${outgoing.prefix}".`);
 }
 
+if (outgoing.reference.source !== "tag") {
+    throw new Error(`Pin GTKX ${outgoing.id} to its release tag before promoting over it.`);
+}
+
 const incoming = requireSingle(manifest.versions, "prerelease");
+
+if (incoming.reference.source !== "worktree") {
+    throw new Error(`GTKX ${incoming.id} must build its reference from the working tree to become current.`);
+}
+
 const retired = manifest.versions.filter((version) => version.status === "old");
 
 if (retired.length > 0) {
