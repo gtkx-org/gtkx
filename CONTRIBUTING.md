@@ -50,9 +50,9 @@ Every pull request that changes a published package adds a version plan, the fil
 pnpm plan
 ```
 
-The prompt asks for the bump and for a changelog message. The message is what users read in the release notes, so write it for them. All packages share one version, so the bump applies to the whole workspace, and Nx keeps the highest version that any pending plan produces.
+The prompt asks for the bump and for a changelog message. The message is what users read in the release notes, so write it for them.
 
-While 2.0 is in beta, choose `prerelease`. A `patch`, `minor` or `major` plan computes the stable 2.0.0 instead, and `pnpm prepare-release` refuses to end a prerelease on its own, so the release stops until a maintainer cuts that version deliberately. Nx derives the changelog heading from the bump, which puts every entry of the beta under "Fixes" whatever it describes.
+Choose the bump that describes your change: `major` for a breaking change, `minor` for a feature, `patch` for a fix. It decides which heading the entry lands under, not the next version number. A release keeps the train it is already on, so while 2.0 is in beta every release is the next beta whatever the pending plans say, and a maintainer moves the train by hand. Ignore the `pre*` bumps; they belong to a maintainer cutting a prerelease from a stable version.
 
 CI fails a pull request that touches a published package and adds no plan. Documentation, tests, and files outside `packages/` never need one, Dependabot is exempt, and the check is advisory rather than required, so a change that genuinely needs no entry can still merge.
 
@@ -60,7 +60,7 @@ CI fails a pull request that touches a published package and adds no plan. Docum
 
 The Release PR workflow cuts a release from the pending version plans and never writes to `main` itself:
 
-1. Run it from the Actions tab or with `gh workflow run release-pr.yml`. It also runs on its own whenever a merged pull request adds a version plan. Leave both inputs empty to derive the version from the plans. Pass `specifier=2.0.0` to cut the stable release whatever the plans say, or `preid=rc` to change the prerelease identifier.
+1. Run it from the Actions tab or with `gh workflow run release-pr.yml`. It also runs on its own whenever a merged pull request adds a version plan. Leave both inputs empty to stay on the current train, which means the next beta today and the bump the plans ask for once 2.0 is stable. Pass `specifier=2.0.0` to end the beta and cut the stable release, or `preid=rc` to rename the prerelease identifier. Both inputs release whether or not a plan is pending, so a maintainer can cut a version on demand.
 2. The workflow versions every package, rewrites the tutorial ranges and the documentation pins, prepends the entry to `CHANGELOG.md`, deletes the consumed plans, and opens or refreshes the `release/next` pull request as the release bot, with a commit signed by GitHub. `pnpm prepare-release --dry-run` runs the same steps locally without writing anything.
 3. Read the pull request and its checks, then advance `main` yourself. The ruleset allows only rebase merges, and a rebase merge drops every signature, so the merge button cannot produce a commit `main` accepts:
 

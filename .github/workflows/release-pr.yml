@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       specifier:
-        description: Exact version or semver keyword; leave empty to derive the version from the pending version plans
+        description: Exact version or semver keyword; leave empty to stay on the current release train
         type: string
         default: ""
       preid:
-        description: Prerelease identifier for pre* bumps, such as beta or rc; leave empty to keep the current one
+        description: Prerelease identifier, such as beta or rc; leave empty to keep the current one
         type: string
         default: ""
   push:

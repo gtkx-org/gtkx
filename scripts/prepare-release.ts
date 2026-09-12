@@ -8,6 +8,11 @@ type TutorialManifest = {
     devDependencies?: Record<string, string>;
 };
 
+type VersionArguments = {
+    preid?: string;
+    specifier?: string;
+};
+
 const ROOT = join(import.meta.dirname, "..");
 const VERSION_MANIFEST_PATH = join(ROOT, "packages/create-gtkx/package.json");
 const VERSION_PLANS_PATH = join(ROOT, ".nx/version-plans");
@@ -19,54 +24,27 @@ const GIT_OPTIONS = { stageChanges: false, gitCommit: false, gitTag: false, gitP
 const readVersion = (): string =>
     (JSON.parse(readFileSync(VERSION_MANIFEST_PATH, "utf8")) as { version: string }).version;
 
+const hasVersionPlans = (): boolean =>
+    existsSync(VERSION_PLANS_PATH) && readdirSync(VERSION_PLANS_PATH).some((file) => file.endsWith(".md"));
+
+const isPrerelease = (version: string): boolean => version.includes("-");
+
 const prereleaseIdentifier = (version: string): string | undefined => {
     const identifier = version.split("-", 2)[1]?.split(".", 1)[0];
 
     return identifier !== undefined && !/^\d+$/.test(identifier) ? identifier : undefined;
 };
 
-const frontmatterBumps = (source: string): string[] => {
-    const lines = source.split("\n");
+const versionArguments = (currentVersion: string, values: VersionArguments): VersionArguments => {
+    const specifier = values.specifier ?? (isPrerelease(currentVersion) ? "prerelease" : undefined);
+    const preid = values.preid ?? prereleaseIdentifier(currentVersion);
 
-    if (lines[0]?.trim() !== "---") {
-        return [];
-    }
-
-    const end = lines.indexOf("---", 1);
-
-    return lines
-        .slice(1, end === -1 ? lines.length : end)
-        .map((line) => line.slice(line.lastIndexOf(":") + 1).trim())
-        .filter(Boolean);
+    return { ...(specifier !== undefined && { specifier }), ...(preid !== undefined && { preid }) };
 };
 
-const readPlanBumps = (): string[] =>
-    existsSync(VERSION_PLANS_PATH)
-        ? readdirSync(VERSION_PLANS_PATH)
-                .filter((file) => file.endsWith(".md"))
-                .flatMap((file) => frontmatterBumps(readFileSync(join(VERSION_PLANS_PATH, file), "utf8")))
-        : [];
-
-const assertPlansMatchTrain = (version: string, specifier: string | undefined, preid: string | undefined): void => {
-    if (specifier !== undefined) {
-        return;
-    }
-
-    const bumps = readPlanBumps();
-    const isPrerelease = version.includes("-");
-
-    if (isPrerelease && bumps.some((bump) => !bump.startsWith("pre"))) {
-        throw new Error(
-            `The pending version plans (${bumps.join(", ")}) end the ${version} prerelease. ` +
-            "Pass --specifier to cut that release on purpose, or make every plan a pre* bump.",
-        );
-    }
-
-    if (!isPrerelease && preid === undefined && bumps.some((bump) => bump.startsWith("pre"))) {
-        throw new Error(
-            `The pending version plans (${bumps.join(", ")}) start a prerelease from the stable ${version}. ` +
-            "Pass --preid to name it, such as --preid beta.",
-        );
+const assertNamedPrerelease = (version: string): void => {
+    if (isPrerelease(version) && prereleaseIdentifier(version) === undefined) {
+        throw new Error(`${version} has no prerelease identifier. Pass --preid to name one, such as --preid beta.`);
     }
 };
 
@@ -111,17 +89,18 @@ const main = async (): Promise<void> => {
         },
     });
     const isDryRun = values["dry-run"];
-    const currentVersion = readVersion();
-    const preid = values.preid ?? prereleaseIdentifier(currentVersion);
 
-    assertPlansMatchTrain(currentVersion, values.specifier, preid);
+    if (values.specifier === undefined && !hasVersionPlans()) {
+        console.log("No version plans to release.");
+
+        return;
+    }
 
     const { workspaceVersion, projectsVersionData, releaseGraph } = await releaseVersion({
         ...GIT_OPTIONS,
         dryRun: isDryRun,
         verbose: values.verbose,
-        ...(values.specifier !== undefined && { specifier: values.specifier }),
-        ...(preid !== undefined && { preid }),
+        ...versionArguments(readVersion(), values),
     });
 
     if (!workspaceVersion) {
@@ -129,6 +108,8 @@ const main = async (): Promise<void> => {
 
         return;
     }
+
+    assertNamedPrerelease(workspaceVersion);
 
     if (!isDryRun) {
         syncTutorialManifest(workspaceVersion);
