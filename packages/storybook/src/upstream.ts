@@ -21,4 +21,4 @@ const composeStoryAnnotations = composeStory as ComposeStory;
 
 export { composeStoryAnnotations };
 
-export { isExportStory } from "storybook/internal/csf";
+export { isExportStory, storyNameFromExport } from "storybook/internal/csf";

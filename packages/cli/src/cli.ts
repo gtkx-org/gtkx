@@ -21,6 +21,11 @@ const main = defineCommand({
         description: "CLI for GTKX: create and develop Adwaita-first GNOME applications",
     },
     subCommands: {
+        storybook: async () => {
+            const { storybook } = await import("./commands/storybook.js");
+
+            return withErrorBoundary(storybook);
+        },
         dev: async () => {
             const { dev } = await import("./commands/dev.js");
 

@@ -3,6 +3,9 @@
     "references": [
         {
             "path": "../react/tsconfig.lib.json"
+        },
+        {
+            "path": "../components/tsconfig.lib.json"
         }
     ]
 }

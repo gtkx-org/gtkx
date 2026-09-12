@@ -15,6 +15,7 @@ type CliProjectOptions = {
     config?: string | undefined;
     files?: Record<string, string | Buffer> | undefined;
     hasStore?: boolean | undefined;
+    shouldShareStore?: boolean | undefined;
     hasAgentReference?: boolean | undefined;
     omitPackages?: string[] | undefined;
 };
@@ -38,6 +39,7 @@ const WORKSPACE_PACKAGES = [
     "native",
     "react",
     "runtime",
+    "storybook",
     "testing",
     "utils",
 ];
@@ -91,11 +93,15 @@ const projectManifest = (options: CliProjectOptions): Record<string, unknown> =>
     dependencies: manifestDependencies(options.omitPackages ?? []),
 });
 
-const installStore = (nodeModules: string): void => {
-    cpSync(join(WORKSPACE_MODULES, STORE_DIR), join(nodeModules, STORE_DIR), {
-        recursive: true,
-        verbatimSymlinks: true,
-    });
+const installStore = (nodeModules: string, shouldShareStore: boolean): void => {
+    if (shouldShareStore) {
+        symlinkSync(join(WORKSPACE_MODULES, STORE_DIR), join(nodeModules, STORE_DIR), "dir");
+    } else {
+        cpSync(join(WORKSPACE_MODULES, STORE_DIR), join(nodeModules, STORE_DIR), {
+            recursive: true,
+            verbatimSymlinks: true,
+        });
+    }
 
     for (const name of STORE_NAMES) {
         symlinkSync(join("..", STORE_DIR, name), join(nodeModules, SCOPE, name), "dir");
@@ -110,7 +116,7 @@ const createCliProject = (options: CliProjectOptions): DisposableCliProject => {
     installPeers(nodeModules, options.omitPackages ?? []);
 
     if (options.hasStore === true) {
-        installStore(nodeModules);
+        installStore(nodeModules, options.shouldShareStore === true);
     }
 
     writeFileSync(join(root, "package.json"), `${JSON.stringify(projectManifest(options), null, 4)}\n`);

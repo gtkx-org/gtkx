@@ -41,6 +41,7 @@ const guideItems: DocumentationItem[] = [
     { text: "OpenGL", path: "guide/opengl" },
     { text: "Internationalization", path: "guide/internationalization" },
     { text: "Testing", path: "guide/testing" },
+    { text: "Storybook", path: "guide/storybook" },
     { text: "MCP", path: "guide/mcp" },
     { text: "Deploying", path: "guide/deploying" },
     { text: "Upgrading to 2.0", path: "guide/upgrading-to-2" },

@@ -39,6 +39,7 @@
             "@gtkx/navigation",
             "@gtkx/react",
             "@gtkx/runtime",
+            "@gtkx/storybook",
             "@gtkx/testing",
             "@gtkx/vitest"
         ],
@@ -85,6 +86,7 @@
                     "@gtkx/navigation:build",
                     "@gtkx/react:build",
                     "@gtkx/runtime:build",
+                    "@gtkx/storybook:build",
                     "@gtkx/testing:build",
                     "@gtkx/vitest:build"
                 ],

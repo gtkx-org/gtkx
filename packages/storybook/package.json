@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/storybook",
     "version": "2.0.0-beta.10",
-    "description": "Portable Component Story Format fixtures for native GTKX applications.",
+    "description": "Native story explorer and portable Component Story Format fixtures for GTKX applications.",
     "keywords": [
         "gtkx",
         "gtk",
@@ -32,6 +32,20 @@
             "import": "./dist/index.js",
             "require": null,
             "default": "./dist/index.js"
+        },
+        "./config": {
+            "source": "./src/config.ts",
+            "types": "./dist/config.d.ts",
+            "import": "./dist/config.js",
+            "require": null,
+            "default": "./dist/config.js"
+        },
+        "./explorer": {
+            "source": "./src/explorer.ts",
+            "types": "./dist/explorer.d.ts",
+            "import": "./dist/explorer.js",
+            "require": null,
+            "default": "./dist/explorer.js"
         }
     },
     "sideEffects": false,
@@ -56,6 +70,8 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
+        "@gtkx/components": "workspace:*",
+        "@gtkx/react": "workspace:*",
         "storybook": "10.6.0"
     },
     "peerDependencies": {

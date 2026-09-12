@@ -4,7 +4,9 @@ import { error, warn } from "@gtkx/utils";
 import { isCatalogSource } from "../i18n/catalogs.js";
 import { hasUnstagedFontImport } from "../internal/font-staging.js";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
+import { createStorybookSession, type StorybookSession } from "../storybook/session.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
+import { DEV_STORYBOOK_ENV } from "./entry-env.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
 import { isMissingImport, missingImportName } from "./missing-import.js";
 import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js";
@@ -57,6 +59,7 @@ type DevSession = {
     refreshTracker: RefreshTracker;
     failure: FailureTracker;
     pendingSaves: Map<string, string>;
+    storybook: StorybookSession | undefined;
 };
 
 type SettledLoad = {
@@ -416,6 +419,10 @@ const applyChange = async (session: DevSession, change: WatchedChange): Promise<
         return;
     }
 
+    if (await session.storybook?.handleChange(change)) {
+        return;
+    }
+
     if (change.event === "add") {
         await handleFileCreate(session, change.path);
 
@@ -596,7 +603,18 @@ const loadEntry = async (session: DevSession, entryPath: string): Promise<void> 
     session.deps.log(`Loading entry: ${entryPath}`);
 
     try {
-        await loadModuleExclusively(session.server, entryPath);
+        const entry = await loadModuleExclusively(session.server, entryPath);
+        const storybookConfig = process.env[DEV_STORYBOOK_ENV];
+
+        if (storybookConfig !== undefined) {
+            session.storybook = createStorybookSession(
+                session.server,
+                entry,
+                storybookConfig,
+                (module) => session.deps.isRefreshBoundary(module),
+            );
+            await session.storybook.initialize();
+        }
     } catch (error_) {
         awaitMissingImport(session, entryPath, error_);
         session.failure.fail(error_);
@@ -633,6 +651,7 @@ const createSession = (server: DevServer, deps: DevRunnerDeps): DevSession => {
             announceFailure(server, cause);
         }, refreshTracker.isRefreshing),
         pendingSaves: new Map(),
+        storybook: undefined,
     };
 };
 
