@@ -1,5 +1,6 @@
 {
     "retention": "gtkx.dev documents the current release, the release it replaced, and any pre-release in progress. Promoting a pre-release retires the older of the two published releases, so no more than one superseded release is ever online.",
+    "packageVersion": "2.0.0-beta.10",
     "versions": [
         {
             "id": "1.6",
@@ -15,7 +16,7 @@
         },
         {
             "id": "2.0",
-            "label": "2.0 beta 10",
+            "label": "",
             "prefix": "/v2",
             "status": "prerelease",
             "examplesRef": "main",

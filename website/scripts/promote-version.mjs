@@ -126,7 +126,6 @@ const pruneEmptyDirectory = (prefix) => {
 const { values } = parseArgs({
     options: {
         to: { type: "string" },
-        label: { type: "string" },
         "examples-ref": { type: "string" },
     },
 });
@@ -197,7 +196,7 @@ outgoing.prefix = values.to;
 outgoing.status = "old";
 incoming.prefix = "";
 incoming.status = "current";
-incoming.label = values.label ?? incoming.id;
+incoming.label = "";
 
 incoming.examplesRef = values["examples-ref"];
 

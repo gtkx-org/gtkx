@@ -90,6 +90,16 @@ const toPrefix = (value: string): string => {
     throw new Error(`versions.json declares the invalid prefix "${value}".`);
 };
 
+const versionLabel = (version: string): string => {
+    const at = version.indexOf("-");
+    const core = at === -1 ? version : version.slice(0, at);
+    const prerelease = at === -1 ? "" : version.slice(at + 1);
+    const [major = "0", minor = "0"] = core.split(".", 2);
+    const base = `${major}.${minor}`;
+
+    return prerelease ? `${base} ${prerelease.replaceAll(".", " ")}` : `${base} stable`;
+};
+
 const toReference = (reference: { source: string; tag: string; commit: string }): ReferenceSource => {
     if (reference.source === "worktree") {
         return { source: "worktree" };
@@ -120,15 +130,25 @@ const assertAtMostOne = (matches: readonly DocumentationVersion[], description: 
     }
 };
 
+const packageVersion = manifest.packageVersion;
+
 const readVersions = (): readonly DocumentationVersion[] => {
-    const parsed = manifest.versions.map((version) => ({
-        id: version.id,
-        label: version.label,
-        prefix: toPrefix(version.prefix),
-        status: toStatus(version.status),
-        examplesRef: version.examplesRef,
-        reference: toReference(version.reference),
-    }));
+    if (packageVersion === "") {
+        throw new Error("versions.json must declare the packageVersion the working-tree label derives from.");
+    }
+
+    const parsed = manifest.versions.map((version) => {
+        const reference = toReference(version.reference);
+
+        return {
+            id: version.id,
+            label: reference.source === "worktree" ? versionLabel(packageVersion) : version.label,
+            prefix: toPrefix(version.prefix),
+            status: toStatus(version.status),
+            examplesRef: version.examplesRef,
+            reference,
+        };
+    });
 
     assertUnique(
         parsed.map((version) => version.id),
