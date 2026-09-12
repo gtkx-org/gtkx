@@ -8,6 +8,7 @@
         "reference": "nx run @gtkx/website:reference",
         "reference-current": "node scripts/references.mjs current",
         "reference-stable": "node scripts/references.mjs stable",
+        "promote-version": "node scripts/promote-version.mjs",
         "dev": "vitepress dev",
         "build": "vitepress build",
         "preview": "vitepress preview"

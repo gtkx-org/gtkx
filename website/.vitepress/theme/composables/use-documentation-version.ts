@@ -7,7 +7,7 @@ type VersionLink = {
     samePage: boolean;
 };
 
-type DocumentationVersionContext = {
+type VersionContext = {
     version: ComputedRef<DocumentationVersion>;
     link: (target: DocumentationVersion) => string;
     isSamePage: (target: DocumentationVersion) => boolean;
@@ -24,7 +24,7 @@ const readLinks = (value: unknown): Map<string, VersionLink> => {
     return new Map(Object.entries(value).filter((entry): entry is [string, VersionLink] => isVersionLink(entry[1])));
 };
 
-const useDocumentationVersion = (): DocumentationVersionContext => {
+const useDocumentationVersion = (): VersionContext => {
     const { frontmatter } = useData();
     const links = computed(() => readLinks(frontmatter.value.versionLinks));
     const version = computed(() => {
@@ -40,4 +40,4 @@ const useDocumentationVersion = (): DocumentationVersionContext => {
     };
 };
 
-export { type DocumentationVersionContext, useDocumentationVersion };
+export { useDocumentationVersion };

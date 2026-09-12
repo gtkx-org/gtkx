@@ -103,7 +103,7 @@ Guide and tutorial pages live under the version's prefix: `website/guide` for th
 Promoting a pre-release to current is scripted, because pages link to each other by absolute path and every one of those links moves with the version:
 
 ```bash
-node website/scripts/promote-version.mjs --to /v1 --label "2.0 stable" --examples-ref v2.0.0
+pnpm --filter @gtkx/website promote-version -- --to /v1 --label "2.0 stable" --examples-ref v2.0.0
 ```
 
 The script moves each version's `guide`, `tutorial` and `reference` directories to its new prefix, rewrites every documentation link in every markdown file to the prefix its target version now lives at, and rewrites `versions.json` so the outgoing release becomes `old` under the new prefix and the incoming one becomes `current` at the root. Links are rewritten by the version they point at rather than the file they sit in, so a page that deliberately links across versions keeps pointing where it meant to.
