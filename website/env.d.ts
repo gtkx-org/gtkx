@@ -1,6 +1,6 @@
 /// <reference types="vitepress/client" />
 
-declare const GTKX_BETA_LABEL: string;
+declare const GTKX_CURRENT_LABEL: string;
 
 declare module "*.vue" {
     import type { DefineComponent } from "vue";

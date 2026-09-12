@@ -20,8 +20,9 @@ const title = "GTKX";
 const description = "Build native GNOME apps with React and TypeScript on an Adwaita-first foundation.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
-const betaManifestPath = join(dirname(fileURLToPath(import.meta.url)), "../../packages/create-gtkx/package.json");
-const betaLabel = versionLabel((JSON.parse(readFileSync(betaManifestPath, "utf8")) as { version: string }).version);
+const currentManifestPath = join(dirname(fileURLToPath(import.meta.url)), "../../packages/create-gtkx/package.json");
+const currentManifest = JSON.parse(readFileSync(currentManifestPath, "utf8")) as { version: string };
+const currentLabel = versionLabel(currentManifest.version);
 
 type LinkedDocumentationItem = {
     text: string;
@@ -69,7 +70,7 @@ const documentationGroups = [
         referenceSidebar: stableReferenceSidebar,
     },
     {
-        label: `GTKX ${betaLabel}`,
+        label: `GTKX ${currentLabel}`,
         items: betaDocItems,
         referenceLink: documentationLink("beta", "reference/"),
         referenceSidebar: betaReferenceSidebar,
@@ -135,7 +136,7 @@ const blogSidebar: DefaultTheme.SidebarItem[] = [
 
 const documentationTitle = (relativePath: string): string => {
     if (/^v2\/(guide|tutorial|reference)\//.test(relativePath)) {
-        return `GTKX ${betaLabel}`;
+        return `GTKX ${currentLabel}`;
     }
 
     if (/^(guide|tutorial|reference)\//.test(relativePath)) {
@@ -218,7 +219,7 @@ export default defineConfig({
     vite: {
         plugins: [highlightPlugin()],
         define: {
-            GTKX_BETA_LABEL: JSON.stringify(betaLabel),
+            GTKX_CURRENT_LABEL: JSON.stringify(currentLabel),
         },
         server: {
             allowedHosts: ["workstation"],

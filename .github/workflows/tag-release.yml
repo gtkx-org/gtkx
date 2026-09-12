@@ -40,8 +40,13 @@ jobs:
             else
               state=published
             fi
-          else
+          elif [ -f CHANGELOG.md ] && awk -v version="$version" '
+            /^##? / { if ($2 == version) { found = 1; exit } }
+            END { exit found ? 0 : 1 }
+          ' CHANGELOG.md; then
             state=missing
+          else
+            state=unprepared
           fi
           {
             echo "version=$version"
@@ -56,7 +61,7 @@ jobs:
           version: ${{ steps.release.outputs.version }}
 
       - name: Tag, draft the release and dispatch Publish
-        if: steps.release.outputs.state != 'published'
+        if: steps.release.outputs.state == 'missing' || steps.release.outputs.state == 'draft'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

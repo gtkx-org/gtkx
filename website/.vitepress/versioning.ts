@@ -56,7 +56,7 @@ const versionLabel = (version: string): string => {
     const [major = "0", minor = "0"] = core.split(".", 2);
     const base = `${major}.${minor}`;
 
-    return prerelease ? `${base} ${prerelease.replaceAll(".", " ")}` : base;
+    return prerelease ? `${base} ${prerelease.replaceAll(".", " ")}` : `${base} stable`;
 };
 
 const documentationLink = (version: DocumentationVersion, path: string): string =>

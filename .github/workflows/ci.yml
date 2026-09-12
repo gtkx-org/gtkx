@@ -324,7 +324,9 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
-          git ls-tree -r --name-only "$BASE_SHA" -- .nx/version-plans | while read -r plan; do
+          git ls-tree -r --name-only "$BASE_SHA" -- .nx/version-plans | sort > "$RUNNER_TEMP/base-plans"
+          git diff --name-only "$BASE_SHA" HEAD -- .nx/version-plans | sort > "$RUNNER_TEMP/touched-plans"
+          comm -23 "$RUNNER_TEMP/base-plans" "$RUNNER_TEMP/touched-plans" | while read -r plan; do
             rm -f "$plan"
           done
 
