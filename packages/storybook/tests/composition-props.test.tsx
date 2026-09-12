@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@gtkx/storybook";
+import type { Meta, Preview, StoryObj } from "@gtkx/storybook";
 import type { ReactNode, RefAttributes } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
@@ -14,6 +14,53 @@ type CustomCounterProps = CounterProps & { suffix: string };
 const RefLabel = ({ ref }: RefAttributes<Gtk.Label>): ReactNode => <GtkLabel ref={ref}>Interface props</GtkLabel>;
 
 describe("portable native story props", () => {
+    it("infers default args when the renderer is supplied by the preview", async () => {
+        const meta = {
+            title: "Props/PreviewRender",
+            args: { label: "Meta label" },
+        } satisfies Meta<{ label: string }>;
+        const preview = {
+            render: (args) => <GtkLabel>{String(args.label)}</GtkLabel>,
+        } satisfies Preview;
+        const story = { args: { label: "Story label" } } satisfies StoryObj<typeof meta>;
+        const { Default, Custom } = composeStories({ default: meta, Default: {}, Custom: story }, preview);
+        expectTypeOf(Default).parameter(0).toEqualTypeOf<{ label?: string }>();
+        expectTypeOf(Default.args).toEqualTypeOf<{ label?: string }>();
+        expectTypeOf<Record<never, never>>().toExtend<StoryObj<typeof meta>>();
+        expectTypeOf<{ args: { label: number } }>().not.toExtend<StoryObj<typeof meta>>();
+        const result = await render(<Default />);
+
+        expect(screen.getByText("Meta label")).toBeVisible();
+        await result.rerender(<Custom />);
+        expect(screen.getByText("Story label")).toBeVisible();
+        await result.rerender(<Custom label="Override label" />);
+        expect(screen.getByText("Override label")).toBeVisible();
+    });
+
+    it("preserves explicit props in story args and render functions", async () => {
+        const meta = {
+            title: "Props/Explicit",
+            args: { label: "Meta label" },
+        } satisfies Meta<{ label: string }>;
+        const story = {
+            args: { label: "Story label" },
+            render: (args) => {
+                expectTypeOf(args).toEqualTypeOf<{ label: string }>();
+
+                return <GtkLabel>{args.label}</GtkLabel>;
+            },
+        } satisfies StoryObj<{ label: string }>;
+        const Story = composeStory(story, meta, undefined, "Explicit");
+        expectTypeOf<NonNullable<StoryObj<{ label: string }>["args"]>>().toEqualTypeOf<{ label?: string }>();
+        expectTypeOf<{ args: { label: number } }>().not.toExtend<StoryObj<{ label: string }>>();
+        expectTypeOf(Story).parameter(0).toEqualTypeOf<{ label?: string }>();
+        const result = await render(<Story />);
+
+        expect(screen.getByText("Story label")).toBeVisible();
+        await result.rerender(<Story label="Override label" />);
+        expect(screen.getByText("Override label")).toBeVisible();
+    });
+
     it("infers interface-based component props and forwards native refs", async () => {
         const initialRef = createRef<Gtk.Label>();
         const overrideRef = createRef<Gtk.Label>();

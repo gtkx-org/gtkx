@@ -125,7 +125,7 @@ class ActionStore {
     }
 }
 
-type CallbackOptions = { callback?: EventCallback; name?: string; argument: string; onError?: (error: Error) => void };
+type CallbackOptions = { callback?: EventCallback; name: string; onError?: (error: Error) => void };
 
 const settleCallback = async (
     result: Promise<unknown>,
@@ -149,13 +149,11 @@ const bindCallback = (
     options: CallbackOptions,
 ): EventCallback => (...values) => {
     const succeed = (): void => {
-        if (options.name !== undefined) {
-            store.record(options.name, values);
-        }
+        store.record(options.name, values);
     };
     const fail = (cause: unknown): void => {
         const error = cause instanceof Error ? cause : new Error(String(cause));
-        store.record(options.name ?? options.argument, values, error);
+        store.record(options.name, values, error);
 
         if (options.onError === undefined) {
             throw error;
@@ -193,19 +191,17 @@ const isOriginalCallback = (value: unknown): value is EventCallback =>
     typeof value === "function" && !actionNames.has(value);
 
 const callbackOptions = (
-    argument: string,
     value: unknown,
     name: string | undefined,
     onError: ((error: Error) => void) | undefined,
 ): CallbackOptions | undefined => {
-    if (typeof value !== "function" && name === undefined) {
+    if (name === undefined) {
         return undefined;
     }
 
     return {
-        argument,
+        name,
         ...(isOriginalCallback(value) && { callback: value }),
-        ...(name !== undefined && { name }),
         ...(onError !== undefined && { onError }),
     };
 };
@@ -222,7 +218,7 @@ const bindActions = (
     for (const argument of names) {
         const value = args[argument];
         const name = actionName(value, argTypes[argument]?.action);
-        const options = callbackOptions(argument, value, name, onError);
+        const options = callbackOptions(value, name, onError);
 
         if (options === undefined) {
             continue;

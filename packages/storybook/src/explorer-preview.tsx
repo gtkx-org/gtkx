@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { markupEscapeText } from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwHeaderBar, AdwStatusPage, AdwToolbarView, AdwWindowTitle } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkScrolledWindow } from "@gtkx/jsx/gtk";
@@ -44,7 +45,8 @@ class PreviewBoundary extends Component<BoundaryProps, BoundaryState> {
                         name="storybook-preview-error"
                         title="Preview failed"
                         iconName="dialog-error-symbolic"
-                        description="Adjust controls, reset the preview, or select another story to continue."
+                        description={markupEscapeText(this.state.error.message.slice(0, 500), -1) +
+                            "\n\nAdjust controls, reset the preview, or select another story to continue."}
                     />
                 );
     }
@@ -190,7 +192,8 @@ const StorybookPreview = ({ entry }: PreviewProps): ReactNode => {
                                         name="storybook-preview-error"
                                         title="Story action failed"
                                         iconName="dialog-error-symbolic"
-                                        description="Reset the preview or select another story to continue."
+                                        description={markupEscapeText(state.error.message.slice(0, 500), -1) +
+                                            "\n\nReset the preview or select another story to continue."}
                                     />
                                 )}
                     </PreviewBoundary>

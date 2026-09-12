@@ -1,4 +1,5 @@
 import type { Meta } from "@gtkx/storybook";
+import { GtkButton } from "@gtkx/jsx/gtk";
 import { action } from "@gtkx/storybook";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
@@ -11,7 +12,62 @@ const eventMeta = {
     argTypes: { onConfigured: { action: "Configured event" } },
 } satisfies Meta<typeof EventFixture>;
 
+const showOrdinaryCallback = async (onEvent: () => unknown) => {
+    const result = Promise.withResolvers<unknown>();
+    await showInspector({
+        default: {
+            title: "Ordinary callback",
+            args: { onEvent },
+            render: ({ onEvent: callback }: { onEvent: () => unknown }) => (
+                <GtkButton
+                    label="Invoke ordinary callback"
+                    onClicked={() => {
+                        try {
+                            result.resolve(callback());
+                        } catch (error) {
+                            result.reject(error);
+                        }
+                    }}
+                />
+            ),
+        },
+        Default: {},
+    });
+
+    return { result: result.promise };
+};
+
 describe("native story actions", () => {
+    it.each([
+        () => 42,
+        () => Promise.resolve(42),
+    ])("preserves ordinary callback results without recording actions", async (onEvent) => {
+        const { result } = await showOrdinaryCallback(onEvent);
+        await Promise.all([
+            expect(result).resolves.toBe(42),
+            userEvent.click(screen.getByText("Invoke ordinary callback")),
+        ]);
+
+        expect(screen.queryAllByName(/^storybook-action-/)).toHaveLength(0);
+        expect(screen.getByText("Invoke ordinary callback")).toBeVisible();
+    });
+
+    it.each([
+        () => {
+            throw new Error("Callback failure");
+        },
+        () => Promise.reject(new Error("Callback failure")),
+    ])("preserves ordinary callback errors without recording actions", async (onEvent) => {
+        const { result } = await showOrdinaryCallback(onEvent);
+        await Promise.all([
+            expect(result).rejects.toThrow(),
+            userEvent.click(screen.getByText("Invoke ordinary callback")),
+        ]);
+
+        expect(screen.queryAllByName(/^storybook-action-/)).toHaveLength(0);
+        expect(screen.getByText("Invoke ordinary callback")).toBeVisible();
+    });
+
     it("records explicit actions and argTypes callbacks through native widget events", async () => {
         await showInspector({ default: eventMeta, Default: {} });
         await userEvent.click(screen.getByText("Trigger event"));

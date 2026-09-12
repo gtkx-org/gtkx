@@ -187,7 +187,7 @@ const Default = {
 
 Use this form to give a callback an explicit identity in reusable stories. Native signal arguments are summarized for inspection: native instances become class labels, and plain values are inspected with bounded depth and length. The history stores these strings without taking native object ownership. Outside the explorer, `action(name)` is a no-op callback. In a portable integration test, override it with a real callback when you need to observe the result.
 
-Actions are explicit. The package does not automatically intercept every GTK signal or infer action names from prop naming conventions. Callback failures are shown in the preview and recorded in the action panel; reset or select another story to recover.
+Actions are explicit. The package does not automatically intercept every GTK signal or infer action names from prop naming conventions. Callbacks without an explicit action are passed through unchanged, including their return values and errors. Configured action failures are shown in the preview and recorded in the action panel; reset or select another story to recover.
 
 ## Preview ownership and lifecycle
 
