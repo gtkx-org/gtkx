@@ -6,6 +6,18 @@ import { resolveEntrypoints } from "../packages/eslint/src/api-entrypoints.ts";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const api = JSON.parse(readFileSync(join(root, "api.json"), "utf8"));
+const manifest = JSON.parse(readFileSync(join(here, "versions.json"), "utf8"));
+const worktreeVersions = manifest.versions.filter((version) => version.reference.source === "worktree");
+
+if (worktreeVersions.length !== 1) {
+    throw new Error(
+        `versions.json must declare exactly one version built from the working tree, found ${worktreeVersions.length}.`,
+    );
+}
+
+const [worktreeVersion] = worktreeVersions;
+const referenceOut = join(worktreeVersion.prefix.replace(/^\//, ""), "reference");
+const referenceLink = `${worktreeVersion.prefix}/reference`;
 const packageDirs = new Map();
 const entryPointsByPackage = new Map();
 const publicModuleNames = {};
@@ -72,7 +84,7 @@ export default {
         unusedMergeModuleWith: true,
     },
     sanitizeComments: true,
-    out: "v2/reference",
+    out: referenceOut,
     docsRoot: ".",
     readme: "./.vitepress/reference-intro.md",
     mergeReadme: true,
@@ -80,8 +92,8 @@ export default {
     githubPages: false,
     externalSymbolLinkMappings: {
         "@gtkx/testing": {
-            tab: "/v2/reference/@gtkx/testing/type-aliases/UserEvent#tab",
-            type: "/v2/reference/@gtkx/testing/type-aliases/UserEvent#type",
+            tab: `${referenceLink}/@gtkx/testing/type-aliases/UserEvent#tab`,
+            type: `${referenceLink}/@gtkx/testing/type-aliases/UserEvent#type`,
         },
     },
 };

@@ -1,12 +1,31 @@
-type DocumentationVersion = "stable" | "beta";
+import manifest from "../versions.json" with { type: "json" };
 
 type DocumentationItem = {
     text: string;
     path: string;
 };
 
+type VersionStatus = "current" | "prerelease" | "old";
+
+type ReferenceSource = { source: "worktree" } | { source: "tag"; tag: string; commit: string };
+
+type DocumentationVersion = {
+    id: string;
+    label: string;
+    prefix: string;
+    status: VersionStatus;
+    examplesRef: string;
+    reference: ReferenceSource;
+};
+
+type VersionPageLookup = (version: DocumentationVersion, path: string) => boolean;
+
+const GUIDE_ROOT = "guide/why-gtkx";
+const TUTORIAL_ROOT = "tutorial/";
+const REFERENCE_ROOT = "reference/";
+
 const guideItems: DocumentationItem[] = [
-    { text: "Why GTKX", path: "guide/why-gtkx" },
+    { text: "Why GTKX", path: GUIDE_ROOT },
     { text: "Getting Started", path: "guide/getting-started" },
     { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
     { text: "Async Operations", path: "guide/async-operations" },
@@ -28,7 +47,7 @@ const guideItems: DocumentationItem[] = [
 ];
 
 const tutorialItems: DocumentationItem[] = [
-    { text: "Introduction", path: "tutorial/" },
+    { text: "Introduction", path: TUTORIAL_ROOT },
     { text: "Your First Window", path: "tutorial/your-first-window" },
     { text: "A List of Tasks", path: "tutorial/a-list-of-tasks" },
     { text: "The Task Store", path: "tutorial/the-task-store" },
@@ -49,62 +68,175 @@ const tutorialItems: DocumentationItem[] = [
     { text: "Appendix C: Flathub", path: "tutorial/flatpak" },
 ];
 
-const versionPrefix = (version: DocumentationVersion): string => (version === "beta" ? "/v2" : "");
+const documentationItems: DocumentationItem[] = [...guideItems, ...tutorialItems];
 
-const documentationLink = (version: DocumentationVersion, path: string): string =>
-    `${versionPrefix(version)}/${path}`;
+const STATUSES: ReadonlySet<string> = new Set<VersionStatus>(["current", "prerelease", "old"]);
 
-const documentationVersionForPath = (path: string): DocumentationVersion =>
-    path === "/v2" || path.startsWith("/v2/") ? "beta" : "stable";
+const isVersionStatus = (value: string): value is VersionStatus => STATUSES.has(value);
+
+const toStatus = (value: string): VersionStatus => {
+    if (isVersionStatus(value)) {
+        return value;
+    }
+
+    throw new Error(`versions.json declares the unknown status "${value}".`);
+};
+
+const toPrefix = (value: string): string => {
+    if (value === "" || /^\/[A-Za-z0-9][A-Za-z0-9.-]*$/.test(value)) {
+        return value;
+    }
+
+    throw new Error(`versions.json declares the invalid prefix "${value}".`);
+};
+
+const toReference = (reference: { source: string; tag: string; commit: string }): ReferenceSource => {
+    if (reference.source === "worktree") {
+        return { source: "worktree" };
+    }
+
+    if (reference.source === "tag" && reference.tag !== "" && reference.commit !== "") {
+        return { source: "tag", tag: reference.tag, commit: reference.commit };
+    }
+
+    throw new Error(`versions.json declares an unusable reference source "${reference.source}".`);
+};
+
+const assertUnique = (values: string[], field: string): void => {
+    if (new Set(values).size !== values.length) {
+        throw new Error(`versions.json declares a duplicate ${field}.`);
+    }
+};
+
+const assertExactlyOne = (matches: readonly DocumentationVersion[], description: string): void => {
+    if (matches.length !== 1) {
+        throw new Error(`versions.json must declare exactly one ${description}, found ${String(matches.length)}.`);
+    }
+};
+
+const readVersions = (): readonly DocumentationVersion[] => {
+    const parsed = manifest.versions.map((version) => ({
+        id: version.id,
+        label: version.label,
+        prefix: toPrefix(version.prefix),
+        status: toStatus(version.status),
+        examplesRef: version.examplesRef,
+        reference: toReference(version.reference),
+    }));
+
+    assertUnique(
+        parsed.map((version) => version.id),
+        "version id",
+    );
+    assertUnique(
+        parsed.map((version) => version.prefix),
+        "version prefix",
+    );
+    assertExactlyOne(
+        parsed.filter((version) => version.status === "current"),
+        "version with the current status",
+    );
+    assertExactlyOne(
+        parsed.filter((version) => version.prefix === ""),
+        "version served without a prefix",
+    );
+
+    return parsed;
+};
+
+const versions = readVersions();
+
+const retentionPolicy: string = manifest.retention;
+
+const findVersion = (isMatch: (version: DocumentationVersion) => boolean): DocumentationVersion => {
+    const found = versions.find((version) => isMatch(version));
+
+    if (!found) {
+        throw new Error("versions.json must declare a version matching the requested criteria.");
+    }
+
+    return found;
+};
+
+const currentVersion = findVersion((version) => version.status === "current");
+
+const rootVersion = findVersion((version) => version.prefix === "");
+
+const featuredVersion = versions.find((version) => version.status === "prerelease") ?? currentVersion;
+
+const versionById = (id: string): DocumentationVersion => findVersion((version) => version.id === id);
+
+const documentationLink = (version: DocumentationVersion, path: string): string => `${version.prefix}/${path}`;
+
+const isVersionPath = (pathname: string, version: DocumentationVersion): boolean =>
+    version.prefix !== "" && (pathname === version.prefix || pathname.startsWith(`${version.prefix}/`));
+
+const versionForPath = (path: string): DocumentationVersion => {
+    const pathname = path.split(/[?#]/, 1)[0] ?? "";
+
+    return versions.find((version) => isVersionPath(pathname, version)) ?? rootVersion;
+};
 
 const normalizeDocumentationPath = (path: string): string => {
     const pathname = path.split(/[?#]/, 1)[0] ?? "";
+    const version = versionForPath(pathname);
+    const withoutPrefix = version.prefix === "" ? pathname : pathname.slice(version.prefix.length);
 
-    return pathname
+    return withoutPrefix
         .replace(/^\/+/, "")
-        .replace(/^v2\//, "")
         .replace(/\/index(?:\.html)?$/, "/")
         .replace(/\.html$/, "");
 };
 
-const counterpartPaths = new Set([...guideItems, ...tutorialItems].map((item) => item.path));
+const sectionRoot = (path: string): string | undefined => {
+    if (path.startsWith(TUTORIAL_ROOT)) {
+        return TUTORIAL_ROOT;
+    }
 
-const hasVersionCounterpart = (path: string): boolean => {
-    const documentationPath = normalizeDocumentationPath(path);
-
-    return counterpartPaths.has(documentationPath) || documentationPath === "reference/";
+    return path.startsWith(REFERENCE_ROOT) ? REFERENCE_ROOT : undefined;
 };
 
-const resolveVersionPath = (currentPath: string, targetVersion: DocumentationVersion): string => {
+const counterpartPath = (
+    path: string,
+    target: DocumentationVersion,
+    hasPage: VersionPageLookup,
+): string | undefined => {
+    if (hasPage(target, path)) {
+        return path;
+    }
+
+    const root = sectionRoot(path);
+
+    return root !== undefined && hasPage(target, root) ? root : undefined;
+};
+
+const hasExactCounterpart = (path: string, target: DocumentationVersion, hasPage: VersionPageLookup): boolean =>
+    hasPage(target, normalizeDocumentationPath(path));
+
+const resolveVersionPath = (currentPath: string, target: DocumentationVersion, hasPage: VersionPageLookup): string => {
     const path = normalizeDocumentationPath(currentPath);
 
-    if (counterpartPaths.has(path)) {
-        return documentationLink(targetVersion, path);
-    }
-
-    if (path === "reference/") {
-        return documentationLink(targetVersion, path);
-    }
-
-    if (path.startsWith("tutorial/")) {
-        return documentationLink(targetVersion, "tutorial/");
-    }
-
-    if (path.startsWith("reference/")) {
-        return documentationLink(targetVersion, "reference/");
-    }
-
-    return documentationLink(targetVersion, "guide/why-gtkx");
+    return documentationLink(target, counterpartPath(path, target, hasPage) ?? GUIDE_ROOT);
 };
 
 export {
-    documentationLink,
+    currentVersion,
     type DocumentationItem,
+    documentationItems,
+    documentationLink,
     type DocumentationVersion,
-    documentationVersionForPath,
+    featuredVersion,
+    GUIDE_ROOT,
     guideItems,
-    hasVersionCounterpart,
+    hasExactCounterpart,
+    normalizeDocumentationPath,
+    REFERENCE_ROOT,
     resolveVersionPath,
+    retentionPolicy,
+    rootVersion,
+    TUTORIAL_ROOT,
     tutorialItems,
-    versionPrefix,
+    versionById,
+    versionForPath,
+    versions,
 };

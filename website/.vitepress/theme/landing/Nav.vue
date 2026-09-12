@@ -3,10 +3,12 @@ import { ref } from "vue";
 import Badge from "../components/Badge.vue";
 import Icon from "../components/Icon.vue";
 import IconButton from "../components/IconButton.vue";
+import { featuredVersion } from "../../versioning.js";
 import { useAppearance } from "../composables/use-appearance";
 import { REPO_URL } from "./content";
 
 const { isDark, toggle } = useAppearance();
+const featuredLabel = featuredVersion.label;
 const menuOpen = ref(false);
 
 const links = [
@@ -23,7 +25,7 @@ const links = [
     <a class="nav__brand" href="#top" aria-label="GTKX home">
       <img src="/gtkx-mark.svg" width="30" height="30" alt="" />
       <span class="nav__word">GTKX</span>
-      <Badge tone="neutral" variant="outline">2.0 beta 10</Badge>
+      <Badge tone="neutral" variant="outline">{{ featuredLabel }}</Badge>
     </a>
     <nav class="nav__links" aria-label="Main">
       <a v-for="l in links" :key="l.href" :href="l.href">{{ l.label }}</a>

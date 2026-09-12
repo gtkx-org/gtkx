@@ -1,5 +1,7 @@
 /// <reference types="vitepress/client" />
 
+declare const GTKX_VERSION_ROUTES: Record<string, string[]>;
+
 declare module "*.vue" {
     import type { DefineComponent } from "vue";
     const component: DefineComponent<Record<string, unknown>, Record<string, unknown>, unknown>;

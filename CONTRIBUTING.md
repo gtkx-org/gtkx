@@ -92,6 +92,21 @@ pnpm nx run @gtkx/website:dev
 
 The build generates API pages from package output. Run `pnpm build` before the first preview.
 
+### Documentation versions
+
+`website/versions.json` is the single source of truth for which releases the site documents. Each entry carries the version id, the label shown in the switcher, the URL prefix, a status of `current`, `prerelease` or `old`, the git ref the Examples link points at, and where its API reference comes from. That one file drives the navigation, the sidebars, the version switcher, the page-to-page mapping between versions, the old-version and pre-release banners, the canonical tags, the per-version `llms.txt` pair, the TypeDoc output path, and the pinned tag the released reference is generated from.
+
+A version whose reference source is `tag` is rebuilt from that tag's own source, pinned by both tag name and commit, so its API pages cannot drift from the release they document. The single version whose source is `worktree` is generated from the current checkout.
+
+Guide and tutorial pages live under the version's prefix: `website/guide` for the unprefixed version, `website/v2/guide` for the one at `/v2`. Adding a page means adding it to `guideItems` or `tutorialItems` in `website/.vitepress/versioning.ts`; the build fails on a page that no list mentions, so the two versions cannot silently drift apart.
+
+Promoting a pre-release to current is a data change plus a directory move:
+
+1. Move the outgoing version's pages under its new prefix, and the incoming version's pages up to the root.
+2. In `versions.json`, give the outgoing version its new prefix and the `old` status, and give the incoming version the empty prefix, the `current` status and a `tag` reference source pinned to its release tag.
+3. Update the `reference-current` and `reference-stable` output paths in `website/package.json` to match the new prefixes.
+4. Decide whether the outgoing prefix keeps serving. Vite and Vitest keep a numbered alias for the current major; GitHub Pages cannot redirect, so an alias needs generated pages.
+
 Examples are executable integration coverage. `examples/tutorial` is excluded from the workspace so it consumes registry packages like an external project; validate it against the working tree with `pnpm tutorial`.
 
 Use [GitHub Discussions](https://github.com/gtkx-org/gtkx/discussions) for questions, [issues](https://github.com/gtkx-org/gtkx/issues) for bugs, and the private channel in [SECURITY.md](SECURITY.md) for vulnerabilities.

@@ -1,75 +1,203 @@
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { type DefaultTheme, defineConfig, type HeadConfig } from "vitepress";
-import stableTypedocSidebar from "../reference/typedoc-sidebar.json" with { type: "json" };
-import betaTypedocSidebar from "../v2/reference/typedoc-sidebar.json" with { type: "json" };
 import { highlightPlugin } from "./highlight.js";
 import {
+    currentVersion,
     type DocumentationItem,
+    documentationItems,
     documentationLink,
     type DocumentationVersion,
+    GUIDE_ROOT,
     guideItems,
+    normalizeDocumentationPath,
+    REFERENCE_ROOT,
+    retentionPolicy,
+    rootVersion,
+    TUTORIAL_ROOT,
     tutorialItems,
-    versionPrefix,
+    versionForPath,
+    versions,
 } from "./versioning.js";
 
 const title = "GTKX";
 const description = "Build native GNOME apps with React and TypeScript on an Adwaita-first foundation.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
+const websiteRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const referencePath = `/${REFERENCE_ROOT.replace(/\/$/, "")}`;
+const sectionDirectories = ["guide", "tutorial"];
 
 type LinkedDocumentationItem = {
     text: string;
     link: string;
 };
 
-const sidebarItems = (version: DocumentationVersion, items: DocumentationItem[]): LinkedDocumentationItem[] =>
-    items.map((item) => ({ text: item.text, link: documentationLink(version, item.path) }));
+const versionDirectory = (version: DocumentationVersion): string =>
+    join(websiteRoot, version.prefix.replace(/^\//, ""));
 
-const referenceLink = (version: DocumentationVersion, link: string): string => {
-    const stableLink = link.replace(/^\/v2\/reference/, "/reference");
+const sectionRoutes = (version: DocumentationVersion, section: string): string[] => {
+    const directory = join(versionDirectory(version), section);
 
-    return stableLink.startsWith("/reference") ? `${versionPrefix(version)}${stableLink}` : stableLink;
+    if (!existsSync(directory)) {
+        return [];
+    }
+
+    return readdirSync(directory)
+        .filter((entry) => entry.endsWith(".md"))
+        .map((entry) => (entry === "index.md" ? `${section}/` : `${section}/${entry.replace(/\.md$/, "")}`));
 };
 
-const referenceSidebar = (
+const versionRoutes = (version: DocumentationVersion): Set<string> => {
+    const routes = sectionDirectories.flatMap((section) => sectionRoutes(version, section));
+    const known = new Set(documentationItems.map((item) => item.path));
+    const unlisted = routes.filter((route) => !known.has(route));
+
+    if (unlisted.length > 0) {
+        const missing = unlisted.join(", ");
+
+        throw new Error(
+            `GTKX ${version.label} has pages missing from the lists in versioning.ts: ${missing}.`,
+        );
+    }
+
+    if (existsSync(join(versionDirectory(version), REFERENCE_ROOT, "index.md"))) {
+        routes.push(REFERENCE_ROOT);
+    }
+
+    return new Set(routes);
+};
+
+const routeEntries = versions.map((version): [string, string[]] => [version.id, [...versionRoutes(version)]]);
+
+const routesByVersion: Map<string, Set<string>> = new Map(
+    routeEntries.map(([id, routes]): [string, Set<string>] => [id, new Set(routes)]),
+);
+
+const routeManifest: Record<string, string[]> = Object.fromEntries(routeEntries);
+
+const hasPage = (version: DocumentationVersion, path: string): boolean =>
+    routesByVersion.get(version.id)?.has(path) ?? false;
+
+const sidebarItems = (version: DocumentationVersion, items: DocumentationItem[]): LinkedDocumentationItem[] =>
+    items
+        .filter((item) => hasPage(version, item.path))
+        .map((item) => ({ text: item.text, link: documentationLink(version, item.path) }));
+
+const strippedReferenceLink = (link: string): string => {
+    const owner = versions.find(
+        (version) => version.prefix !== "" && link.startsWith(`${version.prefix}${referencePath}`),
+    );
+
+    return owner ? link.slice(owner.prefix.length) : link;
+};
+
+const referenceLink = (version: DocumentationVersion, link: string): string => {
+    const stripped = strippedReferenceLink(link);
+
+    return stripped.startsWith(referencePath) ? `${version.prefix}${stripped}` : stripped;
+};
+
+const rewriteReferenceSidebar = (
     version: DocumentationVersion,
     items: DefaultTheme.SidebarItem[],
 ): DefaultTheme.SidebarItem[] =>
     items.map((item) => ({
         ...item,
         ...(item.link && { link: referenceLink(version, item.link) }),
-        ...(item.items && { items: referenceSidebar(version, item.items) }),
+        ...(item.items && { items: rewriteReferenceSidebar(version, item.items) }),
     }));
 
-const stableGuideSidebar = [
-    ...sidebarItems("stable", guideItems),
-    { text: "API Reference", link: documentationLink("stable", "reference/") },
+const parseSidebar = (source: string): DefaultTheme.SidebarItem[] => {
+    const parsed: unknown = JSON.parse(source);
+
+    return Array.isArray(parsed) ? (parsed as DefaultTheme.SidebarItem[]) : [];
+};
+
+const referenceSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] => {
+    const manifest = join(versionDirectory(version), REFERENCE_ROOT, "typedoc-sidebar.json");
+
+    return rewriteReferenceSidebar(version, parseSidebar(readFileSync(manifest, "utf8")));
+};
+
+const referenceSidebars = new Map(versions.map((version) => [version.id, referenceSidebar(version)]));
+
+const versionReferenceSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] =>
+    referenceSidebars.get(version.id) ?? [];
+
+const guideSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] => [
+    ...sidebarItems(version, guideItems),
+    { text: "API Reference", link: documentationLink(version, REFERENCE_ROOT) },
 ];
-const betaGuideSidebar = [
-    ...sidebarItems("beta", guideItems),
-    { text: "API Reference", link: documentationLink("beta", "reference/") },
+
+const tutorialSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] => [
+    { text: "Tutorial", items: sidebarItems(version, tutorialItems) },
 ];
-const stableTutorialSidebar = [{ text: "Tutorial", items: sidebarItems("stable", tutorialItems) }];
-const betaTutorialSidebar = [{ text: "Tutorial", items: sidebarItems("beta", tutorialItems) }];
-const stableReferenceSidebar = referenceSidebar("stable", stableTypedocSidebar);
-const betaReferenceSidebar = referenceSidebar("beta", betaTypedocSidebar);
-const stableDocItems = [...sidebarItems("stable", guideItems), ...sidebarItems("stable", tutorialItems)];
-const betaDocItems = [...sidebarItems("beta", guideItems), ...sidebarItems("beta", tutorialItems)];
-const documentationGroups = [
+
+const blogSidebar: DefaultTheme.SidebarItem[] = [
     {
-        label: "GTKX 1.6 stable",
-        items: stableDocItems,
-        referenceLink: documentationLink("stable", "reference/"),
-        referenceSidebar: stableReferenceSidebar,
-    },
-    {
-        label: "GTKX 2.0 beta 10",
-        items: betaDocItems,
-        referenceLink: documentationLink("beta", "reference/"),
-        referenceSidebar: betaReferenceSidebar,
+        text: "Blog",
+        items: [
+            { text: "GTKX 2.0 beta", link: "/blog/gtkx-2-0-beta-1" },
+            { text: "GTKX 1.6", link: "/blog/gtkx-1-6" },
+            { text: "GTKX 1.5", link: "/blog/gtkx-1-5" },
+            { text: "GTKX 1.4", link: "/blog/gtkx-1-4" },
+            { text: "GTKX 1.3", link: "/blog/gtkx-1-3" },
+            { text: "GTKX 1.1", link: "/blog/gtkx-1-1" },
+            { text: "GTKX 1.0", link: "/blog/gtkx-1-0" },
+        ],
     },
 ];
+
+const navigation = (version: DocumentationVersion): DefaultTheme.NavItem[] => [
+    { text: "Guide", link: documentationLink(version, GUIDE_ROOT) },
+    { text: "Tutorial", link: documentationLink(version, TUTORIAL_ROOT) },
+    { text: "Reference", link: documentationLink(version, REFERENCE_ROOT) },
+    { text: "Blog", link: "/blog/" },
+    { text: "Examples", link: `https://github.com/gtkx-org/gtkx/tree/${version.examplesRef}/examples` },
+    { component: "VersionSelect" },
+];
+
+const versionSidebars = (version: DocumentationVersion): [string, DefaultTheme.SidebarItem[]][] => [
+    [`${version.prefix}/guide/`, guideSidebar(version)],
+    [`${version.prefix}/tutorial/`, tutorialSidebar(version)],
+    [
+        `${version.prefix}${referencePath}/`,
+        [{ text: "Overview", link: documentationLink(version, REFERENCE_ROOT) }, ...versionReferenceSidebar(version)],
+    ],
+];
+
+const sidebar: DefaultTheme.Sidebar = {
+    ...Object.fromEntries(versions.flatMap((version) => versionSidebars(version))),
+    "/blog/": blogSidebar,
+};
+
+type LocaleEntry = {
+    label: string;
+    lang: string;
+    link?: string;
+    themeConfig?: { nav: DefaultTheme.NavItem[] };
+};
+
+const prefixedLocale = (version: DocumentationVersion): [string, LocaleEntry] => [
+    version.prefix.slice(1),
+    {
+        label: "Documentation",
+        lang: "en",
+        link: documentationLink(version, GUIDE_ROOT),
+        themeConfig: { nav: navigation(version) },
+    },
+];
+
+const prefixedVersions = versions.filter((version) => version.prefix !== "");
+
+const locales: Record<string, LocaleEntry> = {
+    root: { label: "Documentation", lang: "en" },
+    ...Object.fromEntries(prefixedVersions.map((version) => prefixedLocale(version))),
+};
+
 const isProdBuild = process.argv.includes("build");
 
 const fontPreloads: HeadConfig[] = isProdBuild
@@ -101,108 +229,132 @@ const getPageImage = (frontmatter: Record<string, unknown>): string =>
 const getOgType = (relativePath: string): string =>
     relativePath !== "blog/index.md" && relativePath.startsWith("blog/") ? "article" : "website";
 
-const navigation = (version: DocumentationVersion): DefaultTheme.NavItem[] => [
-    { text: "Guide", link: documentationLink(version, "guide/why-gtkx") },
-    { text: "Tutorial", link: documentationLink(version, "tutorial/") },
-    { text: "Reference", link: documentationLink(version, "reference/") },
-    { text: "Blog", link: "/blog/" },
-    {
-        text: "Examples",
-        link: `https://github.com/gtkx-org/gtkx/tree/${version === "beta" ? "main" : "v1.6.0"}/examples`,
-    },
-    { component: "VersionSelect" },
-];
+const isDocumentationRoute = (route: string): boolean =>
+    /^(guide|tutorial|reference)\//.test(normalizeDocumentationPath(`/${route}`));
 
-const blogSidebar: DefaultTheme.SidebarItem[] = [
-    {
-        text: "Blog",
-        items: [
-            { text: "GTKX 2.0 beta", link: "/blog/gtkx-2-0-beta-1" },
-            { text: "GTKX 1.6", link: "/blog/gtkx-1-6" },
-            { text: "GTKX 1.5", link: "/blog/gtkx-1-5" },
-            { text: "GTKX 1.4", link: "/blog/gtkx-1-4" },
-            { text: "GTKX 1.3", link: "/blog/gtkx-1-3" },
-            { text: "GTKX 1.1", link: "/blog/gtkx-1-1" },
-            { text: "GTKX 1.0", link: "/blog/gtkx-1-0" },
-        ],
-    },
-];
+const documentationTitle = (route: string): string => {
+    const { label } = versionForPath(`/${route}`);
 
-const documentationTitle = (relativePath: string): string => {
-    if (/^v2\/(guide|tutorial|reference)\//.test(relativePath)) {
-        return "GTKX 2.0 beta 10";
-    }
-
-    if (/^(guide|tutorial|reference)\//.test(relativePath)) {
-        return "GTKX 1.6 stable";
-    }
-
-    return title;
+    return isDocumentationRoute(route) ? `GTKX ${label}` : title;
 };
 
-const loadDocumentationGroup = async (
+const canonicalRoute = (route: string): string => {
+    const version = versionForPath(`/${route}`);
+
+    if (version.status !== "old" || !isDocumentationRoute(route)) {
+        return route;
+    }
+
+    const path = normalizeDocumentationPath(`/${route}`);
+
+    return hasPage(currentVersion, path) ? documentationLink(currentVersion, path).replace(/^\//, "") : route;
+};
+
+const loadDocumentationVersion = async (
     sourceDirectory: string,
     outputDirectory: string,
-    group: (typeof documentationGroups)[number],
+    version: DocumentationVersion,
 ) => ({
-    ...group,
+    version,
     sources: await Promise.all(
-        group.items.map(async (item) => {
-            const file = docFile(item.link);
-            const source = await readFile(join(sourceDirectory, file), "utf8");
-            const target = join(outputDirectory, file);
-            await mkdir(dirname(target), { recursive: true });
-            await writeFile(target, source);
+        documentationItems
+            .filter((item) => hasPage(version, item.path))
+            .map(async (item) => {
+                const file = docFile(documentationLink(version, item.path));
+                const source = await readFile(join(sourceDirectory, file), "utf8");
+                const target = join(outputDirectory, file);
+                await mkdir(dirname(target), { recursive: true });
+                await writeFile(target, source);
 
-            return { ...item, file, source };
-        }),
+                return { text: item.text, file, source };
+            }),
     ),
 });
 
-type LoadedDocumentationGroup = Awaited<ReturnType<typeof loadDocumentationGroup>>;
+type LoadedDocumentationVersion = Awaited<ReturnType<typeof loadDocumentationVersion>>;
 
-const llmsIndex = (versions: LoadedDocumentationGroup[]): string =>
-    versions
-        .map((version) => {
-            const pages = version.sources.map((source) => `- [${source.text}](${url}/${source.file})`).join("\n");
-            const references = version.referenceSidebar
-                .flatMap((entry) => (entry.link ? [`- [${entry.text ?? "API"}](${url}${entry.link})`] : []))
-                .join("\n");
-            const referenceIndex = `- [API Reference](${url}${version.referenceLink})\n${references}`;
+const currentIndex = `${url}${currentVersion.prefix}/llms.txt`;
 
-            return [
-                `## ${version.label} documentation`,
-                pages,
-                `### ${version.label} API reference`,
-                referenceIndex,
-            ].join("\n\n");
-        })
-        .join("\n\n");
+const currentNote = `The current release is GTKX ${currentVersion.label}, documented at ${currentIndex}.`;
 
-const llmsFull = (versions: LoadedDocumentationGroup[]): string =>
-    versions
-        .map((version) => {
-            const sources = version.sources.map((source) => source.source).join("\n\n---\n\n");
+const statusNote = (version: DocumentationVersion): string => {
+    if (version.status === "prerelease") {
+        return `GTKX ${version.label} is a pre-release. ${currentNote}`;
+    }
 
-            return `## ${version.label} documentation\n\n${sources}`;
-        })
-        .join("\n\n---\n\n");
+    if (version.status === "old") {
+        return `GTKX ${version.label} is no longer the current release. ${currentNote}`;
+    }
+
+    return `GTKX ${version.label} is the current release.`;
+};
+
+const otherVersionsSection = (version: DocumentationVersion): string => {
+    const others = versions.filter((other) => other.id !== version.id);
+
+    if (others.length === 0) {
+        return "";
+    }
+
+    const links = others.map((other) => `- [GTKX ${other.label}](${url}${other.prefix}/llms.txt)`).join("\n");
+
+    return `\n## Other versions\n\n${links}\n`;
+};
+
+const llmsHeader = (version: DocumentationVersion): string =>
+    [
+        `# ${title} ${version.label}`,
+        "",
+        `> ${description}`,
+        "",
+        `@doc-version: ${version.id}`,
+        `@doc-status: ${version.status}`,
+        "",
+        statusNote(version),
+        "",
+        retentionPolicy,
+        "",
+    ].join("\n");
+
+const llmsIndex = (loaded: LoadedDocumentationVersion): string => {
+    const pages = loaded.sources.map((source) => `- [${source.text}](${url}/${source.file})`).join("\n");
+    const references = versionReferenceSidebar(loaded.version)
+        .flatMap((entry) => (entry.link ? [`- [${entry.text ?? "API"}](${url}${entry.link})`] : []))
+        .join("\n");
+    const referenceHome = `${url}${documentationLink(loaded.version, REFERENCE_ROOT)}`;
+    const referenceIndex = `- [API Reference](${referenceHome})\n${references}`;
+
+    return [
+        llmsHeader(loaded.version),
+        `## GTKX ${loaded.version.label} documentation`,
+        "",
+        pages,
+        "",
+        `## GTKX ${loaded.version.label} API reference`,
+        "",
+        referenceIndex,
+        "",
+        "## Unversioned content",
+        "",
+        `- [Blog](${url}/blog/)`,
+        otherVersionsSection(loaded.version),
+    ].join("\n");
+};
+
+const llmsFull = (loaded: LoadedDocumentationVersion): string =>
+    [
+        llmsHeader(loaded.version),
+        `## GTKX ${loaded.version.label} documentation`,
+        "",
+        loaded.sources.map((source) => source.source).join("\n\n---\n\n"),
+        otherVersionsSection(loaded.version),
+    ].join("\n");
 
 export default defineConfig({
     title,
     description,
     lang: "en",
-    locales: {
-        root: { label: "Documentation", lang: "en" },
-        v2: {
-            label: "Documentation",
-            lang: "en",
-            link: "/v2/guide/why-gtkx",
-            themeConfig: {
-                nav: navigation("beta"),
-            },
-        },
-    },
+    locales,
     appearance: "dark",
     cleanUrls: true,
     lastUpdated: true,
@@ -212,6 +364,9 @@ export default defineConfig({
     },
     vite: {
         plugins: [highlightPlugin()],
+        define: {
+            GTKX_VERSION_ROUTES: JSON.stringify(routeManifest),
+        },
         server: {
             allowedHosts: ["workstation"],
         },
@@ -235,7 +390,9 @@ export default defineConfig({
         const isHome = pageData.relativePath === "index.md";
         const route = pageData.relativePath.replace(/(^|\/)index\.md$/, "$1").replace(/\.md$/, "");
         const pageUrl = route ? `${url}/${route}` : `${url}/`;
-        const titleSuffix = documentationTitle(pageData.relativePath);
+        const canonical = canonicalRoute(route);
+        const canonicalUrl = canonical ? `${url}/${canonical}` : `${url}/`;
+        const titleSuffix = documentationTitle(route);
         const pageTitle = isHome ? pageData.title : `${pageData.title} | ${titleSuffix}`;
         const pageDescription = pageData.description || description;
         const pageImage = getPageImage(pageData.frontmatter);
@@ -245,7 +402,7 @@ export default defineConfig({
         }
 
         const head: HeadConfig[] = [
-            ["link", { rel: "canonical", href: pageUrl }],
+            ["link", { rel: "canonical", href: canonicalUrl }],
             ["meta", { property: "og:type", content: getOgType(pageData.relativePath) }],
             ["meta", { property: "og:url", content: pageUrl }],
             ["meta", { property: "og:title", content: pageTitle }],
@@ -260,40 +417,33 @@ export default defineConfig({
     },
 
     async buildEnd(siteConfig) {
-        const versions = await Promise.all(
-            documentationGroups.map((group) => loadDocumentationGroup(siteConfig.srcDir, siteConfig.outDir, group)),
-        );
-        const header = `# ${title}\n\n> ${description}\n`;
-
-        await writeFile(
-            join(siteConfig.outDir, "llms.txt"),
-            `${header}\n${llmsIndex(versions)}\n\n## Unversioned content\n\n- [Blog](${url}/blog/)\n`,
+        const loaded = await Promise.all(
+            versions.map((version) => loadDocumentationVersion(siteConfig.srcDir, siteConfig.outDir, version)),
         );
 
-        await writeFile(join(siteConfig.outDir, "llms-full.txt"), `${header}\n${llmsFull(versions)}\n`);
+        await Promise.all(
+            loaded.map(async (version) => {
+                const directory = join(siteConfig.outDir, version.version.prefix.replace(/^\//, ""));
+                await mkdir(directory, { recursive: true });
+                await writeFile(join(directory, "llms.txt"), llmsIndex(version));
+                await writeFile(join(directory, "llms-full.txt"), llmsFull(version));
+            }),
+        );
     },
 
     themeConfig: {
         siteTitle: title,
         logo: "/gtkx-mark.svg",
         search: { provider: "local" },
-        nav: navigation("stable"),
-        sidebar: {
-            "/guide/": stableGuideSidebar,
-            "/tutorial/": stableTutorialSidebar,
-            "/reference/": [{ text: "Overview", link: "/reference/" }, ...stableReferenceSidebar],
-            "/v2/guide/": betaGuideSidebar,
-            "/v2/tutorial/": betaTutorialSidebar,
-            "/v2/reference/": [{ text: "Overview", link: "/v2/reference/" }, ...betaReferenceSidebar],
-            "/blog/": blogSidebar,
-        },
+        nav: navigation(rootVersion),
+        sidebar,
         socialLinks: [{ icon: "github", link: "https://github.com/gtkx-org/gtkx" }],
         editLink: {
             pattern: "https://github.com/gtkx-org/gtkx/edit/main/website/:path",
             text: "Edit this page on GitHub",
         },
         footer: {
-            message: "Released under the MPL-2.0 License.",
+            message: 'Released under the MPL-2.0 License. <a href="/versions">Documentation versions</a>.',
             copyright: "Copyright © 2026 GTKX contributors",
         },
     },
