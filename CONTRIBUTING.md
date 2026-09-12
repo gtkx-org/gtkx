@@ -110,7 +110,7 @@ The script moves each version's `guide`, `tutorial` and `reference` directories 
 
 The script refuses to run while an `old` version is still on the site, which is what keeps the retention policy true: retire that release first by deleting its directories and its manifest entry. Decide separately whether the outgoing prefix keeps serving: Vite and Vitest keep a numbered alias for the current major, and GitHub Pages cannot redirect, so an alias would need generated pages.
 
-The promoted release keeps building its reference from the working tree, so between releases the current version's API pages track `main`. Switch its manifest entry to a `tag` source to pin it to the release instead; exactly one version may build from the working tree.
+The promoted release keeps building its reference from the working tree by default, so between releases the current version's API pages track `main`. Pass `--tag` and `--commit` together to pin it to its own release instead, which is what keeps a released reference from drifting; at most one version may build from the working tree.
 
 An old version's pages canonicalise to the current version's page at the same path when that page exists, and to themselves when it does not, so a reference page for a symbol that a major removed keeps its own identity.
 

@@ -115,11 +115,13 @@ const fetchTagCommit = ({ tag, commit }) => {
 };
 
 const ensureTagCommit = (reference) => {
-    verifyTag(reference);
-
-    if (!hasRevision(reference.commit)) {
+    if (!hasRevision(reference.tag) || !hasRevision(reference.commit)) {
         fetchTagCommit(reference);
+
+        return;
     }
+
+    verifyTag(reference);
 };
 
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));

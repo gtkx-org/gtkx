@@ -144,11 +144,17 @@ const { values } = parseArgs({
         to: { type: "string" },
         label: { type: "string" },
         "examples-ref": { type: "string" },
+        tag: { type: "string" },
+        commit: { type: "string" },
     },
 });
 
 if (values.to === undefined || !/^\/[A-Za-z0-9][A-Za-z0-9.-]*$/.test(values.to)) {
     throw new Error("Pass --to with the prefix the outgoing release moves to, for example --to /v1.");
+}
+
+if ((values.tag === undefined) !== (values.commit === undefined)) {
+    throw new Error("Pass --tag and --commit together to pin the promoted release to its own source.");
 }
 
 const manifest = readManifest();
@@ -203,6 +209,10 @@ incoming.label = values.label ?? incoming.id;
 
 if (values["examples-ref"] !== undefined) {
     incoming.examplesRef = values["examples-ref"];
+}
+
+if (values.tag !== undefined && values.commit !== undefined) {
+    incoming.reference = { source: "tag", tag: values.tag, commit: values.commit };
 }
 
 const others = manifest.versions.filter((version) => version !== incoming && version !== outgoing);
