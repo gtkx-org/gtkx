@@ -34,12 +34,17 @@ jobs:
         run: |
           set -euo pipefail
           version="$(node -p "require('./packages/create-gtkx/package.json').version")"
-          if release="$(gh release view "v${version}" --repo "$GITHUB_REPOSITORY" --json isDraft 2>/dev/null)"; then
-            if [ "$(jq -r '.isDraft' <<<"${release}")" = "true" ]; then
+          lookup="${RUNNER_TEMP}/release-lookup"
+          if release="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v${version}" 2> "$lookup")"; then
+            if [ "$(jq -r '.draft' <<<"${release}")" = "true" ]; then
               state=draft
             else
               state=published
             fi
+          elif ! grep -q 'HTTP 404' "$lookup"; then
+            cat "$lookup" >&2
+            echo "::error::Could not read the release state for v${version}"
+            exit 1
           elif [ -f CHANGELOG.md ] && awk -v version="$version" '
             /^##? / { if ($2 == version) { found = 1; exit } }
             END { exit found ? 0 : 1 }
@@ -70,18 +75,25 @@ jobs:
           NOTES: ${{ steps.notes.outputs.path }}
         run: |
           set -euo pipefail
-          if ! git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" > /dev/null 2>&1; then
+          tag="v${VERSION}"
+          peeled="$(git ls-remote origin "refs/tags/${tag}^{}" | cut -f1)"
+          target="${peeled:-$(git ls-remote origin "refs/tags/${tag}" | cut -f1)}"
+          if [ -n "$target" ] && [ "$target" != "$GITHUB_SHA" ]; then
+            echo "::error::Tag ${tag} already points at ${target} instead of ${GITHUB_SHA}"
+            exit 1
+          fi
+          if [ -z "$target" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag --annotate "v${VERSION}" --message "v${VERSION}" "$GITHUB_SHA"
-            git push origin "refs/tags/v${VERSION}"
+            git tag --annotate "${tag}" --message "${tag}" "$GITHUB_SHA"
+            git push origin "refs/tags/${tag}"
           fi
           if [ "$STATE" = "missing" ]; then
             prerelease=()
             case "$VERSION" in
               *-*) prerelease=(--prerelease) ;;
             esac
-            gh release create "v${VERSION}" --draft "${prerelease[@]}" --verify-tag \
-              --title "v${VERSION}" --notes-file "$NOTES"
+            gh release create "${tag}" --draft "${prerelease[@]}" --verify-tag \
+              --title "${tag}" --notes-file "$NOTES"
           fi
-          gh workflow run publish.yml --ref "v${VERSION}"
+          gh workflow run publish.yml --ref "${tag}"

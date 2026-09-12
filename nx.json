@@ -163,6 +163,7 @@
         }
     },
     "release": {
+        "projectsRelationship": "fixed",
         "versionPlans": {
             "ignorePatternsForPlanCheck": [
                 "**/tests/**",
