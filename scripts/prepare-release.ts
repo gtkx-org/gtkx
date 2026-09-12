@@ -33,13 +33,17 @@ const hasReleaseIntent = (values: VersionArguments): boolean =>
 const isPrerelease = (version: string): boolean => version.includes("-");
 
 const prereleaseIdentifier = (version: string): string | undefined => {
-    const identifier = version.split("-", 2)[1]?.split(".", 1)[0];
+    const at = version.indexOf("-");
+    const identifier = at === -1 ? undefined : version.slice(at + 1).split(".", 1)[0];
 
     return identifier !== undefined && !/^\d+$/.test(identifier) ? identifier : undefined;
 };
 
+const isOnPrereleaseTrain = (currentVersion: string, values: VersionArguments): boolean =>
+    isPrerelease(currentVersion) || values.preid !== undefined;
+
 const versionArguments = (currentVersion: string, values: VersionArguments): VersionArguments => {
-    const specifier = values.specifier ?? (isPrerelease(currentVersion) ? "prerelease" : undefined);
+    const specifier = values.specifier ?? (isOnPrereleaseTrain(currentVersion, values) ? "prerelease" : undefined);
     const preid = values.preid ?? prereleaseIdentifier(currentVersion);
 
     return { ...(specifier !== undefined && { specifier }), ...(preid !== undefined && { preid }) };

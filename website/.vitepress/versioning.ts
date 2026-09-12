@@ -52,7 +52,9 @@ const tutorialItems: DocumentationItem[] = [
 const versionPrefix = (version: DocumentationVersion): string => (version === "beta" ? "/v2" : "");
 
 const versionLabel = (version: string): string => {
-    const [core = "", prerelease = ""] = version.split("-", 2);
+    const at = version.indexOf("-");
+    const core = at === -1 ? version : version.slice(0, at);
+    const prerelease = at === -1 ? "" : version.slice(at + 1);
     const [major = "0", minor = "0"] = core.split(".", 2);
     const base = `${major}.${minor}`;
 
