@@ -1,0 +1,30 @@
+{
+    "retention": "gtkx.dev documents the current release, the release it replaced, and any pre-release in progress. Promoting a pre-release retires the older of the two published releases, so no more than one superseded release is ever online.",
+    "packageVersion": "2.0.0-beta.10",
+    "versions": [
+        {
+            "id": "1.6",
+            "label": "1.6 stable",
+            "prefix": "",
+            "status": "current",
+            "examplesRef": "v1.6.0",
+            "reference": {
+                "source": "tag",
+                "tag": "v1.6.0",
+                "commit": "76c6292fdecb0b18060d7c54bb7e001a4a139440"
+            }
+        },
+        {
+            "id": "2.0",
+            "label": "",
+            "prefix": "/v2",
+            "status": "prerelease",
+            "examplesRef": "main",
+            "reference": {
+                "source": "worktree",
+                "tag": "",
+                "commit": ""
+            }
+        }
+    ]
+}

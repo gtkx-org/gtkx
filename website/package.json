@@ -8,6 +8,8 @@
         "reference": "nx run @gtkx/website:reference",
         "reference-current": "node scripts/references.mjs current",
         "reference-stable": "node scripts/references.mjs stable",
+        "promote-version": "node scripts/promote-version.mjs",
+        "reference-sync": "node scripts/references.mjs sync",
         "dev": "vitepress dev",
         "build": "vitepress build",
         "preview": "vitepress preview"
@@ -110,8 +112,10 @@
             "reference-stable": {
                 "cache": true,
                 "inputs": [
-                    "{projectRoot}/scripts/references.mjs",
-                    "{projectRoot}/scripts/reference-search-exclude.mjs"
+                    "{projectRoot}/scripts/reference*.mjs",
+                    {
+                        "runtime": "node website/scripts/references.mjs pins"
+                    }
                 ],
                 "outputs": [
                     "{projectRoot}/reference"
