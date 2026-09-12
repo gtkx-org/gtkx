@@ -1,32 +1,42 @@
-import { useRoute } from "vitepress";
+import { useData } from "vitepress";
 import { computed, type ComputedRef } from "vue";
-import {
-    type DocumentationVersion,
-    hasExactCounterpart,
-    resolveVersionPath,
-    versionForPath,
-} from "../../versioning.js";
+import { documentationLink, type DocumentationVersion, GUIDE_ROOT, rootVersion, versions } from "../../versioning.js";
 
-const routesByVersion: Map<string, Set<string>> = new Map(
-    Object.entries(GTKX_VERSION_ROUTES).map(([id, routes]): [string, Set<string>] => [id, new Set(routes)]),
-);
-
-const hasPage = (version: DocumentationVersion, path: string): boolean =>
-    routesByVersion.get(version.id)?.has(path) ?? false;
+type VersionLink = {
+    href: string;
+    samePage: boolean;
+};
 
 type DocumentationVersionContext = {
     version: ComputedRef<DocumentationVersion>;
-    resolve: (target: DocumentationVersion) => string;
-    hasCounterpart: (target: DocumentationVersion) => boolean;
+    link: (target: DocumentationVersion) => string;
+    isSamePage: (target: DocumentationVersion) => boolean;
+};
+
+const isVersionLink = (value: unknown): value is VersionLink =>
+    typeof value === "object" && value !== null && "href" in value && typeof value.href === "string";
+
+const readLinks = (value: unknown): Map<string, VersionLink> => {
+    if (typeof value !== "object" || value === null) {
+        return new Map();
+    }
+
+    return new Map(Object.entries(value).filter((entry): entry is [string, VersionLink] => isVersionLink(entry[1])));
 };
 
 const useDocumentationVersion = (): DocumentationVersionContext => {
-    const route = useRoute();
+    const { frontmatter } = useData();
+    const links = computed(() => readLinks(frontmatter.value.versionLinks));
+    const version = computed(() => {
+        const declared: unknown = frontmatter.value.versionId;
+
+        return versions.find((entry) => entry.id === declared) ?? rootVersion;
+    });
 
     return {
-        version: computed(() => versionForPath(route.path)),
-        resolve: (target) => resolveVersionPath(route.path, target, hasPage),
-        hasCounterpart: (target) => hasExactCounterpart(route.path, target, hasPage),
+        version,
+        link: (target) => links.value.get(target.id)?.href ?? documentationLink(target, GUIDE_ROOT),
+        isSamePage: (target) => links.value.get(target.id)?.samePage ?? false,
     };
 };
 

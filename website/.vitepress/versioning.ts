@@ -210,9 +210,6 @@ const counterpartPath = (
     return root !== undefined && hasPage(target, root) ? root : undefined;
 };
 
-const hasExactCounterpart = (path: string, target: DocumentationVersion, hasPage: VersionPageLookup): boolean =>
-    hasPage(target, normalizeDocumentationPath(path));
-
 const resolveVersionPath = (currentPath: string, target: DocumentationVersion, hasPage: VersionPageLookup): string => {
     const path = normalizeDocumentationPath(currentPath);
 
@@ -228,7 +225,6 @@ export {
     featuredVersion,
     GUIDE_ROOT,
     guideItems,
-    hasExactCounterpart,
     normalizeDocumentationPath,
     REFERENCE_ROOT,
     resolveVersionPath,

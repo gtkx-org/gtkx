@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { accessSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { accessSync, cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -53,6 +53,34 @@ const hasRevision = (revision) => {
 
 const requireSidebar = (dir) => {
     accessSync(join(dir, "typedoc-sidebar.json"));
+};
+
+const markdownFiles = (directory) =>
+    readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+        const path = join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+            return markdownFiles(path);
+        }
+
+        return entry.name.endsWith(".md") ? [path] : [];
+    });
+
+const rewriteReferenceLinks = (directory, prefix) => {
+    if (prefix === "") {
+        return;
+    }
+
+    const pattern = /\]\((\/reference\/)/g;
+
+    for (const file of markdownFiles(directory)) {
+        const source = readFileSync(file, "utf8");
+        const updated = source.replaceAll(pattern, (_match, section) => `](${prefix}${section}`);
+
+        if (updated !== source) {
+            writeFileSync(file, updated);
+        }
+    }
 };
 
 const verifyTag = ({ tag, commit }) => {
@@ -116,6 +144,7 @@ const generateTagged = (version) => {
         rmSync(output, { force: true, recursive: true });
         mkdirSync(dirname(output), { recursive: true });
         cpSync(generated, output, { recursive: true });
+        rewriteReferenceLinks(output, version.prefix);
         prepareReferenceSearch(output);
         requireSidebar(output);
     } finally {
@@ -132,18 +161,26 @@ const generateFromWorktree = (version) => {
 
 const mode = process.argv[2] ?? "all";
 
-if (mode !== "stable" && mode !== "current" && mode !== "all") {
+if (mode !== "stable" && mode !== "current" && mode !== "all" && mode !== "pins") {
     throw new Error(`Unknown reference generation mode: ${mode}`);
 }
 
-if (mode === "stable" || mode === "all") {
-    for (const version of versionsWithSource("tag")) {
-        generateTagged(version);
-    }
-}
+if (mode === "pins") {
+    const pins = versionsWithSource("tag").map(
+        (version) => `${version.prefix}|${version.reference.tag}|${version.reference.commit}`,
+    );
 
-if (mode === "current" || mode === "all") {
-    for (const version of versionsWithSource("worktree")) {
-        generateFromWorktree(version);
+    console.log(pins.join("\n"));
+} else {
+    if (mode === "stable" || mode === "all") {
+        for (const version of versionsWithSource("tag")) {
+            generateTagged(version);
+        }
+    }
+
+    if (mode === "current" || mode === "all") {
+        for (const version of versionsWithSource("worktree")) {
+            generateFromWorktree(version);
+        }
     }
 }

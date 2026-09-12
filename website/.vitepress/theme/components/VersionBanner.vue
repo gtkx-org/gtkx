@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { currentVersion } from "../../versioning.js";
 import { useDocumentationVersion } from "../composables/use-documentation-version";
 
-const { version, resolve, hasCounterpart } = useDocumentationVersion();
+const { version, link, isSamePage } = useDocumentationVersion();
 
 const notice = computed(() => {
     const active = version.value;
@@ -19,8 +19,8 @@ const notice = computed(() => {
 
     return {
         lead,
-        href: resolve(currentVersion),
-        text: hasCounterpart(currentVersion)
+        href: link(currentVersion),
+        text: isSamePage(currentVersion)
             ? `Read this page for GTKX ${currentVersion.label}`
             : `Read the GTKX ${currentVersion.label} documentation`,
     };

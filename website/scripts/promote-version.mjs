@@ -113,6 +113,9 @@ const unstageSections = (version, prefix) => {
     }
 };
 
+const occupiedSections = (prefix) =>
+    SECTIONS.filter((section) => existsSync(join(versionDirectory(prefix), section)));
+
 const pruneEmptyDirectory = (prefix) => {
     const directory = versionDirectory(prefix);
 
@@ -146,12 +149,21 @@ if (manifest.versions.some((version) => version.prefix === values.to)) {
     throw new Error(`versions.json already declares the prefix ${values.to}.`);
 }
 
+const occupied = occupiedSections(values.to);
+
+if (occupied.length > 0) {
+    throw new Error(`${versionDirectory(values.to)} already holds ${occupied.join(", ")}; move it aside first.`);
+}
+
+if (existsSync(staging)) {
+    throw new Error(`${staging} already exists from an interrupted run; restore its contents before retrying.`);
+}
+
 const moves = [
     { from: outgoing.prefix, to: values.to },
     { from: incoming.prefix, to: "" },
 ];
 
-rmSync(staging, { force: true, recursive: true });
 stageSections(outgoing);
 stageSections(incoming);
 unstageSections(outgoing, values.to);

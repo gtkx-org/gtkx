@@ -14,6 +14,7 @@ import {
     guideItems,
     normalizeDocumentationPath,
     REFERENCE_ROOT,
+    resolveVersionPath,
     retentionPolicy,
     rootVersion,
     TUTORIAL_ROOT,
@@ -38,16 +39,25 @@ type LinkedDocumentationItem = {
 const versionDirectory = (version: DocumentationVersion): string =>
     join(websiteRoot, version.prefix.replace(/^\//, ""));
 
+const markdownRoutes = (directory: string, base: string): string[] =>
+    readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+        const path = join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+            return markdownRoutes(path, `${base}${entry.name}/`);
+        }
+
+        if (!entry.name.endsWith(".md")) {
+            return [];
+        }
+
+        return entry.name === "index.md" ? [base] : [`${base}${entry.name.replace(/\.md$/, "")}`];
+    });
+
 const sectionRoutes = (version: DocumentationVersion, section: string): string[] => {
     const directory = join(versionDirectory(version), section);
 
-    if (!existsSync(directory)) {
-        return [];
-    }
-
-    return readdirSync(directory)
-        .filter((entry) => entry.endsWith(".md"))
-        .map((entry) => (entry === "index.md" ? `${section}/` : `${section}/${entry.replace(/\.md$/, "")}`));
+    return existsSync(directory) ? markdownRoutes(directory, `${section}/`) : [];
 };
 
 const versionRoutes = (version: DocumentationVersion): Set<string> => {
@@ -70,30 +80,10 @@ const versionRoutes = (version: DocumentationVersion): Set<string> => {
     return new Set(routes);
 };
 
-const markdownRoutes = (directory: string, base: string): string[] =>
-    readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-        const path = join(directory, entry.name);
-
-        if (entry.isDirectory()) {
-            return markdownRoutes(path, `${base}${entry.name}/`);
-        }
-
-        if (!entry.name.endsWith(".md")) {
-            return [];
-        }
-
-        return entry.name === "index.md" ? [base] : [`${base}${entry.name.replace(/\.md$/, "")}`];
-    });
-
 const canonicalRoutes = (version: DocumentationVersion): Set<string> => {
     const sections = [...sectionDirectories, REFERENCE_ROOT.replace(/\/$/, "")];
-    const routes = sections.flatMap((section) => {
-        const directory = join(versionDirectory(version), section);
 
-        return existsSync(directory) ? markdownRoutes(directory, `${section}/`) : [];
-    });
-
-    return new Set(routes);
+    return new Set(sections.flatMap((section) => sectionRoutes(version, section)));
 };
 
 const canonicalRoutesByVersion = new Map(versions.map((version) => [version.id, canonicalRoutes(version)]));
@@ -101,13 +91,9 @@ const canonicalRoutesByVersion = new Map(versions.map((version) => [version.id, 
 const hasCanonicalPage = (version: DocumentationVersion, path: string): boolean =>
     canonicalRoutesByVersion.get(version.id)?.has(path) ?? false;
 
-const routeEntries = versions.map((version): [string, string[]] => [version.id, [...versionRoutes(version)]]);
-
 const routesByVersion: Map<string, Set<string>> = new Map(
-    routeEntries.map(([id, routes]): [string, Set<string>] => [id, new Set(routes)]),
+    versions.map((version): [string, Set<string>] => [version.id, versionRoutes(version)]),
 );
-
-const routeManifest: Record<string, string[]> = Object.fromEntries(routeEntries);
 
 const hasPage = (version: DocumentationVersion, path: string): boolean =>
     routesByVersion.get(version.id)?.has(path) ?? false;
@@ -261,6 +247,24 @@ const documentationTitle = (route: string): string => {
     return isDocumentationRoute(route) ? `GTKX ${label}` : title;
 };
 
+type VersionLink = {
+    href: string;
+    samePage: boolean;
+};
+
+const counterpartLink = (target: DocumentationVersion, route: string): VersionLink => ({
+    href: resolveVersionPath(`/${route}`, target, hasCanonicalPage),
+    samePage: hasCanonicalPage(target, normalizeDocumentationPath(`/${route}`)),
+});
+
+const versionLinks = (route: string): Record<string, VersionLink> => {
+    const active = versionForPath(`/${route}`);
+    const others = versions.filter((version) => version.id !== active.id);
+    const entries = others.map((version): [string, VersionLink] => [version.id, counterpartLink(version, route)]);
+
+    return Object.fromEntries(entries);
+};
+
 const canonicalRoute = (route: string): string => {
     const version = versionForPath(`/${route}`);
 
@@ -383,13 +387,13 @@ export default defineConfig({
     lastUpdated: true,
     sitemap: {
         hostname: url,
-        transformItems: (items) => items.map(({ url: itemUrl, lastmod }) => ({ url: itemUrl, lastmod })),
+        transformItems: (items) =>
+            items
+                .filter(({ url: itemUrl }) => canonicalRoute(itemUrl) === itemUrl)
+                .map(({ url: itemUrl, lastmod }) => ({ url: itemUrl, lastmod })),
     },
     vite: {
         plugins: [highlightPlugin()],
-        define: {
-            GTKX_VERSION_ROUTES: JSON.stringify(routeManifest),
-        },
         server: {
             allowedHosts: ["workstation"],
         },
@@ -412,7 +416,6 @@ export default defineConfig({
     transformPageData(pageData) {
         const isHome = pageData.relativePath === "index.md";
         const route = pageData.relativePath.replace(/(^|\/)index\.md$/, "$1").replace(/\.md$/, "");
-        const pageUrl = route ? `${url}/${route}` : `${url}/`;
         const canonical = canonicalRoute(route);
         const canonicalUrl = canonical ? `${url}/${canonical}` : `${url}/`;
         const titleSuffix = documentationTitle(route);
@@ -427,7 +430,7 @@ export default defineConfig({
         const head: HeadConfig[] = [
             ["link", { rel: "canonical", href: canonicalUrl }],
             ["meta", { property: "og:type", content: getOgType(pageData.relativePath) }],
-            ["meta", { property: "og:url", content: pageUrl }],
+            ["meta", { property: "og:url", content: canonicalUrl }],
             ["meta", { property: "og:title", content: pageTitle }],
             ["meta", { property: "og:description", content: pageDescription }],
             ["meta", { property: "og:image", content: pageImage }],
@@ -436,6 +439,8 @@ export default defineConfig({
             ["meta", { name: "twitter:image", content: pageImage }],
         ];
 
+        pageData.frontmatter.versionId = versionForPath(`/${route}`).id;
+        pageData.frontmatter.versionLinks = versionLinks(route);
         pageData.frontmatter.head = [...frontmatterHead(pageData.frontmatter), ...head];
     },
 

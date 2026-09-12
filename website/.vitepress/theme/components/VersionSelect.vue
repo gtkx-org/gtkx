@@ -6,7 +6,7 @@ import { useDocumentationVersion } from "../composables/use-documentation-versio
 
 const { screenMenu = false } = defineProps<{ screenMenu?: boolean }>();
 const router = useRouter();
-const { version, resolve, hasCounterpart } = useDocumentationVersion();
+const { version, link, isSamePage } = useDocumentationVersion();
 
 const selectedVersion = computed<string>({
     get: () => version.value.id,
@@ -16,8 +16,8 @@ const selectedVersion = computed<string>({
         }
 
         const target = versionById(id);
-        const routeSuffix = hasCounterpart(target) ? `${window.location.search}${window.location.hash}` : "";
-        router.go(`${resolve(target)}${routeSuffix}`);
+        const routeSuffix = isSamePage(target) ? `${window.location.search}${window.location.hash}` : "";
+        router.go(`${link(target)}${routeSuffix}`);
     },
 });
 </script>
