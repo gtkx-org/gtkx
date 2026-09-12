@@ -100,12 +100,17 @@ A version whose reference source is `tag` is rebuilt from that tag's own source,
 
 Guide and tutorial pages live under the version's prefix: `website/guide` for the unprefixed version, `website/v2/guide` for the one at `/v2`. Adding a page means adding it to `guideItems` or `tutorialItems` in `website/.vitepress/versioning.ts`; the build fails on a page that no list mentions, so the two versions cannot silently drift apart.
 
-Promoting a pre-release to current is a data change plus a directory move:
+Promoting a pre-release to current is scripted, because pages link to each other by absolute path and every one of those links moves with the version:
 
-1. Move the outgoing version's pages under its new prefix, and the incoming version's pages up to the root.
-2. In `versions.json`, give the outgoing version its new prefix and the `old` status, and give the incoming version the empty prefix, the `current` status and a `tag` reference source pinned to its release tag.
-3. Update the `reference-current` and `reference-stable` output paths in `website/package.json` to match the new prefixes.
-4. Decide whether the outgoing prefix keeps serving. Vite and Vitest keep a numbered alias for the current major; GitHub Pages cannot redirect, so an alias needs generated pages.
+```bash
+node website/scripts/promote-version.mjs --to /v1 --label "2.0 stable" --examples-ref v2.0.0
+```
+
+The script moves each version's `guide`, `tutorial` and `reference` directories to its new prefix, rewrites every documentation link in every markdown file to the prefix its target version now lives at, and rewrites `versions.json` so the outgoing release becomes `old` under the new prefix and the incoming one becomes `current` at the root. Links are rewritten by the version they point at rather than the file they sit in, so a page that deliberately links across versions keeps pointing where it meant to.
+
+Afterwards, update the `reference-current` and `reference-stable` output paths in `website/package.json` to match the new prefixes, then rebuild. Decide separately whether the outgoing prefix keeps serving: Vite and Vitest keep a numbered alias for the current major, and GitHub Pages cannot redirect, so an alias would need generated pages.
+
+An old version's pages canonicalise to the current version's page at the same path when that page exists, and to themselves when it does not, so a reference page for a symbol that a major removed keeps its own identity.
 
 Examples are executable integration coverage. `examples/tutorial` is excluded from the workspace so it consumes registry packages like an external project; validate it against the working tree with `pnpm tutorial`.
 

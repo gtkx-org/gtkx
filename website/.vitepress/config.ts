@@ -70,6 +70,37 @@ const versionRoutes = (version: DocumentationVersion): Set<string> => {
     return new Set(routes);
 };
 
+const markdownRoutes = (directory: string, base: string): string[] =>
+    readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+        const path = join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+            return markdownRoutes(path, `${base}${entry.name}/`);
+        }
+
+        if (!entry.name.endsWith(".md")) {
+            return [];
+        }
+
+        return entry.name === "index.md" ? [base] : [`${base}${entry.name.replace(/\.md$/, "")}`];
+    });
+
+const canonicalRoutes = (version: DocumentationVersion): Set<string> => {
+    const sections = [...sectionDirectories, REFERENCE_ROOT.replace(/\/$/, "")];
+    const routes = sections.flatMap((section) => {
+        const directory = join(versionDirectory(version), section);
+
+        return existsSync(directory) ? markdownRoutes(directory, `${section}/`) : [];
+    });
+
+    return new Set(routes);
+};
+
+const canonicalRoutesByVersion = new Map(versions.map((version) => [version.id, canonicalRoutes(version)]));
+
+const hasCanonicalPage = (version: DocumentationVersion, path: string): boolean =>
+    canonicalRoutesByVersion.get(version.id)?.has(path) ?? false;
+
 const routeEntries = versions.map((version): [string, string[]] => [version.id, [...versionRoutes(version)]]);
 
 const routesByVersion: Map<string, Set<string>> = new Map(
@@ -86,18 +117,10 @@ const sidebarItems = (version: DocumentationVersion, items: DocumentationItem[])
         .filter((item) => hasPage(version, item.path))
         .map((item) => ({ text: item.text, link: documentationLink(version, item.path) }));
 
-const strippedReferenceLink = (link: string): string => {
-    const owner = versions.find(
-        (version) => version.prefix !== "" && link.startsWith(`${version.prefix}${referencePath}`),
-    );
-
-    return owner ? link.slice(owner.prefix.length) : link;
-};
-
 const referenceLink = (version: DocumentationVersion, link: string): string => {
-    const stripped = strippedReferenceLink(link);
+    const at = link.startsWith("/") ? link.indexOf(`${referencePath}/`) : -1;
 
-    return stripped.startsWith(referencePath) ? `${version.prefix}${stripped}` : stripped;
+    return at === -1 ? link : `${version.prefix}${link.slice(at)}`;
 };
 
 const rewriteReferenceSidebar = (
@@ -247,7 +270,7 @@ const canonicalRoute = (route: string): string => {
 
     const path = normalizeDocumentationPath(`/${route}`);
 
-    return hasPage(currentVersion, path) ? documentationLink(currentVersion, path).replace(/^\//, "") : route;
+    return hasCanonicalPage(currentVersion, path) ? documentationLink(currentVersion, path).replace(/^\//, "") : route;
 };
 
 const loadDocumentationVersion = async (
