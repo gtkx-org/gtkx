@@ -96,7 +96,9 @@ The build generates API pages from package output. Run `pnpm build` before the f
 
 `website/versions.json` is the single source of truth for which releases the site documents. Each entry carries the version id, the label shown in the switcher, the URL prefix, a status of `current`, `prerelease` or `old`, the git ref the Examples link points at, and where its API reference comes from. That one file drives the navigation, the sidebars, the version switcher, the page-to-page mapping between versions, the old-version and pre-release banners, the canonical tags, the per-version `llms.txt` pair, the TypeDoc output path, and the pinned tag the released reference is generated from.
 
-A version whose reference source is `tag` is rebuilt from that tag's own source, pinned by both tag name and commit, so its API pages cannot drift from the release they document. The single version whose source is `worktree` is generated from the current checkout.
+A version whose reference source is `tag` is rebuilt from that tag's own source, pinned by both tag name and commit, so its API pages cannot drift from the release they document. Exactly one version takes its reference from the `worktree`, meaning the current checkout, and the build rejects a manifest that declares any other number. That rule is what lets any release tag regenerate its own reference later: every tag carries a manifest with one working-tree version, and archiving the tag builds that version from the tag's own source.
+
+Between releases the current version is the working-tree one, so its API pages follow `main`. Pin it to its release tag at the moment you add the next pre-release, which becomes the new working-tree version. Reference generation also refuses to run when the output paths declared for the Nx targets in `website/package.json` no longer match the prefixes in the manifest, because a stale declaration lets a cached build restore the wrong directory.
 
 Guide and tutorial pages live under the version's prefix: `website/guide` for the unprefixed version, `website/v2/guide` for the one at `/v2`. Adding a page means adding it to `guideItems` or `tutorialItems` in `website/.vitepress/versioning.ts`; the build fails on a page that no list mentions, so the two versions cannot silently drift apart.
 
@@ -110,7 +112,7 @@ The script moves each version's `guide`, `tutorial` and `reference` directories 
 
 The script refuses to run while an `old` version is still on the site, which is what keeps the retention policy true: retire that release first by deleting its directories and its manifest entry. Decide separately whether the outgoing prefix keeps serving: Vite and Vitest keep a numbered alias for the current major, and GitHub Pages cannot redirect, so an alias would need generated pages.
 
-The promoted release keeps building its reference from the working tree by default, so between releases the current version's API pages track `main`. Pass `--tag` and `--commit` together to pin it to its own release instead, which is what keeps a released reference from drifting; at most one version may build from the working tree.
+The promoted release keeps building its reference from the working tree, which is why promotion does not pin it: pinning it here would leave the manifest with no working-tree version at all. Pin it when the next pre-release arrives to take that role.
 
 An old version's pages canonicalise to the current version's page at the same path when that page exists, and to themselves when it does not, so a reference page for a symbol that a major removed keeps its own identity.
 

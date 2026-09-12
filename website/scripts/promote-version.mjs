@@ -144,17 +144,11 @@ const { values } = parseArgs({
         to: { type: "string" },
         label: { type: "string" },
         "examples-ref": { type: "string" },
-        tag: { type: "string" },
-        commit: { type: "string" },
     },
 });
 
 if (values.to === undefined || !/^\/[A-Za-z0-9][A-Za-z0-9.-]*$/.test(values.to)) {
     throw new Error("Pass --to with the prefix the outgoing release moves to, for example --to /v1.");
-}
-
-if ((values.tag === undefined) !== (values.commit === undefined)) {
-    throw new Error("Pass --tag and --commit together to pin the promoted release to its own source.");
 }
 
 const manifest = readManifest();
@@ -196,7 +190,6 @@ stageSections(outgoing);
 stageSections(incoming);
 unstageSections(outgoing, values.to);
 unstageSections(incoming, "");
-rmSync(staging, { force: true, recursive: true });
 pruneEmptyDirectory(incoming.prefix);
 
 const changed = rewriteLinks(createRewriter(moves));
@@ -211,16 +204,13 @@ if (values["examples-ref"] !== undefined) {
     incoming.examplesRef = values["examples-ref"];
 }
 
-if (values.tag !== undefined && values.commit !== undefined) {
-    incoming.reference = { source: "tag", tag: values.tag, commit: values.commit };
-}
-
 const others = manifest.versions.filter((version) => version !== incoming && version !== outgoing);
 
 manifest.versions = [incoming, outgoing, ...others];
 
 writeFileSync(manifestPath, `${JSON.stringify(manifest, undefined, 4)}\n`);
 syncReferenceOutputs(manifest.versions);
+rmSync(staging, { force: true, recursive: true });
 
 console.log(`Promoted GTKX ${incoming.id} to the site root and moved ${outgoing.id} to ${values.to}.`);
 console.log(`Rewrote documentation links in ${changed} files.`);

@@ -76,16 +76,12 @@ const markdownFiles = (directory) =>
         return entry.name.endsWith(".md") ? [path] : [];
     });
 
+const REFERENCE_LINK = /\]\(\/(?:[A-Za-z0-9][A-Za-z0-9.-]*\/)?reference\//g;
+
 const rewriteReferenceLinks = (directory, prefix) => {
-    if (prefix === "") {
-        return;
-    }
-
-    const pattern = /\]\((\/reference\/)/g;
-
     for (const file of markdownFiles(directory)) {
         const source = readFileSync(file, "utf8");
-        const updated = source.replaceAll(pattern, (_match, section) => `](${prefix}${section}`);
+        const updated = source.replaceAll(REFERENCE_LINK, () => `](${prefix}/reference/`);
 
         if (updated !== source) {
             writeFileSync(file, updated);
@@ -132,16 +128,54 @@ const archiveTarget = (source) => {
     return "reference-current" in targets ? "reference-current" : "reference";
 };
 
-const archiveReferenceDirectory = (source) => {
-    const archiveManifest = join(source, "website", "versions.json");
+const findGenerated = (directory) =>
+    readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+        if (!entry.isDirectory()) {
+            return [];
+        }
 
-    if (!existsSync(archiveManifest)) {
-        return join(source, "website", "reference");
+        const path = join(directory, entry.name);
+
+        return existsSync(join(path, "typedoc-sidebar.json")) ? [path] : findGenerated(path);
+    });
+
+const archiveReferenceDirectory = (source) => {
+    const found = findGenerated(join(source, "website"));
+
+    if (found.length !== 1) {
+        throw new Error(`Expected one generated reference in the archived source, found ${found.length}.`);
     }
 
-    const worktree = readJson(archiveManifest).versions.find((entry) => entry.reference.source === "worktree");
+    return found[0];
+};
 
-    return join(source, "website", worktree ? worktree.prefix.replace(/^\//, "") : "", "reference");
+const PROJECT_ROOT = "{projectRoot}";
+
+const byText = (left, right) => left.localeCompare(right);
+
+const assertDeclaredOutputs = () => {
+    const targets = readJson(join(website, "package.json")).nx.targets;
+    const declaredFor = (name) => (targets[name].outputs ?? []).toSorted(byText).join(", ");
+    const neededFor = (source) =>
+        versionsWithSource(source)
+            .map((version) => join(PROJECT_ROOT, version.prefix.replace(/^\//, ""), "reference"))
+            .toSorted(byText)
+            .join(", ");
+
+    for (const [name, source] of [
+        ["reference-current", "worktree"],
+        ["reference-stable", "tag"],
+    ]) {
+        const declared = declaredFor(name);
+        const needed = neededFor(source);
+
+        if (declared !== needed) {
+            throw new Error(
+                `website/package.json declares ${name} outputs [${declared}], ` +
+                `but versions.json needs [${needed}].`,
+            );
+        }
+    }
 };
 
 const generateTagged = (version) => {
@@ -204,6 +238,8 @@ if (mode === "pins") {
 
     console.log(pins.join("\n"));
 } else {
+    assertDeclaredOutputs();
+
     if (mode === "stable" || mode === "all") {
         for (const version of versionsWithSource("tag")) {
             generateTagged(version);

@@ -133,12 +133,16 @@ const readVersions = (): readonly DocumentationVersion[] => {
         "version prefix",
     );
     assertExactlyOne(
-        parsed.filter((version) => version.status === "current"),
-        "version with the current status",
+        parsed.filter((version) => version.status === "current" && version.prefix === ""),
+        "current version served without a prefix",
     );
     assertExactlyOne(
         parsed.filter((version) => version.prefix === ""),
         "version served without a prefix",
+    );
+    assertExactlyOne(
+        parsed.filter((version) => version.reference.source === "worktree"),
+        "version whose reference is built from the working tree",
     );
 
     return parsed;
@@ -158,9 +162,9 @@ const findVersion = (isMatch: (version: DocumentationVersion) => boolean): Docum
     return found;
 };
 
-const currentVersion = findVersion((version) => version.status === "current");
+const currentVersion = findVersion((version) => version.status === "current" && version.prefix === "");
 
-const rootVersion = findVersion((version) => version.prefix === "");
+const rootVersion = currentVersion;
 
 const featuredVersion = versions.find((version) => version.status === "prerelease") ?? currentVersion;
 
