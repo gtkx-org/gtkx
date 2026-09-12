@@ -48,7 +48,44 @@ const projectFiles = (): Record<string, string> => ({
     "src/excluded/Ignored.stories.tsx": "this is invalid source",
 });
 
+const closeStories = {
+    content: otherStory(),
+    window: `
+import { AdwWindow } from "@gtkx/jsx/adw";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+export default { title: "Window", parameters: { gtkx: { preview: "window" } } };
+export const Example = { render: () => <AdwWindow title="Story window"><GtkLabel>Story content</GtkLabel></AdwWindow> };
+`,
+    failing: `
+export default { title: "Broken", render: () => { throw new Error("Broken story"); } };
+export const Example = {};
+`,
+};
+
 describe("gtkx storybook", () => {
+    it.each(Object.entries(closeStories))("exits after closing the explorer with a %s story", async (mode, source) => {
+        using project = createCliProject({
+            prefix: "gtkx-storybook-close-",
+            config: CONFIG,
+            files: { "src/Close.stories.tsx": source },
+            hasStore: true,
+            shouldShareStore: true,
+        });
+        await using session = await startStorybookSession(project);
+        const pid = await session.applicationPid();
+        await session.waitForWidget("role", "window", { name: "GTKX Storybook" });
+
+        if (mode === "window") {
+            await session.waitForWidget("role", "window", { name: "Story window" });
+        } else if (mode === "failing") {
+            await session.waitForWidget("name", "storybook-preview-error");
+        }
+
+        await session.click("role", "button", { name: "Close" });
+        await expect.poll(() => session.child.exitCode, { timeout: 15_000 }).toBe(0);
+        expect(() => process.kill(pid, 0)).toThrow();
+    });
+
     it("discovers native stories, reloads metadata and components, and updates added and removed modules", async () => {
         using project = createCliProject({
             prefix: "gtkx-storybook-dev-",

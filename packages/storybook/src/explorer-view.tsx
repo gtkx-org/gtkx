@@ -9,6 +9,7 @@ import {
     AdwToolbarView,
     AdwWindowTitle,
 } from "@gtkx/jsx/adw";
+import { quit } from "@gtkx/react";
 import { useCallback, useState, useSyncExternalStore } from "react";
 import type { StoryCatalog } from "./catalog.js";
 import { StoryNavigator } from "./explorer-navigator.js";
@@ -83,7 +84,7 @@ const Storybook = ({
     title = "GTKX Storybook",
 }: StorybookProps): ReactNode => (
     <AdwApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-        <AdwApplicationWindow title={title} defaultWidth={1200} defaultHeight={800}>
+        <AdwApplicationWindow title={title} defaultWidth={1200} defaultHeight={800} onCloseRequest={quit}>
             <StorybookView catalog={catalog} title={title} />
         </AdwApplicationWindow>
     </AdwApplication>
