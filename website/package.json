@@ -112,8 +112,7 @@
             "reference-stable": {
                 "cache": true,
                 "inputs": [
-                    "{projectRoot}/scripts/references.mjs",
-                    "{projectRoot}/scripts/reference-search-exclude.mjs",
+                    "{projectRoot}/scripts/reference*.mjs",
                     {
                         "runtime": "node website/scripts/references.mjs pins"
                     }

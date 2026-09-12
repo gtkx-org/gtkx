@@ -139,6 +139,10 @@ const readVersions = (): readonly DocumentationVersion[] => {
         "version prefix",
     );
     assertExactlyOne(
+        parsed.filter((version) => version.status === "current"),
+        "current version",
+    );
+    assertExactlyOne(
         parsed.filter((version) => version.status === "current" && version.prefix === ""),
         "current version served without a prefix",
     );
