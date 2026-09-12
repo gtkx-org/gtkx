@@ -11,11 +11,6 @@ on:
         description: Prerelease identifier, such as beta or rc; leave empty to keep the current one
         type: string
         default: ""
-  push:
-    branches:
-      - main
-    paths:
-      - ".nx/version-plans/**"
 
 permissions: {}
 

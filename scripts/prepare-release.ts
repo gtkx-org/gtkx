@@ -27,6 +27,9 @@ const readVersion = (): string =>
 const hasVersionPlans = (): boolean =>
     existsSync(VERSION_PLANS_PATH) && readdirSync(VERSION_PLANS_PATH).some((file) => file.endsWith(".md"));
 
+const hasReleaseIntent = (values: VersionArguments): boolean =>
+    values.specifier !== undefined || values.preid !== undefined;
+
 const isPrerelease = (version: string): boolean => version.includes("-");
 
 const prereleaseIdentifier = (version: string): string | undefined => {
@@ -90,7 +93,7 @@ const main = async (): Promise<void> => {
     });
     const isDryRun = values["dry-run"];
 
-    if (values.specifier === undefined && !hasVersionPlans()) {
+    if (!hasReleaseIntent(values) && !hasVersionPlans()) {
         console.log("No version plans to release.");
 
         return;

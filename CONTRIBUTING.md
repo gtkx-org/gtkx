@@ -60,15 +60,19 @@ CI fails a pull request that touches a published package and adds no plan. Docum
 
 The Release PR workflow cuts a release from the pending version plans and never writes to `main` itself:
 
-1. Run it from the Actions tab or with `gh workflow run release-pr.yml`. It also runs on its own whenever a merged pull request adds a version plan. Leave both inputs empty to stay on the current train, which means the next beta today and the bump the plans ask for once 2.0 is stable. Pass `specifier=2.0.0` to end the beta and cut the stable release, or `preid=rc` to rename the prerelease identifier. Both inputs release whether or not a plan is pending, so a maintainer can cut a version on demand.
+1. Run it from the Actions tab or with `gh workflow run release-pr.yml`. Nothing else starts it, so a release happens when you decide it does. Leave both inputs empty to stay on the current train, which means the next beta today and the bump the plans ask for once 2.0 is stable. Pass `specifier=2.0.0` to end the beta and cut the stable release, or `preid=rc` to rename the prerelease identifier. Either input releases on demand even when no plan is pending; with both empty and nothing pending the workflow stops without opening anything.
 2. The workflow versions every package, rewrites the tutorial ranges and the documentation pins, prepends the entry to `CHANGELOG.md`, deletes the consumed plans, and opens or refreshes the `release/next` pull request as the release bot, with a commit signed by GitHub. `pnpm prepare-release --dry-run` runs the same steps locally without writing anything.
 3. Read the pull request and its checks, then advance `main` yourself. The ruleset allows only rebase merges, and a rebase merge drops every signature, so the merge button cannot produce a commit `main` accepts:
 
 ```bash
+git fetch origin release/next
+sha="$(git rev-parse FETCH_HEAD)"
 gh pr checks <number>
-git fetch origin
-git push origin origin/release/next:main
+git log -1 --show-signature "$sha"
+git push origin "$sha:main"
 ```
+
+Push the commit you fetched rather than the branch name. The workflow rebuilds `release/next` on the current tip of `main` every time it runs, so a second run would fast-forward just as cleanly and ship a commit you never read.
 
 The push is a fast-forward of a commit that is already Verified, so it satisfies the `required_signatures` and `required_linear_history` rules on its own merits, and the pull request closes as merged. It bypasses the required status checks and the approving review because an organization admin bypasses the ruleset, so read `gh pr checks` yourself first. If `main` moved after the pull request was created, rerun the Release PR workflow rather than pressing "Update branch": updating by merge adds a second parent that the linear-history rule rejects, and updating by rebase rewrites the commit without a signature.
 
