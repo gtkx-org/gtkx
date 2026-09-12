@@ -9,6 +9,7 @@ import {
 } from "../../versioning.js";
 
 const { screenMenu = false } = defineProps<{ screenMenu?: boolean }>();
+const currentLabel = GTKX_CURRENT_LABEL;
 const route = useRoute();
 const router = useRouter();
 const selectedVersion = computed<DocumentationVersion>({
@@ -32,7 +33,7 @@ const selectedVersion = computed<DocumentationVersion>({
     <span>Version</span>
     <select v-model="selectedVersion">
       <option value="stable">1.6 stable</option>
-      <option value="beta">2.0 beta 10</option>
+      <option value="beta">{{ currentLabel }}</option>
     </select>
   </label>
 </template>

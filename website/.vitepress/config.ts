@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { type DefaultTheme, defineConfig, type HeadConfig } from "vitepress";
 import stableTypedocSidebar from "../reference/typedoc-sidebar.json" with { type: "json" };
 import betaTypedocSidebar from "../v2/reference/typedoc-sidebar.json" with { type: "json" };
@@ -10,6 +12,7 @@ import {
     type DocumentationVersion,
     guideItems,
     tutorialItems,
+    versionLabel,
     versionPrefix,
 } from "./versioning.js";
 
@@ -17,6 +20,9 @@ const title = "GTKX";
 const description = "Build native GNOME apps with React and TypeScript on an Adwaita-first foundation.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
+const currentManifestPath = join(dirname(fileURLToPath(import.meta.url)), "../../packages/create-gtkx/package.json");
+const currentManifest = JSON.parse(readFileSync(currentManifestPath, "utf8")) as { version: string };
+const currentLabel = versionLabel(currentManifest.version);
 
 type LinkedDocumentationItem = {
     text: string;
@@ -64,7 +70,7 @@ const documentationGroups = [
         referenceSidebar: stableReferenceSidebar,
     },
     {
-        label: "GTKX 2.0 beta 10",
+        label: `GTKX ${currentLabel}`,
         items: betaDocItems,
         referenceLink: documentationLink("beta", "reference/"),
         referenceSidebar: betaReferenceSidebar,
@@ -130,7 +136,7 @@ const blogSidebar: DefaultTheme.SidebarItem[] = [
 
 const documentationTitle = (relativePath: string): string => {
     if (/^v2\/(guide|tutorial|reference)\//.test(relativePath)) {
-        return "GTKX 2.0 beta 10";
+        return `GTKX ${currentLabel}`;
     }
 
     if (/^(guide|tutorial|reference)\//.test(relativePath)) {
@@ -212,6 +218,9 @@ export default defineConfig({
     },
     vite: {
         plugins: [highlightPlugin()],
+        define: {
+            GTKX_CURRENT_LABEL: JSON.stringify(currentLabel),
+        },
         server: {
             allowedHosts: ["workstation"],
         },
