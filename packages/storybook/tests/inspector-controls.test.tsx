@@ -1,7 +1,18 @@
+import type { ComponentProps, ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, within } from "@gtkx/testing";
+import { rootElement } from "@gtkx/react";
+import { Storybook, StoryCatalog } from "@gtkx/storybook/explorer";
+import { render, screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { ControlFixture, controlMeta, controlStories, replaceControl, showInspector } from "./fixtures/inspector.js";
+
+const RecoverableControlFixture = (args: ComponentProps<typeof ControlFixture>): ReactNode => {
+    if (args.enabled) {
+        throw new Error("Unsupported enabled state");
+    }
+
+    return <ControlFixture {...args} />;
+};
 
 describe("native story controls", () => {
     it("edits boolean, text, numeric, and choice arguments without remounting the component", async () => {
@@ -16,6 +27,33 @@ describe("native story controls", () => {
         expect(screen.getByName("inspector-text")).toHaveTextContent(/^Updated$/);
         expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^7$/);
         expect(screen.getByName("inspector-choice")).toHaveTextContent(/^"red"$/);
+        expect(screen.getByName("inspector-clicks")).toHaveTextContent(/^1$/);
+    });
+
+    it("recovers a failed render when controls repair the arguments", async () => {
+        const catalog = new StoryCatalog();
+        await catalog.load([{
+            id: "inspector.stories.tsx",
+            title: "Inspector",
+            load: () => Promise.resolve({
+                default: { ...controlMeta, component: RecoverableControlFixture },
+                Default: {},
+            }),
+        }]);
+        const explorer = <Storybook catalog={catalog} />;
+        const result = await render(explorer, { container: rootElement });
+        await userEvent.click(screen.getByText("Increment local state"));
+        await userEvent.click(screen.getByName("storybook-control-enabled"));
+        await expect(result.rerender(explorer)).rejects.toThrow();
+
+        await replaceControl("text", "Repaired");
+        await expect(result.rerender(explorer)).rejects.toThrow();
+        await userEvent.click(screen.getByName("storybook-control-enabled"));
+
+        expect(screen.getByName("inspector-enabled")).toHaveTextContent(/^false$/);
+        expect(screen.getByName("inspector-text")).toHaveTextContent(/^Repaired$/);
+        expect(screen.getByName("inspector-clicks")).toHaveTextContent(/^0$/);
+        await userEvent.click(screen.getByText("Increment local state"));
         expect(screen.getByName("inspector-clicks")).toHaveTextContent(/^1$/);
     });
 

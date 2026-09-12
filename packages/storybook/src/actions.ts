@@ -79,9 +79,9 @@ const action = (name: string): ActionCallback => {
 
 class ActionStore {
     private entries: ActionEntry[] = [];
-    private listeners: Set<() => void> = new Set();
+    private readonly listeners: Set<() => void> = new Set();
     private nextId = 0;
-    private limit: number;
+    private readonly limit: number;
 
     getSnapshot = (): ActionEntry[] => this.entries;
 
@@ -119,7 +119,7 @@ class ActionStore {
             name,
             args: args.slice(0, 8).map((value) => formatArgument(value)),
             timestamp: Date.now(),
-            ...(error !== undefined && { error: error.message }),
+            ...(error !== undefined && { error: error.message.slice(0, MAX_ARGUMENT_LENGTH) }),
         };
         this.publish([...this.entries, entry].slice(-this.limit));
     }
@@ -127,9 +127,16 @@ class ActionStore {
 
 type CallbackOptions = { callback?: EventCallback; name?: string; argument: string; onError?: (error: Error) => void };
 
-const settleCallback = async (result: Promise<unknown>, fail: (cause: unknown) => void): Promise<unknown> => {
+const settleCallback = async (
+    result: Promise<unknown>,
+    succeed: () => void,
+    fail: (cause: unknown) => void,
+): Promise<unknown> => {
     try {
-        return await result;
+        const value = await result;
+        succeed();
+
+        return value;
     } catch (error) {
         fail(error);
 
@@ -141,6 +148,11 @@ const bindCallback = (
     store: ActionStore,
     options: CallbackOptions,
 ): EventCallback => (...values) => {
+    const succeed = (): void => {
+        if (options.name !== undefined) {
+            store.record(options.name, values);
+        }
+    };
     const fail = (cause: unknown): void => {
         const error = cause instanceof Error ? cause : new Error(String(cause));
         store.record(options.name ?? options.argument, values, error);
@@ -155,11 +167,13 @@ const bindCallback = (
     try {
         const result = actionScope.run(store, () => options.callback?.(...values));
 
-        if (options.name !== undefined) {
-            store.record(options.name, values);
+        if (result instanceof Promise) {
+            return settleCallback(result, succeed, fail);
         }
 
-        return result instanceof Promise ? settleCallback(result, fail) : result;
+        succeed();
+
+        return result;
     } catch (error) {
         fail(error);
 

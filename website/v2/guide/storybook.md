@@ -66,7 +66,7 @@ export default meta;
 export { Default, Disabled };
 ```
 
-For component Fast Refresh, keep the component in its own module and import it into the story. Explicit `argTypes` create native boolean, text, number, and select controls. `argTypes.onClicked.action` records callback calls; you can also provide `action("clicked")` from `@gtkx/storybook` directly as an argument.
+For component Fast Refresh, keep the component in its own module and import it into the story. Explicit `argTypes` create native boolean, text, number, and select controls. `argTypes.onClicked.action` records callback calls; asynchronous callbacks are recorded once when they settle. You can also provide `action("clicked")` from `@gtkx/storybook` directly as an argument.
 
 Shared `args`, `parameters`, `decorators`, and `initialGlobals` belong in `.storybook/preview.tsx`, exported as an object satisfying `Preview` from `@gtkx/storybook`. Decorators return ordinary GTKX JSX and receive the resolved story context.
 
@@ -97,7 +97,7 @@ Pass shared preview configuration as the second argument to `composeStories`. Na
 
 ## Lifecycle and compatibility
 
-Control edits rerender the current story. Reset restores default arguments and remounts it. Switching stories unmounts the previous preview, including its windows and dialogs. Content stories receive the explorer's application and parent-window contexts; a story owning a separate window sets `parameters: { gtkx: { preview: "window" } }`.
+Control edits rerender the current story and retry previews that failed to render. Reset restores default arguments and remounts it. Switching stories unmounts the previous preview, including its windows and dialogs. Content stories receive the explorer's application and parent-window contexts; a story owning a separate window sets `parameters: { gtkx: { preview: "window" } }`.
 
 GTKX reuses composition from pinned `storybook@10.6.0`. This is a standalone native explorer. Browser addons, a browser manager, MDX, Autodocs, `play`, loaders, Storybook preview hooks, and static interactive publishing need other integrations and are unsupported. Configured globals are available in context; there is no global toolbar.
 

@@ -187,7 +187,7 @@ const loadSource = async (
 /** Loads CSF modules and publishes subscribable explorer snapshots. */
 class StoryCatalog {
     private snapshot: StoryCatalogSnapshot = { stories: [], errors: [], isLoading: false };
-    private listeners: Set<() => void> = new Set();
+    private readonly listeners: Set<() => void> = new Set();
     private cache = createSourceCache();
     private revision = 0;
 

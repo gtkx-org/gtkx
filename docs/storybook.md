@@ -173,7 +173,7 @@ argTypes: {
 }
 ```
 
-The explorer supplies a recording callback when the argument has no handler and records calls to configured handlers. Existing handlers continue to run. Actions are scoped to the selected story and displayed in the Actions panel, keeping at most 100 entries. Switching stories or resetting clears the history.
+The explorer supplies a recording callback when the argument has no handler and records calls to configured handlers. Existing handlers continue to run. Asynchronous callbacks are recorded once when they settle. Actions are scoped to the selected story and displayed in the Actions panel, keeping at most 100 entries. Switching stories or resetting clears the history.
 
 Alternatively, put a named action directly in the story's args:
 
@@ -220,7 +220,7 @@ export { Default };
 
 Window elements use GTKX's normal portals and presentation lifecycle. A decorator that adds ordinary widget chrome should skip the wrapper for window stories; the example's preview shows that check. Dialogs can be opened from a content story by conditionally rendering `AdwDialog`, which receives the explorer's parent-window context. Remove it from JSX to close it. Use `onClosed` to synchronize component state when a user dismisses it. A story that directly renders a dialog can use `parameters.gtkx.preview: "dialog"`.
 
-Switching stories unmounts the previous preview, closing its windows and dialogs and clearing local React state. Reset remounts the selected story with default arguments. A render failure is contained within the preview so navigation remains available; select another story or reset after correcting its input. Full `AdwApplication` stories require an independent application process and are outside the shared explorer.
+Switching stories unmounts the previous preview, closing its windows and dialogs and clearing local React state. Reset remounts the selected story with default arguments. A render failure is contained within the preview so navigation remains available; edit its controls to retry with corrected arguments, select another story, or reset the preview. Full `AdwApplication` stories require an independent application process and are outside the shared explorer.
 
 Portable composition creates neither an application nor a window. When using composed stories in your own application, supply the shell and providers yourself. `@gtkx/testing` supplies its normal harness window for ordinary widget stories; application-window stories need an application wrapper and the appropriate render container.
 

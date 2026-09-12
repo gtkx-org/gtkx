@@ -38,7 +38,14 @@ const UnsupportedControl = ({ title, description }: { title: string; description
     <AdwActionRow title={markupEscapeText(title, -1)} subtitle={markupEscapeText(description, -1)} sensitive={false} />
 );
 
-const NumberControl = ({ argument, title, value, settings, isDisabled, onChange }: ControlProps): ReactNode => {
+const NumberControl = ({
+    argument,
+    title,
+    value,
+    settings,
+    isDisabled,
+    onChange,
+}: Omit<ControlProps, "type" | "options">): ReactNode => {
     const min = settings.min ?? -Number.MAX_SAFE_INTEGER;
     const max = settings.max ?? Number.MAX_SAFE_INTEGER;
     const step = settings.step ?? 1;
@@ -83,7 +90,7 @@ const NumberControl = ({ argument, title, value, settings, isDisabled, onChange 
     );
 };
 
-const SelectControl = (props: ControlProps): ReactNode => {
+const SelectControl = (props: Omit<ControlProps, "type">): ReactNode => {
     const { argument, title, value, options, settings, isDisabled, onChange } = props;
     if (!Array.isArray(options) || options.length === 0 || options.some((option: unknown) =>
         option !== null && typeof option !== "string" && typeof option !== "number" && typeof option !== "boolean")) {

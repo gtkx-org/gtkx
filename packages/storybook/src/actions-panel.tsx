@@ -19,7 +19,7 @@ const ActionsPanel = ({ store }: { store: ActionStore }): ReactNode => {
                     key={entry.id}
                     name={`storybook-action-${String(entry.id)}`}
                     title={markupEscapeText(entry.name, -1)}
-                    subtitle={entry.error === undefined ? markupEscapeText(entry.args.join(", "), -1) : "Action failed"}
+                    subtitle={markupEscapeText(entry.error ?? entry.args.join(", "), -1)}
                     subtitleSelectable
                     subtitleLines={3}
                     cssClasses={entry.error === undefined ? [] : ["error"]}

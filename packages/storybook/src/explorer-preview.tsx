@@ -22,15 +22,19 @@ type PreviewState = {
     actions: ActionStore;
 };
 
-type BoundaryProps = { children: ReactNode };
-type BoundaryState = { error: Error | null };
+type BoundaryProps = { children: ReactNode; args: Args };
+type BoundaryState = { error: Error | null; args: Args };
 
 class PreviewBoundary extends Component<BoundaryProps, BoundaryState> {
-    static getDerivedStateFromError(error: unknown): BoundaryState {
+    static getDerivedStateFromProps(props: BoundaryProps, state: BoundaryState): BoundaryState | null {
+        return props.args === state.args ? null : { error: null, args: props.args };
+    }
+
+    static getDerivedStateFromError(error: unknown): Pick<BoundaryState, "error"> {
         return { error: error instanceof Error ? error : new Error(String(error)) };
     }
 
-    override state: BoundaryState = { error: null };
+    override state: BoundaryState = { error: null, args: this.props.args };
 
     override render(): ReactNode {
         return this.state.error === null
@@ -40,7 +44,7 @@ class PreviewBoundary extends Component<BoundaryProps, BoundaryState> {
                         name="storybook-preview-error"
                         title="Preview failed"
                         iconName="dialog-error-symbolic"
-                        description="Reset the preview or select another story to continue."
+                        description="Adjust controls, reset the preview, or select another story to continue."
                     />
                 );
     }
@@ -178,7 +182,7 @@ const StorybookPreview = ({ entry }: PreviewProps): ReactNode => {
         >
             <GtkBox>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} hexpand vexpand>
-                    <PreviewBoundary key={state.generation}>
+                    <PreviewBoundary key={state.generation} args={state.args}>
                         {state.error === null
                             ? <PreviewContent story={entry.story} args={boundArgs} />
                             : (
