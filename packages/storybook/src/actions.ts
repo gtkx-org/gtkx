@@ -10,6 +10,7 @@ type ActionEntry = {
     error?: string;
 };
 
+/** A named story callback whose arguments can be recorded by the native explorer. */
 type ActionCallback = (...args: unknown[]) => void;
 type EventCallback = (...args: unknown[]) => unknown;
 
@@ -55,6 +56,14 @@ const formatArgument = (value: unknown): string => {
     }
 };
 
+/**
+ * Creates a named action for a story's callback arguments.
+ * The explorer records bounded argument summaries; calls outside its action scope have no effect.
+ *
+ * @param name Nonempty label displayed in the Actions panel.
+ * @returns A callback to supply in story args.
+ * @throws If the name is empty or contains only whitespace.
+ */
 const action = (name: string): ActionCallback => {
     if (name.trim().length === 0) {
         throw new TypeError("An action needs a name");

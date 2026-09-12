@@ -2,27 +2,49 @@ import type { Args, ArgTypes, ComponentMeta, ComposedStory, Preview, StoryAnnota
 import { composeStories } from "./compose.js";
 import { storyNameFromExport } from "./upstream.js";
 
+/** A lazily loaded CSF module discovered in a Storybook project. */
 type StorySource = {
+    /** Stable module identifier used for caching and error reporting. */
     id: string;
+    /** Fallback story group title when the module does not declare one. */
     title: string;
+    /** Imports the module and resolves to its CSF exports. */
     load: () => Promise<unknown>;
 };
 
+/** A composed story and the metadata used to display it in the explorer. */
 type StoryEntry = {
+    /** Storybook identifier used to preserve the selected story across updates. */
     id: string;
+    /** Component group title declared by the module or derived from its source. */
     title: string;
+    /** Display name declared by the story or derived from its export name. */
     name: string;
+    /** Name of the CSF export that defines this story. */
     exportName: string;
+    /** Identifier of the module containing this story. */
     source: string;
+    /** Renderable story with its metadata, decorators, and default args composed. */
     story: ComposedStory;
+    /** Resolved arg types with explicitly configured explorer controls. */
     controls: ArgTypes;
 };
 
-type StoryLoadError = { source: string; error: Error };
+/** A source loading or composition failure displayed alongside healthy stories. */
+type StoryLoadError = {
+    /** Identifier of the failed source, or Storybook for a session failure. */
+    source: string;
+    /** Normalized error raised while loading or composing the source. */
+    error: Error;
+};
 
+/** Current explorer contents and loading state exposed to subscribers. */
 type StoryCatalogSnapshot = {
+    /** Successfully composed stories with duplicate identifiers excluded. */
     stories: StoryEntry[];
+    /** Failures encountered during the latest load or reported by the session. */
     errors: StoryLoadError[];
+    /** Whether the catalog is waiting for the latest source load to finish. */
     isLoading: boolean;
 };
 
@@ -141,14 +163,38 @@ const collectSources = (loaded: LoadedSource[]) => {
     return { cache, stories: withoutDuplicateIds(entries, errors), errors };
 };
 
+const createSourceCache = (): Map<string, CachedStories> => new Map();
+
+const loadSource = async (
+    source: StorySource,
+    preview: Preview,
+    getCache: () => Map<string, CachedStories>,
+): Promise<LoadedSource> => {
+    try {
+        const module = await source.load();
+        const previous = getCache().get(source.id);
+        const cached = previous !== undefined && previous.module === module &&
+            previous.title === source.title && previous.preview === preview
+            ? previous
+            : { module, title: source.title, preview, entries: composeSource(source, module, preview) };
+
+        return { source, cached };
+    } catch (error) {
+        return { source: source.id, error: normalizeError(error) };
+    }
+};
+
+/** Loads CSF modules and publishes subscribable explorer snapshots. */
 class StoryCatalog {
     private snapshot: StoryCatalogSnapshot = { stories: [], errors: [], isLoading: false };
     private listeners: Set<() => void> = new Set();
-    private cache: Map<string, CachedStories> = new Map();
+    private cache = createSourceCache();
     private revision = 0;
 
+    /** Returns the current snapshot, retaining its identity until the next update. */
     getSnapshot = (): StoryCatalogSnapshot => this.snapshot;
 
+    /** Registers a snapshot listener and returns a function that unsubscribes it. */
     subscribe = (listener: () => void): (() => void) => {
         this.listeners.add(listener);
 
@@ -165,25 +211,15 @@ class StoryCatalog {
         }
     }
 
-    private async loadSource(source: StorySource, preview: Preview): Promise<LoadedSource> {
-        try {
-            const module = await source.load();
-            const previous = this.cache.get(source.id);
-            const cached = previous !== undefined && previous.module === module &&
-                previous.title === source.title && previous.preview === preview
-                ? previous
-                : { module, title: source.title, preview, entries: composeSource(source, module, preview) };
-
-            return { source, cached };
-        } catch (error) {
-            return { source: source.id, error: normalizeError(error) };
-        }
-    }
-
+    /**
+     * Replaces the catalog with stories composed from the supplied sources and preview.
+     * Only the latest load publishes results; unchanged module identities reuse composed stories.
+     * Rejects with an AggregateError after publishing healthy stories when any source fails.
+     */
     async load(sources: StorySource[], preview: Preview = EMPTY_PREVIEW): Promise<void> {
         const revision = ++this.revision;
         this.publish({ ...this.snapshot, isLoading: true });
-        const loaded = await Promise.all(sources.map((source) => this.loadSource(source, preview)));
+        const loaded = await Promise.all(sources.map((source) => loadSource(source, preview, () => this.cache)));
 
         if (revision !== this.revision) {
             return;
@@ -198,6 +234,7 @@ class StoryCatalog {
         }
     }
 
+    /** Publishes a session failure while preserving stories and superseding pending loads. */
     reportError(cause: unknown): void {
         this.revision++;
         this.publish({

@@ -14,9 +14,13 @@ import type { StoryCatalog } from "./catalog.js";
 import { StoryNavigator } from "./explorer-navigator.js";
 import { StorybookPreview } from "./explorer-preview.js";
 
+/** Configuration for the native Storybook application shell. */
 type StorybookProps = {
+    /** Source catalog whose stories and loading errors appear in the explorer. */
     catalog: StoryCatalog;
+    /** Gio application identifier; defaults to org.gtkx.Storybook. */
     applicationId?: string;
+    /** Explorer window and sidebar title; defaults to GTKX Storybook. */
     title?: string;
 };
 
@@ -72,6 +76,7 @@ const StorybookView = ({ catalog, title = "GTKX Storybook" }: StorybookViewProps
     );
 };
 
+/** Renders the Adwaita explorer application with navigation, story previews, controls, and actions. */
 const Storybook = ({
     catalog,
     applicationId = "org.gtkx.Storybook",
