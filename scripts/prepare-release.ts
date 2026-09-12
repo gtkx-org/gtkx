@@ -45,10 +45,23 @@ const versionArguments = (currentVersion: string, values: VersionArguments): Ver
     return { ...(specifier !== undefined && { specifier }), ...(preid !== undefined && { preid }) };
 };
 
-const assertNamedPrerelease = (version: string): void => {
-    if (isPrerelease(version) && prereleaseIdentifier(version) === undefined) {
+const assertNamedPrerelease = (version: string | null | undefined): void => {
+    if (typeof version === "string" && isPrerelease(version) && prereleaseIdentifier(version) === undefined) {
         throw new Error(`${version} has no prerelease identifier. Pass --preid to name one, such as --preid beta.`);
     }
+};
+
+const assertReleasableVersion = async (
+    currentVersion: string,
+    options: Parameters<typeof releaseVersion>[0],
+): Promise<void> => {
+    if (options.preid !== undefined || isPrerelease(currentVersion)) {
+        return;
+    }
+
+    const preview = await releaseVersion({ ...options, dryRun: true });
+
+    assertNamedPrerelease(preview.workspaceVersion);
 };
 
 const withSelfRanges = (ranges: Record<string, string>, version: string): Record<string, string> =>
@@ -99,11 +112,14 @@ const main = async (): Promise<void> => {
         return;
     }
 
+    const currentVersion = readVersion();
+    const options = { ...GIT_OPTIONS, verbose: values.verbose, ...versionArguments(currentVersion, values) };
+
+    await assertReleasableVersion(currentVersion, options);
+
     const { workspaceVersion, projectsVersionData, releaseGraph } = await releaseVersion({
-        ...GIT_OPTIONS,
+        ...options,
         dryRun: isDryRun,
-        verbose: values.verbose,
-        ...versionArguments(readVersion(), values),
     });
 
     if (!workspaceVersion) {
@@ -111,8 +127,6 @@ const main = async (): Promise<void> => {
 
         return;
     }
-
-    assertNamedPrerelease(workspaceVersion);
 
     if (!isDryRun) {
         syncTutorialManifest(workspaceVersion);
