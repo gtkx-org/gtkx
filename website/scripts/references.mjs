@@ -153,14 +153,17 @@ const PROJECT_ROOT = "{projectRoot}";
 
 const byText = (left, right) => left.localeCompare(right);
 
+const referenceOutput = (prefix) => [PROJECT_ROOT, prefix.replace(/^\//, ""), "reference"].filter(Boolean).join("/");
+
+const neededFor = (source) =>
+    versionsWithSource(source)
+        .map((version) => referenceOutput(version.prefix))
+        .toSorted(byText)
+        .join(", ");
+
 const assertDeclaredOutputs = () => {
     const targets = readJson(join(website, "package.json")).nx.targets;
     const declaredFor = (name) => (targets[name].outputs ?? []).toSorted(byText).join(", ");
-    const neededFor = (source) =>
-        versionsWithSource(source)
-            .map((version) => join(PROJECT_ROOT, version.prefix.replace(/^\//, ""), "reference"))
-            .toSorted(byText)
-            .join(", ");
 
     for (const [name, source] of [
         ["reference-current", "worktree"],

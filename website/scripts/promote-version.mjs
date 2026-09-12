@@ -9,6 +9,7 @@ const manifestPath = join(website, "versions.json");
 const packagePath = join(website, "package.json");
 const staging = join(website, ".promote-version");
 const SECTIONS = ["guide", "tutorial", "reference"];
+const PROJECT_ROOT = "{projectRoot}";
 const LINK_PATTERN = /\]\((\/[^)\s]*)\)/g;
 
 const readManifest = () => JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -114,7 +115,7 @@ const unstageSections = (version, prefix) => {
     }
 };
 
-const referenceOutput = (prefix) => join("{projectRoot}", prefix.replace(/^\//, ""), "reference");
+const referenceOutput = (prefix) => [PROJECT_ROOT, prefix.replace(/^\//, ""), "reference"].filter(Boolean).join("/");
 
 const syncReferenceOutputs = (versions) => {
     const manifest = JSON.parse(readFileSync(packagePath, "utf8"));
@@ -127,9 +128,6 @@ const syncReferenceOutputs = (versions) => {
 
     writeFileSync(packagePath, `${JSON.stringify(manifest, undefined, 4)}\n`);
 };
-
-const occupiedSections = (prefix) =>
-    SECTIONS.filter((section) => existsSync(join(versionDirectory(prefix), section)));
 
 const pruneEmptyDirectory = (prefix) => {
     const directory = versionDirectory(prefix);
@@ -175,10 +173,12 @@ if (manifest.versions.some((version) => version.prefix === values.to)) {
     throw new Error(`versions.json already declares the prefix ${values.to}.`);
 }
 
-const occupied = occupiedSections(values.to);
+if (SECTIONS.includes(values.to.slice(1))) {
+    throw new Error(`${values.to} collides with a documentation section; choose another prefix.`);
+}
 
-if (occupied.length > 0) {
-    throw new Error(`${versionDirectory(values.to)} already holds ${occupied.join(", ")}; move it aside first.`);
+if (existsSync(versionDirectory(values.to))) {
+    throw new Error(`${versionDirectory(values.to)} already exists; move it aside first.`);
 }
 
 if (existsSync(staging)) {
