@@ -1,4 +1,3 @@
-export { createElementComponent } from "./components/element.js";
 export { BUILTIN_ELEMENTS } from "./element-config.js";
 export type {
     DetachInfo,

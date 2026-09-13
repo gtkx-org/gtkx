@@ -49,8 +49,7 @@ const collectBuiltinElements = (target: BuiltinElements, elements: Record<string
 
 /**
  * Reads the framework's built-in element config by importing the `config` entrypoint of the installed
- * `@gtkx/react`. That entrypoint is reconciler-free, so importing it resolves `@gtkx/gi` but never
- * `virtual:gtkx-config`, which means this must run only after the gi store has been written and linked.
+ * `@gtkx/react`.
  */
 const readBuiltinElements = async (): Promise<BuiltinElements> => {
     const result: BuiltinElements = {

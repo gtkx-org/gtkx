@@ -26,8 +26,7 @@ import {
     GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { GtkSourceView } from "@gtkx/jsx/gtksource";
-import { createPortal } from "@gtkx/react";
-import { createElementComponent } from "@gtkx/react/config";
+import { createElementComponent, createPortal } from "@gtkx/react";
 import { registerClass } from "@gtkx/runtime";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, useLayoutEffect, useState } from "react";
