@@ -30,6 +30,7 @@ export {
 export { createErrorDomain } from "./error.js";
 export { markSyntheticSignalMembers };
 export { type ApplicationInstance, getApplicationInstance } from "./lifecycle.js";
+export { createParamSpecOverride, type ParamSpecOverride } from "./param-spec-override.js";
 export {
     descriptorFreePropertySpec,
     propertyMapOverride,

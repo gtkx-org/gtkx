@@ -27,6 +27,10 @@
             "exports",
             "types"
         ],
+        "packages/runtime/src/param-spec-override.ts": [
+            "exports",
+            "types"
+        ],
         "packages/cli/src/refresh-runtime.ts": [
             "exports"
         ]
