@@ -23,7 +23,7 @@ const cairoFontOptionsGetVariations = bindCairo(
 
 const cairoFontOptionsSetVariations = bindCairo(
     "cairo_font_options_set_variations",
-    [FONT_OPTIONS_T, t.string("full")],
+    [FONT_OPTIONS_T, t.string("borrowed")],
     t.void,
 );
 
@@ -129,13 +129,13 @@ class FontOptions {
     }
 
     /** Sets the OpenType font variations to apply, as a comma-separated `axis=value` string. */
-    setVariations(variations: string): void {
+    setVariations(variations: string | null): void {
         cairoFontOptionsSetVariations(getHandle(this), variations);
     }
 
     /** Returns the OpenType font variations to apply. */
-    getVariations(): string {
-        return cairoFontOptionsGetVariations(getHandle(this)) as string;
+    getVariations(): string | null {
+        return cairoFontOptionsGetVariations(getHandle(this)) as string | null;
     }
 }
 

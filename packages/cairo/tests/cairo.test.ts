@@ -338,9 +338,16 @@ describe("Context — clipping", () => {
         expect(createTestContext().copyClipRectangleList()).toEqual([{ x: 0, y: 0, width: 200, height: 200 }]);
     });
 
-    it("reports no rectangles for a clip that is not rectangular", () => {
+    it("rejects a clip that cannot be represented by rectangles", () => {
         const ctx = createTestContext();
         ctx.arc(50, 50, 20, 0, Math.PI * 2);
+        ctx.clip();
+        expect(() => ctx.copyClipRectangleList()).toThrow();
+        expect(ctx.status()).toBe(Status.SUCCESS);
+    });
+
+    it("reports no rectangles for an empty clip", () => {
+        const ctx = createTestContext();
         ctx.clip();
         expect(ctx.copyClipRectangleList()).toEqual([]);
     });

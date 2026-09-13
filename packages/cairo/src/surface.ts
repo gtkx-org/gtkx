@@ -12,6 +12,8 @@ import {
     write,
 } from "@gtkx/runtime";
 import type { DeviceOffset, DeviceScale, FallbackResolution, InkExtents, RectangleData } from "./types.js";
+import { Context } from "./context.js";
+import { Device } from "./device.js";
 import { type Content, type Format, type Status, SurfaceType } from "./enums.js";
 import { FontOptions } from "./font-options.js";
 import {
@@ -29,7 +31,6 @@ import { checkSurface } from "./status.js";
 const SURFACE_TYPE = cairoGType("cairo_gobject_surface_get_type");
 const RECTANGLE_SIZE = 32;
 const DOUBLE = t.fieldAt(t.float64);
-const UINT8 = t.fieldAt(t.uint8);
 const DEVICE_PAIR_ARGS = [SURFACE_T, t.float64, t.float64];
 const DEVICE_PAIR_OUT_ARGS = [SURFACE_T, t.ref(t.float64), t.ref(t.float64)];
 const SIMILAR_ARGS = [SURFACE_T, t.int32, t.int32, t.int32];
@@ -42,7 +43,7 @@ const cairoSurfaceCreateForRectangle = bindCairo(
     SURFACE_FULL_T,
 );
 
-const cairoSurfaceWriteToPng = bindCairo("cairo_surface_write_to_png", [SURFACE_T, t.string("full")], t.int32);
+const cairoSurfaceWriteToPng = bindCairo("cairo_surface_write_to_png", [SURFACE_T, t.string("borrowed")], t.int32);
 const cairoSurfaceStatus = bindCairo("cairo_surface_status", [SURFACE_T], t.int32);
 const cairoSurfaceFinish = bindCairo("cairo_surface_finish", [SURFACE_T], t.void);
 const cairoSurfaceFlush = bindCairo("cairo_surface_flush", [SURFACE_T], t.void);
@@ -77,7 +78,7 @@ const cairoSurfaceHasShowTextGlyphs = bindCairo("cairo_surface_has_show_text_gly
 
 const cairoSurfaceSupportsMimeType = bindCairo(
     "cairo_surface_supports_mime_type",
-    [SURFACE_T, t.string("full")],
+    [SURFACE_T, t.string("borrowed")],
     t.boolean,
 );
 
@@ -85,7 +86,7 @@ const cairoImageSurfaceCreate = bindCairo("cairo_image_surface_create", [t.int32
 
 const cairoImageSurfaceCreateFromPng = bindCairo(
     "cairo_image_surface_create_from_png",
-    [t.string("full")],
+    [t.string("borrowed")],
     SURFACE_FULL_T,
 );
 
@@ -94,12 +95,6 @@ const cairoImageSurfaceGetHeight = bindCairo("cairo_image_surface_get_height", [
 const cairoImageSurfaceGetFormat = bindCairo("cairo_image_surface_get_format", [SURFACE_T], t.int32);
 const cairoImageSurfaceGetStride = bindCairo("cairo_image_surface_get_stride", [SURFACE_T], t.int32);
 const cairoRecordingSurfaceCreate = bindCairo("cairo_recording_surface_create", [t.int32, RECTANGLE_T], SURFACE_FULL_T);
-
-const cairoRecordingSurfaceCreateUnbounded = bindCairo(
-    "cairo_recording_surface_create",
-    [t.int32, t.uint64],
-    SURFACE_FULL_T,
-);
 
 const cairoRecordingSurfaceInkExtents = bindCairo(
     "cairo_recording_surface_ink_extents",
@@ -140,10 +135,11 @@ const readRectangle = (buffer: ExternalObject<Handle>): RectangleData => ({
     height: DOUBLE.read(buffer, 24) as number,
 });
 
-const createRecordingSurface = (content: Content, extents?: RectangleData): ExternalObject<Handle> =>
-    (extents === undefined
-        ? cairoRecordingSurfaceCreateUnbounded(content, 0)
-        : cairoRecordingSurfaceCreate(content, allocRectangle(extents))) as ExternalObject<Handle>;
+const createRecordingSurface = (content: Content, extents?: RectangleData): ExternalObject<Handle> => {
+    const rectangle = extents === undefined ? null : allocRectangle(extents);
+
+    return cairoRecordingSurfaceCreate(content, rectangle) as ExternalObject<Handle>;
+};
 
 const surfaceClassFor: WrapperClassResolver = (handle) => {
     const type = cairoSurfaceGetType(handle) as SurfaceType;
@@ -216,9 +212,11 @@ abstract class Surface {
         cairoSurfaceFlush(getHandle(this));
     }
 
-    /** Returns the raw handle of the device behind the surface, or null when it has none. */
-    getDevice(): ExternalObject<Handle> | null {
-        return cairoSurfaceGetDevice(getHandle(this)) as ExternalObject<Handle> | null;
+    /** Returns the managed device behind the surface, or null when it has none. */
+    getDevice(): Device | null {
+        const handle = cairoSurfaceGetDevice(getHandle(this)) as ExternalObject<Handle> | null;
+
+        return handle === null ? null : wrapHandle(handle, Device);
     }
 
     /** Returns the font options the surface's backend prefers for rendering text. */
@@ -351,6 +349,7 @@ class ImageSurface extends Surface {
 
     /** Returns a copy of the pixel data, `getStride() * getHeight()` bytes in the surface's format. */
     getData(): Uint8Array {
+        Context.create(this);
         this.flush();
         const totalBytes = this.getStride() * this.getHeight();
 
@@ -361,16 +360,10 @@ class ImageSurface extends Surface {
         const getImageData = bindCairo(
             "cairo_image_surface_get_data",
             [SURFACE_T],
-            t.struct("borrowed", { size: totalBytes }),
+            t.fixedArray(t.uint8, totalBytes, "borrowed", { isBytes: true }),
         );
 
-        const data = getImageData(getHandle(this)) as ExternalObject<Handle> | null;
-
-        if (data === null) {
-            return new Uint8Array(0);
-        }
-
-        return Uint8Array.from({ length: totalBytes }, (_, index) => UINT8.read(data, index) as number);
+        return getImageData(getHandle(this)) as Uint8Array;
     }
 }
 

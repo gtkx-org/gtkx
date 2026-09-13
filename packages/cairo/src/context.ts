@@ -138,14 +138,14 @@ const cairoGetOperator = bindCairo("cairo_get_operator", [CONTEXT_T], t.int32);
 
 const cairoSelectFontFace = bindCairo(
     "cairo_select_font_face",
-    [CONTEXT_T, t.string("full"), t.int32, t.int32],
+    [CONTEXT_T, t.string("borrowed"), t.int32, t.int32],
     t.void,
 );
 
 const cairoSetFontSize = bindCairo("cairo_set_font_size", [CONTEXT_T, t.float64], t.void);
-const cairoShowText = bindCairo("cairo_show_text", [CONTEXT_T, t.string("full")], t.void);
-const cairoTextPath = bindCairo("cairo_text_path", [CONTEXT_T, t.string("full")], t.void);
-const cairoTextExtents = bindCairo("cairo_text_extents", [CONTEXT_T, t.string("full"), TEXT_EXTENTS_T], t.void);
+const cairoShowText = bindCairo("cairo_show_text", [CONTEXT_T, t.string("borrowed")], t.void);
+const cairoTextPath = bindCairo("cairo_text_path", [CONTEXT_T, t.string("borrowed")], t.void);
+const cairoTextExtents = bindCairo("cairo_text_extents", [CONTEXT_T, t.string("borrowed"), TEXT_EXTENTS_T], t.void);
 const cairoFontExtents = bindCairo("cairo_font_extents", [CONTEXT_T, FONT_EXTENTS_T], t.void);
 const cairoSetFontOptions = bindCairo("cairo_set_font_options", [CONTEXT_T, FONT_OPTIONS_T], t.void);
 const cairoGetFontOptions = bindCairo("cairo_get_font_options", [CONTEXT_T, FONT_OPTIONS_T], t.void);
@@ -200,12 +200,12 @@ const cairoGlyphPath = bindCairo("cairo_glyph_path", [CONTEXT_T, GLYPH_T, t.int3
 const cairoGlyphExtents = bindCairo("cairo_glyph_extents", [CONTEXT_T, GLYPH_T, t.int32, TEXT_EXTENTS_T], t.void);
 const cairoCopyPath = bindCairo("cairo_copy_path", [CONTEXT_T], PATH_T);
 const cairoCopyPathFlat = bindCairo("cairo_copy_path_flat", [CONTEXT_T], PATH_T);
-const cairoTagBegin = bindCairo("cairo_tag_begin", [CONTEXT_T, t.string("full"), t.string("full")], t.void);
-const cairoTagEnd = bindCairo("cairo_tag_end", [CONTEXT_T, t.string("full")], t.void);
+const cairoTagBegin = bindCairo("cairo_tag_begin", [CONTEXT_T, t.string("borrowed"), t.string("borrowed")], t.void);
+const cairoTagEnd = bindCairo("cairo_tag_end", [CONTEXT_T, t.string("borrowed")], t.void);
 
 const cairoShowTextGlyphs = bindCairo(
     "cairo_show_text_glyphs",
-    [CONTEXT_T, t.string("full"), t.int32, GLYPH_T, t.int32, TEXT_CLUSTER_T, t.int32, t.int32],
+    [CONTEXT_T, t.string("borrowed"), t.int32, GLYPH_T, t.int32, TEXT_CLUSTER_T, t.int32, t.int32],
     t.void,
 );
 
@@ -253,6 +253,7 @@ const readRectangle = (rects: ExternalObject<Handle>, base: number): RectangleDa
 });
 
 const readRectangleList = (listHandle: ExternalObject<Handle>): RectangleData[] => {
+    checkStatus(read(listHandle, t.int32, 0) as Status, "clip rectangle list");
     const count = RECTANGLE_LIST_COUNT.read(listHandle) as number;
 
     if (count === 0) {

@@ -163,19 +163,19 @@ const checkPattern = <T extends Pattern>(pattern: T): T => {
     return pattern;
 };
 
-const readRgba = (fill: (...refs: RgbaRefs) => void): RgbaColor => {
+const readRgba = (fill: (...refs: RgbaRefs) => unknown): RgbaColor => {
     const red = { value: 0 };
     const green = { value: 0 };
     const blue = { value: 0 };
     const alpha = { value: 0 };
-    fill(red, green, blue, alpha);
+    checkStatus(fill(red, green, blue, alpha) as Status, "pattern");
 
     return { red: red.value, green: green.value, blue: blue.value, alpha: alpha.value };
 };
 
 const readCount = (boundFn: BoundFunction, self: object): number => {
     const count = { value: 0 };
-    boundFn(getHandle(self), count);
+    checkStatus(boundFn(getHandle(self), count) as Status, "pattern");
 
     return count.value;
 };
@@ -352,7 +352,7 @@ class LinearPattern extends Pattern {
         const y0 = { value: 0 };
         const x1 = { value: 0 };
         const y1 = { value: 0 };
-        cairoPatternGetLinearPoints(getHandle(this), x0, y0, x1, y1);
+        checkStatus(cairoPatternGetLinearPoints(getHandle(this), x0, y0, x1, y1) as Status, "pattern");
 
         return { x0: x0.value, y0: y0.value, x1: x1.value, y1: y1.value };
     }
@@ -368,7 +368,7 @@ class RadialPattern extends Pattern {
         const x1 = { value: 0 };
         const y1 = { value: 0 };
         const r1 = { value: 0 };
-        cairoPatternGetRadialCircles(getHandle(this), x0, y0, r0, x1, y1, r1);
+        checkStatus(cairoPatternGetRadialCircles(getHandle(this), x0, y0, r0, x1, y1, r1) as Status, "pattern");
 
         return { x0: x0.value, y0: y0.value, r0: r0.value, x1: x1.value, y1: y1.value, r1: r1.value };
     }
@@ -433,7 +433,7 @@ class MeshPattern extends Pattern {
     getControlPoint(patchNum: number, pointNum: number): Point {
         const x = { value: 0 };
         const y = { value: 0 };
-        cairoMeshPatternGetControlPoint(getHandle(this), patchNum, pointNum, x, y);
+        checkStatus(cairoMeshPatternGetControlPoint(getHandle(this), patchNum, pointNum, x, y) as Status, "pattern");
 
         return { x: x.value, y: y.value };
     }

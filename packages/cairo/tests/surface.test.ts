@@ -1,6 +1,8 @@
 import {
     Content,
     Context,
+    Device,
+    DeviceType,
     Format,
     ImageSurface,
     RecordingSurface,
@@ -8,6 +10,7 @@ import {
     Surface,
     SurfaceType,
 } from "@gtkx/cairo";
+import { type ExternalObject, getHandle, type Handle, t, wrapHandle } from "@gtkx/runtime";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -38,6 +41,51 @@ afterAll(() => {
 });
 
 describe("Surface (context targets)", () => {
+    it("returns a managed device from a native backend surface", () => {
+        const deviceType = t.boxed("CairoDevice", {
+            ownership: "borrowed",
+            sharedLibrary: "libcairo-gobject.so.2",
+            getTypeFnName: "cairo_gobject_device_get_type",
+        });
+
+        const surfaceType = t.boxed("CairoSurface", {
+            ownership: "borrowed",
+            sharedLibrary: "libcairo-gobject.so.2",
+            getTypeFnName: "cairo_gobject_surface_get_type",
+        });
+
+        const createDevice = t.bind(
+            "libcairo.so.2",
+            "cairo_script_create",
+            [t.string()],
+            { ...deviceType, ownership: "full" },
+        );
+
+        const createSurface = t.bind(
+            "libcairo.so.2",
+            "cairo_script_surface_create_for_target",
+            [deviceType, surfaceType],
+            { ...surfaceType, ownership: "full" },
+        );
+        const handle = createDevice(join(outputDir, "drawing.trace")) as ExternalObject<Handle>;
+        const image = createImage();
+        const surface = wrapHandle(createSurface(handle, getHandle(image)) as ExternalObject<Handle>, Surface);
+        const device = asInstance(surface.getDevice(), Device);
+        expect(device.getType()).toBe(DeviceType.SCRIPT);
+        expect(device.status()).toBe(Status.SUCCESS);
+        const ctx = Context.create(surface);
+        ctx.setSourceRgb(1, 0, 0);
+        ctx.paint();
+        device.flush();
+        expect(image.getData().slice(0, 4)).toEqual(new Uint8Array([0, 0, 255, 255]));
+        surface.finish();
+        device.finish();
+    });
+
+    it("returns no device for an image surface", () => {
+        expect(createImage().getDevice()).toBeNull();
+    });
+
     it("wraps the target of a context as the concrete image surface class", () => {
         const target = Context.create(createImage(4, 6)).getTarget();
         expect(target).toBeInstanceOf(ImageSurface);
@@ -130,6 +178,58 @@ describe("ImageSurface", () => {
 
     it("returns no data for an empty image surface", () => {
         expect(createImage(0, 0).getData()).toHaveLength(0);
+    });
+
+    it("copies pixels independently of the source surface", () => {
+        const image = createImage(2, 2);
+        const ctx = Context.create(image);
+        ctx.setSourceRgb(1, 0, 0);
+        ctx.paint();
+        const data = image.getData();
+        data.fill(0);
+        expect(image.getData().slice(0, 4)).toEqual(new Uint8Array([0, 0, 255, 255]));
+        ctx.setSourceRgb(0, 1, 0);
+        ctx.paint();
+        expect(data.every((byte) => byte === 0)).toBe(true);
+        expect(image.getData().slice(0, 4)).toEqual(new Uint8Array([0, 255, 0, 255]));
+    });
+
+    it("includes row padding in alpha-only pixel data", () => {
+        const image = new ImageSurface(Format.A8, 3, 2);
+        const ctx = Context.create(image);
+        ctx.setSourceRgba(0, 0, 0, 1);
+        ctx.paint();
+        const data = image.getData();
+        expect(image.getStride()).toBe(4);
+        expect(data).toHaveLength(8);
+        expect(data.slice(0, 3)).toEqual(new Uint8Array([255, 255, 255]));
+        expect(data.slice(4, 7)).toEqual(new Uint8Array([255, 255, 255]));
+    });
+
+    it.each([Format.RGB96F, Format.RGBA128F])("paints a floating-point image format %i", (format) => {
+        const image = new ImageSurface(format, 1, 1);
+        const ctx = Context.create(image);
+        ctx.setSourceRgba(0.25, 0.5, 1, 1);
+        ctx.paint();
+        expect(image.getFormat()).toBe(format);
+        const data = image.getData();
+        const channels = new Float32Array(data.buffer, data.byteOffset, data.byteLength / 4);
+        expect(channels[0]).toBeCloseTo(0.25);
+        expect(channels[1]).toBeCloseTo(0.5);
+        expect(channels[2]).toBeCloseTo(1);
+    });
+
+    it("rejects reading data after the surface releases its storage", () => {
+        const image = createImage();
+        image.finish();
+        expect(() => image.getData()).toThrow();
+    });
+
+    it("rejects reading pixels when another native wrapper finishes the surface", () => {
+        const image = createImage();
+        const ctx = Context.create(image);
+        ctx.getTarget().finish();
+        expect(() => image.getData()).toThrow();
     });
 
     it("rejects a non-string file name", () => {
