@@ -1,6 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { CaughtErrorInfo, RootElement } from "@gtkx/react";
-import type { ComponentType, ErrorInfo, ReactNode } from "react";
+import type { ComponentType, ErrorInfo, PropsWithChildren } from "react";
 import type { PrettyWidgetOptions } from "./pretty-widget.js";
 import type { Container } from "./traversal.js";
 
@@ -100,9 +100,7 @@ type ByRoleOptions<T extends Gtk.Accessible = Gtk.Accessible> = MatcherOptions<T
 };
 
 /** A React component that wraps rendered content, receiving it as its children. */
-type WrapperComponent = ComponentType<{
-    children: ReactNode;
-}>;
+type WrapperComponent = ComponentType<Required<PropsWithChildren>>;
 
 /** A custom query, taking the scope to search as its first argument and its matcher arguments after it. */
 type Query = (container: Container, ...args: never[]) => unknown;

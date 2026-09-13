@@ -193,7 +193,6 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "gtkx/brand-naming": "error",
     "gtkx/no-comments": "error",
     "gtkx/no-inline-exports": "error",
-    "gtkx/no-library-prefix": "error",
     "max-lines-per-function": ["error", { max: 50, skipBlankLines: true, skipComments: true }],
     "max-params": ["error", { max: 4 }],
     "perfectionist/sort-exports": [
@@ -285,7 +284,6 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
     },
     { files: ["**/*.d.ts"], rules: { "@typescript-eslint/consistent-type-definitions": "off" } },
     ...scopeTo(JS_SOURCES, [tseslint.configs.disableTypeChecked]),
-    { files: JS_SOURCES },
 ];
 
 export { config };
