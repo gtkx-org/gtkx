@@ -1,9 +1,8 @@
 import { escapeIdentifierStart } from "./escape-identifier-start.ts";
 import { escapeReserved } from "./escape-reserved.ts";
-import { RESERVED } from "./sanitize-identifier.ts";
+import { isReservedIdentifier } from "./sanitize-identifier.ts";
 
 const TYPE_RESERVED: Set<string> = new Set([
-    ...RESERVED,
     "any",
     "bigint",
     "boolean",
@@ -16,8 +15,10 @@ const TYPE_RESERVED: Set<string> = new Set([
     "unknown",
 ]);
 
+const isReservedTypeIdentifier = (name: string): boolean => isReservedIdentifier(name) || TYPE_RESERVED.has(name);
+
 function sanitizeTypeIdentifier(name: string): string {
-    return escapeIdentifierStart(escapeReserved(name, TYPE_RESERVED));
+    return escapeIdentifierStart(escapeReserved(name, isReservedTypeIdentifier));
 }
 
 export { sanitizeTypeIdentifier };

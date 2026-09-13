@@ -1,12 +1,12 @@
-import { readFileSync } from "node:fs";
+import type { GuardJob, ProcessWatch } from "./guard-protocol.ts";
 import { killMarkedProcesses, killMarkedProcessRun } from "./kill-marked-processes.ts";
 import {
     type CleanupDirectoryIdentity,
     killProcessGroup,
-    type ProcessGroupIdentity,
     processGroupIdentity,
     removeCleanupDirectory,
 } from "./kill-process-group.ts";
+import { type ProcessIdentity, readProcessIdentity } from "./process-status.ts";
 
 const GUARD_PREFIX = process.argv[2] ?? "";
 const PROCESS_WATCH_ARGUMENT = process.argv[3];
@@ -14,97 +14,22 @@ const WATCHED_SIGNALS = ["SIGTERM", "SIGINT", "SIGHUP"] as const satisfies NodeJ
 const OWNER_POLL_INTERVAL_MS = 50;
 const SUPERVISOR_EXIT_TIMEOUT_MS = 2000;
 
-type ProcessIdentity = {
-    pid: number;
-    startTime: string;
-};
-
-type ProcessWatch = {
-    owner: ProcessIdentity;
-    target: ProcessIdentity;
-};
-
-type GuardJob = {
-    marker: string;
-    processGroup: ProcessGroupIdentity;
-    cleanupDirectories: CleanupDirectoryIdentity[];
-    signal: NodeJS.Signals;
-};
-
 const state: { bufferedCommands: string; isSweeping: boolean; jobs: Map<string, GuardJob> } = {
     bufferedCommands: "",
     isSweeping: false,
     jobs: new Map(),
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-    typeof value === "object" && value !== null && !Array.isArray(value);
-
-const isProcessIdentity = (value: unknown): value is ProcessIdentity =>
-    isRecord(value) &&
-    typeof value.pid === "number" &&
-    Number.isSafeInteger(value.pid) &&
-    value.pid > 1 &&
-    typeof value.startTime === "string" &&
-    /^\d+$/.test(value.startTime);
-
-const isProcessWatch = (value: unknown): value is ProcessWatch =>
-    isRecord(value) && isProcessIdentity(value.owner) && isProcessIdentity(value.target);
-
-const isProcessGroupIdentity = (value: unknown): value is ProcessGroupIdentity =>
-    isRecord(value) &&
-    typeof value.processGroupId === "number" &&
-    Number.isSafeInteger(value.processGroupId) &&
-    value.processGroupId > 1 &&
-    typeof value.leaderStartTime === "string" &&
-    /^\d+$/.test(value.leaderStartTime);
-
-const isCleanupDirectoryIdentity = (value: unknown): value is CleanupDirectoryIdentity =>
-    isRecord(value) &&
-    typeof value.path === "string" &&
-    typeof value.device === "string" &&
-    typeof value.inode === "string" &&
-    typeof value.userId === "string";
-
-const isGuardJob = (value: unknown): value is GuardJob =>
-    isRecord(value) &&
-    typeof value.marker === "string" &&
-    isProcessGroupIdentity(value.processGroup) &&
-    Array.isArray(value.cleanupDirectories) &&
-    value.cleanupDirectories.every(isCleanupDirectoryIdentity) &&
-    (value.signal === "SIGKILL" || value.signal === "SIGCONT");
-
 const parseProcessWatch = (): ProcessWatch | undefined => {
     if (PROCESS_WATCH_ARGUMENT === undefined) {
         return undefined;
     }
 
-    try {
-        const value: unknown = JSON.parse(PROCESS_WATCH_ARGUMENT);
-
-        return isProcessWatch(value) ? value : undefined;
-    } catch {
-        return undefined;
-    }
-};
-
-const currentProcessIdentity = (pid: number): ProcessIdentity | undefined => {
-    try {
-        const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
-        const fields = stat.slice(stat.lastIndexOf(") ") + 2).split(" ", 20);
-        const state = fields[0];
-        const startTime = fields[19];
-
-        return startTime !== undefined && state !== undefined && !["Z", "X", "x"].includes(state)
-            ? { pid, startTime }
-            : undefined;
-    } catch {
-        return undefined;
-    }
+    return JSON.parse(PROCESS_WATCH_ARGUMENT) as ProcessWatch;
 };
 
 const isCurrentProcess = (identity: ProcessIdentity): boolean =>
-    currentProcessIdentity(identity.pid)?.startTime === identity.startTime;
+    readProcessIdentity(identity.pid)?.startTime === identity.startTime;
 
 const killProcess = (identity: ProcessIdentity): void => {
     if (!isCurrentProcess(identity)) {
@@ -120,15 +45,11 @@ const killProcess = (identity: ProcessIdentity): void => {
 
 const applyCommand = (command: string): void => {
     const operation = command[0];
-    let value: unknown;
+    let value: GuardJob;
 
     try {
-        value = JSON.parse(command.slice(1));
+        value = JSON.parse(command.slice(1)) as GuardJob;
     } catch {
-        return;
-    }
-
-    if (!isGuardJob(value)) {
         return;
     }
 

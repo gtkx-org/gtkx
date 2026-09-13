@@ -48,13 +48,13 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `storybook` | 31 | All files read; unset selections, readonly controls, shared types and documentation fixed; upstream strict declaration checking remains open |
 | `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
 | `cli` | 262 | Generated consumer and catalog-reference fixes verified; full package pending |
-| `create-gtkx` | 31 | All files read; option parsing, installation recovery, duplication and guides fixed; installed-consumer checkpoint pending |
+| `create-gtkx` | 31 | All files read; option parsing, installation recovery, duplication and guides fixed; installed TypeScript and JavaScript consumers pass |
 | `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
 | `testing` | 60 | ComboRow display-value matcher fixed; full package pending |
 | `vitest` | 12 | All files read; packaged preload, Sway configuration and notification sink fixed; repeat review found no further confirmed defect |
 | `e2e` | 117 | Relevant regression coverage reviewed with each fix; full suite audit pending |
 | `eslint` | 36 | All files read; public-surface traversal and cache correctness fixed; prefix restriction removed; independent review passed |
-| `utils` | 60 | Omit preserves source unions; full package pending |
+| `utils` | 60 | All 59 current files read; maintained helpers replace duplication; process protocol and identity parsing shared; public consumer checks pass |
 
 Outside the packages, the starting scope includes 397 example files, 174 website files, 15 scripts, 23 GitHub configuration files, 3 patches, 30 root files, and one file each under `docs`, `.nx`, and `.vscode`. All remain open for a full file review, including documentation read for context during this first batch.
 
@@ -419,7 +419,7 @@ All 41 public CLI cases pass, including real terminal invocation, supported path
 
 The release packaging check found that importing `@gtkx/react/config` loaded the custom-element factory and its generated GI dependencies before bindings existed. The factory is now exported from the main React entry point. Configuration retains only generation-safe metadata and types; generated JSX keeps its internal factory import. The v2 custom-element guide and consumers use the main export.
 
-A subprocess regression copies the built React package into a fresh consumer without generated bindings and runs real codegen. It fails with the old export and passes after the move. All three configuration isolation cases and 46 custom-element/signal cases pass, alongside the affected builds, types, lint and independent review. Full release-consumer validation is pending the next serialized build checkpoint.
+A subprocess regression copies the built React package into a fresh consumer without generated bindings and runs real codegen. It fails with the old export and passes after the move. All three configuration isolation cases and 46 custom-element/signal cases pass, alongside the affected builds, types, lint and independent review. The complete release-consumer retry passes: packages are built and published to a temporary local registry, then fresh TypeScript and JavaScript applications are scaffolded, installed, generated, built, launched and tested. The TypeScript consumer also passes its typecheck. This checkpoint precedes the later utility, testing and native string changes, which require another release check.
 
 ### Development process shutdown follow-up
 
@@ -432,6 +432,14 @@ The supervisor now sends signals through `ChildProcess.kill` directly and reuses
 Native callback argument decoding copied full-transfer strings without releasing their native allocation. The decoder now frees the string after copying and before creating the JavaScript value. Borrowed strings retain their existing lifetime. The confirmed scope is explicit native callback descriptors; no installed GIR callback was found with this transfer contract.
 
 Five public cases use GLib's list destructor to exercise Unicode, empty and null lists, repeated owned inputs, and throwing callbacks. The previous decoder retains roughly 984 MB and 991 MB in the two repeated-call cases. The fixed code passes all 30 memory cases, all 370 native package cases, and the complete memory suite under AddressSanitizer/LeakSanitizer without memory errors. Types, lint, rustfmt and Clippy pass. The ordinary native artifact is restored before the release-consumer check.
+
+### Utility package audit
+
+All 59 current tracked utility files were read. es-toolkit replaces the handwritten object, equality, uniqueness and first-character helpers, while Babel supplies JavaScript reserved-word knowledge and type-fest supplies the constructor type. Small adapters preserve source unions, callback arguments, GIR acronym spelling and native wrapper identity. TypeScript-specific reserved names remain local.
+
+The process guard and launcher now share their private message types and process identity reader. Repeated validation of their own typed messages is removed; partial pipe input and operating-system lifetime checks remain. Public generated-consumer cases cover reserved identifiers and discriminated prop unions, and a native rendering case verifies replacement of equally configured widget instances.
+
+All 203 affected integration cases pass: 68 CLI, process and codegen cases and 135 renderer cases. Utility builds, consumer typechecks, package lint, Knip and the frozen install pass. Independent review found no additional defect in these changes.
 
 ## Next work
 

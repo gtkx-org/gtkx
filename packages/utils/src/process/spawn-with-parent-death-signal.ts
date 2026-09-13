@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { Socket } from "node:net";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { GuardJob, GuardSignal, ProcessWatch } from "./guard-protocol.ts";
 import { warn } from "../log/default-logger.ts";
 import { killMarkedProcesses, PROCESS_MARKER } from "./kill-marked-processes.ts";
 import {
@@ -14,7 +15,7 @@ import {
     processGroupIdentity,
     removeCleanupDirectory,
 } from "./kill-process-group.ts";
-import { isReapedState, readProcessStatFields } from "./process-status.ts";
+import { type ProcessIdentity, readProcessIdentity } from "./process-status.ts";
 import { resolveExecutable } from "./resolve-executable.ts";
 
 type ParentDeathSpawnOptions = {
@@ -27,26 +28,7 @@ type ParentDeathSupervisorOptions = Omit<ParentDeathSpawnOptions, "cleanupDirect
     cleanupDirectory: string;
 };
 
-type GuardSignal = "SIGKILL" | "SIGCONT";
-
-type ProcessIdentity = {
-    pid: number;
-    startTime: string;
-};
-
-type ProcessWatch = {
-    owner: ProcessIdentity;
-    target: ProcessIdentity;
-};
-
 type LaunchArguments = (executable: string, cleanupDirectories: CleanupDirectoryIdentity[]) => string[];
-
-type GuardJob = {
-    marker: string;
-    processGroup: ProcessGroupIdentity;
-    cleanupDirectories: CleanupDirectoryIdentity[];
-    signal: GuardSignal;
-};
 
 type GuardState = {
     child?: ChildProcess | undefined;
@@ -206,14 +188,13 @@ const SUPERVISOR_SCRIPT = [
 ].join("\n");
 
 const processIdentity = (pid: number): ProcessIdentity => {
-    const fields = readProcessStatFields(pid);
-    const startTime = fields?.[19];
+    const identity = readProcessIdentity(pid);
 
-    if (startTime === undefined || isReapedState(fields?.[0])) {
+    if (identity === undefined) {
         throw new Error(`Failed to identify process ${String(pid)}`);
     }
 
-    return { pid, startTime };
+    return identity;
 };
 
 const writeGuardCommand = (child: ChildProcess, operation: "+" | "-", job: GuardJob): void => {

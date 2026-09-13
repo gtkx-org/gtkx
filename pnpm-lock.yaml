@@ -1070,6 +1070,12 @@ importers:
 
   packages/utils:
     dependencies:
+      '@babel/helper-validator-identifier':
+        specifier: ^8.0.4
+        version: 8.0.4
+      es-toolkit:
+        specifier: ^1.51.0
+        version: 1.51.0
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1

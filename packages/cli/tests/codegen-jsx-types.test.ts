@@ -23,6 +23,22 @@ export const augmented: GtkLabelProps = { consumer: "value", label: "Label" };
 const REJECTED = `import type { AdwToggleGroupProps } from "@gtkx/jsx/adw";
 export const selection: AdwToggleGroupProps = { active: 0, activeName: "first" };
 `;
+const UNION_CONSUMER = `import type { GtkLabelProps } from "@gtkx/jsx/gtk";
+import { omit } from "@gtkx/utils";
+
+type LabelProps = { onSelect: () => void } & (
+    { kind: "text"; text: string } | { kind: "count"; count: number }
+);
+export const labelProps = (props: LabelProps): GtkLabelProps => {
+    const value = omit(props, ["onSelect"]);
+    return { label: value.kind === "text" ? value.text : String(value.count) };
+};
+export const label = labelProps({ kind: "text", text: "One", onSelect: () => undefined });
+export const count = labelProps({ kind: "count", count: 1, onSelect: () => undefined });
+`;
+const REJECTED_UNION_CONSUMER = `${UNION_CONSUMER}
+export const invalid = (props: LabelProps) => omit(props, ["onSelect"]).onSelect();
+`;
 
 const typecheck = (project: CliProject, file: string): number | null => spawnSync(
     process.execPath,
@@ -50,7 +66,12 @@ describe("gtkx codegen JSX prop contracts", () => {
         state.project = createCliProject({
             prefix: "gtkx-jsx-types-",
             config: CONFIG,
-            files: { "accepted.ts": ACCEPTED, "rejected.ts": REJECTED },
+            files: {
+                "accepted.ts": ACCEPTED,
+                "rejected.ts": REJECTED,
+                "union-consumer.ts": UNION_CONSUMER,
+                "rejected-union-consumer.ts": REJECTED_UNION_CONSUMER,
+            },
         });
         state.status = runCli(state.project, ["codegen"]).status;
     });
@@ -67,5 +88,11 @@ describe("gtkx codegen JSX prop contracts", () => {
     it("rejects naming and indexing the same controlled selection together", () => {
         expect(state.status).toBe(0);
         expect(typecheck(state.project, "rejected.ts")).not.toBe(0);
+    });
+
+    it("preserves discriminated consumer props when extracting widget props", () => {
+        expect(state.status).toBe(0);
+        expect(typecheck(state.project, "union-consumer.ts")).toBe(0);
+        expect(typecheck(state.project, "rejected-union-consumer.ts")).not.toBe(0);
     });
 });
