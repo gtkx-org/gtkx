@@ -4,28 +4,19 @@ const BUS_CONFIG_DOCTYPE =
 
 const HEADLESS_RUNTIME_MARKER = ".gtkx-headless-runtime";
 
-const SWAY_CONFIG_LINES = [
-    /^xwayland disable$/,
-    /^default_border none$/,
-    /^default_floating_border none$/,
-    /^output HEADLESS-1 resolution [1-9]\d*x[1-9]\d*$/,
-    /^output HEADLESS-1 bg #000000 solid_color$/,
-    /^for_window \[app_id="\.\*"\] floating enable, border none$/,
-    /^for_window \[title="\.\*"\] floating enable, border none$/,
-    /^$/,
-];
-
-const createSwayConfig = (width: string, height: string): string =>
+const swayConfigLines = (resolution: string): string[] =>
     [
         "xwayland disable",
         "default_border none",
         "default_floating_border none",
-        `output HEADLESS-1 resolution ${width}x${height}`,
+        `output HEADLESS-1 resolution ${resolution}`,
         "output HEADLESS-1 bg #000000 solid_color",
         'for_window [app_id=".*"] floating enable, border none',
         'for_window [title=".*"] floating enable, border none',
         "",
-    ].join("\n");
+    ];
+
+const createSwayConfig = (width: string, height: string): string => swayConfigLines(`${width}x${height}`).join("\n");
 
 const createBusConfig = (busSocketPath: string): string =>
     [
@@ -47,9 +38,9 @@ const createHeadlessRuntimeMarker = (runtimeDir: string): string =>
 
 const isSwayConfig = (value: string): boolean => {
     const lines = value.split("\n");
+    const resolution = /^output HEADLESS-1 resolution ([1-9]\d*x[1-9]\d*)$/.exec(lines[3] ?? "")?.[1];
 
-    return lines.length === SWAY_CONFIG_LINES.length &&
-        SWAY_CONFIG_LINES.every((pattern, index) => pattern.test(lines[index] ?? "invalid"));
+    return resolution !== undefined && value === swayConfigLines(resolution).join("\n");
 };
 
 export {
