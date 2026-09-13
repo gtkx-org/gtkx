@@ -56,7 +56,7 @@ type SpinRowProps<
 /** Props for an ID-based Adwaita combo row controlled by React Hook Form. */
 type ComboRowProps<
     TFieldValues extends FieldValues = FieldValues,
-    TName extends FormFieldPath<TFieldValues, string> = FormFieldPath<TFieldValues, string>,
+    TName extends FieldPathByValue<TFieldValues, string> = FieldPathByValue<TFieldValues, string>,
     TTransformedValues = TFieldValues,
     TItem = unknown,
     TSection = unknown,

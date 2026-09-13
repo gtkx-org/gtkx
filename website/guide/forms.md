@@ -76,7 +76,7 @@ The rows retain their native props, children, refs and signal handlers. React Ho
 
 `ComboRow` shares the [collection component's sources and renderers](/guide/components#dropdown). Item IDs remain stable when items move or their labels change. Strings and other primitive values have a default display; structured values require `renderItem`. Passing `control` also lets TypeScript infer item and section types for renderers.
 
-Supply complete form defaults, including an existing item ID for a combo row. This keeps the native display and submitted value aligned from the first render. See the [React Hook Form defaults guidance](https://react-hook-form.com/docs/useform#defaultValues) for asynchronous defaults and resets.
+A form `ComboRow` uses a non-nullable string field. Supply an explicit default ID that exists in its choices. An empty source preserves that ID, so asynchronously reloaded choices restore the selection without changing the form's value or dirty state. See the [React Hook Form defaults guidance](https://react-hook-form.com/docs/useform#defaultValues) for asynchronous defaults and resets.
 
 ## Native validation feedback
 

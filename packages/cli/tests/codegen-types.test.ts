@@ -7,7 +7,7 @@ import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBR
 
 const WORKSPACE = fileURLToPath(new URL("../../..", import.meta.url));
 const TYPESCRIPT_CLI = join(WORKSPACE, "node_modules/typescript/bin/tsc");
-const PACKAGES = ["cairo", "components", "config", "css", "native", "react", "runtime", "utils"];
+const PACKAGES = ["cairo", "components", "config", "css", "forms", "native", "react", "runtime", "utils"];
 const ACCEPTED = `import type { ComboRowProps, DropDownProps, ListViewProps } from "@gtkx/components";
 import { Dialog, SpinRow, SplitButton } from "@gtkx/gi/adw";
 import { Action, DBusInterfaceSkeleton, type DBusInterfaceInfo, SimpleAction } from "@gtkx/gi/gio";
@@ -81,7 +81,44 @@ export const choices = [
 ];
 export const forwarded = <T,>(props: DropDownProps<T>) => <DropDown {...props} />;
 `;
+const FORM_ACCEPTED = `import { ComboRow, EntryRow, SpinRow, SwitchRow, useForm } from "@gtkx/forms";
+export function Form() {
+    const { control } = useForm({ defaultValues: { name: "", count: 0, enabled: false, choice: "one" } });
+    return <>
+        <EntryRow {...{ control }} name="name" />
+        <SpinRow {...{ control }} name="count" />
+        <SwitchRow {...{ control }} name="enabled" />
+        <ComboRow {...{ control }} name="choice"
+            items={[{ id: "one", value: { label: "One" } }]}
+            renderItem={({ item }) => item.label} />
+    </>;
+}
+`;
 const REJECTED = {
+    "nullable-form-combo-row.tsx": `import { ComboRow, useForm } from "@gtkx/forms";
+export function Form() {
+    const { control } = useForm<{ choice: string | null }>({ defaultValues: { choice: null } });
+    return <ComboRow {...{ control }} name="choice" items={[{ id: "one", value: "One" }]} />;
+}
+`,
+    "optional-form-combo-row.tsx": `import { ComboRow, useForm } from "@gtkx/forms";
+export function Form() {
+    const { control } = useForm<{ choice?: string }>({ defaultValues: {} });
+    return <ComboRow {...{ control }} name="choice" items={[{ id: "one", value: "One" }]} />;
+}
+`,
+    "wrong-form-field.tsx": `import { EntryRow, useForm } from "@gtkx/forms";
+export function Form() {
+    const { control } = useForm({ defaultValues: { name: "" } });
+    return <EntryRow {...{ control }} name="missing" />;
+}
+`,
+    "wrong-form-value.tsx": `import { SpinRow, useForm } from "@gtkx/forms";
+export function Form() {
+    const { control } = useForm({ defaultValues: { count: "zero" } });
+    return <SpinRow {...{ control }} name="count" />;
+}
+`,
     "interface-argument.ts": `import { Carousel } from "@gtkx/gi/adw";
 new Carousel().setOrientation("vertical");
 `,
@@ -213,6 +250,8 @@ const copyTypeDependencies = (project: CliProject): void => {
     cpSync(reconcilerTypes, join(project.nodeModules, "@types/react-reconciler"), { recursive: true });
     const typeFest = realpathSync(join(WORKSPACE, "packages/utils/node_modules/type-fest"));
     cpSync(typeFest, join(project.nodeModules, "type-fest"), { recursive: true });
+    const formPackage = realpathSync(join(WORKSPACE, "packages/forms/node_modules/react-hook-form"));
+    cpSync(formPackage, join(project.nodeModules, "react-hook-form"), { recursive: true });
     const taggedTag = realpathSync(join(dirname(typeFest), "tagged-tag"));
     cpSync(taggedTag, join(project.nodeModules, "tagged-tag"), { recursive: true });
 
@@ -270,6 +309,7 @@ describe("generated declarations in an installed consumer", () => {
             files: {
                 "accepted.ts": ACCEPTED,
                 "accepted.tsx": ACCEPTED_JSX,
+                "forms.tsx": FORM_ACCEPTED,
                 "signal-accepted.ts": SIGNAL_ACCEPTED,
                 ...REJECTED,
                 ...SIGNAL_REJECTED,
@@ -289,7 +329,7 @@ describe("generated declarations in an installed consumer", () => {
         removeCliProject(state.project);
     });
 
-    it.each(["namespaces.ts", "accepted.ts", "accepted.tsx", "signal-accepted.ts"])(
+    it.each(["namespaces.ts", "accepted.ts", "accepted.tsx", "forms.tsx", "signal-accepted.ts"])(
         "checks public API declarations in %s",
         (file) => {
             expect(state.status).toBe(0);

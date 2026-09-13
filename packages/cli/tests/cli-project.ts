@@ -35,6 +35,7 @@ const WORKSPACE_PACKAGES = [
     "components",
     "config",
     "css",
+    "forms",
     "i18n",
     "native",
     "react",
