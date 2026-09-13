@@ -26,7 +26,9 @@ const addUrl = (url: string): void => {
 };
 
 const cacheBustedUrl = (url: string): string => {
-    if (!url.startsWith("file:")) {
+    const state = captureStorage.getStore();
+
+    if (state === undefined || !url.startsWith("file:")) {
         return url;
     }
 
@@ -37,7 +39,7 @@ const cacheBustedUrl = (url: string): string => {
     }
 
     const parsed = new URL(url);
-    parsed.searchParams.set("gtkx-config-load", captureStorage.getStore()?.cacheKey ?? "uncaptured");
+    parsed.searchParams.set("gtkx-config-load", state.cacheKey);
 
     return parsed.href;
 };
