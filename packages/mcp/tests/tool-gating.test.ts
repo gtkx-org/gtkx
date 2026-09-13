@@ -46,6 +46,17 @@ afterEach(async () => {
 });
 
 describe("gtkx-mcp tool gating", () => {
+    it("starts without a project configuration", async () => {
+        const root = projectWith("");
+        rmSync(join(root, CONFIG_NAME));
+
+        expect(getNames(await getTools(root))).toContain("gtkx_list_apps");
+    });
+
+    it("rejects invalid project settings instead of registering default tools", async () => {
+        await expect(getTools(projectWith(', mcp: { readOnly: "yes" }'))).rejects.toThrow();
+    });
+
     it("registers every tool and annotates them as local and read-only where they are", async () => {
         const tools = await getTools(projectWith(""));
         const names = getNames(tools);

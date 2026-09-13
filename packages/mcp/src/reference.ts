@@ -1,5 +1,6 @@
 import { type ApiReference, type ApiSymbol, loadApiReference, resolveGirPath, resolveLibraries } from "@gtkx/codegen";
 import { loadConfig } from "@gtkx/config";
+import { CONFIG_EXTENSIONS, configDependenciesFor } from "@gtkx/config/internal";
 import { type McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type CallToolResult, ErrorCode, McpError, type ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { existsSync, statSync } from "node:fs";
@@ -58,7 +59,7 @@ type ResourceServer = Pick<McpServer, "registerResource">;
 
 const FRESHNESS_INTERVAL_MS = 2000;
 const FAILURE_RETRY_MS = 5000;
-const CONFIG_EXTENSIONS = ["ts", "mts", "js", "mjs", "json"];
+const CONFIG_LOCATIONS = ["gtkx.config", ".config/gtkx", ".config/gtkx.config"];
 
 const PROJECT_SOURCE_LABELS: Record<ProjectSource, string> = {
     argument: "requested with `projectRoot`",
@@ -131,7 +132,8 @@ const isFresh = (loaded: LoadedReference): boolean =>
     });
 
 const hasConfigFile = (directory: string): boolean =>
-    CONFIG_EXTENSIONS.some((extension) => existsSync(join(directory, `gtkx.config.${extension}`)));
+    CONFIG_LOCATIONS.some((location) =>
+        CONFIG_EXTENSIONS.some((extension) => existsSync(join(directory, `${location}${extension}`))));
 
 const findProjectRoot = (start: string): string | undefined => {
     const current = resolve(start);
@@ -172,7 +174,8 @@ const resolveProject = (
 };
 
 const loadReference = async (requestedRoot: string): Promise<LoadedReference> => {
-    const { config, configFile, root } = await loadConfig(requestedRoot);
+    const loaded = await loadConfig(requestedRoot);
+    const { config, root } = loaded;
 
     if (config.codegen === false) {
         throw new Error(
@@ -199,7 +202,7 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
         girPath,
     });
 
-    const watched = [watchFile(resolve(root, configFile)), ...reference.girFiles.map((file) => watchFile(file))];
+    const watched = [...configDependenciesFor(loaded), ...reference.girFiles].map((file) => watchFile(file));
 
     return { reference, root, watched };
 };

@@ -1,9 +1,11 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { loadConfig } from "@gtkx/config";
-import { type McpSettings, resolveMcpSettings } from "@gtkx/config/internal";
+import { configDependenciesFor, type McpSettings, resolveMcpSettings } from "@gtkx/config/internal";
 import { createLogger, installGracefulShutdown, type Logger } from "@gtkx/utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { z } from "zod";
 import type { ConnectionErrorEvent } from "./transport.js";
@@ -539,7 +541,11 @@ const configuredSettings = async (cwd: string): Promise<McpSettings> => {
         const { config } = await loadConfig(cwd);
 
         return resolveMcpSettings(config);
-    } catch {
+    } catch (error) {
+        if (configDependenciesFor(error).some((path) => existsSync(resolve(cwd, path)))) {
+            throw error;
+        }
+
         return DEFAULT_SETTINGS;
     }
 };

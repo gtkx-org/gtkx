@@ -342,6 +342,28 @@ describe("a running MCP server", () => {
         expect(await result).toBe(DELAYED_APP_ID);
     });
 
+    it("replaces a connection's previous application registration", async () => {
+        const server = await trackedServer();
+        const socket = await connectTreeApp(server.socketPath, PROBE_APP_ID);
+        await callText(server.client, "gtkx_get_widget_tree", { applicationId: PROBE_APP_ID });
+        socket.write(encode({
+            jsonrpc: "2.0",
+            id: 2,
+            method: "app.register",
+            params: { applicationId: DELAYED_APP_ID, pid: process.pid },
+        }));
+
+        expect(await callText(server.client, "gtkx_get_widget_tree", { applicationId: DELAYED_APP_ID }))
+            .toBe(PROBE_APP_ID);
+        expect(await isToolFailure(server.client, "gtkx_get_widget_tree", {
+            applicationId: PROBE_APP_ID,
+            appTimeout: 0,
+        })).toBe(true);
+        socket.destroy();
+        await waitForAppCount(server, 0);
+        expect(await callJson(server.client, "gtkx_list_apps")).toEqual([]);
+    });
+
     it("removes the socket it owns once it shuts down", async () => {
         const server = await trackedServer();
         expect(existsSync(server.socketPath)).toBe(true);

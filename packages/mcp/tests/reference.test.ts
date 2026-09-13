@@ -1,4 +1,5 @@
-import { rmSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { callText, callTool, createProject, isToolFailure, type McpServer, startServer } from "./app-session.js";
 
@@ -98,5 +99,45 @@ describe("the API reference resources", () => {
 
     it("fails to read a symbol the bindings do not declare", async () => {
         await expect(readResource("gtkx://reference/Gtk/Absent")).rejects.toThrow();
+    });
+});
+
+describe("reference configuration updates", () => {
+    it.each(["gtkx.config.cjs", "gtkx.config.cts", ".config/gtkx.ts", ".config/gtkx.config.ts"])(
+        "finds a project using %s from a child directory",
+        async (configuration) => {
+            const project = createProject();
+            rmSync(join(project, "gtkx.config.mjs"));
+            const path = join(project, configuration);
+            mkdirSync(dirname(path), { recursive: true });
+            writeFileSync(path, 'module.exports = { applicationId: "org.gtkx.reference" };\n');
+
+            try {
+                expect(await listApi({ projectRoot: join(project, "src") })).toContain("Adw");
+            } finally {
+                rmSync(project, { recursive: true, force: true });
+            }
+        },
+    );
+
+    it("reloads imported configuration when the selected libraries change", async () => {
+        const project = createProject();
+        const dependency = join(project, "libraries.mjs");
+        writeFileSync(dependency, 'export default ["GtkSource-5"];\n');
+        writeFileSync(
+            join(project, "gtkx.config.mjs"),
+            'import libraries from "./libraries.mjs";\n' +
+            'export default { applicationId: "org.gtkx.reference", libraries };\n',
+        );
+
+        try {
+            expect(await listApi({ projectRoot: project })).toContain("GtkSource");
+            writeFileSync(dependency, "export default undefined;\n");
+
+            await expect.poll(() => listApi({ projectRoot: project }), { timeout: 10_000 })
+                .not.toContain("GtkSource");
+        } finally {
+            rmSync(project, { recursive: true, force: true });
+        }
     });
 });

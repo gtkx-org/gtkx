@@ -49,7 +49,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
 | `cli` | 262 | Generated consumer and catalog-reference fixes verified; full package pending |
 | `create-gtkx` | 31 | Pending |
-| `mcp` | 26 | Pending |
+| `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
 | `testing` | 60 | ComboRow display-value matcher fixed; full package pending |
 | `vitest` | 12 | All files read; packaged preload, Sway configuration and notification sink fixed; repeat review found no further confirmed defect |
 | `e2e` | 117 | Relevant regression coverage reviewed with each fix; full suite audit pending |
@@ -388,6 +388,14 @@ An application retaining an unmounted native widget also retained its former sig
 Four public regressions cover handler collection and disconnection, child collection, portals after unmount and portal handoff in the same commit. All 144 focused lifecycle, portal, signal and slot cases pass, alongside React/e2e types and touched-file lint. A separate production-mode reproduction fails with the old implementation and passes with the fix. Immediate navigation header collection still follows React's development owner and debug-stack lifetime; repeated navigation releases older headers.
 
 The error-path review found a separate leak when render fails after native signals are connected but before commit. Native callback wrappers now weakly reference their renderer-owned handler records, so abandoned work can be collected. Mounted widgets and adopted pages retain their active handlers through garbage collection and replacement. The failed-render regression fails against the previous signal wrapper and passes with the fix. All 910 React integration cases pass across 42 files, alongside React/e2e types and touched-file lint.
+
+### MCP package audit
+
+All 26 tracked MCP files and both guides were read. API references now refresh when an imported configuration changes, and project discovery covers the configuration extensions supplied by c12 plus its supported project layouts. Re-registering an application connection removes its previous identity. Invalid project settings now stop startup instead of silently enabling default tools; starting outside a project remains supported.
+
+Registration types derive from Zod, unused connection state and timeout configuration are removed, and RegExp.escape replaces handwritten escaping. Both guides now focus on setup, live inspection, generated bindings and tool selection, leaving tool specifications to the client. The native application fixture uses an Adwaita shell and was visually inspected.
+
+Each bug has a public stdio/socket regression that fails against the previous source. All 60 end-to-end cases pass across six files, alongside source/test types, lint, Knip and the ten-task package build. A repeat review found no further confirmed defect. The earlier combined website build passed page rendering and sitemap generation in 472 seconds; these later MCP guide edits await the next website checkpoint.
 
 ## Next work
 
