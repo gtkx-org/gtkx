@@ -18,6 +18,7 @@ const cols: { h: string; items: Link[] }[] = [
         h: "Project",
         items: [
             { t: "GitHub", href: REPO_URL },
+            { t: "Contributing", href: "/contributing/" },
             { t: "Examples", href: `${REPO_URL}/tree/main/examples` },
             { t: "Issues", href: `${REPO_URL}/issues` },
             { t: "Releases", href: `${REPO_URL}/releases` },

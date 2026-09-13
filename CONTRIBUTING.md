@@ -1,5 +1,7 @@
 # Contributing to GTKX
 
+The website's [Contributing section](https://gtkx.dev/contributing/) documents the architecture, tech stack, development setup, and testing workflow for the current codebase.
+
 Follow the [Code of Conduct](CODE_OF_CONDUCT.md). Report conduct concerns to eugeniodepalo@gmail.com.
 
 ## Set up the workspace
@@ -106,6 +108,8 @@ The working-tree version leaves its `label` empty, because the label is derived 
 Between releases the current version is the working-tree one, so its API pages follow `main`. Pin it to its release tag at the moment you add the next pre-release, which becomes the new working-tree version. Reference generation also refuses to run when the output paths declared for the Nx targets in `website/package.json` no longer match the prefixes in the manifest, because a stale declaration lets a cached build restore the wrong directory.
 
 Guide and tutorial pages live under the version's prefix: `website/guide` for the unprefixed version, `website/v2/guide` for the one at `/v2`. Adding a page means adding it to `guideItems` or `tutorialItems` in `website/.vitepress/versioning.ts`; the build fails on a page that no list mentions, so the two versions cannot silently drift apart.
+
+Contributor documentation lives in `website/contributing` and follows `main` independently of release versions. Register its pages in `website/.vitepress/contributing.ts`. The section is linked from every version's navigation, included in search and the `llms.txt` exports, and stays at `/contributing/` when a release is promoted.
 
 Promoting a pre-release to current is scripted, because pages link to each other by absolute path and every one of those links moves with the version:
 

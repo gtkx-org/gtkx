@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { CONTRIBUTING_ROOT } from "../../contributing.js";
 import Badge from "../components/Badge.vue";
 import Icon from "../components/Icon.vue";
 import IconButton from "../components/IconButton.vue";
@@ -17,6 +18,7 @@ const links = [
     { label: "CLI", href: "#cli" },
     { label: "Tutorial", href: "#tutorial" },
     { label: "Docs", href: "/guide/why-gtkx" },
+    { label: "Contributing", href: `/${CONTRIBUTING_ROOT}` },
 ];
 </script>
 
@@ -128,12 +130,12 @@ html.dark .nav__sun {
   display: block;
   padding: 0.75rem 0;
 }
-@media (min-width: 721px) {
+@media (min-width: 901px) {
   .nav__menu {
     display: none;
   }
 }
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .nav__links {
     display: none;
   }

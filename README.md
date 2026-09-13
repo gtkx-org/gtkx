@@ -23,7 +23,7 @@
   <a href="https://gtkx.dev">Homepage</a> &middot;
   <a href="https://gtkx.dev/guide/getting-started">Documentation</a> &middot;
   <a href="https://github.com/gtkx-org/gtkx/tree/main/examples">Examples</a> &middot;
-  <a href="https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md">Contributing</a>
+  <a href="https://gtkx.dev/contributing/">Contributing</a>
 </p>
 
 ---
@@ -170,7 +170,7 @@ GTKX is stable and ready for production use.
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md), the [Code of Conduct](https://github.com/gtkx-org/gtkx/blob/main/CODE_OF_CONDUCT.md), and the [security policy](https://github.com/gtkx-org/gtkx/blob/main/SECURITY.md). Building the repo needs Node.js 26.7 or later, pnpm, and a Rust toolchain.
+Contributions are welcome. The [Contributing docs](https://gtkx.dev/contributing/) cover GTKX's architecture, tech stack, development setup, and testing workflow. See [CONTRIBUTING.md](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) for contribution and release procedures, the [Code of Conduct](https://github.com/gtkx-org/gtkx/blob/main/CODE_OF_CONDUCT.md), and the [security policy](https://github.com/gtkx-org/gtkx/blob/main/SECURITY.md). Building the repo needs Node.js 26.7 or later, pnpm, and a Rust toolchain.
 
 ## License
 

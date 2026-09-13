@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type DefaultTheme, defineConfig, type HeadConfig } from "vitepress";
+import { CONTRIBUTING_ROOT, contributingItems } from "./contributing.js";
 import { highlightPlugin } from "./highlight.js";
 import {
     currentVersion,
@@ -145,6 +146,10 @@ const tutorialSidebar = (version: DocumentationVersion): DefaultTheme.SidebarIte
     { text: "Tutorial", items: sidebarItems(version, tutorialItems) },
 ];
 
+const contributingLinks = contributingItems.map((item) => ({ text: item.text, link: `/${item.path}` }));
+
+const contributingSidebar: DefaultTheme.SidebarItem[] = [{ text: "Contributing", items: contributingLinks }];
+
 const blogSidebar: DefaultTheme.SidebarItem[] = [
     {
         text: "Blog",
@@ -164,6 +169,7 @@ const navigation = (version: DocumentationVersion): DefaultTheme.NavItem[] => [
     { text: "Guide", link: documentationLink(version, GUIDE_ROOT) },
     { text: "Tutorial", link: documentationLink(version, TUTORIAL_ROOT) },
     { text: "Reference", link: documentationLink(version, REFERENCE_ROOT) },
+    { text: "Contributing", link: `/${CONTRIBUTING_ROOT}`, activeMatch: "^/contributing/" },
     { text: "Blog", link: "/blog/" },
     { text: "Examples", link: `https://github.com/gtkx-org/gtkx/tree/${version.examplesRef}/examples` },
     { component: "VersionSelect" },
@@ -180,6 +186,7 @@ const versionSidebars = (version: DocumentationVersion): [string, DefaultTheme.S
 
 const sidebar: DefaultTheme.Sidebar = {
     ...Object.fromEntries(versions.flatMap((version) => versionSidebars(version))),
+    [`/${CONTRIBUTING_ROOT}`]: contributingSidebar,
     "/blog/": blogSidebar,
 };
 
@@ -277,24 +284,35 @@ const canonicalRoute = (route: string): string => {
     return hasCanonicalPage(currentVersion, path) ? documentationLink(currentVersion, path).replace(/^\//, "") : route;
 };
 
+const loadDocumentationSources = async (
+    sourceDirectory: string,
+    outputDirectory: string,
+    items: LinkedDocumentationItem[],
+) =>
+    Promise.all(
+        items.map(async (item) => {
+            const file = docFile(item.link);
+            const source = await readFile(join(sourceDirectory, file), "utf8");
+            const target = join(outputDirectory, file);
+            await mkdir(dirname(target), { recursive: true });
+            await writeFile(target, source);
+
+            return { text: item.text, file, source };
+        }),
+    );
+
+type DocumentationSources = Awaited<ReturnType<typeof loadDocumentationSources>>;
+
 const loadDocumentationVersion = async (
     sourceDirectory: string,
     outputDirectory: string,
     version: DocumentationVersion,
 ) => ({
     version,
-    sources: await Promise.all(
-        documentationItems
-            .filter((item) => hasPage(version, item.path))
-            .map(async (item) => {
-                const file = docFile(documentationLink(version, item.path));
-                const source = await readFile(join(sourceDirectory, file), "utf8");
-                const target = join(outputDirectory, file);
-                await mkdir(dirname(target), { recursive: true });
-                await writeFile(target, source);
-
-                return { text: item.text, file, source };
-            }),
+    sources: await loadDocumentationSources(
+        sourceDirectory,
+        outputDirectory,
+        sidebarItems(version, documentationItems),
     ),
 });
 
@@ -343,7 +361,7 @@ const llmsHeader = (version: DocumentationVersion): string =>
         "",
     ].join("\n");
 
-const llmsIndex = (loaded: LoadedDocumentationVersion): string => {
+const llmsIndex = (loaded: LoadedDocumentationVersion, contributing: DocumentationSources): string => {
     const pages = loaded.sources.map((source) => `- [${source.text}](${url}/${source.file})`).join("\n");
     const references = versionReferenceSidebar(loaded.version)
         .flatMap((entry) => (entry.link ? [`- [${entry.text ?? "API"}](${url}${entry.link})`] : []))
@@ -363,17 +381,24 @@ const llmsIndex = (loaded: LoadedDocumentationVersion): string => {
         "",
         "## Unversioned content",
         "",
+        "Contributing documents development on main.",
+        "",
+        ...contributing.map((source) => `- [Contributing: ${source.text}](${url}/${source.file})`),
         `- [Blog](${url}/blog/)`,
         otherVersionsSection(loaded.version),
     ].join("\n");
 };
 
-const llmsFull = (loaded: LoadedDocumentationVersion): string =>
+const llmsFull = (loaded: LoadedDocumentationVersion, contributing: DocumentationSources): string =>
     [
         llmsHeader(loaded.version),
         `## GTKX ${loaded.version.label} documentation`,
         "",
         loaded.sources.map((source) => source.source).join("\n\n---\n\n"),
+        "",
+        "## Contributing to GTKX",
+        "",
+        contributing.map((source) => source.source).join("\n\n---\n\n"),
         otherVersionsSection(loaded.version),
     ].join("\n");
 
@@ -445,6 +470,7 @@ export default defineConfig({
     },
 
     async buildEnd(siteConfig) {
+        const contributing = await loadDocumentationSources(siteConfig.srcDir, siteConfig.outDir, contributingLinks);
         const loaded = await Promise.all(
             versions.map((version) => loadDocumentationVersion(siteConfig.srcDir, siteConfig.outDir, version)),
         );
@@ -453,8 +479,8 @@ export default defineConfig({
             loaded.map(async (version) => {
                 const directory = join(siteConfig.outDir, version.version.prefix.replace(/^\//, ""));
                 await mkdir(directory, { recursive: true });
-                await writeFile(join(directory, "llms.txt"), llmsIndex(version));
-                await writeFile(join(directory, "llms-full.txt"), llmsFull(version));
+                await writeFile(join(directory, "llms.txt"), llmsIndex(version, contributing));
+                await writeFile(join(directory, "llms-full.txt"), llmsFull(version, contributing));
             }),
         );
     },

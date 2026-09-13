@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { useRouter } from "vitepress";
+import { useData, useRouter } from "vitepress";
 import { computed } from "vue";
+import { CONTRIBUTING_ROOT } from "../../contributing.js";
 import { versionById, versions } from "../../versioning.js";
 import { useDocumentationVersion } from "../composables/use-documentation-version";
 
 const { screenMenu = false } = defineProps<{ screenMenu?: boolean }>();
 const router = useRouter();
+const { page } = useData();
+const isContributing = computed(() => page.value.relativePath.startsWith(CONTRIBUTING_ROOT));
 const { version, link, isSamePage } = useDocumentationVersion();
 
 const selectedVersion = computed<string>({
@@ -23,7 +26,7 @@ const selectedVersion = computed<string>({
 </script>
 
 <template>
-  <label class="version-select" :class="{ 'screen-menu': screenMenu }">
+  <label v-if="!isContributing" class="version-select" :class="{ 'screen-menu': screenMenu }">
     <span>Version</span>
     <select v-model="selectedVersion">
       <option v-for="entry in versions" :key="entry.id" :value="entry.id">{{ entry.label }}</option>
