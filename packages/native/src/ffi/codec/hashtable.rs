@@ -1,7 +1,7 @@
 use anyhow::bail;
 
+use super::bytes::bytes_to_glib_full;
 use super::prelude::*;
-use super::string::str_to_glib_full;
 use crate::ffi::codec::{BigIntCodec, Codec, FloatCodec, IntegerCodec};
 use crate::ffi::{HashTableData, StashData, StashStorage};
 
@@ -11,7 +11,7 @@ type CVoidPtr = *mut c_void;
 /// the one left to release it.
 fn entry_ownership_is_full(codec: &Codec) -> bool {
     match codec {
-        Codec::String(string) => string.ownership.is_full(),
+        Codec::Bytes(bytes) => bytes.ownership.is_full(),
         Codec::Object(object) => object.ownership.is_full(),
         Codec::Boxed(boxed) => boxed.ownership.is_full(),
         Codec::Fundamental(fundamental) => fundamental.ownership.is_full(),
@@ -22,7 +22,7 @@ fn entry_ownership_is_full(codec: &Codec) -> bool {
 
 #[derive(Clone, Debug)]
 pub enum HashTableEntryCodec {
-    String,
+    Bytes,
     Integer(IntegerCodec),
     Float(FloatCodec),
     BigInt(BigIntCodec),
@@ -36,7 +36,7 @@ impl HashTableEntryCodec {
             return Some(Self::Handle(Box::new(codec.clone())));
         }
         match codec {
-            Codec::String(_) => Some(Self::String),
+            Codec::Bytes(_) => Some(Self::Bytes),
             Codec::Integer(integer) => Some(Self::Integer(*integer)),
             Codec::Float(float) => Some(Self::Float(*float)),
             Codec::BigInt(bigint) => Some(Self::BigInt(*bigint)),
@@ -53,7 +53,7 @@ impl HashTableEntryCodec {
 
     pub fn hash_and_equal(&self) -> anyhow::Result<(glib::ffi::GHashFunc, glib::ffi::GEqualFunc)> {
         match self {
-            Self::String => Ok((Some(glib::ffi::g_str_hash), Some(glib::ffi::g_str_equal))),
+            Self::Bytes => Ok((Some(glib::ffi::g_str_hash), Some(glib::ffi::g_str_equal))),
             Self::Float(FloatCodec::F64) => Ok((
                 Some(glib::ffi::g_double_hash),
                 Some(glib::ffi::g_double_equal),
@@ -73,7 +73,7 @@ impl HashTableEntryCodec {
 
     pub fn free_func(&self) -> anyhow::Result<glib::ffi::GDestroyNotify> {
         match self {
-            Self::String | Self::Float(_) | Self::BigInt(_) => Ok(Some(glib::ffi::g_free)),
+            Self::Bytes | Self::Float(_) | Self::BigInt(_) => Ok(Some(glib::ffi::g_free)),
             Self::Integer(_) => Ok(None),
             Self::Handle(codec) => Self::transferred_entry_destroy(codec),
             Self::PtrArray(_) => Ok(Some(g_ptr_array_unref_wrapper)),
@@ -115,11 +115,9 @@ impl HashTableEntryCodec {
 
     pub fn encode(&self, value: Unknown<'_>) -> anyhow::Result<*mut c_void> {
         match self {
-            Self::String => {
-                let ValueType::String = value.get_type()? else {
-                    bail!("Expected string in GHashTable")
-                };
-                Ok(str_to_glib_full(&value::read_napi::<String>(value)?)?.cast::<c_void>())
+            Self::Bytes => {
+                let bytes = super::array::read_bytes_item(value)?;
+                Ok(bytes_to_glib_full(&bytes)?.cast::<c_void>())
             }
             Self::Integer(integer) => Self::pointer_word(*integer, value),
             Self::Float(float) => {
@@ -340,7 +338,7 @@ impl HashTableCodec {
     /// pointer itself owns no memory.
     fn retains_entries(&self, encoder: &HashTableEntryCodec, codec: &Codec) -> bool {
         self.ownership.is_full()
-            && (matches!(encoder, HashTableEntryCodec::String) || encoder.is_boxed())
+            && (matches!(encoder, HashTableEntryCodec::Bytes) || encoder.is_boxed())
             && !entry_ownership_is_full(codec)
     }
 }

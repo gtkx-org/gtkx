@@ -1,6 +1,8 @@
 import { bindVfunc, call, registerClass, resolveType } from "@gtkx/native";
 import { expect, test } from "vitest";
 
+const encoder = new TextEncoder();
+
 const GOBJECT = "libgobject-2.0.so.0";
 const OBJECT_TYPE = resolveType(GOBJECT, "g_object_get_type");
 const PLUGIN_TYPE = resolveType(GOBJECT, "g_type_plugin_get_type");
@@ -11,8 +13,8 @@ const USE_PLUGIN_OFFSET = 16;
 const UNUSE_PLUGIN_OFFSET = 24;
 const PLUGIN_VTABLE_SIZE = 48;
 const BEYOND_CLASS_STRUCT = 4096;
-const BORROWED_STRING = { kind: "string", ownership: "borrowed" } as const;
-const OWNED_STRING = { kind: "string", ownership: "full" } as const;
+const BORROWED_BYTES = { kind: "bytes", ownership: "borrowed" } as const;
+const OWNED_BYTES = { kind: "bytes", ownership: "full" } as const;
 
 test("a bound class slot calls the implementation the class installed", () => {
     const type = registerClass("VfuncClassSlot", OBJECT_TYPE, {
@@ -157,14 +159,14 @@ test("a slot taking no arguments and returning void runs its implementation", ()
     expect(runs).toBe(1);
 });
 
-test("a slot declaring string descriptors marshals the argument and the return value", () => {
+test("a slot declaring byte descriptors passes the argument and the return value", () => {
     const type = registerClass("VfuncStringSlot", OBJECT_TYPE, {
         vfuncs: [
             {
                 byteOffset: DISPOSE_OFFSET,
-                argDescriptors: [BORROWED_STRING],
-                returnDescriptor: OWNED_STRING,
-                fn: (value: string) => `${value}-x`,
+                argDescriptors: [BORROWED_BYTES],
+                returnDescriptor: OWNED_BYTES,
+                fn: (value: Uint8Array) => new Uint8Array([...value, 45, 120]),
             },
         ],
     });
@@ -173,11 +175,11 @@ test("a slot declaring string descriptors marshals the argument and the return v
         instanceType: type,
         byteOffset: DISPOSE_OFFSET,
         label: "VfuncStringSlotClass.dispose",
-        argDescriptors: [BORROWED_STRING],
-        returnDescriptor: OWNED_STRING,
+        argDescriptors: [BORROWED_BYTES],
+        returnDescriptor: OWNED_BYTES,
     });
 
-    expect(call(slot, ["gtk"]).value).toBe("gtk-x");
+    expect(call(slot, [encoder.encode("gtk")]).value).toEqual(encoder.encode("gtk-x"));
 });
 
 test("the same bound slot can be called repeatedly", () => {

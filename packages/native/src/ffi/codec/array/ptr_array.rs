@@ -1,7 +1,7 @@
 use super::super::prelude::*;
 use super::container::ArrayContainer;
 use super::item::ItemCodec;
-use super::{ArrayCodec, ArrayKindEncoder, dup_strings_to_glib, transfer_items};
+use super::{ArrayCodec, ArrayKindEncoder, dup_bytes_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
 
@@ -98,13 +98,13 @@ impl GPtrArrayEncoder {
 }
 
 impl ArrayKindEncoder for GPtrArrayEncoder {
-    fn encode_strings(
+    fn encode_byte_strings(
         &self,
         array: &[Unknown<'_>],
         dup_items: bool,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::Stash> {
-        let dups = dup_strings_to_glib(array)?;
+        let dups = dup_bytes_to_glib(array)?;
 
         // The callee frees the duplicates itself only when it takes both the container and its
         // elements. Everywhere else they stay this side's allocations, and the array's own free

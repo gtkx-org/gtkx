@@ -449,6 +449,22 @@ Clipboard helpers invoke native actions, preserving readonly and protected text,
 
 Regressions fail against the previous implementations. All 254 public integration cases pass across 20 files, including query performance and activation held by another process. Source and full e2e typechecks, package and consumer lint, and the testing build pass. Native clipboard and markup views were visually inspected. The guides now share a concise GTKX-focused structure, with accurate headless setup, query scope and error handling. Independent review found no additional confirmed defect.
 
+### Custom element metadata and subclassing
+
+A production application that retained a GI base class without its generated JSX component could lose inherited property metadata. Removing a custom scale's `digits` prop then left its previous value instead of restoring the native default. Generated GI classes now register their own property and signal metadata. Custom class registration derives declared property metadata from its existing ParamSpecs, so native construction receives construct-only props and later prop removal restores writable defaults.
+
+The separate JSX metadata module and duplicate property-entry type are removed. Three built-application cases cover inherited and declared defaults, omitted props, constructor-time values and rejected construct-only updates. All 428 CLI cases and 910 existing React cases pass, alongside affected builds, typechecks, lint and independent review. The subclassing guides now use complete JSX examples and upstream links instead of API inventories or GtkBuilder instructions; the native example was visually inspected. Website validation remains part of the next combined checkpoint.
+
+### Runtime string conversion
+
+String encoding and decoding now live in runtime. The native descriptor accepts terminated byte storage and retains responsibility for allocation, copying, bounded reads and ownership. Runtime string APIs remain unchanged. Callback returns preserve their declared lifetimes, and native string vectors can carry invalid UTF-8 without constructing Rust UTF-8 string types.
+
+The migration exposed a bounded-buffer overread: filling an allocated character buffer without a terminator caused decoding to read beyond its end. An isolated sanitizer regression confirms the previous heap-buffer-overflow; decoding now searches only the owned buffer. Byte output uses Node-owned backing storage. A confirmed napi-rs copy defect requires an explicit copy after allocation and is tracked as U12 with standalone reproductions against versions 3.12.2 and 3.12.4.
+
+All 376 native package cases, 127 focused integration cases and seven runtime storage cases pass. Sanitizer passes cover 102 native memory cases, the 127 integration cases, all 60 native call cases including six byte-vector regressions, and bounded storage. Typechecks, lint, rustfmt and Clippy pass. Memory checks measure repeated batches after allocation warm-up under the unchanged 40 MiB growth limit; the original callback leak still fails at roughly 993 MB growth. The normal addon and runtime artifacts are restored.
+
+A worker shutdown stress check separately reproduces an intermittent process crash on both the previous and current addon. Instrumented runs have not yet identified its cause; that finding remains open. Container conversion and the remaining R2 responsibilities are also still open.
+
 ## Next work
 
 Continue repeat audits alongside the R2 string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.

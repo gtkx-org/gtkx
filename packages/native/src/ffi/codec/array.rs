@@ -5,8 +5,8 @@ pub use container::{ArrayBounds, ArrayKind};
 use container::{ArrayContainer, ArrayContainerCodec, ViewEncoding};
 use item::ItemCodec;
 
+use super::bytes::bytes_to_glib_full;
 use super::prelude::*;
-use super::string::str_to_glib_full;
 use crate::ffi::codec::{Codec, FloatCodec, lossless_f64};
 use crate::value::TypedView;
 
@@ -112,7 +112,7 @@ impl ArrayCodec {
 
     fn container_release(&self) -> ffi::ReleaseKind {
         match &*self.item_codec {
-            Codec::String(item) if item.ownership.is_full() => ffi::ReleaseKind::StrFreeV,
+            Codec::Bytes(item) if item.ownership.is_full() => ffi::ReleaseKind::StrFreeV,
             _ => ffi::ReleaseKind::GFree,
         }
     }
@@ -125,11 +125,8 @@ pub(super) fn build_js_array<'e>(
     Ok(value::js_array(env, items)?)
 }
 
-pub(super) fn read_string_item(value: Unknown<'_>) -> anyhow::Result<String> {
-    match value.get_type()? {
-        ValueType::String => Ok(value::read_napi::<String>(value)?),
-        other => bail!("Expected a String, got {other:?}"),
-    }
+pub(super) fn read_bytes_item(value: Unknown<'_>) -> anyhow::Result<Vec<u8>> {
+    super::bytes::read_bytes(value)?.ok_or_else(|| anyhow::anyhow!("Expected Uint8Array"))
 }
 
 impl Encoder for ArrayCodec {
@@ -213,10 +210,10 @@ impl PtrWriter for ArrayCodec {
     write_container_value_to_ptr!("array", "array pointer write", Self::container_release);
 }
 
-pub(super) fn dup_strings_to_glib(array: &[Unknown<'_>]) -> anyhow::Result<Vec<*mut c_void>> {
+pub(super) fn dup_bytes_to_glib(array: &[Unknown<'_>]) -> anyhow::Result<Vec<*mut c_void>> {
     let mut ptrs: Vec<*mut c_void> = Vec::with_capacity(array.len());
     for &v in array {
-        let duplicated = read_string_item(v).and_then(|s| str_to_glib_full(&s));
+        let duplicated = read_bytes_item(v).and_then(|s| bytes_to_glib_full(&s));
         match duplicated {
             Ok(ptr) => ptrs.push(ptr.cast::<c_void>()),
             Err(err) => {
@@ -231,7 +228,7 @@ pub(super) fn dup_strings_to_glib(array: &[Unknown<'_>]) -> anyhow::Result<Vec<*
 }
 
 trait ArrayKindEncoder {
-    fn encode_strings(
+    fn encode_byte_strings(
         &self,
         array: &[Unknown<'_>],
         dup_items: bool,
@@ -315,10 +312,10 @@ impl ArrayCodec {
             .collect()
     }
 
-    fn extract_strings(array: &[Unknown<'_>]) -> anyhow::Result<Vec<CString>> {
+    fn extract_byte_strings(array: &[Unknown<'_>]) -> anyhow::Result<Vec<CString>> {
         array
             .iter()
-            .map(|&v| Ok(CString::new(read_string_item(v)?.as_bytes())?))
+            .map(|&v| Ok(CString::new(read_bytes_item(v)?)?))
             .collect()
     }
 
@@ -532,10 +529,10 @@ impl ArrayCodec {
             ItemCodec::Float(kind) => self.finish_scalar_storage(kind.checked_to_stash_storage(
                 &Self::extract_terminated_numbers(array, zero_terminated)?,
             )?),
-            ItemCodec::String => {
+            ItemCodec::Bytes => {
                 let dup_items =
-                    matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());
-                encoder.encode_strings(array, dup_items, self.ownership)
+                    matches!(&*self.item_codec, Codec::Bytes(s) if s.ownership.is_full());
+                encoder.encode_byte_strings(array, dup_items, self.ownership)
             }
             ItemCodec::Pointer => {
                 if let Some(element_size) = self.inline_element_size() {
@@ -594,7 +591,7 @@ impl ArrayCodec {
                     .map(|&v| Ok(v.into_unknown(env)?))
                     .collect()
             }
-            ItemCodec::Pointer | ItemCodec::String => {
+            ItemCodec::Pointer | ItemCodec::Bytes => {
                 let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
                 ptrs.iter()
                     .map(|&item_ptr| self.item_codec.decode(env, &ffi::Stash::Ptr(item_ptr)))

@@ -1,9 +1,12 @@
 import type { Descriptor as NativeDescriptor } from "@gtkx/native";
 
+type StringDescriptor = Omit<Extract<NativeDescriptor, { kind: "bytes" }>, "kind"> & { kind: "string" };
+
 type Descriptor =
     Exclude<NativeDescriptor, {
         kind: "array" | "hashtable" | "callback" | "ref";
     }> |
+    StringDescriptor |
     { kind: "boolean" } |
     { kind: "unichar" } |
     { kind: "enum"; sharedLibrary: string; getTypeFnName: string; isSigned: boolean; members?: number[] } |

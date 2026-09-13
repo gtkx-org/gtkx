@@ -51,6 +51,19 @@ test("empty strings round trip", () => {
     expect(Regress.testIntOutUtf8("")).toBe(0);
 });
 
+test.each([
+    ["\u{FEFF}café", "\u{FEFF}café"],
+    ["a\u{D800}b", "a\u{FFFD}b"],
+    ["a\u{DC00}b", "a\u{FFFD}b"],
+])("string round trips preserve BOM and replace lone surrogates (%s)", (input, expected) => {
+    expect(GIMarshallingTests.filenameCopy(input)).toBe(expected);
+});
+
+test("strings containing NUL are rejected before native calls", () => {
+    expect(() => GIMarshallingTests.filenameCopy("a\0b")).toThrow();
+    expect(() => Regress.testStrvIn(["1", "2\0", "3"])).toThrow();
+});
+
 test("nullable string parameters and returns carry null", () => {
     Regress.testUtf8NullIn(null);
     // @ts-expect-error the nullable parameter is not declared optional

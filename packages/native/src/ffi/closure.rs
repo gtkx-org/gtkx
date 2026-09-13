@@ -15,7 +15,7 @@ use napi_derive::napi;
 use crate::ffi::Stash;
 use crate::ffi::codec::{
     CallbackCodec, CallbackScope, Codec, Decoder as _, DestroyNotifyKind, Encoder as _, Ownership,
-    PtrWriter as _, ReadCtx, SlotInit, str_to_glib_full,
+    PtrWriter as _, ReadCtx, SlotInit, bytes_to_glib_full, read_bytes,
 };
 use crate::handle::{BorrowScope, Handle};
 use crate::host::error_reporter::ReportErr;
@@ -86,7 +86,7 @@ pub struct ClosureData {
     oneshot_fired: Cell<bool>,
     in_flight: Cell<u32>,
     pending_destroy: Cell<bool>,
-    retained_strings: RefCell<HashMap<CString, *mut c_char>>,
+    retained_bytes: RefCell<HashMap<CString, *mut c_char>>,
     retained_containers: RefCell<Vec<Stash>>,
     retained_transfers: RefCell<Vec<crate::ffi::PendingTransfer>>,
 }
@@ -112,7 +112,7 @@ impl ClosureData {
             oneshot_fired: Cell::new(false),
             in_flight: Cell::new(0),
             pending_destroy: Cell::new(false),
-            retained_strings: RefCell::new(HashMap::new()),
+            retained_bytes: RefCell::new(HashMap::new()),
             retained_containers: RefCell::new(Vec::new()),
             retained_transfers: RefCell::new(Vec::new()),
         }
@@ -121,7 +121,7 @@ impl ClosureData {
 
 impl Drop for ClosureData {
     fn drop(&mut self) {
-        for (_, ptr) in self.retained_strings.get_mut().drain() {
+        for (_, ptr) in self.retained_bytes.get_mut().drain() {
             unsafe { glib::ffi::g_free(ptr.cast()) };
         }
         for transfer in self.retained_transfers.get_mut().drain(..) {
@@ -592,10 +592,10 @@ impl ClosureData {
     }
 
     fn write_return(&self, env: &Env, result: *mut c_void, value: &Result<Unknown<'_>, ()>) {
-        if let Codec::String(string_codec) = &self.return_codec
-            && string_codec.ownership.is_borrowed()
+        if let Codec::Bytes(bytes_codec) = &self.return_codec
+            && bytes_codec.ownership.is_borrowed()
         {
-            self.write_retained_string_return(result, value);
+            self.write_retained_bytes_return(result, value);
             return;
         }
         if self.return_type_is_borrowed_container() {
@@ -670,21 +670,21 @@ impl ClosureData {
         unsafe { crate::ffi::Slot::new(result).store(ptr) };
     }
 
-    fn intern_string_return(&self, value: &Result<Unknown<'_>, ()>) -> *mut c_char {
+    fn intern_bytes_return(&self, value: &Result<Unknown<'_>, ()>) -> *mut c_char {
         let Ok(unknown) = value else {
             return std::ptr::null_mut();
         };
-        let Some(text) = string_from_unknown(*unknown) else {
+        let Ok(Some(bytes)) = read_bytes(*unknown) else {
             return std::ptr::null_mut();
         };
-        let Ok(key) = CString::new(text.as_bytes()) else {
+        let Ok(key) = CString::new(bytes) else {
             return std::ptr::null_mut();
         };
-        let mut retained = self.retained_strings.borrow_mut();
+        let mut retained = self.retained_bytes.borrow_mut();
         if let Some(&existing) = retained.get(&key) {
             return existing;
         }
-        let Ok(ptr) = str_to_glib_full(&text) else {
+        let Ok(ptr) = bytes_to_glib_full(key.as_bytes()) else {
             return std::ptr::null_mut();
         };
         retained.insert(key, ptr);
@@ -692,16 +692,9 @@ impl ClosureData {
         ptr
     }
 
-    fn write_retained_string_return(&self, result: *mut c_void, value: &Result<Unknown<'_>, ()>) {
-        let ptr = self.intern_string_return(value);
+    fn write_retained_bytes_return(&self, result: *mut c_void, value: &Result<Unknown<'_>, ()>) {
+        let ptr = self.intern_bytes_return(value);
         unsafe { crate::ffi::Slot::new(result).store(ptr.cast()) };
-    }
-}
-
-fn string_from_unknown(value: Unknown<'_>) -> Option<String> {
-    match value.get_type().ok()? {
-        ValueType::String => value::read_napi::<String>(value).ok(),
-        _ => None,
     }
 }
 
