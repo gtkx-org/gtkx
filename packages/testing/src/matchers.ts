@@ -541,7 +541,7 @@ const isEqualValue = (context: MatcherContext, actual: unknown, expected: unknow
 };
 
 const isClassMatch = (actual: string[], expected: ClassExpectation): boolean =>
-    expected instanceof RegExp ? actual.some((name) => expected.test(name)) : actual.includes(expected);
+    actual.some((name) => isTextMatch(name, expected, "exact"));
 
 const isWidgetRooted = (widget: Gtk.Widget): boolean => {
     const root = widget.getRoot();
@@ -886,7 +886,7 @@ function toBeRooted(received: unknown): MatcherResult {
 function toBeEmptyWidget(received: unknown): MatcherResult {
     const widget = asWidget(received, "toBeEmptyWidget");
 
-    return stateResult(widget, "empty", widget.getFirstChild() === null && getWidgetLabelText(widget) === null);
+    return stateResult(widget, "empty", widget.getFirstChild() === null && !getWidgetLabelText(widget));
 }
 
 function toBeInvalid(received: unknown): MatcherResult {

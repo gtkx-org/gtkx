@@ -100,14 +100,15 @@ const parseKeyToken = (token: string): { keyval: number; isPress: boolean; isRel
 };
 
 const parseCharAt = (input: string, i: number): ParseStep => {
-    const keyval = input.codePointAt(i) ?? 0;
+    const character = input.codePointAt(i) ?? 0;
+    const keyval = Gdk.unicodeToKeyval(character);
 
     return {
         actions: [
             { keyval, isPress: true },
             { keyval, isPress: false },
         ],
-        next: i + 1,
+        next: i + String.fromCodePoint(character).length,
     };
 };
 

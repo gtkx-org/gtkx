@@ -2,7 +2,6 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { EDITABLE_ROLES, type EditableTarget, getEditableDelegate, isEditable, readEditableText } from "../editable.js";
 import { formatRoleList } from "../role-helpers.js";
-import { getWidgetSelection } from "../widget-accessible-properties.js";
 import { callBooleanGetter } from "../widget-getters.js";
 import { wrapEvent } from "./event-wrapper.js";
 
@@ -30,7 +29,6 @@ const SINGLE_CHARACTER_LENGTH = 1;
 const TEXT_END_POSITION = -1;
 
 const isWidgetEditable = (widget: Gtk.Widget): boolean => callBooleanGetter(widget, "getEditable") ?? true;
-const readSelection = (widget: EditableTarget): string => getWidgetSelection(widget) ?? "";
 const hasSelectedText = (widget: Gtk.Editable): boolean => widget.getSelectionBounds()[0];
 
 const getDelegateText = (widget: Gtk.Editable): Gtk.Text | null => {
@@ -43,16 +41,6 @@ const getSelectionLength = (buffer: Gtk.TextBuffer): number => {
     const [isSelected, start, end] = buffer.getSelectionBounds();
 
     return isSelected ? end.getOffset() - start.getOffset() : 0;
-};
-
-const deleteSelection = (widget: EditableTarget): void => {
-    if (widget instanceof Gtk.TextView) {
-        widget.getBuffer().deleteSelection(false, true);
-
-        return;
-    }
-
-    widget.deleteSelection();
 };
 
 const focusPlainEditable = (widget: Gtk.Editable): void => {
@@ -177,10 +165,6 @@ const applyInitialSelection = (widget: EditableTarget, options: TypeOptions): vo
     widget.selectRegion(start, end);
 };
 
-const writeClipboardText = (widget: Gtk.Widget, text: string): void => {
-    widget.getClipboard().set(text);
-};
-
 const resetClipboard = (): void => {
     Gdk.Display.getDefault()?.getClipboard().setContent(null);
 };
@@ -284,15 +268,21 @@ const clear = (widget: Gtk.Widget): Promise<void> =>
 
 /** Copies the current selection. */
 const copy = (widget: Gtk.Widget): Promise<void> =>
-    runEditableEvent(widget, "Cannot copy", (editable) => {
-        writeClipboardText(editable, readSelection(editable));
-    });
+    runClipboardEvent(widget, "copy-clipboard");
 
 /** Cuts the current selection. */
 const cut = (widget: Gtk.Widget): Promise<void> =>
-    runEditableEvent(widget, "Cannot cut", (editable) => {
-        writeClipboardText(editable, readSelection(editable));
-        deleteSelection(editable);
+    runClipboardEvent(widget, "cut-clipboard");
+
+const runClipboardEvent = (widget: Gtk.Widget, signal: "copy-clipboard" | "cut-clipboard"): Promise<void> =>
+    runEditableEvent(widget, `Cannot ${signal}`, (editable) => {
+        const target = editable instanceof Gtk.TextView ? editable : getDelegateText(editable);
+
+        if (target === null) {
+            throw new TypeError("The editable widget has no native clipboard action");
+        }
+
+        target.emit(signal);
     });
 
 /** Pastes text or clipboard contents. */

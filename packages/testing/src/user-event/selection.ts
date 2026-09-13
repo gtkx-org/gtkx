@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { formatRoleList } from "../role-helpers.js";
 import { getCallableMethod } from "../widget-getters.js";
+import { requireWidget } from "../widget-target.js";
 import { wrapEvent } from "./event-wrapper.js";
 import {
     getChildAtIndex,
@@ -152,14 +153,6 @@ const runSelectionEvent = (
 
         byRole(widget, valueArray);
     });
-
-const requireWidget = (target: Gtk.Accessible): Gtk.Widget => {
-    if (!(target instanceof Gtk.Widget)) {
-        throw new TypeError("Cannot select options on a non-widget accessible");
-    }
-
-    return target;
-};
 
 /** Selects positions without activating them. */
 const selectOptions = (widget: Gtk.Accessible, values: number | number[]): Promise<void> =>

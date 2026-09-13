@@ -1,5 +1,7 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { t, toValueHandle, wrapHandle } from "@gtkx/runtime";
+import { toValue } from "@gtkx/runtime/internal";
 import { getAllControllers } from "./controller.js";
 import { dispatchOnControllers, dispatchOnOrCreateControllers } from "./dispatch.js";
 import { wrapEvent } from "./event-wrapper.js";
@@ -53,34 +55,14 @@ type SavedDragState = {
     previousOffset: DragInstancePatch["getOffset"];
 };
 
-const initValue = (gtype: GObject.Type, populate: (value: GObject.Value) => void): GObject.Value => {
-    const value = new GObject.Value();
-    value.init(gtype);
-    populate(value);
-
-    return value;
-};
-
 const buildDropValue = (content: DropContent): GObject.Value => {
     if (content instanceof GObject.Value) {
         return content;
     }
 
-    if (typeof content === "string") {
-        return initValue(GObject.TYPE_STRING, (v) => {
-            v.setString(content);
-        });
-    }
+    const handle = typeof content === "number" ? toValue(t.float64, content) : toValueHandle(content);
 
-    if (typeof content === "boolean") {
-        return initValue(GObject.TYPE_BOOLEAN, (v) => {
-            v.setBoolean(content);
-        });
-    }
-
-    return initValue(GObject.TYPE_DOUBLE, (v) => {
-        v.setDouble(content);
-    });
+    return wrapHandle(handle, GObject.Value);
 };
 
 /** Enters a widget. */

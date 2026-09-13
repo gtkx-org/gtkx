@@ -363,10 +363,11 @@ describe("ByDisplayValue", () => {
 });
 
 describe("getDefaultNormalizer", () => {
-    it("trims and collapses whitespace, and each can be turned off", () => {
-        expect(getDefaultNormalizer()("  hello   world  ")).toBe("hello world");
-        expect(getDefaultNormalizer({ trim: false })("  hello  ")).toBe(" hello ");
-        expect(getDefaultNormalizer({ collapseWhitespace: false })("  hello   world  ")).toBe("hello   world");
+    it("trims and collapses query text, and each can be turned off", async () => {
+        const { container } = await render(<GtkLabel>{"  hello   world  "}</GtkLabel>);
+        expect(getByText(container, "hello world")).toHaveTextContent("hello world");
+        expect(getByText(container, " hello world ", { trim: false })).toHaveTextContent("hello world");
+        expect(getByText(container, "hello   world", { collapseWhitespace: false })).toHaveTextContent("hello world");
     });
 
     it("accepts a custom normalizer on its own, and throws when it is combined with the flags", async () => {

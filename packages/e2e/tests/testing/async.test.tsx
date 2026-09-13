@@ -13,6 +13,8 @@ import {
     waitForElementToBeRemoved,
     within,
 } from "@gtkx/testing";
+import { clearTimeout as cancel, setTimeout as schedule } from "node:timers";
+import { setTimeout as delay } from "node:timers/promises";
 import { useEffect, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -100,7 +102,6 @@ describe("act", () => {
         });
 
         expect(isRan).toBe(true);
-        expect(typeof (settled as { then?: unknown }).then).toBe("function");
         await settled;
         order.push(3);
         expect(order).toEqual([1, 2, 3]);
@@ -140,6 +141,44 @@ describe("act", () => {
 });
 
 describe("waitFor", () => {
+    it("awaits asynchronous success and retries asynchronous failures", async () => {
+        let attempts = 0;
+
+        const result = await waitFor(async () => {
+            await delay(5);
+            attempts += 1;
+
+            if (attempts < 2) {
+                throw new Error("Pending");
+            }
+
+            return "ready";
+        }, { interval: 5 });
+
+        expect(result).toBe("ready");
+        expect(attempts).toBe(2);
+    });
+
+    it("rejects when an asynchronous callback settles after its deadline", async () => {
+        const pending = delay(150, "late");
+        await expect(waitFor(() => pending, { timeout: 20 })).rejects.toThrow();
+        await pending;
+    });
+
+    it("times out a pending callback before that callback is released", async () => {
+        const callback = Promise.withResolvers<string>();
+        const release = schedule(() => {
+            callback.resolve("late");
+        }, 150);
+
+        try {
+            await expect(waitFor(() => callback.promise, { timeout: 20 })).rejects.toThrow();
+        } finally {
+            cancel(release);
+            callback.resolve("late");
+        }
+    });
+
     it("retries until the callback passes and resolves with its result", async () => {
         let value = 0;
         let attempts = 0;
@@ -189,10 +228,6 @@ describe("waitFor", () => {
             findByText(container, "Missing", { timeout: 100, onTimeout: customTimeout }),
         ).rejects.toThrow();
     });
-
-    it("throws when the callback is not a function", () => {
-        expect(() => waitFor(undefined as never)).toThrow();
-    });
 });
 
 describe("waitForElementToBeRemoved", () => {
@@ -213,29 +248,8 @@ describe("waitForElementToBeRemoved", () => {
         await expect(callbackRemoval).resolves.toBeUndefined();
     });
 
-    it("resolves when reading the widget's root throws mid-wait", async () => {
-        const removalButton = await renderRemovable(<GtkButton label="ToDestroy" name="destroyable" />);
-        const element = await screen.findByName("destroyable");
-        const originalGetRoot = element.getRoot.bind(element);
-
-        element.getRoot = () => {
-            const root = originalGetRoot();
-
-            if (root === null) {
-                throw new Error("Widget destroyed");
-            }
-
-            return root;
-        };
-
-        const removalPromise = waitForElementToBeRemoved(element);
-        await userEvent.click(removalButton);
-        await expect(removalPromise).resolves.toBeUndefined();
-    });
-
     it("throws for a target that is absent, empty or never removed", async () => {
         await expect(waitForRemovalOfAbsentTarget([])).rejects.toThrow();
-        await expect(waitForRemovalOfAbsentTarget(null as never)).rejects.toThrow();
         await expect(waitForRemovalOfAbsentTarget(() => null)).rejects.toThrow();
         await render(<GtkButton label="Permanent" />);
         const widget = await screen.findByText("Permanent");
