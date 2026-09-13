@@ -34,7 +34,7 @@ type ElementNode = SignalTarget & {
     props: Props;
     children: PlaceableNode[];
     placements: Map<string, PlacedChild[]>;
-    contexts: Map<ElementBehavior, unknown>;
+    ownedClasses: Set<string>;
     parent: ParentNode | null;
     content: ContentChild[];
     contentKind: ContentKind | null;
@@ -57,6 +57,7 @@ type LazyNode = {
     adopted: GObject.Object | null;
     handlers: Map<string, HandlerRecord>;
     dispatch: Dispatch;
+    adoptionListeners: Set<() => void>;
 };
 
 type TextNode = {
@@ -93,6 +94,7 @@ const createLazyNode = (typeName: string, props: Props, dispatch: Dispatch): Laz
     adopted: null,
     handlers: new Map(),
     dispatch,
+    adoptionListeners: new Set(),
 });
 
 const createElementNode = (
@@ -108,7 +110,7 @@ const createElementNode = (
     children: [],
     handlers: new Map(),
     placements: new Map(),
-    contexts: new Map(),
+    ownedClasses: new Set(),
     parent: null,
     content: [],
     contentKind,
@@ -137,9 +139,6 @@ const lazyTarget = (node: LazyNode, adopted: GObject.Object): SignalTarget => ({
     dispatch: node.dispatch,
 });
 
-const getOrCreateContext = (node: ElementNode, behavior: ElementBehavior): unknown =>
-    node.contexts.getOrInsertComputed(behavior, () => behavior.initialize?.(node.object));
-
 export {
     ELEMENT_KIND,
     PROP_KIND,
@@ -153,7 +152,6 @@ export {
     leafElement,
     nodeObject,
     lazyTarget,
-    getOrCreateContext,
     type ContentKind,
     type HandlerRecord,
     type Dispatch,

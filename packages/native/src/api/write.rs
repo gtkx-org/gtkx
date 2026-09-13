@@ -53,6 +53,7 @@ pub(crate) fn write_field_at<'e>(
     offset: usize,
     value: Unknown<'_>,
 ) -> Result<Unknown<'e>> {
+    let _leases = crate::handle::LeaseScope::open();
     let field_ptr = handle_memory_range(
         handle,
         offset,

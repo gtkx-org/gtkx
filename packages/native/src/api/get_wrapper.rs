@@ -12,6 +12,9 @@ pub fn get_wrapper<'env>(
     env: &'env Env,
     handle: &External<Handle>,
 ) -> Result<Option<Object<'env>>> {
+    let Ok(_lease) = handle.acquire_lease() else {
+        return Ok(None);
+    };
     let Some(gobject_ptr) = handle.as_gobject_ptr() else {
         return Ok(None);
     };
@@ -20,6 +23,7 @@ pub fn get_wrapper<'env>(
         return Ok(None);
     };
 
+    unsafe { wrapper::track_handle(gobject_ptr, handle) };
     handle.release_owned();
 
     Ok(Some(wrapper))

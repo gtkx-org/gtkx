@@ -451,7 +451,7 @@ const renderInterfaceClass = (
     const members: string[] = [];
 
     if (gtypeExpr !== undefined) {
-        members.push(gtypeMemberDeclaration(context), renderInterfaceHasInstance(context, className, gtypeExpr));
+        members.push(gtypeMemberDeclaration(context));
     }
 
     members.push(
@@ -480,15 +480,6 @@ const renderInterfaceBrand = (context: ModuleContext, className: string, implRef
     return (
         `${renderJsDoc(undefined, BRAND_NOTE)}declare static __impl__: ` +
         `${local}<${implRef}, ${className}>["__impl__"];`
-    );
-};
-
-const renderInterfaceHasInstance = (context: ModuleContext, className: string, gtypeExpr: string): string => {
-    context.addRuntimeImport("valueIsA");
-
-    return renderBlock(
-        `static [Symbol.hasInstance](value: unknown): value is ${className}`,
-        `return valueIsA(value, ${gtypeExpr});`,
     );
 };
 

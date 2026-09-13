@@ -1,4 +1,7 @@
-import { call, type Descriptor, bind as nativeBind } from "@gtkx/native";
+import { bind as nativeBind } from "@gtkx/native";
+import type { Descriptor } from "./descriptor-types.js";
+import { createCall } from "./call.js";
+import { toAbi } from "./scalar-plan.js";
 
 /**
  * Precompiles a call to a C function, marshalling the values it is given through the argument
@@ -17,9 +20,13 @@ function bind(
     argDescriptors: Descriptor[],
     returnDescriptor: Descriptor,
 ): (...values: unknown[]) => unknown {
-    const descriptor = nativeBind(sharedLibrary, symbol, argDescriptors, returnDescriptor);
+    const descriptor = nativeBind(
+        sharedLibrary, symbol, argDescriptors.map((argument) => toAbi(argument)), toAbi(returnDescriptor),
+    );
 
-    return (...values) => call(descriptor, values);
+    const invoke = createCall(descriptor, argDescriptors, returnDescriptor);
+
+    return (...values) => invoke(values);
 }
 
 function createBindCache(): (key: string, ...args: Parameters<typeof bind>) => ReturnType<typeof bind> {

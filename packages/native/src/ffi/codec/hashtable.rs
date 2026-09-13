@@ -2,7 +2,7 @@ use anyhow::bail;
 
 use super::prelude::*;
 use super::string::str_to_glib_full;
-use crate::ffi::codec::{BigIntCodec, Codec, EnumFlagsCodec, FloatCodec, IntegerCodec};
+use crate::ffi::codec::{BigIntCodec, Codec, FloatCodec, IntegerCodec};
 use crate::ffi::{HashTableData, StashData, StashStorage};
 
 type CVoidPtr = *mut c_void;
@@ -24,8 +24,6 @@ fn entry_ownership_is_full(codec: &Codec) -> bool {
 pub enum HashTableEntryCodec {
     String,
     Integer(IntegerCodec),
-    EnumFlags(EnumFlagsCodec),
-    Boolean,
     Float(FloatCodec),
     BigInt(BigIntCodec),
     Handle(Box<Codec>),
@@ -40,8 +38,6 @@ impl HashTableEntryCodec {
         match codec {
             Codec::String(_) => Some(Self::String),
             Codec::Integer(integer) => Some(Self::Integer(*integer)),
-            Codec::EnumFlags(enum_flags) => Some(Self::EnumFlags(enum_flags.clone())),
-            Codec::Boolean(_) => Some(Self::Boolean),
             Codec::Float(float) => Some(Self::Float(*float)),
             Codec::BigInt(bigint) => Some(Self::BigInt(*bigint)),
             Codec::Array(array_codec) => array_codec.ptr_array_item().map(Self::PtrArray),
@@ -68,11 +64,7 @@ impl HashTableEntryCodec {
             Self::BigInt(_) => bail!(
                 "A 64-bit integer cannot be a GHashTable key: g_int64_hash dereferences every key the table is handed, including the ones the callee passes beside it, and only the entries encoded here are boxed"
             ),
-            Self::Integer(_)
-            | Self::EnumFlags(_)
-            | Self::Boolean
-            | Self::Handle(_)
-            | Self::PtrArray(_) => Ok((
+            Self::Integer(_) | Self::Handle(_) | Self::PtrArray(_) => Ok((
                 Some(glib::ffi::g_direct_hash),
                 Some(glib::ffi::g_direct_equal),
             )),
@@ -82,7 +74,7 @@ impl HashTableEntryCodec {
     pub fn free_func(&self) -> anyhow::Result<glib::ffi::GDestroyNotify> {
         match self {
             Self::String | Self::Float(_) | Self::BigInt(_) => Ok(Some(glib::ffi::g_free)),
-            Self::Integer(_) | Self::EnumFlags(_) | Self::Boolean => Ok(None),
+            Self::Integer(_) => Ok(None),
             Self::Handle(codec) => Self::transferred_entry_destroy(codec),
             Self::PtrArray(_) => Ok(Some(g_ptr_array_unref_wrapper)),
         }
@@ -130,17 +122,6 @@ impl HashTableEntryCodec {
                 Ok(str_to_glib_full(&value::read_napi::<String>(value)?)?.cast::<c_void>())
             }
             Self::Integer(integer) => Self::pointer_word(*integer, value),
-            Self::EnumFlags(enum_flags) => {
-                enum_flags.validate(value)?;
-
-                Self::pointer_word(enum_flags.storage, value)
-            }
-            Self::Boolean => match value.get_type()? {
-                ValueType::Boolean => {
-                    Ok(isize::from(value::read_napi::<bool>(value)?) as *mut c_void)
-                }
-                _ => bail!("Expected boolean in GHashTable"),
-            },
             Self::Float(float) => {
                 let ValueType::Number = value.get_type()? else {
                     bail!("Expected number in GHashTable for float")

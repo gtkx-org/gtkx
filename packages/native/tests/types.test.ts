@@ -78,16 +78,16 @@ const SIGNAL_GROUP_TYPE = resolveType(GOBJECT, "g_signal_group_get_type");
 const CLOSURE_TYPE = resolveType(GOBJECT, "g_closure_get_type");
 const PLUGIN_TYPE = resolveType(GOBJECT, "g_type_plugin_get_type");
 const ENUM_TYPE = resolveType(GOBJECT, "g_normalize_mode_get_type");
-const FUNDAMENTAL_ENUM_TYPE = call(typeFundamental, [ENUM_TYPE]) as bigint;
-const PARAM_TYPE = call(typeFromName, ["GParam"]) as bigint;
-const PARAM_INT_TYPE = call(typeFromName, ["GParamInt"]) as bigint;
+const FUNDAMENTAL_ENUM_TYPE = call(typeFundamental, [ENUM_TYPE]).value as bigint;
+const PARAM_TYPE = call(typeFromName, ["GParam"]).value as bigint;
+const PARAM_INT_TYPE = call(typeFromName, ["GParamInt"]).value as bigint;
 const SUBTYPE = registerClass("GtkxNativeTypesSubject", OBJECT_TYPE);
 
 const newInstance = (gtype: bigint): ExternalObject<Handle> =>
-    call(objectNew, [gtype, 0, null, null]) as ExternalObject<Handle>;
+    call(objectNew, [gtype, 0, null, null]).value as ExternalObject<Handle>;
 
 const newParamSpec = (): ExternalObject<Handle> =>
-    call(paramSpecInt, ["subject-int", null, null, 0, 10, 5, 3]) as ExternalObject<Handle>;
+    call(paramSpecInt, ["subject-int", null, null, 0, 10, 5, 3]).value as ExternalObject<Handle>;
 
 const classTypeTag = (gtype: bigint): unknown => read(getTypeClass(gtype), { kind: "biguint64" }, 0);
 
@@ -98,7 +98,7 @@ test("a constructed instance reports the type it was constructed as", () => {
 test("the reported type names the instance back through the library it came from", () => {
     const gtype = getType(newInstance(GROUP_TYPE));
 
-    expect(call(typeName, [gtype])).toBe("GBindingGroup");
+    expect(call(typeName, [gtype]).value).toBe("GBindingGroup");
 });
 
 test("an instance of a runtime registered subtype reports the subtype", () => {
@@ -116,7 +116,7 @@ test("a fundamental instance reports the type it was declared as", () => {
 test("a fundamental instance reports its own leaf type when an ancestor is declared", () => {
     const gtype = getType(newParamSpec(), PARAM_TYPE);
 
-    expect(call(typeName, [gtype])).toBe("GParamInt");
+    expect(call(typeName, [gtype]).value).toBe("GParamInt");
 });
 
 test("a fundamental instance with no declared type reports no type", () => {
@@ -164,7 +164,7 @@ test("a type's class struct is tagged with that type", () => {
 });
 
 test("a class struct is a live class the library resolves back to its parent", () => {
-    const parent = call(classPeekParent, [getTypeClass(GROUP_TYPE)]) as ExternalObject<Handle>;
+    const parent = call(classPeekParent, [getTypeClass(GROUP_TYPE)]).value as ExternalObject<Handle>;
 
     expect(read(parent, { kind: "biguint64" }, 0)).toBe(OBJECT_TYPE);
 });

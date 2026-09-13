@@ -1,18 +1,19 @@
 import type { AnyClass } from "@gtkx/utils";
 import {
     bindFunctionPointer,
-    call,
-    type CallDescriptor,
-    type Descriptor,
+    type DecodedCallback,
     type ExternalObject,
     getType,
     type Handle,
     type Ref,
 } from "@gtkx/native";
+import type { Descriptor } from "./descriptor-types.js";
+import { createCall } from "./call.js";
 import {
     type ArrayDescriptor,
     type BoxedDescriptor,
     boxedT,
+    bufferT,
     type CallbackDescriptor,
     type FundamentalDescriptor,
     type HashTableDescriptor,
@@ -22,6 +23,7 @@ import {
     type StructDescriptor,
 } from "./descriptors.js";
 import { checkError } from "./error.js";
+import { normalizeHashTableEntries } from "./hash-table.js";
 import { LIB } from "./library.js";
 import {
     coerceGType,
@@ -33,11 +35,11 @@ import {
     wrapHandle,
     wrapObject,
 } from "./registry.js";
+import { toAbi } from "./scalar-plan.js";
 import { resolveDescriptorType } from "./type.js";
 
 type MarshalledKind = "object" | "struct" | "boxed" | "fundamental" | "array" | "hashtable";
 type MarshalledDescriptor = Extract<Descriptor, { kind: MarshalledKind }>;
-type DecodedCallbackTarget = { fnPtr: bigint; userData?: bigint | undefined };
 
 const MARSHALLED_KINDS: Set<Descriptor["kind"]> = new Set<MarshalledKind>([
     "object",
@@ -47,8 +49,6 @@ const MARSHALLED_KINDS: Set<Descriptor["kind"]> = new Set<MarshalledKind>([
     "array",
     "hashtable",
 ]);
-
-const NULL_POINTER = 0n;
 
 function isMarshalledDescriptor(descriptor: Descriptor): descriptor is MarshalledDescriptor {
     return MARSHALLED_KINDS.has(descriptor.kind);
@@ -124,7 +124,7 @@ const errorRefDescriptor = (): Descriptor =>
 
 function decodedCallbackValues(
     descriptor: CallbackDescriptor,
-    target: DecodedCallbackTarget,
+    target: DecodedCallback,
     inputs: unknown[],
 ): unknown[] {
     const values: unknown[] = [];
@@ -132,7 +132,7 @@ function decodedCallbackValues(
 
     for (const [index, argDescriptor] of descriptor.argDescriptors.entries()) {
         if (index === descriptor.userDataIndex) {
-            values.push(target.userData ?? NULL_POINTER);
+            values.push(target.userData);
         } else {
             values.push(toNative(argDescriptor, inputs[cursor]));
             cursor += 1;
@@ -144,48 +144,41 @@ function decodedCallbackValues(
 
 function decodedCallbackCallable(
     descriptor: CallbackDescriptor,
-    target: DecodedCallbackTarget,
+    target: DecodedCallback,
 ): (...inputs: unknown[]) => unknown {
     const canThrow = descriptor.canThrow === true;
-    const isOneShot = descriptor.scope === "async";
-    const argDescriptors = canThrow ? [...descriptor.argDescriptors, errorRefDescriptor()] : descriptor.argDescriptors;
-    let bound: ExternalObject<CallDescriptor> | undefined;
-    let isSpent = false;
+    const callbackArgs = descriptor.argDescriptors.map((arg, index) =>
+        index === descriptor.userDataIndex ? bufferT : arg,
+    );
+    const argDescriptors = canThrow ? [...callbackArgs, errorRefDescriptor()] : callbackArgs;
+    let invoke: ReturnType<typeof createCall> | undefined;
 
     return (...inputs) => {
-        if (isSpent) {
-            throw new Error("An async-scoped callback was already invoked; its native caller has released it");
-        }
-
-        bound ??= bindFunctionPointer(target.fnPtr, argDescriptors, descriptor.returnDescriptor, "decoded callback");
+        invoke ??= createCall(
+            bindFunctionPointer(
+                target.function, argDescriptors.map((argument) => toAbi(argument)),
+                toAbi(descriptor.returnDescriptor), "decoded callback",
+            ),
+            argDescriptors,
+            descriptor.returnDescriptor,
+        );
         const values = decodedCallbackValues(descriptor, target, inputs);
-        isSpent = isOneShot;
 
         if (!canThrow) {
-            return fromNative(descriptor.returnDescriptor, call(bound, values));
+            return fromNative(descriptor.returnDescriptor, invoke(values));
         }
 
         const errorRef: Ref = { value: null };
         values.push(errorRef);
-        const result = call(bound, values);
+        const result = invoke(values);
         checkError(errorRef);
 
         return fromNative(descriptor.returnDescriptor, result);
     };
 }
 
-function callbackFromNative(descriptor: CallbackDescriptor, value: unknown): unknown {
-    if (value == null) {
-        return value;
-    }
-
-    const target = value as Partial<DecodedCallbackTarget>;
-
-    if (typeof target.fnPtr !== "bigint") {
-        return value;
-    }
-
-    return decodedCallbackCallable(descriptor, { fnPtr: target.fnPtr, userData: target.userData });
+function callbackFromNative(descriptor: CallbackDescriptor, value: DecodedCallback | null): unknown {
+    return value === null ? null : decodedCallbackCallable(descriptor, value);
 }
 
 function hashTableFromNative(descriptor: HashTableDescriptor, value: unknown): unknown {
@@ -206,19 +199,14 @@ function hashTableFromNative(descriptor: HashTableDescriptor, value: unknown): u
 /**
  * Converts a raw value returned from native code into its JavaScript form,
  * wrapping object, struct, boxed, and fundamental handles and recursively
- * converting arrays and hash tables according to the descriptor. A callback
- * decoded from a native function pointer and its bound user data becomes a
- * callable function that invokes the native callback; it stays valid only as
- * long as the native caller keeps the pointer pair alive, which for an
- * async-scoped callback means until the first invocation — calling one a
- * second time throws instead of reaching the released native closure.
+ * converting arrays and hash tables according to the descriptor.
  *
  * @param descriptor Describes the native type of the value.
  * @param value The raw native value to convert.
  */
 function fromNative(descriptor: Descriptor, value: unknown): unknown {
     if (descriptor.kind === "callback") {
-        return callbackFromNative(descriptor, value);
+        return callbackFromNative(descriptor, value as DecodedCallback | null);
     }
 
     if (!isMarshalledDescriptor(descriptor)) {
@@ -263,19 +251,11 @@ function collectionToNative(descriptor: ArrayDescriptor, value: unknown): unknow
  * @param value The JavaScript value passed for a hash table argument.
  */
 function toHashTableEntries(value: unknown): [unknown, unknown][] | null {
-    if (value == null) {
-        return null;
-    }
-
-    if (typeof (value as Partial<Iterable<unknown>>)[Symbol.iterator] !== "function") {
-        throw new TypeError("A hash table argument must be a Map or an iterable of [key, value] pairs");
-    }
-
-    return [...(value as Iterable<[unknown, unknown]>)];
+    return normalizeHashTableEntries(value);
 }
 
 function hashTableToNative(descriptor: HashTableDescriptor, value: unknown): unknown {
-    const entries = toHashTableEntries(value);
+    const entries = normalizeHashTableEntries(value);
 
     if (entries === null) {
         return null;

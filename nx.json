@@ -2,6 +2,9 @@
     "$schema": "./node_modules/nx/schemas/nx-schema.json",
     "defaultBase": "main",
     "analytics": false,
+    "sync": {
+        "disabledTaskSyncGenerators": ["@nx/js:typescript-sync"]
+    },
     "namedInputs": {
         "default": [
             "{projectRoot}/**/*",

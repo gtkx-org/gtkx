@@ -1,4 +1,4 @@
-import type { Descriptor } from "@gtkx/native";
+import type { Descriptor } from "./descriptor-types.js";
 
 /** How one argument of a native call or signal emission is marshalled and which way it flows. */
 type Arg = {

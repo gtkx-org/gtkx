@@ -10,9 +10,7 @@ import type {
     DragSourceIcon,
     LevelBarOffset,
     MainOption,
-    MenuItem,
     ScaleMark,
-    VflConstraints,
 } from "./prop-types.js";
 import { BUILTIN_ELEMENTS, CONTENT_SETTER_TYPES, SINGLE_CHILD_TYPES } from "./element-config.js";
 import {
@@ -22,25 +20,20 @@ import {
     childSetterSlot,
     contentSetterSlot,
     controlledText,
-    deferred,
-    deferredWith,
     indexedSlot,
     list,
     methodSlot,
+    rowSlot,
     setterSlot,
     slot,
     value,
-    wrappingIndexedSlot,
 } from "./reconciler/behaviors.js";
 import {
     type ElementBehavior,
     type ElementConfig,
     forTypes,
-    type Props,
     registerElements,
 } from "./reconciler/registry.js";
-import { applyWrite } from "./reconciler/signals.js";
-import { applyStyle, CSS_CLASSES_PROP, styleClass } from "./reconciler/style.js";
 
 type AdwChildSetter =
     | Adw.Bin |
@@ -57,14 +50,7 @@ type AdwChildSetter =
 type AdwContentSetter = Adw.ApplicationWindow | Adw.BottomSheet | Adw.OverlaySplitView | Adw.Window;
 type BreakpointHost = Adw.ApplicationWindow | Adw.Window | Adw.Dialog;
 type PrefixSuffixRow = Adw.ActionRow | Adw.EntryRow | Adw.ExpanderRow;
-type SidebarModeState = { views: WeakRef<Gtk.Widget>[]; onModeChanged: () => void };
-type SidebarViewParts = { groups: Adw.PreferencesGroup[]; lists: Gtk.ListBox[]; rows: Gtk.ListBoxRow[] };
-type StyleState = { ownedClasses: Set<string> };
 
-const SELECTED_INDEX_PROP = "selectedIndex";
-const SELECTION_SIGNAL = "selected-rows-changed";
-const NO_SELECTION = -1;
-const NO_CONSUMED_PROPS: readonly string[] = [];
 const SLOT_SUFFIX = "Slot";
 const childSetter = childSetterSlot<AdwChildSetter>();
 const contentSetter = contentSetterSlot<AdwContentSetter>(Gtk.Widget);
@@ -83,118 +69,6 @@ const alertDialogExtraChild = setterSlot<Adw.AlertDialog, Gtk.Widget>("children"
 const sidebarSections = indexedSlot<Adw.Sidebar, Adw.SidebarSection>("children", Adw.SidebarSection);
 const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children", Adw.SidebarItem);
 const isWidget = childMatcher(Gtk.Widget);
-
-const collectSidebarViewPart = (parts: SidebarViewParts, widget: Gtk.Widget): void => {
-    if (widget instanceof Adw.PreferencesGroup) {
-        parts.groups.push(widget);
-    }
-
-    if (widget instanceof Gtk.ListBox) {
-        parts.lists.push(widget);
-    }
-
-    if (widget instanceof Gtk.ListBoxRow) {
-        parts.rows.push(widget);
-    }
-};
-
-const collectWidgetChildren = (pending: Gtk.Widget[], widget: Gtk.Widget): void => {
-    for (let child = widget.getFirstChild(); child !== null; child = child.getNextSibling()) {
-        pending.push(child);
-    }
-};
-
-const sidebarViewParts = (view: Gtk.Widget): SidebarViewParts => {
-    const parts: SidebarViewParts = { groups: [], lists: [], rows: [] };
-    const pending: Gtk.Widget[] = [view];
-
-    while (pending.length > 0) {
-        const widget = pending.pop();
-
-        if (widget === undefined) {
-            continue;
-        }
-
-        collectSidebarViewPart(parts, widget);
-        collectWidgetChildren(pending, widget);
-    }
-
-    return parts;
-};
-
-const sidebarViews = (sidebar: Adw.Sidebar): WeakRef<Gtk.Widget>[] => {
-    const placeholder = sidebar.getPlaceholder();
-    const children: Gtk.Widget[] = [];
-    collectWidgetChildren(children, sidebar);
-
-    return children.filter((child) => child !== placeholder).map((child) => new WeakRef(child));
-};
-
-const derefChildren = (children: WeakRef<Gtk.Widget>[]): Gtk.Widget[] => {
-    const widgets: Gtk.Widget[] = [];
-
-    for (const child of children) {
-        const widget = child.deref();
-
-        if (widget !== undefined) {
-            widgets.push(widget);
-        }
-    }
-
-    return widgets;
-};
-
-const unbindSidebarViewModels = (parts: SidebarViewParts): void => {
-    for (const group of parts.groups) {
-        group.bindModel(null, null);
-    }
-
-    for (const list of parts.lists) {
-        list.bindModel(null, null);
-    }
-};
-
-const disposeUnboundSidebarRows = (rows: Gtk.ListBoxRow[]): void => {
-    for (const row of rows) {
-        if (row.getParent() === null) {
-            row.runDispose();
-        }
-    }
-};
-
-const disposeDetachedSidebarView = (view: Gtk.Widget): void => {
-    if (view.getParent() !== null) {
-        return;
-    }
-
-    const parts = sidebarViewParts(view);
-    unbindSidebarViewModels(parts);
-    disposeUnboundSidebarRows(parts.rows);
-};
-
-const sidebarModeBehavior: ElementBehavior<Adw.Sidebar> = {
-    initialize: (sidebar): SidebarModeState => {
-        const state: SidebarModeState = { views: sidebarViews(sidebar), onModeChanged: () => null };
-
-        state.onModeChanged = () => {
-            const previous = derefChildren(state.views);
-            state.views = sidebarViews(sidebar);
-
-            for (const child of previous) {
-                disposeDetachedSidebarView(child);
-            }
-        };
-
-        sidebar.on("notify::mode", state.onModeChanged);
-
-        return state;
-    },
-    update: () => NO_CONSUMED_PROPS,
-    teardown: (sidebar, context) => {
-        const state = context as SidebarModeState;
-        sidebar.off("notify::mode", state.onModeChanged);
-    },
-};
 
 const scrollableWidget = {
     [Symbol.hasInstance]: (value: unknown): value is Gtk.Scrollable & Gtk.Widget =>
@@ -276,7 +150,6 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                     widget.insertActionGroup((info.props.prefix as string | null) ?? "", null);
                 },
             }),
-            styleBehavior(),
         ],
     },
     GtkBox: {
@@ -284,17 +157,12 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkListBox: {
         behaviors: [
-            wrappingIndexedSlot(Gtk.ListBoxRow, (row, inner) => {
-                row.setChild(inner);
-            }),
-            selectedIndexBehavior(),
+            rowSlot<Gtk.ListBox>(),
         ],
     },
     GtkFlowBox: {
         behaviors: [
-            wrappingIndexedSlot(Gtk.FlowBoxChild, (child, inner) => {
-                child.setChild(inner);
-            }),
+            rowSlot<Gtk.FlowBox>(),
         ],
     },
     GtkOverlay: {
@@ -338,14 +206,31 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GMenu: {
         behaviors: [
-            list<Gio.Menu, MenuItem>("items", {
-                clear: (menu) => {
-                    menu.removeAll();
+            slot<Gio.Menu, Gio.MenuItem>("children", Gio.MenuItem, {
+                attach: (menu, item, info) => {
+                    menu.insertItem(info.index, item);
                 },
-                add: (menu, item) => {
-                    appendMenuItem(menu, item);
+                detach: (menu, _item, info) => {
+                    menu.remove(info.index);
                 },
             }),
+        ],
+    },
+    GMenuItem: {
+        behaviors: [
+            { constructOnly: ["label", "action"] },
+            value<Gio.MenuItem, string | null>("label", (item, label) => {
+                item.setLabel(label);
+            }),
+            value<Gio.MenuItem, string | null>("action", (item, action) => {
+                if (action === null) {
+                    item.setActionAndTargetValue(null, null);
+                } else {
+                    item.setDetailedAction(action);
+                }
+            }),
+            setterSlot<Gio.MenuItem, Gio.MenuModel>("submenu", Gio.MenuModel, "setSubmenu"),
+            setterSlot<Gio.MenuItem, Gio.MenuModel>("section", Gio.MenuModel, "setSection"),
         ],
     },
     GtkColumnView: {
@@ -406,27 +291,12 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
             methodSlot<Gtk.ConstraintLayout, Gtk.ConstraintGuide>(
                 "guides", Gtk.ConstraintGuide, "addGuide", "removeGuide",
             ),
-            list<Gtk.ConstraintLayout, VflConstraints, Gtk.Constraint[]>("vfl", {
-                add: (layout, item) => [
-                    ...layout.addConstraintsFromDescription(
-                        item.lines,
-                        item.hspacing ?? 0,
-                        item.vspacing ?? 0,
-                        item.views ?? new Map<string, Gtk.ConstraintTarget>(),
-                    ),
-                ],
-                remove: (layout, _item, constraints) => {
-                    for (const constraint of constraints) {
-                        layout.removeConstraint(constraint);
-                    }
-                },
-            }),
+
         ],
     },
     GtkStack: {
         behaviors: [
             methodSlot<Gtk.Stack, Gtk.Widget>("children", Gtk.Widget, "addChild", "remove"),
-            deferred<Gtk.Stack, string>("visibleChildName", (stack, name) => stack.getChildByName(name) !== null),
         ],
     },
     GtkNotebook: {
@@ -516,10 +386,10 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkDrawingArea: {
         behaviors: [
-            value<Gtk.DrawingArea, Gtk.DrawingAreaDrawFunc>("drawFunc", (area, draw) => {
+            value<Gtk.DrawingArea, Gtk.DrawingAreaDrawFunc | null>("drawFunc", (area, draw) => {
                 area.setDrawFunc(draw);
                 area.queueDraw();
-            }),
+            }, null),
         ],
     },
     GtkDragSource: {
@@ -536,7 +406,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [applicationCreator(Adw.Application)],
     },
     AdwSidebar: {
-        behaviors: [sidebarSections, sidebarModeBehavior],
+        behaviors: [sidebarSections],
     },
     AdwSidebarSection: {
         behaviors: [sidebarItems],
@@ -545,7 +415,6 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [
             multiLayoutLayouts,
             multiLayoutSlots,
-            deferred<Adw.MultiLayoutView, string>("layoutName", (view, name) => view.getLayoutByName(name) !== null),
         ],
     },
     AdwClampScrollable: {
@@ -650,7 +519,6 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwViewStack: {
         behaviors: [
             methodSlot<Adw.ViewStack, Gtk.Widget>("children", Gtk.Widget, "add", "remove"),
-            deferred<Adw.ViewStack, string>("visibleChildName", (stack, name) => stack.getChildByName(name) !== null),
         ],
     },
     AdwToolbarView: {
@@ -675,8 +543,6 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwToggleGroup: {
         behaviors: [
             methodSlot<Adw.ToggleGroup, Adw.Toggle>("children", Adw.Toggle, "add", "remove"),
-            deferred<Adw.ToggleGroup, string>("activeName", (group, name) => group.getToggleByName(name) !== null),
-            deferred("active"),
         ],
     },
     AdwAlertDialog: {
@@ -706,184 +572,6 @@ function layoutChild(parent: Gtk.Widget, child: Gtk.Widget): GObject.Object | nu
     return parent.getLayoutManager()?.getLayoutChild(child) ?? null;
 }
 
-const isNullish = (value: unknown): boolean => value === undefined || value === null;
-
-const cssClassNames = (value: unknown): Set<string> => {
-    const names: Set<string> = new Set();
-
-    if (!Array.isArray(value)) {
-        return names;
-    }
-
-    for (const name of value) {
-        if (typeof name === "string" && name !== "") {
-            names.add(name);
-        }
-    }
-
-    return names;
-};
-
-const keepOwnedCssClass = (widget: Gtk.Widget, name: string): void => {
-    if (!widget.hasCssClass(name)) {
-        widget.addCssClass(name);
-    }
-};
-
-const removeOwnedCssClass = (widget: Gtk.Widget, state: StyleState, name: string, styleName: string | null): void => {
-    if (name !== styleName) {
-        widget.removeCssClass(name);
-    }
-
-    state.ownedClasses.delete(name);
-};
-
-const reconcileOwnedCssClasses = (
-    widget: Gtk.Widget,
-    state: StyleState,
-    desired: Set<string>,
-    styleName: string | null,
-): void => {
-    for (const name of state.ownedClasses) {
-        if (desired.has(name)) {
-            keepOwnedCssClass(widget, name);
-
-            continue;
-        }
-
-        removeOwnedCssClass(widget, state, name, styleName);
-    }
-};
-
-const addDesiredCssClasses = (widget: Gtk.Widget, state: StyleState, desired: Set<string>): void => {
-    for (const name of desired) {
-        if (widget.hasCssClass(name)) {
-            continue;
-        }
-
-        widget.addCssClass(name);
-        state.ownedClasses.add(name);
-    }
-};
-
-const applyCssClassDiff = (
-    widget: Gtk.Widget,
-    state: StyleState,
-    desired: Set<string>,
-    styleName: string | null,
-): void => {
-    reconcileOwnedCssClasses(widget, state, desired, styleName);
-    addDesiredCssClasses(widget, state, desired);
-};
-
-const reconcileCssClasses = (
-    widget: Gtk.Widget,
-    state: StyleState,
-    value: unknown,
-    styleName: string | null,
-): void => {
-    const desired = cssClassNames(value);
-
-    applyWrite(CSS_CLASSES_PROP, () => {
-        applyCssClassDiff(widget, state, desired, styleName);
-    });
-};
-
-function releaseCssClasses(widget: Gtk.Widget, state: StyleState): void {
-    const styleName = styleClass(widget);
-
-    applyWrite(CSS_CLASSES_PROP, () => {
-        for (const name of state.ownedClasses) {
-            if (name === styleName) {
-                continue;
-            }
-
-            widget.removeCssClass(name);
-        }
-    });
-
-    state.ownedClasses.clear();
-}
-
-const isRestyled = (prev: Props, next: Props): boolean => {
-    if (isNullish(prev.style) && isNullish(next.style)) {
-        return false;
-    }
-
-    return !Object.is(prev.style, next.style);
-};
-
-function updateStyle(widget: Gtk.Widget, prev: Props, next: Props, context: unknown): Iterable<string> {
-    const state = context as StyleState;
-    const isChanged = isRestyled(prev, next);
-    const className = isChanged ? applyStyle(widget, next.style) : styleClass(widget);
-
-    reconcileCssClasses(widget, state, next.cssClasses, className);
-
-    return ["style", CSS_CLASSES_PROP];
-}
-
-function styleBehavior(): ElementBehavior<Gtk.Widget> {
-    return {
-        initialize: (): StyleState => ({ ownedClasses: new Set() }),
-        update: updateStyle,
-        teardown: (widget, context) => {
-            releaseCssClasses(widget, context as StyleState);
-        },
-        deferred: [CSS_CLASSES_PROP],
-    };
-}
-
-function selectedRowIndex(box: Gtk.ListBox): number {
-    return box.getSelectedRow()?.getIndex() ?? NO_SELECTION;
-}
-
-function selectedIndexError(value: number): Error {
-    return new Error(
-        "The 'selectedIndex' of a <GtkListBox> must be a whole number, or -1 to select no row; " +
-        `received ${String(value)}.`,
-    );
-}
-
-function desiredIndex(value: unknown): number | undefined {
-    if (value === null) {
-        return NO_SELECTION;
-    }
-
-    if (typeof value !== "number") {
-        return undefined;
-    }
-
-    if (!Number.isSafeInteger(value)) {
-        throw selectedIndexError(value);
-    }
-
-    return value;
-}
-
-function applySelectedIndex(box: Gtk.ListBox, index: number): void {
-    if (index < 0) {
-        box.unselectAll();
-
-        return;
-    }
-
-    const row = box.getRowAtIndex(index);
-
-    if (row !== null) {
-        box.selectRow(row);
-    }
-}
-
-function selectedIndexBehavior(): ElementBehavior<Gtk.ListBox> {
-    return deferredWith<Gtk.ListBox, number>(SELECTED_INDEX_PROP, {
-        parse: desiredIndex,
-        read: selectedRowIndex,
-        write: applySelectedIndex,
-        signal: SELECTION_SIGNAL,
-    });
-}
-
 const addMainOption = (application: Gtk.Application, option: MainOption): void => {
     application.addMainOption(
         option.longName,
@@ -894,34 +582,6 @@ const addMainOption = (application: Gtk.Application, option: MainOption): void =
         option.argDescription ?? null,
     );
 };
-
-const buildMenu = (items: MenuItem[]): Gio.Menu => {
-    const menu = Gio.Menu.new();
-
-    for (const item of items) {
-        appendMenuItem(menu, item);
-    }
-
-    return menu;
-};
-
-function appendMenuItem(menu: Gio.Menu, item: MenuItem): void {
-    const label = item.label ?? null;
-
-    if (item.submenu !== undefined) {
-        menu.appendSubmenu(label, buildMenu(item.submenu));
-
-        return;
-    }
-
-    if (item.section !== undefined) {
-        menu.appendSection(label, buildMenu(item.section));
-
-        return;
-    }
-
-    menu.append(label, item.action ?? null);
-}
 
 function getSlotId(name: string): string | null {
     if (name.length <= SLOT_SUFFIX.length || !name.endsWith(SLOT_SUFFIX)) {

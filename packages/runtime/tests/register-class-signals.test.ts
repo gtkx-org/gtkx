@@ -294,6 +294,10 @@ describe("registerClass — signal error paths: names and accumulators", () => {
         expect(() => registerSignals("GtkxSignalBadName", { "9bad": {} })).toThrow();
     });
 
+    it("throws when a signal declaration includes a detail", () => {
+        expect(() => registerSignals("GtkxSignalDetailedName", { "ping::detail": {} })).toThrow();
+    });
+
     it("throws for an unknown accumulator", () => {
         const accumulator = misspell("maximum") as NonNullable<SignalSpec["accumulator"]>;
 

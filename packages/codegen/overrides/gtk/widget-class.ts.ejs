@@ -1,8 +1,10 @@
-import { type AnyClass, peekTypeClass } from "@gtkx/runtime";
-import { type Type } from "../../gobject/gobject.js";
+import { createTypeClassPeek } from "@gtkx/runtime/internal";
 import { Widget, WidgetClass as GeneratedWidgetClass } from "../gtk.js";
 
-const peek = (type: Type | AnyClass): GeneratedWidgetClass => peekTypeClass(type, Widget) as GeneratedWidgetClass;
+const peek: ReturnType<typeof createTypeClassPeek<GeneratedWidgetClass>> = createTypeClassPeek(
+    GeneratedWidgetClass,
+    Widget,
+);
 
 /**
  * The class structure for the GtkWidget type, with a static `peek` that hands back the class

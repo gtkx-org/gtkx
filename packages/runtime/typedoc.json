@@ -8,11 +8,13 @@
         "InterfaceLayout",
         "MixinReceiver",
         "ParsedValue",
+        "ReadableProperties",
         "RegisterClassOptions",
         "RegisteredClass",
         "SignalConnectSpec",
         "T",
         "TrimmedFinish",
-        "VfuncRegistry"
+        "VfuncRegistry",
+        "WritableProperties"
     ]
 }

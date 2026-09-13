@@ -43,16 +43,13 @@ impl RefCodec {
             Codec::Integer(_)
             | Codec::BigInt(_)
             | Codec::Float(_)
-            | Codec::EnumFlags(_)
             | Codec::String(_)
-            | Codec::Boolean(_)
             | Codec::Object(_)
             | Codec::Boxed(_)
             | Codec::Struct(_)
             | Codec::Fundamental(_)
             | Codec::Array(_)
-            | Codec::HashTable(_)
-            | Codec::Unichar(_) => true,
+            | Codec::HashTable(_) => true,
         }
     }
 

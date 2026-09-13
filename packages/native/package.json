@@ -146,6 +146,7 @@
         "node": ">=26.7.0"
     },
     "devDependencies": {
+        "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",
         "@napi-rs/cli": "^3.10.4"
     }

@@ -1,13 +1,5 @@
-import { getBoxedValue, getHandle, setBoxedValue } from "@gtkx/runtime";
+import { valueGetBoxed, valueSetBoxed } from "@gtkx/runtime/internal";
 import { Value } from "../gobject.js";
 
-Value.prototype.getBoxed = function <T = unknown>(this: Value): T {
-    return getBoxedValue(getHandle(this)) as T;
-};
-
-Value.prototype.setBoxed = function (
-    this: Value,
-    boxed: object | string | number | bigint | boolean | null,
-): void {
-    setBoxedValue(getHandle(this), boxed);
-};
+Value.prototype.getBoxed = valueGetBoxed as Value["getBoxed"];
+Value.prototype.setBoxed = valueSetBoxed;

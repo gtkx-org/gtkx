@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use napi::bindgen_prelude::*;
 use napi::{Env, ValueType};
 
-use crate::handle::{Handle, INVALIDATED_HANDLE};
+use crate::handle::{Handle, HandleClass, INVALIDATED_HANDLE};
 
 mod closure;
 mod view;
@@ -32,9 +32,28 @@ pub fn handle_ptr_checked(
     type_name: &str,
     check: impl FnOnce(&Handle) -> anyhow::Result<()>,
 ) -> anyhow::Result<*mut c_void> {
+    extract_handle_ptr(value, type_name, |handle| {
+        anyhow::ensure!(
+            handle.class() != HandleClass::Function,
+            "The {type_name} handle references a function instead of data memory"
+        );
+        check(handle)
+    })
+}
+
+pub fn opaque_ptr(value: Unknown<'_>, type_name: &str) -> anyhow::Result<*mut c_void> {
+    extract_handle_ptr(value, type_name, |_| Ok(()))
+}
+
+fn extract_handle_ptr(
+    value: Unknown<'_>,
+    type_name: &str,
+    check: impl FnOnce(&Handle) -> anyhow::Result<()>,
+) -> anyhow::Result<*mut c_void> {
     match value.get_type()? {
         ValueType::External => {
             let external: &External<Handle> = read_napi(value)?;
+            external.retain_lease()?;
             anyhow::ensure!(
                 !external.is_invalidated(),
                 "The {type_name} handle refers to nothing: {INVALIDATED_HANDLE}"

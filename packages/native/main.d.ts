@@ -18,10 +18,6 @@ declare module "./index.js" {
      * offset the field sits at within its owner's memory is given on every access.
      */
     export type FieldDescriptor = { _opaque: "FieldDescriptor" };
-    /**
-     * A mutable box for an out or inout ('ref' descriptor) parameter. Pass an object with a `value`
-     * property; after `call` returns, its `value` holds the decoded native result.
-     */
     export type Ref = { value: unknown };
 }
 

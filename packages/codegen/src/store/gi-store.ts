@@ -1,5 +1,5 @@
 import { sortStrings } from "@gtkx/utils";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { SourceModule } from "../compile.js";
@@ -9,6 +9,7 @@ import {
     LIBRARIES_FILENAME,
     renderGeneratedLibraries,
 } from "./gi/generated-libraries.js";
+import { namespaceOverrides, renderOverrideExports } from "./gi/overrides.js";
 import {
     buildManifest,
     namespaceBarrel,
@@ -33,17 +34,12 @@ type GiStoreRecords = {
 const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "overrides");
 const STORE_SIDE_EFFECTS = ["**/bootstrap.js", "**/overrides/*.js", "**/index.js"];
 
-const overrideFiles = (directory: string): SourceModule[] => {
-    const dir = join(OVERRIDES_ROOT, directory);
-
-    if (!existsSync(dir)) {
-        return [];
-    }
-
-    return readdirSync(dir)
-        .filter((name) => name.endsWith(".ejs") && name !== "index.ts.ejs")
-        .map((name) => overrideModule(`${directory}/overrides/${name.replace(/\.ejs$/, "")}`, join(dir, name)));
-};
+const overrideFiles = (directory: string): SourceModule[] =>
+    namespaceOverrides(directory).map(({ module }) =>
+        overrideModule(
+            `${directory}/overrides/${module}.ts`,
+            join(OVERRIDES_ROOT, directory, `${module}.ts.ejs`),
+        ));
 
 const overrideModule = (fileName: string, overridePath: string): SourceModule => ({
     fileName,
@@ -59,7 +55,10 @@ const barrelFile = (directory: string, girFile: string): SourceModule => {
         ? overrideModule(barrel.fileName, overrideIndex)
         : { ...barrel, origin: girFile };
 
-    return { ...file, source: `import "./bootstrap.js";\n${file.source}` };
+    return {
+        ...file,
+        source: `import "./bootstrap.js";\n${file.source}${renderOverrideExports(directory).join("\n")}\n`,
+    };
 };
 
 const collectStoreSources = (

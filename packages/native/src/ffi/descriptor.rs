@@ -4,10 +4,10 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::ffi::codec::{
-    ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, BoxedCodec, BufferCodec,
-    CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind, EnumFlagsCodec,
-    EnumFlagsKind, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec,
-    Ownership, RefCodec, StringCodec, StructCodec, UnicharCodec, VoidCodec,
+    ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BoxedCodec, BufferCodec, CallbackCodec,
+    CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind, FloatCodec, FundamentalCodec,
+    HashTableCodec, IntegerCodec, ObjectCodec, Ownership, RefCodec, StringCodec, StructCodec,
+    VoidCodec,
 };
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
@@ -98,21 +98,6 @@ pub enum Descriptor {
     Biguint64,
     Float32,
     Float64,
-    Enum {
-        shared_library: String,
-        get_type_fn_name: String,
-        is_signed: bool,
-        /// Member values of an enumeration with no registered `GType`, which the GIR is the only
-        /// source of. `None` leaves the membership check to the `GType`'s `GEnumClass`.
-        members: Option<Vec<i32>>,
-    },
-    Flags {
-        shared_library: String,
-        get_type_fn_name: String,
-        is_signed: bool,
-        mask: Option<u32>,
-    },
-    Boolean,
     String {
         ownership: Ownership,
         length: Option<i64>,
@@ -126,7 +111,6 @@ pub enum Descriptor {
         /// `GType` name of the declared type, which an argument's instance must be one of.
         type_name: Option<String>,
     },
-    Unichar,
     Void,
     Buffer,
     Boxed {
@@ -218,36 +202,8 @@ impl Descriptor {
             Self::Biguint64 => Codec::BigInt(BigIntCodec::U64),
             Self::Float32 => Codec::Float(FloatCodec::F32),
             Self::Float64 => Codec::Float(FloatCodec::F64),
-            Self::Boolean => Codec::Boolean(BooleanCodec),
-            Self::Unichar => Codec::Unichar(UnicharCodec),
             Self::Void => Codec::Void(VoidCodec),
             Self::Buffer => Codec::Buffer(BufferCodec),
-            Self::Enum {
-                shared_library,
-                get_type_fn_name,
-                is_signed,
-                members,
-            } => Self::enum_flags(
-                EnumFlagsKind::Enum,
-                shared_library,
-                get_type_fn_name,
-                is_signed,
-                None,
-                members,
-            ),
-            Self::Flags {
-                shared_library,
-                get_type_fn_name,
-                is_signed,
-                mask,
-            } => Self::enum_flags(
-                EnumFlagsKind::Flags,
-                shared_library,
-                get_type_fn_name,
-                is_signed,
-                mask,
-                None,
-            ),
             Self::String {
                 ownership,
                 length,
@@ -422,28 +378,6 @@ impl Descriptor {
                 inout.unwrap_or(false),
             )?),
             _ => unreachable!("descriptors without nested descriptors are handled by into_codec"),
-        })
-    }
-
-    fn enum_flags(
-        kind: EnumFlagsKind,
-        shared_library: String,
-        get_type_fn_name: String,
-        is_signed: bool,
-        mask: Option<u32>,
-        members: Option<Vec<i32>>,
-    ) -> Codec {
-        Codec::EnumFlags(EnumFlagsCodec {
-            kind,
-            shared_library,
-            get_type_fn_name,
-            storage: if is_signed {
-                IntegerCodec::I32
-            } else {
-                IntegerCodec::U32
-            },
-            mask,
-            members,
         })
     }
 

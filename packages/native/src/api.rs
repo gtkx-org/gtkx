@@ -7,6 +7,7 @@ pub mod bind;
 pub mod bind_field;
 pub mod call;
 pub mod copy;
+pub mod function;
 pub mod get_fundamental_wrapper;
 pub mod get_type;
 pub mod get_wrapper;
@@ -21,14 +22,16 @@ pub mod register_class;
 pub mod resolve_type;
 pub mod set_fundamental_wrapper;
 pub mod set_wrapper;
-pub mod symbol_address;
 pub mod type_class;
 pub mod vtable;
 pub mod write;
 
 macro_rules! handle_newtype {
-    ($name:ident, $ptr:ty) => {
-        pub struct $name($ptr);
+    ($name:ident, $ptr:ty, $size:expr) => {
+        pub struct $name {
+            ptr: $ptr,
+            _lease: Option<glib::Object>,
+        }
 
         impl ::napi::bindgen_prelude::FromNapiValue for $name {
             unsafe fn from_napi_value(
@@ -40,7 +43,14 @@ macro_rules! handle_newtype {
                         env, napi_val,
                     )?
                 };
-                Ok(Self(external.as_ptr().cast()))
+                let _scope = $crate::handle::LeaseScope::open();
+                let lease =
+                    $crate::api::native_result(stringify!($name), external.acquire_lease())?;
+                Ok(Self {
+                    ptr: $crate::api::handle_memory_range(external, 0, $size, stringify!($name))?
+                        .cast(),
+                    _lease: lease,
+                })
             }
         }
     };
@@ -59,6 +69,13 @@ pub(crate) fn native_result<T>(context: &str, result: anyhow::Result<T>) -> napi
 /// The address of the memory a handle stands for, rejecting both a handle whose borrow has ended
 /// and one that points at nothing, so that neither is turned into an address to read or write.
 pub(crate) fn handle_memory_ptr(handle: &Handle, label: &str) -> napi::Result<*mut c_void> {
+    native_result(label, handle.retain_lease())?;
+    if handle.class() == crate::handle::HandleClass::Function {
+        return Err(napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("{label}: a native function is not data memory"),
+        ));
+    }
     if handle.is_invalidated() {
         return Err(napi::Error::new(
             napi::Status::InvalidArg,

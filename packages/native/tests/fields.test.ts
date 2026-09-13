@@ -16,8 +16,8 @@ const GLIB = "libglib-2.0.so.0";
 const INT32 = bindField({ kind: "int32" });
 const FLOAT64 = bindField({ kind: "float64" });
 const STRING = bindField({ kind: "string", ownership: "borrowed" });
-const BOOLEAN = bindField({ kind: "boolean" });
-const UNICHAR = bindField({ kind: "unichar" });
+const BOOLEAN_STORAGE = bindField({ kind: "int32" });
+const UNICHAR_STORAGE = bindField({ kind: "uint32" });
 
 test("a bound numeric field reads back the value written at the same offset", () => {
     const block = alloc(16);
@@ -69,13 +69,13 @@ test("a bound borrowed string field reads back the string written at the same of
     expect(readField(STRING, block, 0)).toBe("hello");
 });
 
-test("a bound boolean field round-trips both truth values", () => {
+test("a bound gboolean storage field round-trips both integer values", () => {
     const block = alloc(16);
 
-    writeField(BOOLEAN, block, 0, true);
-    writeField(BOOLEAN, block, 4, false);
+    writeField(BOOLEAN_STORAGE, block, 0, 1);
+    writeField(BOOLEAN_STORAGE, block, 4, 0);
 
-    expect([readField(BOOLEAN, block, 0), readField(BOOLEAN, block, 4)]).toEqual([true, false]);
+    expect([readField(BOOLEAN_STORAGE, block, 0), readField(BOOLEAN_STORAGE, block, 4)]).toEqual([1, 0]);
 });
 
 test("a bound bigint field round-trips a value beyond the exact integer range", () => {
@@ -93,7 +93,7 @@ test("bound descriptors read the fields of a struct a library laid out", () => {
         ownership: "borrowed",
     });
     const uint64 = bindField({ kind: "uint64" });
-    const gstring = call(stringNew, ["hello"]) as ExternalObject<Handle>;
+    const gstring = call(stringNew, ["hello"]).value as ExternalObject<Handle>;
 
     expect([readField(STRING, gstring, 0), readField(uint64, gstring, 8)]).toEqual(["hello", 5]);
 });
@@ -110,10 +110,10 @@ test("an unwritten string field reads as null", () => {
     expect(readField(STRING, block, 0)).toBeNull();
 });
 
-test("an unwritten boolean field reads as false", () => {
+test("an unwritten gboolean storage field reads as zero", () => {
     const block = alloc(16);
 
-    expect(readField(BOOLEAN, block, 0)).toBe(false);
+    expect(readField(BOOLEAN_STORAGE, block, 0)).toBe(0);
 });
 
 test("overwriting a string field replaces what the offset holds", () => {
@@ -173,12 +173,12 @@ test("a byte field reads the low byte of the integer written over it", () => {
     expect(readField(uint8, block, 0)).toBe(0x04);
 });
 
-test("a unichar field decodes the codepoint an integer write stored", () => {
+test("a gunichar storage field reads the written codepoint", () => {
     const block = alloc(16);
 
     writeField(INT32, block, 0, 0x1_F6_00);
 
-    expect(readField(UNICHAR, block, 0)).toBe("\u{1F600}");
+    expect(readField(UNICHAR_STORAGE, block, 0)).toBe(0x1_F6_00);
 });
 
 test("an inline struct field decodes to a handle aliasing the owner's memory", () => {
@@ -193,13 +193,13 @@ test("an inline struct field decodes to a handle aliasing the owner's memory", (
     writeField(uint8, block, 8, 0x68);
     writeField(uint8, block, 9, 0x69);
 
-    expect(call(strdup, [readField(inlineStruct, block, 8)])).toBe("hi");
+    expect(call(strdup, [readField(inlineStruct, block, 8)]).value).toBe("hi");
 });
 
-test("writing a unichar field throws", () => {
+test("writing a string into unsigned storage throws", () => {
     const block = alloc(16);
 
-    expect(() => writeField(UNICHAR, block, 0, "a")).toThrow();
+    expect(() => writeField(UNICHAR_STORAGE, block, 0, "a")).toThrow();
 });
 
 test("writing a string into a numeric field throws", () => {
@@ -208,10 +208,10 @@ test("writing a string into a numeric field throws", () => {
     expect(() => writeField(INT32, block, 0, "nope")).toThrow();
 });
 
-test("writing a number into a boolean field throws", () => {
+test("writing a boolean into integer storage throws", () => {
     const block = alloc(16);
 
-    expect(() => writeField(BOOLEAN, block, 0, 1)).toThrow();
+    expect(() => writeField(BOOLEAN_STORAGE, block, 0, true)).toThrow();
 });
 
 test("writing an out-of-range number into a numeric field throws", () => {

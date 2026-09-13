@@ -1,4 +1,5 @@
-import { copy, type Descriptor } from "@gtkx/native";
+import { copy } from "@gtkx/native";
+import type { Descriptor } from "./descriptor-types.js";
 import type { CallbackDescriptor, RefDescriptor } from "./descriptors.js";
 import {
     foldedLengthArgIndices,
@@ -277,8 +278,16 @@ const getEffectiveTypes = (spec: CallbackSpec): Descriptor[] => {
     return spec.argDescriptors.filter((_, i) => i !== userDataIndex);
 };
 
-const wrapCallbackValue = (spec: CallbackDescriptor, callback: unknown): unknown =>
-    callback == null ? callback : wrapCallback(callback as Callback, spec, "callback");
+const wrapCallbackValue = (spec: CallbackDescriptor, callback: unknown): unknown => {
+    if (callback == null) {
+        return callback;
+    }
+    if (typeof callback !== "function") {
+        throw new CallbackMarshalError(`Cannot marshal ${describeValueKind(callback)} into a callback`);
+    }
+
+    return wrapCallback(callback as Callback, spec, "callback");
+};
 
 const planFoldedInputIndices = (spec: CallbackSpec, hasFoldedInputs: boolean): ReadonlySet<number> =>
     hasFoldedInputs ? foldedLengthArgIndices(spec) : new Set<number>();
@@ -290,10 +299,6 @@ class CallbackMarshalError extends TypeError {
 }
 
 function wrapCallback(fn: Callback, spec: CallbackSpec, kind: CallbackKind): Callback {
-    if (typeof fn !== "function") {
-        throw new CallbackMarshalError(`Cannot marshal ${describeValueKind(fn)} into a ${kind}`);
-    }
-
     const effectiveTypes = getEffectiveTypes(spec);
     const { isInstanceBound, hasInstanceArg, hasFoldedLengths, hasFoldedInputs } = CALLBACK_TRAITS[kind];
     const start = hasInstanceArg ? 1 : 0;

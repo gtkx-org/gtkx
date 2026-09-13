@@ -163,9 +163,32 @@ const literalProps = (type: ts.TypeLiteralNode, sourceFile: ts.SourceFile): Hand
     return props;
 };
 
+const pickedProps = (type: ts.TypeReferenceNode, sourceFile: ts.SourceFile): HandwrittenProp[] => {
+    const [base, keys] = type.typeArguments ?? [];
+
+    if (base === undefined || keys === undefined) {
+        throw new Error("Pick requires a property type and its selected keys");
+    }
+
+    const selections = ts.isUnionTypeNode(keys) ? keys.types : [keys];
+    const names = new Set(selections.map((key) => {
+        if (!ts.isLiteralTypeNode(key) || !ts.isStringLiteral(key.literal)) {
+            throw new Error(`Cannot document Pick keys expressed as ${key.getText(sourceFile)}`);
+        }
+
+        return key.literal.text;
+    }));
+
+    return typeNodeProps(base, sourceFile).filter((prop) => names.has(prop.name));
+};
+
 const referenceProps = (type: ts.TypeReferenceNode, sourceFile: ts.SourceFile): HandwrittenProp[] => {
     if (!ts.isIdentifier(type.typeName)) {
         return [];
+    }
+
+    if (type.typeName.text === "Pick") {
+        return pickedProps(type, sourceFile);
     }
 
     const site = findAlias(sourceFile, type.typeName.text);

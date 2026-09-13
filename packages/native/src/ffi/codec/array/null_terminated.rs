@@ -178,18 +178,15 @@ impl ArrayCodec {
         match self.item_codec("array")? {
             ItemCodec::String => self.decode_null_terminated_string_array(env, *ptr, transfer),
             ItemCodec::Pointer => self.decode_null_terminated_ptr_array(env, *ptr, transfer),
-            codec @ (ItemCodec::Integer(_)
-            | ItemCodec::EnumFlags(_)
-            | ItemCodec::BigInt(_)
-            | ItemCodec::Float(_)
-            | ItemCodec::Boolean
-            | ItemCodec::Unichar) => Self::decode_zero_terminated_contiguous(
-                env,
-                codec.element_size(),
-                *ptr,
-                transfer,
-                |env, base, len| self.decode_contiguous(env, codec, base, len),
-            ),
+            codec @ (ItemCodec::Integer(_) | ItemCodec::BigInt(_) | ItemCodec::Float(_)) => {
+                Self::decode_zero_terminated_contiguous(
+                    env,
+                    codec.element_size(),
+                    *ptr,
+                    transfer,
+                    |env, base, len| self.decode_contiguous(env, codec, base, len),
+                )
+            }
         }
     }
 

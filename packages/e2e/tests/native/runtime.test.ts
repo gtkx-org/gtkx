@@ -202,8 +202,8 @@ test("a library or symbol that is not there fails the call it backs", () => {
     const missingSymbol = bind("libgobject-2.0.so.0", "g_object_not_a_real_symbol", [], VOID);
 
     expect(() => resolveType("libgtkx-not-a-real-library.so.0", "gtk_widget_get_type")).toThrow();
-    expect(() => call(missingLibrary, [])).toThrow();
-    expect(() => call(missingSymbol, [])).toThrow();
+    expect(() => call(missingLibrary, []).value).toThrow();
+    expect(() => call(missingSymbol, []).value).toThrow();
     expect(resolveType("libgobject-2.0.so.0", "g_not_a_real_type_get_type")).toBe(0n);
 });
 
@@ -236,18 +236,18 @@ test("a malformed descriptor is refused when the call is bound", () => {
     expect(() => bind(GLIB, "g_free", [{ kind: "gtkx-not-a-kind" }], VOID)).toThrow();
 });
 
-test("a buffer descriptor hands a typed array to C as a raw pointer", () => {
+test("a buffer descriptor lends a typed array to C", () => {
     const checksum = bind(GLIB, "g_compute_checksum_for_data", [INT32, BUFFER, UINT32], STRING_FULL);
-    expect(call(checksum, [0, new Uint8Array([97, 98, 99]), 3])).toBe("900150983cd24fb0d6963f7d28e17f72");
-    expect(call(checksum, [0, new TextEncoder().encode("abc"), 3])).toBe("900150983cd24fb0d6963f7d28e17f72");
-    expect(call(checksum, [0, null, 0])).toBe("d41d8cd98f00b204e9800998ecf8427e");
-    expect(call(checksum, [0, 0, 0])).toBe("d41d8cd98f00b204e9800998ecf8427e");
+    expect(call(checksum, [0, new Uint8Array([97, 98, 99]), 3]).value).toBe("900150983cd24fb0d6963f7d28e17f72");
+    expect(call(checksum, [0, new TextEncoder().encode("abc"), 3]).value).toBe("900150983cd24fb0d6963f7d28e17f72");
+    expect(call(checksum, [0, null, 0]).value).toBe("d41d8cd98f00b204e9800998ecf8427e");
+    expect(() => call(checksum, [0, 0, 0])).toThrow();
 });
 
-test("a buffer descriptor rejects values that are not a view, an address or null", () => {
+test("a buffer descriptor rejects values that are not a view, a handle or null", () => {
     const checksum = bind(GLIB, "g_compute_checksum_for_data", [INT32, BUFFER, UINT32], STRING_FULL);
-    expect(() => call(checksum, [0, "abc", 3])).toThrow();
-    expect(() => call(checksum, [0, 1.5, 0])).toThrow();
-    expect(() => call(checksum, [0, -1, 0])).toThrow();
-    expect(() => call(checksum, [0, {}, 0])).toThrow();
+    expect(() => call(checksum, [0, "abc", 3]).value).toThrow();
+    expect(() => call(checksum, [0, 1.5, 0]).value).toThrow();
+    expect(() => call(checksum, [0, -1, 0]).value).toThrow();
+    expect(() => call(checksum, [0, {}, 0]).value).toThrow();
 });

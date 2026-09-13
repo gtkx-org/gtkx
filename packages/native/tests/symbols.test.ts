@@ -1,35 +1,58 @@
-import { bind, call, resolveType, symbolAddress } from "@gtkx/native";
+import {
+    alloc,
+    bind,
+    bindFunctionPointer,
+    call,
+    read,
+    readFunctionPointer,
+    resolveFunction,
+    resolveType,
+} from "@gtkx/native";
 import { expect, test } from "vitest";
 
 const GLIB = "libglib-2.0.so.0";
 const GOBJECT = "libgobject-2.0.so.0";
 
-test("a symbol resolves to a non-zero address", () => {
-    expect(symbolAddress(GLIB, "g_strdup")).toBeGreaterThan(0n);
-});
+const duplicateThroughSymbol = (library: string, text: string): unknown =>
+    call(bindFunctionPointer(
+        resolveFunction(library, "g_strdup"),
+        [{ kind: "string", ownership: "borrowed" }],
+        { kind: "string", ownership: "full" },
+        "g_strdup",
+    ), [text]).value;
 
-test("the same symbol resolves to the same address every time", () => {
-    expect(symbolAddress(GLIB, "g_strdup")).toBe(symbolAddress(GLIB, "g_strdup"));
-});
-
-test("distinct symbols resolve to distinct addresses", () => {
-    expect(symbolAddress(GLIB, "g_strdup")).not.toBe(symbolAddress(GLIB, "g_strreverse"));
+test("resolved function handles invoke the symbol repeatedly", () => {
+    expect(duplicateThroughSymbol(GLIB, "gtkx")).toBe("gtkx");
+    expect(duplicateThroughSymbol(GLIB, "again")).toBe("again");
 });
 
 test("a symbol resolves through a library named without its soname suffix", () => {
-    expect(symbolAddress("libglib-2.0.so", "g_strdup")).toBe(symbolAddress(GLIB, "g_strdup"));
+    expect(duplicateThroughSymbol("libglib-2.0.so", "gtkx")).toBe("gtkx");
+});
+
+test("function handles cannot be read as data memory", () => {
+    expect(() => read(resolveFunction(GLIB, "g_strdup"), { kind: "uint8" }, 0)).toThrow();
+});
+
+test("reading a null function field throws", () => {
+    const block = alloc(8);
+    expect(() => readFunctionPointer(block, 0)).toThrow();
+});
+
+test.each([1, 8, -1, 0.5])("reading a function field rejects offsets outside its storage: %s", (offset) => {
+    expect(() => readFunctionPointer(alloc(8), offset)).toThrow();
 });
 
 test("a missing symbol throws", () => {
-    expect(() => symbolAddress(GLIB, "g_no_such_function_exists")).toThrow();
+    expect(() => resolveFunction(GLIB, "g_no_such_function_exists")).toThrow();
 });
 
 test("a missing library throws", () => {
-    expect(() => symbolAddress("libnosuchlibrary.so.0", "g_strdup")).toThrow();
+    expect(() => resolveFunction("libnosuchlibrary.so.0", "g_strdup")).toThrow();
 });
 
 test("an empty symbol name throws", () => {
-    expect(() => symbolAddress(GLIB, "")).toThrow();
+    expect(() => resolveFunction(GLIB, "")).toThrow();
 });
 
 test("a registered type resolves to a non-zero GType", () => {
@@ -58,5 +81,5 @@ test("a resolved GType names itself back through the library it came from", () =
         ownership: "borrowed",
     });
 
-    expect(call(typeName, [resolveType(GOBJECT, "g_closure_get_type")])).toBe("GClosure");
+    expect(call(typeName, [resolveType(GOBJECT, "g_closure_get_type")]).value).toBe("GClosure");
 });

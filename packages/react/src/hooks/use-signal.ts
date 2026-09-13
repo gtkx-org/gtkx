@@ -1,29 +1,9 @@
 import type * as GObject from "@gtkx/gi/gobject";
+import type { SignalMap, SignalName } from "@gtkx/runtime/internal";
 import { offSignal, onSignal, type SignalHandler } from "@gtkx/runtime";
 import { useLayoutEffect } from "react";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 import { useLatestRef } from "./use-latest-ref.js";
-
-/** The signal map `T` declares, from signal name to handler signature. */
-type Signals<T extends Pick<GObject.Object, "__signals__" | "__type__">> = NonNullable<T["__signals__"]>;
-/** Every signal name `T` declares, on its own or narrowed by a `::detail` suffix. */
-type SignalName<T extends Pick<GObject.Object, "__signals__" | "__type__">> =
-    keyof Signals<T> | `${keyof Signals<T> & string}::${string}`;
-
-/**
- * The handler signature `T` declares for signal `S`, looked up through any `::detail` suffix and
- * falling back to an untyped `SignalHandler` when the object declares no such signal.
- */
-type TypedSignalHandler<
-    T extends Pick<GObject.Object, "__signals__" | "__type__">,
-    S extends string,
-> = S extends keyof Signals<T>
-    ? Signals<T>[S]
-    : S extends `${infer TBase}::${string}`
-        ? TBase extends keyof Signals<T>
-            ? Signals<T>[TBase]
-            : SignalHandler
-        : SignalHandler;
 
 /** Options for {@link useSignal}. */
 type UseSignalOptions = {
@@ -42,10 +22,10 @@ type UseSignalOptions = {
  * @param signal The signal name, optionally with a `::detail` suffix.
  * @param options `isAfter` runs the handler after the default handler; `isImmediate` also invokes it on connect.
  */
-function useSignal<T extends Pick<GObject.Object, "__signals__" | "__type__">, S extends SignalName<T> & string>(
+function useSignal<T extends Pick<GObject.Object, "__signals__" | "__type__">, S extends SignalName<T>>(
     object: RefProp<T>,
     signal: S,
-    handler: TypedSignalHandler<T, S>,
+    handler: SignalMap<T>[S],
     { isAfter = false, isImmediate = false }: UseSignalOptions = {},
 ): void {
     const handlerRef = useLatestRef<SignalHandler>(handler as SignalHandler);

@@ -164,6 +164,32 @@ describe("holding accessible props against GTK's own writes", () => {
             expect(readAccessibleFlag(getAccessible(ref.current), Gtk.AccessibleState.HIDDEN)).toBe(true);
         });
     });
+
+    it("tracks an accessible prop added after the widget is mapped", async () => {
+        const ref = createRef<Gtk.Label>();
+
+        function App({ isAuthored, isHidden, isShown }: { isAuthored: boolean; isHidden: boolean; isShown: boolean }) {
+            const accessible = isAuthored ? { accessibleHidden: isHidden } : {};
+
+            return <GtkBox visible={isShown}><GtkLabel ref={ref} {...accessible} /></GtkBox>;
+        }
+
+        const { rerender } = await render(<App isAuthored={false} isHidden={false} isShown />);
+        await rerender(<App isAuthored isHidden isShown />);
+        await rerender(<App isAuthored isHidden={false} isShown={false} />);
+        await rerender(<App isAuthored isHidden={false} isShown />);
+
+        await waitFor(() => {
+            expect(readAccessibleFlag(getAccessible(ref.current), Gtk.AccessibleState.HIDDEN)).toBe(false);
+        });
+
+        await rerender(<App isAuthored={false} isHidden={false} isShown={false} />);
+        await rerender(<App isAuthored={false} isHidden={false} isShown />);
+
+        await waitFor(() => {
+            expect(readAccessibleFlag(getAccessible(ref.current), Gtk.AccessibleState.HIDDEN)).not.toBe(true);
+        });
+    });
 });
 
 describe("resolving relation targets without reading the print string", () => {

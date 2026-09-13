@@ -1,15 +1,8 @@
-import type { ElementBehavior } from "@gtkx/react/config";
 import type { ReactNode } from "react";
 import { ParamFlags, paramSpecString } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkAdjustment, GtkAspectFrame, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
-import {
-    createElementComponent,
-    defineBehavior,
-    defineElements,
-    ELEMENTS,
-    mergeElementConfigs,
-} from "@gtkx/react/config";
+import { createElementComponent } from "@gtkx/react/config";
 import { registerClass } from "@gtkx/runtime";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";
@@ -23,40 +16,6 @@ type TaggedScaleProps = {
 };
 
 const TaggedScaleElement = createElementComponent<TaggedScaleProps>("GtkxTaggedScale");
-const attached: string[] = [];
-
-const frameBehavior = defineBehavior<Gtk.Frame>({
-    attach: (frame, child) => {
-        attached.push(frame.getLabel() ?? "unlabelled");
-        frame.setChild(child as Gtk.Widget);
-
-        return child;
-    },
-    update: (frame, _prev, next) => {
-        frame.setLabel(String(next.label));
-
-        return ["label"];
-    },
-});
-
-const placement = { slot: "child", index: 0, sibling: null, adopted: null, props: {}, context: undefined };
-
-const ADW_CONTAINER_TYPES = [
-    "AdwBin",
-    "AdwToolbarView",
-    "AdwNavigationSplitView",
-    "AdwPreferencesPage",
-    "AdwTabView",
-    "AdwWrapBox",
-];
-
-const behaviorsFor = (type: string): ElementBehavior[] => ELEMENTS[type]?.behaviors ?? [];
-
-const typesWithoutAttach = (types: string[]): string[] =>
-    types.filter((type) => behaviorsFor(type).every((behavior) => behavior.attach === undefined));
-
-const emptyBehaviorNames = (type: string, behaviors: ElementBehavior[]): string[] =>
-    behaviors.flatMap((behavior, index) => (Object.keys(behavior).length === 0 ? [`${type}[${String(index)}]`] : []));
 
 class TaggedScale extends Gtk.Scale {
     declare tag: string;
@@ -83,6 +42,12 @@ describe("createElementComponent for a type codegen does not cover", () => {
         const found = await screen.findByName("slotted");
         expect((found as Gtk.Scale).getAdjustment().getValue()).toBe(7);
     });
+
+    it("rejects an element whose GType has not been registered", async () => {
+        const UnknownElement = createElementComponent("GtkxUnregisteredCustomElement");
+
+        await expect(render(<UnknownElement />)).rejects.toThrow();
+    });
 });
 
 declare module "@gtkx/jsx/gtk" {
@@ -93,6 +58,7 @@ declare module "@gtkx/jsx/gtk" {
 
     interface GtkFrameProps {
         labelSlot?: ReactNode;
+        customTooltip?: string | null | undefined;
     }
     /* eslint-enable @typescript-eslint/consistent-type-definitions */
 }
@@ -143,37 +109,34 @@ describe("custom element rules from gtkx.config.ts", () => {
     });
 });
 
-it("gives each hook the concrete class without a hand-written annotation", () => {
-    const frame = new Gtk.Frame({ label: "outer" });
-    const label = new Gtk.Label({ label: "child" });
-    frameBehavior.attach?.(frame as never, label, placement);
-    expect(attached).toEqual(["outer"]);
-    expect(frame.getChild()).toBe(label);
-});
+it("renders, updates and unmounts a consumer element with merged behavior definitions", async () => {
+    const frameRef = createRef<Gtk.Frame>();
+    const labelRef = createRef<Gtk.Label>();
+    const contentRef = createRef<Gtk.Label>();
+    const App = ({ caption }: { caption: string | undefined }) => (
+        <GtkFrame
+            ref={frameRef}
+            customTooltip={caption}
+            labelSlot={<GtkLabel ref={labelRef}>Section</GtkLabel>}
+        >
+            <GtkLabel ref={contentRef}>Content</GtkLabel>
+        </GtkFrame>
+    );
+    const { rerender, unmount } = await render(<App caption="Before" />);
+    const frame = frameRef.current;
+    expect(frame?.getTooltipText()).toBe("Before");
+    expect(frame?.getChild()).toBe(contentRef.current);
 
-it("applies props through the inferred update hook", () => {
-    const frame = new Gtk.Frame({ label: "before" });
-    expect(frameBehavior.update?.(frame as never, {}, { label: "after" }, undefined)).toEqual(["label"]);
-    expect(frame.getLabel()).toBe("after");
-});
+    await rerender(<App caption="After" />);
+    expect(frameRef.current).toBe(frame);
+    expect(frame?.getTooltipText()).toBe("After");
+    await rerender(<App caption={undefined} />);
+    expect(frame?.getTooltipText()).toBeNull();
 
-it("slots into defineElements and survives merging", () => {
-    const elements = defineElements({ GtkFrame: { behaviors: [frameBehavior], omittedProps: ["child"] } });
-    const merged = mergeElementConfigs(elements);
-    expect(merged.GtkFrame?.behaviors).toHaveLength(1);
-    expect(merged.GtkFrame?.omittedProps).toEqual(["child"]);
-});
-
-describe("adwaita behavior registration", () => {
-    it("registers Adwaita behaviors when @gtkx/jsx/adw is loaded", () => {
-        expect(typesWithoutAttach(ADW_CONTAINER_TYPES)).toEqual([]);
-    });
-
-    it("gives every registered behavior at least one property", () => {
-        const empty = Object.entries(ELEMENTS).flatMap(([type, config]) =>
-            emptyBehaviorNames(type, config.behaviors ?? []),
-        );
-
-        expect(empty.toSorted((left, right) => left.localeCompare(right))).toEqual([]);
-    });
+    await unmount();
+    expect(frameRef.current).toBeNull();
+    expect(labelRef.current).toBeNull();
+    expect(contentRef.current).toBeNull();
+    expect(frame?.getChild()).toBeNull();
+    expect(frame?.getLabelWidget()).toBeNull();
 });

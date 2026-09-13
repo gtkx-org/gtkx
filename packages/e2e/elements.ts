@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { defineElements } from "@gtkx/react/config";
+import { defineBehavior, defineElements, mergeElementConfigs } from "@gtkx/react/config";
 
-export default defineElements({
+export default mergeElementConfigs(defineElements({
     GtkWidget: {
         behaviors: [
             {
@@ -77,4 +77,16 @@ export default defineElements({
             },
         ],
     },
-});
+}), defineElements({
+    GtkFrame: {
+        behaviors: [defineBehavior<Gtk.Frame>({
+            update: (frame, prev, next) => {
+                if (!Object.is(prev.customTooltip, next.customTooltip)) {
+                    frame.setTooltipText((next.customTooltip as string | null | undefined) ?? null);
+                }
+
+                return ["customTooltip"];
+            },
+        })],
+    },
+}));

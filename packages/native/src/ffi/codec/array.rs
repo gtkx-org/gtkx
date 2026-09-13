@@ -283,6 +283,7 @@ fn transfer_items(
     let mut ptrs = Vec::with_capacity(handles.len() + 1);
     let mut acquired: Vec<ffi::PendingTransfer> = Vec::new();
     for handle in handles {
+        handle.retain_lease()?;
         let ptr = handle.as_ptr();
         if ptr.is_null() {
             release_transfers(acquired);
@@ -310,23 +311,6 @@ impl ArrayCodec {
             .map(|&v| match v.get_type()? {
                 ValueType::Number => Ok(value::read_napi::<f64>(v)?),
                 other => bail!("Expected a Number, got {other:?}"),
-            })
-            .collect()
-    }
-
-    fn extract_codepoints(array: &[Unknown<'_>]) -> anyhow::Result<Vec<u32>> {
-        array
-            .iter()
-            .map(|&v| super::unichar::codepoint_from_value(v))
-            .collect()
-    }
-
-    fn extract_booleans(array: &[Unknown<'_>]) -> anyhow::Result<Vec<i32>> {
-        array
-            .iter()
-            .map(|&v| match v.get_type()? {
-                ValueType::Boolean => Ok(i32::from(value::read_napi::<bool>(v)?)),
-                other => bail!("Expected a Boolean, got {other:?}"),
             })
             .collect()
     }
@@ -378,6 +362,7 @@ impl ArrayCodec {
         let handles = Self::extract_handles(array)?;
         let mut buffer = vec![0u8; handles.len() * stride];
         for (index, handle) in handles.iter().enumerate() {
+            handle.retain_lease()?;
             let ptr = handle.as_ptr();
             if ptr.is_null() {
                 bail!("An inline array element has a null pointer");
@@ -529,16 +514,6 @@ impl ArrayCodec {
                     |numbers| kind.checked_to_stash_storage(&numbers),
                 )
             }
-            ItemCodec::EnumFlags(kind) => {
-                let numbers = Self::extract_terminated_numbers(array, zero_terminated)?;
-
-                self.finish_scalars(
-                    encoder,
-                    numbers,
-                    |&value| pointer_word(value),
-                    |numbers| Ok(kind.to_stash_storage(&numbers)),
-                )
-            }
             ItemCodec::BigInt(kind) => {
                 if encoder.holds_pointer_slots() {
                     return encoder
@@ -557,32 +532,6 @@ impl ArrayCodec {
             ItemCodec::Float(kind) => self.finish_scalar_storage(kind.checked_to_stash_storage(
                 &Self::extract_terminated_numbers(array, zero_terminated)?,
             )?),
-            ItemCodec::Boolean => {
-                let mut booleans = Self::extract_booleans(array)?;
-                if zero_terminated {
-                    booleans.push(0);
-                }
-
-                self.finish_scalars(
-                    encoder,
-                    booleans,
-                    |&value| pointer_word(f64::from(value)),
-                    |booleans| Ok(booleans.into()),
-                )
-            }
-            ItemCodec::Unichar => {
-                let mut codepoints = Self::extract_codepoints(array)?;
-                if zero_terminated {
-                    codepoints.push(0);
-                }
-
-                self.finish_scalars(
-                    encoder,
-                    codepoints,
-                    |&value| pointer_word(f64::from(value)),
-                    |codepoints| Ok(codepoints.into()),
-                )
-            }
             ItemCodec::String => {
                 let dup_items =
                     matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());
@@ -629,9 +578,6 @@ impl ArrayCodec {
             ItemCodec::Integer(kind) => {
                 numbers_to_unknowns(unsafe { kind.checked_read_slice(data, len, "array element") }?)
             }
-            ItemCodec::EnumFlags(kind) => {
-                numbers_to_unknowns(unsafe { kind.read_slice(data, len) })
-            }
             ItemCodec::BigInt(kind) => unsafe { kind.read_slice(data, len) }
                 .into_iter()
                 .map(|v| super::bigint::bigint_to_unknown(env, v))
@@ -648,21 +594,6 @@ impl ArrayCodec {
                     .map(|&v| Ok(v.into_unknown(env)?))
                     .collect()
             }
-            ItemCodec::Boolean => unsafe { std::slice::from_raw_parts(data.cast::<i32>(), len) }
-                .iter()
-                .map(|&v| Ok((v != 0).into_unknown(env)?))
-                .collect(),
-            ItemCodec::Unichar => (0..len)
-                .map(|index| unsafe {
-                    self.item_codec.read(
-                        env,
-                        ReadCtx::slot(
-                            data.add(index * size_of::<u32>()).cast::<c_void>(),
-                            "array element",
-                        ),
-                    )
-                })
-                .collect(),
             ItemCodec::Pointer | ItemCodec::String => {
                 let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
                 ptrs.iter()
@@ -732,14 +663,8 @@ impl ArrayCodec {
         let word = item_ptr as isize;
 
         Ok(match ItemCodec::from_codec(&self.item_codec) {
-            Some(ItemCodec::Integer(kind) | ItemCodec::EnumFlags(kind)) => {
+            Some(ItemCodec::Integer(kind)) => {
                 Some(kind.checked_to_stash(lossless_f64(word as i128, "list element")?)?)
-            }
-            Some(ItemCodec::Boolean) => Some(ffi::Stash::I32(i32::from(word != 0))),
-            Some(ItemCodec::Unichar) => {
-                Some(ffi::Stash::U32(u32::try_from(word).map_err(|_| {
-                    anyhow::anyhow!("List element {word} is not a valid Unicode code point")
-                })?))
             }
             _ => None,
         })

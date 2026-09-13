@@ -21,6 +21,11 @@ const genumValuedTableIn = t.fn("libgimarshallingtests.so", "gi_marshalling_test
     returns: t.void,
 }));
 
+const utf8TableIn = t.fn("libgimarshallingtests.so", "gi_marshalling_tests_ghashtable_utf8_none_in", () => ({
+    args: [{ type: t.hashTable(t.string(), t.string()), isRequired: true }],
+    returns: t.void,
+}));
+
 const utf8Table = () =>
     new Map([
         ["-1", "1"],
@@ -59,6 +64,7 @@ test("utf8 hash tables round trip across transfer none, container and full", () 
     expect(GIMarshallingTests.ghashtableUtf8ContainerOut()).toEqual(expected);
     expect(GIMarshallingTests.ghashtableUtf8FullOut()).toEqual(expected);
     GIMarshallingTests.ghashtableUtf8NoneIn(utf8Table());
+    utf8TableIn(utf8Table());
     GIMarshallingTests.ghashtableUtf8ContainerIn(utf8Table());
     const consumed = utf8Table();
     GIMarshallingTests.ghashtableUtf8FullIn(consumed);
@@ -206,17 +212,17 @@ test("hash table enum entries reject wrong types and values outside the storage 
 });
 
 test("a GType registered enum marshals as a hash table element", () => {
-    const members = [
+    const members = new Map([
         [1, GIMarshallingTests.GEnum.VALUE1],
         [2, GIMarshallingTests.GEnum.VALUE2],
         [3, GIMarshallingTests.GEnum.VALUE3],
-    ];
+    ]);
     genumValuedTableIn(members);
-    expect(members).toEqual([
+    expect(members).toEqual(new Map([
         [1, 0],
         [2, 1],
         [3, 42],
-    ]);
+    ]));
 });
 
 test("a GType registered enum hash table element rejects values that are not members", () => {

@@ -403,13 +403,19 @@ describe("render - AdwSidebar", () => {
         expect(spinner.getParent()).toBeNull();
     });
 
-    it("frees the replaced view when a placeholder precedes it", async () => {
+    it("preserves a declared placeholder and suffix through mode changes", async () => {
         const sidebarRef = createRef<Adw.Sidebar>();
         const itemRef = createRef<Adw.SidebarItem>();
+        const placeholderRef = createRef<Gtk.Label>();
+        const suffixRef = createRef<Adw.Spinner>();
 
         function App({ mode, suffix }: { mode: Adw.SidebarMode; suffix: ReactElement | null }) {
             return (
-                <AdwSidebar ref={sidebarRef} mode={mode}>
+                <AdwSidebar
+                    ref={sidebarRef}
+                    mode={mode}
+                    placeholder={<GtkLabel ref={placeholderRef}>Nothing here</GtkLabel>}
+                >
                     <AdwSidebarSection>
                         <AdwSidebarItem ref={itemRef} title="Files" suffix={suffix} />
                         <AdwSidebarItem title="Trash" />
@@ -419,29 +425,16 @@ describe("render - AdwSidebar", () => {
         }
 
         const { rerender } = await render(<App mode={Adw.SidebarMode.SIDEBAR} suffix={null} />);
-        const views: Gtk.Widget[] = [];
-
-        await act(() => {
-            sidebarRef.current?.setPlaceholder(new Gtk.Label({ label: "Nothing here" }));
-        });
-
         for (const mode of [Adw.SidebarMode.PAGE, Adw.SidebarMode.SIDEBAR, Adw.SidebarMode.PAGE]) {
             await rerender(<App mode={mode} suffix={null} />);
-            const view = sidebarRef.current?.getPlaceholder()?.getNextSibling();
-
-            if (view === null || view === undefined) {
-                throw new Error("expected the sidebar to show a view after its placeholder");
-            }
-
-            views.push(view);
         }
 
-        await rerender(<App mode={Adw.SidebarMode.PAGE} suffix={<AdwSpinner />} />);
+        await rerender(<App mode={Adw.SidebarMode.PAGE} suffix={<AdwSpinner ref={suffixRef} />} />);
         expect(itemRef.current?.getSuffix()).toBeInstanceOf(Adw.Spinner);
         expect(getItemTitles(sidebarRef.current)).toEqual(["Files", "Trash"]);
-        expect(views[0]?.getParent()).toBeNull();
-        expect(views[1]?.getParent()).toBeNull();
-        expect(views[2]?.getParent()).toBe(sidebarRef.current);
+        expect(sidebarRef.current?.getPlaceholder()).toBe(placeholderRef.current);
+        expect(itemRef.current?.getSuffix()).toBe(suffixRef.current);
+        expect(suffixRef.current).toBeRooted();
     });
 
     it("keeps items and suffixes stable through repeated mode changes", async () => {

@@ -19,6 +19,9 @@ fn read_type_tag(ptr: *mut c_void) -> glib::ffi::GType {
 }
 
 fn gobject_type(handle: &Handle) -> glib::ffi::GType {
+    let Ok(_lease) = handle.acquire_lease() else {
+        return 0;
+    };
     let Some(gobject_ptr) = handle.as_gobject_ptr() else {
         return 0;
     };

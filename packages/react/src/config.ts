@@ -4,6 +4,7 @@ export type {
     DetachInfo,
     ElementBehavior,
     ElementConfig,
+    ElementPropsExport,
     ModuleExport,
     PlaceInfo,
     Props,

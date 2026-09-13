@@ -3,7 +3,7 @@ import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { ModuleContext } from "../writer/context.js";
 import { resolveClassOrInterface, type ResolvedAncestor, resolveInterfaces } from "../gir/ancestry.js";
-import { isOutParameter } from "../gir/parameter.js";
+import { type GirParameter, type GirReturnValue, isOutParameter } from "../gir/parameter.js";
 import { memberName } from "../store/gi/method.js";
 import { protectedChainSlotKeys, vfuncCallables, vfuncMemberNames } from "../store/gi/vtable.js";
 import { forEachAncestor } from "./inheritance.js";
@@ -37,13 +37,18 @@ type CallableKeyPair = {
 const CHAINABLE_SIGNAL_MEMBERS = ["off", "on", "once"];
 const SYNTHETIC_SIGNAL_MEMBERS = new Set(["connect", "disconnect", "emit", ...CHAINABLE_SIGNAL_MEMBERS]);
 
+const valueKey = (library: Library, value: GirParameter | GirReturnValue): string =>
+    `${typeKey(library, value.type)}${value.nullable ? " | null" : ""}`;
+
 const callableKeys = (library: Library, fn: GirFunction): CallableKeys => ({
-    inputs: inputParameters(library, fn).map((entry) => typeKey(library, entry.parameter.type)),
+    inputs: inputParameters(library, fn).map(({ parameter }) =>
+        `${valueKey(library, parameter)}${parameter.optional ? " | undefined" : ""}`,
+    ),
     outputs: [
-        typeKey(library, fn.returnValue.type),
+        valueKey(library, fn.returnValue),
         ...fn.parameters
             .filter((parameter) => isOutParameter(parameter))
-            .map((parameter) => typeKey(library, parameter.type)),
+            .map((parameter) => valueKey(library, parameter)),
     ],
 });
 
@@ -99,6 +104,15 @@ const inheritedMembers = (context: ModuleContext, klass: GirClass): ClaimedMembe
 const interfaceMembers = (options: InterfaceConflictOptions): MemberTable => {
     const members: MemberTable = new Map();
     collectMethods(options.iface, members);
+    const prerequisites = interfaceSupertypes(options.context.library, {
+        klass: options.iface,
+        namespaceName: options.ifaceNamespace,
+    });
+    const visited: Set<string> = new Set();
+
+    for (const prerequisite of prerequisites) {
+        collectSupertypeMembers(options.context.library, prerequisite, visited, members);
+    }
 
     for (const [key, callable] of vfuncCallables(options.context, options.ifaceNamespace, options.iface)) {
         members.set(key, callable);
@@ -120,7 +134,7 @@ const isConflictingMember = (library: Library, claimed: ClaimedMembers, entry: [
     const owned = claimed.inherited.get(name);
 
     if (owned !== undefined) {
-        return !areCallablesAssignable(library, owned, method);
+        return !areCallablesIdentical(library, owned, method);
     }
 
     const sibling = claimed.interfaces.get(name);
@@ -152,7 +166,10 @@ const rootPrerequisite = (library: Library): ResolvedAncestor[] => {
     return root === undefined ? [] : [root];
 };
 
-const interfaceSupertypes = (library: Library, entry: ResolvedAncestor): ResolvedAncestor[] => {
+const interfaceSupertypes = (
+    library: Library,
+    entry: Pick<ResolvedAncestor, "klass" | "namespaceName">,
+): ResolvedAncestor[] => {
     const prerequisites = entry.klass.prerequisites
         .map((name) => resolveClassOrInterface(library, entry.namespaceName, name))
         .filter((prerequisite) => prerequisite !== undefined);

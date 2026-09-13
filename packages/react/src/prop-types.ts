@@ -203,7 +203,17 @@ type ActionMapProps = {
 type MenuProps = {
     /** Entries the menu is rebuilt from whenever they change. */
     items?: MenuItem[] | null | undefined;
+} & ChildrenProps;
+
+type MenuItemProps = Pick<MenuItem, "label" | "action"> & {
+    submenu?: ReactNode;
+    section?: ReactNode;
 };
+
+type AdwToggleGroupProps = ChildrenProps & (
+    | { active?: Adw.ToggleGroup["active"] | undefined; activeName?: never } |
+    { activeName?: Adw.ToggleGroup["activeName"] | undefined; active?: never }
+);
 
 /** Props of a `Gtk.ShortcutController` element. */
 type GtkShortcutControllerProps = {
@@ -390,6 +400,8 @@ export {
     type ActionGroupProps,
     type ActionMapProps,
     type MenuProps,
+    type MenuItemProps,
+    type AdwToggleGroupProps,
     type GtkShortcutControllerProps,
     type GtkOverlayProps,
     type GtkTextChildAnchorProps,

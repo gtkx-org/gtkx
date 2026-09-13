@@ -592,9 +592,15 @@ importers:
 
   packages/codegen:
     dependencies:
+      '@gtkx/native':
+        specifier: workspace:*
+        version: link:../native
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
+      '@gtkx/runtime':
+        specifier: workspace:*
+        version: link:../runtime
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils
@@ -912,6 +918,9 @@ importers:
 
   packages/native:
     devDependencies:
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@gtkx/vitest':
         specifier: workspace:*
         version: link:../vitest

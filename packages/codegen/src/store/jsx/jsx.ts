@@ -8,6 +8,7 @@ import { renderBlock } from "../../writer/emit.js";
 import { getDoc } from "../gi/doc-spec.js";
 import { elementPropTypeFor } from "./element-prop-imports.js";
 import {
+    ancestorGlibNames,
     collectInterfacePropsClasses,
     getGlibName,
     giNamespaceAlias,
@@ -249,6 +250,24 @@ const interfacePrerequisiteExtends = (iface: ResolvedQualifiedInterface, context
     return refs;
 };
 
+const hasIntersectionProps = (klass: GirClass, namespace: GirNamespace, library: Library): boolean =>
+    ancestorGlibNames(klass, namespace, library)
+        .some((name) => elementPropTypeFor(name)?.composition === "intersection");
+
+const renderPropsDeclaration = (name: string, parents: string[], body: string, isIntersection: boolean): string => {
+    if (isIntersection) {
+        const bases = parents.length === 0 ? "" : `${parents.join(" & ")} & `;
+
+        const signature = `export type ${name} = ${bases}`;
+
+        return `${renderBlock(signature, body)};`;
+    }
+
+    const bases = parents.length === 0 ? "" : ` extends ${parents.join(", ")}`;
+
+    return renderBlock(`export interface ${name}${bases}`, body);
+};
+
 const renderInterfacePropsBlock = (
     iface: ResolvedQualifiedInterface,
     glib: string,
@@ -285,11 +304,14 @@ const renderInterfacePropsBlock = (
         prerequisiteExtends.push(ACCESSIBLE_PROPS_NAME);
     }
 
-    const extendsClause = prerequisiteExtends.length === 0 ? "" : ` extends ${prerequisiteExtends.join(", ")}`;
     addGiNamespace(imports, iface.namespace.name, giNamespaceAlias(iface.namespace.name));
     const selfDefault = `${giNamespaceAlias(iface.namespace.name)}.${sanitizeTypeIdentifier(iface.klass.name)}`;
-    const signature = `export interface ${glib}Props<Self = ${selfDefault}>${extendsClause}`;
-    const block = `${getDoc(iface.klass)}${renderBlock(signature, ownerLines.join("\n"))}`;
+    const block = `${getDoc(iface.klass)}${renderPropsDeclaration(
+        `${glib}Props<Self = ${selfDefault}>`,
+        prerequisiteExtends,
+        ownerLines.join("\n"),
+        hasIntersectionProps(iface.klass, iface.namespace, library),
+    )}`;
 
     return { block, objectPropNames };
 };
@@ -325,12 +347,13 @@ const renderPropBlock = (
     addGiNamespace(context.imports, entry.namespace.name, giNamespaceAlias(entry.namespace.name));
     const ownerLines = dedupePropLines(["ref?: Ref<Self | null> | undefined;", ...propLines]);
     const extendsList = resolveElementExtends(library, entry, context);
-    const extendsClause = extendsList.length === 0 ? "" : ` extends ${extendsList.join(", ")}`;
     const selfDefault = `${giNamespaceAlias(entry.namespace.name)}.${sanitizeTypeIdentifier(entry.klass.name)}`;
 
-    const block = `${getDoc(entry.klass)}${renderBlock(
-        `export interface ${entry.glibName}Props<Self = ${selfDefault}>${extendsClause}`,
+    const block = `${getDoc(entry.klass)}${renderPropsDeclaration(
+        `${entry.glibName}Props<Self = ${selfDefault}>`,
+        extendsList,
         ownerLines.join("\n"),
+        hasIntersectionProps(entry.klass, entry.namespace, library),
     )}`;
 
     return { block, objectPropNames };
