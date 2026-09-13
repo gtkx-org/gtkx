@@ -50,7 +50,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `cli` | 262 | Generated consumer and catalog-reference fixes verified; full package pending |
 | `create-gtkx` | 31 | All files read; option parsing, installation recovery, duplication and guides fixed; installed TypeScript and JavaScript consumers pass |
 | `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
-| `testing` | 60 | ComboRow display-value matcher fixed; full package pending |
+| `testing` | 60 | All files read; deadlines, text queries, clipboard behavior, Unicode and matcher fixes pass; repeat review found no further confirmed defect |
 | `vitest` | 12 | All files read; packaged preload, Sway configuration and notification sink fixed; repeat review found no further confirmed defect |
 | `e2e` | 117 | Relevant regression coverage reviewed with each fix; full suite audit pending |
 | `eslint` | 36 | All files read; public-surface traversal and cache correctness fixed; prefix restriction removed; independent review passed |
@@ -440,6 +440,14 @@ All 59 current tracked utility files were read. es-toolkit replaces the handwrit
 The process guard and launcher now share their private message types and process identity reader. Repeated validation of their own typed messages is removed; partial pipe input and operating-system lifetime checks remain. Public generated-consumer cases cover reserved identifiers and discriminated prop unions, and a native rendering case verifies replacement of equally configured widget instances.
 
 All 203 affected integration cases pass: 68 CLI, process and codegen cases and 135 renderer cases. Utility builds, consumer typechecks, package lint, Knip and the frozen install pass. Independent review found no additional defect in these changes.
+
+### Testing package audit
+
+All 60 tracked testing files and both guides were read, alongside eight existing consumer suites. Async polling now enforces its deadline even when the callback remains pending. Label queries and matchers use rendered text, decode native markup through Pango, and keep mnemonic targets inside the mapped query scope. Keyboard input converts Unicode through GDK and advances by complete characters.
+
+Clipboard helpers invoke native actions, preserving readonly and protected text, password restrictions, existing clipboard contents and native undo history. Hook rerenders distinguish omitted props from explicit `undefined`. Class matchers can reuse global and sticky patterns, and empty labels count as empty widgets. Runtime value packing replaces the drop helper's duplicate GValue construction; widget checks and controller lookups are shared. Tests no longer patch widget internals or assert a private normalizer directly.
+
+Regressions fail against the previous implementations. All 254 public integration cases pass across 20 files, including query performance and activation held by another process. Source and full e2e typechecks, package and consumer lint, and the testing build pass. Native clipboard and markup views were visually inspected. The guides now share a concise GTKX-focused structure, with accurate headless setup, query scope and error handling. Independent review found no additional confirmed defect.
 
 ## Next work
 

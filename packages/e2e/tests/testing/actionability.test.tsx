@@ -155,6 +155,7 @@ const withActivationHeldOutsideThisProcess = async (window: Gtk.Window, body: ()
         cwd: import.meta.dirname,
         stdio: ["pipe", "ignore", "ignore"],
     });
+    const closed = once(foreign, "close");
 
     try {
         await waitFor(
@@ -171,7 +172,7 @@ const withActivationHeldOutsideThisProcess = async (window: Gtk.Window, body: ()
         await body();
     } finally {
         foreign.kill("SIGKILL");
-        await once(foreign, "close");
+        await closed;
     }
 };
 

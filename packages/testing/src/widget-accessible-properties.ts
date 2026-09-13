@@ -1,5 +1,6 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
+import * as Pango from "@gtkx/gi/pango";
 import {
     isAccessibleNumberMatch,
     readAccessibleBooleanProperty,
@@ -57,19 +58,20 @@ const readAccessibleWidgets = (widget: Gtk.Widget, relation: Gtk.AccessibleRelat
 const readAccessibleBoolean = (widget: Gtk.Widget, state: Gtk.AccessibleState): boolean | null =>
     readAccessibleFlag(widget, state);
 
-const getLabelText = (widget: Gtk.Widget): string | null => {
-    if (widget instanceof Gtk.Label) {
-        return widget.getLabel();
-    }
-
-    return readAccessibleString(widget, Gtk.AccessibleProperty.LABEL);
-};
-
 const stripMnemonic = (text: string): string => text.replaceAll(/_(.)/g, "$1");
 const isUnderlineUsed = (widget: object): boolean => callBooleanGetter(widget, "getUseUnderline") ?? false;
 
-const readNamingText = (widget: object, getter: string, value: string): string =>
-    getter !== EDITABLE_TEXT_GETTER && isUnderlineUsed(widget) ? stripMnemonic(value) : value;
+const readNamingText = (widget: object, getter: string, value: string): string => {
+    if (getter === EDITABLE_TEXT_GETTER) {
+        return value;
+    }
+
+    if (callBooleanGetter(widget, "getUseMarkup")) {
+        return Pango.parseMarkup(value, -1, isUnderlineUsed(widget) ? "_" : "\0")[2];
+    }
+
+    return isUnderlineUsed(widget) ? stripMnemonic(value) : value;
+};
 
 const readFirstText = (widget: object, getters: string[]): string | null => {
     for (const getter of getters) {
@@ -89,10 +91,15 @@ const readFirstText = (widget: object, getters: string[]): string | null => {
  *
  * @param widget The widget to read text from.
  */
-const getWidgetText = (widget: Gtk.Accessible): string | null => readFirstText(widget, DEFAULT_TEXT_GETTERS);
+const getWidgetText = (widget: Gtk.Accessible): string | null =>
+    widget instanceof Gtk.Label ? widget.getText() || null : readFirstText(widget, DEFAULT_TEXT_GETTERS);
 
 const namingLabelText = (widget: Gtk.Widget): string | null => {
-    const text = getLabelText(widget);
+    if (widget instanceof Gtk.Label) {
+        return widget.getText();
+    }
+
+    const text = readAccessibleString(widget, Gtk.AccessibleProperty.LABEL);
 
     if (text === null) {
         return null;

@@ -257,7 +257,7 @@ type RenderHookResult<Result, Props> = {
         current: Result;
     };
     /** Re-invokes the hook, keeping the previous props when none are given. */
-    rerender: (newProps?: Props) => Promise<void>;
+    rerender: (...args: [] | [newProps: Props]) => Promise<void>;
     /** Unmounts the component that calls the hook. */
     unmount: () => Promise<void>;
 };
