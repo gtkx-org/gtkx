@@ -41,7 +41,7 @@ The generated `@gtkx/gi` and `@gtkx/jsx` packages belong to each project. Their 
 
 ## Package map
 
-All paths below are relative to the repository root. Package names normally match their directory under `packages/`; `packages/create-gtkx` publishes as `create-gtkx`.
+All paths below are relative to the repository root. Package names normally match their directory under `packages/`; `packages/create-gtkx` publishes as `create-gtkx`. This map describes the current package contents. Use the [Development Principles](/contributing/principles) to decide where a responsibility belongs when changing them.
 
 ### Core and generation
 

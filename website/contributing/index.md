@@ -9,6 +9,8 @@ GTKX brings React and TypeScript to the GNOME application platform. Contributing
 
 This section describes the repository on `main`, where GTKX 2.0 is being developed. It is shared across documentation versions and follows the codebase as it changes. For building an application, use the versioned [Guide](/v2/guide/why-gtkx) and [Tutorial](/v2/tutorial/).
 
+The [Development Principles](/contributing/principles) define the required architecture and standards for changes. The implementation pages describe the code as it exists today and identify the boundaries to review against those principles.
+
 ## Get oriented
 
 | Page | What it covers |
@@ -20,9 +22,9 @@ This section describes the repository on `main`, where GTKX 2.0 is being develop
 | [Native Runtime](/contributing/native-runtime) | Native calls, value conversion, object ownership, callbacks, and the shared event loop. |
 | [React Renderer](/contributing/react-renderer) | Reconciliation, element configuration, child placement, properties, signals, and component lifecycles. |
 | [Testing](/contributing/testing) | Running native integration tests, testing through widgets, and checking packaged applications. |
-| [Development Principles](/contributing/principles) | The home for the project's software development principles as they are defined. |
+| [Development Principles](/contributing/principles) | Required package boundaries, simplicity, declarative composition, testing, and consumer-focused development. |
 
-Start with the architecture overview to understand the boundaries, then follow the setup instructions to run the code. Each technical page points to the source that implements the behavior it describes.
+Start with the principles and architecture overview to understand the required boundaries and current implementation, then follow the setup instructions to run the code. Each technical page points to the source that implements the behavior it describes.
 
 ## Find the right place to contribute
 

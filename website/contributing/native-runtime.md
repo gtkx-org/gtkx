@@ -7,6 +7,8 @@ description: "GTKX's TypeScript runtime, Rust FFI bridge, native ownership model
 
 GTKX's native runtime spans two packages. `@gtkx/runtime` implements JavaScript-facing binding behavior in TypeScript. `@gtkx/native` is a Rust addon that handles the ABI, pointers, native memory, and integration with Node. Generated GI code supplies the signatures and metadata that connect them.
 
+The required boundary keeps [`@gtkx/native` minimal](/contributing/principles#keep-the-native-module-minimal): it supplies memory-safe FFI operations without exposing raw pointers or undefined behavior to JavaScript. [Binding semantics belong to `@gtkx/runtime`](/contributing/principles#put-binding-semantics-in-the-runtime), including marshalling, GValue and GVariant conversion, callback conventions, signal handling, and the GObject type system. The current Rust codecs and registration machinery described below include work that must be evaluated against that boundary; their location does not establish where new binding behavior should go.
+
 The Rust crate builds a Node addon through napi-rs and uses libffi for native calls, libloading for shared libraries, and the Rust GLib bindings for GLib and GObject operations. Its dependencies and supported addon targets are declared in [`packages/native/Cargo.toml`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/Cargo.toml) and [`packages/native/package.json`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/package.json).
 
 ## From a JavaScript method to a C call
@@ -23,7 +25,7 @@ A call passes through these stages:
 
 The two main reusable pieces are the compiled call interface and the resolved symbol. A lazy runtime function specification defers creating the bound callable until its first invocation. The native call descriptor then caches its resolved target. Shared-library loading and symbol lookup are centralized in [`ffi/library_cache.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/ffi/library_cache.rs).
 
-This boundary does runtime validation as well as conversion. For example, the native call checks argument counts, and object codecs check declared native types when those types can be resolved. The TypeScript declaration is useful before execution; the descriptor and codec are what make the actual C call valid.
+The current native call also checks argument counts, and object codecs check declared native types when those types can be resolved. Review these checks against [the principle of trusting the types](/contributing/principles#prefer-simple-code-and-trust-the-types): safe native memory access is required, while redundant validation of statically guaranteed values and unsupported cases should not be added.
 
 ## Values, temporary storage, and ownership
 

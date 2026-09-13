@@ -7,6 +7,8 @@ description: "How GTKX reconciles React trees into native GObjects, routes child
 
 `@gtkx/react` is a custom React renderer for native GObjects. It translates React's host operations into object construction, property updates, signal connections, and container-specific child placement. Generated JSX supplies the typed component surface, and generated GI supplies the classes and methods the renderer uses.
 
+The [reconciler boundary](/contributing/principles#keep-the-reconciler-transparent) requires a thin, transparent translation to native APIs: construct objects, set props, and append, remove, or reorder children. Mount and unmount effects, list-factory handling, and other complex behavior belong outside the reconciler. The implementation map below includes existing behavior machinery that must be reviewed against this requirement.
+
 The reconciler is configured in [`reconciler/host-config.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/host-config.ts). It uses mutation mode with concurrent roots, Node timers, and microtasks. Persistence and hydration are disabled. GTK performs layout and painting after the renderer changes the native tree.
 
 ## Generated components and host elements

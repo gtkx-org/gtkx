@@ -7,11 +7,11 @@ description: "How GTKX's generated bindings, React renderer, TypeScript runtime,
 
 GTKX runs React applications in Node.js and renders their interface through native Adwaita and GTK4 objects. React owns component state and reconciliation. Adwaita supplies application structure and adaptive patterns; GTK4 supplies widgets, layout, input, accessibility, and rendering. GTKX connects those systems through generated JavaScript bindings and a Rust native addon.
 
-This section describes the GTKX 2 implementation on the repository's `main` branch. Start here for the boundaries between packages, then follow the [code generation](/contributing/code-generation), [native runtime](/contributing/native-runtime), and [React renderer](/contributing/react-renderer) pages for the implementation details.
+This section describes the GTKX 2 implementation on the repository's `main` branch. The [Development Principles](/contributing/principles) define the required package boundaries; some existing implementations still span responsibilities that belong in separate layers. Use this page to locate code, then follow the [code generation](/contributing/code-generation), [native runtime](/contributing/native-runtime), and [React renderer](/contributing/react-renderer) pages for the implementation details.
 
 ## The core layers
 
-| Layer | Responsibility | Implementation |
+| Layer | Current implementation role | Implementation |
 | --- | --- | --- |
 | Application components | Describe the interface, hold application state, and compose GTKX features. | Application TSX and packages such as `@gtkx/components` and `@gtkx/navigation`. |
 | Generated JSX | Expose typed React components for the project's native types and retain their property and signal metadata. | Project-generated `@gtkx/jsx/<namespace>` modules. |
@@ -29,7 +29,7 @@ GTKX separates information obtained from GObject Introspection Repository files,
 
 During generation, `@gtkx/codegen` reads the configured GIR libraries and their transitive dependencies. It determines JavaScript names, TypeScript types, callable signatures, transfer rules, and the metadata needed by the renderer. It emits two linked package stores, `@gtkx/gi` and `@gtkx/jsx`, plus a project reference when enabled.
 
-During execution, Node imports those generated modules. Their wrappers and descriptors drive `@gtkx/runtime` and the native bridge, which resolve symbols in the installed shared libraries and call them through libffi. Native type lookup and GObject property operations still happen at runtime, but the runtime does not parse GIR XML to discover each function's signature.
+During execution, Node imports those generated ESM modules, including their actual class definitions and method implementations. Their wrappers and descriptors drive `@gtkx/runtime` and the native bridge, which resolve symbols in the installed shared libraries and call them through libffi. Native type lookup and GObject property operations still happen at runtime. `@gtkx/runtime` has no knowledge of libgirepository: consumers supply all call descriptors and shapes, and GIR analysis belongs to generation.
 
 This distinction explains why generated imports are local project artifacts. The project's library selection and GIR versions define the available API. Changing a GIR search path changes generated declarations; it does not install a native library that implements those declarations. See [Configuration and Codegen](/v2/guide/configuration-and-codegen) for the application-facing configuration.
 
@@ -81,4 +81,4 @@ Likewise, a controlled prop and a native widget property are two representations
 | A child appears in the wrong place, disappears, or fails to reorder. | `packages/react/src/reconciler/child-routing.ts` and `placement.ts`. |
 | Signals, timers, or shutdown stop making progress. | `packages/runtime/src/lifecycle.ts` and `packages/native/src/runloop.rs`. |
 
-Follow a failure across these boundaries before deciding where a fix belongs. A renderer symptom can begin in generated metadata, and a native ownership failure can begin in an incorrect GIR annotation. The more detailed pages describe the contracts each boundary carries.
+Follow a failure across these boundaries before deciding where a fix belongs. A renderer symptom can begin in generated metadata, and a native ownership failure can begin in an incorrect GIR annotation. The source location is a starting point for investigation; the [package boundaries](/contributing/principles#keep-the-native-module-minimal) determine where the implementation belongs.

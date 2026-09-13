@@ -141,4 +141,4 @@ pnpm lint
 pnpm typecheck
 ```
 
-Published-package changes use an Nx version plan created by `pnpm plan`. Documentation-only and test-only changes do not need one. The [repository contributing guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) contains the submission and release workflow, and [Development Principles](/contributing/principles) is the home for the project's development standards.
+Published-package changes use an Nx version plan created by `pnpm plan`. Documentation-only and test-only changes do not need one. The [repository contributing guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) contains the submission and release workflow. Review changes against the [Development Principles](/contributing/principles), including package ownership, testing strategy, and the separation of consumer behavior from repository-specific tooling.

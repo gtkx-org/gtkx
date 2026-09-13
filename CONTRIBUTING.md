@@ -2,6 +2,8 @@
 
 The website's [Contributing section](https://gtkx.dev/contributing/) documents the architecture, tech stack, development setup, and testing workflow for the current codebase.
 
+Read the [Development Principles](https://gtkx.dev/contributing/principles) before making a change. They define the required package boundaries, coding and testing standards, and the distinction between production behavior and repository-specific tooling.
+
 Follow the [Code of Conduct](CODE_OF_CONDUCT.md). Report conduct concerns to eugeniodepalo@gmail.com.
 
 ## Set up the workspace
