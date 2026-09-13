@@ -1,14 +1,9 @@
 import type { Element } from "stylis";
 import { compile, middleware, rulesheet, stringify, serialize as stylisSerialize } from "stylis";
-import { escapeNamedColors, restoreNamedColors } from "./named-colors.js";
-
-const LABEL_DECL_FIRST_CHAR = 108;
-const LABEL_DECL_THIRD_CHAR = 98;
+import { escapeNamedColors } from "./named-colors.js";
 
 const removeLabel = (element: Element): void => {
-    if (!(element.type === "decl" &&
-        element.value.codePointAt(0) === LABEL_DECL_FIRST_CHAR &&
-        element.value.codePointAt(2) === LABEL_DECL_THIRD_CHAR)) {
+    if (element.type !== "decl" || element.props !== "label") {
         return;
     }
 
@@ -27,13 +22,15 @@ const terminateDeclarations = (styles: string): string => {
 };
 
 const eachRule = (input: string, visit: (rule: string) => void): void => {
+    const escaped = escapeNamedColors(input);
+
     stylisSerialize(
-        compile(escapeNamedColors(input)),
+        compile(escaped.css),
         middleware([
             removeLabel,
             stringify,
             rulesheet((rule) => {
-                visit(restoreNamedColors(rule));
+                visit(escaped.restore(rule));
             }),
         ]),
     );

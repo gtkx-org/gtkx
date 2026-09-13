@@ -148,4 +148,16 @@ describe("injectGlobal", () => {
         injectGlobal({ "label.gtkx-global-twice": { minWidth: "161px" } });
         expect(await probeMinWidth(["gtkx-global-twice"])).toBeGreaterThanOrEqual(161);
     });
+
+    it("inserts a global rule after serializing the same styles for a class", async () => {
+        const styles = { "label.gtkx-global-after-class": { minWidth: "163px" } };
+        css(styles);
+        injectGlobal(styles);
+        expect(await probeMinWidth(["gtkx-global-after-class"])).toBeGreaterThanOrEqual(163);
+    });
+
+    it("preserves valid selectors matching the named-color escape prefix", async () => {
+        injectGlobal(".gtkx-named-color__theme_fg_color{min-width:167px;}");
+        expect(await probeMinWidth(["gtkx-named-color__theme_fg_color"])).toBeGreaterThanOrEqual(167);
+    });
 });
