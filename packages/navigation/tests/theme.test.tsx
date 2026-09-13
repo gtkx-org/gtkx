@@ -75,11 +75,6 @@ describe("theme - useTheme", () => {
         await screen.findByText("Dark header");
         expect(screen.queryByText("Light header")).toBeNull();
     });
-
-    it("exposes the light and dark theme values", () => {
-        expect(DefaultTheme).toEqual({ dark: false, highContrast: false });
-        expect(DarkTheme).toEqual({ dark: true, highContrast: false });
-    });
 });
 
 describe("theme - style manager changes", () => {

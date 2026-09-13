@@ -21,12 +21,13 @@ import { screen } from "@gtkx/testing";
 import { useEffect } from "react";
 import { expect } from "vitest";
 
+import { getAncestor } from "./widget-ancestors.js";
+
 type TabName = "First" | "Second" | "Third";
 type NestedParams = { Home: undefined; Details: undefined };
 type TabListeners = ScreenListeners<TabNavigationState<ParamListBase>, TabNavigationEventMap>;
 type TabRenderer = () => ReactNode;
 type StateSpy = Mock<(state: NavigationState | undefined) => void>;
-type WidgetClass<T> = abstract new (...args: never[]) => T;
 type TabPressSpy = Mock<(event: { target?: string }) => void>;
 
 type TabsAppProps = {
@@ -138,20 +139,6 @@ const TabsApp = ({ navigator, options, listeners, renderers, names, onStateChang
 
 const findTab = (title: string): Promise<Gtk.Widget> => screen.findByRole(Gtk.AccessibleRole.TAB, { name: title });
 
-const getAncestor = <T,>(widget: Gtk.Widget, type: WidgetClass<T>): T => {
-    let current: Gtk.Widget | null = widget;
-
-    while (current !== null) {
-        if (current instanceof type) {
-            return current;
-        }
-
-        current = current.getParent();
-    }
-
-    throw new Error("The widget has no ancestor of the requested type");
-};
-
 const getViewStack = (text: string): Adw.ViewStack => getAncestor(screen.getByText(text), Adw.ViewStack);
 
 const getStackPage = (text: string, title: string): Adw.ViewStackPage => {
@@ -199,7 +186,6 @@ const expectUnselectedTab = (title: string): void => {
 
 export {
     expectSelectedTab,
-    getAncestor,
     getStackPage,
     expectUnselectedTab,
     findTab,
@@ -212,3 +198,5 @@ export {
     type TabPressSpy,
     TabsApp,
 };
+
+export { getAncestor } from "./widget-ancestors.js";

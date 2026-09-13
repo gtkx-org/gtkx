@@ -25,6 +25,8 @@ import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createContext, useContext, useEffect, useState } from "react";
 import { expect, vi } from "vitest";
 
+import { getAncestor } from "./widget-ancestors.js";
+
 type RootParams = {
     Home: undefined;
     Details: { id: string };
@@ -33,7 +35,6 @@ type RootParams = {
     Draft: { text: string };
 };
 
-type WidgetClass<T> = abstract new (...args: never[]) => T;
 type StackEvent = { type: string; route: string; isClosing?: boolean };
 type EventSpy = Mock<(event: StackEvent) => void>;
 type PreventSpy = Mock<(data: { action: NavigationAction }) => void>;
@@ -301,34 +302,8 @@ const pressKeys = async (text: string, keys: string): Promise<void> => {
     await userEvent.keyboard(await screen.findByText(text), keys);
 };
 
-const getAncestor = <T,>(widget: Gtk.Widget, type: WidgetClass<T>): T => {
-    let current: Gtk.Widget | null = widget;
-
-    while (current !== null) {
-        if (current instanceof type) {
-            return current;
-        }
-
-        current = current.getParent();
-    }
-
-    throw new Error("The widget has no ancestor of the requested type");
-};
-
 const getNavigationView = (text: string): Adw.NavigationView =>
     getAncestor(screen.getByText(text), Adw.NavigationView);
-
-const countPages = (view: Adw.NavigationView): number => {
-    let count = 0;
-
-    for (let child = view.getFirstChild(); child !== null; child = child.getNextSibling()) {
-        if (child instanceof Adw.NavigationPage) {
-            count += 1;
-        }
-    }
-
-    return count;
-};
 
 const getStackPage = (view: Adw.NavigationView, index: number): Adw.NavigationPage => {
     const page = view.getNavigationStack().getItem(index);
@@ -372,7 +347,6 @@ const expectHidden = (text: string): void => {
 export {
     buildStack,
     clickButton,
-    countPages,
     createEventSpy,
     createPreventSpy,
     createStateSpy,
