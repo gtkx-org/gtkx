@@ -524,8 +524,8 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkDragSource: {
         behaviors: [
-            value<Gtk.DragSource, DragSourceIcon>("icon", (source, icon) => {
-                source.setIcon(icon.paintable ?? null, icon.hotX ?? 0, icon.hotY ?? 0);
+            value<Gtk.DragSource, DragSourceIcon | null>("icon", (source, icon) => {
+                source.setIcon(icon?.paintable ?? null, icon?.hotX ?? 0, icon?.hotY ?? 0);
             }),
         ],
     },
