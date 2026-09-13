@@ -78,6 +78,19 @@ pub(crate) fn handle_memory_ptr(handle: &Handle, label: &str) -> napi::Result<*m
     Ok(ptr)
 }
 
+pub(crate) fn handle_memory_range(
+    handle: &Handle,
+    offset: usize,
+    size: usize,
+    label: &str,
+) -> napi::Result<*mut c_void> {
+    handle
+        .check_range(offset, size)
+        .map_err(|error| napi::Error::new(napi::Status::InvalidArg, format!("{label}: {error}")))?;
+
+    Ok(handle_memory_ptr(handle, label)?.wrapping_byte_add(offset))
+}
+
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub(crate) fn byte_count_from_f64(value: f64, label: &str) -> napi::Result<usize> {
     const MAX_EXACT_INTEGER: f64 = 9_007_199_254_740_992.0;

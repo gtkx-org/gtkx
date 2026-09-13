@@ -1,12 +1,15 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { RUST_NIGHTLY } from "./rust-nightly.js";
 
 const WORKSPACE_ROOT = join(import.meta.dirname, "..");
 const NATIVE_TESTS = join(WORKSPACE_ROOT, "packages", "e2e", "tests", "native");
 const SUPPRESSIONS = join(NATIVE_TESTS, "lsan.supp");
-const NATIVE_CONFIG = join(NATIVE_TESTS, "vitest.config.ts");
+const NATIVE_CONFIGS = [
+    join(WORKSPACE_ROOT, "packages", "native", "vitest.config.ts"),
+    join(NATIVE_TESTS, "vitest.config.ts"),
+];
 const BUILD_ARGS = ["--filter", "@gtkx/native", "exec", "napi", "build", "--platform", "--release", "--esm",
     "--no-dts-cache", "--no-const-enum"];
 
@@ -34,20 +37,22 @@ run("pnpm", [...BUILD_ARGS, "--target", "x86_64-unknown-linux-gnu"], {
 const runtime = asanRuntime();
 
 try {
-    run("pnpm", ["exec", "vitest", "run", "--config", NATIVE_CONFIG], {
-        ...process.env,
-        LD_PRELOAD: runtime,
-        GTKX_ASAN_RUNTIME: runtime,
-        ASAN_OPTIONS: [
-            "detect_leaks=1",
-            "fast_unwind_on_malloc=0",
-            "malloc_context_size=30",
-            "verify_asan_link_order=0",
-            "abort_on_error=1",
-            "exitcode=66",
-        ].join(":"),
-        LSAN_OPTIONS: [`suppressions=${SUPPRESSIONS}`, "leak_check_at_exit=0"].join(":"),
-    });
+    for (const config of NATIVE_CONFIGS) {
+        run("pnpm", ["exec", "vitest", "run", "--root", dirname(config), "--config", config], {
+            ...process.env,
+            LD_PRELOAD: runtime,
+            GTKX_ASAN_RUNTIME: runtime,
+            ASAN_OPTIONS: [
+                "detect_leaks=1",
+                "fast_unwind_on_malloc=0",
+                "malloc_context_size=30",
+                "verify_asan_link_order=0",
+                "abort_on_error=1",
+                "exitcode=66",
+            ].join(":"),
+            LSAN_OPTIONS: [`suppressions=${SUPPRESSIONS}`, "leak_check_at_exit=0"].join(":"),
+        });
+    }
 } finally {
     run("pnpm", BUILD_ARGS, process.env);
 }

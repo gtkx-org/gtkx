@@ -94,7 +94,7 @@ pnpm exec vitest run --config packages/e2e/tests/native/vitest.config.ts
 
 Its configuration adds the fixture shared libraries to the loader path and enables available glibc heap checks. Tests use explicit garbage collection where object lifetime behavior requires it.
 
-For native memory and lifetime changes, an additional target builds the addon with AddressSanitizer and runs the native suite with leak detection:
+For native memory and lifetime changes, an additional target builds the addon with AddressSanitizer and runs both the native addon tests and the generated binding fixture suite with leak detection:
 
 ```bash
 pnpm nx run @gtkx/e2e:test:asan

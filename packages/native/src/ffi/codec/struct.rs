@@ -150,7 +150,9 @@ impl StructCodec {
         let Some(size) = self.size else {
             bail!("Cannot write an inline struct field whose size is unknown")
         };
-        let src_ptr = value::handle_ptr(value, "Struct field write")?;
+        let src_ptr = value::handle_ptr_checked(value, "Struct field write", |handle| {
+            handle.check_range(0, size)
+        })?;
         if src_ptr.is_null() {
             bail!("Cannot write null into an inline struct field")
         }
@@ -167,7 +169,9 @@ impl StructCodec {
         init: SlotInit,
         size: usize,
     ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
-        let src_ptr = value::handle_ptr(value, "Struct field write")?;
+        let src_ptr = value::handle_ptr_checked(value, "Struct field write", |handle| {
+            handle.check_range(0, size)
+        })?;
         if src_ptr.is_null() {
             unsafe { slot.store(std::ptr::null_mut()) };
             return Ok(None);
