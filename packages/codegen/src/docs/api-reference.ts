@@ -105,28 +105,18 @@ type ApiSearchOptions = {
     limit?: number;
 };
 
-/** An indexed JSX element, carrying the widget class its page renders from. */
 type ElementEntry = {
-    /** Discriminant marking the entry as a JSX element rather than a GIR symbol. */
     kind: "element";
-    /** GIR namespace declaring the widget class. */
     namespace: GirNamespace;
-    /** Element name, which is the class's GLib type name such as `GtkButton`. */
     name: string;
-    /** Documentation text carried by the widget class's GIR node. */
     doc: string | undefined;
-    /** The widget class the element is generated from. */
     element: GlibNamedClass;
 };
 
-/** Anything the index holds: a GIR symbol or a JSX element. */
 type SymbolEntry = GiSymbolEntry | ElementEntry;
 
-/** A search hit: an indexed entry and how well its name answered the query. */
 type ScoredEntry = {
-    /** Match strength, ranked best first: an exact name, then a prefix, then a substring. */
     score: number;
-    /** The entry that matched. */
     entry: SymbolEntry;
 };
 

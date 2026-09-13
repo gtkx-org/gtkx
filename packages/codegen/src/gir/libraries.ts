@@ -1,13 +1,9 @@
 import { sortStrings } from "@gtkx/utils";
 import { readdirSync } from "node:fs";
 
-/** A namespace found on the GIR path, taken from the name of its `.gir` file. */
 type GirNamespace = {
-    /** Namespace the file describes, such as `Gtk`. */
     name: string;
-    /** API version the file describes, such as `4.0`. */
     version: string;
-    /** Name and version joined the way a `libraries` entry spells them, such as `Gtk-4.0`. */
     identifier: string;
 };
 

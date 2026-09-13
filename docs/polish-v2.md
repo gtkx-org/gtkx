@@ -397,6 +397,12 @@ Registration types derive from Zod, unused connection state and timeout configur
 
 Each bug has a public stdio/socket regression that fails against the previous source. All 60 end-to-end cases pass across six files, alongside source/test types, lint, Knip and the ten-task package build. A repeat review found no further confirmed defect. The earlier combined website build passed page rendering and sitemap generation in 472 seconds; these later MCP guide edits await the next website checkpoint.
 
+### Lint audit follow-up
+
+The public-surface audit identified 305 JSDoc blocks attached to private implementation declarations, mostly GIR parsing and reference-generation types. Those blocks are removed. Comparing the parsed source with comments omitted confirms that the cleanup changes no code.
+
+The rule's correctness review and integration coverage are still in progress. Newly exposed missing documentation remains subject to the maintainer's no-new-comments instruction; this checkpoint does not represent a clean lint review.
+
 ## Next work
 
 Continue repeat audits alongside the R2 string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.

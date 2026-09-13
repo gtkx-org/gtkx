@@ -25,11 +25,8 @@ import { requireWidget } from "./widget-target.js";
 import { findPresentedWindowFailure, findRenderedWindowFailure, mappedToplevels } from "./window-state.js";
 import { within } from "./within.js";
 
-/** A mounted render tracked so cleanup can unmount it. */
 type ActiveRender = {
-    /** Root that rerenders drive and that cleanup tears the tree down through. */
     root: ReconcilerRoot;
-    /** Harness window created for the render, null when it renders into a container the caller supplied. */
     window: Gtk.Window | null;
 };
 

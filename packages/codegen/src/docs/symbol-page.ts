@@ -66,69 +66,47 @@ import {
     tagNotes,
 } from "./render.js";
 
-/** What every indexed GIR symbol carries, whatever its kind. */
 type GiSymbolBase = {
-    /** GIR namespace declaring the symbol. */
     namespace: GirNamespace;
-    /** Name the bindings export it under: camelCase for functions, PascalCase for classes, the GIR name otherwise. */
     name: string;
-    /** Raw gtk-doc text from the GIR, undefined when the symbol is undocumented. */
     doc: string | undefined;
 };
 
-/** A GIR symbol the reference indexes, discriminated by `kind` and carrying the GIR node its page renders from. */
 type GiSymbolEntry =
     | (GiSymbolBase & {
-        /** Renders the class page: hierarchy, constructors, static methods, properties, signals, and methods. */
         kind: "class" | "interface";
-        /** Supplies the ancestry, members, and, on an interface, the vtable slots an implementer fills. */
         klass: GirClass;
     }) |
     (GiSymbolBase & {
-        /** Renders the record page, labeled `union` when the record is one. */
         kind: "record";
-        /** Supplies the constructors, static methods, fields, and instance methods. */
         record: GirRecord;
     }) |
     (GiSymbolBase & {
-        /** Renders the page for an enumeration, a flags type, or an error domain, as a table of members. */
         kind: "enum";
-        /** Supplies the members, their values, and the GError domain when the enum carries one. */
         enumeration: GirEnum;
     }) |
     (GiSymbolBase & {
-        /** Renders the callback page as a single function type signature. */
         kind: "callback";
-        /** Supplies the parameters and return type the signature is rendered from. */
         callback: GirCallback;
     }) |
     (GiSymbolBase & {
-        /** Renders the alias page as the type the alias resolves to. */
         kind: "alias";
-        /** Supplies the target type the page prints. */
         alias: GirAlias;
     }) |
     (GiSymbolBase & {
-        /** Renders the page for a namespace-level function, promisified when a finish function matches it. */
         kind: "function";
-        /** Supplies the parameters and return type the signature is rendered from. */
         fn: GirFunction;
     }) |
     (GiSymbolBase & {
-        /** Renders the page for a namespace-level constant, showing its type and literal value. */
         kind: "constant";
-        /** Supplies the type and the value the literal is emitted from. */
         constant: GirConstant;
     });
 
 type ClassSymbol = GiSymbolBase & { klass: GirClass };
 type ClassPageSymbol = ClassSymbol & { kind: "class" | "interface" };
 
-/** What {@link renderSymbolPage} needs besides the entry itself. */
 type SymbolPageOptions = {
-    /** Parsed GIR the page resolves ancestry, interfaces, and referenced types against. */
     library: Library;
-    /** Looks up the JSX element a class is also available as, undefined when it has none. */
     elementNameFor: (namespaceName: string, className: string) => string | undefined;
 };
 

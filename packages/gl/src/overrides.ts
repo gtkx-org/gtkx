@@ -11,7 +11,6 @@ import { getProgramiv, getProgramPipelineiv, getShaderiv, LIB } from "./generate
 import { INFO_LOG_LENGTH } from "./generated/enums.js";
 
 type LengthQuery = (id: GLuint, pname: GLenum) => GLint;
-/** Arguments the driver hands the raw debug callback: source, type, id, severity, message length, and text. */
 type DebugCallbackArgs = [GLenum, GLenum, GLuint, GLenum, number, string];
 
 /**

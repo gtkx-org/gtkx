@@ -3,7 +3,6 @@ import type { RawNode } from "./parse.js";
 import type { ParseContext } from "./type-id.js";
 import { type GirCallable, parseCallable } from "./parameter.js";
 
-/** The signature of a function pointer type GIR declares, whether named or anonymous. */
 type GirCallback = GirCallable;
 
 const callbackFromNode = (node: RawNode, context: ParseContext): GirCallback => parseCallable(node, context);
