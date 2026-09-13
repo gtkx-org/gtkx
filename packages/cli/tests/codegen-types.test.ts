@@ -8,7 +8,7 @@ import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBR
 const WORKSPACE = fileURLToPath(new URL("../../..", import.meta.url));
 const TYPESCRIPT_CLI = join(WORKSPACE, "node_modules/typescript/bin/tsc");
 const PACKAGES = ["cairo", "components", "config", "css", "native", "react", "runtime", "utils"];
-const ACCEPTED = `import type { ComboRowProps, DropDownProps } from "@gtkx/components";
+const ACCEPTED = `import type { ComboRowProps, DropDownProps, ListViewProps } from "@gtkx/components";
 import { Dialog, SpinRow, SplitButton } from "@gtkx/gi/adw";
 import { Action, DBusInterfaceSkeleton, type DBusInterfaceInfo, SimpleAction } from "@gtkx/gi/gio";
 import { ArrowType, Box, Button, CellAreaBox, CellRendererText, Orientation } from "@gtkx/gi/gtk";
@@ -47,6 +47,15 @@ export const comboRowProps: ComboRowProps<string> = {
     selectedId: "first",
     onSelectionChanged: (id) => id,
 };
+export const collectionSources: ListViewProps<string, string>[] = [
+    { renderItem: () => null },
+    { items: [{ id: "first", value: "First" }], renderHeader: null, renderItem: ({ item }) => item },
+    {
+        sections: [{ id: "group", value: "Group", data: [{ id: "first", value: "First" }] }],
+        renderHeader: ({ section }) => section,
+        renderItem: ({ item }) => item,
+    },
+];
 
 export function interfaceName(value: unknown): string {
     return value instanceof Action ? value.getName() : "";
@@ -83,6 +92,18 @@ export const props: DropDownProps = { selectedId: null };
 `,
     "nullable-combo-row-selection.ts": `import type { ComboRowProps } from "@gtkx/components";
 export const props: ComboRowProps = { selectedId: null };
+`,
+    "mixed-collection-sources.ts": `import type { DropDownProps } from "@gtkx/components";
+export const props: DropDownProps = { items: [], sections: [] };
+`,
+    "header-with-item-source.ts": `import type { ComboRowProps } from "@gtkx/components";
+export const props: ComboRowProps = { items: [], renderHeader: () => null };
+`,
+    "header-without-section-source.ts": `import type { ListViewProps } from "@gtkx/components";
+export const props: ListViewProps = { renderItem: () => null, renderHeader: () => null };
+`,
+    "discarded-column-children.ts": `import type { ColumnViewProps } from "@gtkx/components";
+export const props: ColumnViewProps = { columns: [], children: "unrendered" };
 `,
 };
 
@@ -151,6 +172,10 @@ const copyTypeDependencies = (project: CliProject): void => {
 
     const reconcilerTypes = realpathSync(join(WORKSPACE, "packages/react/node_modules/@types/react-reconciler"));
     cpSync(reconcilerTypes, join(project.nodeModules, "@types/react-reconciler"), { recursive: true });
+    const typeFest = realpathSync(join(WORKSPACE, "packages/utils/node_modules/type-fest"));
+    cpSync(typeFest, join(project.nodeModules, "type-fest"), { recursive: true });
+    const taggedTag = realpathSync(join(dirname(typeFest), "tagged-tag"));
+    cpSync(taggedTag, join(project.nodeModules, "tagged-tag"), { recursive: true });
 
     for (const name of ["node", "react"]) {
         const source = realpathSync(join(WORKSPACE, "node_modules", "@types", name));

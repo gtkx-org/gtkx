@@ -156,12 +156,15 @@ type SortProps = {
 };
 
 /** The data a collection view renders, either as a plain item list or grouped into sections. */
-type SourceProps<T, S> = {
-    /** Items to render, nesting through `ListItem.children` for a tree; ignored once `sections` is given. */
+type SourceProps<T, S> = ({
+    /** Items to render, nesting through `ListItem.children` for a tree. */
     items?: ListItem<T>[] | undefined;
-    /** Items grouped under section headers, rendered in place of `items`. */
-    sections?: ListSection<S, T>[] | undefined;
-};
+} & Partial<Record<"sections", undefined>> & Partial<Record<"renderHeader", null | undefined>>) | ({
+    /** Items grouped under section headers. */
+    sections: ListSection<S, T>[];
+    /** Renders the header shown above each section. */
+    renderHeader?: ListSectionRenderer<S> | null | undefined;
+} & Partial<Record<"items", undefined>>);
 
 /** One column of a {@link ColumnView}, pairing Gtk.ColumnViewColumn props with a cell renderer. */
 type ColumnViewColumn<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter" | "id" | "title"> & {
@@ -186,8 +189,6 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
     Omit<ItemSizeProps, "estimatedItemWidth"> & {
         /** Columns to render, in order; each carries its own cell renderer. */
         columns: ColumnViewColumn<T>[];
-        /** Renders the header shown above each section. */
-        renderHeader?: ListSectionRenderer<S> | null | undefined;
         /** Resolves the props of the row carrying one item's cells, such as its screen-reader label. */
         rowProps?: ListRowPropsResolver<T> | null | undefined;
     };
@@ -200,7 +201,7 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
  */
 type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
-    "columns" | "model" | "headerFactory" | "rowFactory" | keyof ColumnViewOwnProps<T, S>
+    "children" | "columns" | "model" | "headerFactory" | "rowFactory" | keyof ColumnViewOwnProps<T, S>
 > &
 ColumnViewOwnProps<T, S>;
 
@@ -214,8 +215,6 @@ type DropDownOwnProps<T, S> = SourceProps<T, S> & {
     renderItem?: ListItemRenderer<T> | null | undefined;
     /** Renderer for items in the open popup list, falling back to renderItem when omitted. */
     renderListItem?: ListItemRenderer<T> | null | undefined;
-    /** Renderer for section headers in the popup list. */
-    renderHeader?: ListSectionRenderer<S> | null | undefined;
 };
 
 /** A drop-down-shaped widget's props with its model and factories swapped for the declarative collection props. */
@@ -257,8 +256,6 @@ type ListViewOwnProps<T, S> = ItemSizeProps &
     FlatnessProps & {
         /** Renders the contents of one row. */
         renderItem: ListItemRenderer<T>;
-        /** Renders the header shown above each section. */
-        renderHeader?: ListSectionRenderer<S> | null | undefined;
     };
 
 /**

@@ -5,6 +5,7 @@ import type {
     AdwSpinRowProps,
     AdwSwitchRowProps,
 } from "@gtkx/jsx/adw";
+import type { DistributedOmit } from "@gtkx/utils";
 import type { FieldPath, FieldPathByValue, FieldValues, UseControllerProps } from "react-hook-form";
 
 /** A form field path whose value can be represented by a GTKX control. */
@@ -59,7 +60,7 @@ type ComboRowProps<
     TTransformedValues = TFieldValues,
     TItem = unknown,
     TSection = unknown,
-> = Omit<BaseComboRowProps<TItem, TSection>, "accessibleInvalid" | "selectedId"> &
+> = DistributedOmit<BaseComboRowProps<TItem, TSection>, "accessibleInvalid" | "selectedId"> &
     FormFieldProps<TFieldValues, TName, TTransformedValues>;
 
 export {

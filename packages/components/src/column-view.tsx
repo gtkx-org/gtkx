@@ -45,7 +45,6 @@ const COLUMN_VIEW_PROPS = [
     "sortOrder",
     "onSortChanged",
     "estimatedItemHeight",
-    "children",
     "ref",
 ] as const satisfies (keyof ColumnViewProps)[];
 
