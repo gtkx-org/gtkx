@@ -1,7 +1,16 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcut, GtkShortcutController, GtkVideo } from "@gtkx/jsx/gtk";
+import {
+    GtkButton,
+    GtkCallbackAction,
+    GtkHeaderBar,
+    GtkImage,
+    GtkShortcut,
+    GtkShortcutController,
+    GtkShortcutTrigger,
+    GtkVideo,
+} from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
 import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
@@ -176,12 +185,16 @@ function VideoPlayerDemo() {
                     scope={Gtk.ShortcutScope.GLOBAL}
                     shortcuts={(
                         <GtkShortcut
-                            trigger={Gtk.ShortcutTrigger.parseString("F11")}
-                            action={Gtk.CallbackAction.new(() => {
-                                handleToggleFullscreen();
+                            trigger={<GtkShortcutTrigger accelerator="F11" />}
+                            action={(
+                                <GtkCallbackAction
+                                    callback={() => {
+                                        handleToggleFullscreen();
 
-                                return true;
-                            })}
+                                        return true;
+                                    }}
+                                />
+                            )}
                         />
                     )}
                 />

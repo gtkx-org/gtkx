@@ -6,6 +6,18 @@ import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { CSSProperties, ReactNode } from "react";
 
+declare const constructOnlyProps: unique symbol;
+
+type ConstructOnlyMetadata<ConstructOnly extends PropertyKey> = Readonly<Record<ConstructOnly, true>>;
+
+type GeneratedElementProps<Props, ConstructOnly extends PropertyKey = never> = Props & {
+    readonly [constructOnlyProps]?: ConstructOnlyMetadata<ConstructOnly>;
+};
+
+type ConstructOnlyPropNames<Props> = typeof constructOnlyProps extends keyof Props
+    ? keyof NonNullable<Props[typeof constructOnlyProps]>
+    : never;
+
 /** One entry of a `GMenu`'s `items` prop; `submenu` and `section` nest further menus. */
 type MenuItem = {
     /** Text shown for the entry, or the heading of the submenu or section it introduces. */
@@ -221,6 +233,14 @@ type GtkShortcutControllerProps = {
     shortcuts?: ReactNode | null | undefined;
 };
 
+type GtkCallbackActionElementProps = {
+    callback: Gtk.ShortcutFunc;
+} & GeneratedElementProps<object, "callback">;
+
+type GtkShortcutTriggerElementProps = {
+    accelerator: string;
+} & GeneratedElementProps<object, "accelerator">;
+
 /** Props of a `Gtk.Overlay` element, whose `children` is the widget the overlays sit above. */
 type GtkOverlayProps = {
     /** Widgets stacked over the main child. */
@@ -385,6 +405,10 @@ type AdwMultiLayoutViewProps = {
 };
 
 export {
+    type ConstructOnlyMetadata,
+    type ConstructOnlyPropNames,
+    type GeneratedElementProps,
+    type constructOnlyProps,
     type MenuItem,
     type VflConstraints,
     type ScaleMark,
@@ -403,6 +427,8 @@ export {
     type MenuItemProps,
     type AdwToggleGroupProps,
     type GtkShortcutControllerProps,
+    type GtkCallbackActionElementProps,
+    type GtkShortcutTriggerElementProps,
     type GtkOverlayProps,
     type GtkTextChildAnchorProps,
     type GtkConstraintLayoutProps,

@@ -57,12 +57,12 @@ type ModuleExport = {
     export: string;
 };
 
-type ElementPropsExport = ModuleExport & { composition?: "intersection" };
+type ElementPropsExport = ModuleExport & {
+    composition?: "factory" | "intersection";
+    constructOnly?: string[];
+};
 
-/**
- * How one GLib type is rendered. `component`, `props` and `omittedProps` are inert at runtime; they are
- * read only by codegen.
- */
+/** How one GLib type is rendered. */
 type ElementConfig<T extends GObject.Object = GObject.Object> = {
     /** The element has no GObject of its own; its parent container creates one, as it does for pages. */
     isLazy?: boolean;

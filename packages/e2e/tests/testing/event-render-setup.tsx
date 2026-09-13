@@ -6,6 +6,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
     GtkButton,
+    GtkCallbackAction,
     GtkDragSource,
     GtkDropTarget,
     GtkLabel,
@@ -32,7 +33,7 @@ type RenderedDragAndDropPair = {
 };
 
 type ShortcutHostOptions = {
-    trigger: Gtk.ShortcutTrigger;
+    trigger: ComponentProps<typeof GtkShortcut>["trigger"];
     isSensitive?: boolean;
     isHandled?: boolean;
     phase?: Gtk.PropagationPhase;
@@ -84,7 +85,10 @@ async function renderShortcutHost(options: ShortcutHostOptions): Promise<Rendere
                         propagationPhase={options.phase}
                         scope={options.scope}
                         shortcuts={(
-                            <GtkShortcut trigger={options.trigger} action={Gtk.CallbackAction.new(onActivate)} />
+                            <GtkShortcut
+                                trigger={options.trigger}
+                                action={<GtkCallbackAction callback={onActivate} />}
+                            />
                         )}
                     />
                 )}

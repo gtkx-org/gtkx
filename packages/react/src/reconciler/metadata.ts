@@ -22,6 +22,7 @@ type TypeInfo = {
     signals: Record<string, string>;
     userEventSignals: Set<string>;
     behaviors: ElementBehavior[];
+    createProps: Set<string>;
     declaredConstructOnly: Set<string>;
     isLazy: boolean;
     constructOnly: Set<string>;
@@ -89,9 +90,16 @@ const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
 };
 
 const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
+    const config = ELEMENTS[ancestor];
     Object.assign(info.signals, registeredElementSignals[ancestor] ?? signals[ancestor] ?? {});
     addAll(info.userEventSignals, userEventSignals[ancestor]);
-    info.behaviors.push(...(ELEMENTS[ancestor]?.behaviors ?? []));
+
+    if (config?.props?.composition === "factory" && ancestor !== info.typeName) {
+        return;
+    }
+
+    info.behaviors.push(...(config?.behaviors ?? []));
+    addAll(info.declaredConstructOnly, config?.props?.constructOnly);
 };
 
 const resolveProperty = (info: TypeInfo, name: string, entry: PropertyEntry): void => {
@@ -124,6 +132,20 @@ const resolveBehaviorFlags = (info: TypeInfo): void => {
     }
 };
 
+const resolveCreateProps = (info: TypeInfo): void => {
+    const config = ELEMENTS[info.typeName];
+    const behaviors = config?.behaviors ?? [];
+
+    for (const behavior of behaviors) {
+        if (behavior.create === undefined) {
+            continue;
+        }
+
+        addAll(info.createProps, config?.props?.constructOnly);
+        addAll(info.createProps, behavior.constructOnly);
+    }
+};
+
 const buildTypeInfo = (name: string): TypeInfo => {
     const chain = ancestryFor(name);
 
@@ -133,6 +155,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
         signals: {},
         userEventSignals: new Set(),
         behaviors: [],
+        createProps: new Set(),
         declaredConstructOnly: new Set(),
         isLazy: false,
         constructOnly: new Set(),
@@ -145,6 +168,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
     }
 
     resolveBehaviorFlags(info);
+    resolveCreateProps(info);
     info.isLazy = chain.some((ancestor) => ELEMENTS[ancestor]?.isLazy === true);
 
     for (const ancestor of chain.toReversed()) {

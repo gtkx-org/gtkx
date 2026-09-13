@@ -15,6 +15,7 @@ import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkButton,
+    GtkCallbackAction,
     GtkLabel,
     GtkMenuButton,
     GtkNotebook,
@@ -22,6 +23,7 @@ import {
     GtkScrolledWindow,
     GtkShortcut,
     GtkShortcutController,
+    GtkShortcutTrigger,
     GtkToggleButton,
     GtkWindow,
 } from "@gtkx/jsx/gtk";
@@ -274,12 +276,16 @@ const AppHeaderBar = ({ hasDemo, isSearchActive, onRun, onSearchToggle }: AppHea
 
 const shortcut = (accelerator: string, run: () => void) => (
     <GtkShortcut
-        trigger={Gtk.ShortcutTrigger.parseString(accelerator)}
-        action={Gtk.CallbackAction.new(() => {
-            run();
+        trigger={<GtkShortcutTrigger accelerator={accelerator} />}
+        action={(
+            <GtkCallbackAction
+                callback={() => {
+                    run();
 
-            return true;
-        })}
+                    return true;
+                }}
+            />
+        )}
     />
 );
 

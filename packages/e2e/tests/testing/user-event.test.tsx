@@ -24,6 +24,7 @@ import {
     GtkListBoxRow,
     GtkShortcut,
     GtkShortcutController,
+    GtkShortcutTrigger,
     GtkSwitch,
     GtkTextBuffer,
     GtkTextTag,
@@ -215,7 +216,7 @@ const delegateKeyPressOrder = async (phase?: Gtk.PropagationPhase): Promise<stri
 
 const pressShortcutFromField = async (options: Omit<ShortcutHostOptions, "trigger">): Promise<Mock<() => boolean>> => {
     const { findByName, onActivate } = await renderShortcutHost({
-        trigger: Gtk.ShortcutTrigger.parseString("F5"),
+        trigger: <GtkShortcutTrigger accelerator="F5" />,
         ...options,
     });
 
@@ -909,17 +910,14 @@ describe("userEvent.dragAndDrop", () => {
 
 describe("userEvent.keyboard: shortcuts", () => {
     it("activates keyval and alternative triggers, and ignores keys that do not match", async () => {
-        const keyval = await renderShortcutHost({ trigger: Gtk.ShortcutTrigger.parseString("F5") });
+        const keyval = await renderShortcutHost({ trigger: <GtkShortcutTrigger accelerator="F5" /> });
         await userEvent.keyboard(keyval.host, "{F5}");
         expect(keyval.onActivate).toHaveBeenCalledTimes(1);
         await userEvent.keyboard(keyval.host, "{F9}");
         expect(keyval.onActivate).toHaveBeenCalledTimes(1);
 
         const alternative = await renderShortcutHost({
-            trigger: Gtk.AlternativeTrigger.new(
-                Gtk.ShortcutTrigger.parseString("F6"),
-                Gtk.ShortcutTrigger.parseString("F7"),
-            ),
+            trigger: <GtkShortcutTrigger accelerator="F6|F7" />,
         });
 
         await userEvent.keyboard(alternative.host, "{F6}");
@@ -929,7 +927,7 @@ describe("userEvent.keyboard: shortcuts", () => {
 
     it("retains a held modifier across calls until it is released", async () => {
         const { host, onActivate } = await renderShortcutHost({
-            trigger: Gtk.ShortcutTrigger.parseString("<Shift>F5"),
+            trigger: <GtkShortcutTrigger accelerator="<Shift>F5" />,
         });
 
         await userEvent.keyboard(host, "{Shift>}");

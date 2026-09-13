@@ -7,11 +7,14 @@ import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBR
 
 const WORKSPACE = fileURLToPath(new URL("../../..", import.meta.url));
 const TYPESCRIPT_CLI = join(WORKSPACE, "node_modules/typescript/bin/tsc");
-const PACKAGES = ["cairo", "config", "css", "native", "react", "runtime", "utils"];
-const ACCEPTED = `import { Dialog, SpinRow, SplitButton } from "@gtkx/gi/adw";
+const PACKAGES = ["cairo", "components", "config", "css", "native", "react", "runtime", "utils"];
+const ACCEPTED = `import type { ComboRowProps, DropDownProps } from "@gtkx/components";
+import { Dialog, SpinRow, SplitButton } from "@gtkx/gi/adw";
 import { Action, DBusInterfaceSkeleton, type DBusInterfaceInfo, SimpleAction } from "@gtkx/gi/gio";
 import { ArrowType, Box, Button, CellAreaBox, CellRendererText, Orientation } from "@gtkx/gi/gtk";
 import type { AdwToggleGroupProps } from "@gtkx/jsx/adw";
+import { GtkCallbackAction, GtkKeyvalTrigger, GtkShortcutTrigger } from "@gtkx/jsx/gtk";
+import { createElement } from "react";
 
 declare const dialog: Dialog;
 declare const row: SpinRow;
@@ -29,6 +32,21 @@ export const info: DBusInterfaceInfo = skeleton.getInfo();
 action.enabled = true;
 export const selections: AdwToggleGroupProps[] = [{}, { active: 0 }, { activeName: "first" }];
 export const cells = new CellAreaBox().packStart(new CellRendererText(), true, false, false);
+export const shortcutElements = [
+    createElement(GtkShortcutTrigger, { accelerator: "<Control>s" }),
+    createElement(GtkCallbackAction, { callback: () => true }),
+    createElement(GtkKeyvalTrigger, { keyval: 65 }),
+];
+export const dropDownProps: DropDownProps<string> = {
+    items: [{ id: "first", value: "First" }],
+    selectedId: "first",
+    onSelectionChanged: (id) => id,
+};
+export const comboRowProps: ComboRowProps<string> = {
+    items: [{ id: "first", value: "First" }],
+    selectedId: "first",
+    onSelectionChanged: (id) => id,
+};
 
 export function interfaceName(value: unknown): string {
     return value instanceof Action ? value.getName() : "";
@@ -44,6 +62,27 @@ export const direction: TextDirection = new SplitButton().getDirection();
 `,
     "exclusive-props.ts": `import type { AdwToggleGroupProps } from "@gtkx/jsx/adw";
 export const props: AdwToggleGroupProps = {active: 0, activeName: "first"};
+`,
+    "missing-shortcut-trigger-prop.ts": `import { GtkShortcutTrigger } from "@gtkx/jsx/gtk";
+import { createElement } from "react";
+createElement(GtkShortcutTrigger, {});
+`,
+    "missing-callback-action-prop.ts": `import { GtkCallbackAction } from "@gtkx/jsx/gtk";
+import { createElement } from "react";
+createElement(GtkCallbackAction, {});
+`,
+    "parsed-trigger-prop-on-keyval.ts": `import { GtkKeyvalTrigger } from "@gtkx/jsx/gtk";
+import { createElement } from "react";
+createElement(GtkKeyvalTrigger, { accelerator: "F5" });
+`,
+    "nullable-constructor-result.ts": `import { ShortcutTrigger } from "@gtkx/gi/gtk";
+export const trigger: ShortcutTrigger = ShortcutTrigger.parseString("F5");
+`,
+    "nullable-dropdown-selection.ts": `import type { DropDownProps } from "@gtkx/components";
+export const props: DropDownProps = { selectedId: null };
+`,
+    "nullable-combo-row-selection.ts": `import type { ComboRowProps } from "@gtkx/components";
+export const props: ComboRowProps = { selectedId: null };
 `,
 };
 

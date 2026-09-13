@@ -55,7 +55,7 @@ const constructInput = (info: TypeInfo, props: Props): Props =>
         (value, name) =>
             value !== undefined &&
             name !== "cssClasses" &&
-            (info.constructOnly.has(name) || info.construct.has(name)),
+            (info.createProps.has(name) || info.constructOnly.has(name) || info.construct.has(name)),
     );
 
 const instantiate = (typeName: string, type: bigint, input: Props): GObject.Object => {

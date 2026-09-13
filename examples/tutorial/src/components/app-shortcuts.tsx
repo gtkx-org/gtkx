@@ -1,11 +1,19 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkShortcut, GtkShortcutController } from "@gtkx/jsx/gtk";
+import {
+    GtkCallbackAction,
+    GtkShortcut,
+    GtkShortcutController,
+    GtkShortcutTrigger,
+} from "@gtkx/jsx/gtk";
 import { openTaskId } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import { useRequestDeleteTask } from "./dialogs.js";
 
 const shortcut = (accelerator: string, run: () => boolean) => (
-    <GtkShortcut trigger={Gtk.ShortcutTrigger.parseString(accelerator)} action={Gtk.CallbackAction.new(run)} />
+    <GtkShortcut
+        trigger={<GtkShortcutTrigger accelerator={accelerator} />}
+        action={<GtkCallbackAction callback={run} />}
+    />
 );
 
 export const AppShortcuts = () => {

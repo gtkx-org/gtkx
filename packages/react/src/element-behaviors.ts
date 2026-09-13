@@ -186,6 +186,24 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
             ),
         ],
     },
+    GtkCallbackAction: {
+        behaviors: [{
+            create: (props) => Gtk.CallbackAction.new(props.callback as Gtk.ShortcutFunc),
+        }],
+    },
+    GtkShortcutTrigger: {
+        behaviors: [{
+            create: (props) => {
+                const trigger = Gtk.ShortcutTrigger.parseString(props.accelerator as string);
+
+                if (trigger === null) {
+                    throw new Error("Invalid shortcut accelerator");
+                }
+
+                return trigger;
+            },
+        }],
+    },
     GtkTextChildAnchor: {
         behaviors: [{ create: () => Gtk.TextChildAnchor.new() }],
     },
@@ -218,7 +236,6 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GMenuItem: {
         behaviors: [
-            { constructOnly: ["label", "action"] },
             value<Gio.MenuItem, string | null>("label", (item, label) => {
                 item.setLabel(label);
             }),

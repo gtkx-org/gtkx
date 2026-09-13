@@ -383,12 +383,20 @@ Create `src/components/app-shortcuts.tsx`:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkShortcut, GtkShortcutController } from "@gtkx/jsx/gtk";
+import {
+    GtkCallbackAction,
+    GtkShortcut,
+    GtkShortcutController,
+    GtkShortcutTrigger,
+} from "@gtkx/jsx/gtk";
 import { openTaskId } from "../navigation.js";
 import { useStore } from "../store/index.js";
 
 const shortcut = (accelerator: string, run: () => boolean) => (
-    <GtkShortcut trigger={Gtk.ShortcutTrigger.parseString(accelerator)} action={Gtk.CallbackAction.new(run)} />
+    <GtkShortcut
+        trigger={<GtkShortcutTrigger accelerator={accelerator} />}
+        action={<GtkCallbackAction callback={run} />}
+    />
 );
 
 export const AppShortcuts = () => {
@@ -419,7 +427,7 @@ export const AppShortcuts = () => {
 };
 ```
 
-A shortcut pairs a trigger with an action. `Gtk.ShortcutTrigger.parseString` reads the same accelerator strings you have been writing, and `Gtk.CallbackAction.new` wraps a function whose return value reports what happened to the key.
+`GtkShortcutTrigger` accepts an accelerator string, while `GtkCallbackAction` runs the matching callback. Its return value reports whether the shortcut handled the key.
 
 `scope={Gtk.ShortcutScope.GLOBAL}` makes these fire wherever focus sits inside the window. Leave it out and the keys work only while focus is on the controller's own widget, which for a window-level controller is almost never what you want.
 

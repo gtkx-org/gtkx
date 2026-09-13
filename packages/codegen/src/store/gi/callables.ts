@@ -236,6 +236,18 @@ const renderCallableMember = (
     return `${doc}${renderBlock(header, body)}`;
 };
 
+const constructorReturnOverride = (
+    context: ModuleContext,
+    callable: GirFunction,
+    override: string | undefined,
+): string | undefined => {
+    if (override === undefined) {
+        return undefined;
+    }
+
+    return renderMethodReturnType(context, callable, override);
+};
+
 const renderStaticEntry = (
     context: ModuleContext,
     callable: GirFunction,
@@ -261,7 +273,7 @@ const renderStaticEntry = (
     return renderCallableMember(context, callable, {
         resolveName: options.resolveName,
         isStatic: true,
-        returnTypeOverride: options.returnTypeOverride,
+        returnTypeOverride: constructorReturnOverride(context, callable, options.returnTypeOverride),
     });
 };
 
@@ -432,7 +444,7 @@ const renderStaticSignature = (
         name,
         signature: memberSignatureText(context, callable, name, {
             finishFn,
-            returnTypeOverride: options?.returnTypeOverride,
+            returnTypeOverride: constructorReturnOverride(context, callable, options?.returnTypeOverride),
         }),
     };
 };

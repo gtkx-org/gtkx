@@ -19,6 +19,19 @@
           <type name="Base" c:type="StaticNarrowBase*"/>
         </return-value>
       </constructor>
+      <constructor name="parse" c:identifier="static_narrow_base_parse">
+        <return-value transfer-ownership="full" nullable="1">
+          <type name="Base" c:type="StaticNarrowBase*"/>
+        </return-value>
+        <parameters>
+          <parameter name="source" transfer-ownership="none">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+          <parameter name="consumed" direction="out" caller-allocates="0" transfer-ownership="none">
+            <type name="gint" c:type="gint*"/>
+          </parameter>
+        </parameters>
+      </constructor>
       <method name="lookup" c:identifier="static_narrow_base_lookup">
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>

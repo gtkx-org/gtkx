@@ -3,10 +3,21 @@ import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
+import type { GirIndex } from "./gir-index.js";
 import { externalPackageFor } from "../../gir/external-namespaces.js";
 import { renderBlock } from "../../writer/emit.js";
 import { getDoc } from "../gi/doc-spec.js";
-import { elementPropTypeFor } from "./element-prop-imports.js";
+import {
+    constructOnlyPropNames,
+    namedPropsConstructOnlyPropNames,
+    renderConstructOnlyUnion,
+    renderGeneratedElementProps,
+} from "./element-construct-only.js";
+import {
+    elementBasePropTypeFor,
+    elementPropTypeFor,
+    factoryElementPropTypeFor,
+} from "./element-prop-imports.js";
 import {
     ancestorGlibNames,
     collectInterfacePropsClasses,
@@ -25,6 +36,7 @@ type GenerateJsxOptions = {
     imports: ImportsBuilder;
     intrinsicElements: GlibNamedClass[];
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
+    girIndex: GirIndex;
 };
 
 type InterfaceBlockContext = {
@@ -35,6 +47,7 @@ type InterfaceBlockContext = {
 };
 
 type RenderPropBlockContext = {
+    girIndex: GirIndex;
     isIntrinsicElementAncestor: (candidate: GirClass) => boolean;
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
     targetNamespaceName: string;
@@ -56,6 +69,16 @@ const addGiNamespace = (imports: ImportsBuilder, namespaceName: string, alias: s
 
 const addReactBuiltin = (imports: ImportsBuilder, name: string): void => {
     imports.addNamed("react", name, true);
+};
+
+const addFactoryPropImports = (imports: ImportsBuilder, entries: GlibNamedClass[]): void => {
+    for (const entry of entries) {
+        const props = factoryElementPropTypeFor(entry.glibName);
+
+        if (props !== undefined) {
+            imports.addNamed(props.module, props.export, true);
+        }
+    }
 };
 
 const propLineName = (line: string): string | undefined => {
@@ -118,6 +141,7 @@ const generateJsxSection = (
     const propBlocks: string[] = [...interfaceResult.blocks];
 
     const blockContext: RenderPropBlockContext = {
+        girIndex: options.girIndex,
         isIntrinsicElementAncestor,
         intrinsicElementByGlibName,
         targetNamespaceName: targetNamespace.name,
@@ -139,19 +163,21 @@ const generateJsxSection = (
         addReactBuiltin(imports, "ReactElement");
     }
 
+    addFactoryPropImports(imports, namespaceElements);
+
     const source = [
         constLines.join("\n\n"),
         "",
         propBlocks.join("\n\n"),
         "",
-        renderJsxAugmentation(namespaceElements),
+        renderJsxAugmentation(namespaceElements, options.girIndex, imports),
     ].join("\n");
 
     return { source, intrinsicCount: intrinsicElementConsts.length };
 };
 
 const hasContainerProps: HasContainerProps = (glibName) =>
-    glibName !== undefined && elementPropTypeFor(glibName) !== undefined;
+    glibName !== undefined && elementBasePropTypeFor(glibName) !== undefined;
 
 const renderInterfacePropBlocks = (
     library: Library,
@@ -291,7 +317,7 @@ const renderInterfacePropsBlock = (
 
     const ownerLines = dedupePropLines(propLines);
     const prerequisiteExtends = interfacePrerequisiteExtends(iface, context);
-    const declared = elementPropTypeFor(glib);
+    const declared = elementBasePropTypeFor(glib);
 
     if (declared !== undefined) {
         const alias = `${declared.export}Base`;
@@ -316,10 +342,31 @@ const renderInterfacePropsBlock = (
     return { block, objectPropNames };
 };
 
-const renderJsxAugmentation = (namespaceElements: GlibNamedClass[]): string => {
+const renderJsxAugmentation = (
+    namespaceElements: GlibNamedClass[],
+    girIndex: GirIndex,
+    imports: ImportsBuilder,
+): string => {
     const elementLines = namespaceElements
-        .filter((entry) => !entry.klass.isAbstract)
-        .map((entry) => `${getDoc(entry.klass)}${entry.glibName}: ${entry.glibName}Props;`)
+        .filter(
+            (entry) => entry.klass.isAbstract ? factoryElementPropTypeFor(entry.glibName) !== undefined : true,
+        )
+        .map((entry) => {
+            const factoryProps = factoryElementPropTypeFor(entry.glibName);
+            let props = `${entry.glibName}Props`;
+
+            if (factoryProps !== undefined) {
+                props += ` & ${factoryProps.export}`;
+            }
+
+            const constructOnly = constructOnlyPropNames(girIndex, entry);
+
+            if (constructOnly.length > 0) {
+                imports.addNamed("@gtkx/react/internal", "GeneratedElementProps", true);
+            }
+
+            return `${getDoc(entry.klass)}${entry.glibName}: ${renderGeneratedElementProps(props, constructOnly)};`;
+        })
         .join("\n");
 
     const intrinsicInterface = renderBlock("interface IntrinsicElements", elementLines);
@@ -346,6 +393,16 @@ const renderPropBlock = (
 
     addGiNamespace(context.imports, entry.namespace.name, giNamespaceAlias(entry.namespace.name));
     const ownerLines = dedupePropLines(["ref?: Ref<Self | null> | undefined;", ...propLines]);
+    const constructOnly = namedPropsConstructOnlyPropNames(context.girIndex, entry);
+
+    if (constructOnly.length > 0) {
+        context.imports.addNamed("@gtkx/react/internal", "ConstructOnlyMetadata", true);
+        context.imports.addNamed("@gtkx/react/internal", "constructOnlyProps", true);
+        ownerLines.push(
+            `readonly [constructOnlyProps]?: ConstructOnlyMetadata<${renderConstructOnlyUnion(constructOnly)}>;`,
+        );
+    }
+
     const extendsList = resolveElementExtends(library, entry, context);
     const selfDefault = `${giNamespaceAlias(entry.namespace.name)}.${sanitizeTypeIdentifier(entry.klass.name)}`;
 
@@ -361,7 +418,7 @@ const renderPropBlock = (
 
 const resolveElementExtends = (library: Library, entry: GlibNamedClass, context: RenderPropBlockContext): string[] => {
     const extendsList: string[] = [];
-    const declared = elementPropTypeFor(entry.glibName);
+    const declared = elementBasePropTypeFor(entry.glibName);
 
     if (declared !== undefined) {
         const alias = `${declared.export}Base`;

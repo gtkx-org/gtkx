@@ -1,5 +1,12 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel, GtkListBox, GtkShortcut, GtkShortcutController } from "@gtkx/jsx/gtk";
+import {
+    GtkCallbackAction,
+    GtkLabel,
+    GtkListBox,
+    GtkShortcut,
+    GtkShortcutController,
+    GtkShortcutTrigger,
+} from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./shortcut-triggers.tsx?raw";
 
@@ -17,12 +24,11 @@ const shortcutTriggersDemo: Demo = {
     isResizable: false,
 };
 
-const logAction = (message: string): Gtk.ShortcutAction =>
-    Gtk.CallbackAction.new(() => {
-        console.log(message);
+const logAction = (message: string) => (): boolean => {
+    console.log(message);
 
-        return true;
-    });
+    return true;
+};
 
 function ShortcutTriggersDemo() {
     return (
@@ -34,8 +40,8 @@ function ShortcutTriggersDemo() {
                         scope={Gtk.ShortcutScope.GLOBAL}
                         shortcuts={(
                             <GtkShortcut
-                                trigger={Gtk.ShortcutTrigger.parseString("<Control>g")}
-                                action={logAction("activated Press Ctrl-G")}
+                                trigger={<GtkShortcutTrigger accelerator="<Control>g" />}
+                                action={<GtkCallbackAction callback={logAction("activated Press Ctrl-G")} />}
                             />
                         )}
                     />
@@ -50,8 +56,8 @@ function ShortcutTriggersDemo() {
                         scope={Gtk.ShortcutScope.GLOBAL}
                         shortcuts={(
                             <GtkShortcut
-                                trigger={Gtk.ShortcutTrigger.parseString("x")}
-                                action={logAction("activated Press X")}
+                                trigger={<GtkShortcutTrigger accelerator="x" />}
+                                action={<GtkCallbackAction callback={logAction("activated Press X")} />}
                             />
                         )}
                     />

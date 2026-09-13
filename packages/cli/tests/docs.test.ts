@@ -38,6 +38,8 @@ const PIXBUF_PAGE = "gdkpixbuf/pixbuf.md";
 const SIDEBAR_PAGE = "adw/sidebar.md";
 const APPLICATION_PAGE = "adw/application.md";
 const MENU_ITEM_PAGE = "gio/menu-item.md";
+const CALLBACK_ACTION_PAGE = "gtk/callback-action.md";
+const SHORTCUT_TRIGGER_PAGE = "gtk/shortcut-trigger.md";
 const DOCUMENTED_PAGE = "documented/note.md";
 const ASYNC_SACK_PAGE = "asyncpair/sack.md";
 const ASYNC_JOB_PAGE = "asyncpair/job.md";
@@ -215,6 +217,12 @@ describe("gtkx docs", () => {
         expect(page).toContain("### `section`");
         expect(page).toContain("`ReactNode`");
         expect(page).not.toContain("`MenuItem[]`");
+    });
+
+    it("documents factory-backed element props", () => {
+        expect(state.status).toBe(0);
+        expect(readPage(state.project, CALLBACK_ACTION_PAGE)).toContain("### `callback`");
+        expect(readPage(state.project, SHORTCUT_TRIGGER_PAGE)).toContain("### `accelerator`");
     });
 });
 
