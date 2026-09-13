@@ -405,7 +405,7 @@ The rule now follows inferred and nested public types without inspecting impleme
 
 All 89 remaining ESLint integration and rule cases pass, alongside both typechecks, package lint, Knip and independent review. The obsolete GTK/GLib prefix restriction and its tests are removed at the maintainer's request. React's own children type replaces the testing wrapper's duplicate shape. Existing no-new-comments exemptions now also cover object property constraints, registered class metadata and testing options; these declarations were kept simple instead of adding type indirection to evade documentation checks. Repository-wide Nx lint is the next validation checkpoint.
 
-The naming follow-up restores `gtkModel`, `GTK_LIB`, `useGObjectValue` and its cache type after tracing changes made for the removed prefix restriction. Stale suppression comments are removed. Remaining library names describe actual libraries. React, components and testing source typechecks and affected-file lint pass; these changes do not alter behavior or public APIs.
+The naming follow-up restores `gtkModel` and `GTK_LIB` after tracing changes made for the removed prefix restriction. Stale suppression comments are removed. GLib is the default, so `useObjectValue` and `ObjectValueCache` keep their names without the `G` prefix. This convention is recorded in the contributing principles. Remaining library names describe actual libraries. React, components and testing source typechecks and affected-file lint pass; these changes do not alter behavior or public APIs.
 
 ## Next work
 
