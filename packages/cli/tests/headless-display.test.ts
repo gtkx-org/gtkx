@@ -2,6 +2,7 @@ import {
     killProcessGroup,
     type ProcessGroupIdentity,
     processGroupIdentity,
+    resolveExecutable,
     spawnWithParentDeathSignal,
 } from "@gtkx/utils";
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
@@ -251,6 +252,26 @@ const displayProcess = (probe: DisplayProbe, isMatch: (entry: ProcessEntry) => b
 const displayExecutable = (probe: DisplayProbe, name: string): ProcessEntry =>
     displayProcess(probe, (entry) => entry.args[0]?.endsWith(`/${name}`) === true);
 
+const callNotificationService = (probe: DisplayProbe, method: string, ...args: string[]) =>
+    spawnSync(
+        resolveExecutable("gdbus"),
+        [
+            "call",
+            "--address",
+            `unix:path=${join(probe.runtimeDir, "bus")}`,
+            "--dest",
+            "org.freedesktop.Notifications",
+            "--object-path",
+            "/org/freedesktop/Notifications",
+            "--method",
+            `org.freedesktop.Notifications.${method}`,
+            ...args,
+        ],
+        { encoding: "utf8" },
+    );
+
+const returnedNotificationId = (output: string): number => Number(/uint32 (\d+)/.exec(output)?.[1]);
+
 const startDisplayProbe = async (compositor: "sway" | "weston" = "sway"): Promise<DisplayProbe> => {
     const root = mkdtempSync(join(tmpdir(), "gtkx-display-probe-"));
     const child = spawn(process.execPath, [...NODE_TYPESCRIPT_ARGS, headlessProbe(compositor)], {
@@ -492,6 +513,36 @@ const devProjectOptions = (prefix: string): CliProjectOptions => ({
 });
 
 describe("headless display process ownership", () => {
+    it("provides a conforming desktop notification sink", async () => {
+        const probe = await startDisplayProbe();
+
+        try {
+            expect(callNotificationService(probe, "GetServerInformation").status).toBe(0);
+            const first = callNotificationService(probe, "Notify", "probe", "0", "", "first", "", "[]", "{}", "0");
+            const replacement = callNotificationService(
+                probe,
+                "Notify",
+                "probe",
+                "41",
+                "",
+                "second",
+                "",
+                "[]",
+                "{}",
+                "0",
+            );
+
+            expect(first.status).toBe(0);
+            expect(returnedNotificationId(first.stdout)).toBe(1);
+            expect(replacement.status).toBe(0);
+            expect(returnedNotificationId(replacement.stdout)).toBe(41);
+            expect(callNotificationService(probe, "CloseNotification", "41").status).toBe(0);
+            expect(callNotificationService(probe, "CloseNotification", "41").status).not.toBe(0);
+        } finally {
+            stopProbe(probe);
+        }
+    });
+
     it("kills its exact display process groups when its parent is hard-killed", async () => {
         const probe = await startDisplayProbe();
 
