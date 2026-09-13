@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import type { DrawerRouterFactory } from "./drawer-router.js";
 import type {
     DrawerNavigationEventMap,
+    DrawerNavigationHelpers,
     DrawerNavigationOptions,
     DrawerNavigationProp,
     DrawerNavigatorProps,
@@ -94,7 +95,7 @@ function DrawerNavigator({
         <NavigationContent>
             <DrawerView
                 state={state}
-                navigation={navigation}
+                navigation={navigation as DrawerNavigationHelpers}
                 descriptors={descriptors}
                 drawerContent={drawerContent}
                 collapsed={collapsed}

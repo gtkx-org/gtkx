@@ -1,5 +1,5 @@
 import { createNavigationContainerRef } from "@gtkx/navigation";
-import { act, render, screen, within } from "@gtkx/testing";
+import { act, render, screen, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import {
     buildStack,
@@ -229,6 +229,23 @@ describe("stack - edge cases", () => {
 });
 
 describe("stack - closing page", () => {
+    it("keeps the latest header while the page animates away", async () => {
+        const { rerender } = await renderStack({ isAnimated: true, details: { headerTitle: "Original Header" } });
+        await clickButton("Go to details");
+        await waitFor(() => {
+            expectHidden("Home Content");
+        });
+        await rerender(buildStack({ isAnimated: true, details: { headerTitle: "Updated Header" } }));
+        await screen.findByText("Updated Header");
+        await clickButton("Go back");
+        expectVisible("Updated Header");
+        expectHidden("Original Header");
+        await waitFor(() => {
+            expectHidden("Updated Header");
+        });
+        expectVisible("Home Content");
+    });
+
     it("shows the outgoing page's latest params while it animates away", async () => {
         await renderStack({ isAnimated: true });
         await clickButton("Go to details");

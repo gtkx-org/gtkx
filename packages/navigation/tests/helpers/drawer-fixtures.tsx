@@ -16,7 +16,8 @@ import { screen, within } from "@gtkx/testing";
 import { useEffect } from "react";
 import { expect } from "vitest";
 
-type WidgetClass<T> = abstract new (...args: never[]) => T;
+import { getAncestor } from "./widget-ancestors.js";
+
 type StateSpy = Mock<(state: NavigationState | undefined) => void>;
 type ScreenConfig = { name: string; text: string; options?: DrawerNavigationOptions };
 type MountSpyProps = { text: string; onMount: () => void };
@@ -107,20 +108,6 @@ const drawerScreens = (configs: ScreenConfig[]): ReactNode =>
             {() => <DrawerScreen text={text} />}
         </Drawer.Screen>
     ));
-
-const getAncestor = <T,>(widget: Gtk.Widget, type: WidgetClass<T>): T => {
-    let current: Gtk.Widget | null = widget;
-
-    while (current !== null) {
-        if (current instanceof type) {
-            return current;
-        }
-
-        current = current.getParent();
-    }
-
-    throw new Error("The widget has no ancestor of the requested type");
-};
 
 const sidebarList = (): Gtk.ListBox => {
     const list = screen.getByRole(Gtk.AccessibleRole.LIST);

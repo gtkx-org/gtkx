@@ -33,18 +33,6 @@ const neededKeys = (state: StackState, closing: StackDescriptorMap, offset: numb
 const hasSameMembers = (left: readonly string[], right: readonly string[]): boolean =>
     left.length === right.length && left.every((key) => right.includes(key));
 
-const hasRefreshedFocus = (tracking: PageTracking, descriptors: StackDescriptorMap): boolean => {
-    const { focusedKey } = tracking;
-
-    if (focusedKey === undefined) {
-        return false;
-    }
-
-    const next = descriptors[focusedKey];
-
-    return next !== undefined && tracking.descriptors[focusedKey]?.route !== next.route;
-};
-
 const appendOrder = (previous: readonly string[], needed: readonly string[]): string[] => [
     ...previous.filter((key) => needed.includes(key)),
     ...needed.filter((key) => !previous.includes(key)),
@@ -114,7 +102,7 @@ const useStackPages = (
 
     if (!hasSameMembers(tracking.order, neededKeys(state, tracking.closing, offset)) ||
         tracking.focusedKey !== getFocusedKey(state, offset) ||
-        hasRefreshedFocus(tracking, descriptors)) {
+        tracking.descriptors !== descriptors) {
         setTracking(advance(tracking, state, descriptors, offset));
     }
 

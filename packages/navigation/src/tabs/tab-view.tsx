@@ -8,7 +8,6 @@ import type { TabDescriptor, TabDescriptorMap, TabNavigationConfig, TabNavigatio
 import { HeaderBar } from "../shared/header-bar.js";
 import { getFocusedRoute, requireDescriptor } from "../shared/routes.js";
 import { ScenePage } from "../shared/scene-page.js";
-import { useLoadedRoutes } from "../shared/use-loaded-routes.js";
 import { usePopToTopOnBlur } from "../shared/use-pop-to-top-on-blur.js";
 
 type TabViewProps = TabNavigationConfig & {
@@ -88,7 +87,6 @@ const TabView = ({ state, navigation, descriptors, tabBarPosition = "top" }: Tab
     const [stack, setStack] = useState<Adw.ViewStack | null>(null);
     const focused = getFocusedRoute(state);
     const descriptor = requireDescriptor(descriptors, focused.key);
-    const loaded = useLoadedRoutes(focused.key, state.preloadedRouteKeys);
     const onVisibleChildChanged = useTabSelection(navigation);
 
     const viewSwitcher = stack === null
@@ -115,7 +113,7 @@ const TabView = ({ state, navigation, descriptors, tabBarPosition = "top" }: Tab
                     <TabPage
                         key={route.key}
                         descriptor={requireDescriptor(descriptors, route.key)}
-                        isLoaded={loaded.has(route.key)}
+                        isLoaded={route.key === focused.key || state.preloadedRouteKeys.includes(route.key)}
                     />
                 ))}
             </AdwViewStack>

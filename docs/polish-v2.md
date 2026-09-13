@@ -44,7 +44,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `css` | 21 | All files read twice; named-color and registry fixes validated; documentation corrected |
 | `forms` | 17 | All current files read; callback refs, shared types and explicit ComboRow IDs fixed; repeat review continues |
 | `i18n` | 17 | All files read; contextual lookup and locale formatting fixed; repeat review found no further confirmed defect |
-| `navigation` | 66 | Pending |
+| `navigation` | 66 | All files read; stack option lifetimes, closing headers and lazy route restoration fixed; repeat review found no further local defect |
 | `storybook` | 31 | Pending |
 | `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
 | `cli` | 262 | Generated consumer and catalog-reference fixes verified; full package pending |
@@ -364,6 +364,14 @@ All 12 tracked Vitest files were read with the CLI consumers and headless-displa
 The private notification sink now implements the required server-information method, assigns and replaces notification IDs consistently, reports only supported capabilities, tracks open notifications and emits the close signal. A real D-Bus integration case exercises server information, allocation, replacement, successful close and rejection of an already closed ID through the complete headless display process. All 28 headless cases pass together. Source and test typechecks, lint and the package build pass.
 
 The Wayland input helper remains local after a dependency review. GTK clients require persistent virtual pointer and keyboard capabilities; a real Sway probe confirmed that a configured fallback seat without devices advertises no capabilities, and no maintained package met the required compositor protocol contract. The missing server declarations in `@homebridge/dbus-native` 0.7.9 are recorded in the upstream tracker; GTKX retains its declaration augmentation until upstream includes them. A repeat review found no further confirmed defect in the package.
+
+### Navigation package audit
+
+All 66 tracked navigation files and both guides were read. Stack options retained removed routes and their header closures for the navigator's lifetime. Options now follow mounted and closing pages, and descriptor snapshots refresh when header options change so closing animations retain the latest header. Tabs and drawers now keep lazy-loading state on each mounted page instead of retaining every route key indefinitely.
+
+Public regressions cover header collection across repeated navigation, updated headers during closing animations, native page removal after pop, replace and reset, and lazy restoration of a previously removed route key. The header and lazy restoration regressions fail against the previous implementations. All 209 native integration cases pass across 28 files, alongside source/test types, lint and Knip. Both header and return-navigation screenshots were visually inspected. Repeated fixture traversal is shared, and the constant-only theme test is removed.
+
+A repeat package review found no further navigation-local defect. Retained renderer metadata is being investigated separately in React because native page removal alone does not establish release of the former React properties.
 
 ## Next work
 
