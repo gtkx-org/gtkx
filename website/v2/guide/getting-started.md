@@ -47,17 +47,7 @@ If the destination already exists, `--overwrite` lists and replaces only files o
 unrelated files in place. The command refuses a destination reached through a symbolic link. Without `--overwrite`,
 an existing scaffold-owned file stops the command before anything is changed.
 
-### If the install stops on a fresh release
-
-pnpm holds back packages published in the last 24 hours, so scaffolding on the day a GTKX version ships can stop with `ERR_PNPM_NO_MATURE_MATCHING_VERSION` or `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`. The scaffolder prints the exact versions pnpm rejected and the `pnpm add` commands that finish the install. Run those once the versions clear the window, or allow them up front in `pnpm-workspace.yaml`:
-
-```yaml
-minimumReleaseAgeExclude:
-  - '@gtkx/react@2.0.0-beta.10'
-  - '@gtkx/runtime@2.0.0-beta.10'
-```
-
-The key belongs at the top level of the file, alongside `packages:` and `allowBuilds:`, never nested inside either. pnpm names only the versions the command it stopped on had to resolve, so a later run can name more; add each one to the same list.
+If dependency installation fails, the project files remain available. Resolve the package manager's error, then rerun its install command from the project directory. For pnpm's release-age restrictions, see the [pnpm documentation](https://pnpm.io/settings/dependency-resolution#minimumreleaseage).
 
 ## The dev loop
 
