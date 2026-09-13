@@ -1,6 +1,5 @@
 import { createXmlParser, parseXmlFile } from "../xml.js";
 
-/** An element of the parsed GIR XML: attributes under `@_`-prefixed keys, children under their tag names. */
 type RawNode = Record<string, unknown>;
 
 const GIR_LABEL = "GIR file";

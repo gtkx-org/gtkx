@@ -46,11 +46,8 @@ import {
     staticSectionBlocks,
 } from "./render.js";
 
-/** Shared state an element's reference page renders from. */
 type ElementPageContext = {
-    /** Parsed GIR the element, its ancestors, and the interfaces it implements are read from. */
     library: Library;
-    /** Resolves a GLib type name to the URL of its page, undefined when it has none. */
     linkFor: (glibName: string) => string | undefined;
 };
 
