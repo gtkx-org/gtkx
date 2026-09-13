@@ -1,5 +1,5 @@
 ---
-description: "Put an Adwaita window with a header bar on screen, and learn what mounted it."
+description: "Build the Tasks application shell with an Adwaita window and header bar."
 ---
 
 # Your First Window
@@ -25,7 +25,7 @@ tasks/
 └── vitest.config.ts
 ```
 
-`gtkx.config.ts` declares your application ID and the libraries codegen generates bindings for. `src/index.tsx` mounts the component tree. `src/app.tsx` is the file you work in; it holds the counter demo you are about to delete. `src/gtkx-env.d.ts` points TypeScript at the generated bindings, so every widget you write is typed without importing a type.
+`gtkx.config.ts` configures the application and generated bindings. `src/index.tsx` mounts the component tree, and `src/app.tsx` contains the counter demo you will replace. `src/gtkx-env.d.ts` connects TypeScript to the generated declarations.
 
 `gtkx.config.ts`:
 
@@ -47,9 +47,9 @@ export default defineConfig({
 });
 ```
 
-The application, window, and high-level surfaces on this page come from Adwaita rather than plain GTK4, establishing the foundation used throughout the tutorial. There is nothing to add for it: `v2DefaultLibraries` binds `Gtk-4.0` and `Adw-1` together, so `libraries` is only for what you want on top of them. A project that needed WebKit would name it there and nothing else.
+The tutorial uses Adwaita for application structure. On the stable release, `v2DefaultLibraries` includes Adwaita and GTK4; `libraries` lists any additional native libraries you need. See [Configuration and Codegen](/guide/configuration-and-codegen) for the configuration reference and future flags.
 
-If your application ID reads something else, change it to `com.gtkx.tutorial` now: the schema file, the notification identity, and the Flatpak all key off this string.
+Keep the application ID you chose in the introduction, and use it wherever later examples show `com.gtkx.tutorial`.
 
 ## The entry point
 
@@ -64,11 +64,11 @@ import { App } from "./app.js";
 createRoot().render(<App />);
 ```
 
-`createRoot()` gives you a React root backed by the GTKX reconciler. It is to GTK4 what React DOM is to the browser: it creates, updates, and destroys real GObject instances to match the tree your components return. With no argument it targets the process-level root, where an application element belongs.
+`createRoot()` creates the React root for the native application. GTKX creates and updates GObject instances from the JSX tree. With no argument, the root accepts the application element shown below.
 
 ## The application and its window
 
-Replace the whole of `src/app.tsx` with this. The scaffolder's `tests/app.test.tsx` covers the counter you are deleting, so delete that file along with it: [Appendix A](/tutorial/testing) writes the tests for Tasks from scratch. Leaving it there breaks `npm run typecheck` and `npm test` from here on, because it imports `App` as a default export and the file below has none.
+Replace `src/app.tsx` with the following. Also remove the scaffolder's `tests/app.test.tsx`, which tests the counter and imports its default export. [Testing](/tutorial/testing) adds tests for Tasks.
 
 `src/app.tsx`:
 
@@ -90,17 +90,17 @@ export function App() {
 }
 ```
 
-One rule covers both elements and the rest of the tutorial: **a component's name is the GObject type name, verbatim**. `AdwApplicationWindow` is the widget `AdwApplicationWindow`; `GtkListBox` is `GtkListBox`. Anything in the [GTK4](https://docs.gtk.org/gtk4/) or [Adwaita](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/) documentation is already a component. There is no wrapper to write and no list of supported widgets to check.
+Generated JSX elements use their GObject type names: `AdwApplicationWindow`, `GtkListBox`, and so on. The available elements come from your project's configured GIR libraries. Use the [generated element reference](/guide/configuration-and-codegen#generating-element-reference-docs) for their props and signals.
 
-Props follow the same rule: they are the widget's GObject properties, camelCased, so `width-request` becomes `widthRequest`. Signals get the `on` prefix and PascalCase, so `close-request` becomes `onCloseRequest`. Here it calls `quit()` to end the process when you close the last window.
+GObject properties become camelCase props, such as `widthRequest`. Signals become handlers such as `onCloseRequest`; here, closing the window calls `quit()` to unmount the application.
 
-`AdwApplication` starts the `Gtk.Application` when it mounts, taking its application ID from `gtkx.config.ts`. `AdwApplicationWindow` presents itself when it mounts and destroys itself when it unmounts: rendering a window opens it, removing it from the tree closes it. You never call `present()` anywhere in this app.
+`AdwApplication` takes its application ID from `gtkx.config.ts` and starts the application when it mounts. Rendering `AdwApplicationWindow` opens the window; removing it from the tree closes it.
 
-360 by 294 is the GNOME phone form factor, the smallest size a GNOME application is expected to handle. Committing to it now keeps the adaptive layout you build in [A Layout That Collapses](/tutorial/an-adaptive-layout) honest: any layout that stops working at that width fails while you are looking at it.
+The minimum size of 360 by 294 follows GNOME's [guidance for phone layouts](https://developer.gnome.org/hig/guidelines/adaptive.html#small-size-handling). Test at this size as you add the adaptive layout in [A Layout That Collapses](/tutorial/an-adaptive-layout).
 
 ## Giving the window a header bar
 
-An `AdwApplicationWindow` is freeform: its content area runs edge to edge with no titlebar, so nothing on screen shows the title you set and there is nothing to drag or close the window with. `AdwToolbarView` supplies that furniture: it holds your content and stacks bars above and below it.
+`AdwApplicationWindow` leaves its content area free for your layout. Add `AdwToolbarView` with an `AdwHeaderBar` to show the title and window controls above the content.
 
 `src/app.tsx`:
 
@@ -136,15 +136,15 @@ export function App() {
 }
 ```
 
-`topBar` takes JSX, which is the other rule to carry forward: **some props are container slots rather than values**. A widget with more than one place to put a child exposes each place as its own prop, filled with an element just as you would fill `children`. Props like `sidebar`, `content`, `prefix`, and `suffix` all work this way.
+`topBar` is a JSX slot for the header bar. The status page goes in `children`, the toolbar view's content slot. GTKX uses named slots where a native container has several places for children; see [the JSX prop model](/guide/configuration-and-codegen#the-jsx-prop-model).
 
-The empty `AdwHeaderBar` picks up the window's `title` on its own and draws the window controls. `AdwStatusPage` is the standard Adwaita empty state: an icon, a title, and a line of explanation, centered in whatever space it is given.
+The header bar picks up the window title. `AdwStatusPage` supplies the empty state until the next chapter adds tasks.
 
 ## Run it
 
 Save `src/app.tsx` and look at the window that has been open since the introduction. The counter is replaced by a window 360 points wide at its narrowest, titled **Tasks** in a header bar, with a checkbox icon centered above the words **No Tasks Yet**.
 
-Now change one string: set the status page title to `Nothing Here Yet` and save. The text in the open window changes. The window did not reopen, the process did not restart, and nothing flashed, because Fast Refresh patched the running widget tree in place. This is the loop you work in for the rest of the tutorial.
+Change the status page title to `Nothing Here Yet` and save. Fast Refresh updates the text in the open window.
 
 Set the title back to `No Tasks Yet` before moving on.
 

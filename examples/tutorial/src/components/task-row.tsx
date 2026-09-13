@@ -1,11 +1,12 @@
 import * as Gdk from "@gtkx/gi/gdk";
+import { markupEscapeText } from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { t } from "@gtkx/i18n";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkButton, GtkCheckButton, GtkDragSource, GtkDropTarget, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useNavigation } from "@gtkx/navigation";
-import { escapeMarkup, formatDue } from "../format.js";
+import { formatDue } from "../format.js";
 import { useStore } from "../store/index.js";
 import type { Task } from "../types.js";
 import { useRequestDeleteTask } from "./dialogs.js";
@@ -16,7 +17,8 @@ export const TaskRow = ({ task, canReorder }: { task: Task; canReorder: boolean 
     const setDone = useStore((state) => state.setDone);
     const setImportant = useStore((state) => state.setImportant);
     const reorder = useStore((state) => state.reorder);
-    const title = task.done ? `<s>${escapeMarkup(task.title)}</s>` : escapeMarkup(task.title);
+    const escapedTitle = markupEscapeText(task.title, -1);
+    const title = task.done ? `<s>${escapedTitle}</s>` : escapedTitle;
 
     return (
         <AdwActionRow

@@ -1,20 +1,16 @@
 ---
-description: "Move tasks into a zustand store and add one by typing in the list."
+description: "Connect an Adwaita entry row to a Zustand store to add tasks."
 ---
 
 # Adding Tasks with a Store
 
-In [Showing a List of Tasks](/tutorial/a-list-of-tasks) you rendered a hardcoded array as an Adwaita boxed list, and the only way to change what was on screen was to edit the source. Now you make the list writable. A store holds the tasks, and a row at the top of the card creates one.
+Connect the list from [Showing a List of Tasks](/tutorial/a-list-of-tasks) to a store, then add an entry row that creates tasks when you press Enter.
 
-## The problem with a constant
+## Shared task state
 
-The array in `task-list.tsx` is a `const` read by one component. Soon a checkbox flips `done`, a sidebar counts what is open per list, an editor rewrites a title, and a keyboard shortcut creates a task from a handler outside the list.
+Tasks will share state between the list, sidebar, editor, and keyboard actions. This tutorial uses [Zustand](https://zustand.docs.pmnd.rs/learn/getting-started/introduction), whose React hooks work with GTKX without an adapter. Its documentation covers store creation and subscriptions; this chapter connects that store to native widgets.
 
-Lift the array into `app.tsx` with `useState` and every component that touches a task needs data and a callback threaded down to it, so the components in between grow props they never use. Put it in a context and the threading goes away, but every consumer re-renders whenever any part of the value changes, and a provider has to sit above everything that reads it.
-
-An external store removes the middle. A component reads the fields it needs and calls the action it needs, with nothing in between.
-
-## Install zustand
+## Install Zustand
 
 From `tasks/`:
 
@@ -30,11 +26,9 @@ pnpm add zustand
 
 :::
 
-It belongs in `dependencies`, not `devDependencies`: the store runs in the shipped application.
-
 ## The seed data
 
-The tasks a fresh install starts with are data, not view code, so give them their own module.
+Move the initial tasks into a seed module.
 
 `src/store/seed.ts`:
 
@@ -87,7 +81,7 @@ export const seedTasks: Task[] = [
 ];
 ```
 
-The `task` helper fills in every required field, so each entry sets only the values that make it distinct rather than repeating the defaults. Due dates are computed relative to the day you run the app, so the Today view always has something in it.
+Relative due dates give the later Today view sample content whenever you run the app.
 
 ## The store
 
@@ -132,37 +126,19 @@ export const useStore = create<Store>()((set) => ({
 }));
 ```
 
-`create` takes a function that receives `set` and returns the initial state. Actions live in that same object beside the state they change, so there is no reducer file, no action type, and no dispatch. `addTask` is a plain function reachable from anywhere.
-
-`set` takes an updater that returns the fields to merge, so returning `{ tasks: [...] }` replaces `tasks` and leaves every other field alone. The array is always new, never mutated in place, because a component re-renders only when the value it selected stops being identical to the previous one.
-
-`addTask` trims the title and returns `null` when nothing is left, so pressing Enter on an empty entry creates nothing. It also returns the new id, which lets a caller open a task as soon as it exists in [Opening a Task](/tutorial/the-task-editor).
+`addTask` ignores blank titles and returns the new task's ID. The editor will use that ID in [Opening a Task](/tutorial/the-task-editor).
 
 ## Reading from the store
 
-Point the list at the store instead of the constant.
+Remove the module-level `TASKS` and `createdAt` constants from `task-list.tsx`, along with the `Task` type import. Add the store import:
 
 `src/components/task-list.tsx`:
 
-```tsx
-import { useStore } from "../store/index.js"; // [!code ++]
-
-export const TaskList = () => {
-    const TASKS: Task[] = [/* ... */]; // [!code --]
-    const tasks = useStore((state) => state.tasks); // [!code ++]
-    // ...
-};
+```ts
+import { useStore } from "../store/index.js";
 ```
 
-`useStore` takes a selector, subscribes the component to whatever that selector returns, and re-renders when the value changes by `Object.is`. Delete the `TASKS` constant and the `Task` import with it, since the rest of the component already maps over `tasks`.
-
-The rest of this tutorial follows one rule for reading: **select the smallest stable thing, and derive the rest during render.** `state.tasks` returns the same array reference until a task changes, so the component stays put. A selector that builds a fresh value on every call, such as `state.tasks.filter(...)`, produces an unstable snapshot. With zustand 5, that can trigger an infinite render loop because React sees a different value even when the store has not changed. Filtering and counting belong in ordinary functions called during render, which [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) builds.
-
-Actions follow the rule automatically. Their identity is fixed for the life of the store, so selecting one never triggers a re-render and never needs a dependency array:
-
-```tsx
-const addTask = useStore((state) => state.addTask);
-```
+Inside `TaskList`, select `state.tasks` and `state.addTask`, then change `TASKS.map` to `tasks.map`, as shown below. Select the stored array directly; Zustand's [selector guide](https://zustand.docs.pmnd.rs/learn/guides/prevent-rerenders-with-use-shallow) covers computed values. The tutorial adds filtering in [Smart Views, Filters, and Search](/tutorial/smart-views-and-search).
 
 ## The add row
 
@@ -196,9 +172,9 @@ export const TaskList = () => {
 
 Add `AdwEntryRow` to the import from `@gtkx/jsx/adw`.
 
-`onEntryActivated` shows the rules that govern every signal in GTKX. **A signal prop is `on` followed by the signal name in PascalCase**, so `entry-activated` becomes `onEntryActivated`, and any signal in the GTK4 or Adwaita documentation translates the same way. **The widget that emitted the signal arrives as the last argument**, the `self` above. This signal carries nothing else, so `self` is the only parameter. When a signal does carry arguments, they come first and the emitter follows them.
+`onEntryActivated` handles the native `entry-activated` signal. GTKX passes the emitting widget as the last argument; this signal has no other arguments, so the handler receives only `self`. See [the JSX prop model](/guide/configuration-and-codegen#the-jsx-prop-model) for signal conventions.
 
-`self` is what lets the handler clear the entry. Nothing binds this entry's text to a prop, so GTK4 owns it. Read the typed value with `self.text`, and clear it by assigning to the same property. This uncontrolled approach fits whenever a widget's value only matters at the moment it is submitted. Widgets whose value must stay in sync with the store are wired the other way, with a value prop and its change signal, and the next chapter builds one.
+The entry keeps its text in GTK until submission. The handler reads `self.text`, adds the task, and clears the entry. The next chapter connects controls whose values stay synchronized with the store.
 
 The `"personal"` passed as the list id is a placeholder while every task lives in one place. [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) replaces it with the list you are currently viewing.
 
@@ -206,7 +182,7 @@ The `"personal"` passed as the list id is a placeholder while every task lives i
 
 Save `task-list.tsx` and watch the window. An empty row titled "Add a task…" appears at the top of the card, above the seeded tasks. Type `Buy oat milk` into it and press Enter. The task appears at the bottom of the list and the entry clears, ready for the next one. Press Enter on the empty entry and nothing happens, because `addTask` trims the title to nothing and returns early.
 
-Now close the window, which ends the dev session, and run `npm run dev` again. Every task you typed is gone and the seeded tasks are back, because the store lives in memory and starts from `seedTasks` on each launch. That is the next chapter's job.
+Restart the app. The seeded tasks return and newly added tasks are gone because the store is still in memory. [Saving Tasks Between Runs](/tutorial/saving-to-disk) adds persistence.
 
 ## Next
 
