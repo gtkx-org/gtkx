@@ -421,6 +421,12 @@ The release packaging check found that importing `@gtkx/react/config` loaded the
 
 A subprocess regression copies the built React package into a fresh consumer without generated bindings and runs real codegen. It fails with the old export and passes after the move. All three configuration isolation cases and 46 custom-element/signal cases pass, alongside the affected builds, types, lint and independent review. Full release-consumer validation is pending the next serialized build checkpoint.
 
+### Development process shutdown follow-up
+
+The supervisor treated Node's `ChildProcess.killed` flag as confirmation of process exit. After forwarding a signal, that flag prevented the shutdown deadline from killing a runner whose event loop was blocked. Signal-derived exit statuses also treated every signal except SIGINT as SIGTERM.
+
+The supervisor now sends signals through `ChildProcess.kill` directly and reuses Node's process type. Exit statuses derive from Node's platform signal constants. Four public regressions fail against the previous implementation: hard-killed runner status, two leaked runners after timeout, and SIGHUP status. All 20 lifecycle and development integration cases pass, including graceful shutdown and existing reload behavior, alongside utils/CLI builds, test types, lint and independent review.
+
 ## Next work
 
 Continue repeat audits alongside the R2 string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
