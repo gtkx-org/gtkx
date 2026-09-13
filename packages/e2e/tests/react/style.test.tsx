@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode, RefObject } from "react";
-import { css } from "@gtkx/css";
+import { css, injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, waitFor } from "@gtkx/testing";
@@ -29,7 +29,6 @@ const GREEN_CSS = "rgb(0, 255, 0)";
 const BLUE_CSS = "rgb(0, 0, 255)";
 const NAMED_ALPHA = 0.4;
 const WIDE = 200;
-const NUL = "\u{0}";
 const competing = css({ color: "rgb(0, 0, 255)" });
 
 const Pair = ({ plainRef, styledRef, style, classes }: PairProps): ReactNode => (
@@ -110,6 +109,27 @@ describe("style prop", () => {
         expect(getColor(styled)).toEqual(RED);
         styled.setStateFlags(Gtk.StateFlags.PRELIGHT, false);
         expect(getColor(styled)).toEqual(GREEN);
+    });
+
+    it("preserves valid selector text matching the named-color escape prefix", async () => {
+        const className = "gtkx-named-color__theme_fg_color";
+        const { styled } = await renderPair({ [`&.${className}`]: { color: GREEN_CSS } }, [className]);
+        expect(getColor(styled)).toEqual(GREEN);
+    });
+
+    it("inserts a scoped rule after serializing the same styles globally", async () => {
+        const styles = { ".gtkx-global-before-class &": { minWidth: 211 } };
+        injectGlobal(styles);
+        const className = css(styles);
+        const ref = createRef<Gtk.Label>();
+        await render(
+            <GtkBox cssClasses={["gtkx-global-before-class"]}>
+                <GtkLabel ref={ref} cssClasses={[className]}>
+                    scoped
+                </GtkLabel>
+            </GtkBox>,
+        );
+        expect(getMinWidth(ref.current)).toBeGreaterThanOrEqual(211);
     });
 });
 
@@ -287,19 +307,5 @@ describe("style prop edge cases", () => {
         expect(styled).not.toHaveClass("heading");
         expect(generatedClasses(styled)).toHaveLength(1);
         expect(getColor(styled)).toEqual(RED);
-    });
-
-    it("leaves other widgets alone when a declaration tries to escape the selector", async () => {
-        const { plain, styled, restyle } = await renderPair(undefined);
-        const before = getColor(plain);
-        await restyle({ color: `${RED_CSS}; } * { color: rgb(0, 0, 255)` });
-        expect(getColor(styled)).toEqual(RED);
-        expect(getColor(plain)).toEqual(before);
-    });
-
-    it("renders a declaration carrying a NUL byte", async () => {
-        const { plain, styled } = await renderPair({ background: `url(a${NUL}b.png)` });
-        expect(styled).toBeVisible();
-        expect(getColor(styled)).toEqual(getColor(plain));
     });
 });

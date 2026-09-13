@@ -23,7 +23,12 @@ type Css = {
 };
 
 type TokenPartition = { rawClasses: string[]; registeredStyles: string[] };
-type CssState = { sheet: StyleSheet; inserted: Set<string>; registered: RegisteredCache };
+type CssState = {
+    sheet: StyleSheet;
+    global: Set<string>;
+    scoped: Set<string>;
+    registered: RegisteredCache;
+};
 
 const KEY = "gtkx";
 
@@ -47,18 +52,18 @@ const partitionTokens = (tokens: string[], registered: RegisteredCache): TokenPa
     return { rawClasses, registeredStyles };
 };
 
-const didMarkNewStyle = (state: CssState, serialized: SerializedStyles): boolean => {
-    if (state.inserted.has(serialized.name)) {
+const didMarkNewStyle = (inserted: Set<string>, serialized: SerializedStyles): boolean => {
+    if (inserted.has(serialized.name)) {
         return false;
     }
 
-    state.inserted.add(serialized.name);
+    inserted.add(serialized.name);
 
     return true;
 };
 
 const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
-    if (!didMarkNewStyle(state, serialized)) {
+    if (!didMarkNewStyle(state.scoped, serialized)) {
         return;
     }
 
@@ -73,7 +78,7 @@ const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
 };
 
 const insertWithoutScoping = (state: CssState, serialized: SerializedStyles): void => {
-    if (!didMarkNewStyle(state, serialized)) {
+    if (!didMarkNewStyle(state.global, serialized)) {
         return;
     }
 
@@ -101,7 +106,12 @@ const cxClassNames = (state: CssState, classNames: CxToken[]): string[] => {
 };
 
 const createCss = (): Css => {
-    const state: CssState = { sheet: new StyleSheet(), inserted: new Set(), registered: {} };
+    const state: CssState = {
+        sheet: new StyleSheet(),
+        global: new Set(),
+        scoped: new Set(),
+        registered: {},
+    };
 
     return {
         css: (...args) => cssClassName(state, args),
