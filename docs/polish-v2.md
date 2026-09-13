@@ -51,7 +51,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `create-gtkx` | 31 | Pending |
 | `mcp` | 26 | Pending |
 | `testing` | 60 | ComboRow display-value matcher fixed; full package pending |
-| `vitest` | 12 | Pending |
+| `vitest` | 12 | All files read; packaged preload, Sway configuration and notification sink fixed; repeat review found no further confirmed defect |
 | `e2e` | 117 | Relevant regression coverage reviewed with each fix; full suite audit pending |
 | `eslint` | 36 | Pending |
 | `utils` | 60 | Omit preserves source unions; full package pending |
@@ -356,6 +356,14 @@ The public subprocess regression covers successful and failed asynchronous loads
 All 32 tracked Cairo files were read. String parameters now borrow their inputs instead of transferring temporary allocations to functions that never own them. Queries validate the status returned through paths, patterns, clip lists and scaled fonts. Nullable font variations, typed null recording extents and managed surface devices now match the native contracts. The hand-copied GIR stub, its parser dependency and its parity test were removed; public native-type integration coverage checks the installed Cairo GObject values instead.
 
 `ImageSurface.getData()` copies the native buffer through its byte-array descriptor. Before reading it creates a temporary context, which detects a surface finished through any alias even though Cairo continues to report a successful surface status after freeing the image storage. GTKX will retain this compatibility check until an official Cairo release fixes the upstream lifetime contract. All 250 Cairo cases and four DrawingArea cases pass, alongside package typechecks, lint, Knip and diff checks. The rendered native drawing was visually inspected, and a repeat review found no further confirmed defect.
+
+### Vitest package audit
+
+All 12 tracked Vitest files were read with the CLI consumers and headless-display integration suite. The worker preload now resolves only from the built package layout, removing a source-tree fallback that served the monorepo rather than installed consumers. One generated Sway configuration shape drives both writing and stale-runtime validation.
+
+The private notification sink now implements the required server-information method, assigns and replaces notification IDs consistently, reports only supported capabilities, tracks open notifications and emits the close signal. A real D-Bus integration case exercises server information, allocation, replacement, successful close and rejection of an already closed ID through the complete headless display process. All 28 headless cases pass together. Source and test typechecks, lint and the package build pass.
+
+The Wayland input helper remains local after a dependency review. GTK clients require persistent virtual pointer and keyboard capabilities; a real Sway probe confirmed that a configured fallback seat without devices advertises no capabilities, and no maintained package met the required compositor protocol contract. The missing server declarations in `@homebridge/dbus-native` 0.7.9 are recorded in the upstream tracker; GTKX retains its declaration augmentation until upstream includes them. A repeat review found no further confirmed defect in the package.
 
 ## Next work
 
