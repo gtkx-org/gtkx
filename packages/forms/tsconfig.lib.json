@@ -8,6 +8,9 @@
             "path": "../components/tsconfig.lib.json"
         },
         {
+            "path": "../react/tsconfig.lib.json"
+        },
+        {
             "path": "../vitest/tsconfig.lib.json"
         },
         {

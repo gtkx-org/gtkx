@@ -1,49 +1,31 @@
 ---
 title: "Forms"
-description: "Build typed Adwaita forms with @gtkx/forms and React Hook Form: controlled rows, validation, focus, disabled fields, and programmatic updates."
+description: "Connect React Hook Form to native Adwaita rows, focus and validation feedback."
 ---
 
 # Forms
 
-GTKX applications use Adwaita for their application surfaces, and `@gtkx/forms` carries that foundation into forms by connecting [React Hook Form](https://react-hook-form.com) to Adwaita's form rows. The form state, validation rules, nested field names, and submission flow come from React Hook Form; `EntryRow`, `PasswordEntryRow`, `SwitchRow`, `SpinRow`, and `ComboRow` bind that state to native Adwaita controls.
+`@gtkx/forms` connects [React Hook Form](https://react-hook-form.com) to native Adwaita rows. Use it for GTKX-specific input, focus and validation feedback; use the [React Hook Form documentation](https://react-hook-form.com/docs) for form state, validation rules and submission.
 
-Install it separately:
+Install the package:
 
 ```bash
 npm install @gtkx/forms@beta
 ```
 
-The controls use the generated `@gtkx/jsx/adw` bindings, which every GTKX 2 project receives because `Adw-1` is the sole default GIR root. Its GIR include brings in GTK4 as part of the same generated foundation. The package also re-exports `useForm`, `FormProvider`, `Controller`, `useController`, `useFieldArray`, `useFormContext`, `useFormState`, and `useWatch`, plus the common types used with them. Importing the provider and hooks from `@gtkx/forms` keeps them on the same React Hook Form context as the rows. Full signatures are in the [@gtkx/forms reference](/v2/reference/@gtkx/forms/).
+The rows use the generated `@gtkx/jsx/adw` bindings included in GTKX 2 projects.
 
-## A complete typed form
+## Connect a form
 
-Give `useForm` the shape saved by the form and complete `defaultValues`. Each row's `name` is then restricted to paths holding the value that row represents: strings for entry and combo rows, a number for a spin row, and a boolean for a switch row.
+Pass `control={form.control}` to infer the row's field names from your form type. GTK buttons submit through `onClicked`:
 
 ```tsx
-import { AdwPreferencesGroup } from "@gtkx/jsx/adw";
+import { ComboRow, EntryRow, useForm } from "@gtkx/forms";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkAdjustment, GtkBox, GtkButton } from "@gtkx/jsx/gtk";
-import {
-    ComboRow,
-    EntryRow,
-    FormProvider,
-    PasswordEntryRow,
-    SpinRow,
-    SwitchRow,
-    useForm,
-} from "@gtkx/forms";
+import { AdwPreferencesGroup } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 
-type AccountValues = {
-    displayName: string;
-    password: string;
-    notifications: boolean;
-    retryCount: number;
-    theme: string;
-};
-
-type AccountFormProps = {
-    onSave: (values: AccountValues) => void | Promise<void>;
-};
+type Preferences = { displayName: string; theme: string };
 
 const themes = [
     { id: "system", value: "Follow system" },
@@ -51,193 +33,69 @@ const themes = [
     { id: "dark", value: "Dark" },
 ];
 
-export const AccountForm = ({ onSave }: AccountFormProps) => {
-    const form = useForm<AccountValues>({
-        defaultValues: {
-            displayName: "",
-            password: "",
-            notifications: true,
-            retryCount: 3,
-            theme: "system",
-        },
-        mode: "onBlur",
+export const PreferencesForm = ({ onSave }: { onSave: (values: Preferences) => void }) => {
+    const form = useForm<Preferences>({
+        defaultValues: { displayName: "", theme: "system" },
     });
     const submit = form.handleSubmit(onSave);
 
     return (
-        <FormProvider {...form}>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={18}>
-                <AdwPreferencesGroup title="Account">
-                    <EntryRow<AccountValues>
-                        name="displayName"
-                        title="Display name"
-                        rules={{ required: "Enter a display name" }}
-                    />
-                    <PasswordEntryRow<AccountValues>
-                        name="password"
-                        title="Password"
-                        rules={{
-                            minLength: { value: 12, message: "Use at least 12 characters" },
-                        }}
-                    />
-                    <SwitchRow<AccountValues>
-                        name="notifications"
-                        title="Notifications"
-                    />
-                    <SpinRow<AccountValues>
-                        name="retryCount"
-                        title="Retry attempts"
-                        adjustment={
-                            <GtkAdjustment
-                                lower={0}
-                                upper={10}
-                                stepIncrement={1}
-                                pageIncrement={1}
-                            />
-                        }
-                        rules={{
-                            min: { value: 0, message: "Use zero or more retries" },
-                            max: { value: 10, message: "Use no more than 10 retries" },
-                        }}
-                    />
-                    <ComboRow
-                        control={form.control}
-                        name="theme"
-                        title="Theme"
-                        items={themes}
-                        rules={{ required: "Choose a theme" }}
-                    />
-                </AdwPreferencesGroup>
-                <GtkButton
-                    label="Save"
-                    halign={Gtk.Align.END}
-                    cssClasses={["suggested-action"]}
-                    sensitive={!form.formState.isSubmitting}
-                    onClicked={() => {
-                        void submit();
-                    }}
+        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={18}>
+            <AdwPreferencesGroup title="Preferences">
+                <EntryRow
+                    control={form.control}
+                    name="displayName"
+                    title="Display name"
+                    rules={{ required: "Enter a display name" }}
                 />
-            </GtkBox>
-        </FormProvider>
+                <ComboRow
+                    control={form.control}
+                    name="theme"
+                    title="Theme"
+                    items={themes}
+                />
+            </AdwPreferencesGroup>
+            <GtkButton label="Save" onClicked={() => { void submit(); }} />
+        </GtkBox>
     );
 };
 ```
 
-`FormProvider` supplies the `control` to every row below it. A row can instead be used without a provider by passing `control={form.control}` directly. The GTK button is not an HTML submit button, so its `onClicked` calls the function returned by `handleSubmit`; that function validates first and hands `onSave` a typed `AccountValues` only when the form is valid.
+You can also import `FormProvider` from `@gtkx/forms` to supply the control to rows below it. When a row relies on the provider, give it the form type explicitly, such as `<EntryRow<Preferences> name="displayName" />`, to check its field name.
 
-The rows keep their underlying native props and handlers, apart from the value prop that React Hook Form owns. Their mappings are:
+## Choose a row
 
-| Component | Form value | Native state |
-| --- | --- | --- |
-| `EntryRow` | `string` | `Adw.EntryRow:text` |
-| `PasswordEntryRow` | `string` | `Adw.PasswordEntryRow:text` |
-| `SwitchRow` | `boolean` | `Adw.SwitchRow:active` |
-| `SpinRow` | `number` | `Adw.SpinRow:value` |
-| `ComboRow` | `string` | selected item ID |
+| Row | Stored value |
+| --- | --- |
+| `EntryRow`, `PasswordEntryRow` | Text |
+| `SwitchRow` | Boolean |
+| `SpinRow` | Number |
+| `ComboRow` | Item ID |
 
-`ComboRow` takes the same `items`, `sections`, and renderer props as [`ComboRow` from `@gtkx/components`](/v2/guide/components#dropdown). Passing `control={form.control}`, as in the example, lets TypeScript infer both the form field path and the item and section types used by those renderers. The stored value is the stable item `id`, not its current position or display value, so reordering or relabeling the items does not change the submitted value.
+The rows retain their native props, children, refs and signal handlers. React Hook Form owns the value, so configure a spin row's range through a JSX `GtkAdjustment`, and use `setValue` or `reset` to change its current value. Those form updates do not echo back as user edits.
 
-## Validation feedback
+`ComboRow` shares the [collection component's sources and renderers](/v2/guide/components#dropdown). Item IDs remain stable when items move or their labels change. Strings and other primitive values have a default display; structured values require `renderItem`. Passing `control` also lets TypeScript infer item and section types for renderers.
 
-Pass React Hook Form's `rules` to any row. When a field is invalid, the row:
+Supply complete form defaults, including an existing item ID for a combo row. This keeps the native display and submitted value aligned from the first render. See the [React Hook Form defaults guidance](https://react-hook-form.com/docs/useform#defaultValues) for asynchronous defaults and resets.
 
-- gains Adwaita's `error` CSS class while preserving the classes passed in `cssClasses`,
-- exposes `Gtk.AccessibleInvalidState.TRUE` to assistive technology, and
-- uses the rule's error message as its tooltip when one is present.
+## Native validation feedback
 
-When the field becomes valid, the added class is removed, its accessible invalid state returns to `FALSE`, and the row's original `tooltipText` is restored. Give a rule such as `required` the string message `Enter a name` when the tooltip should explain the problem; a boolean rule can mark the row invalid but has no message to show.
+An invalid row gains Adwaita's `error` CSS class and exposes an accessible invalid state. When validation supplies a message, the row uses it as its tooltip. Correcting the field restores the caller's classes and tooltip.
 
-The tooltip and accessible state augment the color change, but neither adds a permanently visible message below the row. For a form that needs one, read `formState.errors`, `useFormState`, or `Controller` and render that text in the surrounding layout.
+The rows do not add a persistent error label. Render one beside the row when your application needs visible feedback. Native handlers such as `onNotifyText` still run after the form receives an edit.
 
-## Disabled fields
+## Focus and disabled fields
 
-The `disabled` prop has React Hook Form semantics: the row becomes insensitive and its value is omitted from submitted data. Set the native `sensitive` prop to `false` instead when the row should stop accepting input but remain registered and included in the result.
+Form focus operations, including focus on the first invalid field, reach the native row through `grabFocus()`. Text and spin rows also support `setFocus(name, { shouldSelect: true })`. Forwarded refs receive the native row and preserve React callback-ref cleanup.
 
-Disabling the entire form through React Hook Form disables the rows the same way. A caller's `sensitive` value of `false` is preserved when the form field itself is enabled.
+Leaving the row's native subtree marks the field touched and supports blur validation. Moving focus between widgets inside the same row does not. Any controllers passed through `controllers` remain attached alongside this tracking.
 
-## Focus and blur
+`disabled` makes a row insensitive and omits its value from submission. Use the native `sensitive={false}` prop when the value should remain in the submitted form. Disabling the whole form also disables its rows.
 
-React Hook Form's focus APIs reach the native widget. `setFocus("displayName")`, `setError` with `shouldFocus: true`, and the default focus-on-first-error behavior all call GTK's `grabFocus()` through the row adapter. Text and spin rows also support selection:
+## Other GTK controls
 
-```tsx
-form.setFocus("displayName", { shouldSelect: true });
-```
+For a control without a form row, use `Controller` from `@gtkx/forms`. Its render callback supplies the form value and handlers; connect them to the control's JSX props and signals. Add `GtkEventControllerFocus` through `controllers` to forward `onLeave` to `field.onBlur`.
 
-Each row tracks focus across its whole native subtree. Leaving the row, rather than moving between widgets inside it, marks the field touched and runs `onBlur` validation. Any event controllers passed through the row's `controllers` prop stay attached alongside that focus tracking.
+Give `field.ref` a handle with a no-argument `focus()` method that calls the widget's `grabFocus()`. Passing the widget directly does not work: GTK's `focus` method expects a direction. Use `fieldState.invalid` to apply the control's validation presentation.
 
-## Reset and programmatic values
-
-The controls are fully controlled by React Hook Form. `reset`, `resetField`, and `setValue` write their next values back to the native rows:
-
-```tsx
-form.setValue("theme", "dark", { shouldDirty: true });
-
-form.reset({
-    displayName: "Ada",
-    password: "",
-    notifications: false,
-    retryCount: 1,
-    theme: "system",
-});
-```
-
-Those controlled writes do not echo back as user edits. Native change handlers passed to a form row still run after React Hook Form receives an actual edit, so `onNotifyText`, `onNotifyActive`, `onNotifyValue`, and `onSelectionChanged` can observe user interaction without taking ownership of the value.
-
-Complete `defaultValues` give each controlled row its value on the first render and give React Hook Form a stable baseline for `isDirty`. Without one, text rows display an empty string, switch rows display `false`, spin rows display `0`, and a combo row has no selected ID until the form supplies one.
-
-## Custom GTK controls
-
-Use the re-exported `Controller` when a form needs a GTK control without a dedicated row. Its render callback supplies the value and handlers; the custom adapter remains responsible for translating the native signal, focus, blur, and validation appearance:
-
-```tsx
-import { Controller, useForm } from "@gtkx/forms";
-import * as Gtk from "@gtkx/gi/gtk";
-import { GtkCheckButton, GtkEventControllerFocus } from "@gtkx/jsx/gtk";
-
-type Options = { compact: boolean };
-
-export const CompactOption = () => {
-    const form = useForm<Options>({ defaultValues: { compact: false } });
-
-    return (
-        <Controller
-            control={form.control}
-            name="compact"
-            rules={{ required: "Compact mode must be enabled" }}
-            render={({ field, fieldState }) => (
-                <GtkCheckButton
-                    label="Compact mode"
-                    active={field.value}
-                    cssClasses={fieldState.invalid ? ["error"] : undefined}
-                    accessibleInvalid={
-                        fieldState.invalid
-                            ? Gtk.AccessibleInvalidState.TRUE
-                            : Gtk.AccessibleInvalidState.FALSE
-                    }
-                    ref={(button) => {
-                        field.ref(
-                            button === null
-                                ? null
-                                : {
-                                      focus: () => {
-                                          button.grabFocus();
-                                      },
-                                  },
-                        );
-                    }}
-                    controllers={<GtkEventControllerFocus onLeave={field.onBlur} />}
-                    onToggled={(button) => {
-                        field.onChange(button.active);
-                    }}
-                />
-            )}
-        />
-    );
-};
-```
-
-The focus proxy is deliberate: GTK's `focus` method takes a direction, while React Hook Form expects a no-argument `focus()` handle. Calling `grabFocus()` is the bridge the built-in form rows use too.
-
-## Next
-
-Continue with [Modals and Portals](/v2/guide/modals-and-portals) for forms that open in a dialog, or [Testing](/v2/guide/testing) to drive the controls and assert submitted values.
+See the [forms reference](/v2/reference/@gtkx/forms/) for GTKX prop types and the [testing guide](/v2/guide/testing) for driving native controls.

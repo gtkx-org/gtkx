@@ -824,6 +824,9 @@ importers:
       '@gtkx/components':
         specifier: workspace:*
         version: link:../components
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../react
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils
