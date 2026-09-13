@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import ts from "typescript";
 import type { ModuleExport } from "./react/element-config.js";
 import type { OmittedProps } from "./store/jsx/omitted-props.js";
 import { checkModules } from "./compile.js";
@@ -20,7 +21,7 @@ import {
 
 type GlCodegenOptions = {
     registryPath: string;
-    overrideExports: Set<string>;
+    overridePath: string;
     outputDir: string;
     resolveFrom: string;
 };
@@ -106,10 +107,31 @@ const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerR
     }
 };
 
+const moduleExportNames = (path: string): Set<string> => {
+    const program = ts.createProgram([path], {
+        module: ts.ModuleKind.NodeNext,
+        moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    });
+    const source = program.getSourceFile(path);
+
+    if (source === undefined) {
+        throw new Error(`TypeScript did not load ${path}`);
+    }
+
+    const checker = program.getTypeChecker();
+    const symbol = checker.getSymbolAtLocation(source);
+
+    if (symbol === undefined) {
+        throw new Error(`TypeScript did not create a module symbol for ${path}`);
+    }
+
+    return new Set(checker.getExportsOfModule(symbol).map((entry) => entry.getName()));
+};
+
 const runGlCodegen = (options: GlCodegenOptions): GlGenerationReport => {
     const { files, report } = generateGlModules({
         registryPath: options.registryPath,
-        overrideExports: options.overrideExports,
+        overrideExports: moduleExportNames(options.overridePath),
     });
 
     checkModules({

@@ -56,6 +56,13 @@ const NUMERIC_LAYOUT: ArrayLayout = { isBytes: false };
 const scalarAliasOrGroup = (scalar: GlScalar, group: string | undefined): string =>
     group !== undefined && scalar.isGroupBearing === true ? group : scalar.tsAlias;
 
+const scalarZero = (scalar: GlScalar): string => (scalar.tsPrimitive === "bigint" ? "0n" : "0");
+
+const scalarPrimitive = (scalar: GlScalar): string => scalar.tsPrimitive ?? "number";
+
+const scalarArraySeed = (scalar: GlScalar, length: string): string =>
+    `new Array<${scalarPrimitive(scalar)}>(${length}).fill(${scalarZero(scalar)})`;
+
 const returnPlanTsType = (plan: ReturnPlan, group: string | undefined): string => {
     switch (plan.kind) {
         case "void": {
@@ -156,7 +163,7 @@ const outArgFields = (options: OutArgFieldsOptions): OutArgFields => {
     switch (plan.kind) {
         case "ref-out": {
             return {
-                seed: `const ${cellName} = { value: 0 };`,
+                seed: `const ${cellName} = { value: ${scalarZero(plan.scalar)} };`,
                 tsType: track(scalarAliasOrGroup(plan.scalar, param.group)),
                 descriptor: tRef(plan.scalar.descriptor),
             };
@@ -166,14 +173,14 @@ const outArgFields = (options: OutArgFieldsOptions): OutArgFields => {
             const lenIdentifier = toCamelIdentifier(plan.lenParamName);
 
             return {
-                seed: `const ${cellName} = { value: new Array<number>(${lenIdentifier}).fill(0) };`,
+                seed: `const ${cellName} = { value: ${scalarArraySeed(plan.scalar, lenIdentifier)} };`,
                 tsType: `${track(scalarAliasOrGroup(plan.scalar, param.group))}[]`,
                 descriptor: tRef(tSizedArray(plan.scalar.descriptor, sizeIndex, undefined, NUMERIC_LAYOUT)),
             };
         }
         case "ref-fixed-out": {
             return {
-                seed: `const ${cellName} = { value: new Array<number>(${String(plan.length)}).fill(0) };`,
+                seed: `const ${cellName} = { value: ${scalarArraySeed(plan.scalar, String(plan.length))} };`,
                 tsType: `${track(plan.scalar.tsAlias)}[]`,
                 descriptor: tRef(tFixedArray(plan.scalar.descriptor, plan.length, undefined, NUMERIC_LAYOUT)),
             };
