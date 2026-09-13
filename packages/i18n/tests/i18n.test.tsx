@@ -12,12 +12,9 @@ import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 
-const DEFAULT_VALUE_ONE = "defaultValue_one";
-const DEFAULT_VALUE_OTHER = "defaultValue_other";
-
 const FILE_DEFAULTS = {
-    [DEFAULT_VALUE_ONE]: "{{count}} file",
-    [DEFAULT_VALUE_OTHER]: "{{count}} files",
+    defaultValue_one: "{{count}} file",
+    defaultValue_other: "{{count}} files",
 };
 
 const WrappedLabel = withTranslation()(({ t: translate }: WithTranslation): ReactNode => (
@@ -57,8 +54,8 @@ const expectEdgeCases = (): void => {
         t("{{count}} apple", {
             context: "fruit",
             count: 2,
-            [DEFAULT_VALUE_ONE]: "{{count}} apple",
-            [DEFAULT_VALUE_OTHER]: "{{count}} apples",
+            defaultValue_one: "{{count}} apple",
+            defaultValue_other: "{{count}} apples",
         }),
     ).toBe("2 pommes");
 
@@ -88,8 +85,8 @@ describe("react-i18next gettext backend", () => {
                     {t("{{count}} item", {
                         context: "technical",
                         count: 2,
-                        [DEFAULT_VALUE_ONE]: "{{count}} item",
-                        [DEFAULT_VALUE_OTHER]: "{{count}} items",
+                        defaultValue_one: "{{count}} item",
+                        defaultValue_other: "{{count}} items",
                     })}
                 </GtkLabel>
             </GtkBox>,
