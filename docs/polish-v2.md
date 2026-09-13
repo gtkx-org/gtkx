@@ -37,24 +37,24 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
 | `codegen` | 144 | All override templates read; remaining generator folders pending |
 | `react` | 47 | Core reconciler read; nullable drag icon fixed; lifecycle and metadata migrations open |
-| `components` | 50 | All files read; identity, controlled state, nullable selection, live size estimates and import side effects fixed; six findings remain |
-| `animated` | 19 | All files read; six findings open |
+| `components` | 50 | All files read; identity, controlled state, sources, live size estimates and import side effects fixed; four findings remain |
+| `animated` | 19 | All files read; text, prop contracts, dead code, tests and guides fixed; upstream ref compatibility retained |
 | `cairo` | 32 | Pending |
 | `gl` | 6 | All files read; exact 64-bit bindings and thin overrides fixed; callback release remains open |
 | `css` | 21 | All files read; defensive parsers removed and insertion defects fixed; repeat audit pending |
-| `forms` | 17 | Pending |
+| `forms` | 17 | Collection source union preserved; full package pending |
 | `i18n` | 17 | Pending |
 | `navigation` | 66 | Pending |
 | `storybook` | 31 | Pending |
 | `config` | 18 | Pending |
-| `cli` | 262 | Pending |
+| `cli` | 262 | Generated consumer and catalog-reference fixes verified; full package pending |
 | `create-gtkx` | 31 | Pending |
 | `mcp` | 26 | Pending |
 | `testing` | 60 | Pending |
 | `vitest` | 12 | Pending |
 | `e2e` | 117 | Relevant regression coverage reviewed with each fix; full suite audit pending |
 | `eslint` | 36 | Pending |
-| `utils` | 60 | Pending |
+| `utils` | 60 | Omit preserves source unions; full package pending |
 
 Outside the packages, the starting scope includes 397 example files, 174 website files, 15 scripts, 23 GitHub configuration files, 3 patches, 30 root files, and one file each under `docs`, `.nx`, and `.vscode`. All remain open for a full file review, including documentation read for context during this first batch.
 
@@ -227,10 +227,10 @@ All 50 tracked files in `packages/components` were read, including source, inter
 | --- | --- | --- |
 | COMP1: recycled cells retain another item's React state | Item and section portals are keyed by native host lifetime; reversing two logical values renders `B:A, A:B`. Section identity is discarded by the collection index. | Fixed; logical item and section keys prevent recycled hosts from carrying state across values, with public reorder regressions |
 | COMP2: controlled selection and sorting drift | DropDown/ComboRow and ColumnView report rejected native changes but only restore controlled props after another React render. | Fixed; selection, expansion and sorting share one component-level controlled synchronization hook |
-| COMP3: source/header types admit an invalid call | Plain `items` can be combined with `renderHeader`, then the renderer typed as receiving a section is called with `undefined`; `sections` silently wins when both sources are supplied. | Reproduced; model item and section sources as an exclusive union |
+| COMP3: source/header types admit invalid combinations | Types admit both sources and section headers for plain items. The current renderer skips a missing section, but the advertised input still has no meaningful header behavior. | Fixed; exclusive sources require sections for a header renderer, preserving empty inputs and inferred payloads |
 | COMP4: nullable controlled selection does not clear | `selectedId={null}` becomes the current native selection instead of `Gtk.INVALID_LIST_POSITION`. | Resolved; GTK and libadwaita auto-select a row in nonempty models, so nullable input was removed. Empty models report `null`; the upstream limitation is U6 |
 | COMP5: estimated item sizes stay stale | Updating an estimate changes only registry state; realized placeholders retain the old size. | Fixed; surviving placeholders resize when estimates change or are removed, preserving rendered content sizes |
-| COMP6: ColumnView accepts discarded children | The inherited generated type accepts `children`, while the component removes them and renders only `columns`. | Open; omit `children` and verify installed declarations |
+| COMP6: ColumnView accepts discarded children | The inherited generated type accepts `children`, while the component removes them and renders only `columns`. | Fixed; the public type omits `children` and no longer silently strips an unsupported input |
 | COMP7: unsupported tree inputs drive production complexity | Cycle tracking, depth-8,000 chains and repeated-ID semantics have extensive implementation and tests despite the stated supported-input principles. | Open contract decision; remove unsupported promises and machinery if they are outside 2.0 |
 | COMP8: cells redeclare native property descriptors | Accessibility labels/descriptions are written through a local borrowed-string descriptor and raw property names. | Open; repair or reuse a runtime/generated typed property path |
 | COMP9: fallback display serialization is hand-rolled | The default DropDown renderer catches failed JSON serialization and supplies another representation for unsupported structured values. | Open; keep the default renderer simple and require an explicit renderer for structured values |
@@ -238,6 +238,8 @@ All 50 tracked files in `packages/components` were read, including source, inter
 | COMP11: side-effect metadata is inaccurate | The package declares `sideEffects: false`, but collection-model import writes a shared symbol entry to `globalThis`. | Fixed; the cross-copy weak map is initialized only when a collection item is created or read |
 
 The live-size fix passes eight public measurement cases across ListView, GridView and ColumnView. The complete components suite passes 114 tests; component test types and touched-file lint pass. A running native list was visually inspected at 40-pixel, 100-pixel and removed estimates. Only framework placeholders receive size updates; rendered content keeps its own dimensions.
+
+The source union also survives the form ComboRow wrapper and its prop-omission helper. The shared helper uses type-fest's `DistributedOmit`, with no runtime import of that type-only dependency. Public integration cases exercise empty, sectioned and plain sources and preserve form selection through transitions. The complete components suite now passes 115 cases, and all 11 form cases pass. All 19 strict installed-consumer checks pass, rejecting mixed sources, headers without sections and discarded ColumnView children. Root typechecking, affected lint and Knip pass.
 
 ### OpenGL package audit
 
@@ -268,14 +270,44 @@ The complete CSS package passes 16 native integration cases. The focused React s
 
 ### Declarative shortcut construction audit
 
-The tutorial and six GTK demo files construct `Gtk.ShortcutTrigger` and `Gtk.CallbackAction` manually during render. Generated JSX currently exposes CallbackAction without its required callback and omits the abstract ShortcutTrigger component, while the reference page misleadingly shows an import for it. The smallest compatible API is nested JSX using a required `callback` prop and an accelerator-backed trigger element. Thin components above the generic host should call the native factories, keep callback identity current, remount immutable triggers when their accelerator changes, and preserve existing native-object props. Public key activation, update, false-return, unmount, invalid accelerator and strict declaration cases are required. Singleton and alternative shortcut types need a later constructor-model audit.
+Generated JSX now exposes `GtkCallbackAction` with its required `callback` and `GtkShortcutTrigger` with its required `accelerator`. Small components keep callback identity current and remount immutable triggers when their accelerator changes. Host construction delegates to the native factories. Factory-only props, behavior and wrappers apply to their exact type, so concrete trigger subclasses retain their own construction contracts. The tutorial and six GTK demo files use the new elements; native-object props remain supported.
+
+The constructor review also found that owner-class return overrides discarded GIR nullability and output tuples. C6 preserves the native primary result's nullable owner type before folding output parameters, in both emitted bindings and reference signatures. Strict consumer cases cover scalar nullability and nullable constructors with an additional output. The tuple defect was also confirmed in generated `Gst.Structure.fromString` bindings.
+
+Validation passes 15 installed-consumer cases, 29 generated-binding cases, 13 CLI documentation cases, 98 shortcut/menu/input integration cases, and the affected library, test and root typechecks. Singleton and alternative shortcut types still need a broader constructor-model audit. The factory types also retain a naming distinction: their raw named property bags omit factory inputs, while `ComponentProps<typeof Element>` gives the complete element contract. A consistent public name for the complete factory props remains follow-up work.
+
+### Animated package audit
+
+All 19 tracked animated files were read. Six findings are resolved: text normalization now follows React's empty-child semantics and handles bigint text; generated construct-only prop names prevent springs on immutable inputs; animated collections accept readonly arrays instead of unsupported general iterables; unused scheduler ticks are removed; an impossible untyped-input test is removed; and both animation guides focus on GTKX integration and link to React Spring for its APIs.
+
+The construct-only type metadata comes from GIR and the canonical React element configuration. It also supplies named prop types, inherited props, lazy-element omissions and codegen fingerprints, avoiding a separate hand-maintained animation list. Mutable props still accept springs, and native text writes avoid unnecessary React renders.
+
+React Spring 10.1.2 still suppresses refs on ordinary React 19 function components. Its public `createHost` reproduces the failure without GTKX's animation wrapper; U7 and the reproduction are preserved in `/home/eugenio/UPSTREAM.md`. GTKX keeps its compatible wrapper until an official upstream release handles that path.
+
+Validation passes 50 animated tests, 134 focused renderer cases, 15 installed-consumer checks, fresh generation of 19 namespaces and 643 elements, typechecks and lint. A running animated text fixture was visually inspected. React elements and non-text children intentionally use the React render fallback.
 
 ### Tutorial continuation audit
 
-The next four chapters were read completely: Trash and Toasts, Preferences and Theming, Drag to Reorder, and Reminders. Their prose repeats substantial React, TypeScript, GSettings, GTK event, GValue, notification and D-Bus teaching; revisions should retain GTKX integration and link upstream material.
+The next four chapters were read completely: Trash and Toasts, Preferences and Theming, Drag to Reorder, and Reminders. Both current and v2 versions now use the same concise GTKX-focused progression, with official upstream links for React, TypeScript, GSettings, GTK input, GValue, notifications and application activation. References to a nonexistent `@gtkx/components/adw` entry point and a time selector absent from the editor are corrected.
 
-Concrete implementation findings precede that prose pass: three examples import a nonexistent `@gtkx/components/adw`; reminder instructions describe a time selector the editor lacks; cold-start notification actions can lose navigation before the container is ready; drag gating ignores the Open/Done filter and has no keyboard path; drop/reorder code accepts invalid payloads and defends impossible states; settings choices are repeated across XML, TypeScript, guards and JSX even though the parser already reads their metadata; dialog state permits a delete dialog without a task; an empty new-list name closes silently; zero-minute reminders never fire; session-only notification IDs resend after restart; notifications require manual GObject construction because GTKX lacks a declarative contract; and the conclusion points to upstream widget docs instead of the generated project reference. Current tutorial tests do not cover those paths. These are open findings, with the seven components failures and declarative shortcut contract scheduled first.
+The example now queues notification navigation until the container is ready, enables reordering only in a manual unfiltered view, supports Alt+Up/Down, and rejects foreign text at the drop boundary. Delete confirmation carries its task in a discriminated union. New-list submission stays disabled for blank names and trims valid input before storing it. Shared settings tables replace repeated UI and theme choices.
+
+Reminders record the notified due value in the persistent task and use stable notification IDs. Zero-minute reminders and delayed sweeps work; a delayed nonzero-lead regression was verified failing against the old condition and passing against the new sweep cursor. Public application tests pass 19 cases, and the built French application passes three translation cases. Live MCP inspection confirmed the main window, task rows, and disabled-to-enabled New List submission; screenshots were visually inspected.
+
+Two cross-package contracts remain open: notifications still need a declarative GTKX API, and schema choice/enum metadata should drive the settings types and integer mapping instead of duplicating that contract in the example.
+
+The combined documentation changes pass a complete VitePress production build, including page rendering and sitemap generation, in 441 seconds.
+
+### Translation catalog references
+
+A message shared by source and deployment metadata retained obsolete source locations after code moved or disappeared. GNU `msggrep` selects the whole shared entry, so joining it back also restored those old references. GTKX now uses the maintained gettext-parser dependency to retain only canonical metadata references before the existing GNU join step.
+
+The public deploy/build regression failed with the old implementation and passes with the fix. All six localization cases and three adjacent CLI i18n cases pass, alongside CLI source/test types, lint and offline frozen-lockfile validation. Regenerated tutorial catalogs contain only current source references and preserve their translations; compiling the French catalog produces a byte-identical MO file.
+
+### Testing follow-up
+
+The form source transition exposed a matcher issue: a custom ComboRow renders its selected label correctly, but `toHaveDisplayValue` reports an empty string. The accessible-value lookup currently takes precedence over the visible selected content even when that value is empty. This needs a focused public matcher regression and review during the testing-package pass.
 
 ## Next work
 
-Commit the validated native/runtime/codegen/renderer checkpoint, then fix the reproduced components failures and declarative shortcut construction in parallel with the remaining R2 output-storage, string/container and ownership stages. Follow with the tutorial implementation and prose findings. Keep the TextView, Sidebar and ComboRow workarounds until official upstream releases contain their fixes. Continue the source and documentation audits after each coherent change. Zero findings has not been reached, and the remaining package/file inventory has not yet been reviewed.
+Revisit the four remaining components findings alongside R2 output-storage, string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
