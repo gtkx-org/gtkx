@@ -1,5 +1,6 @@
 import {
     alloc,
+    allocField,
     bind,
     bindField,
     call,
@@ -18,6 +19,27 @@ const FLOAT64 = bindField({ kind: "float64" });
 const STRING = bindField({ kind: "string", ownership: "borrowed" });
 const BOOLEAN_STORAGE = bindField({ kind: "int32" });
 const UNICHAR_STORAGE = bindField({ kind: "uint32" });
+
+test.each([
+    { descriptor: { kind: "int8" } as const, value: -128, zero: 0 },
+    { descriptor: { kind: "biguint64" } as const, value: 18_446_744_073_709_551_615n, zero: 0n },
+    { descriptor: { kind: "float64" } as const, value: 1.25, zero: 0 },
+])("a $descriptor.kind field allocates zeroed storage of its ABI width", ({ descriptor, value, zero }) => {
+    const field = bindField(descriptor);
+    const storage = allocField(field);
+
+    expect(readField(field, storage, 0)).toBe(zero);
+    writeField(field, storage, 0, value);
+    expect(readField(field, storage, 0)).toBe(value);
+    expect(() => readField(field, storage, 1)).toThrow();
+    expect(() => writeField(field, storage, 1, value)).toThrow();
+});
+
+test("a field without a declared storage size cannot allocate memory", () => {
+    const field = bindField({ kind: "struct", ownership: "borrowed", isInline: true });
+
+    expect(() => allocField(field)).toThrow();
+});
 
 test("a bound numeric field reads back the value written at the same offset", () => {
     const block = alloc(16);

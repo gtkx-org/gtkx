@@ -132,6 +132,7 @@ fn completion_callback(stash: &ffi::Stash) -> anyhow::Result<&ffi::CallbackValue
 fn lends_element_buffer(codec: &Codec, stash: &ffi::Stash) -> bool {
     let borrows_a_buffer = match codec {
         Codec::Array(array) => array.ownership.is_borrowed(),
+        Codec::Ref(reference) => reference.inner_codec().is_scalar(),
         Codec::Buffer(_) => true,
         _ => false,
     };
@@ -215,7 +216,7 @@ fn decode_outputs<'env>(
     let mut outputs = Vec::new();
 
     for (i, (codec, &value)) in arg_codecs.iter().zip(values).enumerate() {
-        if matches!(codec, Codec::Ref(_))
+        if matches!(codec, Codec::Ref(reference) if !reference.inner_codec().is_scalar())
             && !matches!(value.get_type()?, ValueType::Null | ValueType::Undefined)
         {
             outputs.push(CallOutput {

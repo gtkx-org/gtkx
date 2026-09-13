@@ -11,6 +11,7 @@ import {
 import type { Descriptor } from "./descriptor-types.js";
 import { normalizeHashTableEntries } from "./hash-table.js";
 import { LIB } from "./library.js";
+import { compileOutputStorage, type OutputStorage, type StorageHandle } from "./output-storage.js";
 
 type Conversion = (value: unknown) => unknown;
 type ScalarPlan = {
@@ -19,6 +20,7 @@ type ScalarPlan = {
     decode: Conversion;
     defaultReturn?: unknown;
     inner?: ScalarPlan;
+    storage?: OutputStorage;
 };
 type Callback = (...args: unknown[]) => unknown;
 type CallbackShape = { argDescriptors: Descriptor[]; returnDescriptor: Descriptor; userDataIndex?: number };
@@ -153,6 +155,40 @@ const refConversion = (convert: Conversion): Conversion => (value) => {
     return { value: inner == null ? inner : convert(inner) };
 };
 
+const referencePlan = (descriptor: Extract<Descriptor, { kind: "ref" }>): ScalarPlan => {
+    const inner = compileDescriptor(descriptor.innerDescriptor);
+    const storage = compileOutputStorage(inner.abi);
+    const abi = { ...descriptor, innerDescriptor: inner.abi };
+
+    if (storage === undefined) {
+        return {
+            abi,
+            inner,
+            encode: refConversion(inner.encode),
+            decode: refConversion(inner.decode),
+        };
+    }
+
+    return {
+        abi,
+        inner,
+        storage,
+        encode(value) {
+            if (value == null) {
+                return value;
+            }
+            const seed: unknown = Reflect.get(value, "value");
+
+            return storage.allocate(seed == null ? seed : inner.encode(seed));
+        },
+        decode: (value) => ({
+            value: value != null && descriptor.inout === true
+                ? inner.decode(storage.read(value as StorageHandle))
+                : null,
+        }),
+    };
+};
+
 const adaptCallback = (shape: CallbackShape, callback: Callback): Callback => {
     const args = shape.argDescriptors
         .filter((_, index) => index !== shape.userDataIndex)
@@ -167,11 +203,16 @@ const adaptCallback = (shape: CallbackShape, callback: Callback): Callback => {
             plan.inner !== undefined && values[index] != null
                 ? [{
                         index,
+                        storage: plan.storage,
                         value: plan.inner.encode((decoded[index] as Ref).value),
                     }]
                 : []);
         for (const output of outputs) {
-            (values[output.index] as Ref).value = output.value;
+            if (output.storage === undefined) {
+                (values[output.index] as Ref).value = output.value;
+            } else {
+                output.storage.write(values[output.index] as StorageHandle, output.value);
+            }
         }
 
         return encodedReturn;
@@ -223,14 +264,7 @@ const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
             };
         }
         case "ref": {
-            const inner = compileDescriptor(descriptor.innerDescriptor);
-
-            return {
-                abi: { ...descriptor, innerDescriptor: inner.abi },
-                inner,
-                encode: refConversion(inner.encode),
-                decode: refConversion(inner.decode),
-            };
+            return referencePlan(descriptor);
         }
         case "callback": {
             return {

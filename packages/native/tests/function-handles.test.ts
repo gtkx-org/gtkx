@@ -12,6 +12,7 @@ import {
     readFunctionPointer,
     resolveType,
     setWrapper,
+    write,
 } from "@gtkx/native";
 import { expect, test } from "vitest";
 
@@ -109,6 +110,79 @@ test("a function field keeps its owning closure alive", async () => {
     expect(call(invoke, [-3, null]).value).toBe(-6);
 });
 
+test.each([false, true])("callback scalar storage is writable only during its invocation (inout: %s)", (inout) => {
+    const captured: { storage: ExternalObject<Handle> | null } = { storage: null };
+    const closure = newClosure((storage: ExternalObject<Handle>) => {
+        captured.storage = storage;
+        expect(read(storage, INT, 0)).toBe(inout ? 7 : 0);
+        write(storage, INT, 0, 11);
+        expect(() => read(storage, INT, 1)).toThrow();
+        expect(() => deferBuffer(storage, held, { kind: "ref", innerDescriptor: INT })).toThrow();
+    }, [{ kind: "ref", innerDescriptor: INT, inout }], VOID);
+    const invoke = bindFunctionPointer(
+        readFunctionPointer(closure, CLOSURE_CALLBACK_OFFSET),
+        [BUFFER, BUFFER],
+        VOID,
+        "scalar storage callback",
+    );
+    const output = alloc(4);
+    write(output, INT, 0, 7);
+
+    call(invoke, [output, null]);
+
+    expect(read(output, INT, 0)).toBe(11);
+    const storage = captured.storage;
+    if (storage === null) {
+        throw new Error("The callback did not receive its storage");
+    }
+    expect(() => read(storage, INT, 0)).toThrow();
+    expect(() => write(storage, INT, 0, 12)).toThrow();
+});
+
+test("callback scalar storage expires after a handler throws", () => {
+    const captured: { storage: ExternalObject<Handle> | null } = { storage: null };
+    const closure = newClosure((storage: ExternalObject<Handle>) => {
+        captured.storage = storage;
+        throw new Error("Callback failure");
+    }, [{ kind: "ref", innerDescriptor: INT }], VOID);
+    const invoke = bindFunctionPointer(
+        readFunctionPointer(closure, CLOSURE_CALLBACK_OFFSET),
+        [BUFFER, BUFFER],
+        VOID,
+        "throwing scalar storage callback",
+    );
+    const output = alloc(4);
+    write(output, INT, 0, 7);
+
+    expect(() => call(invoke, [output, null])).toThrow();
+    expect(read(output, INT, 0)).toBe(0);
+
+    const storage = captured.storage;
+    if (storage === null) {
+        throw new Error("The callback did not receive its storage");
+    }
+    expect(() => read(storage, INT, 0)).toThrow();
+    expect(() => write(storage, INT, 0, 12)).toThrow();
+});
+
+test("an omitted callback scalar slot arrives as null", () => {
+    const observed: (ExternalObject<Handle> | null)[] = [];
+    const reference: Descriptor = { kind: "ref", innerDescriptor: INT };
+    const closure = newClosure((storage: ExternalObject<Handle> | null) => {
+        observed.push(storage);
+    }, [reference], VOID);
+    const invoke = bindFunctionPointer(
+        readFunctionPointer(closure, CLOSURE_CALLBACK_OFFSET),
+        [reference, BUFFER],
+        VOID,
+        "optional scalar storage callback",
+    );
+
+    call(invoke, [null, null]);
+
+    expect(observed).toEqual([null]);
+});
+
 test("received call-scoped function handles expire after the native invocation", () => {
     const captured: { callback: DecodedCallback | null } = { callback: null };
     let invoke: ReturnType<typeof bindCallback> | undefined;
@@ -181,6 +255,7 @@ const DATA_DESCRIPTORS: Descriptor[] = [
     { kind: "object", ownership: "borrowed" },
     { kind: "struct", ownership: "borrowed" },
     CLOSURE,
+    { kind: "ref", innerDescriptor: INT },
 ];
 
 test.each(DATA_DESCRIPTORS)("function handles cannot be passed as $kind data", (descriptor) => {
@@ -216,13 +291,14 @@ const COMPLETE: Descriptor = {
 const deferBuffer = (
     buffer: ExternalObject<Handle>,
     receive: (callback: DecodedCallback) => void,
+    descriptor: Descriptor = BUFFER,
 ): { calls: number } => {
     const closure = newClosure((_buffer: ExternalObject<Handle>, callback: DecodedCallback) => {
         receive(callback);
     }, [{ kind: "struct", ownership: "borrowed" }, COMPLETE], VOID);
     const invoke = bindFunctionPointer(
         readFunctionPointer(closure, CLOSURE_CALLBACK_OFFSET),
-        [BUFFER, COMPLETE, BUFFER],
+        [descriptor, COMPLETE, BUFFER],
         VOID,
         "deferred buffer receiver",
     );
@@ -265,6 +341,42 @@ test.each(["closure", "function", "field"])("an async buffer retains its %s owne
     captured.callback = null;
     await drain();
     expect(weak.deref()).toBeUndefined();
+});
+
+test("an async scalar slot retains its owner until completion", async () => {
+    const captured: { callback: DecodedCallback | null } = { callback: null };
+    const begin = (): WeakRef<(value: number) => number> => {
+        const fn = decrementBy(4);
+        const closure = newClosure(fn, [INT], INT);
+        const storage = read(closure, {
+            kind: "struct", ownership: "borrowed", isInline: true, size: 4,
+        }, 0) as ExternalObject<Handle>;
+        deferBuffer(storage, (callback) => {
+            captured.callback = callback;
+        }, { kind: "ref", innerDescriptor: INT });
+
+        return new WeakRef(fn);
+    };
+    const weak = begin();
+    await drain();
+    expect(weak.deref()).toBeDefined();
+    completeBuffer(held(captured.callback));
+    captured.callback = null;
+    await drain();
+    expect(weak.deref()).toBeUndefined();
+});
+
+test("an async scalar slot requires the completion callback that releases it", () => {
+    const reference: Descriptor = { kind: "ref", innerDescriptor: INT };
+    const closure = newClosure(() => null, [reference, COMPLETE], VOID);
+    const invoke = bindFunctionPointer(
+        readFunctionPointer(closure, CLOSURE_CALLBACK_OFFSET),
+        [reference, COMPLETE, BUFFER],
+        VOID,
+        "async scalar storage without completion",
+    );
+
+    expect(() => call(invoke, [alloc(4), null, null], 1)).toThrow();
 });
 
 test("a call-scoped function cannot escape as an async buffer", () => {

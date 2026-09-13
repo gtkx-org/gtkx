@@ -63,10 +63,39 @@ impl RefCodec {
             _ => bail_expected!("a Ref", "ref"),
         }
     }
+
+    fn encode_scalar_storage(
+        &self,
+        value: Unknown<'_>,
+        retain_for_async: bool,
+    ) -> anyhow::Result<ffi::Stash> {
+        if matches!(value.get_type()?, ValueType::Null | ValueType::Undefined) {
+            return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
+        }
+        let handle: &External<crate::handle::Handle> = value::read_napi(value)?;
+        let size = self
+            .inner_codec
+            .field_size()
+            .ok_or_else(|| anyhow::anyhow!("The reference has no declared storage size"))?;
+        let ptr = crate::api::handle_memory_range(handle, 0, size, "scalar reference")?;
+        let retained = if retain_for_async {
+            handle.retain_for_async()?
+        } else {
+            (**handle).clone()
+        };
+
+        Ok(ffi::Stash::Storage(StashStorage::new(
+            ptr,
+            StashData::Handle(retained),
+        )))
+    }
 }
 
 impl Encoder for RefCodec {
     fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        if self.inner_codec.is_scalar() {
+            return self.encode_scalar_storage(value, false);
+        }
         let Some(inner) = Self::inner_value(env, value)? else {
             return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
         };
@@ -145,14 +174,16 @@ impl Encoder for RefCodec {
                     StashData::Buffer(buffer),
                 )))
             }
-            _ => {
-                if is_nullish {
-                    Ok(Self::zeroed_scalar_stash())
-                } else {
-                    let encoded = self.inner_codec.encode(env, inner)?;
-                    Self::scalar_out_stash(&encoded)
-                }
-            }
+            _ if is_nullish => Ok(Self::null_ptr_stash()),
+            _ => bail!("Expected Null for Ref<HashTable>"),
+        }
+    }
+
+    fn encode_owned(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        if self.inner_codec.is_scalar() {
+            self.encode_scalar_storage(value, true)
+        } else {
+            self.encode(env, value)
         }
     }
 
@@ -270,16 +301,6 @@ impl RefCodec {
         let mut slot: Vec<*mut c_void> = vec![target];
         let ptr = slot.as_mut_ptr().cast::<c_void>();
         ffi::Stash::Storage(StashStorage::new(ptr, StashData::PtrSlot(slot, inner)))
-    }
-
-    fn scalar_out_stash(encoded: &ffi::Stash) -> anyhow::Result<ffi::Stash> {
-        let storage = StashStorage::from(vec![0u64]);
-        unsafe { encoded.write_scalar_to_ptr(storage.ptr())? };
-        Ok(ffi::Stash::Storage(storage))
-    }
-
-    fn zeroed_scalar_stash() -> ffi::Stash {
-        ffi::Stash::Storage(StashStorage::from(vec![0u64]))
     }
 
     fn decode_ref_string<'e>(

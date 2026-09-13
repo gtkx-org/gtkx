@@ -1,4 +1,4 @@
-import { alloc, bind, bindFunctionPointer, call, resolveFunction } from "@gtkx/native";
+import { alloc, bind, bindFunctionPointer, call, read, resolveFunction } from "@gtkx/native";
 import { expect, test } from "vitest";
 
 const GLIB = "libglib-2.0.so.0";
@@ -106,6 +106,21 @@ test("an omitted ref produces no output entry", () => {
 
 test("a call without refs returns an empty output list", () => {
     expect(call(strdup, ["gtkx"])).toEqual({ value: "gtkx", outputs: [] });
+});
+
+test("a scalar output writes into the caller's allocated storage", () => {
+    const split = bind("libm.so.6", "modf", [
+        { kind: "float64" },
+        { kind: "ref", innerDescriptor: { kind: "float64" } },
+    ], { kind: "float64" });
+    const integer = alloc(8);
+
+    expect(call(split, [12.75, integer])).toEqual({ value: 0.75, outputs: [] });
+    expect(read(integer, { kind: "float64" }, 0)).toBe(12);
+    expect(call(split, [-3.5, integer])).toEqual({ value: -0.5, outputs: [] });
+    expect(read(integer, { kind: "float64" }, 0)).toBe(-3);
+    expect(() => call(split, [1, alloc(4)])).toThrow();
+    expect(() => call(split, [1, { value: null }])).toThrow();
 });
 
 test("a completion index must identify a one-shot callback", () => {
