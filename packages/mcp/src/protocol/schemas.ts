@@ -20,11 +20,7 @@ type SerializedProperty = {
     note?: string;
 };
 
-type AppInfo = {
-    applicationId: string;
-    pid: number;
-    projectRoot?: string;
-};
+type AppInfo = z.output<typeof RegisterParamsSchema>;
 
 type ServerRequestParams<Method extends keyof typeof ServerRequestParamsSchemas> = z.infer<
     (typeof ServerRequestParamsSchemas)[Method]

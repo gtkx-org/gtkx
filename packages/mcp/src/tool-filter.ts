@@ -2,12 +2,9 @@ import type { McpSettings } from "@gtkx/config/internal";
 import type { Tool } from "./tool.js";
 
 const NEGATION_PREFIX = "!";
-const SPECIAL_CHARACTERS = /[.+?^${}()|[\]\\]/g;
-
-const escapeLiteral = (value: string): string => value.replaceAll(SPECIAL_CHARACTERS, String.raw`\$&`);
 
 const patternToRegExp = (pattern: string): RegExp =>
-    new RegExp(`^${pattern.split("*").map((part) => escapeLiteral(part)).join(".*")}$`);
+    new RegExp(`^${pattern.split("*").map((part) => RegExp.escape(part)).join(".*")}$`);
 
 const matchingNames = (tools: Tool[], pattern: string): string[] => {
     const expression = patternToRegExp(pattern);
