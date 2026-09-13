@@ -54,6 +54,7 @@
     },
     "dependencies": {
         "picocolors": "^1.1.1",
+        "type-fest": "^5.8.0",
         "which": "^7.0.0"
     },
     "devDependencies": {

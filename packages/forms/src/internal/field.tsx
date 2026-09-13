@@ -1,7 +1,7 @@
 import type { RefCallBack } from "react-hook-form";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkEventControllerFocus } from "@gtkx/jsx/gtk";
-import { omit } from "@gtkx/utils";
+import { type DistributedOmit, omit } from "@gtkx/utils";
 import { type ReactElement, type ReactNode, type Ref, type RefCallback, useCallback } from "react";
 
 type FormFieldPropName =
@@ -130,6 +130,6 @@ const selectText = (row: { selectRegion: (start: number, end: number) => void })
 
 const widgetProps = <Props extends Partial<Record<FormFieldPropName, unknown>>>(
     props: Props,
-): Omit<Props, FormFieldPropName> => omit(props, FORM_FIELD_PROP_NAMES);
+): DistributedOmit<Props, FormFieldPropName> => omit(props, FORM_FIELD_PROP_NAMES);
 
 export { selectText, useFieldWidget, widgetProps };

@@ -1,17 +1,38 @@
-import type { ListItem, ListItemRenderArgs, ListSection } from "@gtkx/components";
+import type {
+    ColumnViewProps,
+    ComboRowProps,
+    DropDownProps,
+    ListItem,
+    ListItemRenderArgs,
+    ListSection,
+    ListSectionRenderer,
+    ListViewProps,
+} from "@gtkx/components";
 import type { ReactNode, RefObject } from "react";
 import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { expanderCount, expanderNamed } from "./helpers/expanders.js";
 import { expectRowTexts } from "./helpers/row-texts.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 type Named = { name: string };
+
+type SectionedViewProps =
+    | ListViewProps<string, string> |
+    ColumnViewProps<string, string> |
+    DropDownProps<string, string> |
+    ComboRowProps<string, string>;
+
+type ItemViewProps = {
+    items: ListItem<string>[];
+    renderItem: () => null;
+    columns: [];
+};
 
 type ListDraw = {
     groups: ListSection<string, Named>[];
@@ -132,6 +153,41 @@ function StatefulSections({ listRef }: { listRef: RefObject<Gtk.ListView | null>
 }
 
 describe("ListView sections", () => {
+    it("accepts an empty source and switches between section and item renderers", async () => {
+        expectTypeOf<ItemViewProps & { sections: ListSection<string, string>[] }>()
+            .not.toExtend<SectionedViewProps>();
+        expectTypeOf<ItemViewProps & { renderHeader: ListSectionRenderer<string> }>()
+            .not.toExtend<SectionedViewProps>();
+        expectTypeOf<{ renderItem: () => null; columns: []; renderHeader: () => null }>()
+            .not.toExtend<SectionedViewProps>();
+        expectTypeOf<{ renderItem: () => null; columns: []; sections: undefined; renderHeader: () => null }>()
+            .not.toExtend<SectionedViewProps>();
+        expectTypeOf<"children">().not.toExtend<keyof ColumnViewProps>();
+
+        const ref = createRef<Gtk.ListView>();
+        const { rerender } = await render(
+            <ListView ref={ref} items={undefined} sections={undefined} renderHeader={null} renderItem={renderItem} />,
+        );
+        expect(ref.current?.getModel()).toHaveObjectProperty("nItems", 0);
+
+        await rerender(
+            <ListView
+                ref={ref}
+                sections={[{ id: "group", value: { title: "Group" }, data: [leaf("one", "One")] }]}
+                renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
+                renderHeader={({ section }) => <GtkLabel>{section.title}</GtkLabel>}
+            />,
+        );
+        await expectRowTexts(ref, ["Group", "One"]);
+
+        await rerender(<ListView ref={ref} items={[leaf("two", "Two")]} renderItem={renderItem} />);
+        await expectRowTexts(ref, ["Two"]);
+
+        await rerender(<ListView ref={ref} renderItem={renderItem} />);
+        await expectRowTexts(ref, []);
+        expect(ref.current?.getModel()).toHaveObjectProperty("nItems", 0);
+    });
+
     it("draws a header per section and models only the children as items", async () => {
         const { ref } = await renderFixture({ groups: sections, expandedIds: [] });
         await expectRowTexts(ref, collapsedRows);

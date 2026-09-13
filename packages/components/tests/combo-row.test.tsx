@@ -10,7 +10,7 @@ type ProbeProps = {
     comboRef: Ref<Adw.ComboRow>;
 };
 
-type ComboShellProps = Omit<ComboRowProps<string, string>, "ref" | "title"> & ProbeProps;
+type ComboShellProps = ComboRowProps<string, string> & ProbeProps;
 
 const items = [
     { id: "title", value: "By title" },
