@@ -1,3 +1,4 @@
+import { type GetTextTranslation, po } from "gettext-parser";
 import {
     chmodSync,
     existsSync,
@@ -337,7 +338,16 @@ const ITALIAN_CATALOG = join("po", "it.po");
 
 const LOCALIZED_APP_SOURCE = `import { t } from "@gtkx/i18n";
 ${APP_SOURCE}
+process.env.SHARED_TRANSLATION = t("Deploy Probe");
 process.env.STALE_TRANSLATION = t("${STALE_SOURCE_MESSAGE}");
+`;
+
+const MOVED_SHARED_APP_SOURCE = `import { t } from "@gtkx/i18n";
+${APP_SOURCE}
+
+
+
+process.env.SHARED_TRANSLATION = t("Deploy Probe");
 `;
 
 const DEPENDENCY_MANIFEST = {
@@ -491,6 +501,33 @@ const expectMetadataMessages = (project: CliProject): void => {
     expect(template).not.toContain("gtkx-deploy-metadata-");
 };
 
+const catalogMessage = (path: string, msgid: string): GetTextTranslation => {
+    const catalog = po.parse(readFileSync(path));
+    const message = catalog.translations[""]?.[msgid];
+
+    if (message === undefined) {
+        throw new Error(`Missing catalog message: ${msgid}`);
+    }
+
+    return message;
+};
+
+const messageReferences = (message: GetTextTranslation): string[] =>
+    message.comments?.reference?.split(/\s+/u) ?? [];
+
+const expectSharedMetadataMessage = (project: CliProject): string[] => {
+    const templatePath = join(project.root, "po", `${APPLICATION_ID}.pot`);
+    const references = messageReferences(catalogMessage(templatePath, "Deploy Probe"));
+    const sourceReferences = references.filter((reference) => reference.startsWith("src/index.tsx:"));
+    const metadataRoot = join("po", ".gtkx-metadata");
+    expect(references.some((reference) => reference.startsWith(metadataRoot))).toBe(true);
+    expect(catalogMessage(join(project.root, FRENCH_CATALOG), "Deploy Probe").msgstr).toEqual([
+        FRENCH_NAME,
+    ]);
+
+    return sourceReferences;
+};
+
 const expectSynchronizedCatalog = (project: CliProject): void => {
     const catalog = readFileSync(join(project.root, FRENCH_CATALOG), "utf8");
     expect(catalog).toContain(`msgid ${JSON.stringify(STALE_SOURCE_MESSAGE)}`);
@@ -577,13 +614,24 @@ const expectLocalizedDeploy = (state: DeployProbe): void => {
 
 const expectPlainBuildPreservesMetadata = (project: CliProject): void => {
     const sourcePath = join(project.root, "src", "index.tsx");
-    writeFileSync(sourcePath, APP_SOURCE);
+    const originalReferences = expectSharedMetadataMessage(project);
+    expect(originalReferences).toHaveLength(1);
+    writeFileSync(sourcePath, MOVED_SHARED_APP_SOURCE);
 
     try {
         expect(runCli(project, ["build"]).status).toBe(0);
-        const template = readFileSync(join(project.root, "po", `${APPLICATION_ID}.pot`), "utf8");
+        const templatePath = join(project.root, "po", `${APPLICATION_ID}.pot`);
+        const movedReferences = expectSharedMetadataMessage(project);
+        const movedTemplate = readFileSync(templatePath, "utf8");
         expectMetadataMessages(project);
-        expect(template).not.toContain(STALE_SOURCE_MESSAGE);
+        expect(movedReferences).toHaveLength(1);
+        expect(movedReferences).not.toEqual(originalReferences);
+        expect(movedTemplate).not.toContain(STALE_SOURCE_MESSAGE);
+
+        writeFileSync(sourcePath, APP_SOURCE);
+        expect(runCli(project, ["build"]).status).toBe(0);
+        expectMetadataMessages(project);
+        expect(expectSharedMetadataMessage(project)).toEqual([]);
     } finally {
         writeFileSync(sourcePath, LOCALIZED_APP_SOURCE);
     }

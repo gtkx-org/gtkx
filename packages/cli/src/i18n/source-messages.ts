@@ -2,6 +2,7 @@ import type { ExtractedKey, ExtractedKeysMap, Logger, Plugin } from "i18next-cli
 import type { ESTree } from "vite";
 import { type NodePath, parseSync as parseBabelSync, type Scope, traverse, types } from "@babel/core";
 import { isPathInside, isPathWithin, toPosixPath } from "@gtkx/utils";
+import { type GetTextTranslationRecord, po } from "gettext-parser";
 import { runExtractor } from "i18next-cli";
 import {
     existsSync,
@@ -1915,17 +1916,46 @@ const extractSourceMessages = ({ project, messages, output, workDir }: SourceExt
     });
 };
 
+const retainMetadataReferences = (
+    translations: GetTextTranslationRecord,
+    metadataPaths: ReadonlySet<string>,
+): void => {
+    const messages = Object.values(translations).flatMap((context) => Object.values(context));
+
+    for (const message of messages) {
+        const reference = message.comments?.reference;
+
+        if (reference === undefined) {
+            continue;
+        }
+
+        message.comments = {
+            ...message.comments,
+            reference: reference
+                .split(/\s+/u)
+                .filter((location) => metadataPaths.has(location.replace(/:\d+$/u, "")))
+                .join("\n"),
+        };
+    }
+};
+
 const extractMetadataFragment = (project: CatalogProject, input: string, output: string): void => {
+    const metadataPaths = new Set(metadataTemplateFiles(project).map((file) => file.relativePath));
+
     runCliTool({
         tool: "msggrep",
         args: [
             "--force-po",
             `--output-file=${output}`,
-            ...metadataTemplateFiles(project).map((file) => `--location=${file.relativePath}`),
+            ...metadataPaths.values().map((path) => `--location=${path}`),
             input,
         ],
         target: input,
     });
+
+    const fragment = po.parse(readFileSync(output));
+    retainMetadataReferences(fragment.translations, metadataPaths);
+    writeFileSync(output, po.compile(fragment, { foldLength: 0 }));
 };
 
 const joinMetadataFragment = (output: string, fragment: string): void => {

@@ -91,6 +91,7 @@
         "create-gtkx": "workspace:*",
         "fast-xml-builder": "^1.3.1",
         "fast-xml-parser": "^5.11.1",
+        "gettext-parser": "^9.1.1",
         "hosted-git-info": "^10.1.1",
         "i18next-cli": "1.73.1",
         "jiti": "^2.7.0",
@@ -102,6 +103,7 @@
         "@gtkx/testing": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.30.0",
         "@types/babel__core": "^7.20.5",
+        "@types/gettext-parser": "^9.0.0",
         "@types/hosted-git-info": "^3.0.5",
         "@types/react-refresh": "^0.14.7",
         "vitest": "catalog:"
