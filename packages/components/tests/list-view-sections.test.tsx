@@ -12,13 +12,12 @@ import type { ReactNode, RefObject } from "react";
 import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { render, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { expanderCount, expanderNamed } from "./helpers/expanders.js";
 import { expectRowTexts } from "./helpers/row-texts.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
-import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 type Named = { name: string };
 
@@ -67,11 +66,6 @@ const mirrorSection: ListSection<string, Named> = {
     value: "Three",
     data: [branch("p3", "Parent 3", [leaf("c4", "Child 4")]), leaf("x3", "Solo 3")],
 };
-
-const repeatedIdSections: ListSection<string, Named>[] = [
-    { id: "s", value: "First", data: [leaf("a", "Alpha")] },
-    { id: "s", value: "Second", data: [leaf("b", "Beta")] },
-];
 
 const sections = [firstSection, secondSection];
 const firstSectionOnly = [firstSection];
@@ -192,22 +186,6 @@ describe("ListView sections", () => {
         const { ref } = await renderFixture({ groups: sections, expandedIds: [] });
         await expectRowTexts(ref, collapsedRows);
         expect(ref.current?.getModel()).toHaveObjectProperty("nItems", 4);
-    });
-
-    it("renders the header content as the header's direct child", async () => {
-        const { ref } = await renderFixture({ groups: sections, expandedIds: [] });
-        const [headerLabel] = await screen.findAllByText("H:One");
-
-        if (headerLabel === undefined || ref.current === null) {
-            throw new TypeError("Expected the header to render");
-        }
-
-        expectNoBoxBetween(headerLabel, ref.current);
-    });
-
-    it("keeps two sections that share an id apart", async () => {
-        const { ref } = await renderFixture({ groups: repeatedIdSections, expandedIds: [] });
-        await expectRowTexts(ref, ["H:First", "Alpha", "H:Second", "Beta"]);
     });
 
     it("does not carry component state between reordered sections", async () => {

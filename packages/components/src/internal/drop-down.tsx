@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { ElementType, ReactNode, Ref } from "react";
 import { GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
-import { omit } from "@gtkx/utils";
+import { omit, type Primitive } from "@gtkx/utils";
 import { useRef } from "react";
 import type { DropDownOwnProps, ListItemRenderArgs, ListItemRenderer } from "../types.js";
 import { ItemPortals, useItemCells, useSectionHeader } from "./cells.js";
@@ -55,22 +55,8 @@ function newApplyState(): ApplyState {
     return { isApplying: false, isReady: false };
 }
 
-const describeValue = (value: unknown): string => {
-    if (typeof value === "string") {
-        return value;
-    }
-
-    try {
-        return JSON.stringify(value);
-    } catch {
-        return String(value);
-    }
-};
-
-const defaultItemContent = (value: unknown): ReactNode =>
-    value == null ? null : <GtkLabel>{describeValue(value)}</GtkLabel>;
-
-const defaultRenderItem = ({ item }: ListItemRenderArgs<unknown>): ReactNode => defaultItemContent(item);
+const defaultRenderItem = ({ item }: ListItemRenderArgs<Primitive>): ReactNode =>
+    item == null ? null : <GtkLabel>{String(item)}</GtkLabel>;
 const faceRenderer = (props: DropDownBaseProps): ListItemRenderer<never> => props.renderItem ?? defaultRenderItem;
 
 const resolvePosition = (
