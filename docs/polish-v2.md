@@ -37,11 +37,11 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
 | `codegen` | 144 | All override templates read; remaining generator folders pending |
 | `react` | 47 | Core reconciler read; nullable drag icon fixed; lifecycle and metadata migrations open |
-| `components` | 50 | All files read; 11 findings open, including seven reproduced public defects |
-| `animated` | 19 | Pending |
+| `components` | 50 | All files read; identity, controlled state, nullable selection and import side effects fixed; seven findings remain |
+| `animated` | 19 | All files read; six findings open |
 | `cairo` | 32 | Pending |
-| `gl` | 6 | Pending |
-| `css` | 21 | Pending |
+| `gl` | 6 | All files read; exact 64-bit bindings and thin overrides fixed; callback release remains open |
+| `css` | 21 | All files read; defensive parsers removed and insertion defects fixed; repeat audit pending |
 | `forms` | 17 | Pending |
 | `i18n` | 17 | Pending |
 | `navigation` | 66 | Pending |
@@ -225,17 +225,44 @@ All 50 tracked files in `packages/components` were read, including source, inter
 
 | Finding | Evidence and consequence | State |
 | --- | --- | --- |
-| COMP1: recycled cells retain another item's React state | Item and section portals are keyed by native host lifetime; reversing two logical values renders `B:A, A:B`. Section identity is discarded by the collection index. | Reproduced for items and headers; add logical keyed boundaries and preserve section IDs |
-| COMP2: controlled selection and sorting drift | DropDown/ComboRow and ColumnView report rejected native changes but only restore controlled props after another React render. | Reproduced through public widgets; share the existing controlled-drift mechanism |
+| COMP1: recycled cells retain another item's React state | Item and section portals are keyed by native host lifetime; reversing two logical values renders `B:A, A:B`. Section identity is discarded by the collection index. | Fixed; logical item and section keys prevent recycled hosts from carrying state across values, with public reorder regressions |
+| COMP2: controlled selection and sorting drift | DropDown/ComboRow and ColumnView report rejected native changes but only restore controlled props after another React render. | Fixed; selection, expansion and sorting share one component-level controlled synchronization hook |
 | COMP3: source/header types admit an invalid call | Plain `items` can be combined with `renderHeader`, then the renderer typed as receiving a section is called with `undefined`; `sections` silently wins when both sources are supplied. | Reproduced; model item and section sources as an exclusive union |
-| COMP4: nullable controlled selection does not clear | `selectedId={null}` becomes the current native selection instead of `Gtk.INVALID_LIST_POSITION`. | Reproduced; fix with COMP2 for DropDown and ComboRow |
+| COMP4: nullable controlled selection does not clear | `selectedId={null}` becomes the current native selection instead of `Gtk.INVALID_LIST_POSITION`. | Resolved; GTK and libadwaita auto-select a row in nonempty models, so nullable input was removed. Empty models report `null`; the upstream limitation is U6 |
 | COMP5: estimated item sizes stay stale | Updating an estimate changes only registry state; realized placeholders retain the old size. | Reproduced; resize surviving hosts for list, grid and column views |
 | COMP6: ColumnView accepts discarded children | The inherited generated type accepts `children`, while the component removes them and renders only `columns`. | Open; omit `children` and verify installed declarations |
 | COMP7: unsupported tree inputs drive production complexity | Cycle tracking, depth-8,000 chains and repeated-ID semantics have extensive implementation and tests despite the stated supported-input principles. | Open contract decision; remove unsupported promises and machinery if they are outside 2.0 |
 | COMP8: cells redeclare native property descriptors | Accessibility labels/descriptions are written through a local borrowed-string descriptor and raw property names. | Open; repair or reuse a runtime/generated typed property path |
 | COMP9: fallback display serialization is hand-rolled | The default DropDown renderer catches failed JSON serialization and supplies another representation for unsupported structured values. | Open; keep the default renderer simple and require an explicit renderer for structured values |
 | COMP10: tests assert internals and wall-clock budgets | Tests inspect model splice emissions, enforce timing thresholds and emit a toast signal instead of clicking its visible action. | Open; retain observable integration coverage and move timing to benchmarks |
-| COMP11: side-effect metadata is inaccurate | The package declares `sideEffects: false`, but collection-model import writes a shared symbol entry to `globalThis`. | Open; make the cache lazy or remove the import-time mutation |
+| COMP11: side-effect metadata is inaccurate | The package declares `sideEffects: false`, but collection-model import writes a shared symbol entry to `globalThis`. | Fixed; the cross-copy weak map is initialized only when a collection item is created or read |
+
+### OpenGL package audit
+
+All six tracked files in `packages/gl` were read. The generated modules were reviewed through their generator and exercised in a real `GtkGLArea`; the OpenGL guide and demo consumers were traced.
+
+| Finding | Evidence and consequence | State |
+| --- | --- | --- |
+| GL1: 64-bit GL values lose their native range | `GLint64` and `GLuint64` were generated as `number`, and the sole value beyond JavaScript's safe integer range, `GL_TIMEOUT_IGNORED`, was omitted. This made the required `glWaitSync` call impossible and rejected exact timer-query results. | Fixed; signed and unsigned values now use `bigint`, typed arrays use the BigInt views, the full-width enum is emitted, and real sync/timer-query coverage passes |
+| GL2: a custom wait loop duplicates OpenGL | `clientWaitSyncLoop` split a wait into one-second calls to work around the old numeric binding. The native command already accepts the entire timeout and defines its wait behavior. | Fixed; the helper and its documentation reference are removed |
+| GL3: the debug override changes unrelated context state | Installing a callback also enabled debug output and synchronous delivery, diverging from `glDebugMessageCallback` and hiding two persistent GL state changes. | Fixed; callback registration is transparent, with context-state and message-delivery integration coverage |
+| GL4: override discovery parses TypeScript with a regular expression | The package script inferred generated-name collisions by splitting one expected export-block spelling. | Fixed; the existing TypeScript compiler dependency supplies the module's actual exports |
+| GL5: debug callback replacements retain every closure forever | The binding uses a `forever` callback because OpenGL has no destroy notifier. Clearing or replacing a context callback cannot release the corresponding runtime closure, so repeated registrations retain callbacks for the process lifetime. | Open; add an explicit runtime-owned callback lifetime that can be released after deregistration without exposing native pointers |
+
+The focused GL codegen now emits all selected enums and compiles its generated modules. Codegen, GL and e2e typechecks and touched-file lint pass. Five real `GtkGLArea` cases pass, including exact signed and unsigned timer-query values, the required server-wait timeout, transparent debug registration and callback delivery.
+
+### CSS package audit
+
+All 21 tracked files in `packages/css` were read, including production code, native integration tests and configuration. The React style consumer and its integration suite were traced with the package.
+
+| Finding | Evidence and consequence | State |
+| --- | --- | --- |
+| CSS1: unsupported malformed input drives custom parsing | Import-time random probes, a token scanner and NUL/containment filters attempted to classify malformed CSS before GTK. They duplicated Stylis and GTK, added a hidden side effect, and tested inputs outside the supported contract. | Fixed; the custom scanners and malformed-input matrix are removed, while GTK retains its development parsing diagnostics |
+| CSS2: scoped and global styles suppress each other | One hash set tracked both insertion modes, so serializing identical styles in one mode could prevent the other mode from reaching GTK. | Fixed; scoped and global insertions have separate identities, with both orderings covered through rendered widgets |
+| CSS3: named-color escaping corrupts valid CSS text | A fixed placeholder rewrote selectors and string values that already contained its prefix. | Fixed; each serialization selects a token absent from its input and owns the matching restore function |
+| CSS4: Emotion labels are detected by character positions | Declaration removal checked two characters rather than the declaration property, allowing unrelated properties to match. | Fixed; removal requires an exact Stylis `label` declaration |
+
+The complete CSS package passes 16 native integration cases. The focused React style suite passes 20 render cases, and the affected TypeScript and ESLint checks pass. The implementation removes 268 more lines than it adds.
 
 ### Declarative shortcut construction audit
 
