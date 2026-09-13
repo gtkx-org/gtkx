@@ -1,7 +1,7 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { getSignalBaseName, offSignal, onSignal, type SignalHandler } from "@gtkx/runtime";
 import { toCamelIdentifier } from "@gtkx/utils";
-import type { HandlerRecord, SignalTarget } from "./node.js";
+import type { Dispatch, HandlerRecord, SignalTarget } from "./node.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
 
 type NotifyBinding = { property: string | null };
@@ -67,7 +67,6 @@ const isBlockableSignal = (info: TypeInfo, signal: string): boolean =>
     info.userEventSignals.has(getSignalBaseName(signal));
 
 const invokeHandler = (
-    target: SignalTarget,
     record: HandlerRecord,
     notify: NotifyBinding | null,
     args: unknown[],
@@ -75,17 +74,23 @@ const invokeHandler = (
     const property = notify?.property ?? null;
 
     return property === null
-        ? record.handler(...args, target.object)
-        : record.handler(Reflect.get(target.object, property), target.object);
+        ? record.handler(...args, record.object)
+        : record.handler(Reflect.get(record.object, property), record.object);
 };
 
-const wrapHandler = (target: SignalTarget, record: HandlerRecord, notify: NotifyBinding | null): SignalHandler =>
+const wrapHandler = (
+    reference: WeakRef<HandlerRecord>,
+    dispatch: Dispatch,
+    notify: NotifyBinding | null,
+): SignalHandler =>
     (...args: unknown[]): unknown => {
-        if (isSuppressed(record, notify, args)) {
+        const record = reference.deref();
+
+        if (record === undefined || isSuppressed(record, notify, args)) {
             return undefined;
         }
 
-        return target.dispatch(() => invokeHandler(target, record, notify, args));
+        return dispatch(() => invokeHandler(record, notify, args));
     };
 
 const connectHandler = (target: SignalTarget, prop: string, signal: string, handler: SignalHandler): void => {
@@ -111,7 +116,7 @@ const connectHandler = (target: SignalTarget, prop: string, signal: string, hand
         object: target.object,
     };
 
-    record.wrapped = wrapHandler(target, record, notifyBindingFor(signal));
+    record.wrapped = wrapHandler(new WeakRef(record), target.dispatch, notifyBindingFor(signal));
     onSignal(target.object, signal, record.wrapped);
     target.handlers.set(prop, record);
 };

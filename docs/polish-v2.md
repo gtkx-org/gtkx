@@ -387,7 +387,7 @@ An application retaining an unmounted native widget also retained its former sig
 
 Four public regressions cover handler collection and disconnection, child collection, portals after unmount and portal handoff in the same commit. All 144 focused lifecycle, portal, signal and slot cases pass, alongside React/e2e types and touched-file lint. A separate production-mode reproduction fails with the old implementation and passes with the fix. Immediate navigation header collection still follows React's development owner and debug-stack lifetime; repeated navigation releases older headers.
 
-The error-path review found a separate leak when render fails after native signals are connected but before commit. That abandoned-render case remains open and is being fixed through callback ownership rather than development-only cleanup.
+The error-path review found a separate leak when render fails after native signals are connected but before commit. Native callback wrappers now weakly reference their renderer-owned handler records, so abandoned work can be collected. Mounted widgets and adopted pages retain their active handlers through garbage collection and replacement. The failed-render regression fails against the previous signal wrapper and passes with the fix. All 910 React integration cases pass across 42 files, alongside React/e2e types and touched-file lint.
 
 ## Next work
 

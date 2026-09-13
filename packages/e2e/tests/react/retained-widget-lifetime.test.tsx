@@ -1,10 +1,20 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkStack, GtkStackPage } from "@gtkx/jsx/gtk";
 import { createPortal } from "@gtkx/react";
-import { cleanup, render } from "@gtkx/testing";
+import { act, cleanup, render } from "@gtkx/testing";
+import { setImmediate } from "node:timers/promises";
 import { createRef } from "react";
 import { expect, it } from "vitest";
 import { gcUntil } from "../helpers/native-utils.js";
+
+const collect = async (): Promise<void> => {
+    expect(globalThis.gc).toBeTypeOf("function");
+
+    for (let round = 0; round < 3; round += 1) {
+        await setImmediate();
+        globalThis.gc?.();
+    }
+};
 
 const unmountRetainedButton = async () => {
     const ref = createRef<Gtk.Button>();
@@ -46,6 +56,32 @@ const unmountRetainedParent = async () => {
     return { parent, released };
 };
 
+const failAfterCreatingButton = async (): Promise<WeakRef<() => void>> => {
+    let clicks = 0;
+    const onClicked = (): void => {
+        clicks += 1;
+    };
+    const handler = new WeakRef(onClicked);
+    let didThrow = false;
+
+    try {
+        await render(
+            <GtkBox>
+                <GtkButton label="Abandoned" onClicked={onClicked} />
+                <GtkBox>Invalid text child</GtkBox>
+            </GtkBox>,
+        );
+    } catch {
+        didThrow = true;
+    }
+
+    expect(didThrow).toBe(true);
+    expect(clicks).toBe(0);
+    await cleanup();
+
+    return handler;
+};
+
 it("releases a retained widget's signal handlers after unmount", async () => {
     const { button, handler } = await unmountRetainedButton();
     await gcUntil(() => handler.deref() === undefined);
@@ -59,6 +95,65 @@ it("releases removed children while their unmounted parent is retained", async (
     await gcUntil(() => released.deref() === undefined);
     expect(released.deref()).toBeUndefined();
     expect(parent.getFirstChild()).toBeNull();
+});
+
+it("releases signal handlers when rendering fails before commit", async () => {
+    const handler = await failAfterCreatingButton();
+    await gcUntil(() => handler.deref() === undefined);
+    expect(handler.deref()).toBeUndefined();
+});
+
+it("keeps mounted widget and adopted page handlers through collection and replacement", async () => {
+    const buttonRef = createRef<Gtk.Button>();
+    const pageRef = createRef<Gtk.StackPage>();
+    const events: string[] = [];
+    const App = ({ version }: { version: string }) => (
+        <GtkStack>
+            <GtkStackPage
+                ref={pageRef}
+                title="Initial"
+                onNotifyTitle={(title) => {
+                    events.push(`${version}:${String(title)}`);
+                }}
+            >
+                <GtkButton
+                    ref={buttonRef}
+                    label="Click"
+                    onClicked={() => {
+                        events.push(`${version}:click`);
+                    }}
+                />
+            </GtkStackPage>
+        </GtkStack>
+    );
+    const { rerender, unmount } = await render(<App version="first" />);
+    const button = buttonRef.current;
+    const page = pageRef.current;
+
+    if (button === null || page === null) {
+        throw new Error("The button and page were not mounted");
+    }
+
+    await collect();
+    await act(() => {
+        button.emit("clicked");
+        page.setTitle("Changed");
+    });
+    expect(events).toEqual(["first:click", "first:Changed"]);
+
+    await rerender(<App version="second" />);
+    events.length = 0;
+    await collect();
+    await act(() => {
+        button.emit("clicked");
+        page.setTitle("Again");
+    });
+    expect(events).toEqual(["second:click", "second:Again"]);
+
+    await unmount();
+    button.emit("clicked");
+    page.setTitle("Detached");
+    expect(events).toEqual(["second:click", "second:Again"]);
 });
 
 it("accepts a new portal into a retained parent after unmount", async () => {
