@@ -1,12 +1,12 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { ElementType, ReactNode, Ref } from "react";
 import { GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
-import { useLatestRef } from "@gtkx/react/internal";
 import { omit } from "@gtkx/utils";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import type { DropDownOwnProps, ListItemRenderArgs, ListItemRenderer } from "../types.js";
-import type { Collection } from "./collection.js";
 import { ItemPortals, useItemCells, useSectionHeader } from "./cells.js";
+import { type Collection, isCollectionIdle } from "./collection.js";
+import { useControlledSync } from "./controlled-sync.js";
 import { useCollectionData } from "./use-collection.js";
 import { useWidgetRef } from "./use-widget-ref.js";
 
@@ -24,17 +24,18 @@ type SelectionOptions = {
 };
 
 type NotifySelectedHandler = NonNullable<DropDownBaseProps["onNotifySelected"]>;
-type ApplyState = { isApplying: boolean };
+type ApplyState = { isApplying: boolean; isReady: boolean };
 
 type NotifyContext = {
     options: SelectionOptions;
     known: { current: string | null };
     state: ApplyState;
+    markDrift: () => void;
 };
 
 type KnownSelection = {
     known: { current: string | null };
-    onSelectionChanged: ((id: string) => void) | null | undefined;
+    onSelectionChanged: ((id: string | null) => void) | null | undefined;
 };
 
 const DROP_DOWN_PROPS: string[] = [
@@ -51,7 +52,7 @@ const DROP_DOWN_PROPS: string[] = [
 ];
 
 function newApplyState(): ApplyState {
-    return { isApplying: false };
+    return { isApplying: false, isReady: false };
 }
 
 const describeValue = (value: unknown): string => {
@@ -75,17 +76,21 @@ const faceRenderer = (props: DropDownBaseProps): ListItemRenderer<never> => prop
 const resolvePosition = (
     widget: SelectableWidget,
     collection: Collection,
-    selectedId: string | null | undefined,
+    selectedId: string | undefined,
 ): number => {
-    const requested = selectedId == null ? -1 : collection.positionFor(selectedId);
+    if (selectedId === undefined) {
+        return widget.getSelected();
+    }
+
+    const requested = collection.positionFor(selectedId);
 
     return requested >= 0 ? requested : widget.getSelected();
 };
 
 const updateKnownSelection = (
     tracker: KnownSelection,
-    effectiveId: string,
-    selectedId: string | null | undefined,
+    effectiveId: string | null,
+    selectedId: string | undefined,
 ): void => {
     const { known, onSelectionChanged } = tracker;
     const expectedId = selectedId ?? known.current;
@@ -100,7 +105,7 @@ const updateKnownSelection = (
 const reportKnownSelection = (tracker: KnownSelection, id: string | null): void => {
     const { known, onSelectionChanged } = tracker;
 
-    if (id === null || id === known.current) {
+    if (id === known.current) {
         return;
     }
 
@@ -108,14 +113,18 @@ const reportKnownSelection = (tracker: KnownSelection, id: string | null): void 
     onSelectionChanged?.(id);
 };
 
-const reportSelectedNotify = (options: SelectionOptions, tracker: KnownSelection): void => {
-    const { widget, collection } = options;
-
-    if (widget === null) {
-        return;
+const hasSelectionDrifted = (
+    widget: SelectableWidget,
+    collection: Collection,
+    selectedId: string | undefined,
+): boolean => {
+    if (selectedId === undefined) {
+        return false;
     }
 
-    reportKnownSelection(tracker, collection.idAt(widget.getSelected()));
+    const requested = collection.positionFor(selectedId);
+
+    return requested >= 0 && widget.getSelected() !== requested;
 };
 
 const applySelectedPosition = (widget: SelectableWidget, position: number, state: ApplyState): void => {
@@ -129,49 +138,58 @@ const applySelectedPosition = (widget: SelectableWidget, position: number, state
 };
 
 const dispatchSelectedNotify = (context: NotifyContext, value: number | null, self: SelectableWidget): void => {
-    const { options, known, state } = context;
+    const { options, known, state, markDrift } = context;
 
     if (state.isApplying) {
         return;
     }
 
-    reportSelectedNotify(options, { known, onSelectionChanged: options.props.onSelectionChanged });
     options.props.onNotifySelected?.(value, self);
+
+    if (!state.isReady || !isCollectionIdle(options.collection)) {
+        return;
+    }
+
+    reportKnownSelection(
+        { known, onSelectionChanged: options.props.onSelectionChanged },
+        options.collection.idAt(self.getSelected()),
+    );
+
+    if (hasSelectionDrifted(self, options.collection, options.props.selectedId)) {
+        markDrift();
+    }
 };
 
 const useDropDownSelection = (options: SelectionOptions): NotifySelectedHandler => {
     const { widget, collection } = options;
     const { selectedId } = options.props;
     const known = useRef<string | null>(null);
-    const [applyState] = useState<ApplyState>(newApplyState);
+    const applyState = useRef<ApplyState>(newApplyState());
 
-    const syncKnownSelection = (position: number): void => {
+    const syncKnownSelection = (position: number, requestedId: string | undefined): void => {
         const effectiveId = collection.idAt(position);
-
-        if (effectiveId === null) {
-            known.current = null;
-
-            return;
-        }
-
         const { onSelectionChanged } = options.props;
-        updateKnownSelection({ known, onSelectionChanged }, effectiveId, selectedId);
+        updateKnownSelection({ known, onSelectionChanged }, effectiveId, requestedId);
+        applyState.current.isReady = true;
     };
 
-    const syncRef = useLatestRef(syncKnownSelection);
+    const markDrift = useControlledSync({
+        value: selectedId,
+        source: collection,
+        target: widget,
+        apply: (value) => {
+            if (widget === null) {
+                return;
+            }
 
-    useLayoutEffect(() => {
-        if (widget === null) {
-            return;
-        }
-
-        const position = resolvePosition(widget, collection, selectedId);
-        applySelectedPosition(widget, position, applyState);
-        syncRef.current(position);
-    }, [syncRef, widget, collection, selectedId, applyState]);
+            const position = resolvePosition(widget, collection, value);
+            applySelectedPosition(widget, position, applyState.current);
+            syncKnownSelection(position, value);
+        },
+    });
 
     return (value, self) => {
-        dispatchSelectedNotify({ options, known, state: applyState }, value, self);
+        dispatchSelectedNotify({ options, known, state: applyState.current, markDrift }, value, self);
     };
 };
 

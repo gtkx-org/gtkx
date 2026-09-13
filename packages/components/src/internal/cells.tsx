@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkSignalListItemFactory, GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal, useProperty } from "@gtkx/react";
 import { setProperty, t } from "@gtkx/runtime";
-import { memo, useInsertionEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, memo, useInsertionEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type {
     ExpanderDescriptions,
     ListItem,
@@ -15,7 +15,8 @@ import type {
     ListSectionRenderer,
 } from "../types.js";
 import type { Collection } from "./collection.js";
-import { slotRefFor } from "./collection-model.js";
+import { slotPathAt, type SlotRef, slotRefFor } from "./collection-model.js";
+import { joinParts } from "./keys.js";
 
 type CellSize = {
     width: number;
@@ -84,6 +85,7 @@ type ItemSlotOptions = {
 type PositionedHost = Gtk.ListItem | Gtk.ColumnViewRow;
 
 type ItemSlot = {
+    itemKey: string;
     item: ListItem;
     row: Gtk.TreeListRow | null;
     args: ListItemRenderArgs<unknown>;
@@ -100,6 +102,7 @@ type CollectionStateStore = {
 };
 
 type ItemIdentity = {
+    itemKey: string;
     item: ListItem | undefined;
     position: number;
     isExpanded: boolean;
@@ -324,15 +327,25 @@ function itemArgs(
     return args;
 }
 
+function keyForItem(ref: SlotRef, item: ListItem): string {
+    return joinParts([slotPathAt(ref.store, ref.slot), item.id]);
+}
+
 function slotFor(options: ItemSlotOptions): ItemSlot | null {
     const ref = slotRefFor(options.item);
-    const item = ref === null ? undefined : options.collection.itemAt(ref);
+
+    if (ref === null) {
+        return null;
+    }
+
+    const item = options.collection.itemAt(ref);
 
     if (item === undefined) {
         return null;
     }
 
     return {
+        itemKey: keyForItem(ref, item),
         item,
         row: options.row,
         args: itemArgs(item, options.position, options.row, isRowWanted(options, item)),
@@ -352,6 +365,7 @@ function useItemSlot(
         return identity.item === undefined
             ? null
             : {
+                    itemKey: identity.itemKey,
                     item: identity.item,
                     row,
                     args: itemArgs(identity.item, position, row, identity.isExpanded),
@@ -372,6 +386,7 @@ function itemIdentity(
     const item = ref === null ? undefined : collection.itemAt(ref);
 
     return {
+        itemKey: ref === null || item === undefined ? "" : keyForItem(ref, item),
         item,
         position: entry.host.getPosition(),
         isExpanded: item === undefined ? false : (expandedIds?.includes(item.id) ?? false),
@@ -381,6 +396,7 @@ function itemIdentity(
 function isSameItemIdentity(previous: ItemIdentity, next: ItemIdentity): boolean {
     return (
         previous.item === next.item &&
+        previous.itemKey === next.itemKey &&
         previous.position === next.position &&
         previous.isExpanded === next.isExpanded
     );
@@ -417,6 +433,7 @@ function createItemIdentityStore(): ItemIdentityStore {
 
 function renderedIdentity(entry: CellEntry<PositionedHost>, slot: ItemSlot | null): ItemIdentity {
     return {
+        itemKey: slot?.itemKey ?? "",
         item: slot?.item,
         position: slot?.args.index ?? entry.host.getPosition(),
         isExpanded: slot?.args.isExpanded ?? false,
@@ -506,7 +523,9 @@ function itemBody(
     const renderItem = render as ListItemRenderer<unknown>;
     const content = renderItem(slot.args);
 
-    return hasExpander ? wrapExpander(slot, content, descriptions) : content;
+    return (
+        <Fragment key={slot.itemKey}>{hasExpander ? wrapExpander(slot, content, descriptions) : content}</Fragment>
+    );
 }
 
 function rowText(value: string | undefined): string | null {
@@ -592,11 +611,29 @@ function ItemRowImpl({ entry, rowProps, state, ...identity }: ItemRowProps): Rea
 
 function HeaderCellImpl({ entry, render, collection }: HeaderCellProps): ReactNode {
     const item = useProperty(entry.host, "item") ?? null;
-    const ref = slotRefFor(item);
-    const renderHeader = render as ListSectionRenderer<unknown>;
-    const body = ref === null ? null : renderHeader({ section: collection.sectionFor(ref.store.level.path) });
 
-    return createPortal(body, entry.host, entry.key);
+    return createPortal(headerBody(slotRefFor(item), render, collection), entry.host, entry.key);
+}
+
+function headerBody(
+    ref: SlotRef | null,
+    render: ListSectionRenderer<never>,
+    collection: Collection,
+): ReactNode {
+    if (ref === null) {
+        return null;
+    }
+
+    const section = collection.sectionFor(ref.store.level.path);
+
+    if (section === undefined) {
+        return null;
+    }
+
+    const renderHeader = render as ListSectionRenderer<unknown>;
+    const key = joinParts([ref.store.level.path, section.id]);
+
+    return <Fragment key={key}>{renderHeader({ section: section.value })}</Fragment>;
 }
 
 function usePortalEntries<H extends FactoryHost>(registry: CellRegistry<H>): CellEntry<H>[] {

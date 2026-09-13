@@ -207,9 +207,9 @@ ColumnViewOwnProps<T, S>;
 /** The declarative collection props {@link DropDown} and `ComboRow` add on top of their widget's own. */
 type DropDownOwnProps<T, S> = SourceProps<T, S> & {
     /** Id of the currently selected item, making the selection controlled. */
-    selectedId?: string | null | undefined;
-    /** Called with the id of the item that became selected. */
-    onSelectionChanged?: ((id: string) => void) | null | undefined;
+    selectedId?: string | undefined;
+    /** Called with the selected id, or `null` when the model becomes empty. */
+    onSelectionChanged?: ((id: string | null) => void) | null | undefined;
     /** Renders the collapsed display, and the popup rows too unless `renderListItem` is given. */
     renderItem?: ListItemRenderer<T> | null | undefined;
     /** Renderer for items in the open popup list, falling back to renderItem when omitted. */

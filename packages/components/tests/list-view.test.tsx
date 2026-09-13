@@ -1,8 +1,9 @@
 import type { ListItem, ListItemRenderer } from "@gtkx/components";
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
     asCollectionView,
@@ -88,6 +89,13 @@ const listViewView = async (items: string[]) => asCollectionView(await renderLis
 const gridViewView = async (items: string[]) => asCollectionView(await renderGridView(items), labelTexts);
 const renderCount: ListItemRenderer<{ count: number }> = ({ item }) => <GtkLabel>{String(item.count)}</GtkLabel>;
 
+const StatefulItem = ({ name }: { name: string }): ReactNode => {
+    const [initial] = useState(name);
+
+    return <GtkLabel>{`${name}:${initial}`}</GtkLabel>;
+};
+const renderStatefulItem: ListItemRenderer<{ name: string }> = ({ item }) => <StatefulItem name={item.name} />;
+
 const countedItems = (offset: number): ListItem<{ count: number }>[] => [
     { id: "1", value: { count: offset } },
     { id: "2", value: { count: offset * 2 } },
@@ -164,6 +172,13 @@ describe("ListView rendering", () => {
             await rerender(countedItems(round), { renderItem: renderCount });
             expect(labelTexts(ref.current)).toEqual([String(round), String(round * 2)]);
         }
+    });
+
+    it("does not carry component state between reordered items", async () => {
+        const { ref, rerender } = await renderListView(["A", "B"], { renderItem: renderStatefulItem });
+        expect(labelTexts(ref.current)).toEqual(["A:A", "B:B"]);
+        await rerender(["B", "A"], { renderItem: renderStatefulItem });
+        expect(labelTexts(ref.current)).toEqual(["B:B", "A:A"]);
     });
 
     it("renders the row content as the cell's direct child", async () => {

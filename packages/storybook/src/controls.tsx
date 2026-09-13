@@ -112,8 +112,12 @@ const SelectControl = (props: Omit<ControlProps, "type">): ReactNode => {
             title={markupEscapeText(title, -1)}
             sensitive={!isDisabled}
             items={items}
-            selectedId={selected === -1 ? null : String(selected)}
+            selectedId={selected === -1 ? undefined : String(selected)}
             onSelectionChanged={(id) => {
+                if (id === null) {
+                    return;
+                }
+
                 const index = Number(id);
 
                 if (Number.isSafeInteger(index) && index >= 0 && index < values.length) {
