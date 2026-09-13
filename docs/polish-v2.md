@@ -37,12 +37,12 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
 | `codegen` | 144 | All override templates read; remaining generator folders pending |
 | `react` | 47 | Core reconciler read; nullable drag icon fixed; lifecycle and metadata migrations open |
-| `components` | 50 | All files read; identity, controlled state, sources, live size estimates and import side effects fixed; four findings remain |
+| `components` | 50 | All files read; all initial findings resolved; repeat review continues |
 | `animated` | 19 | All files read; text, prop contracts, dead code, tests and guides fixed; upstream ref compatibility retained |
 | `cairo` | 32 | Pending |
 | `gl` | 6 | All files read; exact 64-bit bindings and thin overrides fixed; callback release remains open |
-| `css` | 21 | All files read; defensive parsers removed and insertion defects fixed; repeat audit pending |
-| `forms` | 17 | Collection source union preserved; full package pending |
+| `css` | 21 | All files read twice; named-color and registry fixes validated; documentation corrected |
+| `forms` | 17 | All current files read; callback refs and shared types fixed; nullable ComboRow contract open |
 | `i18n` | 17 | Pending |
 | `navigation` | 66 | Pending |
 | `storybook` | 31 | Pending |
@@ -50,7 +50,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `cli` | 262 | Generated consumer and catalog-reference fixes verified; full package pending |
 | `create-gtkx` | 31 | Pending |
 | `mcp` | 26 | Pending |
-| `testing` | 60 | Pending |
+| `testing` | 60 | ComboRow display-value matcher fixed; full package pending |
 | `vitest` | 12 | Pending |
 | `e2e` | 117 | Relevant regression coverage reviewed with each fix; full suite audit pending |
 | `eslint` | 36 | Pending |
@@ -231,15 +231,17 @@ All 50 tracked files in `packages/components` were read, including source, inter
 | COMP4: nullable controlled selection does not clear | `selectedId={null}` becomes the current native selection instead of `Gtk.INVALID_LIST_POSITION`. | Resolved; GTK and libadwaita auto-select a row in nonempty models, so nullable input was removed. Empty models report `null`; the upstream limitation is U6 |
 | COMP5: estimated item sizes stay stale | Updating an estimate changes only registry state; realized placeholders retain the old size. | Fixed; surviving placeholders resize when estimates change or are removed, preserving rendered content sizes |
 | COMP6: ColumnView accepts discarded children | The inherited generated type accepts `children`, while the component removes them and renders only `columns`. | Fixed; the public type omits `children` and no longer silently strips an unsupported input |
-| COMP7: unsupported tree inputs drive production complexity | Cycle tracking, depth-8,000 chains and repeated-ID semantics have extensive implementation and tests despite the stated supported-input principles. | Open contract decision; remove unsupported promises and machinery if they are outside 2.0 |
-| COMP8: cells redeclare native property descriptors | Accessibility labels/descriptions are written through a local borrowed-string descriptor and raw property names. | Open; repair or reuse a runtime/generated typed property path |
-| COMP9: fallback display serialization is hand-rolled | The default DropDown renderer catches failed JSON serialization and supplies another representation for unsupported structured values. | Open; keep the default renderer simple and require an explicit renderer for structured values |
-| COMP10: tests assert internals and wall-clock budgets | Tests inspect model splice emissions, enforce timing thresholds and emit a toast signal instead of clicking its visible action. | Open; retain observable integration coverage and move timing to benchmarks |
+| COMP7: unsupported tree inputs drive production complexity | Cycle tracking, depth-8,000 chains and repeated-ID semantics have extensive implementation and tests despite the stated supported-input principles. | Resolved; finite acyclic trees require stable unique item IDs, and recursive traversal replaces cycle and extreme-depth machinery |
+| COMP8: cells redeclare native property descriptors | Accessibility labels/descriptions are written through a local borrowed-string descriptor and raw property names. | Fixed; generated ColumnViewRow accessors own the property descriptors, with public update, clear and resolver-error cases |
+| COMP9: fallback display serialization is hand-rolled | The default DropDown renderer catches failed JSON serialization and supplies another representation for unsupported structured values. | Fixed; primitive labels use String, and structured values require renderItem through the public types |
+| COMP10: tests assert internals and wall-clock budgets | Tests inspect model splice emissions, enforce timing thresholds and emit a toast signal instead of clicking its visible action. | Fixed; removed internal hierarchy, splice and timing assertions; large lists verify visible updates and scrolling, and toast tests click Undo |
 | COMP11: side-effect metadata is inaccurate | The package declares `sideEffects: false`, but collection-model import writes a shared symbol entry to `globalThis`. | Fixed; the cross-copy weak map is initialized only when a collection item is created or read |
 
 The live-size fix passes eight public measurement cases across ListView, GridView and ColumnView. The complete components suite passes 114 tests; component test types and touched-file lint pass. A running native list was visually inspected at 40-pixel, 100-pixel and removed estimates. Only framework placeholders receive size updates; rendered content keeps its own dimensions.
 
 The source union also survives the form ComboRow wrapper and its prop-omission helper. The shared helper uses type-fest's `DistributedOmit`, with no runtime import of that type-only dependency. Public integration cases exercise empty, sectioned and plain sources and preserve form selection through transitions. The complete components suite now passes 115 cases, and all 11 form cases pass. All 19 strict installed-consumer checks pass, rejecting mixed sources, headers without sections and discarded ColumnView children. Root typechecking, affected lint and Knip pass.
+
+The remaining components fixes pass all 120 integration cases. Tree traversal no longer maintains cycle ancestry or manual stacks; an independent review found no regression for supported trees. Row accessibility uses generated accessors. Default dropdown rendering accepts primitive values, leaving nullish content empty; objects need a renderer, including when only the popup renderer is otherwise provided. All 25 strict installed-consumer checks cover these contracts and inferred JSX. Native trees, row labels and dropdown displays/popups were visually inspected.
 
 ### OpenGL package audit
 
@@ -265,8 +267,14 @@ All 21 tracked files in `packages/css` were read, including production code, nat
 | CSS2: scoped and global styles suppress each other | One hash set tracked both insertion modes, so serializing identical styles in one mode could prevent the other mode from reaching GTK. | Fixed; scoped and global insertions have separate identities, with both orderings covered through rendered widgets |
 | CSS3: named-color escaping corrupts valid CSS text | A fixed placeholder rewrote selectors and string values that already contained its prefix. | Fixed; each serialization selects a token absent from its input and owns the matching restore function |
 | CSS4: Emotion labels are detected by character positions | Declaration removal checked two characters rather than the declaration property, allowing unrelated properties to match. | Fixed; removal requires an exact Stylis `label` declaration |
+| CSS5: application color definitions disappear | Stylis stringify drops GTK's `@define-color` statements, including aliases used by otherwise valid declarations. | Fixed; a small GTK statement serializer preserves these native rules |
+| CSS6: named colors collide with at-rule parsing | Keyword exemptions treat declaration values such as `@media` as rules; the hand-written identifier pattern also misses valid native names. | Fixed; PostCSS identifies declaration values and color-definition parameters before Stylis nesting |
+| CSS7: plain strings collide with registry prototypes | `cx("constructor", generatedClass)` loses the raw class, and an empty Emotion registry changes `style` font values with the same name. | Fixed; registered classes use a null-prototype dictionary, and the style prop omits the unused registry |
+| CSS8: guides describe removed implementation | Both guides promise containment warnings; the current guide also describes a per-widget provider that no longer exists. | Fixed; concise guides describe the shared provider and link upstream styling documentation |
 
 The complete CSS package passes 16 native integration cases. The focused React style suite passes 20 render cases, and the affected TypeScript and ESLint checks pass. The implementation removes 268 more lines than it adds.
+
+The repeat pass adds six native CSS regressions and one rendered style regression, all confirmed failing before the fixes. PostCSS replaces custom identifier recognition; Stylis retains nesting with a small extension for GTK color statements. All 22 CSS cases and 21 rendered style cases pass, with source/test types, lint and independent review. The native color example was visually inspected. No independently actionable upstream defect was established.
 
 ### Declarative shortcut construction audit
 
@@ -304,10 +312,29 @@ A message shared by source and deployment metadata retained obsolete source loca
 
 The public deploy/build regression failed with the old implementation and passes with the fix. All six localization cases and three adjacent CLI i18n cases pass, alongside CLI source/test types, lint and offline frozen-lockfile validation. Regenerated tutorial catalogs contain only current source references and preserve their translations; compiling the French catalog produces a byte-identical MO file.
 
+### Forms package audit
+
+All 18 files tracked in `packages/forms` at this pass were read, with both forms guides, affected component consumers and React Hook Form's public declarations. The new callback-ref regression file brings the package to 19 tracked files.
+
+| Finding | Evidence and consequence | State |
+| --- | --- | --- |
+| FORM1: forwarded callback-ref cleanup is discarded | The local ref dispatcher calls a React callback ref but ignores its returned cleanup. Public replacement/unmount regressions fail for all five form rows. | Fixed; the shared maintained ref-composition helper preserves cleanup and the React Hook Form focus proxy |
+| FORM2: nullish ComboRow defaults disagree with the display | A nullable or undefined field remains nullish while its nonempty native row shows the first option. The public field-path type advertises nullable values. | Open; align the supported form default/nullable contract with the native auto-selection limitation recorded as U6 |
+| FORM3: form metadata duplicates upstream types | Field names, binding callbacks and validation state redeclare parts of React Hook Form's contract. | Fixed; derive these shapes from the dependency's public types |
+| FORM4: tests and guides duplicate cosmetic/upstream details | An edge test matches validation-message text; guides teach form state and incorrectly imply that context infers field names and missing defaults leave a combo row unselected. | Fixed; removed the cosmetic assertion and rewrote the guides around native bindings with upstream links |
+
+All 18 forms integration cases pass, including seven new ref cases for replacement, unmount, object refs, focus/selection and cleanup errors. Source/test types, full package lint and independent ref review pass. The running focus/selection example was visually inspected. Existing broad FieldValues inputs still need value narrowing; this is an actual dependency boundary rather than an unsupported-input fallback.
+
+FORM2 is reproduced for both null and undefined defaults in `/tmp/gtkx-form-default-observation.test.tsx`. The guides now recommend valid initial item IDs, but that advice does not close the public type mismatch. No production selection change was made in this pass. The follow-up must cover reset/setValue(null) and late-loaded choices as well as mount, while preserving Storybook controls' explicit absent-argument behavior.
+
 ### Testing follow-up
 
-The form source transition exposed a matcher issue: a custom ComboRow renders its selected label correctly, but `toHaveDisplayValue` reports an empty string. The accessible-value lookup currently takes precedence over the visible selected content even when that value is empty. This needs a focused public matcher regression and review during the testing-package pass.
+The form source transition exposed a matcher issue: a custom ComboRow visibly rendered its selected label while `toHaveDisplayValue` returned an empty string. A public native regression confirmed it. The matcher now reads the selected factory content or the displayed subtitle independently of accessible-value overrides, excluding unrelated row titles and popup content.
+
+Ten public regressions cover custom rendering, empty selections and models, subtitle mode, updates, open popovers, errors and DropDown compatibility. The broader testing run passed 219 cases before the final two empty-subtitle cases were added; all ten final regressions and six ComboRow lifetime cases pass. Testing/e2e types and affected lint pass. This was a GTKX matcher defect, with no new upstream report needed.
+
+The combined checkpoint passes library builds, affected typechecks, root typechecking, lint, Knip and an offline frozen-lockfile install. Current API references generate successfully into a standalone output directory. The full website production build, page rendering and sitemap generation pass in 430 seconds.
 
 ## Next work
 
-Revisit the four remaining components findings alongside R2 output-storage, string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
+Resolve FORM2 and continue repeat audits alongside R2 output-storage, string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.

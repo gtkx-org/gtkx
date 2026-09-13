@@ -325,5 +325,4 @@ export {
     renderListView,
     renderStatefulListView,
     valueItems,
-    type ListViewFixture,
 };
