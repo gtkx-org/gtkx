@@ -18,7 +18,7 @@ function ComboRow<
 
     const binding = useFieldWidget<Adw.ComboRow>(field, fieldState, rowProps);
 
-    const selectedId = typeof field.value === "string" ? field.value : null;
+    const selectedId = typeof field.value === "string" ? field.value : undefined;
 
     return (
         <BaseComboRow

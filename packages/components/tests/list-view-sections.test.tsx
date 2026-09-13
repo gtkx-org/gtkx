@@ -79,6 +79,12 @@ function renderHeader({ section }: { section: string }): ReactNode {
     return <GtkLabel>{`H:${section}`}</GtkLabel>;
 }
 
+function StatefulHeader({ section }: { section: string }): ReactNode {
+    const [initial] = useState(section);
+
+    return <GtkLabel>{`H:${section}:${initial}`}</GtkLabel>;
+}
+
 const drawList = (ref: RefObject<Gtk.ListView | null>, draw: ListDraw, handlers: ListHandlers): ReactNode => (
     <ScrollWrapper minContentHeight={500}>
         <ListView<Named, string>
@@ -146,6 +152,25 @@ describe("ListView sections", () => {
     it("keeps two sections that share an id apart", async () => {
         const { ref } = await renderFixture({ groups: repeatedIdSections, expandedIds: [] });
         await expectRowTexts(ref, ["H:First", "Alpha", "H:Second", "Beta"]);
+    });
+
+    it("does not carry component state between reordered sections", async () => {
+        const ref = createRef<Gtk.ListView>();
+        const draw = (groups: ListSection<string, Named>[]): ReactNode => (
+            <ScrollWrapper>
+                <ListView
+                    ref={ref}
+                    sections={groups}
+                    isFlat
+                    renderItem={renderItem}
+                    renderHeader={({ section }) => <StatefulHeader section={section} />}
+                />
+            </ScrollWrapper>
+        );
+        const { rerender } = await render(draw(sections));
+        await expectRowTexts(ref, ["H:One:One", "Parent 1", "Solo 1", "H:Two:Two", "Solo 2", "Parent 2"]);
+        await rerender(draw(sections.toReversed()));
+        await expectRowTexts(ref, ["H:Two:Two", "Solo 2", "Parent 2", "H:One:One", "Parent 1", "Solo 1"]);
     });
 
     it("selects the row named by selectedIds once a section arrives", async () => {

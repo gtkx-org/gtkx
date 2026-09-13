@@ -132,9 +132,39 @@ describe("DropDown", () => {
 });
 
 describe("DropDown controlled selection", () => {
+    it("restores selectedId after the user selects another item", async () => {
+        const ref = dropDownRef();
+        const onSelectionChanged = vi.fn();
+
+        await render(
+            <DropDown ref={ref} selectedId="b" onSelectionChanged={onSelectionChanged} items={abcItems()} />,
+        );
+        await userEvent.selectOptions(ref.current, 2);
+
+        await waitFor(() => {
+            expect(onSelectionChanged).toHaveBeenCalledExactlyOnceWith("c");
+            expect(ref.current).toHaveObjectProperty("selected", 1);
+        });
+    });
+
     it("reports the new effective id when the selected item is removed", async () => {
         await expectRemovalReported({ initialPosition: 0, removedId: "a" });
         await expectRemovalReported({ selectedId: "b", initialPosition: 1, removedId: "b" });
+    });
+
+    it("reports null when the model becomes empty", async () => {
+        const ref = dropDownRef();
+        const onSelectionChanged = vi.fn();
+        const draw = (items: IdItem[]): ReactNode => (
+            <DropDown ref={ref} selectedId="a" onSelectionChanged={onSelectionChanged} items={items} />
+        );
+        const { rerender } = await render(draw(abcItems().slice(0, 1)));
+        await rerender(draw([]));
+
+        await waitFor(() => {
+            expect(ref.current).toHaveObjectProperty("selected", Gtk.INVALID_LIST_POSITION);
+            expect(onSelectionChanged).toHaveBeenCalledExactlyOnceWith(null);
+        });
     });
 
     it("stays quiet when a controlled apply lands on the requested id", async () => {

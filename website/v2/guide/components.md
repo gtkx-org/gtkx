@@ -79,9 +79,13 @@ import { DropDown } from "@gtkx/components";
 <DropDown
     items={SOURCE_TYPES.map((type) => ({ id: type, value: type }))}
     selectedId={sourceType}
-    onSelectionChanged={(id) => setSourceType(id)}
+    onSelectionChanged={(id) => {
+        if (id !== null) setSourceType(id);
+    }}
 />
 ```
+
+The callback receives `null` when the model becomes empty.
 
 `ComboRow<T, S>` from `@gtkx/components` takes the same collection props and renders an `Adw.ComboRow`, presenting the choice as a row inside a preferences group, as the tutorial's [preferences chapter](/v2/tutorial/preferences-and-theming) does.
 

@@ -257,11 +257,11 @@ function useSelection(options: SelectionOptions): ReactElement {
     const context: SelectionContext = { selection, collection, last, state, onSelectionChanged };
 
     const markDrift = useControlledSync({
-        ids: selectedIds,
-        collection,
-        widget: selection,
-        apply: (ids) => {
-            applyControlledSelection(context, ids);
+        value: selectedIds,
+        source: collection,
+        target: selection,
+        apply: (value) => {
+            applyControlledSelection(context, value);
         },
     });
 

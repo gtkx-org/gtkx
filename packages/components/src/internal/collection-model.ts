@@ -51,7 +51,6 @@ type CollectionModel = {
 const STORE_CLASS_KEY = Symbol.for("gtkx.components.lazy-level-store");
 const SLOTS_KEY = Symbol.for("gtkx.components.lazy-level-store.slots");
 const EMPTY_INDEX = createCollectionIndex(undefined, undefined, true);
-const SLOTS = sharedSlots();
 
 const newRootStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
 
@@ -88,7 +87,7 @@ function slotRefFor(value: GObject.Object | null): SlotRef | null {
         return null;
     }
 
-    const ref = SLOTS.get(item);
+    const ref = sharedSlots().get(item);
 
     return ref === undefined || ref.slot === -1 ? null : ref;
 }
@@ -427,7 +426,7 @@ class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
         const created = Gtk.StringObject.new("");
         this.refs.set(position, ref);
         this.objects.set(position, created);
-        SLOTS.set(created, ref);
+        sharedSlots().set(created, ref);
 
         return created;
     }

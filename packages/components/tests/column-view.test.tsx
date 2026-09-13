@@ -330,6 +330,22 @@ describe("ColumnView sorting", () => {
         expect(firstColumnTexts(ref.current)).toEqual(["Charlie", "Alice", "Bob"]);
         expect(primarySort(ref.current)).toEqual([null, Gtk.SortType.ASCENDING]);
     });
+
+    it("restores the controlled sort after the user selects another column", async () => {
+        const onSortChanged = vi.fn();
+        const { ref } = await renderColumnView(personRows("name"), {
+            columns: personColumns,
+            sortColumn: "name",
+            sortOrder: Gtk.SortType.ASCENDING,
+            onSortChanged,
+        });
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.COLUMN_HEADER, { name: "Salary" }));
+
+        await waitFor(() => {
+            expect(onSortChanged).toHaveBeenCalledExactlyOnceWith("salary", Gtk.SortType.ASCENDING);
+            expect(primarySort(ref.current)).toEqual(["name", Gtk.SortType.ASCENDING]);
+        });
+    });
 });
 
 describe("ColumnView selection", () => {

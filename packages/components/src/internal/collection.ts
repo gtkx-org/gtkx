@@ -1,5 +1,5 @@
 import type { ListItem } from "../types.js";
-import type { CollectionIndex } from "./collection-index.js";
+import type { CollectionIndex, SectionIdentity } from "./collection-index.js";
 import type { CollectionModel, SlotRef } from "./collection-model.js";
 import type { MatchedRows } from "./tree-order.js";
 import { slotPathAt, slotRefFor } from "./collection-model.js";
@@ -8,7 +8,7 @@ import { findIds, findRows } from "./tree-order.js";
 type Collection = Pick<CollectionModel, "model" | "expansion" | "rowAt"> & {
     isTree: boolean;
     itemAt: (ref: SlotRef) => ListItem | undefined;
-    sectionFor: (levelPath: string) => unknown;
+    sectionFor: (levelPath: string) => SectionIdentity | undefined;
     idAt: (position: number) => string | null;
     idsAt: (positions: number[]) => string[];
     pathAt: (position: number) => string | null;
