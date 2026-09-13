@@ -29,19 +29,12 @@ type CandidateExportOptions = {
     components: Record<string, ElementComponent>;
 };
 
-type LazyMetadataOptions = {
-    intrinsicNames: Set<string>;
-};
-
 type ElementComponentExport = {
     glibName: string;
     component: ElementComponent | undefined;
     classRef: string;
-    metadataRef: string;
     propsType: string;
 };
-
-const METADATA_ALIAS = "Metadata$";
 
 const generateElementComponentsSection = (
     targetNamespace: GirNamespace,
@@ -67,9 +60,7 @@ const generateElementComponentsSection = (
         components: options.components,
     });
 
-    collectLazyElementExports(collector, lazyElements, {
-        intrinsicNames: new Set(options.intrinsicElements.map((entry) => entry.glibName)),
-    });
+    collectLazyElementExports(collector, lazyElements);
 
     const source = collector.exportLines.join("\n\n");
 
@@ -109,34 +100,15 @@ const collectCandidateExports = (collector: ExportCollector, options: CandidateE
 const collectLazyElementExports = (
     collector: ExportCollector,
     lazyElements: LazyElementSpec[],
-    options: LazyMetadataOptions,
 ): void => {
     for (const spec of lazyElements) {
         collector.imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
 
-        const refs = {
-            classRef: lazyClassRef(collector, spec),
-            metadataRef: lazyMetadataRef(collector, spec, options),
-        };
-
-        collector.exportLines.push(renderLazyElementExport(spec, refs));
+        const classRef = lazyClassRef(collector, spec);
+        collector.exportLines.push(renderLazyElementExport(spec, classRef));
         collector.exportedNames.add(spec.element);
     }
-};
-
-const lazyMetadataRef = (
-    collector: ExportCollector,
-    spec: LazyElementSpec,
-    options: LazyMetadataOptions,
-): string | undefined => {
-    if (!options.intrinsicNames.has(spec.element)) {
-        return undefined;
-    }
-
-    collector.imports.addNamespace("../metadata.js", METADATA_ALIAS, false);
-
-    return `${METADATA_ALIAS}.${spec.element}`;
 };
 
 const lazyClassRef = (
@@ -152,14 +124,10 @@ const lazyClassRef = (
 
 const renderLazyElementExport = (
     spec: LazyElementSpec,
-    refs: { classRef: string; metadataRef: string | undefined },
+    classRef: string,
 ): string => {
     const doc = getDoc(spec);
-    const args = [sourceStringLiteral(spec.element), refs.classRef];
-
-    if (refs.metadataRef !== undefined) {
-        args.push(refs.metadataRef);
-    }
+    const args = [sourceStringLiteral(spec.element), classRef];
 
     const factory = `/* @__PURE__ */ createElementComponent(${args.join(", ")})`;
     const component = `${doc}export const ${spec.element}: (props: ${spec.typeName}) => ReactNode = ${factory};`;
@@ -193,9 +161,7 @@ const renderCandidateExport = (
     const alias = `${namespace.name}$`;
     const specifier = externalPackageFor(namespace.name) ?? `@gtkx/gi/${namespace.name.toLowerCase()}`;
     imports.addNamespace(specifier, alias, false);
-    imports.addNamespace("../metadata.js", METADATA_ALIAS, false);
     const classRef = `${alias}.${sanitizeTypeIdentifier(klass.name)}`;
-    const metadataRef = `${METADATA_ALIAS}.${glibName}`;
     const doc = getDoc(klass);
 
     const basePropsType = factoryProps === undefined
@@ -209,7 +175,7 @@ const renderCandidateExport = (
 
     const propsType = renderGeneratedElementProps(basePropsType, constructOnly);
 
-    return `${doc}${renderElementComponentExport({ glibName, component, classRef, metadataRef, propsType })}`;
+    return `${doc}${renderElementComponentExport({ glibName, component, classRef, propsType })}`;
 };
 
 const resolveElementComponent = (
@@ -228,9 +194,9 @@ const resolveElementComponent = (
 };
 
 const renderElementComponentExport = (spec: ElementComponentExport): string => {
-    const { glibName, component, classRef, metadataRef, propsType } = spec;
+    const { glibName, component, classRef, propsType } = spec;
     const annotation = `(props: ${propsType}) => ReactNode`;
-    const args = [sourceStringLiteral(glibName), classRef, metadataRef];
+    const args = [sourceStringLiteral(glibName), classRef];
     const factoryCall = `/* @__PURE__ */ createElementComponent(${args.join(", ")})`;
 
     if (component === undefined) {

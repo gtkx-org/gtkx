@@ -22,6 +22,7 @@ import {
     renderStaticHead,
 } from "./callables.js";
 import { annotationSpec, getDoc } from "./doc-spec.js";
+import { appendElementMetadata } from "./element-metadata.js";
 import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
@@ -146,6 +147,8 @@ const generateFoldedInterface = (
         gtypeExpr,
         layout: renderInterfaceLayout(context, iface, callables),
     });
+
+    appendElementMetadata(context, iface);
 
     const signalRegistration = renderSignalRegistration(context, iface, localName);
 

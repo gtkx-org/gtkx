@@ -1,5 +1,6 @@
 import type { ExternalObject, Handle } from "@gtkx/native";
 import { type AnyClass, camelCase, kebabCase, toCamelIdentifier } from "@gtkx/utils";
+import type { ElementPropertyEntry } from "./element-metadata.js";
 import { bind } from "./bind.js";
 import { biguint64T, fundamentalT, refT, sizedArrayT, stringT, structT, uint32T, voidT } from "./descriptors.js";
 import { LIB, PARAM_T, VALUE_T } from "./library.js";
@@ -66,6 +67,7 @@ type PropertySpec = object;
 type PropertyDispatch = {
     accessors: PropertyAccessor[];
     delegates: Map<string, InterfaceProperty>;
+    elementProperties: Record<string, ElementPropertyEntry>;
 };
 
 type PropertyDispatchSource = {
@@ -833,7 +835,16 @@ function buildPropertyDispatch(source: PropertyDispatchSource): PropertyDispatch
     const declared = buildAccessors(source);
     recordDeclaredNames(source.klass, declared);
 
-    return { accessors: [...declared], delegates: interfaceDelegatesFor(source.adoptedTypes) };
+    const elementProperties = Object.fromEntries(declared.map((accessor) => {
+        const entry: ElementPropertyEntry = [accessor.propertyName, accessor.flags];
+        if (isParamWritable(accessor.flags) && !isParamConstructOnly(accessor.flags)) {
+            entry.push(fromValue(defaultValueFor(accessor.handle)));
+        }
+
+        return [accessor.memberName, entry];
+    }));
+
+    return { accessors: [...declared], delegates: interfaceDelegatesFor(source.adoptedTypes), elementProperties };
 }
 
 /**

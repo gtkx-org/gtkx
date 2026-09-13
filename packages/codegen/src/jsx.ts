@@ -56,7 +56,7 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
 
     const library = options.getLibrary();
 
-    const { namespaces, metadata, intrinsicElementCount, elements } = generateJsxFiles(library, {
+    const { namespaces, intrinsicElementCount, elements } = generateJsxFiles(library, {
         components,
         lazyElements,
         props,
@@ -66,7 +66,6 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
     const store = writeJsxStore({
         options: options.jsx,
         namespaces,
-        metadata,
         externalPackages: storeExternalPackages(library),
         rawFiles: [
             {

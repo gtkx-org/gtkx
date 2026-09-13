@@ -24,6 +24,7 @@ export { preserveArrayNull } from "./descriptors.js";
 /** @internal */
 export { registerElementMetadata } from "./element-metadata.js";
 export {
+    type ElementPropertyEntry,
     elementMetadataVersion,
     registeredElementProperties,
     registeredElementSignals,
