@@ -110,7 +110,7 @@ const createCss = (): Css => {
         sheet: new StyleSheet(),
         global: new Set(),
         scoped: new Set(),
-        registered: {},
+        registered: Object.create(null) as RegisteredCache,
     };
 
     return {

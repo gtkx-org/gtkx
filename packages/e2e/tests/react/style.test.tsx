@@ -104,6 +104,11 @@ describe("style prop", () => {
         expect(getAlpha(styled)).toBeCloseTo(getAlpha(plain) * NAMED_ALPHA, 2);
     });
 
+    it("preserves a font family whose name occurs on Object.prototype", async () => {
+        const { styled } = await renderPair({ fontFamily: "constructor" });
+        expect(styled.getPangoContext().getFontDescription()?.getFamily()).toBe("constructor");
+    });
+
     it("nests a block under the selector its key derives", async () => {
         const { styled } = await renderPair({ color: RED_CSS, "&:hover": { color: GREEN_CSS } });
         expect(getColor(styled)).toEqual(RED);
