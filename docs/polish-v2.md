@@ -53,7 +53,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `testing` | 60 | ComboRow display-value matcher fixed; full package pending |
 | `vitest` | 12 | All files read; packaged preload, Sway configuration and notification sink fixed; repeat review found no further confirmed defect |
 | `e2e` | 117 | Relevant regression coverage reviewed with each fix; full suite audit pending |
-| `eslint` | 36 | Pending |
+| `eslint` | 36 | All files read; public-surface traversal and cache correctness fixed; prefix restriction removed; independent review passed |
 | `utils` | 60 | Omit preserves source unions; full package pending |
 
 Outside the packages, the starting scope includes 397 example files, 174 website files, 15 scripts, 23 GitHub configuration files, 3 patches, 30 root files, and one file each under `docs`, `.nx`, and `.vscode`. All remain open for a full file review, including documentation read for context during this first batch.
@@ -401,7 +401,9 @@ Each bug has a public stdio/socket regression that fails against the previous so
 
 The public-surface audit identified 305 JSDoc blocks attached to private implementation declarations, mostly GIR parsing and reference-generation types. Those blocks are removed. Comparing the parsed source with comments omitted confirms that the cleanup changes no code.
 
-The rule's correctness review and integration coverage are still in progress. Newly exposed missing documentation remains subject to the maintainer's no-new-comments instruction; this checkpoint does not represent a clean lint review.
+The rule now follows inferred and nested public types without inspecting implementation bodies or documenting type-filter patterns. Overloads share their first declaration's documentation, private and protected members remain private, and recursive callable signatures terminate through declaration cycle detection. The surface refreshes after saved and unsaved source edits, reverse exports, missing or removed sources, TypeScript path changes, and imported package manifest creation or changes. Separate compiler programs avoid sharing parser-owned symbol graphs.
+
+All 89 remaining ESLint integration and rule cases pass, alongside both typechecks, package lint, Knip and independent review. The obsolete GTK/GLib prefix restriction and its tests are removed at the maintainer's request. React's own children type replaces the testing wrapper's duplicate shape. Existing no-new-comments exemptions now also cover object property constraints, registered class metadata and testing options; these declarations were kept simple instead of adding type indirection to evade documentation checks. Repository-wide Nx lint is the next validation checkpoint.
 
 ## Next work
 
