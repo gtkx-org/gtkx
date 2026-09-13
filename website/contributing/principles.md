@@ -87,6 +87,14 @@ Correct generated behavior in its source model, generator, configuration, or run
 
 Share an implementation when its contract is shared. Keep the resulting abstraction as small as that contract requires; speculative generality makes the code harder to understand without removing a real duplication.
 
+## Prefer maintained dependencies over custom implementations
+
+Strive for the least amount of hand-written code. When a well-maintained third-party package implements the behavior we need, or a useful part of it, prefer that package over building and maintaining an equivalent implementation ourselves.
+
+Check the dependencies already in use before adding another one. Evaluate maintenance, compatibility, and the supported contract before choosing a package; an abandoned or unsuitable dependency does not satisfy this principle. Keep GTKX-specific code focused on the integration and behavior the dependency does not provide.
+
+Apply this rule during reviews as well as when adding features. Existing custom implementations should be replaced when a maintained dependency fits their contract. Familiarity with the current code is not a reason to preserve duplication.
+
 ## Prefer simple code and trust the types
 
 Use the simplest implementation that satisfies the supported contract. Trust the type system completely. Express invariants through types, constructors, ownership, and control flow, then use them directly.
