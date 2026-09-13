@@ -475,6 +475,25 @@ impl ClosureData {
 
             let arg_ptr = unsafe { *args.add(arg_slot) };
             if let Codec::Ref(ref_codec) = codec {
+                if ref_codec.inner_codec().is_scalar() {
+                    let ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
+                    let value = if ptr.is_null() {
+                        value::js_null(env)?
+                    } else {
+                        let size = ref_codec.inner_codec().field_size().ok_or_else(|| {
+                            anyhow::anyhow!("The reference has no declared storage size")
+                        })?;
+                        if !ref_codec.is_inout() {
+                            unsafe { ptr.cast::<u8>().write_bytes(0, size) };
+                        }
+                        value::handle_to_unknown(
+                            env,
+                            Handle::from_glib_borrow(ptr).with_allocated_bytes(size),
+                        )?
+                    };
+                    js_args.push(value);
+                    continue;
+                }
                 let slot = unsafe { Self::read_ref_arg(env, ref_codec, arg_ptr, &siblings) }
                     .map_err(|e| e.context(format!("callback: failed to read arg {i}")))?;
                 js_args.push(slot.obj);
@@ -815,10 +834,6 @@ fn seed_ref<'e>(
         return Ok(value::js_null(env)?);
     }
     let seeded = match inner_codec {
-        codec if codec.is_scalar() => {
-            unsafe { codec.read(env, ReadCtx::slot(inner_ptr.cast_const(), "ref seed")) }
-                .report_err("callback: failed to seed ref")
-        }
         // A length-bounded inout array takes its extent from the sibling the caller passed beside
         // it, exactly the way an incoming array argument does. It is read without being freed: the
         // write-back releases the container it replaces.

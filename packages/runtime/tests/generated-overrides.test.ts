@@ -3,7 +3,7 @@ import { Regex } from "@gtkx/gi/glib";
 import { ObjectClass, ParamFlags, paramSpecInt, TYPE_INT, TYPE_INVALID, TYPE_STRING } from "@gtkx/gi/gobject";
 import { Button, WidgetClass } from "@gtkx/gi/gtk";
 import { getClassType } from "@gtkx/runtime";
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 
 const MATCH_METHODS = ["match", "matchAll"] as const;
 const FULL_MATCH_METHODS = ["matchFull", "matchAllFull"] as const;
@@ -11,6 +11,7 @@ const FULL_MATCH_METHODS = ["matchFull", "matchAllFull"] as const;
 describe("generated GLib.Regex overrides", () => {
     it.each(MATCH_METHODS)("%s retains the subject for the returned match info", (method) => {
         const regex = Regex.new("a+", 0, 0);
+        assert(regex);
         const [matched, info] = regex[method]("caaa", 0);
         globalThis.gc?.();
         expect(matched).toBe(true);
@@ -19,6 +20,7 @@ describe("generated GLib.Regex overrides", () => {
 
     it.each(MATCH_METHODS)("%s returns false for an unmatched subject", (method) => {
         const regex = Regex.new("a+", 0, 0);
+        assert(regex);
         const [matched, info] = regex[method]("", 0);
         expect(matched).toBe(false);
         expect(info.matches()).toBe(false);
@@ -26,6 +28,7 @@ describe("generated GLib.Regex overrides", () => {
 
     it.each(FULL_MATCH_METHODS)("%s accepts a split subject and a byte offset", (method) => {
         const regex = Regex.new("a+", 0, 0);
+        assert(regex);
         const [matched, info] = regex[method](["é", "aaa"], 2, 0);
         expect(matched).toBe(true);
         expect(info.fetch(0)).toBe("aaa");
@@ -33,6 +36,7 @@ describe("generated GLib.Regex overrides", () => {
 
     it.each(FULL_MATCH_METHODS)("%s throws for an offset inside a UTF-8 codepoint", (method) => {
         const regex = Regex.new("a+", 0, 0);
+        assert(regex);
         expect(() => regex[method]("éaaa", 1, 0)).toThrow();
     });
 });

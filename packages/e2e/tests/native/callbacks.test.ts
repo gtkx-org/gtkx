@@ -1,11 +1,11 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import type { Descriptor } from "@gtkx/native";
+import type { Descriptor, Ref } from "@gtkx/native";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Regress from "@gtkx/gi/regress";
 import { bind, call } from "@gtkx/native";
-import { getHandle } from "@gtkx/runtime";
+import { getHandle, t } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 import { drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
@@ -370,6 +370,71 @@ test("callback return values and out parameters come back from the call", () => 
     expect(GIMarshallingTests.callbackMultipleOutParameters(() => [1.5, 2.5])).toEqual([1.5, 2.5]);
     expect(GIMarshallingTests.callbackReturnValueAndOneOutParameter(() => [11n, 22n])).toEqual([11n, 22n]);
     expect(GIMarshallingTests.callbackReturnValueAndMultipleOutParameters(() => [1n, 2n, 3n])).toEqual([1n, 2n, 3n]);
+});
+
+const callWithScalarOutput = t.bind(
+    "libgimarshallingtests.so",
+    "gi_marshalling_tests_callback_one_out_parameter",
+    [t.callback([t.ref(t.float32)], t.void), t.ref(t.float32)],
+    t.void,
+);
+
+test.each([false, true])("a callback's unset scalar output becomes zero (explicit null: %s)", (explicitNull) => {
+    const output = { value: 7 };
+    const observed: unknown[] = [];
+
+    callWithScalarOutput((reference: Ref) => {
+        observed.push(reference.value);
+        if (explicitNull) {
+            reference.value = null;
+        }
+    }, output);
+
+    expect(observed).toEqual([null]);
+    expect(output.value).toBe(0);
+});
+
+test("a throwing scalar callback leaves the caller's Ref unchanged", () => {
+    const output = { value: 7 };
+
+    expect(() => callWithScalarOutput((reference: Ref) => {
+        expect(reference.value).toBeNull();
+        throw new Error("Callback failure");
+    }, output)).toThrow();
+
+    expect(output.value).toBe(7);
+    callWithScalarOutput((reference: Ref) => {
+        reference.value = 12;
+    }, output);
+    expect(output.value).toBe(12);
+});
+
+test("a scalar inout callback receives the caller's seed and writes its replacement", () => {
+    const invoke = t.bind(
+        "libgimarshallingtests.so",
+        "gi_marshalling_tests_callback_one_out_parameter",
+        [t.callback([t.ref(t.float32, true)], t.void), t.ref(t.float32)],
+        t.void,
+    );
+    const output = { value: 7 };
+
+    invoke((reference: Ref) => {
+        expect(reference.value).toBe(7);
+        reference.value = 12;
+    }, output);
+
+    expect(output.value).toBe(12);
+});
+
+test("an omitted scalar callback output keeps its Ref wrapper without accessing native storage", () => {
+    const observed: unknown[] = [];
+
+    callWithScalarOutput((reference: Ref) => {
+        observed.push(reference.value);
+        reference.value = 12;
+    }, null);
+
+    expect(observed).toEqual([null]);
 });
 
 test("out parameter tuples pad missing entries and ignore extra ones", () => {

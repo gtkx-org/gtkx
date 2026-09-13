@@ -3,7 +3,7 @@ import * as GdkPixbuf from "@gtkx/gi/gdkpixbuf";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getHandle, promisify, setHandle, trimFinish } from "@gtkx/runtime";
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 
 const handle = (id: number): ExternalObject<Handle> => {
     const token: object = { id };
@@ -90,6 +90,7 @@ describe("trimFinish", () => {
 describe("generated promisified bindings", () => {
     it("resolves an instance async method against its annotated static finish", async () => {
         const pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, false, 8, 2, 2);
+        assert(pixbuf);
         const stream = Gio.MemoryOutputStream.newResizable();
         const isSaved = await pixbuf.saveToStreamvAsync(stream, "png", null, null);
         expect(isSaved).toBe(true);
