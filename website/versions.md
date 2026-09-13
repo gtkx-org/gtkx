@@ -15,4 +15,6 @@ The guide and tutorial for a version are written by hand and kept in the reposit
 
 ## Machine-readable documentation
 
-Each version publishes its own `llms.txt` index and `llms-full.txt` bundle at its own prefix, covering only that version's pages. Start from [/llms.txt](/llms.txt) for the current release.
+Each version publishes its own `llms.txt` index and `llms-full.txt` bundle at its own prefix. The index links to that version's guide, tutorial, and API reference; the full bundle contains its guide and tutorial text.
+
+Both exports also include the shared [Contributing](/contributing/) documentation, which follows development on `main` independently of release versions. Start from [/llms.txt](/llms.txt) for the current release.

@@ -381,7 +381,7 @@ const llmsIndex = (loaded: LoadedDocumentationVersion, contributing: Documentati
         "",
         "## Unversioned content",
         "",
-        "Contributing documents development on main.",
+        "The contributing documentation describes development on main.",
         "",
         ...contributing.map((source) => `- [Contributing: ${source.text}](${url}/${source.file})`),
         `- [Blog](${url}/blog/)`,
