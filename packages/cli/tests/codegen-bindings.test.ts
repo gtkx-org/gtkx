@@ -37,6 +37,7 @@ const base: Base = Base.new();
 const derived: Derived = Derived.new();
 const compact: Compact = Compact.new();
 const leaf: Leaf = Leaf.new();
+export const parsed: [Base | null, number] = Base.parse("value");
 
 export const values = [base.lookup("value"), derived.lookup(1), leaf.lookup(1), compact.measure(), base.measure(1)];
 `;
@@ -49,6 +50,12 @@ export const value = Leaf.new().lookup("value");
 `,
     "dropped-parameter.ts": `import { Compact } from "${STATIC_NARROW_MODULE}";
 export const value = Compact.new().measure(1);
+`,
+    "nullable-constructor-tuple.ts": `import { Base } from "${STATIC_NARROW_MODULE}";
+export const value: [Base, number] = Base.parse("value");
+`,
+    "omitted-constructor-output.ts": `import { Base } from "${STATIC_NARROW_MODULE}";
+export const value: Base | null = Base.parse("value");
 `,
 };
 const MISSING_GIR_CONFIG =
@@ -124,7 +131,7 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
         expect(declarations()).not.toContain("ref(");
     });
 
-    it.each(Object.keys(STATIC_NARROW_REJECTED))("rejects the inherited signature in %s", (file) => {
+    it.each(Object.keys(STATIC_NARROW_REJECTED))("rejects an incompatible consumer in %s", (file) => {
         expect(state.status).toBe(0);
         expect(() => {
             typecheckGenerated(state.project, file);

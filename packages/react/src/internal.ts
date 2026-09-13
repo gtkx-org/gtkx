@@ -18,6 +18,10 @@ export { createElementComponent } from "./components/element.js";
 export { createMenuComponent, createMenuItemComponent } from "./components/menu.js";
 /** @internal */
 export { createPortaledComponent } from "./components/portaled.js";
+export {
+    createCallbackActionComponent,
+    createShortcutTriggerComponent,
+} from "./components/shortcut.js";
 /** @internal */
 export { createWindowComponent } from "./components/window.js";
 export { settleAccessible } from "./hooks/use-accessible-map.js";

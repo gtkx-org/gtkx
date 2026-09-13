@@ -225,12 +225,25 @@ const renderOutTsType = (context: ModuleContext, parameter: GirParameter): strin
         ? "unknown"
         : renderTsType(context, parameter.type, parameter.nullable);
 
-const renderMethodReturnType = (context: ModuleContext, fn: GirFunction): string => {
-    const outs = returnedOutParameters(context, fn);
+const primaryReturnType = (
+    context: ModuleContext,
+    fn: GirFunction,
+    override: string | undefined,
+): string | undefined => {
+    if (shouldOmitPrimaryReturn(context.library, fn.returnValue)) {
+        return undefined;
+    }
 
-    const primary = shouldOmitPrimaryReturn(context.library, fn.returnValue)
-        ? undefined
-        : renderReturnedTsType(context, fn.returnValue.type, fn.returnValue.nullable);
+    if (override === undefined) {
+        return renderReturnedTsType(context, fn.returnValue.type, fn.returnValue.nullable);
+    }
+
+    return fn.returnValue.nullable ? `${override} | null` : override;
+};
+
+const renderMethodReturnType = (context: ModuleContext, fn: GirFunction, primaryTypeOverride?: string): string => {
+    const outs = returnedOutParameters(context, fn);
+    const primary = primaryReturnType(context, fn, primaryTypeOverride);
 
     if (outs.length === 0) {
         return primary ?? "void";

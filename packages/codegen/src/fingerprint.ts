@@ -1,3 +1,4 @@
+import type { ElementPropsExport, ModuleExport } from "@gtkx/react/config";
 import { createHash, type Hash } from "node:crypto";
 import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -21,12 +22,10 @@ type GiFingerprint = {
     girPath: string[];
 };
 
-type ModuleExport = { module: string; export: string };
-
 type DocsFingerprintInput = {
     basePath: string;
     linkStyle: string;
-    props: Record<string, ModuleExport>;
+    props: Record<string, ElementPropsExport>;
     omittedProps: Record<string, string[]>;
     acceptedChildTypes: Record<string, string[]>;
 };
@@ -40,7 +39,7 @@ type JsxFingerprintInput = {
     reactVersion: string;
     components: Record<string, ModuleExport>;
     lazyElements: string[];
-    props: Record<string, ModuleExport>;
+    props: Record<string, ElementPropsExport>;
     omittedProps: Record<string, string[]>;
 };
 
@@ -247,7 +246,7 @@ const hashDocs = (giValue: string, input: DocsFingerprintInput): string =>
                 giValue,
                 input.basePath,
                 input.linkStyle,
-                serializeModuleExports(input.props),
+                serializeElementProps(input.props),
                 serializeStringLists(input.omittedProps),
                 serializeStringLists(input.acceptedChildTypes),
             ]),
@@ -275,6 +274,15 @@ const isDocsOutputFresh = (outDir: string, inputs: GiInputs, input: DocsFingerpr
 const serializeModuleExports = (map: Record<string, ModuleExport>): [string, string, string][] =>
     sortOrdinal(Object.keys(map)).map((type) => [type, map[type]?.module ?? "", map[type]?.export ?? ""]);
 
+const serializeElementProps = (map: Record<string, ElementPropsExport>): [string, string, string, string, string][] =>
+    sortOrdinal(Object.keys(map)).map((type) => [
+        type,
+        map[type]?.module ?? "",
+        map[type]?.export ?? "",
+        map[type]?.composition ?? "",
+        sortAlpha(map[type]?.constructOnly ?? []),
+    ]);
+
 const serializeStringLists = (map: Record<string, string[]>): [string, string][] =>
     sortOrdinal(Object.keys(map)).map((type) => [type, sortAlpha(map[type] ?? [])]);
 
@@ -286,7 +294,7 @@ const hashJsx = (input: JsxFingerprintInput): string =>
                 input.reactVersion,
                 serializeModuleExports(input.components),
                 sortOrdinal(input.lazyElements),
-                serializeModuleExports(input.props),
+                serializeElementProps(input.props),
                 serializeStringLists(input.omittedProps),
             ]),
         )

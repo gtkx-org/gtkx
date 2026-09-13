@@ -105,6 +105,22 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     GtkShortcutController: {
         props: internal("GtkShortcutControllerProps"),
     },
+    GtkCallbackAction: {
+        component: internal("createCallbackActionComponent"),
+        props: {
+            ...internal("GtkCallbackActionElementProps"),
+            composition: "factory",
+            constructOnly: ["callback"],
+        },
+    },
+    GtkShortcutTrigger: {
+        component: internal("createShortcutTriggerComponent"),
+        props: {
+            ...internal("GtkShortcutTriggerElementProps"),
+            composition: "factory",
+            constructOnly: ["accelerator"],
+        },
+    },
     GtkTextView: {
         acceptedChildTypes: ["GtkTextBuffer"],
         props: internal("ChildrenProps"),
@@ -119,7 +135,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     },
     GMenuItem: {
         component: internal("createMenuItemComponent"),
-        props: internal("MenuItemProps"),
+        props: { ...internal("MenuItemProps"), constructOnly: ["label", "action"] },
     },
     GtkColumnView: {
         acceptedChildTypes: ["GtkColumnViewColumn"],
@@ -148,11 +164,11 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     },
     GtkApplication: {
         acceptedChildTypes: ["GtkWindow"],
-        props: internal("GtkApplicationProps"),
+        props: { ...internal("GtkApplicationProps"), constructOnly: ["mainOptions"] },
         component: internal("createApplicationComponent"),
     },
     GtkAboutDialog: {
-        props: internal("GtkAboutDialogProps"),
+        props: { ...internal("GtkAboutDialogProps"), constructOnly: ["creditSections"] },
     },
     GtkScale: {
         props: internal("GtkScaleProps"),

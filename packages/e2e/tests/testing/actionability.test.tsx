@@ -17,6 +17,7 @@ import {
     GtkListBoxRow,
     GtkScale,
     GtkScrolledWindow,
+    GtkShortcutTrigger,
     GtkStack,
     GtkStackPage,
     GtkSwitch,
@@ -342,7 +343,7 @@ describe("userEvent actionability - insensitive targets", () => {
     });
 
     it("refuses keyboard input on an insensitive shortcut host without activating its shortcut", async () => {
-        const trigger = Gtk.ShortcutTrigger.parseString("F5");
+        const trigger = <GtkShortcutTrigger accelerator="F5" />;
         const { host, onActivate } = await renderShortcutHost({ trigger, isSensitive: false });
         await expect(userEvent.keyboard(host, "{F5}")).rejects.toThrow();
         expect(onActivate).not.toHaveBeenCalled();

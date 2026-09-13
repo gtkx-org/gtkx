@@ -60,6 +60,7 @@ const isReservedName = (name: string, info: TypeInfo): boolean =>
     REACT_RESERVED_PROPS.has(name) ||
     (isHandlerName(name) && !hasProperty(info, name)) ||
     (isAccessibleProp(name) && !hasProperty(info, name)) ||
+    info.createProps.has(name) ||
     info.constructOnly.has(name);
 
 const isSkippedValueName = (name: string, info: TypeInfo, consumed: Set<string>): boolean =>

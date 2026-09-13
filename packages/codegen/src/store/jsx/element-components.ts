@@ -4,8 +4,11 @@ import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
 import type { ImportsBuilder } from "../../writer/imports.js";
 import type { LazyElementSpec } from "./element-prop-types.js";
+import type { GirIndex } from "./gir-index.js";
 import { externalPackageFor } from "../../gir/external-namespaces.js";
 import { getDoc } from "../gi/doc-spec.js";
+import { constructOnlyPropNames, renderGeneratedElementProps } from "./element-construct-only.js";
+import { factoryElementPropTypeFor } from "./element-prop-imports.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
 type ElementComponent = ModuleExport;
@@ -20,6 +23,7 @@ type ExportCollector = {
 type CandidateExportOptions = {
     targetNamespace: GirNamespace;
     library: Library;
+    girIndex: GirIndex;
     virtualNames: Set<string>;
     intrinsicElements: GlibNamedClass[];
     components: Record<string, ElementComponent>;
@@ -27,6 +31,14 @@ type CandidateExportOptions = {
 
 type LazyMetadataOptions = {
     intrinsicNames: Set<string>;
+};
+
+type ElementComponentExport = {
+    glibName: string;
+    component: ElementComponent | undefined;
+    classRef: string;
+    metadataRef: string;
+    propsType: string;
 };
 
 const METADATA_ALIAS = "Metadata$";
@@ -39,6 +51,7 @@ const generateElementComponentsSection = (
         lazyElements: LazyElementSpec[];
         intrinsicElements: GlibNamedClass[];
         components: ElementComponentOverrides;
+        girIndex: GirIndex;
     },
 ): { source: string; exportedNames: Set<string> } => {
     const collector: ExportCollector = { imports: options.imports, exportedNames: new Set(), exportLines: [] };
@@ -48,6 +61,7 @@ const generateElementComponentsSection = (
     collectCandidateExports(collector, {
         targetNamespace,
         library,
+        girIndex: options.girIndex,
         virtualNames,
         intrinsicElements: options.intrinsicElements,
         components: options.components,
@@ -67,7 +81,7 @@ const appendCandidateExport = (
     candidate: GlibNamedClass,
     options: CandidateExportOptions,
 ): void => {
-    const { targetNamespace, library, virtualNames, components } = options;
+    const { targetNamespace, virtualNames } = options;
 
     if (candidate.namespace.name !== targetNamespace.name) {
         return;
@@ -77,14 +91,14 @@ const appendCandidateExport = (
         return;
     }
 
-    const line = renderCandidateExport(candidate, library, collector.imports, components);
+    const line = renderCandidateExport(candidate, collector.imports, options);
     collector.exportLines.push(line);
     collector.exportedNames.add(candidate.glibName);
 };
 
 const collectCandidateExports = (collector: ExportCollector, options: CandidateExportOptions): void => {
     for (const candidate of options.intrinsicElements) {
-        if (candidate.klass.isAbstract) {
+        if (candidate.klass.isAbstract && factoryElementPropTypeFor(candidate.glibName) === undefined) {
             continue;
         }
 
@@ -155,18 +169,25 @@ const renderLazyElementExport = (
 
 const renderCandidateExport = (
     candidate: GlibNamedClass,
-    library: Library,
     imports: ImportsBuilder,
-    components: Record<string, ElementComponent>,
+    options: CandidateExportOptions,
 ): string => {
+    const { library, girIndex, components } = options;
     const { glibName, klass, namespace } = candidate;
     const ancestry = ancestorGlibNames(klass, namespace, library);
-    const component = resolveElementComponent(ancestry, components);
+    const factoryProps = factoryElementPropTypeFor(glibName);
+    const component = factoryProps === undefined
+        ? resolveElementComponent(ancestry, components)
+        : components[glibName];
     imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
     imports.addNamed("react", "ReactNode", true);
 
     if (component !== undefined) {
         imports.addNamed(component.module, component.export, false);
+    }
+
+    if (factoryProps !== undefined) {
+        imports.addNamed(factoryProps.module, factoryProps.export, true);
     }
 
     const alias = `${namespace.name}$`;
@@ -177,7 +198,18 @@ const renderCandidateExport = (
     const metadataRef = `${METADATA_ALIAS}.${glibName}`;
     const doc = getDoc(klass);
 
-    return `${doc}${renderElementComponentExport(glibName, component, classRef, metadataRef)}`;
+    const basePropsType = factoryProps === undefined
+        ? `${glibName}Props`
+        : `${glibName}Props & ${factoryProps.export}`;
+    const constructOnly = constructOnlyPropNames(girIndex, candidate);
+
+    if (constructOnly.length > 0) {
+        imports.addNamed("@gtkx/react/internal", "GeneratedElementProps", true);
+    }
+
+    const propsType = renderGeneratedElementProps(basePropsType, constructOnly);
+
+    return `${doc}${renderElementComponentExport({ glibName, component, classRef, metadataRef, propsType })}`;
 };
 
 const resolveElementComponent = (
@@ -187,7 +219,7 @@ const resolveElementComponent = (
     for (const name of ancestry) {
         const found = components[name];
 
-        if (found !== undefined) {
+        if (found !== undefined && factoryElementPropTypeFor(name) === undefined) {
             return found;
         }
     }
@@ -195,13 +227,8 @@ const resolveElementComponent = (
     return undefined;
 };
 
-const renderElementComponentExport = (
-    glibName: string,
-    component: ElementComponent | undefined,
-    classRef: string,
-    metadataRef: string,
-): string => {
-    const propsType = `${glibName}Props`;
+const renderElementComponentExport = (spec: ElementComponentExport): string => {
+    const { glibName, component, classRef, metadataRef, propsType } = spec;
     const annotation = `(props: ${propsType}) => ReactNode`;
     const args = [sourceStringLiteral(glibName), classRef, metadataRef];
     const factoryCall = `/* @__PURE__ */ createElementComponent(${args.join(", ")})`;

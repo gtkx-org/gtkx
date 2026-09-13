@@ -12,7 +12,6 @@ type Scheduler = {
     flushedAt: number;
     isTicking: boolean;
     stalledUntil: WeakMap<Gtk.Widget, number>;
-    ticks: number;
 };
 
 const FALLBACK_FRAME_MS = 16;
@@ -27,7 +26,6 @@ const scheduler: Scheduler = {
     flushedAt: 0,
     isTicking: false,
     stalledUntil: new WeakMap(),
-    ticks: 0,
 };
 
 const isSuspended = (widget: Gtk.Widget): boolean => widget instanceof Gtk.Window && widget.isSuspended();
@@ -134,7 +132,6 @@ const shouldKeepTicking = (): boolean => {
     }
 
     cancelStallSource(driver);
-    scheduler.ticks += 1;
     scheduler.stalledUntil.delete(driver.widget);
 
     try {

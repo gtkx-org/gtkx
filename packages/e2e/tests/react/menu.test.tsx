@@ -7,11 +7,13 @@ import {
     GtkApplication,
     GtkApplicationWindow,
     GtkBox,
+    GtkCallbackAction,
     GtkMenuButton,
     GtkPopoverMenu,
     GtkPopoverMenuBar,
     GtkShortcut,
     GtkShortcutController,
+    GtkShortcutTrigger,
 } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { render } from "@gtkx/testing";
@@ -187,7 +189,7 @@ const buildMenu = (items: { label: string; action: string }[]): Gio.Menu => {
     return menu;
 };
 
-const callbackAction = (): Gtk.ShortcutAction => Gtk.CallbackAction.new(() => true);
+const callbackAction = () => <GtkCallbackAction callback={() => true} />;
 
 const ItemMenu = ({ label }: { label: string }) => (
     <GtkPopoverMenu menuModel={<GMenu><GMenuItem label={label} action="win.open" /></GMenu>} />
@@ -466,7 +468,7 @@ describe("render - Shortcut", () => {
                         ref={controllerRef}
                         shortcuts={(
                             <GtkShortcut
-                                trigger={Gtk.ShortcutTrigger.parseString("<Control>s")}
+                                trigger={<GtkShortcutTrigger accelerator="<Control>s" />}
                                 action={callbackAction()}
                             />
                         )}
@@ -481,10 +483,7 @@ describe("render - Shortcut", () => {
     it.each([
         {
             label: "supports an alternative trigger",
-            trigger: Gtk.AlternativeTrigger.new(
-                Gtk.ShortcutTrigger.parseString("<Control>s"),
-                Gtk.ShortcutTrigger.parseString("F2"),
-            ),
+            trigger: <GtkShortcutTrigger accelerator="<Control>s|F2" />,
         },
         { label: "supports a never trigger", trigger: Gtk.NeverTrigger.get() },
     ])("$label", async ({ trigger }) => {
@@ -518,12 +517,15 @@ describe("render - Shortcut", () => {
                             shortcuts={
                                 show && (
                                     <GtkShortcut
-                                        trigger={Gtk.ShortcutTrigger.parseString("<Control>s")}
-                                        action={Gtk.CallbackAction.new(() => {
-                                            setShow(false);
+                                        trigger={<GtkShortcutTrigger accelerator="<Control>s" />}
+                                        action={(
+                                            <GtkCallbackAction callback={() => {
+                                                setShow(false);
 
-                                            return true;
-                                        })}
+                                                return true;
+                                            }}
+                                            />
+                                        )}
                                     />
                                 )
                             }
@@ -553,7 +555,7 @@ describe("render - Shortcut", () => {
                                 trigger={
                                     isDisabled
                                         ? Gtk.NeverTrigger.get()
-                                        : Gtk.ShortcutTrigger.parseString("<Control>s")
+                                        : <GtkShortcutTrigger accelerator="<Control>s" />
                                 }
                                 action={callbackAction()}
                             />

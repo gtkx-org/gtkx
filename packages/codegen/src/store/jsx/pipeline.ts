@@ -33,6 +33,7 @@ type JsxGenerationOptions = {
 
 type NamespaceFilesOptions = {
     library: Library;
+    girIndex: ReturnType<typeof buildGirIndex>;
     intrinsicElements: GlibNamedClass[];
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
     lazyByNamespace: Map<string, LazyElementSpec[]>;
@@ -40,6 +41,7 @@ type NamespaceFilesOptions = {
 };
 
 type JsxNamespaceContext = {
+    girIndex: ReturnType<typeof buildGirIndex>;
     lazyElements: LazyElementSpec[];
     intrinsicElements: GlibNamedClass[];
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
@@ -56,6 +58,7 @@ const generateJsxFiles = (library: Library, options: JsxGenerationOptions = {}):
 
     const { namespaces, intrinsicElementCount } = generateNamespaceFiles({
         library,
+        girIndex,
         intrinsicElements,
         intrinsicElementByGlibName,
         lazyByNamespace,
@@ -80,13 +83,14 @@ const orderedIntrinsicNamespaces = (intrinsicElements: GlibNamedClass[]): GirNam
 const generateNamespaceFiles = (
     options: NamespaceFilesOptions,
 ): { namespaces: JsxNamespaceFile[]; intrinsicElementCount: number } => {
-    const { library, intrinsicElements, intrinsicElementByGlibName, lazyByNamespace, components } = options;
+    const { library, girIndex, intrinsicElements, intrinsicElementByGlibName, lazyByNamespace, components } = options;
 
     const namespaces: JsxNamespaceFile[] = [];
     let intrinsicElementCount = 0;
 
     for (const namespace of orderedIntrinsicNamespaces(intrinsicElements)) {
         const { source, count } = generateJsxNamespace(namespace, library, {
+            girIndex,
             lazyElements: lazyByNamespace.get(namespace.name) ?? [],
             intrinsicElements,
             intrinsicElementByGlibName,
@@ -105,7 +109,7 @@ const generateJsxNamespace = (
     library: Library,
     context: JsxNamespaceContext,
 ): { source: string; count: number } => {
-    const { lazyElements, intrinsicElements, intrinsicElementByGlibName, components } = context;
+    const { girIndex, lazyElements, intrinsicElements, intrinsicElementByGlibName, components } = context;
     const targetDirectory = namespaceDirectory(targetNamespace);
     const imports = new ImportsBuilder();
     imports.addSideEffect(`@gtkx/gi/${targetDirectory}`);
@@ -115,6 +119,7 @@ const generateJsxNamespace = (
         lazyElements,
         intrinsicElements,
         components,
+        girIndex,
     });
 
     const excludeNames: Set<string> = new Set(elementComponents.exportedNames);
@@ -124,6 +129,7 @@ const generateJsxNamespace = (
         imports,
         intrinsicElements,
         intrinsicElementByGlibName,
+        girIndex,
     });
 
     const body = [imports.toSource().trimEnd(), "", jsxSection];

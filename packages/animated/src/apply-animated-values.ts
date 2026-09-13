@@ -1,7 +1,9 @@
 import type { Lookup } from "@react-spring/types";
+import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { applyStyle, applyWrite } from "@gtkx/react/internal";
 import { coerceObjectProperty } from "@gtkx/runtime";
+import { Children } from "react";
 
 const LABEL_PROP = "label";
 const setterCache: WeakMap<object, Map<string, boolean>> = new WeakMap();
@@ -37,24 +39,17 @@ const hasSetter = (instance: object, name: string): boolean => {
     return isWritable;
 };
 
-const isText = (value: unknown): value is string | number => typeof value === "string" || typeof value === "number";
+const isText = (value: unknown): value is string | number | bigint =>
+    typeof value === "string" || typeof value === "number" || typeof value === "bigint";
 
-const getText = (value: unknown): string | null => {
-    if (isText(value)) {
-        return String(value);
-    }
+const getText = (value: ReactNode): string | null => {
+    const texts = Children.toArray(value);
 
-    if (!Array.isArray(value)) {
-        return null;
-    }
-
-    const texts = value.map((item) => getText(item));
-
-    return texts.every((item) => item !== null) ? texts.join("") : null;
+    return texts.every(isText) ? texts.join("") : null;
 };
 
 const didApplyText = (instance: object, value: unknown): boolean => {
-    const text = getText(value);
+    const text = getText(value as ReactNode);
 
     if (text === null || !(instance instanceof Gtk.Label)) {
         return false;
