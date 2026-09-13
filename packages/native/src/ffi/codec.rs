@@ -447,6 +447,16 @@ pub enum Codec {
 }
 
 impl Codec {
+    pub(crate) fn field_size(&self) -> Option<usize> {
+        match self {
+            Self::Struct(codec) if codec.inline => codec.size,
+            Self::Boxed(codec) if codec.inline => codec.size,
+            Self::Fundamental(codec) if codec.inline => None,
+            Self::Void(_) => Some(0),
+            _ => Some(unsafe { (*self.libffi_type().as_raw_ptr()).size }),
+        }
+    }
+
     #[must_use]
     pub fn transfer(&self) -> Ownership {
         match self {

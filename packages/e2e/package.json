@@ -44,7 +44,11 @@
                 ],
                 "cache": true,
                 "inputs": [
-                    "nodeTests"
+                    "nodeTests",
+                    "{workspaceRoot}/packages/native/tests/**/*",
+                    "{workspaceRoot}/packages/native/vitest.config.ts",
+                    "{workspaceRoot}/packages/native/package.json",
+                    "{workspaceRoot}/packages/native/*.js"
                 ],
                 "outputs": []
             },

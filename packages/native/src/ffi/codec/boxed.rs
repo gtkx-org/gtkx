@@ -158,7 +158,8 @@ impl BoxedCodec {
             )
         };
         let src_ptr = value::handle_ptr_checked(value, "Boxed field write", |handle| {
-            Encoder::check_instance(self, handle)
+            Encoder::check_instance(self, handle)?;
+            handle.check_range(0, size)
         })?;
         if src_ptr.is_null() {
             bail!(

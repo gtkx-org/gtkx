@@ -235,6 +235,21 @@ impl Handle {
         self.inner.allocated_bytes.get()
     }
 
+    pub(crate) fn check_range(&self, offset: usize, size: usize) -> anyhow::Result<()> {
+        let end = offset
+            .checked_add(size)
+            .ok_or_else(|| anyhow::anyhow!("memory range exceeds the address space"))?;
+
+        if let Some(available) = self.allocated_bytes() {
+            anyhow::ensure!(
+                end <= available,
+                "memory range {offset}..{end} exceeds the handle's {available} bytes"
+            );
+        }
+
+        Ok(())
+    }
+
     /// A handle over memory that stays alive for the rest of the process, such as a registered
     /// type's class struct. Nothing owns the memory through the handle, and no borrow scope ever
     /// ends the borrow.
@@ -246,12 +261,18 @@ impl Handle {
     /// A handle over the `offset` bytes into `owner`, aliasing the owner's memory instead of
     /// copying it, and holding the owner alive for as long as the field handle exists.
     #[must_use]
-    pub fn field(owner: &Self, offset: usize) -> Self {
-        HandleKind::Field {
+    pub fn field(owner: &Self, offset: usize, size: Option<usize>) -> Self {
+        let extent = size.or_else(|| owner.allocated_bytes().map(|bytes| bytes - offset));
+        let handle: Self = HandleKind::Field {
             owner: owner.clone(),
             offset,
         }
-        .into()
+        .into();
+
+        match extent {
+            Some(size) => handle.with_allocated_bytes(size),
+            None => handle,
+        }
     }
 
     /// The store that adopts allocations written into this handle's fields, paired with the byte

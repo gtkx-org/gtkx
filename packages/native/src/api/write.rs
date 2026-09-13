@@ -4,7 +4,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::{byte_count_from_f64, handle_memory_ptr, native_result};
+use crate::api::{byte_count_from_f64, handle_memory_range, native_result};
 use crate::ffi::codec::{Codec, PtrWriter as _, SlotInit};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
@@ -53,7 +53,12 @@ pub(crate) fn write_field_at<'e>(
     offset: usize,
     value: Unknown<'_>,
 ) -> Result<Unknown<'e>> {
-    let field_ptr = handle_memory_ptr(handle, "field write")?.wrapping_byte_add(offset);
+    let field_ptr = handle_memory_range(
+        handle,
+        offset,
+        field_codec.field_size().unwrap_or(0),
+        "field write",
+    )?;
     let store = handle.field_store();
     let displaced = store.and_then(|(fields, base)| {
         let offset = base + offset;
