@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="ReservedNames"
+             version="1.0"
+             shared-library="libreservednames.so.0"
+             c:identifier-prefixes="ReservedNames"
+             c:symbol-prefixes="reserved_names">
+    <enumeration name="class" c:type="ReservedNamesClass">
+      <member name="first" value="0" c:identifier="RESERVED_NAMES_CLASS_FIRST"/>
+    </enumeration>
+    <enumeration name="class_" c:type="ReservedNamesClassUnderscore">
+      <member name="first" value="0" c:identifier="RESERVED_NAMES_CLASS_UNDERSCORE_FIRST"/>
+    </enumeration>
+    <enumeration name="number" c:type="ReservedNamesNumber">
+      <member name="first" value="0" c:identifier="RESERVED_NAMES_NUMBER_FIRST"/>
+    </enumeration>
+    <enumeration name="number_" c:type="ReservedNamesNumberUnderscore">
+      <member name="first" value="0" c:identifier="RESERVED_NAMES_NUMBER_UNDERSCORE_FIRST"/>
+    </enumeration>
+    <function name="default" c:identifier="reserved_names_default">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="class" transfer-ownership="none"><type name="class" c:type="ReservedNamesClass"/></parameter>
+        <parameter name="number" transfer-ownership="none"><type name="number" c:type="ReservedNamesNumber"/></parameter>
+      </parameters>
+    </function>
+    <function name="await" c:identifier="reserved_names_await">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+    </function>
+    <function name="arguments" c:identifier="reserved_names_arguments">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+    </function>
+    <function name="get_HTTP_status" c:identifier="reserved_names_get_http_status">
+      <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+    </function>
+  </namespace>
+</repository>

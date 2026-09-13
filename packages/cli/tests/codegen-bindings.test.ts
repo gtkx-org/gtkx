@@ -151,6 +151,35 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
             `= ${PURE} t.fn("libdigitname.so.0", "digit_name_radio_get_mode", () => (`,
         );
     });
+
+    it("escapes reserved bindings and type names without changing GIR acronym casing", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-reserved-",
+            config: fixtureConfig("ReservedNames-1.0"),
+            files: {
+                "probe.ts": `import {
+    class_, class__, number_, number__, default_, await_, arguments_, getHTTPStatus,
+} from "@gtkx/gi/reservednames";
+export const values = [class_.FIRST, class__.FIRST, number_.FIRST, number__.FIRST];
+export const invoke = () => {
+    default_(class_.FIRST, number_.FIRST);
+    await_();
+    arguments_();
+    return getHTTPStatus();
+};
+`,
+                "rejected.ts": `import { number as NumberType } from "@gtkx/gi/reservednames";
+export const value = NumberType.FIRST;
+`,
+            },
+        });
+
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        typecheckGenerated(project);
+        expect(() => {
+            typecheckGenerated(project, "rejected.ts");
+        }).toThrow();
+    });
 });
 
 describe("gtkx codegen (where the documentation goes)", () => {

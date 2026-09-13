@@ -887,6 +887,34 @@ describe("render - AdwMultiLayoutView", () => {
 });
 
 describe("render - SizeGroup widgets", () => {
+    it("replaces equally configured widget instances in a group", async () => {
+        const first = createRef<Gtk.Label>();
+        const second = createRef<Gtk.Label>();
+        const group = createRef<Gtk.SizeGroup>();
+        const view = (widgets: Gtk.Widget[]): ReactElement => (
+            <GtkBox>
+                <GtkSizeGroup ref={group} widgets={widgets} />
+                <GtkLabel ref={first} label="Same" />
+                <GtkLabel ref={second} label="Same" />
+            </GtkBox>
+        );
+        const { rerender } = await render(view([]));
+        const firstWidget = first.current;
+        const secondWidget = second.current;
+
+        if (firstWidget === null || secondWidget === null) {
+            throw new Error("Labels did not mount");
+        }
+
+        for (const widget of [firstWidget, firstWidget, secondWidget]) {
+            await rerender(view([widget]));
+            expect(group.current?.getWidgets()).toHaveLength(1);
+            expect(group.current?.getWidgets()[0]).toBe(widget);
+        }
+        await rerender(view([]));
+        expect(group.current?.getWidgets()).toEqual([]);
+    });
+
     it("stretches every member to the widest member's natural size", async () => {
         await expectGroupOfTwoIsWide();
     });
