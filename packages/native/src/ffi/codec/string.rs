@@ -59,8 +59,11 @@ impl Decoder for StringCodec {
         })
     }
 
-    read_value_non_null!(|self, env, ptr, _transfer| {
+    read_value_non_null!(|self, env, ptr, transfer| {
         let string = unsafe { lossy_c_string(ptr as *const c_char) };
+        if transfer.is_full() {
+            unsafe { glib::ffi::g_free(ptr) };
+        }
         Ok(string.into_unknown(env)?)
     });
 }
