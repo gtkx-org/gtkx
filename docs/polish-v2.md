@@ -45,7 +45,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `forms` | 17 | All current files read; callback refs, shared types and explicit ComboRow IDs fixed; repeat review continues |
 | `i18n` | 17 | All files read; contextual lookup and locale formatting fixed; repeat review found no further confirmed defect |
 | `navigation` | 66 | All files read; stack option lifetimes, closing headers and lazy route restoration fixed; repeat review found no further local defect |
-| `storybook` | 31 | Pending |
+| `storybook` | 31 | All files read; unset selections, readonly controls, shared types and documentation fixed; upstream strict declaration checking remains open |
 | `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
 | `cli` | 262 | Generated consumer and catalog-reference fixes verified; full package pending |
 | `create-gtkx` | 31 | Pending |
@@ -372,6 +372,14 @@ All 66 tracked navigation files and both guides were read. Stack options retaine
 Public regressions cover header collection across repeated navigation, updated headers during closing animations, native page removal after pop, replace and reset, and lazy restoration of a previously removed route key. The header and lazy restoration regressions fail against the previous implementations. All 209 native integration cases pass across 28 files, alongside source/test types, lint and Knip. Both header and return-navigation screenshots were visually inspected. Repeated fixture traversal is shared, and the constant-only theme test is removed.
 
 A repeat package review found no further navigation-local defect. Retained renderer metadata is being investigated separately in React because native page removal alone does not establish release of the former React properties.
+
+### Storybook package audit
+
+All 31 tracked Storybook files, the website guide and the repository guide were read. Unset choice arguments previously displayed the first option. Choice controls now use an explicit placeholder and can clear an argument back to undefined. Readonly argument metadata now disables native controls consistently. Both public control regressions fail against the previous implementation.
+
+Storybook's own argument inference and required-argument types replace duplicated conditional types. Typed native signals and typed composition inputs no longer receive redundant validation. The unused action timestamp and unused configurable history limit are removed. The repository guide points to the concise website guide, which links upstream for CSF and decorators.
+
+All 75 native integration cases pass, including rendering, argument inference, controls, action errors and preview lifecycle. Source/test types, lint, Knip and independent review pass. Unset and readonly controls were visually inspected. A minimal import of Storybook's framework-neutral Renderer type exposes an undeclared dependency on its browser React package when dependency declarations are checked strictly. U10 records that upstream defect and reproductions; GTKX's existing skipLibCheck configuration is unaffected.
 
 ## Next work
 

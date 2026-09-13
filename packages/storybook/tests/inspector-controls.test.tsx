@@ -21,7 +21,7 @@ describe("native story controls", () => {
         await userEvent.click(screen.getByName("storybook-control-enabled"));
         await replaceControl("text", "Updated");
         await replaceControl("quantity", "7");
-        await userEvent.selectOptions(screen.getByName("storybook-control-choice"), 2);
+        await userEvent.selectOptions(screen.getByName("storybook-control-choice"), 3);
 
         expect(screen.getByName("inspector-enabled")).toHaveTextContent(/^true$/);
         expect(screen.getByName("inspector-text")).toHaveTextContent(/^Updated$/);
@@ -81,16 +81,21 @@ describe("native story controls", () => {
         for (const argument of ["text", "enabled", "quantity", "choice"]) {
             expect(screen.getByName(`inspector-${argument}`)).toHaveTextContent(/^unset$/);
         }
+        expect(screen.getByName("storybook-control-choice")).toHaveDisplayValue("Choose option...");
 
         await replaceControl("text", "Defined");
         await userEvent.click(screen.getByName("storybook-control-enabled"));
         await replaceControl("quantity", "5");
-        await userEvent.selectOptions(screen.getByName("storybook-control-choice"), 1);
+        await userEvent.selectOptions(screen.getByName("storybook-control-choice"), 2);
 
         expect(screen.getByName("inspector-text")).toHaveTextContent(/^Defined$/);
         expect(screen.getByName("inspector-enabled")).toHaveTextContent(/^true$/);
         expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^5$/);
         expect(screen.getByName("inspector-choice")).toHaveTextContent(/^"blue"$/);
+        await userEvent.selectOptions(screen.getByName("storybook-control-choice"), 0);
+        expect(screen.getByName("inspector-choice")).toHaveTextContent(/^unset$/);
+        expect(screen.getByName("storybook-control-choice")).toHaveDisplayValue("Choose option...");
+        await userEvent.selectOptions(screen.getByName("storybook-control-choice"), 2);
         await userEvent.click(screen.getByText("Reset story"));
 
         for (const argument of ["text", "enabled", "quantity", "choice"]) {
@@ -116,6 +121,31 @@ describe("native story controls", () => {
         expect(screen.queryByName("storybook-control-enabled")).toBeNull();
         expect(screen.queryByName("storybook-control-quantity")).toBeNull();
         expect(screen.queryByName("storybook-control-choice")).toBeNull();
+        await userEvent.click(screen.getByText("Increment local state"));
+        expect(screen.getByName("inspector-clicks")).toHaveTextContent(/^1$/);
+    });
+
+    it("keeps read-only story arguments visible without allowing edits", async () => {
+        await showInspector({
+            default: {
+                ...controlMeta,
+                argTypes: {
+                    text: { control: "text", table: { readonly: true } },
+                    enabled: { control: "boolean", table: { readonly: true } },
+                    quantity: { control: "number", table: { readonly: true } },
+                    choice: { control: "select", options: ["green", "blue"], table: { readonly: true } },
+                },
+            },
+            Default: {},
+        });
+
+        for (const argument of ["text", "enabled", "quantity", "choice"]) {
+            expect(screen.getByName(`storybook-control-${argument}`)).toBeDisabled();
+        }
+
+        expect(within(screen.getByName("storybook-control-text")).getByRole(Gtk.AccessibleRole.TEXT_BOX))
+            .toHaveDisplayValue("Initial");
+        expect(screen.getByName("storybook-control-choice")).toHaveDisplayValue("green");
         await userEvent.click(screen.getByText("Increment local state"));
         expect(screen.getByName("inspector-clicks")).toHaveTextContent(/^1$/);
     });
@@ -191,9 +221,9 @@ describe("native story controls", () => {
             Default: {},
         });
 
-        await userEvent.selectOptions(screen.getByName("storybook-control-choice"), 1);
-        expect(screen.getByName("inspector-choice")).toHaveTextContent(/^true$/);
         await userEvent.selectOptions(screen.getByName("storybook-control-choice"), 2);
+        expect(screen.getByName("inspector-choice")).toHaveTextContent(/^true$/);
+        await userEvent.selectOptions(screen.getByName("storybook-control-choice"), 3);
         expect(screen.getByName("inspector-choice")).toHaveTextContent(/^42$/);
     });
 

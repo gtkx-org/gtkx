@@ -5,7 +5,7 @@ description: "Browse native GTKX component stories, edit arguments, record actio
 
 # Storybook
 
-`@gtkx/storybook` runs CSF3 component stories in a native Adwaita explorer. It supplies a story navigator, a preview, controls, and an action panel, using the same GTKX runtime and generated bindings as your application.
+`@gtkx/storybook` runs [CSF3 component stories](https://storybook.js.org/docs/api/csf) in a native Adwaita explorer. It supplies a story navigator, a preview, controls, and an action panel, using the same GTKX runtime and generated bindings as your application.
 
 ## Start the explorer
 
@@ -68,7 +68,9 @@ export { Default, Disabled };
 
 For component Fast Refresh, keep the component in its own module and import it into the story. Explicit `argTypes` create native boolean, text, number, and select controls. `argTypes.onClicked.action` records callback calls; asynchronous callbacks are recorded once when they settle. You can also provide `action("clicked")` from `@gtkx/storybook` directly as an argument.
 
-Shared `args`, `parameters`, `decorators`, and `initialGlobals` belong in `.storybook/preview.tsx`, exported as an object satisfying `Preview` from `@gtkx/storybook`. Decorators return ordinary GTKX JSX and receive the resolved story context.
+Shared preview configuration belongs in `.storybook/preview.tsx`, exported as an object satisfying `Preview` from `@gtkx/storybook`. [Decorators](https://storybook.js.org/docs/writing-stories/decorators) return ordinary GTKX JSX and receive the resolved story context.
+
+Controls preserve absent arguments until you edit them. Choice controls display a placeholder for an unset value; selecting it clears the argument. Set `table.readonly: true` on an argument's metadata to show a disabled control, or `table.disable: true` to hide it.
 
 ## Reuse stories in native tests
 
@@ -101,4 +103,4 @@ Control edits rerender the current story and retry previews that failed to rende
 
 GTKX reuses composition from pinned `storybook@10.6.0`. This is a standalone native explorer. Browser addons, a browser manager, MDX, Autodocs, `play`, loaders, Storybook preview hooks, and static interactive publishing need other integrations and are unsupported. Configured globals are available in context; there is no global toolbar.
 
-The [complete guide](https://github.com/gtkx-org/gtkx/blob/main/docs/storybook.md) covers discovery, decorators, actions, window ownership, update behavior, and API boundaries. The [example project](https://github.com/gtkx-org/gtkx/tree/main/examples/storybook) demonstrates controls, dialog and window stories, and native integration tests.
+The [example project](https://github.com/gtkx-org/gtkx/tree/main/examples/storybook) demonstrates controls, dialog and window stories, and native integration tests.
