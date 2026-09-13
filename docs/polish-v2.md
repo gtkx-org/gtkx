@@ -427,6 +427,12 @@ The supervisor treated Node's `ChildProcess.killed` flag as confirmation of proc
 
 The supervisor now sends signals through `ChildProcess.kill` directly and reuses Node's process type. Exit statuses derive from Node's platform signal constants. Four public regressions fail against the previous implementation: hard-killed runner status, two leaked runners after timeout, and SIGHUP status. All 20 lifecycle and development integration cases pass, including graceful shutdown and existing reload behavior, alongside utils/CLI builds, test types, lint and independent review.
 
+### Callback string ownership follow-up
+
+Native callback argument decoding copied full-transfer strings without releasing their native allocation. The decoder now frees the string after copying and before creating the JavaScript value. Borrowed strings retain their existing lifetime. The confirmed scope is explicit native callback descriptors; no installed GIR callback was found with this transfer contract.
+
+Five public cases use GLib's list destructor to exercise Unicode, empty and null lists, repeated owned inputs, and throwing callbacks. The previous decoder retains roughly 984 MB and 991 MB in the two repeated-call cases. The fixed code passes all 30 memory cases, all 370 native package cases, and the complete memory suite under AddressSanitizer/LeakSanitizer without memory errors. Types, lint, rustfmt and Clippy pass. The ordinary native artifact is restored before the release-consumer check.
+
 ## Next work
 
 Continue repeat audits alongside the R2 string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
