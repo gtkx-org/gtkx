@@ -35,7 +35,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | --- | ---: | --- |
 | `native` | 99 | API folder read; memory access fixed in batch 1; ownership migration open |
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
-| `codegen` | 144 | All override templates read; remaining generator folders pending |
+| `codegen` | 144 | All override templates, writer files and compile entry read; metadata retention and import emission fixed; remaining generator folders pending |
 | `react` | 47 | Core reconciler read; nullable drag icon fixed; lifecycle and metadata migrations open |
 | `components` | 50 | All files read; all initial findings resolved; repeat review continues |
 | `animated` | 19 | All files read; text, prop contracts, dead code, tests and guides fixed; upstream ref compatibility retained |
@@ -464,6 +464,12 @@ The migration exposed a bounded-buffer overread: filling an allocated character 
 All 376 native package cases, 127 focused integration cases and seven runtime storage cases pass. Sanitizer passes cover 102 native memory cases, the 127 integration cases, all 60 native call cases including six byte-vector regressions, and bounded storage. Typechecks, lint, rustfmt and Clippy pass. Memory checks measure repeated batches after allocation warm-up under the unchanged 40 MiB growth limit; the original callback leak still fails at roughly 993 MB growth. The normal addon and runtime artifacts are restored.
 
 A worker shutdown stress check separately reproduces an intermittent process crash on both the previous and current addon. Instrumented runs have not yet identified its cause; that finding remains open. Container conversion and the remaining R2 responsibilities are also still open.
+
+### Code generation writer audit
+
+All nine files in `packages/codegen/src/writer` and `compile.ts` were read, together with their public CLI generation path. Named imports sharing a module with a namespace import produced invalid syntax; a type-only namespace silently discarded the named imports. Public custom element configuration can reach both cases. The writer now emits separate import declarations.
+
+Three generated-consumer cases cover ordinary named props, both shared namespace forms and incompatible values. They invoke codegen and TypeScript with library checking enabled. All three pass, as do seven existing documentation cases, codegen compilation, CLI test types and lint. Independent review found no further confirmed defect in this scope.
 
 ## Next work
 
