@@ -19,42 +19,42 @@ type Collection = Pick<CollectionModel, "model" | "expansion" | "rowAt"> & {
 const NO_ROWS: MatchedRows = { positions: [], ids: [] };
 const NO_IDS: string[] = [];
 
-function rowsFor(collectionModel: CollectionModel, ids: string[]): MatchedRows {
+function rowsFor(gtkModel: CollectionModel, ids: string[]): MatchedRows {
     if (ids.length === 0) {
         return NO_ROWS;
     }
 
-    const { expansion } = collectionModel;
+    const { expansion } = gtkModel;
 
     return findRows(expansion.index, expansion.slots, new Set(ids));
 }
 
-function positionFor(collectionModel: CollectionModel, id: string): number {
-    const [first = -1] = rowsFor(collectionModel, [id]).positions;
+function positionFor(gtkModel: CollectionModel, id: string): number {
+    const [first = -1] = rowsFor(gtkModel, [id]).positions;
 
     return first;
 }
 
-function refAt(collectionModel: CollectionModel, position: number): SlotRef | null {
+function refAt(gtkModel: CollectionModel, position: number): SlotRef | null {
     if (position < 0) {
         return null;
     }
 
-    return slotRefFor(collectionModel.model.getItem(position));
+    return slotRefFor(gtkModel.model.getItem(position));
 }
 
 function itemAt(index: CollectionIndex, ref: SlotRef): ListItem | undefined {
     return index.itemAt(ref.store.level.path, ref.slot);
 }
 
-function idAt(collectionModel: CollectionModel, index: CollectionIndex, position: number): string | null {
-    const ref = refAt(collectionModel, position);
+function idAt(gtkModel: CollectionModel, index: CollectionIndex, position: number): string | null {
+    const ref = refAt(gtkModel, position);
 
     return ref === null ? null : (itemAt(index, ref)?.id ?? null);
 }
 
-function pathAt(collectionModel: CollectionModel, position: number): string | null {
-    const ref = refAt(collectionModel, position);
+function pathAt(gtkModel: CollectionModel, position: number): string | null {
+    const ref = refAt(gtkModel, position);
 
     if (ref === null) {
         return null;
@@ -63,12 +63,12 @@ function pathAt(collectionModel: CollectionModel, position: number): string | nu
     return slotPathAt(ref.store, ref.slot);
 }
 
-function idsAt(collectionModel: CollectionModel, positions: number[]): string[] {
+function idsAt(gtkModel: CollectionModel, positions: number[]): string[] {
     if (positions.length === 0) {
         return NO_IDS;
     }
 
-    const { expansion } = collectionModel;
+    const { expansion } = gtkModel;
 
     return findIds(expansion.index, expansion.slots, new Set(positions));
 }
@@ -79,19 +79,19 @@ function isCollectionIdle(collection: Collection): boolean {
     return !expansion.isApplying && !expansion.isSyncing;
 }
 
-function createCollection(collectionModel: CollectionModel, index: CollectionIndex): Collection {
+function createCollection(gtkModel: CollectionModel, index: CollectionIndex): Collection {
     return {
-        model: collectionModel.model,
-        expansion: collectionModel.expansion,
+        model: gtkModel.model,
+        expansion: gtkModel.expansion,
         isTree: index.isTree,
-        rowAt: collectionModel.rowAt,
+        rowAt: gtkModel.rowAt,
         itemAt: (ref) => itemAt(index, ref),
         sectionFor: index.sectionFor,
-        idAt: (position) => idAt(collectionModel, index, position),
-        idsAt: (positions) => idsAt(collectionModel, positions),
-        pathAt: (position) => pathAt(collectionModel, position),
-        positionFor: (id) => positionFor(collectionModel, id),
-        rowsFor: (ids) => rowsFor(collectionModel, ids),
+        idAt: (position) => idAt(gtkModel, index, position),
+        idsAt: (positions) => idsAt(gtkModel, positions),
+        pathAt: (position) => pathAt(gtkModel, position),
+        positionFor: (id) => positionFor(gtkModel, id),
+        rowsFor: (ids) => rowsFor(gtkModel, ids),
     };
 }
 

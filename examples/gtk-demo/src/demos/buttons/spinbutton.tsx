@@ -32,7 +32,6 @@ const MONTHS = [
     "December",
 ];
 
-// eslint-disable-next-line gtkx/no-library-prefix
 const GTK_INPUT_ERROR = -1;
 const DECIMAL_PREFIX_PATTERN = /^\s*([+-]?\d+)/;
 

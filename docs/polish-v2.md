@@ -405,6 +405,8 @@ The rule now follows inferred and nested public types without inspecting impleme
 
 All 89 remaining ESLint integration and rule cases pass, alongside both typechecks, package lint, Knip and independent review. The obsolete GTK/GLib prefix restriction and its tests are removed at the maintainer's request. React's own children type replaces the testing wrapper's duplicate shape. Existing no-new-comments exemptions now also cover object property constraints, registered class metadata and testing options; these declarations were kept simple instead of adding type indirection to evade documentation checks. Repository-wide Nx lint is the next validation checkpoint.
 
+The naming follow-up restores `gtkModel`, `GTK_LIB`, `useGObjectValue` and its cache type after tracing changes made for the removed prefix restriction. Stale suppression comments are removed. Remaining library names describe actual libraries. React, components and testing source typechecks and affected-file lint pass; these changes do not alter behavior or public APIs.
+
 ## Next work
 
 Continue repeat audits alongside the R2 string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.

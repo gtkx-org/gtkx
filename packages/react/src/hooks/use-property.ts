@@ -3,7 +3,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import { kebabCase } from "@gtkx/utils";
 import { getPropertyName } from "../reconciler/metadata.js";
 import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
-import { useObjectValue } from "./use-object-value.js";
+import { useGObjectValue } from "./use-gobject-value.js";
 
 /** Every property `T` declares that is also readable off the instance, in camelCase. */
 type PropertyName<T extends Pick<GObject.Object, "__properties__" | "__type__">> =
@@ -22,7 +22,7 @@ function useProperty<T extends Pick<GObject.Object, "__properties__" | "__type__
     const resolved = resolveRefProp(object);
     const name = (resolved === null ? undefined : getPropertyName(resolved, propertyName)) ?? kebabCase(propertyName);
 
-    return useObjectValue(object, `notify::${name}`, (obj) =>
+    return useGObjectValue(object, `notify::${name}`, (obj) =>
         obj === null ? undefined : GObject.getProperty(obj, propertyName),
     );
 }
