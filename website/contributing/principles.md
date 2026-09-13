@@ -145,6 +145,14 @@ Reserve code comments for public API documentation. Explain why an API or constr
 
 Comments must describe the current API without recounting earlier implementations. Deprecation documentation is the exception, where the transition is part of the public contract.
 
+## Write focused, consistent documentation
+
+Write in a human, concise style that is easy to follow. Use plain language, explain one idea at a time, and keep terminology and page structure consistent within each section. Include the context a reader needs to use GTKX without repeating it across pages.
+
+Guides and tutorials explain GTKX concepts and workflows. Use small examples that support the task; leave complete API specifications, type definitions, and exhaustive member lists to the API reference. Link to the reference when readers need those details.
+
+Keep the scope on GTKX. Assume readers know the underlying languages and libraries, and link to their official documentation when background is needed. For example, show how React state drives a GTKX widget without teaching React state itself. Explain GTKX's integration with React, GTK, and Adwaita; let those projects document their own behavior.
+
 ## Keep production code focused on consumers
 
 Production code serves real consumers of the framework. It must not contain special behavior solely to accommodate this repository's workspace layout, package linking, caches, test setup, or build orchestration.
