@@ -1,20 +1,11 @@
 import { error, exitCodeForSignal, info, installGracefulShutdown } from "@gtkx/utils";
-import { fork as nodeFork } from "node:child_process";
+import { type ChildProcess, fork as nodeFork } from "node:child_process";
 import { type FSWatcher, statSync, watch as watchFs } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEV_CONFIG_ENV, DEV_ENTRY_ENV, DEV_STORYBOOK_ENV } from "./entry-env.js";
 
-type SupervisedChild = {
-    killed: boolean;
-    pid?: number | undefined;
-    exitCode: number | null;
-    kill(signal?: number | NodeJS.Signals): boolean;
-    on(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): void;
-    once(event: "exit", listener: (code: number | null, signal: NodeJS.Signals | null) => void): void;
-};
-
-type ForkRunner = (modulePath: string, args: string[], env: NodeJS.ProcessEnv, cwd: string) => SupervisedChild;
+type ForkRunner = (modulePath: string, args: string[], env: NodeJS.ProcessEnv, cwd: string) => ChildProcess;
 
 type DevWatch = {
     paths: string[];
@@ -34,7 +25,7 @@ type SupervisorState = {
     changedPaths: Set<string>;
     restartTimer: DebounceTimer;
     fork: ForkRunner;
-    child: SupervisedChild | null;
+    child: ChildProcess | null;
     isShuttingDown: boolean;
     isRestarting: boolean;
     isRestartPending: boolean;
@@ -81,24 +72,6 @@ const defaultForkRunner: ForkRunner = (modulePath, args, env, cwd) => {
         detached: true,
         execArgv: withoutConditions(process.execArgv),
     });
-};
-
-const forwardSignal = (child: SupervisedChild, signal: NodeJS.Signals): void => {
-    if (!child.killed) {
-        child.kill(signal);
-    }
-};
-
-const didForceKillChild = (child: SupervisedChild | null): boolean => {
-    if (!child?.pid || child.exitCode !== null || child.killed) {
-        return false;
-    }
-
-    try {
-        return process.kill(child.pid, "SIGKILL");
-    } catch {
-        return false;
-    }
 };
 
 const captureShutdownExit = (state: SupervisorState, code: number | null, signal: NodeJS.Signals | null): void => {
@@ -258,7 +231,7 @@ const restart = async (state: SupervisorState): Promise<void> => {
         relaunchAfterExit(state);
     });
 
-    forwardSignal(current, "SIGTERM");
+    current.kill("SIGTERM");
 };
 
 const scheduleRestart = (state: SupervisorState, changedPaths: string[] = []): void => {
@@ -427,13 +400,13 @@ const shutdownOnSignal = (state: SupervisorState, signal: NodeJS.Signals): Promi
             resolve();
         });
 
-        forwardSignal(state.child, signal);
+        state.child.kill(signal);
     });
 
 const installShutdown = (state: SupervisorState): void => {
     installGracefulShutdown({
         onSignal: (signal) => shutdownOnSignal(state, signal),
-        onForce: () => didForceKillChild(state.child),
+        onForce: () => state.child?.kill("SIGKILL"),
         forceKillAfterMs: FORCE_KILL_TIMEOUT_MS,
         exitCode: (signal, graceful) => state.capturedChildExit ?? (graceful ? 0 : exitCodeForSignal(signal)),
     });
