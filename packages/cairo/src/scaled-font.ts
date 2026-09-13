@@ -25,6 +25,7 @@ import {
     TEXT_EXTENTS_T,
 } from "./lib.js";
 import { allocMatrix, Matrix } from "./matrix.js";
+import { checkStatus } from "./status.js";
 import { allocFontExtents, allocGlyphBuffer, allocTextExtents, readFontExtents, readTextExtents } from "./text.js";
 
 const SCALED_FONT_TYPE = cairoGType("cairo_gobject_scaled_font_get_type");
@@ -43,7 +44,7 @@ const cairoScaledFontCreate = bindCairo(
 
 const cairoScaledFontTextExtents = bindCairo(
     "cairo_scaled_font_text_extents",
-    [SCALED_FONT_T, t.string("full"), TEXT_EXTENTS_T],
+    [SCALED_FONT_T, t.string("borrowed"), TEXT_EXTENTS_T],
     t.void,
 );
 
@@ -104,6 +105,7 @@ class ScaledFont {
             getHandle(options),
         ) as ExternalObject<Handle>;
 
+        checkStatus(cairoScaledFontStatus(handle) as Status, "scaled font");
         setHandle(this, handle);
     }
 

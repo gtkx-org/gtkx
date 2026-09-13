@@ -81,6 +81,23 @@ describe("ScaledFont", () => {
         expect(font.extents().ascent).toBeGreaterThan(0);
     });
 
+    it("draws glyphs with a forward text-cluster mapping", () => {
+        const surface = new ImageSurface(Format.ARGB32, 16, 16);
+        const ctx = Context.create(surface);
+        ctx.setFontSize(12);
+        ctx.showTextGlyphs("A", [{ index: 0, x: 0, y: 12 }], [{ numBytes: 1, numGlyphs: 1 }], 0);
+        expect(ctx.status()).toBe(Status.SUCCESS);
+        expect(surface.getData().some((byte) => byte !== 0)).toBe(true);
+        ctx.showTextGlyphs("", [], [], 0);
+        expect(ctx.status()).toBe(Status.SUCCESS);
+    });
+
+    it("reports a mismatched text-cluster mapping", () => {
+        const ctx = createContext();
+        ctx.showTextGlyphs("A", [], [], 0);
+        expect(ctx.status()).toBe(Status.INVALID_CLUSTERS);
+    });
+
     it("returns a copy of its font options", () => {
         const options = createScaledFont().getFontOptions();
         expect(options).toBeInstanceOf(FontOptions);
@@ -92,6 +109,15 @@ describe("ScaledFont", () => {
         expect(Object.values(Status)).toContain(status);
     });
 
+    it("rejects a scaled font with a singular device transformation", () => {
+        const face = createToyFace();
+        const fontMatrix = Matrix.initScale(12, 12);
+        const ctm = new Matrix(1, 1, 1, 1, 0, 0);
+        const options = FontOptions.create();
+        expect(() => ScaledFont.create(face, fontMatrix, ctm, options)).toThrow();
+        expect(() => new ScaledFont(face, fontMatrix, ctm, options)).toThrow();
+    });
+
     it("rejects a missing font face", () => {
         const identity = Matrix.initIdentity();
         expect(() => ScaledFont.create(undefined as never, identity, identity, FontOptions.create())).toThrow();
@@ -100,6 +126,17 @@ describe("ScaledFont", () => {
 });
 
 describe("FontOptions", () => {
+    it("sets, copies and clears font variations", () => {
+        const options = FontOptions.create();
+        expect(options.getVariations()).toBeNull();
+        options.setVariations("wght=700");
+        const copy = new FontOptions(options);
+        expect(copy.getVariations()).toBe("wght=700");
+        options.setVariations(null);
+        expect(options.getVariations()).toBeNull();
+        expect(copy.getVariations()).toBe("wght=700");
+        expect(copy.equal(options)).toBe(false);
+    });
     it("copies another set of options and compares equal to it", () => {
         const options = FontOptions.create();
         options.setHintStyle(HintStyle.FULL);

@@ -1,9 +1,9 @@
 import { type ExternalObject, getHandle, type Handle, read, t } from "@gtkx/runtime";
-import type { PathData } from "./types.js";
-import { PathDataType } from "./enums.js";
+import type { PathData, Point } from "./types.js";
+import { PathDataType, type Status } from "./enums.js";
+import { checkStatus } from "./status.js";
 
 type PathBuffer = ExternalObject<Handle>;
-type Point = { x: number; y: number };
 type SegmentReader = (data: PathBuffer, base: number) => PathData;
 
 const ELEMENT_SIZE = 16;
@@ -31,27 +31,15 @@ const readCurveTo: SegmentReader = (data, base) => {
 
 const readClosePath: SegmentReader = () => ({ type: "closePath" });
 
-const segmentReaderFor = (headerType: PathDataType): SegmentReader | null => {
-    switch (headerType) {
-        case PathDataType.MOVE_TO: {
-            return readMoveTo;
-        }
-        case PathDataType.LINE_TO: {
-            return readLineTo;
-        }
-        case PathDataType.CURVE_TO: {
-            return readCurveTo;
-        }
-        case PathDataType.CLOSE_PATH: {
-            return readClosePath;
-        }
-        default: {
-            return null;
-        }
-    }
+const segmentReaders: Record<PathDataType, SegmentReader> = {
+    [PathDataType.MOVE_TO]: readMoveTo,
+    [PathDataType.LINE_TO]: readLineTo,
+    [PathDataType.CURVE_TO]: readCurveTo,
+    [PathDataType.CLOSE_PATH]: readClosePath,
 };
 
 const parsePath = (pathHandle: PathBuffer): PathData[] => {
+    checkStatus(INT.read(pathHandle, 0) as Status, "path");
     const numData = NUM_DATA.read(pathHandle) as number;
 
     if (numData === 0) {
@@ -64,12 +52,8 @@ const parsePath = (pathHandle: PathBuffer): PathData[] => {
 
     while (index < numData) {
         const base = index * ELEMENT_SIZE;
-        const reader = segmentReaderFor(INT.read(data, base) as PathDataType);
-
-        if (reader !== null) {
-            segments.push(reader(data, base));
-        }
-
+        const reader = segmentReaders[INT.read(data, base) as PathDataType];
+        segments.push(reader(data, base));
         index += INT.read(data, base + 4) as number;
     }
 

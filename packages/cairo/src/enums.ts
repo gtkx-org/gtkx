@@ -13,7 +13,7 @@ type LineCap = (typeof LineCap)[keyof typeof LineCap];
 /** One of the `LineJoin` styles for the corners of a stroked path. */
 type LineJoin = (typeof LineJoin)[keyof typeof LineJoin];
 /** One of the `TextClusterFlags` values describing a cluster mapping. */
-type TextClusterFlags = (typeof TextClusterFlags)[keyof typeof TextClusterFlags];
+type TextClusterFlags = number;
 /** One of the `FontSlant` values for a toy font face. */
 type FontSlant = (typeof FontSlant)[keyof typeof FontSlant];
 /** One of the `FontWeight` values for a toy font face. */
@@ -126,6 +126,12 @@ const Status = {
     DEVICE_FINISHED: 37,
     /** A JBIG2 global data stream was attached without its global identifier. */
     JBIG2_GLOBAL_MISSING: 38,
+    PNG_ERROR: 39,
+    FREETYPE_ERROR: 40,
+    WIN32_GDI_ERROR: 41,
+    TAG_ERROR: 42,
+    DWRITE_ERROR: 43,
+    SVG_FONT_ERROR: 44,
 } as const;
 
 /**
@@ -359,6 +365,7 @@ const FontType = {
     QUARTZ: 3,
     /** A font created with the user font API. */
     USER: 4,
+    DWRITE: 5,
 } as const;
 
 /**
@@ -477,6 +484,8 @@ const Format = {
     RGB16_565: 4,
     /** 30 bits per pixel with 10 bits per color channel. */
     RGB30: 5,
+    RGB96F: 6,
+    RGBA128F: 7,
 } as const;
 
 /**

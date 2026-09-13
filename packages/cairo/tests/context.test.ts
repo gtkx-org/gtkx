@@ -51,6 +51,17 @@ describe("Context", () => {
         expect(() => Context.create(undefined as never)).toThrow();
         expect(() => new Context(undefined as never)).toThrow();
     });
+
+    it("distinguishes an empty path from a failed path copy", () => {
+        const ctx = Context.create(createSurface());
+        expect(ctx.copyPath()).toEqual([]);
+        expect(ctx.copyPathFlat()).toEqual([]);
+        ctx.restore();
+        expect(ctx.status()).toBe(Status.INVALID_RESTORE);
+        expect(() => ctx.copyPath()).toThrow();
+        expect(() => ctx.copyPathFlat()).toThrow();
+        expect(() => ctx.copyClipRectangleList()).toThrow();
+    });
 });
 
 describe("Region", () => {

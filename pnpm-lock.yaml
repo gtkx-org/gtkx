@@ -335,9 +335,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.5.0
-      fast-xml-parser:
-        specifier: ^5.11.1
-        version: 5.11.1
 
   packages/cli:
     dependencies:
