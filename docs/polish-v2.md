@@ -37,7 +37,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
 | `codegen` | 144 | All override templates read; remaining generator folders pending |
 | `react` | 47 | Core reconciler read; nullable drag icon fixed; lifecycle and metadata migrations open |
-| `components` | 50 | All files read; identity, controlled state, nullable selection and import side effects fixed; seven findings remain |
+| `components` | 50 | All files read; identity, controlled state, nullable selection, live size estimates and import side effects fixed; six findings remain |
 | `animated` | 19 | All files read; six findings open |
 | `cairo` | 32 | Pending |
 | `gl` | 6 | All files read; exact 64-bit bindings and thin overrides fixed; callback release remains open |
@@ -229,13 +229,15 @@ All 50 tracked files in `packages/components` were read, including source, inter
 | COMP2: controlled selection and sorting drift | DropDown/ComboRow and ColumnView report rejected native changes but only restore controlled props after another React render. | Fixed; selection, expansion and sorting share one component-level controlled synchronization hook |
 | COMP3: source/header types admit an invalid call | Plain `items` can be combined with `renderHeader`, then the renderer typed as receiving a section is called with `undefined`; `sections` silently wins when both sources are supplied. | Reproduced; model item and section sources as an exclusive union |
 | COMP4: nullable controlled selection does not clear | `selectedId={null}` becomes the current native selection instead of `Gtk.INVALID_LIST_POSITION`. | Resolved; GTK and libadwaita auto-select a row in nonempty models, so nullable input was removed. Empty models report `null`; the upstream limitation is U6 |
-| COMP5: estimated item sizes stay stale | Updating an estimate changes only registry state; realized placeholders retain the old size. | Reproduced; resize surviving hosts for list, grid and column views |
+| COMP5: estimated item sizes stay stale | Updating an estimate changes only registry state; realized placeholders retain the old size. | Fixed; surviving placeholders resize when estimates change or are removed, preserving rendered content sizes |
 | COMP6: ColumnView accepts discarded children | The inherited generated type accepts `children`, while the component removes them and renders only `columns`. | Open; omit `children` and verify installed declarations |
 | COMP7: unsupported tree inputs drive production complexity | Cycle tracking, depth-8,000 chains and repeated-ID semantics have extensive implementation and tests despite the stated supported-input principles. | Open contract decision; remove unsupported promises and machinery if they are outside 2.0 |
 | COMP8: cells redeclare native property descriptors | Accessibility labels/descriptions are written through a local borrowed-string descriptor and raw property names. | Open; repair or reuse a runtime/generated typed property path |
 | COMP9: fallback display serialization is hand-rolled | The default DropDown renderer catches failed JSON serialization and supplies another representation for unsupported structured values. | Open; keep the default renderer simple and require an explicit renderer for structured values |
 | COMP10: tests assert internals and wall-clock budgets | Tests inspect model splice emissions, enforce timing thresholds and emit a toast signal instead of clicking its visible action. | Open; retain observable integration coverage and move timing to benchmarks |
 | COMP11: side-effect metadata is inaccurate | The package declares `sideEffects: false`, but collection-model import writes a shared symbol entry to `globalThis`. | Fixed; the cross-copy weak map is initialized only when a collection item is created or read |
+
+The live-size fix passes eight public measurement cases across ListView, GridView and ColumnView. The complete components suite passes 114 tests; component test types and touched-file lint pass. A running native list was visually inspected at 40-pixel, 100-pixel and removed estimates. Only framework placeholders receive size updates; rendered content keeps its own dimensions.
 
 ### OpenGL package audit
 
