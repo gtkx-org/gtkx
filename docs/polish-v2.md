@@ -43,7 +43,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `gl` | 6 | All files read; exact 64-bit bindings and thin overrides fixed; callback release remains open |
 | `css` | 21 | All files read twice; named-color and registry fixes validated; documentation corrected |
 | `forms` | 17 | All current files read; callback refs, shared types and explicit ComboRow IDs fixed; repeat review continues |
-| `i18n` | 17 | Pending |
+| `i18n` | 17 | All files read; contextual lookup and locale formatting fixed; repeat review found no further confirmed defect |
 | `navigation` | 66 | Pending |
 | `storybook` | 31 | Pending |
 | `config` | 18 | Pending |
@@ -334,6 +334,14 @@ The form source transition exposed a matcher issue: a custom ComboRow visibly re
 Ten public regressions cover custom rendering, empty selections and models, subtitle mode, updates, open popovers, errors and DropDown compatibility. The broader testing run passed 219 cases before the final two empty-subtitle cases were added; all ten final regressions and six ComboRow lifetime cases pass. Testing/e2e types and affected lint pass. This was a GTKX matcher defect, with no new upstream report needed.
 
 The combined checkpoint passes library builds, affected typechecks, root typechecking, lint, Knip and an offline frozen-lockfile install. Current API references generate successfully into a standalone output directory. The full website production build, page rendering and sitemap generation pass in 430 seconds.
+
+### Internationalization package audit
+
+All 17 tracked i18n files and both guides were read, with the generated translation-type emitter and tutorial consumers. Two public rendering regressions exposed incorrect contextual fallback and locale formatting. A contextual translation identical to its source was replaced by the ordinary translation; gettext lookups now distinguish an absent entry from that valid result. The libc locale name was passed directly to i18next, which prevented Intl number formatting; formatting now uses the process's Intl locale while gettext retains its startup environment.
+
+All five native integration cases pass, including zero/singular/plural fallback and unsupported counts, alongside source/test types and package lint. The rendered French example was visually inspected. The guides now explain GTKX catalog handling and extraction restrictions, with upstream links for React APIs. A repeat source review found no additional confirmed defect in the supported contract.
+
+The pass also reproduced an ESLint contract conflict: the shared object-property naming rule rejects i18next's legitimate `defaultValue_one` and `defaultValue_other` options. Existing computed test keys remain until the shared rule is reviewed; this is pending in the ESLint package audit.
 
 ## Next work
 

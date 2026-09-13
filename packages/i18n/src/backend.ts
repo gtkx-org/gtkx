@@ -4,9 +4,9 @@ import { applicationId } from "virtual:gtkx-config";
 
 type GettextCatalog = {
     gettext(msgid: string): string;
-    ngettext(msgid: string, msgidPlural: string, count: number | bigint): string;
-    npgettext(context: string, msgid: string, msgidPlural: string, count: number | bigint): string;
-    pgettext(context: string, msgid: string): string;
+    ngettext(msgid: string, msgidPlural: string, count: number): string;
+    npgettext(context: string, msgid: string, msgidPlural: string, count: number): string | undefined;
+    pgettext(context: string, msgid: string): string | undefined;
 };
 
 const CONTEXT_SEPARATOR = "\u{4}";
@@ -20,7 +20,10 @@ const gettextCatalog: GettextCatalog = {
         return GLib.dngettext(applicationId, msgid, msgidPlural, normalizeCount(count));
     },
     pgettext(context, msgid) {
-        return GLib.dpgettext2(applicationId, context, msgid);
+        const contextual = contextualMsgid(context, msgid);
+        const translated = GLib.dgettext(applicationId, contextual);
+
+        return translated === contextual ? undefined : translated;
     },
     npgettext(context, msgid, msgidPlural, count) {
         const contextualSingular = contextualMsgid(context, msgid);
@@ -33,11 +36,7 @@ const gettextCatalog: GettextCatalog = {
             normalizeCount(count),
         );
 
-        if (translated === contextualSingular) {
-            return msgid;
-        }
-
-        return translated === contextualPlural ? msgidPlural : translated;
+        return translated === contextualSingular || translated === contextualPlural ? undefined : translated;
     },
 };
 
@@ -51,20 +50,12 @@ const gettextBackend: BackendModule = {
     },
 };
 
-const normalizeCount = (count: number | bigint): bigint => {
-    if (typeof count === "number") {
-        if (!Number.isSafeInteger(count) || count < 0) {
-            throw new RangeError("gettext counts must be non-negative safe integers");
-        }
-
-        return BigInt(count);
+const normalizeCount = (count: number): bigint => {
+    if (!Number.isSafeInteger(count) || count < 0) {
+        throw new RangeError("gettext counts must be non-negative safe integers");
     }
 
-    if (count < 0n) {
-        throw new RangeError("gettext counts must be non-negative");
-    }
-
-    return count;
+    return BigInt(count);
 };
 
 const contextualMsgid = (context: string, msgid: string): string => `${context}${CONTEXT_SEPARATOR}${msgid}`;
