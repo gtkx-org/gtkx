@@ -111,7 +111,7 @@ description: t("No tasks match “{{query}}”", { query }),
 And `src/notifications.ts` uses the same catalog even when the shell displays the result outside the window:
 
 ```ts
-notification.setBody(t("Due {{date}}", { date: formatDateTime(task.due) }));
+notification.setBody(t("Due {{date}}", { date: formatDateTime(due) }));
 notification.addButtonWithTarget(
     t("Mark Complete"),
     "app.complete-task",

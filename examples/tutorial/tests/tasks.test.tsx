@@ -1,9 +1,11 @@
 import * as Adw from "@gtkx/gi/adw";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { rootElement } from "@gtkx/react";
-import { act, fireEvent, render, screen, userEvent, waitFor } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/app.js";
+import { ALL_TASKS, openTask } from "../src/navigation.js";
 import { useStore } from "../src/store/index.js";
 
 const openWaterThePlants = async (): Promise<void> => {
@@ -17,6 +19,14 @@ const findTitleEntry = (): Promise<Adw.EntryRow> =>
 
 const importantSwitch = (isChecked: boolean): Gtk.Switch =>
     screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: isChecked, as: Gtk.Switch });
+
+const settings = Gio.Settings.new("com.gtkx.tutorial");
+
+afterEach(() => {
+    vi.useRealTimers();
+    settings.reset("reminder-minutes");
+    vi.restoreAllMocks();
+});
 
 describe("Tasks", () => {
     it("adds a task from the entry row", async () => {
@@ -42,6 +52,13 @@ describe("Tasks", () => {
         await render(<App />, { container: rootElement });
 
         await openWaterThePlants();
+
+        expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
+    });
+
+    it("opens a notification target requested before navigation mounts", async () => {
+        openTask(ALL_TASKS, "t2");
+        await render(<App />, { container: rootElement });
 
         expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
     });
@@ -84,6 +101,19 @@ describe("Tasks", () => {
         expect(useStore.getState().tasks.find((task) => task.id === "t2")?.deleted).toBe(true);
     });
 
+    it("permanently deletes a task through the Trash confirmation", async () => {
+        await render(<App />, { container: rootElement });
+
+        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
+        await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Trash/ }));
+        const trashed = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
+        await userEvent.click(within(trashed).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" }));
+
+        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeNull();
+    });
+
     it("reorders tasks by dragging", async () => {
         await render(<App />, { container: rootElement });
 
@@ -97,6 +127,121 @@ describe("Tasks", () => {
 
         expect(first).toHaveAccessibleName("Review pull requests");
         expect(second).toHaveAccessibleName("Water the plants");
+    });
+
+    it("reorders the focused task with the keyboard", async () => {
+        await render(<App />, { container: rootElement });
+
+        const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
+        source.grabFocus();
+        await userEvent.keyboard(source, "{Alt>}{ArrowDown}{/Alt}");
+
+        const [first, second] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
+            name: /Water the plants|Prepare the weekly report/,
+        });
+        expect(first).toHaveAccessibleName("Prepare the weekly report");
+        expect(second).toHaveAccessibleName("Water the plants");
+    });
+
+    it("does not expose reordering while the list is filtered", async () => {
+        await render(<App />, { container: rootElement });
+
+        await userEvent.click(await screen.findByText("Open"));
+        const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
+        const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Review pull requests/ });
+
+        await expect(userEvent.dragAndDrop(source, target, "t2")).rejects.toThrow();
+    });
+
+    it("ignores text drops that do not name a task", async () => {
+        await render(<App />, { container: rootElement });
+
+        const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
+        const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Prepare the weekly report/ });
+        await userEvent.dragAndDrop(source, target, "outside the application");
+
+        const [water, report, gift] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
+            name: /Water the plants|Prepare the weekly report|Order birthday gift/,
+        });
+        expect(water).toHaveAccessibleName("Water the plants");
+        expect(report).toHaveAccessibleName("Prepare the weekly report");
+        expect(gift).toHaveAccessibleName(/Order birthday gift/);
+    });
+
+    it("keeps an empty new-list form open until it has a name", async () => {
+        await render(<App />, { container: rootElement });
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New List" }));
+        const add = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Add" });
+        const name = await screen.findByPlaceholderText("List name");
+        expect(add).toBeDisabled();
+        await userEvent.type(name, " ".repeat(3));
+        expect(add).toBeDisabled();
+        await userEvent.type(name, "Errands");
+        await waitFor(() => {
+            expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Add" })).toBeEnabled();
+        });
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Add" }));
+
+        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Errands/ })).toBeDefined();
+    });
+
+    it("sends a zero-minute reminder once across a window remount", async () => {
+        settings.setInt("reminder-minutes", 0);
+        useStore.setState((state) => ({
+            tasks: state.tasks.map((task) =>
+                task.id === "t4"
+                    ? { ...task, due: new Date(Date.now() - 1000).toISOString(), lastNotifiedDue: null }
+                    : task,
+            ),
+        }));
+        const sendNotification = vi
+            .spyOn(Gio.Application.prototype, "sendNotification")
+            .mockImplementation(() => {
+                return;
+            });
+
+        const first = await render(<App />, { container: rootElement });
+        await waitFor(() => {
+            expect(sendNotification).toHaveBeenCalledTimes(1);
+        });
+        await first.unmount();
+        await render(<App />, { container: rootElement });
+
+        expect(sendNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it("sends a nonzero reminder after a delayed sweep passes its window", async () => {
+        vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+        settings.setInt("reminder-minutes", 1);
+        useStore.setState((state) => ({
+            tasks: state.tasks.map((task) =>
+                task.id === "t4"
+                    ? {
+                          ...task,
+                          done: false,
+                          deleted: false,
+                          due: new Date(Date.now() + 90_000).toISOString(),
+                          lastNotifiedDue: null,
+                      }
+                    : { ...task, done: true },
+            ),
+        }));
+        const sendNotification = vi
+            .spyOn(Gio.Application.prototype, "sendNotification")
+            .mockImplementation(() => {
+                return;
+            });
+
+        const view = await render(<App />, { container: rootElement });
+        expect(sendNotification).not.toHaveBeenCalled();
+        await act(async () => {
+            vi.setSystemTime(Date.now() + 60_000);
+            await vi.advanceTimersByTimeAsync(60_000);
+        });
+
+        expect(sendNotification).toHaveBeenCalledTimes(1);
+        await view.unmount();
     });
 
     it("keeps one color selected when the same swatch is clicked repeatedly", async () => {

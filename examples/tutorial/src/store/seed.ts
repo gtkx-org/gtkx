@@ -24,6 +24,7 @@ const task = (fields: Partial<Task> & Pick<Task, "id" | "listId" | "title" | "po
     due: null,
     createdAt,
     completedAt: null,
+    lastNotifiedDue: null,
     ...fields,
 });
 

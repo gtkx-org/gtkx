@@ -1,8 +1,8 @@
 import { useToast } from "@gtkx/components";
 import { t } from "@gtkx/i18n";
+import type { Task } from "../types.js";
 import { closeTaskIfOpen } from "../navigation.js";
 import { useStore } from "../store/index.js";
-import type { Task } from "../types.js";
 import { About } from "./about.js";
 import { DeleteConfirmation } from "./delete-confirmation.js";
 import { NewListDialog } from "./new-list-dialog.js";
@@ -15,7 +15,7 @@ export const useRequestDeleteTask = (): ((task: Task) => void) => {
     return (task) => {
         const { moveToTrash, restore, askDeleteTask } = useStore.getState();
         if (task.deleted) {
-            askDeleteTask(task.id);
+            askDeleteTask(task);
             return;
         }
         closeTaskIfOpen(task.id);
@@ -33,7 +33,7 @@ export const Dialogs = () => {
     const showDialog = useStore((state) => state.showDialog);
     const close = () => showDialog("none");
 
-    switch (dialog) {
+    switch (dialog.kind) {
         case "about":
             return <About onClose={close} />;
         case "shortcuts":
@@ -43,7 +43,7 @@ export const Dialogs = () => {
         case "new-list":
             return <NewListDialog />;
         case "delete-task":
-            return <DeleteConfirmation />;
+            return <DeleteConfirmation task={dialog.task} />;
         case "none":
             return null;
     }
