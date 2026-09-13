@@ -1,3 +1,4 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     isAccessibleNumberMatch,
@@ -11,7 +12,7 @@ import {
 } from "./accessible-native.js";
 import { EDITABLE_ROLES, isEditable, readEditableText } from "./editable.js";
 import { isNameFromAuthor, isNameProhibited } from "./role-naming.js";
-import { children, descendants, relationCandidates } from "./traversal.js";
+import { type ChildContainer, children, descendants, relationCandidates } from "./traversal.js";
 import { callBooleanGetter, callStringGetter, getCallableMethod } from "./widget-getters.js";
 import { requireWidget } from "./widget-target.js";
 
@@ -148,14 +149,22 @@ const getWidgetTextContent = (widget: Gtk.Widget): string | null => {
 };
 
 const isDropDownFaceCandidate = (widget: Gtk.Widget): boolean =>
-    !(widget instanceof Gtk.Popover) && widget.getChildVisible();
+    !(widget instanceof Gtk.Popover) && widget.getVisible() && widget.getChildVisible();
 
-const dropDownChildFaceText = (child: Gtk.Widget): string | null =>
-    isDropDownFaceCandidate(child) ? getWidgetLabelText(child) ?? dropDownFaceText(child) : null;
+const dropDownFace = function* (widget: ChildContainer): Generator<Gtk.Widget> {
+    for (const child of children(widget)) {
+        if (!isDropDownFaceCandidate(child)) {
+            continue;
+        }
+
+        yield child;
+        yield* dropDownFace(child);
+    }
+};
 
 const dropDownFaceText = (widget: Gtk.Widget): string | null => {
-    for (const child of children(widget)) {
-        const text = dropDownChildFaceText(child);
+    for (const child of dropDownFace(widget)) {
+        const text = getWidgetLabelText(child);
 
         if (text !== null) {
             return text;
@@ -163,6 +172,19 @@ const dropDownFaceText = (widget: Gtk.Widget): string | null => {
     }
 
     return null;
+};
+
+const comboRowDisplayValue = (widget: Adw.ComboRow): string => {
+    if (widget.getUseSubtitle()) {
+        return widget.getSubtitle() ?? "";
+    }
+
+    const factory = widget.getFactory();
+    const current = dropDownFace(widget).find((child) =>
+        child instanceof Gtk.ListView && child.getFactory() === factory,
+    );
+
+    return current === undefined ? "" : (dropDownFaceText(current) ?? "");
 };
 
 const tabPanelTitle = (widget: Gtk.Widget): string | null => {
@@ -232,10 +254,15 @@ const getWidgetPlaceholderText = (widget: Gtk.Widget): string | null => {
     );
 };
 
-const comboBoxDisplayValue = (widget: Gtk.Widget): string | null =>
-    widget instanceof Gtk.DropDown
+const comboBoxDisplayValue = (widget: Gtk.Widget): string | null => {
+    if (widget instanceof Adw.ComboRow) {
+        return comboRowDisplayValue(widget);
+    }
+
+    return widget instanceof Gtk.DropDown
         ? (dropDownFaceText(widget) ?? getWidgetValueText(widget))
         : (getWidgetValueText(widget) ?? dropDownFaceText(widget));
+};
 
 const getWidgetDisplayValue = (widget: Gtk.Widget): string | null => {
     if (EDITABLE_ROLES.has(widget.getAccessibleRole()) && isEditable(widget)) {
