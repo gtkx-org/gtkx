@@ -37,7 +37,7 @@ describe.each(["bound", "unbound"] as const)("%s field bounds", (mode) => {
         [{ kind: "biguint64" }, 8, 123n],
         [{ kind: "float32" }, 4, 0.5],
         [{ kind: "float64" }, 8, Math.PI],
-        [{ kind: "boolean" }, 4, true],
+        [{ kind: "int32" }, 4, 1],
         [{ kind: "string", ownership: "borrowed" }, 8, "hello"],
     ] satisfies [Descriptor, number, unknown][])("a %j field fits exactly in %i bytes", (descriptor, size, value) => {
         const field = access(descriptor);

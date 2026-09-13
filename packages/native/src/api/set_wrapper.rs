@@ -36,6 +36,7 @@ unsafe extern "C" fn on_wrapper_finalize(
 /// that releases it when the wrapper is garbage collected.
 #[napi(catch_unwind)]
 pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> Result<()> {
+    let _lease = crate::api::native_result("set_wrapper", handle.acquire_lease())?;
     let Some(gobject_ptr) = handle.as_gobject_ptr() else {
         return Err(Error::new(
             Status::InvalidArg,
@@ -75,6 +76,7 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
     let pinned: glib::Object = unsafe { from_glib_none(gobject_ptr) };
     let owned = handle.take_owned();
     let (wrapper_handle, generation) = unsafe { wrapper::install(gobject_ptr, raw_ref) };
+    handle.track_wrapper(&wrapper_handle);
     drop(owned);
     unsafe {
         (*data).wrapper_handle = Some(wrapper_handle);

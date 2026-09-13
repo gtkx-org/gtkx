@@ -14,7 +14,7 @@ import {
     registeredElementSignals,
 } from "@gtkx/runtime/internal";
 import { properties, type PropertyEntry, signals, userEventSignals } from "virtual:gtkx-config";
-import { deferredProps, type ElementBehavior, ELEMENTS } from "./registry.js";
+import { type ElementBehavior, ELEMENTS } from "./registry.js";
 
 type TypeInfo = {
     typeName: string;
@@ -22,10 +22,8 @@ type TypeInfo = {
     signals: Record<string, string>;
     userEventSignals: Set<string>;
     behaviors: ElementBehavior[];
-    deferred: Set<string>;
     declaredConstructOnly: Set<string>;
     isLazy: boolean;
-    hasFlush: boolean;
     constructOnly: Set<string>;
     construct: Set<string>;
     defaults: Record<string, unknown>;
@@ -117,11 +115,6 @@ const resolveProperties = (info: TypeInfo): void => {
 };
 
 const applyBehaviorFlags = (info: TypeInfo, behavior: ElementBehavior): void => {
-    if (behavior.flush !== undefined) {
-        info.hasFlush = true;
-    }
-
-    addAll(info.deferred, deferredProps(behavior));
     addAll(info.declaredConstructOnly, behavior.constructOnly);
 };
 
@@ -140,10 +133,8 @@ const buildTypeInfo = (name: string): TypeInfo => {
         signals: {},
         userEventSignals: new Set(),
         behaviors: [],
-        deferred: new Set(),
         declaredConstructOnly: new Set(),
         isLazy: false,
-        hasFlush: false,
         constructOnly: new Set(),
         construct: new Set(),
         defaults: {},

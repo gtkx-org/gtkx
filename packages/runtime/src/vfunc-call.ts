@@ -12,6 +12,7 @@ import {
     resolveWrapperType,
     type VfuncDescriptor,
 } from "./registry.js";
+import { toAbi } from "./scalar-plan.js";
 import { TYPE_INVALID, typeInterfaces, typeIsA, typeParent } from "./type.js";
 import { type RefSeeds, seedsFor } from "./vfunc-seeds.js";
 import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor, vfuncArgs } from "./vfunc.js";
@@ -45,8 +46,8 @@ function bindOptionsFor(
     const options: BindVfuncOptions = {
         byteOffset: descriptor.byteOffset,
         label,
-        argDescriptors: buildNativeArgTypes(args, descriptor.canThrow === true),
-        returnDescriptor: descriptor.returnDescriptor,
+        argDescriptors: buildNativeArgTypes(args, descriptor.canThrow === true).map((descriptor) => toAbi(descriptor)),
+        returnDescriptor: toAbi(descriptor.returnDescriptor),
     };
 
     if (descriptor.vtableSize !== undefined) {

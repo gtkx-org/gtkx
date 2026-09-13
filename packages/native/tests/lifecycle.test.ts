@@ -16,7 +16,7 @@ const idleAdd = bind(
         {
             kind: "callback",
             argDescriptors: [],
-            returnDescriptor: { kind: "boolean" },
+            returnDescriptor: { kind: "int32" },
             hasDestroy: true,
             hasUserData: true,
             scope: "notified",
@@ -37,7 +37,7 @@ const queueIdle = (onDispatch: () => void): void => {
         () => {
             onDispatch();
 
-            return false;
+            return 0;
         },
     ]);
 };
@@ -141,7 +141,7 @@ test("quitting from inside a glib dispatch stops later idle sources from dispatc
 
 test("a bound call still succeeds while the main loop integration is torn down", () => {
     quit();
-    const duplicated = call(duplicate, ["torn down"]);
+    const duplicated = call(duplicate, ["torn down"]).value;
     init();
 
     expect(duplicated).toBe("torn down");

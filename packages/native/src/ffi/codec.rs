@@ -12,11 +12,9 @@ use crate::{ffi, value};
 
 mod array;
 mod bigint;
-mod boolean;
 mod boxed;
 mod buffer;
 mod callback;
-mod enum_flags;
 mod fundamental;
 mod hashtable;
 mod numeric;
@@ -25,17 +23,14 @@ mod prelude;
 mod r#ref;
 mod string;
 mod r#struct;
-mod unichar;
 mod void;
 
 pub use array::{ArrayBounds, ArrayCodec, ArrayKind};
 pub use bigint::BigIntCodec;
-pub use boolean::BooleanCodec;
 pub use boxed::BoxedCodec;
 pub use buffer::BufferCodec;
 pub(crate) use callback::CallbackReleasePolicy;
 pub use callback::{CallbackCodec, CallbackScope, DestroyNotifyKind};
-pub use enum_flags::{EnumFlagsCodec, EnumFlagsKind};
 pub use fundamental::FundamentalCodec;
 pub use hashtable::{HashTableCodec, HashTableEntryCodec};
 pub use numeric::{FloatCodec, IntegerCodec, lossless_f64};
@@ -46,7 +41,6 @@ pub(crate) use object::{
 pub use r#ref::RefCodec;
 pub use string::{StringCodec, str_to_glib_full};
 pub use r#struct::StructCodec;
-pub use unichar::UnicharCodec;
 pub use void::VoidCodec;
 
 pub(crate) trait IntegerBacked {
@@ -430,10 +424,8 @@ pub enum Codec {
     Integer(IntegerCodec),
     BigInt(BigIntCodec),
     Float(FloatCodec),
-    EnumFlags(EnumFlagsCodec),
     String(StringCodec),
     Void(VoidCodec),
-    Boolean(BooleanCodec),
     Object(ObjectCodec),
     Boxed(BoxedCodec),
     Struct(StructCodec),
@@ -443,7 +435,6 @@ pub enum Codec {
     HashTable(HashTableCodec),
     Callback(CallbackCodec),
     Ref(RefCodec),
-    Unichar(UnicharCodec),
 }
 
 impl Codec {
@@ -471,12 +462,9 @@ impl Codec {
             Self::Integer(_)
             | Self::BigInt(_)
             | Self::Float(_)
-            | Self::EnumFlags(_)
             | Self::Void(_)
-            | Self::Boolean(_)
             | Self::Buffer(_)
-            | Self::Callback(_)
-            | Self::Unichar(_) => Ownership::Borrowed,
+            | Self::Callback(_) => Ownership::Borrowed,
         }
     }
 
@@ -490,15 +478,7 @@ impl Codec {
 
     #[must_use]
     pub fn is_scalar(&self) -> bool {
-        matches!(
-            self,
-            Codec::Integer(_)
-                | Codec::BigInt(_)
-                | Codec::Float(_)
-                | Codec::EnumFlags(_)
-                | Codec::Boolean(_)
-                | Codec::Unichar(_)
-        )
+        matches!(self, Codec::Integer(_) | Codec::BigInt(_) | Codec::Float(_))
     }
 }
 
@@ -508,13 +488,8 @@ impl std::fmt::Display for Codec {
             Self::Integer(kind) => write!(f, "Integer({kind:?})"),
             Self::BigInt(kind) => write!(f, "BigInt({kind:?})"),
             Self::Float(kind) => write!(f, "Float({kind:?})"),
-            Self::EnumFlags(t) => match t.kind {
-                EnumFlagsKind::Enum => write!(f, "Enum({})", t.get_type_fn_name),
-                EnumFlagsKind::Flags => write!(f, "Flags({})", t.get_type_fn_name),
-            },
             Self::String(_) => write!(f, "String"),
             Self::Void(_) => write!(f, "Void"),
-            Self::Boolean(_) => write!(f, "Boolean"),
             Self::Object(_) => write!(f, "Object"),
             Self::Boxed(t) => write!(f, "Boxed({})", t.type_name),
             Self::Struct(t) => write!(f, "Struct({})", t.ownership),
@@ -524,7 +499,6 @@ impl std::fmt::Display for Codec {
             Self::HashTable(_) => write!(f, "HashTable"),
             Self::Callback(_) => write!(f, "Callback"),
             Self::Ref(t) => write!(f, "Ref({})", t.inner_codec()),
-            Self::Unichar(_) => write!(f, "Unichar"),
         }
     }
 }

@@ -8,6 +8,7 @@ import {
     collectInheritedPropertyTypes,
     collectInterfaceMergeOmissions,
     hasNaturalClassChainMember,
+    hasNaturalMember,
     naturalSignalMemberNames,
     shadowedInstanceMemberName,
 } from "../../analysis/inheritance.js";
@@ -126,11 +127,9 @@ const generateClass = (context: ModuleContext, klass: GirClass): void => {
     generateBindings(context, callables);
     const parentExpression = resolveParent(context, klass);
     const implemented = resolveImplementedRefs(context, klass);
-    const extendsClause = renderExtendsClause({ context, parentExpression, klass, callables });
-    const implementsClause = renderImplementsClause(implemented);
+    const heritage = renderExtendsClause({ context, parentExpression, klass, callables });
     const { members } = renderClassMembers(context, klass, callables, parentExpression !== undefined);
     const body = indentMembers(members);
-    const heritage = `${extendsClause}${implementsClause}`;
     declareClass(context, { klass, className, heritage, body, implemented });
 
     context.declare({
@@ -145,12 +144,6 @@ const classModifier = (context: ModuleContext, klass: GirClass): string =>
     klass.isAbstract || isFundamentalClass(context, klass) || requiresFactoryInitialization(context, klass)
         ? "abstract "
         : "";
-
-const renderImplementsClause = (implemented: ImplementedRef[]): string => {
-    const typeRefs = implemented.map((ref) => omittedTypeRef(ref.typeRef, ref.conflicts));
-
-    return typeRefs.length === 0 ? "" : ` implements ${typeRefs.join(", ")}`;
-};
 
 const declareClass = (context: ModuleContext, options: ClassDeclarationOptions): void => {
     const { klass, className, heritage, body, implemented } = options;
@@ -395,7 +388,13 @@ const interfaceMergeRef = (context: ModuleContext, klass: GirClass, ref: Impleme
         namespaceName: ref.interfaceNamespace,
     });
 
-    return omittedTypeRef(ref.typeRef, [...omissions, ...ref.conflicts]);
+    const mergeOmissions = [...omissions, ...ref.conflicts];
+
+    if (mergeOmissions.length > 0 && !hasNaturalMember(context, ref.interfaceKlass, "emit")) {
+        mergeOmissions.push("emit");
+    }
+
+    return omittedTypeRef(ref.typeRef, mergeOmissions);
 };
 
 const implementedRefFor = (options: ImplementedRefOptions): ImplementedRef | undefined => {

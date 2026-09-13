@@ -316,6 +316,35 @@ test("a call-scoped callback handed to a vfunc runs from JavaScript", () => {
     expect(seen).toEqual(["function", 5, -3]);
 });
 
+test("a call-scoped callback retained after the vfunc returns expires", () => {
+    const captured: Holder<GIMarshallingTests.CallbackIntInt> = { value: null };
+
+    class WithRetainedCallback extends GIMarshallingTests.Object {
+        vfuncVfuncWithCallback(callback: GIMarshallingTests.CallbackIntInt): void {
+            captured.value = callback;
+            expect(callback(7)).toBe(7);
+        }
+    }
+
+    const Registered = registerClass(WithRetainedCallback, { typeName: uniqueName("GtkxRetainedCallback") });
+    new Registered({}).callVfuncWithCallback();
+    expect(() => held(captured)(8)).toThrow();
+});
+
+test("a call-scoped callback expires before its first delayed invocation", () => {
+    const captured: Holder<GIMarshallingTests.CallbackIntInt> = { value: null };
+
+    class WithDelayedCallback extends GIMarshallingTests.Object {
+        vfuncVfuncWithCallback(callback: GIMarshallingTests.CallbackIntInt): void {
+            captured.value = callback;
+        }
+    }
+
+    const Registered = registerClass(WithDelayedCallback, { typeName: uniqueName("GtkxDelayedCallback") });
+    new Registered({}).callVfuncWithCallback();
+    expect(() => held(captured)(9)).toThrow();
+});
+
 test("a vfunc that reports success returns its value to the C caller", () => {
     const seen: number[] = [];
 

@@ -6,7 +6,6 @@ use glib::{self};
 
 use super::prelude::*;
 use crate::handle::{Handle, HandleClass};
-use crate::value::wrapper;
 
 unsafe fn keeps_own_construction_ref(gobject_ptr: *mut glib::gobject_ffi::GObject) -> bool {
     unsafe { glib::types::instance_of::<glib::InitiallyUnowned>(gobject_ptr.cast()) }
@@ -46,11 +45,6 @@ pub(crate) unsafe fn tracked_gobject_value(
 
     let object: glib::Object = unsafe { from_glib_full(gobject_ptr) };
 
-    if let Some(existing) = unsafe { wrapper::wrapper_value(env, gobject_ptr) } {
-        drop(object);
-        return Ok(existing.into_unknown(env)?);
-    }
-
     Ok(value::handle_to_unknown(
         env,
         Handle::decoded_gobject(object),
@@ -61,10 +55,6 @@ pub(crate) unsafe fn call_scoped_gobject_value(
     env: &Env,
     gobject_ptr: *mut glib::gobject_ffi::GObject,
 ) -> anyhow::Result<Unknown<'_>> {
-    if let Some(existing) = unsafe { wrapper::wrapper_value(env, gobject_ptr) } {
-        return Ok(existing.into_unknown(env)?);
-    }
-
     Ok(value::handle_to_unknown(
         env,
         Handle::borrowed_gobject(gobject_ptr),

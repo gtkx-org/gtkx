@@ -1,4 +1,4 @@
-import type { ExternalObject, Handle, RegisterClassProperty } from "@gtkx/native";
+import type { ExternalObject, Handle } from "@gtkx/native";
 import { type AnyClass, camelCase, kebabCase, toCamelIdentifier } from "@gtkx/utils";
 import { bind } from "./bind.js";
 import { biguint64T, fundamentalT, refT, sizedArrayT, stringT, structT, uint32T, voidT } from "./descriptors.js";
@@ -108,6 +108,17 @@ const classListProperties = bind(
     "g_object_class_list_properties",
     [CLASS_T, refT(uint32T)],
     sizedArrayT(PARAM_T, 1, "full"),
+);
+
+const interfaceListProperties = bind(
+    LIB,
+    "g_object_interface_list_properties",
+    [CLASS_T, refT(uint32T)],
+    sizedArrayT(PARAM_T, 1, "full"),
+);
+const classInstallProperty = bind(LIB, "g_object_class_install_property", [CLASS_T, uint32T, PARAM_T], voidT);
+const classOverrideProperty = bind(
+    LIB, "g_object_class_override_property", [CLASS_T, uint32T, stringT("borrowed")], voidT,
 );
 
 const defaultInterfaceRef = bind(LIB, "g_type_default_interface_ref", [biguint64T], CLASS_T);
@@ -433,6 +444,16 @@ function coercePropertyValue(gtype: bigint, propertyName: string, value: unknown
     const check = propertyCheckFor(gtype, propertyName);
 
     return check === null ? value : coerceNumber(check, value);
+}
+
+function coerceConstructPropertyValue(gtype: bigint, propertyName: string, value: unknown): unknown {
+    const check = propertyCheckFor(gtype, propertyName);
+
+    if (check === null) {
+        throw new TypeError(`No GObject property named '${propertyName}'`);
+    }
+
+    return typeof value === "number" && Number.isFinite(value) ? coerceNumber(check, value) : value;
 }
 
 /**
@@ -827,11 +848,35 @@ function getDeclaredPropertyName(object: object, accessor: string): string | und
     return declared?.[accessor];
 }
 
-function toNativeProperties(properties: Record<string, PropertySpec>): RegisterClassProperty[] {
-    return Object.values(properties).map((pspec, index) => ({
-        id: index + FIRST_PROPERTY_ID,
-        pspec: getHandle(pspec),
-    }));
+function installClassProperties(
+    klass: ExternalObject<Handle>,
+    properties: Record<string, PropertySpec>,
+    interfaces: bigint[],
+): void {
+    let nextId = FIRST_PROPERTY_ID;
+    for (const pspec of Object.values(properties)) {
+        classInstallProperty(klass, nextId++, getHandle(pspec));
+    }
+    for (const type of interfaces) {
+        nextId = installInterfaceProperties(klass, type, nextId);
+    }
+}
+
+function installInterfaceProperties(klass: ExternalObject<Handle>, type: bigint, nextId: number): number {
+    const vtable = defaultInterfaceRef(type);
+    try {
+        const pspecs = interfaceListProperties(vtable, { value: 0 }) as ExternalObject<Handle>[];
+        for (const pspec of pspecs) {
+            const name = paramSpecName(pspec) as string;
+            if (classFindProperty(klass, name) === null) {
+                classOverrideProperty(klass, nextId++, name);
+            }
+        }
+
+        return nextId;
+    } finally {
+        defaultInterfaceUnref(vtable);
+    }
 }
 
 export {
@@ -839,7 +884,7 @@ export {
     coerceObjectProperty,
     getDeclaredPropertyName,
     isReadableProperty,
-    coercePropertyValue,
+    coerceConstructPropertyValue,
     constructPropertyFor,
     GET_PROPERTY_VFUNC,
     makeGetProperty,
@@ -847,7 +892,7 @@ export {
     newParamSpecOverride,
     readableObjectPropertyFor,
     SET_PROPERTY_VFUNC,
-    toNativeProperties,
+    installClassProperties,
     writableObjectPropertyFor,
     type ConstructProperty,
     type PropertyDispatch,

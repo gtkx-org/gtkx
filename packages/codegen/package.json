@@ -65,7 +65,9 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
+        "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
+        "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@types/node": "catalog:",
         "fast-xml-parser": "^5.11.1",

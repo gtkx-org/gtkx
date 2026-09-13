@@ -19,6 +19,32 @@ pub struct WrapperHandle {
     wrapper_strong: Cell<bool>,
 }
 
+impl WrapperHandle {
+    pub(crate) fn is_reachable(&self) -> bool {
+        if self.generation.get() == 0 {
+            return false;
+        }
+        let mut value = std::ptr::null_mut();
+        unsafe {
+            sys::napi_get_reference_value(
+                node_env::env().raw(),
+                self.napi_ref.get(),
+                &raw mut value,
+            );
+        }
+        !value.is_null()
+    }
+}
+
+pub(crate) unsafe fn track_handle(
+    gobject: *mut glib::gobject_ffi::GObject,
+    handle: &crate::handle::Handle,
+) {
+    if let Some(wrapper) = unsafe { handle_qdata(gobject) } {
+        handle.track_wrapper(unsafe { wrapper.as_ref() });
+    }
+}
+
 thread_local! {
     static LIVE_TOGGLE_REFS: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
 }

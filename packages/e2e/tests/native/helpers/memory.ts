@@ -12,7 +12,7 @@ const leakCheck = ((): (() => number) => {
 
     const check = bind(runtime, "__lsan_do_recoverable_leak_check", [], { kind: "int32" });
 
-    return () => call(check, []) as number;
+    return () => call(check, []).value as number;
 })();
 
 const drainGC = async (rounds = 3): Promise<void> => {

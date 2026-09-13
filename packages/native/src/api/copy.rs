@@ -26,6 +26,7 @@ pub fn copy<'env>(
     src: &External<Handle>,
     size: f64,
 ) -> Result<Unknown<'env>> {
+    let _leases = crate::handle::LeaseScope::open();
     let size = byte_count_from_f64(size, "copy: size")?;
     let dest_ptr = handle_memory_range(dest, 0, size, "copy: destination")?;
     let src_ptr = handle_memory_range(src, 0, size, "copy: source")?;

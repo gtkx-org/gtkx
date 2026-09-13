@@ -1,5 +1,6 @@
-import type { ArrayKind, Descriptor, Ownership } from "@gtkx/native";
+import type { ArrayKind, Ownership } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
+import type { Descriptor } from "./descriptor-types.js";
 
 /** Descriptor variant for a `gint8`. */
 type Int8Descriptor = Extract<Descriptor, { kind: "int8" }>;
@@ -216,7 +217,7 @@ const booleanT: BooleanDescriptor = { kind: "boolean" };
 const voidT: VoidDescriptor = { kind: "void" };
 /** Descriptor for a `gunichar`, marshalled as a single-character string or a codepoint number. */
 const unicharT: UnicharDescriptor = { kind: "unichar" };
-/** Descriptor for an opaque `gpointer`, taken from a typed array's memory or a numeric address. */
+/** Descriptor for an opaque `gpointer`. */
 const bufferT: BufferDescriptor = { kind: "buffer" };
 const fundamentalLifecycles: Map<string, FundamentalLifecycle> = new Map();
 

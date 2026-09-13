@@ -1,3 +1,4 @@
+import type { ModuleExport } from "@gtkx/react/config";
 import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";
@@ -7,7 +8,7 @@ import { externalPackageFor } from "../../gir/external-namespaces.js";
 import { getDoc } from "../gi/doc-spec.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
-type ElementComponent = { module: string; export: string };
+type ElementComponent = ModuleExport;
 type ElementComponentOverrides = Record<string, ElementComponent>;
 
 type ExportCollector = {

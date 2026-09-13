@@ -1,12 +1,15 @@
 import {
     bindField,
-    type Descriptor,
     type ExternalObject,
     type FieldDescriptor,
     type Handle,
+    read as nativeRead,
+    write as nativeWrite,
     readField,
     writeField,
 } from "@gtkx/native";
+import type { Descriptor } from "./descriptor-types.js";
+import { compileDescriptor } from "./scalar-plan.js";
 
 /**
  * A field of a native struct at a fixed offset, bound once against the descriptor its bytes are
@@ -39,12 +42,13 @@ type StridedField = {
  * @returns An accessor reading and writing that field at any offset of any handle it is given.
  */
 const fieldAt = (descriptor: Descriptor): StridedField => {
-    const bound: ExternalObject<FieldDescriptor> = bindField(descriptor);
+    const plan = compileDescriptor(descriptor);
+    const bound: ExternalObject<FieldDescriptor> = bindField(plan.abi);
 
     return {
-        read: (handle, offset) => readField(bound, handle, offset),
+        read: (handle, offset) => plan.decode(readField(bound, handle, offset)),
         write: (handle, offset, value) => {
-            writeField(bound, handle, offset, value);
+            writeField(bound, handle, offset, plan.encode(value));
         },
     };
 };
@@ -73,4 +77,15 @@ const field = (descriptor: Descriptor, offset: number): Field => {
     };
 };
 
-export { field, type Field, fieldAt, type StridedField };
+const read = (handle: ExternalObject<Handle>, descriptor: Descriptor, offset: number): unknown => {
+    const plan = compileDescriptor(descriptor);
+
+    return plan.decode(nativeRead(handle, plan.abi, offset));
+};
+
+const write = (handle: ExternalObject<Handle>, descriptor: Descriptor, offset: number, value: unknown): void => {
+    const plan = compileDescriptor(descriptor);
+    nativeWrite(handle, plan.abi, offset, plan.encode(value));
+};
+
+export { read, write, field, type Field, fieldAt, type StridedField };

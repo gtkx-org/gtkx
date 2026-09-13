@@ -1,10 +1,6 @@
 import type { AnyClass } from "@gtkx/utils";
-import type {
-    descriptorFreePropertySpec,
-    propertyMapOverride,
-    writablePropertyMapOverride,
-} from "./property-brand.js";
-import type { Camelized, Dashed } from "./property-types.js";
+import type { descriptorFreePropertySpec } from "./property-brand.js";
+import type { Camelized, Dashed, ReadableProperties, WritableProperties } from "./property-types.js";
 import { newParamSpecOverride } from "./properties.js";
 import { wrapHandle } from "./registry.js";
 
@@ -17,30 +13,6 @@ type SourceInstance<TSource> = [TSource] extends [AnyClass]
             ? TInstance
             : never
     : never;
-
-type ReadableProperties<TInstance> = TInstance extends {
-    [propertyMapOverride]?: infer TResolver;
-}
-    ? TResolver extends () => infer TMap
-        ? NonNullable<TMap>
-        : TInstance extends { __properties__: infer TMap }
-            ? NonNullable<TMap>
-            : object
-    : TInstance extends { __properties__: infer TMap }
-        ? NonNullable<TMap>
-        : object;
-
-type WritableProperties<TInstance> = TInstance extends {
-    [writablePropertyMapOverride]?: infer TResolver;
-}
-    ? TResolver extends () => infer TMap
-        ? NonNullable<TMap>
-        : TInstance extends { __writableProperties__: infer TMap }
-            ? NonNullable<TMap>
-            : object
-    : TInstance extends { __writableProperties__: infer TMap }
-        ? NonNullable<TMap>
-        : object;
 
 type OverridePropertySpec<TParamSpec, TName extends string, TSource> = [TSource] extends [AnyClass]
     ? [SourceInstance<TSource>] extends [never]

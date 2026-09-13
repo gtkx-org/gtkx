@@ -34,7 +34,7 @@ test("a bound class slot calls the implementation the class installed", () => {
         returnDescriptor: { kind: "int32" },
     });
 
-    expect(call(slot, [21])).toBe(42);
+    expect(call(slot, [21]).value).toBe(42);
 });
 
 test("a bound interface slot calls the implementation the class installed", () => {
@@ -65,7 +65,7 @@ test("a bound interface slot calls the implementation the class installed", () =
         returnDescriptor: { kind: "int32" },
     });
 
-    expect(call(slot, [1])).toBe(101);
+    expect(call(slot, [1]).value).toBe(101);
 });
 
 test("binding against the parent type reaches the parent implementation, not the override", () => {
@@ -100,8 +100,8 @@ test("binding against the parent type reaches the parent implementation, not the
             returnDescriptor: { kind: "int32" },
         });
 
-    expect(call(bindAt(childType), [])).toBe(2);
-    expect(call(bindAt(parentType), [])).toBe(1);
+    expect(call(bindAt(childType), []).value).toBe(2);
+    expect(call(bindAt(parentType), []).value).toBe(1);
 });
 
 test("binding a slot a subclass leaves alone reaches the implementation it inherited", () => {
@@ -126,7 +126,7 @@ test("binding a slot a subclass leaves alone reaches the implementation it inher
         returnDescriptor: { kind: "int32" },
     });
 
-    expect(call(slot, [])).toBe(7);
+    expect(call(slot, []).value).toBe(7);
 });
 
 test("a slot taking no arguments and returning void runs its implementation", () => {
@@ -153,7 +153,7 @@ test("a slot taking no arguments and returning void runs its implementation", ()
         returnDescriptor: { kind: "void" },
     });
 
-    expect(call(slot, [])).toBeUndefined();
+    expect(call(slot, []).value).toBeUndefined();
     expect(runs).toBe(1);
 });
 
@@ -177,7 +177,7 @@ test("a slot declaring string descriptors marshals the argument and the return v
         returnDescriptor: OWNED_STRING,
     });
 
-    expect(call(slot, ["gtk"])).toBe("gtk-x");
+    expect(call(slot, ["gtk"]).value).toBe("gtk-x");
 });
 
 test("the same bound slot can be called repeatedly", () => {
@@ -200,7 +200,7 @@ test("the same bound slot can be called repeatedly", () => {
         returnDescriptor: { kind: "int32" },
     });
 
-    expect([call(slot, [1]), call(slot, [2]), call(slot, [3])]).toEqual([2, 3, 4]);
+    expect([call(slot, [1]).value, call(slot, [2]).value, call(slot, [3]).value]).toEqual([2, 3, 4]);
 });
 
 test("a slot the interface default vtable leaves empty binds and throws only when it is called", () => {
@@ -213,7 +213,7 @@ test("a slot the interface default vtable leaves empty binds and throws only whe
         returnDescriptor: { kind: "void" },
     });
 
-    expect(() => call(slot, [])).toThrow();
+    expect(() => call(slot, []).value).toThrow();
 });
 
 test("a slot of an interface the type does not implement binds and throws only when it is called", () => {
@@ -227,7 +227,7 @@ test("a slot of an interface the type does not implement binds and throws only w
         returnDescriptor: { kind: "void" },
     });
 
-    expect(() => call(slot, [])).toThrow();
+    expect(() => call(slot, []).value).toThrow();
 });
 
 test("an implementation that throws propagates out of the call", () => {
@@ -252,7 +252,7 @@ test("an implementation that throws propagates out of the call", () => {
         returnDescriptor: { kind: "int32" },
     });
 
-    expect(() => call(slot, [])).toThrow();
+    expect(() => call(slot, []).value).toThrow();
 });
 
 test("a byte offset past the end of the class struct throws", () => {

@@ -1,15 +1,14 @@
-import { type ExternalObject, type Handle, read, symbolAddress } from "@gtkx/native";
+import { type ExternalObject, type Handle, readFunctionPointer, resolveFunction } from "@gtkx/native";
 import { type AnyClass } from "@gtkx/utils";
 import { bind, createBindCache } from "./bind.js";
 import {
-    biguint64T,
     boxedT,
+    bufferT,
     type CallbackDescriptor,
     callbackT,
     sizedArrayT,
     structT,
     uint32T,
-    uint64T,
     voidT,
 } from "./descriptors.js";
 import { CLOSURE_SIZE, LIB, VALUE_SIZE, VALUE_T } from "./library.js";
@@ -51,8 +50,8 @@ const MARSHAL_T = callbackT(
         MARSHAL_VALUE_T,
         uint32T,
         sizedArrayT(MARSHAL_VALUE_T, N_PARAM_VALUES_INDEX, "borrowed", { elementSize: VALUE_SIZE }),
-        uint64T,
-        uint64T,
+        structT("borrowed"),
+        bufferT,
     ],
     voidT,
     {
@@ -67,14 +66,14 @@ const MARSHAL_T = callbackT(
 const NESTED_VALUE_T = structT("borrowed");
 const gCclosureNew = bind(LIB, "g_cclosure_new", [MARSHAL_T], OWNED_CLOSURE_T);
 const gValueGetBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], NESTED_VALUE_T);
-const gClosureRef = bind(LIB, "g_closure_ref", [CLOSURE_T], uint64T);
+const gClosureRef = bind(LIB, "g_closure_ref", [CLOSURE_T], voidT);
 const gClosureSink = bind(LIB, "g_closure_sink", [CLOSURE_T], voidT);
-const gClosureSetMarshal = bind(LIB, "g_closure_set_marshal", [CLOSURE_T, biguint64T], voidT);
+const gClosureSetMarshal = bind(LIB, "g_closure_set_marshal", [CLOSURE_T, bufferT], voidT);
 const cclosureNewCache = createBindCache();
-const genericMarshal: { address?: bigint } = {};
+const genericMarshal: { function?: ExternalObject<Handle> } = {};
 
-const genericClosureMarshal = (): bigint =>
-    (genericMarshal.address ??= symbolAddress(LIB, "g_cclosure_marshal_generic"));
+const genericClosureMarshal = (): ExternalObject<Handle> =>
+    (genericMarshal.function ??= resolveFunction(LIB, "g_cclosure_marshal_generic"));
 
 const isClosureInstance = (value: object): boolean =>
     typeIsA(getClassType(value.constructor as AnyClass), resolveBoxedType(CLOSURE_T));
@@ -99,7 +98,7 @@ function marshalFor(callback: ClosureCallback): (...args: unknown[]) => void {
 
 function newClosure(callback: ClosureCallback): ExternalObject<Handle> {
     const handle = gCclosureNew(marshalFor(callback)) as ExternalObject<Handle>;
-    const marshal = read(handle, biguint64T, CCLOSURE_CALLBACK_OFFSET);
+    const marshal = readFunctionPointer(handle, CCLOSURE_CALLBACK_OFFSET);
     gClosureRef(handle);
     gClosureSink(handle);
     gClosureSetMarshal(handle, marshal);

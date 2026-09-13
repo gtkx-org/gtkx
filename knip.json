@@ -33,6 +33,21 @@
         ],
         "packages/cli/src/refresh-runtime.ts": [
             "exports"
+        ],
+        "packages/runtime/src/override-methods.ts": [
+            "exports"
+        ],
+        "packages/runtime/src/text-view.ts": [
+            "exports"
+        ],
+        "packages/runtime/src/combo-row.ts": [
+            "exports"
+        ],
+        "packages/runtime/src/sidebar.ts": [
+            "exports"
+        ],
+        "packages/runtime/src/signal.ts": [
+            "types"
         ]
     },
     "workspaces": {

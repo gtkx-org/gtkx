@@ -1,4 +1,4 @@
-import { matchAllRegex, matchRegex } from "@gtkx/runtime";
+import { regexMatch, regexMatchAll, regexMatchAllFull, regexMatchFull } from "@gtkx/runtime/internal";
 import { type MatchInfo, Regex, type RegexMatchFlags } from "../glib.js";
 
 declare module "../glib.js" {
@@ -43,26 +43,7 @@ declare module "../glib.js" {
     }
 }
 
-Regex.prototype.match = function match(string: string, matchOptions: RegexMatchFlags): [boolean, MatchInfo] {
-    return matchRegex<MatchInfo>(this, string, 0, matchOptions);
-};
-
-Regex.prototype.matchAll = function matchAll(string: string, matchOptions: RegexMatchFlags): [boolean, MatchInfo] {
-    return matchAllRegex<MatchInfo>(this, string, 0, matchOptions);
-};
-
-Regex.prototype.matchFull = function matchFull(
-    string: string | string[],
-    startPosition: number,
-    matchOptions: RegexMatchFlags,
-): [boolean, MatchInfo] {
-    return matchRegex<MatchInfo>(this, string, startPosition, matchOptions);
-};
-
-Regex.prototype.matchAllFull = function matchAllFull(
-    string: string | string[],
-    startPosition: number,
-    matchOptions: RegexMatchFlags,
-): [boolean, MatchInfo] {
-    return matchAllRegex<MatchInfo>(this, string, startPosition, matchOptions);
-};
+Regex.prototype.match = regexMatch<MatchInfo>;
+Regex.prototype.matchAll = regexMatchAll<MatchInfo>;
+Regex.prototype.matchFull = regexMatchFull<MatchInfo>;
+Regex.prototype.matchAllFull = regexMatchAllFull<MatchInfo>;

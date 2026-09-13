@@ -34,7 +34,7 @@ const paramSpecNew = bind(
         { kind: "string", ownership: "borrowed" },
         { kind: "string", ownership: "borrowed" },
         { kind: "string", ownership: "borrowed" },
-        { kind: "boolean" },
+        { kind: "int32" },
         { kind: "uint32" },
     ],
     {
@@ -82,13 +82,13 @@ const objectHandle = (): ExternalObject<Handle> => {
 };
 
 const fundamentalHandle = (): ExternalObject<Handle> =>
-    call(paramSpecNew, ["flag", "Flag", "a flag", false, READWRITE]) as ExternalObject<Handle>;
+    call(paramSpecNew, ["flag", "Flag", "a flag", 0, READWRITE]).value as ExternalObject<Handle>;
 
 const anotherObjectHandle = (handle: ExternalObject<Handle>): ExternalObject<Handle> =>
-    call(objectRef, [handle]) as ExternalObject<Handle>;
+    call(objectRef, [handle]).value as ExternalObject<Handle>;
 
 const anotherFundamentalHandle = (handle: ExternalObject<Handle>): ExternalObject<Handle> =>
-    call(paramSpecRef, [handle]) as ExternalObject<Handle>;
+    call(paramSpecRef, [handle]).value as ExternalObject<Handle>;
 
 test("a wrapper attached to a GObject comes back as the same object", () => {
     const handle = objectHandle();

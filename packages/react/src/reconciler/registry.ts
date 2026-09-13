@@ -15,33 +15,22 @@ type PlaceInfo = {
     adopted: GObject.Object | null;
     /** Props of the child element. */
     props: Props;
-    /** Value `initialize` returned for this behavior on the parent. */
-    context: unknown;
 };
 
 /** Per-child values a slot hook receives while removing one child. */
 type DetachInfo = {
+    index: number;
     /** Name of the slot the child is leaving. */
     slot: string;
     /** Object the container adopted for this child, or null when it adopted none. */
     adopted: GObject.Object | null;
     /** Props of the child element. */
     props: Props;
-    /** Value `initialize` returned for this behavior on the parent. */
-    context: unknown;
 };
 
-/**
- * Customizes how one element type places children and applies props. Hooks other than `create` receive the
- * GObject instance; `update` and `flush` also take the private per-node context `initialize` built, and
- * `attach`, `reorder` and `detach` read it off their info object. Subtypes inherit a type's behaviors,
- * except for `create`, which is consulted only for the type it is registered on.
- */
 type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     /** Builds the GObject from its construct props, for types whose constructor does more than set properties. */
     create?: (props: Props) => GObject.Object;
-    /** Builds the private per-node context the other hooks receive, once per node. */
-    initialize?: (object: T) => unknown;
     /** Places a child, claiming it by returning anything other than `undefined`. */
     attach?: (object: T, child: GObject.Object, info: PlaceInfo) => unknown;
     /** Moves an already-attached child; without it, the whole slot is detached and re-attached in order. */
@@ -51,13 +40,7 @@ type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     /** Returns the object the container adopts for a child, overriding whatever `attach` returned. */
     resolve?: (object: T, child: GObject.Object) => GObject.Object | null;
     /** Applies changed props and returns the names it consumed, which are then not set as GObject properties. */
-    update?: (object: T, prev: Props, next: Props, context: unknown) => Iterable<string> | undefined;
-    /** Runs after the commit that touched the node, once every child has been placed. */
-    flush?: (object: T, context: unknown) => void;
-    /** Releases whatever `initialize` or a later hook acquired, once the node is destroyed. */
-    teardown?: (object: T, context: unknown) => void;
-    /** Props to withhold from the constructor, leaving them for a later hook to apply. */
-    deferred?: string[];
+    update?: (object: T, prev: Props, next: Props) => Iterable<string> | undefined;
     /**
      * Props the behavior can only apply while the element is being built, because the library exposes no
      * counterpart to whatever applied them. Changing one after it has been applied throws instead of
@@ -74,6 +57,8 @@ type ModuleExport = {
     export: string;
 };
 
+type ElementPropsExport = ModuleExport & { composition?: "intersection" };
+
 /**
  * How one GLib type is rendered. `component`, `props` and `omittedProps` are inert at runtime; they are
  * read only by codegen.
@@ -86,15 +71,14 @@ type ElementConfig<T extends GObject.Object = GObject.Object> = {
     /** Component that wraps the generated element. */
     component?: ModuleExport;
     /** Base props interface the generated props extend. */
-    props?: ModuleExport;
+    props?: ElementPropsExport;
     /** GObject properties to leave out of the generated props, such as those a behavior writes from children. */
     omittedProps?: string[];
+    acceptedChildTypes?: string[];
 };
 
 /** Every registered element config, keyed by GLib type name. */
 const ELEMENTS: Record<string, ElementConfig> = {};
-
-const deferredProps = (behavior: ElementBehavior): string[] => behavior.deferred ?? [];
 
 const mergeBehaviors = (base: ElementConfig, added: ElementBehavior[], isPrepended: boolean): ElementBehavior[] => {
     const baseBehaviors = base.behaviors ?? [];
@@ -175,7 +159,6 @@ const internal = (name: string): ModuleExport => ({ module: "@gtkx/react/interna
 
 export {
     ELEMENTS,
-    deferredProps,
     mergeElementConfigs,
     registerElements,
     defineElements,
@@ -187,5 +170,6 @@ export {
     type DetachInfo,
     type ElementBehavior,
     type ModuleExport,
+    type ElementPropsExport,
     type ElementConfig,
 };

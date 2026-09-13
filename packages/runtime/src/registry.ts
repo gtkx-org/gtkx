@@ -5,11 +5,11 @@ import {
     getTypeClass,
     getWrapper,
     type Handle,
-    type RegisterClassVfunc as NativeRegisterClassVfunc,
     setFundamentalWrapper,
     setWrapper,
 } from "@gtkx/native";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
+import type { Descriptor } from "./descriptor-types.js";
 import { copyLayerMembers, createMixinLayer, installMixins, type Mixin, type MixinReceiver } from "./mixin.js";
 import {
     TYPE_INVALID,
@@ -20,7 +20,9 @@ import {
     typeIsA,
     typeName,
     typeParent,
+    valueIsA,
 } from "./type.js";
+import { initializeWrapper } from "./wrapper-brand.js";
 
 /**
  * Static side of class `C` with its construct signature preserved but the members named `K`
@@ -48,6 +50,10 @@ type WrapperClass<C, I> = Omit<C, "prototype"> & {
         ? abstract new (...args: A) => I
         : never);
 
+type InterfaceClass<C, I> = C & {
+    [Symbol.hasInstance](value: unknown): value is I;
+};
+
 /** One overridable vtable slot: where it sits in the vtable struct and how it is marshalled. */
 type VfuncDescriptor = {
     /** GIR name of the type struct holding the slot, without its namespace, such as `WidgetClass`. */
@@ -63,9 +69,9 @@ type VfuncDescriptor = {
      */
     vtableSize?: number;
     /** Descriptor for each argument the slot receives, starting with the instance. */
-    argDescriptors: NativeRegisterClassVfunc["argDescriptors"];
+    argDescriptors: Descriptor[];
     /** Descriptor for the value the slot returns. */
-    returnDescriptor: NativeRegisterClassVfunc["returnDescriptor"];
+    returnDescriptor: Descriptor;
     /**
      * GIR marks the slot's return value as one the bindings do not surface, so a call through the
      * slot drops it and an implementation of the slot reports success in its place, while
@@ -379,6 +385,12 @@ function resolveWrapperType(instance: object): bigint {
  * implementing class overrides and take over the ones it leaves alone.
  */
 function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, layout?: InterfaceLayout): void {
+    Object.defineProperty(cls, Symbol.hasInstance, {
+        value: (value: unknown) => valueIsA(value, type),
+        configurable: true,
+        writable: true,
+    });
+
     if (type === TYPE_INVALID) {
         return;
     }
@@ -695,6 +707,7 @@ function bindCallScopedWrapper(handle: ExternalObject<Handle>, instance: object)
 function registerWrapper(handle: ExternalObject<Handle>, instance: object): void {
     setHandle(instance, handle);
     setWrapper(handle, instance);
+    (instance as { [initializeWrapper]?: () => void })[initializeWrapper]?.();
 }
 
 function registerVfuncRegistry(cls: object, registry: VfuncRegistry): void {
@@ -744,6 +757,7 @@ export {
     resolveWrapperType,
     wrapCallScopedObject,
     wrapObject,
+    type InterfaceClass,
     type InterfaceProperty,
     type StaticBase,
     type VfuncDescriptor,

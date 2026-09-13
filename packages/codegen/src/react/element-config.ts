@@ -1,13 +1,5 @@
-import type { ModuleExport } from "@gtkx/react/config";
+import type { ElementConfig, ElementPropsExport, ModuleExport } from "@gtkx/react/config";
 import type { OmittedProps } from "../store/jsx/omitted-props.js";
-
-type BuiltinElement = {
-    component?: ModuleExport;
-    isLazy?: boolean;
-    props?: ModuleExport;
-    omittedProps?: string[];
-    acceptedChildTypes?: string[];
-};
 
 /** The framework's built-in element config, split into the maps codegen consumes. */
 type BuiltinElements = {
@@ -16,7 +8,7 @@ type BuiltinElements = {
     /** GLib type names with no GObject of their own, exported as elements that drop their construct-only props. */
     lazyElements: string[];
     /** Base props interfaces the generated element props extend, keyed by GLib type name. */
-    props: Record<string, ModuleExport>;
+    props: Record<string, ElementPropsExport>;
     /** Props left out of the generated element props, keyed by GLib type name. */
     omittedProps: OmittedProps;
 };
@@ -25,15 +17,13 @@ type DocsBuiltinElements = BuiltinElements & { acceptedChildTypes: Record<string
 
 const CONFIG_SPECIFIER = "@gtkx/react/config";
 
-const importBuiltinElements = async (): Promise<Record<string, BuiltinElement>> => {
-    const imported = (await import(/* @vite-ignore */ CONFIG_SPECIFIER)) as {
-        BUILTIN_ELEMENTS?: Record<string, BuiltinElement>;
-    };
+const importBuiltinElements = async (): Promise<Record<string, ElementConfig>> => {
+    const imported = (await import(/* @vite-ignore */ CONFIG_SPECIFIER)) as typeof import("@gtkx/react/config");
 
-    return imported.BUILTIN_ELEMENTS ?? {};
+    return imported.BUILTIN_ELEMENTS;
 };
 
-const applyBuiltinElement = (target: BuiltinElements, type: string, config: BuiltinElement): void => {
+const applyBuiltinElement = (target: BuiltinElements, type: string, config: ElementConfig): void => {
     if (config.component !== undefined) {
         target.components[type] = config.component;
     }
@@ -51,7 +41,7 @@ const applyBuiltinElement = (target: BuiltinElements, type: string, config: Buil
     }
 };
 
-const collectBuiltinElements = (target: BuiltinElements, elements: Record<string, BuiltinElement>): void => {
+const collectBuiltinElements = (target: BuiltinElements, elements: Record<string, ElementConfig>): void => {
     for (const [type, config] of Object.entries(elements)) {
         applyBuiltinElement(target, type, config);
     }

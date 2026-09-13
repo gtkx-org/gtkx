@@ -54,7 +54,7 @@ const constructInput = (info: TypeInfo, props: Props): Props =>
         props,
         (value, name) =>
             value !== undefined &&
-            !info.deferred.has(name) &&
+            name !== "cssClasses" &&
             (info.constructOnly.has(name) || info.construct.has(name)),
     );
 

@@ -39,7 +39,7 @@ type T = {
     void: typeof helpers.voidT;
     /** Descriptor for a `gunichar`, marshalled as a single-character string or a codepoint number. */
     unichar: typeof helpers.unicharT;
-    /** Descriptor for an opaque `gpointer` argument, taken from a typed array's memory or a numeric address. */
+    /** Descriptor for an opaque `gpointer` argument. */
     buffer: typeof helpers.bufferT;
     /** Builds a C-string descriptor with optional caller-allocated length. */
     string: typeof helpers.stringT;

@@ -37,6 +37,7 @@ const DBUS_CONNECTION_PAGE = "gio/d-bus-connection.md";
 const PIXBUF_PAGE = "gdkpixbuf/pixbuf.md";
 const SIDEBAR_PAGE = "adw/sidebar.md";
 const APPLICATION_PAGE = "adw/application.md";
+const MENU_ITEM_PAGE = "gio/menu-item.md";
 const DOCUMENTED_PAGE = "documented/note.md";
 const ASYNC_SACK_PAGE = "asyncpair/sack.md";
 const ASYNC_JOB_PAGE = "asyncpair/job.md";
@@ -200,6 +201,20 @@ describe("gtkx docs", () => {
         expect(indexStamp(state.project)).toBe(before);
         expect(runDocs(state.project, ["--force"])).toBe(0);
         expect(indexStamp(state.project)).not.toBe(before);
+    });
+
+    it("documents selected menu item fields and its declarative menu slots", () => {
+        expect(state.status).toBe(0);
+        const page = readPage(state.project, MENU_ITEM_PAGE);
+
+        expect(page).toContain("### `label`");
+        expect(page).toContain("### `action`");
+        expect(page).toContain("Text shown for the entry");
+        expect(page).toContain("Detailed action name the entry activates");
+        expect(page).toContain("### `submenu`");
+        expect(page).toContain("### `section`");
+        expect(page).toContain("`ReactNode`");
+        expect(page).not.toContain("`MenuItem[]`");
     });
 });
 

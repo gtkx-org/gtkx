@@ -1,13 +1,13 @@
-import { disconnectSignal, offSignal, onceSignal, onSignal } from "@gtkx/runtime";
-import { signalMapOverride, type SignalMethodReceiver } from "@gtkx/runtime/internal";
-import { Object as GObject, type ObjectSignals, type Type } from "../gobject.js";
-
-type Listener = (...args: unknown[]) => unknown;
-type Signals<T> = T extends { [signalMapOverride]?: infer TResolver }
-    ? TResolver extends () => infer TMap
-        ? NonNullable<TMap>
-        : ObjectSignals
-    : ObjectSignals;
+import {
+    objectDisconnect,
+    objectOff,
+    objectOn,
+    objectOnce,
+    type SignalMap,
+    type SignalMethodReceiver,
+    type SignalName,
+} from "@gtkx/runtime/internal";
+import { Object as GObject, type Type } from "../gobject.js";
 
 declare module "../gobject.js" {
     interface Object {
@@ -30,10 +30,10 @@ declare module "../gobject.js" {
          * @param isAfter Run the handler after the default handler rather than before it.
          * @returns The same object, so calls chain.
          */
-        on<TThis, K extends keyof Signals<TThis>>(
+        on<TThis, K extends SignalName<TThis>>(
             this: TThis & SignalMethodReceiver<TThis, "on">,
             sigName: K,
-            callback: Signals<TThis>[K],
+            callback: SignalMap<TThis>[K],
             isAfter?: boolean,
         ): TThis;
 
@@ -45,10 +45,10 @@ declare module "../gobject.js" {
          * @param isAfter Run the handler after the default handler rather than before it.
          * @returns The same object, so calls chain.
          */
-        once<TThis, K extends keyof Signals<TThis>>(
+        once<TThis, K extends SignalName<TThis>>(
             this: TThis & SignalMethodReceiver<TThis, "once">,
             sigName: K,
-            callback: Signals<TThis>[K],
+            callback: SignalMap<TThis>[K],
             isAfter?: boolean,
         ): TThis;
 
@@ -59,37 +59,16 @@ declare module "../gobject.js" {
          * @param callback The handler that was connected.
          * @returns The same object, so calls chain.
          */
-        off<TThis, K extends keyof Signals<TThis>>(
+        off<TThis, K extends SignalName<TThis>>(
             this: TThis & SignalMethodReceiver<TThis, "off">,
             sigName: K,
-            callback: Signals<TThis>[K],
+            callback: SignalMap<TThis>[K],
         ): TThis;
 
     }
 }
 
-type GObjectWithConnect = GObject & {
-    connect(sigName: string, callback: Listener, isAfter?: boolean): number;
-};
-
-GObject.prototype.disconnect = function disconnect(handlerId: number): void {
-    disconnectSignal(this, handlerId);
-};
-
-function onImpl(this: GObjectWithConnect, sigName: string, callback: Listener, isAfter?: boolean): GObject {
-    onSignal(this, sigName, callback, isAfter);
-    return this;
-}
-GObject.prototype.on = onImpl;
-
-function onceImpl(this: GObjectWithConnect, sigName: string, callback: Listener, isAfter?: boolean): GObject {
-    onceSignal(this, sigName, callback, isAfter);
-    return this;
-}
-GObject.prototype.once = onceImpl;
-
-function offImpl(this: GObjectWithConnect, sigName: string, callback: Listener): GObject {
-    offSignal(this, sigName, callback);
-    return this;
-}
-GObject.prototype.off = offImpl;
+GObject.prototype.disconnect = objectDisconnect;
+GObject.prototype.on = objectOn;
+GObject.prototype.once = objectOnce;
+GObject.prototype.off = objectOff;

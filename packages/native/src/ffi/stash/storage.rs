@@ -218,6 +218,7 @@ pub struct GPtrArrayData {
 #[derive(Debug)]
 pub enum StashData {
     Unit,
+    Handle(crate::handle::Handle),
     U8Vec(Vec<u8>),
     I8Vec(Vec<i8>),
     U16Vec(Vec<u16>),
@@ -336,7 +337,7 @@ impl StashStorage {
     }
 
     pub fn owns_element_buffer(&self) -> bool {
-        self.byte_len().is_some()
+        matches!(self.data, StashData::Handle(_)) || self.byte_len().is_some()
     }
 
     pub fn byte_len(&self) -> Option<usize> {
@@ -353,6 +354,7 @@ impl StashStorage {
             StashData::F64Vec(v) => Some(size_of_val(v.as_slice())),
             StashData::CallerAllocation(allocation) => Some(allocation.byte_len),
             StashData::Unit
+            | StashData::Handle(_)
             | StashData::StringArray(_, _)
             | StashData::ObjectArray(_, _)
             | StashData::List(_)
@@ -419,6 +421,7 @@ impl Drop for StashStorage {
             StashData::GPtrArray(data) => Self::free_gptrarray(data),
             StashData::GByteArray(_)
             | StashData::Unit
+            | StashData::Handle(_)
             | StashData::U8Vec(_)
             | StashData::I8Vec(_)
             | StashData::U16Vec(_)

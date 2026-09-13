@@ -6,21 +6,28 @@ use ::libffi::{low as libffi_low, middle as libffi};
 use glib::prelude::StaticType as _;
 use glib::translate::IntoGlib as _;
 use napi::bindgen_prelude::{
-    BigInt, FromNapiValue as _, Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object,
-    Unknown,
+    BigInt, Either, External, FromNapiValue as _, Function, JsObjectValue, JsValue,
+    JsValuesTupleIntoVec, Null, Object, ToNapiValue as _, Unknown,
 };
 use napi::{Env, Status, ValueType};
+use napi_derive::napi;
 
 use crate::ffi::Stash;
 use crate::ffi::codec::{
-    CallbackCodec, Codec, Decoder as _, Encoder as _, Ownership, PtrWriter as _, ReadCtx, SlotInit,
-    str_to_glib_full,
+    CallbackCodec, CallbackScope, Codec, Decoder as _, DestroyNotifyKind, Encoder as _, Ownership,
+    PtrWriter as _, ReadCtx, SlotInit, str_to_glib_full,
 };
 use crate::handle::{BorrowScope, Handle};
 use crate::host::error_reporter::ReportErr;
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
 use crate::value::{self, ClosureHandle};
+
+#[napi(object, object_from_js = false)]
+pub struct DecodedCallback {
+    pub function: External<Handle>,
+    pub user_data: Either<External<Handle>, Null>,
+}
 
 struct CallbackArgs(Vec<napi::sys::napi_value>);
 
@@ -500,6 +507,7 @@ impl ClosureData {
         args: *const *const c_void,
         result: *mut c_void,
     ) -> Option<*mut ClosureState> {
+        let _leases = crate::handle::LeaseScope::open();
         let env = node_env::env();
 
         let capture_result = !matches!(self.return_codec, Codec::Void(_));
@@ -756,15 +764,45 @@ unsafe fn read_callback_arg<'e>(
         return Ok(value::js_null(env)?);
     }
 
-    let mut target: Object<'e> = Object::new(env)?;
-    target.set_named_property("fnPtr", BigInt::from(fn_ptr as u64))?;
-
-    if codec.has_user_data {
-        let user_data = unsafe { (*args.add(slot + 1)).cast::<*mut c_void>().read_unaligned() };
-        target.set_named_property("userData", BigInt::from(user_data as u64))?;
+    let user_data = if codec.has_user_data {
+        unsafe { (*args.add(slot + 1)).cast::<*mut c_void>().read_unaligned() }
+    } else {
+        std::ptr::null_mut()
+    };
+    let owner = if codec.scope == CallbackScope::Notified && codec.has_destroy {
+        anyhow::ensure!(
+            codec.destroy_kind == DestroyNotifyKind::DestroyNotify,
+            "A decoded callback requires a data-only destroy notify"
+        );
+        let destroy_slot = slot + 1 + usize::from(codec.has_user_data);
+        let destroy = unsafe {
+            (*args.add(destroy_slot))
+                .cast::<*mut c_void>()
+                .read_unaligned()
+        };
+        if destroy.is_null() {
+            None
+        } else {
+            Some(Handle::callback_data(user_data, unsafe {
+                std::mem::transmute::<*mut c_void, crate::handle::BoxedFreeFn>(destroy)
+            }))
+        }
+    } else {
+        None
+    };
+    let lent = codec.scope == CallbackScope::Call
+        || (codec.scope == CallbackScope::Notified && owner.is_none());
+    let function = Handle::function(fn_ptr, owner, codec.scope == CallbackScope::Async, lent);
+    let user_data = if user_data.is_null() {
+        Either::B(Null)
+    } else {
+        Either::A(External::new(Handle::pointer(user_data, &function)))
+    };
+    Ok(DecodedCallback {
+        function: External::new(function),
+        user_data,
     }
-
-    Ok(target.to_unknown())
+    .into_unknown(env)?)
 }
 
 fn seed_ref<'e>(

@@ -268,12 +268,35 @@ const vfuncMergeOmissions = (
     return vfuncMemberNames(context, iface.namespaceName, iface.klass).filter((name) => claimed.has(name));
 };
 
+const propertyMergeOmissions = (context: ModuleContext, klass: GirClass, iface: GirClass): string[] => {
+    const declared = new Map(klass.properties.map((property) => [property.name, property]));
+    const omitted: string[] = [];
+
+    for (const property of iface.properties) {
+        const own = declared.get(property.name);
+
+        if (own === undefined) {
+            continue;
+        }
+
+        const ownTypes = resolveAccessorTypes(context, own);
+        const interfaceTypes = resolveAccessorTypes(context, property);
+
+        if (ownTypes?.readType !== interfaceTypes?.readType || ownTypes?.writeType !== interfaceTypes?.writeType) {
+            omitted.push(toCamelIdentifier(property.name));
+        }
+    }
+
+    return omitted;
+};
+
 const collectInterfaceMergeOmissions = (
     context: ModuleContext,
     klass: GirClass,
     iface: { klass: GirClass; namespaceName: string },
 ): string[] => [
     ...methodMergeOmissions(context, klass, iface.klass),
+    ...propertyMergeOmissions(context, klass, iface.klass),
     ...vfuncMergeOmissions(context, klass, iface),
 ];
 

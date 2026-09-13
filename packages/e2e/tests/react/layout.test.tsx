@@ -196,7 +196,11 @@ function GuideBox({ boxRef, isShown }: { boxRef: RefObject<Gtk.Box | null>; isSh
     );
 }
 
-function VflBox({ boxRef, lines }: { boxRef: RefObject<Gtk.Box | null>; lines: string[] }) {
+function VflBox({ boxRef, lines, hasDescription = true }: {
+    boxRef: RefObject<Gtk.Box | null>;
+    lines: string[];
+    hasDescription?: boolean;
+}) {
     const [a, setA] = useState<Gtk.Button | null>(null);
     const [b, setB] = useState<Gtk.Button | null>(null);
 
@@ -208,7 +212,11 @@ function VflBox({ boxRef, lines }: { boxRef: RefObject<Gtk.Box | null>; lines: s
     return (
         <GtkBox
             ref={boxRef}
-            layoutManager={<GtkConstraintLayout vfl={views && [{ lines, hspacing: 8, vspacing: 8, views }]} />}
+            layoutManager={(
+                <GtkConstraintLayout
+                    vfl={hasDescription && views ? [{ lines, hspacing: 8, vspacing: 8, views }] : undefined}
+                />
+            )}
         >
             <GtkButton ref={setA} label="A" />
             <GtkButton ref={setB} label="B" />
@@ -499,6 +507,18 @@ describe("render - GtkConstraint props", () => {
 });
 
 describe("render - GtkConstraint lifecycle", () => {
+    it("removes constraints before unmounting their entire layout subtree", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const { unmount } = await render(<WidthBox boxRef={boxRef} constant={100} />);
+        const layout = layoutFrom(boxRef);
+        const constraint = onlyConstraint(boxRef);
+
+        await unmount();
+
+        expect(collectConstraints(layout)).toHaveLength(0);
+        expect(constraint.isAttached()).toBe(false);
+    });
+
     it("recreates the constraint when its key changes with a construct-only prop", async () => {
         const boxRef = createRef<Gtk.Box>();
         const { rerender } = await render(<WidthBox boxRef={boxRef} constant={100} />);
@@ -562,6 +582,24 @@ describe("render - GtkConstraintLayout vfl", () => {
         expect(initial).toBeGreaterThanOrEqual(5);
         await rerender(<VflBox boxRef={boxRef} lines={WIDER_VFL_LINES} />);
         expect(collectConstraints(layoutFrom(boxRef)).length).toBeGreaterThan(initial);
+    });
+
+    it("removes only its described constraints when the prop goes away", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const { rerender } = await render(<VflBox boxRef={boxRef} lines={VFL_LINES} />);
+        const layout = layoutFrom(boxRef);
+        expect(collectConstraints(layout).length).toBeGreaterThan(0);
+        await rerender(<VflBox boxRef={boxRef} lines={VFL_LINES} hasDescription={false} />);
+        expect(collectConstraints(layout)).toEqual([]);
+    });
+
+    it("releases described constraints when the entire layout subtree unmounts", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const { unmount } = await render(<VflBox boxRef={boxRef} lines={VFL_LINES} />);
+        const layout = layoutFrom(boxRef);
+        expect(collectConstraints(layout).length).toBeGreaterThan(0);
+        await unmount();
+        expect(collectConstraints(layout)).toEqual([]);
     });
 
     it("rejects a description that names an unknown view", async () => {

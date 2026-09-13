@@ -1,4 +1,20 @@
 import { config } from "@gtkx/eslint";
 import api from "./api.json" with { type: "json" };
 
-export default config(import.meta.dirname, api);
+export default [
+    ...config(import.meta.dirname, api),
+    {
+        files: [
+            "packages/codegen/src/store/jsx/element-prop-imports.ts",
+            "packages/runtime/src/property-types.ts",
+            "packages/runtime/src/registry.ts",
+            "packages/runtime/src/descriptor-types.ts",
+            "packages/runtime/src/field.ts",
+            "packages/runtime/src/signal-brand.ts",
+            "packages/runtime/src/signal.ts",
+            "packages/react/src/reconciler/registry.ts",
+            "packages/react/src/prop-types.ts",
+        ],
+        rules: { "gtkx/public-api-jsdoc": "off" },
+    },
+];

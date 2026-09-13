@@ -2,7 +2,10 @@ import type * as Gtk from "@gtkx/gi/gtk";
 import { attachParsingErrorLogger, registerProviderForDefaultDisplay, scopedRule } from "@gtkx/css/internal";
 import { STYLE_PROVIDER_PRIORITY_APPLICATION } from "@gtkx/gi/gtk";
 import { createLogger, type Logger } from "@gtkx/utils";
+import type { Props } from "./registry.js";
 import { applyWrite } from "./signals.js";
+
+type StyleState = { ownedClasses: Set<string> };
 
 type StyleSlot = { className: string; css: string };
 
@@ -127,4 +130,105 @@ const applyStyle = (widget: Gtk.Widget, style: unknown): string | null => {
     return slot.className;
 };
 
-export { applyStyle, CSS_CLASSES_PROP, flushStyles, releaseStyle, styleClass };
+const isNullish = (value: unknown): boolean => value === undefined || value === null;
+
+const cssClassNames = (value: unknown): Set<string> =>
+    new Set(((value as string[] | null | undefined) ?? []).filter((name) => name !== ""));
+
+const keepOwnedCssClass = (widget: Gtk.Widget, name: string): void => {
+    if (!widget.hasCssClass(name)) {
+        widget.addCssClass(name);
+    }
+};
+
+const removeOwnedCssClass = (widget: Gtk.Widget, state: StyleState, name: string, styleName: string | null): void => {
+    if (name !== styleName) {
+        widget.removeCssClass(name);
+    }
+
+    state.ownedClasses.delete(name);
+};
+
+const reconcileOwnedCssClasses = (
+    widget: Gtk.Widget,
+    state: StyleState,
+    desired: Set<string>,
+    styleName: string | null,
+): void => {
+    for (const name of state.ownedClasses) {
+        if (desired.has(name)) {
+            keepOwnedCssClass(widget, name);
+
+            continue;
+        }
+
+        removeOwnedCssClass(widget, state, name, styleName);
+    }
+};
+
+const addDesiredCssClasses = (widget: Gtk.Widget, state: StyleState, desired: Set<string>): void => {
+    for (const name of desired) {
+        if (widget.hasCssClass(name)) {
+            continue;
+        }
+
+        widget.addCssClass(name);
+        state.ownedClasses.add(name);
+    }
+};
+
+const applyCssClassDiff = (
+    widget: Gtk.Widget,
+    state: StyleState,
+    desired: Set<string>,
+    styleName: string | null,
+): void => {
+    reconcileOwnedCssClasses(widget, state, desired, styleName);
+    addDesiredCssClasses(widget, state, desired);
+};
+
+const reconcileCssClasses = (
+    widget: Gtk.Widget,
+    state: StyleState,
+    value: unknown,
+    styleName: string | null,
+): void => {
+    const desired = cssClassNames(value);
+
+    applyWrite(CSS_CLASSES_PROP, () => {
+        applyCssClassDiff(widget, state, desired, styleName);
+    });
+};
+
+function releaseCssClasses(widget: Gtk.Widget, state: StyleState): void {
+    const styleName = styleClass(widget);
+
+    applyWrite(CSS_CLASSES_PROP, () => {
+        for (const name of state.ownedClasses) {
+            if (name === styleName) {
+                continue;
+            }
+
+            widget.removeCssClass(name);
+        }
+    });
+
+    state.ownedClasses.clear();
+}
+
+const isRestyled = (prev: Props, next: Props): boolean => {
+    if (isNullish(prev.style) && isNullish(next.style)) {
+        return false;
+    }
+
+    return !Object.is(prev.style, next.style);
+};
+
+function updateStyle(widget: Gtk.Widget, prev: Props, next: Props, state: StyleState): void {
+    const isChanged = isRestyled(prev, next);
+    const className = isChanged ? applyStyle(widget, next.style) : styleClass(widget);
+
+    reconcileCssClasses(widget, state, next.cssClasses, className);
+}
+
+export { applyStyle, flushStyles, releaseCssClasses, releaseStyle, updateStyle };

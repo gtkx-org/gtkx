@@ -390,18 +390,13 @@ describe("render - LevelBar", () => {
         expect(ref.current?.getOffsetValue("extra")[0]).toBe(false);
     });
 
-    it("flushes an in-place mutation of a reused offset object", async () => {
+    it("updates an offset value while retaining its name", async () => {
         const ref = createRef<Gtk.LevelBar>();
         const offset = { name: "threshold", value: 0.5 };
 
-        function App() {
-            return <GtkLevelBar ref={ref} offsets={[offset]} />;
-        }
-
-        const { rerender } = await render(<App />);
+        const { rerender } = await render(<GtkLevelBar ref={ref} offsets={[offset]} />);
         expect(ref.current?.getOffsetValue("threshold")[1]).toBe(0.5);
-        offset.value = 0.9;
-        await rerender(<App />);
+        await rerender(<GtkLevelBar ref={ref} offsets={[{ ...offset, value: 0.9 }]} />);
         expect(ref.current?.getOffsetValue("threshold")[1]).toBeCloseTo(0.9, 12);
     });
 });

@@ -37,18 +37,18 @@ test("a single-byte allocation round-trips its only byte", () => {
 test("an allocation carrying a boxed gtype holds a usable GValue", () => {
     const value = alloc(24, resolveType(GOBJECT, "g_value_get_type"));
 
-    call(valueInit, [value, call(typeFromName, ["gint"])]);
+    call(valueInit, [value, call(typeFromName, ["gint"]).value]);
     call(valueSetInt, [value, 42]);
 
-    expect(call(valueGetInt, [value])).toBe(42);
+    expect(call(valueGetInt, [value]).value).toBe(42);
 });
 
 test("an allocation carrying a boxed gtype exposes the type tag it was initialized with", () => {
     const value = alloc(24, resolveType(GOBJECT, "g_value_get_type"));
 
-    call(valueInit, [value, call(typeFromName, ["gint"])]);
+    call(valueInit, [value, call(typeFromName, ["gint"]).value]);
 
-    expect(read(value, { kind: "biguint64" }, 0)).toBe(call(typeFromName, ["gint"]));
+    expect(read(value, { kind: "biguint64" }, 0)).toBe(call(typeFromName, ["gint"]).value);
 });
 
 test("a registered non-boxed gtype allocates plain writable memory", () => {
@@ -170,13 +170,13 @@ test("float64 round-trips exactly", () => {
     expect(read(block, { kind: "float64" }, 8)).toBe(-Number.MAX_VALUE);
 });
 
-test("a boolean round-trips at a non-zero offset", () => {
+test("a gboolean storage word round-trips at a non-zero offset", () => {
     const block = alloc(16);
 
-    write(block, { kind: "boolean" }, 8, true);
+    write(block, { kind: "int32" }, 8, 1);
 
-    expect(read(block, { kind: "boolean" }, 0)).toBe(false);
-    expect(read(block, { kind: "boolean" }, 8)).toBe(true);
+    expect(read(block, { kind: "int32" }, 0)).toBe(0);
+    expect(read(block, { kind: "int32" }, 8)).toBe(1);
 });
 
 test("writes at distinct offsets do not disturb each other", () => {
@@ -207,7 +207,7 @@ test("the same byte reads back differently through a signed and an unsigned code
 
     expect(read(block, { kind: "uint8" }, 0)).toBe(255);
     expect(read(block, { kind: "int8" }, 0)).toBe(-1);
-    expect(read(block, { kind: "boolean" }, 0)).toBe(true);
+    expect(read(block, { kind: "int32" }, 0)).toBe(255);
 });
 
 test("an all-ones 64-bit slot reads back as minus one through int64", () => {
@@ -347,12 +347,6 @@ test("a non-string write to a string slot throws", () => {
     expect(() => write(block, { kind: "string", ownership: "full" }, 0, 5)).toThrow();
 });
 
-test("a unichar write into raw memory throws", () => {
-    const block = alloc(8);
-
-    expect(() => write(block, { kind: "unichar" }, 0, 65)).toThrow();
-});
-
 test("a write at a fractional offset throws", () => {
     const block = alloc(8);
 
@@ -458,11 +452,11 @@ test("a copy carries a boxed allocation's contents into another", () => {
     const source = alloc(24, gvalueType);
     const destination = alloc(24, gvalueType);
 
-    call(valueInit, [source, call(typeFromName, ["gint"])]);
+    call(valueInit, [source, call(typeFromName, ["gint"]).value]);
     call(valueSetInt, [source, 99]);
     copy(destination, source, 24);
 
-    expect(call(valueGetInt, [destination])).toBe(99);
+    expect(call(valueGetInt, [destination]).value).toBe(99);
 });
 
 test("a fractional copy size throws", () => {

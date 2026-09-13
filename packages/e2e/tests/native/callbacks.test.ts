@@ -97,7 +97,7 @@ const registerCompletionTied = (
         () => {
             resolve(undefined);
         },
-    ]);
+    ], 5);
 
     return { completion: promise, weak: new WeakRef(callback) };
 };

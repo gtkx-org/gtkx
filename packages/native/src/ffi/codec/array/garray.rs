@@ -149,11 +149,6 @@ impl ArrayCodec {
                 unsafe { Self::append_vals(g_array, storage.ptr(), array.len()) }?;
                 Ok(Vec::new())
             }
-            ItemCodec::EnumFlags(kind) => {
-                let storage = kind.to_stash_storage(&Self::extract_numbers(array)?);
-                unsafe { Self::append_vals(g_array, storage.ptr(), array.len()) }?;
-                Ok(Vec::new())
-            }
             ItemCodec::BigInt(kind) => {
                 let storage = kind.to_stash_storage(array)?;
                 unsafe { Self::append_vals(g_array, storage.ptr(), array.len()) }?;
@@ -161,16 +156,6 @@ impl ArrayCodec {
             }
             ItemCodec::Float(kind) => {
                 let storage = kind.checked_to_stash_storage(&Self::extract_numbers(array)?)?;
-                unsafe { Self::append_vals(g_array, storage.ptr(), array.len()) }?;
-                Ok(Vec::new())
-            }
-            ItemCodec::Boolean => {
-                let storage: StashStorage = Self::extract_booleans(array)?.into();
-                unsafe { Self::append_vals(g_array, storage.ptr(), array.len()) }?;
-                Ok(Vec::new())
-            }
-            ItemCodec::Unichar => {
-                let storage: StashStorage = Self::extract_codepoints(array)?.into();
                 unsafe { Self::append_vals(g_array, storage.ptr(), array.len()) }?;
                 Ok(Vec::new())
             }

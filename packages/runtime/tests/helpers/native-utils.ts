@@ -1,4 +1,4 @@
-import { bind, type Descriptor, call as nativeCall } from "@gtkx/native";
+import { type Descriptor, t } from "@gtkx/runtime";
 
 const GOBJECT_LIB = "libgobject-2.0.so.0";
 const BIGUINT64 = { kind: "biguint64" as const };
@@ -9,17 +9,14 @@ function callArgs(
     args: { type: Descriptor; value: unknown }[],
     returnDescriptor: Descriptor,
 ): unknown {
-    const descriptor = bind(
+    const descriptor = t.bind(
         sharedLibrary,
         symbol,
         args.map((arg) => arg.type),
         returnDescriptor,
     );
 
-    return nativeCall(
-        descriptor,
-        args.map((arg) => arg.value),
-    );
+    return descriptor(...args.map((arg) => arg.value));
 }
 
 function forceGC(): void {

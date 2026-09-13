@@ -1,6 +1,7 @@
-import type { Descriptor, ExternalObject, Handle } from "@gtkx/native";
+import type { ExternalObject, Handle } from "@gtkx/native";
 import { type AnyClass, toCamelIdentifier, upperFirst } from "@gtkx/utils";
-import type { ResolvedSignalEmitMap, ResolvedSignalMap } from "./signal-brand.js";
+import type { Descriptor } from "./descriptor-types.js";
+import type { ResolvedSignalEmitMap, ResolvedSignalMap, SignalArguments, SignalResult } from "./signal-brand.js";
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind } from "./bind.js";
 import { wrapCallback } from "./callback.js";
@@ -42,7 +43,7 @@ const isSignalHandler = (value: unknown): value is SignalHandler => typeof value
 
 type DeclaredSignalMap<T> = T extends { __signals__?: infer TSignals } ? NonNullable<TSignals> : never;
 type SignalMap<T> = ResolvedSignalMap<T, DeclaredSignalMap<T>>;
-type SignalName<T> = Extract<keyof SignalMap<T>, string>;
+type SignalName<T> = keyof SignalMap<T> & string;
 type DeclaredSignalEmitMap<T> = T extends { __signalEmit__?: infer TSignals }
     ? NonNullable<TSignals>
     : T extends { __signals__?: infer TSignals }
@@ -55,17 +56,9 @@ type DeclaredSignalEmitMap<T> = T extends { __signalEmit__?: infer TSignals }
             }
         : never;
 type SignalEmitMap<T> = ResolvedSignalEmitMap<T, DeclaredSignalEmitMap<T>>;
-type SignalEmitName<T> = Extract<keyof SignalEmitMap<T>, string>;
-type SignalEmitArguments<T, K extends SignalEmitName<T>> = SignalEmitMap<T>[K] extends {
-    args: infer TArgs extends unknown[];
-}
-    ? TArgs
-    : never;
-type SignalEmitResult<T, K extends SignalEmitName<T>> = SignalEmitMap<T>[K] extends {
-    result: infer TResult;
-}
-    ? TResult
-    : never;
+type SignalEmitName<T> = keyof SignalEmitMap<T> & string;
+type SignalEmitArguments<T, K extends SignalEmitName<T>> = SignalArguments<SignalEmitMap<T>[K]>;
+type SignalEmitResult<T, K extends SignalEmitName<T>> = SignalResult<SignalEmitMap<T>[K]>;
 
 type SignalConnector = (
     instance: object,
@@ -535,5 +528,10 @@ export {
     overrideSignalClassClosure,
     signalConnect,
     signalEmit,
+    type SignalEmitArguments,
+    type SignalEmitName,
+    type SignalEmitResult,
     type SignalHandler,
+    type SignalMap,
+    type SignalName,
 };

@@ -1,12 +1,9 @@
-type ElementPropTypeRef = { type: string; module: string; export: string };
+import type { ElementPropsExport } from "@gtkx/react/config";
 
-/** Base props interface each element extends, keyed by GLib type name (the module exports it). */
-type ElementProps = Record<string, {
-    module: string;
-    export: string;
-}>;
+type ElementPropTypeRef = ElementPropsExport & { type: string };
+type ElementProps = Record<string, ElementPropsExport>;
 
-const elementProps: Map<string, { module: string; export: string }> = new Map();
+const elementProps: Map<string, ElementPropsExport> = new Map();
 
 const setElementProps = (props: ElementProps): void => {
     elementProps.clear();
@@ -19,7 +16,7 @@ const setElementProps = (props: ElementProps): void => {
 const elementPropTypeFor = (glibName: string): ElementPropTypeRef | undefined => {
     const ref = elementProps.get(glibName);
 
-    return ref === undefined ? undefined : { type: glibName, module: ref.module, export: ref.export };
+    return ref === undefined ? undefined : { type: glibName, ...ref };
 };
 
 export { setElementProps, elementPropTypeFor, type ElementProps };
