@@ -23,29 +23,22 @@ class ImportsBuilder {
     private namespaces: Map<string, NamespaceImport> = new Map();
     private sideEffects: Set<string> = new Set();
 
-    private specifierLine(specifier: string): string | undefined {
+    private specifierLines(specifier: string): string[] {
         const namespaceImport = this.namespaces.get(specifier);
         const namedNames = this.named.get(specifier);
-
-        if (namespaceImport?.isType === true) {
-            return `import type * as ${namespaceImport.alias} from ${sourceStringLiteral(specifier)};`;
-        }
-
-        const parts: string[] = [];
+        const source = sourceStringLiteral(specifier);
+        const lines: string[] = [];
 
         if (namespaceImport !== undefined) {
-            parts.push(`* as ${namespaceImport.alias}`);
+            const prefix = namespaceImport.isType ? "import type" : "import";
+            lines.push(`${prefix} * as ${namespaceImport.alias} from ${source};`);
         }
 
-        if (namedNames !== undefined && namedNames.size > 0) {
-            parts.push(`{ ${formatNamedNames(namedNames).join(", ")} }`);
+        if (namedNames !== undefined) {
+            lines.push(`import { ${formatNamedNames(namedNames).join(", ")} } from ${source};`);
         }
 
-        if (parts.length === 0) {
-            return undefined;
-        }
-
-        return `import ${parts.join(", ")} from ${sourceStringLiteral(specifier)};`;
+        return lines;
     }
 
     addNamed(specifier: string, name: string, isType = false, alias?: string): void {
@@ -88,11 +81,7 @@ class ImportsBuilder {
         const specifiers: Set<string> = new Set([...this.named.keys(), ...this.namespaces.keys()]);
 
         for (const specifier of sortStrings(specifiers)) {
-            const line = this.specifierLine(specifier);
-
-            if (line !== undefined) {
-                lines.push(line);
-            }
+            lines.push(...this.specifierLines(specifier));
         }
 
         return lines.length === 0 ? "" : `${lines.join("\n")}\n`;

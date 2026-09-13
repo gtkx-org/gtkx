@@ -61,6 +61,26 @@ export const value: Base | null = Base.parse("value");
 const MISSING_GIR_CONFIG =
     `export default { applicationId: "com.gtkx.clicodegen", libraries: ${JSON.stringify(["Documented-1.0"])}, ` +
     `girPath: ${JSON.stringify(["/nonexistent"])} };\n`;
+const SHARED_IMPORT_CONFIG = `export default {
+    applicationId: "org.gtkx.sharedimports",
+    libraries: ["Gio-2.0"],
+    elements: { config: {
+        GObject: { props: { module: "@gtkx/gi/gobject", export: "ObjectConstructorProps" } },
+        GSimpleAction: { props: { module: "@gtkx/gi/gobject", export: "ObjectConstructorProps" } },
+        GBindingGroup: { props: { module: "react", export: "Attributes" } },
+    } },
+};`;
+const NAMED_PROPS_PROBE = `import type { GBindingGroupProps } from "@gtkx/jsx/gobject";
+export const group: GBindingGroupProps = { key: "group" };
+`;
+const SHARED_IMPORT_PROBE = `import type { GObjectProps } from "@gtkx/jsx/gobject";
+import type { GSimpleActionProps } from "@gtkx/jsx/gio";
+export const object: GObjectProps = {};
+export const action: GSimpleActionProps = { name: "open" };
+`;
+const REJECTED_NAMED_PROPS_PROBE = `import type { GBindingGroupProps } from "@gtkx/jsx/gobject";
+export const group: GBindingGroupProps = { key: {} };
+`;
 
 const typecheckGenerated = (project: CliProject, file = "probe.ts"): void => {
     const result = spawnSync(
@@ -176,6 +196,45 @@ export const value = NumberType.FIRST;
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
         typecheckGenerated(project);
+        expect(() => {
+            typecheckGenerated(project, "rejected.ts");
+        }).toThrow();
+    });
+});
+
+describe("gtkx codegen (configured props imports)", () => {
+    let project: CliProject;
+    let status: number | null;
+
+    beforeAll(() => {
+        project = createCliProject({
+            prefix: "gtkx-cli-codegen-shared-imports-",
+            config: SHARED_IMPORT_CONFIG,
+            files: {
+                "named.ts": NAMED_PROPS_PROBE,
+                "shared.ts": SHARED_IMPORT_PROBE,
+                "rejected.ts": REJECTED_NAMED_PROPS_PROBE,
+            },
+        });
+        status = runCli(project, ["codegen"]).status;
+    });
+
+    afterAll(() => {
+        removeCliProject(project);
+    });
+
+    it("exposes props imported by name from another package", () => {
+        expect(status).toBe(0);
+        typecheckGenerated(project, "named.ts");
+    });
+
+    it("combines named props imports with runtime and type-only GI namespaces", () => {
+        expect(status).toBe(0);
+        typecheckGenerated(project, "shared.ts");
+    });
+
+    it("rejects values incompatible with the imported props", () => {
+        expect(status).toBe(0);
         expect(() => {
             typecheckGenerated(project, "rejected.ts");
         }).toThrow();
