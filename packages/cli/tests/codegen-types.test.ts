@@ -47,6 +47,17 @@ export const comboRowProps: ComboRowProps<string> = {
     selectedId: "first",
     onSelectionChanged: (id) => id,
 };
+export const emptyDropDown: DropDownProps = {};
+export const emptyComboRow: ComboRowProps = {};
+export const structuredDropDown: DropDownProps<{ label: string }> = {
+    items: [{ id: "first", value: { label: "First" } }],
+    renderItem: ({ item }) => item.label,
+};
+export const primitiveComboRow: ComboRowProps<string | number | boolean | bigint | symbol | null | undefined> = {
+    items: ["First", 0, false, 42n, Symbol("choice"), null, undefined].map((value, index) => ({
+        id: String(index), value,
+    })),
+};
 export const collectionSources: ListViewProps<string, string>[] = [
     { renderItem: () => null },
     { items: [{ id: "first", value: "First" }], renderHeader: null, renderItem: ({ item }) => item },
@@ -60,6 +71,15 @@ export const collectionSources: ListViewProps<string, string>[] = [
 export function interfaceName(value: unknown): string {
     return value instanceof Action ? value.getName() : "";
 }
+`;
+const ACCEPTED_JSX = `import { ComboRow, DropDown, type DropDownProps } from "@gtkx/components";
+export const choices = [
+    <DropDown />,
+    <ComboRow items={[{ id: "one", value: 1 }]} />,
+    <DropDown items={[{ id: "one", value: { label: "One" } }]}
+        renderItem={({ item }) => item.label} />,
+];
+export const forwarded = <T,>(props: DropDownProps<T>) => <DropDown {...props} />;
 `;
 const REJECTED = {
     "interface-argument.ts": `import { Carousel } from "@gtkx/gi/adw";
@@ -101,6 +121,25 @@ export const props: ComboRowProps = { items: [], renderHeader: () => null };
 `,
     "header-without-section-source.ts": `import type { ListViewProps } from "@gtkx/components";
 export const props: ListViewProps = { renderItem: () => null, renderHeader: () => null };
+`,
+    "structured-dropdown-without-renderer.ts": `import type { DropDownProps } from "@gtkx/components";
+export const props: DropDownProps<{ label: string }> = { items: [{ id: "first", value: { label: "First" } }] };
+`,
+    "structured-combo-row-popup-only.ts": `import type { ComboRowProps } from "@gtkx/components";
+export const props: ComboRowProps<{ label: string }> = {
+    items: [{ id: "first", value: { label: "First" } }], renderListItem: ({ item }) => item.label,
+};
+`,
+    "mixed-dropdown-without-renderer.ts": `import type { DropDownProps } from "@gtkx/components";
+export const props: DropDownProps<string | { label: string }> = { items: [{ id: "first", value: { label: "First" } }] };
+`,
+    "inferred-structured-dropdown.tsx": `import { DropDown } from "@gtkx/components";
+export const choice = <DropDown items={[{ id: "one", value: { label: "One" } }]} />;
+`,
+    "inferred-structured-combo-row.tsx": `import { ComboRow } from "@gtkx/components";
+export const choice = <ComboRow sections={[{
+    id: "group", value: "Group", data: [{ id: "one", value: { label: "One" } }],
+}]} renderListItem={({ item }) => item.label} />;
 `,
     "discarded-column-children.ts": `import type { ColumnViewProps } from "@gtkx/components";
 export const props: ColumnViewProps = { columns: [], children: "unrendered" };
@@ -210,7 +249,7 @@ const typecheck = (project: CliProject, file: string): void => {
         TYPESCRIPT_CLI,
         "--noEmit", "--module", "ESNext", "--moduleResolution", "Bundler", "--target", "ESNext",
         "--strict", "--exactOptionalPropertyTypes", "--noUncheckedIndexedAccess",
-        "--skipLibCheck", "false", "--types", "node", file,
+        "--skipLibCheck", "false", "--types", "node", "--jsx", "react-jsx", file,
     ], { cwd: project.root, encoding: "utf8" });
 
     if (result.status !== 0) {
@@ -228,7 +267,13 @@ describe("generated declarations in an installed consumer", () => {
         state.project = createCliProject({
             prefix: "gtkx-installed-types-",
             config: `export default {applicationId: "org.gtkx.strict", libraries: ${JSON.stringify(STORE_LIBRARIES)}};`,
-            files: { "accepted.ts": ACCEPTED, "signal-accepted.ts": SIGNAL_ACCEPTED, ...REJECTED, ...SIGNAL_REJECTED },
+            files: {
+                "accepted.ts": ACCEPTED,
+                "accepted.tsx": ACCEPTED_JSX,
+                "signal-accepted.ts": SIGNAL_ACCEPTED,
+                ...REJECTED,
+                ...SIGNAL_REJECTED,
+            },
         });
         state.status = runCli(state.project, ["codegen"]).status;
 
@@ -244,7 +289,7 @@ describe("generated declarations in an installed consumer", () => {
         removeCliProject(state.project);
     });
 
-    it.each(["namespaces.ts", "accepted.ts", "signal-accepted.ts"])(
+    it.each(["namespaces.ts", "accepted.ts", "accepted.tsx", "signal-accepted.ts"])(
         "checks public API declarations in %s",
         (file) => {
             expect(state.status).toBe(0);

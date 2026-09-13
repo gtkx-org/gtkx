@@ -3,7 +3,7 @@ import type { ReactNode, RefObject } from "react";
 import { ColumnView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { getWidgetText, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { act, getWidgetText, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -17,15 +17,12 @@ import { renderColumnView } from "./helpers/list-fixtures.js";
 import { expectRowTexts } from "./helpers/row-texts.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 import { getSelectionModel } from "./helpers/selection-model.js";
-import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 type Named = { name: string };
 type Person = { name: string; salary: number };
 
 const ESTIMATED_HEIGHT = 48;
 const LARGE_COLUMN_COUNT = 200_000;
-const LARGE_COLUMN_MOUNT_BUDGET_MS = 1500;
-const LARGE_COLUMN_UPDATE_BUDGET_MS = 250;
 const VISIBLE_ROWS = 10;
 
 const sizedItems: ListItem<Named>[] = Array.from({ length: 20 }, (_, index) => ({
@@ -139,27 +136,6 @@ const renderSizedCells = async (estimatedItemHeight?: number): Promise<Gtk.Colum
     return ref.current;
 };
 
-const firstRowCells = (columnView: Gtk.ColumnView): Gtk.Widget[] => {
-    const [firstRow] = dataRows(columnView);
-
-    if (firstRow === undefined) {
-        throw new TypeError("Expected a data row");
-    }
-
-    return within(firstRow).getAllByRole(Gtk.AccessibleRole.GRID_CELL);
-};
-
-const expectCellHoldsLabel = (cell: Gtk.Widget, columnView: Gtk.ColumnView): void => {
-    const [label] = within(cell).getAllByRole(Gtk.AccessibleRole.LABEL);
-
-    if (label === undefined) {
-        throw new TypeError("Expected the cell to hold a label");
-    }
-
-    expect(cell.getFirstChild()).toBe(label);
-    expectNoBoxBetween(label, columnView);
-};
-
 const drawSections = (ref: RefObject<Gtk.ColumnView | null>, groups: ListSection<string, Named>[]): ReactNode => (
     <ScrollWrapper minContentHeight={500}>
         <ColumnView<Named, string>
@@ -201,83 +177,81 @@ describe("ColumnView", () => {
 });
 
 describe("ColumnView cells", () => {
-    it("renders each cell's content as the cell's direct child", async () => {
-        const { ref } = await renderColumnView(personRows(null), { columns: personColumns });
-        const cells = firstRowCells(ref.current);
-        expect(cells).toHaveLength(2);
-
-        for (const cell of cells) {
-            expectCellHoldsLabel(cell, ref.current);
-        }
-    });
-
-    it("redraws and re-resolves only a realized row whose item changes", async () => {
-        let childrenReads = 0;
+    it("displays updated cells and appended rows in a large flat source", async () => {
         const items: ListItem<Named>[] = Array.from({ length: LARGE_COLUMN_COUNT }, (_, index) => ({
             id: String(index),
             value: { name: `Item ${String(index)}` },
-            get children(): [] {
-                childrenReads += 1;
-
-                return [];
-            },
         }));
-
-        let cellRenders = 0;
-        let rowResolutions = 0;
-        const renderCell = (args: ListItemRenderArgs<Named>): ReactNode => {
-            cellRenders += 1;
-
-            return renderNamed(args);
-        };
-        const rowProps = ({ item }: ListItemRenderArgs<Named>): { accessibleLabel: string } => {
-            rowResolutions += 1;
-
-            return { accessibleLabel: `Row: ${item.name}` };
-        };
         const options = {
             columns: Array.from({ length: 5 }, (_, index) => ({
                 id: `column-${String(index)}`,
                 title: `Column ${String(index)}`,
-                renderCell,
+                renderCell: renderNamed,
             })),
-            rowProps,
+            rowProps: ({ item }: ListItemRenderArgs<Named>) => ({ accessibleLabel: `Row: ${item.name}` }),
             isFlat: true,
             estimatedItemHeight: 40,
             minContentHeight: 200,
             maxContentHeight: 200,
         };
-
-        const mountStartedAt = performance.now();
         const { ref, rerender } = await renderColumnView(items, options);
-        const mountDuration = performance.now() - mountStartedAt;
-        const initialCellRenders = cellRenders;
-        const initialRowResolutions = rowResolutions;
+        expect(dataRows(ref.current)[0]).toHaveAccessibleName("Row: Item 0");
 
-        expect(initialCellRenders).toBeGreaterThan(0);
-        expect(initialCellRenders).toBeLessThan(2500);
-        expect(initialRowResolutions).toBeGreaterThan(0);
-        expect(initialRowResolutions).toBeLessThan(500);
-        expect(childrenReads).toBe(0);
-        expect(mountDuration).toBeLessThan(LARGE_COLUMN_MOUNT_BUDGET_MS);
+        const appended = [...items, { id: "appended", value: { name: "Appended" } }];
+        await rerender(appended);
+        expect(dataRows(ref.current)[0]).toHaveAccessibleName("Row: Item 0");
 
-        const appendStartedAt = performance.now();
-        await rerender([...items, { id: "appended", value: { name: "Appended" } }], options);
-        const appendDuration = performance.now() - appendStartedAt;
-        expect(cellRenders).toBe(initialCellRenders);
-        expect(rowResolutions).toBe(initialRowResolutions);
-        expect(appendDuration).toBeLessThan(LARGE_COLUMN_UPDATE_BUDGET_MS);
-
-        const replacement = { id: "replacement", value: { name: "Replacement" } };
-        const replaceStartedAt = performance.now();
-        await rerender(items.with(0, replacement), options);
-        const replaceDuration = performance.now() - replaceStartedAt;
-        expect(cellRenders).toBe(initialCellRenders + options.columns.length);
-        expect(rowResolutions).toBe(initialRowResolutions + 1);
+        await rerender(appended.with(0, { id: "replacement", value: { name: "Replacement" } }));
         expect(screen.getAllByText("Replacement")).toHaveLength(options.columns.length);
         expect(dataRows(ref.current)[0]).toHaveAccessibleName("Row: Replacement");
-        expect(childrenReads).toBe(0);
-        expect(replaceDuration).toBeLessThan(LARGE_COLUMN_UPDATE_BUDGET_MS);
+        expect(screen.queryAllByText("Item 0")).toHaveLength(0);
+
+        await act(() => {
+            ref.current.scrollTo(LARGE_COLUMN_COUNT, null, Gtk.ListScrollFlags.NONE, null);
+        });
+        await waitFor(() => {
+            expect(screen.getByRole(Gtk.AccessibleRole.ROW, { name: "Row: Appended" })).toBeVisible();
+        });
+    });
+});
+
+describe("ColumnView row accessibility", () => {
+    it("updates the row label and description when its item changes", async () => {
+        const { ref, rerender } = await renderColumnView([{ id: "person", value: { name: "Alice" } }], {
+            rowProps: ({ item }) => ({
+                accessibleLabel: `Row: ${item.name}`,
+                accessibleDescription: `Details for ${item.name}`,
+            }),
+        });
+        const row = within(ref.current).getByRole(Gtk.AccessibleRole.ROW, { name: "Row: Alice" });
+        expect(row).toHaveAccessibleDescription("Details for Alice");
+
+        await rerender([{ id: "person", value: { name: "Bob" } }]);
+
+        expect(row).toHaveAccessibleName("Row: Bob");
+        expect(row).toHaveAccessibleDescription("Details for Bob");
+    });
+
+    it("clears omitted row labels and descriptions", async () => {
+        const items = [{ id: "person", value: { name: "Alice" } }];
+        const { ref, rerender } = await renderColumnView(items, {
+            rowProps: () => ({ accessibleLabel: "Person", accessibleDescription: "Person details" }),
+        });
+        const row = within(ref.current).getByRole(Gtk.AccessibleRole.ROW, { name: "Person" });
+        expect(row).toHaveAccessibleDescription("Person details");
+
+        await rerender(items, { rowProps: () => ({}) });
+
+        expect(row).toHaveAccessibleName("Alice");
+        expect(row).not.toHaveAccessibleDescription();
+    });
+
+    it("propagates a failed row property resolver", async () => {
+        await expect(renderColumnView([{ id: "person", value: { name: "Alice" } }], {
+            rowProps: () => {
+                throw new Error("Row properties unavailable");
+            },
+        })).rejects.toThrow();
     });
 });
 

@@ -9,7 +9,7 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwToastOverlay } from "@gtkx/jsx/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { render, renderHook, screen, waitFor } from "@gtkx/testing";
+import { render, renderHook, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject, useLayoutEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -73,8 +73,8 @@ describe("render - toast (useToast / useToastOverlay)", () => {
     it("invokes onButtonClicked when the toast button is activated", async () => {
         const { handles } = await renderToastHost();
         const onButtonClicked = vi.fn();
-        const toast = handles.toast.show({ title: "Undoable", buttonLabel: "Undo", onButtonClicked });
-        toast.emit("button-clicked");
+        handles.toast.show({ title: "Undoable", buttonLabel: "Undo", onButtonClicked });
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Undo" }));
         expect(onButtonClicked).toHaveBeenCalledTimes(1);
     });
 

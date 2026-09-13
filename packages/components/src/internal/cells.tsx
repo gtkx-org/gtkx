@@ -3,7 +3,6 @@ import type { ReactElement, ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkSignalListItemFactory, GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal, useProperty } from "@gtkx/react";
-import { setProperty, t } from "@gtkx/runtime";
 import { Fragment, memo, useInsertionEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type {
     ExpanderDescriptions,
@@ -173,7 +172,6 @@ const HEADER_OPTIONS: CellRegistryOptions<Gtk.ListHeader> = { isHost: isListHead
 const ROW_OPTIONS: CellRegistryOptions<Gtk.ColumnViewRow> = { isHost: isColumnViewRow };
 const NO_SIZE: CellSize = { width: -1, height: -1 };
 const NO_ROW_PROPS: ListRowProps = {};
-const ROW_TEXT_DESCRIPTOR = t.string("borrowed");
 const placeholders: WeakSet<Gtk.Widget> = new WeakSet();
 
 const placeholder = (size: CellSize): Gtk.Widget => {
@@ -567,21 +565,17 @@ function rowPropsFor(slot: ItemSlot | null, rowProps: ListRowPropsResolver<never
     };
 }
 
-function setRowText(host: Gtk.ColumnViewRow, name: string, value: string | null): void {
-    setProperty(host, name, ROW_TEXT_DESCRIPTOR, value);
-}
-
 function applyRowProps(
     host: Gtk.ColumnViewRow,
     props: ResolvedRowProps,
     previous: ResolvedRowProps | null,
 ): void {
     if (previous?.accessibleLabel !== props.accessibleLabel) {
-        setRowText(host, "accessible-label", props.accessibleLabel);
+        host.accessibleLabel = props.accessibleLabel;
     }
 
     if (previous?.accessibleDescription !== props.accessibleDescription) {
-        setRowText(host, "accessible-description", props.accessibleDescription);
+        host.accessibleDescription = props.accessibleDescription;
     }
 
     if (previous?.isActivatable !== props.isActivatable) {
