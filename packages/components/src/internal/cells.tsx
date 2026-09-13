@@ -174,9 +174,14 @@ const ROW_OPTIONS: CellRegistryOptions<Gtk.ColumnViewRow> = { isHost: isColumnVi
 const NO_SIZE: CellSize = { width: -1, height: -1 };
 const NO_ROW_PROPS: ListRowProps = {};
 const ROW_TEXT_DESCRIPTOR = t.string("borrowed");
+const placeholders: WeakSet<Gtk.Widget> = new WeakSet();
 
-const placeholder = (size: CellSize): Gtk.Widget =>
-    new Gtk.Box({ widthRequest: size.width, heightRequest: size.height });
+const placeholder = (size: CellSize): Gtk.Widget => {
+    const widget = new Gtk.Box({ widthRequest: size.width, heightRequest: size.height });
+    placeholders.add(widget);
+
+    return widget;
+};
 
 function isListItem(value: GObject.Object): value is Gtk.ListItem {
     return value instanceof Gtk.ListItem;
@@ -191,8 +196,12 @@ function isColumnViewRow(value: GObject.Object): value is Gtk.ColumnViewRow {
 }
 
 function prepareCell(host: CellHost, size: CellSize): void {
-    if (host.getChild() === null) {
+    const child = host.getChild();
+
+    if (child === null) {
         host.setChild(placeholder(size));
+    } else if (placeholders.has(child)) {
+        child.setSizeRequest(size.width, size.height);
     }
 }
 
@@ -277,7 +286,15 @@ function createCellRegistry<H extends FactoryHost>(options: CellRegistryOptions<
     return {
         handlers: createHandlers(state),
         setSize: (next) => {
+            if (state.size.width === next.width && state.size.height === next.height) {
+                return;
+            }
+
             state.size = next;
+
+            for (const host of state.entries.keys()) {
+                state.prepare?.(host, next);
+            }
         },
         subscribe: (onChange) => subscribeRegistry(state, onChange),
         getEntries: () => getRegistryEntries(state),
