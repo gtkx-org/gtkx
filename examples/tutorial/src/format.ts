@@ -1,8 +1,5 @@
 import { t } from "@gtkx/i18n";
 
-export const escapeMarkup = (value: string): string =>
-    value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
 const startOfDay = (date: Date): number => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
 export const isToday = (iso: string | null): boolean => {
