@@ -1,6 +1,7 @@
 import { t } from "@gtkx/i18n";
+import type { SortOrder } from "../settings.js";
+import type { Filter, Selection, SmartView, Task, TaskList } from "../types.js";
 import { isToday } from "../format.js";
-import type { Filter, Selection, SmartView, SortOrder, Task, TaskList } from "../types.js";
 
 const SMART_TITLES: Record<SmartView, string> = {
     all: t("All Tasks"),
@@ -98,8 +99,16 @@ export const sidebarCounts = (tasks: Task[], lists: TaskList[]): SidebarCounts =
     };
 };
 
-export const isReorderable = (selection: Selection, query: string, sortOrder: SortOrder): boolean =>
-    sortOrder === "manual" && query === "" && !(selection.kind === "smart" && selection.view === "trash");
+export const isReorderable = (
+    selection: Selection,
+    query: string,
+    filter: Filter,
+    sortOrder: SortOrder,
+): boolean =>
+    sortOrder === "manual" &&
+    query === "" &&
+    filter === "all" &&
+    !(selection.kind === "smart" && selection.view === "trash");
 
 export type EmptyState = { icon: string; title: string; description: string };
 

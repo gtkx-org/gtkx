@@ -208,7 +208,7 @@ Flag names are camelCase, so the key is `v2ByteArrays`, not `v2_byteArrays`.
   rule is required.
 - **`v2DefaultLibraries`**: binds `Adw-1` alongside `Gtk-4.0` whether or not `libraries` names it. Every
   project then generates the Adwaita bindings, so `@gtkx/gi/adw` and `@gtkx/jsx/adw` are always present and
-  the packages built on them — [`@gtkx/components/adw`](/guide/components), [`@gtkx/forms`](/guide/forms),
+  the packages built on them — [`@gtkx/components`](/guide/components), [`@gtkx/forms`](/guide/forms),
   [`@gtkx/navigation`](/guide/navigation) — need no opt-in. Each joins by namespace, so a list that pins
   another version of Gtk or Adwaita keeps its pin. Naming `Gtk-4.0` or `Adw-1` outright then changes nothing,
   and codegen says so on its next run. In 2.0, `Adw-1` is the sole default root and its GIR include supplies

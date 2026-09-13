@@ -6,14 +6,14 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
 import { useCallback, useEffect, useRef } from "react";
+import type { Task } from "../types.js";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useReminders } from "../hooks/use-reminders.js";
-import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
+import { ALL_TASKS, navigationRef, openPendingTask, Split } from "../navigation.js";
 import { buildReminder } from "../notifications.js";
 import { useStore } from "../store/index.js";
 import { selectionTitle } from "../store/selectors.js";
 import { applyColorScheme } from "../theme.js";
-import type { Task } from "../types.js";
 import { AppShortcuts } from "./app-shortcuts.js";
 import { Dialogs } from "./dialogs.js";
 import { MainMenu } from "./main-menu.js";
@@ -46,6 +46,7 @@ export const Window = () => {
     const collapsed = useStore((state) => state.collapsed);
     const setCollapsed = useStore((state) => state.setCollapsed);
     const showDialog = useStore((state) => state.showDialog);
+    const markNotified = useStore((state) => state.markNotified);
 
     const [colorScheme] = useSetting(schema, "color-scheme");
     const [reminderMinutes] = useSetting(schema, "reminder-minutes");
@@ -60,8 +61,11 @@ export const Window = () => {
     }, [colorScheme]);
 
     const sendReminder = useCallback(
-        (task: Task) => application.sendNotification(task.id, buildReminder(task)),
-        [application],
+        (task: Task, due: string) => {
+            application.sendNotification(task.id, buildReminder(task, due));
+            markNotified(task.id, due);
+        },
+        [application, markNotified],
     );
     useReminders(tasks, reminderMinutes, sendReminder);
 
@@ -84,7 +88,7 @@ export const Window = () => {
                 controllers={<AppShortcuts />}
             >
                 <AdwToastOverlay ref={toastOverlayRef}>
-                    <NavigationContainer ref={navigationRef}>
+                    <NavigationContainer ref={navigationRef} onReady={openPendingTask}>
                         <Split.Navigator
                             initialRouteName="Tasks"
                             collapsed={collapsed}

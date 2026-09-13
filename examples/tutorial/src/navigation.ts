@@ -13,6 +13,8 @@ export const Split = createSplitViewNavigator<RootParamList>();
 
 export const navigationRef = createNavigationContainerRef<RootParamList>();
 
+let pendingTask: { selection: Selection; id: string } | null = null;
+
 type RootNavigatorType = typeof Split;
 
 declare module "@react-navigation/core" {
@@ -40,9 +42,19 @@ export const openTaskId = (): string | null => {
 };
 
 export const openTask = (selection: Selection, id: string): void => {
-    if (!navigationRef.isReady()) return;
+    if (!navigationRef.isReady()) {
+        pendingTask = { selection, id };
+        return;
+    }
     navigationRef.navigate("Tasks", selection);
     navigationRef.navigate("Task", { id });
+};
+
+export const openPendingTask = (): void => {
+    if (pendingTask === null) return;
+    const { selection, id } = pendingTask;
+    pendingTask = null;
+    openTask(selection, id);
 };
 
 export const closeTaskIfOpen = (id: string): void => {

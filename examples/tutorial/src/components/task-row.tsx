@@ -4,14 +4,28 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { t } from "@gtkx/i18n";
 import { AdwActionRow } from "@gtkx/jsx/adw";
-import { GtkButton, GtkCheckButton, GtkDragSource, GtkDropTarget, GtkToggleButton } from "@gtkx/jsx/gtk";
+import {
+    GtkButton,
+    GtkCheckButton,
+    GtkDragSource,
+    GtkDropTarget,
+    GtkEventControllerKey,
+    GtkToggleButton,
+} from "@gtkx/jsx/gtk";
 import { useNavigation } from "@gtkx/navigation";
+import type { Task } from "../types.js";
 import { formatDue } from "../format.js";
 import { useStore } from "../store/index.js";
-import type { Task } from "../types.js";
 import { useRequestDeleteTask } from "./dialogs.js";
 
-export const TaskRow = ({ task, canReorder }: { task: Task; canReorder: boolean }) => {
+type TaskRowProps = {
+    task: Task;
+    canReorder: boolean;
+    previousId?: string;
+    nextId?: string;
+};
+
+export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) => {
     const requestDeleteTask = useRequestDeleteTask();
     const navigation = useNavigation();
     const setDone = useStore((state) => state.setDone);
@@ -19,6 +33,14 @@ export const TaskRow = ({ task, canReorder }: { task: Task; canReorder: boolean 
     const reorder = useStore((state) => state.reorder);
     const escapedTitle = markupEscapeText(task.title, -1);
     const title = task.done ? `<s>${escapedTitle}</s>` : escapedTitle;
+    const handleReorderKey = (keyval: number, state: Gdk.ModifierType): boolean => {
+        if ((state & Gdk.ModifierType.ALT_MASK) === 0) return Gdk.EVENT_PROPAGATE;
+        if (keyval !== Gdk.KEY_Up && keyval !== Gdk.KEY_Down) return Gdk.EVENT_PROPAGATE;
+        const targetId = keyval === Gdk.KEY_Up ? previousId : nextId;
+        if (targetId === undefined) return Gdk.EVENT_PROPAGATE;
+        reorder(task.id, targetId);
+        return Gdk.EVENT_STOP;
+    };
 
     return (
         <AdwActionRow
@@ -26,6 +48,7 @@ export const TaskRow = ({ task, canReorder }: { task: Task; canReorder: boolean 
             useMarkup
             subtitle={formatDue(task.due) ?? undefined}
             activatable
+            accessibleKeyShortcuts={canReorder ? "Alt+Up Alt+Down" : null}
             onActivated={() => navigation.navigate("Task", { id: task.id })}
             prefix={
                 <GtkCheckButton
@@ -60,8 +83,8 @@ export const TaskRow = ({ task, canReorder }: { task: Task; canReorder: boolean 
                         <GtkDragSource
                             actions={Gdk.DragAction.MOVE}
                             onPrepare={(x, y, self) => {
-                                const row = self.getWidget();
-                                if (row) self.setIcon(Gtk.WidgetPaintable.new(row), Math.round(x), Math.round(y));
+                                const row = self.getWidget() as Gtk.Widget;
+                                self.setIcon(Gtk.WidgetPaintable.new(row), Math.round(x), Math.round(y));
                                 return Gdk.ContentProvider.newForValue(task.id);
                             }}
                         />
@@ -70,9 +93,17 @@ export const TaskRow = ({ task, canReorder }: { task: Task; canReorder: boolean 
                             types={[GObject.TYPE_STRING]}
                             onDrop={(value) => {
                                 const draggedId = value.getString();
-                                if (draggedId) reorder(draggedId, task.id);
+                                if (
+                                    draggedId === null ||
+                                    !useStore.getState().tasks.some((candidate) => candidate.id === draggedId)
+                                )
+                                    return false;
+                                reorder(draggedId, task.id);
                                 return true;
                             }}
+                        />
+                        <GtkEventControllerKey
+                            onKeyPressed={(keyval, _keycode, state) => handleReorderKey(keyval, state)}
                         />
                     </>
                 ) : undefined

@@ -23,10 +23,15 @@ export const NewListDialog = () => {
             closeResponse="cancel"
             responses={[
                 { id: "cancel", label: t("Cancel") },
-                { id: "add", label: t("Add"), appearance: Adw.ResponseAppearance.SUGGESTED },
+                {
+                    id: "add",
+                    label: t("Add"),
+                    appearance: Adw.ResponseAppearance.SUGGESTED,
+                    isEnabled: name.trim().length > 0,
+                },
             ]}
             onResponse={(id) => {
-                if (id === "add") addList(name, color);
+                if (id === "add") addList(name.trim(), color);
                 showDialog("none");
             }}
         >

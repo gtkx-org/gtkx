@@ -4,21 +4,11 @@ description: "Store preferences in GSettings, add a preferences dialog, sort the
 
 # Preferences and the System Theme
 
-Deletion is now recoverable, with a toast for the reversible case and a dialog for the permanent one ([Deleting Without Fear](/v2/tutorial/trash-and-toasts)). This page carries out the split promised in [Saving Tasks Between Runs](/v2/tutorial/saving-to-disk): user content lives in a JSON file, preferences live in GSettings.
+[Deleting Without Fear](/v2/tutorial/trash-and-toasts) finished the app's dialog flow. This chapter keeps user choices in GSettings while task and list data stays in the JSON store from [Saving Tasks Between Runs](/v2/tutorial/saving-to-disk).
 
-## Preferences are not user data
+## Add the settings schema
 
-Your tasks are open-ended: any number of them, each an object whose shape only your app understands. A JSON file suits that.
-
-A preference is different. The theme is one of a closed set of names, the reminder lead time is a whole number of minutes with a floor and a ceiling, the window width is a pixel count. Each has a type, a default, and a range of legal values. The desktop has a stake in them too: `gsettings` reads and writes them from a terminal, `dconf-editor` browses them, and resetting an app to factory settings means clearing them.
-
-GSettings provides that: a declared schema with types, defaults, and constraints, a per-user database behind it, and change notification when a value moves. A JSON file provides none of it.
-
-## Declaring the schema
-
-GSettings will not let you read or write a key you have not declared. The declaration is an XML schema file in your project's `data/` directory.
-
-Create `data/com.gtkx.tutorial.gschema.xml`:
+GTKX imports, compiles, and generates types for the GSettings schemas used by the application. Create `data/com.gtkx.tutorial.gschema.xml`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -65,98 +55,94 @@ Create `data/com.gtkx.tutorial.gschema.xml`:
 </schemalist>
 ```
 
-The schema `id` is your application ID, and the `path` is that ID with slashes instead of dots. GNOME expects this convention, which is why the first chapter settled on a reverse-DNS application ID.
+The schema uses the application ID established in [Your First Native Window](/v2/tutorial/your-first-window). Its enum, choices, ranges, and defaults are the native settings contract; the [GSettings schema reference](https://docs.gtk.org/gio/class.Settings.html) covers the XML format and storage model.
 
-`color-scheme` uses an inline `<choices>` list, which fits when the legal values are plain strings. `sort-order` refers to a top-level `<enum>` by id, pairing each name with a stored integer, so the value on disk is compact. An enum key reads and writes as that integer; the sorting section maps it to and from the readable nick with a small hook. An enum key's `<default>` is the nick in single quotes, not the number. `reminder-minutes` takes a `<range>`, capping the lead time at a day.
-
-GSettings enforces these constraints when you write: a value outside the declared choices or range is rejected. A value you read back is already legal, so it never needs validating.
-
-The window keys are not something the user picks. They let the app remember its own size, and they are the same kind of small typed value, so they belong here too.
-
-## Importing the schema
-
-`gtkx dev`, `gtkx build`, and `gtkx codegen` discover imported `.gschema.xml` files, compile them with
-`glib-compile-schemas`, and generate a module per schema carrying its keys and their types. Import the schema
-relative to the source file that uses it:
+Import the file wherever GTKX needs a schema:
 
 ```ts
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 ```
 
-That import makes the schema part of the application and gives you the generated module, not the XML text. It
-carries the key types: `"sort-order"` resolves to `number` (its enum integer), `"window-width"` to `number`,
-`"color-scheme"` to `string`. Misspell a key name and the type checker catches it before the app runs.
+The import returns the generated schema module. Its key names and stored value kinds flow into `useSetting` and `useBindSetting`.
 
-## Binding first
+## Bind the window size
 
-Start with the window size, because it needs no dialog and no code of your own.
-
-`useBindSetting` ties a GSettings key to a GObject property on a live widget, in both directions and for as long as the widget exists. Give it the schema, the key, a ref to the widget, and the property name in camelCase, in `src/components/window.tsx`:
+In `src/components/window.tsx`, keep an application-window ref and bind its default size:
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
-// ...
 import { quit, useBindSetting, useSetting } from "@gtkx/react";
 import { useEffect, useRef } from "react";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
-// ...
 
-export const Window = () => {
-    // ...
-    const windowRef = useRef<Adw.ApplicationWindow | null>(null);
+const [colorScheme] = useSetting(schema, "color-scheme");
+const [reminderMinutes] = useSetting(schema, "reminder-minutes");
+const windowRef = useRef<Adw.ApplicationWindow | null>(null);
 
-    useBindSetting({ schema, key: "window-width", object: windowRef, property: "defaultWidth" });
-    useBindSetting({ schema, key: "window-height", object: windowRef, property: "defaultHeight" });
-
-    return (
-        <AdwApplicationWindow
-            ref={windowRef}
-            title="Tasks"
-            // ...
-        >
+useBindSetting({ schema, key: "window-width", object: windowRef, property: "defaultWidth" });
+useBindSetting({ schema, key: "window-height", object: windowRef, property: "defaultHeight" });
 ```
 
-There is no save handler, close handler, or restore effect: the two-way binding keeps the key and the property in sync on its own.
+Keep `ref={windowRef}` on `AdwApplicationWindow`. The bindings restore the values when the widget mounts and write changes back without a separate save path.
 
-`useBindSetting` returns nothing. The property on the widget is the value, and React never needs to know it changed.
+## Keep application choices together
 
-## Reading and writing a value
-
-Not every preference maps to a widget property. The theme is applied by a process-wide manager, and the sort order is consumed by a plain function. For those, `useSetting` gives you a value and a setter:
-
-```tsx
-const [sortOrder, setSortOrder] = useSetting(schema, "sort-order");
-```
-
-It reads the current value, re-renders the component whenever that key changes (including when something outside your app changes it), and writes through to the database when you call the setter. Every component reading the same key sees the same value, with no store, no context, and no prop in between. GSettings is already the shared source of truth.
-
-## Sorting
-
-The list's order today is whatever order tasks were created in. Make it a choice instead. Mirror the schema's `<enum>` as a TypeScript enum in `src/types.ts`, and derive the nick union from it so there is one source of truth:
-
-```diff
- export type Filter = "all" | "open" | "done";
-+
-+export enum SortValue {
-+    manual = 0,
-+    "due-date" = 1,
-+    title = 2,
-+    created = 3,
-+}
-+
-+export type SortOrder = keyof typeof SortValue;
-```
-
-`SortOrder` is `keyof typeof SortValue`, which TypeScript resolves to the member names, `"manual" | "due-date" | "title" | "created"`. The rest of the app works in those nicks; only the boundary hook touches the integers.
-
-Then a comparator in `src/store/selectors.ts`:
+The native schema owns storage. A small application module owns the labels and conversions used by the UI, sorter, and theme manager. Create `src/settings.ts`:
 
 ```ts
-// ...
-import type { Filter, Selection, SmartView, SortOrder, Task, TaskList } from "../types.js";
+import * as Adw from "@gtkx/gi/adw";
 
-// ...
+const COLOR_SCHEMES = {
+    default: { label: "Follow system", value: Adw.ColorScheme.DEFAULT },
+    light: { label: "Light", value: Adw.ColorScheme.FORCE_LIGHT },
+    dark: { label: "Dark", value: Adw.ColorScheme.FORCE_DARK },
+} as const;
 
+const SORT_ORDERS = {
+    manual: "Manual",
+    "due-date": "Due date",
+    title: "Title",
+    created: "Date created",
+} as const;
+
+export type ColorScheme = keyof typeof COLOR_SCHEMES;
+export type SortOrder = keyof typeof SORT_ORDERS;
+
+const sortOrderIds = Object.keys(SORT_ORDERS) as SortOrder[];
+
+export const colorSchemeItems = (): { id: string; value: string }[] =>
+    Object.entries(COLOR_SCHEMES).map(([id, choice]) => ({ id, value: choice.label }));
+
+export const sortOrderItems = (): { id: string; value: string }[] =>
+    sortOrderIds.map((id) => ({ id, value: SORT_ORDERS[id] }));
+
+export const colorSchemeValue = (id: string): Adw.ColorScheme => COLOR_SCHEMES[id as ColorScheme].value;
+
+export const sortOrderFromSetting = (value: number): SortOrder => sortOrderIds[value];
+
+export const sortOrderToSetting = (order: SortOrder): number => sortOrderIds.indexOf(order);
+```
+
+All TypeScript consumers now derive their choice names from these tables. Only this module translates the schema's integer sort value to the readable ID used by the app.
+
+Create `src/hooks/use-sort-order.ts`:
+
+```ts
+import { useSetting } from "@gtkx/react";
+import schema from "../../data/com.gtkx.tutorial.gschema.xml";
+import { sortOrderFromSetting, sortOrderToSetting, type SortOrder } from "../settings.js";
+
+export const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {
+    const [value, setValue] = useSetting(schema, "sort-order");
+    return [sortOrderFromSetting(value), (order) => setValue(sortOrderToSetting(order))];
+};
+```
+
+## Sort visible tasks
+
+Import `SortOrder` from `settings.ts` in `src/store/selectors.ts`, then add the comparator:
+
+```ts
 const byOrder =
     (order: SortOrder) =>
     (a: Task, b: Task): number => {
@@ -175,70 +161,35 @@ const byOrder =
                 return a.position - b.position;
         }
     };
+
+export type VisibleOptions = { query: string; filter: Filter; sortOrder: SortOrder };
+
+export const visibleTasks = (tasks: Task[], selection: Selection, options: VisibleOptions): Task[] =>
+    tasks
+        .filter(
+            (task) =>
+                inSelection(task, selection) &&
+                matchesQuery(task, options.query) &&
+                matchesFilter(task, options.filter),
+        )
+        .sort(byOrder(options.sortOrder));
 ```
 
-Due date sends undated tasks to the end and breaks ties on the stored `position`, so the order within a day stays stable. Title and creation date compare with `localeCompare`, which orders accented characters the way the user's language expects rather than by code point. Due dates and creation stamps are ISO strings, which sort correctly as plain text. `manual` falls through to `position`.
-
-`visibleTasks` gains the option and one call:
-
-```diff
--export type VisibleOptions = { query: string; filter: Filter };
-+export type VisibleOptions = { query: string; filter: Filter; sortOrder: SortOrder };
-
- export const visibleTasks = (tasks: Task[], selection: Selection, options: VisibleOptions): Task[] =>
-     tasks
-         .filter(
-             (task) =>
-                 inSelection(task, selection) &&
-                 matchesQuery(task, options.query) &&
-                 matchesFilter(task, options.filter),
--        );
-+        )
-+        .sort(byOrder(options.sortOrder));
-```
-
-`sort` mutates the array it is called on. That is safe here because `filter` has already produced a fresh array, so the store's own `tasks` array is untouched.
-
-The setting stores the order as the enum's integer, but the app works in the nick. A small hook bridges the two, in `src/hooks/use-sort-order.ts`:
-
-```ts
-import { useSetting } from "@gtkx/react";
-import schema from "../../data/com.gtkx.tutorial.gschema.xml";
-import { type SortOrder, SortValue } from "../types.js";
-
-export const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {
-    const [value, setValue] = useSetting(schema, "sort-order");
-    return [SortValue[value] as SortOrder, (order) => setValue(SortValue[order])];
-};
-```
-
-A TypeScript enum reads both ways, so `SortValue` is the whole translation: index it by the stored number to get the nick, or by the nick to get the number. Nothing past this hook sees the integer.
-
-The caller supplies the order. In `src/components/task-list.tsx`:
+The existing filter returns a fresh array before `sort` changes its order, so the store array remains untouched. In `src/components/task-list.tsx`, read the setting and pass it to the selector:
 
 ```diff
 +import { useSortOrder } from "../hooks/use-sort-order.js";
-+
+
  export const TaskList = ({ selection }: { selection: Selection }) => {
-     // ...
 +    const [sortOrder] = useSortOrder();
 
 -    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter });
 +    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
 ```
 
-## The command that opens it
+## Open Preferences
 
-Preferences reaches the user the way every other command does: a named action, an accelerator, and a menu item. <kbd>Ctrl</kbd>+<kbd>,</kbd> is the GNOME convention for opening preferences.
-
-Add the kind to `src/types.ts`:
-
-```diff
--export type DialogKind = "none" | "about" | "shortcuts" | "new-list" | "delete-task";
-+export type DialogKind = "none" | "about" | "shortcuts" | "preferences" | "new-list" | "delete-task";
-```
-
-Add the action in `src/components/window-actions.tsx`:
+Add `"preferences"` to `DialogKind` in `src/types.ts`. Then connect the existing dialog state to a window action in `src/components/window-actions.tsx`:
 
 ```diff
      <GSimpleAction name="new" onActivate={newTask} />
@@ -246,7 +197,7 @@ Add the action in `src/components/window-actions.tsx`:
      <GSimpleAction name="shortcuts" onActivate={() => showDialog("shortcuts")} />
 ```
 
-Give it its accelerator in `src/app.tsx`:
+Register the accelerator in `src/app.tsx`:
 
 ```diff
      actionAccels={[
@@ -256,35 +207,11 @@ Give it its accelerator in `src/app.tsx`:
      ]}
 ```
 
-The accelerator string spells the key by name: `comma` is the GDK key name, and `<Control>,` does not parse.
+Add `{ label: "Preferences", action: "win.preferences" }` beside Keyboard Shortcuts in `src/components/main-menu.tsx`, and document the same accelerator in `src/components/shortcuts.tsx`:
 
-And put it in the menu, in `src/components/main-menu.tsx`. It joins the Keyboard Shortcuts section rather than starting one of its own, so the menu keeps the groups it has:
-
-```diff
-     { section: [{ label: "New Task", action: "win.new" }] },
--    { section: [{ label: "Keyboard Shortcuts", action: "win.shortcuts" }] },
-+    {
-+        section: [
-+            { label: "Preferences", action: "win.preferences" },
-+            { label: "Keyboard Shortcuts", action: "win.shortcuts" },
-+        ],
-+    },
-     { section: [{ label: "About Tasks", action: "win.about" }] },
+```tsx
+<AdwShortcutsItem title="Preferences" accelerator="<Control>comma" />
 ```
-
-The menu item shows `Ctrl+,` along its right edge automatically, because it reads the accelerator you registered against the same action name.
-
-The shortcuts window is documentation, not wiring, so it needs the row added by hand. In `src/components/shortcuts.tsx`:
-
-```diff
-     <AdwShortcutsItem title="Search tasks" accelerator="<Control>f" />
-+    <AdwShortcutsItem title="Preferences" accelerator="<Control>comma" />
-     <AdwShortcutsItem title="Keyboard shortcuts" accelerator="<Control>question" />
-```
-
-## The dialog
-
-`AdwPreferencesDialog` holds `AdwPreferencesPage` elements, each shown with its own icon, and each page holds `AdwPreferencesGroup` elements that render as titled boxed lists. Nesting these elements gives you GNOME's preferences layout without styling anything.
 
 Create `src/components/preferences.tsx`:
 
@@ -295,13 +222,7 @@ import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useSortOrder } from "../hooks/use-sort-order.js";
-
-type Scheme = "default" | "light" | "dark";
-type Sort = "manual" | "due-date" | "title" | "created";
-
-const isScheme = (value: string): value is Scheme => value === "default" || value === "light" || value === "dark";
-const isSort = (value: string): value is Sort =>
-    value === "manual" || value === "due-date" || value === "title" || value === "created";
+import { colorSchemeItems, sortOrderItems, type SortOrder } from "../settings.js";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const [scheme, setScheme] = useSetting(schema, "color-scheme");
@@ -314,36 +235,23 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                 <AdwPreferencesGroup title="Appearance">
                     <ComboRow
                         title="Theme"
-                        items={[
-                            { id: "default", value: "Follow system" },
-                            { id: "light", value: "Light" },
-                            { id: "dark", value: "Dark" },
-                        ]}
+                        items={colorSchemeItems()}
                         selectedId={scheme}
-                        onSelectionChanged={(id) => {
-                            if (isScheme(id)) setScheme(id);
-                        }}
+                        onSelectionChanged={(id) => setScheme(id as string)}
                     />
                 </AdwPreferencesGroup>
                 <AdwPreferencesGroup title="Tasks">
                     <ComboRow
                         title="Sort order"
-                        items={[
-                            { id: "manual", value: "Manual" },
-                            { id: "due-date", value: "Due date" },
-                            { id: "title", value: "Title" },
-                            { id: "created", value: "Date created" },
-                        ]}
+                        items={sortOrderItems()}
                         selectedId={sortOrder}
-                        onSelectionChanged={(id) => {
-                            if (isSort(id)) setSortOrder(id);
-                        }}
+                        onSelectionChanged={(id) => setSortOrder(id as SortOrder)}
                     />
                     <AdwSpinRow
                         title="Reminder lead time"
                         subtitle="Minutes before a task is due"
                         adjustment={<GtkAdjustment value={reminderMinutes} lower={0} upper={1440} stepIncrement={5} />}
-                        onNotifyValue={(value) => setReminderMinutes(value ?? 30)}
+                        onNotifyValue={(value) => setReminderMinutes(value as number)}
                     />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>
@@ -352,93 +260,52 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-`ComboRow` from `@gtkx/components` presents a choice as a row inside a preferences group, which is what belongs here; `DropDown` from `@gtkx/components` is the same collection API rendered as a plain `Gtk.DropDown`. `selectedId` drives the selection and `onSelectionChanged` reports the id the user picked: the controlled-widget pairing from [Completing, Starring, and Deleting](/v2/tutorial/completing-and-deleting), with a settings key on the other end instead of the store.
+`ComboRow` is the GTKX collection component for an Adwaita preferences row. The tables from `settings.ts` feed both rows, and the adjustment gives the native spin row its current reminder value and range.
 
-`AdwSpinRow` takes its bounds through a `GtkAdjustment` in the `adjustment` slot, the same JSX-valued-prop shape as `topBar` and `prefix`. The adjustment carries the value, the floor, the ceiling, and the step, so the row itself takes none of them. The lead time it sets has no effect yet: the sweep that reads it arrives in [Reminders That Reach the Desktop](/v2/tutorial/reminders).
-
-`onSelectionChanged` hands back a bare `string`, because a drop-down of arbitrary items cannot know your key's type, while the setter wants one of the declared names. `isScheme` and `isSort` narrow the string to that union, so the write type-checks without a cast and an illegal id is ignored. Sort order writes through `useSortOrder`, which takes the nick here and stores the integer for you. This is the general pattern whenever a widget's loose type meets a typed key.
-
-Let the dialog switch reach it, in `src/components/dialogs.tsx`:
+Mount the new dialog from `src/components/dialogs.tsx`:
 
 ```diff
 +import { Preferences } from "./preferences.js";
-+
-     switch (dialog) {
-         case "about":
-             return <About onClose={close} />;
-         case "shortcuts":
-             return <Shortcuts onClose={close} />;
+
+     switch (dialog.kind) {
 +        case "preferences":
 +            return <Preferences onClose={close} />;
+         case "new-list":
+             return <NewListDialog />;
 ```
 
-Same contract as the other dialogs: mounting the component presents it, `onClosed` calls back so the store can clear the state that mounted it, and unmounting closes it.
-
-## Applying the theme
-
-The theme picker writes a string. Something needs to turn that string into a repaint.
-
-Adwaita's light and dark handling belongs to `Adw.StyleManager`, and the default manager covers the whole process. It is not a widget and not in your tree, so setting the scheme is a function call, not a prop.
+## Apply the color scheme
 
 Create `src/theme.ts`:
 
 ```ts
 import * as Adw from "@gtkx/gi/adw";
+import { colorSchemeValue } from "./settings.js";
 
 export const applyColorScheme = (value: string): void => {
     const manager = Adw.StyleManager.getDefault();
-    const scheme =
-        value === "light"
-            ? Adw.ColorScheme.FORCE_LIGHT
-            : value === "dark"
-              ? Adw.ColorScheme.FORCE_DARK
-              : Adw.ColorScheme.DEFAULT;
-    manager.setColorScheme(scheme);
+    manager.setColorScheme(colorSchemeValue(value));
 };
 ```
 
-`DEFAULT` is the "Follow system" option: it hands the decision back to the desktop, so when the user switches GNOME to dark, or their night schedule does it at sunset, your window follows. `FORCE_LIGHT` and `FORCE_DARK` override that for users who want your app to stay light or dark regardless of the desktop.
-
-Call it from an effect on the setting, in `src/components/window.tsx`:
+Apply it when the setting changes in `src/components/window.tsx`:
 
 ```tsx
-// ...
 import { applyColorScheme } from "../theme.js";
 
-export const Window = () => {
-    // ...
-    const [colorScheme] = useSetting(schema, "color-scheme");
-
-    useEffect(() => {
-        applyColorScheme(colorScheme);
-    }, [colorScheme]);
+useEffect(() => {
+    applyColorScheme(colorScheme);
+}, [colorScheme]);
 ```
 
-An effect is the right tool because the target is outside React. `useSetting` re-renders the window when the key changes, the effect sees the new value in its dependency list, and the call updates process-wide state that no render produces.
+The default table entry follows the desktop scheme; the other entries ask Adwaita to keep the app light or dark.
 
 ## Run it
 
-Save `window.tsx`. The window on your desktop is still the one you opened at the start of the tutorial, with the theme effect now in it.
+Press <kbd>Ctrl</kbd>+<kbd>,</kbd>. Change the theme and sort order, then close the dialog. Both changes take effect immediately. Resize the window, quit the process, and start it again. The window size and each preference return from GSettings.
 
-Press <kbd>Ctrl</kbd>+<kbd>,</kbd>. The Preferences dialog slides in over the window with a General page, an Appearance group holding Theme, and a Tasks group holding Sort order and Reminder lead time.
-
-Set Theme to Dark. The window repaints immediately, dialog included. Set it back to Follow system and it matches your desktop again.
-
-Set Sort order to Title and close the dialog. The task list is alphabetical, and it stays alphabetical as you switch between lists and smart views.
-
-Only a fresh process proves persistence. Resize the window to something distinctly wide and quit it. That ends the dev session too, so start it again with `npm run dev`. The window comes back at the size you left it, still sorted by title, still on the theme you chose. From another terminal, compile the schema and ask GSettings directly:
-
-```bash
-glib-compile-schemas data
-GSETTINGS_SCHEMA_DIR=data gsettings get com.gtkx.tutorial window-width
-```
-
-```
-1240
-```
-
-The number matches the width you dragged the window to, and it comes from your desktop's settings database, not your app.
+Set Reminder lead time to zero and leave it there. [Reminders That Reach the Desktop](/v2/tutorial/reminders) will make that mean “notify when due.”
 
 ## Next
 
-[Dragging Tasks Into Order](/v2/tutorial/drag-to-reorder) lets you reorder rows by hand, but only in the views where a manual order means anything.
+[Dragging Tasks Into Order](/v2/tutorial/drag-to-reorder) adds pointer and keyboard reordering when Manual is selected.

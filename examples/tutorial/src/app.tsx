@@ -19,15 +19,14 @@ export function App() {
                         name="complete-task"
                         parameterType={GLib.VariantType.new("s")}
                         onActivate={(parameter) => {
-                            if (parameter) useStore.getState().setDone(parameter.getString()[0], true);
+                            useStore.getState().setDone((parameter as GLib.Variant).getString()[0], true);
                         }}
                     />
                     <GSimpleAction
                         name="open-task"
                         parameterType={GLib.VariantType.new("s")}
                         onActivate={(parameter) => {
-                            if (!parameter) return;
-                            openTask(ALL_TASKS, parameter.getString()[0]);
+                            openTask(ALL_TASKS, (parameter as GLib.Variant).getString()[0]);
                         }}
                     />
                 </>

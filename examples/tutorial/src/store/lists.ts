@@ -10,9 +10,6 @@ export type ListsSlice = {
 
 export const createListsSlice: StateCreator<Store, Mutators, [], ListsSlice> = (set) => ({
     lists: seedLists,
-    addList: (name, color) => {
-        const trimmed = name.trim();
-        if (trimmed === "") return;
-        set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name: trimmed, color }] }));
-    },
+    addList: (name, color) =>
+        set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name, color }] })),
 });
