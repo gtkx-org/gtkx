@@ -28,12 +28,12 @@ function requireStringResult(result: unknown): string {
 
 function initializeLocale(): string {
     const localeDir = process.env.GTKX_LOCALE_DIR ?? fileURLToPath(new URL("locale", import.meta.url));
-    const initialized = requireStringResult(setLocaleBinding(LC_ALL, ""));
+    requireStringResult(setLocaleBinding(LC_ALL, ""));
     requireStringResult(bindTextDomainBinding(applicationId, localeDir));
     requireStringResult(bindTextDomainCodesetBinding(applicationId, GETTEXT_CODESET));
     requireStringResult(textDomainBinding(applicationId));
 
-    return initialized;
+    return new Intl.NumberFormat().resolvedOptions().locale;
 }
 
 export { locale };

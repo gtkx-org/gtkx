@@ -57,11 +57,7 @@ const pluralLookup = ({ catalog, context, count, msgid, msgidPlural }: PluralLoo
         return catalog.ngettext(msgid, msgidPlural, count);
     }
 
-    const contextual = catalog.npgettext(context, msgid, msgidPlural, count);
-
-    return contextual === msgid || contextual === msgidPlural
-        ? catalog.ngettext(msgid, msgidPlural, count)
-        : contextual;
+    return catalog.npgettext(context, msgid, msgidPlural, count) ?? catalog.ngettext(msgid, msgidPlural, count);
 };
 
 const stringOption = (options: TOptions, key: string): string | undefined => {
@@ -119,9 +115,7 @@ const contextualLookup = (
         return catalog.gettext(source);
     }
 
-    const translated = catalog.pgettext(context, source);
-
-    return translated === source ? catalog.gettext(source) : translated;
+    return catalog.pgettext(context, source) ?? catalog.gettext(source);
 };
 
 const singularPointLookup = (
@@ -136,7 +130,7 @@ const singularPointLookup = (
 };
 
 const pointLookup = (catalog: GettextCatalog, msgid: string, options: TOptions): string | undefined => {
-    if (typeof options.count === "number") {
+    if (options.count !== undefined) {
         return pluralPointLookup(catalog, msgid, options, options.count);
     }
 
