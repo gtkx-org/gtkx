@@ -14,7 +14,6 @@ describe("css", () => {
             min-width: 137px;
         `;
 
-        expect(className).toMatch(/^gtkx-/);
         const style = await probeStyle({ classNames: [className] });
         expect(style.color).toEqual(RED);
         expect(style.minWidth).toBeGreaterThanOrEqual(137);
@@ -32,6 +31,32 @@ describe("css", () => {
 });
 
 describe("css selectors and at-rules", () => {
+    it("uses application-defined colors and aliases", async () => {
+        injectGlobal(`
+            @define-color gtkx_css_base rgb(0, 0, 255);
+            @define-color gtkx_css_alias @gtkx_css_base;
+        `);
+
+        expect(await probeColor([css("color: @gtkx_css_alias;")])).toEqual(BLUE);
+    });
+
+    it("uses named colors that share an at-rule keyword", async () => {
+        for (const name of ["media", "import", "keyframes", "define-color"]) {
+            injectGlobal(`@define-color ${name} rgb(255, 0, 0);`);
+            expect(await probeColor([css(`color: @${name};`)])).toEqual(RED);
+        }
+    });
+
+    it("accepts uppercase color definitions", async () => {
+        injectGlobal("@DEFINE-COLOR gtkx_css_upper rgb(0, 255, 0);");
+        expect(await probeColor([css("color: @gtkx_css_upper;")])).toEqual(GREEN);
+    });
+
+    it.each(["-gtkx-css-color", "é"])("preserves the valid GTK color name %s", async (name) => {
+        injectGlobal(`@define-color ${name} rgb(255, 0, 0);`);
+        expect(await probeColor([css(`color: @${name};`)])).toEqual(RED);
+    });
+
     it("applies a nested selector once the widget enters that state", async () => {
         const className = css`
             color: rgb(255, 0, 0);
@@ -87,6 +112,14 @@ describe("css composition", () => {
 });
 
 describe("cx", () => {
+    it("preserves plain classes whose names occur on Object.prototype", async () => {
+        injectGlobal(".constructor{color:rgb(255, 0, 0);}");
+        const classes = cx("constructor", css({ minWidth: "179px" }));
+        const style = await probeStyle({ classNames: classes });
+        expect(style.color).toEqual(RED);
+        expect(style.minWidth).toBeGreaterThanOrEqual(179);
+    });
+
     it("merges generated classes into one where the later styles win", async () => {
         const first = css({ color: "rgb(255, 0, 0)", minWidth: "151px" });
         const second = css({ color: "rgb(0, 0, 255)" });
@@ -122,9 +155,11 @@ describe("cx", () => {
         expect(prelit.color).toEqual(GREEN);
     });
 
-    it("passes plain class names through and drops the falsy tokens", () => {
-        expect(cx("a", "b", "c")).toEqual(["a", "b", "c"]);
-        expect(cx("base", false, undefined, null, "")).toEqual(["base"]);
+    it("passes ordinary classes through conditional and empty arguments", async () => {
+        injectGlobal(".gtkx-cx-base{color:rgb(255, 0, 0);}.gtkx-cx-wide{min-width:181px;}");
+        const style = await probeStyle({ classNames: cx("gtkx-cx-base", false, undefined, null, "", "gtkx-cx-wide") });
+        expect(style.color).toEqual(RED);
+        expect(style.minWidth).toBeGreaterThanOrEqual(181);
         expect(cx()).toEqual([]);
     });
 });

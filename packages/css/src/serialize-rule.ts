@@ -1,4 +1,4 @@
-import type { Element } from "stylis";
+import type { Element, Middleware } from "stylis";
 import { compile, middleware, rulesheet, stringify, serialize as stylisSerialize } from "stylis";
 import { escapeNamedColors } from "./named-colors.js";
 
@@ -9,6 +9,16 @@ const removeLabel = (element: Element): void => {
 
     element.return = "";
     element.value = "";
+};
+
+const stringifyGtk: Middleware = (element, index, children, callback) => {
+    if (element.type === "@define-color") {
+        element.return = element.value;
+
+        return element.return;
+    }
+
+    return stringify(element, index, children, callback);
 };
 
 const terminateDeclarations = (styles: string): string => {
@@ -28,7 +38,7 @@ const eachRule = (input: string, visit: (rule: string) => void): void => {
         compile(escaped.css),
         middleware([
             removeLabel,
-            stringify,
+            stringifyGtk,
             rulesheet((rule) => {
                 visit(escaped.restore(rule));
             }),
