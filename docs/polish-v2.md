@@ -42,7 +42,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `cairo` | 32 | Pending |
 | `gl` | 6 | All files read; exact 64-bit bindings and thin overrides fixed; callback release remains open |
 | `css` | 21 | All files read twice; named-color and registry fixes validated; documentation corrected |
-| `forms` | 17 | All current files read; callback refs and shared types fixed; nullable ComboRow contract open |
+| `forms` | 17 | All current files read; callback refs, shared types and explicit ComboRow IDs fixed; repeat review continues |
 | `i18n` | 17 | Pending |
 | `navigation` | 66 | Pending |
 | `storybook` | 31 | Pending |
@@ -319,13 +319,13 @@ All 18 files tracked in `packages/forms` at this pass were read, with both forms
 | Finding | Evidence and consequence | State |
 | --- | --- | --- |
 | FORM1: forwarded callback-ref cleanup is discarded | The local ref dispatcher calls a React callback ref but ignores its returned cleanup. Public replacement/unmount regressions fail for all five form rows. | Fixed; the shared maintained ref-composition helper preserves cleanup and the React Hook Form focus proxy |
-| FORM2: nullish ComboRow defaults disagree with the display | A nullable or undefined field remains nullish while its nonempty native row shows the first option. The public field-path type advertises nullable values. | Open; align the supported form default/nullable contract with the native auto-selection limitation recorded as U6 |
+| FORM2: nullish ComboRow defaults disagree with the display | A nullable or undefined field remains nullish while its nonempty native row shows the first option. The public field-path type advertises nullable values. | Fixed; require explicit non-nullable string IDs and preserve them while choices reload |
 | FORM3: form metadata duplicates upstream types | Field names, binding callbacks and validation state redeclare parts of React Hook Form's contract. | Fixed; derive these shapes from the dependency's public types |
 | FORM4: tests and guides duplicate cosmetic/upstream details | An edge test matches validation-message text; guides teach form state and incorrectly imply that context infers field names and missing defaults leave a combo row unselected. | Fixed; removed the cosmetic assertion and rewrote the guides around native bindings with upstream links |
 
 All 18 forms integration cases pass, including seven new ref cases for replacement, unmount, object refs, focus/selection and cleanup errors. Source/test types, full package lint and independent ref review pass. The running focus/selection example was visually inspected. Existing broad FieldValues inputs still need value narrowing; this is an actual dependency boundary rather than an unsupported-input fallback.
 
-FORM2 is reproduced for both null and undefined defaults in `/tmp/gtkx-form-default-observation.test.tsx`. The guides now recommend valid initial item IDs, but that advice does not close the public type mismatch. No production selection change was made in this pass. The follow-up must cover reset/setValue(null) and late-loaded choices as well as mount, while preserving Storybook controls' explicit absent-argument behavior.
+FORM2 follows the explicit-ID contract selected by the maintainer. ComboRow field paths now require a non-nullable string, and empty choices preserve the form value until that ID is available again. Four native integration cases cover item and section sources, late loading, reloads, reset, setValue, dirty state and submission. The two reload regressions fail against the previous implementation; all 22 forms cases pass with the fix. Installed-consumer tests reject nullable and optional IDs and validate inferred field names, value types and item renderers; all 30 declaration cases pass. Source/test types, lint, independent review, visual inspection and all 18 Storybook inspector cases pass.
 
 ### Testing follow-up
 
@@ -337,4 +337,4 @@ The combined checkpoint passes library builds, affected typechecks, root typeche
 
 ## Next work
 
-Resolve FORM2 and continue repeat audits alongside R2 output-storage, string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
+Continue repeat audits alongside R2 output-storage, string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
