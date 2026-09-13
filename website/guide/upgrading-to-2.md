@@ -118,7 +118,7 @@ itself — spreading it, `Object.keys(animated)` — keep every widget in the bu
 about the file; member access and the call form stay fully shakeable while the flag rewrites them, and
 member access is itself deprecated (see the table below).
 
-The [configuration guide](/guide/configuration-and-codegen#future-flags) documents each flag in full, including the `?icon` and `?url` forms.
+The [configuration guide](/guide/configuration-and-codegen#future-flags) explains each migration, including the `?icon` and `?url` forms.
 
 ## Stop binding every installed library
 
@@ -197,5 +197,5 @@ The `deprecations` block stays: it is the mechanism, not one of the corrections.
 
 ## Next
 
-- [Configuration and Codegen](/guide/configuration-and-codegen#future-flags): what each flag changes, in detail.
+- [Configuration and Codegen](/guide/configuration-and-codegen#future-flags): what each flag changes.
 - The [API reference](/reference/) documents every package.
