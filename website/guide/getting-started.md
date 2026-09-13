@@ -94,5 +94,5 @@ Shutting down is the mirror image. `quit()` from `@gtkx/react` unmounts every ro
 
 ## Next
 
-- [Configuration and Codegen](/guide/configuration-and-codegen): how codegen works, and what [every config option](/guide/configuration-and-codegen#every-option) does.
+- [Configuration and Codegen](/guide/configuration-and-codegen): how codegen works, with [other settings](/guide/configuration-and-codegen#every-option) linked to their reference.
 - [Tutorial](/tutorial/): build Tasks, a complete GNOME task manager, end to end.
