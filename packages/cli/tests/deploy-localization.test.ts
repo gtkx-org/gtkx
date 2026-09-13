@@ -40,7 +40,7 @@ describe("gtkx deploy (gettext localization)", () => {
         expectLocalizedDeploy(state);
     });
 
-    it("preserves metadata while removing stale source messages on a plain build", () => {
+    it("refreshes shared metadata references when source moves or disappears", () => {
         expectPlainBuildPreservesMetadata(state.project);
     });
 
