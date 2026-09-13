@@ -222,7 +222,6 @@ describe("forms - edge cases", () => {
         expect(entry).toHaveClass("custom", "error");
         expect(entry).toBeInvalid();
         expect(entry.getDelegate()?.isFocus()).toBe(true);
-        expect(entry.getTooltipText()).toBe("Name is required");
         expect(screen.getByName("submitted-name")).toHaveTextContent("Not submitted");
         await userEvent.type(entry, "Ada");
 

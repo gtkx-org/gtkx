@@ -59,6 +59,7 @@
     },
     "dependencies": {
         "@gtkx/components": "workspace:*",
+        "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "react-hook-form": "^7.87.0"
     },
