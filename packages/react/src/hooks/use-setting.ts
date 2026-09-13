@@ -6,7 +6,7 @@ import {
     type SettingsSchemaKeys,
     type SettingValue,
 } from "../utils/settings.js";
-import { useGObjectValue } from "./use-gobject-value.js";
+import { useObjectValue } from "./use-object-value.js";
 
 type UseSettingsProps<K extends SettingsSchemaKeys> = Pick<SettingsSchema<K>, "id" | "path">;
 
@@ -25,7 +25,7 @@ function useSetting<K extends SettingsSchemaKeys, P extends keyof K>(
 ): [SettingValue<K, P>, (value: SettingValue<K, P>) => void] {
     const settings = useSettings({ id: schema.id, path: schema.path });
     const accessor = resolveSettingAccessor(settings, schema, key);
-    const value = useGObjectValue(settings, `changed::${key}`, () => accessor.get());
+    const value = useObjectValue(settings, `changed::${key}`, () => accessor.get());
 
     return [value, accessor.set];
 }

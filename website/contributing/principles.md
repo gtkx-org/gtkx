@@ -141,6 +141,8 @@ See [Testing](/contributing/testing) for the existing suites and commands.
 
 Use clear names, direct control flow, and small, well-defined responsibilities so the implementation explains itself. Comments must not compensate for code that is difficult to follow.
 
+GTKX is GLib-first, so omit the `G` prefix from our own identifiers: use `useObjectValue`, for example. GTK prefixes are welcome when they make a name clearer. Preserve upstream names when referencing native APIs.
+
 Reserve code comments for public API documentation. Explain why an API or constraint exists and what consumers need to understand about its contract. Do not narrate what the code already does.
 
 Comments must describe the current API without recounting earlier implementations. Deprecation documentation is the exception, where the transition is part of the public contract.
