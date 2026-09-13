@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ParamFlags, paramSpecString } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkAdjustment, GtkAspectFrame, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
-import { createElementComponent } from "@gtkx/react/config";
+import { createElementComponent } from "@gtkx/react";
 import { registerClass } from "@gtkx/runtime";
 import { render, screen } from "@gtkx/testing";
 import { createRef } from "react";

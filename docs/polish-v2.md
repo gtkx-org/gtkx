@@ -415,6 +415,12 @@ The complete dependency manifest is written before installation, so a failed ins
 
 All 41 public CLI cases pass, including real terminal invocation, supported path edge cases and installation failures, alongside source/test types, package lint and independent review. Citty's boolean ordering defect is reproduced independently and recorded as U11 in the upstream tracker. The release packaging check built and locally published the packages, then exposed a separate fresh-consumer configuration import failure; that fix is tracked below before repeating the complete consumer check.
 
+### Fresh-consumer configuration bootstrap
+
+The release packaging check found that importing `@gtkx/react/config` loaded the custom-element factory and its generated GI dependencies before bindings existed. The factory is now exported from the main React entry point. Configuration retains only generation-safe metadata and types; generated JSX keeps its internal factory import. The v2 custom-element guide and consumers use the main export.
+
+A subprocess regression copies the built React package into a fresh consumer without generated bindings and runs real codegen. It fails with the old export and passes after the move. All three configuration isolation cases and 46 custom-element/signal cases pass, alongside the affected builds, types, lint and independent review. Full release-consumer validation is pending the next serialized build checkpoint.
+
 ## Next work
 
 Continue repeat audits alongside the R2 string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.

@@ -1,7 +1,9 @@
 import { spawnSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createCliProject } from "./cli-project.js";
+import { createCliProject, runCli } from "./cli-project.js";
+import { fixtureLibrariesConfig } from "./codegen-helpers.js";
 
 const CONFIG = `import { applicationId } from "./config-value.mjs";
 
@@ -67,5 +69,28 @@ describe("configuration import isolation", () => {
         });
 
         expect(result.status).toBe(0);
+    });
+});
+
+describe("renderer configuration before codegen", () => {
+    it("loads installed element definitions without existing generated bindings", () => {
+        const config = fixtureLibrariesConfig(["Documented-1.0"]).replace(
+            "export default {",
+            () => 'import { BUILTIN_ELEMENTS } from "@gtkx/react/config";\n' +
+                "export default { elements: { config: BUILTIN_ELEMENTS },",
+        );
+        using project = createCliProject({
+            prefix: "gtkx-config-before-codegen-",
+            config,
+            omitPackages: ["react"],
+        });
+        const reactPackage = join(project.nodeModules, "@gtkx/react");
+        mkdirSync(reactPackage);
+        cpSync(new URL("../../react/package.json", import.meta.url), join(reactPackage, "package.json"));
+        cpSync(new URL("../../react/dist", import.meta.url), join(reactPackage, "dist"), { recursive: true });
+
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        expect(existsSync(join(project.nodeModules, "@gtkx/gi/documented/documented.js"))).toBe(true);
+        expect(existsSync(join(project.nodeModules, "@gtkx/jsx/documented/documented.js"))).toBe(true);
     });
 });

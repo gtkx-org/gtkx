@@ -387,11 +387,11 @@ The reconciler places a child only where a behavior on the parent claims it, so 
 
 ## Rendering a registered class
 
-A class `registerClass` created has no generated element. `createElementComponent` from `@gtkx/react/config` builds one for any GType name, here for the `Swatch` registered above:
+A class `registerClass` created has no generated element. `createElementComponent` from `@gtkx/react` builds one for any GType name, here for the `Swatch` registered above:
 
 ```tsx
 import type { GtkWidgetProps } from "@gtkx/jsx/gtk";
-import { createElementComponent } from "@gtkx/react/config";
+import { createElementComponent } from "@gtkx/react";
 
 type SwatchProps = GtkWidgetProps<Swatch> & { red?: number };
 
