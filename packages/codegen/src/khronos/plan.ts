@@ -4,6 +4,7 @@ import { tScalar } from "../analysis/descriptor.js";
 type GlScalar = {
     descriptor: string;
     tsAlias: string;
+    tsPrimitive?: "bigint";
     viewType?: string;
     isGroupBearing?: boolean;
 };
@@ -75,8 +76,14 @@ const GL_SCALARS: Map<string, GlScalar> = new Map([
     ["GLushort", { descriptor: tScalar("uint16"), tsAlias: "GLushort", viewType: "Uint16Array" }],
     ["GLfloat", { descriptor: tScalar("float32"), tsAlias: "GLfloat", viewType: "Float32Array" }],
     ["GLdouble", { descriptor: tScalar("float64"), tsAlias: "GLdouble", viewType: "Float64Array" }],
-    ["GLint64", { descriptor: tScalar("int64"), tsAlias: "GLint64" }],
-    ["GLuint64", { descriptor: tScalar("uint64"), tsAlias: "GLuint64" }],
+    [
+        "GLint64",
+        { descriptor: tScalar("bigint64"), tsAlias: "GLint64", tsPrimitive: "bigint", viewType: "BigInt64Array" },
+    ],
+    [
+        "GLuint64",
+        { descriptor: tScalar("biguint64"), tsAlias: "GLuint64", tsPrimitive: "bigint", viewType: "BigUint64Array" },
+    ],
     ["GLintptr", { descriptor: tScalar("int64"), tsAlias: "GLintptr" }],
     ["GLsizeiptr", { descriptor: tScalar("int64"), tsAlias: "GLsizeiptr" }],
 ]);

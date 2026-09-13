@@ -153,4 +153,60 @@ describe("a GL area rendered from React", () => {
         expect(shader.status).toBe(gl.FALSE);
         expect(shader.log.length).toBeGreaterThan(0);
     });
+
+    it("passes the required full-width timeout to a server-side sync wait", async () => {
+        const result = await inGlContext(() => {
+            const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+            gl.waitSync(sync, 0, gl.TIMEOUT_IGNORED);
+            gl.deleteSync(sync);
+            const query = gl.genQuery();
+            gl.queryCounter(query, gl.TIMESTAMP);
+            gl.finish();
+            const timestamp = gl.getQueryObjectui64v(query, gl.QUERY_RESULT);
+            const signedTimestamp = gl.getQueryObjecti64v(query, gl.QUERY_RESULT);
+            gl.deleteQuery(query);
+
+            return { error: gl.getError(), timestamp, signedTimestamp };
+        });
+
+        expect(result.error).toBe(gl.NO_ERROR);
+        expect(typeof result.timestamp).toBe("bigint");
+        expect(result.timestamp).toBeGreaterThan(0n);
+        expect(result.signedTimestamp).toBe(result.timestamp);
+    });
+
+    it("delivers debug messages without changing the context's debug state", async () => {
+        const result = await inGlContext(() => {
+            let message: gl.DebugMessage | null = null;
+            gl.disable(gl.DEBUG_OUTPUT);
+            gl.debugMessageCallback((received) => {
+                message = received;
+            });
+            const wasEnabledByCallback = gl.isEnabled(gl.DEBUG_OUTPUT);
+            gl.enable(gl.DEBUG_OUTPUT);
+            gl.enable(gl.DEBUG_OUTPUT_SYNCHRONOUS);
+            gl.debugMessageInsert(
+                gl.DEBUG_SOURCE_APPLICATION,
+                gl.DEBUG_TYPE_MARKER,
+                7,
+                gl.DEBUG_SEVERITY_NOTIFICATION,
+                -1,
+                "GTKX debug message",
+            );
+            gl.debugMessageCallback(null);
+            gl.disable(gl.DEBUG_OUTPUT_SYNCHRONOUS);
+            gl.disable(gl.DEBUG_OUTPUT);
+
+            return { wasEnabledByCallback, message };
+        });
+
+        expect(result.wasEnabledByCallback).toBe(false);
+        expect(result.message).toEqual({
+            source: gl.DEBUG_SOURCE_APPLICATION,
+            type: gl.DEBUG_TYPE_MARKER,
+            id: 7,
+            severity: gl.DEBUG_SEVERITY_NOTIFICATION,
+            message: "GTKX debug message",
+        });
+    });
 });

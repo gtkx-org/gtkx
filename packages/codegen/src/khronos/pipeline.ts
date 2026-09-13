@@ -133,8 +133,8 @@ const enumLiteral = (token: GlEnum): string | undefined => {
         return undefined;
     }
 
-    if (value > MAX_SAFE) {
-        return undefined;
+    if (value > MAX_SAFE || value < -MAX_SAFE) {
+        return /^0[xX]/.test(text) ? `0x${text.slice(2).toLowerCase()}n` : `${text}n`;
     }
 
     if (/^0[xX]/.test(text)) {
