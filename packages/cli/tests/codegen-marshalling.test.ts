@@ -39,6 +39,24 @@ const RegisteredRail = registerClass(Rail, {
 const rail = new RegisteredRail({});
 const orientation: Gtk.Orientation = GObject.getProperty(rail, "orientation");
 GObject.setProperty(rail, "orientation", Gtk.Orientation.HORIZONTAL);
+
+class SpacedWidget extends Gtk.Widget {}
+
+const RegisteredSpacedWidget = registerClass(SpacedWidget, {
+    typeName: "GtkxPropertyHelperSpacedWidget",
+    properties: {
+        "margin-top": GObject.paramSpecOverride("margin-top", Gtk.Widget),
+        margin_bottom: GObject.paramSpecOverride("margin_bottom", Gtk.Widget),
+        marginStart: GObject.paramSpecOverride("marginStart", Gtk.Widget),
+    },
+});
+const widget = new RegisteredSpacedWidget({});
+const top: number = GObject.getProperty(widget, "marginTop");
+const bottom: number = GObject.getProperty(widget, "marginBottom");
+const start: number = GObject.getProperty(widget, "marginStart");
+GObject.setProperty(widget, "marginTop", 1);
+GObject.setProperty(widget, "marginBottom", 2);
+GObject.setProperty(widget, "marginStart", 3);
 `;
 const PROPERTY_OVERRIDE_SPELLING_PROBE = `import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";

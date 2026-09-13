@@ -7,6 +7,7 @@ import {
     type RegisterClassVfunc as NativeRegisterClassVfunc,
 } from "@gtkx/native";
 import { type AnyClass, getParentClass, kebabCase, walkClassChain } from "@gtkx/utils";
+import type { Camelized, Dashed } from "./property-types.js";
 import { wrapCallback } from "./callback.js";
 import { insertMixinLayer } from "./mixin.js";
 import {
@@ -68,16 +69,6 @@ type Interface<TImpl, TInstance = object> = AnyClass & {
     /** Type-level slot holding the interface's `Impl` type; no value ever carries it. */
     __impl__: (impl: Partial<TImpl> & object) => TInstance;
 };
-
-/** Converts underscores in a property name to canonical dashes. */
-type Dashed<TName extends string> = TName extends `${infer THead}_${infer TTail}`
-    ? Dashed<`${THead}-${TTail}`>
-    : TName;
-
-/** Converts a dashed property name to its JavaScript spelling. */
-type Camelized<TName extends string> = TName extends `${infer THead}-${infer TTail}`
-    ? `${THead}${Capitalize<Camelized<TTail>>}`
-    : TName;
 
 /** Property-map keys in the camelCase spelling hooks use. */
 type InstalledNames<TProperties> = string extends keyof TProperties

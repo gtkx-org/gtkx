@@ -1,7 +1,7 @@
-import type { ParamSpec } from "@gtkx/gi/gobject";
 import {
     Object as GObject,
     ParamFlags,
+    ParamSpec,
     paramSpecInt,
     paramSpecOverride,
     TYPE_BOOLEAN,
@@ -135,6 +135,28 @@ describe("registerClass — property overrides, happy path", () => {
 });
 
 describe("registerClass — property overrides, edge cases", () => {
+    it.each(["margin-top", "margin_top", "marginTop"])("overrides properties named %s", (name) => {
+        class SpacedWidget extends Gtk.Widget {}
+
+        const spec = paramSpecOverride(name, Gtk.Widget);
+        expect(spec).toBeInstanceOf(ParamSpec);
+        expect(spec.name).toBe("margin-top");
+        expect(spec.valueType).toBe(TYPE_INT);
+
+        registerClass(SpacedWidget, {
+            typeName: uniqueName("GtkxOverrideSpacedWidget"),
+            properties: { [name]: spec },
+        });
+
+        const widget = new SpacedWidget();
+        expect(widget.marginTop).toBe(0);
+        const seen = watchNotify(widget);
+        widget.marginTop = 12;
+        expect(widget.marginTop).toBe(12);
+        expect(readInt(widget, "margin-top")).toBe(12);
+        expect(seen).toEqual(["margin-top"]);
+    });
+
     it("overrides an interface property the class explicitly redeclares", () => {
         class Rail extends GObject {}
 
