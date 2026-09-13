@@ -48,7 +48,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `storybook` | 31 | All files read; unset selections, readonly controls, shared types and documentation fixed; upstream strict declaration checking remains open |
 | `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
 | `cli` | 262 | Generated consumer and catalog-reference fixes verified; full package pending |
-| `create-gtkx` | 31 | Pending |
+| `create-gtkx` | 31 | All files read; option parsing, installation recovery, duplication and guides fixed; installed-consumer checkpoint pending |
 | `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
 | `testing` | 60 | ComboRow display-value matcher fixed; full package pending |
 | `vitest` | 12 | All files read; packaged preload, Sway configuration and notification sink fixed; repeat review found no further confirmed defect |
@@ -406,6 +406,14 @@ The rule now follows inferred and nested public types without inspecting impleme
 All 89 remaining ESLint integration and rule cases pass, alongside both typechecks, package lint, Knip and independent review. The obsolete GTK/GLib prefix restriction and its tests are removed at the maintainer's request. React's own children type replaces the testing wrapper's duplicate shape. Existing no-new-comments exemptions now also cover object property constraints, registered class metadata and testing options; these declarations were kept simple instead of adding type indirection to evade documentation checks. Repository-wide Nx lint is the next validation checkpoint.
 
 The naming follow-up restores `gtkModel` and `GTK_LIB` after tracing changes made for the removed prefix restriction. Stale suppression comments are removed. GLib is the default, so `useObjectValue` and `ObjectValueCache` keep their names without the `G` prefix. This convention is recorded in the contributing principles. Remaining library names describe actual libraries. React, components and testing source typechecks and affected-file lint pass; these changes do not alter behavior or public APIs.
+
+### Project scaffolding audit
+
+All 31 tracked create-gtkx files and both getting-started guides were read. One option schema now supplies help, argument types and strict parsing. Repeated flags and aliases honor their last occurrence, and `--no-interactive` works in a real terminal. Invalid project names are rejected instead of silently rewritten; parent directory names remain intact.
+
+The complete dependency manifest is written before installation, so a failed install can be resumed with the package manager's install command. nypm still resolves and saves dependency versions. YAML serialization uses the existing maintained dependency, and repeated filesystem checks, an initial generated-file stub, manifest replacement machinery and package-manager error parsing are removed. Existing overwrite and symlink boundaries remain covered through the CLI.
+
+All 41 public CLI cases pass, including real terminal invocation, supported path edge cases and installation failures, alongside source/test types, package lint and independent review. Citty's boolean ordering defect is reproduced independently and recorded as U11 in the upstream tracker. The release packaging check built and locally published the packages, then exposed a separate fresh-consumer configuration import failure; that fix is tracked below before repeating the complete consumer check.
 
 ## Next work
 

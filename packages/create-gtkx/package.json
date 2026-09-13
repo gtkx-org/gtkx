@@ -58,10 +58,11 @@
         "@clack/prompts": "^1.8.1",
         "@gtkx/config": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "ejs": "catalog:",
         "citty": "^0.2.2",
+        "ejs": "catalog:",
         "nypm": "^0.6.10",
-        "tinyexec": "^1.3.1"
+        "tinyexec": "^1.3.1",
+        "yaml": "catalog:"
     },
     "devDependencies": {
         "@types/ejs": "catalog:",
