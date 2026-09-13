@@ -15,6 +15,8 @@ import {
 } from "@gtkx/native";
 import { expect, test } from "vitest";
 
+const encoder = new TextEncoder();
+
 const GOBJECT = "libgobject-2.0.so.0";
 const READWRITE = 3;
 
@@ -31,9 +33,9 @@ const paramSpecNew = bind(
     GOBJECT,
     "g_param_spec_boolean",
     [
-        { kind: "string", ownership: "borrowed" },
-        { kind: "string", ownership: "borrowed" },
-        { kind: "string", ownership: "borrowed" },
+        { kind: "bytes", ownership: "borrowed" },
+        { kind: "bytes", ownership: "borrowed" },
+        { kind: "bytes", ownership: "borrowed" },
         { kind: "int32" },
         { kind: "uint32" },
     ],
@@ -81,8 +83,11 @@ const objectHandle = (): ExternalObject<Handle> => {
     return created;
 };
 
-const fundamentalHandle = (): ExternalObject<Handle> =>
-    call(paramSpecNew, ["flag", "Flag", "a flag", 0, READWRITE]).value as ExternalObject<Handle>;
+const fundamentalHandle = (): ExternalObject<Handle> => {
+    const values = ["flag", "Flag", "a flag"].map((value) => encoder.encode(value));
+
+    return call(paramSpecNew, [...values, 0, READWRITE]).value as ExternalObject<Handle>;
+};
 
 const anotherObjectHandle = (handle: ExternalObject<Handle>): ExternalObject<Handle> =>
     call(objectRef, [handle]).value as ExternalObject<Handle>;

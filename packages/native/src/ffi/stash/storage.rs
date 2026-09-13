@@ -238,7 +238,6 @@ pub enum StashData {
     GByteArray(Option<glib::ByteArray>),
     Buffer(Vec<u8>),
     PtrSlot(Vec<*mut c_void>, Option<Box<StashStorage>>),
-    StrV(glib::StrV),
     HashTable(HashTableData),
     CallerAllocation(CallerAllocation),
 }
@@ -363,7 +362,6 @@ impl StashStorage {
             | StashData::GPtrArray(_)
             | StashData::GByteArray(_)
             | StashData::PtrSlot(_, _)
-            | StashData::StrV(_)
             | StashData::HashTable(_) => None,
         }
     }
@@ -437,7 +435,6 @@ impl Drop for StashStorage {
             | StashData::CString(_)
             | StashData::Buffer(_)
             | StashData::PtrSlot(_, _)
-            | StashData::StrV(_)
             | StashData::CallerAllocation(_) => {}
         }
     }

@@ -14,6 +14,8 @@ type FixtureRun = {
 
 type WorkerReport = { bare: boolean; doubled: number; string: string };
 
+const encoder = new TextEncoder();
+
 const OBSERVED_PREFIX = "OBSERVED ";
 const CHILD_BUDGET_MS = 30_000;
 const GLIB = "libglib-2.0.so.0";
@@ -21,7 +23,7 @@ const VOID: Descriptor = { kind: "void" };
 const INT32: Descriptor = { kind: "int32" };
 const UINT32: Descriptor = { kind: "uint32" };
 const BUFFER: Descriptor = { kind: "buffer" };
-const STRING_FULL: Descriptor = { kind: "string", ownership: "full" };
+const BYTES_FULL: Descriptor = { kind: "bytes", ownership: "full" };
 const NESTING_LIMIT = 80;
 const WORKER_REPORT: WorkerReport = { bare: true, doubled: 42, string: "worker" };
 
@@ -229,7 +231,7 @@ test("a malformed descriptor is refused when the call is bound", () => {
     };
 
     expect(() => bind(GLIB, "g_free", [nested], VOID)).toThrow();
-    expect(() => bind(GLIB, "g_free", [{ kind: "string", ownership: "borrowed", length: -5 }], VOID)).toThrow();
+    expect(() => bind(GLIB, "g_free", [{ kind: "bytes", ownership: "borrowed", length: -5 }], VOID)).toThrow();
     expect(() => bind(GLIB, "g_free", [fixedArray], VOID)).toThrow();
     expect(() => bind(GLIB, "g_free", [sizedArray], VOID)).toThrow();
     // @ts-expect-error a kind no descriptor variant carries
@@ -237,15 +239,17 @@ test("a malformed descriptor is refused when the call is bound", () => {
 });
 
 test("a buffer descriptor lends a typed array to C", () => {
-    const checksum = bind(GLIB, "g_compute_checksum_for_data", [INT32, BUFFER, UINT32], STRING_FULL);
-    expect(call(checksum, [0, new Uint8Array([97, 98, 99]), 3]).value).toBe("900150983cd24fb0d6963f7d28e17f72");
-    expect(call(checksum, [0, new TextEncoder().encode("abc"), 3]).value).toBe("900150983cd24fb0d6963f7d28e17f72");
-    expect(call(checksum, [0, null, 0]).value).toBe("d41d8cd98f00b204e9800998ecf8427e");
+    const checksum = bind(GLIB, "g_compute_checksum_for_data", [INT32, BUFFER, UINT32], BYTES_FULL);
+    const expected = encoder.encode("900150983cd24fb0d6963f7d28e17f72");
+
+    expect(call(checksum, [0, new Uint8Array([97, 98, 99]), 3]).value).toEqual(expected);
+    expect(call(checksum, [0, encoder.encode("abc"), 3]).value).toEqual(expected);
+    expect(call(checksum, [0, null, 0]).value).toEqual(encoder.encode("d41d8cd98f00b204e9800998ecf8427e"));
     expect(() => call(checksum, [0, 0, 0])).toThrow();
 });
 
 test("a buffer descriptor rejects values that are not a view, a handle or null", () => {
-    const checksum = bind(GLIB, "g_compute_checksum_for_data", [INT32, BUFFER, UINT32], STRING_FULL);
+    const checksum = bind(GLIB, "g_compute_checksum_for_data", [INT32, BUFFER, UINT32], BYTES_FULL);
     expect(() => call(checksum, [0, "abc", 3]).value).toThrow();
     expect(() => call(checksum, [0, 1.5, 0]).value).toThrow();
     expect(() => call(checksum, [0, -1, 0]).value).toThrow();

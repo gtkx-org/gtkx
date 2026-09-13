@@ -9,7 +9,7 @@ pub(super) enum ItemCodec {
     BigInt(BigIntCodec),
     Float(FloatCodec),
     Pointer,
-    String,
+    Bytes,
 }
 
 impl ItemCodec {
@@ -21,7 +21,7 @@ impl ItemCodec {
             Codec::Integer(kind) => Self::Integer(*kind),
             Codec::BigInt(kind) => Self::BigInt(*kind),
             Codec::Float(kind) => Self::Float(*kind),
-            Codec::String(_) => Self::String,
+            Codec::Bytes(_) => Self::Bytes,
             Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_) => {
                 unreachable!("handle-backed codecs are classified as pointers above")
             }
@@ -57,7 +57,7 @@ impl ItemCodec {
                 (kind, view_kind),
                 (BigIntCodec::I64, ViewKind::BigInt64) | (BigIntCodec::U64, ViewKind::BigUint64)
             ),
-            Self::Pointer | Self::String => false,
+            Self::Pointer | Self::Bytes => false,
         }
     }
 
@@ -67,7 +67,7 @@ impl ItemCodec {
             Self::BigInt(kind) => kind.byte_size(),
             Self::Float(FloatCodec::F32) => size_of::<f32>(),
             Self::Float(FloatCodec::F64) => size_of::<f64>(),
-            Self::Pointer | Self::String => size_of::<*mut c_void>(),
+            Self::Pointer | Self::Bytes => size_of::<*mut c_void>(),
         }
     }
 }

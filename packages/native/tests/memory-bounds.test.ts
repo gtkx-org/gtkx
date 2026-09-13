@@ -12,6 +12,8 @@ import {
 } from "@gtkx/native";
 import { describe, expect, test } from "vitest";
 
+const encoder = new TextEncoder();
+
 const INLINE: Descriptor = { kind: "struct", ownership: "borrowed", isInline: true, size: 8 };
 const INT32: Descriptor = { kind: "int32" };
 
@@ -38,17 +40,17 @@ describe.each(["bound", "unbound"] as const)("%s field bounds", (mode) => {
         [{ kind: "float32" }, 4, 0.5],
         [{ kind: "float64" }, 8, Math.PI],
         [{ kind: "int32" }, 4, 1],
-        [{ kind: "string", ownership: "borrowed" }, 8, "hello"],
+        [{ kind: "bytes", ownership: "borrowed" }, 8, encoder.encode("hello")],
     ] satisfies [Descriptor, number, unknown][])("a %j field fits exactly in %i bytes", (descriptor, size, value) => {
         const field = access(descriptor);
         const block = alloc(size);
 
         field.write(block, 0, value);
 
-        expect(field.read(block, 0)).toBe(value);
+        expect(field.read(block, 0)).toEqual(value);
         expect(() => field.read(block, 1)).toThrow();
         expect(() => field.write(block, 1, value)).toThrow();
-        expect(field.read(block, 0)).toBe(value);
+        expect(field.read(block, 0)).toEqual(value);
     });
 
     test("a bounded inline field rejects reads into its sibling", () => {

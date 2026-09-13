@@ -10,24 +10,26 @@ import {
 } from "@gtkx/native";
 import { expect, test } from "vitest";
 
+const encoder = new TextEncoder();
+
 const GLIB = "libglib-2.0.so.0";
 const GOBJECT = "libgobject-2.0.so.0";
 
 const duplicateThroughSymbol = (library: string, text: string): unknown =>
     call(bindFunctionPointer(
         resolveFunction(library, "g_strdup"),
-        [{ kind: "string", ownership: "borrowed" }],
-        { kind: "string", ownership: "full" },
+        [{ kind: "bytes", ownership: "borrowed" }],
+        { kind: "bytes", ownership: "full" },
         "g_strdup",
-    ), [text]).value;
+    ), [encoder.encode(text)]).value;
 
 test("resolved function handles invoke the symbol repeatedly", () => {
-    expect(duplicateThroughSymbol(GLIB, "gtkx")).toBe("gtkx");
-    expect(duplicateThroughSymbol(GLIB, "again")).toBe("again");
+    expect(duplicateThroughSymbol(GLIB, "gtkx")).toEqual(encoder.encode("gtkx"));
+    expect(duplicateThroughSymbol(GLIB, "again")).toEqual(encoder.encode("again"));
 });
 
 test("a symbol resolves through a library named without its soname suffix", () => {
-    expect(duplicateThroughSymbol("libglib-2.0.so", "gtkx")).toBe("gtkx");
+    expect(duplicateThroughSymbol("libglib-2.0.so", "gtkx")).toEqual(encoder.encode("gtkx"));
 });
 
 test("function handles cannot be read as data memory", () => {
@@ -77,9 +79,9 @@ test("a type getter in a missing library throws", () => {
 
 test("a resolved GType names itself back through the library it came from", () => {
     const typeName = bind(GOBJECT, "g_type_name", [{ kind: "biguint64" }], {
-        kind: "string",
+        kind: "bytes",
         ownership: "borrowed",
     });
 
-    expect(call(typeName, [resolveType(GOBJECT, "g_closure_get_type")]).value).toBe("GClosure");
+    expect(call(typeName, [resolveType(GOBJECT, "g_closure_get_type")]).value).toEqual(encoder.encode("GClosure"));
 });

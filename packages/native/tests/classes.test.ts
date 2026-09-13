@@ -15,13 +15,15 @@ import {
 } from "@gtkx/native";
 import { expect, test } from "vitest";
 
+const encoder = new TextEncoder();
+
 const GOBJECT = "libgobject-2.0.so.0";
 
 const INT32_BOOLEAN: Descriptor = { kind: "int32" };
 const GTYPE: Descriptor = { kind: "biguint64" };
 const INT: Descriptor = { kind: "int32" };
 const OBJECT: Descriptor = { kind: "object", ownership: "borrowed" };
-const STRING: Descriptor = { kind: "string", ownership: "borrowed" };
+const BYTES: Descriptor = { kind: "bytes", ownership: "borrowed" };
 const STRUCT: Descriptor = { kind: "struct", ownership: "borrowed" };
 const UINT: Descriptor = { kind: "uint32" };
 const VOID: Descriptor = { kind: "void" };
@@ -38,16 +40,16 @@ const objectType = resolveType(GOBJECT, "g_object_get_type");
 const closureType = resolveType(GOBJECT, "g_closure_get_type");
 const typePluginType = resolveType(GOBJECT, "g_type_plugin_get_type");
 
-const typeFromName = bind(GOBJECT, "g_type_from_name", [STRING], GTYPE);
+const typeFromName = bind(GOBJECT, "g_type_from_name", [BYTES], GTYPE);
 const typeIsA = bind(GOBJECT, "g_type_is_a", [GTYPE, GTYPE], INT32_BOOLEAN);
-const typeName = bind(GOBJECT, "g_type_name", [GTYPE], STRING);
+const typeName = bind(GOBJECT, "g_type_name", [GTYPE], BYTES);
 const typeParent = bind(GOBJECT, "g_type_parent", [GTYPE], GTYPE);
 const classInstallProperty = bind(GOBJECT, "g_object_class_install_property", [STRUCT, UINT, STRUCT], VOID);
-const classFindProperty = bind(GOBJECT, "g_object_class_find_property", [STRUCT, STRING], STRUCT);
-const paramSpecInt = bind(GOBJECT, "g_param_spec_int", [STRING, STRING, STRING, INT, INT, INT, INT], STRUCT);
-const paramSpecName = bind(GOBJECT, "g_param_spec_get_name", [STRUCT], STRING);
-const objectGetProperty = bind(GOBJECT, "g_object_get_property", [OBJECT, STRING, STRUCT], VOID);
-const objectSetProperty = bind(GOBJECT, "g_object_set_property", [OBJECT, STRING, STRUCT], VOID);
+const classFindProperty = bind(GOBJECT, "g_object_class_find_property", [STRUCT, BYTES], STRUCT);
+const paramSpecInt = bind(GOBJECT, "g_param_spec_int", [BYTES, BYTES, BYTES, INT, INT, INT, INT], STRUCT);
+const paramSpecName = bind(GOBJECT, "g_param_spec_get_name", [STRUCT], BYTES);
+const objectGetProperty = bind(GOBJECT, "g_object_get_property", [OBJECT, BYTES, STRUCT], VOID);
+const objectSetProperty = bind(GOBJECT, "g_object_set_property", [OBJECT, BYTES, STRUCT], VOID);
 const valueGetInt = bind(GOBJECT, "g_value_get_int", [STRUCT], INT);
 const valueInit = bind(GOBJECT, "g_value_init", [STRUCT, GTYPE], VOID);
 const valueSetInt = bind(GOBJECT, "g_value_set_int", [STRUCT, INT], VOID);
@@ -62,7 +64,7 @@ const uniqueName = (): string => {
     return name;
 };
 
-const intType = call(typeFromName, ["gint"]).value as bigint;
+const intType = call(typeFromName, [encoder.encode("gint")]).value as bigint;
 
 const unreached = (): void => {
     throw new Error("this callback must not run");
@@ -79,8 +81,11 @@ const intValue = (value: number): ExternalObject<Handle> => {
     return handle;
 };
 
-const intPspec = (name: string): ExternalObject<Handle> =>
-    call(paramSpecInt, [name, name, name, 0, 100, 0, READWRITE]).value as ExternalObject<Handle>;
+const intPspec = (name: string): ExternalObject<Handle> => {
+    const bytes = encoder.encode(name);
+
+    return call(paramSpecInt, [bytes, bytes, bytes, 0, 100, 0, READWRITE]).value as ExternalObject<Handle>;
+};
 
 const construct = (
     gtype: bigint,
@@ -138,7 +143,7 @@ test("registering a subclass of GObject yields a new GType", () => {
 test("a registered type names itself back with the name it was registered under", () => {
     const name = uniqueName();
 
-    expect(call(typeName, [registerClass(name, objectType)]).value).toBe(name);
+    expect(call(typeName, [registerClass(name, objectType)]).value).toEqual(encoder.encode(name));
 });
 
 test("a registered type reports the parent it was derived from", () => {
@@ -173,22 +178,22 @@ test("a registered class implements the interfaces it declares", () => {
 });
 
 test("a registered property is installed on the class", () => {
-    const pspec = call(classFindProperty, [getTypeClass(registerCounterClass()), "count"]).value;
+    const pspec = call(classFindProperty, [getTypeClass(registerCounterClass()), encoder.encode("count")]).value;
 
-    expect(call(paramSpecName, [pspec]).value).toBe("count");
+    expect(call(paramSpecName, [pspec]).value).toEqual(encoder.encode("count"));
 });
 
 test("a property absent from the class is not found on it", () => {
     const klass = getTypeClass(registerCounterClass());
 
-    expect(call(classFindProperty, [klass, "missing"]).value).toBeNull();
+    expect(call(classFindProperty, [klass, encoder.encode("missing")]).value).toBeNull();
 });
 
 test("a construct property reaches the class's own property vfuncs", () => {
     const { handle } = construct(registerCounterClass(), ["count"], [intValue(7)]);
     const out = alloc(VALUE_SIZE);
 
-    call(objectGetProperty, [handle, "count", out]);
+    call(objectGetProperty, [handle, encoder.encode("count"), out]);
 
     expect(call(valueGetInt, [out]).value).toBe(7);
 });
@@ -202,7 +207,7 @@ test("a construct property accepts complete GValue storage at an unaligned offse
     const { handle } = construct(registerCounterClass(), ["count"], [value as ExternalObject<Handle>]);
     const out = alloc(VALUE_SIZE);
 
-    call(objectGetProperty, [handle, "count", out]);
+    call(objectGetProperty, [handle, encoder.encode("count"), out]);
 
     expect(call(valueGetInt, [out]).value).toBe(7);
 });
@@ -211,8 +216,8 @@ test("a property set after construction reads back through the class", () => {
     const { handle } = construct(registerCounterClass());
     const out = alloc(VALUE_SIZE);
 
-    call(objectSetProperty, [handle, "count", intValue(42)]);
-    call(objectGetProperty, [handle, "count", out]);
+    call(objectSetProperty, [handle, encoder.encode("count"), intValue(42)]);
+    call(objectGetProperty, [handle, encoder.encode("count"), out]);
 
     expect(call(valueGetInt, [out]).value).toBe(42);
 });
@@ -405,7 +410,7 @@ test("constructing a not instantiatable type with properties throws", () => {
 });
 
 test("constructing an instantiatable type that is not a GObject throws", () => {
-    const paramType = call(typeFromName, ["GParamInt"]).value as bigint;
+    const paramType = call(typeFromName, [encoder.encode("GParamInt")]).value as bigint;
 
     expect(() => newObject(paramType, ["name"], [alloc(VALUE_SIZE)], {}, ignore)).toThrow();
 });

@@ -2,7 +2,7 @@ use std::ffi::CString;
 
 use super::super::prelude::*;
 use super::container::ArrayContainer;
-use super::{ArrayCodec, ArrayKindEncoder, dup_strings_to_glib, transfer_items};
+use super::{ArrayCodec, ArrayKindEncoder, dup_bytes_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
 
@@ -67,9 +67,9 @@ fn string_list_parts(
     dup_items: bool,
 ) -> anyhow::Result<(Vec<CString>, Vec<*mut c_void>)> {
     if dup_items {
-        Ok((Vec::new(), dup_strings_to_glib(array)?))
+        Ok((Vec::new(), dup_bytes_to_glib(array)?))
     } else {
-        let cstrings = ArrayCodec::extract_strings(array)?;
+        let cstrings = ArrayCodec::extract_byte_strings(array)?;
         let ptrs = cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
         Ok((cstrings, ptrs))
     }
@@ -99,7 +99,7 @@ impl ListEncoder {
 }
 
 impl ArrayKindEncoder for ListEncoder {
-    fn encode_strings(
+    fn encode_byte_strings(
         &self,
         array: &[Unknown<'_>],
         dup_items: bool,

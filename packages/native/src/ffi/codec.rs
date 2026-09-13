@@ -14,6 +14,7 @@ mod array;
 mod bigint;
 mod boxed;
 mod buffer;
+mod bytes;
 mod callback;
 mod fundamental;
 mod hashtable;
@@ -21,7 +22,6 @@ mod numeric;
 mod object;
 mod prelude;
 mod r#ref;
-mod string;
 mod r#struct;
 mod void;
 
@@ -29,6 +29,7 @@ pub use array::{ArrayBounds, ArrayCodec, ArrayKind};
 pub use bigint::BigIntCodec;
 pub use boxed::BoxedCodec;
 pub use buffer::BufferCodec;
+pub use bytes::{BytesCodec, bytes_to_glib_full, read_bytes};
 pub(crate) use callback::CallbackReleasePolicy;
 pub use callback::{CallbackCodec, CallbackScope, DestroyNotifyKind};
 pub use fundamental::FundamentalCodec;
@@ -39,7 +40,6 @@ pub(crate) use object::{
     acquire_construction_ref, release_construction_ref, tracked_gobject_value,
 };
 pub use r#ref::RefCodec;
-pub use string::{StringCodec, str_to_glib_full};
 pub use r#struct::StructCodec;
 pub use void::VoidCodec;
 
@@ -424,7 +424,7 @@ pub enum Codec {
     Integer(IntegerCodec),
     BigInt(BigIntCodec),
     Float(FloatCodec),
-    String(StringCodec),
+    Bytes(BytesCodec),
     Void(VoidCodec),
     Object(ObjectCodec),
     Boxed(BoxedCodec),
@@ -454,7 +454,7 @@ impl Codec {
             Self::Object(codec) => codec.ownership,
             Self::Boxed(codec) => codec.ownership,
             Self::Struct(codec) => codec.ownership,
-            Self::String(codec) => codec.ownership,
+            Self::Bytes(codec) => codec.ownership,
             Self::Array(codec) => codec.ownership,
             Self::HashTable(codec) => codec.ownership,
             Self::Fundamental(codec) => codec.ownership,
@@ -488,7 +488,7 @@ impl std::fmt::Display for Codec {
             Self::Integer(kind) => write!(f, "Integer({kind:?})"),
             Self::BigInt(kind) => write!(f, "BigInt({kind:?})"),
             Self::Float(kind) => write!(f, "Float({kind:?})"),
-            Self::String(_) => write!(f, "String"),
+            Self::Bytes(_) => write!(f, "Bytes"),
             Self::Void(_) => write!(f, "Void"),
             Self::Object(_) => write!(f, "Object"),
             Self::Boxed(t) => write!(f, "Boxed({})", t.type_name),

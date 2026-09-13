@@ -2,13 +2,15 @@ import { alloc, bind, call, copy, type ExternalObject, getTypeClass, type Handle
     write } from "@gtkx/native";
 import { expect, test } from "vitest";
 
+const encoder = new TextEncoder();
+
 const GOBJECT = "libgobject-2.0.so.0";
 const objectType = resolveType(GOBJECT, "g_object_get_type");
 const typeQuery = bind(GOBJECT, "g_type_query", [
     { kind: "biguint64" },
     { kind: "struct", ownership: "borrowed" },
 ], { kind: "void" });
-const typeFromName = bind(GOBJECT, "g_type_from_name", [{ kind: "string", ownership: "borrowed" }], {
+const typeFromName = bind(GOBJECT, "g_type_from_name", [{ kind: "bytes", ownership: "borrowed" }], {
     kind: "biguint64",
 });
 
@@ -53,7 +55,7 @@ test.each(sources)("$name rejects access beyond the class allocation", ({ create
 });
 
 test("class registration rejects a classed parent outside GObject", () => {
-    const paramType = call(typeFromName, ["GParam"]).value as bigint;
+    const paramType = call(typeFromName, [encoder.encode("GParam")]).value as bigint;
 
     expect(() => registerClass("GtkxNativeInvalidParamSubclass", paramType)).toThrow();
 });

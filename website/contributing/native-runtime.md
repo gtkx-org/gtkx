@@ -18,7 +18,7 @@ The central contract is a descriptor: a structured description of a value's nati
 A call passes through these stages:
 
 1. A generated adapter presents the public JavaScript signature and supplies a runtime function specification.
-2. [`runtime/src/fn.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/fn.ts) plans inputs and outputs and wraps callbacks. Shared runtime conversion plans lower semantic scalars such as booleans, Unicode characters, enums, and flags to their ABI representations.
+2. [`runtime/src/fn.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/fn.ts) plans inputs and outputs and wraps callbacks. Shared runtime conversion plans encode strings as UTF-8 bytes and lower booleans, Unicode characters, enums, and flags to their ABI representations.
 3. [`native/src/api/bind.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/api/bind.rs) turns descriptors into codecs and a libffi call interface. It records the target symbol, vtable slot, or function pointer.
 4. [`native/src/api/call.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/api/call.rs) prepares native storage, invokes the target, and returns the result and output values while settling ownership transfers.
 5. The TypeScript runtime converts returned values, updates JavaScript references, reports errors, and packs surfaced outputs into the public return shape.
@@ -29,7 +29,7 @@ The current native call also checks argument counts, and object codecs check dec
 
 ## Values, temporary storage, and ownership
 
-The runtime's conversion plans serve calls, fields, callbacks, references, and collections. The remaining [`ffi/codec`](https://github.com/gtkx-org/gtkx/tree/main/packages/native/src/ffi/codec) modules handle native storage, including string and container conversion that still needs to move into runtime. A `Stash` holds an invocation's temporary allocations, callback state, and pending ownership transfers.
+The runtime's conversion plans serve calls, fields, callbacks, references, and collections. String encoding and decoding live in runtime; native receives bytes and manages their terminated storage, capacity and ownership. The remaining [`ffi/codec`](https://github.com/gtkx-org/gtkx/tree/main/packages/native/src/ffi/codec) modules still include container conversion that needs to move into runtime. A `Stash` holds an invocation's temporary allocations, callback state, and pending ownership transfers.
 
 Ownership is directional. Passing a borrowed value to C differs from handing ownership to C; receiving a borrowed pointer differs from receiving a newly owned allocation. A container's allocation and its elements can also have distinct transfer requirements. The generated descriptor supplies those rules, and the relevant codec acquires, copies, transfers, or releases memory accordingly.
 

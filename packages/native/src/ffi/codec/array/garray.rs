@@ -3,7 +3,7 @@ use anyhow::bail;
 use super::super::prelude::*;
 use super::container::ArrayContainer;
 use super::item::ItemCodec;
-use super::{ArrayCodec, dup_strings_to_glib, transfer_items};
+use super::{ArrayCodec, dup_bytes_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
 
@@ -160,12 +160,12 @@ impl ArrayCodec {
                 Ok(Vec::new())
             }
             ItemCodec::Pointer => self.append_handle_values_to_garray(g_array, array),
-            ItemCodec::String => {
+            ItemCodec::Bytes => {
                 unsafe extern "C" fn free_garray_string_element(slot: glib::ffi::gpointer) {
                     unsafe { glib::ffi::g_free(*slot.cast::<glib::ffi::gpointer>()) };
                 }
                 let callee_owns_strings =
-                    matches!(&*self.item_codec, Codec::String(s) if s.ownership.is_full());
+                    matches!(&*self.item_codec, Codec::Bytes(s) if s.ownership.is_full());
                 if !callee_owns_strings {
                     unsafe {
                         glib::ffi::g_array_set_clear_func(
@@ -174,7 +174,7 @@ impl ArrayCodec {
                         );
                     }
                 }
-                let dups = dup_strings_to_glib(array)?;
+                let dups = dup_bytes_to_glib(array)?;
                 let acquired = if callee_owns_strings {
                     dups.iter()
                         .map(|&dup| ffi::PendingTransfer::new(dup, ffi::ReleaseKind::GFree))
