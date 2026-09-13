@@ -1,9 +1,11 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ComponentType, ReactNode } from "react";
 import type {
+    ArgsFromMeta,
     ComponentAnnotations,
     GlobalTypes,
     Renderer,
+    StoryAnnotations as StorybookAnnotations,
     ArgTypes as StorybookArgTypes,
     StoryContext as StorybookContext,
 } from "storybook/internal/types";
@@ -87,31 +89,11 @@ type ComponentOrProps<T> = T extends ComponentType<infer Props extends object>
 /** Presents combined inferred args as a single object type. */
 type Simplify<T> = { [Key in keyof T]: T[Key] };
 
-/** Combines the argument requirements of every member of a union. */
-type UnionToIntersection<T> = (
-    T extends unknown ? (value: T) => void : never
-) extends (value: infer Intersection) => void ? Intersection : never;
-
-/** Retains explicitly named args while removing broad index signatures. */
-type DeclaredArgs<T> = {
-    [Key in keyof T as string extends Key
-        ? never
-        : number extends Key ? never : symbol extends Key ? never : Key]: T[Key];
-};
-
-/** Extracts the args accepted by a custom render function. */
-type RenderArgs<T> = T extends (args: infer Props extends object, context: never) => ReactNode ? Props : object;
-
-/** Combines the args required by a metadata object's decorators. */
-type DecoratorArgs<T> = T extends readonly (infer Item)[]
-    ? UnionToIntersection<Item extends Decorator<infer Props extends object> ? Props : object>
-    : object;
-
 /** Infers story args from component props, render functions, decorators, or declared defaults. */
-type ArgsFrom<T> = T extends { component?: infer Component; render?: infer Render; decorators?: infer Decorators }
+type ArgsFrom<T> = T extends { component?: infer Component; render?: unknown; decorators?: unknown }
     ? Simplify<
         (NonNullable<Component> extends ComponentType<infer Props extends object> ? Props : object) &
-        DeclaredArgs<RenderArgs<NonNullable<Render>> & DecoratorArgs<NonNullable<Decorators>>>
+        ArgsFromMeta<NativeRenderer, T>
     >
     : T extends { args: infer Defaults extends object } ? Defaults : Args;
 
@@ -135,9 +117,10 @@ type RequiredStoryArgs<T, TArgs extends object> =
 
 /** CSF3 story object inferred from metadata, a React component, or an explicit args type. */
 type StoryObj<T = Args> = T extends { component?: unknown; render?: unknown; decorators?: unknown; args?: unknown }
-    ? StoryAnnotations<ArgsFrom<T>> & (Record<never, never> extends RequiredStoryArgs<T, ArgsFrom<T>>
-        ? { args?: RequiredStoryArgs<T, ArgsFrom<T>> }
-        : { args: RequiredStoryArgs<T, ArgsFrom<T>> })
+    ? StoryAnnotations<ArgsFrom<T>> & Pick<
+        StorybookAnnotations<NativeRenderer<ArgsFrom<T>>, ArgsFrom<T>, RequiredStoryArgs<T, ArgsFrom<T>>>,
+        "args"
+    >
     : StoryAnnotations<ComponentOrProps<T>>;
 
 /** Project annotations shared by all composed stories. */

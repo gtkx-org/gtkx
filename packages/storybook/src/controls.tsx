@@ -7,6 +7,9 @@ import type { Args, ArgTypes } from "./types.js";
 
 type ControlsProps = { argTypes: ArgTypes; args: Args; onChange: (update: Args) => void };
 
+const NO_SELECTION_ID = "no-selection";
+const NO_SELECTION_LABEL = "Choose option...";
+
 type ControlProps = {
     argument: string;
     title: string;
@@ -79,10 +82,7 @@ const NumberControl = ({
                 />
             )}
             onNotifyValue={(next) => {
-                if (
-                    typeof next === "number" && Number.isFinite(next) &&
-                    next >= min && next <= max && !Object.is(next, value)
-                ) {
+                if (!Object.is(next, value)) {
                     onChange({ [argument]: next });
                 }
             }}
@@ -100,11 +100,11 @@ const SelectControl = (props: Omit<ControlProps, "type">): ReactNode => {
     const values: unknown[] = options;
     const selected = values.findIndex((option) => Object.is(option, value));
     const labels = isObject(settings.labels) ? settings.labels : {};
-    const items = values.map((option, index) => {
+    const items = [{ id: NO_SELECTION_ID, value: NO_SELECTION_LABEL }, ...values.map((option, index) => {
         const label = labels[String(option)];
 
         return { id: String(index), value: typeof label === "string" ? label : String(option) };
-    });
+    })];
 
     return (
         <ComboRow
@@ -112,17 +112,19 @@ const SelectControl = (props: Omit<ControlProps, "type">): ReactNode => {
             title={markupEscapeText(title, -1)}
             sensitive={!isDisabled}
             items={items}
-            selectedId={selected === -1 ? undefined : String(selected)}
+            selectedId={selected === -1 ? NO_SELECTION_ID : String(selected)}
             onSelectionChanged={(id) => {
+                if (id === NO_SELECTION_ID) {
+                    onChange({ [argument]: undefined });
+
+                    return;
+                }
+
                 if (id === null) {
                     return;
                 }
 
-                const index = Number(id);
-
-                if (Number.isSafeInteger(index) && index >= 0 && index < values.length) {
-                    onChange({ [argument]: values[index] });
-                }
+                onChange({ [argument]: values[Number(id)] });
             }}
         />
     );
@@ -140,7 +142,7 @@ const Control = (props: ControlProps): ReactNode => {
                     sensitive={!isDisabled}
                     active={value === true}
                     onNotifyActive={(active) => {
-                        if (typeof active === "boolean" && !Object.is(active, value)) {
+                        if (!Object.is(active, value)) {
                             onChange({ [argument]: active });
                         }
                     }}
@@ -155,7 +157,7 @@ const Control = (props: ControlProps): ReactNode => {
                     sensitive={!isDisabled}
                     text={typeof value === "string" ? value : ""}
                     onNotifyText={(text) => {
-                        if (typeof text === "string" && !Object.is(text, value)) {
+                        if (!Object.is(text, value)) {
                             onChange({ [argument]: text });
                         }
                     }}
@@ -181,9 +183,9 @@ const Controls = ({ argTypes, args, onChange }: ControlsProps): ReactNode => (
     <AdwPreferencesGroup title="Controls">
         {Object.entries(argTypes).map(([argument, annotation]) => {
             const control: unknown = annotation?.control;
-            const table: unknown = annotation?.table;
+            const table = isObject(annotation?.table) ? annotation.table : {};
 
-            if (control === undefined || control === false || (isObject(table) && table.disable === true)) {
+            if (control === undefined || control === false || table.disable === true) {
                 return null;
             }
 
@@ -199,7 +201,7 @@ const Controls = ({ argTypes, args, onChange }: ControlsProps): ReactNode => (
                     type={typeof type === "string" ? type : "unknown"}
                     settings={settings}
                     options={annotation?.options}
-                    isDisabled={settings.disable === true}
+                    isDisabled={settings.disable === true || table.readonly === true}
                     onChange={onChange}
                 />
             );

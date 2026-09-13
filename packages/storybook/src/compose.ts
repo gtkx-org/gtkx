@@ -34,10 +34,6 @@ const composeStory = <TArgs extends object>(
     preview: Preview = {},
     exportName?: string,
 ): ComposedStory<TArgs> => {
-    requireObject(story);
-    requireObject(meta);
-    requireObject(preview);
-
     if (!story.render && !meta.render && !preview.render && !meta.component) {
         throw new TypeError("A story needs a component or render function");
     }
@@ -67,9 +63,7 @@ const composeStories = <TModule extends StoryModule>(
     stories: TModule,
     preview: Preview = {},
 ): ComposedStories<TModule> => {
-    requireObject(stories);
     requireObject(stories.default);
-    requireObject(preview);
 
     const meta = stories.default as ComponentMeta<Args>;
     const composed: Partial<ComposedStories<TModule>> = {};
