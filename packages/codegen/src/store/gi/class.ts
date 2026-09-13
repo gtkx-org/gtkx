@@ -43,6 +43,7 @@ import {
     requiresFactoryInitialization,
 } from "./constructor-props.js";
 import { getDoc } from "./doc-spec.js";
+import { appendElementMetadata } from "./element-metadata.js";
 import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
 import { memberName, methodExportName } from "./method.js";
@@ -325,6 +326,10 @@ const appendClassRegistrations = (context: ModuleContext, klass: GirClass, targe
         gtypeExpr,
         vfuncs: renderVfuncMetadata(context, klass),
     });
+
+    if (gtypeExpr !== undefined) {
+        appendElementMetadata(context, klass);
+    }
 
     appendClassStructRegistration(context, klass, targetName, gtypeExpr);
 };

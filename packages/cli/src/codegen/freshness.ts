@@ -15,7 +15,7 @@ type CodegenInputs = {
 };
 
 const PACKAGE_EXPORT = "./package.json";
-const JSX_REQUIRED_EXPORTS = [PACKAGE_EXPORT, "./metadata", "./gtk", "./adw"];
+const JSX_REQUIRED_EXPORTS = [PACKAGE_EXPORT, "./gtk", "./adw"];
 
 const resolveCodegenInputs = (cwd: string, config: Config): CodegenInputs => {
     const girPath = resolveGirPath(config.girPath);

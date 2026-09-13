@@ -28,7 +28,6 @@ const GI_MODULES = [
 const JSX_MODULES = [
     join("adw", "adw.js"),
     join("adw", "index.js"),
-    "metadata.js",
     join("gtk", "gtk.js"),
     join("gtk", "index.js"),
     "package.json",

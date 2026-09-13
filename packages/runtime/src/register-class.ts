@@ -12,6 +12,7 @@ import { bind } from "./bind.js";
 import { wrapCallback } from "./callback.js";
 import { type ClassSignal, prepareClassSignals } from "./class-signals.js";
 import { stringT, structT, voidT } from "./descriptors.js";
+import { registerElementMetadata } from "./element-metadata.js";
 import { insertMixinLayer } from "./mixin.js";
 import {
     buildPropertyDispatch,
@@ -494,6 +495,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     installSignalOverrides(newType, methods);
     applyInterfaceMixins(klass, adoptedTypes, inheritedNames);
     installDeclaredSignalMethods(klass, signals.table);
+    registerElementMetadata(name, {}, dispatch.elementProperties);
     invokeClassInit(options, newType);
 
     return klass;

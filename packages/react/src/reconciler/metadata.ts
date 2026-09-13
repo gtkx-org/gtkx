@@ -10,15 +10,16 @@ import {
 } from "@gtkx/runtime";
 import {
     elementMetadataVersion,
+    type ElementPropertyEntry,
     registeredElementProperties,
     registeredElementSignals,
 } from "@gtkx/runtime/internal";
-import { properties, type PropertyEntry, signals, userEventSignals } from "virtual:gtkx-config";
+import { userEventSignals } from "virtual:gtkx-config";
 import { type ElementBehavior, ELEMENTS } from "./registry.js";
 
 type TypeInfo = {
     typeName: string;
-    properties: Record<string, PropertyEntry>;
+    properties: Record<string, ElementPropertyEntry>;
     signals: Record<string, string>;
     userEventSignals: Set<string>;
     behaviors: ElementBehavior[];
@@ -91,7 +92,7 @@ const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
 
 const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
     const config = ELEMENTS[ancestor];
-    Object.assign(info.signals, registeredElementSignals[ancestor] ?? signals[ancestor] ?? {});
+    Object.assign(info.signals, registeredElementSignals[ancestor] ?? {});
     addAll(info.userEventSignals, userEventSignals[ancestor]);
 
     if (config?.props?.composition === "factory" && ancestor !== info.typeName) {
@@ -102,7 +103,7 @@ const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
     addAll(info.declaredConstructOnly, config?.props?.constructOnly);
 };
 
-const resolveProperty = (info: TypeInfo, name: string, entry: PropertyEntry): void => {
+const resolveProperty = (info: TypeInfo, name: string, entry: ElementPropertyEntry): void => {
     if ((entry[FLAGS] & CONSTRUCT_ONLY) !== 0) {
         info.constructOnly.add(name);
     }
@@ -172,7 +173,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
     info.isLazy = chain.some((ancestor) => ELEMENTS[ancestor]?.isLazy === true);
 
     for (const ancestor of chain.toReversed()) {
-        Object.assign(info.properties, registeredElementProperties[ancestor] ?? properties[ancestor] ?? {});
+        Object.assign(info.properties, registeredElementProperties[ancestor] ?? {});
     }
 
     resolveProperties(info);

@@ -46,7 +46,11 @@ const TSCONFIG = `${JSON.stringify({
     files: ["probe.ts"],
 }, null, 4)}\n`;
 const LOCK_WAIT_MS = 10_000;
-const IMPORT_PROBE = 'await Promise.all([import("@gtkx/gi/gobject"), import("@gtkx/jsx/metadata")]);';
+const IMPORT_PROBE = `import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+const jsx = createRequire(import.meta.url).resolve("@gtkx/jsx/gobject");
+await Promise.all([import("@gtkx/gi/gobject"), readFile(jsx)]);
+`;
 const TRANSITION_IMPORT_PROBE = `import { createRequire } from "node:module";
 const resolve = createRequire(import.meta.url).resolve;
 const canResolve = (specifier) => {

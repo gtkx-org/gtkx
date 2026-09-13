@@ -1,104 +1,37 @@
-import { sortStringsBy, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
+import { sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirEnum } from "../../gir/enum.js";
 import type { Library } from "../../gir/library.js";
 import type { PrimitiveCategory } from "../../gir/primitives.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
+import type { ModuleContext } from "../../writer/context.js";
 import { inputParameters } from "../../analysis/param-structure.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
-import {
-    ancestorGlibNames,
-    implementedInterfaces,
-    isIntrinsicElementClass,
-    iterateClassesWithGlibName,
-    signalHandlerName,
-} from "./intrinsic-elements.js";
-
-type IntrinsicElementEntry = {
-    glibName: string;
-    signals: [string, string][];
-    properties: [string, string][];
-    ancestors: string[];
-};
+import { getGlibName, implementedInterfaces, signalHandlerName } from "../jsx/intrinsic-elements.js";
 
 const READABLE = 1;
 const WRITABLE = 2;
 const CONSTRUCT = 4;
 const CONSTRUCT_ONLY = 8;
-
-const PROPERTY_ENTRY_TYPE =
-    "/** The GObject name of a property, what a write may do to it, and the value it resets to. */\n" +
-    "export type PropertyEntry = [name: string, flags: number, defaultValue?: unknown];";
-
 const INTEGER_PATTERN = /^-?\d+$/;
 const FLOAT_PATTERN = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
 
-const generateMetadata = (library: Library): string => {
-    const intrinsicElements = collectIntrinsicElements(library);
-
-    return generateEntryMetadata(intrinsicElements);
-};
-
-const entryAncestorsInSet = (entry: IntrinsicElementEntry, names: Set<string>): string[] =>
-    entry.ancestors.filter((name) => name !== entry.glibName && names.has(name));
-
-const compareEntriesByDepth = (
-    names: Set<string>,
-): ((first: IntrinsicElementEntry, second: IntrinsicElementEntry) => number) =>
-    (first, second) =>
-        entryAncestorsInSet(first, names).length - entryAncestorsInSet(second, names).length ||
-        first.glibName.localeCompare(second.glibName);
-
-const renderEntryExport = (entry: IntrinsicElementEntry, names: Set<string>): string => {
-    const parent = entryAncestorsInSet(entry, names)[0] ?? "undefined";
-    const literal = sourceStringLiteral(entry.glibName);
-    const ownSignals = renderSignalsObject(entry.signals);
-    const ownProperties = renderPropertiesObject(entry.properties);
-    const call = `registerElementMetadata(${literal}, ${parent}, ${ownSignals}, ${ownProperties})`;
-
-    return `export const ${entry.glibName}: string = /* @__PURE__ */ ${call};`;
-};
-
-const generateEntryMetadata = (intrinsicElements: IntrinsicElementEntry[]): string => {
-    const names = new Set(intrinsicElements.map((entry) => entry.glibName));
-    const ordered = intrinsicElements.toSorted(compareEntriesByDepth(names));
-    const lines = ordered.map((entry) => renderEntryExport(entry, names));
-
-    return `${[
-        "import { registerElementMetadata } from \"@gtkx/runtime/internal\";",
-        PROPERTY_ENTRY_TYPE,
-        "export const signals: Record<string, Record<string, string>> = {};",
-        "export const properties: Record<string, Record<string, PropertyEntry>> = {};",
-        lines.join("\n\n"),
-    ].join("\n\n")}\n`;
-};
-
-const collectIntrinsicElements = (library: Library): IntrinsicElementEntry[] => {
-    const entries: IntrinsicElementEntry[] = [];
-    const seen: Set<string> = new Set();
-
-    for (const { glibName, klass, namespace } of iterateClassesWithGlibName(library)) {
-        if (!isIntrinsicElementClass(klass, namespace, library) || seen.has(glibName)) {
-            continue;
-        }
-
-        seen.add(glibName);
-
-        const sources: GirClass[] = [
-            klass,
-            ...implementedInterfaces(klass, namespace, library).map((entry) => entry.klass),
-        ];
-
-        entries.push({
-            glibName,
-            signals: collectSignals(sources),
-            properties: collectProperties(library, sources),
-            ancestors: ancestorGlibNames(klass, namespace, library),
-        });
+const appendElementMetadata = (context: ModuleContext, klass: GirClass): void => {
+    const glibName = getGlibName(klass);
+    if (glibName === undefined) {
+        return;
     }
-
-    return sortStringsBy(entries, (entry) => entry.glibName);
+    const sources = [
+        klass,
+        ...implementedInterfaces(klass, context.namespace, context.library).map((entry) => entry.klass),
+    ];
+    const signals = renderSignalsObject(collectSignals(sources));
+    const properties = renderPropertiesObject(collectProperties(context.library, sources));
+    context.addRuntimeInternalImport("registerElementMetadata");
+    context.collectRegistration(
+        `registerElementMetadata(${sourceStringLiteral(glibName)}, ${signals}, ${properties});`,
+    );
 };
 
 const collectSignalsFromSource = (source: GirClass, seen: Set<string>, signals: [string, string][]): void => {
@@ -356,4 +289,4 @@ const enumDefaultLiteral = (enumType: GirEnum, raw: string): string | undefined 
     return member?.value;
 };
 
-export { generateMetadata };
+export { appendElementMetadata };

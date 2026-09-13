@@ -29,8 +29,8 @@ The main outputs are:
 | Output | Contents |
 | --- | --- |
 | `@gtkx/gi/<namespace>` | JavaScript classes, records, interfaces, constants, functions, bootstrap code, and their `.d.ts` declarations. |
-| `@gtkx/jsx/<namespace>` | React element components and prop declarations, with references to the corresponding GI classes and metadata. |
-| JSX metadata and element records | Property names, flags and defaults; signal mappings; generated element configuration. |
+| `@gtkx/jsx/<namespace>` | React element components and prop declarations, with references to the corresponding GI classes. |
+| Class metadata and element records | Property names, flags and defaults; signal mappings; generated element configuration. |
 | `.gtkx/reference` | The project's generated element reference, when reference generation is enabled. |
 
 The stores normally live under `node_modules/.gtkx/gi` and `node_modules/.gtkx/jsx`, with package links under `node_modules/@gtkx`. They are generated packages; there are no handwritten `packages/gi` or `packages/jsx` source packages to edit.
@@ -77,9 +77,9 @@ The JSX pipeline uses the same parsed library to identify element classes and de
 
 [`packages/react/src/element-config.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/element-config.ts) is deliberately usable without loading native bindings. It describes which props an element adds or omits, which component factory wraps it, and whether its parent creates the underlying object. Runtime attachment and update behavior lives separately in `element-behaviors.ts`.
 
-Generated element components call the renderer's `createElementComponent` factory with the GType name, class reference, and metadata reference. Keeping those references in the component preserves the class registration and metadata needed when a production bundle removes unused code. An inherited wrapper can add application, window, or dialog lifecycle behavior.
+Generated element components call the renderer's `createElementComponent` factory with the GType name and class reference. Each generated class registers its property and signal metadata, so retaining the class also preserves that metadata in production bundles and application subclasses. An inherited wrapper can add application, window, or dialog lifecycle behavior.
 
-The main sources are [`store/jsx/pipeline.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/jsx/pipeline.ts), [`store/jsx/element-components.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/jsx/element-components.ts), and [`store/jsx/metadata.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/jsx/metadata.ts). The [React Renderer](/contributing/react-renderer) page follows these outputs into a mounted tree.
+The main sources are [`store/jsx/pipeline.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/jsx/pipeline.ts), [`store/jsx/element-components.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/jsx/element-components.ts), and [`store/gi/element-metadata.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/gi/element-metadata.ts). The [React Renderer](/contributing/react-renderer) page follows these outputs into a mounted tree.
 
 ## Store placement, freshness, and publication
 
