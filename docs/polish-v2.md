@@ -381,6 +381,14 @@ Storybook's own argument inference and required-argument types replace duplicate
 
 All 75 native integration cases pass, including rendering, argument inference, controls, action errors and preview lifecycle. Source/test types, lint, Knip and independent review pass. Unset and readonly controls were visually inspected. A minimal import of Storybook's framework-neutral Renderer type exposes an undeclared dependency on its browser React package when dependency declarations are checked strictly. U10 records that upstream defect and reproductions; GTKX's existing skipLibCheck configuration is unaffected.
 
+### Renderer metadata lifetime follow-up
+
+An application retaining an unmounted native widget also retained its former signal closures and children through the renderer's object-to-node map. Removing that map entry after native teardown releases the old properties while preserving the retained object's native values. Cleanup runs during mutation so a portal created into the former parent in the same commit receives fresh metadata; deferred cleanup stranded that portal's children.
+
+Four public regressions cover handler collection and disconnection, child collection, portals after unmount and portal handoff in the same commit. All 144 focused lifecycle, portal, signal and slot cases pass, alongside React/e2e types and touched-file lint. A separate production-mode reproduction fails with the old implementation and passes with the fix. Immediate navigation header collection still follows React's development owner and debug-stack lifetime; repeated navigation releases older headers.
+
+The error-path review found a separate leak when render fails after native signals are connected but before commit. That abandoned-render case remains open and is being fixed through callback ownership rather than development-only cleanup.
+
 ## Next work
 
 Continue repeat audits alongside the R2 string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.

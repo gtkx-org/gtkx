@@ -205,6 +205,8 @@ const detachElement = (instance: ElementNode): void => {
         releaseCssClasses(instance.object, instance);
         releaseStyle(instance.object);
     }
+
+    containerNodes.delete(instance.object);
 };
 
 const detachSubtree = (instance: AnyNode): void => {
