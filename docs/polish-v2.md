@@ -777,9 +777,11 @@ The array codec and all ten container modules were read with hash tables, refere
 
 The compile-cache entry and cleanup store now import Node's cache APIs directly. Their availability checks supported Node versions below GTKX's declared minimum. Disabled and unwritable caching retain Node's existing behavior, and cleanup still preserves the active cache directory.
 
-All ten public compile-cache cases, the CLI build, affected typechecks, lint and independent review pass. Six cache/loading modules were read completely, 382 baseline lines, with the public cache and React compiler suites. The React compiler tests still inspect private build output instead of running the application; replacement integration coverage is in progress.
+All ten public compile-cache cases, the CLI build, affected typechecks, lint and independent review pass. Six cache/loading modules were read completely, 382 baseline lines, with the public cache and React compiler suites.
 
 Module hashing now uses Node's resolved module URL for the import scanner and React compiler. This removes extension guessing and the shared fallback hash while retaining published JavaScript and explicit TypeScript source execution. Nine public GIR freshness and live schema-import refresh cases pass, as do the canonical source bootstrap, CLI build, typecheck, lint and independent review.
+
+The React compiler suite now builds through the public CLI and runs the resulting Adwaita application. Six cases check rendered labels and button interactions with default or disabled compilation, ordinary TypeScript and createElement modules, changed source with the same cache, an unwritable cache and invalid input. Private builder calls and compiler-output assertions are removed. All six canonical cases, typechecking, lint and independent review pass. The running window was inspected before and after activation, including screenshots and its live widget tree.
 
 ### Flatpak branch installation
 
