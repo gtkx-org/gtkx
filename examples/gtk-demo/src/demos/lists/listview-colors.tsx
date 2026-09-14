@@ -824,10 +824,6 @@ function useColorsComputed(state: ColorsState, models: ColorsModels) {
     };
 
     const handleLimitChange = (id: string | null) => {
-        if (id === null) {
-            return;
-        }
-
         const limit = COLOR_LIMITS.find((l) => l.id === id);
 
         if (limit) {

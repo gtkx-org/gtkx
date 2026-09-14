@@ -72,7 +72,19 @@ Use the generated ParamSpec reference for its metadata and flags. Class-level in
 
 ### Properties and the hooks
 
-Pass an instance or ref to `useProperty(ref, "tag")` to subscribe to a registered property. Inherited properties remain available. Keep application effects in React components and hooks.
+Pass the instance to `useProperty(object, "tag")` to subscribe to a registered property. Inherited properties remain available. For an instance created by JSX, use a state setter as its callback ref:
+
+```tsx
+import { useProperty } from "@gtkx/react";
+import { useState } from "react";
+
+const [scale, setScale] = useState<TaggedScale | null>(null);
+const tag = useProperty(scale, "tag");
+
+<TaggedScaleElement ref={setScale} tag="volume" />;
+```
+
+The hook returns `undefined` while its target is absent. React state keeps the subscription aligned when the element mounts, is replaced, or unmounts. `useSignal` and `useBindSetting` take instances the same way; mutable ref objects are not subscription targets.
 
 ## Declaring signals
 

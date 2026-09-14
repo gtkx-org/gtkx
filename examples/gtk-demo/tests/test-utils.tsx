@@ -6,8 +6,8 @@ import { AdwApplication } from "@gtkx/jsx/adw";
 import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { render, type RenderResult, screen, userEvent, waitFor, type WidgetType } from "@gtkx/testing";
-import { type ComponentType, createRef, type ReactNode, type RefObject, useCallback, useState } from "react";
-import { expect, vi } from "vitest";
+import { type ComponentType, useState } from "react";
+import { expect } from "vitest";
 import type { Demo, DemoProps, DemoProviderProps } from "../src/demos/types.js";
 import { DemoProvider, useDemo } from "../src/context/demo-context.js";
 
@@ -16,16 +16,12 @@ type RenderDemoOptions = {
     areAnimationsEnabled?: boolean;
 };
 
-type WrapperArgs = {
-    windowRef: RefObject<Gtk.Window | null>;
+type DemoShellProps = {
+    Component: ComponentType<DemoProps>;
     onClose: () => void;
     Provider: ComponentType<DemoProviderProps>;
     Titlebar: ComponentType<DemoProps> | undefined;
     demo: Demo;
-};
-
-type DemoShellProps = WrapperArgs & {
-    children: ReactNode;
 };
 
 type DemoShellSizing = {
@@ -124,10 +120,6 @@ const collectWidgets = <T extends Gtk.Widget>(root: Gtk.Widget, as: WidgetType<T
     return found;
 };
 
-function assignWindowRef(windowRef: RefObject<Gtk.Window | null>, widget: Gtk.Widget | null): void {
-    (windowRef as { current: Gtk.Window | null }).current = (widget as Gtk.Window | null) ?? null;
-}
-
 function demoShellTitle(demo: Demo, windowTitle: string | null): string | undefined {
     return windowTitle ?? demo.windowTitle;
 }
@@ -141,29 +133,18 @@ function demoShellSizing(demo: Demo): DemoShellSizing {
     };
 }
 
-const DemoShell = ({ windowRef, onClose, Provider, Titlebar, demo, children }: DemoShellProps) => {
-    const [windowReady, setWindowReady] = useState(false);
+const DemoShell = ({ Component, onClose, Provider, Titlebar, demo }: DemoShellProps) => {
+    const [window, setWindow] = useState<Gtk.Window | null>(null);
     const [applicationId] = useState(nextApplicationId);
     const { windowTitle, defaultWidget } = useDemo();
-    const titlebar = Titlebar ? <Titlebar window={windowRef} onClose={onClose} /> : undefined;
+    const titlebar = Titlebar ? <Titlebar window={window} onClose={onClose} /> : undefined;
     const sizing = demoShellSizing(demo);
-
-    const handleWindowRef = useCallback(
-        (widget: Gtk.Widget | null): void => {
-            assignWindowRef(windowRef, widget);
-
-            if (widget) {
-                setWindowReady(true);
-            }
-        },
-        [windowRef],
-    );
 
     return (
         <AdwApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-            <Provider window={windowRef} onClose={onClose}>
+            <Provider window={window} onClose={onClose}>
                 <GtkApplicationWindow
-                    ref={handleWindowRef}
+                    ref={setWindow}
                     title={demoShellTitle(demo, windowTitle)}
                     defaultWidth={sizing.defaultWidth}
                     defaultHeight={sizing.defaultHeight}
@@ -173,44 +154,35 @@ const DemoShell = ({ windowRef, onClose, Provider, Titlebar, demo, children }: D
                     defaultWidget={defaultWidget}
                     titlebar={titlebar}
                 >
-                    {windowReady ? children : null}
+                    {window !== null && <Component window={window} onClose={onClose} />}
                 </GtkApplicationWindow>
             </Provider>
         </AdwApplication>
     );
 };
 
-const buildWrapper = (args: WrapperArgs): ComponentType<{ children: ReactNode }> => ({ children }) => (
-    <DemoProvider demos={[args.demo]}>
-        <DemoShell
-            windowRef={args.windowRef}
-            onClose={args.onClose}
-            Provider={args.Provider}
-            Titlebar={args.Titlebar}
-            demo={args.demo}
-        >
-            {children}
-        </DemoShell>
-    </DemoProvider>
-);
-
 const renderDemo = async (demo: Demo, options: RenderDemoOptions = {}): Promise<RenderResult> => {
-    const windowRef = createRef<Gtk.Window | null>();
-    const onClose = options.onClose ?? vi.fn();
-    expect(demo.component, "renderDemo: demo has no component").toBeTypeOf("function");
-    const ResolvedComponent = demo.component as ComponentType<DemoProps>;
+    const onClose = options.onClose ?? (() => undefined);
+    const Component = demo.component;
+    if (Component === undefined) {
+        throw new Error("Demo has no component");
+    }
 
-    return await render(<ResolvedComponent window={windowRef} onClose={onClose} />, {
-        areAnimationsEnabled: options.areAnimationsEnabled === true,
-        container: rootElement,
-        wrapper: buildWrapper({
-            windowRef,
-            onClose,
-            Provider: demo.provider ?? PassthroughProvider,
-            Titlebar: demo.titlebar,
-            demo,
-        }),
-    });
+    return await render(
+        <DemoProvider demos={[demo]}>
+            <DemoShell
+                Component={Component}
+                onClose={onClose}
+                Provider={demo.provider ?? PassthroughProvider}
+                Titlebar={demo.titlebar}
+                demo={demo}
+            />
+        </DemoProvider>,
+        {
+            areAnimationsEnabled: options.areAnimationsEnabled === true,
+            container: rootElement,
+        },
+    );
 };
 
 const findInactiveSearchToggle = async (): Promise<Gtk.ToggleButton> => {

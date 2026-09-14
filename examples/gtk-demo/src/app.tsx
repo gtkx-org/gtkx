@@ -29,7 +29,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { quit, useParentWindow } from "@gtkx/react";
 import * as path from "node:path/posix";
-import { type ComponentType, type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentType, useEffect, useState } from "react";
 import type { Demo as DemoDefinition, DemoProviderProps } from "./demos/types.js";
 import logoResourcePath from "../data/icons/org.gtk.Demo4.svg?resource";
 import { EmptyState } from "./components/empty-state.js";
@@ -165,8 +165,7 @@ function demoWindowSizing(demo: DemoDefinition): DemoWindowSizing {
 const DemoWindow = ({ onClose }: DemoWindowProps) => {
     const { currentDemo, windowTitle, defaultWidget } = useDemo();
     const hostWindow = useParentWindow();
-    const windowRef = useRef<Gtk.Window>(null);
-    const hostWindowRef = useMemo<RefObject<Gtk.Window | null>>(() => ({ current: hostWindow }), [hostWindow]);
+    const [window, setWindow] = useState<Gtk.Window | null>(null);
 
     if (!hostWindow || !currentDemo?.component) {
         return null;
@@ -178,19 +177,19 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
 
     if (currentDemo.isDialogOnly) {
         return (
-            <DemoStateProvider window={hostWindowRef} onClose={onClose}>
-                <DemoComponent onClose={onClose} window={hostWindowRef} />
+            <DemoStateProvider window={hostWindow} onClose={onClose}>
+                <DemoComponent onClose={onClose} window={hostWindow} />
             </DemoStateProvider>
         );
     }
 
-    const titlebar = DemoTitlebar ? <DemoTitlebar onClose={onClose} window={windowRef} /> : undefined;
+    const titlebar = DemoTitlebar ? <DemoTitlebar onClose={onClose} window={window} /> : undefined;
     const sizing = demoWindowSizing(currentDemo);
 
     return (
-        <DemoStateProvider window={windowRef} onClose={onClose}>
+        <DemoStateProvider window={window} onClose={onClose}>
             <GtkWindow
-                ref={windowRef}
+                ref={setWindow}
                 name="demo-window"
                 title={demoWindowTitle(currentDemo, windowTitle)}
                 defaultWidth={sizing.defaultWidth}
@@ -206,7 +205,7 @@ const DemoWindow = ({ onClose }: DemoWindowProps) => {
                     return Gdk.EVENT_STOP;
                 }}
             >
-                <DemoComponent onClose={onClose} window={windowRef} />
+                <DemoComponent onClose={onClose} window={window} />
             </GtkWindow>
         </DemoStateProvider>
     );

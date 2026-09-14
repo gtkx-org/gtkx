@@ -104,13 +104,13 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
     const bbbPaintable = Gdk.Texture.newFromResource(bbbPngPath);
 
     useSignal(window, "notify::fullscreened", () => {
-        setIsFullscreen(window.current?.isFullscreen() ?? false);
+        setIsFullscreen(window?.isFullscreen() ?? false);
     }, {
         isImmediate: true,
     });
 
     const handleOpen = () => {
-        void openVideoDialog(window.current, setVideoFile);
+        void openVideoDialog(window, setVideoFile);
     };
 
     const handleLogo = () => {
@@ -121,10 +121,10 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
         setVideoFile(Gio.File.newForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg"));
     };
 
-    const handleFullscreen = () => window.current?.fullscreen();
+    const handleFullscreen = () => window?.fullscreen();
 
     const handleToggleFullscreen = () => {
-        toggleFullscreen(window.current);
+        toggleFullscreen(window);
     };
 
     const value = {

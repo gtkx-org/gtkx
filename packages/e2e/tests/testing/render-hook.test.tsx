@@ -23,7 +23,7 @@ const useCounter = (initial: number) => {
 
 describe("renderHook", () => {
     it("accepts explicit undefined props while preserving omitted props", async () => {
-        const { result, rerender } = await renderHook((value: string | undefined) => value, {
+        const { result, rerender } = await renderHook<string | undefined, string | undefined>((value) => value, {
             initialProps: "initial",
         });
 

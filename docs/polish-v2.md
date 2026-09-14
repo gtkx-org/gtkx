@@ -471,6 +471,14 @@ All nine files in `packages/codegen/src/writer` and `compile.ts` were read, toge
 
 Three generated-consumer cases cover ordinary named props, both shared namespace forms and incompatible values. They invoke codegen and TypeScript with library checking enabled. All three pass, as do seven existing documentation cases, codegen compilation, CLI test types and lint. Independent review found no further confirmed defect in this scope.
 
+### Hook targets and declarative settings
+
+All 12 hook files were read. Property, signal and settings-binding hooks now receive native instances; state-backed callback refs make JSX creation and replacement observable to React. The mutable-ref union and its private resolver are removed. Settings hooks receive a JSX-created settings instance instead of constructing one internally. Application-owned settings can be shared through React context, including relocatable schema paths.
+
+Subscription setup now invalidates the first cached snapshot, covering native changes between render and subscription and GSettings' requirement to read a key after connecting. An immediate signal handler that throws disconnects its newly installed handler before propagating the error. Eight public regressions fail against the previous implementation and pass with these changes. All 920 React cases, 35 CLI build cases and 19 isolated tutorial cases pass. The full e2e typecheck passes at the default heap size; an explicit generic return type in the settings test helper removes an unnecessary type expansion.
+
+Independent review found a missed video-demo ref consumer. The demo now passes native window instances, and its tick hook follows instance identity directly. This removes repeated registration synchronization and test ref casts. Nullable cursor results and selection notifications follow their declared contracts; selection notifications without an ID preserve the application's explicit selection. All 146 affected demo cases, source/test types and lint pass. The video was inspected through the real application, including fullscreen, exit, close and reopen. Tutorial preferences persisted across remount and were visually inspected. The v2 guides and tutorial use the new hook contracts; stable-version documentation remains unchanged.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; that link is removed, and the production build is being repeated.

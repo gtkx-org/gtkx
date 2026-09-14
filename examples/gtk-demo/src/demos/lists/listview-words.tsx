@@ -14,7 +14,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { createContext, type RefObject, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import { useDemo } from "../../context/demo-context.js";
 import sourceCode from "./listview-words.tsx?raw";
@@ -130,14 +130,14 @@ async function loadWordsFromFile(
 }
 
 async function openWordsFile(
-    window: RefObject<Gtk.Window | null>,
+    window: Gtk.Window | null,
     loadFile: (filePath: string) => Promise<void>,
 ) {
     const dialog = new Gtk.FileDialog();
     dialog.setTitle("Open file");
 
     try {
-        const file = await dialog.open(window.current, null);
+        const file = await dialog.open(window, null);
         const path = file.getPath();
 
         if (path) {

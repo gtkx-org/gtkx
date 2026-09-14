@@ -103,16 +103,18 @@ Wire the hook into `src/components/window.tsx`:
 
 ```tsx
 import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useReminders } from "../hooks/use-reminders.js";
 import { buildReminder } from "../notifications.js";
 import type { Task } from "../types.js";
+import { useAppSettings } from "./settings.js";
 
 const application = useApplication();
 const tasks = useStore((state) => state.tasks);
 const markNotified = useStore((state) => state.markNotified);
-const [reminderMinutes] = useSetting(schema, "reminder-minutes");
+const settings = useAppSettings();
+const [reminderMinutes] = useSetting(settings, schema, "reminder-minutes");
 
 const sendReminder = useCallback(
     (task: Task, due: string) => {
@@ -134,6 +136,7 @@ Notification interactions target application actions because they may run before
 ```tsx
 import * as GLib from "@gtkx/gi/glib";
 import { GSimpleAction } from "@gtkx/jsx/gio";
+import { SettingsProvider } from "./components/settings.js";
 import { ALL_TASKS, openTask } from "./navigation.js";
 import { useStore } from "./store/index.js";
 
@@ -162,7 +165,9 @@ import { useStore } from "./store/index.js";
         </>
     }
 >
-    <Window />
+    <SettingsProvider>
+        <Window />
+    </SettingsProvider>
 </AdwApplication>
 ```
 

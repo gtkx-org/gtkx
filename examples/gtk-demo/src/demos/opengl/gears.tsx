@@ -12,7 +12,7 @@ import {
     GtkOverlayLayoutChild,
     GtkScale,
 } from "@gtkx/jsx/gtk";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import { useTickCallback } from "../../use-tick-callback.js";
 import sourceCode from "./gears.tsx?raw";
@@ -561,11 +561,11 @@ function useFpsPolling(fpsRef: React.RefObject<number>, setFps: (fps: number) =>
 }
 
 function useGearsAnimation(fpsRef: React.RefObject<number>, setFps: (fps: number) => void) {
-    const glAreaRef = useRef<Gtk.GLArea | null>(null);
+    const [glArea, setGLArea] = useState<Gtk.GLArea | null>(null);
     const firstFrameTimeRef = useRef(0);
     const angleRef = useRef(0);
 
-    useTickCallback(glAreaRef, (_widget, frameClock) => {
+    useTickCallback(glArea, (_widget, frameClock) => {
         const frameTime = Number(frameClock.getFrameTime());
 
         if (firstFrameTimeRef.current === 0) {
@@ -575,16 +575,16 @@ function useGearsAnimation(fpsRef: React.RefObject<number>, setFps: (fps: number
         }
 
         angleRef.current = (((frameTime - firstFrameTimeRef.current) / 1_000_000) * 70) % 360;
-        glAreaRef.current?.queueRender();
+        glArea?.queueRender();
         sampleFps(frameClock, frameTime, fpsRef);
 
         return GLib.SOURCE_CONTINUE;
     });
 
-    const handleGLAreaRef = (glArea: Gtk.GLArea | null) => {
-        glAreaRef.current = glArea;
+    const handleGLAreaRef = useCallback((area: Gtk.GLArea | null) => {
+        setGLArea(area);
         firstFrameTimeRef.current = 0;
-    };
+    }, []);
 
     useFpsPolling(fpsRef, setFps);
 

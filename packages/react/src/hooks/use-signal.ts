@@ -2,7 +2,6 @@ import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalMap, SignalName } from "@gtkx/runtime/internal";
 import { offSignal, onSignal, type SignalHandler } from "@gtkx/runtime";
 import { useLayoutEffect } from "react";
-import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 import { useLatestRef } from "./use-latest-ref.js";
 
 /** Options for {@link useSignal}. */
@@ -23,7 +22,7 @@ type UseSignalOptions = {
  * @param options `isAfter` runs the handler after the default handler; `isImmediate` also invokes it on connect.
  */
 function useSignal<T extends Pick<GObject.Object, "__signals__" | "__type__">, S extends SignalName<T>>(
-    object: RefProp<T>,
+    object: T | null | undefined,
     signal: S,
     handler: SignalMap<T>[S],
     { isAfter = false, isImmediate = false }: UseSignalOptions = {},
@@ -31,21 +30,24 @@ function useSignal<T extends Pick<GObject.Object, "__signals__" | "__type__">, S
     const handlerRef = useLatestRef<SignalHandler>(handler as SignalHandler);
 
     useLayoutEffect(() => {
-        const resolved = resolveRefProp(object);
-
-        if (!resolved) {
+        if (object == null) {
             return;
         }
 
         const emit: SignalHandler = (...args) => handlerRef.current(...args);
-        onSignal(resolved, signal, emit, isAfter);
+        onSignal(object, signal, emit, isAfter);
 
-        if (isImmediate) {
-            emit();
+        try {
+            if (isImmediate) {
+                emit();
+            }
+        } catch (error) {
+            offSignal(object, signal, emit);
+            throw error;
         }
 
         return () => {
-            offSignal(resolved, signal, emit);
+            offSignal(object, signal, emit);
         };
     }, [handlerRef, object, signal, isAfter, isImmediate]);
 }

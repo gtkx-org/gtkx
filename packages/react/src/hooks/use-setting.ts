@@ -1,5 +1,4 @@
-import * as Gio from "@gtkx/gi/gio";
-import { useMemo } from "react";
+import type * as Gio from "@gtkx/gi/gio";
 import {
     resolveSettingAccessor,
     type SettingsSchema,
@@ -8,11 +7,6 @@ import {
 } from "../utils/settings.js";
 import { useObjectValue } from "./use-object-value.js";
 
-type UseSettingsProps<K extends SettingsSchemaKeys> = Pick<SettingsSchema<K>, "id" | "path">;
-
-const useSettings = <K extends SettingsSchemaKeys>({ id, path }: UseSettingsProps<K>): Gio.Settings =>
-    useMemo(() => (path ? new Gio.Settings({ schema: id, path }) : Gio.Settings.new(id)), [id, path]);
-
 /**
  * Reads and writes a single key of a GSettings schema, re-rendering when the stored value changes.
  *
@@ -20,14 +14,14 @@ const useSettings = <K extends SettingsSchemaKeys>({ id, path }: UseSettingsProp
  * @throws When the key is not declared in the schema.
  */
 function useSetting<K extends SettingsSchemaKeys, P extends keyof K>(
+    settings: Gio.Settings,
     schema: SettingsSchema<K>,
     key: P & string,
 ): [SettingValue<K, P>, (value: SettingValue<K, P>) => void] {
-    const settings = useSettings({ id: schema.id, path: schema.path });
     const accessor = resolveSettingAccessor(settings, schema, key);
     const value = useObjectValue(settings, `changed::${key}`, () => accessor.get());
 
     return [value, accessor.set];
 }
 
-export { useSettings, useSetting };
+export { useSetting };
