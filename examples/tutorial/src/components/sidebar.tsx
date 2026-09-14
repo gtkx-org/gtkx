@@ -80,6 +80,7 @@ export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lis
                     <AdwActionRow
                         key={selectionKey(entry.selection)}
                         title={entry.title}
+                        useMarkup={false}
                         prefix={
                             entry.color ? (
                                 <GtkBox

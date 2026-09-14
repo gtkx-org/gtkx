@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gtkx-tutorial 1.0.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-14 19:07+0200\n"
+"POT-Creation-Date: 2026-09-14 19:47+0200\n"
 "PO-Revision-Date: 2026-08-26 23:34+0200\n"
 "Last-Translator: GTKX contributors\n"
 "Language-Team: French\n"
@@ -205,11 +205,11 @@ msgstr "À faire"
 msgid "Done"
 msgstr "Terminées"
 
-#: src/components/task-list.tsx:35
+#: src/components/task-list.tsx:36
 msgid "Search tasks…"
 msgstr "Rechercher des tâches…"
 
-#: src/components/task-list.tsx:45
+#: src/components/task-list.tsx:46
 msgid "Add a task…"
 msgstr "Ajouter une tâche…"
 

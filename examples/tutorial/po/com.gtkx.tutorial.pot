@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-14 19:07+0200\n"
+"POT-Creation-Date: 2026-09-14 19:47+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -206,11 +206,11 @@ msgstr ""
 msgid "Done"
 msgstr ""
 
-#: src/components/task-list.tsx:35
+#: src/components/task-list.tsx:36
 msgid "Search tasks…"
 msgstr ""
 
-#: src/components/task-list.tsx:45
+#: src/components/task-list.tsx:46
 msgid "Add a task…"
 msgstr ""
 
