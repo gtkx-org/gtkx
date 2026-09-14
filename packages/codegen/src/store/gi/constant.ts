@@ -1,8 +1,8 @@
 import { sanitizeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { GirConstant } from "../../gir/namespace.js";
 import type { PrimitiveCategory } from "../../gir/primitives.js";
-import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { primitiveCategoryThroughAliases } from "../../analysis/type-shape.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
 import { getDoc } from "./doc-spec.js";
 
@@ -24,42 +24,27 @@ const generateConstant = (context: ModuleContext, constant: GirConstant): void =
 };
 
 const constantLiteral = (context: ModuleContext, constant: GirConstant): string => {
-    if (hasPrimitiveCategory(context, constant.type, "string")) {
+    const category = primitiveCategoryThroughAliases(context.library, constant.type);
+
+    if (category === "string") {
         return sourceStringLiteral(constant.value);
     }
 
-    if (hasPrimitiveCategory(context, constant.type, "boolean")) {
+    if (category === "boolean") {
         return TRUE_VALUES.has(constant.value.trim()) ? "true" : "false";
     }
 
-    return numericConstantLiteral(context, constant);
+    return numericConstantLiteral(constant, category);
 };
 
-const numericConstantLiteral = (context: ModuleContext, constant: GirConstant): string => {
+const numericConstantLiteral = (constant: GirConstant, category: PrimitiveCategory | undefined): string => {
     const value = constant.value.trim();
 
     if (!isNumericLiteral(value)) {
         return sourceStringLiteral(value);
     }
 
-    return isBigIntConstant(context, constant.type) ? `${value}n` : value;
-};
-
-const isBigIntConstant = (context: ModuleContext, type: TypeId | undefined): boolean =>
-    [...BIGINT_CATEGORIES].some((category) => hasPrimitiveCategory(context, type, category));
-
-const hasPrimitiveCategory = (
-    context: ModuleContext,
-    type: TypeId | undefined,
-    category: PrimitiveCategory,
-): boolean => {
-    if (type === undefined) {
-        return false;
-    }
-
-    const resolved = context.library.typeFor(type);
-
-    return resolved?.kind === "primitive" && resolved.category === category;
+    return category !== undefined && BIGINT_CATEGORIES.has(category) ? `${value}n` : value;
 };
 
 const isNumericLiteral = (value: string): boolean => /^-?(?:\d+|\d*\.\d+)$/.test(value);

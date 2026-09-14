@@ -745,6 +745,16 @@ Builds require no deployment configuration. Local deployment and `--skip-build` 
 
 All seven new public cases fail before the correction and pass afterward, covering selected revisions, mixed targets, ordinary builds, empty dependency sets, failed rebuilds, skipped builds and a missing notice artifact. All 50 canonical notice/AppImage cases, build, source/test types, affected lint and independent review pass. The probes execute actual builds and generated install commands; they do not claim a complete Flatpak sandbox build. Publication and tutorial checks follow the next combined batch.
 
+### Constant aliases and remaining generator leaves
+
+A real GIR scanner fixture declared a 64-bit constant through an alias; GTKX imported it as the rounded number `9007199254740992` instead of `9007199254740993n`. Constant generation now resolves primitive alias chains once, including the existing GType alias rule. Numeric-looking and padded string aliases remain strings, and boolean aliases retain boolean values.
+
+The two public generated-consumer cases pass on the canonical build, checking 14 exports, exact literal types and rejection of a number consumer for a bigint constant. Constant imports and TypeScript checks disable native addons. Source/test types, affected lint and review pass. Comparing 110 generated JavaScript/declaration files changes only the fixture constants and the real GObject constant whose alias requires bigint. Direct occurrence-based type-shape queries retain their existing pointer/void semantics.
+
+Six GI leaves were read completely: constant, enum, generated-libraries, gtype-binding, value-marshalable and companion, 398 baseline lines. A further six files—element-metadata, constructor-props, doc-spec, callable-doc, item-comparators and signal—were read completely, 1,390 lines, with relevant runtime metadata and alias-declaration callers. The broader constructor/factory and metadata work remains open.
+
+Three distinct upstream scanner defects were reproduced without GTKX: floating-point precision loss, eight-bit unsigned wrapping and negative floating-point sign loss. U15–U17 in `~/UPSTREAM.md` contain permanent standalone reproductions and current upstream source references. No GTKX workaround was added for information already lost from GIR input.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.
