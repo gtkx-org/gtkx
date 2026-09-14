@@ -17,9 +17,7 @@ const ROOT = join(import.meta.dirname, "..");
 const VERSION_MANIFEST_PATH = join(ROOT, "packages/create-gtkx/package.json");
 const VERSION_PLANS_PATH = join(ROOT, ".nx/version-plans");
 const TUTORIAL_MANIFEST_PATH = join(ROOT, "examples/tutorial/package.json");
-const GETTING_STARTED_PATH = join(ROOT, "website/v2/guide/getting-started.md");
 const VERSIONS_PATH = join(ROOT, "website/versions.json");
-const PIN_PREFIX = "  - '@gtkx/";
 const GIT_OPTIONS = { stageChanges: false, gitCommit: false, gitTag: false, gitPush: false };
 
 const readVersion = (): string =>
@@ -88,18 +86,6 @@ const syncTutorialManifest = (version: string): void => {
     writeFileSync(TUTORIAL_MANIFEST_PATH, `${JSON.stringify(manifest, null, 4)}\n`);
 };
 
-const withPinnedVersion = (line: string, version: string): string => {
-    const at = line.indexOf("@", PIN_PREFIX.length);
-
-    return at !== -1 && line.startsWith(PIN_PREFIX) ? `${line.slice(0, at + 1)}${version}'` : line;
-};
-
-const syncGettingStarted = (version: string): void => {
-    const lines = readFileSync(GETTING_STARTED_PATH, "utf8").split("\n");
-
-    writeFileSync(GETTING_STARTED_PATH, lines.map((line) => withPinnedVersion(line, version)).join("\n"));
-};
-
 const syncDocumentationVersions = (version: string): void => {
     const manifest = JSON.parse(readFileSync(VERSIONS_PATH, "utf8")) as { packageVersion: string };
     manifest.packageVersion = version;
@@ -142,7 +128,6 @@ const main = async (): Promise<void> => {
 
     if (!isDryRun) {
         syncTutorialManifest(workspaceVersion);
-        syncGettingStarted(workspaceVersion);
         syncDocumentationVersions(workspaceVersion);
     }
 

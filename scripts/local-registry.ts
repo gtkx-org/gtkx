@@ -35,7 +35,7 @@ Press Ctrl-C to stop.
 }
 
 async function main(): Promise<void> {
-    const handle = await startRegistry({ registryDir: REGISTRY_DIR, resetsStorage: false });
+    const handle = await startRegistry({ registryDir: REGISTRY_DIR });
     announce(handle.npmrcPath);
     await waitForShutdown();
     await handle.stop();
