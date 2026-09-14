@@ -1,5 +1,5 @@
 ---
-description: "Reorder tasks by pointer or keyboard where the complete manual list is visible."
+description: "Change the persisted manual order with drag and drop or keyboard shortcuts."
 ---
 
 # Dragging Tasks Into Order
@@ -26,11 +26,11 @@ reorder: (draggedId, targetId) =>
     }),
 ```
 
-Callers validate the IDs at their input boundary, so the action can use them directly. The store's existing persistence writes the new positions to disk.
+The drop handler validates incoming IDs; keyboard handlers use IDs from the displayed tasks. Reordering moves the backing array and rewrites its positions together, preserving the append rule added in the previous chapter. Existing persistence saves the order.
 
-## Limit reordering to the complete manual list
+## Enable reordering in manual views
 
-A displayed order can be edited only when the screen contains the complete ordered set. Title and date sorts derive their order, while search, Open/Done filtering, and Trash show subsets that do not have an unambiguous insertion point.
+Reordering changes the global manual order, including when you move tasks within a list, Today, or Important. Disable it for derived sorts, search results, Open/Done filters, and Trash so those views keep their displayed order.
 
 Add the shared decision to `src/store/selectors.ts`:
 
@@ -47,7 +47,7 @@ export const isReorderable = (
     !(selection.kind === "smart" && selection.view === "trash");
 ```
 
-Compute it once in `src/components/task-list.tsx`, then give each row its neighbors:
+Add `isReorderable` to the selector import in `src/components/task-list.tsx`. Compute it once, then give each row its visible neighbors:
 
 ```tsx
 const canReorder = isReorderable(selection, searchQuery, filter, sortOrder);
@@ -72,6 +72,7 @@ GTKX attaches generated controller elements through a widget's `controllers` pro
 Update the imports and props in `src/components/task-row.tsx`:
 
 ```tsx
+import type * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import { markupEscapeText } from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
@@ -84,8 +85,11 @@ import {
     GtkDropTarget,
     GtkEventControllerKey,
     GtkToggleButton,
+    GtkWidgetPaintable,
 } from "@gtkx/jsx/gtk";
 import { useNavigation } from "@gtkx/navigation";
+import { createPortal, rootElement } from "@gtkx/react";
+import { useRef, useState } from "react";
 import { formatDue } from "../format.js";
 import { useStore } from "../store/index.js";
 import type { Task } from "../types.js";
@@ -99,6 +103,8 @@ type TaskRowProps = {
 };
 
 export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) => {
+    const [row, setRow] = useState<Adw.ActionRow | null>(null);
+    const paintableRef = useRef<Gtk.WidgetPaintable | null>(null);
     const requestDeleteTask = useRequestDeleteTask();
     const navigation = useNavigation();
     const setDone = useStore((state) => state.setDone);
@@ -117,77 +123,84 @@ export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) 
     };
 
     return (
-        <AdwActionRow
-            title={title}
-            useMarkup
-            subtitle={formatDue(task.due) ?? undefined}
-            activatable
-            accessibleKeyShortcuts={canReorder ? "Alt+Up Alt+Down" : null}
-            onActivated={() => navigation.navigate("Task", { id: task.id })}
-            prefix={
-                <GtkCheckButton
-                    valign={Gtk.Align.CENTER}
-                    active={task.done}
-                    accessibleLabel="Mark complete"
-                    onToggled={(self) => setDone(task.id, self.active)}
-                />
-            }
-            suffix={
-                <>
-                    <GtkToggleButton
+        <>
+            {canReorder &&
+                createPortal(
+                    <GtkWidgetPaintable ref={paintableRef} widget={row as Gtk.Widget | null} />,
+                    rootElement,
+                )}
+            <AdwActionRow
+                ref={setRow}
+                title={title}
+                useMarkup
+                subtitle={formatDue(task.due) ?? undefined}
+                activatable
+                accessibleKeyShortcuts={canReorder ? "Alt+Up Alt+Down" : null}
+                onActivated={() => navigation.navigate("Task", { id: task.id })}
+                prefix={
+                    <GtkCheckButton
                         valign={Gtk.Align.CENTER}
-                        iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
-                        active={task.important}
-                        accessibleLabel="Toggle important"
-                        cssClasses={["flat"]}
-                        onToggled={(self) => setImportant(task.id, self.active)}
+                        active={task.done}
+                        accessibleLabel="Mark complete"
+                        onToggled={(self) => setDone(task.id, self.active)}
                     />
-                    <GtkButton
-                        valign={Gtk.Align.CENTER}
-                        iconName="user-trash-symbolic"
-                        accessibleLabel="Delete task"
-                        cssClasses={["flat"]}
-                        onClicked={() => requestDeleteTask(task)}
-                    />
-                </>
-            }
-            controllers={
-                canReorder ? (
+                }
+                suffix={
                     <>
-                        <GtkDragSource
-                            actions={Gdk.DragAction.MOVE}
-                            onPrepare={(x, y, self) => {
-                                const row = self.getWidget() as Gtk.Widget;
-                                self.setIcon(Gtk.WidgetPaintable.new(row), Math.round(x), Math.round(y));
-                                return Gdk.ContentProvider.newForValue(task.id);
-                            }}
+                        <GtkToggleButton
+                            valign={Gtk.Align.CENTER}
+                            iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
+                            active={task.important}
+                            accessibleLabel="Toggle important"
+                            cssClasses={["flat"]}
+                            onToggled={(self) => setImportant(task.id, self.active)}
                         />
-                        <GtkDropTarget
-                            actions={Gdk.DragAction.MOVE}
-                            types={[GObject.TYPE_STRING]}
-                            onDrop={(value) => {
-                                const draggedId = value.getString();
-                                if (
-                                    draggedId === null ||
-                                    !useStore.getState().tasks.some((candidate) => candidate.id === draggedId)
-                                )
-                                    return false;
-                                reorder(draggedId, task.id);
-                                return true;
-                            }}
-                        />
-                        <GtkEventControllerKey
-                            onKeyPressed={(keyval, _keycode, state) => handleReorderKey(keyval, state)}
+                        <GtkButton
+                            valign={Gtk.Align.CENTER}
+                            iconName="user-trash-symbolic"
+                            accessibleLabel="Delete task"
+                            cssClasses={["flat"]}
+                            onClicked={() => requestDeleteTask(task)}
                         />
                     </>
-                ) : undefined
-            }
-        />
+                }
+                controllers={
+                    canReorder ? (
+                        <>
+                            <GtkDragSource
+                                actions={Gdk.DragAction.MOVE}
+                                onPrepare={(x, y, self) => {
+                                    self.setIcon(paintableRef.current, Math.round(x), Math.round(y));
+                                    return Gdk.ContentProvider.newForValue(task.id);
+                                }}
+                            />
+                            <GtkDropTarget
+                                actions={Gdk.DragAction.MOVE}
+                                types={[GObject.TYPE_STRING]}
+                                onDrop={(value) => {
+                                    const draggedId = value.getString();
+                                    if (
+                                        draggedId === null ||
+                                        !useStore.getState().tasks.some((candidate) => candidate.id === draggedId)
+                                    )
+                                        return false;
+                                    reorder(draggedId, task.id);
+                                    return true;
+                                }}
+                            />
+                            <GtkEventControllerKey
+                                onKeyPressed={(keyval, _keycode, state) => handleReorderKey(keyval, state)}
+                            />
+                        </>
+                    ) : undefined
+                }
+            />
+        </>
     );
 };
 ```
 
-`onPrepare` carries the task ID and uses the row as the drag icon. A `TYPE_STRING` payload arrives through GTK's external input boundary as a [GObject.Value](https://docs.gtk.org/gobject/struct.Value.html), so the drop handler verifies that its string names a task before sending both IDs to the store. The key controller sends the current row and its previous or next neighbor to the same action.
+`GtkWidgetPaintable` observes the row through a callback ref and a root portal. It stays mounted while reordering is enabled, so repeated drags reuse the same paintable. `onPrepare` sets its pointer offset and returns the task ID in a content provider; that synchronous native return is created inside the signal handler. A `TYPE_STRING` payload arrives through GTK's external input boundary as a [GObject.Value](https://docs.gtk.org/gobject/struct.Value.html), so the drop handler verifies that its string names a task before sending both IDs to the store. The key controller sends the current row and its previous or next neighbor to the same action.
 
 When reordering is unavailable, the row has none of these controllers and exposes no keyboard-shortcut metadata.
 
@@ -195,7 +208,7 @@ When reordering is unavailable, the row has none of these controllers and expose
 
 Choose Manual sorting and the All filter, clear the search box, and focus a task. Press <kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Alt</kbd>+<kbd>Down</kbd>; the row moves one position. Dragging it onto another row changes the same persisted order.
 
-Switch to Title, search for a task, select Open or Done, or open Trash. Pointer dragging and the reorder keys are disabled in each partial or derived view. Return to Manual with All selected and an empty search to reorder again.
+Switch to Title, search for a task, select Open or Done, or open Trash. Pointer dragging and the reorder keys are disabled in each of those views. Return to Manual with All selected and an empty search to reorder again.
 
 ## Next
 

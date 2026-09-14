@@ -55,7 +55,7 @@ GTKX imports, compiles, and generates types for the GSettings schemas used by th
 </schemalist>
 ```
 
-The schema uses the application ID established in [Your First Native Window](/v2/tutorial/your-first-window). Its enum, choices, ranges, and defaults are the native settings contract; the [GSettings schema reference](https://docs.gtk.org/gio/class.Settings.html) covers the XML format and storage model.
+Use the same application ID as the scaffold. The [GSettings reference](https://docs.gtk.org/gio/class.Settings.html) covers schemas and their native storage; GTKX supplies the typed imports and React bindings.
 
 Import the file wherever GTKX needs a schema:
 
@@ -114,7 +114,7 @@ In `src/app.tsx`, wrap `Window` inside the existing `AdwApplication`:
 
 ## Bind the window size
 
-In `src/components/window.tsx`, replace `windowRef` with a window instance held in state and bind its default size:
+In `src/components/window.tsx`, extend the React and GTKX imports, then hold the window instance in state and bind its default size:
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
@@ -125,14 +125,13 @@ import { useAppSettings } from "./settings.js";
 
 const settings = useAppSettings();
 const [colorScheme] = useSetting(settings, schema, "color-scheme");
-const [reminderMinutes] = useSetting(settings, schema, "reminder-minutes");
 const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
 
 useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
 useBindSetting({ settings, schema, key: "window-height", object: window, property: "defaultHeight" });
 ```
 
-Set `ref={setWindow}` on `AdwApplicationWindow`. The callback ref makes the mounted instance available to the bindings on the next render. They wait while `window` is `null`, then restore the saved size and write changes back without a separate save path.
+Set `ref={setWindow}` on `AdwApplicationWindow`. Both bindings wait for the mounted instance, then restore its saved size and write changes back. Keep the existing toast overlay ref.
 
 ## Keep application choices together
 
@@ -172,7 +171,7 @@ export const sortOrderFromSetting = (value: number): SortOrder => sortOrderIds[v
 export const sortOrderToSetting = (order: SortOrder): number => sortOrderIds.indexOf(order);
 ```
 
-All TypeScript consumers now derive their choice names from these tables. Only this module translates the schema's integer sort value to the readable ID used by the app.
+The sort setting returns the schema's integer enum value. This module maps it to the IDs used by the preferences row and task selector.
 
 Create `src/hooks/use-sort-order.ts`:
 
@@ -226,7 +225,7 @@ export const visibleTasks = (tasks: Task[], selection: Selection, options: Visib
         .sort(byOrder(options.sortOrder));
 ```
 
-The existing filter returns a fresh array before `sort` changes its order, so the store array remains untouched. In `src/components/task-list.tsx`, read the setting and pass it to the selector:
+In `src/components/task-list.tsx`, read the setting and pass it to the selector:
 
 ```diff
 +import { useSortOrder } from "../hooks/use-sort-order.js";
@@ -313,7 +312,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-`ComboRow` is the GTKX collection component for an Adwaita preferences row. The tables from `settings.ts` feed both rows, and the adjustment gives the native spin row its current reminder value and range.
+`ComboRow` maps the stored choice ID to an Adwaita preferences row. `GtkAdjustment` supplies the spin row's value and range through JSX.
 
 Mount the new dialog from `src/components/dialogs.tsx`:
 

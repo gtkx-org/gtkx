@@ -37,7 +37,7 @@ export const createTasksSlice: StateCreator<Store, Mutators, [], TasksSlice> = (
                     important: false,
                     deleted: false,
                     due: null,
-                    position: state.tasks.length,
+                    position: (state.tasks.at(-1)?.position ?? -1) + 1,
                     createdAt: new Date().toISOString(),
                     completedAt: null,
                     lastNotifiedDue: null,
