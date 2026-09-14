@@ -122,7 +122,7 @@ const payloadWith = (settings: DeploySettings, icons: StagedFile[]): DeployPaylo
 
     return {
         node: null,
-        notices: [],
+        notices: { appimage: [], deb: [], flatpak: [], rpm: [] },
         overlays: { appimage: [], deb: [], flatpak: [], rpm: [] },
         settings,
         stage: [desktop, ...icons],

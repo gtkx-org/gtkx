@@ -699,7 +699,7 @@ Reference generation now reuses an installed GI declaration store only when the 
 
 All 15 configured-props CLI cases pass within the 537-case CLI checkpoint. The added public case generates a store, changes GIR search precedence, restores the earlier inputs and verifies declaration errors without replacing existing pages. Independent MCP probes cover absent, fresh and stale stores, configuration changes, isolation and recovery. Source/test types, affected lint, Knip and independent review pass.
 
-The completed coverage job at `f6793578` has 4,821 passes and 17 failures, all in the MCP reference file. Instrumented cold requests take roughly 90 seconds, exposing SDK request and polling deadlines as well as test deadlines. The reference tests now use 120-second requests and polls, with 600 seconds for multi-reload cases; other consumers retain their existing request defaults. A focused V8 coverage run and the combined checkpoint are in progress. Sonar analysis did not run after the failed coverage step, so its quality gate remains unconfirmed.
+The completed coverage job at `f6793578` has 4,821 passes and 17 failures, all in the MCP reference file. Instrumented cold requests take roughly 90 seconds, exposing SDK request and polling deadlines as well as test deadlines. The reference tests now use 120-second requests and polls, with 600 seconds for multi-reload cases; other consumers retain their existing request defaults. The focused V8 run now passes all 29 reference cases in 807 seconds; subprocess coverage records include 136 codegen and MCP source modules. This establishes instrumented execution, not a coverage percentage. Main CI tests pass at `91d37dab`; its coverage analysis is still running, so the Sonar quality gate remains unconfirmed.
 
 ### Package script paths and platform notices
 
@@ -708,6 +708,14 @@ All five nFPM modules were read, 302 baseline lines, with their target wrappers 
 Real Debian and RPM packages retain the configured hook script for relative paths containing spaces and for absolute paths. Missing scripts remain rejected. The six public integration cases pass across focused runs; the Debian inspection uses existing `ar` and `tar` tools after the initial test exposed unavailable `dpkg-deb` on Fedora. Source/test types and affected lint pass. No tool was added to the environment.
 
 Platform notices now describe generated FFI bindings and dynamically supplied libraries. The incorrect runtime-introspection explanation and legal interpretation are removed; source links and license identifiers remain. Independent review passes; combined validation follows this batch.
+
+### Target-specific Flatpak notices
+
+Source Flatpak previews no longer probe an unused local Node executable. Notice collection now follows the same runtime-selection decision as deployment and supplies separate sections for each target. Source manifests identify their configured SDK extension; local and binary targets retain the actual bundled Node version and license. Mixed deployments preserve both identities.
+
+All 12 new public CLI cases pass, including a missing local executable, custom SDK selection, binary Flatpaks and mixed targets. Existing notice provenance cases pass. The combined build, lint, typechecking and all 46 test/build tasks pass, followed by fresh published TypeScript and JavaScript consumers and the installed tutorial's application, localization and package checks. Independent review passes.
+
+A separate public source-revision case confirms that locally rendered dependency notices can still describe a different revision from the source being built. The next correction takes those sections from the selected revision's own build output. This batch closes runtime identity only.
 
 ## Next work
 

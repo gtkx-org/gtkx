@@ -244,13 +244,13 @@ const stageOverlay = (
 
 const stageOverlays = (
     settings: DeploySettings,
-    notices: NoticeSection[],
+    notices: Record<DeployTargetName, NoticeSection[]>,
     metadata: StagedMetadata,
 ): Record<DeployTargetName, StagedFile[]> => ({
-    appimage: stageOverlay(settings, "appimage", notices, metadata),
-    deb: stageOverlay(settings, "deb", notices, metadata),
-    flatpak: stageOverlay(settings, "flatpak", notices, metadata),
-    rpm: stageOverlay(settings, "rpm", notices, metadata),
+    appimage: stageOverlay(settings, "appimage", notices.appimage, metadata),
+    deb: stageOverlay(settings, "deb", notices.deb, metadata),
+    flatpak: stageOverlay(settings, "flatpak", notices.flatpak, metadata),
+    rpm: stageOverlay(settings, "rpm", notices.rpm, metadata),
 });
 
 export {
