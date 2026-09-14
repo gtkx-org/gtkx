@@ -8,6 +8,7 @@ import { FONTS_DIR } from "../../internal/font-path.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
+import { BINDING_FILENAME } from "../native-addon.js";
 import { optional } from "../nfpm/optional.js";
 import { renderNotices } from "../notices/render.js";
 import { executableModeFor } from "../payload/copy-tree.js";
@@ -65,7 +66,7 @@ const runtimeInstallCommands = (settings: DeploySettings, nodeExtensionPath: str
     return [
         installCommand(`${nodeExtensionPath}/bin/node`, `${lib}/node`, "m755"),
         installCommand(`dist/${BUNDLE_FILENAME}`, `${lib}/${BUNDLE_FILENAME}`, "m644"),
-        installCommand("dist/gtkx.node", `${lib}/gtkx.node`, "m755"),
+        installCommand(`dist/${BINDING_FILENAME}`, `${lib}/${BINDING_FILENAME}`, "m755"),
         "test ! -f dist/gtkx.gresource || " + installCommand("dist/gtkx.gresource", `${lib}/gtkx.gresource`, "m644"),
         "test ! -f dist/gschemas.compiled || " +
         installCommand("dist/gschemas.compiled", `${lib}/gschemas.compiled`, "m644"),

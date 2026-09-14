@@ -47,7 +47,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `navigation` | 66 | All files read; stack option lifetimes, closing headers and lazy route restoration fixed; repeat review found no further local defect |
 | `storybook` | 31 | All files read; unset selections, readonly controls, shared types and documentation fixed; upstream strict declaration checking remains open |
 | `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
-| `cli` | 262 | Command, codegen, settings, development, Node runtime, vendored tools, payload, freedesktop, notices and nFPM folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
+| `cli` | 262 | Command, codegen, settings, development, Node runtime, vendored tools, payload, freedesktop, notices, nFPM and deployment target folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
 | `create-gtkx` | 31 | All files read; option parsing, installation recovery, duplication and guides fixed; installed TypeScript and JavaScript consumers pass |
 | `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
 | `testing` | 60 | All files read; deadlines, text queries, clipboard behavior, Unicode and matcher fixes pass; repeat review found no further confirmed defect |
@@ -754,6 +754,16 @@ The two public generated-consumer cases pass on the canonical build, checking 14
 Six GI leaves were read completely: constant, enum, generated-libraries, gtype-binding, value-marshalable and companion, 398 baseline lines. A further six files—element-metadata, constructor-props, doc-spec, callable-doc, item-comparators and signal—were read completely, 1,390 lines, with relevant runtime metadata and alias-declaration callers. The broader constructor/factory and metadata work remains open.
 
 Three distinct upstream scanner defects were reproduced without GTKX: floating-point precision loss, eight-bit unsigned wrapping and negative floating-point sign loss. U15–U17 in `~/UPSTREAM.md` contain permanent standalone reproductions and current upstream source references. No GTKX workaround was added for information already lost from GIR input.
+
+### Target paths and staging ownership
+
+All ten deployment target files were read with their configuration and tool callers, 1,162 baseline lines. Public CLI probes reproduced a project-relative custom AppImage runtime failing, an absolute Flatpak lockfile failing, and a lockfile-copy error leaving temporary staging behind.
+
+Configured runtime and lockfile paths now resolve from the project root while preserving absolute paths. The existing staging-directory helper owns both copying and generator execution, including failures. Source Flatpak installation also reuses the canonical native addon filename.
+
+The nine public integration cases cover relative and absolute paths with spaces, default lockfiles, real AppImage extraction, missing inputs, malformed JSON and temporary-directory cleanup. Three fail before the correction and pass afterward; the isolated target/source-notice batch passes all 28 cases. The canonical build, full lint, typecheck and all 46 test/build tasks pass. Independent review is clean. Release, tutorial and website checks are running for this batch.
+
+Custom Flatpak branch installation and revision-free source manifests remain observations requiring separate consumer-contract checks. They are not counted as confirmed defects or silently folded into this correction.
 
 ## Next work
 

@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, join, resolve } from "node:path";
 import type {
     DeployArtifact,
     DeployManifest,
@@ -123,7 +123,7 @@ const toolArgsFor = (settings: DeploySettings, runtime: string, appDir: string, 
     return [
         "--no-appstream",
         "--runtime-file",
-        appimage.runtimeFile ?? runtime,
+        appimage.runtimeFile === undefined ? runtime : resolve(settings.paths.root, appimage.runtimeFile),
         ...(appimage.compression === undefined ? [] : ["--comp", appimage.compression]),
         ...(appimage.updateInformation === undefined ? [] : ["-u", appimage.updateInformation]),
         ...(signing === undefined ? [] : ["-s", "--sign-key", signing.gpgKeyId]),

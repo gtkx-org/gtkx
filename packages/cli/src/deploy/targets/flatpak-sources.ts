@@ -1,8 +1,8 @@
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import type { DeploySettings } from "../types.js";
 import { runCliTool } from "../../internal/run-cli-tool.js";
+import { withStagingDir } from "../../internal/staging-dir.js";
 import { gitRemoteUrl, runGit } from "../git.js";
 import { optional } from "../nfpm/optional.js";
 import { FLATPAK_NODE_GENERATOR, GENERATOR_PNPM_OPTION } from "../tools.js";
@@ -149,19 +149,19 @@ const resolveGitSource = (settings: DeploySettings): GitSource => ({
 const generatedSourcesPath = (settings: DeploySettings): string =>
     join(settings.paths.targets, "flatpak", GENERATED_SOURCES);
 
-const isolateLockfile = (root: string, lockfile: string): string => {
-    const source = join(root, lockfile);
+const stageLockfile = (root: string, lockfile: string, dir: string): string => {
+    const source = resolve(root, lockfile);
 
     if (!existsSync(source)) {
         throw new Error(`Cannot vendor the offline sources: no ${lockfile} under ${root}`);
     }
 
     const manifest = join(dirname(source), "package.json");
-    const dir = mkdtempSync(join(tmpdir(), "gtkx-lockfile-"));
+    const staged = join(dir, basename(lockfile));
     copyFileSync(existsSync(manifest) ? manifest : join(root, "package.json"), join(dir, "package.json"));
-    copyFileSync(source, join(dir, basename(lockfile)));
+    copyFileSync(source, staged);
 
-    return dir;
+    return staged;
 };
 
 const storeVersionArgs = (pin: PnpmPin | null): string[] =>
@@ -171,18 +171,16 @@ const generateNodeSources = (settings: DeploySettings, manager: PackageManager, 
     const lockfile = settings.deploy.flatpak?.lockfile ?? LOCKFILE_BY_MANAGER[manager];
     const output = generatedSourcesPath(settings);
     mkdirSync(dirname(output), { recursive: true });
-    const isolated = isolateLockfile(settings.paths.root, lockfile);
 
-    try {
+    withStagingDir("lockfile", (dir) => {
+        const staged = stageLockfile(settings.paths.root, lockfile, dir);
         runCliTool({
             tool: FLATPAK_NODE_GENERATOR.command,
-            args: [manager, join(isolated, basename(lockfile)), ...storeVersionArgs(pin), "-o", output],
+            args: [manager, staged, ...storeVersionArgs(pin), "-o", output],
             target: "the offline dependency sources",
             shouldStream: true,
         });
-    } finally {
-        rmSync(isolated, { recursive: true, force: true, maxRetries: 5 });
-    }
+    });
 };
 
 export {
