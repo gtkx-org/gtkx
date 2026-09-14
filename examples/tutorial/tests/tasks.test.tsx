@@ -54,7 +54,11 @@ describe("Tasks", () => {
         await userEvent.type(entry, "Book flights");
         await userEvent.keyboard(entry, "{Enter}");
 
-        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Book flights" })).toBeDefined();
+        const [gift, added] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
+            name: /Order birthday gift|Book flights/,
+        });
+        expect(gift).toHaveAccessibleName("Order birthday gift");
+        expect(added).toHaveAccessibleName("Book flights");
     });
 
     it.each(["missing", "<b>missing</b>", "missing & < café"])("shows the literal search query %s", async (query) => {
@@ -170,6 +174,19 @@ describe("Tasks", () => {
 
         expect(first).toHaveAccessibleName("Review pull requests");
         expect(second).toHaveAccessibleName("Water the plants");
+
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Work" }));
+        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Water the plants" })).toBeNull();
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "All Tasks" }));
+        const returned = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Water the plants" });
+        const destination = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Review pull requests" });
+        await userEvent.dragAndDrop(returned, destination, "t2");
+
+        const [water, review] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
+            name: /Water the plants|Review pull requests/,
+        });
+        expect(water).toHaveAccessibleName("Water the plants");
+        expect(review).toHaveAccessibleName("Review pull requests");
     });
 
     it("reorders the focused task with the keyboard", async () => {
@@ -349,5 +366,84 @@ describe("task form - edge cases", () => {
         await fireEvent(otherTask, "activated");
         const otherTitle = await findTitleEntry();
         expect(otherTitle.getText()).toBe("Review pull requests");
+    });
+});
+
+describe("literal deletion toasts", () => {
+    it.each(["Ordinary task", "<b>Read</b>", "Read & < café"])("deletes and restores the literal task %s", async (title) => {
+        await render(<App />, { container: rootElement });
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        await userEvent.type(entry, title);
+        await userEvent.keyboard(entry, "{Enter}");
+        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
+        await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
+        expect(await screen.findByText(`“${title}” moved to Trash`)).toHaveTextContent(`“${title}” moved to Trash`);
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Undo" }));
+        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title })).toHaveAccessibleName(title);
+    });
+});
+
+describe("manual order after permanent deletion", () => {
+    it.each([false, true])("appends after deleting leading tasks (reordered: %s)", async (reordered) => {
+        await render(<App />, { container: rootElement });
+        if (reordered) {
+            const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Order birthday gift" });
+            const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Review pull requests" });
+            await userEvent.dragAndDrop(source, target, "t6");
+        }
+        for (const title of ["Welcome to Tasks", "Water the plants"]) {
+            const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
+            await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
+        }
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Trash/ }));
+        for (const title of ["Welcome to Tasks", "Water the plants"]) {
+            const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
+            await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
+            await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" }));
+        }
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^All Tasks/ }));
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        await userEvent.type(entry, "Newly appended task");
+        await userEvent.keyboard(entry, "{Enter}");
+        const lastSurvivor = reordered ? "Buy oat milk" : "Order birthday gift";
+        const [survivor, added] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
+            name: (name) => name === lastSurvivor || name === "Newly appended task",
+        });
+        expect(survivor).toHaveAccessibleName(lastSurvivor);
+        expect(added).toHaveAccessibleName("Newly appended task");
+    });
+
+    it("starts a new manual list after every task was permanently deleted", async () => {
+        await render(<App />, { container: rootElement });
+        const titles = [
+            "Welcome to Tasks",
+            "Water the plants",
+            "Prepare the weekly report",
+            "Review pull requests",
+            "Buy oat milk",
+            "Order birthday gift",
+        ];
+        for (const title of titles) {
+            const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
+            await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
+        }
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Trash/ }));
+        for (const title of titles) {
+            const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
+            await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
+            await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" }));
+        }
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^All Tasks/ }));
+        expect(await screen.findByText("No Tasks Yet")).toHaveTextContent("No Tasks Yet");
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        for (const title of ["First new task", "Second new task"]) {
+            await userEvent.type(entry, title);
+            await userEvent.keyboard(entry, "{Enter}");
+        }
+        const [first, second] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
+            name: /First new task|Second new task/,
+        });
+        expect(first).toHaveAccessibleName("First new task");
+        expect(second).toHaveAccessibleName("Second new task");
     });
 });

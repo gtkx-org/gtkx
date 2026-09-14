@@ -21,6 +21,7 @@ export const useRequestDeleteTask = (): ((task: Task) => void) => {
         closeTaskIfOpen(task.id);
         moveToTrash(task.id);
         show({
+            useMarkup: false,
             title: t("“{{title}}” moved to Trash", { title: task.title }),
             buttonLabel: t("Undo"),
             onButtonClicked: () => restore(task.id),
