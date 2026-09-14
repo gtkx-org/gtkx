@@ -1,11 +1,9 @@
-import { XMLParser } from "fast-xml-parser";
+import { createXmlParser, parseXmlFile } from "@gtkx/codegen/internal";
+import { isRecord } from "@gtkx/utils";
 
 type ParsedKey = {
     name: string;
-    variantType: string | null;
-    enumId: string | null;
-    flagsId: string | null;
-    choices: string[];
+    kind: string;
     summary: string | null;
 };
 
@@ -18,18 +16,11 @@ type ParsedSchema = {
 type ParsedSchemaFile = {
     fileName: string;
     schemas: ParsedSchema[];
-    enums: Map<string, string[]>;
-    flags: Map<string, string[]>;
 };
 
 type RawNode = Record<string, unknown>;
-
-type RawSchema = {
-    id: string;
-    path: string | null;
-    extendsId: string | null;
-    keys: ParsedKey[];
-};
+type RawSchema = ParsedSchema & { extendsId: string | null };
+type RawSchemaFile = { fileName: string; schemas: RawSchema[] };
 
 type MergeContext = {
     byId: Map<string, RawSchema>;
@@ -37,18 +28,8 @@ type MergeContext = {
     visited: Set<string>;
 };
 
-const MULTI_TAGS: Set<string> = new Set(["schema", "key", "enum", "flags", "value", "choice"]);
-
-const PARSER = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: "@_",
-    parseAttributeValue: false,
-    parseTagValue: false,
-    trimValues: true,
-    isArray: (name) => MULTI_TAGS.has(name),
-});
-
-const isRawNode = (value: unknown): value is RawNode => typeof value === "object" && value !== null;
+const MULTI_TAGS: Set<string> = new Set(["schema", "key"]);
+const PARSER = createXmlParser({ trimValues: true, isArray: (name) => MULTI_TAGS.has(name) });
 
 const attr = (node: RawNode, name: string): string | null => {
     const value = node[`@_${name}`];
@@ -62,69 +43,53 @@ const text = (node: RawNode, name: string): string | null => {
     return typeof value === "string" && value.length > 0 ? value : null;
 };
 
+const elementNode = (value: unknown): RawNode => {
+    if (!isRecord(value)) {
+        throw new Error("A GSettings schema or key element has no attributes");
+    }
+
+    return value;
+};
+
 const children = (node: RawNode, name: string): RawNode[] => {
     const value = node[name];
 
-    if (!Array.isArray(value)) {
-        return [];
-    }
-
-    return value.filter(isRawNode);
+    return Array.isArray(value) ? value.map((child) => elementNode(child)) : [];
 };
 
-const parseNicks = (definition: RawNode): string[] =>
-    children(definition, "value")
-        .map((value) => attr(value, "nick"))
-        .filter((nick): nick is string => nick !== null);
-
-const parseDefinitions = (schemalist: RawNode, tag: string): Map<string, string[]> => {
-    const definitions: Map<string, string[]> = new Map();
-
-    for (const definition of children(schemalist, tag)) {
-        const id = attr(definition, "id");
-
-        if (id !== null) {
-            definitions.set(id, parseNicks(definition));
-        }
+const keyKind = (key: RawNode, fileName: string): string => {
+    if (attr(key, "enum") !== null) {
+        return "enum";
     }
 
-    return definitions;
-};
-
-const parseChoices = (key: RawNode): string[] => {
-    const choices = key.choices;
-
-    if (!isRawNode(choices)) {
-        return [];
+    if (attr(key, "flags") !== null) {
+        return "flags";
     }
 
-    return children(choices, "choice")
-        .map((choice) => attr(choice, "value"))
-        .filter((value): value is string => value !== null);
+    const type = attr(key, "type");
+
+    if (type === null) {
+        throw new Error(`A <key> in ${fileName} has no type, enum or flags attribute`);
+    }
+
+    return type;
 };
 
 const parseKey = (key: RawNode, fileName: string): ParsedKey => {
     const name = attr(key, "name");
 
     if (name === null) {
-        throw new SchemaParseError(`A <key> in ${fileName} has no name attribute`);
+        throw new Error(`A <key> in ${fileName} has no name attribute`);
     }
 
-    return {
-        name,
-        variantType: attr(key, "type"),
-        enumId: attr(key, "enum"),
-        flagsId: attr(key, "flags"),
-        choices: parseChoices(key),
-        summary: text(key, "summary"),
-    };
+    return { name, kind: keyKind(key, fileName), summary: text(key, "summary") };
 };
 
 const parseRawSchema = (schema: RawNode, fileName: string): RawSchema => {
     const id = attr(schema, "id");
 
     if (id === null) {
-        throw new SchemaParseError(`A <schema> in ${fileName} has no id attribute`);
+        throw new Error(`A <schema> in ${fileName} has no id attribute`);
     }
 
     return {
@@ -137,13 +102,18 @@ const parseRawSchema = (schema: RawNode, fileName: string): RawSchema => {
 
 const collectInheritedKeys = (context: MergeContext, current: RawSchema): void => {
     if (context.visited.has(current.id)) {
-        return;
+        throw new Error(`GSettings schema inheritance contains a cycle at ${current.id}`);
     }
 
     context.visited.add(current.id);
-    const parent = current.extendsId === null ? undefined : context.byId.get(current.extendsId);
 
-    if (parent !== undefined) {
+    if (current.extendsId !== null) {
+        const parent = context.byId.get(current.extendsId);
+
+        if (parent === undefined) {
+            throw new Error(`GSettings schema ${current.id} extends missing schema ${current.extendsId}`);
+        }
+
         collectInheritedKeys(context, parent);
     }
 
@@ -159,35 +129,32 @@ const mergeInheritedKeys = (schema: RawSchema, byId: Map<string, RawSchema>): Pa
     return context.merged.values().toArray();
 };
 
-const parseSchemaXml = (xml: string, fileName: string): ParsedSchemaFile => {
-    let document: unknown;
+const parseSchemaFile = (path: string, fileName: string): RawSchemaFile => {
+    const document = parseXmlFile({ parser: PARSER, label: "GSettings schema", path });
 
-    try {
-        document = PARSER.parse(xml);
-    } catch (error) {
-        throw new SchemaParseError(`Failed to parse ${fileName} as XML: ${String(error)}`, { cause: error });
+    if (!isRecord(document) || !("schemalist" in document)) {
+        throw new Error(`${fileName} has no <schemalist> root element`);
     }
 
-    if (!isRawNode(document) || !("schemalist" in document)) {
-        throw new SchemaParseError(`${fileName} has no <schemalist> root element`);
-    }
-
-    const schemalist = isRawNode(document.schemalist) ? document.schemalist : {};
-    const rawSchemas = children(schemalist, "schema").map((schema) => parseRawSchema(schema, fileName));
-    const byId = new Map(rawSchemas.map((schema) => [schema.id, schema]));
+    const schemalist = isRecord(document.schemalist) ? document.schemalist : {};
 
     return {
         fileName,
-        schemas: rawSchemas.map((schema) => ({
+        schemas: children(schemalist, "schema").map((schema) => parseRawSchema(schema, fileName)),
+    };
+};
+
+const createSchemaResolver = (files: RawSchemaFile[]): (file: RawSchemaFile) => ParsedSchemaFile => {
+    const byId = new Map(files.flatMap((file) => file.schemas.map((schema) => [schema.id, schema] as const)));
+
+    return (file) => ({
+        fileName: file.fileName,
+        schemas: file.schemas.map((schema) => ({
             id: schema.id,
             path: schema.path,
             keys: mergeInheritedKeys(schema, byId),
         })),
-        enums: parseDefinitions(schemalist, "enum"),
-        flags: parseDefinitions(schemalist, "flags"),
-    };
+    });
 };
 
-class SchemaParseError extends Error {}
-
-export { parseSchemaXml, SchemaParseError, type ParsedKey, type ParsedSchema, type ParsedSchemaFile };
+export { parseSchemaFile, createSchemaResolver, type ParsedKey, type ParsedSchema, type ParsedSchemaFile };

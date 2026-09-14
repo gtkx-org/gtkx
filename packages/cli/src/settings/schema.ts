@@ -1,27 +1,24 @@
-import { isPathInside, sortStrings, toPosixPath, warn } from "@gtkx/utils";
-import { createHash } from "node:crypto";
+import { isPathInside, sortStrings, toPosixPath } from "@gtkx/utils";
 import {
     copyFileSync,
     existsSync,
     mkdirSync,
-    mkdtempSync,
     readFileSync,
     realpathSync,
     writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import type { SourceImport } from "../internal/source-imports.js";
 import { I18N_TYPES_FILENAME, i18nTypesPath } from "../i18n/types.js";
 import { discoverProjectImports } from "../internal/import-scan.js";
-import { removeTempDir } from "../internal/staging-dir.js";
+import { createRetainedStagingDir } from "../internal/staging-dir.js";
 import {
     isBareRelativeAsset,
     parseIconSpecifier,
     parseResourceSpecifier,
 } from "../vite-plugins/asset-specifier.js";
 import { compileSchemas } from "./compile.js";
-import { type ParsedSchemaFile, parseSchemaXml, SchemaParseError } from "./parser.js";
+import { createSchemaResolver, type ParsedSchemaFile, parseSchemaFile } from "./parser.js";
 import { renderEnvModule } from "./render.js";
 
 type SchemaEnvResult = {
@@ -30,7 +27,6 @@ type SchemaEnvResult = {
 };
 
 const SCHEMA_SUFFIX = ".gschema.xml";
-const STAGED_NAME_LENGTH = 16;
 const RESOURCE_QUERY = "?resource=";
 const ICON_QUERY = "?icon=";
 
@@ -46,11 +42,8 @@ const prependSchemaDir = (dir: string, existing: string | undefined): string => 
     return `${dir}:${existing}`;
 };
 
-const stagedSchemaName = (filePath: string): string =>
-    `${createHash("sha1").update(filePath).digest("hex").slice(0, STAGED_NAME_LENGTH)}${SCHEMA_SUFFIX}`;
-
 const stageSchema = (dir: string, filePath: string): void => {
-    copyFileSync(filePath, join(dir, stagedSchemaName(filePath)));
+    copyFileSync(filePath, join(dir, basename(filePath)));
 };
 
 const projectRelativeSchemaPath = (root: string, filePath: string): string | null => {
@@ -81,6 +74,9 @@ const findImportedSchemaFiles = (imports: SourceImport[]): string[] => {
 
     return sortStrings(new Set(files));
 };
+
+const isImportedSchemaFile = (root: string, filePath: string): boolean =>
+    filePath.endsWith(SCHEMA_SUFFIX) && findImportedSchemaFiles(discoverProjectImports(root)).includes(filePath);
 
 const blockedAssetSpecifier = (source: string): string | null => {
     if (!isBareRelativeAsset(source)) {
@@ -186,49 +182,39 @@ const stageAndCompileProjectSchemas = (root: string): string | null => {
         return null;
     }
 
-    const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-"));
+    const staging = createRetainedStagingDir("schemas");
+    const dir = staging.retain();
 
-    for (const filePath of schemaFiles) {
-        stageSchema(dir, filePath);
+    try {
+        for (const filePath of schemaFiles) {
+            stageSchema(dir, filePath);
+        }
+
+        compileSchemas(dir);
+
+        return dir;
+    } catch (error) {
+        staging.release();
+        throw error;
     }
-
-    compileSchemas(dir);
-
-    process.once("exit", () => {
-        removeTempDir(dir);
-    });
-
-    return dir;
 };
 
 const schemaEnvPath = (rootDir: string): string => join(rootDir, "node_modules", ".gtkx", "env.d.ts");
 
-const parseSchemaFileOrWarn = (filePath: string, specifier: string): ParsedSchemaFile | null => {
-    try {
-        return parseSchemaXml(readFileSync(filePath, "utf8"), specifier);
-    } catch (error) {
-        if (!(error instanceof SchemaParseError)) {
-            throw error;
-        }
+const parseProjectSchemas = (schemaFiles: string[], specifierFor: (filePath: string) => string): ParsedSchemaFile[] => {
+    const files = schemaFiles.map((path) => parseSchemaFile(path, specifierFor(path)));
+    const resolveSchema = createSchemaResolver(files);
 
-        warn(`Skipping ${filePath} in schema type generation: ${error.message}`);
-
-        return null;
-    }
+    return files.map((file) => resolveSchema(file));
 };
 
-const parseProjectSchemas = (schemaFiles: string[], specifierFor: (filePath: string) => string): ParsedSchemaFile[] => {
-    const parsed: ParsedSchemaFile[] = [];
+const readProjectSchema = (root: string, filePath: string): ParsedSchemaFile => {
+    const file = parseSchemaFile(filePath, basename(filePath));
+    const paths = findImportedSchemaFiles(discoverProjectImports(root));
+    const dependencies = paths.filter((path) => path !== filePath).map((path) => parseSchemaFile(path, basename(path)));
+    const resolveSchema = createSchemaResolver([file, ...dependencies]);
 
-    for (const filePath of schemaFiles) {
-        const result = parseSchemaFileOrWarn(filePath, specifierFor(filePath));
-
-        if (result !== null) {
-            parsed.push(result);
-        }
-    }
-
-    return parsed;
+    return resolveSchema(file);
 };
 
 const readFileOrNull = (path: string): string | null => {
@@ -272,4 +258,6 @@ export {
     projectRelativeSchemaPath,
     stageAndCompileProjectSchemas,
     emitSchemaEnv,
+    readProjectSchema,
+    isImportedSchemaFile,
 };

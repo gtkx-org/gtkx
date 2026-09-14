@@ -1,5 +1,5 @@
 import { camelCase, sanitizeIdentifier, upperFirst } from "@gtkx/utils";
-import type { ParsedKey, ParsedSchema, ParsedSchemaFile } from "./parser.js";
+import type { ParsedSchema, ParsedSchemaFile } from "./parser.js";
 
 type NamedSchema = {
     schema: ParsedSchema;
@@ -21,8 +21,6 @@ const GTKX_ENV_MODULE_HEADER = `/**
  * \`gtkx codegen\`, \`gtkx dev\`, and \`gtkx build\`; do not edit.
  */`;
 
-const ENUM_KIND = "enum";
-const FLAGS_KIND = "flags";
 const ID_SEPARATOR = /[._]/;
 const NAME_SEPARATOR = "_";
 
@@ -55,21 +53,9 @@ const getNamedSchemas = (file: ParsedSchemaFile): NamedSchema[] => {
     });
 };
 
-const runtimeKindForKey = (key: ParsedKey): string => {
-    if (key.enumId !== null) {
-        return ENUM_KIND;
-    }
-
-    if (key.flagsId !== null) {
-        return FLAGS_KIND;
-    }
-
-    return key.variantType ?? "";
-};
-
 const getRuntimeKeys = (schema: ParsedSchema): string => {
     const entries = schema.keys.map(
-        (key) => `${toJsStringLiteral(key.name)}: ${toJsStringLiteral(runtimeKindForKey(key))}`,
+        (key) => `${toJsStringLiteral(key.name)}: ${toJsStringLiteral(key.kind)}`,
     );
 
     return `{ ${entries.join(", ")} }`;
@@ -133,7 +119,7 @@ const renderKeysType = (name: string, schema: ParsedSchema): string[] => {
             lines.push(`        /** ${sanitizeSummary(key.summary)} */`);
         }
 
-        lines.push(`        ${toJsStringLiteral(key.name)}: ${toJsStringLiteral(runtimeKindForKey(key))};`);
+        lines.push(`        ${toJsStringLiteral(key.name)}: ${toJsStringLiteral(key.kind)};`);
     }
 
     lines.push("    };");
