@@ -10,7 +10,6 @@ import {
     url,
 } from "./schema-text.ts";
 
-const APPIMAGE_COMPRESSIONS = ["gzip", "xz", "zstd"] as const;
 const DEB_COMPRESSIONS = ["gzip", "none", "xz", "zstd"] as const;
 const DEB_SIGN_METHODS = ["debsign", "dpkg-sig"] as const;
 const DEB_SIGN_TYPES = ["archive", "maint", "origin"] as const;
@@ -196,7 +195,7 @@ const rpmSchema = z.strictObject({
 
 const appimageSchema = z.strictObject({
     fileName: text("must be an output file name").optional(),
-    compression: z.enum(APPIMAGE_COMPRESSIONS, { error: "must be one of gzip, xz, zstd" }).optional(),
+    compression: z.literal("zstd", { error: "must be zstd" }).optional(),
     updateInformation: text("must be an AppImage update information string").optional(),
     runtimeFile: text("must be a path to an AppImage runtime file").optional(),
 });
