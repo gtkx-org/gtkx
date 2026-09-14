@@ -106,11 +106,9 @@ The independent checks compose into one visible list. Trash is the only view tha
 
 `.filter` returns a fresh array, so sorting it in place is safe. Position is the manual order a task carries. Sorting by due date or title arrives with the preferences in [Preferences and the System Theme](/v2/tutorial/preferences-and-theming).
 
-`isToday` is about dates rather than tasks, so it goes in `src/format.ts` beside `escapeMarkup`:
+Create `src/format.ts` for the shared date helpers:
 
 ```ts
-// ...
-
 const startOfDay = (date: Date): number => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
 export const isToday = (iso: string | null): boolean => {

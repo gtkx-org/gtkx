@@ -1,8 +1,11 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
+import { getUserDataDir } from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { rootElement } from "@gtkx/react";
 import { act, fireEvent, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/app.js";
 import { ALL_TASKS, openTask } from "../src/navigation.js";
@@ -29,6 +32,21 @@ afterEach(() => {
 });
 
 describe("Tasks", () => {
+    it("persists text entered through a native row", async () => {
+        await render(<App />, { container: rootElement });
+
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        await userEvent.type(entry, "Buy milk & café");
+        await userEvent.keyboard(entry, "{Enter}");
+
+        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Buy milk & café" })).toBeDefined();
+        const file = join(getUserDataDir(), "com.gtkx.tutorial", "tasks.json");
+        const saved: unknown = JSON.parse(readFileSync(file, "utf8"));
+        expect(saved).toHaveProperty("state.tasks", expect.arrayContaining([
+            expect.objectContaining({ title: "Buy milk & café" }),
+        ]));
+    });
+
     it("adds a task from the entry row", async () => {
         await render(<App />, { container: rootElement });
 

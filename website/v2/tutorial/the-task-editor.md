@@ -44,7 +44,6 @@ In `src/components/task-row.tsx`, reach navigation and mark the row:
 ```diff
  import { GtkButton, GtkCheckButton, GtkToggleButton } from "@gtkx/jsx/gtk";
 +import { useNavigation } from "@gtkx/navigation";
- import { escapeMarkup } from "../format.js";
 ```
 
 ```diff
@@ -330,7 +329,11 @@ export const formatDateTime = (iso: string | null): string => {
 
 Returning `null` for a task with no due date lets each caller decide what "no date" looks like. The menu button falls back to `"Set date"`, and the row to no subtitle.
 
-In `src/components/task-row.tsx`, add the subtitle:
+In `src/components/task-row.tsx`, import the formatter and add the subtitle:
+
+```diff
++import { formatDue } from "../format.js";
+```
 
 ```diff
              title={title}

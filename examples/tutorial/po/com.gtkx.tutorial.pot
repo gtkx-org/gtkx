@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-13 20:44+0200\n"
+"POT-Creation-Date: 2026-09-14 19:07+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,9 +18,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: src/components/about.tsx:9 src/components/preferences.tsx:26
-#: src/components/shortcuts.tsx:12 src/components/window.tsx:76
-#: src/components/window.tsx:104 src/store/selectors.ts:18
+#: src/components/about.tsx:9 src/components/preferences.tsx:28
+#: src/components/shortcuts.tsx:12 src/components/window.tsx:78
+#: src/components/window.tsx:106 src/store/selectors.ts:18
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:3
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:4
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:25
@@ -68,7 +68,7 @@ msgstr ""
 msgid "New Task"
 msgstr ""
 
-#: src/components/main-menu.tsx:16 src/components/preferences.tsx:16
+#: src/components/main-menu.tsx:16 src/components/preferences.tsx:18
 #: src/components/shortcuts.tsx:9
 msgid "Preferences"
 msgstr ""
@@ -81,7 +81,7 @@ msgstr ""
 msgid "About Tasks"
 msgstr ""
 
-#: src/components/new-list-dialog.tsx:21 src/components/window.tsx:108
+#: src/components/new-list-dialog.tsx:21 src/components/window.tsx:110
 msgid "New List"
 msgstr ""
 
@@ -97,27 +97,27 @@ msgstr ""
 msgid "Color {{color}}"
 msgstr ""
 
-#: src/components/preferences.tsx:17 src/components/shortcuts.tsx:6
+#: src/components/preferences.tsx:19 src/components/shortcuts.tsx:6
 msgid "General"
 msgstr ""
 
-#: src/components/preferences.tsx:18
+#: src/components/preferences.tsx:20
 msgid "Appearance"
 msgstr ""
 
-#: src/components/preferences.tsx:20
+#: src/components/preferences.tsx:22
 msgid "Theme"
 msgstr ""
 
-#: src/components/preferences.tsx:28
+#: src/components/preferences.tsx:30
 msgid "Sort order"
 msgstr ""
 
-#: src/components/preferences.tsx:34
+#: src/components/preferences.tsx:36
 msgid "Reminder lead time"
 msgstr ""
 
-#: src/components/preferences.tsx:35
+#: src/components/preferences.tsx:37
 msgid "Minutes before a task is due"
 msgstr ""
 
@@ -227,15 +227,15 @@ msgstr ""
 msgid "Task"
 msgstr ""
 
-#: src/components/window.tsx:35
+#: src/components/window.tsx:36
 msgid "Nothing Selected"
 msgstr ""
 
-#: src/components/window.tsx:36
+#: src/components/window.tsx:37
 msgid "Pick a list or a smart view in the sidebar"
 msgstr ""
 
-#: src/components/window.tsx:125
+#: src/components/window.tsx:127
 msgid "New Task (Ctrl+N)"
 msgstr ""
 

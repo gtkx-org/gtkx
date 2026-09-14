@@ -35,7 +35,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | --- | ---: | --- |
 | `native` | 99 | API folder read; memory access fixed in batch 1; ownership migration open |
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
-| `codegen` | 144 | All override templates, analysis and writer files and compile entry read; metadata, imports and inherited declarations fixed; remaining generator folders pending |
+| `codegen` | 144 | All override templates, analysis, writer and direct store files and compile entry read; metadata, imports, inheritance and GIR freshness fixed; remaining generator folders pending |
 | `react` | 47 | Core reconciler read; nullable drag icon fixed; lifecycle and metadata migrations open |
 | `components` | 50 | All files read; all initial findings resolved; repeat review continues |
 | `animated` | 19 | All files read; text, prop contracts, dead code, tests and guides fixed; upstream ref compatibility retained |
@@ -56,7 +56,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `eslint` | 36 | All files read; public-surface traversal and cache correctness fixed; prefix restriction removed; independent review passed |
 | `utils` | 60 | All 59 current files read; maintained helpers replace duplication; process protocol and identity parsing shared; public consumer checks pass |
 
-Outside the packages, the starting scope includes 397 example files, 174 website files, 15 scripts, 23 GitHub configuration files, 3 patches, 30 root files, and one file each under `docs`, `.nx`, and `.vscode`. All remain open for a full file review, including documentation read for context during this first batch.
+Outside the packages, the starting scope includes 397 example files, 174 website files, 15 scripts, 23 GitHub configuration files, 3 patches, 30 root files, and one file each under `docs`, `.nx`, and `.vscode`. All top-level scripts and GitHub configuration files have now been read. The batches below record the reviewed example and website files; their remaining inventories and the other root files stay open.
 
 ## Batch 1: architectural boundaries
 
@@ -530,6 +530,20 @@ Four public CLI cases cover missing native/runtime dependencies and GI-only cons
 Changing GIR search-directory or root-library order could leave the previous bindings marked fresh. Adding a GIR earlier in the search path had the same effect. Fingerprints now retain configuration order and resolve recorded GIR names through the same lookup used for generation before comparing their contents. Built-in string sorting replaces the handwritten ordinal comparator where order is only needed for stable hashing.
 
 Eight public CLI cases import generated constants after direct and transitive shadowing, search-order changes, duplicate version selections, removals and directory aliases. Missing GIR input fails while preserving the previous usable bindings. The previous implementation selected stale values in four supported cases. All 90 focused integration cases pass, including store publication, generated types and documentation, alongside codegen/CLI/test types, lint and independent review.
+
+### Tutorial introduction and storage audit
+
+The first six v2 tutorial chapters were read in full, 1,038 baseline lines. They now focus on GTKX application setup, imports, slots, signals and the steps needed to build Tasks. React and Zustand explanations link to their own documentation. Repeated code and inaccurate claims about rendering, seeding and serialization are removed. GLib's markup escaping replaces a handwritten helper. Three later chapters were also read, 1,961 baseline lines, to align prerequisite imports and storage snippets; their broader prose audit remains open.
+
+The installed tutorial previously continued with seed data after unreadable or malformed storage and overwrote unsupported-version data during startup. Only a missing file now starts a fresh store. Synchronous hydration failures stop initialization; unsupported saved versions fail without replacing the file. GLib supplies the data directory and atomic file replacement, removing the application's temporary-file implementation and permissive migration guard.
+
+All 20 native application tests, three localization tests, installed consumer types and five cumulative chapter typechecks pass. Five built-app startup cases cover missing and empty stores plus malformed, unreadable and unsupported-version failures with unchanged saved bytes. Live application checks confirm text entry, persistence across restart and preservation of the previous file after a failed save. Both application screenshots were inspected. Local links, code fences and whitespace checks pass. Repository ESLint intentionally excludes the standalone tutorial; library-only forced lint is not part of this validation. The earlier publication checkpoint refreshed the tracked gettext input list and source references without changing translations.
+
+### Second PR review follow-up
+
+At `2decda13`, the PR's main tests, CLI tests, sanitizer, fresh publication consumers, documentation, lint, typechecking and CodeQL pass. Coverage passes 4,778 cases but two real ESLint configuration tests exceed their default five-second deadline; that test timing remains under investigation.
+
+Copilot repeated the manifest recovery concern already checked through the real scaffolder. Its CSS suggestion requests restoration of the malformed-input containment removed under CSS1. Public CSS input already passes through PostCSS before serialized rules reach the stylesheet; the review supplies no supported-input serialization regression. GTK semantic diagnostics remain delegated to its provider. Independent source and contract review found no actionable production change for either comment. No review replies were posted.
 
 ## Next work
 
