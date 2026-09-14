@@ -1,3 +1,4 @@
+import parseSpdx from "spdx-expression-parse";
 import type { DeploySettings, Notice, NoticeSection } from "../types.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { readLicenseText } from "../notices/text.js";
@@ -14,13 +15,10 @@ const CONTINUATION_BLANK = " .";
 const UNKNOWN_COPYRIGHT = "unknown";
 const UNKNOWN_LICENSE = "unknown";
 const LICENSE_SEPARATOR = " and ";
-const SPDX_GROUPING = /[()]/g;
-const SPDX_OPERATOR = /\b(?:AND|OR|WITH)\b/g;
-const REPEATED_SPACE = / {2,}/g;
+const GROUPED_LICENSE_SEPARATOR = ", and ";
+const LICENSE_CHOICE = " or ";
 const OUTSIDE_NAME = /[^\w.+-]+/g;
 const NAME_JOINER = "-";
-const NAME_TOKEN = /^[\w.+-]+$/;
-const NAME_CONNECTIVE = / (?:or|with) /;
 
 const indentLine = (line: string): string => (line.trim().length === 0 ? CONTINUATION_BLANK : ` ${line}`);
 
@@ -30,30 +28,54 @@ const foldedField = (name: string, lines: string[]): string[] => {
     return first === undefined ? [] : [`${name}: ${first}`, ...rest.map((line) => indentLine(line))];
 };
 
-const shortName = (license: string): string =>
-    license
-        .replaceAll(SPDX_GROUPING, " ")
-        .replaceAll(SPDX_OPERATOR, (operator) => operator.toLowerCase())
-        .replaceAll(REPEATED_SPACE, " ")
-        .trim();
+const customName = (license: string): string =>
+    license.split(OUTSIDE_NAME).filter((token) => token.length > 0).join(NAME_JOINER);
 
-const isShortName = (part: string): boolean =>
-    part.split(NAME_CONNECTIVE).every((token) => NAME_TOKEN.test(token));
+const licenseName = (expression: parseSpdx.LicenseInfo): string => {
+    const name = customName(expression.license) + (expression.plus === true ? "+" : "");
 
-const namePart = (part: string): string =>
-    isShortName(part) ? part : part.split(OUTSIDE_NAME).filter((token) => token.length > 0).join(NAME_JOINER);
+    return expression.exception === undefined ? name : `${name} with ${customName(expression.exception)} exception`;
+};
 
-const shortNames = (license: string): string[] =>
-    shortName(license).split(LICENSE_SEPARATOR).map((part) => namePart(part)).filter((part) => part.length > 0);
+const expressionClauses = (expression: parseSpdx.Info): string[][] => {
+    if ("license" in expression) {
+        return [[licenseName(expression)]];
+    }
+
+    const left = expressionClauses(expression.left);
+    const right = expressionClauses(expression.right);
+
+    return expression.conjunction === "and"
+        ? [...left, ...right]
+        : left.flatMap((choice) => right.map((alternative) => [...choice, ...alternative]));
+};
+
+const licenseClauses = (license: string): string[][] => {
+    let expression: parseSpdx.Info;
+
+    try {
+        expression = parseSpdx(license);
+    } catch {
+        const name = customName(license);
+
+        return name.length === 0 ? [] : [[name]];
+    }
+
+    return expressionClauses(expression);
+};
 
 const licenseNames = (notices: Notice[]): string => {
-    const names = [...new Set(notices.flatMap((notice) => shortNames(notice.license)))];
+    const clauses = notices.flatMap((notice) => licenseClauses(notice.license));
+    const names = [...new Set(clauses.map((clause) => [...new Set(clause)].join(LICENSE_CHOICE)))];
+    const separator = clauses.some((clause) => clause.length > 1)
+        ? GROUPED_LICENSE_SEPARATOR
+        : LICENSE_SEPARATOR;
 
-    return names.length === 0 ? UNKNOWN_LICENSE : names.join(LICENSE_SEPARATOR);
+    return names.length === 0 ? UNKNOWN_LICENSE : names.join(separator);
 };
 
 const compactNotice = (notice: Notice): string => {
-    const label = `${notice.subject} (${licenseNames([notice])})`;
+    const label = `${notice.subject} (${notice.license})`;
 
     return notice.source === null ? label : `${label}: ${notice.source}`;
 };
@@ -61,7 +83,7 @@ const compactNotice = (notice: Notice): string => {
 const noticeBody = (notice: Notice, reproduced: Set<string>): string[] => {
     const head = [
         "",
-        `${notice.subject} (${licenseNames([notice])})`,
+        `${notice.subject} (${notice.license})`,
         ...(notice.source === null ? [] : [`Source: ${notice.source}`]),
     ];
 
@@ -136,19 +158,20 @@ const headerLines = (settings: DeploySettings, sections: NoticeSection[]): strin
     ...foldedField("Comment", headerComment(sections)),
 ];
 
-const applicationStanza = (settings: DeploySettings, text: string | null): string[] => [
+const applicationStanza = (settings: DeploySettings, text: string | null, reproduced: Set<string>): string[] => [
     "Files: *",
     `Copyright: ${settings.copyright}`,
     ...foldedField("License", [
         licenseNames([applicationNotice(settings)]),
-        ...(text === null ? [] : text.split("\n")),
+        ...noticeBody({ ...applicationNotice(settings), text }, reproduced),
     ]),
     "",
 ];
 
 const renderCopyright = (settings: DeploySettings, sections: NoticeSection[]): string => {
     const own = settings.paths.licenseFile === null ? null : readLicenseText(settings.paths.licenseFile);
-    const reproduced: Set<string> = new Set(own === null ? [] : [own]);
+    const reproduced: Set<string> = new Set();
+    const application = applicationStanza(settings, own, reproduced);
 
     const stanzas = filePatterns(sections).flatMap((files) =>
         fileStanza({ settings, files, sections: sectionsFor(sections, files), reproduced }));
@@ -156,7 +179,7 @@ const renderCopyright = (settings: DeploySettings, sections: NoticeSection[]): s
     return [
         ...headerLines(settings, sections),
         "",
-        ...applicationStanza(settings, own),
+        ...application,
         ...stanzas,
     ].join("\n");
 };

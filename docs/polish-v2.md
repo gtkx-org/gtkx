@@ -717,6 +717,12 @@ All 12 new public CLI cases pass, including a missing local executable, custom S
 
 A separate public source-revision case confirms that locally rendered dependency notices can still describe a different revision from the source being built. The next correction takes those sections from the selected revision's own build output. This batch closes runtime identity only.
 
+### Debian license expression grouping
+
+Debian copyright output previously removed SPDX parentheses, changing the meaning of combinations such as `(MIT OR Apache-2.0) AND BSD-3-Clause`. The maintained SPDX expression parser now supplies the syntax tree. Serialization preserves grouped choices using Debian's conjunction syntax, including nested alternatives, exceptions and later-version markers. Original expressions and available license texts remain in the notice body; custom package license labels retain their existing handling.
+
+All 25 public notice-provenance cases pass, including 15 expression cases covering grouping, deduplicated terms, explicit license files and missing terms. The complete canonical build, lint, typecheck and test checkpoint also passes, followed by release consumers and tutorial packaging. Frozen dependency installation and independent review pass. No private-helper or cosmetic error assertions were added.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.

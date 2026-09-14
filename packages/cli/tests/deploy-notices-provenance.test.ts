@@ -1,7 +1,7 @@
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createCliProject, runCliOrThrow } from "./cli-project.js";
+import { createCliProject, runCli, runCliOrThrow } from "./cli-project.js";
 
 const DEPENDENCY_NAME = "@audit/notices";
 const BINARY_NAME = "gtkx-notices-audit";
@@ -156,5 +156,124 @@ describe("bundled dependency notice provenance", () => {
         const metadata = JSON.parse(readFileSync(metadataPath, "utf8")) as Record<string, unknown>;
         writeFileSync(metadataPath, JSON.stringify({ ...metadata, ...replacement }));
         expect(() => deploy(project, true)).toThrow();
+    });
+});
+
+const licenseField = (notice: string, files: string): string | undefined =>
+    notice.split(`Files: ${files}\n`)[1]?.split("\nLicense: ", 2)[1]?.split("\n", 1)[0];
+
+const EXPRESSIONS = [
+    { expression: "MIT", expected: "MIT" },
+    { expression: "MIT AND Apache-2.0", expected: "MIT and Apache-2.0" },
+    { expression: "MIT OR Apache-2.0", expected: "MIT or Apache-2.0" },
+    {
+        expression: "(MIT OR Apache-2.0) AND BSD-3-Clause",
+        expected: "MIT or Apache-2.0, and BSD-3-Clause",
+    },
+    {
+        expression: "MIT AND (Apache-2.0 OR BSD-3-Clause)",
+        expected: "MIT, and Apache-2.0 or BSD-3-Clause",
+    },
+    {
+        expression: "MIT OR Apache-2.0 AND BSD-3-Clause",
+        expected: "MIT or Apache-2.0, and MIT or BSD-3-Clause",
+    },
+    {
+        expression: "(MIT OR Apache-2.0) AND (BSD-3-Clause OR ISC)",
+        expected: "MIT or Apache-2.0, and BSD-3-Clause or ISC",
+    },
+    {
+        expression: "MIT OR (Apache-2.0 AND (BSD-3-Clause OR ISC))",
+        expected: "MIT or Apache-2.0, and MIT or BSD-3-Clause or ISC",
+    },
+    {
+        expression: "(MIT AND Apache-2.0) OR (BSD-3-Clause AND ISC)",
+        expected: "MIT or BSD-3-Clause, and MIT or ISC, and Apache-2.0 or BSD-3-Clause, and Apache-2.0 or ISC",
+    },
+];
+
+const SPECIAL_EXPRESSIONS = [
+    {
+        expression: "GPL-2.0+ WITH Classpath-exception-2.0 OR MIT",
+        expected: "GPL-2.0+ with Classpath-exception-2.0 exception or MIT",
+        licenseFile: "LICENSE",
+    },
+    {
+        expression: "LicenseRef-Company OR DocumentRef-upstream:LicenseRef-Shared",
+        expected: "LicenseRef-Company or DocumentRef-upstream-LicenseRef-Shared",
+        licenseFile: "LICENSE",
+    },
+    { expression: "SEE LICENSE IN terms.txt", expected: "SEE-LICENSE-IN-terms.txt", licenseFile: "terms.txt" },
+    { expression: "Custom package terms", expected: "Custom-package-terms", licenseFile: "LICENSE" },
+];
+
+describe("Debian license expressions", () => {
+    it.each(EXPRESSIONS)("preserves the meaning of $expression", ({ expression, expected }) => {
+        using project = createCliProject({
+            prefix: "gtkx-dep5-expression-",
+            config: CONFIG.replace('license: "MPL-2.0"', () => `license: "${expression}"`),
+            files: files(),
+            hasStore: true,
+        });
+        const notice = deploy(project);
+        expect(licenseField(notice, "*")).toBe(expected);
+        expect(notice).toContain(`Notices Audit (${expression})`);
+    });
+
+    it.each(SPECIAL_EXPRESSIONS)("retains bundled $expression terms", ({ expression, expected, licenseFile }) => {
+        using project = createCliProject({
+            prefix: "gtkx-dep5-special-",
+            config: CONFIG,
+            files: files(expression, licenseFile),
+            hasStore: true,
+        });
+        const separator = expected.includes(" or ") ? ", and " : " and ";
+        const notice = deploy(project);
+        const bundle = `lib/${BINARY_NAME}/bundle.mjs`;
+        expect(licenseField(notice, bundle)?.split(separator)).toContain(expected);
+        expect(notice).toContain(`${DEPENDENCY_NAME} 1.0.0 (${expression})`);
+        expect(notice).toContain(ORIGINAL_TERMS);
+    });
+
+    it("combines choices from the application and multiple bundled packages", () => {
+        const other = "@audit/other-notices";
+        const expression = "(MPL-2.0 OR Apache-2.0) AND ISC";
+        using project = createCliProject({
+            prefix: "gtkx-dep5-combined-",
+            config: CONFIG.replace('license: "MPL-2.0"', () => `license: "${expression}"`),
+            files: {
+                ...files("(BSD-2-Clause OR BSD-3-Clause) AND Zlib"),
+                "src/index.ts": `import { message } from "${DEPENDENCY_NAME}";\n` +
+                    `import { other } from "${other}"; process.stdout.write(message + other);\n`,
+                [`node_modules/${other}/package.json`]: JSON.stringify({
+                    name: other, version: "1.0.0", type: "module", exports: "./index.js",
+                    license: "LicenseRef-Company OR CC0-1.0",
+                }),
+                [`node_modules/${other}/index.js`]: 'export const other = "other dependency";\n',
+                [`node_modules/${other}/LICENSE`]: ORIGINAL_TERMS,
+                LICENSE: ORIGINAL_TERMS,
+            },
+            hasStore: true,
+        });
+        const notice = deploy(project);
+        expect(licenseField(notice, `lib/${BINARY_NAME}/bundle.mjs`)?.split(", and ")).toEqual(
+            expect.arrayContaining([
+                "MPL-2.0 or Apache-2.0", "ISC", "BSD-2-Clause or BSD-3-Clause", "Zlib",
+                "LicenseRef-Company or CC0-1.0",
+            ]),
+        );
+        expect(notice).toContain(`Notices Audit (${expression})`);
+        expect(notice).toContain(`${DEPENDENCY_NAME} 1.0.0 ((BSD-2-Clause OR BSD-3-Clause) AND Zlib)`);
+        expect(notice.split(ORIGINAL_TERMS)).toHaveLength(2);
+    });
+
+    it("rejects a license value with the wrong configuration type", () => {
+        using project = createCliProject({
+            prefix: "gtkx-dep5-invalid-",
+            config: CONFIG.replace('license: "MPL-2.0"', "license: 42"),
+            files: files(),
+            hasStore: true,
+        });
+        expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).not.toBe(0);
     });
 });
