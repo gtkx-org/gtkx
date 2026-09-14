@@ -1,6 +1,5 @@
 import type { Ownership } from "@gtkx/native";
-import type { Descriptor } from "@gtkx/runtime";
-import type { t } from "@gtkx/runtime";
+import type { Descriptor, t } from "@gtkx/runtime";
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirCursorBounds } from "../gir/parameter.js";
 import { joinArgs, pure } from "../writer/emit.js";
