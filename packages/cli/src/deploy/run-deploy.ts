@@ -476,14 +476,20 @@ const buildArchPayload = async ({
         paths: { ...settings.paths, schemaFiles: buildManifest.schemaFiles },
     };
 
-    const node = options.shouldPrintManifests || !isNodeRequired(plan.targets, builtSettings)
+    const shouldIncludeNode = isNodeRequired(plan.targets, builtSettings);
+    const node = !shouldIncludeNode || options.shouldPrintManifests
         ? null
         : await resolveNodeRuntime(builtSettings);
 
     const addon = await resolveStagedAddon(builtSettings);
     const stage = stagePayload({ settings: builtSettings, node, addon, metadata });
     info(`Staged ${String(stage.length)} files into ${displayPath(builtSettings, builtSettings.paths.stage)}`);
-    const notices = collectNotices({ settings: builtSettings, node, packages: buildManifest.packages });
+    const notices = collectNotices({
+        settings: builtSettings,
+        node,
+        packages: buildManifest.packages,
+        shouldIncludeNode,
+    });
 
     return {
         settings: builtSettings,

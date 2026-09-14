@@ -279,7 +279,7 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
             GENERATED_SOURCES,
             ...stagedMetadataSources(payload),
             inlineSource(LAUNCHER_FILENAME, renderLauncher(settings)),
-            inlineSource(NOTICES_FILENAME, renderNotices(settings, payload.notices)),
+            inlineSource(NOTICES_FILENAME, renderNotices(settings, payload.notices.flatpak)),
             ...activationSource(settings),
         ],
         "build-commands": [
