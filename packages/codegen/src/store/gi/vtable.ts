@@ -61,6 +61,11 @@ type VfuncSignature = {
     returnType: string;
 };
 
+type VfuncCallable = {
+    callable: GirFunction;
+    returnType: string;
+};
+
 type VfuncEntry = {
     name: string;
     signature: string;
@@ -419,12 +424,15 @@ const protectedSlotKeys = (options: VfuncMembersOptions, slots: VtableSlot[]): S
     return new Set(slots.map((slot) => slot.key).filter((key) => !shared.has(key)));
 };
 
-const vfuncCallables = (context: ModuleContext, namespaceName: string, klass: GirClass): Map<string, GirFunction> => {
-    const members: Map<string, GirFunction> = new Map();
+const vfuncCallables = (context: ModuleContext, namespaceName: string, klass: GirClass): Map<string, VfuncCallable> => {
+    const members: Map<string, VfuncCallable> = new Map();
 
     for (const slot of callableVfuncSlots(context, namespaceName, klass)) {
         const [, ...parameters] = slot.callback.parameters;
-        members.set(slot.key, { ...callbackAsFunction(slot.callback), parameters });
+        members.set(slot.key, {
+            callable: { ...callbackAsFunction(slot.callback), parameters },
+            returnType: vfuncSlotSignature(context, slot).returnType,
+        });
     }
 
     return members;

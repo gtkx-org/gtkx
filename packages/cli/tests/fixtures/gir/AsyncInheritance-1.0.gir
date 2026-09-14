@@ -1,0 +1,246 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="Gio" version="2.0"/>
+  <namespace name="AsyncInheritance" version="1.0" shared-library="libasyncinheritance.so.0"
+             c:identifier-prefixes="AsyncInheritance" c:symbol-prefixes="async_inheritance">
+    <class name="Base" c:type="AsyncInheritanceBase" parent="GObject.Object"
+           glib:type-name="AsyncInheritanceBase" glib:get-type="async_inheritance_base_get_type">
+      <method name="read_async" c:identifier="async_inheritance_base_read_async">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Base" c:type="AsyncInheritanceBase*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" nullable="1" scope="async" closure="1"><type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/></parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_finish" c:identifier="async_inheritance_base_read_finish">
+        <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Base" c:type="AsyncInheritanceBase*"/></instance-parameter>
+          <parameter name="result" transfer-ownership="none"><type name="Gio.AsyncResult" c:type="GAsyncResult*"/></parameter>
+        </parameters>
+      </method>
+      <method name="inspect_async" c:identifier="async_inheritance_base_inspect_async">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Base" c:type="AsyncInheritanceBase*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" nullable="1" scope="async" closure="1"><type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/></parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="inspect_finish" c:identifier="async_inheritance_base_inspect_finish" throws="1">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Base" c:type="AsyncInheritanceBase*"/></instance-parameter>
+          <parameter name="result" transfer-ownership="none"><type name="Gio.AsyncResult" c:type="GAsyncResult*"/></parameter>
+          <parameter name="output_0" direction="out" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="Derived" c:type="AsyncInheritanceDerived" parent="Base"
+           glib:type-name="AsyncInheritanceDerived" glib:get-type="async_inheritance_derived_get_type">
+      <method name="read_async" c:identifier="async_inheritance_derived_read_async">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Derived" c:type="AsyncInheritanceDerived*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" nullable="1" scope="async" closure="1"><type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/></parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_finish" c:identifier="async_inheritance_derived_read_finish">
+        <return-value transfer-ownership="none"><type name="utf8" c:type="const gchar*"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Derived" c:type="AsyncInheritanceDerived*"/></instance-parameter>
+          <parameter name="result" transfer-ownership="none"><type name="Gio.AsyncResult" c:type="GAsyncResult*"/></parameter>
+        </parameters>
+      </method>
+      <method name="inspect_async" c:identifier="async_inheritance_derived_inspect_async">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Derived" c:type="AsyncInheritanceDerived*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" nullable="1" scope="async" closure="1"><type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/></parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="inspect_finish" c:identifier="async_inheritance_derived_inspect_finish" throws="1">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Derived" c:type="AsyncInheritanceDerived*"/></instance-parameter>
+          <parameter name="result" transfer-ownership="none"><type name="Gio.AsyncResult" c:type="GAsyncResult*"/></parameter>
+          <parameter name="output_0" direction="out" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+          <parameter name="output_1" direction="out" transfer-ownership="none"><type name="utf8" c:type="gchar**"/></parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="Leaf" c:type="AsyncInheritanceLeaf" parent="Derived"
+           glib:type-name="AsyncInheritanceLeaf" glib:get-type="async_inheritance_leaf_get_type"/>
+    <interface name="Collector" c:type="AsyncInheritanceCollector"
+           glib:type-name="AsyncInheritanceCollector" glib:get-type="async_inheritance_collector_get_type">
+      <prerequisite name="Base"/>
+      <method name="read_async" c:identifier="async_inheritance_collector_read_async">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Collector" c:type="AsyncInheritanceCollector*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" nullable="1" scope="async" closure="1"><type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/></parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_finish" c:identifier="async_inheritance_collector_read_finish">
+        <return-value transfer-ownership="none"><type name="utf8" c:type="const gchar*"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Collector" c:type="AsyncInheritanceCollector*"/></instance-parameter>
+          <parameter name="result" transfer-ownership="none"><type name="Gio.AsyncResult" c:type="GAsyncResult*"/></parameter>
+        </parameters>
+      </method>
+    </interface>
+    <class name="Host" c:type="AsyncInheritanceHost" parent="Base"
+           glib:type-name="AsyncInheritanceHost" glib:get-type="async_inheritance_host_get_type">
+      <implements name="Collector"/>
+    </class>
+    <class name="HostChild" c:type="AsyncInheritanceHostChild" parent="Host"
+           glib:type-name="AsyncInheritanceHostChild" glib:get-type="async_inheritance_host_child_get_type">
+      <method name="read_async" c:identifier="async_inheritance_host_child_read_async">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="HostChild" c:type="AsyncInheritanceHostChild*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" nullable="1" scope="async" closure="1"><type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/></parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_finish" c:identifier="async_inheritance_host_child_read_finish">
+        <return-value transfer-ownership="none"><type name="utf8" c:type="const gchar*"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="HostChild" c:type="AsyncInheritanceHostChild*"/></instance-parameter>
+          <parameter name="result" transfer-ownership="none"><type name="Gio.AsyncResult" c:type="GAsyncResult*"/></parameter>
+        </parameters>
+      </method>
+    </class>
+    <interface name="Reader" c:type="AsyncInheritanceReader"
+           glib:type-name="AsyncInheritanceReader" glib:get-type="async_inheritance_reader_get_type">
+      <prerequisite name="GObject.Object"/>
+      <method name="read_async" c:identifier="async_inheritance_reader_read_async">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Reader" c:type="AsyncInheritanceReader*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" nullable="1" scope="async" closure="1"><type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/></parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_finish" c:identifier="async_inheritance_reader_read_finish">
+        <return-value transfer-ownership="none"><type name="utf8" c:type="const gchar*"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Reader" c:type="AsyncInheritanceReader*"/></instance-parameter>
+          <parameter name="result" transfer-ownership="none"><type name="Gio.AsyncResult" c:type="GAsyncResult*"/></parameter>
+        </parameters>
+      </method>
+    </interface>
+    <class name="InterfaceHost" c:type="AsyncInheritanceInterfaceHost" parent="GObject.Object"
+           glib:type-name="AsyncInheritanceInterfaceHost" glib:get-type="async_inheritance_interface_host_get_type">
+      <implements name="Reader"/>
+    </class>
+    <class name="InterfaceChild" c:type="AsyncInheritanceInterfaceChild" parent="InterfaceHost"
+           glib:type-name="AsyncInheritanceInterfaceChild" glib:get-type="async_inheritance_interface_child_get_type">
+      <method name="read_async" c:identifier="async_inheritance_interface_child_read_async">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="InterfaceChild" c:type="AsyncInheritanceInterfaceChild*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" nullable="1" scope="async" closure="1"><type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/></parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_finish" c:identifier="async_inheritance_interface_child_read_finish">
+        <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="InterfaceChild" c:type="AsyncInheritanceInterfaceChild*"/></instance-parameter>
+          <parameter name="result" transfer-ownership="none"><type name="Gio.AsyncResult" c:type="GAsyncResult*"/></parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="Owned" c:type="AsyncInheritanceOwned" parent="GObject.Object"
+           glib:type-name="AsyncInheritanceOwned" glib:get-type="async_inheritance_owned_get_type">
+      <implements name="Reader"/>
+      <method name="read_async" c:identifier="async_inheritance_owned_read_async">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Owned" c:type="AsyncInheritanceOwned*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" nullable="1" scope="async" closure="1"><type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/></parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_finish" c:identifier="async_inheritance_owned_read_finish">
+        <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Owned" c:type="AsyncInheritanceOwned*"/></instance-parameter>
+          <parameter name="result" transfer-ownership="none"><type name="Gio.AsyncResult" c:type="GAsyncResult*"/></parameter>
+        </parameters>
+      </method>
+    </class>
+    <interface name="NumericReader" c:type="AsyncInheritanceNumericReader"
+               glib:type-name="AsyncInheritanceNumericReader" glib:get-type="async_inheritance_numeric_reader_get_type">
+      <prerequisite name="GObject.Object"/>
+      <method name="read_async" c:identifier="async_inheritance_numeric_reader_read_async">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="NumericReader" c:type="AsyncInheritanceNumericReader*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" nullable="1" scope="async" closure="1"><type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/></parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_finish" c:identifier="async_inheritance_numeric_reader_read_finish">
+        <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="NumericReader" c:type="AsyncInheritanceNumericReader*"/></instance-parameter>
+          <parameter name="result" transfer-ownership="none"><type name="Gio.AsyncResult" c:type="GAsyncResult*"/></parameter>
+        </parameters>
+      </method>
+    </interface>
+    <class name="Middle" c:type="AsyncInheritanceMiddle" parent="InterfaceHost"
+           glib:type-name="AsyncInheritanceMiddle" glib:get-type="async_inheritance_middle_get_type">
+      <implements name="NumericReader"/>
+    </class>
+    <class name="MiddleChild" c:type="AsyncInheritanceMiddleChild" parent="Middle"
+           glib:type-name="AsyncInheritanceMiddleChild" glib:get-type="async_inheritance_middle_child_get_type">
+      <method name="read_async" c:identifier="async_inheritance_middle_child_read_async">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="MiddleChild" c:type="AsyncInheritanceMiddleChild*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" nullable="1" scope="async" closure="1"><type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/></parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_finish" c:identifier="async_inheritance_middle_child_read_finish">
+        <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="MiddleChild" c:type="AsyncInheritanceMiddleChild*"/></instance-parameter>
+          <parameter name="result" transfer-ownership="none"><type name="Gio.AsyncResult" c:type="GAsyncResult*"/></parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="OrderedHost" c:type="AsyncInheritanceOrderedHost" parent="GObject.Object"
+           glib:type-name="AsyncInheritanceOrderedHost" glib:get-type="async_inheritance_ordered_host_get_type">
+      <implements name="Reader"/>
+      <implements name="NumericReader"/>
+    </class>
+    <class name="OrderedChild" c:type="AsyncInheritanceOrderedChild" parent="OrderedHost"
+           glib:type-name="AsyncInheritanceOrderedChild" glib:get-type="async_inheritance_ordered_child_get_type">
+      <method name="read_async" c:identifier="async_inheritance_ordered_child_read_async">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="OrderedChild" c:type="AsyncInheritanceOrderedChild*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" nullable="1" scope="async" closure="1"><type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/></parameter>
+          <parameter name="user_data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_finish" c:identifier="async_inheritance_ordered_child_read_finish">
+        <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="OrderedChild" c:type="AsyncInheritanceOrderedChild*"/></instance-parameter>
+          <parameter name="result" transfer-ownership="none"><type name="Gio.AsyncResult" c:type="GAsyncResult*"/></parameter>
+        </parameters>
+      </method>
+    </class>
+  </namespace>
+</repository>
