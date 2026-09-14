@@ -125,7 +125,7 @@ const installFlatpak = (settings: DeploySettings): void => {
     runCliTool({
         tool: FLATPAK.command,
         args: ["install", "--user", "--noninteractive", "--reinstall", join(flatpakDir(settings), "repo"),
-            settings.applicationId],
+            `app/${settings.applicationId}/${settings.arch.flatpak}/${branchFor(settings)}`],
         target: "the flatpak",
         shouldStream: true,
     });

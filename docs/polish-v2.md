@@ -763,7 +763,7 @@ Configured runtime and lockfile paths now resolve from the project root while pr
 
 The nine public integration cases cover relative and absolute paths with spaces, default lockfiles, real AppImage extraction, missing inputs, malformed JSON and temporary-directory cleanup. Three fail before the correction and pass afterward; the isolated target/source-notice batch passes all 28 cases. The canonical build, full lint, typecheck and all 46 test/build tasks pass. Independent review is clean. Fresh published TypeScript and JavaScript consumers, the installed tutorial and the production website also pass at `fdb77c7c`; the website completes in 448 seconds. This checkpoint includes the source-revision notices, real AppImage coverage and constant-alias correction.
 
-Custom Flatpak branch installation and revision-free source manifests remain observations requiring separate consumer-contract checks. They are not counted as confirmed defects or silently folded into this correction.
+Revision-free source manifests remain an observation requiring a separate consumer-contract check. Custom Flatpak branch installation was subsequently confirmed and corrected below.
 
 ### Native container writes
 
@@ -778,6 +778,12 @@ The array codec and all ten container modules were read with hash tables, refere
 The compile-cache entry and cleanup store now import Node's cache APIs directly. Their availability checks supported Node versions below GTKX's declared minimum. Disabled and unwritable caching retain Node's existing behavior, and cleanup still preserves the active cache directory.
 
 All ten public compile-cache cases, the CLI build, affected typechecks, lint and independent review pass. Six cache/loading modules were read completely, 382 baseline lines, with the public cache and React compiler suites. The React compiler tests still inspect private build output instead of running the application; replacement integration coverage is in progress. Module hashing also needs to resolve the actual loaded source or compiled module without guessed filenames or a shared fallback hash.
+
+### Flatpak branch installation
+
+Flatpak deployment now installs the complete application, architecture and branch reference already selected by its builder and bundler. The target repository persists between builds, so specifying only the application ID becomes ambiguous after building two branches.
+
+A real Flatpak 1.18.2 repository with stable and beta exports reproduces the noninteractive install failure. Explicit references install each selected branch successfully; a missing branch fails. The probe uses an isolated installation and checks the installed references. The public CLI deployment suites, build, typecheck, lint and independent review pass. This validates reference selection and existing manifest behavior; it does not claim a complete SDK build.
 
 ## Next work
 
