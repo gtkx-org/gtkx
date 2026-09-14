@@ -187,7 +187,6 @@ const SIGNAL_ACCEPTED = `import * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { useSignal } from "@gtkx/react";
 import { registerClass } from "@gtkx/runtime";
-import { createRef } from "react";
 
 class Beacon extends GObject.Object {}
 const RegisteredBeacon = registerClass(Beacon, {
@@ -196,7 +195,7 @@ const RegisteredBeacon = registerClass(Beacon, {
 });
 declare const beacon: InstanceType<typeof RegisteredBeacon>;
 declare const editable: Gtk.Editable;
-const button = createRef<Gtk.Button>();
+declare const button: Gtk.Button | null;
 
 export function useDeclaredSignals(): void {
     useSignal(button, "clicked", () => {});
