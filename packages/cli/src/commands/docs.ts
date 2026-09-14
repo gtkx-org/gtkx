@@ -1,7 +1,7 @@
 import { mergeOmittedProps, resolveGirPath, resolveLibraries } from "@gtkx/codegen";
 import { readBuiltinElementsForDocs, writeDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
-import { resolveOmittedProps } from "@gtkx/config/internal";
+import { resolveElementProps, resolveOmittedProps } from "@gtkx/config/internal";
 import { info, isPathInside } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
@@ -46,7 +46,7 @@ const docs = defineCommand({
             );
         }
 
-        const girPath = resolveGirPath(config.girPath);
+        const girPath = resolveGirPath(config.girPath, cwd);
 
         if (girPath.length === 0) {
             throw new Error(
@@ -65,8 +65,9 @@ const docs = defineCommand({
             libraries,
             girPath,
             outDir,
+            resolveFrom: cwd,
             basePath: args["base-path"],
-            props: builtin.props,
+            props: { ...builtin.props, ...resolveElementProps(config.elements) },
             acceptedChildTypes: builtin.acceptedChildTypes,
             omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
             isForced: args.force,

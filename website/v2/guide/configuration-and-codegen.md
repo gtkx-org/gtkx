@@ -23,7 +23,7 @@ List additional libraries by GIR name and version, for example `libraries: ["Web
 
 `defineConfig` provides editor completion. The CLI validates the configuration when it loads it. The application ID is required and uses a reverse-DNS name such as `com.example.Tasks`.
 
-Install the corresponding GIR files before generating bindings. Use `girPath` when they live outside the standard search directories. Supplying a newer GIR file changes the declarations, not the library that runs your app.
+Install the corresponding GIR files before generating bindings. Use `girPath` when they live outside the standard search directories; relative paths start at the project root. Supplying a newer GIR file changes the declarations, not the library that runs your app.
 
 ### Other settings {#every-option}
 
@@ -163,7 +163,7 @@ Choose a directory below the project root that is empty or contains an earlier G
 gtkx docs
 ```
 
-Use `gtkx docs --help` to choose an output directory or link root. These pages describe the actual libraries configured for the project.
+Use `gtkx docs --help` to choose an output directory or link root. These pages describe the project's configured libraries and element props, including props imported through `elements.config`. Rerun the command after changing those inputs; the MCP reference refreshes them automatically.
 
 ## What agents are given
 

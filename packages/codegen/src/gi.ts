@@ -3,7 +3,7 @@ import type { PreparedStore, StoreOptions } from "./store/store-fs.js";
 import { computeGiFingerprint } from "./fingerprint.js";
 import { externalPackageFor } from "./gir/external-namespaces.js";
 import { resolveBoundLibraries } from "./gir/libraries.js";
-import { namespaceDirectory } from "./gir/namespace.js";
+import { type GirNamespace, namespaceDirectory } from "./gir/namespace.js";
 import { type GiNamespaceInput, writeGiStore } from "./store/gi-store.js";
 import { collectGeneratedLibraries } from "./store/gi/generated-libraries.js";
 import { generateNamespaceModule } from "./store/gi/pipeline.js";
@@ -21,6 +21,17 @@ type SplitNamespaces = {
 
 type GiCodegenResult = { namespaces: number; store: PreparedStore };
 
+const generateGiNamespace = (namespace: GirNamespace, library: Library): GiNamespaceInput => {
+    const generated = generateNamespaceModule(namespace, library);
+
+    return {
+        directory: namespaceDirectory(namespace),
+        rawSource: generated.source,
+        rawBootstrapSource: generated.bootstrapSource,
+        girFile: namespace.girFile,
+    };
+};
+
 const splitNamespaces = (library: Library): SplitNamespaces => {
     const namespaces: GiNamespaceInput[] = [];
     const externalPackages: string[] = [];
@@ -33,14 +44,7 @@ const splitNamespaces = (library: Library): SplitNamespaces => {
             continue;
         }
 
-        const generated = generateNamespaceModule(namespace, library);
-
-        namespaces.push({
-            directory: namespaceDirectory(namespace),
-            rawSource: generated.source,
-            rawBootstrapSource: generated.bootstrapSource,
-            girFile: namespace.girFile,
-        });
+        namespaces.push(generateGiNamespace(namespace, library));
     }
 
     return { namespaces, externalPackages };
@@ -65,4 +69,4 @@ const runGiCodegen = (library: Library, options: GiCodegenOptions): GiCodegenRes
     return { namespaces: library.namespaces.size, store };
 };
 
-export { runGiCodegen };
+export { generateGiNamespace, runGiCodegen };

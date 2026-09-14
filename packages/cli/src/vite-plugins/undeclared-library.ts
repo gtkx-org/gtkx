@@ -25,7 +25,7 @@ const DEFAULT_LIBRARY_NAMESPACES: Set<string> = new Set(["adw", "gtk"]);
 const girSearchPaths = async (state: PluginState): Promise<string[]> => {
     if (state.girPath === null) {
         const { config } = await state.loadConfig.load(state.root);
-        state.girPath = resolveGirPath(config.girPath);
+        state.girPath = resolveGirPath(config.girPath, state.root);
     }
 
     return state.girPath;

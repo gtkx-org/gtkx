@@ -1,6 +1,6 @@
-import type { ModuleExport } from "@gtkx/react/config";
-import { fileURLToPath } from "node:url";
 import ts from "typescript";
+import { propsDependencies, type PropsDependencies } from "./props-dependencies.js";
+import { createPropsProgram, type PropsExport, type PropsProgramOptions } from "./props-program.js";
 
 type HandwrittenProp = {
     name: string;
@@ -8,246 +8,101 @@ type HandwrittenProp = {
     doc: string;
 };
 
-type AliasSite = {
-    sourceFile: ts.SourceFile;
-    declaration: ts.TypeAliasDeclaration;
+type PropsCatalog = {
+    byType: Map<string, HandwrittenProp[]>;
+    dependencies: PropsDependencies;
 };
 
-type NamedBinding = ts.ImportSpecifier | ts.ExportSpecifier;
-
-const RESOLUTION_OPTIONS: ts.CompilerOptions = {
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
-    customConditions: ["source"],
+type ExportContext = {
+    checker: ts.TypeChecker;
+    declaration: ts.Node;
+    type: ts.Type;
 };
 
-const CONTAINING_FILE = fileURLToPath(import.meta.url);
 const WHITESPACE_RUN = /\s+/g;
-const propsByRef: Map<string, HandwrittenProp[]> = new Map();
+const TYPE_FORMAT = ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
 
-const moduleFileFor = (specifier: string, containingFile: string): string | undefined =>
-    ts.resolveModuleName(specifier, containingFile, RESOLUTION_OPTIONS, ts.sys).resolvedModule?.resolvedFileName;
+const exportContext = (program: ts.Program, entry: PropsExport): ExportContext => {
+    const source = program.getSourceFile(entry.fileName);
+    const checker = program.getTypeChecker();
+    const moduleSymbol = source === undefined ? undefined : checker.getSymbolAtLocation(source);
+    const exported = moduleSymbol === undefined
+        ? undefined
+        : checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === entry.name);
 
-const parseModule = (filePath: string): ts.SourceFile =>
-    ts.createSourceFile(filePath, ts.sys.readFile(filePath) ?? "", ts.ScriptTarget.Latest, true);
-
-const specifierText = (node: ts.Expression | undefined): string | undefined =>
-    node !== undefined && ts.isStringLiteral(node) ? node.text : undefined;
-
-const boundName = (elements: readonly NamedBinding[], name: string): string | undefined => {
-    for (const element of elements) {
-        if (element.name.text === name) {
-            return (element.propertyName ?? element.name).text;
-        }
+    if (exported === undefined || source === undefined) {
+        throw new Error(`${entry.fileName} exports no type named ${entry.name}`);
     }
 
-    return undefined;
-};
+    const symbol = (exported.flags & ts.SymbolFlags.Alias) === 0 ? exported : checker.getAliasedSymbol(exported);
 
-const findAliasInModule = (specifier: string, sourceFile: ts.SourceFile, name: string): AliasSite | undefined => {
-    const filePath = moduleFileFor(specifier, sourceFile.fileName);
-
-    return filePath === undefined ? undefined : findAlias(parseModule(filePath), name);
-};
-
-const importedAlias = (
-    statement: ts.ImportDeclaration,
-    sourceFile: ts.SourceFile,
-    name: string,
-): AliasSite | undefined => {
-    const bindings = statement.importClause?.namedBindings;
-    const specifier = specifierText(statement.moduleSpecifier);
-
-    if (specifier === undefined || bindings === undefined || !ts.isNamedImports(bindings)) {
-        return undefined;
-    }
-
-    const imported = boundName(bindings.elements, name);
-
-    return imported === undefined ? undefined : findAliasInModule(specifier, sourceFile, imported);
-};
-
-const exportedAlias = (
-    statement: ts.ExportDeclaration,
-    sourceFile: ts.SourceFile,
-    name: string,
-): AliasSite | undefined => {
-    const specifier = specifierText(statement.moduleSpecifier);
-
-    if (specifier === undefined) {
-        return undefined;
-    }
-
-    const clause = statement.exportClause;
-
-    if (clause === undefined) {
-        return findAliasInModule(specifier, sourceFile, name);
-    }
-
-    const exported = ts.isNamedExports(clause) ? boundName(clause.elements, name) : undefined;
-
-    return exported === undefined ? undefined : findAliasInModule(specifier, sourceFile, exported);
-};
-
-const statementAlias = (statement: ts.Statement, sourceFile: ts.SourceFile, name: string): AliasSite | undefined => {
-    if (ts.isTypeAliasDeclaration(statement)) {
-        return statement.name.text === name ? { sourceFile, declaration: statement } : undefined;
-    }
-
-    if (ts.isImportDeclaration(statement)) {
-        return importedAlias(statement, sourceFile, name);
-    }
-
-    return ts.isExportDeclaration(statement) ? exportedAlias(statement, sourceFile, name) : undefined;
-};
-
-const propType = (type: ts.TypeNode, sourceFile: ts.SourceFile): string => {
-    const parts: readonly ts.TypeNode[] = ts.isUnionTypeNode(type) ? type.types : [type];
-
-    return parts
-        .filter((part) => part.kind !== ts.SyntaxKind.UndefinedKeyword)
-        .map((part) => part.getText(sourceFile).replaceAll(WHITESPACE_RUN, " "))
-        .join(" | ");
-};
-
-const propDoc = (member: ts.TypeElement): string => {
-    const comments = ts
-        .getJSDocCommentsAndTags(member)
-        .map((node) => (ts.isJSDoc(node) ? ts.getTextOfJSDocComment(node.comment) : undefined));
-
-    return comments.filter((text) => text !== undefined).join(" ").replaceAll(WHITESPACE_RUN, " ").trim();
-};
-
-const propertyProp = (member: ts.PropertySignature, sourceFile: ts.SourceFile): HandwrittenProp | undefined => {
-    const { name, type } = member;
-
-    if (type === undefined || !(ts.isIdentifier(name) || ts.isStringLiteral(name))) {
-        return undefined;
-    }
-
-    return { name: name.text, type: propType(type, sourceFile), doc: propDoc(member) };
-};
-
-const indexProp = (member: ts.IndexSignatureDeclaration, sourceFile: ts.SourceFile): HandwrittenProp | undefined => {
-    const keyType = member.parameters[0]?.type;
-
-    if (keyType === undefined) {
-        return undefined;
+    if ((symbol.flags & ts.SymbolFlags.Type) === 0) {
+        throw new Error(`${entry.fileName} does not export ${entry.name} as a type`);
     }
 
     return {
-        name: keyType.getText(sourceFile).replaceAll("`", ""),
-        type: propType(member.type, sourceFile),
-        doc: propDoc(member),
+        checker,
+        type: checker.getDeclaredTypeOfSymbol(symbol),
+        declaration: symbol.declarations?.[0] ?? source,
     };
 };
 
-const memberProp = (member: ts.TypeElement, sourceFile: ts.SourceFile): HandwrittenProp | undefined => {
-    if (ts.isPropertySignature(member)) {
-        return propertyProp(member, sourceFile);
+const isSymbolProperty = (checker: ts.TypeChecker, property: ts.Symbol): boolean =>
+    property.declarations?.some((declaration) => {
+        const name = ts.getNameOfDeclaration(declaration);
+
+        return name !== undefined && ts.isComputedPropertyName(name) &&
+            (checker.getTypeAtLocation(name.expression).flags & ts.TypeFlags.ESSymbolLike) !== 0;
+    }) === true;
+
+const formatType = (context: ExportContext, type: ts.Type): string =>
+    context.checker.typeToString(type, context.declaration, TYPE_FORMAT);
+
+const formatDoc = (doc: string): string => doc.replaceAll(WHITESPACE_RUN, " ").trim();
+
+const indexDoc = (declaration: ts.IndexSignatureDeclaration | undefined): string => {
+    if (declaration === undefined) {
+        return "";
     }
 
-    return ts.isIndexSignatureDeclaration(member) ? indexProp(member, sourceFile) : undefined;
+    const comments = ts.getJSDocCommentsAndTags(declaration)
+        .map((node) => ts.isJSDoc(node) ? ts.getTextOfJSDocComment(node.comment) : undefined);
+
+    return formatDoc(comments.filter((text) => text !== undefined).join(" "));
 };
 
-const literalProps = (type: ts.TypeLiteralNode, sourceFile: ts.SourceFile): HandwrittenProp[] => {
-    const props: HandwrittenProp[] = [];
+const declaredProps = (context: ExportContext): HandwrittenProp[] => {
+    const { checker, type, declaration } = context;
+    const properties = checker.getPropertiesOfType(type)
+        .filter((property) => !isSymbolProperty(checker, property))
+        .map((property) => ({
+            name: property.name,
+            type: formatType(context, checker.getTypeOfSymbolAtLocation(property, declaration)),
+            doc: formatDoc(ts.displayPartsToString(property.getDocumentationComment(checker))),
+        }));
+    const indices = checker.getIndexInfosOfType(type)
+        .filter((info) => (info.keyType.flags & ts.TypeFlags.ESSymbolLike) === 0)
+        .map((info) => ({
+            name: formatType(context, info.keyType).replaceAll("`", ""),
+            type: formatType(context, info.type),
+            doc: indexDoc(info.declaration),
+        }));
 
-    for (const member of type.members) {
-        const prop = memberProp(member, sourceFile);
-
-        if (prop !== undefined) {
-            props.push(prop);
-        }
-    }
-
-    return props;
+    return [...properties, ...indices];
 };
 
-const pickedProps = (type: ts.TypeReferenceNode, sourceFile: ts.SourceFile): HandwrittenProp[] => {
-    const [base, keys] = type.typeArguments ?? [];
-
-    if (base === undefined || keys === undefined) {
-        throw new Error("Pick requires a property type and its selected keys");
+const createPropsCatalog = (options: PropsProgramOptions): PropsCatalog => {
+    if (Object.keys(options.props).length === 0) {
+        return { byType: new Map(), dependencies: propsDependencies([], []) };
     }
 
-    const selections = ts.isUnionTypeNode(keys) ? keys.types : [keys];
-    const names = new Set(selections.map((key) => {
-        if (!ts.isLiteralTypeNode(key) || !ts.isStringLiteral(key.literal)) {
-            throw new Error(`Cannot document Pick keys expressed as ${key.getText(sourceFile)}`);
-        }
+    const { program, exports, dependencies } = createPropsProgram(options);
+    const byType = new Map(exports.map((entry) => [
+        entry.glibName,
+        declaredProps(exportContext(program, entry)),
+    ]));
 
-        return key.literal.text;
-    }));
-
-    return typeNodeProps(base, sourceFile).filter((prop) => names.has(prop.name));
+    return { byType, dependencies };
 };
 
-const referenceProps = (type: ts.TypeReferenceNode, sourceFile: ts.SourceFile): HandwrittenProp[] => {
-    if (!ts.isIdentifier(type.typeName)) {
-        return [];
-    }
-
-    if (type.typeName.text === "Pick") {
-        return pickedProps(type, sourceFile);
-    }
-
-    const site = findAlias(sourceFile, type.typeName.text);
-
-    return site === undefined ? [] : typeNodeProps(site.declaration.type, site.sourceFile);
-};
-
-const declaredProps = (ref: ModuleExport): HandwrittenProp[] => {
-    const filePath = moduleFileFor(ref.module, CONTAINING_FILE);
-
-    if (filePath === undefined) {
-        throw new Error(`Cannot resolve ${ref.module}, which declares the ${ref.export} element props`);
-    }
-
-    const site = findAlias(parseModule(filePath), ref.export);
-
-    if (site === undefined) {
-        throw new Error(`${ref.module} declares no type named ${ref.export}`);
-    }
-
-    return typeNodeProps(site.declaration.type, site.sourceFile);
-};
-
-const handwrittenPropsFor = (ref: ModuleExport): HandwrittenProp[] => {
-    const key = `${ref.module}#${ref.export}`;
-    const cached = propsByRef.get(key);
-
-    if (cached !== undefined) {
-        return cached;
-    }
-
-    const props = declaredProps(ref);
-    propsByRef.set(key, props);
-
-    return props;
-};
-
-function findAlias(sourceFile: ts.SourceFile, name: string): AliasSite | undefined {
-    for (const statement of sourceFile.statements) {
-        const site = statementAlias(statement, sourceFile, name);
-
-        if (site !== undefined) {
-            return site;
-        }
-    }
-
-    return undefined;
-}
-
-function typeNodeProps(type: ts.TypeNode, sourceFile: ts.SourceFile): HandwrittenProp[] {
-    if (ts.isTypeLiteralNode(type)) {
-        return literalProps(type, sourceFile);
-    }
-
-    if (ts.isIntersectionTypeNode(type)) {
-        return type.types.flatMap((part) => typeNodeProps(part, sourceFile));
-    }
-
-    return ts.isTypeReferenceNode(type) ? referenceProps(type, sourceFile) : [];
-}
-
-export { handwrittenPropsFor, type HandwrittenProp };
+export { createPropsCatalog, type HandwrittenProp, type PropsCatalog };
