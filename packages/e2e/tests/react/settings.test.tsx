@@ -1,10 +1,10 @@
+import type * as Gio from "@gtkx/gi/gio";
 import type { SettingsSchema, SettingValue } from "@gtkx/react/internal";
-import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import { useSetting } from "@gtkx/react";
 import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { expectSettingRoundTrip, resetSettingsKey } from "../helpers/settings.js";
+import { expectSettingRoundTrip, renderSetting, renderSettings, resetSettingsKey } from "../helpers/settings.js";
 
 type TestSchemaKeys = {
     enabled: "b";
@@ -91,14 +91,14 @@ const profileAt = (path: string): SettingsSchema<{ title: "s" }> => ({
     keys: { title: "s" },
 });
 
-const useMissingKey = () =>
+const useMissingKey = (settings: Gio.Settings) =>
     // @ts-expect-error "missing" is not a declared key of TYPED_SCHEMA
-    useSetting(TYPED_SCHEMA, "missing");
+    useSetting(settings, TYPED_SCHEMA, "missing");
 
 const renderCountSetting = async () => {
-    resetSettingsKey(SCHEMA_ID, "count");
+    await resetSettingsKey(SCHEMA_ID, "count");
 
-    return renderHook(() => useSetting(TYPED_SCHEMA, "count"));
+    return renderSetting(TYPED_SCHEMA, "count");
 };
 
 describe("useSetting", () => {
@@ -124,7 +124,7 @@ describe("useSetting", () => {
 
     it("reflects external GSettings changes via signal handler", async () => {
         const { result } = await renderCountSetting();
-        const settings = Gio.Settings.new(SCHEMA_ID);
+        const settings = await renderSettings(SCHEMA_ID);
         await act(() => settings.setInt("count", 99));
 
         await waitFor(() => {
@@ -135,7 +135,7 @@ describe("useSetting", () => {
     it("disconnects the signal handler on unmount", async () => {
         const { result, unmount } = await renderCountSetting();
         await unmount();
-        const settings = Gio.Settings.new(SCHEMA_ID);
+        const settings = await renderSettings(SCHEMA_ID);
         await act(() => settings.setInt("count", 7));
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(result.current[0]).toBe(0);
@@ -181,8 +181,8 @@ describe("useSetting (typed refs: scalars)", () => {
 
 describe("useSetting (typed refs: enums and choices)", () => {
     it("reads and writes enum keys as their integer value", async () => {
-        resetSettingsKey(SCHEMA_ID, "wrap-mode");
-        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "wrap-mode"));
+        await resetSettingsKey(SCHEMA_ID, "wrap-mode");
+        const { result } = await renderSetting(TYPED_SCHEMA, "wrap-mode");
         expectTypeOf(result.current[0]).toEqualTypeOf<number>();
         expect(result.current[0]).toBe(0);
 
@@ -196,8 +196,8 @@ describe("useSetting (typed refs: enums and choices)", () => {
     });
 
     it("reads and writes string keys with choices", async () => {
-        resetSettingsKey(SCHEMA_ID, "theme");
-        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "theme"));
+        await resetSettingsKey(SCHEMA_ID, "theme");
+        const { result } = await renderSetting(TYPED_SCHEMA, "theme");
         expectTypeOf(result.current[0]).toEqualTypeOf<string>();
         expect(result.current[0]).toBe("default");
 
@@ -213,8 +213,8 @@ describe("useSetting (typed refs: enums and choices)", () => {
 
 describe("useSetting (typed refs: tuples)", () => {
     it("reads and writes tuple keys as native arrays", async () => {
-        resetSettingsKey(SCHEMA_ID, "window-size");
-        const { result } = await renderHook(() => useSetting(TYPED_SCHEMA, "window-size"));
+        await resetSettingsKey(SCHEMA_ID, "window-size");
+        const { result } = await renderSetting(TYPED_SCHEMA, "window-size");
         expectTypeOf(result.current[0]).toEqualTypeOf<[number, number]>();
         expect(result.current[0]).toEqual([800, 600]);
 
@@ -233,9 +233,11 @@ describe("useSetting (typed refs: relocatable paths)", () => {
         const pathA = "/com/gtkx/test/useSetting/profiles/a/";
         const pathB = "/com/gtkx/test/useSetting/profiles/b/";
 
+        const first = await renderSettings(PROFILE_SCHEMA_ID, pathA);
+        const second = await renderSettings(PROFILE_SCHEMA_ID, pathB);
         const { result } = await renderHook(() => ({
-            a: useSetting(profileAt(pathA), "title"),
-            b: useSetting(profileAt(pathB), "title"),
+            a: useSetting(first, profileAt(pathA), "title"),
+            b: useSetting(second, profileAt(pathB), "title"),
         }));
 
         await act(() => {
@@ -247,6 +249,33 @@ describe("useSetting (typed refs: relocatable paths)", () => {
         });
 
         expect(result.current.b[0]).toBe("untitled");
+    });
+
+    it("follows a replacement settings instance and disconnects the previous one", async () => {
+        const firstPath = "/com/gtkx/test/useSetting/replacement/first/";
+        const secondPath = "/com/gtkx/test/useSetting/replacement/second/";
+        const first = await renderSettings(PROFILE_SCHEMA_ID, firstPath);
+        const second = await renderSettings(PROFILE_SCHEMA_ID, secondPath);
+        first.setString("title", "first");
+        second.setString("title", "second");
+        const { result, rerender } = await renderHook(
+            ({ settings, schema }: { settings: Gio.Settings; schema: SettingsSchema<{ title: "s" }> }) =>
+                useSetting(settings, schema, "title"),
+            { initialProps: { settings: first, schema: profileAt(firstPath) } },
+        );
+        expect(result.current[0]).toBe("first");
+        await rerender({ settings: second, schema: profileAt(secondPath) });
+
+        expect(result.current[0]).toBe("second");
+        await act(() => {
+            first.setString("title", "old target");
+        });
+        expect(result.current[0]).toBe("second");
+        await act(() => {
+            result.current[1]("updated");
+        });
+        expect(second.getString("title")).toBe("updated");
+        expect(first.getString("title")).toBe("old target");
     });
 });
 
@@ -295,8 +324,8 @@ describe("useSetting (variant types: dictionaries)", () => {
 
     it("reads and writes variant-valued dictionaries", async () => {
         expectTypeOf<Value<"extras">>().toEqualTypeOf<Record<string, GLib.Variant>>();
-        resetSettingsKey(SCHEMA_ID2, "extras");
-        const { result } = await renderHook(() => useSetting(SCHEMA, "extras"));
+        await resetSettingsKey(SCHEMA_ID2, "extras");
+        const { result } = await renderSetting(SCHEMA, "extras");
         expect(result.current[0]).toEqual({});
 
         await act(() => {
@@ -315,8 +344,8 @@ describe("useSetting (variant types: dictionaries)", () => {
 describe("useSetting (variant types: maybe and variant)", () => {
     it("reads and writes maybe keys as nullable values", async () => {
         expectTypeOf<Value<"opt-limit">>().toEqualTypeOf<number | null>();
-        resetSettingsKey(SCHEMA_ID2, "opt-limit");
-        const { result } = await renderHook(() => useSetting(SCHEMA, "opt-limit"));
+        await resetSettingsKey(SCHEMA_ID2, "opt-limit");
+        const { result } = await renderSetting(SCHEMA, "opt-limit");
         expect(result.current[0]).toBeNull();
 
         await act(() => {
@@ -338,8 +367,8 @@ describe("useSetting (variant types: maybe and variant)", () => {
 
     it("reads and writes variant keys as GLib.Variant", async () => {
         expectTypeOf<Value<"wrapped">>().toEqualTypeOf<GLib.Variant>();
-        resetSettingsKey(SCHEMA_ID2, "wrapped");
-        const { result } = await renderHook(() => useSetting(SCHEMA, "wrapped"));
+        await resetSettingsKey(SCHEMA_ID2, "wrapped");
+        const { result } = await renderSetting(SCHEMA, "wrapped");
         expect(result.current[0].getString()[0]).toBe("hello");
 
         await act(() => {
@@ -399,10 +428,10 @@ describe("useSetting (variant types: dict entries)", () => {
 
 describe("useSetting (variant types: invalid input)", () => {
     it("rejects invalid object paths and signatures with a descriptive error", async () => {
-        resetSettingsKey(SCHEMA_ID2, "bus-path");
-        resetSettingsKey(SCHEMA_ID2, "bus-signature");
-        const paths = await renderHook(() => useSetting(SCHEMA, "bus-path"));
-        const signatures = await renderHook(() => useSetting(SCHEMA, "bus-signature"));
+        await resetSettingsKey(SCHEMA_ID2, "bus-path");
+        await resetSettingsKey(SCHEMA_ID2, "bus-signature");
+        const paths = await renderSetting(SCHEMA, "bus-path");
+        const signatures = await renderSetting(SCHEMA, "bus-signature");
 
         expect(() => {
             paths.result.current[1]("not a path");
@@ -417,13 +446,13 @@ describe("useSetting (variant types: invalid input)", () => {
         for (const kind of ["zz", "ii", "(ii", "a{vs}"]) {
             const schema: SettingsSchema = { id: SCHEMA_ID2, path: null, keys: { count: kind } };
 
-            await expect(renderHook(() => useSetting(schema, "count"))).rejects.toThrow();
+            await expect(renderSetting(schema, "count")).rejects.toThrow();
         }
     });
 
     it("rejects keys the schema object does not declare", async () => {
         const untyped: SettingsSchema = SCHEMA;
 
-        await expect(renderHook(() => useSetting(untyped, "missing"))).rejects.toThrow();
+        await expect(renderSetting(untyped, "missing")).rejects.toThrow();
     });
 });

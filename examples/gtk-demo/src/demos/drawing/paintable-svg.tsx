@@ -80,7 +80,7 @@ function PaintableSvgProvider({ window, children }: DemoProviderProps) {
         loadSvgFromFile(Gio.File.newForUri(`resource://${nodeEditorSvgPath}`)));
 
     const handleOpen = async () => {
-        const file = await pickSvgFile(window.current);
+        const file = await pickSvgFile(window);
 
         if (!file) {
             return;

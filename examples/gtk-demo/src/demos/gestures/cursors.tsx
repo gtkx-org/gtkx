@@ -182,7 +182,7 @@ const CursorPreview = ({ info }: { info: CursorInfo }) => {
     return <GtkImage paintable={texture} />;
 };
 
-const CursorFrame = ({ cursor, tooltip }: { cursor: Gdk.Cursor; tooltip: string }) => (
+const CursorFrame = ({ cursor, tooltip }: { cursor: Gdk.Cursor | null; tooltip: string }) => (
     <GtkFrame widthRequest={32} heightRequest={32} cssClasses={["cursorbg"]} cursor={cursor} tooltipText={tooltip} />
 );
 

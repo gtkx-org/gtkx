@@ -18,7 +18,7 @@ type Theme = {
 type OriginalSettingsRef = React.RefObject<{ themeName: string; colorScheme: Adw.ColorScheme } | null>;
 
 type ThemesControls = {
-    window: React.RefObject<Gtk.Window | null>;
+    window: Gtk.Window | null;
     originalSettingsRef: OriginalSettingsRef;
     fpsRef: React.RefObject<string>;
     setIsRunning: (isRunning: boolean) => void;
@@ -78,7 +78,7 @@ const applyTheme = (theme: Theme, settings: Gtk.Settings, window: Gtk.Window | n
 };
 
 const applyNextTheme = (
-    window: React.RefObject<Gtk.Window | null>,
+    window: Gtk.Window | null,
     themeIndexRef: React.RefObject<number>,
     frameClock: Gdk.FrameClock,
     fpsRef: React.RefObject<string>,
@@ -92,7 +92,7 @@ const applyNextTheme = (
     const theme = THEMES[themeIndexRef.current % THEMES.length];
 
     if (theme) {
-        applyTheme(theme, settings, window.current);
+        applyTheme(theme, settings, window);
     }
 
     themeIndexRef.current++;
@@ -125,7 +125,7 @@ const respondToWarning = (controls: ThemesControls, response: string): void => {
         return;
     }
 
-    if (controls.window.current) {
+    if (controls.window) {
         controls.setIsRunning(true);
     }
 };
@@ -211,7 +211,7 @@ function useFpsAttrs() {
     })();
 }
 
-function useThemesCycling(window: React.RefObject<Gtk.Window | null>) {
+function useThemesCycling(window: Gtk.Window | null) {
     const [isRunning, setIsRunning] = useState(false);
     const [fps, setFps] = useState("");
     const [showWarning, setShowWarning] = useState(false);

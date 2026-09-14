@@ -17,4 +17,3 @@ export {
     type RootOptions,
 } from "./reconciler/root.js";
 export type { AccessibleProps } from "./utils/accessible-props.js";
-export type { RefProp } from "./utils/ref-prop.js";

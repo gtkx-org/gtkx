@@ -5,7 +5,7 @@ import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage, AdwToastOverlay } f
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Task } from "../types.js";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useReminders } from "../hooks/use-reminders.js";
@@ -18,6 +18,7 @@ import { AppShortcuts } from "./app-shortcuts.js";
 import { Dialogs } from "./dialogs.js";
 import { MainMenu } from "./main-menu.js";
 import { SearchButton } from "./search-button.js";
+import { useAppSettings } from "./settings.js";
 import { Sidebar } from "./sidebar.js";
 import { TaskButtons } from "./task-buttons.js";
 import { TaskFilter } from "./task-filter.js";
@@ -48,13 +49,14 @@ export const Window = () => {
     const showDialog = useStore((state) => state.showDialog);
     const markNotified = useStore((state) => state.markNotified);
 
-    const [colorScheme] = useSetting(schema, "color-scheme");
-    const [reminderMinutes] = useSetting(schema, "reminder-minutes");
-    const windowRef = useRef<Adw.ApplicationWindow | null>(null);
+    const settings = useAppSettings();
+    const [colorScheme] = useSetting(settings, schema, "color-scheme");
+    const [reminderMinutes] = useSetting(settings, schema, "reminder-minutes");
+    const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
     const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
 
-    useBindSetting({ schema, key: "window-width", object: windowRef, property: "defaultWidth" });
-    useBindSetting({ schema, key: "window-height", object: windowRef, property: "defaultHeight" });
+    useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
+    useBindSetting({ settings, schema, key: "window-height", object: window, property: "defaultHeight" });
 
     useEffect(() => {
         applyColorScheme(colorScheme);
@@ -72,7 +74,7 @@ export const Window = () => {
     return (
         <ToastProvider overlayRef={toastOverlayRef}>
             <AdwApplicationWindow
-                ref={windowRef}
+                ref={setWindow}
                 title={t("Tasks")}
                 widthRequest={360}
                 heightRequest={294}

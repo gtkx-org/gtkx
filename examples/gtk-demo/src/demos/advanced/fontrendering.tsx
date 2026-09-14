@@ -441,11 +441,7 @@ function useFontRenderingState() {
 
     const pixelAlphaRef = useRef(1);
     const outlineAlphaRef = useRef(0);
-    const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
-
-    const setDrawingArea = (node: Gtk.DrawingArea | null) => {
-        drawingAreaRef.current = node;
-    };
+    const [drawingArea, setDrawingArea] = useState<Gtk.DrawingArea | null>(null);
 
     return {
         mode,
@@ -466,7 +462,7 @@ function useFontRenderingState() {
         setOverlays,
         pixelAlphaRef,
         outlineAlphaRef,
-        drawingAreaRef,
+        drawingArea,
         setDrawingArea,
     };
 }
@@ -568,12 +564,12 @@ const advanceOverlayAnimation = ({
 };
 
 function useOverlayAnimation(state: FontRenderingState) {
-    const { overlays, pixelAlphaRef, outlineAlphaRef, drawingAreaRef } = state;
+    const { overlays, pixelAlphaRef, outlineAlphaRef, drawingArea } = state;
     const animationRef = useRef<OverlayAnimation | null>(null);
     const [isAnimating, setIsAnimating] = useState(false);
 
     useEffect(() => {
-        if (!drawingAreaRef.current) {
+        if (!drawingArea) {
             return;
         }
 
@@ -585,9 +581,9 @@ function useOverlayAnimation(state: FontRenderingState) {
             animationRef,
             setIsAnimating,
         });
-    }, [overlays.shouldShowPixels, overlays.shouldShowOutlines, pixelAlphaRef, outlineAlphaRef, drawingAreaRef]);
+    }, [overlays.shouldShowPixels, overlays.shouldShowOutlines, pixelAlphaRef, outlineAlphaRef, drawingArea]);
 
-    useTickCallback(isAnimating ? drawingAreaRef : null, (widget, frameClock) =>
+    useTickCallback(isAnimating ? drawingArea : null, (widget, frameClock) =>
         advanceOverlayAnimation({
             widget,
             frameClock,

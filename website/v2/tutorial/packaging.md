@@ -58,7 +58,7 @@ The runtime finds `gschemas.compiled`, the icons, and `gtkx.node` relative to th
 directory to `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, and loads the native addon from beside itself. An app
 that imports `?resource` or `?icon` assets also gets a sibling `gtkx.gresource`, which generated modules load and
 register automatically. Keep those files together and the app is self-contained. Move `bundle.mjs` on its own
-and the settings schema goes missing on the first `useSetting` call.
+and the settings schema goes missing when `SettingsProvider` creates its `GSettings` instance.
 
 `gtkx-schemas.json` is build metadata for `gtkx deploy`, not a runtime file. It identifies the metadata format and
 records both the schema sources and JavaScript packages reached by the bundle; deploy consumes it without placing

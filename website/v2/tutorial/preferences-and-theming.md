@@ -65,25 +65,74 @@ import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 
 The import returns the generated schema module. Its key names and stored value kinds flow into `useSetting` and `useBindSetting`.
 
+## Create the settings instance
+
+Both hooks receive an existing `Gio.Settings` instance. Create it for the application in `src/components/settings.tsx`:
+
+```tsx
+import type * as Gio from "@gtkx/gi/gio";
+import { GSettings } from "@gtkx/jsx/gio";
+import { createPortal, rootElement } from "@gtkx/react";
+import { createContext, type ReactNode, use, useState } from "react";
+import schema from "../../data/com.gtkx.tutorial.gschema.xml";
+
+const SettingsContext = createContext<Gio.Settings | null>(null);
+
+export const SettingsProvider = ({ children }: { children: ReactNode }) => {
+    const [settings, setSettings] = useState<Gio.Settings | null>(null);
+
+    return (
+        <>
+            {createPortal(<GSettings ref={setSettings} schemaId={schema.id} />, rootElement)}
+            {settings !== null && <SettingsContext value={settings}>{children}</SettingsContext>}
+        </>
+    );
+};
+
+export const useAppSettings = (): Gio.Settings => {
+    const settings = use(SettingsContext);
+    if (settings === null) {
+        throw new Error("SettingsProvider is required");
+    }
+
+    return settings;
+};
+```
+
+The portal places the non-widget settings object at GTKX's root while `SettingsProvider` owns its React lifecycle. The provider mounts its children once the instance is available and shares it through [React context](https://react.dev/learn/passing-data-deeply-with-context).
+
+In `src/app.tsx`, wrap `Window` inside the existing `AdwApplication`:
+
+```diff
++import { SettingsProvider } from "./components/settings.js";
+
+-    <Window />
++    <SettingsProvider>
++        <Window />
++    </SettingsProvider>
+```
+
 ## Bind the window size
 
-In `src/components/window.tsx`, keep an application-window ref and bind its default size:
+In `src/components/window.tsx`, replace `windowRef` with a window instance held in state and bind its default size:
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
 import { quit, useBindSetting, useSetting } from "@gtkx/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
+import { useAppSettings } from "./settings.js";
 
-const [colorScheme] = useSetting(schema, "color-scheme");
-const [reminderMinutes] = useSetting(schema, "reminder-minutes");
-const windowRef = useRef<Adw.ApplicationWindow | null>(null);
+const settings = useAppSettings();
+const [colorScheme] = useSetting(settings, schema, "color-scheme");
+const [reminderMinutes] = useSetting(settings, schema, "reminder-minutes");
+const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
 
-useBindSetting({ schema, key: "window-width", object: windowRef, property: "defaultWidth" });
-useBindSetting({ schema, key: "window-height", object: windowRef, property: "defaultHeight" });
+useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
+useBindSetting({ settings, schema, key: "window-height", object: window, property: "defaultHeight" });
 ```
 
-Keep `ref={windowRef}` on `AdwApplicationWindow`. The bindings restore the values when the widget mounts and write changes back without a separate save path.
+Set `ref={setWindow}` on `AdwApplicationWindow`. The callback ref makes the mounted instance available to the bindings on the next render. They wait while `window` is `null`, then restore the saved size and write changes back without a separate save path.
 
 ## Keep application choices together
 
@@ -130,10 +179,12 @@ Create `src/hooks/use-sort-order.ts`:
 ```ts
 import { useSetting } from "@gtkx/react";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
+import { useAppSettings } from "../components/settings.js";
 import { sortOrderFromSetting, sortOrderToSetting, type SortOrder } from "../settings.js";
 
 export const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {
-    const [value, setValue] = useSetting(schema, "sort-order");
+    const settings = useAppSettings();
+    const [value, setValue] = useSetting(settings, schema, "sort-order");
     return [sortOrderFromSetting(value), (order) => setValue(sortOrderToSetting(order))];
 };
 ```
@@ -223,11 +274,13 @@ import { useSetting } from "@gtkx/react";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useSortOrder } from "../hooks/use-sort-order.js";
 import { colorSchemeItems, sortOrderItems, type SortOrder } from "../settings.js";
+import { useAppSettings } from "./settings.js";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
-    const [scheme, setScheme] = useSetting(schema, "color-scheme");
+    const settings = useAppSettings();
+    const [scheme, setScheme] = useSetting(settings, schema, "color-scheme");
     const [sortOrder, setSortOrder] = useSortOrder();
-    const [reminderMinutes, setReminderMinutes] = useSetting(schema, "reminder-minutes");
+    const [reminderMinutes, setReminderMinutes] = useSetting(settings, schema, "reminder-minutes");
 
     return (
         <AdwPreferencesDialog onClosed={onClose} title="Preferences">
