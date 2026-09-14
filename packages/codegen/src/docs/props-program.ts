@@ -28,6 +28,7 @@ type PropsProgram = {
     program: ts.Program;
     exports: PropsExport[];
     dependencies: PropsDependencies;
+    withSource: (fileName: string, source: string) => ts.Program;
 };
 
 type DeclarationModules = {
@@ -103,14 +104,14 @@ const declarationModules = (options: PropsProgramOptions): DeclarationModules =>
 const moduleHostFor = (
     options: PropsProgramOptions,
     modules: DeclarationModules,
-    packageFiles: Set<string>,
+    packageFiles: Map<string, string>,
 ): PropsModuleHost => ({
     fileExists: (fileName) => modules.sources.has(fileName) || ts.sys.fileExists(fileName),
     readFile: (fileName) => {
-        const text = modules.sources.get(fileName) ?? ts.sys.readFile(fileName);
+        const text = modules.sources.get(fileName) ?? packageFiles.get(fileName) ?? ts.sys.readFile(fileName);
 
         if (text !== undefined && fileName.endsWith("/package.json")) {
-            packageFiles.add(fileName);
+            packageFiles.set(fileName, text);
         }
 
         return text;
@@ -181,10 +182,11 @@ const resolveModule = (
 const compilerHost = (
     options: PropsProgramOptions,
     modules: DeclarationModules,
-    packageFiles: Set<string>,
+    packageFiles: Map<string, string>,
     resolutions: Map<string, PropsResolution>,
 ): { host: ts.CompilerHost; resolve: PropsResolver } => {
     const defaultHost = ts.createCompilerHost(PROPS_COMPILER_OPTIONS);
+    const sourceFiles: Map<string, ts.SourceFile> = new Map();
     const moduleHost = moduleHostFor(options, modules, packageFiles);
     const context: ResolutionContext = {
         modules,
@@ -197,11 +199,22 @@ const compilerHost = (
         ...defaultHost,
         ...moduleHost,
         getSourceFile: (fileName, version, onError, shouldCreateNewSourceFile) => {
-            const text = modules.sources.get(fileName);
+            const cached = sourceFiles.get(fileName);
 
-            return text === undefined
+            if (cached !== undefined && shouldCreateNewSourceFile !== true) {
+                return cached;
+            }
+
+            const text = modules.sources.get(fileName);
+            const source = text === undefined
                 ? defaultHost.getSourceFile(fileName, version, onError, shouldCreateNewSourceFile)
                 : ts.createSourceFile(fileName, text, version, true);
+
+            if (source !== undefined) {
+                sourceFiles.set(fileName, source);
+            }
+
+            return source;
         },
         resolveModuleNameLiterals: (literals, containingFile) =>
             literals.map((literal) => ({ resolvedModule: resolve(literal.text, containingFile) })),
@@ -221,7 +234,7 @@ const resolveExports = (options: PropsProgramOptions, resolver: PropsResolver): 
         return { glibName, name: ref.export, fileName: resolved.resolvedFileName };
     });
 
-const checkSources = (program: ts.Program, modules: DeclarationModules): string[] => {
+const checkSources = (program: ts.Program, modules: DeclarationModules): [string, string][] => {
     const sources = program.getSourceFiles().filter((source) =>
         !modules.sources.has(source.fileName) && !program.isSourceFileDefaultLibrary(source));
     const diagnostics = [
@@ -237,13 +250,13 @@ const checkSources = (program: ts.Program, modules: DeclarationModules): string[
         throw declarationError(diagnostics, program.getCurrentDirectory());
     }
 
-    return sources.map((source) => source.fileName);
+    return sources.map((source) => [source.fileName, source.text]);
 };
 
 const createPropsProgram = (options: PropsProgramOptions): PropsProgram => {
     const modules = declarationModules(options);
     const resolutions: Map<string, PropsResolution> = new Map();
-    const packageFiles: Set<string> = new Set();
+    const packageFiles: Map<string, string> = new Map();
     const { host, resolve } = compilerHost(options, modules, packageFiles, resolutions);
     const exports = resolveExports(options, resolve);
     const program = ts.createProgram({
@@ -251,9 +264,20 @@ const createPropsProgram = (options: PropsProgramOptions): PropsProgram => {
         options: PROPS_COMPILER_OPTIONS,
         host,
     });
-    const files = [...new Set([...checkSources(program, modules), ...packageFiles])];
+    const files = new Map([...checkSources(program, modules), ...packageFiles]);
 
-    return { program, exports, dependencies: propsDependencies(files, resolutions.values().toArray()) };
+    const withSource = (fileName: string, source: string): ts.Program => {
+        modules.sources.set(fileName, source);
+
+        return ts.createProgram({
+            rootNames: [...program.getRootFileNames(), fileName],
+            options: PROPS_COMPILER_OPTIONS,
+            host,
+            oldProgram: program,
+        });
+    };
+
+    return { program, exports, dependencies: propsDependencies(files, resolutions.values().toArray()), withSource };
 };
 
 export { createPropsProgram, type PropsExport, type PropsProgramOptions };

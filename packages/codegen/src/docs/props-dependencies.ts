@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import ts from "typescript";
 import { arrayGuard, hasFields, isString } from "../guards.js";
@@ -33,27 +32,40 @@ const isPropsDependencies = (value: unknown): value is PropsDependencies =>
         value: isString,
     });
 
-const dependencyHash = (files: string[]): string => {
+const dependencyHash = (sources: Iterable<[string, string]>): string => {
     const hash = createHash("sha256");
 
-    for (const file of files) {
+    for (const [file, source] of sources) {
         hash.update(file);
         hash.update("\0");
-        hash.update(readFileSync(file));
+        hash.update(source);
     }
 
     return hash.digest("hex");
 };
 
-const propsDependencies = (files: string[], resolutions: PropsResolution[]): PropsDependencies => ({
-    files,
+const propsDependencies = (
+    sources: ReadonlyMap<string, string>,
+    resolutions: PropsResolution[],
+): PropsDependencies => ({
+    files: sources.keys().toArray(),
     resolutions,
-    value: dependencyHash(files),
+    value: dependencyHash(sources),
 });
+
+const readDependency = (file: string): [string, string] => {
+    const source = ts.sys.readFile(file);
+
+    if (source === undefined) {
+        throw new Error(`Cannot read reference dependency ${file}`);
+    }
+
+    return [file, source];
+};
 
 const hasFreshPropsDependencies = (dependencies: PropsDependencies): boolean => {
     try {
-        if (dependencyHash(dependencies.files) !== dependencies.value) {
+        if (dependencyHash(dependencies.files.map((file) => readDependency(file))) !== dependencies.value) {
             return false;
         }
 

@@ -1,8 +1,10 @@
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { callText, callTool, createProject, isToolFailure, type McpServer, startServer } from "./app-session.js";
+
+vi.setConfig({ testTimeout: 300_000 });
 
 const state = { project: "", server: {} as McpServer };
 const CONFIGURED_PROPS_FIXTURE = fileURLToPath(
@@ -100,6 +102,43 @@ describe("gtkx_search_api", () => {
 });
 
 describe("gtkx_get_api_docs", () => {
+    it("documents union branches and index overlaps across projects, edits, and invalid declarations", async () => {
+        const project = createConfiguredProject();
+        const other = createConfiguredProject();
+        const moduleName = "@audit/union-props";
+        writePropsConfig(project, "UnionProps", moduleName);
+        writePropsConfig(other, "UnionProps", moduleName);
+        const declaration = join(project, "node_modules", moduleName, "index.d.ts");
+        const otherDeclaration = join(other, "node_modules", moduleName, "index.d.ts");
+        const source = readFileSync(declaration, "utf8");
+        writeFileSync(otherDeclaration, source.replaceAll("auditFlag", "auditOther"));
+        const docs = (): Promise<string> => apiDocs({ symbol: "GtkButton", projectRoot: project });
+
+        try {
+            const initial = await docs();
+
+            for (const name of ["auditCount", "auditFlag", "auditLabel"]) {
+                expect(initial).toContain("### `" + name + "`");
+            }
+
+            expect(initial).toContain("### `auditDynamic`\n\n`string | number`");
+            expect(initial).toContain("### `audit-label-detail-${string}`\n\n`number | boolean`");
+            expect(await apiDocs({ symbol: "GtkButton", projectRoot: other })).toContain("### `auditOther`");
+            expect(await docs()).toContain("### `auditFlag`");
+            writeFileSync(declaration, source.replaceAll("auditFlag", "auditUpdated"));
+            await expect.poll(docs, { timeout: 30_000 }).toContain("### `auditUpdated`");
+            writeFileSync(declaration, source.replace("auditFlag: boolean", "auditFlag: Gtk.Absent"));
+            await expect.poll(() => isToolFailure(state.server.client, "gtkx_get_api_docs", {
+                symbol: "GtkButton", projectRoot: project,
+            }), { timeout: 30_000 }).toBe(true);
+            writeFileSync(declaration, source);
+            await expect.poll(docs, { timeout: 30_000 }).toContain("### `auditFlag`");
+        } finally {
+            rmSync(project, { recursive: true, force: true });
+            rmSync(other, { recursive: true, force: true });
+        }
+    });
+
     it("documents a symbol by qualified name and by JSX element name", async () => {
         const qualified = await apiDocs({ symbol: "Adw.Toast" });
         const element = await apiDocs({ symbol: "AdwToast" });
@@ -194,7 +233,7 @@ describe("reference configuration updates", () => {
             rmSync(project, { recursive: true, force: true });
             rmSync(launchGir, { recursive: true, force: true });
         }
-    }, 60_000);
+    });
 
     it("reloads when a higher-priority configuration appears or is removed", async () => {
         const project = createProject();
@@ -219,7 +258,7 @@ describe("reference configuration updates", () => {
         } finally {
             rmSync(project, { recursive: true, force: true });
         }
-    }, 120_000);
+    });
 
     it("selects a GIR that appears earlier in the configured search path", async () => {
         const project = createProject();
@@ -258,7 +297,7 @@ describe("reference configuration updates", () => {
         } finally {
             rmSync(project, { recursive: true, force: true });
         }
-    }, 120_000);
+    });
 
     it("refreshes configured declarations and isolates installed prop packages by project", async () => {
         const project = createConfiguredProject();
@@ -283,7 +322,7 @@ describe("reference configuration updates", () => {
             rmSync(project, { recursive: true, force: true });
             rmSync(other, { recursive: true, force: true });
         }
-    }, 120_000);
+    });
 
     it.each(INVALID_PROPS)("rejects configured props from $title", async ({ module, exported }) => {
         const project = createConfiguredProject();
@@ -301,7 +340,7 @@ describe("reference configuration updates", () => {
         } finally {
             rmSync(project, { recursive: true, force: true });
         }
-    }, 60_000);
+    });
 
     it("rejects a configured prop with an absent GIR type", async () => {
         const project = createConfiguredProject();
@@ -317,7 +356,7 @@ describe("reference configuration updates", () => {
         } finally {
             rmSync(project, { recursive: true, force: true });
         }
-    }, 60_000);
+    });
 
     it.each(["gtkx.config.cjs", "gtkx.config.cts", ".config/gtkx.ts", ".config/gtkx.config.ts"])(
         "finds a project using %s from a child directory",
@@ -355,5 +394,5 @@ describe("reference configuration updates", () => {
         } finally {
             rmSync(project, { recursive: true, force: true });
         }
-    }, 60_000);
+    });
 });

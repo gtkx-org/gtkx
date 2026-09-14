@@ -34,7 +34,11 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
     const builtin = await readBuiltinElements();
     const components = { ...builtin.components, ...options.userComponents };
     const lazyElements = [...builtin.lazyElements, ...options.userLazyElements];
-    const props = { ...builtin.props, ...options.userProps };
+    const userProps = Object.fromEntries(Object.entries(options.userProps).map(([name, ref]) => [
+        name,
+        { ...ref, composition: "intersection" as const },
+    ]));
+    const props = { ...builtin.props, ...userProps };
     const omittedProps = mergeOmittedProps(builtin.omittedProps, options.userOmittedProps);
 
     const fingerprintInput: JsxFingerprintInput = {
