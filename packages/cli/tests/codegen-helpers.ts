@@ -208,7 +208,7 @@ const fixtureConfig = (library: string): string =>
 const fixtureLibrariesConfig = (libraries: string[] | undefined): string => {
     const selection = libraries === undefined ? "" : `, libraries: ${JSON.stringify(libraries)}`;
 
-    return config(`${selection}, girPath: ${JSON.stringify([FIXTURE_GIR])}`);
+    return config(`${selection}, girPath: ${JSON.stringify([FIXTURE_GIR])}, agents: { reference: false }`);
 };
 
 const initialRunState = (): CodegenRunState => ({
