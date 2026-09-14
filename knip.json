@@ -5,6 +5,7 @@
         "-internal"
     ],
     "ignore": [
+        "packages/cli/tests/fixtures/configured-props/**",
         "packages/eslint/tests/fixtures/**",
         "packages/native/index.js"
     ],
