@@ -1,5 +1,6 @@
+import { MINIMUM_NODE_VERSION } from "@gtkx/config/internal";
 import { spawnSync } from "node:child_process";
-import { chmodSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCliOrThrow } from "./cli-project.js";
@@ -29,7 +30,12 @@ const deployConfig = (launcher: string): string => `export default {
 
 const files = (): Record<string, string> => ({
     "application.svg": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"/>\n',
-    [join("src", "index.ts")]: 'process.stdout.write("bundle");\n',
+    [join("src", "index.ts")]: `process.stdout.write(JSON.stringify({
+        literal: process.env.PROBE_LITERAL,
+        threads: process.env.UV_THREADPOOL_SIZE,
+        flags: process.execArgv,
+        args: process.argv.slice(1),
+    }));\n`,
 });
 
 const createLauncherProject = (config: string) => createCliProject({
@@ -50,15 +56,7 @@ describe("gtkx deploy (generated launcher)", () => {
         const stage = join(project.root, "build", process.arch, "stage");
         const node = join(stage, "lib", BINARY_NAME, "node");
         const launcher = join(stage, "bin", BINARY_NAME);
-        writeFileSync(
-            node,
-            [
-                "#!/bin/sh",
-                String.raw`printf "env=%s\nthreads=%s\n" "$PROBE_LITERAL" "$UV_THREADPOOL_SIZE"`,
-                String.raw`printf "arg=%s\n" "$@"`,
-                "",
-            ].join("\n"),
-        );
+        copyFileSync(process.execPath, node);
         chmodSync(node, 0o755);
 
         const run = spawnSync(launcher, ["from user"], {
@@ -68,16 +66,18 @@ describe("gtkx deploy (generated launcher)", () => {
         });
 
         expect(run.status).toBe(0);
-        expect(run.stdout).toContain(`env=${LITERAL_VALUE}\nthreads=16\n`);
-        expect(run.stdout).toContain("arg=--trace-warnings\narg=--title=two words\n");
-        expect(run.stdout).toContain(`arg=${join(stage, "lib", BINARY_NAME, "bundle.mjs")}\n`);
-        expect(run.stdout).toContain("arg=from user\n");
+        expect(JSON.parse(run.stdout)).toEqual({
+            literal: LITERAL_VALUE,
+            threads: "16",
+            flags: NODE_FLAGS,
+            args: [join(stage, "lib", BINARY_NAME, "bundle.mjs"), "from user"],
+        });
         expect(
             readFileSync(
                 join(project.root, "build", process.arch, "overlay", "deb", "share", "doc", BINARY_NAME, "copyright"),
                 "utf8",
             ),
-        ).toContain("Node.js 26.8.2");
+        ).toContain(`Node.js ${MINIMUM_NODE_VERSION}`);
     });
 
     it.each([
