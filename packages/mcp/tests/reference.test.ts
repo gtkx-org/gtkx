@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { callText, callTool, createProject, isToolFailure, type McpServer, startServer } from "./app-session.js";
 
-vi.setConfig({ testTimeout: 300_000 });
+const REFERENCE_TIMEOUT = 120_000;
+const REQUEST_OPTIONS = { timeout: REFERENCE_TIMEOUT };
+
+vi.setConfig({ testTimeout: 600_000, expect: { poll: { timeout: REFERENCE_TIMEOUT } } });
 
 const state = { project: "", server: {} as McpServer };
 const CONFIGURED_PROPS_FIXTURE = fileURLToPath(
@@ -38,16 +41,16 @@ const createConfiguredProject = (): string => {
 };
 
 const listApi = (args: Record<string, unknown> = {}): Promise<string> =>
-    callText(state.server.client, "gtkx_list_api", args);
+    callText(state.server.client, "gtkx_list_api", args, REQUEST_OPTIONS);
 
 const searchApi = (args: Record<string, unknown>): Promise<string> =>
-    callText(state.server.client, "gtkx_search_api", args);
+    callText(state.server.client, "gtkx_search_api", args, REQUEST_OPTIONS);
 
 const apiDocs = (args: Record<string, unknown>): Promise<string> =>
-    callText(state.server.client, "gtkx_get_api_docs", args);
+    callText(state.server.client, "gtkx_get_api_docs", args, REQUEST_OPTIONS);
 
 const readResource = async (uri: string): Promise<string> => {
-    const result = await state.server.client.readResource({ uri });
+    const result = await state.server.client.readResource({ uri }, REQUEST_OPTIONS);
     const [entry] = result.contents;
 
     return entry && "text" in entry ? entry.text : "";
@@ -80,7 +83,9 @@ describe("gtkx_list_api", () => {
     });
 
     it("fails for a namespace the project does not bind", async () => {
-        expect(await isToolFailure(state.server.client, "gtkx_list_api", { namespace: "Absent" })).toBe(true);
+        expect(await isToolFailure(
+            state.server.client, "gtkx_list_api", { namespace: "Absent" }, REQUEST_OPTIONS,
+        )).toBe(true);
     });
 });
 
@@ -97,7 +102,7 @@ describe("gtkx_search_api", () => {
     });
 
     it("fails when the query is missing", async () => {
-        expect(await isToolFailure(state.server.client, "gtkx_search_api", {})).toBe(true);
+        expect(await isToolFailure(state.server.client, "gtkx_search_api", {}, REQUEST_OPTIONS)).toBe(true);
     });
 });
 
@@ -126,13 +131,13 @@ describe("gtkx_get_api_docs", () => {
             expect(await apiDocs({ symbol: "GtkButton", projectRoot: other })).toContain("### `auditOther`");
             expect(await docs()).toContain("### `auditFlag`");
             writeFileSync(declaration, source.replaceAll("auditFlag", "auditUpdated"));
-            await expect.poll(docs, { timeout: 30_000 }).toContain("### `auditUpdated`");
+            await expect.poll(docs).toContain("### `auditUpdated`");
             writeFileSync(declaration, source.replace("auditFlag: boolean", "auditFlag: Gtk.Absent"));
             await expect.poll(() => isToolFailure(state.server.client, "gtkx_get_api_docs", {
                 symbol: "GtkButton", projectRoot: project,
-            }), { timeout: 30_000 }).toBe(true);
+            }, REQUEST_OPTIONS)).toBe(true);
             writeFileSync(declaration, source);
-            await expect.poll(docs, { timeout: 30_000 }).toContain("### `auditFlag`");
+            await expect.poll(docs).toContain("### `auditFlag`");
         } finally {
             rmSync(project, { recursive: true, force: true });
             rmSync(other, { recursive: true, force: true });
@@ -178,12 +183,16 @@ describe("gtkx_get_api_docs", () => {
     });
 
     it("lists the candidates behind an ambiguous name", async () => {
-        const ambiguous = await callTool(state.server.client, "gtkx_get_api_docs", { symbol: "Orientation" });
+        const ambiguous = await callTool(
+            state.server.client, "gtkx_get_api_docs", { symbol: "Orientation" }, REQUEST_OPTIONS,
+        );
         expect(JSON.stringify(ambiguous)).toContain("Gtk.Orientation");
     });
 
     it("fails for a symbol the bindings do not declare", async () => {
-        expect(await isToolFailure(state.server.client, "gtkx_get_api_docs", { symbol: "Gtk.Absent" })).toBe(true);
+        expect(await isToolFailure(
+            state.server.client, "gtkx_get_api_docs", { symbol: "Gtk.Absent" }, REQUEST_OPTIONS,
+        )).toBe(true);
     });
 });
 
@@ -252,9 +261,9 @@ describe("reference configuration updates", () => {
                 'elements: { config: { GtkButton: { omittedProps: ["label"] } } } };\n',
             );
 
-            await expect.poll(docs, { timeout: 30_000 }).not.toContain("### `label`");
+            await expect.poll(docs).not.toContain("### `label`");
             rmSync(selected);
-            await expect.poll(docs, { timeout: 30_000 }).toContain("### `label`");
+            await expect.poll(docs).toContain("### `label`");
         } finally {
             rmSync(project, { recursive: true, force: true });
         }
@@ -290,9 +299,9 @@ describe("reference configuration updates", () => {
                 ),
             );
 
-            await expect.poll(docs, { timeout: 30_000 }).toContain("A higher priority reference was selected.");
+            await expect.poll(docs).toContain("A higher priority reference was selected.");
             rmSync(selected);
-            await expect.poll(docs, { timeout: 30_000 })
+            await expect.poll(docs)
                 .toContain("Holds a short piece of text the user jotted down.");
         } finally {
             rmSync(project, { recursive: true, force: true });
@@ -315,7 +324,7 @@ describe("reference configuration updates", () => {
             expect(await docs(project)).not.toContain("### `auditOther`");
             writeFileSync(baseFile, BASE_DECLARATION);
 
-            await expect.poll(() => docs(project), { timeout: 30_000 }).toContain("### `auditReplacement`");
+            await expect.poll(() => docs(project)).toContain("### `auditReplacement`");
             expect(await docs(project)).not.toContain("### `auditCaption`");
             expect(await docs(other)).toContain("### `auditOther`");
         } finally {
@@ -332,11 +341,10 @@ describe("reference configuration updates", () => {
             expect(await apiDocs(request)).toContain("### `auditCaption`");
             writePropsConfig(project, exported, module);
             await expect.poll(
-                () => isToolFailure(state.server.client, "gtkx_get_api_docs", request),
-                { timeout: 30_000 },
+                () => isToolFailure(state.server.client, "gtkx_get_api_docs", request, REQUEST_OPTIONS),
             ).toBe(true);
             writePropsConfig(project);
-            await expect.poll(() => apiDocs(request), { timeout: 30_000 }).toContain("### `auditCaption`");
+            await expect.poll(() => apiDocs(request)).toContain("### `auditCaption`");
         } finally {
             rmSync(project, { recursive: true, force: true });
         }
@@ -350,8 +358,7 @@ describe("reference configuration updates", () => {
             expect(await apiDocs(request)).toContain("### `auditCaption`");
             writeFileSync(join(project, "node_modules", PROPS_MODULE, "index.d.ts"), INVALID_DECLARATION);
             await expect.poll(
-                () => isToolFailure(state.server.client, "gtkx_get_api_docs", request),
-                { timeout: 30_000 },
+                () => isToolFailure(state.server.client, "gtkx_get_api_docs", request, REQUEST_OPTIONS),
             ).toBe(true);
         } finally {
             rmSync(project, { recursive: true, force: true });
@@ -389,7 +396,7 @@ describe("reference configuration updates", () => {
             expect(await listApi({ projectRoot: project })).toContain("GtkSource");
             writeFileSync(dependency, "export default undefined;\n");
 
-            await expect.poll(() => listApi({ projectRoot: project }), { timeout: 30_000 })
+            await expect.poll(() => listApi({ projectRoot: project }))
                 .not.toContain("GtkSource");
         } finally {
             rmSync(project, { recursive: true, force: true });

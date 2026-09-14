@@ -4,10 +4,12 @@ import ts from "typescript";
 import type { Library } from "../gir/library.js";
 import type { ElementProps } from "../store/jsx/element-prop-imports.js";
 import { transpileDeclaration } from "../compile.js";
+import { type GiInputs, isGiStoreFresh } from "../fingerprint.js";
 import { generateGiNamespace } from "../gi.js";
 import { externalPackageFor } from "../gir/external-namespaces.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { collectStoreSources } from "../store/gi-store.js";
+import { resolveStore } from "../store/resolve-store.js";
 import { propsDependencies, type PropsDependencies, type PropsResolution } from "./props-dependencies.js";
 import { declarationError, PROPS_COMPILER_OPTIONS, VIRTUAL_GI_ROOT } from "./props-modules.js";
 
@@ -253,6 +255,24 @@ const checkSources = (program: ts.Program, modules: DeclarationModules): [string
     return sources.map((source) => [source.fileName, source.text]);
 };
 
+const freshDeclarationDir = (root: string, inputs: GiInputs): string | undefined => {
+    const resolved = ts.resolveModuleName(
+        "@gtkx/gi/package.json",
+        join(root, "gtkx.config.ts"),
+        PROPS_COMPILER_OPTIONS,
+        ts.sys,
+    ).resolvedModule;
+
+    if (resolved === undefined) {
+        return undefined;
+    }
+
+    const directory = dirname(resolved.resolvedFileName);
+    const { version } = resolveStore(root).gi;
+
+    return isGiStoreFresh(directory, { ...inputs, storeVersion: version }) ? directory : undefined;
+};
+
 const createPropsProgram = (options: PropsProgramOptions): PropsProgram => {
     const modules = declarationModules(options);
     const resolutions: Map<string, PropsResolution> = new Map();
@@ -280,4 +300,4 @@ const createPropsProgram = (options: PropsProgramOptions): PropsProgram => {
     return { program, exports, dependencies: propsDependencies(files, resolutions.values().toArray()), withSource };
 };
 
-export { createPropsProgram, type PropsExport, type PropsProgramOptions };
+export { createPropsProgram, freshDeclarationDir, type PropsExport, type PropsProgramOptions };

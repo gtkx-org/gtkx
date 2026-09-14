@@ -18,6 +18,7 @@ import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/js
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
 import { type ElementPageContext, renderElementPage } from "./element-page.js";
 import { createPropsCatalog, type PropsCatalog } from "./handwritten-props.js";
+import { freshDeclarationDir } from "./props-program.js";
 import { elementSlug, firstSentence, namespaceOrder } from "./render.js";
 
 type DocsElementLink = {
@@ -412,7 +413,8 @@ const writeDocs = (options: DocsOptions): DocsResult => {
         library,
         props: input.props,
         resolveFrom: input.resolveFrom,
-        declarationDir: options.declarationDir,
+        declarationDir: options.declarationDir ??
+            freshDeclarationDir(input.resolveFrom, giInputs(options, library.girFiles)),
     });
     const { pages, namespaces } = generatePages({ options, basePath: input.basePath, linkStyle, library, props });
     clearOutDir(options, previous);

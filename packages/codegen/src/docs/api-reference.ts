@@ -17,6 +17,7 @@ import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.j
 import { type ElementPageContext, renderElementPage } from "./element-page.js";
 import { createPropsCatalog, type PropsCatalog } from "./handwritten-props.js";
 import { hasFreshPropsDependencies } from "./props-dependencies.js";
+import { freshDeclarationDir } from "./props-program.js";
 import { docsSignatureContext, firstSentence, namespaceOrder } from "./render.js";
 import { type GiSymbolEntry, renderSymbolPage, type SymbolPageOptions } from "./symbol-page.js";
 
@@ -382,10 +383,12 @@ class ApiReference {
             storeVersion: undefined,
         };
         this.giFingerprint = computeGiFingerprint(this.giInputs);
+        const resolveFrom = resolve(options.resolveFrom ?? process.cwd());
         this.propsCatalog = createPropsCatalog({
             library: this.library,
             props: this.props,
-            resolveFrom: resolve(options.resolveFrom ?? process.cwd()),
+            resolveFrom,
+            declarationDir: freshDeclarationDir(resolveFrom, this.giInputs),
         });
         this.elementContext = {
             library: this.library,
