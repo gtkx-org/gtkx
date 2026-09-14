@@ -518,8 +518,8 @@ importers:
         specifier: 'catalog:'
         version: 6.0.1
       nypm:
-        specifier: ^0.6.9
-        version: 0.6.9
+        specifier: ^0.6.10
+        version: 0.6.10
       tinyexec:
         specifier: ^1.3.1
         version: 1.3.1
@@ -5910,8 +5910,8 @@ packages:
       '@swc/core':
         optional: true
 
-  nypm@0.6.9:
-    resolution: {integrity: sha512-zxlE2yvSWZWmHcNdT3+5zV2lrCogeE9YOklHrR3dFjqutq5wO7GFDYLFDRXLsYnJzwvy/im9fYoxePvS0VTW0w==}
+  nypm@0.6.10:
+    resolution: {integrity: sha512-W72Hrj1petq+b3Hk2aAC+9zswetlIFTnDW4s5djseZh2nYqBbyQLOtj472HwcbcWykPBUW1WpWpjOd4nK6gMRw==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -12400,7 +12400,7 @@ snapshots:
       '@nx/nx-win32-x64-msvc': 23.2.0
       '@swc/core': 1.16.2
 
-  nypm@0.6.9:
+  nypm@0.6.10:
     dependencies:
       citty: 0.2.2
       pathe: 2.0.3
