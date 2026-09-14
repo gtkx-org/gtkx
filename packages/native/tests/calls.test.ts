@@ -57,6 +57,27 @@ test("a bound descriptor stays reusable across calls", () => {
     expect(call(strdup, [encoder.encode("x")]).value).toEqual(encoder.encode("x"));
 });
 
+test("cursor return descriptors reject ownership of another argument's buffer", () => {
+    expect(() => bind("libc.so.6", "memchr", [
+        {
+            kind: "array",
+            arrayKind: "sized",
+            itemDescriptor: { kind: "uint8" },
+            ownership: "borrowed",
+            sizeParamIndex: 2,
+        },
+        { kind: "int32" },
+        { kind: "uint64" },
+    ], {
+        kind: "array",
+        arrayKind: "cursor",
+        itemDescriptor: { kind: "uint8" },
+        ownership: "full",
+        baseParamIndex: 0,
+        sizeParamIndex: 2,
+    })).toThrow();
+});
+
 test.each([
     { name: "ordinary items", values: [encoder.encode("gtk"), encoder.encode("x")] },
     { name: "bytes outside UTF-8", values: [new Uint8Array([255, 128]), encoder.encode("gtkx")] },

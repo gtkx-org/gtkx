@@ -28,17 +28,20 @@ const run = (command: string, args: string[], env: NodeJS.ProcessEnv): void => {
     execFileSync(resolveExecutable(command), args, { stdio: "inherit", env, cwd: WORKSPACE_ROOT });
 };
 
-run("pnpm", [...BUILD_ARGS, "--target", "x86_64-unknown-linux-gnu"], {
-    ...process.env,
-    RUSTFLAGS: "-Zsanitizer=address",
-    RUSTUP_TOOLCHAIN: RUST_NIGHTLY,
-});
-
 const runtime = asanRuntime();
 
 try {
+    run("pnpm", [...BUILD_ARGS, "--target", "x86_64-unknown-linux-gnu"], {
+        ...process.env,
+        RUSTFLAGS: "-Zsanitizer=address",
+        RUSTUP_TOOLCHAIN: RUST_NIGHTLY,
+    });
+
     for (const config of NATIVE_CONFIGS) {
-        run("pnpm", ["exec", "vitest", "run", "--root", dirname(config), "--config", config], {
+        const args = [
+            "exec", "vitest", "run", "--root", dirname(config), "--config", config, "--testTimeout", "120000",
+        ];
+        run("pnpm", args, {
             ...process.env,
             LD_PRELOAD: runtime,
             GTKX_ASAN_RUNTIME: runtime,
