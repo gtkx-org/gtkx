@@ -1,9 +1,8 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import type { PrimitiveCategory } from "./primitives.js";
 import type { CArrayType, HashTableType, ListType, ParseContext, TypeId } from "./type-id.js";
 import type { GirType } from "./type.js";
 import { callbackFromNode } from "./callback.js";
+import { locateGirFile } from "./libraries.js";
 import {
     createNamespaceShell,
     type GirNamespace,
@@ -36,21 +35,6 @@ const readRepositoryNode = (path: string): RawNode => {
     }
 
     return repository as RawNode;
-};
-
-const locateGirFile = (identifier: string, girPath: string[]): string => {
-    const filename = `${identifier}.gir`;
-
-    for (const directory of girPath) {
-        const candidate = join(directory, filename);
-
-        if (existsSync(candidate)) {
-            return candidate;
-        }
-    }
-
-    const tried = girPath.map((directory) => join(directory, filename)).join(", ");
-    throw new Error(`GIR file ${filename} not found on girPath. Tried: ${tried}`);
 };
 
 class Library {

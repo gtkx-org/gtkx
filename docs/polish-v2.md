@@ -503,7 +503,7 @@ All ten analysis files were read, 2,996 baseline lines, with their callable, asy
 
 Repeat review exposed ancestor ownership differences. Shared selection now follows emitted methods and runtime mixin precedence: class declarations win, followed by the oldest ancestor's interface methods, retaining interface order within each level. Shadowed GIR methods no longer create false interface omissions. Public CLI generation and strict consumer declarations cover these cases, including incompatible consumer types. All 97 focused cases pass, with 21 analysis cases, alongside codegen/CLI types and lint. Independent review found no additional actionable finding in this scope.
 
-A separate store-resolution finding remains open: `store/resolve-store.ts` accepts the monorepo's `packages/<name>/package.json` layout when Node cannot resolve the dependency. The retained public API probe confirms this production fallback; it belongs in the next store audit.
+The separate monorepo store-resolution fallback is addressed in the store audit below.
 
 ### Release tooling audit
 
@@ -519,8 +519,20 @@ All 23 tracked GitHub configuration files were read, 1,418 baseline lines. CI no
 
 All nine Contributing pages were reread against the current implementation. Three pages now identify generated GI classes as the owners of property and signal metadata; JSX retains those classes. The architecture call path distinguishes runtime conversion from native storage preparation. The complete production website build passes all 27 tasks, including current API generation, page rendering and sitemap generation, in seven minutes 21 seconds. The new PR job will keep that validation alongside the code checks.
 
+### Generated store audit
+
+All six direct generated-store modules were read, 1,207 baseline lines, with their CLI resolution and compilation callers. Resolution now requires installed dependencies; a `packages/<name>/package.json` source directory cannot stand in for one. Unused temporary dependency links and their option plumbing are removed because declaration and module transpilation do not resolve imports.
+
+Four public CLI cases cover missing native/runtime dependencies and GI-only consumers with uninstalled React source directories. Existing store publication and generated-consumer cases also pass. Independent review found no additional actionable issue in these changes.
+
+### GIR freshness follow-up
+
+Changing GIR search-directory or root-library order could leave the previous bindings marked fresh. Adding a GIR earlier in the search path had the same effect. Fingerprints now retain configuration order and resolve recorded GIR names through the same lookup used for generation before comparing their contents. Built-in string sorting replaces the handwritten ordinal comparator where order is only needed for stable hashing.
+
+Eight public CLI cases import generated constants after direct and transitive shadowing, search-order changes, duplicate version selections, removals and directory aliases. Missing GIR input fails while preserving the previous usable bindings. The previous implementation selected stale values in four supported cases. All 90 focused integration cases pass, including store publication, generated types and documentation, alongside codegen/CLI/test types, lint and independent review.
+
 ## Next work
 
-The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. Complete publication/tutorial consumers and the next PR checks are in progress.
+The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.
 
 Continue repeat audits alongside the R2 string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.

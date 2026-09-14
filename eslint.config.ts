@@ -4,6 +4,13 @@ import api from "./api.json" with { type: "json" };
 export default [
     ...config(import.meta.dirname, api),
     {
+        files: ["packages/codegen/src/fingerprint.ts"],
+        rules: {
+            "unicorn/require-array-sort-compare": "off",
+            "sonarjs/no-alphabetical-sort": "off",
+        },
+    },
+    {
         files: [
             "packages/codegen/src/store/jsx/element-prop-imports.ts",
             "packages/runtime/src/property-types.ts",
