@@ -615,6 +615,12 @@ All nine configured-props cases, 15 CLI docs cases, 28 MCP reference cases and 3
 
 The first combined lint run found two exports left unused by the settings cleanup and the fixture packages copied dynamically into public consumers. The exports are now local, and Knip excludes only that fixture tree, following the existing fixture convention. Knip, affected lint and independent review pass; the combined checkpoint restarts with this cleanup.
 
+### Clean source bootstrap follow-up
+
+The first reference-batch CI run exposed a source-checkout dependency: bootstrap codegen requested React's published declarations before React was compiled. Installed consumers already had those declarations and passed. An explicit repository bootstrap configuration now generates bindings without the agent reference. A separate target builds the CLI and its dependencies before generating that reference; ordinary consumer codegen remains unchanged. Root build/codegen commands and root lint/typechecking include the final reference target without adding a cycle to package builds.
+
+A clean copied checkout with no generated store or package declarations passes postinstall, source bootstrap, CLI dependency compilation and built-CLI reference generation. Its reference includes the built-in callback prop. Both Nx dependency graphs, root types, Knip, affected lint, whitespace checks and independent review pass. The bootstrap configuration is a narrowly registered analysis entry; this introduces no production fallback for the monorepo.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.
