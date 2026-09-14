@@ -18,6 +18,9 @@
         "**/gtkx.config.ts": [
             "exports"
         ],
+        "scripts/gtkx.bootstrap.ts": [
+            "exports"
+        ],
         "packages/e2e/elements.ts": [
             "exports"
         ],
@@ -60,6 +63,11 @@
             "ignoreDependencies": [
                 "@gtkx/cairo",
                 "@gtkx/native"
+            ]
+        },
+        "scripts": {
+            "entry": [
+                "gtkx.bootstrap.ts!"
             ]
         },
         "packages/codegen": {
