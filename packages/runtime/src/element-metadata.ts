@@ -16,6 +16,10 @@ const registerElementMetadata = (
 
 const elementMetadataVersion = (): number => state.version;
 
-/** @internal */
-export { type ElementPropertyEntry, registerElementMetadata };
-export { elementMetadataVersion, registeredElementProperties, registeredElementSignals };
+export {
+    type ElementPropertyEntry,
+    registerElementMetadata,
+    elementMetadataVersion,
+    registeredElementProperties,
+    registeredElementSignals,
+};
