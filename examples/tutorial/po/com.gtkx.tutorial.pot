@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-14 19:47+0200\n"
+"POT-Creation-Date: 2026-09-14 22:16+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -52,11 +52,11 @@ msgstr ""
 msgid "Delete"
 msgstr ""
 
-#: src/components/dialogs.tsx:24
+#: src/components/dialogs.tsx:25
 msgid "“{{title}}” moved to Trash"
 msgstr ""
 
-#: src/components/dialogs.tsx:25
+#: src/components/dialogs.tsx:26
 msgid "Undo"
 msgstr ""
 
@@ -137,7 +137,7 @@ msgstr ""
 msgid "Keyboard shortcuts"
 msgstr ""
 
-#: src/components/shortcuts.tsx:13 src/components/task-row.tsx:74
+#: src/components/shortcuts.tsx:13 src/components/task-row.tsx:87
 msgid "Delete task"
 msgstr ""
 
@@ -214,11 +214,11 @@ msgstr ""
 msgid "Add a task…"
 msgstr ""
 
-#: src/components/task-row.tsx:57
+#: src/components/task-row.tsx:70
 msgid "Mark complete"
 msgstr ""
 
-#: src/components/task-row.tsx:67
+#: src/components/task-row.tsx:80
 msgid "Toggle important"
 msgstr ""
 

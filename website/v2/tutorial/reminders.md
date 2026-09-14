@@ -1,41 +1,30 @@
 ---
-description: "Send one desktop reminder for each due date, with actions that survive a cold start."
+description: "Send desktop reminders and route their actions into the app."
 ---
 
 # Reminders That Reach the Desktop
 
-[Dragging Tasks Into Order](/v2/tutorial/drag-to-reorder) completed task-list interaction. This chapter sends a desktop notification when a task enters its reminder window and keeps notification actions working when they launch the app.
+The [drag chapter](/v2/tutorial/drag-to-reorder) completed task-list interaction. Add a reminder when a task reaches its configured lead time, then connect the notification's actions to the application.
 
-## Remember which due date was notified
+## Record the notified due date
 
-The reminder marker belongs to the task because tasks already persist. Add it to `Task` in `src/types.ts`:
+Add `lastNotifiedDue: string | null` to `Task` in `src/types.ts`. Set it to `null` in the seed helper and in the task created by `addTask`.
 
-```diff
-     createdAt: string;
-     completedAt: string | null;
-+    lastNotifiedDue: string | null;
-```
-
-Set it to `null` in both the seed helper in `src/store/seed.ts` and the new task created in `src/store/tasks.ts`:
+Add this member to `TasksSlice` in `src/store/tasks.ts`:
 
 ```ts
-lastNotifiedDue: null,
+markNotified: (id: string, due: string) => void;
 ```
 
-Add an action that records the exact due value that produced a notification:
-
-```diff
-     reorder: (draggedId: string, targetId: string) => void;
-+    markNotified: (id: string, due: string) => void;
-```
+Add its implementation alongside the other slice actions:
 
 ```ts
 markNotified: (id, due) => set((state) => ({ tasks: patch(state.tasks, id, { lastNotifiedDue: due }) })),
 ```
 
-A restart now preserves the marker. Changing the task's due date changes the value being compared, so the new due date can produce its own reminder.
+Tasks already persist, so this marker survives a restart. Comparing the exact due value lets a changed due date produce another reminder.
 
-## Sweep for due tasks
+## Check the reminder window
 
 Create `src/hooks/use-reminders.ts`:
 
@@ -73,17 +62,17 @@ export const useReminders = (
 };
 ```
 
-The first sweep runs when the hook mounts and sends upcoming tasks already inside the configured lead. `previousSweep` records the last point checked, so a delayed interval still catches a reminder threshold crossed since then, including a nonzero lead. On mount, that cursor starts one minute earlier. Completed tasks, tasks in Trash, and due values already recorded are skipped.
+The hook checks immediately and once a minute. It skips completed, deleted, and already-notified tasks. The sweep cursor catches a reminder threshold crossed since the previous check, including a delayed interval; the first check looks back one minute.
 
-## Build the notification
+## Send a notification
 
 Create `src/notifications.ts`:
 
 ```ts
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
-import { formatDateTime } from "./format.js";
 import type { Task } from "./types.js";
+import { formatDateTime } from "./format.js";
 
 export const buildReminder = (task: Task, due: string): Gio.Notification => {
     const notification = Gio.Notification.new(task.title);
@@ -95,25 +84,22 @@ export const buildReminder = (task: Task, due: string): Gio.Notification => {
 };
 ```
 
-This is an explicit imperative boundary: `Gio.Notification` requires a title in its native constructor, and GTKX does not yet expose that constructor as a usable JSX contract. The rest of the app continues to instantiate GObjects through JSX. The [Gio notification reference](https://docs.gtk.org/gio/class.Notification.html) covers notification fields and application actions.
+The generated `Gio.Notification` binding exposes the native constructor and methods used here. Its actions target the application so they can also work after a launch. See the [Gio notification documentation](https://docs.gtk.org/gio/class.Notification.html) for the desktop's delivery and activation requirements.
 
-## Send and record together
+In `src/components/window.tsx`, add `useApplication` to the `@gtkx/react` import and `useCallback` to the React import. Add these imports:
 
-Wire the hook into `src/components/window.tsx`:
-
-```tsx
-import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import schema from "../../data/com.gtkx.tutorial.gschema.xml";
+```ts
+import type { Task } from "../types.js";
 import { useReminders } from "../hooks/use-reminders.js";
 import { buildReminder } from "../notifications.js";
-import type { Task } from "../types.js";
-import { useAppSettings } from "./settings.js";
+```
 
+Inside `Window`, reuse the `settings` instance and schema from the preferences chapter:
+
+```ts
 const application = useApplication();
 const tasks = useStore((state) => state.tasks);
 const markNotified = useStore((state) => state.markNotified);
-const settings = useAppSettings();
 const [reminderMinutes] = useSetting(settings, schema, "reminder-minutes");
 
 const sendReminder = useCallback(
@@ -127,55 +113,59 @@ const sendReminder = useCallback(
 useReminders(tasks, reminderMinutes, sendReminder);
 ```
 
-The task ID is also the shell notification ID, so sending another notification for that task replaces the existing one. Recording the due value immediately after sending makes the store and desktop delivery share one path.
+The task ID identifies the desktop notification, so a later reminder for that task replaces it. Record the due value after sending.
 
-## Add application actions
+## Handle application actions
 
-Notification interactions target application actions because they may run before a window exists. GTKX renders them as children of `AdwApplication`; the [Gio application reference](https://docs.gtk.org/gio/class.Application.html) covers the upstream action, activation, and session-bus lifecycle. Add them to the `actions` prop in `src/app.tsx`:
+Update `src/app.tsx`, keeping its `App` export:
 
 ```tsx
 import * as GLib from "@gtkx/gi/glib";
+import { AdwApplication } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { SettingsProvider } from "./components/settings.js";
+import { Window } from "./components/window.js";
 import { ALL_TASKS, openTask } from "./navigation.js";
 import { useStore } from "./store/index.js";
 
-<AdwApplication
-    actionAccels={[
-        { detailedActionName: "win.new", accels: ["<Control>n"] },
-        { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
-        { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
-    ]}
-    actions={
-        <>
-            <GSimpleAction
-                name="complete-task"
-                parameterType={GLib.VariantType.new("s")}
-                onActivate={(parameter) => {
-                    useStore.getState().setDone((parameter as GLib.Variant).getString()[0], true);
-                }}
-            />
-            <GSimpleAction
-                name="open-task"
-                parameterType={GLib.VariantType.new("s")}
-                onActivate={(parameter) => {
-                    openTask(ALL_TASKS, (parameter as GLib.Variant).getString()[0]);
-                }}
-            />
-        </>
-    }
->
-    <SettingsProvider>
-        <Window />
-    </SettingsProvider>
-</AdwApplication>
+export function App() {
+    return (
+        <AdwApplication
+            actionAccels={[
+                { detailedActionName: "win.new", accels: ["<Control>n"] },
+                { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
+                { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
+            ]}
+            actions={
+                <>
+                    <GSimpleAction
+                        name="complete-task"
+                        parameterType={GLib.VariantType.new("s")}
+                        onActivate={(parameter) => {
+                            useStore.getState().setDone((parameter as GLib.Variant).getString()[0], true);
+                        }}
+                    />
+                    <GSimpleAction
+                        name="open-task"
+                        parameterType={GLib.VariantType.new("s")}
+                        onActivate={(parameter) => {
+                            openTask(ALL_TASKS, (parameter as GLib.Variant).getString()[0]);
+                        }}
+                    />
+                </>
+            }
+        >
+            <SettingsProvider>
+                <Window />
+            </SettingsProvider>
+        </AdwApplication>
+    );
+}
 ```
 
-These actions match the names and string targets created in `buildReminder`. They use the store and navigation ref because a notification activation does not originate inside a screen.
+The `actions` prop mounts `GSimpleAction` elements on the application. Their names and string parameters match the targets supplied by `buildReminder`.
 
-## Queue cold-start navigation
-
-An `open-task` action can arrive before `NavigationContainer` mounts. Keep the latest request until the container reports that it is ready. Update `src/navigation.ts`:
+An action may arrive before the navigation container mounts. In `src/navigation.ts`, add `pendingTask`, replace `openTask`, and add `openPendingTask`:
 
 ```ts
 let pendingTask: { selection: Selection; id: string } | null = null;
@@ -197,38 +187,20 @@ export const openPendingTask = (): void => {
 };
 ```
 
-Import `openPendingTask` in `src/components/window.tsx` and connect it to the container:
-
-```tsx
-<NavigationContainer ref={navigationRef} onReady={openPendingTask}>
-    <Split.Navigator>
-        …
-    </Split.Navigator>
-</NavigationContainer>
-```
-
-A running window opens the task immediately. A cold start stores the request, mounts the normal application tree, and opens it from `onReady`.
-
-Desktop delivery also depends on the installed application identity and desktop entry. [Packaging the App](/v2/tutorial/packaging) adds that metadata; the development process can exercise the actions directly but does not represent an installed notification service.
+Import `openPendingTask` in `window.tsx` and add `onReady={openPendingTask}` to the existing `NavigationContainer`. A ready container opens the task immediately; a newly mounted one consumes the queued request.
 
 ## Run it
 
-The task editor currently assigns a selected date a due time of 18:00. Choose today before 18:00, or tomorrow, then set Reminder lead time wide enough to include that time. Within a minute, the notification appears. Its body opens the task; Mark Complete updates it through the application action.
+The editor assigns a selected date a due time of 18:00. Pick a date and set the reminder lead time to include it. A zero-minute lead sends on the first sweep at or just after the due time. Restarting does not resend the same recorded due value.
 
-Set the lead to zero to notify on the first sweep at or just after 18:00. Restarting the app does not resend a reminder for the same due value. Change the due date and the task becomes eligible again.
-
-For the action path during development, replace `<task-id>` with a real task ID:
+While the development app is running, exercise an application action with a real task ID:
 
 ```bash
 gapplication action com.gtkx.tutorial complete-task "'<task-id>'"
 ```
 
-The installed cold-start path becomes available after the packaging chapter installs the desktop entry.
-
-## You built the application
-
-Tasks now covers native Adwaita layout, GTKX JSX, navigation, forms, persistence, settings, input controllers, and desktop actions. Use the [generated element reference](/v2/guide/configuration-and-codegen#generating-element-reference-docs) for the exact widgets and libraries configured in a GTKX project. Follow the linked upstream documentation when a feature belongs to React, GTK, or GLib.
+Desktop delivery and launching from a notification require the installed application identity and desktop entry. The [packaging chapter](/v2/tutorial/packaging) adds those. After installation, check that clicking a reminder opens its task and **Mark Complete** updates it.
 
 ## Next
 
-[Appendix A: Testing the App](/v2/tutorial/testing) drives the finished application through its native accessibility tree.
+[Testing the App](/v2/tutorial/testing) exercises the application through its native widgets.
