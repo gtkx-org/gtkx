@@ -71,4 +71,4 @@ const createRetainedStagingDir = (prefix: string): RetainedStagingDir => {
     };
 };
 
-export { createRetainedStagingDir, removeTempDir, type RetainedStagingDir, withStagingDir };
+export { createRetainedStagingDir, type RetainedStagingDir, withStagingDir };

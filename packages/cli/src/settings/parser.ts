@@ -157,4 +157,4 @@ const createSchemaResolver = (files: RawSchemaFile[]): (file: RawSchemaFile) => 
     });
 };
 
-export { parseSchemaFile, createSchemaResolver, type ParsedKey, type ParsedSchema, type ParsedSchemaFile };
+export { parseSchemaFile, createSchemaResolver, type ParsedSchema, type ParsedSchemaFile };
