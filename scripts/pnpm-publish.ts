@@ -119,12 +119,12 @@ const registryFor = (packageDir: string, name: string, manifest: PackageManifest
     return new URL(normalized);
 };
 
-const registryDocument = async (url: URL): Promise<object | undefined> => {
+const registryDocument = async (url: URL, timeoutMs: number): Promise<object | undefined> => {
     try {
         const response = await fetch(url, {
             cache: "no-store",
             headers: { "Cache-Control": "no-cache" },
-            signal: AbortSignal.timeout(REGISTRY_REQUEST_TIMEOUT_MS),
+            signal: AbortSignal.timeout(timeoutMs),
         });
 
         const body: unknown = response.ok ? await response.json() : undefined;
@@ -163,18 +163,23 @@ const waitForVisibility = async (packageDir: string, tag: string | undefined, ti
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {
+        const requestTimeout = Math.min(REGISTRY_REQUEST_TIMEOUT_MS, deadline - Date.now());
         const [versionDocument, packument] = await Promise.all([
-            registryDocument(versionUrl),
-            registryDocument(packumentUrl),
+            registryDocument(versionUrl, requestTimeout),
+            registryDocument(packumentUrl, requestTimeout),
         ]);
 
-        if (isVersionVisible(versionDocument, version) && isTagVisible(packument, tag, version)) {
+        if (
+            Date.now() < deadline &&
+            isVersionVisible(versionDocument, version) &&
+            isTagVisible(packument, tag, version)
+        ) {
             console.log(`${expected} is visible on the registry`);
 
             return;
         }
 
-        await delay(VISIBILITY_INTERVAL_MS);
+        await delay(Math.min(VISIBILITY_INTERVAL_MS, deadline - Date.now()));
     }
 
     const limit = `${String(timeoutMs)} ms (${VISIBILITY_TIMEOUT_ENV} overrides the default)`;

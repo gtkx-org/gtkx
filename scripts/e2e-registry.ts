@@ -56,8 +56,7 @@ type RegistryHandle = RegistryContext & {
 };
 
 type StartRegistryOptions = {
-    registryDir?: string | undefined;
-    resetsStorage?: boolean | undefined;
+    registryDir: string;
     visibilityDelayMs?: number | undefined;
 };
 
@@ -106,19 +105,16 @@ type AppLaunch = {
     env?: NodeJS.ProcessEnv;
 };
 
-type HeadlessDisplay = {
-    startHeadlessDisplay: (options: { size: string; compositor: "sway" | "weston" }) => Promise<() => void>;
-    resolveHeadlessOptions: (provided: object) => { size: string; compositor: "sway" | "weston" };
-    STATIC_HEADLESS_ENV: Record<string, string>;
-};
+type HeadlessDisplay = typeof import("../packages/vitest/src/headless-display.ts");
 
 const ROOT_DIR = fileURLToPath(new URL("..", import.meta.url));
 const PACKAGES_DIR = join(ROOT_DIR, "packages");
 const NATIVE_DIR = join(ROOT_DIR, "packages", "native");
 const PORT = 4873;
 const VERDACCIO_PORT = 4874;
-const HOST = `localhost:${String(PORT)}`;
-const VERDACCIO_HOST = `localhost:${String(VERDACCIO_PORT)}`;
+const HOSTNAME = "127.0.0.1";
+const HOST = `${HOSTNAME}:${String(PORT)}`;
+const VERDACCIO_HOST = `${HOSTNAME}:${String(VERDACCIO_PORT)}`;
 const REGISTRY = `http://${HOST}/`;
 const REGISTRAR_USER = "release-e2e";
 const RELEASE_VISIBILITY_DELAY_MS = 3000;
@@ -398,7 +394,7 @@ function forwardRegistryRequest(
     const upstream = request(
         {
             headers: { ...incoming.headers, host: VERDACCIO_HOST },
-            hostname: "localhost",
+            hostname: HOSTNAME,
             method: incoming.method,
             path: rawUrl,
             port: VERDACCIO_PORT,
@@ -597,7 +593,7 @@ function listenServer(server: Server, port: number): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         server.once("error", reject);
 
-        server.listen(port, () => {
+        server.listen(port, HOSTNAME, () => {
             resolve();
         });
     });
@@ -618,21 +614,16 @@ async function publishInto(env: NodeJS.ProcessEnv): Promise<void> {
     }
 }
 
-function resetRegistryStorage(options: StartRegistryOptions, registryDir: string): void {
-    if (options.resetsStorage ?? true) {
-        rmSync(join(registryDir, "storage"), { recursive: true, force: true });
-    }
-}
-
 async function startRegistryServers(configPath: string, visibilityDelayMs: number): Promise<RegistryServers> {
     const server = (await runServer(configPath)) as Server;
-    await listenServer(server, visibilityDelayMs > 0 ? VERDACCIO_PORT : PORT);
-
-    if (visibilityDelayMs === 0) {
-        return { server };
-    }
 
     try {
+        await listenServer(server, visibilityDelayMs > 0 ? VERDACCIO_PORT : PORT);
+
+        if (visibilityDelayMs === 0) {
+            return { server };
+        }
+
         return { server, visibilityProxy: await startVisibilityProxy(visibilityDelayMs) };
     } catch (error) {
         await closeServer(server);
@@ -648,8 +639,8 @@ async function stopRegistryServers(servers: RegistryServers): Promise<void> {
     await closeServer(servers.server);
 }
 
-async function startRegistry(options: StartRegistryOptions = {}): Promise<RegistryHandle> {
-    const registryDir = options.registryDir ?? mkdtempSync(join(tmpdir(), "gtkx-registry-"));
+async function startRegistry(options: StartRegistryOptions): Promise<RegistryHandle> {
+    const { registryDir } = options;
     const visibilityDelayMs = options.visibilityDelayMs ?? 0;
     const verdaccioHost = visibilityDelayMs > 0 ? VERDACCIO_HOST : HOST;
     mkdirSync(registryDir, { recursive: true });
@@ -657,7 +648,7 @@ async function startRegistry(options: StartRegistryOptions = {}): Promise<Regist
     const npmrcPath = join(registryDir, "npmrc");
     writeFileSync(configPath, verdaccioConfig(registryDir, verdaccioHost));
     rmSync(join(registryDir, "htpasswd"), { force: true });
-    resetRegistryStorage(options, registryDir);
+    rmSync(join(registryDir, "storage"), { recursive: true, force: true });
     const servers = await startRegistryServers(configPath, visibilityDelayMs);
 
     try {
@@ -682,13 +673,18 @@ async function startRegistry(options: StartRegistryOptions = {}): Promise<Regist
 }
 
 async function withRegistry(fn: (ctx: RegistryContext) => Promise<void>): Promise<void> {
-    const handle = await startRegistry({ visibilityDelayMs: RELEASE_VISIBILITY_DELAY_MS });
+    const registryDir = mkdtempSync(join(tmpdir(), "gtkx-registry-"));
 
     try {
-        await fn(handle);
+        const handle = await startRegistry({ registryDir, visibilityDelayMs: RELEASE_VISIBILITY_DELAY_MS });
+
+        try {
+            await fn(handle);
+        } finally {
+            await handle.stop();
+        }
     } finally {
-        await handle.stop();
-        rmSync(handle.registryDir, { recursive: true, force: true });
+        rmSync(registryDir, { recursive: true, force: true });
     }
 }
 

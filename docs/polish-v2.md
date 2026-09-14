@@ -505,6 +505,14 @@ Repeat review exposed ancestor ownership differences. Shared selection now follo
 
 A separate store-resolution finding remains open: `store/resolve-store.ts` accepts the monorepo's `packages/<name>/package.json` layout when Node cannot resolve the dependency. The retained public API probe confirms this production fallback; it belongs in the next store audit.
 
+### Release tooling audit
+
+All 14 tracked top-level script files besides the separately reviewed sanitizer runner were read, 2,142 baseline lines, with their workflow and package callers. The local registry now rebuilds its storage on startup, so unchanged package versions can serve updated tarballs. Its servers bind to loopback. Temporary-directory ownership surrounds startup as well as normal operation, so failed startup removes its files and closes listeners. Headless display types derive from their existing implementation.
+
+Two real local-registry starts rebuilt and locally published the workspace. Fresh npm consumers observed values 1 and 2 from the same probe package version across restart. Public command failures on occupied primary and proxy ports leave no temporary directory or listener; the previous command left its directory behind. Owned listener inspection confirms the loopback address. Temporary validation paths were removed from the checkout.
+
+Publication visibility requests now share the polling deadline, and a late successful response cannot pass. The real release command against a local HTTP registry fixture accepted immediate and 200 ms responses, rejected delayed and hanging responses at approximately 500 ms, and restored its manifest on both outcomes. The previous command incorrectly accepted a 1.5-second response with the same 500 ms limit. The obsolete getting-started pin-list synchronization is removed; tutorial dependencies and the documentation version manifest retain their existing synchronization. Root types, affected lint, whitespace checks and independent review pass. Complete release and tutorial consumers are the next checkpoint. Their existing startup smoke check establishes process liveness for eight seconds; visual application checks remain separate.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it lets the full production build pass, including page rendering and sitemap generation in 432 seconds. Later collection and codegen changes remain part of the next combined checkpoint.
