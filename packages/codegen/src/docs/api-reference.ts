@@ -26,6 +26,7 @@ type ApiReferenceOptions = {
     props?: ElementProps;
     /** GObject properties the project omits from generated props; without it pages show props that do not exist. */
     omittedProps?: OmittedProps;
+    acceptedChildTypes?: Record<string, string[]>;
 };
 
 /** Narrows an `ApiReference.symbols` enumeration. */
@@ -357,12 +358,14 @@ class ApiReference {
 
     private props: ElementProps;
     private omittedProps: OmittedProps;
+    private acceptedChildTypes: Record<string, string[]>;
 
     /** Indexes every symbol and JSX element in the GIR data the options point at. */
     constructor(options: ApiReferenceOptions) {
         this.libraries = options.libraries;
         this.props = options.props ?? {};
         this.omittedProps = options.omittedProps ?? {};
+        this.acceptedChildTypes = options.acceptedChildTypes ?? {};
         this.library = Library.load(options.libraries, options.girPath);
         this.elementContext = { library: this.library, linkFor: (): string | undefined => undefined };
         this.buildIndex();
@@ -371,7 +374,7 @@ class ApiReference {
     private applyElementConfig(): void {
         setElementProps(this.props);
         setOmittedProps(this.omittedProps);
-        setAcceptedChildTypes({});
+        setAcceptedChildTypes(this.acceptedChildTypes);
     }
 
     private add(entry: SymbolEntry): void {

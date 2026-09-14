@@ -78,6 +78,36 @@ describe("gtkx_get_api_docs", () => {
         expect(element).toContain("AdwToast");
     });
 
+    it("documents GTKX factory props and child constraints", async () => {
+        expect(await apiDocs({ symbol: "GtkCallbackAction" })).toContain("### `callback`");
+        expect(await apiDocs({ symbol: "GMenuItem" })).toContain("### `submenu`");
+        expect(await apiDocs({ symbol: "GMenu" })).toContain("must create `GMenuItem` or a subtype");
+    });
+
+    it("replaces omitted native child properties with JSX children", async () => {
+        const button = await apiDocs({ symbol: "GtkButton" });
+        expect(button).toContain("### `children`");
+        expect(button).not.toContain("### `child`");
+    });
+
+    it("keeps configured property omissions scoped to their project", async () => {
+        const project = createProject();
+        writeFileSync(
+            join(project, "gtkx.config.mjs"),
+            'export default { applicationId: "org.gtkx.reference", ' +
+            'elements: { config: { GtkButton: { omittedProps: ["label"] } } } };\n',
+        );
+
+        try {
+            const configured = await apiDocs({ symbol: "GtkButton", projectRoot: project });
+            expect(configured).not.toContain("### `label`");
+            expect(configured).not.toContain("### `child`");
+            expect(await apiDocs({ symbol: "GtkButton" })).toContain("### `label`");
+        } finally {
+            rmSync(project, { recursive: true, force: true });
+        }
+    });
+
     it("lists the candidates behind an ambiguous name", async () => {
         const ambiguous = await callTool(state.server.client, "gtkx_get_api_docs", { symbol: "Orientation" });
         expect(JSON.stringify(ambiguous)).toContain("Gtk.Orientation");

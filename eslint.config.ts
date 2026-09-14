@@ -12,6 +12,7 @@ export default [
     },
     {
         files: [
+            "packages/codegen/src/docs/api-reference.ts",
             "packages/codegen/src/store/jsx/element-prop-imports.ts",
             "packages/runtime/src/property-types.ts",
             "packages/runtime/src/registry.ts",

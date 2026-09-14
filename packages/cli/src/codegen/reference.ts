@@ -1,9 +1,8 @@
 import type { Config } from "@gtkx/config";
 import { mergeOmittedProps } from "@gtkx/codegen";
-import { writeDocs } from "@gtkx/codegen/internal";
+import { readBuiltinElementsForDocs, writeDocs } from "@gtkx/codegen/internal";
 import { isAgentReferenceEnabled, resolveOmittedProps } from "@gtkx/config/internal";
 import { join } from "node:path";
-import { resolveDocsElements } from "../internal/docs-elements.js";
 
 type WriteReferenceOptions = {
     root: string;
@@ -29,7 +28,7 @@ const writeReference = async (options: WriteReferenceOptions): Promise<Reference
         return SKIPPED;
     }
 
-    const builtin = await resolveDocsElements(root);
+    const builtin = await readBuiltinElementsForDocs();
 
     const { isRegenerated, namespaces } = writeDocs({
         libraries,

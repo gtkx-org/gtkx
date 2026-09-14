@@ -1,6 +1,14 @@
-import { type ApiReference, type ApiSymbol, loadApiReference, resolveGirPath, resolveLibraries } from "@gtkx/codegen";
+import {
+    type ApiReference,
+    type ApiSymbol,
+    loadApiReference,
+    mergeOmittedProps,
+    resolveGirPath,
+    resolveLibraries,
+} from "@gtkx/codegen";
+import { readBuiltinElementsForDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
-import { CONFIG_EXTENSIONS, configDependenciesFor } from "@gtkx/config/internal";
+import { CONFIG_EXTENSIONS, configDependenciesFor, resolveOmittedProps } from "@gtkx/config/internal";
 import { type McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type CallToolResult, ErrorCode, McpError, type ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { existsSync, statSync } from "node:fs";
@@ -196,10 +204,14 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
     }
 
     const libraries = resolveLibraries(config.libraries);
+    const builtin = await readBuiltinElementsForDocs();
 
     const reference = loadApiReference({
         libraries,
         girPath,
+        props: builtin.props,
+        omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
+        acceptedChildTypes: builtin.acceptedChildTypes,
     });
 
     const watched = [...configDependenciesFor(loaded), ...reference.girFiles].map((file) => watchFile(file));
