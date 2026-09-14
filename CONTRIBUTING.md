@@ -65,7 +65,7 @@ CI fails a pull request that touches a published package and adds no plan. Docum
 The Release PR workflow cuts a release from the pending version plans and never writes to `main` itself:
 
 1. Run it from the Actions tab or with `gh workflow run release-pr.yml`. Nothing else starts it, so a release happens when you decide it does. Leave both inputs empty to stay on the current train, which means the next beta today and the bump the plans ask for once 2.0 is stable. Pass `specifier=2.0.0` to end the beta and cut the stable release, or `preid=rc` to rename the prerelease identifier. Either input releases on demand even when no plan is pending; with both empty and nothing pending the workflow stops without opening anything.
-2. The workflow versions every package, rewrites the tutorial ranges and the documentation pins, prepends the entry to `CHANGELOG.md`, deletes the consumed plans, and opens or refreshes the `release/next` pull request as the release bot, with a commit signed by GitHub. `pnpm prepare-release --dry-run` runs the same steps locally without writing anything.
+2. The workflow versions every package, updates the tutorial ranges and documentation version, prepends the entry to `CHANGELOG.md`, deletes the consumed plans, and opens or refreshes the `release/next` pull request as the release bot, with a commit signed by GitHub. `pnpm prepare-release --dry-run` runs the same steps locally without writing anything.
 3. Read the pull request and its checks, then advance `main` yourself. The ruleset allows only rebase merges, and a rebase merge drops every signature, so the merge button cannot produce a commit `main` accepts:
 
 ```bash
@@ -125,7 +125,7 @@ The script refuses to run while an `old` version is still on the site, which is 
 
 The promoted release keeps building its reference from the working tree, which is why promotion does not pin it: pinning it here would leave the manifest with no working-tree version at all. Pin it when the next pre-release arrives to take that role, and write its derived label into the manifest at the same time, because a tag-pinned version no longer derives one.
 
-Two paths outside the manifest still name the pre-release prefix: the getting-started pin that `scripts/prepare-release.ts` rewrites, and the reference output declarations. Repoint the first by hand at a promotion; the second is synchronised for you.
+The promotion script synchronizes the reference output declarations with the new prefixes.
 
 An old version's pages canonicalise to the current version's page at the same path when that page exists, and to themselves when it does not, so a reference page for a symbol that a major removed keeps its own identity.
 
