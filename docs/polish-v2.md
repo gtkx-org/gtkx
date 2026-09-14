@@ -731,6 +731,12 @@ At `91d37dab`, CI passes the main suite, publication, sanitizers, docs, lint, ty
 
 Copilot reviewed 277 of 683 files at that commit and added no new comments. This partial review does not close the audit or the previously tracked GL callback finding; no reply was posted.
 
+### Real AppImage packaging coverage
+
+The 224-line private AppImage fixture and mocked packager are replaced by public CLI deployments and extraction of real AppImages. The tests compare packaged icon bytes for scalable preference, effective raster size and application-icon context; an unrelated icon remains rejected. Two existing GTKX PNG assets supply stable fixture data.
+
+The pinned appimagetool supports only zstd, although GTKX previously accepted gzip and xz. Configuration now preserves default or explicit zstd and rejects unsupported choices during loading. All six public cases pass, alongside the 50-case canonical notice/AppImage checkpoint, build, source/test types, affected lint and independent review. The known upstream compressor limitation is recorded separately in `~/UPSTREAM.md`.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.
