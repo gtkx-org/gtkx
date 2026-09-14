@@ -13,7 +13,7 @@ The reconciler is configured in [`reconciler/host-config.ts`](https://github.com
 
 ## Generated components and host elements
 
-A generated component such as `GtkButton` is a typed factory around a host element whose name is a GType name, such as `GtkButton`. Its reference to the generated GI class and metadata keeps the registration needed by that name available in a bundled application.
+A generated component such as `GtkButton` is a typed factory around a host element whose name is a GType name, such as `GtkButton`. Its reference to the generated GI class retains that class's registration and metadata in a bundled application.
 
 [`components/element.tsx`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/components/element.tsx) builds that host element. It examines props containing React elements and routes them through internal `gtkx:prop` elements. This turns a named prop containing JSX into a reconcilable subtree associated with a slot name, while ordinary `children` remain in the default slot.
 

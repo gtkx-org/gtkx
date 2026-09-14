@@ -26,6 +26,9 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
@@ -36,6 +39,7 @@ jobs:
         id: filter
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
+          predicate-quantifier: every
           filters: |
             code:
               - '**'
@@ -194,6 +198,23 @@ jobs:
         run: |
           set -euo pipefail
           docker buildx imagetools create --tag ghcr.io/gtkx-org/gtkx-ci:latest "$REF"
+
+  docs:
+    needs: image-manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Build documentation
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm exec nx run @gtkx/website:build
+          extra-env: NODE_OPTIONS
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
 
   lint:
     needs: [changes, image-manifest]
