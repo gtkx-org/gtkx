@@ -432,6 +432,9 @@ importers:
 
   packages/codegen:
     dependencies:
+      '@gtkx/cairo':
+        specifier: workspace:*
+        version: link:../cairo
       '@gtkx/native':
         specifier: workspace:*
         version: link:../native

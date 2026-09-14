@@ -35,7 +35,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | --- | ---: | --- |
 | `native` | 99 | API folder read; memory access fixed in batch 1; ownership migration open |
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
-| `codegen` | 144 | All override templates, GIR, analysis, writer, direct store and reference modules and compile entry read; metadata, imports, inheritance and GIR parsing/freshness fixed; configured reference props and remaining generator folders pending |
+| `codegen` | 144 | All override templates, GIR, analysis, writer, direct store and reference modules and compile entry read; metadata, imports, inheritance, GIR parsing/freshness and configured reference props fixed; remaining generator folders pending |
 | `react` | 47 | Core reconciler read; nullable drag icon fixed; lifecycle and metadata migrations open |
 | `components` | 50 | All files read; all initial findings resolved; repeat review continues |
 | `animated` | 19 | All files read; text, prop contracts, dead code, tests and guides fixed; upstream ref compatibility retained |
@@ -602,6 +602,16 @@ Copilot reviewed 279 of 621 changed files at `ac5309c8` and requested missing-ID
 ### Analysis quality-gate follow-up
 
 Every GitHub workflow job passes at `ac5309c8`. Sonar reports 89.8% coverage on new code and no new duplication, but its reliability gate flags eight uses of built-in ordinal sorting in the fingerprint module. Those inputs need deterministic hashing, not locale-sensitive display order. A file-specific S2871 exception preserves that contract without adding a handwritten comparator. Two S6564 exceptions preserve the public `TextClusterFlags` and `FtSynthesize` type names while accepting numeric bit combinations. The duplicate runtime type imports reported by S3863 are combined. These are scoped analysis settings and an import cleanup; the next remote analysis must confirm the gate passes.
+
+### Configured element props and live references
+
+The 19 changed production TypeScript modules were read completely with their declaration and configuration callers. CLI docs, generated agent references and MCP now include project-configured prop exports. A TypeScript checker replaces the handwritten declaration parser, covering interfaces, inherited generics, utility types and reexports. Reference generation shares the actual GI generator, overrides and declaration emitter. It reads the validated generated store when available and produces the same declarations in memory on a first run; it retains only the rendered catalog and dependency fingerprint.
+
+Built-in declarations resolve from codegen's dependencies, while configured packages resolve from the consuming project. Codegen declares its Cairo dependency explicitly, and Node type resolution works with hoisted installations. Invalid modules, missing or value-only exports and absent GIR types fail before replacing usable reference pages. Generated-consumer checks share their existing installation helper and keep strict declaration checking enabled.
+
+Reference freshness tracks declaration contents and module resolution. A running MCP server also rechecks GIR search priority and all supported configuration candidates, including files that did not exist during its previous load. Public consumers reproduced stale pages after a higher-priority GIR or config appeared; add/remove cases now pass. Relative configured GIR paths resolve from the selected project root across CLI and MCP. Conflicting launch-directory fixtures reproduced the previous wrong-project output through `--cwd` and `projectRoot`.
+
+All nine configured-props cases, 15 CLI docs cases, 28 MCP reference cases and 30 existing strict generated-consumer cases pass. Codegen, CLI and MCP builds, source/test types, affected lint, whitespace checks and independent review pass. The guide describes the resulting reference and relative-path behavior. The combined release, tutorial and website checkpoint follows this commit.
 
 ## Next work
 

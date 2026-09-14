@@ -149,7 +149,14 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
         isForced,
     });
 
-    const reference = await writeReference({ root: cwd, config, girPath, libraries, isForced });
+    const reference = await writeReference({
+        root: cwd,
+        config,
+        girPath,
+        libraries,
+        isForced,
+        declarationDir: store.giStoreDir,
+    });
 
     if (isAgentRulesEnabled(config)) {
         upsertAgentRules(cwd);

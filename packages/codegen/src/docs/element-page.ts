@@ -24,7 +24,6 @@ import {
 } from "../store/jsx/intrinsic-elements.js";
 import { isOmittedProp } from "../store/jsx/omitted-props.js";
 import { isObjectProp } from "../store/jsx/props.js";
-import { handwrittenPropsFor } from "./handwritten-props.js";
 import {
     annotationNotes,
     classMethodEntries,
@@ -49,6 +48,7 @@ import {
 type ElementPageContext = {
     library: Library;
     linkFor: (glibName: string) => string | undefined;
+    handwrittenProps: ReadonlyMap<string, HandwrittenProp[]>;
 };
 
 type MemberOwner = {
@@ -239,8 +239,9 @@ const handwrittenPropEntries = (
     }
 
     const entries: MetaDocEntry[] = [];
+    const props = context.handwrittenProps.get(declared.type) ?? [];
 
-    for (const prop of handwrittenPropsFor(declared)) {
+    for (const prop of props) {
         if (seen.has(prop.name)) {
             continue;
         }

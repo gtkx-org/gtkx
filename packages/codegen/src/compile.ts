@@ -268,6 +268,12 @@ const transpileOptions = (compilerOptions: ts.CompilerOptions, fileName: string)
     reportDiagnostics: true,
 });
 
+const transpileDeclaration = (module: SourceModule, shouldRemoveComments = false): ts.TranspileOutput =>
+    ts.transpileDeclaration(
+        module.source,
+        transpileOptions({ ...DECLARATION_OPTIONS, removeComments: shouldRemoveComments }, module.fileName),
+    );
+
 const isPureAnnotated = (text: string, node: ts.Node): boolean =>
     ts.isCallExpression(node) &&
     node.pos >= 0 &&
@@ -301,7 +307,7 @@ const dropCommentsExceptPureAnnotations =
 
 const emitModule = (module: SourceModule, projectDir: string): ts.Diagnostic[] => {
     const fileName = join(projectDir, module.fileName);
-    const declaration = ts.transpileDeclaration(module.source, transpileOptions(DECLARATION_OPTIONS, fileName));
+    const declaration = transpileDeclaration({ ...module, fileName });
 
     const javascript = ts.transpileModule(module.source, {
         ...transpileOptions(MODULE_OPTIONS, fileName),
@@ -373,4 +379,4 @@ const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; la
     rmSync(keepAt, { recursive: true, force: true });
 };
 
-export { checkModules, emitModules, keepFailedProject, type SourceModule };
+export { checkModules, emitModules, keepFailedProject, transpileDeclaration, type SourceModule };

@@ -4,6 +4,11 @@ import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import packageManifest from "../package.json" with { type: "json" };
+import {
+    hasFreshPropsDependencies,
+    isPropsDependencies,
+    type PropsDependencies,
+} from "./docs/props-dependencies.js";
 import { EXTERNAL_NAMESPACES } from "./gir/external-namespaces.js";
 import { locateGirFile } from "./gir/libraries.js";
 import { arrayGuard, hasFields, isNumber, isString } from "./guards.js";
@@ -24,6 +29,7 @@ type GiFingerprint = {
 };
 
 type DocsFingerprintInput = {
+    resolveFrom: string;
     basePath: string;
     linkStyle: string;
     props: Record<string, ElementPropsExport>;
@@ -34,6 +40,7 @@ type DocsFingerprintInput = {
 type DocsFingerprint = {
     value: string;
     gi: GiFingerprint;
+    props: PropsDependencies;
 };
 
 type JsxFingerprintInput = {
@@ -203,7 +210,7 @@ const isGiFingerprint = (value: unknown): value is GiFingerprint =>
     });
 
 const isDocsFingerprint = (value: unknown): value is DocsFingerprint =>
-    hasFields<DocsFingerprint>(value, { value: isString, gi: isGiFingerprint });
+    hasFields<DocsFingerprint>(value, { value: isString, gi: isGiFingerprint, props: isPropsDependencies });
 
 const isJsxFingerprint = (value: unknown): value is JsxFingerprint =>
     hasFields<JsxFingerprint>(value, { value: isString, intrinsicElementCount: isNumber });
@@ -225,18 +232,23 @@ const recordedGiValue = (sentinel: GiFingerprint, inputs: GiInputs): string | un
 const isGiStoreFresh = (giStoreDir: string, inputs: GiInputs): boolean => {
     const sentinel = readSentinel(giStoreDir);
 
-    return isGiFingerprint(sentinel) && recordedGiValue(sentinel, inputs) === sentinel.value;
+    return isGiFingerprint(sentinel) && isGiFingerprintFresh(sentinel, inputs);
 };
+
+const isGiFingerprintFresh = (fingerprint: GiFingerprint, inputs: GiInputs): boolean =>
+    recordedGiValue(fingerprint, inputs) === fingerprint.value;
 
 const hasMatchingRecordedInputs = (sentinel: GiFingerprint, inputs: GiInputs): boolean =>
     JSON.stringify(sentinel.libraries) === JSON.stringify(inputs.libraries) &&
     JSON.stringify(sentinel.girPath) === JSON.stringify(inputs.girPath);
 
-const hashDocs = (giValue: string, input: DocsFingerprintInput): string =>
+const hashDocs = (giValue: string, input: DocsFingerprintInput, propsValue: string): string =>
     createHash("sha256")
         .update(
             JSON.stringify([
                 giValue,
+                input.resolveFrom,
+                propsValue,
                 input.basePath,
                 input.linkStyle,
                 serializeElementProps(input.props),
@@ -246,10 +258,14 @@ const hashDocs = (giValue: string, input: DocsFingerprintInput): string =>
         )
         .digest("hex");
 
-const computeDocsFingerprint = (inputs: GiInputs, input: DocsFingerprintInput): DocsFingerprint => {
+const computeDocsFingerprint = (
+    inputs: GiInputs,
+    input: DocsFingerprintInput,
+    props: PropsDependencies,
+): DocsFingerprint => {
     const gi = computeGiFingerprint(inputs);
 
-    return { value: hashDocs(gi.value, input), gi };
+    return { value: hashDocs(gi.value, input, props.value), gi, props };
 };
 
 const isDocsOutputFresh = (outDir: string, inputs: GiInputs, input: DocsFingerprintInput): boolean => {
@@ -261,7 +277,9 @@ const isDocsOutputFresh = (outDir: string, inputs: GiInputs, input: DocsFingerpr
 
     const giValue = recordedGiValue(sentinel.gi, inputs);
 
-    return giValue !== undefined && hashDocs(giValue, input) === sentinel.value;
+    return giValue !== undefined &&
+        hashDocs(giValue, input, sentinel.props.value) === sentinel.value &&
+        hasFreshPropsDependencies(sentinel.props);
 };
 
 const serializeModuleExports = (map: Record<string, ModuleExport>): [string, string, string][] =>
@@ -318,6 +336,7 @@ export {
     computeGiFingerprint,
     computeDocsFingerprint,
     isGiStoreFresh,
+    isGiFingerprintFresh,
     isDocsOutputFresh,
     computeJsxFingerprint,
     jsxStoreFreshness,

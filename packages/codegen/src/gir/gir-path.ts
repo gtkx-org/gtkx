@@ -1,6 +1,7 @@
 import { formatChildProcessError, resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 
 const SYSTEM_GIR_PATH = "/usr/share/gir-1.0";
 
@@ -11,11 +12,11 @@ const SYSTEM_GIR_PATH = "/usr/share/gir-1.0";
  *
  * @throws If pkg-config is installed but fails while being queried.
  */
-const resolveGirPath = (configGirPath: string[] | undefined): string[] => {
+const resolveGirPath = (configGirPath: string[] | undefined, root: string = process.cwd()): string[] => {
     const paths: string[] = [];
 
     if (configGirPath) {
-        paths.push(...configGirPath);
+        paths.push(...configGirPath.map((path) => resolve(root, path)));
     }
 
     const envPath = process.env.GTKX_GIR_PATH;

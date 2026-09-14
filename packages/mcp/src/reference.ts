@@ -8,7 +8,12 @@ import {
 } from "@gtkx/codegen";
 import { readBuiltinElementsForDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
-import { CONFIG_EXTENSIONS, configDependenciesFor, resolveOmittedProps } from "@gtkx/config/internal";
+import {
+    CONFIG_EXTENSIONS,
+    configDependenciesFor,
+    resolveElementProps,
+    resolveOmittedProps,
+} from "@gtkx/config/internal";
 import { type McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type CallToolResult, ErrorCode, McpError, type ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { existsSync, statSync } from "node:fs";
@@ -137,11 +142,13 @@ const isFresh = (loaded: LoadedReference): boolean =>
         const current = watchFile(file.path);
 
         return current.mtimeMs === file.mtimeMs && current.size === file.size;
-    });
+    }) && loaded.reference.hasFreshInputs();
 
-const hasConfigFile = (directory: string): boolean =>
-    CONFIG_LOCATIONS.some((location) =>
-        CONFIG_EXTENSIONS.some((extension) => existsSync(join(directory, `${location}${extension}`))));
+const configCandidatePaths = (directory: string): string[] =>
+    CONFIG_LOCATIONS.flatMap((location) =>
+        CONFIG_EXTENSIONS.map((extension) => join(directory, `${location}${extension}`)));
+
+const hasConfigFile = (directory: string): boolean => configCandidatePaths(directory).some((path) => existsSync(path));
 
 const findProjectRoot = (start: string): string | undefined => {
     const current = resolve(start);
@@ -193,7 +200,7 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
         );
     }
 
-    const girPath = resolveGirPath(config.girPath);
+    const girPath = resolveGirPath(config.girPath, root);
 
     if (girPath.length === 0) {
         throw new Error(
@@ -209,12 +216,17 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
     const reference = loadApiReference({
         libraries,
         girPath,
-        props: builtin.props,
+        resolveFrom: root,
+        props: { ...builtin.props, ...resolveElementProps(config.elements) },
         omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
         acceptedChildTypes: builtin.acceptedChildTypes,
     });
 
-    const watched = [...configDependenciesFor(loaded), ...reference.girFiles].map((file) => watchFile(file));
+    const watched = [...new Set([
+        ...configDependenciesFor(loaded),
+        ...configCandidatePaths(root),
+        ...reference.inputFiles,
+    ])].map((file) => watchFile(file));
 
     return { reference, root, watched };
 };

@@ -1,7 +1,7 @@
 import type { Config } from "@gtkx/config";
 import { mergeOmittedProps } from "@gtkx/codegen";
 import { readBuiltinElementsForDocs, writeDocs } from "@gtkx/codegen/internal";
-import { isAgentReferenceEnabled, resolveOmittedProps } from "@gtkx/config/internal";
+import { isAgentReferenceEnabled, resolveElementProps, resolveOmittedProps } from "@gtkx/config/internal";
 import { join } from "node:path";
 
 type WriteReferenceOptions = {
@@ -9,6 +9,7 @@ type WriteReferenceOptions = {
     config: Config;
     girPath: string[];
     libraries: string[];
+    declarationDir: string;
     isForced?: boolean;
 };
 
@@ -34,9 +35,11 @@ const writeReference = async (options: WriteReferenceOptions): Promise<Reference
         libraries,
         girPath,
         outDir: join(root, REFERENCE_PATH),
+        resolveFrom: root,
+        declarationDir: options.declarationDir,
         basePath: REFERENCE_PATH,
         linkStyle: "file",
-        props: builtin.props,
+        props: { ...builtin.props, ...resolveElementProps(config.elements) },
         acceptedChildTypes: builtin.acceptedChildTypes,
         omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
         isForced: options.isForced === true,

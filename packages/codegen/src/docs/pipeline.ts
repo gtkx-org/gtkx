@@ -1,6 +1,6 @@
 import { sortStringsBy } from "@gtkx/utils";
 import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import {
     computeDocsFingerprint,
     type DocsFingerprintInput,
@@ -17,6 +17,7 @@ import { type ElementProps, setElementProps } from "../store/jsx/element-prop-im
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
 import { type ElementPageContext, renderElementPage } from "./element-page.js";
+import { createPropsCatalog, type PropsCatalog } from "./handwritten-props.js";
 import { elementSlug, firstSentence, namespaceOrder } from "./render.js";
 
 type DocsElementLink = {
@@ -37,6 +38,8 @@ type DocsOptions = {
     libraries: string[];
     girPath: string[];
     outDir: string;
+    resolveFrom?: string;
+    declarationDir?: string;
     basePath?: string;
     linkStyle?: DocsLinkStyle;
     props?: ElementProps;
@@ -250,18 +253,21 @@ const namespacePages = (input: {
     return { docs, pages };
 };
 
-const generatePages = (
-    options: DocsOptions,
-    basePath: string,
-    linkStyle: DocsLinkStyle,
-    library: Library,
-): GeneratedDocs => {
+const generatePages = (input: {
+    options: DocsOptions;
+    basePath: string;
+    linkStyle: DocsLinkStyle;
+    library: Library;
+    props: PropsCatalog;
+}): GeneratedDocs => {
+    const { options, basePath, linkStyle, library, props } = input;
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const byNamespace = groupElementsByNamespace(intrinsicElements);
     const linkByGlibName = buildElementLinks(intrinsicElements, basePath, linkStyle);
     const pageContext: ElementPageContext = {
         library,
         linkFor: (glibName) => linkByGlibName.get(glibName),
+        handwrittenProps: props.byType,
     };
     const pages: Page[] = [];
     const namespaces: DocsNamespace[] = [];
@@ -378,6 +384,7 @@ const writePages = (outDir: string, pages: Page[]): void => {
 };
 
 const docsFingerprintInput = (options: DocsOptions): DocsFingerprintInput => ({
+    resolveFrom: resolve(options.resolveFrom ?? process.cwd()),
     basePath: options.basePath ?? DEFAULT_BASE_PATH,
     linkStyle: options.linkStyle ?? "url",
     props: options.props ?? {},
@@ -401,13 +408,19 @@ const writeDocs = (options: DocsOptions): DocsResult => {
 
     assertOwnedOutDir(options, previous);
     const library = Library.load(options.libraries, options.girPath);
-    const { pages, namespaces } = generatePages(options, input.basePath, linkStyle, library);
+    const props = createPropsCatalog({
+        library,
+        props: input.props,
+        resolveFrom: input.resolveFrom,
+        declarationDir: options.declarationDir,
+    });
+    const { pages, namespaces } = generatePages({ options, basePath: input.basePath, linkStyle, library, props });
     clearOutDir(options, previous);
     mkdirSync(options.outDir, { recursive: true });
     const manifest: DocsManifest = { generator: MANIFEST_GENERATOR, namespaces };
     writeFileSync(manifestPath, JSON.stringify(manifest));
     writePages(options.outDir, pages);
-    const fingerprint = computeDocsFingerprint(giInputs(options, library.girFiles), input);
+    const fingerprint = computeDocsFingerprint(giInputs(options, library.girFiles), input, props.dependencies);
     writeFileSync(join(options.outDir, FINGERPRINT_FILENAME), JSON.stringify(fingerprint));
 
     return { isRegenerated: true, namespaces };
