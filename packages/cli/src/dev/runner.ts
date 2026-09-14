@@ -4,6 +4,7 @@ import { error, warn } from "@gtkx/utils";
 import { isCatalogSource } from "../i18n/catalogs.js";
 import { hasUnstagedFontImport } from "../internal/font-staging.js";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
+import { isImportedSchemaFile, stageAndCompileProjectSchemas } from "../settings/schema.js";
 import { createStorybookSession, type StorybookSession } from "../storybook/session.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { DEV_STORYBOOK_ENV } from "./entry-env.js";
@@ -390,8 +391,26 @@ const restartForCatalog = async (session: DevSession, changedPath: string): Prom
     await requestRestart(session);
 };
 
+const restartForSchema = async (session: DevSession): Promise<void> => {
+    try {
+        stageAndCompileProjectSchemas(session.server.config.root);
+    } catch (error_) {
+        error("Schema compilation failed; keeping the current application.", error_);
+
+        return;
+    }
+
+    await requestRestart(session);
+};
+
 const didRestartForChange = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
     const { root } = session.server.config;
+
+    if (isImportedSchemaFile(root, change.path)) {
+        await restartForSchema(session);
+
+        return true;
+    }
 
     if (isCatalogSource(root, change.path)) {
         await restartForCatalog(session, change.path);

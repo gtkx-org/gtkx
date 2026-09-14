@@ -47,7 +47,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `navigation` | 66 | All files read; stack option lifetimes, closing headers and lazy route restoration fixed; repeat review found no further local defect |
 | `storybook` | 31 | All files read; unset selections, readonly controls, shared types and documentation fixed; upstream strict declaration checking remains open |
 | `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
-| `cli` | 262 | Generated consumer and catalog-reference fixes verified; full package pending |
+| `cli` | 262 | Command, codegen and settings folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
 | `create-gtkx` | 31 | All files read; option parsing, installation recovery, duplication and guides fixed; installed TypeScript and JavaScript consumers pass |
 | `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
 | `testing` | 60 | All files read; deadlines, text queries, clipboard behavior, Unicode and matcher fixes pass; repeat review found no further confirmed defect |
@@ -586,6 +586,18 @@ The next four tutorial chapters were read in full, 1,368 baseline lines, alongsi
 Deletion toasts now display titles literally. New tasks use the final stored position after permanent deletions; the reorder action already moves the backing array and renumbers positions together. A JSX-created widget paintable supplies drag icons through a root portal. The synchronous content-provider return remains inside the native signal handler.
 
 All 31 application cases and four cumulative chapter typechecks pass, along with complete tutorial source/test types. Public cases reproduce the old literal-text and append-order failures, including reorder followed by deletion and addition. Real Wayland pointer drags exercise icon preparation and persisted reordering before and after row remounts; drag and literal-toast screenshots were inspected. Repository ESLint intentionally excludes this standalone application. Packaging, localization extraction and the combined website checkpoint will follow this batch.
+
+### GSettings import and development audit
+
+All four CLI settings modules were read, 734 baseline lines, alongside the settings Vite plugin, staging/import helpers and development restart callers. Schema parsing now uses the shared validated XML reader. It resolves inheritance across imported files and keeps one key-kind model for runtime exports and declarations, removing unused enum/choice reconstruction. Invalid or incomplete XML fails before replacing usable consumer declarations.
+
+Schema staging preserves the already-validated unique basenames. Hashing those names could put a derived schema before its base and make a valid native schema set fail to compile. The existing staging owner now registers cleanup before compilation, so failed development starts leave no temporary schema directory. Editing an imported schema first compiles the complete set, then restarts the development process so Gio reads the new keys and defaults. A failed edit preserves the current running application and can recover on the next valid save. Adding schema imports to an already-running source module remains a separate follow-up.
+
+Thirteen public CLI cases pass against both the isolated CLI prototype and the canonical build: same-file and cross-file transitive inheritance, enum/flags/choice kinds, relocatable references, native override defaults, strict accepted/rejected consumer types, invalid XML preserving declarations, failed-start cleanup and live edit/failure/recovery behavior. Each fixture owns its generated store. Independent review, affected lint and CLI test types pass, alongside canonical codegen, CLI and MCP builds. The combined release and website checkpoint follows the configured-props reference batch.
+
+### Latest Copilot follow-up
+
+Copilot reviewed 279 of 621 changed files at `ac5309c8` and requested missing-ID and same-item guards in the tutorial reorder action. Independent review traced every caller: pointer drops validate incoming IDs against the current store; keyboard moves use neighboring visible task IDs; permanent deletion occurs in Trash, where reorder controllers are absent. Normal deletion retains the task ID, and a same-item move preserves its position. Existing pointer, keyboard, remount and reorder/deletion/addition checks cover these workflows. No supported failing path was found, so unsupported-input guards were not restored. This partial review does not establish a clean review of the entire PR. No reply was posted.
 
 ## Next work
 
