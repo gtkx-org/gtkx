@@ -47,7 +47,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `navigation` | 66 | All files read; stack option lifetimes, closing headers and lazy route restoration fixed; repeat review found no further local defect |
 | `storybook` | 31 | All files read; unset selections, readonly controls, shared types and documentation fixed; upstream strict declaration checking remains open |
 | `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
-| `cli` | 262 | Command, codegen, settings, development, Node runtime, vendored tools, payload, freedesktop and notices folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
+| `cli` | 262 | Command, codegen, settings, development, Node runtime, vendored tools, payload, freedesktop, notices and nFPM folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
 | `create-gtkx` | 31 | All files read; option parsing, installation recovery, duplication and guides fixed; installed TypeScript and JavaScript consumers pass |
 | `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
 | `testing` | 60 | All files read; deadlines, text queries, clipboard behavior, Unicode and matcher fixes pass; repeat review found no further confirmed defect |
@@ -700,6 +700,14 @@ Reference generation now reuses an installed GI declaration store only when the 
 All 15 configured-props CLI cases pass within the 537-case CLI checkpoint. The added public case generates a store, changes GIR search precedence, restores the earlier inputs and verifies declaration errors without replacing existing pages. Independent MCP probes cover absent, fresh and stale stores, configuration changes, isolation and recovery. Source/test types, affected lint, Knip and independent review pass.
 
 The completed coverage job at `f6793578` has 4,821 passes and 17 failures, all in the MCP reference file. Instrumented cold requests take roughly 90 seconds, exposing SDK request and polling deadlines as well as test deadlines. The reference tests now use 120-second requests and polls, with 600 seconds for multi-reload cases; other consumers retain their existing request defaults. A focused V8 coverage run and the combined checkpoint are in progress. Sonar analysis did not run after the failed coverage step, so its quality gate remains unconfirmed.
+
+### Package script paths and platform notices
+
+All five nFPM modules were read, 302 baseline lines, with their target wrappers and command path handling. A real Debian deployment launched with `--cwd` failed to package an existing project-relative hook script because nFPM inherited the caller's working directory. The packaging subprocess now runs from the resolved project root, which also supplies the base for relative signing files.
+
+Real Debian and RPM packages retain the configured hook script for relative paths containing spaces and for absolute paths. Missing scripts remain rejected. The six public integration cases pass across focused runs; the Debian inspection uses existing `ar` and `tar` tools after the initial test exposed unavailable `dpkg-deb` on Fedora. Source/test types and affected lint pass. No tool was added to the environment.
+
+Platform notices now describe generated FFI bindings and dynamically supplied libraries. The incorrect runtime-introspection explanation and legal interpretation are removed; source links and license identifiers remain. Independent review passes; combined validation follows this batch.
 
 ## Next work
 
