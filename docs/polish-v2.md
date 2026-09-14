@@ -47,7 +47,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `navigation` | 66 | All files read; stack option lifetimes, closing headers and lazy route restoration fixed; repeat review found no further local defect |
 | `storybook` | 31 | All files read; unset selections, readonly controls, shared types and documentation fixed; upstream strict declaration checking remains open |
 | `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
-| `cli` | 262 | Command, codegen and settings folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
+| `cli` | 262 | Command, codegen, settings and development folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
 | `create-gtkx` | 31 | All files read; option parsing, installation recovery, duplication and guides fixed; installed TypeScript and JavaScript consumers pass |
 | `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
 | `testing` | 60 | All files read; deadlines, text queries, clipboard behavior, Unicode and matcher fixes pass; repeat review found no further confirmed defect |
@@ -640,6 +640,16 @@ The reminders, testing, packaging, internationalization and Flatpak chapters wer
 The English test configuration now fixes its locale. A real consumer with an inherited French environment failed English widget queries before this change and passes afterward. Exact chapter snippets pass strict consumer typechecking and three English plus three French UI cases. French application screenshots were inspected. The minimal packaging configuration passes typechecking and real manifest generation. Imperative notification creation and the example's notification mocks remain tracked work; the prose revision does not close those implementation gaps.
 
 The combined installed tutorial checkpoint passes all 31 application tests, three French tests, build, launch, types, localized AppImage/deb/rpm launches and Flatpak manifest validation. Gettext updates contain source locations and extraction metadata only; translations are unchanged. All 27 website build tasks pass, rendering 6,122 pages and generating the sitemap. Local page links, code fences, whitespace checks and independent review pass. All v2 tutorial chapters have now been read; repeat review continues alongside the remaining application findings.
+
+### Development schema inputs and upstream types
+
+All 17 development modules were read, 1,819 baseline lines, alongside the shared import scanner and Storybook session. Adding, replacing or removing a schema import during Fast Refresh previously left Gio's process-level schema catalog unchanged. Development now records the running process's schema inputs and restarts after validating a changed complete set.
+
+Import discovery reports incomplete scans explicitly. A syntax error in one component no longer makes its schema imports appear removed when another component is saved. Ordinary child refresh preserves the running app and React state. XML edits also wait for complete source discovery; a pending edit is applied after source repair even when the import set is unchanged. Invalid XML preserves the running app until the next valid save.
+
+Vite's own server, module and resolved-config types replace copied declarations. This removes optional-field fallbacks that Vite's actual types do not require. The supervisor's unused process-factory option and stored function are removed; both public command callers already use the same real process launcher.
+
+All 501 CLI cases across 49 files pass, including the new real development sequence, existing shutdown/reload behavior, Storybook, settings, build and deployment cases. The regression observes process identity, mounted React state, continued activity and native schema defaults through nullable lookups. Build, source/test types, affected lint, Knip, whitespace checks and independent review pass. The type cleanup preserves the validated runner's emitted JavaScript.
 
 ## Next work
 

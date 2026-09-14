@@ -1,5 +1,5 @@
+import type { ModuleNode, ViteDevServer } from "vite";
 import type { WatchedChange } from "../dev/change-queue.js";
-import type { DevServer, DevServerModule } from "../dev/vite-dev-server.js";
 import { withExclusiveLoad } from "../internal/module-loads.js";
 import {
     discoverStorybookFiles,
@@ -22,7 +22,7 @@ type StorybookSession = {
 };
 
 type StorybookState = {
-    server: DevServer;
+    server: ViteDevServer;
     handle: StorybookHandle;
     configured: string | undefined;
     files: StorybookFiles;
@@ -39,7 +39,7 @@ const explorerHandle = (module: Record<string, unknown>): StorybookHandle => {
     return module as StorybookHandle;
 };
 
-const invalidate = (server: DevServer, path: string): void => {
+const invalidate = (server: ViteDevServer, path: string): void => {
     const module = server.moduleGraph.getModuleById(path);
 
     if (module !== undefined) {
@@ -134,9 +134,9 @@ const reload = async (state: StorybookState, changedPath?: string): Promise<void
 };
 
 const hasImporter = (
-    module: DevServerModule,
+    module: ModuleNode,
     targets: Set<string>,
-    seen: Set<DevServerModule>,
+    seen: Set<ModuleNode>,
 ): boolean => {
     if (seen.has(module)) {
         return false;
@@ -144,11 +144,11 @@ const hasImporter = (
 
     seen.add(module);
 
-    if (module.id !== undefined && module.id !== null && targets.has(module.id)) {
+    if (module.id !== null && targets.has(module.id)) {
         return true;
     }
 
-    return [...(module.importers ?? [])].some((importer) => hasImporter(importer, targets, seen));
+    return [...module.importers].some((importer) => hasImporter(importer, targets, seen));
 };
 
 const hasDependency = (state: StorybookState, path: string, targets: Set<string>): boolean => {
@@ -185,7 +185,7 @@ const shouldReload = (state: StorybookState, change: WatchedChange): boolean => 
 };
 
 const createStorybookSession = (
-    server: DevServer,
+    server: ViteDevServer,
     entry: Record<string, unknown>,
     configured: string,
     isRefreshBoundary: (module: Record<string, unknown>) => boolean,

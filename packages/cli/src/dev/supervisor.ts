@@ -5,8 +5,6 @@ import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEV_CONFIG_ENV, DEV_ENTRY_ENV, DEV_STORYBOOK_ENV } from "./entry-env.js";
 
-type ForkRunner = (modulePath: string, args: string[], env: NodeJS.ProcessEnv, cwd: string) => ChildProcess;
-
 type DevWatch = {
     paths: string[];
     resolvePaths: () => string[];
@@ -24,7 +22,6 @@ type SupervisorState = {
     watchers: FSWatcher[];
     changedPaths: Set<string>;
     restartTimer: DebounceTimer;
-    fork: ForkRunner;
     child: ChildProcess | null;
     isShuttingDown: boolean;
     isRestarting: boolean;
@@ -39,7 +36,6 @@ type DevSupervisorOptions = {
     cwd: string;
     args?: string[] | undefined;
     watch?: DevWatch | undefined;
-    fork?: ForkRunner | undefined;
 };
 
 type DebounceTimer = { handle: NodeJS.Timeout | null };
@@ -62,7 +58,7 @@ const getNodeOptions = (env: NodeJS.ProcessEnv): string | undefined => {
     return options === undefined ? undefined : withoutConditions(options.split(/\s+/)).join(" ");
 };
 
-const defaultForkRunner: ForkRunner = (modulePath, args, env, cwd) => {
+const forkRunner = (modulePath: string, args: string[], env: NodeJS.ProcessEnv, cwd: string): ChildProcess => {
     const nodeOptions = getNodeOptions(env);
 
     return nodeFork(modulePath, args, {
@@ -106,7 +102,7 @@ const handleChildExit = (state: SupervisorState, code: number | null, signal: No
 };
 
 const launch = (state: SupervisorState): void => {
-    const child = state.fork(
+    const child = forkRunner(
         state.runnerPath,
         state.args,
         {
@@ -413,7 +409,7 @@ const installShutdown = (state: SupervisorState): void => {
 };
 
 const runDevSupervisor = async (options: DevSupervisorOptions): Promise<never> => {
-    const { entryPath, configFile, storybookConfig, cwd, args = [], watch, fork = defaultForkRunner } = options;
+    const { entryPath, configFile, storybookConfig, cwd, args = [], watch } = options;
 
     const state: SupervisorState = {
         runnerPath: fileURLToPath(DEV_RUNNER_URL),
@@ -426,7 +422,6 @@ const runDevSupervisor = async (options: DevSupervisorOptions): Promise<never> =
         watchers: [],
         changedPaths: new Set(),
         restartTimer: { handle: null },
-        fork,
         child: null,
         isShuttingDown: false,
         isRestarting: false,
