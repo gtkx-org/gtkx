@@ -822,6 +822,9 @@ importers:
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils
+      '@types/react-reconciler':
+        specifier: ^0.33.0
+        version: 0.33.0(patch_hash=5f321dd89798ede30e54db677b972e9a7ad535a6245167ce4678941916c328e8)(@types/react@19.2.18)
       react:
         specifier: ^19.2
         version: 19.2.8
@@ -835,9 +838,6 @@ importers:
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.18
-      '@types/react-reconciler':
-        specifier: ^0.33.0
-        version: 0.33.0(patch_hash=5f321dd89798ede30e54db677b972e9a7ad535a6245167ce4678941916c328e8)(@types/react@19.2.18)
 
   packages/runtime:
     dependencies:
