@@ -266,7 +266,7 @@ jobs:
     needs: [changes, image-manifest]
     if: *code-changed
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       GTKX_MAX_WORKERS: "2"
     steps:

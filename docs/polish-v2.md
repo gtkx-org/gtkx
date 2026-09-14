@@ -691,7 +691,7 @@ The source Flatpak review separately reproduced a preview probing an unused loca
 
 The complete deployment guide was reviewed against the command, configuration and target implementations. The revision is about 65% shorter, replacing complete option catalogs and sample command transcripts with the GTKX workflow and links to exported API types. It preserves targets, architectures, icons, preview and rebuild behavior, runtime choices, native addon assets, installed notices and source Flatpak constraints.
 
-The guide distinguishes runtime FFI from GIR generation, describes target-specific AppStream warnings and separates a generated source manifest from a tested source build. Three snippets pass strict installed-consumer typechecking, six local routes and anchors resolve through VitePress, and upstream links were checked. Independent review passes; the production website checkpoint follows this batch. The configuration reference currently hides schema-inferred deployment fields, so editor completion supplies the options until that separate reference gap is corrected.
+The guide distinguishes runtime FFI from GIR generation, describes target-specific AppStream warnings and separates a generated source manifest from a tested source build. Three snippets pass strict installed-consumer typechecking, six local routes and anchors resolve through VitePress, and upstream links were checked. Independent review and the production website checkpoint pass. The configuration reference currently hides schema-inferred deployment fields, so editor completion supplies the options until that separate reference gap is corrected.
 
 ### Reference store reuse and coverage deadlines
 
@@ -707,7 +707,7 @@ All five nFPM modules were read, 302 baseline lines, with their target wrappers 
 
 Real Debian and RPM packages retain the configured hook script for relative paths containing spaces and for absolute paths. Missing scripts remain rejected. The six public integration cases pass across focused runs; the Debian inspection uses existing `ar` and `tar` tools after the initial test exposed unavailable `dpkg-deb` on Fedora. Source/test types and affected lint pass. No tool was added to the environment.
 
-Platform notices now describe generated FFI bindings and dynamically supplied libraries. The incorrect runtime-introspection explanation and legal interpretation are removed; source links and license identifiers remain. Independent review passes; combined validation follows this batch.
+Platform notices now describe generated FFI bindings and dynamically supplied libraries. The incorrect runtime-introspection explanation and legal interpretation are removed; source links and license identifiers remain. Independent review and the combined build, lint, typecheck, test, release, tutorial and website checkpoint pass.
 
 ### Target-specific Flatpak notices
 
@@ -723,8 +723,16 @@ Debian copyright output previously removed SPDX parentheses, changing the meanin
 
 All 25 public notice-provenance cases pass, including 15 expression cases covering grouping, deduplicated terms, explicit license files and missing terms. The complete canonical build, lint, typecheck and test checkpoint also passes, followed by release consumers and tutorial packaging. Frozen dependency installation and independent review pass. No private-helper or cosmetic error assertions were added.
 
+### Combined checkpoint and CI capacity
+
+The complete local checkpoint passes build, lint, typechecking, all 46 test/build tasks, fresh published TypeScript and JavaScript consumers, the installed tutorial and all 27 website tasks. The website renders successfully in 426 seconds. This checkpoint includes target-specific Node notices, Debian expression grouping and project-relative package hook scripts.
+
+At `91d37dab`, CI passes the main suite, publication, sanitizers, docs, lint, types and CodeQL. The CLI job reaches its 30-minute job limit after reporting 50 passing files, with localization still unfinished; its log contains no failed test assertion. The CLI job now allows 45 minutes. Individual test deadlines and production behavior are unchanged. Workflow YAML parses successfully. Sonar's separate coverage job remains in progress.
+
+Copilot reviewed 277 of 683 files at that commit and added no new comments. This partial review does not close the audit or the previously tracked GL callback finding; no reply was posted.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.
 
-Continue repeat audits alongside the R2 string/container and ownership stages. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
+Continue repeat audits alongside the remaining R2 container and ownership stages; the string conversion stage is complete. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
