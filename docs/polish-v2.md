@@ -743,7 +743,7 @@ A public Git fixture reproduced source Flatpaks embedding local dependency 2.0 n
 
 Builds require no deployment configuration. Local deployment and `--skip-build` retain their recorded dependency identity, and generic runtime staging excludes both metadata artifacts through one filename set. The native emitter and notice producer share the existing addon filename. Shared section builders and rendering avoid a separate source-mode implementation.
 
-All seven new public cases fail before the correction and pass afterward, covering selected revisions, mixed targets, ordinary builds, empty dependency sets, failed rebuilds, skipped builds and a missing notice artifact. All 50 canonical notice/AppImage cases, build, source/test types, affected lint and independent review pass. The probes execute actual builds and generated install commands; they do not claim a complete Flatpak sandbox build. Publication and tutorial checks follow the next combined batch.
+All seven new public cases fail before the correction and pass afterward, covering selected revisions, mixed targets, ordinary builds, empty dependency sets, failed rebuilds, skipped builds and a missing notice artifact. All 50 canonical notice/AppImage cases, build, source/test types, affected lint and independent review pass. The probes execute actual builds and generated install commands; they do not claim a complete Flatpak sandbox build. The subsequent combined publication and tutorial checks also pass.
 
 ### Constant aliases and remaining generator leaves
 
@@ -761,7 +761,7 @@ All ten deployment target files were read with their configuration and tool call
 
 Configured runtime and lockfile paths now resolve from the project root while preserving absolute paths. The existing staging-directory helper owns both copying and generator execution, including failures. Source Flatpak installation also reuses the canonical native addon filename.
 
-The nine public integration cases cover relative and absolute paths with spaces, default lockfiles, real AppImage extraction, missing inputs, malformed JSON and temporary-directory cleanup. Three fail before the correction and pass afterward; the isolated target/source-notice batch passes all 28 cases. The canonical build, full lint, typecheck and all 46 test/build tasks pass. Independent review is clean. Release, tutorial and website checks are running for this batch.
+The nine public integration cases cover relative and absolute paths with spaces, default lockfiles, real AppImage extraction, missing inputs, malformed JSON and temporary-directory cleanup. Three fail before the correction and pass afterward; the isolated target/source-notice batch passes all 28 cases. The canonical build, full lint, typecheck and all 46 test/build tasks pass. Independent review is clean. Fresh published TypeScript and JavaScript consumers, the installed tutorial and the production website also pass at `fdb77c7c`; the website completes in 448 seconds. This checkpoint includes the source-revision notices, real AppImage coverage and constant-alias correction.
 
 Custom Flatpak branch installation and revision-free source manifests remain observations requiring separate consumer-contract checks. They are not counted as confirmed defects or silently folded into this correction.
 
