@@ -433,7 +433,11 @@ impl ClosureData {
         };
 
         Ok(RefSlot {
-            obj: wrap_ref(env, seed)?,
+            obj: if inner_ptr.is_null() {
+                value::js_null(env)?
+            } else {
+                wrap_ref(env, seed)?
+            },
             inner_ptr,
             inner_codec: ref_codec.inner_codec(),
             init: if ref_codec.is_inout() {

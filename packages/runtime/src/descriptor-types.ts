@@ -9,7 +9,10 @@ type Descriptor =
     { kind: "unichar" } |
     { kind: "enum"; sharedLibrary: string; getTypeFnName: string; isSigned: boolean; members?: number[] } |
     { kind: "flags"; sharedLibrary: string; getTypeFnName: string; isSigned: boolean; mask?: number } |
-    (Omit<Extract<NativeDescriptor, { kind: "array" }>, "itemDescriptor"> & { itemDescriptor: Descriptor }) |
+    (Omit<Extract<NativeDescriptor, { kind: "array" }>, "itemDescriptor"> & {
+        itemDescriptor: Descriptor;
+        preserveNull?: boolean;
+    }) |
     (Omit<Extract<NativeDescriptor, { kind: "hashtable" }>, "keyDescriptor" | "valueDescriptor"> & {
         keyDescriptor: Descriptor;
         valueDescriptor: Descriptor;

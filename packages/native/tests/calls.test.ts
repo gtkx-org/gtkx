@@ -14,7 +14,6 @@ const BORROWED_VECTOR = {
     arrayKind: "array",
     ownership: "borrowed",
     isZeroTerminated: true,
-    preserveNull: true,
 } as const;
 
 const strdup = bind(GLIB, "g_strdup", [BORROWED_BYTES], OWNED_BYTES);

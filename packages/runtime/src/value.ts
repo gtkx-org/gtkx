@@ -162,9 +162,10 @@ const nullableStrvValueType: ValueType = {
 };
 
 const setByteArrayBoxed = bind(LIB, "g_value_set_boxed", [VALUE_T, byteArrayT()], voidT);
-const getBoxedPointer = bind(LIB, "g_value_get_boxed", [VALUE_T], structT("borrowed"));
-const getBytesBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], byteArrayT());
-const getByteItemsBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], arrayT(uint8T, "gbytearray"));
+const getBytesBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], preserveArrayNull(byteArrayT()));
+const getByteItemsBoxed = bind(
+    LIB, "g_value_get_boxed", [VALUE_T], preserveArrayNull(arrayT(uint8T, "gbytearray")),
+);
 
 const PLAIN_VALUE_TYPES: Partial<Record<Descriptor["kind"], ValueType>> = {
     boolean: booleanValueType,
@@ -264,11 +265,7 @@ const boxedValueType = (type: bigint): ValueType => {
     return { set: setBoxedBind(name), get: dupBoxedBind(name) };
 };
 
-const byteArrayValueGetterFor = (isBytes: boolean): ValueGetter => {
-    const get = isBytes ? getBytesBoxed : getByteItemsBoxed;
-
-    return (value) => (getBoxedPointer(value) ? get(value) : null);
-};
+const byteArrayValueGetterFor = (isBytes: boolean): ValueGetter => isBytes ? getBytesBoxed : getByteItemsBoxed;
 
 const byteArrayValueType = (descriptor: ArrayDescriptor): ValueType => ({
     set: setByteArrayValue,

@@ -301,6 +301,22 @@ test("values unset and re-initialize to another type", () => {
     expect(GIMarshallingTests.gvalueRoundTrip(value)).toBe(true);
 });
 
+test("byte-array GValues distinguish null and empty payloads", () => {
+    const value = new GObject.Value();
+    value.init(resolveType("libgobject-2.0.so.0", "g_byte_array_get_type"));
+    expect(value.getBoxed()).toBeNull();
+
+    value.setBoxed(new Uint8Array());
+    expect(value.getBoxed()).toEqual(new Uint8Array());
+    value.setBoxed(new Uint8Array([0, 128, 255]));
+    expect(value.getBoxed()).toEqual(new Uint8Array([0, 128, 255]));
+    value.setBoxed(null);
+    expect(value.getBoxed()).toBeNull();
+    expect(() => {
+        value.setBoxed(1);
+    }).toThrow();
+});
+
 test("reset hands the value back without giving it a second owner", async () => {
     const value = stringValue("again");
     value.reset();

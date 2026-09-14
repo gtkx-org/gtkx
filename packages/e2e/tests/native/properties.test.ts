@@ -164,6 +164,12 @@ test("string strv boxed and byte array properties round trip", () => {
     expect(boxedBack).not.toBe(boxed);
     po.someByteArray = new Uint8Array([0, 128, 255]);
     expect(po.someByteArray).toEqual(new Uint8Array([0, 128, 255]));
+    po.someByteArray = null;
+    expect(po.someByteArray).toBeNull();
+    expect(GObject.getProperty(po, "someByteArray")).toBeNull();
+    po.someByteArray = new Uint8Array();
+    expect(po.someByteArray).toEqual(new Uint8Array());
+    expect(GObject.getProperty(po, "someByteArray")).toEqual(new Uint8Array());
 });
 
 test("variant object gvalue enum and flags properties round trip", () => {
