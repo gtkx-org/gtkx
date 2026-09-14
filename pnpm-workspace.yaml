@@ -29,7 +29,7 @@ catalog:
   vite: ^8.2.2
   vitest: ^5.0.0
   yaml: ^2.9.0
-  zod: ^4.5.4
+  zod: ^4.6.2
 
 allowBuilds:
   '@swc/core': true
