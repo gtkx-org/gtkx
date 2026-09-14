@@ -38,7 +38,7 @@ type ProjectImports = {
 const CACHE_FILE = ["node_modules", ".gtkx", "import-scan.json"];
 const PARSER_MANIFEST = "vite/package.json";
 const UNKNOWN_PARSER = "unknown";
-const SCANNER_MODULES = ["source-imports", "import-scan"];
+const SCANNER_MODULES = ["./source-imports.js", "./import-scan.js"];
 const identity: { value: string | undefined } = { value: undefined };
 
 const scanCachePath = (root: string): string => join(root, ...CACHE_FILE);
@@ -60,7 +60,7 @@ const parserVersion = (): string => {
 };
 
 const scannerHash = (): string =>
-    SCANNER_MODULES.map((name) => moduleHash(join(import.meta.dirname, name))).join("-");
+    SCANNER_MODULES.map((name) => moduleHash(new URL(import.meta.resolve(name)))).join("-");
 
 const cacheVersion = (): string =>
     (identity.value ??= `${packageManifest.version}+${parserVersion()}+${scannerHash()}`);

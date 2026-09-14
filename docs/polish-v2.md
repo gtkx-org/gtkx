@@ -777,7 +777,9 @@ The array codec and all ten container modules were read with hash tables, refere
 
 The compile-cache entry and cleanup store now import Node's cache APIs directly. Their availability checks supported Node versions below GTKX's declared minimum. Disabled and unwritable caching retain Node's existing behavior, and cleanup still preserves the active cache directory.
 
-All ten public compile-cache cases, the CLI build, affected typechecks, lint and independent review pass. Six cache/loading modules were read completely, 382 baseline lines, with the public cache and React compiler suites. The React compiler tests still inspect private build output instead of running the application; replacement integration coverage is in progress. Module hashing also needs to resolve the actual loaded source or compiled module without guessed filenames or a shared fallback hash.
+All ten public compile-cache cases, the CLI build, affected typechecks, lint and independent review pass. Six cache/loading modules were read completely, 382 baseline lines, with the public cache and React compiler suites. The React compiler tests still inspect private build output instead of running the application; replacement integration coverage is in progress.
+
+Module hashing now uses Node's resolved module URL for the import scanner and React compiler. This removes extension guessing and the shared fallback hash while retaining published JavaScript and explicit TypeScript source execution. Nine public GIR freshness and live schema-import refresh cases pass, as do the canonical source bootstrap, CLI build, typecheck, lint and independent review.
 
 ### Flatpak branch installation
 
