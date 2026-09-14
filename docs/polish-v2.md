@@ -737,6 +737,14 @@ The 224-line private AppImage fixture and mocked packager are replaced by public
 
 The pinned appimagetool supports only zstd, although GTKX previously accepted gzip and xz. Configuration now preserves default or explicit zstd and rejects unsupported choices during loading. All six public cases pass, alongside the 50-case canonical notice/AppImage checkpoint, build, source/test types, affected lint and independent review. The known upstream compressor limitation is recorded separately in `~/UPSTREAM.md`.
 
+### Source-revision dependency notices
+
+A public Git fixture reproduced source Flatpaks embedding local dependency 2.0 notices while the pinned revision builds dependency 1.0. Ordinary builds now emit `BUNDLED-NOTICES` from the same recorded package snapshot as their JSON build metadata. Source Flatpak installation combines that selected build's notices with SDK and platform sections. The notice identifies the bundled files' installation directory.
+
+Builds require no deployment configuration. Local deployment and `--skip-build` retain their recorded dependency identity, and generic runtime staging excludes both metadata artifacts through one filename set. The native emitter and notice producer share the existing addon filename. Shared section builders and rendering avoid a separate source-mode implementation.
+
+All seven new public cases fail before the correction and pass afterward, covering selected revisions, mixed targets, ordinary builds, empty dependency sets, failed rebuilds, skipped builds and a missing notice artifact. All 50 canonical notice/AppImage cases, build, source/test types, affected lint and independent review pass. The probes execute actual builds and generated install commands; they do not claim a complete Flatpak sandbox build. Publication and tutorial checks follow the next combined batch.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.

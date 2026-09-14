@@ -3,7 +3,7 @@ import { existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { DeploySettings, DeployTargetName, NodeRuntime, NoticeSection, StagedFile } from "../types.js";
 import { LOCALE_DIRNAME } from "../../i18n/catalogs.js";
-import { BUILD_MANIFEST_FILENAME } from "../../internal/build-manifest.js";
+import { BUILD_METADATA_FILENAMES } from "../../internal/build-manifest.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 import { renderCopyright } from "../freedesktop/copyright.js";
@@ -67,7 +67,7 @@ const stageRuntimeFiles = (settings: DeploySettings, root: string): StagedFile[]
 
     return listFilesRecursive(dist)
         .filter((file) =>
-            !isIconAsset(file.rel) && file.rel !== BUILD_MANIFEST_FILENAME && !isLocaleAsset(file.rel))
+            !isIconAsset(file.rel) && !BUILD_METADATA_FILENAMES.has(file.rel) && !isLocaleAsset(file.rel))
         .map((file) => copyInto(root, join(libDirFor(settings), file.rel), file.absPath));
 };
 

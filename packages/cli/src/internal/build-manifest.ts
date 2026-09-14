@@ -23,6 +23,8 @@ type BuildManifestCollector = {
 };
 
 const BUILD_MANIFEST_FILENAME = "gtkx-schemas.json";
+const BUILD_NOTICES_FILENAME = "BUNDLED-NOTICES";
+const BUILD_METADATA_FILENAMES: ReadonlySet<string> = new Set([BUILD_MANIFEST_FILENAME, BUILD_NOTICES_FILENAME]);
 const BUILD_MANIFEST_GENERATOR = "gtkx-build";
 const BUILD_MANIFEST_FORMAT_VERSION = 3;
 
@@ -49,6 +51,8 @@ const createBuildManifestCollector = (): BuildManifestCollector => ({ schemas: [
 
 export {
     BUILD_MANIFEST_FILENAME,
+    BUILD_METADATA_FILENAMES,
+    BUILD_NOTICES_FILENAME,
     BUILD_MANIFEST_FORMAT_VERSION,
     BUILD_MANIFEST_GENERATOR,
     configDigest,

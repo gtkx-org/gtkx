@@ -95,7 +95,7 @@ describe("source Flatpak runtime notices", () => {
         expect(notices).not.toContain(`Node.js ${process.versions.node}`);
         expect(notices).not.toContain(LOCAL_LICENSE.trim());
         expect(manifest.modules.flatMap((module) => module.sources)
-            .find((source) => source["dest-filename"] === "THIRD-PARTY-NOTICES")?.contents).toBe(notices);
+            .find((source) => source["dest-filename"] === "THIRD-PARTY-NOTICES")?.contents).toContain(notices);
     });
 
     it("identifies the configured SDK extension without guessing its release", () => {
@@ -145,7 +145,7 @@ describe("source Flatpak runtime notices", () => {
         expect(notices).toContain(`Node.js (${SDK_EXTENSION})`);
         expect(notices).not.toContain(LOCAL_LICENSE.trim());
         expect(readFlatpak(project.root).modules.flatMap((module) => module.sources)
-            .find((source) => source["dest-filename"] === "THIRD-PARTY-NOTICES")?.contents).toBe(notices);
+            .find((source) => source["dest-filename"] === "THIRD-PARTY-NOTICES")?.contents).toContain(notices);
     });
 
     it("retains local runtime notices for a binary Flatpak", () => {

@@ -1,7 +1,6 @@
 import { warn } from "@gtkx/utils";
 import type { RecordedPackage } from "../../internal/build-manifest.js";
-import type { DeploySettings, Notice, NoticeSection } from "../types.js";
-import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
+import type { Notice, NoticeSection } from "../types.js";
 import { isGtkxPackage } from "./gtkx.js";
 
 const TITLE = "Bundled JavaScript dependencies";
@@ -38,13 +37,13 @@ const warnUndeclared = (entries: RecordedPackage[]): void => {
     );
 };
 
-const dependencyNotices = (settings: DeploySettings, packages: RecordedPackage[]): NoticeSection => {
+const dependencyNotices = (bundleFile: string, packages: RecordedPackage[]): NoticeSection => {
     const bundled = packages.filter((entry) => !isGtkxPackage(entry));
     warnUndeclared(bundled);
 
     return {
         title: TITLE,
-        files: [`lib/${settings.binaryName}/${BUNDLE_FILENAME}`],
+        files: [bundleFile],
         summary: SUMMARY,
         notices: bundled.map((entry) => noticeFor(entry)),
     };

@@ -3,6 +3,7 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { posix, relative, resolve } from "node:path";
 import type { DeployPayload, DeploySettings } from "../types.js";
 import { LOCALE_DIRNAME } from "../../i18n/catalogs.js";
+import { BUILD_NOTICES_FILENAME } from "../../internal/build-manifest.js";
 import { FONTS_DIR } from "../../internal/font-path.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
@@ -207,9 +208,11 @@ const licenseInstallCommands = (settings: DeploySettings): string[] => {
 const noticesInstallCommands = (settings: DeploySettings): string[] => {
     const extensionLicense = `${nodeExtensionPathFor(settings)}/LICENSE`;
     const nodeTarget = `${DESTINATION}/${shellArgument(nodeLicenseDestination(settings))}`;
+    const noticeTarget = `${DESTINATION}/${shellArgument(noticesDestination(settings))}`;
 
     return [
-        installCommand(NOTICES_FILENAME, `${DESTINATION}/${shellArgument(noticesDestination(settings))}`, "m644"),
+        installCommand(NOTICES_FILENAME, noticeTarget, "m644"),
+        `cat dist/${BUILD_NOTICES_FILENAME} >> ${noticeTarget}`,
         `test ! -f ${extensionLicense} || ${installCommand(extensionLicense, nodeTarget, "m644")}`,
     ];
 };
@@ -279,7 +282,11 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
             GENERATED_SOURCES,
             ...stagedMetadataSources(payload),
             inlineSource(LAUNCHER_FILENAME, renderLauncher(settings)),
-            inlineSource(NOTICES_FILENAME, renderNotices(settings, payload.notices.flatpak)),
+            inlineSource(
+                NOTICES_FILENAME,
+                renderNotices(settings, payload.notices.flatpak) +
+                `The bundled files listed below are installed in ${RUNTIME_PREFIX}/lib/${settings.binaryName}.\n\n`,
+            ),
             ...activationSource(settings),
         ],
         "build-commands": [
