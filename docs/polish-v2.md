@@ -47,7 +47,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `navigation` | 66 | All files read; stack option lifetimes, closing headers and lazy route restoration fixed; repeat review found no further local defect |
 | `storybook` | 31 | All files read; unset selections, readonly controls, shared types and documentation fixed; upstream strict declaration checking remains open |
 | `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
-| `cli` | 262 | Command, codegen, settings and development folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
+| `cli` | 262 | Command, codegen, settings, development, Node runtime, vendored tools, payload and freedesktop folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
 | `create-gtkx` | 31 | All files read; option parsing, installation recovery, duplication and guides fixed; installed TypeScript and JavaScript consumers pass |
 | `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
 | `testing` | 60 | All files read; deadlines, text queries, clipboard behavior, Unicode and matcher fixes pass; repeat review found no further confirmed defect |
@@ -650,6 +650,14 @@ Import discovery reports incomplete scans explicitly. A syntax error in one comp
 Vite's own server, module and resolved-config types replace copied declarations. This removes optional-field fallbacks that Vite's actual types do not require. The supervisor's unused process-factory option and stored function are removed; both public command callers already use the same real process launcher.
 
 All 501 CLI cases across 49 files pass, including the new real development sequence, existing shutdown/reload behavior, Storybook, settings, build and deployment cases. The regression observes process identity, mounted React state, continued activity and native schema defaults through nullable lookups. Build, source/test types, affected lint, Knip, whitespace checks and independent review pass. The type cleanup preserves the validated runner's emitted JavaScript.
+
+### Node runtime and payload audit
+
+All six Node runtime modules, two vendored tool modules and five payload modules were read, 525, 136 and 503 baseline lines, with their staging and configuration callers. Maintained npm semver now parses and compares Node releases. The shared minimum remains authoritative; malformed leading-zero and unsafe-integer releases are rejected. Executable failures and version validation no longer depend on matching error-message prefixes.
+
+The runtime-path and generated-launcher cases now execute copies of the real Node binary instead of shell substitutes. All 22 runtime-version cases and three launcher cases pass, covering supported versions, relative paths, literal environment values and arguments, rejected versions, missing runtimes and execution failures. Build, source/test types, affected lint, Knip, frozen installation and independent review pass. Regenerating Nx's stale dependency graph resolves its initial version mismatch without a production change.
+
+The ELF reader still contains handwritten binary parsing; a suitable maintained replacement remains under evaluation. The payload review found no additional confirmed production defect. The ten freedesktop modules were also read, 944 lines. Their handwritten AppStream diagnostic parser can use the existing validator's structured YAML report; that change is the next metadata slice. Notice provenance and explicit package-license files are being reproduced separately.
 
 ## Next work
 

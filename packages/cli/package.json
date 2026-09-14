@@ -95,6 +95,7 @@
         "i18next-cli": "1.73.1",
         "jiti": "^2.7.0",
         "react-refresh": "^0.18.0",
+        "semver": "^7.8.5",
         "vite": "catalog:",
         "yaml": "catalog:"
     },
@@ -105,6 +106,7 @@
         "@types/gettext-parser": "^9.0.0",
         "@types/hosted-git-info": "^3.0.5",
         "@types/react-refresh": "^0.14.7",
+        "@types/semver": "^7.8.0",
         "vitest": "catalog:"
     },
     "peerDependencies": {
