@@ -14,9 +14,9 @@ This section describes the GTKX 2 implementation on the repository's `main` bran
 | Layer | Current implementation role | Implementation |
 | --- | --- | --- |
 | Application components | Describe the interface, hold application state, and compose GTKX features. | Application TSX and packages such as `@gtkx/components` and `@gtkx/navigation`. |
-| Generated JSX | Expose typed React components for the project's native types and retain their property and signal metadata. | Project-generated `@gtkx/jsx/<namespace>` modules. |
+| Generated JSX | Expose typed React components for the project's native types and retain their GI classes. | Project-generated `@gtkx/jsx/<namespace>` modules. |
 | React renderer | Create native objects, apply prop changes, route children, connect signals, and tear down mounted instances. | [`packages/react`](https://github.com/gtkx-org/gtkx/tree/main/packages/react). |
-| Generated GI bindings | Expose native classes, interfaces, records, enums, callbacks, and functions as JavaScript with TypeScript declarations. | Project-generated `@gtkx/gi/<namespace>` modules. |
+| Generated GI bindings | Expose native classes, interfaces, records, enums, callbacks, and functions, and register property and signal metadata with their classes. | Project-generated `@gtkx/gi/<namespace>` modules. |
 | TypeScript runtime | Translate binding descriptions into calls, wrap native values, register types, and coordinate signals and application lifecycle. | [`packages/runtime`](https://github.com/gtkx-org/gtkx/tree/main/packages/runtime). |
 | Native bridge | Marshal values, invoke C symbols, implement callbacks, manage native handles, and integrate GLib with Node's event loop. | [`packages/native`](https://github.com/gtkx-org/gtkx/tree/main/packages/native). |
 | Native libraries | Implement the actual GNOME application and widget behavior. | Adwaita, GTK4, GIO, GObject, GLib, and the project's additional libraries. |
@@ -42,7 +42,7 @@ Consider a component that renders a button and updates a label when the button i
 1. The generated JSX component turns its props into a React host element identified by its GType name. Element-valued props become named child slots.
 2. React reconciles the tree and asks GTKX's host configuration to create or update an instance.
 3. The renderer uses generated metadata and registered element behaviors to construct the native object, apply values, and place children through the appropriate container API.
-4. Generated GI methods and runtime helpers describe the native calls. The Rust addon marshals their arguments and invokes the underlying C functions.
+4. Generated GI methods describe the native calls. Runtime converts their arguments, and the Rust addon prepares native storage and invokes the underlying C functions.
 5. GTK delivers the button's signal through the GLib main context. The runtime calls the connected JavaScript handler, and the renderer gives that handler React's discrete event priority.
 6. The handler changes React state. React reconciles again, and the renderer updates the existing native label where the element's identity permits reuse.
 
