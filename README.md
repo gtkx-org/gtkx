@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://gtkx.dev">Homepage</a> &middot;
-  <a href="https://gtkx.dev/guide/getting-started">Documentation</a> &middot;
+  <a href="https://gtkx.dev/v2/guide/getting-started">Documentation</a> &middot;
   <a href="https://github.com/gtkx-org/gtkx/tree/main/examples">Examples</a> &middot;
   <a href="https://gtkx.dev/contributing/">Contributing</a> &middot;
   <a href="https://github.com/sponsors/gtkx-org">Sponsor</a>
@@ -34,7 +34,7 @@
 </p>
 
 <p align="center">
-  <em>The Tasks app you build in the <a href="https://gtkx.dev/tutorial/">tutorial</a>.</em>
+  <em>The Tasks app you build in the <a href="https://gtkx.dev/v2/tutorial/">tutorial</a>.</em>
 </p>
 
 ## Demo
@@ -99,22 +99,22 @@ This is the [`hello-world`](https://github.com/gtkx-org/gtkx/tree/main/examples/
 
 GTKX uses Adwaita as the foundation for applications, windows, navigation, dialogs, and adaptive layouts, with the complete GTK4 toolkit underneath. It adds a declarative React layer and an integrated TypeScript toolchain to the GNOME platform:
 
-- a React reconciler that exposes every GObject as a JSX element,
+- generated JSX elements for native GObject types,
 - a CLI for scaffolding, development, and production builds,
 - a dev server with Fast Refresh that patches your running UI in place,
 - CSS-in-JS styling, React Hook Form-powered Adwaita controls, gettext-backed react-i18next localization, React Spring animations, React Navigation stack, tab, drawer, and split view navigators, and high-level list, grid, and dialog components,
 - a Testing Library-style API for querying and driving your widgets in tests,
 - and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
 
-### Native GNOME widgets, without a compatibility layer
+### Native GNOME widgets
 
-React Native and similar frameworks hide the native toolkit so one API can run everywhere. GTKX renders real Adwaita and GTK4 widgets and exposes any other GObject-Introspection library on your system. It is GNOME-native and Linux-only by design.
+GTKX renders real Adwaita and GTK4 widgets. Generated bindings also expose the GObject-Introspection libraries configured by your application. GTKX is GNOME-native and Linux-only.
 
 ### Why Node.js, and why generated bindings
 
-GTKX runs on Node.js, which puts native modules, the npm ecosystem, and the tooling built for Node.js APIs within reach. GJS is GNOME's own runtime, built on SpiderMonkey rather than V8; node-gtk runs on Node.js but is lightly maintained, on the older nan/V8 ABI rather than N-API, and still centered on GTK3. The [Why GTKX guide](https://gtkx.dev/guide/why-gtkx) covers what running on Node.js means day to day.
+GTKX runs on Node.js, with access to its APIs, native modules, npm packages, and development tools. The [Why GTKX guide](https://gtkx.dev/v2/guide/why-gtkx) explains the design.
 
-GTKX generates the TypeScript types and native FFI calls from the same GObject-Introspection data, so the types cannot drift from the calls they back. `Adw-1` is the sole default GIR root; its GIR include pulls in `Gtk-4.0`, so codegen covers both complete API surfaces. Neither belongs in a GTKX 2 `libraries` list.
+GTKX generates executable ESM bindings and TypeScript declarations together from GIR data. Adwaita and GTK4 are included by default; the `libraries` option selects additional libraries.
 
 At runtime, the native Rust core calls straight into the system Adwaita, GTK4, and GLib libraries through libffi, without loading libgirepository at all.
 
@@ -137,13 +137,13 @@ cd my-app
 npm run dev
 ```
 
-To go further, follow the [tutorial](https://gtkx.dev/tutorial/).
+To go further, follow the [tutorial](https://gtkx.dev/v2/tutorial/).
 
 ## Documentation
 
 The documentation at **[gtkx.dev](https://gtkx.dev)** includes a step-by-step tutorial that builds a complete GNOME app, from scaffolding to packaging and shipping, plus guides and a full API reference.
 
-**[Read the docs &rarr;](https://gtkx.dev/guide/why-gtkx)**
+**[Read the docs &rarr;](https://gtkx.dev/v2/guide/why-gtkx)**
 
 ## Requirements
 
@@ -167,7 +167,7 @@ Explore the [example apps](https://github.com/gtkx-org/gtkx/tree/main/examples):
 
 ## Status
 
-GTKX is stable and ready for production use.
+This branch develops GTKX 2.0, currently in beta. The stable release is scheduled for 1 December 2026. The [1.x documentation](https://gtkx.dev/guide/getting-started) covers the current stable release.
 
 ## Funding
 
