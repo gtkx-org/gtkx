@@ -1,5 +1,7 @@
+import { join } from "node:path";
 import ts from "typescript";
 import { propsDependencies, type PropsDependencies } from "./props-dependencies.js";
+import { VIRTUAL_GI_ROOT } from "./props-modules.js";
 import { createPropsProgram, type PropsExport, type PropsProgramOptions } from "./props-program.js";
 
 type HandwrittenProp = {
@@ -91,18 +93,158 @@ const declaredProps = (context: ExportContext): HandwrittenProp[] => {
     return [...properties, ...indices];
 };
 
-const createPropsCatalog = (options: PropsProgramOptions): PropsCatalog => {
-    if (Object.keys(options.props).length === 0) {
-        return { byType: new Map(), dependencies: propsDependencies([], []) };
+type UnionProp = {
+    name: string;
+    doc: string;
+    keyType?: ts.TypeNode | undefined;
+};
+
+type UnionExport = {
+    entry: PropsExport;
+    props: UnionProp[];
+};
+
+const unionProps = (context: ExportContext, variants: readonly ts.Type[]): UnionProp[] => {
+    const { checker } = context;
+    const properties = Map.groupBy(
+        variants.flatMap((variant) => checker.getPropertiesOfType(variant))
+            .filter((property) => !isSymbolProperty(checker, property)),
+        (property) => property.name,
+    );
+    const indices = Map.groupBy(
+        variants.flatMap((variant) => checker.getIndexInfosOfType(variant))
+            .filter((info) => (info.keyType.flags & ts.TypeFlags.ESSymbolLike) === 0),
+        (info) => formatType(context, info.keyType),
+    );
+
+    return [
+        ...[...properties].map(([name, members]) => ({
+            name,
+            doc: formatDoc([...new Set(members.map((property) =>
+                ts.displayPartsToString(property.getDocumentationComment(checker))))].join(" ")),
+        })),
+        ...[...indices].map(([name, members]) => {
+            const [first] = members;
+            const keyType = first === undefined
+                ? undefined
+                : checker.typeToTypeNode(
+                        first.keyType,
+                        context.declaration,
+                        ts.NodeBuilderFlags.NoTruncation,
+                    );
+
+            if (keyType === undefined) {
+                throw new Error("Cannot represent a configured element prop index");
+            }
+
+            return {
+                name: name.replaceAll("`", ""),
+                doc: [...new Set(members.map((info) => indexDoc(info.declaration)))].filter(Boolean).join(" "),
+                keyType,
+            };
+        }),
+    ];
+};
+
+const propsProbe = (entries: UnionExport[]): string => {
+    const statements = entries.flatMap(({ entry, props }) => props.map((prop) => {
+        const name = prop.keyType === undefined
+            ? ts.factory.createStringLiteral(prop.name)
+            : ts.factory.createComputedPropertyName(ts.factory.createAsExpression(
+                    ts.factory.createIdentifier("undefined"),
+                    prop.keyType,
+                ));
+        const object = ts.factory.createObjectLiteralExpression([
+            ts.factory.createPropertyAssignment(name, ts.factory.createIdentifier("undefined")),
+        ]);
+        const type = ts.factory.createImportTypeNode(
+            ts.factory.createLiteralTypeNode(ts.factory.createStringLiteral(entry.fileName)),
+            undefined,
+            ts.factory.createIdentifier(entry.name),
+        );
+
+        return ts.factory.createExpressionStatement(ts.factory.createAsExpression(object, type));
+    }));
+    const source = ts.factory.createSourceFile(
+        statements,
+        ts.factory.createToken(ts.SyntaxKind.EndOfFileToken),
+        ts.NodeFlags.None,
+    );
+
+    return ts.createPrinter().printFile(source);
+};
+
+const contextualProps = (
+    program: ts.Program,
+    fileName: string,
+    entries: UnionExport[],
+): [string, HandwrittenProp[]][] => {
+    const source = program.getSourceFile(fileName);
+
+    if (source === undefined) {
+        throw new Error("Cannot load configured element prop context");
     }
 
-    const { program, exports, dependencies } = createPropsProgram(options);
-    const byType = new Map(exports.map((entry) => [
-        entry.glibName,
-        declaredProps(exportContext(program, entry)),
-    ]));
+    const values: ts.Expression[] = [];
+    const visit = (node: ts.Node): void => {
+        if (ts.isPropertyAssignment(node)) {
+            values.push(node.initializer);
+        }
 
-    return { byType, dependencies };
+        ts.forEachChild(node, visit);
+    };
+    visit(source);
+    let index = 0;
+
+    return entries.map(({ entry, props }) => {
+        const context = exportContext(program, entry);
+
+        return [entry.glibName, props.map((prop) => {
+            const initializer = values[index++];
+            const type = initializer === undefined ? undefined : context.checker.getContextualType(initializer);
+
+            if (type === undefined) {
+                throw new Error("Cannot resolve a configured element prop context");
+            }
+
+            return { name: prop.name, type: formatType(context, type), doc: prop.doc };
+        })];
+    });
+};
+
+const resolveUnionProps = (
+    entries: UnionExport[],
+    withSource: (fileName: string, source: string) => ts.Program,
+): [string, HandwrittenProp[]][] => {
+    if (entries.length === 0) {
+        return [];
+    }
+
+    const fileName = join(VIRTUAL_GI_ROOT, "props.ts");
+
+    return contextualProps(withSource(fileName, propsProbe(entries)), fileName, entries);
+};
+
+const createPropsCatalog = (options: PropsProgramOptions): PropsCatalog => {
+    if (Object.keys(options.props).length === 0) {
+        return { byType: new Map(), dependencies: propsDependencies(new Map(), []) };
+    }
+
+    const { program, exports, dependencies, withSource } = createPropsProgram(options);
+    const unions: UnionExport[] = [];
+    const byType: Map<string, HandwrittenProp[]> = new Map();
+
+    for (const entry of exports) {
+        const context = exportContext(program, entry);
+
+        if (context.type.isUnion()) {
+            unions.push({ entry, props: unionProps(context, context.type.types) });
+        } else {
+            byType.set(entry.glibName, declaredProps(context));
+        }
+    }
+
+    return { byType: new Map([...byType, ...resolveUnionProps(unions, withSource)]), dependencies };
 };
 
 export { createPropsCatalog, type HandwrittenProp, type PropsCatalog };

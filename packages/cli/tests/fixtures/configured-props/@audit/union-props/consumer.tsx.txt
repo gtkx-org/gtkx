@@ -1,0 +1,36 @@
+import { GtkButton, GtkLabel, GtkToggleButton } from "@gtkx/jsx/gtk";
+import type * as Gtk from "@gtkx/gi/gtk";
+import type { ComponentProps } from "react";
+import { expectTypeOf } from "vitest";
+
+type Props = ComponentProps<typeof GtkButton>;
+type Label = Extract<Props, { auditMode: "label" }>;
+type Count = Extract<Props, { auditMode: "count" }>;
+expectTypeOf<Label["auditLabel"]>().toEqualTypeOf<string>();
+expectTypeOf<Count["auditCount"]>().toEqualTypeOf<number>();
+expectTypeOf<{ auditMode: "label"; auditCount: 3 }>().not.toExtend<Props>();
+expectTypeOf<{ auditMode: "flag"; auditFlag: string }>().not.toExtend<Props>();
+
+export const label = <GtkButton
+    auditMode="label"
+    auditLabel="a"
+    auditDynamic="dynamic"
+    {...{ 0: "zero" }}
+    auditValue="text"
+    auditCall={value => value}
+    auditOverlap="any"
+    audit-label-detail-enabled
+/>;
+export const count = <GtkButton
+    auditMode="count"
+    auditCount={3}
+    auditDynamic={2}
+    {...{ 0: 3 }}
+    auditValue={2}
+    auditCall={value => value}
+    auditOverlap={true}
+    audit-count-unit="item"
+/>;
+export const flag = <GtkButton auditMode="flag" auditFlag />;
+export const inherited = <GtkToggleButton auditMode="flag" auditFlag />;
+export const ordinary = <GtkLabel label="unchanged" />;
