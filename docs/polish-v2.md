@@ -687,6 +687,12 @@ Explicit npm `SEE LICENSE IN` files are included alongside existing license and 
 
 The source Flatpak review separately reproduced a preview probing an unused local Node executable. Source builds copy Node from their SDK extension, while mixed targets can also carry a local runtime; notices must describe each target's actual runtime. That correction and Debian license-expression grouping remain the next packaging changes. Hardcoded native crate license metadata remains under review.
 
+### Deployment guide
+
+The complete deployment guide was reviewed against the command, configuration and target implementations. The revision is about 65% shorter, replacing complete option catalogs and sample command transcripts with the GTKX workflow and links to exported API types. It preserves targets, architectures, icons, preview and rebuild behavior, runtime choices, native addon assets, installed notices and source Flatpak constraints.
+
+The guide distinguishes runtime FFI from GIR generation, describes target-specific AppStream warnings and separates a generated source manifest from a tested source build. Three snippets pass strict installed-consumer typechecking, six local routes and anchors resolve through VitePress, and upstream links were checked. Independent review passes; the production website checkpoint follows this batch. The configuration reference currently hides schema-inferred deployment fields, so editor completion supplies the options until that separate reference gap is corrected.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.
