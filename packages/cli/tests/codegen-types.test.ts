@@ -187,7 +187,6 @@ const SIGNAL_ACCEPTED = `import * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { useSignal } from "@gtkx/react";
 import { registerClass } from "@gtkx/runtime";
-import { createRef } from "react";
 
 class Beacon extends GObject.Object {}
 const RegisteredBeacon = registerClass(Beacon, {
@@ -196,7 +195,7 @@ const RegisteredBeacon = registerClass(Beacon, {
 });
 declare const beacon: InstanceType<typeof RegisteredBeacon>;
 declare const editable: Gtk.Editable;
-const button = createRef<Gtk.Button>();
+declare const button: Gtk.Button | null;
 
 export function useDeclaredSignals(): void {
     useSignal(button, "clicked", () => {});
@@ -250,6 +249,8 @@ const copyTypeDependencies = (project: CliProject): void => {
     cpSync(reconcilerTypes, join(project.nodeModules, "@types/react-reconciler"), { recursive: true });
     const typeFest = realpathSync(join(WORKSPACE, "packages/utils/node_modules/type-fest"));
     cpSync(typeFest, join(project.nodeModules, "type-fest"), { recursive: true });
+    const toolkit = realpathSync(join(WORKSPACE, "packages/utils/node_modules/es-toolkit"));
+    cpSync(toolkit, join(project.nodeModules, "es-toolkit"), { recursive: true });
     const formPackage = realpathSync(join(WORKSPACE, "packages/forms/node_modules/react-hook-form"));
     cpSync(formPackage, join(project.nodeModules, "react-hook-form"), { recursive: true });
     const taggedTag = realpathSync(join(dirname(typeFest), "tagged-tag"));

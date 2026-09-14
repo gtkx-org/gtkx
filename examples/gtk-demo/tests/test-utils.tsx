@@ -16,9 +16,8 @@ type RenderDemoOptions = {
     areAnimationsEnabled?: boolean;
 };
 
-type DemoShellProps = {
+type DemoShellProps = Pick<DemoProps, "onClose"> & {
     Component: ComponentType<DemoProps>;
-    onClose: () => void;
     Provider: ComponentType<DemoProviderProps>;
     Titlebar: ComponentType<DemoProps> | undefined;
     demo: Demo;
@@ -133,16 +132,16 @@ function demoShellSizing(demo: Demo): DemoShellSizing {
     };
 }
 
-const DemoShell = ({ Component, onClose, Provider, Titlebar, demo }: DemoShellProps) => {
+const DemoShell = ({ Component, Provider, Titlebar, demo, ...callbacks }: DemoShellProps) => {
     const [window, setWindow] = useState<Gtk.Window | null>(null);
     const [applicationId] = useState(nextApplicationId);
     const { windowTitle, defaultWidget } = useDemo();
-    const titlebar = Titlebar ? <Titlebar window={window} onClose={onClose} /> : undefined;
+    const titlebar = Titlebar ? <Titlebar window={window} {...callbacks} /> : undefined;
     const sizing = demoShellSizing(demo);
 
     return (
         <AdwApplication applicationId={applicationId} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-            <Provider window={window} onClose={onClose}>
+            <Provider window={window} {...callbacks}>
                 <GtkApplicationWindow
                     ref={setWindow}
                     title={demoShellTitle(demo, windowTitle)}
@@ -154,7 +153,7 @@ const DemoShell = ({ Component, onClose, Provider, Titlebar, demo }: DemoShellPr
                     defaultWidget={defaultWidget}
                     titlebar={titlebar}
                 >
-                    {window !== null && <Component window={window} onClose={onClose} />}
+                    {window !== null && <Component window={window} {...callbacks} />}
                 </GtkApplicationWindow>
             </Provider>
         </AdwApplication>
@@ -162,7 +161,7 @@ const DemoShell = ({ Component, onClose, Provider, Titlebar, demo }: DemoShellPr
 };
 
 const renderDemo = async (demo: Demo, options: RenderDemoOptions = {}): Promise<RenderResult> => {
-    const onClose = options.onClose ?? (() => undefined);
+    const { areAnimationsEnabled, ...callbacks } = options;
     const Component = demo.component;
     if (Component === undefined) {
         throw new Error("Demo has no component");
@@ -172,14 +171,14 @@ const renderDemo = async (demo: Demo, options: RenderDemoOptions = {}): Promise<
         <DemoProvider demos={[demo]}>
             <DemoShell
                 Component={Component}
-                onClose={onClose}
+                {...callbacks}
                 Provider={demo.provider ?? PassthroughProvider}
                 Titlebar={demo.titlebar}
                 demo={demo}
             />
         </DemoProvider>,
         {
-            areAnimationsEnabled: options.areAnimationsEnabled === true,
+            areAnimationsEnabled: areAnimationsEnabled === true,
             container: rootElement,
         },
     );
