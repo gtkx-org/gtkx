@@ -789,6 +789,12 @@ Flatpak deployment now installs the complete application, architecture and branc
 
 A real Flatpak 1.18.2 repository with stable and beta exports reproduces the noninteractive install failure. Explicit references install each selected branch successfully; a missing branch fails. The probe uses an isolated installation and checks the installed references. The public CLI deployment suites, build, typecheck, lint and independent review pass. This validates reference selection and existing manifest behavior; it does not claim a complete SDK build.
 
+### CLI helper repeat audit
+
+Thirteen internal modules were read completely, 768 baseline lines: application/entry arguments, banners and errors, parent-process ownership, XDG data paths, font/icon paths and staging, file listing and agent rules. Supporting reads covered the shared process-stat reader and its process-group and marked-process callers.
+
+CLI parent ownership now reuses the existing utility parser for Linux process statistics. Its ancestor traversal, process-group checks and process identity comparisons remain intact. All seven public development-process lifecycle cases pass, covering wrapper exit, graceful shutdown, signal status and an unresponsive child. Build, affected types, lint and independent review pass. No helper tests or additional parser were introduced.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.
