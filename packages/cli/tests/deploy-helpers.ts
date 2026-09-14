@@ -50,7 +50,7 @@ type BuildMetadata = {
     configFile: string;
     configDigest: string;
     schemas: string[];
-    packages: { name: string; version: string | null; dir: string }[];
+    packages: { name: string; version: string | null }[];
 };
 
 type DeploySetup = {

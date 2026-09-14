@@ -4,7 +4,6 @@ import { dependencyNotices } from "./dependencies.js";
 import { gtkxNotices } from "./gtkx.js";
 import { libraryNotices } from "./libraries.js";
 import { nodeNotices } from "./node-runtime.js";
-import { bundledPackages } from "./packages.js";
 
 type NoticeRequest = {
     settings: DeploySettings;
@@ -12,9 +11,7 @@ type NoticeRequest = {
     packages: RecordedPackage[];
 };
 
-const collectNotices = ({ settings, node, packages: recordedPackages }: NoticeRequest): NoticeSection[] => {
-    const packages = bundledPackages(settings, recordedPackages);
-
+const collectNotices = ({ settings, node, packages }: NoticeRequest): NoticeSection[] => {
     const sections = [
         nodeNotices(settings, node),
         gtkxNotices(settings, packages),
