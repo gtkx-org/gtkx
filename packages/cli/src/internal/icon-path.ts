@@ -28,8 +28,9 @@ const defaultIconFiles = (root: string, applicationId: string): string[] =>
 
 const resolveDefaultApplicationIcon = (root: string, applicationId: string): ResolvedApplicationIcon => {
     const files = defaultIconFiles(root, applicationId);
+    const path = files[0];
 
-    if (files.length === 0) {
+    if (path === undefined) {
         return { kind: "none" };
     }
 
@@ -37,12 +38,6 @@ const resolveDefaultApplicationIcon = (root: string, applicationId: string): Res
         throw new Error(
             `Found multiple default application icons for ${applicationId}; set \`applicationIcon\` to choose one`,
         );
-    }
-
-    const path = files[0];
-
-    if (path === undefined) {
-        return { kind: "none" };
     }
 
     return { kind: "file", path };
