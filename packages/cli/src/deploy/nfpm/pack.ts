@@ -32,6 +32,7 @@ const packWithNfpm = async (
         args: ["package", "--config", configPath, "--packager", packager, "--target", target],
         target: `the ${packager} package`,
         shouldStream: true,
+        options: { cwd: payload.settings.paths.root },
     });
 
     if (!existsSync(target)) {
