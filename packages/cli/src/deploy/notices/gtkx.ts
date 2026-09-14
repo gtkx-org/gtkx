@@ -1,6 +1,6 @@
 import { sortStrings } from "@gtkx/utils";
+import type { RecordedPackage } from "../../internal/build-manifest.js";
 import type { DeploySettings, Notice, NoticeSection } from "../types.js";
-import type { BundledPackage } from "./packages.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
 
 const TITLE = "GTKX";
@@ -13,27 +13,27 @@ const CRATES_SUBJECT = "Rust crates linked into the GTKX native addon";
 const CRATES_LICENSE = "MIT and Apache-2.0 and ISC and Unicode-3.0";
 const CRATES_MANIFEST = "packages/native/Cargo.toml";
 
-const isGtkxPackage = (entry: BundledPackage): boolean => entry.name.startsWith(SCOPE);
+const isGtkxPackage = (entry: RecordedPackage): boolean => entry.name.startsWith(SCOPE);
 
-const getVersion = (packages: BundledPackage[]): string | null =>
+const getVersion = (packages: RecordedPackage[]): string | null =>
     packages.map((entry) => entry.version).find((version) => version !== null) ?? null;
 
-const getRepository = (packages: BundledPackage[]): string =>
+const getRepository = (packages: RecordedPackage[]): string =>
     packages.map((entry) => entry.source).find((source) => source !== null) ?? REPOSITORY_URL;
 
-const sourceFor = (packages: BundledPackage[]): string => {
+const sourceFor = (packages: RecordedPackage[]): string => {
     const repository = getRepository(packages);
     const version = getVersion(packages);
 
     return version === null ? repository : `${repository}/tree/v${version}`;
 };
 
-const cratesSourceFor = (packages: BundledPackage[]): string => `${sourceFor(packages)}/${CRATES_MANIFEST}`;
+const cratesSourceFor = (packages: RecordedPackage[]): string => `${sourceFor(packages)}/${CRATES_MANIFEST}`;
 
-const modulesLine = (packages: BundledPackage[]): string[] =>
+const modulesLine = (packages: RecordedPackage[]): string[] =>
     packages.length === 0 ? [] : [`Modules: ${sortStrings(packages.map((entry) => entry.name)).join(", ")}.`];
 
-const summaryFor = (settings: DeploySettings, packages: BundledPackage[]): string[] => {
+const summaryFor = (settings: DeploySettings, packages: RecordedPackage[]): string[] => {
     const lib = `lib/${settings.binaryName}`;
 
     return [
@@ -51,19 +51,19 @@ const summaryFor = (settings: DeploySettings, packages: BundledPackage[]): strin
     ];
 };
 
-const getText = (packages: BundledPackage[]): string | null =>
+const getText = (packages: RecordedPackage[]): string | null =>
     packages.map((entry) => entry.text).find((text) => text !== null) ?? null;
 
-const getCopyright = (packages: BundledPackage[]): string[] =>
+const getCopyright = (packages: RecordedPackage[]): string[] =>
     sortStrings(new Set(packages.flatMap((entry) => entry.copyright)));
 
-const subjectFor = (packages: BundledPackage[]): string => {
+const subjectFor = (packages: RecordedPackage[]): string => {
     const version = getVersion(packages);
 
     return version === null ? TITLE : `${TITLE} ${version}`;
 };
 
-const cratesNotice = (packages: BundledPackage[]): Notice => ({
+const cratesNotice = (packages: RecordedPackage[]): Notice => ({
     subject: CRATES_SUBJECT,
     license: CRATES_LICENSE,
     source: cratesSourceFor(packages),
@@ -71,7 +71,7 @@ const cratesNotice = (packages: BundledPackage[]): Notice => ({
     text: null,
 });
 
-const gtkxNotices = (settings: DeploySettings, packages: BundledPackage[]): NoticeSection => {
+const gtkxNotices = (settings: DeploySettings, packages: RecordedPackage[]): NoticeSection => {
     const own = packages.filter((entry) => isGtkxPackage(entry));
     const lib = `lib/${settings.binaryName}`;
 

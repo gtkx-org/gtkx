@@ -30,7 +30,7 @@ type ExpectedBuildConfig = {
 const invalidManifest = (path: string): Error =>
     new Error(`Cannot deploy: ${path} is not a valid GTKX build manifest. Run \`gtkx build\` again.`);
 
-const recordedSchemas = (value: unknown[], path: string): string[] =>
+const recordedStrings = (value: unknown[], path: string): string[] =>
     value.map((entry) => {
         if (typeof entry !== "string") {
             throw invalidManifest(path);
@@ -39,18 +39,27 @@ const recordedSchemas = (value: unknown[], path: string): string[] =>
         return entry;
     });
 
+const recordedText = (value: unknown, path: string): string | null => {
+    if (value === null || typeof value === "string") {
+        return value;
+    }
+
+    throw invalidManifest(path);
+};
+
 const recordedPackage = (value: unknown, path: string): RecordedPackage => {
-    if (
-        !isRecord(value) ||
-        typeof value.name !== "string" ||
-        typeof value.dir !== "string" ||
-        isAbsolute(value.dir) ||
-        (value.version !== null && typeof value.version !== "string")
-    ) {
+    if (!isRecord(value) || typeof value.name !== "string" || !Array.isArray(value.copyright)) {
         throw invalidManifest(path);
     }
 
-    return { name: value.name, version: value.version, dir: value.dir };
+    return {
+        name: value.name,
+        version: recordedText(value.version, path),
+        license: recordedText(value.license, path),
+        source: recordedText(value.source, path),
+        copyright: recordedStrings(value.copyright, path),
+        text: recordedText(value.text, path),
+    };
 };
 
 const parseBuildManifest = (value: unknown, path: string): BuildManifest => {
@@ -73,7 +82,7 @@ const parseBuildManifest = (value: unknown, path: string): BuildManifest => {
         formatVersion: BUILD_MANIFEST_FORMAT_VERSION,
         configFile: value.configFile,
         configDigest: value.configDigest,
-        schemas: recordedSchemas(value.schemas, path),
+        schemas: recordedStrings(value.schemas, path),
         packages: packages.map((entry) => recordedPackage(entry, path)),
     };
 };

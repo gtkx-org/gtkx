@@ -47,7 +47,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `navigation` | 66 | All files read; stack option lifetimes, closing headers and lazy route restoration fixed; repeat review found no further local defect |
 | `storybook` | 31 | All files read; unset selections, readonly controls, shared types and documentation fixed; upstream strict declaration checking remains open |
 | `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
-| `cli` | 262 | Command, codegen, settings, development, Node runtime, vendored tools, payload and freedesktop folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
+| `cli` | 262 | Command, codegen, settings, development, Node runtime, vendored tools, payload, freedesktop and notices folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
 | `create-gtkx` | 31 | All files read; option parsing, installation recovery, duplication and guides fixed; installed TypeScript and JavaScript consumers pass |
 | `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
 | `testing` | 60 | All files read; deadlines, text queries, clipboard behavior, Unicode and matcher fixes pass; repeat review found no further confirmed defect |
@@ -678,6 +678,14 @@ AppStream validation now reads the validator's YAML report through the existing 
 All 48 deployment, metadata, source-Flatpak and localization cases pass. Public warning cases accept a Debian preview and reject a source-Flatpak preview using the same native warning; malformed metadata and unsupported tags remain rejected. Build, source/test types, affected lint, whitespace checks and independent review pass. The warning cases assert only exit status.
 
 The review also reproduced an upstream AppStream YAML command returning success for missing input. U14 in `~/UPSTREAM.md` records the standalone reproduction and current upstream cause. GTKX supplies freshly written metadata, so no production workaround was introduced. A separate source review found that Debian copyright serialization discards SPDX grouping; a public reproduction and maintained-parser correction remain follow-up work.
+
+### Bundled notice provenance
+
+All eight notice modules were read with the build manifest, metadata reader and target renderers. Deployment previously reread installed packages after the bundle had been built, so replacing a dependency could attach the replacement's terms to old code. Build metadata now records dependency identity, source, copyright and license text at build time. Deployment uses that snapshot even when the installed dependency changes or disappears. The metadata format is version 3; older builds require regeneration.
+
+Explicit npm `SEE LICENSE IN` files are included alongside existing license and notice discovery, without duplicating a file already selected. Build and deployment share the recorded package shape and package manifest reader. Ten public CLI regressions cover replacement, removal, standard and custom filenames, combined notices and unsupported or malformed metadata. All 537 CLI tests across 50 files pass with this change and fresh reference-store reuse. Build, source/test types, affected lint, Knip, whitespace checks and independent review pass.
+
+The source Flatpak review separately reproduced a preview probing an unused local Node executable. Source builds copy Node from their SDK extension, while mixed targets can also carry a local runtime; notices must describe each target's actual runtime. That correction and Debian license-expression grouping remain the next packaging changes. Hardcoded native crate license metadata remains under review.
 
 ## Next work
 
