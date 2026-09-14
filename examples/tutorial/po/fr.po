@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gtkx-tutorial 1.0.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-14 19:47+0200\n"
+"POT-Creation-Date: 2026-09-14 22:16+0200\n"
 "PO-Revision-Date: 2026-08-26 23:34+0200\n"
 "Last-Translator: GTKX contributors\n"
 "Language-Team: French\n"
@@ -51,11 +51,11 @@ msgstr "Annuler"
 msgid "Delete"
 msgstr "Supprimer"
 
-#: src/components/dialogs.tsx:24
+#: src/components/dialogs.tsx:25
 msgid "“{{title}}” moved to Trash"
 msgstr "« {{title}} » a été déplacée dans la corbeille"
 
-#: src/components/dialogs.tsx:25
+#: src/components/dialogs.tsx:26
 msgid "Undo"
 msgstr "Annuler"
 
@@ -136,7 +136,7 @@ msgstr "Rechercher des tâches"
 msgid "Keyboard shortcuts"
 msgstr "Raccourcis clavier"
 
-#: src/components/shortcuts.tsx:13 src/components/task-row.tsx:74
+#: src/components/shortcuts.tsx:13 src/components/task-row.tsx:87
 msgid "Delete task"
 msgstr "Supprimer la tâche"
 
@@ -213,11 +213,11 @@ msgstr "Rechercher des tâches…"
 msgid "Add a task…"
 msgstr "Ajouter une tâche…"
 
-#: src/components/task-row.tsx:57
+#: src/components/task-row.tsx:70
 msgid "Mark complete"
 msgstr "Marquer comme terminée"
 
-#: src/components/task-row.tsx:67
+#: src/components/task-row.tsx:80
 msgid "Toggle important"
 msgstr "Basculer la priorité"
 
