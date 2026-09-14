@@ -208,11 +208,12 @@ const instanceMethodCollisions = (
     methods: GirFunction[],
 ): Set<string> => {
     const inheritedMethods = collectInheritedMethods(context, klass);
+    const scope = instanceScope(klass.name, klass);
 
     return new Set(
         methods
             .filter((callable) => isEmittableCallable(context, callable))
-            .map((callable) => shadowedInstanceMemberName(context, callable, inheritedMethods))
+            .map((callable) => shadowedInstanceMemberName(context, callable, scope, inheritedMethods))
             .filter((name): name is string => name !== undefined),
     );
 };

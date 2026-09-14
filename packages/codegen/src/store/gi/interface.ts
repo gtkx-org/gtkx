@@ -282,14 +282,14 @@ const prerequisiteRef = (context: ModuleContext, iface: GirClass, name: string):
         return undefined;
     }
 
-    return omittedTypeRef(ref, prerequisiteConflicts(context.library, iface, base));
+    return omittedTypeRef(ref, prerequisiteConflicts(context, iface, base));
 };
 
 const rootPrerequisiteRef = (context: ModuleContext, iface: GirClass): string => {
     const ref = context.qualify("GObject", "Object");
     const base = resolveClassOrInterface(context.library, "GObject", "Object");
 
-    return base === undefined ? ref : omittedTypeRef(ref, prerequisiteConflicts(context.library, iface, base));
+    return base === undefined ? ref : omittedTypeRef(ref, prerequisiteConflicts(context, iface, base));
 };
 
 const interfaceTypeExtends = (context: ModuleContext, iface: GirClass): string => {

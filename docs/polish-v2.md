@@ -35,7 +35,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | --- | ---: | --- |
 | `native` | 99 | API folder read; memory access fixed in batch 1; ownership migration open |
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
-| `codegen` | 144 | All override templates, writer files and compile entry read; metadata retention and import emission fixed; remaining generator folders pending |
+| `codegen` | 144 | All override templates, analysis and writer files and compile entry read; metadata, imports and inherited declarations fixed; remaining generator folders pending |
 | `react` | 47 | Core reconciler read; nullable drag icon fixed; lifecycle and metadata migrations open |
 | `components` | 50 | All files read; all initial findings resolved; repeat review continues |
 | `animated` | 19 | All files read; text, prop contracts, dead code, tests and guides fixed; upstream ref compatibility retained |
@@ -496,6 +496,14 @@ All 61 native call cases and 40 generated array cases pass, alongside lint, rust
 The first PR run passed ordinary integration tests, typechecking, fresh publication/tutorial consumers and CodeQL. Its remaining failures exposed stale isolated consumers and test timing: copied utility declarations needed their es-toolkit dependency, and the signal fixture still used the removed mutable-ref hook contract. The demo fixture now preserves its optional close callback instead of inventing a no-op. MCP's imported-config refresh test allows the freshness interval plus two reference loads under coverage; a real covered subprocess confirms the refresh succeeds. No production timeout changed.
 
 The combined local checkpoint passed all 66 lint tasks, 63 type/build tasks and 46 test/build tasks. Subsequent inheritance review fixes and release tooling remain subject to the next checkpoint. Copilot's cursor finding is addressed above. Its worker-preload comment does not match the actual worker fixture, which imports the built entry point and passed all 28 headless cases. The suppressed drag/drop suggestion is already covered at the input boundary; self-drop preserves order. A real scaffolder retry replaced malformed package JSON successfully, so the suppressed manifest-recovery comment did not establish a supported-path defect. No review comments or replies were posted.
+
+### Code generation analysis audit
+
+All ten analysis files were read, 2,996 baseline lines, with their callable, async, vtable and interface emission paths. Inheritance comparisons now use the generated return shape: output tuples, skipped returns, folded lengths, caller-allocated outputs and async finish results. Callback parameter types retain their own signatures. Virtual functions use the slot renderer's result with the original parameter indices. Scratch contexts keep comparison imports out of generated modules.
+
+Repeat review exposed ancestor ownership differences. Shared selection now follows emitted methods and runtime mixin precedence: class declarations win, followed by the oldest ancestor's interface methods, retaining interface order within each level. Shadowed GIR methods no longer create false interface omissions. Public CLI generation and strict consumer declarations cover these cases, including incompatible consumer types. All 97 focused cases pass, with 21 analysis cases, alongside codegen/CLI types and lint. Independent review found no additional actionable finding in this scope.
+
+A separate store-resolution finding remains open: `store/resolve-store.ts` accepts the monorepo's `packages/<name>/package.json` layout when Node cannot resolve the dependency. The retained public API probe confirms this production fallback; it belongs in the next store audit.
 
 ## Next work
 

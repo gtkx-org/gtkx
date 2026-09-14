@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="OutputShapes" version="1.0" shared-library="liboutputshapes.so.0"
+             c:identifier-prefixes="OutputShapes" c:symbol-prefixes="output_shapes">
+    <callback name="NumberFunc" c:type="OutputShapesNumberFunc">
+      <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+      <parameters>
+        <parameter name="value" transfer-ownership="none"><type name="gint" c:type="gint"/></parameter>
+      </parameters>
+    </callback>
+    <callback name="StringFunc" c:type="OutputShapesStringFunc">
+      <return-value transfer-ownership="none"><type name="utf8" c:type="const gchar*"/></return-value>
+      <parameters>
+        <parameter name="value" transfer-ownership="none"><type name="utf8" c:type="const gchar*"/></parameter>
+      </parameters>
+    </callback>
+    <class name="Base" c:type="OutputShapesBase"
+           glib:type-name="OutputShapesBase" glib:get-type="output_shapes_base_get_type">
+      <method name="visit" c:identifier="output_shapes_base_visit">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Base" c:type="OutputShapesBase*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="NumberFunc" c:type="OutputShapesNumberFunc"/></parameter>
+        </parameters>
+      </method>
+      <method name="read" c:identifier="output_shapes_base_read">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Base" c:type="OutputShapesBase*"/></instance-parameter>
+          <parameter name="value" direction="out" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+        </parameters>
+      </method>
+      <method name="inspect" c:identifier="output_shapes_base_inspect">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Base" c:type="OutputShapesBase*"/></instance-parameter>
+          <parameter name="value" direction="out" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+        </parameters>
+      </method>
+      <method name="advance" c:identifier="output_shapes_base_advance">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Base" c:type="OutputShapesBase*"/></instance-parameter>
+          <parameter name="value" direction="inout" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+        </parameters>
+      </method>
+      <method name="copy" c:identifier="output_shapes_base_copy">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Base" c:type="OutputShapesBase*"/></instance-parameter>
+          <parameter name="values" direction="out" transfer-ownership="full">
+            <array length="1" zero-terminated="0" c:type="gint**"><type name="gint" c:type="gint"/></array>
+          </parameter>
+          <parameter name="length" direction="out" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="Derived" c:type="OutputShapesDerived" parent="Base"
+           glib:type-name="OutputShapesDerived" glib:get-type="output_shapes_derived_get_type">
+      <method name="visit" c:identifier="output_shapes_derived_visit">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Derived" c:type="OutputShapesDerived*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="StringFunc" c:type="OutputShapesStringFunc"/></parameter>
+        </parameters>
+      </method>
+      <method name="read" c:identifier="output_shapes_derived_read">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Derived" c:type="OutputShapesDerived*"/></instance-parameter>
+          <parameter name="value" direction="out" transfer-ownership="none"><type name="utf8" c:type="gchar**"/></parameter>
+        </parameters>
+      </method>
+      <method name="inspect" c:identifier="output_shapes_derived_inspect">
+        <return-value transfer-ownership="none" skip="1"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Derived" c:type="OutputShapesDerived*"/></instance-parameter>
+          <parameter name="value" direction="out" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+        </parameters>
+      </method>
+      <method name="advance" c:identifier="output_shapes_derived_advance">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Derived" c:type="OutputShapesDerived*"/></instance-parameter>
+          <parameter name="value" direction="inout" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+          <parameter name="label" direction="out" transfer-ownership="none"><type name="utf8" c:type="gchar**"/></parameter>
+        </parameters>
+      </method>
+      <method name="copy" c:identifier="output_shapes_derived_copy">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Derived" c:type="OutputShapesDerived*"/></instance-parameter>
+          <parameter name="values" direction="out" transfer-ownership="full">
+            <array length="1" zero-terminated="0" c:type="gchar***"><type name="utf8" c:type="gchar*"/></array>
+          </parameter>
+          <parameter name="length" direction="out" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="Leaf" c:type="OutputShapesLeaf" parent="Derived"
+           glib:type-name="OutputShapesLeaf" glib:get-type="output_shapes_leaf_get_type"/>
+  </namespace>
+</repository>

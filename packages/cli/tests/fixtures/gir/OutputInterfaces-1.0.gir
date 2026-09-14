@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="OutputInterfaces" version="1.0" shared-library="liboutputinterfaces.so.0"
+             c:identifier-prefixes="OutputInterfaces" c:symbol-prefixes="output_interfaces">
+    <class name="Base" c:type="OutputInterfacesBase" parent="GObject.Object"
+           glib:type-name="OutputInterfacesBase" glib:get-type="output_interfaces_base_get_type">
+      <method name="measure" c:identifier="output_interfaces_base_measure">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Base" c:type="OutputInterfacesBase*"/></instance-parameter>
+        </parameters>
+      </method>
+    </class>
+    <interface name="Collector" c:type="OutputInterfacesCollector"
+               glib:type-name="OutputInterfacesCollector" glib:get-type="output_interfaces_collector_get_type">
+      <prerequisite name="Base"/>
+      <method name="measure" c:identifier="output_interfaces_collector_measure">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Collector" c:type="OutputInterfacesCollector*"/></instance-parameter>
+          <parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none">
+            <array fixed-size="2" zero-terminated="0" c:type="gint*"><type name="gint" c:type="gint"/></array>
+          </parameter>
+        </parameters>
+      </method>
+    </interface>
+    <interface name="Filler" c:type="OutputInterfacesFiller"
+               glib:type-name="OutputInterfacesFiller" glib:get-type="output_interfaces_filler_get_type">
+      <prerequisite name="GObject.Object"/>
+      <method name="measure" c:identifier="output_interfaces_filler_measure">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Filler" c:type="OutputInterfacesFiller*"/></instance-parameter>
+          <parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none">
+            <array fixed-size="2" zero-terminated="0" c:type="gint*"><type name="gint" c:type="gint"/></array>
+          </parameter>
+        </parameters>
+      </method>
+    </interface>
+    <class name="Host" c:type="OutputInterfacesHost" parent="Base"
+           glib:type-name="OutputInterfacesHost" glib:get-type="output_interfaces_host_get_type">
+      <implements name="Collector"/>
+    </class>
+    <class name="Owned" c:type="OutputInterfacesOwned" parent="GObject.Object"
+           glib:type-name="OutputInterfacesOwned" glib:get-type="output_interfaces_owned_get_type">
+      <implements name="Filler"/>
+      <method name="measure" c:identifier="output_interfaces_owned_measure">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Owned" c:type="OutputInterfacesOwned*"/></instance-parameter>
+        </parameters>
+      </method>
+    </class>
+  </namespace>
+</repository>
