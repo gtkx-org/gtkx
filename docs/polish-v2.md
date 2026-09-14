@@ -541,7 +541,7 @@ All 20 native application tests, three localization tests, installed consumer ty
 
 ### Second PR review follow-up
 
-At `2decda13`, the PR's main tests, CLI tests, sanitizer, fresh publication consumers, documentation, lint, typechecking and CodeQL pass. Coverage passes 4,778 cases but two real ESLint configuration tests exceed their default five-second deadline; that test timing remains under investigation.
+At `2decda13`, the PR's main tests, CLI tests, sanitizer, fresh publication consumers, documentation, lint, typechecking and CodeQL pass. Coverage passes 4,778 cases but two real ESLint configuration tests take 5.32 and 5.87 seconds against the default five-second deadline. The ESLint integration project now allows 30 seconds per test. All 89 cases pass under V8 coverage with that configuration, alongside package lint and source/test types. Assertions, hooks and production behavior are unchanged; the remote coverage run still needs to pass.
 
 Copilot repeated the manifest recovery concern already checked through the real scaffolder. Its CSS suggestion requests restoration of the malformed-input containment removed under CSS1. Public CSS input already passes through PostCSS before serialized rules reach the stylesheet; the review supplies no supported-input serialization regression. GTK semantic diagnostics remain delegated to its provider. Independent source and contract review found no actionable production change for either comment. No review replies were posted.
 
