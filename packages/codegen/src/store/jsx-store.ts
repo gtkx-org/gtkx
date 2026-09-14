@@ -9,7 +9,6 @@ type WriteJsxStoreParams = {
     namespaces: JsxNamespaceFile[];
     externalPackages: string[];
     rawFiles: RawFile[];
-    giStoreDir: string;
 };
 
 const jsxPeerDependencies = (externalPackages: string[]): Record<string, string> => {
@@ -34,7 +33,6 @@ const writeJsxStore = (params: WriteJsxStoreParams): PreparedStore => {
         storeDir: options.storeDir,
         linkDir: options.linkDir,
         owner: options.owner,
-        compileDependencies: { "@gtkx/gi": params.giStoreDir },
         files,
         manifest: buildManifest({
             name: "@gtkx/jsx",

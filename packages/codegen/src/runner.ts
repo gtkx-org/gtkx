@@ -76,8 +76,7 @@ type GiStoreResult = { isRegenerated: boolean; namespaces: number; store: Prepar
  * `resolveStore(projectRoot)` for everything but `libraries` and `girPath`.
  *
  * Every store already on disk is linked at its `linkDir` before anything is generated, so a link an install
- * pruned out of `node_modules` is restored without regenerating the store, and the gi store is reachable
- * under its own specifier while the jsx store is type checked.
+ * pruned out of `node_modules` is restored without regenerating the store.
  *
  * @param options What to generate and where to write it.
  * @returns A summary of what was regenerated and how long the run took.
@@ -161,10 +160,9 @@ const emitJsxStore = async (input: {
     jsx: StoreOptions;
     loadLibrary: () => Library;
     isGiRegenerated: boolean;
-    giStoreDir: string;
     namespaces: number;
 }): Promise<JsxStoreResult> => {
-    const { options, jsx, loadLibrary, isGiRegenerated, giStoreDir, namespaces } = input;
+    const { options, jsx, loadLibrary, isGiRegenerated, namespaces } = input;
     const { runJsxCodegen } = await import("./jsx.js");
 
     const jsxResult = await runJsxCodegen({
@@ -173,7 +171,6 @@ const emitJsxStore = async (input: {
         ...jsxUserOptions(options),
         isGiRegenerated,
         isForced: options.isForced === true,
-        giStoreDir,
     });
 
     return {
@@ -235,7 +232,6 @@ const emitStorePair = async (input: {
             jsx,
             loadLibrary,
             isGiRegenerated: gi.isRegenerated,
-            giStoreDir: gi.store?.dir ?? options.gi.storeDir,
             namespaces: gi.namespaces,
         });
 

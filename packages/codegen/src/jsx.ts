@@ -22,7 +22,6 @@ type RunJsxCodegenOptions = {
     userOmittedProps: OmittedProps;
     isGiRegenerated: boolean;
     isForced: boolean;
-    giStoreDir: string;
 };
 
 type RunJsxCodegenResult = {
@@ -75,7 +74,6 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
             },
             { relativePath: ELEMENTS_FILENAME, content: renderGeneratedElements(elements) },
         ],
-        giStoreDir: options.giStoreDir,
     });
 
     return { isRegenerated: true, intrinsicElementCount, store };
