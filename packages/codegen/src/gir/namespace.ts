@@ -5,7 +5,7 @@ import { callbackFromNode, type GirCallback } from "./callback.js";
 import { classFromNode, type GirClass } from "./class.js";
 import { enumFromNode, type GirEnum } from "./enum.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, getChild, getChildren, nameAttr, type RawNode } from "./parse.js";
+import { attr, getChild, getChildren, nameAttr, rawAttr, type RawNode } from "./parse.js";
 import { type GirRecord, isVtableRecord, recordFromNode } from "./record.js";
 import { typeRefFromNode } from "./type-ref.js";
 
@@ -106,7 +106,7 @@ const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNode, cont
 
     shell.constants = getChildren(namespaceNode, "constant").map((constant) => ({
         ...documentedFromNode(constant),
-        value: attr(constant, "value") ?? "",
+        value: rawAttr(constant, "value") ?? "",
         type: typeRefFromNode(constant, context),
     }));
 

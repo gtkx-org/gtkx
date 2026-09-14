@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0" xmlns:c="http://www.gtk.org/introspection/c/1.0">
+  <namespace name="GirRecords" version="1.0">
+    <record name="Visible" c:type="GirRecordsVisible">
+      <field name="public_field" writable=" 1 "><type name="gint" c:type="gint"/></field>
+      <field name="hidden" writable="1" introspectable=" 0 "><type name="gint64" c:type="gint64"/></field>
+      <field name="tail" writable="1"><type name="gint" c:type="gint"/></field>
+    </record>
+    <record name="Mixed" c:type="GirRecordsMixed">
+      <field name="before" writable="1"><type name="gint" c:type="gint"/></field>
+      <union name="data">
+        <record name="pair">
+          <field name="first"><type name="gint" c:type="gint"/></field>
+          <field name="second"><type name="gint" c:type="gint"/></field>
+        </record>
+        <field name="other"><type name="gint" c:type="gint"/></field>
+      </union>
+      <field name="after" writable="1"><type name="gint" c:type="gint"/></field>
+    </record>
+    <record name="Nested" c:type="GirRecordsNested">
+      <field name="before" writable="1"><type name="guint8" c:type="guint8"/></field>
+      <union name="data">
+        <record name="pair">
+          <field name="first"><type name="guint8" c:type="guint8"/></field>
+          <union name="middle"><field name="value"><type name="gint64" c:type="gint64"/></field></union>
+          <field name="second"><type name="guint8" c:type="guint8"/></field>
+        </record>
+        <field name="other"><type name="gint" c:type="gint"/></field>
+      </union>
+      <field name="after" writable="1"><type name="guint8" c:type="guint8"/></field>
+    </record>
+    <record name="Collection" c:type="GirRecordsCollection">
+      <field name="count" writable="1"><type name="guint" c:type="guint"/></field>
+      <field name="items" writable="1"><array length="0" c:type="GirRecordsVisible*"><type name="Visible" c:type="GirRecordsVisible"/></array></field>
+    </record>
+  </namespace>
+</repository>

@@ -1,6 +1,6 @@
 import type { ParseContext, TypeId } from "./type-id.js";
 import { documentedFromNode, type GirAnnotations } from "./annotations.js";
-import { attr, getChild, getChildren, intAttr, isAttrTrue, type RawNode } from "./parse.js";
+import { attr, getChild, getOrderedChildren, intAttr, isAttrTrue, type RawNode } from "./parse.js";
 import { typeRefFromNode } from "./type-ref.js";
 
 type GirField = {
@@ -12,6 +12,7 @@ type GirField = {
     readable: boolean;
     writable: boolean;
     private: boolean;
+    introspectable: boolean;
     bits: number | undefined;
     inlineMembers: GirField[] | undefined;
     isInlineUnion: boolean;
@@ -24,6 +25,7 @@ const fieldFromNode = (node: RawNode, context: ParseContext): GirField => ({
     readable: isAttrTrue(node, "readable", true),
     writable: isAttrTrue(node, "writable", false),
     private: isAttrTrue(node, "private", false),
+    introspectable: isAttrTrue(node, "introspectable", true),
     bits: intAttr(node, "bits"),
     inlineMembers: undefined,
     isInlineUnion: false,
@@ -36,15 +38,16 @@ const anonymousMemberFromNode = (node: RawNode, isUnion: boolean, context: Parse
     readable: false,
     writable: false,
     private: true,
+    introspectable: false,
     bits: undefined,
     inlineMembers: collectFields(node, context),
     isInlineUnion: isUnion,
 });
 
-const collectFields = (node: RawNode, context: ParseContext): GirField[] => [
-    ...getChildren(node, "field").map((field) => fieldFromNode(field, context)),
-    ...getChildren(node, "union").map((member) => anonymousMemberFromNode(member, true, context)),
-    ...getChildren(node, "record").map((member) => anonymousMemberFromNode(member, false, context)),
-];
+const collectFields = (node: RawNode, context: ParseContext): GirField[] =>
+    getOrderedChildren(node, ["field", "union", "record"]).map(({ tag, node: child }) =>
+        tag === "field"
+            ? fieldFromNode(child, context)
+            : anonymousMemberFromNode(child, tag === "union", context));
 
 export { collectFields, type GirField };

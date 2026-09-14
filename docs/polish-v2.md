@@ -35,7 +35,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | --- | ---: | --- |
 | `native` | 99 | API folder read; memory access fixed in batch 1; ownership migration open |
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
-| `codegen` | 144 | All override templates, analysis, writer and direct store files and compile entry read; metadata, imports, inheritance and GIR freshness fixed; remaining generator folders pending |
+| `codegen` | 144 | All override templates, GIR, analysis, writer, direct store and reference modules and compile entry read; metadata, imports, inheritance and GIR parsing/freshness fixed; configured reference props and remaining generator folders pending |
 | `react` | 47 | Core reconciler read; nullable drag icon fixed; lifecycle and metadata migrations open |
 | `components` | 50 | All files read; all initial findings resolved; repeat review continues |
 | `animated` | 19 | All files read; text, prop contracts, dead code, tests and guides fixed; upstream ref compatibility retained |
@@ -549,7 +549,17 @@ Copilot repeated the manifest recovery concern already checked through the real 
 
 All 29 directly tracked root files besides the generated pnpm lockfile were read, alongside the editor settings and three version plans. The lockfile was parsed structurally; its dependency resolution remains validated through the existing frozen install and fresh publication consumers. No new configuration defect was confirmed in this scope.
 
-The README advertised beta installation while linking to stable-version examples and describing the branch as production-ready. It now identifies the 2.0 beta and scheduled release date, links to the matching guides and tutorial, and describes generated native bindings without unsupported universal API claims or third-party maintenance comparisons. Contributor release instructions no longer refer to removed guide pins. README documentation targets resolve to local pages, the release manifest agrees with its status, and independent review and whitespace checks pass.
+The README advertised beta installation while linking to stable-version documentation and describing the branch as production-ready. It now identifies the 2.0 beta and scheduled release date, links to the matching guides and tutorial, and describes generated native bindings without unsupported universal API claims or third-party maintenance comparisons. Contributor release instructions no longer refer to removed guide pins. README documentation targets resolve to local pages, the release manifest agrees with its status, and independent review and whitespace checks pass.
+
+### Store and tutorial validation checkpoint
+
+At `af1eff2e`, the combined local run passes all 46 test/build tasks across 19 projects, followed by fresh TypeScript and JavaScript release consumers installed from the temporary local registry. Both consumers generate bindings, build, launch and pass their tests; the TypeScript consumer also passes typechecking. The production website passes all 27 tasks, including reference generation, page rendering and sitemap generation. The preceding combined lint and typecheck runs pass 66 and 63 tasks respectively. These checks include the store freshness and tutorial storage changes; subsequent GIR, reference and literal-text fixes require their own validation.
+
+### GIR parsing and record layout audit
+
+All 28 GIR modules were read, 2,172 baseline lines, with their XML and record emission callers. String constants now retain their exact whitespace; flags and non-string literals keep their existing normalization. Parser metadata preserves field, anonymous record and anonymous union declaration order. Non-introspectable fields remain part of native layout but no longer appear in accessors, constructor props or collection element types. Record layout caching follows parsed record identity, so a second generation cannot reuse another project's definition with the same name.
+
+Public generation checks confirmed all four defects without loading record bindings. The fixed generator preserves a padded constant, places an interleaved record's trailing field at offset 12, omits hidden accessors and uses offset 8 after a nested record grows in a subsequent generation. Ten new public generation cases cover exact constant imports with addons disabled, accepted and rejected consumer declarations, generated layout output, successive projects and malformed XML preserving published bindings. All 50 GIR, documentation and store cases pass, alongside codegen/CLI builds, source/test types, lint and independent review. The next combined checkpoint will regenerate installed-library bindings and run their normal sanitizer coverage.
 
 ## Next work
 

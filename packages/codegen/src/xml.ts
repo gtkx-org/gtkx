@@ -187,9 +187,11 @@ const restoreControlCodes = (value: unknown, replacements: Map<string, string>):
     }
 
     if (isRecord(value)) {
-        return Object.fromEntries(
-            Object.entries(value).map(([key, entry]) => [key, restoreControlCodes(entry, replacements)]),
-        );
+        for (const [key, entry] of Object.entries(value)) {
+            value[key] = restoreControlCodes(entry, replacements);
+        }
+
+        return value;
     }
 
     return value;
