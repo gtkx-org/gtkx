@@ -237,7 +237,6 @@ const collectIntrinsicElementClasses = (library: Library): GlibNamedClass[] => {
 
 export {
     signalHandlerName,
-    iterateClassesWithGlibName,
     implementedInterfaces,
     getGlibName,
     giNamespaceAlias,
