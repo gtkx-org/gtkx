@@ -773,6 +773,14 @@ Independent source review, Rust formatting, Clippy and affected typechecks pass.
 
 The array codec and all ten container modules were read with hash tables, references, byte/bigint/buffer/struct codecs, stash ownership, allocation/field/call APIs and typed views. Runtime scalar plans, native-value conversion, hash tables, output storage, calls, descriptor types and fields were also read with their public collection tests. This confirms that runtime already owns string conversion. Moving byte-array value normalization is the next bounded R2 slice; native storage, transfer and release remain native responsibilities.
 
+### Runtime byte-array conversion
+
+Runtime conversion plans now pack numeric GByteArray inputs and choose public byte-view or numeric-array output, including the null policy. Rust retains native allocation, view validation, storage, transfer and release. Decoding copies directly into JavaScript-owned bytes while the native owner is alive, removing an intermediate allocation. The required napi U12 compatibility copy remains unchanged.
+
+Eighteen new public integration cases use generated bindings, runtime calls, GValue and fields with real GLib/GIO functions. They cover byte values and offset views, both transfers and output shapes, null and empty values, invalid inputs, reference seeds, callback inputs and outputs, copied values and asynchronous capture. All 126 affected generated/native cases and 40 runtime cases pass, alongside Rust formatting, Clippy, builds, types, lint and independent review. The sanitizer checkpoint passes 377 addon and 527 generated-native cases, then restores the normal addon. No private-helper tests or mocks were added.
+
+This completes the bounded GByteArray conversion slice. Other container conversion and owned-element destruction contracts remain open.
+
 ### Supported Node cache APIs
 
 The compile-cache entry and cleanup store now import Node's cache APIs directly. Their availability checks supported Node versions below GTKX's declared minimum. Disabled and unwritable caching retain Node's existing behavior, and cleanup still preserves the active cache directory.
@@ -807,7 +815,7 @@ The reminder chapter follows the declarative implementation and keeps React expl
 
 ### Latest remote checkpoint
 
-At `fdb77c7c`, every main CI job passes, including all 591 CLI tests across 55 files in 2,172 seconds. The expanded CLI budget accommodates that run. CodeQL passes. Sonar's coverage and quality gate remain in progress at this checkpoint.
+At `fdb77c7c`, every main CI job passes, including all 591 CLI tests across 55 files in 2,172 seconds. The expanded CLI budget accommodates that run. CodeQL passes. The instrumented suite passes all 4,930 tests across 382 files in 3,175 seconds; Sonar analysis and its quality-gate check both pass. The 90-minute coverage budget accommodates the complete run.
 
 Copilot reviewed 275 of 705 files and added no new inline comments. Its summary repeats the nullable action, manifest replacement and callback lifetime concerns already tracked. The declared string action parameter and existing malformed-manifest coverage retain their recorded dispositions; GL callback lifetime remains open. This partial review does not close the audit, and no reply was posted.
 

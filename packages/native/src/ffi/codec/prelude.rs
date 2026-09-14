@@ -250,9 +250,6 @@ where
     let Ok(unknown) = value else {
         return std::ptr::null_mut();
     };
-    if !unknown.is_array().unwrap_or(false) {
-        return std::ptr::null_mut();
-    }
     encode(*unknown)
         .and_then(|stash| transfer_container(stash, context))
         .report_err(context)

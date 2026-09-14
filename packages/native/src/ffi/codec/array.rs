@@ -93,6 +93,10 @@ impl ArrayCodec {
         Ok(Some(self.element_stride()? * slots))
     }
 
+    pub(crate) fn is_byte_array(&self) -> bool {
+        matches!(self.container, ArrayContainerCodec::ByteArray(_))
+    }
+
     pub(crate) fn is_length_bounded(&self) -> bool {
         self.container.is_length_bounded()
     }

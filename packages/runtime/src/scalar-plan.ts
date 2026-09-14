@@ -50,6 +50,40 @@ const stringPlan = (descriptor: Extract<Descriptor, { kind: "string" }>): Scalar
     decode: (value) => value == null ? value : decoder.decode(value as Uint8Array),
 });
 
+const encodeByteArray: Conversion = (value) => {
+    if (value == null || ArrayBuffer.isView(value)) {
+        return value;
+    }
+    if (!Array.isArray(value)) {
+        throw new TypeError("Expected a byte array");
+    }
+
+    return Uint8Array.from(value, (item: unknown) => {
+        if (typeof item !== "number" || !Number.isSafeInteger(item) || item < 0 || item > 255) {
+            throw new TypeError("Expected an integer byte between 0 and 255");
+        }
+
+        return item;
+    });
+};
+
+const byteArrayPlan = (descriptor: Extract<Descriptor, { kind: "array" }>): ScalarPlan => {
+    const { preserveNull = false, ...abi } = descriptor;
+    const decode: Conversion = descriptor.isBytes === true ? identity : (value) => [...value as Uint8Array];
+
+    return {
+        abi: { ...abi, itemDescriptor: toAbi(descriptor.itemDescriptor), isBytes: true },
+        encode: encodeByteArray,
+        decode(value) {
+            if (value === null) {
+                return preserveNull ? null : decode(new Uint8Array());
+            }
+
+            return decode(value);
+        },
+    };
+};
+
 const enumClass = (descriptor: EnumDescriptor): ExternalObject<Handle> => {
     let library = classHandles.get(descriptor.sharedLibrary);
     if (library === undefined) {
@@ -271,6 +305,9 @@ const mapEntries = (key: Conversion, item: Conversion): Conversion => {
 const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
     switch (descriptor.kind) {
         case "array": {
+            if (descriptor.arrayKind === "gbytearray") {
+                return byteArrayPlan(descriptor);
+            }
             const item = compileDescriptor(descriptor.itemDescriptor);
             const { preserveNull = false, ...layout } = descriptor;
             const decode = mapCollection(item.decode);
