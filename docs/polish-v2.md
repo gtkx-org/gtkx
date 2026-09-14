@@ -485,6 +485,12 @@ The collection review fully read 15 runtime modules and 16 native codec/storage 
 
 Public native-library fixtures cover calls, outputs, fields, callback inputs, inout seeds and absent slots, with separate native property and GValue coverage. All 376 addon cases, 508 generated-native cases and 204 focused cases pass. The final GValue follow-up passes all 21 cases, including null, empty, populated and invalid values. Runtime/dependency builds, default-heap test types, lint, rustfmt and Clippy pass. Independent review found no blocker in this migration. The normal addon and runtime artifacts are aligned; remaining collection packing and ownership work stays open.
 
+### Cursor ownership and sanitizer validation
+
+Review of PR [#658](https://github.com/gtkx-org/gtkx/pull/658) identified a cursor descriptor that could claim ownership of another argument's buffer. Native binding now rejects that descriptor before a call can be made. Borrowed cursor decoding is unchanged. The regression exercises descriptor rejection only; existing generated bindings cover empty, populated and invalid byte inputs.
+
+All 61 native call cases and 40 generated array cases pass, alongside lint, rustfmt and Clippy. The complete sanitizer target passes 377 addon cases and 509 generated-native cases, with no sanitizer error, and restores the normal addon. Its per-test deadline is now two minutes: CI's five failures were successful 31–42 second operations exceeding the ordinary 30-second deadline. Iteration counts and memory-growth limits are unchanged. Runtime discovery happens before instrumentation, and a failed instrumented build now also enters the normal-build restoration path.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it lets the full production build pass, including page rendering and sitemap generation in 432 seconds. Later collection and codegen changes remain part of the next combined checkpoint.

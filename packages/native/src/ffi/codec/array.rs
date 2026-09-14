@@ -42,6 +42,10 @@ impl ArrayCodec {
         is_bytes: bool,
     ) -> anyhow::Result<Self> {
         anyhow::ensure!(
+            kind != ArrayKind::Cursor || ownership.is_borrowed(),
+            "A cursor array borrows another argument's buffer and cannot transfer ownership"
+        );
+        anyhow::ensure!(
             !is_bytes || ItemCodec::from_codec(&item_codec).is_some_and(ItemCodec::is_byte),
             "A byte array descriptor needs a u8 item codec, got {item_codec:?}"
         );
