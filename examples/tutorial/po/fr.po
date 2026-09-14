@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gtkx-tutorial 1.0.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-14 22:16+0200\n"
+"POT-Creation-Date: 2026-09-15 00:51+0200\n"
 "PO-Revision-Date: 2026-08-26 23:34+0200\n"
 "Last-Translator: GTKX contributors\n"
 "Language-Team: French\n"
@@ -18,8 +18,8 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 #: src/components/about.tsx:9 src/components/preferences.tsx:28
-#: src/components/shortcuts.tsx:12 src/components/window.tsx:78
-#: src/components/window.tsx:106 src/store/selectors.ts:18
+#: src/components/shortcuts.tsx:12 src/components/window.tsx:71
+#: src/components/window.tsx:99 src/store/selectors.ts:18
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:3
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:4
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:25
@@ -80,7 +80,7 @@ msgstr "Raccourcis clavier"
 msgid "About Tasks"
 msgstr "À propos de Tâches"
 
-#: src/components/new-list-dialog.tsx:21 src/components/window.tsx:110
+#: src/components/new-list-dialog.tsx:21 src/components/window.tsx:103
 msgid "New List"
 msgstr "Nouvelle liste"
 
@@ -226,15 +226,15 @@ msgstr "Basculer la priorité"
 msgid "Task"
 msgstr "Tâche"
 
-#: src/components/window.tsx:36
+#: src/components/window.tsx:35
 msgid "Nothing Selected"
 msgstr "Aucune sélection"
 
-#: src/components/window.tsx:37
+#: src/components/window.tsx:36
 msgid "Pick a list or a smart view in the sidebar"
 msgstr "Choisissez une liste ou une vue intelligente dans la barre latérale"
 
-#: src/components/window.tsx:127
+#: src/components/window.tsx:120
 msgid "New Task (Ctrl+N)"
 msgstr "Nouvelle tâche (Ctrl+N)"
 
@@ -260,11 +260,11 @@ msgstr[1] "Il y a {{count}} jours"
 msgid "Never"
 msgstr "Jamais"
 
-#: src/notifications.ts:9
+#: src/notifications.tsx:21
 msgid "Due {{date}}"
 msgstr "Échéance : {{date}}"
 
-#: src/notifications.ts:11
+#: src/notifications.tsx:23
 msgid "Mark Complete"
 msgstr "Marquer comme terminée"
 

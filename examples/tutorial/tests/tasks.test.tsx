@@ -1,12 +1,11 @@
 import * as Adw from "@gtkx/gi/adw";
-import * as Gio from "@gtkx/gi/gio";
 import { getUserDataDir } from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { rootElement } from "@gtkx/react";
 import { act, fireEvent, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 import { ALL_TASKS, openTask } from "../src/navigation.js";
 import { useStore } from "../src/store/index.js";
@@ -22,14 +21,6 @@ const findTitleEntry = (): Promise<Adw.EntryRow> =>
 
 const importantSwitch = (isChecked: boolean): Gtk.Switch =>
     screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: isChecked, as: Gtk.Switch });
-
-const settings = Gio.Settings.new("com.gtkx.tutorial");
-
-afterEach(() => {
-    vi.useRealTimers();
-    settings.reset("reminder-minutes");
-    vi.restoreAllMocks();
-});
 
 describe("Tasks", () => {
     it("persists text entered through a native row", async () => {
@@ -244,64 +235,6 @@ describe("Tasks", () => {
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Add" }));
 
         expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Errands/ })).toBeDefined();
-    });
-
-    it("sends a zero-minute reminder once across a window remount", async () => {
-        settings.setInt("reminder-minutes", 0);
-        useStore.setState((state) => ({
-            tasks: state.tasks.map((task) =>
-                task.id === "t4"
-                    ? { ...task, due: new Date(Date.now() - 1000).toISOString(), lastNotifiedDue: null }
-                    : task,
-            ),
-        }));
-        const sendNotification = vi
-            .spyOn(Gio.Application.prototype, "sendNotification")
-            .mockImplementation(() => {
-                return;
-            });
-
-        const first = await render(<App />, { container: rootElement });
-        await waitFor(() => {
-            expect(sendNotification).toHaveBeenCalledTimes(1);
-        });
-        await first.unmount();
-        await render(<App />, { container: rootElement });
-
-        expect(sendNotification).toHaveBeenCalledTimes(1);
-    });
-
-    it("sends a nonzero reminder after a delayed sweep passes its window", async () => {
-        vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
-        settings.setInt("reminder-minutes", 1);
-        useStore.setState((state) => ({
-            tasks: state.tasks.map((task) =>
-                task.id === "t4"
-                    ? {
-                          ...task,
-                          done: false,
-                          deleted: false,
-                          due: new Date(Date.now() + 90_000).toISOString(),
-                          lastNotifiedDue: null,
-                      }
-                    : { ...task, done: true },
-            ),
-        }));
-        const sendNotification = vi
-            .spyOn(Gio.Application.prototype, "sendNotification")
-            .mockImplementation(() => {
-                return;
-            });
-
-        const view = await render(<App />, { container: rootElement });
-        expect(sendNotification).not.toHaveBeenCalled();
-        await act(async () => {
-            vi.setSystemTime(Date.now() + 60_000);
-            await vi.advanceTimersByTimeAsync(60_000);
-        });
-
-        expect(sendNotification).toHaveBeenCalledTimes(1);
-        await view.unmount();
     });
 
     it("keeps one color selected when the same swatch is clicked repeatedly", async () => {

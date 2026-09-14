@@ -797,8 +797,22 @@ CLI parent ownership now reuses the existing utility parser for Linux process st
 
 Default icon selection now narrows its first candidate once, removing an unreachable second missing-icon branch. Missing, unique and ambiguous icon behavior is preserved. All three existing public icon integration cases, build, typecheck, lint and independent review pass.
 
+### Declarative tutorial reminders
+
+Notifications now use the generated JSX element in an application-owned portal. The notification effect reads the current task before sending, so completed, trashed, removed or rescheduled tasks cannot send a stale reminder. Pending reminders retain their task and due-date identity across renders. The sweep cursor also survives rerenders and catches reminders reached while the application process was paused.
+
+Real desktop-bus integration coverage replaces the two mocked notification tests. The complete installed tutorial passes all 40 application cases, including StrictMode, edits, removal, action activation and a real paused-process case. The French suite passes all three cases. Fresh installation, build, launch, typechecking, localized AppImage/deb/rpm packaging and Flatpak manifest checks pass. Supplemental lint covers the tutorial files excluded from workspace lint. The running task window and editor were inspected through their widget trees and screenshots.
+
+The reminder chapter follows the declarative implementation and keeps React explanations in linked upstream documentation. Translation messages are unchanged. The review covered 38 tutorial files, 3,394 baseline lines, plus the generated notification reference and the final implementation, tests and chapter. Native action activation is covered; GNOME Shell interaction and activation after application exit remain separate contracts requiring review.
+
+### Latest remote checkpoint
+
+At `fdb77c7c`, every main CI job passes, including all 591 CLI tests across 55 files in 2,172 seconds. The expanded CLI budget accommodates that run. CodeQL passes. Sonar's coverage and quality gate remain in progress at this checkpoint.
+
+Copilot reviewed 275 of 705 files and added no new inline comments. Its summary repeats the nullable action, manifest replacement and callback lifetime concerns already tracked. The declared string action parameter and existing malformed-manifest coverage retain their recorded dispositions; GL callback lifetime remains open. This partial review does not close the audit, and no reply was posted.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.
 
-Continue repeat audits alongside the remaining R2 container and ownership stages; the string conversion stage is complete. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
+Continue repeat audits alongside the remaining R2 container and ownership stages; the string conversion and declarative notification stages are complete. Follow with GL callback release, the broader constructor/factory-prop contract, remaining desktop notification behavior and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.

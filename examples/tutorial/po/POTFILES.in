@@ -25,7 +25,7 @@ src/hooks/use-reminders.ts
 src/hooks/use-sort-order.ts
 src/index.tsx
 src/navigation.ts
-src/notifications.ts
+src/notifications.tsx
 src/settings.ts
 src/store/index.ts
 src/store/lists.ts

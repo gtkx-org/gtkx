@@ -4,13 +4,12 @@ import { useTranslation } from "@gtkx/i18n";
 import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage, AdwToastOverlay } from "@gtkx/jsx/adw";
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
-import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Task } from "../types.js";
+import { quit, useBindSetting, useSetting } from "@gtkx/react";
+import { useEffect, useRef, useState } from "react";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useReminders } from "../hooks/use-reminders.js";
 import { ALL_TASKS, navigationRef, openPendingTask, Split } from "../navigation.js";
-import { buildReminder } from "../notifications.js";
+import { ReminderNotification } from "../notifications.js";
 import { useStore } from "../store/index.js";
 import { selectionTitle } from "../store/selectors.js";
 import { applyColorScheme } from "../theme.js";
@@ -41,13 +40,11 @@ const NothingSelected = () => {
 
 export const Window = () => {
     const { t } = useTranslation();
-    const application = useApplication();
     const lists = useStore((state) => state.lists);
     const tasks = useStore((state) => state.tasks);
     const collapsed = useStore((state) => state.collapsed);
     const setCollapsed = useStore((state) => state.setCollapsed);
     const showDialog = useStore((state) => state.showDialog);
-    const markNotified = useStore((state) => state.markNotified);
 
     const settings = useAppSettings();
     const [colorScheme] = useSetting(settings, schema, "color-scheme");
@@ -62,17 +59,13 @@ export const Window = () => {
         applyColorScheme(colorScheme);
     }, [colorScheme]);
 
-    const sendReminder = useCallback(
-        (task: Task, due: string) => {
-            application.sendNotification(task.id, buildReminder(task, due));
-            markNotified(task.id, due);
-        },
-        [application, markNotified],
-    );
-    useReminders(tasks, reminderMinutes, sendReminder);
+    const reminders = useReminders(tasks, reminderMinutes);
 
     return (
         <ToastProvider overlayRef={toastOverlayRef}>
+            {reminders.map((reminder) => (
+                <ReminderNotification key={`${reminder.id}:${reminder.due}`} {...reminder} />
+            ))}
             <AdwApplicationWindow
                 ref={setWindow}
                 title={t("Tasks")}
