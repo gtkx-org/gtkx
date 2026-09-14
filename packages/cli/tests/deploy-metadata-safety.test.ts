@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import { type CliProject, createCliProject, removeCliProject, runCliOrThrow } from "./cli-project.js";
+import { type CliProject, createCliProject, removeCliProject, runCli, runCliOrThrow } from "./cli-project.js";
 import {
     APPLICATION_ID,
     BINARY_NAME,
@@ -12,6 +12,7 @@ import {
     NFPM_PATH,
     NOTES_DESTINATION,
     outputFile,
+    PINNED_SOURCE,
     projectFiles,
     RPM_NFPM_PATH,
     stagedMode,
@@ -174,6 +175,26 @@ describe("gtkx deploy (metadata and packaging safety)", () => {
 });
 
 describe("gtkx deploy (invalid metadata and extra files)", () => {
+    it.each([{ target: "deb", status: 0 }, { target: "flatpak", status: 1 }])(
+        "applies the AppStream warning policy for $target",
+        ({ target, status }) => {
+            const extra = target === "flatpak"
+                ? `        flatpak: { mode: "source", source: ${PINNED_SOURCE} },\n`
+                : "";
+            const configuration = projectConfig(extra).replace(
+                "A probe application for deployment metadata and packaging safety.",
+                "A probe application for deployment metadata and packaging safety. Visit https://gtkx.dev for details.",
+            );
+            using project = createCliProject({
+                prefix: "gtkx-cli-deploy-appstream-warning-",
+                config: configuration,
+                files: projectFiles(),
+                hasStore: true,
+            });
+            expect(runCli(project, ["deploy", "--print-manifests", "--target", target]).status).toBe(status);
+        },
+    );
+
     it("rejects malformed or unsupported AppStream fragments", () => {
         expectDeployRejected(
             "gtkx-cli-deploy-malformed-metainfo-extra-",

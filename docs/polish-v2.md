@@ -671,6 +671,14 @@ At `f6793578`, CI passes publication consumers, sanitizers, CLI tests, documenta
 
 Copilot reviewed 281 of 652 files and added no new inline findings. Its nullable activation suggestions concern tutorial actions that explicitly require string parameters. Gio guarantees the expected type when emitting SimpleAction activation, and the notification targets supply string variants. The other suppressed suggestions repeat previously reviewed cases. This partial review does not close the full audit; no reply was posted.
 
+### Structured AppStream validation
+
+AppStream validation now reads the validator's YAML report through the existing YAML dependency. Handwritten diagnostic matching and English success-summary filtering are removed. Known rule identifiers, native explanations and the existing target-specific warning policy remain available. A terminated validator retains a failed process status instead of being treated as a successful exit.
+
+All 48 deployment, metadata, source-Flatpak and localization cases pass. Public warning cases accept a Debian preview and reject a source-Flatpak preview using the same native warning; malformed metadata and unsupported tags remain rejected. Build, source/test types, affected lint, whitespace checks and independent review pass. The warning cases assert only exit status.
+
+The review also reproduced an upstream AppStream YAML command returning success for missing input. U14 in `~/UPSTREAM.md` records the standalone reproduction and current upstream cause. GTKX supplies freshly written metadata, so no production workaround was introduced. A separate source review found that Debian copyright serialization discards SPDX grouping; a public reproduction and maintained-parser correction remain follow-up work.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.

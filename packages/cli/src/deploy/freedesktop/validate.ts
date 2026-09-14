@@ -1,21 +1,24 @@
 import { resolveExecutable, sortStrings, warn } from "@gtkx/utils";
 import { spawnSync } from "node:child_process";
+import { parse } from "yaml";
 
 type ToolResult = {
     output: string;
-    status: number;
+    stdout: string;
+    status: number | null;
 };
 
 type Diagnostic = {
     severity: string;
-    rule: string;
-    detail: string;
+    tag: string;
+    hint?: string;
+    explanation: string;
 };
 
 type MetainfoResult = {
     subject: string;
     output: string;
-    status: number;
+    status: number | null;
     errors: string[];
     warnings: string[];
     rules: string[];
@@ -29,11 +32,9 @@ type ToolRequest = {
     subject: string;
 };
 
-const DIAGNOSTIC = /^(?<severity>[EIPW]): \S+ (?<rule>[\w-]+)(?: (?<detail>.*))?$/;
-const SUCCESS_SUMMARY = /^\W*Validation was successful/u;
-const ERROR_SEVERITY = "E";
-const WARNING_SEVERITY = "W";
-const INFO_SEVERITY = "I";
+const ERROR_SEVERITY = "error";
+const WARNING_SEVERITY = "warning";
+const INFO_SEVERITY = "info";
 const FATAL_WARNING_RULES: Set<string> = new Set(["unknown-tag"]);
 const DESKTOP_ERROR = /(?:^|:\s)error:/iu;
 
@@ -61,34 +62,22 @@ const runTool = ({ tool, args, subject }: ToolRequest): ToolResult => {
         throw new Error(`${subject} could not be validated: ${result.error.message}`, { cause: result.error });
     }
 
-    return { output: [result.stdout, result.stderr].join("\n").trim(), status: result.status ?? 0 };
+    return {
+        output: [result.stdout, result.stderr].join("\n").trim(),
+        stdout: result.stdout,
+        status: result.status,
+    };
 };
 
-const parseDiagnostics = (output: string): Diagnostic[] =>
-    output.split("\n").flatMap((line) => {
-        const groups = DIAGNOSTIC.exec(line)?.groups;
-
-        return groups === undefined
-            ? []
-            : [{ severity: groups.severity ?? "", rule: groups.rule ?? "", detail: (groups.detail ?? "").trim() }];
-    });
-
 const rulesIn = (diagnostics: Diagnostic[], severities: string[]): string[] =>
-    diagnostics.filter((diagnostic) => severities.includes(diagnostic.severity)).map((diagnostic) => diagnostic.rule);
+    diagnostics.filter((diagnostic) => severities.includes(diagnostic.severity)).map((diagnostic) => diagnostic.tag);
 
 const fatalNotes = (diagnostics: Diagnostic[]): string[] =>
     diagnostics
-        .filter((diagnostic) => diagnostic.severity !== ERROR_SEVERITY && FATAL_WARNING_RULES.has(diagnostic.rule))
+        .filter((diagnostic) => diagnostic.severity !== ERROR_SEVERITY && FATAL_WARNING_RULES.has(diagnostic.tag))
         .map((diagnostic) =>
-            FATAL_RULE_NOTES[diagnostic.rule]?.(diagnostic.detail) ??
-            `GTKX treats ${diagnostic.rule} as fatal for every target`);
-
-const withoutSuccessSummary = (output: string): string =>
-    output
-        .split("\n")
-        .filter((line) => !SUCCESS_SUMMARY.test(line))
-        .join("\n")
-        .trimEnd();
+            FATAL_RULE_NOTES[diagnostic.tag]?.(diagnostic.hint ?? "") ??
+            `GTKX treats ${diagnostic.tag} as fatal for every target`);
 
 const remedyLines = (rules: string[]): string[] => {
     const remedies = sortStrings([...new Set(rules)])
@@ -119,7 +108,7 @@ const isFatalResult = ({ status, errors, warnings, rules, areWarningsFatal }: Me
         return true;
     }
 
-    return status !== 0 && warnings.length === 0;
+    return status === null || (status !== 0 && warnings.length === 0);
 };
 
 const assertNotFatal = (result: MetainfoResult): void => {
@@ -161,13 +150,14 @@ const validateDesktopEntry = (path: string): void => {
 const validateMetainfo = (path: string, areWarningsFatal: boolean): void => {
     const subject = "The AppStream metainfo";
 
-    const { output, status } = runTool({
+    const { output, stdout, status } = runTool({
         tool: "appstreamcli",
-        args: ["validate", "--no-net", "--explain", path],
+        args: ["validate", "--no-net", "--format=yaml", path],
         subject,
     });
 
-    const diagnostics = parseDiagnostics(output);
+    const report = parse(stdout) as { Issues: Diagnostic[] } | null;
+    const diagnostics = report?.Issues ?? [];
     const errors = rulesIn(diagnostics, [ERROR_SEVERITY]);
     const warnings = rulesIn(diagnostics, [WARNING_SEVERITY]);
     const infos = rulesIn(diagnostics, [INFO_SEVERITY]);
@@ -175,7 +165,9 @@ const validateMetainfo = (path: string, areWarningsFatal: boolean): void => {
     const notes = fatalNotes(diagnostics);
     assertNotFatal({
         subject,
-        output: withoutSuccessSummary(output),
+        output: diagnostics.length === 0
+            ? output
+            : diagnostics.map((issue) => `${issue.tag}: ${issue.explanation}`).join("\n"),
         status,
         errors,
         warnings,
