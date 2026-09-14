@@ -765,6 +765,14 @@ The nine public integration cases cover relative and absolute paths with spaces,
 
 Custom Flatpak branch installation and revision-free source manifests remain observations requiring separate consumer-contract checks. They are not counted as confirmed defects or silently folded into this correction.
 
+### Native container writes
+
+Source review found that initialized array writes selected cleanup from the element type alone, overlooking the container layout. Replacement now uses the existing GArray, GPtrArray, GByteArray or list cleanup operation; plain C arrays preserve their existing ownership policy. Fallible field and reference writes also finish encoding before replacing the old value. Encoding failures propagate instead of being converted to a successful null write. Callback return defaults remain unchanged.
+
+Independent source review, Rust formatting, Clippy and affected typechecks pass. All 250 existing field, call, runtime reference and generated collection integration cases pass. The complete sanitizer checkpoint passes 377 addon and 509 generated-native cases, then restores the normal addon. These checks do not close every owned-element cleanup combination; list element ownership and callback seed decoding remain under review.
+
+The array codec and all ten container modules were read with hash tables, references, byte/bigint/buffer/struct codecs, stash ownership, allocation/field/call APIs and typed views. Runtime scalar plans, native-value conversion, hash tables, output storage, calls, descriptor types and fields were also read with their public collection tests. This confirms that runtime already owns string conversion. Moving byte-array value normalization is the next bounded R2 slice; native storage, transfer and release remain native responsibilities.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.

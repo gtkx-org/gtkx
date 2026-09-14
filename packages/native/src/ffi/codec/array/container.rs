@@ -157,6 +157,18 @@ impl ArrayContainerCodec {
         })
     }
 
+    pub(super) fn release_kind(&self) -> ffi::ReleaseKind {
+        match self {
+            Self::List(list) => list.release_kind(),
+            Self::PtrArray(_) => ffi::ReleaseKind::GPtrArrayUnref,
+            Self::GArray(_) => ffi::ReleaseKind::GArrayUnref,
+            Self::ByteArray(_) => ffi::ReleaseKind::GByteArrayUnref,
+            Self::NullTerminated(_) | Self::Sized(_) | Self::Fixed(_) | Self::Cursor(_) => {
+                ffi::ReleaseKind::GFree
+            }
+        }
+    }
+
     pub(super) fn is_length_bounded(&self) -> bool {
         matches!(self, Self::Sized(_) | Self::Fixed(_) | Self::Cursor(_))
     }

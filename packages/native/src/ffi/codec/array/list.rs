@@ -15,6 +15,10 @@ impl ListArrayCodec {
     pub(super) fn new(ops: &'static ffi::ListOps) -> Self {
         Self { ops }
     }
+
+    pub(super) fn release_kind(&self) -> ffi::ReleaseKind {
+        self.ops.pending
+    }
 }
 
 impl ArrayContainer for ListArrayCodec {

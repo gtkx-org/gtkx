@@ -102,9 +102,12 @@ impl ArrayCodec {
     }
 
     fn container_release(&self) -> ffi::ReleaseKind {
-        match &*self.item_codec {
-            Codec::Bytes(item) if item.ownership.is_full() => ffi::ReleaseKind::StrFreeV,
-            _ => ffi::ReleaseKind::GFree,
+        let release = self.container.release_kind();
+        match (&*self.item_codec, release) {
+            (Codec::Bytes(item), ffi::ReleaseKind::GFree) if item.ownership.is_full() => {
+                ffi::ReleaseKind::StrFreeV
+            }
+            _ => release,
         }
     }
 }

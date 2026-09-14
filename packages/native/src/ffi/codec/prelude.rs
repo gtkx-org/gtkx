@@ -65,11 +65,8 @@ macro_rules! write_container_value_to_ptr {
                 )
             );
 
-            let container = $crate::ffi::codec::prelude::encode_and_leak_container(
-                &::std::result::Result::Ok(value),
-                $label,
-                |value| $crate::ffi::codec::Encoder::encode(self, env, value),
-            );
+            let encoded = $crate::ffi::codec::Encoder::encode(self, env, value)?;
+            let container = $crate::ffi::codec::prelude::transfer_container(encoded, $label)?;
 
             if !init.is_initialized() {
                 unsafe { slot.store(container) };
@@ -256,17 +253,19 @@ where
     if !unknown.is_array().unwrap_or(false) {
         return std::ptr::null_mut();
     }
-    let Some(stash) = encode(*unknown).report_err(context) else {
-        return std::ptr::null_mut();
-    };
-    let Some(container) = stash.as_ptr(context).report_err(context) else {
-        return std::ptr::null_mut();
-    };
+    encode(*unknown)
+        .and_then(|stash| transfer_container(stash, context))
+        .report_err(context)
+        .unwrap_or(std::ptr::null_mut())
+}
+
+pub(super) fn transfer_container(stash: ffi::Stash, context: &str) -> anyhow::Result<*mut c_void> {
+    let container = stash.as_ptr(context)?;
     stash.disarm_pending_transfer();
     if aliases_stash_backing(&stash) {
         std::mem::forget(stash);
     }
-    container
+    Ok(container)
 }
 
 pub(super) fn owned_view_storage(view: &value::TypedView) -> ffi::StashStorage {
