@@ -29,18 +29,20 @@ const constantLiteral = (context: ModuleContext, constant: GirConstant): string 
     }
 
     if (hasPrimitiveCategory(context, constant.type, "boolean")) {
-        return TRUE_VALUES.has(constant.value) ? "true" : "false";
+        return TRUE_VALUES.has(constant.value.trim()) ? "true" : "false";
     }
 
     return numericConstantLiteral(context, constant);
 };
 
 const numericConstantLiteral = (context: ModuleContext, constant: GirConstant): string => {
-    if (!isNumericLiteral(constant.value)) {
-        return sourceStringLiteral(constant.value);
+    const value = constant.value.trim();
+
+    if (!isNumericLiteral(value)) {
+        return sourceStringLiteral(value);
     }
 
-    return isBigIntConstant(context, constant.type) ? `${constant.value}n` : constant.value;
+    return isBigIntConstant(context, constant.type) ? `${value}n` : value;
 };
 
 const isBigIntConstant = (context: ModuleContext, type: TypeId | undefined): boolean =>

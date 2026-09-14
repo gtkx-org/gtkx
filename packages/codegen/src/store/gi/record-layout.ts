@@ -18,7 +18,7 @@ type RecordFieldSlot = {
 };
 
 const POINTER_LAYOUT: FieldLayout = { size: 8, align: 8 };
-const recordLayoutCache: Map<string, FieldLayout> = new Map();
+const recordLayoutCache: WeakMap<ResolvedRecordValue, FieldLayout> = new WeakMap();
 
 const ALIGNMENT_OVERRIDES: Map<string, FieldLayout> = new Map([
     ["graphene_simd4f_t", { size: 16, align: 16 }],
@@ -189,7 +189,7 @@ const layoutOfRecord = (
         return POINTER_LAYOUT;
     }
 
-    const cached = recordLayoutCache.get(key);
+    const cached = recordLayoutCache.get(resolved.value);
 
     if (cached !== undefined) {
         return cached;
@@ -208,7 +208,7 @@ const layoutOfRecord = (
     const { size } = computeFieldSlots(inputs, resolved.value.isUnion);
     const align = Math.max(1, ...inputs.map((input) => input.layout.align));
     const layout: FieldLayout = { size, align };
-    recordLayoutCache.set(key, layout);
+    recordLayoutCache.set(resolved.value, layout);
 
     return layout;
 };
