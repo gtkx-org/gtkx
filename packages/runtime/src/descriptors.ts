@@ -499,7 +499,7 @@ const arrayT = (
 };
 
 const preserveArrayNull = (descriptor: ArrayDescriptor): ArrayDescriptor => {
-    Reflect.set(descriptor, "preserveNull", true);
+    descriptor.preserveNull = true;
 
     return descriptor;
 };

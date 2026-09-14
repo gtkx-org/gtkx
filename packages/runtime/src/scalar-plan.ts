@@ -184,7 +184,14 @@ const referencePlan = (descriptor: Extract<Descriptor, { kind: "ref" }>): Scalar
             abi,
             inner,
             encode: refConversion(inner.encode),
-            decode: refConversion(inner.decode),
+            decode(value) {
+                if (value == null) {
+                    return { value: null };
+                }
+                const seed: unknown = Reflect.get(value, "value");
+
+                return { value: descriptor.inout === true ? inner.decode(seed) : seed };
+            },
         };
     }
 
@@ -265,11 +272,19 @@ const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
     switch (descriptor.kind) {
         case "array": {
             const item = compileDescriptor(descriptor.itemDescriptor);
+            const { preserveNull = false, ...layout } = descriptor;
+            const decode = mapCollection(item.decode);
 
             return {
-                abi: { ...descriptor, itemDescriptor: item.abi },
+                abi: { ...layout, itemDescriptor: item.abi },
                 encode: mapCollection(item.encode),
-                decode: mapCollection(item.decode),
+                decode(value) {
+                    if (value !== null || preserveNull) {
+                        return decode(value);
+                    }
+
+                    return descriptor.isBytes === true ? new Uint8Array() : [];
+                },
             };
         }
         case "hashtable": {

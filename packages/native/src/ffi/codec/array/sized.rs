@@ -127,7 +127,7 @@ impl ArrayCodec {
             return None;
         };
         if ptr.is_null() {
-            return Some(self.decode_null(env));
+            return Some(value::js_null(env).map_err(Into::into));
         }
         Some(self.decode_sized_array(env, *ptr, length))
     }

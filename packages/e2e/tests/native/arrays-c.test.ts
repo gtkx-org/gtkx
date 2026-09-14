@@ -1,8 +1,15 @@
+import type { ExternalObject, Handle, Ref } from "@gtkx/native";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
-import { expect, test } from "vitest";
+import { t } from "@gtkx/runtime";
+import { resolveExecutable } from "@gtkx/utils";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import { drainAfterEachTest } from "./helpers/memory.js";
 
 drainAfterEachTest();
@@ -10,6 +17,103 @@ drainAfterEachTest();
 const UNICHARS = ["c", "o", "n", "s", "t", " ", "♥", " ", "u", "t", "f", "8"];
 
 const unalignedPattern = Array.from({ length: 32 }, (_, index) => (index + 1) % 8);
+const temporary = mkdtempSync(join(tmpdir(), "gtkx-collection-values-"));
+const collectionLibrary = join(temporary, "libgtkx-collection-values.so");
+
+beforeAll(() => {
+    const flags = execFileSync(resolveExecutable("pkg-config"), ["--cflags", "--libs", "glib-2.0"], {
+        encoding: "utf8",
+    }).trim().split(/\s+/);
+    execFileSync(resolveExecutable("cc"), [
+        "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror",
+        join(import.meta.dirname, "fixtures/collection-values.c"), "-o", collectionLibrary, ...flags,
+    ]);
+});
+
+afterAll(() => {
+    rmSync(temporary, { recursive: true, force: true });
+});
+
+test.each([false, true])("array returns and outputs preserve their null policy (%s)", (preserveNull) => {
+    const descriptor = { ...t.array(t.string()), preserveNull };
+    const read = t.bind(collectionLibrary, "gtkx_collection_strings", [t.int32], descriptor);
+    const readOut = t.bind(collectionLibrary, "gtkx_collection_out", [t.int32, t.ref(descriptor)], t.void);
+    const expected = [preserveNull ? null : [], [], ["one", "two"]];
+
+    for (const [state, value] of expected.entries()) {
+        expect(read(state)).toEqual(value);
+        const out = { value: null };
+        readOut(state, out);
+        expect(out.value).toEqual(value);
+    }
+});
+
+test.each([false, true])("byte array returns preserve their null policy (%s)", (preserveNull) => {
+    const descriptor = { ...t.array(t.uint8, "array", "borrowed", { isBytes: true }), preserveNull };
+    const read = t.bind(collectionLibrary, "gtkx_collection_bytes", [t.int32], descriptor);
+
+    expect(read(0)).toEqual(preserveNull ? null : new Uint8Array());
+    expect(read(1)).toEqual(new Uint8Array());
+    expect(read(2)).toEqual(new Uint8Array([1, 2]));
+});
+
+test.each([false, true])("array fields preserve their null policy (%s)", (preserveNull) => {
+    const descriptor = { ...t.array(t.string()), preserveNull };
+    const readRecord = t.bind(collectionLibrary, "gtkx_collection_record", [t.int32], t.struct());
+    const items = t.field(descriptor, 0);
+    const expected = [preserveNull ? null : [], [], ["one", "two"]];
+
+    for (const [state, value] of expected.entries()) {
+        const record = readRecord(state) as ExternalObject<Handle>;
+        expect(items.read(record)).toEqual(value);
+    }
+});
+
+test.each([false, true])("array callback arguments preserve their null policy (%s)", (preserveNull) => {
+    const descriptor = { ...t.array(t.string()), preserveNull };
+    const visit = t.bind(collectionLibrary, "gtkx_collection_visit", [
+        t.int32, t.callback([descriptor], t.void, { scope: "call" }),
+    ], t.void);
+    const seen: unknown[] = [];
+
+    for (const state of [0, 1, 2]) {
+        visit(state, (value: unknown) => {
+            seen.push(value);
+        });
+    }
+
+    expect(seen).toEqual([preserveNull ? null : [], [], ["one", "two"]]);
+});
+
+test.each([false, true])("inout array callbacks distinguish null values from absent slots (%s)", (preserveNull) => {
+    const descriptor = { ...t.array(t.string("full"), "array", "full"), preserveNull };
+    const visit = t.bind(collectionLibrary, "gtkx_collection_visit_ref", [
+        t.int32, t.callback([t.ref(descriptor, true)], t.void, { scope: "call" }),
+    ], t.int32);
+    const seen: unknown[] = [];
+    const lengths = [0, 1, 2, 3].map((state) => visit(state, (value: Ref) => {
+        seen.push(value.value);
+        value.value = ["replacement"];
+    }));
+
+    expect(seen).toEqual([preserveNull ? null : [], [], ["one", "two"], null]);
+    expect(lengths).toEqual([1, 1, 1, -1]);
+});
+
+test("array callback outputs start unset and write through existing slots", () => {
+    const descriptor = t.array(t.string("full"), "array", "full");
+    const visit = t.bind(collectionLibrary, "gtkx_collection_visit_ref", [
+        t.int32, t.callback([t.ref(descriptor)], t.void, { scope: "call" }),
+    ], t.int32);
+    const seen: unknown[] = [];
+    const lengths = [0, 3].map((state) => visit(state, (value: Ref) => {
+        seen.push(value.value);
+        value.value = ["replacement"];
+    }));
+
+    expect(seen).toEqual([null, null]);
+    expect(lengths).toEqual([1, -1]);
+});
 
 test("variable-length int arrays pass with the length in any position", () => {
     GIMarshallingTests.arrayIn([-1, 0, 1, 2]);

@@ -249,7 +249,7 @@ impl Decoder for RefCodec {
             };
 
             if actual_ptr.is_null() {
-                return array_codec.decode_null(env);
+                return Ok(value::js_null(env)?);
             }
 
             let ptr_stash = ffi::Stash::Ptr(actual_ptr);
