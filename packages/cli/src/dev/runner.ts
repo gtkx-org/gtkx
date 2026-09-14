@@ -1,10 +1,11 @@
 import type { ApplicationInstance } from "@gtkx/runtime/internal";
-import type { InlineConfig, Plugin } from "vite";
+import type { InlineConfig, ModuleNode, Plugin, ViteDevServer } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { isCatalogSource } from "../i18n/catalogs.js";
 import { hasUnstagedFontImport } from "../internal/font-staging.js";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
-import { isImportedSchemaFile, stageAndCompileProjectSchemas } from "../settings/schema.js";
+import { sourceLanguage } from "../internal/source-imports.js";
+import { projectSchemaFiles, SCHEMA_SUFFIX, stageAndCompileProjectSchemas } from "../settings/schema.js";
 import { createStorybookSession, type StorybookSession } from "../storybook/session.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { DEV_STORYBOOK_ENV } from "./entry-env.js";
@@ -14,8 +15,6 @@ import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js"
 import { RESTART_EXIT_CODE } from "./supervisor.js";
 import {
     createDevServerConfig,
-    type DevServer,
-    type DevServerChangedModule,
     type DevServerWatchEvent,
     isServerConfigFile,
 } from "./vite-dev-server.js";
@@ -23,7 +22,7 @@ import {
 type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
 
 type DevRunnerDeps = {
-    createServer(config: InlineConfig): Promise<DevServer>;
+    createServer(config: InlineConfig): Promise<ViteDevServer>;
     waitForApplicationId(timeoutMs: number, shouldKeepWaiting: () => boolean): Promise<string | null>;
     getConfiguredApplicationId(root: string): Promise<string | undefined>;
     startMcpClient(applicationId: string, loadAppModule: LoadAppModule): Promise<unknown>;
@@ -54,12 +53,14 @@ type ShutdownController = {
 };
 
 type DevSession = {
-    server: DevServer;
+    server: ViteDevServer;
     deps: DevRunnerDeps;
     controller: ShutdownController;
     refreshTracker: RefreshTracker;
     failure: FailureTracker;
     pendingSaves: Map<string, string>;
+    schemaFiles: Set<string>;
+    hasPendingSchemaChange: boolean;
     storybook: StorybookSession | undefined;
 };
 
@@ -70,7 +71,7 @@ type SettledLoad = {
 
 type SettleAttempt = {
     loadedExports: Record<string, unknown> | null;
-    module: DevServerChangedModule;
+    module: ModuleNode;
 };
 
 const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
@@ -82,7 +83,7 @@ const DROPPED_REFRESH = "Fast Refresh dropped";
 const SAVE_ACTION = "File changed";
 const RETRY_ACTION = "Retrying pending save";
 
-const announceFailure = (server: DevServer, cause: unknown): void => {
+const announceFailure = (server: ViteDevServer, cause: unknown): void => {
     if (cause instanceof Error) {
         server.ssrFixStacktrace(cause);
     }
@@ -106,7 +107,7 @@ const requestRestart = async (session: DevSession): Promise<never> => {
     return session.deps.exit(RESTART_EXIT_CODE);
 };
 
-const requiresRestart = (session: DevSession, module: DevServerChangedModule): boolean => {
+const requiresRestart = (session: DevSession, module: ModuleNode): boolean => {
     if (session.failure.isDown()) {
         return true;
     }
@@ -120,7 +121,7 @@ const requiresRestart = (session: DevSession, module: DevServerChangedModule): b
     return !session.deps.isRefreshBoundary(loadedExports);
 };
 
-const invalidateChangedModule = (session: DevSession, module: DevServerChangedModule): void => {
+const invalidateChangedModule = (session: DevSession, module: ModuleNode): void => {
     session.server.moduleGraph.invalidateModule(module);
 
     for (const importer of module.importers) {
@@ -145,7 +146,7 @@ const isEvaluationCurrent = (
 const loadInvalidatedModule = (
     session: DevSession,
     changedPath: string,
-    module: DevServerChangedModule,
+    module: ModuleNode,
 ): Promise<SettledLoad> =>
     withExclusiveLoad(session.server, async () => {
         const revision = await session.deps.readFileRevision(changedPath);
@@ -162,7 +163,7 @@ const loadInvalidatedModule = (
 const settleAttempt = async (
     session: DevSession,
     changedPath: string,
-    module: DevServerChangedModule,
+    module: ModuleNode,
 ): Promise<SettleAttempt> => {
     const { loadedExports, isSettled } = await loadInvalidatedModule(session, changedPath, module);
 
@@ -176,7 +177,7 @@ const settleAttempt = async (
 const loadSettledExports = async (
     session: DevSession,
     changedPath: string,
-    changedModule: DevServerChangedModule,
+    changedModule: ModuleNode,
 ): Promise<Record<string, unknown> | null> => {
     let module = changedModule;
 
@@ -232,7 +233,7 @@ const unpatchedExportReason = (
 const refreshChangedModule = async (
     session: DevSession,
     changedPath: string,
-    changedModule: DevServerChangedModule,
+    changedModule: ModuleNode,
     previous: Record<string, unknown> | null,
 ): Promise<void> => {
     const loadedExports = await loadSettledExports(session, changedPath, changedModule);
@@ -354,7 +355,7 @@ const handleFileRemove = async (session: DevSession, removedPath: string): Promi
     await requestRestart(session);
 };
 
-const createShutdownController = (server: DevServer, deps: DevRunnerDeps): ShutdownController => {
+const createShutdownController = (server: ViteDevServer, deps: DevRunnerDeps): ShutdownController => {
     let isShuttingDown = false;
 
     return {
@@ -403,10 +404,28 @@ const restartForSchema = async (session: DevSession): Promise<void> => {
     await requestRestart(session);
 };
 
+const hasChangedSchemaInputs = (session: DevSession, change: WatchedChange): boolean => {
+    const isSchemaFile = change.path.endsWith(SCHEMA_SUFFIX);
+
+    if (!isSchemaFile && sourceLanguage(change.path) === undefined) {
+        return false;
+    }
+
+    const { files, isComplete } = projectSchemaFiles(session.server.config.root);
+
+    if (isSchemaFile && (session.schemaFiles.has(change.path) || files.includes(change.path))) {
+        session.hasPendingSchemaChange = true;
+    }
+
+    return isComplete && (
+        session.hasPendingSchemaChange || new Set(files).symmetricDifference(session.schemaFiles).size > 0
+    );
+};
+
 const didRestartForChange = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
     const { root } = session.server.config;
 
-    if (isImportedSchemaFile(root, change.path)) {
+    if (hasChangedSchemaInputs(session, change)) {
         await restartForSchema(session);
 
         return true;
@@ -463,7 +482,7 @@ const watchProjectFiles = (session: DevSession): void => {
     const queue = createChangeQueue((change) => applyChange(session, change));
 
     for (const event of WATCH_EVENTS) {
-        session.server.watcher.on(event, (path) => {
+        session.server.watcher.on(event, (path: string) => {
             queue.enqueue({ event, path });
         });
     }
@@ -660,7 +679,7 @@ const announceReady = (session: DevSession): void => {
     session.deps.log("HMR enabled - watching for changes...");
 };
 
-const createSession = (server: DevServer, deps: DevRunnerDeps): DevSession => {
+const createSession = (server: ViteDevServer, deps: DevRunnerDeps): DevSession => {
     const refreshTracker = createRefreshTracker(deps.performRefresh);
 
     return {
@@ -672,6 +691,8 @@ const createSession = (server: DevServer, deps: DevRunnerDeps): DevSession => {
             announceFailure(server, cause);
         }, refreshTracker.isRefreshing),
         pendingSaves: new Map(),
+        schemaFiles: new Set(projectSchemaFiles(server.config.root).files),
+        hasPendingSchemaChange: false,
         storybook: undefined,
     };
 };

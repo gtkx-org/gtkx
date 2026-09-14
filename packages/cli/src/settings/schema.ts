@@ -75,8 +75,11 @@ const findImportedSchemaFiles = (imports: SourceImport[]): string[] => {
     return sortStrings(new Set(files));
 };
 
-const isImportedSchemaFile = (root: string, filePath: string): boolean =>
-    filePath.endsWith(SCHEMA_SUFFIX) && findImportedSchemaFiles(discoverProjectImports(root)).includes(filePath);
+const projectSchemaFiles = (root: string): { files: string[]; isComplete: boolean } => {
+    const { imports, isComplete } = discoverProjectImports(root);
+
+    return { files: findImportedSchemaFiles(imports), isComplete };
+};
 
 const blockedAssetSpecifier = (source: string): string | null => {
     if (!isBareRelativeAsset(source)) {
@@ -174,8 +177,7 @@ const assertUniqueSchemaBasenames = (schemaFiles: string[]): void => {
 };
 
 const stageAndCompileProjectSchemas = (root: string): string | null => {
-    const imports = discoverProjectImports(root);
-    const schemaFiles = findImportedSchemaFiles(imports);
+    const { files: schemaFiles } = projectSchemaFiles(root);
     assertUniqueSchemaBasenames(schemaFiles);
 
     if (schemaFiles.length === 0) {
@@ -210,7 +212,7 @@ const parseProjectSchemas = (schemaFiles: string[], specifierFor: (filePath: str
 
 const readProjectSchema = (root: string, filePath: string): ParsedSchemaFile => {
     const file = parseSchemaFile(filePath, basename(filePath));
-    const paths = findImportedSchemaFiles(discoverProjectImports(root));
+    const { files: paths } = projectSchemaFiles(root);
     const dependencies = paths.filter((path) => path !== filePath).map((path) => parseSchemaFile(path, basename(path)));
     const resolveSchema = createSchemaResolver([file, ...dependencies]);
 
@@ -237,7 +239,7 @@ const didWriteChanges = (path: string, content: string): boolean => {
 };
 
 const emitSchemaEnv = (rootDir: string): SchemaEnvResult => {
-    const imports = discoverProjectImports(rootDir);
+    const { imports } = discoverProjectImports(rootDir);
     const importedFiles = findImportedSchemaFiles(imports);
     assertUniqueSchemaBasenames(importedFiles);
     const imported = parseProjectSchemas(importedFiles, getRelativeModuleSpecifier);
@@ -259,5 +261,5 @@ export {
     stageAndCompileProjectSchemas,
     emitSchemaEnv,
     readProjectSchema,
-    isImportedSchemaFile,
+    projectSchemaFiles,
 };
