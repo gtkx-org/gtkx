@@ -773,6 +773,12 @@ Independent source review, Rust formatting, Clippy and affected typechecks pass.
 
 The array codec and all ten container modules were read with hash tables, references, byte/bigint/buffer/struct codecs, stash ownership, allocation/field/call APIs and typed views. Runtime scalar plans, native-value conversion, hash tables, output storage, calls, descriptor types and fields were also read with their public collection tests. This confirms that runtime already owns string conversion. Moving byte-array value normalization is the next bounded R2 slice; native storage, transfer and release remain native responsibilities.
 
+### Supported Node cache APIs
+
+The compile-cache entry and cleanup store now import Node's cache APIs directly. Their availability checks supported Node versions below GTKX's declared minimum. Disabled and unwritable caching retain Node's existing behavior, and cleanup still preserves the active cache directory.
+
+All ten public compile-cache cases, the CLI build, affected typechecks, lint and independent review pass. Six cache/loading modules were read completely, 382 baseline lines, with the public cache and React compiler suites. The React compiler tests still inspect private build output instead of running the application; replacement integration coverage is in progress. Module hashing also needs to resolve the actual loaded source or compiled module without guessed filenames or a shared fallback hash.
+
 ## Next work
 
 The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.
