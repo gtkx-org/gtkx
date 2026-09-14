@@ -57,6 +57,31 @@ describe("Tasks", () => {
         expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Book flights" })).toBeDefined();
     });
 
+    it.each(["missing", "<b>missing</b>", "missing & < café"])("shows the literal search query %s", async (query) => {
+        await render(<App />, { container: rootElement });
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Search (Ctrl+F)" }));
+        const search = await screen.findByPlaceholderText("Search tasks…");
+        await userEvent.type(search, query);
+
+        expect(await screen.findByText(`No tasks match “${query}”`)).toHaveTextContent(`No tasks match “${query}”`);
+    });
+
+    it.each(["Errands & café", "<b>Travel</b>"])("creates a list with the literal name %s", async (title) => {
+        await render(<App />, { container: rootElement });
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New List" }));
+        const name = await screen.findByPlaceholderText("List name");
+        await userEvent.type(name, title);
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Add" }));
+
+        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
+        expect(row).toHaveAccessibleName(title);
+        await userEvent.click(row);
+
+        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeNull();
+    });
+
     it("marks a task complete", async () => {
         await render(<App />, { container: rootElement });
 

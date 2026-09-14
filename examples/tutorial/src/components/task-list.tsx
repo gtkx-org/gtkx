@@ -1,3 +1,4 @@
+import { markupEscapeText } from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { useTranslation } from "@gtkx/i18n";
 import { AdwClamp, AdwEntryRow, AdwStatusPage } from "@gtkx/jsx/adw";
@@ -63,7 +64,7 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
                                 cssClasses={["compact"]}
                                 iconName={empty.icon}
                                 title={empty.title}
-                                description={empty.description}
+                                description={markupEscapeText(empty.description, -1)}
                             />
                         ) : null}
                     </GtkBox>
