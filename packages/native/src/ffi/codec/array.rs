@@ -277,8 +277,9 @@ fn transfer_items(
         if ptr.is_null() {
             bail!("GObject in {context} has a null pointer");
         }
+        let release = item_codec.transfer_release()?;
         let element = unsafe { item_codec.ref_for_transfer(ptr) }?;
-        if let Some(release) = item_codec.transfer_release() {
+        if let Some(release) = release {
             acquired.push(ffi::PendingTransfer::new(element, release));
         }
         ptrs.push(element);

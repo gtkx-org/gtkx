@@ -32,7 +32,7 @@ pub enum ReleaseKind {
     GFree,
     ObjectUnref,
     BoxedFree(glib::Type),
-    Fundamental(UnrefFn),
+    Function(UnrefFn),
     StrFreeV,
     StringElements,
     HashTableUnref,
@@ -69,7 +69,7 @@ impl Drop for PendingTransfer {
                 ReleaseKind::BoxedFree(type_) => {
                     glib::gobject_ffi::g_boxed_free(type_.into_glib(), self.ptr);
                 }
-                ReleaseKind::Fundamental(unref) => unref(self.ptr),
+                ReleaseKind::Function(unref) => unref(self.ptr),
                 ReleaseKind::StrFreeV => {
                     glib::ffi::g_strfreev(self.ptr.cast::<*mut std::ffi::c_char>());
                 }

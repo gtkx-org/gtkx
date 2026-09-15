@@ -29,6 +29,17 @@ pub struct StructCodec {
 }
 
 impl Encoder for StructCodec {
+    fn owned_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
+        if self.ownership.is_borrowed() {
+            return Ok(None);
+        }
+        self.ensure_transfer(self.ownership)?;
+        Ok(Some(self.free_fn()?.map_or(
+            ffi::ReleaseKind::GFree,
+            ffi::ReleaseKind::Function,
+        )))
+    }
+
     fn object_ptr_context(&self) -> &'static str {
         "Struct object"
     }

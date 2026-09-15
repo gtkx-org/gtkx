@@ -143,10 +143,11 @@ impl Encoder for ObjectCodec {
         Ok(())
     }
 
-    fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
-        self.ownership
+    fn owned_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
+        Ok(self
+            .ownership
             .is_full()
-            .then_some(ffi::ReleaseKind::ObjectUnref)
+            .then_some(ffi::ReleaseKind::ObjectUnref))
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {

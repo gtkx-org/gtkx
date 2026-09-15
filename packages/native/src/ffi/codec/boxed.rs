@@ -5,7 +5,6 @@ use glib::{self};
 use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
 use crate::handle::{Boxed, BoxedFreeFn, Handle, HandleClass};
-use crate::host::error_reporter::ReportErr as _;
 
 const POINTER_TYPE: &str = "it is registered as a plain pointer type rather than a boxed one, so \
                             nothing names the functions that would copy or free it";
@@ -63,22 +62,14 @@ impl BoxedCodec {
         })
     }
 
-    fn boxed_with_free_fn(
-        &self,
-        ptr: *mut c_void,
-        free_fn_name: &str,
-        transfer: Ownership,
-    ) -> anyhow::Result<Handle> {
+    fn free_fn(&self) -> anyhow::Result<Option<BoxedFreeFn>> {
+        let Some(free_fn_name) = self.free_fn_name.as_deref() else {
+            return Ok(None);
+        };
         let library_name = self.shared_library.as_deref().unwrap_or("(no library)");
-
-        let free_fn = Self::lookup_free_fn(library_name, free_fn_name)
-            .map_err(|e| anyhow::anyhow!("Cannot decode boxed '{}': {e}", self.type_name))?;
-
-        if transfer.is_full() {
-            Ok(Boxed::from_glib_full_with_free_fn(ptr, free_fn).into())
-        } else {
-            Ok(Handle::from_glib_borrow(ptr))
-        }
+        Self::lookup_free_fn(library_name, free_fn_name)
+            .map(Some)
+            .map_err(|e| anyhow::anyhow!("Cannot decode boxed '{}': {e}", self.type_name))
     }
 
     fn with_free_fn(
@@ -86,15 +77,14 @@ impl BoxedCodec {
         ptr: *mut c_void,
         transfer: Ownership,
     ) -> anyhow::Result<Option<Handle>> {
-        let Some(free_fn_name) = self.free_fn_name.as_deref() else {
+        let Some(free_fn) = self.free_fn()? else {
             return Ok(None);
         };
-
-        Ok(Some(self.boxed_with_free_fn(
-            ptr,
-            free_fn_name,
-            transfer,
-        )?))
+        Ok(Some(if transfer.is_full() {
+            Boxed::from_glib_full_with_free_fn(ptr, free_fn).into()
+        } else {
+            Handle::from_glib_borrow(ptr)
+        }))
     }
 
     fn adopted(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
@@ -221,14 +211,24 @@ impl Encoder for BoxedCodec {
         Ok(())
     }
 
-    fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
+    fn owned_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
         if self.ownership.is_borrowed() {
-            return None;
+            return Ok(None);
         }
-        self.type_()
-            .report_err("Boxed transfer release: cannot resolve type")
-            .flatten()
-            .map(ffi::ReleaseKind::BoxedFree)
+        let type_ = self.type_()?;
+        if let Some(type_) = type_.filter(|type_| is_boxed_type(*type_)) {
+            return Ok(Some(ffi::ReleaseKind::BoxedFree(type_)));
+        }
+        if let Some(free_fn) = self.free_fn()? {
+            return Ok(Some(ffi::ReleaseKind::Function(free_fn)));
+        }
+        match type_ {
+            Some(_) => bail!(
+                "Cannot take ownership of '{}': {POINTER_TYPE}",
+                self.type_name
+            ),
+            None => Ok(Some(ffi::ReleaseKind::GFree)),
+        }
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
