@@ -829,6 +829,10 @@ fn seed_ref<'e>(
         return Ok(value::js_null(env)?);
     }
     let seeded = match inner_codec {
+        Codec::Bytes(bytes_codec) if bytes_codec.length.is_none() => {
+            unsafe { bytes_codec.read(env, ReadCtx::slot(inner_ptr, "ref seed")) }
+                .report_err("callback: failed to seed ref")
+        }
         // A length-bounded inout array takes its extent from the sibling the caller passed beside
         // it, exactly the way an incoming array argument does. It is read without being freed: the
         // write-back releases the container it replaces.
