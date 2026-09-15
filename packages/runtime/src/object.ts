@@ -26,6 +26,7 @@ type ConstructBinding = [name: string, descriptor: Descriptor];
 type ConstructBindings = Record<string, ConstructBinding>;
 type ResolvedBindings = { generation: number; bindings: ConstructBindings };
 
+const constructFactories: WeakMap<object, () => object> = new WeakMap();
 const declaredBindings: WeakMap<AnyClass, ConstructBindings> = new WeakMap();
 const resolvedBindings: WeakMap<AnyClass, ResolvedBindings> = new WeakMap();
 const declarations = { generation: 0 };
@@ -105,6 +106,10 @@ function registerConstructProperties(cls: AnyClass, bindings: ConstructBindings)
     declarations.generation += 1;
 }
 
+function registerConstructFactory<T extends object>(cls: AnyClass<T>, factory: () => T): void {
+    constructFactories.set(cls, factory);
+}
+
 function constructPropertyForEntry(
     source: { gtype: bigint; bindings: ConstructBindings; wrapper: object },
     name: string,
@@ -172,7 +177,8 @@ function newObjectWithProperties<T extends object>(gtype: bigint, props: object,
         }
     }
 
-    const existing = newObject(gtype, names, values, wrapper, registerWrapper);
+    const existing = constructFactories.get(wrapper.constructor)?.() ??
+        newObject(gtype, names, values, wrapper, registerWrapper);
 
     if (existing !== null) {
         return existing as T;
@@ -252,6 +258,7 @@ export {
     newObjectWithProperties,
     getProperty,
     registerConstructProperties,
+    registerConstructFactory,
     setProperty,
     type ConstructBinding,
     type ConstructBindings,

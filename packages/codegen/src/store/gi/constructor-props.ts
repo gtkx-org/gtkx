@@ -107,6 +107,12 @@ const fundamentalMessage = (qualified: string, hint: string | undefined): string
         : `${reason}; use ${qualified}.${hint} instead.`;
 };
 
+const SINGLETON_ACTIONS: Set<string> = new Set([
+    "Gtk.ActivateAction",
+    "Gtk.MnemonicAction",
+    "Gtk.NothingAction",
+]);
+
 const INITIALIZATION_INTERFACES: Set<string> = new Set(["AsyncInitable", "Initable"]);
 
 const requiresFactoryInitialization = (context: ModuleContext, klass: GirClass): boolean => {
@@ -159,6 +165,13 @@ const renderClassConstructor = (context: ModuleContext, spec: ClassConstructorSp
 
     if (requiresFactoryInitialization(context, klass)) {
         return renderInitializationGuard(context, spec);
+    }
+
+    if (SINGLETON_ACTIONS.has(`${context.namespace.name}.${klass.name}`)) {
+        context.addRuntimeInternalImport("registerConstructFactory");
+        context.collectRegistration(`registerConstructFactory(_${className}, _${className}.get);`);
+
+        return undefined;
     }
 
     if (!hasParent) {

@@ -813,6 +813,14 @@ Real desktop-bus integration coverage replaces the two mocked notification tests
 
 The reminder chapter follows the declarative implementation and keeps React explanations in linked upstream documentation. Translation messages are unchanged. The review covered 38 tutorial files, 3,394 baseline lines, plus the generated notification reference and the final implementation, tests and chapter. Native action activation is covered; GNOME Shell interaction and activation after application exit remain separate contracts requiring review.
 
+### Singleton shortcut construction
+
+Generated construction for GTK's activate, mnemonic and nothing actions now delegates to their native singleton getters. Runtime keeps the factory registration and existing wrapper identity behavior; the generated modules only register the three factories. Other classes retain their existing construction path.
+
+All 11 declarative shortcut cases pass, including direct construction, shared JSX references, removal, remounting and keyboard activation. A running consumer was inspected through its widget tree and screenshot, confirming each action's native behavior and an independent callback shortcut. Builds, full lint and typechecking pass. Knip now recognizes the copied React compiler fixture entry and the generated-only runtime factory export. The constructor review covered 29 files, 6,306 lines, with partial supporting reads recorded separately. Broader constructor and factory-prop contracts remain open.
+
+The combined CLI run passes 575 cases but fails nine cases across five files. Those older build tests execute source plugins through Vitest, whose module resolution does not match the Node URLs used for cache hashing. They need to exercise the built CLI without adding a production source-extension fallback. The remaining workspace checkpoint is still running.
+
 ### Latest remote checkpoint
 
 At `fdb77c7c`, every main CI job passes, including all 591 CLI tests across 55 files in 2,172 seconds. The expanded CLI budget accommodates that run. CodeQL passes. The instrumented suite passes all 4,930 tests across 382 files in 3,175 seconds; Sonar analysis and its quality-gate check both pass. The 90-minute coverage budget accommodates the complete run.
