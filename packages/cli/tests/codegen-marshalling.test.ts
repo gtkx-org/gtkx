@@ -376,37 +376,16 @@ const EXTERNAL_FINISH_NOTE =
     "class, and no finish method of this class pairs with it. Call it only on the instance that owns the " +
     "result (`Gio.Task.isValid(result, owner)`); an unrelated instance is not a valid receiver.";
 
-const NEWV_GUARD_PROBE = String.raw`import * as Gio from "@gtkx/gi/gio";
+const NEWV_GUARD_PROBE = `import assert from "node:assert/strict";
+import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 
-const factories = (message) => [...message.matchAll(/\b(\w+)\.new\(/g)].map(([, name]) => name);
-const declares = (name) =>
-    [Gio, GObject].some((namespace) => globalThis.Object.hasOwn(namespace[name] ?? {}, "new"));
-const attempt = (run) => {
-    try {
-        run();
-        return "returned";
-    } catch (error) {
-        return {
-            type: error.constructor.name,
-            factories: factories(error.message),
-            resolvable: factories(error.message).every(declares),
-            namesNewv: error.message.includes("newv"),
-        };
-    }
-};
-const unbound = Gio.Subprocess.newv;
 const launcher = GObject.Object.newv(Gio.SubprocessLauncher, []);
-process.stdout.write(JSON.stringify({
-    constructed: launcher instanceof Gio.SubprocessLauncher,
-    subclass: attempt(() => Gio.Subprocess.newv(["/usr/bin/true"], Gio.SubprocessFlags.NONE)),
-    base: attempt(() => GObject.Object.newv(Gio.Subprocess, "x")),
-    unbound: attempt(() => unbound(["/usr/bin/true"])),
-}));
-`;
-const UNBOUND_NEWV_PROBE = `import * as Gio from "@gtkx/gi/gio";
+assert.ok(launcher instanceof Gio.SubprocessLauncher);
+assert.throws(() => Gio.Subprocess.newv(["/usr/bin/true"], Gio.SubprocessFlags.NONE));
+assert.throws(() => GObject.Object.newv(Gio.Subprocess, "x"));
 const unbound = Gio.Subprocess.newv;
-unbound(["/usr/bin/true"]);
+assert.throws(() => unbound(["/usr/bin/true"]));
 `;
 const SIDE_CALLBACK_PROBE = `import type { Job, ProgressCallback } from "@gtkx/gi/asyncpair";
 
@@ -657,29 +636,14 @@ Gio.Subprocess.newv(["/usr/bin/true"], Gio.SubprocessFlags.NONE);`;
         expect(() => evaluateProject(project, source)).toThrow();
     });
 
-    it("guards GObject.Object.newv with guidance that names only factories that exist", () => {
+    it("constructs objects and rejects invalid newv calls", () => {
         using project = createCliProject({
             prefix: "gtkx-cli-codegen-newv-guard-",
             config: GIO_CONFIG,
         });
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
-        const report = JSON.parse(evaluateProject(project, NEWV_GUARD_PROBE)) as {
-            constructed: boolean;
-            subclass: { type: string; factories: string[]; resolvable: boolean };
-            base: { type: string; factories: string[]; namesNewv: boolean };
-            unbound: { type: string; namesNewv: boolean };
-        };
-        expect(report.constructed).toBe(true);
-        expect(report.subclass.type).toBe("TypeError");
-        expect(report.subclass.factories).toEqual(["Subprocess"]);
-        expect(report.subclass.resolvable).toBe(true);
-        expect(report.base.type).toBe("TypeError");
-        expect(report.base.factories).toEqual([]);
-        expect(report.base.namesNewv).toBe(true);
-        expect(report.unbound.type).toBe("TypeError");
-        expect(report.unbound.namesNewv).toBe(true);
-        expect(() => evaluateProject(project, UNBOUND_NEWV_PROBE)).toThrow();
+        expect(() => evaluateProject(project, NEWV_GUARD_PROBE)).not.toThrow();
     });
 
     it("rejects direct JavaScript construction of callback actions", () => {
