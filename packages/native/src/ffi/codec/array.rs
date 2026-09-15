@@ -1,7 +1,7 @@
 use std::ffi::CString;
 
 use anyhow::bail;
-pub use container::{ArrayBounds, ArrayKind};
+pub use container::{ArrayBounds, ArrayKind, ElementOwnership};
 use container::{ArrayContainer, ArrayContainerCodec, ArrayRead, ViewEncoding};
 use item::ItemCodec;
 use null_terminated::terminated_ptrs;
@@ -26,6 +26,7 @@ mod sized;
 pub struct ArrayCodec {
     pub item_codec: Box<Codec>,
     pub ownership: Ownership,
+    pub(crate) element_ownership: ElementOwnership,
     pub element_size: Option<usize>,
     pub(crate) is_bytes: bool,
     pub(crate) caller_allocated: bool,
@@ -41,6 +42,7 @@ impl ArrayCodec {
         bounds: ArrayBounds,
         element_size: Option<usize>,
         is_bytes: bool,
+        element_ownership: ElementOwnership,
     ) -> anyhow::Result<Self> {
         anyhow::ensure!(
             kind != ArrayKind::Cursor || ownership.is_borrowed(),
@@ -51,9 +53,24 @@ impl ArrayCodec {
             "A byte array descriptor needs a u8 item codec, got {item_codec:?}"
         );
 
+        if element_ownership == ElementOwnership::Container {
+            anyhow::ensure!(
+                matches!(kind, ArrayKind::GPtrArray | ArrayKind::GArray),
+                "Container element ownership requires GPtrArray or GArray"
+            );
+            anyhow::ensure!(
+                matches!(
+                    &*item_codec,
+                    Codec::Integer(_) | Codec::BigInt(_) | Codec::Float(_)
+                ) || item_codec.transfer().is_full(),
+                "Container-owned resources require full item ownership"
+            );
+        }
+
         Ok(Self {
             item_codec,
             ownership,
+            element_ownership,
             element_size,
             is_bytes,
             caller_allocated: false,
@@ -120,7 +137,16 @@ impl ArrayCodec {
     }
 
     pub(crate) fn ptr_array_item(&self) -> Option<Box<Codec>> {
-        matches!(self.container, ArrayContainerCodec::PtrArray(_)).then(|| self.item_codec.clone())
+        (matches!(self.container, ArrayContainerCodec::PtrArray(_))
+            && self.element_ownership == ElementOwnership::Separate)
+            .then(|| self.item_codec.clone())
+    }
+
+    fn declared_read(&self, ownership: Ownership) -> ArrayRead {
+        match self.element_ownership {
+            ElementOwnership::Separate => ArrayRead::Declared(ownership),
+            ElementOwnership::Container => ArrayRead::Container(ownership),
+        }
     }
 
     pub(crate) fn replacement_extent(
@@ -274,7 +300,7 @@ impl Encoder for ArrayCodec {
 impl Decoder for ArrayCodec {
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
         self.container
-            .decode(self, env, stash, ArrayRead::Declared(self.ownership))
+            .decode(self, env, stash, self.declared_read(self.ownership))
     }
 
     unsafe fn read_value<'e>(
@@ -290,7 +316,7 @@ impl Decoder for ArrayCodec {
         let read = if transfer.is_borrowed() {
             ArrayRead::Borrowed
         } else {
-            ArrayRead::Declared(transfer)
+            self.declared_read(transfer)
         };
         self.container
             .decode(self, env, &ffi::Stash::Ptr(ptr), read)
@@ -309,7 +335,7 @@ impl Decoder for ArrayCodec {
             stash,
             ffi_args,
             arg_codecs,
-            ArrayRead::Declared(self.ownership),
+            self.declared_read(self.ownership),
         )
     }
 }

@@ -25,7 +25,7 @@ mod r#ref;
 mod r#struct;
 mod void;
 
-pub use array::{ArrayBounds, ArrayCodec, ArrayKind};
+pub use array::{ArrayBounds, ArrayCodec, ArrayKind, ElementOwnership};
 pub use bigint::BigIntCodec;
 pub use boxed::BoxedCodec;
 pub use buffer::BufferCodec;

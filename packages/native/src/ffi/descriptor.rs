@@ -5,9 +5,9 @@ use napi_derive::napi;
 
 use crate::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BoxedCodec, BufferCodec, BytesCodec,
-    CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind, FloatCodec,
-    FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, RefCodec, StructCodec,
-    VoidCodec,
+    CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind,
+    ElementOwnership, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec,
+    Ownership, RefCodec, StructCodec, VoidCodec,
 };
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
@@ -146,6 +146,7 @@ pub enum Descriptor {
         item_descriptor: NestedDescriptor,
         array_kind: ArrayKind,
         ownership: Ownership,
+        element_ownership: Option<ElementOwnership>,
         base_param_index: Option<u32>,
         size_param_index: Option<u32>,
         fixed_size: Option<u32>,
@@ -291,6 +292,7 @@ impl Descriptor {
                 item_descriptor,
                 array_kind,
                 ownership,
+                element_ownership,
                 base_param_index,
                 size_param_index,
                 fixed_size,
@@ -310,6 +312,7 @@ impl Descriptor {
                     },
                     element_size.map(|n| n as usize),
                     is_bytes.unwrap_or(false),
+                    element_ownership.unwrap_or_default(),
                 )
                 .map_err(|error| Error::from_reason(error.to_string()))?;
                 if is_zero_terminated.unwrap_or(false) {

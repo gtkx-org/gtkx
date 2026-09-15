@@ -61,6 +61,15 @@ pub(crate) unsafe fn call_scoped_gobject_value(
     )?)
 }
 
+pub(super) unsafe extern "C" fn g_object_unref_wrapper(ptr: *mut c_void) {
+    if ptr.is_null() {
+        return;
+    }
+    unsafe {
+        glib::gobject_ffi::g_object_unref(ptr.cast::<glib::gobject_ffi::GObject>());
+    }
+}
+
 unsafe fn object_ref_full(ptr: *mut c_void) -> *mut c_void {
     let obj: glib::Object =
         unsafe { glib::Object::from_glib_none(ptr.cast::<glib::gobject_ffi::GObject>()) };

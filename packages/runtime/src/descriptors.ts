@@ -109,18 +109,16 @@ type CallbackOptions = {
     hasDestroy?: boolean;
     /** Signature of that destroy notify; defaults to `destroyNotify`, a one-argument `GDestroyNotify`. */
     destroyKind?: CallbackDescriptor["destroyKind"];
-    /** The callee also takes a `user_data` pointer; without one the closure can never be freed. */
     hasUserData?: boolean;
     /** Position of `user_data` among the callback's own arguments, dropped before the closure is called. */
     userDataIndex?: number;
     /** Converts a thrown value to the callback's trailing `GError**`. */
     canThrow?: boolean;
-    /** Lifetime of the closure; defaults to `notified` when `hasDestroy` is set and `call` otherwise. */
     scope?: CallbackDescriptor["scope"];
 };
 
 /** The lengths and strides a C array layout needs beyond its element type. */
-type ArrayOptions = {
+type ArrayOptions = Pick<ArrayDescriptor, "elementOwnership"> & {
     /** Stride in bytes between elements stored inline in the array. */
     elementSize?: number | undefined;
     /** Position of the argument whose buffer a cursor array points into. */
@@ -450,7 +448,11 @@ const fundamentalT = (
     return result;
 };
 
-const applyArrayBounds = (result: ArrayDescriptor, options: ArrayOptions): void => {
+const applyArrayMetadata = (result: ArrayDescriptor, options: ArrayOptions): void => {
+    if (options.elementOwnership !== undefined) {
+        result.elementOwnership = options.elementOwnership;
+    }
+
     if (options.baseParamIndex !== undefined) {
         result.baseParamIndex = options.baseParamIndex;
     }
@@ -477,7 +479,7 @@ const arrayT = (
         return result;
     }
 
-    applyArrayBounds(result, options);
+    applyArrayMetadata(result, options);
 
     if (options.elementSize !== undefined) {
         result.elementSize = options.elementSize;

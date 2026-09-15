@@ -2,6 +2,7 @@ use anyhow::bail;
 use enum_dispatch::enum_dispatch;
 use napi_derive::napi;
 
+use super::super::object::g_object_unref_wrapper;
 use super::super::prelude::*;
 use super::ArrayCodec;
 use super::byte_array::GByteArrayCodec;
@@ -40,22 +41,31 @@ pub struct ArrayBounds {
     pub fixed_size: Option<u32>,
 }
 
+#[napi(string_enum = "lowercase")]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ElementOwnership {
+    #[default]
+    Separate,
+    Container,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(super) enum ArrayRead {
     Declared(Ownership),
+    Container(Ownership),
     Borrowed,
 }
 
 impl ArrayRead {
     pub(super) fn transfer(self) -> Ownership {
         match self {
-            Self::Declared(transfer) => transfer,
+            Self::Declared(transfer) | Self::Container(transfer) => transfer,
             Self::Borrowed => Ownership::Borrowed,
         }
     }
 
     pub(super) fn borrows_items(self) -> bool {
-        matches!(self, Self::Borrowed)
+        matches!(self, Self::Borrowed | Self::Container(_))
     }
 }
 
@@ -196,6 +206,46 @@ impl ArrayContainerCodec {
         match self {
             Self::Fixed(fixed) => Some(fixed.extent()),
             _ => None,
+        }
+    }
+}
+
+pub(super) unsafe extern "C" fn free_element_slot(slot: *mut c_void) {
+    unsafe { glib::ffi::g_free(*slot.cast::<*mut c_void>()) };
+}
+
+unsafe extern "C" fn unref_object_slot(slot: *mut c_void) {
+    unsafe { g_object_unref_wrapper(*slot.cast::<*mut c_void>()) };
+}
+
+impl ArrayCodec {
+    pub(super) fn container_destroy(
+        &self,
+        indirect: bool,
+    ) -> anyhow::Result<glib::ffi::GDestroyNotify> {
+        if self.element_ownership == ElementOwnership::Separate {
+            return Ok(None);
+        }
+        anyhow::ensure!(
+            self.inline_element_size().is_none(),
+            "Container-owned inline resources cannot be encoded"
+        );
+        match &*self.item_codec {
+            Codec::Integer(_) | Codec::BigInt(_) | Codec::Float(_) => Ok(None),
+            Codec::Bytes(_) | Codec::Object(_) => match self.item_codec.owned_release()? {
+                Some(ffi::ReleaseKind::GFree) => Ok(Some(if indirect {
+                    free_element_slot
+                } else {
+                    glib::ffi::g_free
+                })),
+                Some(ffi::ReleaseKind::ObjectUnref) => Ok(Some(if indirect {
+                    unref_object_slot
+                } else {
+                    g_object_unref_wrapper
+                })),
+                _ => bail!("Container-owned item has no supported destructor"),
+            },
+            _ => bail!("Container-owned encoding requires string, Object or scalar items"),
         }
     }
 }
