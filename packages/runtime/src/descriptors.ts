@@ -104,17 +104,11 @@ type BoxedOptions = {
 };
 
 /** Callback result, closure ownership, and lifetime options. */
-type CallbackOptions = {
-    /** The callee also takes a destroy notify, which frees the closure once it is done with it. */
-    hasDestroy?: boolean;
-    /** Signature of that destroy notify; defaults to `destroyNotify`, a one-argument `GDestroyNotify`. */
-    destroyKind?: CallbackDescriptor["destroyKind"];
-    hasUserData?: boolean;
-    /** Position of `user_data` among the callback's own arguments, dropped before the closure is called. */
-    userDataIndex?: number;
-    /** Converts a thrown value to the callback's trailing `GError**`. */
-    canThrow?: boolean;
-    scope?: CallbackDescriptor["scope"];
+type CallbackOptions = Pick<
+    CallbackDescriptor,
+    "hasDestroy" | "hasUserData" | "userDataIndex" | "canThrow"
+> & {
+    [Key in "destroyKind" | "scope"]?: CallbackDescriptor[Key] | undefined;
 };
 
 /** The lengths and strides a C array layout needs beyond its element type. */
