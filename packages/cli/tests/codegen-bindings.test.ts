@@ -1,6 +1,4 @@
-import { spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCli } from "./cli-project.js";
 import {
@@ -28,9 +26,9 @@ import {
     PURE,
     RECORD_FIELD_ACCESSORS,
 } from "./codegen-helpers.js";
+import { isolateTypeConsumer, typecheckFile } from "./type-consumer.js";
 
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
-const STATIC_NARROW_MODULE = "./node_modules/.gtkx/gi/staticnarrow/staticnarrow.js";
+const STATIC_NARROW_MODULE = "@gtkx/gi/staticnarrow";
 const STATIC_NARROW_PROBE = `import { Base, Compact, Derived, Leaf } from "${STATIC_NARROW_MODULE}";
 
 const base: Base = Base.new();
@@ -82,33 +80,6 @@ const REJECTED_NAMED_PROPS_PROBE = `import type { GBindingGroupProps } from "@gt
 export const group: GBindingGroupProps = { key: {} };
 `;
 
-const typecheckGenerated = (project: CliProject, file = "probe.ts"): void => {
-    const result = spawnSync(
-        process.execPath,
-        [
-            TYPESCRIPT_CLI,
-            "--noEmit",
-            "--module",
-            "ESNext",
-            "--moduleResolution",
-            "Bundler",
-            "--skipLibCheck",
-            "false",
-            "--strict",
-            "--target",
-            "ESNext",
-            "--types",
-            "node",
-            file,
-        ],
-        { cwd: project.root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-    );
-
-    if (result.status !== 0) {
-        throw new Error(`${result.stdout}${result.stderr}`);
-    }
-};
-
 describe("gtkx codegen (libraries the generated types have to escape)", () => {
     const state: { project: CliProject; status: number | null } = {
         project: { root: "", nodeModules: "" },
@@ -125,6 +96,7 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
         });
 
         state.status = runCli(state.project, ["codegen"]).status;
+        isolateTypeConsumer(state.project);
     });
 
     afterAll(() => {
@@ -136,7 +108,7 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
         expect(declarations()).toContain("StaticBase<");
         expect(classBody(declarations(), "Derived")).toContain("lookup(value: number): number;");
         expect(classBody(declarations(), "Derived")).not.toContain("this: never");
-        typecheckGenerated(state.project);
+        expect(typecheckFile(state.project, "probe.ts")).toBe(0);
     });
 
     it("declares a narrowing that stays assignable to the inherited method directly on the class", () => {
@@ -153,9 +125,7 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
 
     it.each(Object.keys(STATIC_NARROW_REJECTED))("rejects an incompatible consumer in %s", (file) => {
         expect(state.status).toBe(0);
-        expect(() => {
-            typecheckGenerated(state.project, file);
-        }).toThrow();
+        expect(typecheckFile(state.project, file)).not.toBe(0);
     });
 
     it("binds a type whose GIR name starts with a digit", () => {
@@ -195,10 +165,8 @@ export const value = NumberType.FIRST;
         });
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
-        typecheckGenerated(project);
-        expect(() => {
-            typecheckGenerated(project, "rejected.ts");
-        }).toThrow();
+        expect(typecheckFile(project, "probe.ts")).toBe(0);
+        expect(typecheckFile(project, "rejected.ts")).not.toBe(0);
     });
 });
 
@@ -225,19 +193,17 @@ describe("gtkx codegen (configured props imports)", () => {
 
     it("exposes props imported by name from another package", () => {
         expect(status).toBe(0);
-        typecheckGenerated(project, "named.ts");
+        expect(typecheckFile(project, "named.ts")).toBe(0);
     });
 
     it("combines named props imports with runtime and type-only GI namespaces", () => {
         expect(status).toBe(0);
-        typecheckGenerated(project, "shared.ts");
+        expect(typecheckFile(project, "shared.ts")).toBe(0);
     });
 
     it("rejects values incompatible with the imported props", () => {
         expect(status).toBe(0);
-        expect(() => {
-            typecheckGenerated(project, "rejected.ts");
-        }).toThrow();
+        expect(typecheckFile(project, "rejected.ts")).not.toBe(0);
     });
 });
 

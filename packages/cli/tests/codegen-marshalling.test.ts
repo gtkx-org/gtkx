@@ -1,14 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { createCliProject, runCli } from "./cli-project.js";
+import { type CliProject, createCliProject, runCli } from "./cli-project.js";
 import { fixtureConfig } from "./codegen-helpers.js";
 import { MARSHALLING_CONSUMERS } from "./codegen-marshalling-consumers.js";
-import { isolateTypeConsumer, typecheckSource } from "./type-consumer.js";
+import { isolateTypeConsumer, typecheckFile, typecheckSource } from "./type-consumer.js";
 
-const TYPESCRIPT_CLI = fileURLToPath(
-    new URL("../../../node_modules/typescript/bin/tsc", import.meta.url),
-);
 const GIO_CONFIG = `export default {
     applicationId: "com.gtkx.gioprobe",
     libraries: ["Gio-2.0"],
@@ -390,28 +386,12 @@ export const transform = (job: Job): void => {
 };
 `;
 
-const typecheckProject = (
-    project: { root: string },
-    file = "probe.ts",
-): void => {
-    execFileSync(
-        process.execPath,
-        [
-            TYPESCRIPT_CLI,
-            "--noEmit",
-            "--module",
-            "NodeNext",
-            "--moduleResolution",
-            "NodeNext",
-            "--skipLibCheck",
-            "--strict",
-            "--target",
-            "ESNext",
-            file,
-        ],
-        { cwd: project.root, stdio: "pipe" },
-    );
-};
+const typecheckProject = (project: CliProject, file = "probe.ts"): number =>
+    typecheckFile(project, file, [
+        "--module", "NodeNext",
+        "--moduleResolution", "NodeNext",
+        "--skipLibCheck", "true",
+    ]);
 
 const evaluateProject = (project: { root: string }, source: string): string =>
     execFileSync(
@@ -453,9 +433,7 @@ describe("gtkx codegen marshalling", () => {
         });
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
-        expect(() => {
-            typecheckProject(project);
-        }).not.toThrow();
+        expect(typecheckProject(project)).toBe(0);
     });
 
     it("exposes the factory for objects that require initialization", () => {
@@ -478,9 +456,7 @@ process.stdout.write(typeof DBusProxy.newForBusSync);`;
         });
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
-        expect(() => {
-            typecheckProject(project);
-        }).not.toThrow();
+        expect(typecheckProject(project)).toBe(0);
     });
 
     it("retains marshalable interface properties and rejects unsafe property helpers", () => {
@@ -494,17 +470,13 @@ process.stdout.write(typeof DBusProxy.newForBusSync);`;
         });
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
-        expect(() => {
-            typecheckProject(project);
-        }).not.toThrow();
+        expect(typecheckProject(project)).toBe(0);
         expect(evaluateProject(project, PROPERTY_OVERRIDE_SPELLING_PROBE)).toBe(
             "margin-top,margin-top,margin-top",
         );
 
         for (const file of Object.keys(PROPERTY_TYPE_ERRORS)) {
-            expect(() => {
-                typecheckProject(project, file);
-            }).toThrow();
+            expect(typecheckProject(project, file)).not.toBe(0);
         }
     });
 
@@ -516,14 +488,10 @@ process.stdout.write(typeof DBusProxy.newForBusSync);`;
         });
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
-        expect(() => {
-            typecheckProject(project, "signatures.ts");
-        }).not.toThrow();
+        expect(typecheckProject(project, "signatures.ts")).toBe(0);
 
         for (const file of Object.keys(GIO_TYPE_ERRORS)) {
-            expect(() => {
-                typecheckProject(project, file);
-            }).toThrow();
+            expect(typecheckProject(project, file)).not.toBe(0);
         }
 
         const source = `import * as Gio from "@gtkx/gi/gio";
@@ -567,9 +535,7 @@ new Client();`,
         });
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
-        expect(() => {
-            typecheckProject(project);
-        }).toThrow();
+        expect(typecheckProject(project)).not.toBe(0);
         const source = `import { DBusProxy } from "@gtkx/gi/gio";
 new DBusProxy();`;
         expect(() => evaluateProject(project, source)).toThrow();

@@ -57,9 +57,7 @@ const isolateTypeConsumer = (project: CliProject): void => {
     copyTypeDependencies(project);
 };
 
-const typecheckSource = (project: CliProject, source: string): number => {
-    writeFileSync(join(project.root, "consumer.tsx"), source);
-
+const typecheckFile = (project: CliProject, file: string, compilerOptions: readonly string[] = []): number => {
     const result = spawnSync(process.execPath, [
         TYPESCRIPT_CLI,
         "--noEmit",
@@ -70,7 +68,8 @@ const typecheckSource = (project: CliProject, source: string): number => {
         "--strict",
         "--skipLibCheck", "false",
         "--types", "node",
-        "consumer.tsx",
+        ...compilerOptions,
+        file,
     ], { cwd: project.root, encoding: "utf8" });
 
     if (result.status === null) {
@@ -80,4 +79,10 @@ const typecheckSource = (project: CliProject, source: string): number => {
     return result.status;
 };
 
-export { isolateTypeConsumer, typecheckSource };
+const typecheckSource = (project: CliProject, source: string): number => {
+    writeFileSync(join(project.root, "consumer.tsx"), source);
+
+    return typecheckFile(project, "consumer.tsx");
+};
+
+export { isolateTypeConsumer, typecheckFile, typecheckSource };
