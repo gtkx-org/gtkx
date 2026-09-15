@@ -249,7 +249,7 @@ The release is still one command, and the localization work is visible in the sh
 [gtkx] Deploying Tasks 1.0.0-1 as gtkx-tutorial (x64) to appimage, deb, flatpak, rpm
 [gtkx] Building ~/tasks/src/index.tsx
 [gtkx] Validated the desktop entry and the metainfo
-[gtkx] Bundled Node.js v26.7.0 (109.4 MiB, runtime glibc >= 2.28)
+[gtkx] Bundled Node.js v26.8.2 (111.8 MiB, runtime glibc >= 2.28)
 [gtkx] Staged 11 files into build/x64/stage
 [gtkx] Wrote build/x64/targets/appimage/AppRun
 [gtkx] deb package requires glibc >= 2.38
