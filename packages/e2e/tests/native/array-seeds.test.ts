@@ -22,8 +22,14 @@ const layouts = [
     { name: "sized", id: 0, make: (item: Descriptor) => t.sizedArray(item, 1, "full") },
     { name: "fixed", id: 1, make: (item: Descriptor, length: number) => t.fixedArray(item, length, "full") },
     { name: "terminated", id: 2, make: (item: Descriptor) => t.array(item, "array", "full") },
-    { name: "GPtrArray", id: 3, make: (item: Descriptor) => t.ptrArray(item, "full") },
-    { name: "GArray", id: 4, make: (item: Descriptor) => t.array(item, "garray", "full") },
+    {
+        name: "GPtrArray", id: 3,
+        make: (item: Descriptor) => t.ptrArray(item, "full", { elementOwnership: "container" }),
+    },
+    {
+        name: "GArray", id: 4,
+        make: (item: Descriptor) => t.array(item, "garray", "full", { elementOwnership: "container" }),
+    },
 ];
 const handleTypes = [
     {

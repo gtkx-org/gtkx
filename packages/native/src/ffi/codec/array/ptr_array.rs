@@ -13,6 +13,15 @@ fn element_count(len: usize) -> anyhow::Result<u32> {
 #[derive(Debug, Clone)]
 pub(crate) struct GPtrArrayCodec;
 
+impl GPtrArrayCodec {
+    pub(super) fn items(ptr: *mut c_void) -> impl Iterator<Item = *mut c_void> {
+        let ptr_array = ptr.cast::<glib::ffi::GPtrArray>();
+        let len = unsafe { (*ptr_array).len as usize };
+        let pdata = unsafe { (*ptr_array).pdata };
+        (0..len).map(move |i| unsafe { *pdata.add(i) })
+    }
+}
+
 impl ArrayContainer for GPtrArrayCodec {
     fn encode(
         &self,
@@ -51,12 +60,8 @@ impl ArrayContainer for GPtrArrayCodec {
         };
 
         let ptr_array = ptr.cast::<glib::ffi::GPtrArray>();
-        let len = unsafe { (*ptr_array).len as usize };
-        let pdata = unsafe { (*ptr_array).pdata };
-        let items = (0..len).map(move |i| unsafe { *pdata.add(i) });
-
         let is_full = read.transfer().is_full();
-        codec.decode_ptr_iter(env, items, read, move || {
+        codec.decode_ptr_iter(env, Self::items(ptr), read, move || {
             if is_full {
                 unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
             }

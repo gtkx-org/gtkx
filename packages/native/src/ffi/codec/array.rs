@@ -229,6 +229,17 @@ impl ArrayCodec {
             None
         };
 
+        let separate_elements = if self.element_ownership == ElementOwnership::Separate
+            && self.inline_element_size().is_none()
+            && matches!(
+                self.container,
+                ArrayContainerCodec::PtrArray(_) | ArrayContainerCodec::GArray(_)
+            ) {
+            self.item_codec.owned_release()?
+        } else {
+            None
+        };
+
         Ok(move |ptr| {
             let container = ffi::PendingTransfer::new(ptr, release);
             if let Some((length, item)) = contiguous_elements {
@@ -245,6 +256,21 @@ impl ArrayCodec {
             }
             if let Some((list, item)) = elements {
                 list.release_items(ptr, item);
+            }
+            if let Some(item) = separate_elements {
+                match &self.container {
+                    ArrayContainerCodec::PtrArray(_) => {
+                        for ptr in ptr_array::GPtrArrayCodec::items(ptr) {
+                            drop(ffi::PendingTransfer::new(ptr, item));
+                        }
+                    }
+                    ArrayContainerCodec::GArray(_) => {
+                        for ptr in garray::GArrayCodec::items(ptr) {
+                            drop(ffi::PendingTransfer::new(ptr, item));
+                        }
+                    }
+                    _ => {}
+                }
             }
             drop(container);
         })

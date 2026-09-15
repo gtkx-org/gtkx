@@ -14,6 +14,22 @@ fn element_count(len: usize, what: &str) -> anyhow::Result<u32> {
 #[derive(Debug, Clone)]
 pub(crate) struct GArrayCodec;
 
+impl GArrayCodec {
+    fn data(ptr: *mut c_void) -> (*const u8, usize) {
+        let g_array = ptr.cast::<glib::ffi::GArray>();
+        unsafe { ((*g_array).data.cast::<u8>(), (*g_array).len as usize) }
+    }
+
+    pub(super) fn items(ptr: *mut c_void) -> impl Iterator<Item = *mut c_void> {
+        let (data, len) = Self::data(ptr);
+        (0..len).map(move |i| unsafe {
+            data.add(i * size_of::<*mut c_void>())
+                .cast::<*mut c_void>()
+                .read_unaligned()
+        })
+    }
+}
+
 impl ArrayContainer for GArrayCodec {
     fn encode(
         &self,
@@ -86,9 +102,7 @@ impl ArrayContainer for GArrayCodec {
             return Ok(value::js_null(env)?);
         };
 
-        let g_array = ptr as *const glib::ffi::GArray;
-        let data = unsafe { (*g_array).data as *const u8 };
-        let len = unsafe { (*g_array).len as usize };
+        let (data, len) = Self::data(ptr);
         let decoded = codec.decode_bytes_or_items(env, data, len, "GArray", read);
 
         if read.transfer().is_full() {
