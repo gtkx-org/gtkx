@@ -40,6 +40,25 @@ pub struct ArrayBounds {
     pub fixed_size: Option<u32>,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(super) enum ArrayRead {
+    Declared(Ownership),
+    Borrowed,
+}
+
+impl ArrayRead {
+    pub(super) fn transfer(self) -> Ownership {
+        match self {
+            Self::Declared(transfer) => transfer,
+            Self::Borrowed => Ownership::Borrowed,
+        }
+    }
+
+    pub(super) fn borrows_items(self) -> bool {
+        matches!(self, Self::Borrowed)
+    }
+}
+
 #[enum_dispatch]
 pub(super) trait ArrayContainer {
     fn encode(
@@ -56,9 +75,9 @@ pub(super) trait ArrayContainer {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
-        codec.decode_null_terminated(env, self.name(), stash, transfer)
+        codec.decode_null_terminated(env, self.name(), stash, read)
     }
 
     fn decode_with_context<'e>(
@@ -68,9 +87,9 @@ pub(super) trait ArrayContainer {
         stash: &ffi::Stash,
         _ffi_args: &[ffi::Stash],
         _arg_codecs: &[Codec],
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
-        self.decode(codec, env, stash, transfer)
+        self.decode(codec, env, stash, read)
     }
 
     fn buffer_view_support(&self) -> BufferViewSupport {

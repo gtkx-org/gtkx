@@ -14,7 +14,7 @@ use napi_derive::napi;
 
 use crate::ffi::Stash;
 use crate::ffi::codec::{
-    CallbackCodec, CallbackScope, Codec, Decoder as _, DestroyNotifyKind, Encoder as _, Ownership,
+    CallbackCodec, CallbackScope, Codec, Decoder as _, DestroyNotifyKind, Encoder as _,
     PtrWriter as _, ReadCtx, SlotInit, bytes_to_glib_full, read_bytes,
 };
 use crate::handle::{BorrowScope, Handle};
@@ -833,25 +833,14 @@ fn seed_ref<'e>(
             unsafe { bytes_codec.read(env, ReadCtx::slot(inner_ptr, "ref seed")) }
                 .report_err("callback: failed to seed ref")
         }
-        // A length-bounded inout array takes its extent from the sibling the caller passed beside
-        // it, exactly the way an incoming array argument does. It is read without being freed: the
-        // write-back releases the container it replaces.
-        Codec::Array(array_codec) if array_codec.is_length_bounded() => {
+        Codec::Array(array_codec) => {
             let value_ptr = unsafe { inner_ptr.cast::<*mut c_void>().read_unaligned() };
-            array_codec
-                .decode_with_context(
-                    env,
-                    &Stash::Ptr(value_ptr),
-                    siblings.stashes,
-                    siblings.codecs,
-                )
-                .report_err("callback: failed to seed ref")
-        }
-        Codec::Array(array_codec) if !array_codec.is_length_bounded() => {
-            let value_ptr = unsafe { inner_ptr.cast::<*mut c_void>().read_unaligned() };
-            return unsafe {
-                array_codec.read_value(env, value_ptr, "ref seed", Ownership::Borrowed)
-            };
+            return array_codec.decode_borrowed_with_context(
+                env,
+                &Stash::Ptr(value_ptr),
+                siblings.stashes,
+                siblings.codecs,
+            );
         }
         _ => None,
     };

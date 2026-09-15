@@ -1,7 +1,7 @@
 use anyhow::bail;
 
 use super::super::prelude::*;
-use super::container::ArrayContainer;
+use super::container::{ArrayContainer, ArrayRead};
 use super::item::ItemCodec;
 use super::{ArrayCodec, dup_bytes_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
@@ -72,7 +72,7 @@ impl ArrayContainer for GArrayCodec {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GArray")? else {
             return Ok(value::js_null(env)?);
@@ -81,9 +81,9 @@ impl ArrayContainer for GArrayCodec {
         let g_array = ptr as *const glib::ffi::GArray;
         let data = unsafe { (*g_array).data as *const u8 };
         let len = unsafe { (*g_array).len as usize };
-        let decoded = codec.decode_bytes_or_items(env, data, len, "GArray");
+        let decoded = codec.decode_bytes_or_items(env, data, len, "GArray", read);
 
-        if transfer.is_full() {
+        if read.transfer().is_full() {
             let storage_owns = matches!(stash, ffi::Stash::Storage(_));
             if !storage_owns {
                 unsafe { glib::ffi::g_array_unref(ptr.cast::<glib::ffi::GArray>()) };

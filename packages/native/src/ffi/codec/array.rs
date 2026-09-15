@@ -2,7 +2,7 @@ use std::ffi::CString;
 
 use anyhow::bail;
 pub use container::{ArrayBounds, ArrayKind};
-use container::{ArrayContainer, ArrayContainerCodec, ViewEncoding};
+use container::{ArrayContainer, ArrayContainerCodec, ArrayRead, ViewEncoding};
 use item::ItemCodec;
 
 use super::bytes::bytes_to_glib_full;
@@ -101,6 +101,23 @@ impl ArrayCodec {
         self.container.is_length_bounded()
     }
 
+    pub(crate) fn decode_borrowed_with_context<'e>(
+        &self,
+        env: &'e Env,
+        stash: &ffi::Stash,
+        ffi_args: &[ffi::Stash],
+        arg_codecs: &[Codec],
+    ) -> anyhow::Result<Unknown<'e>> {
+        self.container.decode_with_context(
+            self,
+            env,
+            stash,
+            ffi_args,
+            arg_codecs,
+            ArrayRead::Borrowed,
+        )
+    }
+
     pub(crate) fn ptr_array_item(&self) -> Option<Box<Codec>> {
         matches!(self.container, ArrayContainerCodec::PtrArray(_)).then(|| self.item_codec.clone())
     }
@@ -178,7 +195,8 @@ impl Encoder for ArrayCodec {
 
 impl Decoder for ArrayCodec {
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
-        self.container.decode(self, env, stash, self.ownership)
+        self.container
+            .decode(self, env, stash, ArrayRead::Declared(self.ownership))
     }
 
     unsafe fn read_value<'e>(
@@ -191,13 +209,13 @@ impl Decoder for ArrayCodec {
         if ptr.is_null() {
             return Ok(value::js_null(env)?);
         }
-        if transfer.is_borrowed()
-            && let ArrayContainerCodec::List(list) = &self.container
-        {
-            return list.decode_borrowed(self, env, &ffi::Stash::Ptr(ptr));
-        }
+        let read = if transfer.is_borrowed() {
+            ArrayRead::Borrowed
+        } else {
+            ArrayRead::Declared(transfer)
+        };
         self.container
-            .decode(self, env, &ffi::Stash::Ptr(ptr), transfer)
+            .decode(self, env, &ffi::Stash::Ptr(ptr), read)
     }
 
     fn decode_with_context<'e>(
@@ -207,8 +225,14 @@ impl Decoder for ArrayCodec {
         ffi_args: &[ffi::Stash],
         arg_codecs: &[Codec],
     ) -> anyhow::Result<Unknown<'e>> {
-        self.container
-            .decode_with_context(self, env, stash, ffi_args, arg_codecs, self.ownership)
+        self.container.decode_with_context(
+            self,
+            env,
+            stash,
+            ffi_args,
+            arg_codecs,
+            ArrayRead::Declared(self.ownership),
+        )
     }
 }
 
@@ -381,37 +405,44 @@ impl ArrayCodec {
         Ok(buffer)
     }
 
-    pub(super) fn decode_inline<'e>(
+    fn decode_inline<'e>(
         &self,
         env: &'e Env,
         stride: usize,
         data: *const u8,
         len: usize,
+        read: ArrayRead,
     ) -> anyhow::Result<Vec<Unknown<'e>>> {
         value::checked_array_length(len)?;
 
         (0..len)
-            .map(|index| unsafe {
-                self.item_codec.read(
-                    env,
-                    ReadCtx::value(data.add(index * stride).cast_mut().cast(), "array element"),
-                )
+            .map(|index| {
+                let ptr = unsafe { data.add(index * stride).cast_mut().cast() };
+                if read.borrows_items() {
+                    self.decode_borrowed_item(env, ptr)
+                } else {
+                    unsafe {
+                        self.item_codec
+                            .read(env, ReadCtx::value(ptr, "array element"))
+                    }
+                }
             })
             .collect()
     }
 
-    pub(crate) fn decode_bytes_or_items<'e>(
+    fn decode_bytes_or_items<'e>(
         &self,
         env: &'e Env,
         data: *const u8,
         len: usize,
         context: &str,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
         if self.is_bytes {
             return Ok(unsafe { value::js_byte_array(env, data, len) }?);
         }
 
-        let values = self.decode_contiguous(env, self.item_codec(context)?, data, len)?;
+        let values = self.decode_contiguous(env, self.item_codec(context)?, data, len, read)?;
 
         build_js_array(env, values)
     }
@@ -545,12 +576,13 @@ impl ArrayCodec {
         codec: ItemCodec,
         data: *const u8,
         len: usize,
+        read: ArrayRead,
     ) -> anyhow::Result<Vec<Unknown<'e>>> {
         if len == 0 || data.is_null() {
             return Ok(Vec::new());
         }
         if let Some(stride) = self.inline_element_size() {
-            return self.decode_inline(env, stride, data, len);
+            return self.decode_inline(env, stride, data, len, read);
         }
         value::checked_array_length(len)?;
 
@@ -583,7 +615,7 @@ impl ArrayCodec {
             ItemCodec::Pointer | ItemCodec::Bytes => {
                 let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
                 ptrs.iter()
-                    .map(|&item_ptr| self.item_codec.decode(env, &ffi::Stash::Ptr(item_ptr)))
+                    .map(|&item_ptr| self.decode_array_item(env, item_ptr, read))
                     .collect()
             }
         }
@@ -656,33 +688,49 @@ impl ArrayCodec {
         })
     }
 
+    fn decode_borrowed_item<'e>(
+        &self,
+        env: &'e Env,
+        item_ptr: *mut c_void,
+    ) -> anyhow::Result<Unknown<'e>> {
+        let decoded = unsafe {
+            self.item_codec
+                .read(env, ReadCtx::value(item_ptr, "array element"))
+        }?;
+        if !item_ptr.is_null() && self.item_codec.is_handle_backed() {
+            let handle: &External<crate::handle::Handle> = value::read_napi(decoded)?;
+            Ok(value::handle_to_unknown(env, handle.retain_owned()?)?)
+        } else {
+            Ok(decoded)
+        }
+    }
+
+    fn decode_array_item<'e>(
+        &self,
+        env: &'e Env,
+        item_ptr: *mut c_void,
+        read: ArrayRead,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if read.borrows_items()
+            && (self.item_codec.is_handle_backed()
+                || matches!(&*self.item_codec, Codec::Bytes(_) | Codec::Array(_)))
+        {
+            self.decode_borrowed_item(env, item_ptr)
+        } else {
+            self.decode_ptr_item(env, item_ptr)
+        }
+    }
+
     fn decode_ptr_iter<'e>(
         &self,
         env: &'e Env,
         ptrs: impl Iterator<Item = *mut c_void>,
-        borrow_items: bool,
+        read: ArrayRead,
         release: impl FnOnce(),
     ) -> anyhow::Result<Unknown<'e>> {
         let mut values = Vec::with_capacity(ptrs.size_hint().0);
         let result = ptrs.into_iter().try_for_each(|item_ptr| {
-            let value = if borrow_items
-                && (self.item_codec.is_handle_backed()
-                    || matches!(&*self.item_codec, Codec::Bytes(_)))
-            {
-                let decoded = unsafe {
-                    self.item_codec
-                        .read(env, ReadCtx::value(item_ptr, "list element"))
-                }?;
-                if !item_ptr.is_null() && self.item_codec.is_handle_backed() {
-                    let handle: &External<crate::handle::Handle> = value::read_napi(decoded)?;
-                    value::handle_to_unknown(env, handle.retain_owned()?)?
-                } else {
-                    decoded
-                }
-            } else {
-                self.decode_ptr_item(env, item_ptr)?
-            };
-            values.push(value);
+            values.push(self.decode_array_item(env, item_ptr, read)?);
             anyhow::Ok(())
         });
         release();

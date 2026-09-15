@@ -1,5 +1,5 @@
 use super::super::prelude::*;
-use super::container::ArrayContainer;
+use super::container::{ArrayContainer, ArrayRead};
 use super::item::ItemCodec;
 use super::{ArrayCodec, ArrayKindEncoder, dup_bytes_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
@@ -40,7 +40,7 @@ impl ArrayContainer for GPtrArrayCodec {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GPtrArray")? else {
             return Ok(value::js_null(env)?);
@@ -51,8 +51,8 @@ impl ArrayContainer for GPtrArrayCodec {
         let pdata = unsafe { (*ptr_array).pdata };
         let items = (0..len).map(move |i| unsafe { *pdata.add(i) });
 
-        let is_full = transfer.is_full();
-        codec.decode_ptr_iter(env, items, false, move || {
+        let is_full = read.transfer().is_full();
+        codec.decode_ptr_iter(env, items, read, move || {
             if is_full {
                 unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
             }

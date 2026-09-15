@@ -1,7 +1,7 @@
 use std::ffi::CString;
 
 use super::super::prelude::*;
-use super::container::ArrayContainer;
+use super::container::{ArrayContainer, ArrayRead};
 use super::{ArrayCodec, ArrayKindEncoder, dup_bytes_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
@@ -40,36 +40,6 @@ impl ListArrayCodec {
             drop(ffi::PendingTransfer::new(item, release));
         }
     }
-
-    pub(super) fn decode_borrowed<'e>(
-        &self,
-        codec: &ArrayCodec,
-        env: &'e Env,
-        stash: &ffi::Stash,
-    ) -> anyhow::Result<Unknown<'e>> {
-        self.decode_items(codec, env, stash, Ownership::Borrowed, true)
-    }
-
-    fn decode_items<'e>(
-        &self,
-        codec: &ArrayCodec,
-        env: &'e Env,
-        stash: &ffi::Stash,
-        transfer: Ownership,
-        borrow_items: bool,
-    ) -> anyhow::Result<Unknown<'e>> {
-        let ops = self.ops;
-        let Some(ptr) = stash.as_non_null_ptr(ops.label)? else {
-            return Ok(value::js_null(env)?);
-        };
-
-        let is_full = transfer.is_full();
-        codec.decode_ptr_iter(env, self.nodes(ptr), borrow_items, move || {
-            if is_full {
-                unsafe { (ops.free)(ptr) };
-            }
-        })
-    }
 }
 
 impl ArrayContainer for ListArrayCodec {
@@ -87,9 +57,19 @@ impl ArrayContainer for ListArrayCodec {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
-        self.decode_items(codec, env, stash, transfer, false)
+        let ops = self.ops;
+        let Some(ptr) = stash.as_non_null_ptr(ops.label)? else {
+            return Ok(value::js_null(env)?);
+        };
+
+        let is_full = read.transfer().is_full();
+        codec.decode_ptr_iter(env, self.nodes(ptr), read, move || {
+            if is_full {
+                unsafe { (ops.free)(ptr) };
+            }
+        })
     }
 
     fn name(&self) -> &'static str {

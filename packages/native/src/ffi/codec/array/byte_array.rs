@@ -3,7 +3,7 @@ use glib::translate::{IntoGlibPtr, ToGlibPtr};
 
 use super::super::prelude::*;
 use super::ArrayCodec;
-use super::container::{ArrayContainer, BufferViewSupport, ViewEncoding};
+use super::container::{ArrayContainer, ArrayRead, BufferViewSupport, ViewEncoding};
 use crate::ffi::{StashData, StashStorage};
 use crate::value::TypedView;
 
@@ -46,7 +46,7 @@ impl ArrayContainer for GByteArrayCodec {
         _codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GByteArray")? else {
             return Ok(value::js_null(env)?);
@@ -54,7 +54,7 @@ impl ArrayContainer for GByteArrayCodec {
 
         let byte_array = ptr.cast::<glib::ffi::GByteArray>();
         let storage_owns = matches!(stash, ffi::Stash::Storage(_));
-        let adopted: Option<glib::ByteArray> = (transfer.is_full() && !storage_owns)
+        let adopted: Option<glib::ByteArray> = (read.transfer().is_full() && !storage_owns)
             .then(|| unsafe { glib::translate::from_glib_full(byte_array) });
 
         let data = unsafe { (*byte_array).data };
