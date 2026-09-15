@@ -116,7 +116,7 @@ Elsewhere, animate the margins, the size requests, a `Gtk.Paned`'s `position`, o
 
 ## The frame clock
 
-Frames come from GTK's frame clock: animations advance in the update phase of the newest mapped window's clock, so writes land before that window lays out and paints, in step with the display. When the driving window goes away, another mapped window takes over; when no window is mapped, or the clock stops ticking, a timer paces the frames instead, so a spring always reaches its target and its `onRest` always fires.
+Frames advance during the update phase of a mapped window's GTK frame clock, before layout and painting. GTKX keeps using that window while it can supply frames, switching to another mapped window or a timer when necessary.
 
 ## Reduced motion
 
