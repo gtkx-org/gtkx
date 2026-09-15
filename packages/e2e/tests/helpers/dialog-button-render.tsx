@@ -28,10 +28,14 @@ const expectDialogTitleTracksProp = async <Widget extends DialogButtonWidget>(
         return renderButton(ref, { title });
     }
 
-    await render(<App title="First Title" />);
-    expect(ref.current?.getDialog()).toHaveObjectProperty("title", "First Title");
-    await render(<App title="Second Title" />);
-    expect(ref.current?.getDialog()).toHaveObjectProperty("title", "Second Title");
+    const { rerender } = await render(<App title="First Title" />);
+    const button = ref.current;
+    const dialog = button?.getDialog();
+    expect(dialog).toHaveObjectProperty("title", "First Title");
+    await rerender(<App title="Second Title" />);
+    expect(ref.current).toBe(button);
+    expect(ref.current?.getDialog()).toBe(dialog);
+    expect(dialog).toHaveObjectProperty("title", "Second Title");
 };
 
 const expectDialogModalProp = async <Widget extends DialogButtonWidget>(
