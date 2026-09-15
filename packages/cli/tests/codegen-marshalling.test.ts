@@ -682,6 +682,21 @@ Gio.Subprocess.newv(["/usr/bin/true"], Gio.SubprocessFlags.NONE);`;
         expect(() => evaluateProject(project, UNBOUND_NEWV_PROBE)).toThrow();
     });
 
+    it("rejects direct JavaScript construction of callback actions", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-callback-guard-",
+            config: ORIENTABLE_CONFIG,
+        });
+
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        const source = `import assert from "node:assert/strict";
+import { CallbackAction } from "@gtkx/gi/gtk";
+
+assert.ok(CallbackAction.new(() => true) instanceof CallbackAction);
+assert.throws(() => new CallbackAction());`;
+        expect(() => evaluateProject(project, source)).not.toThrow();
+    });
+
     it("rejects direct construction for objects that require initialization", () => {
         using project = createCliProject({
             prefix: "gtkx-cli-codegen-initable-guard-",

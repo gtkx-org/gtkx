@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="Gtk" version="4.0"/>
+  <namespace name="Construct"
+             version="1.0"
+             shared-library="libconstruct.so.0"
+             c:identifier-prefixes="Construct"
+             c:symbol-prefixes="construct">
+    <class name="ConfiguredAction"
+           c:symbol-prefix="configured_action"
+           c:type="ConstructConfiguredAction"
+           parent="Gtk.NamedAction"
+           glib:type-name="ConstructConfiguredAction"
+           glib:get-type="construct_configured_action_get_type">
+      <property name="enabled" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+    </class>
+    <class name="InheritedAction"
+           c:symbol-prefix="inherited_action"
+           c:type="ConstructInheritedAction"
+           parent="ConfiguredAction"
+           glib:type-name="ConstructInheritedAction"
+           glib:get-type="construct_inherited_action_get_type"/>
+  </namespace>
+</repository>

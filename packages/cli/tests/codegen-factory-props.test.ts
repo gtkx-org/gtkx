@@ -7,7 +7,7 @@ const CONFIG = `export default {
     agents: { reference: false, rules: false },
 };`;
 const IMPORTS = `import type { ComponentProps } from "react";
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkCallbackAction, type GtkCallbackActionProps,
     GtkShortcutTrigger, type GtkShortcutTriggerProps,
@@ -27,11 +27,12 @@ const createProject = (): ReturnType<typeof createCliProject> => {
     return project;
 };
 
-describe("factory element named props", () => {
+describe("factory element contracts", () => {
     it("accepts the same props through named types, component props, and JSX", () => {
         using project = createProject();
         expect(typecheck(project, `
             export const callback: GtkCallbackActionProps = { callback: () => true };
+            export const action: Gtk.CallbackAction = Gtk.CallbackAction.new(callback.callback);
             export const trigger: GtkShortcutTriggerProps = { accelerator: "<Control>a" };
             export const callbackComponent: ComponentProps<typeof GtkCallbackAction> = callback;
             export const triggerComponent: ComponentProps<typeof GtkShortcutTrigger> = trigger;
@@ -45,9 +46,10 @@ describe("factory element named props", () => {
         `)).toBe(0);
     });
 
-    it("requires valid factory arguments in named props and JSX", () => {
+    it("rejects invalid factory props and direct callback construction", () => {
         using project = createProject();
         for (const source of [
+            "export const action = new Gtk.CallbackAction();",
             "export const props: GtkCallbackActionProps = {};",
             "export const props: GtkShortcutTriggerProps = {};",
             'export const props: GtkCallbackActionProps = { callback: "invalid" };',
