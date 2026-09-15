@@ -1,6 +1,6 @@
+import type * as GObject from "@gtkx/gi/gobject";
 import type { ReactNode, RefObject } from "react";
 import * as Adw from "@gtkx/gi/adw";
-import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow, AdwComboRow, AdwPreferencesGroup, AdwPreferencesPage } from "@gtkx/jsx/adw";
 import {
@@ -14,7 +14,6 @@ import {
     GtkProgressBar,
     GtkScale,
     GtkScrollbar,
-    GtkSignalListItemFactory,
     GtkStringList,
     GtkSwitch,
     GtkTextView,
@@ -23,6 +22,7 @@ import {
 import { getWidgetText, render, screen, waitFor } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
+import { ItemFactory } from "../helpers/list-view-render.js";
 import { gcUntil } from "../helpers/native-utils.js";
 
 type AccessibleProbeProps = { show: boolean; ariaRef: RefObject<Gtk.Label | null> };
@@ -39,20 +39,9 @@ const expectLabelSelection = async (text: string, range: [number, number], expec
     expect(label).toHaveSelection(expected);
 };
 
-const setUpItemLabel = (object: GObject.Object): void => {
-    if (object instanceof Gtk.ListItem) {
-        object.setChild(new Gtk.Label());
-    }
-};
-
-const bindItemLabel = (object: GObject.Object): void => {
-    const child = object instanceof Gtk.ListItem ? object.getChild() : null;
-    const item = object instanceof Gtk.ListItem ? object.getItem() : null;
-
-    if (child instanceof Gtk.Label && item instanceof Gtk.StringObject) {
-        child.setLabel(`Language: ${item.getString()}`);
-    }
-};
+const renderItemLabel = (item: GObject.Object): ReactNode => (
+    item instanceof Gtk.StringObject ? <GtkLabel>{`Language: ${item.getString()}`}</GtkLabel> : null
+);
 
 const renderPlaceholderEntry = async (rendered: string, accessible: string): Promise<Gtk.Entry | null> => {
     const ref = createRef<Gtk.Entry>();
@@ -327,7 +316,7 @@ describe("accessible reads beyond the concrete classes", () => {
             <GtkDropDown
                 ref={ref}
                 model={<GtkStringList strings={["English", "French"]} />}
-                factory={<GtkSignalListItemFactory onSetup={setUpItemLabel} onBind={bindItemLabel} />}
+                factory={<ItemFactory renderItem={renderItemLabel} />}
             />,
         );
 

@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwComboRow, AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import { GtkBox, GtkDropDown, GtkStringList } from "@gtkx/jsx/gtk";
 import { getClassType } from "@gtkx/runtime";
-import { cleanup, render, screen } from "@gtkx/testing";
+import { act, cleanup, render, screen } from "@gtkx/testing";
 import { setTimeout } from "node:timers/promises";
 import { createRef } from "react";
 import { expect, it } from "vitest";
@@ -126,15 +126,23 @@ it("preserves a user factory shared with another widget after row destruction", 
         throw new Error("Both widgets must be mounted");
     }
 
-    rowRef.current.setFactory(dropdown.getFactory());
-    rowRef.current.setSelected(1);
+    await act(() => {
+        const sharedRow = rowRef.current;
+        if (sharedRow === null) {
+            throw new Error("The row must be mounted");
+        }
+        sharedRow.setFactory(dropdown.getFactory());
+        sharedRow.setSelected(1);
+    });
     expect(screen.getByDisplayValue("beta")).toBe(rowRef.current);
 
     const row = new WeakRef(rowRef.current);
     await rerender(<App shouldShowRow={false} />);
     await gcUntil(() => row.deref() === undefined);
     expect(row.deref()).toBeUndefined();
-    dropdown.setSelected(1);
+    await act(() => {
+        dropdown.setSelected(1);
+    });
     expect(screen.getByDisplayValue("second")).toBe(dropdown);
 });
 
