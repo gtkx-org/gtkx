@@ -57,10 +57,10 @@ const isolateTypeConsumer = (project: CliProject): void => {
     copyTypeDependencies(project);
 };
 
-const typecheckSource = (project: CliProject, source: string): number | null => {
+const typecheckSource = (project: CliProject, source: string): number => {
     writeFileSync(join(project.root, "consumer.tsx"), source);
 
-    return spawnSync(process.execPath, [
+    const result = spawnSync(process.execPath, [
         TYPESCRIPT_CLI,
         "--noEmit",
         "--module", "ESNext",
@@ -71,7 +71,13 @@ const typecheckSource = (project: CliProject, source: string): number | null => 
         "--skipLibCheck", "false",
         "--types", "node",
         "consumer.tsx",
-    ], { cwd: project.root, encoding: "utf8" }).status;
+    ], { cwd: project.root, encoding: "utf8" });
+
+    if (result.status === null) {
+        throw result.error ?? new Error("TypeScript did not exit normally");
+    }
+
+    return result.status;
 };
 
 export { isolateTypeConsumer, typecheckSource };

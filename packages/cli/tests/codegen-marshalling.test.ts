@@ -2,14 +2,9 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCli } from "./cli-project.js";
-import {
-    fixtureConfig,
-    generatedModule,
-    VALUE_PARAMETER_BINDINGS,
-    VALUE_PARAMETER_DECLARATIONS,
-} from "./codegen-helpers.js";
-
-type ExpectedOutput = { bindings: string[]; declarations: string[] };
+import { fixtureConfig } from "./codegen-helpers.js";
+import { MARSHALLING_CONSUMERS } from "./codegen-marshalling-consumers.js";
+import { isolateTypeConsumer, typecheckSource } from "./type-consumer.js";
 
 const TYPESCRIPT_CLI = fileURLToPath(
     new URL("../../../node_modules/typescript/bin/tsc", import.meta.url),
@@ -371,11 +366,6 @@ const NATURAL_PROPERTY_METHOD_PROBE = `import type { Station } from "@gtkx/gi/ho
 declare const station: Station;
 const value: string | null = station.getProperty("key");
 `;
-const EXTERNAL_FINISH_NOTE =
-    "Callback-based: the GIR declares `AsyncPair.Client.genericFinish` as its finish function, on another " +
-    "class, and no finish method of this class pairs with it. Call it only on the instance that owns the " +
-    "result (`Gio.Task.isValid(result, owner)`); an unrelated instance is not a valid receiver.";
-
 const NEWV_GUARD_PROBE = `import assert from "node:assert/strict";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
@@ -440,99 +430,19 @@ const evaluateProject = (project: { root: string }, source: string): string =>
         },
     );
 
-const expectGenerated = (
-    library: string,
-    namespace: string,
-    expected: ExpectedOutput,
-): void => {
-    using project = createCliProject({
-        prefix: `gtkx-cli-codegen-${namespace}-`,
-        config: fixtureConfig(library),
-    });
-
-    expect(runCli(project, ["codegen"]).status).toBe(0);
-    const declarations = generatedModule(
-        project,
-        "gi",
-        namespace,
-        `${namespace}.d.ts`,
-    );
-    const bindings = generatedModule(
-        project,
-        "gi",
-        namespace,
-        `${namespace}.js`,
-    );
-    expect(
-        expected.declarations.filter((text) => !declarations.includes(text)),
-    ).toEqual([]);
-    expect(
-        expected.bindings.filter((text) => !bindings.includes(text)),
-    ).toEqual([]);
-};
-
 describe("gtkx codegen marshalling", () => {
-    it("represents byte sequences as typed arrays", () => {
-        expectGenerated("ByteSeq-1.0", "byteseq", {
-            declarations: [
-                "readSized(): Uint8Array",
-                "readByteArray(): Uint8Array",
-                "writeSized(data: Uint8Array | number[]): void",
-                "readNumbers(): number[]",
-            ],
-            bindings: ["isBytes: true", "t.byteArray("],
+    it.each(MARSHALLING_CONSUMERS)("$title", ({ library, imports, accepted, rejected }) => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-codegen-marshalling-",
+            config: fixtureConfig(library),
         });
-    });
+        expect(runCli(project, ["codegen"]).status).toBe(0);
+        isolateTypeConsumer(project);
+        expect(typecheckSource(project, imports + accepted)).toBe(0);
 
-    it("accepts JavaScript values and unwraps returned GValues", () => {
-        expectGenerated("ValueBox-1.0", "valuebox", {
-            declarations: [
-                ...VALUE_PARAMETER_DECLARATIONS,
-                "peek(): unknown",
-                "fill(): [boolean, unknown]",
-            ],
-            bindings: [
-                ...VALUE_PARAMETER_BINDINGS,
-                "isReturnUnpacked: true",
-                "isUnpacked: true",
-            ],
-        });
-    });
-
-    it("trims the leading success value from finish results", () => {
-        expectGenerated("AsyncPair-1.0", "asyncpair", {
-            declarations: [
-                "runAsync(): Promise<[string, number]>",
-                "probeAsync(): Promise<boolean>",
-            ],
-            bindings: [
-                "promisify(asyncPairJobRunAsync, trimFinish(this.runFinish.bind(this))",
-            ],
-        });
-    });
-
-    it("pairs an externally annotated async method with its class's only generic finish", () => {
-        expectGenerated("AsyncPair-1.0", "asyncpair", {
-            declarations: [
-                "fetchAsync(cancellable?: Gio.Cancellable | null): Promise<boolean>",
-                "refreshAsync(cancellable?: Gio.Cancellable | null): Promise<boolean>",
-            ],
-            bindings: [
-                "promisify(asyncPairSackFetchAsync, this.mergeGenericFinish.bind(this)",
-                "promisify(asyncPairSackRefreshAsync, this.mergeGenericFinish.bind(this)",
-            ],
-        });
-    });
-
-    it("keeps the callback form when no finish method of the class can be paired", () => {
-        expectGenerated("AsyncPair-1.0", "asyncpair", {
-            declarations: [
-                "externalAsync(callback: Gio.AsyncReadyCallback | null): void",
-                "drainAsync(cancellable: Gio.Cancellable | null, callback: Gio.AsyncReadyCallback | null): void",
-                EXTERNAL_FINISH_NOTE,
-            ],
-            bindings: [],
-        });
+        for (const source of rejected) {
+            expect(typecheckSource(project, imports + source)).not.toBe(0);
+        }
     });
 
     it("exposes supported side callbacks through the generated API", () => {
@@ -546,21 +456,6 @@ describe("gtkx codegen marshalling", () => {
         expect(() => {
             typecheckProject(project);
         }).not.toThrow();
-    });
-
-    it("mutates caller-allocated inout records without returning them again", () => {
-        expectGenerated("InoutBox-1.0", "inoutbox", {
-            declarations: [
-                "step(spot: Spot): boolean",
-                "recenter(spot: Spot): void",
-                "advance(offset: number): [boolean, number]",
-                "locate(spot: Spot): [boolean, string]",
-            ],
-            bindings: [
-                'direction: "inout", isCallerAllocated: true, isConsumed: true, isRequired: true }',
-                't.int32, direction: "inout", isRequired: true }',
-            ],
-        });
     });
 
     it("exposes the factory for objects that require initialization", () => {

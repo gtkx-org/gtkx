@@ -333,13 +333,14 @@ const renderPromisifiedBody = (
     finishTarget: { fn: GirFunction; expression: string },
     bindingExpression: string,
 ): string => {
-    if (hasSideCallback(context, asyncFn)) {
+    const cancellableIndex = findCancellableIndex(context, asyncFn.parameters);
+
+    if (cancellableIndex < 0 || hasSideCallback(context, asyncFn)) {
         return renderAdaptedPromisifiedBody(context, asyncFn, finishTarget, bindingExpression);
     }
 
     context.addRuntimeImport("promisify");
     const finish = promisifiedFinishExpression(context, finishTarget.fn, finishTarget.expression);
-    const cancellableIndex = findCancellableIndex(context, asyncFn.parameters);
 
     const promisifyContext: PromisifyContext = {
         context,
