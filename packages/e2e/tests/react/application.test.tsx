@@ -41,11 +41,6 @@ type AccelsAppProps2 = {
     appActions?: ReactNode;
 };
 
-type Rendered = {
-    output: string;
-    windows: number;
-};
-
 type Captured = {
     application: Gtk.Application | null;
 };
@@ -335,23 +330,10 @@ const Probe = () => {
     return null;
 };
 
-const captureStandardError = (): (() => string) => {
-    const chunks: string[] = [];
-
-    vi.spyOn(process.stderr, "write").mockImplementation((chunk: string | Uint8Array): boolean => {
-        chunks.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString());
-
-        return true;
-    });
-
-    return () => chunks.join("");
-};
-
-const renderApplication2 = async (applicationId: string): Promise<Rendered> => {
+const renderWindowCount = async (applicationId: string): Promise<number> => {
     const root = createRoot({ ...rootElement });
     mounted.push(root);
     const captured: Captured = { application: null };
-    const standardError = captureStandardError();
 
     await act(() => {
         root.render(
@@ -366,7 +348,7 @@ const renderApplication2 = async (applicationId: string): Promise<Rendered> => {
         );
     });
 
-    return { output: standardError(), windows: captured.application?.getWindows().length ?? 0 };
+    return captured.application?.getWindows().length ?? 0;
 };
 
 const Probe2 = ({ onCleanup }: ProbeProps): ReactNode => {
@@ -563,7 +545,6 @@ describe("useApplication", () => {
 afterEach(async () => {
     const roots = [...mounted];
     mounted.length = 0;
-    vi.restoreAllMocks();
 
     for (const root of roots) {
         await act(() => {
@@ -578,13 +559,11 @@ describe("<GtkApplication> on an application ID another process already owns", (
     it("draws no window when another process owns the application ID", async () => {
         const applicationId = uniqueAppId4();
         await startApplicationOwner(applicationId);
-        const rendered = await renderApplication2(applicationId);
-        expect(rendered.windows).toBe(0);
+        expect(await renderWindowCount(applicationId)).toBe(0);
     });
 
-    it("says nothing when this process owns the application ID", async () => {
-        const rendered = await renderApplication2(uniqueAppId4());
-        expect(rendered.windows).toBe(1);
+    it("opens a window when this process owns the application ID", async () => {
+        expect(await renderWindowCount(uniqueAppId4())).toBe(1);
     });
 });
 
