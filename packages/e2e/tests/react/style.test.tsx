@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode, RefObject } from "react";
 import { css, injectGlobal } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkFrame, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -58,9 +58,6 @@ const getAlpha = (widget: Gtk.Widget | null): number => mounted(widget).getColor
 
 const getMinWidth = (widget: Gtk.Widget | null): number =>
     mounted(widget).measure(Gtk.Orientation.HORIZONTAL, -1)[0];
-
-const generatedClasses = (widget: Gtk.Widget | null): string[] =>
-    mounted(widget).getCssClasses().filter((name) => name.startsWith("gtkx-s"));
 
 const renderPair = async (style: LabelStyle, classes?: string[] | null): Promise<Pair> => {
     const plainRef = createRef<Gtk.Label>();
@@ -139,10 +136,9 @@ describe("style prop", () => {
 });
 
 describe("style prop alongside cssClasses", () => {
-    it("keeps the classes the user asked for next to the one it generates", async () => {
+    it("preserves authored classes while painting the widget", async () => {
         const { styled } = await renderPair({ color: RED_CSS }, ["heading"]);
         expect(styled).toHaveClass("heading");
-        expect(generatedClasses(styled)).toHaveLength(1);
         expect(getColor(styled)).toEqual(RED);
     });
 
@@ -191,7 +187,6 @@ describe("style prop alongside cssClasses", () => {
         const { styled, restyle } = await renderPair({ color: RED_CSS }, ["heading"]);
         await restyle({ color: RED_CSS }, null);
         expect(styled).not.toHaveClass("heading");
-        expect(generatedClasses(styled)).toHaveLength(1);
         expect(getColor(styled)).toEqual(RED);
         await restyle({ color: GREEN_CSS }, null);
         expect(getColor(styled)).toEqual(GREEN);
@@ -210,20 +205,20 @@ describe("style prop alongside cssClasses", () => {
 });
 
 describe("style prop removal", () => {
-    it("clears the paint and the generated class when the prop goes away", async () => {
+    it("restores the default paint when the prop goes away", async () => {
         const { plain, styled, restyle } = await renderPair({ color: RED_CSS });
         expect(getColor(styled)).toEqual(RED);
         await restyle(undefined);
         expect(getColor(styled)).toEqual(getColor(plain));
-        expect(generatedClasses(styled)).toEqual([]);
     });
 
-    it("strips the style from a widget the tree removes", async () => {
+    it("clears removed styles before a retained widget is attached again", async () => {
         const ref = createRef<Gtk.Label>();
+        const frameRef = createRef<Gtk.Frame>();
 
         const { rerender } = await render(
             <GtkBox>
-                <GtkLabel ref={ref} cssClasses={["heading"]} style={{ color: RED_CSS }}>
+                <GtkLabel ref={ref} cssClasses={["heading"]} style={{ color: RED_CSS, minWidth: WIDE }}>
                     gone
                 </GtkLabel>
             </GtkBox>,
@@ -231,9 +226,18 @@ describe("style prop removal", () => {
 
         const detached = mounted(ref.current);
         expect(getColor(detached)).toEqual(RED);
-        expect(generatedClasses(detached)).toHaveLength(1);
+        expect(getMinWidth(detached)).toBeGreaterThanOrEqual(WIDE);
+        expect(detached).toHaveClass("heading");
         await rerender(<GtkBox />);
-        expect(detached.getCssClasses()).toEqual([]);
+        expect(detached).not.toBeRooted();
+        expect(detached).not.toHaveClass("heading");
+        await rerender(<GtkFrame ref={frameRef} labelWidget={detached} />);
+        expect(frameRef.current?.getLabelWidget()).toBe(detached);
+        expect(detached).toBeRooted();
+
+        await waitFor(() => {
+            expect(getMinWidth(detached)).toBeLessThan(WIDE);
+        });
     });
 
     it("paints the next styled widget on its own after one is removed", async () => {
@@ -265,7 +269,6 @@ describe("style prop edge cases", () => {
         expect(getColor(styled)).toEqual(RED);
         await restyle(null);
         expect(getColor(styled)).toEqual(getColor(plain));
-        expect(generatedClasses(styled)).toEqual([]);
     });
 
     it("renders an empty style object with the paint it would have had", async () => {
@@ -310,7 +313,6 @@ describe("style prop edge cases", () => {
         const { styled, restyle } = await renderPair({ color: RED_CSS }, ["heading"]);
         await restyle({ color: RED_CSS });
         expect(styled).not.toHaveClass("heading");
-        expect(generatedClasses(styled)).toHaveLength(1);
         expect(getColor(styled)).toEqual(RED);
     });
 });
