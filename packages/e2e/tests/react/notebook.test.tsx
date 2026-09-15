@@ -2,7 +2,7 @@ import type { GtkNotebookPageElementProps } from "@gtkx/jsx/gtk";
 import type { ReactNode, RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel, GtkListBox, GtkListBoxRow, GtkNotebook, GtkNotebookPage } from "@gtkx/jsx/gtk";
-import { getWidgetText, render, screen, userEvent, within } from "@gtkx/testing";
+import { getWidgetText, render, screen, userEvent } from "@gtkx/testing";
 import { renderChildren } from "@gtkx/testing/internal";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -13,12 +13,30 @@ type NotebookFixture = { notebook: Gtk.Notebook; onSwitchPage: ReturnType<typeof
 
 const TAB_LABELS = ["Tab one", "Tab two", "Tab three"];
 
-const tabLabel = (tab: Gtk.Widget): string => getWidgetText(within(tab).getByRole(Gtk.AccessibleRole.LABEL)) ?? "";
+const requireNotebook = (notebook: Gtk.Notebook | null): Gtk.Notebook => {
+    if (notebook === null) {
+        throw new Error("The notebook was not mounted");
+    }
+
+    return notebook;
+};
 
 const getPageLabels = (notebook: Gtk.Notebook): string[] =>
-    within(notebook)
-        .getAllByRole(Gtk.AccessibleRole.TAB)
-        .map((tab) => tabLabel(tab));
+    Array.from({ length: notebook.getNPages() }, (_, index) => {
+        const page = notebook.getNthPage(index);
+
+        if (page === null) {
+            throw new Error("The notebook page was not found");
+        }
+
+        const tab = notebook.getPage(page).tab;
+
+        if (tab === null) {
+            throw new Error("The notebook tab was not found");
+        }
+
+        return getWidgetText(tab) ?? "";
+    });
 
 const renderPage = async (pageProps: NotebookPageMetadata) => {
     const notebookRef = createRef<Gtk.Notebook>();
@@ -91,10 +109,11 @@ describe("render - Notebook", () => {
         it("inserts page before existing page", async () => {
             const notebookRef = createRef<Gtk.Notebook>();
             const { rerender } = await renderChildren(["First", "Last"], buildLabelNotebook(notebookRef));
+            const notebook = requireNotebook(notebookRef.current);
+            expect(getPageLabels(notebook)).toEqual(["First", "Last"]);
             await rerender(["First", "Middle", "Last"]);
-            const labels = getPageLabels(notebookRef.current as Gtk.Notebook);
-            expect(labels).toHaveLength(3);
-            expect(labels).toEqual(expect.arrayContaining(["First", "Middle", "Last"]));
+            expect(notebookRef.current).toBe(notebook);
+            expect(getPageLabels(notebook)).toEqual(["First", "Middle", "Last"]);
         });
 
         it("removes page", async () => {
@@ -149,10 +168,12 @@ describe("render - Notebook", () => {
                 );
             }
 
-            await render(<App label="Initial" />);
-            expect(getPageLabels(notebookRef.current as Gtk.Notebook)).toEqual(["Initial"]);
-            await render(<App label="Updated" />);
-            expect(getPageLabels(notebookRef.current as Gtk.Notebook)).toEqual(["Updated"]);
+            const { rerender } = await render(<App label="Initial" />);
+            const notebook = requireNotebook(notebookRef.current);
+            expect(getPageLabels(notebook)).toEqual(["Initial"]);
+            await rerender(<App label="Updated" />);
+            expect(notebookRef.current).toBe(notebook);
+            expect(getPageLabels(notebook)).toEqual(["Updated"]);
         });
     });
 });
@@ -183,11 +204,20 @@ describe("render - NotebookPage", () => {
             );
         }
 
-        await render(<App labelText="Initial" />);
-        let page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
+        const { rerender } = await render(<App labelText="Initial" />);
+        const notebook = requireNotebook(notebookRef.current);
+        const content = contentRef.current;
+
+        if (content === null) {
+            throw new Error("The notebook content was not mounted");
+        }
+
+        const page = notebook.getPage(content);
         expect(page).toHaveObjectProperty("tabLabel", "Initial");
-        await render(<App labelText="Updated" />);
-        page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
+        await rerender(<App labelText="Updated" />);
+        expect(notebookRef.current).toBe(notebook);
+        expect(contentRef.current).toBe(content);
+        expect(notebook.getPage(content)).toBe(page);
         expect(page).toHaveObjectProperty("tabLabel", "Updated");
     });
 
@@ -208,8 +238,11 @@ describe("render - NotebookPage", () => {
     it("handles page reordering", async () => {
         const notebookRef = createRef<Gtk.Notebook>();
         const { rerender } = await renderChildren(["First", "Second", "Third"], buildPlainNotebook(notebookRef));
+        const notebook = requireNotebook(notebookRef.current);
+        expect(getPageLabels(notebook)).toEqual(["First", "Second", "Third"]);
         await rerender(["Second", "First", "Third"]);
-        expect(notebookRef.current?.getNPages()).toBe(3);
+        expect(notebookRef.current).toBe(notebook);
+        expect(getPageLabels(notebook)).toEqual(["Second", "First", "Third"]);
     });
 
     it("attaches the page when content is inserted before an existing tab wrapper element", async () => {
@@ -226,12 +259,20 @@ describe("render - NotebookPage", () => {
             );
         }
 
-        await render(<App shouldShowContent={false} />);
-        expect(notebookRef.current?.getNPages()).toBe(0);
-        await render(<App shouldShowContent={true} />);
-        expect(notebookRef.current?.getNPages()).toBe(1);
-        const page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
-        expect(page).toHaveObjectProperty("tabLabel", "Tab");
+        const { rerender } = await render(<App shouldShowContent={false} />);
+        const notebook = requireNotebook(notebookRef.current);
+        expect(notebook.getNPages()).toBe(0);
+        await rerender(<App shouldShowContent={true} />);
+        expect(notebookRef.current).toBe(notebook);
+        expect(notebook.getNPages()).toBe(1);
+        const content = contentRef.current;
+
+        if (content === null) {
+            throw new Error("The notebook content was not mounted");
+        }
+
+        expect(notebook.getNthPage(0)).toBe(content);
+        expect(notebook.getPage(content)).toHaveObjectProperty("tabLabel", "Tab");
     });
 
     it("applies tabExpand and tabFill page metadata", async () => {
