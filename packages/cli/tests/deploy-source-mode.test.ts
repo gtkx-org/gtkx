@@ -27,6 +27,7 @@ import {
     NOTICES_INSTALL,
     NPM_INSTALL,
     npmSourceFiles,
+    outputFile,
     outputNames,
     PINNED_SOURCE,
     PNPM_INSTALL,
@@ -63,6 +64,12 @@ describe("gtkx deploy (flatpak source mode)", () => {
         expect(appModule["build-options"]["append-path"]).toBe(APPEND_PATH);
         expect(appModule["build-commands"][0]).toBe(PNPM_INSTALL);
         expect(Object.keys(appModule["build-options"].env)).toEqual(["npm_config_nodedir"]);
+        const sources = JSON.parse(outputFile(state.project, GENERATED_SOURCES)) as {
+            "dest-filename"?: string;
+            contents?: string;
+        }[];
+        const storeManifest = sources.find((source) => source["dest-filename"] === "pnpm-manifest.json");
+        expect(JSON.parse(storeManifest?.contents ?? "{}")).toMatchObject({ store_version: "v11" });
     });
 });
 

@@ -75,8 +75,8 @@
         "@vitest/pretty-format": "^5.0.1"
     },
     "peerDependencies": {
-        "@types/react": "^19.2",
-        "react": "^19.2",
+        "@types/react": "^19.3",
+        "react": "^19.3",
         "vitest": ">=5"
     },
     "devDependencies": {

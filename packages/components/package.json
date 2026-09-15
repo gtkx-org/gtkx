@@ -62,7 +62,7 @@
         "@gtkx/utils": "workspace:*"
     },
     "peerDependencies": {
-        "react": "^19.2"
+        "react": "^19.3"
     },
     "devDependencies": {
         "@gtkx/config": "workspace:*",

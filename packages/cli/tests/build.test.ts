@@ -251,8 +251,15 @@ process.stdout.write(vector + bitmap);
 const LAZY_ICON_NAME = "gtkx-lazy-probe";
 
 const LAZY_ICON_SOURCE = `const { default: iconName } = await import("../data/lazy.svg?icon=${LAZY_ICON_NAME}");
+const { contents } = await import("./lazy-asset.js");
 
-process.stdout.write(iconName);
+process.stdout.write(iconName + ":" + contents);
+`;
+
+const LAZY_ASSET_SOURCE = `import { readFileSync } from "node:fs";
+import assetPath from "../data/logo.png?url";
+
+export const contents = readFileSync(assetPath, "utf8").trim();
 `;
 
 const SIDE_EFFECT_ICON_APP_SOURCE = `import * as Gdk from "@gtkx/gi/gdk";
@@ -692,8 +699,8 @@ describe("gtkx build (an entry the command is given)", () => {
     });
 });
 
-describe("gtkx build (a lazy resource-backed icon)", () => {
-    it("loads the icon from an emitted chunk", () => {
+describe("gtkx build (lazy assets)", () => {
+    it("loads a resource-backed icon and a URL asset from emitted chunks", () => {
         using project = createCliProject({
             prefix: "gtkx-cli-build-lazy-icon-",
             config: config(STORE_LIBRARIES, ", codegen: false"),
@@ -701,6 +708,7 @@ describe("gtkx build (a lazy resource-backed icon)", () => {
                 ...appFiles("index.tsx"),
                 [join("data", "lazy.svg")]: SVG,
                 [join("src", "index.tsx")]: LAZY_ICON_SOURCE,
+                [join("src", "lazy-asset.ts")]: LAZY_ASSET_SOURCE,
             },
             hasStore: true,
         });
@@ -714,7 +722,7 @@ describe("gtkx build (a lazy resource-backed icon)", () => {
         expect(emitted.some((name) => name.startsWith("assets/") && name.endsWith(".mjs"))).toBe(true);
         const run = runApp(project);
         expect(run.stderr).toBe("");
-        expect(run.stdout).toBe(LAZY_ICON_NAME);
+        expect(run.stdout).toBe(`${LAZY_ICON_NAME}:png-probe`);
         expect(run.status).toBe(0);
     });
 });

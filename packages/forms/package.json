@@ -63,7 +63,7 @@
         "react-hook-form": "^7.88.0"
     },
     "peerDependencies": {
-        "react": "^19.2"
+        "react": "^19.3"
     },
     "devDependencies": {
         "@gtkx/config": "workspace:*",

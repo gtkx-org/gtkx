@@ -80,7 +80,7 @@
         "react-i18next": "^17.0.14"
     },
     "peerDependencies": {
-        "react": "^19.2"
+        "react": "^19.3"
     },
     "devDependencies": {
         "@gtkx/config": "workspace:*",
