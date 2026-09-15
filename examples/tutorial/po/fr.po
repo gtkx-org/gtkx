@@ -165,7 +165,7 @@ msgstr "Corbeille"
 msgid "Delete (Delete)"
 msgstr "Supprimer (Suppr)"
 
-#: src/components/task-detail.tsx:54 src/settings.ts:13
+#: src/components/task-detail.tsx:54 src/settings.ts:18
 msgid "Title"
 msgstr "Titre"
 
@@ -268,27 +268,27 @@ msgstr "Échéance : {{date}}"
 msgid "Mark Complete"
 msgstr "Marquer comme terminée"
 
-#: src/settings.ts:5
+#: src/settings.ts:10
 msgid "Follow system"
 msgstr "Suivre le système"
 
-#: src/settings.ts:6
+#: src/settings.ts:11
 msgid "Light"
 msgstr "Clair"
 
-#: src/settings.ts:7
+#: src/settings.ts:12
 msgid "Dark"
 msgstr "Sombre"
 
-#: src/settings.ts:11
+#: src/settings.ts:16
 msgid "Manual"
 msgstr "Manuel"
 
-#: src/settings.ts:12
+#: src/settings.ts:17
 msgid "Due date"
 msgstr "Échéance"
 
-#: src/settings.ts:14
+#: src/settings.ts:19
 msgid "Date created"
 msgstr "Date de création"
 

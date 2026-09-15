@@ -166,7 +166,7 @@ msgstr ""
 msgid "Delete (Delete)"
 msgstr ""
 
-#: src/components/task-detail.tsx:54 src/settings.ts:13
+#: src/components/task-detail.tsx:54 src/settings.ts:18
 msgid "Title"
 msgstr ""
 
@@ -269,27 +269,27 @@ msgstr ""
 msgid "Mark Complete"
 msgstr ""
 
-#: src/settings.ts:5
+#: src/settings.ts:10
 msgid "Follow system"
 msgstr ""
 
-#: src/settings.ts:6
+#: src/settings.ts:11
 msgid "Light"
 msgstr ""
 
-#: src/settings.ts:7
+#: src/settings.ts:12
 msgid "Dark"
 msgstr ""
 
-#: src/settings.ts:11
+#: src/settings.ts:16
 msgid "Manual"
 msgstr ""
 
-#: src/settings.ts:12
+#: src/settings.ts:17
 msgid "Due date"
 msgstr ""
 
-#: src/settings.ts:14
+#: src/settings.ts:19
 msgid "Date created"
 msgstr ""
 

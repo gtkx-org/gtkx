@@ -825,7 +825,57 @@ Those five suites now build through the public CLI and the existing isolated con
 
 ### JSX generation repeat review
 
-All 12 JSX store modules and the JSX store writer were read completely, 1,799 lines, with the element reference renderer. A public generated consumer confirms that omitting `label` from GtkToggleButton still leaves the inherited GtkButton prop accepted. The parent and child-without-label controls pass. Inherited property omissions and the existing distinction between factory property bags and complete element props remain open.
+All 12 JSX store modules and the JSX store writer were read completely, 1,799 lines, with the element reference renderer. A public generated consumer confirmed that omitting `label` from GtkToggleButton still left the inherited GtkButton prop accepted. Generated bases now omit inherited native property and notify keys before applying the current element's replacement props. The maintained distributed omission type is re-exported through the existing React internal dependency.
+
+The inherited configured-interface correction now filters omitted properties from references too. Four public omission cases cover class, interface, prerequisite and cross-namespace inheritance, replacement props and discriminated branches. Custom-only union omissions remain outside the documented GObject-property contract.
+
+Named factory property bags now include their own required inputs and match component props and intrinsic JSX. Factory-only base types keep those inputs out of native subclasses. The three added factory cases and all 37 existing consumer and omission cases pass in the canonical checkout. The suites share one public TypeScript consumer launcher. Independent repeat review covers 17 complete files, 2,736 lines, and reports no further findings in this slice.
+
+### Reference output and abstract bases
+
+Reference paths now normalize trailing separators before generating links and fingerprints. Root paths no longer create protocol-relative links. Abstract classes retain their inherited-prop pages and type-only imports, while renderable inventories exclude them. Factory-backed abstract elements remain available. Generation, references and API lookup share the existing mountability rule.
+
+Independent review covers six production files, 2,408 lines, plus the public tests and their shared consumer helper. Isolated public checks pass for four path forms, page hierarchy, API lookup and accepted or rejected JSX imports. All 25 canonical reference cases pass, along with full build, types and lint. The final production website build passes in 441 seconds, including the introduction and controlled-selection prose corrections.
+
+### Pending native allocation ownership
+
+Pending transfers now release through Rust ownership, with explicit disarming after successful handoff. This removes manual cleanup loops while preserving callback lifetime, field replacement, rollback and container backing order. The existing external ownership policy for untracked fields remains unchanged.
+
+Rust formatting and Clippy, a fresh native release build and runtime integration pass. The sanitizer checkpoint passes all 377 addon and 527 generated-native cases, then restores the normal addon. Independent source review is clean for this six-file change. The cleanup removes fragile manual paths; it does not claim a reproduced supported-input memory failure. Broader collection and callback ownership work remains open.
+
+### Schema-derived settings values
+
+Generated schema modules now expose enum and flag nickname mappings and choice values alongside the existing key kinds. `useSetting` derives enum and choice types from that metadata, while flag combinations remain numeric. Manual schema definitions retain their previous behavior. The tutorial derives its preference types and enum values from the XML instead of repeating the schema's ordering and identifiers.
+
+The parser preserves choice and nickname whitespace, resolves declarations across files and inheritance, and accepts GLib's integer literal forms. Runtime rendering reuses the shared JavaScript string encoder. Enum-only schema imports now produce matching empty runtime and declaration modules, allowing them to supply referenced enum definitions without requiring a schema of their own.
+
+All 18 public CLI settings cases and 49 native hook cases pass in the isolated candidate. Full workspace types and lint pass after adding the new private metadata constraint to the existing TypeDoc exclusions. The e2e project uses the public application test plugin and generated schema declarations; its repository configuration shares the root GIR bindings and retains uncompiled runtime tests. Nx excludes that configuration from inference, matching the example projects' bootstrap arrangement.
+
+The first complete suite exposed a stale local e2e binding store left by the configuration attempt. Its links and generation were moved outside the checkout; no production resolver change was needed. All 82 settings and layout cases pass against the shared bindings. The complete CLI checkpoint passes, and the e2e rerun passes all 1,177 application/runtime cases and 527 generated-native cases. Fresh TypeScript and JavaScript consumers pass local-registry installation, codegen, build, launch and tests; the TypeScript consumer also passes typechecking. The installed tutorial passes all 40 application cases and three French cases, plus launch, types, localized AppImage/deb/rpm packaging and Flatpak manifest checks. Translation source locations follow the moved settings declarations; messages are unchanged.
+
+### Guide consistency and native examples
+
+The async, error handling, navigation, subclassing and modals guides now keep complete signatures in the API reference and shared React concepts in upstream documentation. Navigation describes the actual stack selection behavior. Window guidance distinguishes explicit application-window transient parents from the default used by plain windows, and explains the initial null returned by `useParentWindow`.
+
+The new async example owns its file dialog declaratively. Its complete consumer passes strict TypeScript and real MCP interactions for file selection, user dismissal and a 20-second cancellable timeout. Widget trees and screenshots were inspected, and all owned processes were stopped. The four-guide pass checks 24 code fences and 21 local routes; the adjacent modals pass checks four unchanged JSX examples and seven routes. The combined production website build passes.
+
+### GTKX introduction and migration review
+
+Both introduction pages now describe verified GTKX behavior and link to the feature guides. Unsupported comparisons with other projects and the promise that every npm package works are removed. Version-specific default libraries and the UI-thread constraint remain explicit.
+
+The pass reads 17 full files, 1,188 lines, plus supporting implementation excerpts. All 20 local routes resolve. The bounded 2.0 migration review confirms the inspected configuration, runtime minimum, exports and tuple changes; it finds no additional stale contract. There is no new widget example to execute. The final website checkpoint includes these edits.
+
+### Components and Cairo guide review
+
+The two guides were checked against 15 complete implementation and integration files: 17 full files and 2,334 lines in total. The Components guide incorrectly described `onRowSelected` as exclusively reporting user actions. Its shorter explanation now distinguishes GTKX's suppressed writes from other native selection changes, while preserving optional control and pending-row behavior. Existing integration coverage supports this correction. No snippets or links changed. The Cairo guide has no confirmed issue in this scope.
+
+### Remaining GL callback lifetime contract
+
+The repeat lifetime review reads 12 complete core files, 2,263 lines, plus relevant descriptor and handle paths. Current closure dispatch is tied to the Node thread. Callback retirement and native executable-memory reclamation need separate guarantees; clearing a GL callback does not establish the asynchronous completion boundary needed by a reclamation implementation. The [KHR_debug contract](https://registry.khronos.org/OpenGL/extensions/KHR/KHR_debug.txt) permits delayed and foreign-thread delivery when synchronous output is disabled. No driver stress or stale-callback probe was run, and no GL state change is proposed. GL5 remains open.
+
+### Compiler factory investigation
+
+U18 records an observed React Compiler closure-hoisting failure with a standalone compiler example and public compiled GTKX application controls. The named-function and compiler-disabled controls render the expected native label; the arrow factory raises ReferenceError. React's documented component-hook-factories rule rejects this pattern, and the existing upstream report remains unconfirmed. This does not establish a supported GTKX application regression. Evidence and that limitation are recorded in `~/UPSTREAM.md`; no production workaround or external post was added.
 
 ### Latest remote checkpoint
 
@@ -833,8 +883,10 @@ At `fdb77c7c`, every main CI job passes, including all 591 CLI tests across 55 f
 
 Copilot reviewed 275 of 705 files and added no new inline comments. Its summary repeats the nullable action, manifest replacement and callback lifetime concerns already tracked. The declared string action parameter and existing malformed-manifest coverage retain their recorded dispositions; GL callback lifetime remains open. This partial review does not close the audit, and no reply was posted.
 
+At `e99630eb`, every main CI job and CodeQL pass, including CLI tests, types, lint, documentation, publication and sanitizers. The Sonar coverage and quality-gate run also passes. Copilot reviewed 278 of 730 files and added no inline comments. Its summary retains manifest replacement and GL callback concerns and mentions unknown signal handling. The signal conversion callers receive actual Node child-exit signals or the explicitly handled Linux signals; unsupported signal names do not justify an extra production fallback. No review reply was posted.
+
 ## Next work
 
-The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.
+The completed checkpoint passes full build, typechecking and lint; all 40 JSX consumer cases and 25 reference cases pass. The settings checkpoint includes the complete CLI suite and 1,704 e2e cases. Fresh installed TypeScript and JavaScript consumers, the tutorial and localized packages pass. The final website includes all guide changes. The native ownership sanitizer checkpoint passes 904 cases and restores the normal addon. All remote checks at `e99630eb` are green.
 
-Continue repeat audits alongside the remaining R2 container and ownership stages; the string conversion and declarative notification stages are complete. Follow with GL callback release, the broader constructor/factory-prop contract, remaining desktop notification behavior and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
+Continue repeat audits alongside the remaining R2 container and ownership stages; the string conversion and declarative notification stages are complete. The combined publication, reference and website checkpoint passes. Apply and validate the reviewed contiguous-byte output, string callback seed and GL user-data descriptor corrections. Follow with broader constructor contracts, GL callback release and remaining desktop notification behavior. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
