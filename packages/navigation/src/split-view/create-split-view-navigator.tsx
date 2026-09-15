@@ -56,7 +56,7 @@ function SplitViewNavigator({
     popOnEscape,
     ...options
 }: SplitViewNavigatorProps): ReactNode {
-    const { state, describe, descriptors, navigation, NavigationContent } = useNavigationBuilder<
+    const { state, describe, descriptors, navigation, render } = useNavigationBuilder<
         StackNavigationState<ParamListBase>,
         StackRouterOptions,
         StackActionHelpers<ParamListBase>,
@@ -64,22 +64,20 @@ function SplitViewNavigator({
         SplitViewNavigationEventMap
     >(splitViewRouter, options);
 
-    return (
-        <NavigationContent>
-            <SplitView
-                state={state}
-                navigation={navigation}
-                descriptors={descriptors}
-                describe={describe}
-                collapsed={collapsed}
-                contentPlaceholder={contentPlaceholder}
-                sidebarPosition={sidebarPosition}
-                minSidebarWidth={minSidebarWidth}
-                maxSidebarWidth={maxSidebarWidth}
-                sidebarWidthFraction={sidebarWidthFraction}
-                popOnEscape={popOnEscape}
-            />
-        </NavigationContent>
+    return render(
+        <SplitView
+            state={state}
+            navigation={navigation}
+            descriptors={descriptors}
+            describe={describe}
+            collapsed={collapsed}
+            contentPlaceholder={contentPlaceholder}
+            sidebarPosition={sidebarPosition}
+            minSidebarWidth={minSidebarWidth}
+            maxSidebarWidth={maxSidebarWidth}
+            sidebarWidthFraction={sidebarWidthFraction}
+            popOnEscape={popOnEscape}
+        />,
     );
 }
 

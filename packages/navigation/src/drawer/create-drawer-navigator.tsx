@@ -82,7 +82,7 @@ function DrawerNavigator({
 }: DrawerNavigatorProps): ReactNode {
     const createRouter = useDrawerRouter(collapsed === true);
 
-    const { state, descriptors, navigation, NavigationContent } = useNavigationBuilder<
+    const { state, descriptors, navigation, render } = useNavigationBuilder<
         DrawerNavigationState<ParamListBase>,
         DrawerRouterOptions,
         DrawerActionHelpers<ParamListBase>,
@@ -90,21 +90,19 @@ function DrawerNavigator({
         DrawerNavigationEventMap
     >(createRouter, { ...options, defaultStatus: defaultStatus ?? (collapsed === true ? "closed" : "open") });
 
-    return (
-        <NavigationContent>
-            <DrawerView
-                state={state}
-                navigation={navigation}
-                descriptors={descriptors}
-                drawerContent={drawerContent}
-                collapsed={collapsed}
-                sidebarPosition={sidebarPosition}
-                pinSidebar={pinSidebar}
-                minSidebarWidth={minSidebarWidth}
-                maxSidebarWidth={maxSidebarWidth}
-                sidebarWidthFraction={sidebarWidthFraction}
-            />
-        </NavigationContent>
+    return render(
+        <DrawerView
+            state={state}
+            navigation={navigation}
+            descriptors={descriptors}
+            drawerContent={drawerContent}
+            collapsed={collapsed}
+            sidebarPosition={sidebarPosition}
+            pinSidebar={pinSidebar}
+            minSidebarWidth={minSidebarWidth}
+            maxSidebarWidth={maxSidebarWidth}
+            sidebarWidthFraction={sidebarWidthFraction}
+        />,
     );
 }
 

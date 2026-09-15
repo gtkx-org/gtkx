@@ -244,8 +244,11 @@ function gtkxWorker(): Plugin {
             return transformWorkerUrls({ context: this, references }, code, id);
         },
 
-        resolveFileUrl({ referenceId, relativePath }) {
-            return references.claimed.has(referenceId) ? workerUrlExpression(relativePath) : null;
+        resolveFileUrl: {
+            order: "pre",
+            handler({ referenceId, relativePath }) {
+                return references.claimed.has(referenceId) ? workerUrlExpression(relativePath) : null;
+            },
         },
     };
 }

@@ -1,2 +1,3 @@
 [tools]
-node = "26"
+"npm:npm" = "12.0.2"
+node = "26.8.2"

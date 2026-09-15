@@ -160,7 +160,7 @@ type DeployNodeOptions = Partial<
     Record<"path", string | undefined> &
     Record<"shouldStrip" | "shouldUseCompileCache", boolean | undefined>
 > & {
-    /** Expected Node.js version. Downloaded runtimes default to exactly 26.7.0 when omitted. */
+    /** Expected Node.js version. Downloaded runtimes default to exactly 26.8.2 when omitted. */
     version?: string | undefined;
 };
 const nodeRuntimeSchema: z.ZodType<DeployNodeOptions> = z.strictObject({

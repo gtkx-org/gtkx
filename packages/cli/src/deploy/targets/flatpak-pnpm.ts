@@ -9,12 +9,12 @@ type PnpmPin = {
     sha512: string;
 };
 
-const PNPM_VERSION = "11.26.0";
-const PNPM_MAJOR = 11;
-const PNPM_MINOR = 26;
+const PNPM_VERSION = "12.4.2";
+const PNPM_MAJOR = 12;
+const PNPM_MINOR = 4;
 
-const PNPM_SHA512 = "fc0e2bf890b9f983611f1ab68c0637bce914390653699f83c1a78b005ed25f2c81e77920c8" +
-    "fd8eee2ecf0b58b28cdcb00a84d97f69bcf7c56b2f344710238664";
+const PNPM_SHA512 = "08adc6613180275c7c9edada39dcf08c9c61ad4e7eaf330a4f3461f102b0f907423454d117f9" +
+    "8e72d47fef0616070644d7bffc973a6a57f5090a6d7c368b07c9";
 
 const PNPM_DIR = "flatpak-pnpm";
 const PNPM_COMMAND = "pnpm";
@@ -49,7 +49,8 @@ const pinFromGroups = (groups: Record<string, string | undefined>): PnpmPin | nu
 };
 
 const isSupportedPin = (pin: PnpmPin): boolean =>
-    pin.major === STORE_V10_MAJOR || (pin.major === STORE_V11_MAJOR && pin.minor >= TRUST_LOCKFILE_MINOR);
+    pin.major === PNPM_MAJOR || pin.major === STORE_V10_MAJOR ||
+    (pin.major === STORE_V11_MAJOR && pin.minor >= TRUST_LOCKFILE_MINOR);
 
 const resolvePnpmPin = (settings: DeploySettings): PnpmPin => {
     const field = readPackageManifest(settings.paths.root).packageManager;
@@ -79,7 +80,8 @@ const resolvePnpmPin = (settings: DeploySettings): PnpmPin => {
     if (!isSupportedPin(pin)) {
         throw new Error(
             `Cannot vendor pnpm ${pin.version} for the Flathub sandbox: the offline install runs on pnpm 10, or on ` +
-            "pnpm 11 from 11.3.0 on, where `--trust-lockfile` exists. Earlier pnpm 11 releases reach the registry " +
+            "pnpm 11 from 11.3.0 on, or pnpm 12, where `--trust-lockfile` exists. " +
+            "Earlier pnpm 11 releases reach the registry " +
             'during the supply-chain check and the sandbox has no network. Pin "packageManager" to one of those.',
         );
     }
@@ -100,7 +102,7 @@ const pnpmSources = (pin: PnpmPin, moduleDir: string): FlatpakModule[] => [
 ];
 
 const pnpmInstallCommand = (pin: PnpmPin): string =>
-    pin.major === STORE_V11_MAJOR ? `${PNPM_INSTALL} ${TRUST_LOCKFILE}` : PNPM_INSTALL;
+    pin.major >= STORE_V11_MAJOR ? `${PNPM_INSTALL} ${TRUST_LOCKFILE}` : PNPM_INSTALL;
 
 const pnpmStoreVersionFor = (pin: PnpmPin): string =>
     pin.major === STORE_V10_MAJOR ? STORE_V10 : STORE_V11;

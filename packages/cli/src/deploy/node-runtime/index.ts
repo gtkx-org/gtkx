@@ -19,6 +19,7 @@ type StagedRuntime = {
 type NodeSource = "download" | "host" | "path";
 
 const BYTES_PER_MIB = 1024 * 1024;
+const DEFAULT_NODE_VERSION = "26.8.2";
 const EXECUTABLE_MODE = 0o755;
 const NODE_FILENAME = "node";
 const NODE_VERSION_PATTERN = /^v?(\d+)\.(\d+)\.(\d+)$/;
@@ -134,7 +135,7 @@ const resolveNodeVersion = (settings: DeploySettings): string => {
     const source = nodeSourceFor(settings);
 
     if (source === "download") {
-        return supportedNodeVersion(node.version ?? MINIMUM_NODE_VERSION, 'deploy.node.source: "download"');
+        return supportedNodeVersion(node.version ?? DEFAULT_NODE_VERSION, 'deploy.node.source: "download"');
     }
 
     const actual = source === "host"

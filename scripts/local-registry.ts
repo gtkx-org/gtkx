@@ -25,7 +25,7 @@ local-registry: serving the workspace packages at ${REGISTRY}
     pnpm install
 
   Or per command:
-    NPM_CONFIG_REGISTRY=${REGISTRY} pnpm install
+    PNPM_CONFIG_REGISTRY=${REGISTRY} pnpm install
 
   Auth token (publishing only): ${npmrcPath}
   Storage: ${join(REGISTRY_DIR, "storage")}

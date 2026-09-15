@@ -172,11 +172,11 @@ binaries, and ELF files supplied through `deploy.extraFiles`.
 
 ## Why Node.js is bundled
 
-GTKX needs Node.js 26.7.0 or newer, so `gtkx deploy` bundles the official `nodejs.org` build instead of depending on a distribution package. The default download is pinned to exactly 26.7.0, independently of the Node.js version running the deploy. Set `deploy.node.version` to pin another supported official download explicitly. GTKX verifies the published SHA-256 and caches the archive under `~/.cache/gtkx/node/`, so only the first deploy of that version and architecture needs network access.
+GTKX needs Node.js 26.7.0 or newer, so `gtkx deploy` bundles the official `nodejs.org` build instead of depending on a distribution package. The default download is pinned to exactly 26.8.2, independently of the Node.js version running the deploy. Set `deploy.node.version` to pin another supported official download explicitly. GTKX verifies the published SHA-256 and caches the archive under `~/.cache/gtkx/node/`, so only the first deploy of that version and architecture needs network access.
 
 `deploy.node.source` changes where it comes from:
 
-- `"download"` (default) fetches and verifies the official build for `deploy.node.version`, or 26.7.0 when it is omitted.
+- `"download"` (default) fetches and verifies the official build for `deploy.node.version`, or 26.8.2 when it is omitted.
 - `"host"` copies the Node.js running the build and records `process.versions.node`. Fully offline, but rejected with an explanation when that binary links against something the target machine will not have, which is the case for the Node.js packages Fedora and Debian ship.
 - `"path"` uses `deploy.node.path` and runs that binary with `--version` before packaging it.
 

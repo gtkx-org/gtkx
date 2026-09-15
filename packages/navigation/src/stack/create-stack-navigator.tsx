@@ -46,7 +46,7 @@ const createStackScreen: StaticScreenFactory<StackTypeBag> = createScreenFactory
 
 /** Renders the screens of a {@link createStackNavigator} as pages of an `AdwNavigationView`. */
 function StackNavigator({ popOnEscape, ...options }: StackNavigatorProps): ReactNode {
-    const { state, describe, descriptors, navigation, NavigationContent } = useNavigationBuilder<
+    const { state, describe, descriptors, navigation, render } = useNavigationBuilder<
         StackNavigationState<ParamListBase>,
         StackRouterOptions,
         StackActionHelpers<ParamListBase>,
@@ -54,16 +54,14 @@ function StackNavigator({ popOnEscape, ...options }: StackNavigatorProps): React
         StackNavigationEventMap
     >(StackRouter, options);
 
-    return (
-        <NavigationContent>
-            <StackView
-                popOnEscape={popOnEscape}
-                state={state}
-                navigation={navigation}
-                descriptors={descriptors}
-                describe={describe}
-            />
-        </NavigationContent>
+    return render(
+        <StackView
+            popOnEscape={popOnEscape}
+            state={state}
+            navigation={navigation}
+            descriptors={descriptors}
+            describe={describe}
+        />,
     );
 }
 

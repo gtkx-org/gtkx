@@ -1,6 +1,6 @@
 import type { Plugin, UserConfig } from "vite";
 import { existsSync } from "node:fs";
-import { isAbsolute } from "node:path";
+import { isAbsolute, posix } from "node:path";
 import { stripQuery } from "./strip-query.js";
 
 type PluginState = { isBuild: boolean };
@@ -17,12 +17,13 @@ const bundleRelativeUrl = (filename: string): string => {
 const renderAssetUrl = (
     filename: string,
     type: string,
+    hostId: string,
 ): { runtime: string } | undefined => {
     if (type !== "asset") {
         return undefined;
     }
 
-    return { runtime: bundleRelativeUrl(filename) };
+    return { runtime: bundleRelativeUrl(posix.relative(posix.dirname(hostId), filename)) };
 };
 
 const configureBuiltUrl = (userConfig: UserConfig, command: string): UserConfig | undefined => {
@@ -32,8 +33,8 @@ const configureBuiltUrl = (userConfig: UserConfig, command: string): UserConfig 
 
     return {
         experimental: {
-            renderBuiltUrl(filename, { type }) {
-                return renderAssetUrl(filename, type);
+            renderBuiltUrl(filename, { type, hostId }) {
+                return renderAssetUrl(filename, type, hostId);
             },
         },
     };

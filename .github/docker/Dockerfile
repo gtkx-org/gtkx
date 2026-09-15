@@ -60,7 +60,7 @@ RUN apt-get update \
         libglib2.0-0t64-dbgsym \
     && rm -rf /var/lib/apt/lists/*
 
-ARG FLATPAK_BUILDER_TOOLS=1fc32195e3e60fe5c97f0af646dec7a99df5962b
+ARG FLATPAK_BUILDER_TOOLS=de2225a6dee4818c1339b3cdbf29f90c471fcb7e
 ENV PIPX_HOME=/opt/pipx
 ENV PIPX_BIN_DIR=/usr/local/bin
 RUN pipx install \
@@ -71,7 +71,7 @@ RUN pipx install \
 COPY 60-gtkx-noto-sans.conf /etc/fonts/conf.d/60-gtkx-noto-sans.conf
 RUN fc-cache -f
 
-ARG NODE26_VERSION=26.8.1
+ARG NODE26_VERSION=26.8.2
 ARG TARGETARCH
 RUN set -eux \
     && case "${TARGETARCH}" in \
@@ -83,7 +83,7 @@ RUN set -eux \
         | tar -xJ --strip-components=1 -C /usr/local \
     && node --version | grep -q "v${NODE26_VERSION}"
 
-RUN npm install -g corepack@latest && corepack enable && corepack prepare pnpm@11.26.0 --activate
+RUN npm install -g npm@12.0.2 corepack@0.36.0 && corepack enable && corepack prepare pnpm@12.4.2 --activate
 
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/usr/local/cargo
@@ -94,7 +94,7 @@ ENV RUSTUP_MAX_RETRIES=10
 ENV CARGO_HTTP_MULTIPLEXING=false
 
 ARG RUST_VERSION=1.98.1
-ARG RUST_NIGHTLY=nightly-2026-09-08
+ARG RUST_NIGHTLY=nightly-2026-09-15
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --default-toolchain "${RUST_VERSION}" \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 

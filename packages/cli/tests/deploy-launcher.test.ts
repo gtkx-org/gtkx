@@ -77,7 +77,7 @@ describe("gtkx deploy (generated launcher)", () => {
                 join(project.root, "build", process.arch, "overlay", "deb", "share", "doc", BINARY_NAME, "copyright"),
                 "utf8",
             ),
-        ).toContain("Node.js 26.7.0");
+        ).toContain("Node.js 26.8.2");
     });
 
     it.each([

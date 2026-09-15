@@ -397,7 +397,7 @@ function forwardRegistryRequest(
 ): void {
     const upstream = request(
         {
-            headers: { ...incoming.headers, host: VERDACCIO_HOST },
+            headers: { ...incoming.headers, host: HOST },
             hostname: "localhost",
             method: incoming.method,
             path: rawUrl,
@@ -468,11 +468,14 @@ function registryEnv(userConfig: string, registryDir: string): NodeJS.ProcessEnv
         NPM_CONFIG_CACHE: join(registryDir, "npm-cache"),
         NPM_CONFIG_REGISTRY: REGISTRY,
         NPM_CONFIG_USERCONFIG: userConfig,
+        PNPM_CONFIG_REGISTRY: REGISTRY,
+        PNPM_CONFIG_USERCONFIG: userConfig,
     };
 
     delete env.GITHUB_ACTIONS;
     delete env.NPM_CONFIG_PROVENANCE;
     delete env.npm_config_manage_package_manager_versions;
+    delete env.pnpm_config_manage_package_manager_versions;
 
     return env;
 }
