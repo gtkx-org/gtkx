@@ -122,10 +122,46 @@ impl ArrayCodec {
         matches!(self.container, ArrayContainerCodec::PtrArray(_)).then(|| self.item_codec.clone())
     }
 
-    fn container_release(&self) -> anyhow::Result<impl FnOnce(*mut c_void) + '_> {
+    pub(crate) fn replacement_extent(
+        &self,
+        ffi_args: &[ffi::Stash],
+        arg_codecs: &[Codec],
+    ) -> anyhow::Result<Option<usize>> {
+        match &self.container {
+            ArrayContainerCodec::Sized(sized) => sized.extent(ffi_args, arg_codecs).map(Some),
+            _ => Ok(self.container.fixed_extent()),
+        }
+    }
+
+    pub(crate) fn write_value_with_extent(
+        &self,
+        env: Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+        init: SlotInit,
+        old_extent: Option<usize>,
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
+        write_container_value(
+            slot,
+            value,
+            init,
+            self.ownership,
+            "array pointer write",
+            |value| self.encode(&env, value),
+            || self.container_release(old_extent),
+        )
+    }
+
+    fn container_release(
+        &self,
+        old_extent: Option<usize>,
+    ) -> anyhow::Result<impl FnOnce(*mut c_void) + '_> {
         let release = self.container.release_kind();
         let release = match (&*self.item_codec, release) {
-            (Codec::Bytes(item), ffi::ReleaseKind::GFree) if item.ownership.is_full() => {
+            (Codec::Bytes(item), ffi::ReleaseKind::GFree)
+                if item.ownership.is_full()
+                    && matches!(self.container, ArrayContainerCodec::NullTerminated(_)) =>
+            {
                 ffi::ReleaseKind::StrFreeV
             }
             _ => release,
@@ -137,8 +173,34 @@ impl ArrayCodec {
             _ => None,
         };
 
+        let contiguous_elements = if self.inline_element_size().is_none()
+            && matches!(
+                self.container,
+                ArrayContainerCodec::Sized(_) | ArrayContainerCodec::Fixed(_)
+            ) {
+            self.item_codec
+                .owned_release()?
+                .map(|item| {
+                    old_extent.map(|length| (length, item)).ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Replacing an owned sized-array field needs its original length"
+                        )
+                    })
+                })
+                .transpose()?
+        } else {
+            None
+        };
+
         Ok(move |ptr| {
             let container = ffi::PendingTransfer::new(ptr, release);
+            if let Some((length, item)) = contiguous_elements {
+                let items =
+                    unsafe { std::slice::from_raw_parts(ptr.cast::<*mut c_void>(), length) };
+                for &ptr in items {
+                    drop(ffi::PendingTransfer::new(ptr, item));
+                }
+            }
             if let Some((list, item)) = elements {
                 list.release_items(ptr, item);
             }
@@ -248,7 +310,15 @@ impl PtrWriter for ArrayCodec {
         unsafe { ret.store(container) };
     }
 
-    write_container_value_to_ptr!("array", "array pointer write", Self::container_release);
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+        init: SlotInit,
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
+        self.write_value_with_extent(*env, slot, value, init, self.container.fixed_extent())
+    }
 }
 
 pub(super) fn dup_bytes_to_glib(array: &[Unknown<'_>]) -> anyhow::Result<Vec<*mut c_void>> {

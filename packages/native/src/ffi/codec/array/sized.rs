@@ -14,6 +14,14 @@ impl SizedArrayCodec {
     pub(super) fn new(size_param_index: u32) -> Self {
         Self { size_param_index }
     }
+
+    pub(super) fn extent(
+        &self,
+        ffi_args: &[ffi::Stash],
+        arg_codecs: &[Codec],
+    ) -> anyhow::Result<usize> {
+        ArrayCodec::size_from_args(ffi_args, arg_codecs, self.size_param_index as usize)
+    }
 }
 
 impl ArrayContainer for SizedArrayCodec {
@@ -39,8 +47,7 @@ impl ArrayContainer for SizedArrayCodec {
         arg_codecs: &[Codec],
         read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
-        let length =
-            ArrayCodec::size_from_args(ffi_args, arg_codecs, self.size_param_index as usize)?;
+        let length = self.extent(ffi_args, arg_codecs)?;
         codec.decode_length_bounded(env, self.name(), stash, length, read)
     }
 

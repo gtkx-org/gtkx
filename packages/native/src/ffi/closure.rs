@@ -303,6 +303,7 @@ struct RefSlot<'e> {
     inner_ptr: *mut c_void,
     inner_codec: &'e Codec,
     init: SlotInit,
+    array_extent: Option<usize>,
 }
 
 /// The arguments beside the one being read, as the sizing path consumes them: the stash each libffi
@@ -424,6 +425,15 @@ impl ClosureData {
     ) -> anyhow::Result<RefSlot<'e>> {
         let inner_ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
         let is_seeded = ref_codec.is_inout();
+        let array_extent = if is_seeded
+            && !inner_ptr.is_null()
+            && let Codec::Array(array) = ref_codec.inner_codec()
+            && !unsafe { inner_ptr.cast::<*mut c_void>().read_unaligned() }.is_null()
+        {
+            array.replacement_extent(siblings.stashes, siblings.codecs)?
+        } else {
+            None
+        };
         let seed = if is_seeded {
             seed_ref(env, inner_ptr, ref_codec.inner_codec(), siblings)?
         } else {
@@ -438,6 +448,7 @@ impl ClosureData {
             },
             inner_ptr,
             inner_codec: ref_codec.inner_codec(),
+            array_extent,
             init: if ref_codec.is_inout() {
                 SlotInit::Initialized
             } else {
@@ -632,12 +643,17 @@ impl ClosureData {
             let Some(new_value) = read_ref_value(env, slot.obj) else {
                 continue;
             };
-            let written = slot.inner_codec.write_value_to_ptr(
-                env,
-                unsafe { crate::ffi::Slot::new(slot.inner_ptr) },
-                new_value,
-                slot.init,
-            );
+            let target = unsafe { crate::ffi::Slot::new(slot.inner_ptr) };
+            let written = match slot.inner_codec {
+                Codec::Array(array) => array.write_value_with_extent(
+                    *env,
+                    target,
+                    new_value,
+                    slot.init,
+                    slot.array_extent,
+                ),
+                codec => codec.write_value_to_ptr(env, target, new_value, slot.init),
+            };
             match written {
                 Ok(Some(transfer)) => self.retain_transfer(transfer),
                 Ok(None) => {}

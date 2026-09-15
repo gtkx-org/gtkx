@@ -47,50 +47,41 @@ macro_rules! read_value_non_null {
 }
 pub(super) use read_value_non_null;
 
-macro_rules! write_container_value_to_ptr {
-    ($noun:literal, $label:literal, $release:expr) => {
-        fn write_value_to_ptr(
-            &self,
-            env: &::napi::Env,
-            slot: $crate::ffi::Slot,
-            value: ::napi::bindgen_prelude::Unknown<'_>,
-            init: $crate::ffi::codec::SlotInit,
-        ) -> ::anyhow::Result<::std::option::Option<$crate::ffi::PendingTransfer>> {
-            ::anyhow::ensure!(
-                self.ownership.is_full(),
-                ::std::concat!(
-                    "A transfer-none ",
-                    $noun,
-                    " cannot be written through a pointer: nothing would own the container"
-                )
-            );
-
-            let prepare_release = $release;
-            let release = if init.is_initialized() && !unsafe { slot.load() }.is_null() {
-                Some(prepare_release(self)?)
-            } else {
-                None
-            };
-            let encoded = $crate::ffi::codec::Encoder::encode(self, env, value)?;
-            let container = $crate::ffi::codec::prelude::transfer_container(encoded, $label)?;
-
-            if !init.is_initialized() {
-                unsafe { slot.store(container) };
-
-                return ::std::result::Result::Ok(::std::option::Option::None);
-            }
-
-            let previous = unsafe { slot.swap(container) };
-
-            if let Some(release) = release {
-                release(previous);
-            }
-
-            ::std::result::Result::Ok(::std::option::Option::None)
-        }
+pub(super) fn write_container_value<'e, R>(
+    slot: ffi::Slot,
+    value: Unknown<'e>,
+    init: SlotInit,
+    ownership: Ownership,
+    context: &str,
+    encode: impl FnOnce(Unknown<'e>) -> anyhow::Result<ffi::Stash>,
+    prepare_release: impl FnOnce() -> anyhow::Result<R>,
+) -> anyhow::Result<Option<ffi::PendingTransfer>>
+where
+    R: FnOnce(*mut c_void),
+{
+    anyhow::ensure!(
+        ownership.is_full(),
+        "{context}: a transfer-none container cannot be written through a pointer"
+    );
+    let release = if init.is_initialized() && !unsafe { slot.load() }.is_null() {
+        Some(prepare_release()?)
+    } else {
+        None
     };
+    let encoded = encode(value)?;
+    let container = transfer_container(encoded, context)?;
+
+    if !init.is_initialized() {
+        unsafe { slot.store(container) };
+        return Ok(None);
+    }
+
+    let previous = unsafe { slot.swap(container) };
+    if let Some(release) = release {
+        release(previous);
+    }
+    Ok(None)
 }
-pub(super) use write_container_value_to_ptr;
 
 macro_rules! write_return_transferred {
     ($label:expr) => {
