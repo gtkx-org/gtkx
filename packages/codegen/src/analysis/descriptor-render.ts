@@ -52,7 +52,7 @@ import {
     tUint64,
     tVoid,
 } from "./descriptor.js";
-import { carrayFor, isByteSequence, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
+import { carrayFor, isByteSequence, isUnboundedArray, primitiveCategoryFor, underlyingType } from "./type-shape.js";
 
 type PrimaryReturnKind = "surfaced" | "void" | "skipped";
 
@@ -266,7 +266,7 @@ const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): G
         return undefined;
     }
 
-    const type = context.library.typeFor(ref);
+    const type = underlyingType(context.library, ref);
 
     if (type?.kind !== "callback") {
         return undefined;

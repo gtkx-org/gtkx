@@ -24,6 +24,12 @@
         </parameter>
       </parameters>
     </callback>
+    <alias name="HookAlias" c:type="HookSlotsHookAlias">
+      <type name="HookFunc" c:type="HookSlotsHookFunc"/>
+    </alias>
+    <alias name="HookAliasChain" c:type="HookSlotsHookAliasChain">
+      <type name="HookAlias" c:type="HookSlotsHookAlias"/>
+    </alias>
     <class name="Station"
            c:symbol-prefix="station"
            c:type="HookSlotsStation"
@@ -41,6 +47,19 @@
           </instance-parameter>
           <parameter name="key" transfer-ownership="none">
             <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="invoke_watch" c:identifier="hook_slots_station_invoke_watch">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="station" transfer-ownership="none">
+            <type name="Station" c:type="HookSlotsStation*"/>
+          </instance-parameter>
+          <parameter name="has_callback" transfer-ownership="none">
+            <type name="gboolean" c:type="gboolean"/>
           </parameter>
         </parameters>
       </method>
@@ -90,7 +109,7 @@
                        scope="notified"
                        closure="2"
                        destroy="3">
-              <type name="HookFunc" c:type="HookSlotsHookFunc"/>
+              <type name="HookAliasChain" c:type="HookSlotsHookAliasChain"/>
             </parameter>
             <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1">
               <type name="gpointer" c:type="gpointer"/>
@@ -116,7 +135,7 @@
                        allow-none="1"
                        scope="async"
                        closure="3">
-              <type name="HookFunc" c:type="HookSlotsHookFunc"/>
+              <type name="HookAliasChain" c:type="HookSlotsHookAliasChain"/>
             </parameter>
             <parameter name="stride" transfer-ownership="none">
               <type name="gint" c:type="gint"/>
@@ -127,6 +146,48 @@
           </parameters>
         </callback>
       </field>
+      <field name="get_hook">
+        <callback name="get_hook">
+          <return-value transfer-ownership="none" nullable="1">
+            <type name="HookAliasChain" c:type="HookSlotsHookAliasChain"/>
+          </return-value>
+          <parameters>
+            <parameter name="self" transfer-ownership="none">
+              <type name="Station" c:type="HookSlotsStation*"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
     </record>
+    <function name="get_data_destroy_count" c:identifier="hook_slots_get_data_destroy_count">
+      <return-value transfer-ownership="none">
+        <type name="guint" c:type="guint"/>
+      </return-value>
+    </function>
+    <function name="get_callback_count" c:identifier="hook_slots_get_callback_count">
+      <return-value transfer-ownership="none">
+        <type name="guint" c:type="guint"/>
+      </return-value>
+    </function>
+    <function name="get_base_call_count" c:identifier="hook_slots_get_base_call_count">
+      <return-value transfer-ownership="none">
+        <type name="guint" c:type="guint"/>
+      </return-value>
+    </function>
+    <function name="get_null_call_count" c:identifier="hook_slots_get_null_call_count">
+      <return-value transfer-ownership="none">
+        <type name="guint" c:type="guint"/>
+      </return-value>
+    </function>
+    <function name="get_last_value" c:identifier="hook_slots_get_last_value">
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </return-value>
+    </function>
+    <function name="get_base_result" c:identifier="hook_slots_get_base_result">
+      <return-value transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+    </function>
   </namespace>
 </repository>
