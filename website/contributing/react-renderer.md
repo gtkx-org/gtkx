@@ -47,7 +47,7 @@ When React creates an instance, [`reconciler/instance.ts`](https://github.com/gt
 
 On an update, unchanged values are skipped. Removing a prop can restore its recorded default. A construct-only native property cannot be changed on an existing instance; the renderer rejects that update, so an application must change the element's key when it needs a newly constructed object.
 
-The host configuration's `resetAfterCommit` flushes text, accessibility, styles, and adopted object references after tree mutations. Adopted refs are available to parent layout effects. Accessibility reapplication on map still lives in the host and remains part of the boundary audit.
+The host configuration's `resetAfterCommit` flushes text, accessibility, styles, and adopted object references after tree mutations. Adopted refs are available to parent layout effects. The element component handles accessibility reapplication on map through [`useAccessibleMap`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/hooks/use-accessible-map.ts), whose callback ref owns the signal connection and cleanup.
 
 ## Child placement and parent-created objects
 

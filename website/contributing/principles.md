@@ -95,6 +95,8 @@ Check the dependencies already in use before adding another one. Evaluate mainte
 
 Apply this rule during reviews as well as when adding features. Existing custom implementations should be replaced when a maintained dependency fits their contract. Familiarity with the current code is not a reason to preserve duplication.
 
+Keep compatibility workarounds until official upstream releases include the fixes. Remove them when GTKX's supported versions no longer need them.
+
 ## Prefer simple code and trust the types
 
 Use the simplest implementation that satisfies the supported contract. Trust the type system completely. Express invariants through types, constructors, ownership, and control flow, then use them directly.
