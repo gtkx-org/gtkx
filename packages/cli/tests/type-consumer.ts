@@ -1,9 +1,11 @@
-import { cpSync, mkdirSync, realpathSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { cpSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CliProject } from "./cli-project.js";
 
 const WORKSPACE = fileURLToPath(new URL("../../..", import.meta.url));
+const TYPESCRIPT_CLI = join(WORKSPACE, "node_modules/typescript/bin/tsc");
 const PACKAGES = ["cairo", "components", "config", "css", "forms", "native", "react", "runtime", "utils"];
 
 const copyPackage = (project: CliProject, name: string): void => {
@@ -55,4 +57,21 @@ const isolateTypeConsumer = (project: CliProject): void => {
     copyTypeDependencies(project);
 };
 
-export { isolateTypeConsumer };
+const typecheckSource = (project: CliProject, source: string): number | null => {
+    writeFileSync(join(project.root, "consumer.tsx"), source);
+
+    return spawnSync(process.execPath, [
+        TYPESCRIPT_CLI,
+        "--noEmit",
+        "--module", "ESNext",
+        "--moduleResolution", "Bundler",
+        "--target", "ESNext",
+        "--jsx", "react-jsx",
+        "--strict",
+        "--skipLibCheck", "false",
+        "--types", "node",
+        "consumer.tsx",
+    ], { cwd: project.root, encoding: "utf8" }).status;
+};
+
+export { isolateTypeConsumer, typecheckSource };

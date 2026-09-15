@@ -33,3 +33,4 @@ export { createReconcilerRoot, type ReconcilerRoot, setReconcilerErrorHandler } 
 export { applyWrite } from "./reconciler/signals.js";
 export { applyStyle } from "./reconciler/style.js";
 export type { SettingsSchema, SettingsSchemaKeys, SettingsSchemaValues, SettingValue } from "./utils/settings.js";
+export type { DistributedOmit } from "@gtkx/utils";

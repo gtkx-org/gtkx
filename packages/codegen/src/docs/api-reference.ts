@@ -12,6 +12,7 @@ import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
 import { namespaceFunctionExportName } from "../store/gi/function.js";
 import { setAcceptedChildTypes } from "../store/jsx/accepted-child-types.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
+import { isMountableElement } from "../store/jsx/generated-elements.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
 import { type ElementPageContext, renderElementPage } from "./element-page.js";
@@ -419,6 +420,8 @@ class ApiReference {
     }
 
     private buildIndex(): void {
+        this.applyElementConfig();
+
         for (const namespace of this.library.namespaces.values()) {
             if (externalPackageFor(namespace.name) !== undefined) {
                 continue;
@@ -427,7 +430,9 @@ class ApiReference {
             this.indexNamespace(namespace);
         }
 
-        for (const element of collectIntrinsicElementClasses(this.library)) {
+        const elements = collectIntrinsicElementClasses(this.library).filter(isMountableElement);
+
+        for (const element of elements) {
             this.add({
                 kind: "element",
                 namespace: element.namespace,

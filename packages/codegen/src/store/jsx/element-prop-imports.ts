@@ -25,6 +25,9 @@ const factoryElementPropTypeFor = (glibName: string): ElementPropTypeRef | undef
     return props?.composition === "factory" ? props : undefined;
 };
 
+const inheritablePropsNameFor = (glibName: string): string =>
+    factoryElementPropTypeFor(glibName) === undefined ? `${glibName}Props` : `${glibName}BaseProps`;
+
 const elementBasePropTypeFor = (glibName: string): ElementPropTypeRef | undefined => {
     const props = elementPropTypeFor(glibName);
 
@@ -71,6 +74,7 @@ export {
     setElementProps,
     elementPropTypeFor,
     factoryElementPropTypeFor,
+    inheritablePropsNameFor,
     elementBasePropTypeFor,
     configuredConstructOnlyPropsFor,
     inheritableConfiguredConstructOnlyPropsFor,
