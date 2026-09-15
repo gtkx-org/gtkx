@@ -28,10 +28,6 @@ type PluginState = {
     buildSchemas: Set<string>;
 };
 
-type PluginContext = AssetEmitter & {
-    error: (message: string) => never;
-};
-
 type SchemaResolveContext = Parameters<typeof resolveToVirtual>[0];
 type SchemaResolveRequest = Parameters<typeof resolveToVirtual>[1];
 
@@ -124,19 +120,14 @@ const registerSchemaForMode = (state: PluginState, filePath: string, id: string)
     info(`Compiled GSettings schema: ${fileName}`);
 };
 
-const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): string | undefined => {
+const loadSchemaModule = (state: PluginState, id: string): string | undefined => {
     if (!isVirtual(id)) {
         return undefined;
     }
 
     const filePath = fromVirtualId(id);
-    const fileName = basename(filePath);
     registerSchemaForMode(state, filePath, id);
     const parsed = readProjectSchema(state.rootDir, filePath);
-
-    if (parsed.schemas.length === 0) {
-        ctx.error(`No <schema id="..."> found in ${fileName}`);
-    }
 
     return renderRuntimeModule(parsed);
 };
@@ -183,7 +174,7 @@ const buildSchemaPaths = (rootDir: string, schemaFiles: string[]): string[] =>
     });
 
 const emitBuildSchemas = (
-    ctx: PluginContext,
+    ctx: AssetEmitter,
     state: PluginState,
     buildManifest: BuildManifestCollector | undefined,
 ): void => {
@@ -302,7 +293,7 @@ function gtkxSettings(buildManifest?: BuildManifestCollector): Plugin {
             filter: { id: VIRTUAL_ID_RE },
 
             handler(id) {
-                return loadSchemaModule(this, state, id);
+                return loadSchemaModule(state, id);
             },
         },
 

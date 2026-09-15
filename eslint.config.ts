@@ -25,6 +25,7 @@ export default [
             "packages/react/src/reconciler/registry.ts",
             "packages/react/src/prop-types.ts",
             "packages/react/src/hooks/use-bind-setting.ts",
+            "packages/react/src/utils/settings.ts",
             "packages/testing/src/types.ts",
         ],
         rules: { "gtkx/public-api-jsdoc": "off" },

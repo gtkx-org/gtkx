@@ -3,6 +3,7 @@ import {
     resolveSettingAccessor,
     type SettingsSchema,
     type SettingsSchemaKeys,
+    type SettingsSchemaValues,
     type SettingValue,
 } from "../utils/settings.js";
 import { useObjectValue } from "./use-object-value.js";
@@ -13,11 +14,15 @@ import { useObjectValue } from "./use-object-value.js";
  * @returns The current value, and a setter that writes a new one back to GSettings.
  * @throws When the key is not declared in the schema.
  */
-function useSetting<K extends SettingsSchemaKeys, P extends keyof K>(
+function useSetting<
+    K extends SettingsSchemaKeys,
+    P extends keyof K,
+    V extends SettingsSchemaValues = Record<never, never>,
+>(
     settings: Gio.Settings,
-    schema: SettingsSchema<K>,
+    schema: SettingsSchema<K, V>,
     key: P & string,
-): [SettingValue<K, P>, (value: SettingValue<K, P>) => void] {
+): [SettingValue<K, P, V>, (value: SettingValue<K, P, V>) => void] {
     const accessor = resolveSettingAccessor(settings, schema, key);
     const value = useObjectValue(settings, `changed::${key}`, () => accessor.get());
 

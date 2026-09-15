@@ -2,9 +2,13 @@
 <schemalist>
   <enum id="org.gtkx.test.WrapMode">
     <value nick="none" value="0"/>
-    <value nick="word" value="1"/>
-    <value nick="char" value="2"/>
+    <value nick="word" value="7"/>
+    <value nick="char" value="42"/>
   </enum>
+  <flags id="org.gtkx.test.Features">
+    <value nick="first" value="1"/>
+    <value nick="second" value="8"/>
+  </flags>
   <schema id="com.gtkx.test.useSetting" path="/com/gtkx/test/useSetting/">
     <key name="enabled" type="b">
       <default>false</default>
@@ -38,6 +42,16 @@
       </choices>
       <default>'default'</default>
       <summary>Theme</summary>
+    </key>
+    <key name="nested-theme" type="aams">
+      <choices>
+        <choice value="light"/>
+        <choice value="dark"/>
+      </choices>
+      <default>[[nothing, just 'light']]</default>
+    </key>
+    <key name="features" flags="org.gtkx.test.Features">
+      <default>[]</default>
     </key>
     <key name="retries" type="u">
       <default>3</default>

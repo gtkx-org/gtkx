@@ -69,6 +69,7 @@
                 "testMode": "run"
             },
             "exclude": [
+                "packages/e2e/vitest.config.ts",
                 "examples/gtk-demo/*",
                 "examples/animations/*",
                 "examples/navigation/*",

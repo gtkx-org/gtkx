@@ -588,6 +588,9 @@ importers:
       '@gtkx/cairo':
         specifier: workspace:*
         version: link:../cairo
+      '@gtkx/cli':
+        specifier: workspace:*
+        version: link:../cli
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config

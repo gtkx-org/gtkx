@@ -135,26 +135,28 @@ Set `ref={setWindow}` on `AdwApplicationWindow`. Both bindings wait for the moun
 
 ## Keep application choices together
 
-The native schema owns storage. A small application module owns the labels and conversions used by the UI, sorter, and theme manager. Create `src/settings.ts`:
+The generated schema supplies the allowed choices and enum values. A small application module adds the labels and Adwaita theme mapping used by the UI. Create `src/settings.ts`:
 
 ```ts
 import * as Adw from "@gtkx/gi/adw";
+import schema from "../data/com.gtkx.tutorial.gschema.xml";
+
+export type ColorScheme = typeof schema.values["color-scheme"][number];
+export type SortOrder = keyof typeof schema.values["sort-order"];
+type SortOrderValue = typeof schema.values["sort-order"][SortOrder];
 
 const COLOR_SCHEMES = {
     default: { label: "Follow system", value: Adw.ColorScheme.DEFAULT },
     light: { label: "Light", value: Adw.ColorScheme.FORCE_LIGHT },
     dark: { label: "Dark", value: Adw.ColorScheme.FORCE_DARK },
-} as const;
+} as const satisfies Record<ColorScheme, { label: string; value: Adw.ColorScheme }>;
 
 const SORT_ORDERS = {
     manual: "Manual",
     "due-date": "Due date",
     title: "Title",
     created: "Date created",
-} as const;
-
-export type ColorScheme = keyof typeof COLOR_SCHEMES;
-export type SortOrder = keyof typeof SORT_ORDERS;
+} satisfies Record<SortOrder, string>;
 
 const sortOrderIds = Object.keys(SORT_ORDERS) as SortOrder[];
 
@@ -166,12 +168,13 @@ export const sortOrderItems = (): { id: string; value: string }[] =>
 
 export const colorSchemeValue = (id: string): Adw.ColorScheme => COLOR_SCHEMES[id as ColorScheme].value;
 
-export const sortOrderFromSetting = (value: number): SortOrder => sortOrderIds[value];
+export const sortOrderFromSetting = (value: SortOrderValue): SortOrder =>
+    sortOrderIds.find((id) => schema.values["sort-order"][id] === value) as SortOrder;
 
-export const sortOrderToSetting = (order: SortOrder): number => sortOrderIds.indexOf(order);
+export const sortOrderToSetting = (order: SortOrder): SortOrderValue => schema.values["sort-order"][order];
 ```
 
-The sort setting returns the schema's integer enum value. This module maps it to the IDs used by the preferences row and task selector.
+The sort setting returns the schema's integer enum value. The conversion uses those declared values, so it also works when they are nonconsecutive. The label maps require an entry for each schema choice.
 
 Create `src/hooks/use-sort-order.ts`:
 
@@ -272,7 +275,7 @@ import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useSortOrder } from "../hooks/use-sort-order.js";
-import { colorSchemeItems, sortOrderItems, type SortOrder } from "../settings.js";
+import { colorSchemeItems, sortOrderItems, type ColorScheme, type SortOrder } from "../settings.js";
 import { useAppSettings } from "./settings.js";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
@@ -289,7 +292,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                         title="Theme"
                         items={colorSchemeItems()}
                         selectedId={scheme}
-                        onSelectionChanged={(id) => setScheme(id as string)}
+                        onSelectionChanged={(id) => setScheme(id as ColorScheme)}
                     />
                 </AdwPreferencesGroup>
                 <AdwPreferencesGroup title="Tasks">
