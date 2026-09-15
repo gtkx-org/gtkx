@@ -873,6 +873,38 @@ The two guides were checked against 15 complete implementation and integration f
 
 The repeat lifetime review reads 12 complete core files, 2,263 lines, plus relevant descriptor and handle paths. Current closure dispatch is tied to the Node thread. Callback retirement and native executable-memory reclamation need separate guarantees; clearing a GL callback does not establish the asynchronous completion boundary needed by a reclamation implementation. The [KHR_debug contract](https://registry.khronos.org/OpenGL/extensions/KHR/KHR_debug.txt) permits delayed and foreign-thread delivery when synchronous output is disabled. No driver stress or stale-callback probe was run, and no GL state change is proposed. GL5 remains open.
 
+### Contiguous byte outputs and callback string seeds
+
+Runtime now chooses the public byte-view or numeric-array shape for contiguous uint8 outputs, sharing the GByteArray conversion policy. Native receives its existing byte transport descriptor and retains allocation, storage and transfer responsibilities. Numeric-array inputs remain unchanged. Pointer collections, non-byte arrays and inline records retain their existing paths. The napi U12 compatibility copy remains in place.
+
+String callback inout seeds now copy their borrowed bytes before invoking JavaScript. Runtime still owns UTF-8 conversion, and fixed-capacity string buffers keep their existing behavior. Source review confirmed that lengthless string seeds previously became null; no pre-fix native probe was run.
+
+The 25 new public cases cover byte returns, fields, references and callbacks, plus string seed preservation, replacement, null, empty and Unicode values, and invalid callback outputs. Four native fixture suites share their existing compiler setup through one test helper. All 163 affected native cases, 672 runtime cases and five GL cases pass. Fresh builds, full types and lint, Rust formatting, Clippy and independent review pass; all 59 checked public declaration files remain unchanged. The sanitizer run passes 377 addon and 552 generated-native cases, 929 total, then restores the normal addon.
+
+### GL debug callback arguments
+
+The GL debug callback descriptor now supplies the native registration function's user-data argument and describes the callback's ignored user-data value as a pointer. Clearing the callback consequently supplies both required null pointers. This is a source-confirmed ABI correction, validated by the existing five ordinary GL integration cases and the combined checkpoint above. No pre-fix malformed call or stress probe was run. The explicit callback lifetime is unchanged; GL5 remains open.
+
+### Final v2 guide coverage
+
+Animations, CSS, OpenGL and Storybook were read completely, 530 baseline lines, with 39 complete supporting files totaling 3,829 lines. Together with the recorded earlier batches, all 20 v2 guides now have explicit full-read evidence. CSS and Storybook have no additional confirmed finding in this scope.
+
+Animation guidance now describes retaining a viable window clock without promising the newest mapped window or unconditional completion. The OpenGL guide focuses on GTKX integration, replaces incomplete rendering fragments with a complete component, and links to the upstream rendering reference and existing examples. It also accounts for resize-triggered rendering when automatic rendering is disabled.
+
+The exact component and its Adwaita consumer pass strict TypeScript. Real MCP interaction resizes the running window from 520×360 to 840×620; inspected screenshots show the gray GL surface filling both sizes. All owned processes were stopped. Independent review confirms context, resize and error contracts. The production website checkpoint passes in 438 seconds, including these two guide edits.
+
+### Contributing architecture repeat review
+
+All nine Contributing pages were read completely, 992 lines, with their navigation and implementation owners. The full supporting inventory totals 25 files and 3,025 lines; all 78 repository link targets resolve. The architecture now identifies the element hook that reapplies accessibility on mapping, and the principles include the established upstream workaround retention policy. Runtime byte conversion, generated settings and JSX descriptions remain consistent with the current implementation. Independent review is clean. The production website checkpoint passes in 439 seconds, including both prose changes.
+
+### Owned list replacement and callback borrowing
+
+Source review confirms that initialized GList and GSList replacement releases list nodes without releasing owned elements. Callback seed decoding borrows the outer list but still uses the elements' original transfer policy. The next correction must address both contracts together: adding element cleanup alone would conflict with seed decoding that consumes those elements.
+
+The bounded fix remains under review. Ordinary transfer-full return decoding and separate node/item construction rollback must retain their existing behavior. No stale-memory reproduction or native probe was run. Allocation, traversal and release remain native responsibilities; this finding does not require moving memory operations into runtime.
+
+The shared lifecycle prerequisite is complete. Destructor lookup now happens before acquiring transferred storage and propagates resolution errors. Stored-value cleanup and rollback of newly acquired references share that lookup while preserving their distinct fundamental-reference requirements. Releasable structs now carry their declared cleanup into rollback. Rust formatting, Clippy, the native/runtime build, all 377 addon cases and 80 existing generated collection, string and callback cases pass. Independent review is clean. The list replacement and borrowed-read counterpart still needs validation before this finding can close.
+
 ### Compiler factory investigation
 
 U18 records an observed React Compiler closure-hoisting failure with a standalone compiler example and public compiled GTKX application controls. The named-function and compiler-disabled controls render the expected native label; the arrow factory raises ReferenceError. React's documented component-hook-factories rule rejects this pattern, and the existing upstream report remains unconfirmed. This does not establish a supported GTKX application regression. Evidence and that limitation are recorded in `~/UPSTREAM.md`; no production workaround or external post was added.
@@ -887,6 +919,6 @@ At `e99630eb`, every main CI job and CodeQL pass, including CLI tests, types, li
 
 ## Next work
 
-The completed checkpoint passes full build, typechecking and lint; all 40 JSX consumer cases and 25 reference cases pass. The settings checkpoint includes the complete CLI suite and 1,704 e2e cases. Fresh installed TypeScript and JavaScript consumers, the tutorial and localized packages pass. The final website includes all guide changes. The native ownership sanitizer checkpoint passes 904 cases and restores the normal addon. All remote checks at `e99630eb` are green.
+The completed checkpoint passes full build, typechecking and lint; all 40 JSX consumer cases and 25 reference cases pass. The settings checkpoint includes the complete CLI suite and 1,704 e2e cases. Fresh installed TypeScript and JavaScript consumers, the tutorial and localized packages pass. The byte/string native checkpoint passes 929 sanitizer cases and restores the normal addon. All v2 guide and Contributing edits pass the website build. The subsequent list lifecycle prerequisite passes Rust checks and 457 ordinary native cases; the coupled list fix and sanitizer validation remain pending. All remote checks at `e99630eb` are green; subsequent local commits await a fresh remote checkpoint.
 
-Continue repeat audits alongside the remaining R2 container and ownership stages; the string conversion and declarative notification stages are complete. The combined publication, reference and website checkpoint passes. Apply and validate the reviewed contiguous-byte output, string callback seed and GL user-data descriptor corrections. Follow with broader constructor contracts, GL callback release and remaining desktop notification behavior. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
+Continue repeat audits alongside the remaining R2 container and ownership stages; the string conversion and declarative notification stages are complete. Contiguous-byte output, string callback seeds and GL user-data descriptors are corrected and validated. Follow with coupled owned-list replacement and callback borrowing, broader constructor contracts, GL callback release and remaining desktop notification behavior. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
